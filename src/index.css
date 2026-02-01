@@ -1,0 +1,204 @@
+/* ═══════════════════════════════════════════════════════════
+   🎨 EN-CHECK ADMIN - STYLES GLOBAUX
+   ═══════════════════════════════════════════════════════════ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Couleurs Sable & Or */
+  --sable-clair: #E5D4C0;
+  --sable-dore: #C4A574;
+  --terre-chaude: #8B6914;
+  --brun-profond: #3D2B1F;
+  --noir-elegant: #1C1C1C;
+  --or-doux: #D4AF37;
+  
+  /* Couleurs de base */
+  --blanc: #FFFBF5;
+  --gris: #9E9E9E;
+  --succes: #4A7C59;
+  --erreur: #9B2C2C;
+  
+  /* Ombres */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--sable-clair);
+  color: var(--brun-profond);
+  min-height: 100vh;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   🧩 COMPOSANTS RÉUTILISABLES
+   ═══════════════════════════════════════════════════════════ */
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.card {
+  background: var(--blanc);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.btn {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--terre-chaude);
+  color: var(--blanc);
+}
+
+.btn-primary:hover {
+  background: var(--brun-profond);
+}
+
+.btn-secondary {
+  background: var(--sable-dore);
+  color: var(--brun-profond);
+}
+
+.btn-secondary:hover {
+  background: var(--terre-chaude);
+  color: var(--blanc);
+}
+
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--sable-dore);
+  border-radius: 12px;
+  background: var(--blanc);
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--terre-chaude);
+}
+
+.label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--brun-profond);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   📱 RESPONSIVE - MOBILE FIRST
+   ═══════════════════════════════════════════════════════════ */
+
+/* Petits écrans (téléphones) */
+@media (max-width: 600px) {
+  .container {
+    padding: 0 12px;
+  }
+
+  .card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  /* Cacher certains éléments sur mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Tablettes */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .container {
+    padding: 0 16px;
+  }
+}
+
+/* Installation PWA Banner */
+.pwa-install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #3D2B1F;
+  color: #FFFBF5;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 9999;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+}
+
+.pwa-install-banner button {
+  background: #8B6914;
+  color: #FFFBF5;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pwa-install-banner .close-btn {
+  background: none;
+  padding: 8px;
+}
+
+
+/* ... (ton code existant) ... */
+
+/* ═══════════════════════════════════════════════════════════
+   🦶 ANIMATION CHARGEMENT (PIEDS QUI MARCHENT)
+   ═══════════════════════════════════════════════════════════ */
+@keyframes walk {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-10px) rotate(-10deg); }
+  75% { transform: translateY(-10px) rotate(10deg); }
+}
+
+.loading-walk {
+  animation: walk 1.2s infinite ease-in-out;
+}
+
+.loading-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  color: #8B6914;
+  background-color: #E5D4C0;
+}
