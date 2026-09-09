@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+
+# Bloquer les pages admin
+Disallow: /dashboard
+Disallow: /employes
+Disallow: /pointages
+Disallow: /entreprises
+Disallow: /admin
+Disallow: /employee
+
+Sitemap: https://votre-domaine.com/sitemap.xml

@@ -1,0 +1,1219 @@
+// src/services/hoursCalculator.js
+// ═══════════════════════════════════════════════════════════
+// 🧮 HOURS CALCULATOR (CORRIGÉ v3.0 - Taux dynamiques)
+// ✅ Fix : Taux heures sup dynamiques depuis settings entreprise
+// ✅ Fix : Session ouverte plafonnée intelligemment
+// ✅ Fix : Fenêtre de pointage stricte
+// ✅ Fix : Attendu calculé correctement depuis planning
+// ═══════════════════════════════════════════════════════════
+
+import { supabase } from '../lib/supabase'
+import FeatureService, { FEATURES } from './featureService'
+import HolidayService from './holidayService'
+import { calculerDureeSecondes, formaterHeureLocale } from '../utils/timezoneUtils'
+import { minutesDepuisMinuit } from '../utils/timezoneUtils'
+
+export async function calculateEmployeeHours(employeeId, enterpriseId, referenceDate = new Date()) {
+  const ref = new Date(referenceDate)
+
+  // ── 1) Charger employé + entreprise ───────────────────────
+  const [{ data: employee, error: empErr }, { data: enterprise, error: entErr }] = await Promise.all([
+    supabase
+      .from('employees')
+      .select('id, enterprise_id, matricule, first_name, last_name, photo_url')
+      .eq('id', employeeId)
+      .single(),
+    supabase
+      .from('enterprises')
+      .select('id, currency, auto_close_enabled, auto_close_time, auto_close_grace_minutes')
+      .eq('id', enterpriseId)
+      .single(),
+  ])
+
+  if (empErr || !employee) throw new Error('Employé introuvable')
+  if (entErr || !enterprise) throw new Error('Entreprise introuvable')
+
+  const enterpriseCfg = {
+    id: enterprise.id,
+    currency: enterprise.currency || 'XAF',
+    autoCloseEnabled: enterprise.auto_close_enabled === true,
+    autoCloseTime: (enterprise.auto_close_time || '23:59:00').slice(0, 8),
+    autoCloseGraceMinutes: Number.isFinite(enterprise.auto_close_grace_minutes)
+      ? Number(enterprise.auto_close_grace_minutes)
+      : 0,
+  }
+
+  // ── 2) Périodes ──────────────────────────────────────────
+  const yearPeriod = getYearPeriod(ref)
+  const monthPeriod = getMonthPeriod(ref)
+  const weekPeriod = getWeekPeriod(ref)
+  let todayKey = toDateKeyLocal(ref)
+
+  const yearStartISO = new Date(`${yearPeriod.startDate}T00:00:00`).toISOString()
+  const yearEndISO = new Date(`${yearPeriod.endDate}T23:59:59.999`).toISOString()
+
+  // ── 3) Charger attendances ──────────────────────────────────
+  const { data: attendancesRaw, error: attErr } = await supabase
+    .from('attendances')
+    .select('id, employee_id, enterprise_id, check_time, check_type, is_auto_closed, method')
+    .eq('employee_id', employeeId)
+    .gte('check_time', yearStartISO)
+    .lte('check_time', yearEndISO)
+    .order('check_time', { ascending: true })
+
+  if (attErr) throw attErr
+  const attendances = attendancesRaw || []
+
+  // ── 4) Charger absences ─────────────────────────────────────
+  const { data: absencesRaw } = await supabase
+    .from('absences')
+    .select('id, employee_id, start_date, end_date, reason')
+    .eq('employee_id', employeeId)
+    .or(`start_date.lte.${yearPeriod.endDate},end_date.gte.${yearPeriod.startDate}`)
+
+  const absences = absencesRaw || []
+
+  // ── 5) Planning ──────────────────────────────────────────────
+  //  Les grilles horaires portent des dates d'effet : on ne charge plus « la »
+  //  grille de l'employé, mais celles qui peuvent s'appliquer sur la période,
+  //  puis on retient pour chaque journée celle qui était en vigueur ce jour-là.
+  //  Une grille changée en mars ne retouche donc jamais janvier.
+  const { plansParJour, employeeScheduleRow, defaultScheduleRow } = await loadPlanningsDeLaPeriode({
+    supabase,
+    employeeId,
+    enterpriseId: employee.enterprise_id,
+    startDate: yearPeriod.startDate,
+    endDate: yearPeriod.endDate,
+  })
+
+  const plan = resolvePlanForExpected(employeeScheduleRow, defaultScheduleRow)
+
+  //  À 01:00 du matin, la journée de travail en cours est encore celle d'hier
+  //  quand la bascule est à 04:00 : le tableau de bord doit montrer la garde en
+  //  cours, pas une journée vide.
+  if (plan) todayKey = cleJourDeTravail(ref, plan.bascule)
+  const scheduleResolved = resolveScheduleLikeRetards(employeeScheduleRow, defaultScheduleRow)
+
+  // ── 6) Jours fériés ──────────────────────────────────────────
+  const holidaysSet = await loadHolidaySet(employee.enterprise_id, yearPeriod.startDate, yearPeriod.endDate)
+
+  // ── 7) Contexte heures sup ───────────────────────────────────
+  const { hasOvertimeFeature, overtimeSettings, allSchedules } = await loadOvertimeContext(employee.enterprise_id)
+
+  // ── 8) Calcul jour par jour ──────────────────────────────────
+  const daySummaries = buildDaySummariesStrict({
+    basculeMinutes: plan ? minutesDeBascule(plan.bascule) : 0,
+    attendances,
+    enterpriseCfg,
+    yearStartDate: yearPeriod.startDate,
+    yearEndDate: yearPeriod.endDate,
+  })
+
+  // ── 9) Aujourd'hui ────────────────────────────────────────────
+  const todaySummary = daySummaries[todayKey] || makeEmptyDaySummary(todayKey)
+
+  const todayData = {
+    date: todayKey,
+    worked: formatDurationSeconds(todaySummary.totalSeconds),
+    entries: todaySummary.entries,
+    break: null,
+    openSessionsCount: todaySummary.openSessionsCount,
+    hasAutoCloseVirtual: todaySummary.hasAutoCloseVirtual,
+  }
+
+  // ── 10) Semaine ───────────────────────────────────────────────
+  const weekDays = listDaysInclusive(weekPeriod.startDate, weekPeriod.endDate)
+
+  let weekWorkedSeconds = 0
+  let weekExpectedSeconds = null
+  let weekExpectedDaysCount = null
+
+  const weekRows = weekDays.map(d => {
+    const s = daySummaries[d] || makeEmptyDaySummary(d)
+    weekWorkedSeconds += s.totalSeconds
+    return {
+      day: new Date(`${d}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long' }),
+      hours: formatDurationSeconds(s.totalSeconds),
+      overtime: null,
+    }
+  })
+
+  if (plan) {
+    const exp = computeExpectedForRange({
+      startDate: weekPeriod.startDate,
+      endDate: weekPeriod.endDate,
+      plan,
+      plansParJour,
+      holidaysSet,
+      absences,
+    })
+    weekExpectedSeconds = exp.expectedSeconds
+    weekExpectedDaysCount = exp.expectedDaysCount
+  }
+
+  const weekCompletion = (weekExpectedSeconds && weekExpectedSeconds > 0)
+    ? (weekWorkedSeconds / weekExpectedSeconds) * 100
+    : null
+
+  const weekData = {
+    period: `${formatDateShortFR(weekPeriod.startDate)} - ${formatDateShortFR(weekPeriod.endDate)}`,
+    total: formatDurationSeconds(weekWorkedSeconds),
+    expected: (weekExpectedSeconds && weekExpectedSeconds > 0) ? formatDurationSeconds(weekExpectedSeconds) : null,
+    completion: (weekCompletion !== null) ? Math.round(weekCompletion * 10) / 10 : null,
+    days: weekRows,
+  }
+
+  // ── 11) Mois (avec taux dynamiques) ───────────────────────────
+  const monthDays = listDaysInclusive(monthPeriod.startDate, monthPeriod.endDate)
+
+  let monthWorkedSeconds = 0
+  let monthNormalSeconds = 0
+  let otNormalSeconds = 0
+  let otMajor50Seconds = 0
+  let otMajor100Seconds = 0
+
+  // ✅ NOUVEAU : Tracker les taux réellement appliqués
+  let appliedRateNormal = null
+  let appliedRateMajor = null
+
+  let monthOpenSessionsCount = 0
+  let monthVirtualAutoCloseDays = 0
+
+  for (const d of monthDays) {
+    const s = daySummaries[d] || makeEmptyDaySummary(d)
+    monthWorkedSeconds += s.totalSeconds
+    monthOpenSessionsCount += s.openSessionsCount
+    if (s.hasAutoCloseVirtual) monthVirtualAutoCloseDays += 1
+
+    if (hasOvertimeFeature && overtimeSettings && s.totalSeconds > 0) {
+      const scheduleForDay = FeatureService.getApplicableSchedule(employee.enterprise_id, d, allSchedules)
+      const overtimeData = FeatureService.calculateOvertimeWithSchedule(
+        s.totalSeconds,
+        scheduleForDay,
+        overtimeSettings,
+        new Date(`${d}T00:00:00`)
+      )
+
+      const totalOt = overtimeData?.totalOvertimeSeconds || 0
+      const majorOt = overtimeData?.overtimeMajorSeconds || 0
+      const normalOt = overtimeData?.overtimeSeconds || Math.max(0, totalOt - majorOt)
+
+      otNormalSeconds += normalOt
+
+      const majorRate = overtimeData?.rateMajorApplied
+      if (majorRate === 100) otMajor100Seconds += majorOt
+      else if (majorRate === 50) otMajor50Seconds += majorOt
+      else otMajor50Seconds += majorOt
+
+      monthNormalSeconds += Math.max(0, s.totalSeconds - totalOt)
+
+      // ✅ Capturer les taux réels
+      if (overtimeData?.rateApplied && appliedRateNormal === null) {
+        appliedRateNormal = overtimeData.rateApplied
+      }
+      if (overtimeData?.rateMajorApplied && appliedRateMajor === null) {
+        appliedRateMajor = overtimeData.rateMajorApplied
+      }
+    } else {
+      monthNormalSeconds += s.totalSeconds
+    }
+  }
+
+  let monthExpectedSeconds = null
+  let monthExpectedDaysCount = null
+  let monthAbsenceSeconds = 0
+
+  if (plan) {
+    const exp = computeExpectedForRange({
+      startDate: monthPeriod.startDate,
+      endDate: monthPeriod.endDate,
+      plan,
+      plansParJour,
+      holidaysSet,
+      absences,
+    })
+    monthExpectedSeconds = exp.expectedSeconds
+    monthExpectedDaysCount = exp.expectedDaysCount
+    monthAbsenceSeconds = exp.absenceSeconds
+  }
+
+  const monthRate = (monthExpectedSeconds && monthExpectedSeconds > 0)
+    ? Math.round((monthWorkedSeconds / monthExpectedSeconds) * 100)
+    : null
+
+  // ✅ NOUVEAU : Structure avec taux dynamiques
+  const monthData = {
+    period: formatMonthYearFR(monthPeriod.startDate),
+
+    normal: formatDurationSeconds(monthNormalSeconds),
+    
+    // ✅ Heures sup avec taux réels
+    overtime_normal: {
+      hours: formatDurationSeconds(otNormalSeconds),
+      rate: appliedRateNormal !== null ? appliedRateNormal : (overtimeSettings?.rate_normal || 25),
+    },
+    
+    overtime_major: {
+      hours: formatDurationSeconds(otMajor50Seconds + otMajor100Seconds),
+      rate: appliedRateMajor !== null ? appliedRateMajor : (overtimeSettings?.rate_major || 50),
+    },
+
+    // ✅ Ancien format (rétrocompatibilité)
+    overtime_25: formatDurationSeconds(otNormalSeconds),
+    overtime_50: formatDurationSeconds(otMajor50Seconds),
+    overtime_100: formatDurationSeconds(otMajor100Seconds),
+
+    absences: plan ? formatDurationSeconds(monthAbsenceSeconds) : '0h00',
+    total_worked: formatDurationSeconds(monthWorkedSeconds),
+
+    total_expected: (monthExpectedSeconds && monthExpectedSeconds > 0)
+      ? formatDurationSeconds(monthExpectedSeconds)
+      : null,
+
+    rate: monthRate,
+
+    openSessionsCount: monthOpenSessionsCount,
+    virtualAutoCloseDays: monthVirtualAutoCloseDays,
+  }
+
+  // ── 12) Année ─────────────────────────────────────────────────
+  const yearDays = listDaysInclusive(yearPeriod.startDate, yearPeriod.endDate)
+
+  let yearWorkedSeconds = 0
+  let yearOtSeconds = 0
+  let yearPresenceDays = 0
+
+  for (const d of yearDays) {
+    const s = daySummaries[d] || makeEmptyDaySummary(d)
+    yearWorkedSeconds += s.totalSeconds
+    if (s.firstInISO) yearPresenceDays += 1
+
+    if (hasOvertimeFeature && overtimeSettings && s.totalSeconds > 0) {
+      const scheduleForDay = FeatureService.getApplicableSchedule(employee.enterprise_id, d, allSchedules)
+      const overtimeData = FeatureService.calculateOvertimeWithSchedule(
+        s.totalSeconds,
+        scheduleForDay,
+        overtimeSettings,
+        new Date(`${d}T00:00:00`)
+      )
+      yearOtSeconds += overtimeData?.totalOvertimeSeconds || 0
+    }
+  }
+
+  const avgPerDaySeconds = yearPresenceDays > 0 ? Math.round(yearWorkedSeconds / yearPresenceDays) : 0
+
+  let yearExpectedSeconds = null
+  let yearExpectedDaysCount = null
+
+  if (plan) {
+    const exp = computeExpectedForRange({
+      startDate: yearPeriod.startDate,
+      endDate: yearPeriod.endDate,
+      plan,
+      plansParJour,
+      holidaysSet,
+      absences,
+    })
+    yearExpectedSeconds = exp.expectedSeconds
+    yearExpectedDaysCount = exp.expectedDaysCount
+  }
+
+  const attendanceRate = (yearExpectedDaysCount && yearExpectedDaysCount > 0)
+    ? Math.round((yearPresenceDays / yearExpectedDaysCount) * 100)
+    : null
+
+  const delays = computeRetardsAlignedRetardsJSX({
+    attendances,
+    scheduleResolved,
+    holidaysSet,
+    startDate: yearPeriod.startDate,
+    endDate: yearPeriod.endDate,
+  })
+
+  const yearData = {
+    period: new Date(`${yearPeriod.startDate}T00:00:00`).getFullYear().toString(),
+    total: formatDurationSeconds(yearWorkedSeconds),
+    overtime: formatDurationSeconds(yearOtSeconds),
+    avg_per_day: formatDurationSeconds(avgPerDaySeconds),
+    attendance_rate: attendanceRate,
+    delays,
+  }
+
+  // ── 13) Valorisation (avec taux dynamiques) ───────────────────
+  const valorization = await calculateValorization(employeeId, employee.enterprise_id, monthData, enterpriseCfg.currency)
+
+  // ── 14) Alertes ───────────────────────────────────────────────
+  const alerts = generateAlerts({
+    today: todayData,
+    month: monthData,
+    year: yearData,
+    hasPlan: !!plan,
+  })
+
+  return {
+    employee: {
+      id: employee.id,
+      name: `${employee.first_name} ${employee.last_name}`,
+      matricule: employee.matricule,
+      photo_url: employee.photo_url,
+    },
+    today: todayData,
+    thisWeek: weekData,
+    thisMonth: monthData,
+    thisYear: yearData,
+    valorization,
+    alerts,
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ✅ CALCUL STRICT JOUR PAR JOUR
+// ═══════════════════════════════════════════════════════════
+
+function buildDaySummariesStrict({ attendances, enterpriseCfg, yearStartDate, yearEndDate, basculeMinutes = 0 }) {
+  const summaries = {}
+  const atts = [...(attendances || [])].sort((a, b) => new Date(a.check_time) - new Date(b.check_time))
+
+  const ensure = (dateKey) => {
+    if (!summaries[dateKey]) summaries[dateKey] = makeEmptyDaySummary(dateKey)
+    return summaries[dateKey]
+  }
+
+  const pushPairToDay = (inAtt, outAtt) => {
+    const inDate = new Date(inAtt.check_time)
+    //  Journée de travail : la bascule de la grille décide où commence la
+    //  journée, donc à quelle journée appartient un pointage d'après minuit.
+    const dayKey = cleJourDeTravail(inDate, basculeMinutes)
+
+    if (dayKey < yearStartDate || dayKey > yearEndDate) return
+
+    const s = ensure(dayKey)
+
+    const duration = calculerDureeSecondes(inAtt.check_time, outAtt.check_time)
+    const cappedDuration = Math.min(duration, 16 * 3600)
+    s.totalSeconds += cappedDuration
+
+    s.validPairsCount += 1
+    if (!s.firstInISO) s.firstInISO = inAtt.check_time
+    s.lastOutISO = outAtt.check_time
+
+    if (outAtt?.__virtual) {
+      s.openSessionsCount += 1
+      s.hasAutoCloseVirtual = true
+    }
+
+    // entries (limitées)
+    if (s.entries.length < 4) {
+      s.entries.push({
+        in: formaterHeureLocale(inAtt.check_time),
+        out: outAtt ? formaterHeureLocale(outAtt.check_time) : null,
+        is_auto_closed: !!outAtt?.is_auto_closed,
+        is_virtual: !!outAtt?.__virtual,
+      })
+    }
+  }
+
+  let currentIn = null
+
+  for (const att of atts) {
+    // ✅ on ne filtre pas sur la "date du OUT", on paire globalement
+    if (att.check_type === 'in') {
+      currentIn = att
+      continue
+    }
+
+    if (att.check_type === 'out' && currentIn) {
+      const diffHours = (new Date(att.check_time) - new Date(currentIn.check_time)) / (1000 * 60 * 60)
+
+      if (diffHours > 0 && diffHours <= 16) {
+        pushPairToDay(currentIn, att)
+        currentIn = null
+      } else {
+        // OUT trop loin / incohérent => on abandonne l'IN
+        currentIn = null
+      }
+    }
+  }
+
+  // ✅ Session ouverte (IN sans OUT dans toute la période)
+  if (currentIn) {
+    const inDate = new Date(currentIn.check_time)
+    const inDateKey = toDateKeyLocal(inDate)
+    const now = new Date()
+    const nowDateKey = toDateKeyLocal(now)
+
+    let virtualOut
+
+    if (inDateKey < nowDateKey) {
+      virtualOut = computeVirtualAutoCloseOut(inDate, enterpriseCfg)
+      const endOfDay = new Date(`${inDateKey}T23:59:59`)
+      if (virtualOut > endOfDay) virtualOut = endOfDay
+    } else {
+      const configuredClose = computeVirtualAutoCloseOut(inDate, enterpriseCfg)
+      virtualOut = (now < configuredClose) ? now : configuredClose
+    }
+
+    const maxDuration = 14 * 3600 * 1000
+    const maxOut = new Date(inDate.getTime() + maxDuration)
+    const finalOut = (virtualOut > maxOut) ? maxOut : virtualOut
+
+    pushPairToDay(currentIn, {
+      id: `virtual-out-${currentIn.id}`,
+      check_time: finalOut.toISOString(),
+      check_type: 'out',
+      is_auto_closed: true,
+      __virtual: true,
+    })
+  }
+
+  return summaries
+}
+
+function computeDayStrict(selectedDate, empAttendances, enterpriseCfg) {
+  let totalSeconds = 0
+  let validPairs = []
+  let openSessionsCount = 0
+  let hasAutoCloseVirtual = false
+
+  const atts = [...empAttendances].sort((a, b) => new Date(a.check_time) - new Date(b.check_time))
+
+  let currentIn = null
+
+  for (const att of atts) {
+    if (att.check_type === 'in') {
+      currentIn = att
+    } else if (att.check_type === 'out' && currentIn) {
+      const duration = calculerDureeSecondes(currentIn.check_time, att.check_time)
+      const cappedDuration = Math.min(duration, 16 * 3600)
+      
+      totalSeconds += cappedDuration
+      validPairs.push({ in: currentIn, out: att })
+      currentIn = null
+    }
+  }
+
+  // ✅ Session ouverte (IN sans OUT)
+  if (currentIn) {
+    openSessionsCount = 1
+    hasAutoCloseVirtual = true
+
+    const inDate = new Date(currentIn.check_time)
+    const now = new Date()
+    const inDateKey = toDateKeyLocal(inDate)
+    const nowDateKey = toDateKeyLocal(now)
+
+    let virtualOut
+
+    if (inDateKey < nowDateKey) {
+      virtualOut = computeVirtualAutoCloseOut(inDate, enterpriseCfg)
+      const endOfDay = new Date(`${inDateKey}T23:59:59`)
+      if (virtualOut > endOfDay) {
+        virtualOut = endOfDay
+      }
+    } else {
+      const configuredClose = computeVirtualAutoCloseOut(inDate, enterpriseCfg)
+      virtualOut = (now < configuredClose) ? now : configuredClose
+    }
+
+    const maxDuration = 14 * 3600 * 1000
+    const maxOut = new Date(inDate.getTime() + maxDuration)
+    const finalOut = (virtualOut > maxOut) ? maxOut : virtualOut
+
+    const duration = calculerDureeSecondes(currentIn.check_time, finalOut.toISOString())
+    totalSeconds += duration
+
+    validPairs.push({
+      in: currentIn,
+      out: {
+        id: `virtual-out-${currentIn.id}`,
+        check_time: finalOut.toISOString(),
+        check_type: 'out',
+        is_auto_closed: true,
+        __virtual: true,
+      },
+    })
+  }
+
+  const firstIn = validPairs.length > 0 ? validPairs[0].in : null
+  const lastOut = validPairs.length > 0 ? validPairs[validPairs.length - 1].out : null
+
+  const entries = validPairs.slice(0, 4).map(pair => ({
+    in: formaterHeureLocale(pair.in.check_time),
+    out: pair.out ? formaterHeureLocale(pair.out.check_time) : null,
+    is_auto_closed: !!pair.out?.is_auto_closed,
+    is_virtual: !!pair.out?.__virtual,
+  }))
+
+  return {
+    date: selectedDate,
+    totalSeconds,
+    firstInISO: firstIn?.check_time || null,
+    lastOutISO: lastOut?.check_time || null,
+    validPairsCount: validPairs.length,
+    openSessionsCount,
+    hasAutoCloseVirtual,
+    entries,
+  }
+}
+
+function computeVirtualAutoCloseOut(inDate, enterpriseCfg) {
+  const baseDateKey = toDateKeyLocal(inDate)
+
+  if (!enterpriseCfg.autoCloseEnabled) {
+    return new Date(`${baseDateKey}T23:59:59`)
+  }
+
+  const targetBase = new Date(`${baseDateKey}T${enterpriseCfg.autoCloseTime}`)
+  const target = new Date(targetBase.getTime() + enterpriseCfg.autoCloseGraceMinutes * 60000)
+
+  return target
+}
+
+// ═══════════════════════════════════════════════════════════
+// EXPECTED (planning)
+// ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+// DATES D'EFFET DES GRILLES HORAIRES
+// ═══════════════════════════════════════════════════════════
+//  Une grille sans date de début vaut depuis toujours ; sans date de fin, elle
+//  vaut sans fin ; et lorsque plusieurs versions couvrent une même journée,
+//  c'est la plus récemment déclarée qui l'emporte.
+
+const DATE_SANS_DEBUT = '1900-01-01'
+
+// ═══════════════════════════════════════════════════════════
+// LA JOURNÉE DE TRAVAIL ET L'HEURE DE BASCULE
+// ═══════════════════════════════════════════════════════════
+//  Un service qui commence à 22:00 et finit à 06:00 appartient à la journée où
+//  il a COMMENCÉ : la partie qui se déroule après minuit doit donc être comptée
+//  la veille. Chaque grille peut déclarer une heure de bascule — avant cette
+//  heure-là, on est encore la journée précédente. Sans déclaration, la bascule
+//  est à minuit et rien ne change.
+
+function minutesDeBascule(valeur) {
+  if (valeur === null || valeur === undefined || valeur === '') return 0
+  if (typeof valeur === 'number') {
+    return Number.isFinite(valeur) ? Math.max(0, Math.min(1439, Math.round(valeur))) : 0
+  }
+  const m = String(valeur).match(/^(\d{1,2}):(\d{2})/)
+  if (!m) return 0
+  const minutes = Number(m[1]) * 60 + Number(m[2])
+  return Number.isFinite(minutes) ? Math.max(0, Math.min(1439, minutes)) : 0
+}
+
+//  Le nom de la journée de travail d'un instant : on recule de la bascule, puis
+//  on prend le jour local. Avec une bascule à minuit, c'est le jour local.
+function cleJourDeTravail(date, basculeMinutes = 0) {
+  const bascule = minutesDeBascule(basculeMinutes)
+  if (!bascule) return toDateKeyLocal(date)
+  return toDateKeyLocal(new Date(date.getTime() - bascule * 60000))
+}
+
+function grilleValableLe(grille, jour) {
+  if (!grille || !jour) return true
+  const debut = grille.valide_du ? String(grille.valide_du).slice(0, 10) : DATE_SANS_DEBUT
+  const fin = grille.valide_au ? String(grille.valide_au).slice(0, 10) : null
+  if (jour < debut) return false
+  if (fin && jour > fin) return false
+  return true
+}
+
+function dateEffet(grille) {
+  return grille && grille.valide_du ? String(grille.valide_du).slice(0, 10) : DATE_SANS_DEBUT
+}
+
+//  La plus récente d'abord ; à date d'effet égale, la dernière créée — c'est
+//  celle que quelqu'un vient de déclarer, donc celle qu'il faut lire.
+function parDateEffetDecroissante(a, b) {
+  const da = dateEffet(a)
+  const db = dateEffet(b)
+  if (da !== db) return db.localeCompare(da)
+
+  const ca = String(a?.created_at || '')
+  const cb = String(b?.created_at || '')
+  if (ca !== cb) return cb.localeCompare(ca)
+
+  return String(b?.id || '').localeCompare(String(a?.id || ''))
+}
+
+function choisirGrilleParDefaut(grilles, jour) {
+  const valables = (grilles || []).filter((g) => grilleValableLe(g, jour))
+  if (valables.length === 0) return null
+  const parDefaut = valables.filter((g) => g.is_default === true)
+  return [...(parDefaut.length ? parDefaut : valables)].sort(parDateEffetDecroissante)[0] || null
+}
+
+/**
+ * Charge les grilles applicables sur la période et construit, pour chaque
+ * journée, l'horaire attendu de ce jour précis.
+ *
+ * Si la base ne connaît pas encore les dates d'effet, on reprend exactement
+ * les deux requêtes d'origine : rien ne change à l'écran.
+ */
+async function loadPlanningsDeLaPeriode({ supabase, employeeId, enterpriseId, startDate, endDate }) {
+  const [{ data: affectations, error: errAffectations }, { data: grilles, error: errGrilles }] =
+    await Promise.all([
+      supabase.from('employee_schedules').select('*, work_schedules(*)').eq('employee_id', employeeId),
+      supabase
+        .from('work_schedules')
+        .select('*')
+        .eq('enterprise_id', enterpriseId)
+        .eq('is_active', true)
+        .or(`valide_du.is.null,valide_du.lte.${endDate}`),
+    ])
+
+  if (errGrilles || errAffectations) {
+    const [{ data: employeeScheduleRow }, { data: defaultScheduleRow }] = await Promise.all([
+      supabase
+        .from('employee_schedules')
+        .select('*, work_schedules(*)')
+        .eq('employee_id', employeeId)
+        .maybeSingle(),
+      supabase
+        .from('work_schedules')
+        .select('*')
+        .eq('enterprise_id', enterpriseId)
+        .eq('is_default', true)
+        .eq('is_active', true)
+        .maybeSingle(),
+    ])
+
+    return {
+      plansParJour: null,
+      employeeScheduleRow: employeeScheduleRow || null,
+      defaultScheduleRow: defaultScheduleRow || null,
+    }
+  }
+
+  const affectationsUtiles = (affectations || []).filter(
+    (r) => r && r.is_active !== false && r.work_schedules && grilleValableLe(r.work_schedules, startDate)
+  )
+  const grillesUtiles = (grilles || []).filter((g) => grilleValableLe(g, startDate))
+
+  const employeeScheduleRow = affectationsUtiles[0] || null
+  const defaultScheduleRow =
+    choisirGrilleParDefaut(grillesUtiles, startDate) ||
+    (employeeScheduleRow ? employeeScheduleRow.work_schedules : null) ||
+    null
+
+  return {
+    plansParJour: construirePlanningsParJour({ affectations: affectationsUtiles, grilles: grillesUtiles, startDate, endDate }),
+    employeeScheduleRow,
+    defaultScheduleRow,
+  }
+}
+
+function construirePlanningsParJour({ affectations, grilles, startDate, endDate }) {
+  const parJour = {}
+  if (!startDate || !endDate) return parJour
+
+  for (const jour of listDaysInclusive(startDate, endDate)) {
+    const affectation =
+      (affectations || [])
+        .filter((r) => grilleValableLe(r.work_schedules, jour))
+        .sort((a, b) => parDateEffetDecroissante(a.work_schedules, b.work_schedules))[0] || null
+
+    const grilleDuJour = affectation ? affectation.work_schedules : choisirGrilleParDefaut(grilles, jour)
+    if (!grilleDuJour) continue
+
+    const plan = resolvePlanForExpected(affectation, grilleDuJour)
+    if (!plan) continue
+
+    parJour[jour] = {
+      ...plan,
+      grilleId: grilleDuJour.id || null,
+      grilleNom: grilleDuJour.name || null,
+      valide_du: grilleDuJour.valide_du || null,
+    }
+  }
+
+  return parJour
+}
+
+function computeExpectedForRange({ startDate, endDate, plan, plansParJour, holidaysSet, absences }) {
+  const days = listDaysInclusive(startDate, endDate)
+  const absenceDaySet = buildAbsenceDaySet(absences, startDate, endDate)
+
+  let expectedSeconds = 0
+  let expectedDaysCount = 0
+  let absenceSeconds = 0
+  let joursSansGrille = 0
+
+  //  Quel horaire a produit le total : c'est ce qui permet d'expliquer un
+  //  résultat à un employé (« en mars, ta grille est passée de 8 h à 8 h 30 »).
+  const heuresParGrille = new Map()
+
+  for (const d of days) {
+    if (holidaysSet && holidaysSet.has(d)) continue
+
+    //  En mode daté, une journée sans grille en vigueur n'attend rien : on ne
+    //  ressert pas l'horaire d'avant, sinon une grille terminée continuerait de
+    //  compter ses heures pour toujours.
+    const grilleDuJour = plansParJour ? plansParJour[d] || null : null
+    if (plansParJour && !grilleDuJour) joursSansGrille += 1
+    const planDuJour = plansParJour ? grilleDuJour : plan
+
+    const dayExpected = computeExpectedForDay(d, planDuJour)
+    if (!dayExpected || dayExpected <= 0) continue
+
+    if (grilleDuJour && grilleDuJour.grilleId) {
+      const cle = grilleDuJour.grilleId
+      const vu = heuresParGrille.get(cle) || {
+        grilleId: grilleDuJour.grilleId,
+        grilleNom: grilleDuJour.grilleNom || null,
+        jours: [],
+        secondes: 0,
+      }
+      vu.jours.push(d)
+      vu.secondes += dayExpected
+      heuresParGrille.set(cle, vu)
+    }
+
+    if (absenceDaySet.has(d)) {
+      absenceSeconds += dayExpected
+      continue
+    }
+
+    expectedSeconds += dayExpected
+    expectedDaysCount += 1
+  }
+
+  return {
+    expectedSeconds,
+    expectedDaysCount,
+    absenceSeconds,
+    joursSansGrille,
+    //  Détail par grille, du plus ancien au plus récent : sert à afficher
+    //  « du 01/01 au 28/02 : 08:00-17:00 · à partir du 01/03 : 07:00-16:00 ».
+    detailParGrille: Array.from(heuresParGrille.values())
+      .map((v) => ({ ...v, debut: v.jours[0], fin: v.jours[v.jours.length - 1] }))
+      .sort((a, b) => String(a.debut).localeCompare(String(b.debut))),
+  }
+}
+
+function computeExpectedForDay(dateKey, plan) {
+  if (!plan) return 0
+
+  const dayIndex = getPlanDayIndex(dateKey)
+  const workDays = Array.isArray(plan.work_days) ? plan.work_days : null
+  if (!workDays || workDays.length === 0) return 0
+  if (!workDays.includes(dayIndex)) return 0
+
+  if (!plan.start_time || !plan.end_time) return 0
+
+  const startMin = timeToMinutes(plan.start_time)
+  const endMin = timeToMinutes(plan.end_time)
+  //  Départ identique à l'arrivée : rien de déclaré, on ne compte rien.
+  if (endMin === startMin) return 0
+
+  //  Un service qui traverse minuit — 22:00 → 06:00 — vaut 8 h, comptées sur la
+  //  journée où il a COMMENCÉ. Avant, la base répondait 0 heure : ni retard, ni
+  //  absence, ni heure supplémentaire ne pouvaient exister pour une garde de nuit.
+  const minutes = endMin > startMin ? endMin - startMin : (1440 - startMin) + endMin
+
+  let pauseMinutes = 0
+  if (plan.has_break && plan.break_start && plan.break_end) {
+    let bStart = timeToMinutes(plan.break_start)
+    let bEnd = timeToMinutes(plan.break_end)
+    if (endMin < startMin) {
+      //  Service de nuit : la pause est écrite elle aussi après minuit.
+      if (bStart < startMin) bStart += 1440
+      if (bEnd < startMin) bEnd += 1440
+    }
+    if (bEnd > bStart && bStart >= startMin && bEnd <= startMin + minutes) {
+      pauseMinutes = bEnd - bStart
+    }
+  }
+
+  return Math.max(0, minutes - pauseMinutes) * 60
+}
+
+function resolvePlanForExpected(employeeScheduleRow, defaultScheduleRow) {
+  if (employeeScheduleRow?.use_custom_hours) {
+    const start = employeeScheduleRow.custom_start_time?.slice(0, 8) || null
+    const end = employeeScheduleRow.custom_end_time?.slice(0, 8) || null
+    const hasBreak = employeeScheduleRow.custom_has_break !== false
+    const breakStart = employeeScheduleRow.custom_break_start?.slice(0, 8) || null
+    const breakEnd = employeeScheduleRow.custom_break_end?.slice(0, 8) || null
+    const workDays = employeeScheduleRow.custom_work_days || null
+
+    if (!start || !end || !Array.isArray(workDays) || workDays.length === 0) return null
+
+    return {
+      start_time: start,
+      end_time: end,
+      has_break: hasBreak,
+      break_start: breakStart,
+      break_end: breakEnd,
+      work_days: workDays,
+      bascule: minutesDeBascule(employeeScheduleRow.custom_bascule),
+    }
+  }
+
+  if (employeeScheduleRow?.work_schedules) {
+    const ws = employeeScheduleRow.work_schedules
+    if (!ws.start_time || !ws.end_time) return null
+
+    return {
+      start_time: ws.start_time?.slice(0, 8),
+      end_time: ws.end_time?.slice(0, 8),
+      has_break: ws.has_break !== false,
+      break_start: ws.break_start?.slice(0, 8) || null,
+      break_end: ws.break_end?.slice(0, 8) || null,
+      work_days: Array.isArray(ws.work_days) ? ws.work_days : [1, 2, 3, 4, 5],
+      bascule: minutesDeBascule(ws.bascule),
+    }
+  }
+
+  if (defaultScheduleRow?.start_time && defaultScheduleRow?.end_time) {
+    return {
+      start_time: defaultScheduleRow.start_time?.slice(0, 8),
+      end_time: defaultScheduleRow.end_time?.slice(0, 8),
+      has_break: defaultScheduleRow.has_break !== false,
+      break_start: defaultScheduleRow.break_start?.slice(0, 8) || null,
+      break_end: defaultScheduleRow.break_end?.slice(0, 8) || null,
+      work_days: Array.isArray(defaultScheduleRow.work_days) ? defaultScheduleRow.work_days : [1, 2, 3, 4, 5],
+      bascule: minutesDeBascule(defaultScheduleRow.bascule),
+    }
+  }
+
+  return null
+}
+
+// ═══════════════════════════════════════════════════════════
+// OVERTIME CONTEXT
+// ═══════════════════════════════════════════════════════════
+
+async function loadOvertimeContext(enterpriseId) {
+  let hasOvertimeFeature = false
+  let overtimeSettings = null
+
+  try {
+    hasOvertimeFeature = await FeatureService.hasFeature(enterpriseId, FEATURES.HEURES_SUPPLEMENTAIRES)
+    if (hasOvertimeFeature) {
+      overtimeSettings = await FeatureService.getOvertimeSettings(enterpriseId)
+    }
+  } catch {
+    hasOvertimeFeature = false
+    overtimeSettings = null
+  }
+
+  const allSchedules = await FeatureService.loadSchedules([enterpriseId])
+  return { hasOvertimeFeature, overtimeSettings, allSchedules }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HOLIDAYS
+// ═══════════════════════════════════════════════════════════
+
+async function loadHolidaySet(enterpriseId, startDate, endDate) {
+  try {
+    const holidays = await HolidayService.getHolidaysForRange(enterpriseId, startDate, endDate)
+    const nonWorked = (holidays || []).filter(h => !h.is_worked)
+    return HolidayService.buildHolidaySet(nonWorked)
+  } catch {
+    return new Set()
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// RETARDS
+// ═══════════════════════════════════════════════════════════
+
+function computeRetardsAlignedRetardsJSX({ attendances, scheduleResolved, holidaysSet, startDate, endDate }) {
+  const { heureArrivee, tolerance, bascule } = scheduleResolved || {}
+  if (!heureArrivee) {
+    return { count: 0, total_minutes: 0, ignored_no_schedule: true }
+  }
+
+  const inAtts = attendances
+    .filter(a => a.check_type === 'in')
+    .filter(a => {
+      const d = a.check_time.split('T')[0]
+      return d >= startDate && d <= endDate
+    })
+    .sort((a, b) => new Date(a.check_time) - new Date(b.check_time))
+
+  //  La journée de travail, et non la date UTC : un pointage de 00h30 avec une
+  //  bascule à 04:00 appartient à la veille, pas au lendemain.
+  const firstInByDay = {}
+  for (const a of inAtts) {
+    const jour = cleJourDeTravail(new Date(a.check_time), bascule)
+    if (!firstInByDay[jour]) firstInByDay[jour] = a
+  }
+
+  const [hA, mA] = heureArrivee.split(':').map(Number)
+  const minutesArriveeBase = hA * 60 + mA
+  const minutesArriveeMax = minutesArriveeBase + (tolerance || 15)
+
+  let count = 0
+  let totalMinutes = 0
+
+  for (const [jour, premierPointage] of Object.entries(firstInByDay)) {
+    if (holidaysSet && holidaysSet.has(jour)) continue
+
+    // Le retard se calcule sur l'heure LOCALE de l'entreprise.
+    // Avant, on comparait l'heure UTC à un horaire configuré en heure locale :
+    // pour un client au Cameroun, tout le monde arrivait « à l'heure » une
+    // heure trop tard, et pour un client au Canada, tout le monde était
+    // compté 4 heures en retard.
+    const minutesPointage = minutesDepuisMinuit(premierPointage.check_time)
+
+    const retardMinutes = minutesPointage - minutesArriveeBase
+    const estEnRetard = minutesPointage > minutesArriveeMax
+
+    if (estEnRetard && retardMinutes > 0) {
+      count++
+      totalMinutes += retardMinutes
+    }
+  }
+
+  return { count, total_minutes: totalMinutes, ignored_no_schedule: false }
+}
+
+function resolveScheduleLikeRetards(employeeScheduleRow, defaultScheduleRow) {
+  let heureArrivee = null
+  let tolerance = 15
+  let bascule = 0
+
+  if (employeeScheduleRow) {
+    if (employeeScheduleRow.use_custom_hours && employeeScheduleRow.custom_start_time) {
+      heureArrivee = employeeScheduleRow.custom_start_time.slice(0, 5)
+      tolerance = employeeScheduleRow.custom_late_tolerance_minutes || 15
+      bascule = minutesDeBascule(employeeScheduleRow.custom_bascule)
+    } else if (employeeScheduleRow.schedule_id && employeeScheduleRow.work_schedules) {
+      heureArrivee = employeeScheduleRow.work_schedules.start_time?.slice(0, 5) || null
+      tolerance = employeeScheduleRow.work_schedules.late_tolerance_minutes || 15
+      bascule = minutesDeBascule(employeeScheduleRow.work_schedules.bascule)
+    }
+  }
+
+  if (!heureArrivee && defaultScheduleRow) {
+    heureArrivee = defaultScheduleRow.start_time?.slice(0, 5) || null
+    tolerance = defaultScheduleRow.late_tolerance_minutes || 15
+    bascule = minutesDeBascule(defaultScheduleRow.bascule)
+  }
+
+  return { heureArrivee, tolerance, bascule }
+}
+
+// ═══════════════════════════════════════════════════════════
+// VALORISATION (avec taux dynamiques)
+// ═══════════════════════════════════════════════════════════
+
+async function calculateValorization(employeeId, enterpriseId, monthData, currency) {
+  try {
+    const { data: profile } = await supabase
+      .from('employee_payroll_profiles')
+      .select('hourly_rate')
+      .eq('employee_id', employeeId)
+      .eq('enterprise_id', enterpriseId)
+      .maybeSingle()
+
+    const hourlyRate = profile?.hourly_rate ? Number(profile.hourly_rate) : null
+    if (!hourlyRate || !Number.isFinite(hourlyRate) || hourlyRate <= 0) return null
+
+    const normalHours = parseDurationToHours(monthData.normal)
+    
+    // ✅ Utiliser les taux réels
+    const otNormalHours = monthData.overtime_normal 
+      ? parseDurationToHours(monthData.overtime_normal.hours)
+      : parseDurationToHours(monthData.overtime_25)
+    
+    const otMajorHours = monthData.overtime_major
+      ? parseDurationToHours(monthData.overtime_major.hours)
+      : parseDurationToHours(monthData.overtime_50)
+
+    const rateNormal = monthData.overtime_normal?.rate || 25
+    const rateMajor = monthData.overtime_major?.rate || 50
+
+    const normalAmount = normalHours * hourlyRate
+    const otNormalAmount = otNormalHours * hourlyRate * (1 + rateNormal / 100)
+    const otMajorAmount = otMajorHours * hourlyRate * (1 + rateMajor / 100)
+
+    return {
+      normal: { 
+        hours: monthData.normal, 
+        rate: hourlyRate, 
+        amount: Math.round(normalAmount) 
+      },
+      overtime_normal: { 
+        hours: monthData.overtime_normal?.hours || monthData.overtime_25,
+        rate: hourlyRate * (1 + rateNormal / 100), 
+        ratePercent: rateNormal,
+        amount: Math.round(otNormalAmount) 
+      },
+      overtime_major: { 
+        hours: monthData.overtime_major?.hours || monthData.overtime_50,
+        rate: hourlyRate * (1 + rateMajor / 100),
+        ratePercent: rateMajor, 
+        amount: Math.round(otMajorAmount) 
+      },
+      total_gross: Math.round(normalAmount + otNormalAmount + otMajorAmount),
+      currency: currency || 'XAF',
+    }
+  } catch {
+    return null
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ALERTES
+// ═══════════════════════════════════════════════════════════
+
+function generateAlerts({ today, month, year, hasPlan }) {
+  const alerts = []
+
+  if (today?.openSessionsCount > 0) {
+    alerts.push({ type: 'warning', message: '⚠ 1 session ouverte (auto-close plafonné à 14h max)' })
+  }
+
+  if (month?.openSessionsCount > 0) {
+    alerts.push({ type: 'warning', message: `${month.openSessionsCount} session(s) ouverte(s) sur la période (auto-close plafonné)` })
+  }
+
+  if (!hasPlan) {
+    alerts.push({ type: 'info', message: 'Aucun planning configuré — attendu non calculé' })
+  } else if (year?.delays?.count > 0) {
+    alerts.push({ type: 'warning', message: `${year.delays.count} retard(s) cette année` })
+  }
+
+  if (month?.rate !== null && month?.rate !== undefined) {
+    if (month.rate > 110) alerts.push({ type: 'warning', message: `Surcharge détectée : ${month.rate}% de la capacité` })
+    if (month.rate < 70 && month.rate > 0) alerts.push({ type: 'warning', message: `Sous-utilisation : seulement ${month.rate}% de la capacité` })
+    if (alerts.length === 0 && month.rate >= 90 && month.rate <= 105) alerts.push({ type: 'success', message: 'Performance optimale ce mois' })
+  }
+
+  return alerts
+}
+
+// ═══════════════════════════════════════════════════════════
+// ABSENCES
+// ═══════════════════════════════════════════════════════════
+
+function buildAbsenceDaySet(absences, startDateStr, endDateStr) {
+  const set = new Set()
+  if (!absences?.length) return set
+
+  const startBound = new Date(`${startDateStr}T00:00:00`)
+  const endBound = new Date(`${endDateStr}T00:00:00`)
+
+  for (const abs of absences) {
+    const absStart = new Date(`${abs.start_date}T00:00:00`)
+    const absEnd = new Date(`${abs.end_date}T00:00:00`)
+
+    const start = absStart > startBound ? absStart : startBound
+    const end = absEnd < endBound ? absEnd : endBound
+    if (end < start) continue
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      set.add(toDateKeyLocal(d))
+    }
+  }
+
+  return set
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+
+function getWeekPeriod(date) {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+  const monday = new Date(d.setDate(diff))
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+
+  return {
+    startDate: toDateKeyLocal(monday),
+    endDate: toDateKeyLocal(sunday),
+  }
+}
+
+function getMonthPeriod(date) {
+  const d = new Date(date)
+  const start = new Date(d.getFullYear(), d.getMonth(), 1)
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+  return {
+    startDate: toDateKeyLocal(start),
+    endDate: toDateKeyLocal(end),
+  }
+}
+
+function getYearPeriod(date) {
+  const d = new Date(date)
+  const start = new Date(d.getFullYear(), 0, 1)
+  const end = new Date(d.getFullYear(), 11, 31)
+  return {
+    startDate: toDateKeyLocal(start),
+    endDate: toDateKeyLocal(end),
+  }
+}
+
+function toDateKeyLocal(date) {
+  const d = new Date(date)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+function listDaysInclusive(startDateStr, endDateStr) {
+  const days = []
+  const start = new Date(`${startDateStr}T00:00:00`)
+  const end = new Date(`${endDateStr}T00:00:00`)
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    days.push(toDateKeyLocal(d))
+  }
+  return days
+}
+
+function makeEmptyDaySummary(dateStr) {
+  return {
+    date: dateStr,
+    totalSeconds: 0,
+    firstInISO: null,
+    lastOutISO: null,
+    validPairsCount: 0,
+    openSessionsCount: 0,
+    hasAutoCloseVirtual: false,
+    entries: [],
+  }
+}
+
+function formatDurationSeconds(seconds) {
+  const s = Math.max(0, Math.round(seconds || 0))
+  const hours = Math.floor(s / 3600)
+  const mins = Math.floor((s % 3600) / 60)
+  return `${hours}h${String(mins).padStart(2, '0')}`
+}
+
+function parseDurationToHours(durationStr) {
+  if (!durationStr) return 0
+  const match = String(durationStr).match(/(\d+)h(\d+)/)
+  if (!match) return 0
+  return (parseInt(match[1], 10) || 0) + (parseInt(match[2], 10) || 0) / 60
+}
+
+function formatDateShortFR(dateStr) {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+}
+
+function formatMonthYearFR(dateStr) {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+}
+
+function getPlanDayIndex(dateKey) {
+  const d = new Date(`${dateKey}T00:00:00`)
+  const js = d.getDay()
+  return js === 0 ? 7 : js
+}
+
+function timeToMinutes(t) {
+  const s = String(t).slice(0, 5)
+  const [h, m] = s.split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
+}

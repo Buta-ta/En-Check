@@ -2,26 +2,47 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    
+    <!-- ✅ VIEWPORT CORRIGÉ (sans user-scalable=no) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#3D2B1F" />
-    <meta name="description" content="En-Check - Gestion de pointage intelligente" />
+    <meta name="description" content="En-Check - Gestion de pointage intelligente pour entreprises" />
     
     <!-- iOS Support -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="En-Check" />
-    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
+    <link rel="apple-touch-icon" href="/icon-512.png" />
     
-    <!-- Manifest -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- ❌ SUPPRIMÉ : VitePWA l'injecte automatiquement -->
+    <!-- <link rel="manifest" href="/manifest.json" /> -->
+
+    <!-- 🌍 LEAFLET CSS (chargement asynchrone) -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link 
+        rel="stylesheet" 
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""
+      />
+    </noscript>
     
     <title>En-Check | Administration</title>
   </head>
   <body>
-    <div id="root"></div>
+    <main id="root"></main>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -1,0 +1,6 @@
+{
+  "supabase_url": "https://cxggndvhwdolbtyezjde.supabase.co",
+  "supabase_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4Z2duZHZod2RvbGJ0eWV6amRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4MzU4NTYsImV4cCI6MjA4MTQxMTg1Nn0.x810lGDB1f3IlMRZBRMro8IGHm8s1Y2saD8ebyX5X2c.une_signature",
+  "port": 8080,
+  "journal": "pointages.log"
+}

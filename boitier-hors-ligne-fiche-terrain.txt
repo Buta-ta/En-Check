@@ -1,0 +1,149 @@
+════════════════════════════════════════════════════════════════════════════
+ LE BOÎTIER SUR PLACE — les pointages survivent aux coupures de réseau
+════════════════════════════════════════════════════════════════════════════
+
+CE QUI SE PASSE AUJOURD'HUI, SANS BOÎTIER
+   La pointeuse envoie ses pointages à En-Check par Internet. Si la connexion du
+   site tombe, elle garde ses pointages en mémoire et les renverra plus tard :
+   rien n'est perdu, mais on ne peut rien voir tant que le réseau n'est pas
+   revenu — et si quelqu'un relève les heures sur place, il regarde une machine,
+   pas le logiciel.
+
+CE QU'UN BOÎTIER CHANGE
+   Un petit ordinateur allumé en permanence sur le site (mini-PC, Raspberry Pi,
+   ou même un vieux portable qui ne sert plus). Les pointeuses lui parlent par le
+   réseau LOCAL — le Wi-Fi ou le câble du bureau — donc sans Internet :
+
+     · Internet disponible   → le boîtier transmet à En-Check, comme avant ;
+     · Internet coupé        → le boîtier GARDE les pointages chez lui, et la
+                               pointeuse reçoit « reçu » : elle libère sa
+                               mémoire et continue de pointer normalement ;
+     · Internet revient      → la file se vide toute seule, dans l'ordre, sans
+                               que personne ne touche à rien.
+
+   Le résultat : les employés pointent comme d'habitude, on peut vérifier sur
+   place à tout moment, et il n'y a jamais deux endroits où l'on se demande
+   ce qui est passé.
+
+────────────────────────────────────────────────────────────────────────────
+ CE QU'IL FAUT SUR LE BOÎTIER
+────────────────────────────────────────────────────────────────────────────
+   1. Node.js version 18 ou plus  →  https://nodejs.org  (bouton vert, tout
+      par défaut). Rien d'autre à installer : ni base de données, ni paquets.
+   2. Deux fichiers, dans un dossier :
+         · receveur.js            (le programme)
+         · config.json            (les réglages — ci-dessous)
+      et un troisième, la liste des pointeuses :
+         · appareils.json
+   3. Le boîtier et les pointeuses sur le MÊME réseau (le même Wi-Fi ou le même
+      switch). Le boîtier n'a pas besoin d'Internet pour recevoir.
+
+────────────────────────────────────────────────────────────────────────────
+ LES RÉGLAGES — `config.json`, et où trouver chaque valeur
+────────────────────────────────────────────────────────────────────────────
+   Exemple rempli, à copier tel quel puis remplacer les deux premières lignes :
+
+   {
+     "supabase_url": "https://cxggndvhwdolbtyezjde.supabase.co",
+     "supabase_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....(très long)",
+     "port": 8080,
+     "journal": "pointages.log",
+     "file_attente": "file-dattente.jsonl",
+     "remontee_secondes": 30,
+     "delai_reseau_ms": 8000
+   }
+
+   · supabase_url  → dans Supabase : Project Settings → API → « Project URL ».
+                     C'est exactement l'adresse qui finit par .supabase.co.
+   · supabase_key  → même page, ligne « anon public ». C'est une clé TRÈS
+                     longue qui commence par « eyJ ». ⚠️ PAS la clé « service_role »
+                     (celle-ci donnerait tous les droits à quiconque ouvre le
+                     boîtier) : la clé publique suffit, c'est le secret de chaque
+                     appareil qui protège les pointages.
+   · port          → 8080 par défaut. Change-le seulement s'il est déjà pris.
+   · les autres lignes : ne les touche pas, ce sont les réglages de la file
+     d'attente et du journal.
+
+────────────────────────────────────────────────────────────────────────────
+ LA LISTE DES POINTEUSES — `appareils.json`
+────────────────────────────────────────────────────────────────────────────
+   Chaque pointeuse enregistrée dans l'application a un secret, affiché sur sa
+   fiche dans la page des pointeuses. Recopie-les ici :
+
+   [
+     { "serial": "AANF123456789", "secret": "le-secret-affiche-dans-l-application",
+       "label": "Pointeuse entrée dépôt" }
+   ]
+
+   · serial → le numéro de série, visible sur l'étiquette de la machine ou sur
+              sa fiche dans l'application.
+   · secret → affiché une seule fois à l'enregistrement, sur la fiche de la
+              pointeuse. Si tu ne l'as plus, « Régénérer » en crée un neuf : il
+              faut alors le remettre ici.
+   · label  → juste pour s'y retrouver dans le journal.
+
+────────────────────────────────────────────────────────────────────────────
+ DÉMARRER LE BOÎTIER, ET QU'IL REDÉMARRE TOUT SEUL
+────────────────────────────────────────────────────────────────────────────
+   · Windows : double-clique `demarrer-windows.bat`. Une fenêtre noire s'ouvre et
+     reste ouverte : c'est normal, c'est le boîtier qui travaille. Si le
+     programme s'arrête, la fenêtre le relance toute seule.
+     Pour qu'il reparte à chaque allumage du PC : clic droit sur le fichier →
+     Créer un raccourci → appuie sur Windows+R, tape
+     `shell:startup`, Entrée, et dépose le raccourci dans le dossier qui s'ouvre.
+   · Linux (Raspberry Pi et compagnie) : installe le service fourni (voir le
+     fichier `en-check-boitier.service`) — il redémarre le boîtier à chaque
+     démarrage de la machine et le relance s'il s'arrête.
+   · La fenêtre noire doit afficher, au démarrage : « EN-CHECK — receveur ADMS
+     démarré », le port, le nombre d'appareils déclarés. Si elle affiche
+     « supabase_url / supabase_key absents », c'est que `config.json` n'est pas
+     rempli ou pas dans le bon dossier.
+
+────────────────────────────────────────────────────────────────────────────
+ LA PAGE DE CONTRÔLE — depuis un téléphone, sur le site, même sans Internet
+────────────────────────────────────────────────────────────────────────────
+   Ouvre, depuis un téléphone connecté au Wi-Fi du site :
+
+        http://ADRESSE-DU-BOÎTIER:8080/
+
+   (Pour connaître l'adresse du boîtier : Windows → `ipconfig` ; Linux →
+   `hostname -I`. Prends celle en 192.168.…)
+
+   Ce qu'elle affiche, et ce que ça veut dire :
+
+   · « EN SERVICE »            → la liaison avec En-Check fonctionne.
+   · « ⚠️ HORS LIGNE »         → la connexion du site est coupée. Les pointages
+                                 s'empilent sur le boîtier. RIEN À FAIRE : dès
+                                 que le réseau revient, tout remonte.
+   · « pointages en attente : N » → N pointages pas encore arrivés au serveur.
+                                 Si N ne bouge pas et que l'état dit EN SERVICE,
+                                 appelle-nous : c'est anormal.
+   · « dernière pointeuse entendue : SN — il y a X minutes » → la preuve que les
+                                 machines parlent bien au boîtier. Si ça dépasse
+                                 une heure alors que le site travaille, le câble
+                                 réseau de la pointeuse ou son réglage Cloud
+                                 Server est en cause.
+
+   Pour forcer une remontée sans attendre :
+        http://ADRESSE-DU-BOÎTIER:8080/?forcer=1
+
+────────────────────────────────────────────────────────────────────────────
+ LE FICHIER À NE JAMAIS SUPPRIMER PENDANT UNE COUPURE
+────────────────────────────────────────────────────────────────────────────
+   `file-dattente.jsonl` — c'est là que les pointages attendent. Il se vide tout
+   seul au fur et à mesure de la remontée, et une ligne = un lot reçu d'une
+   pointeuse, avec l'heure. Tant qu'il contient des lignes, c'est qu'il reste des
+   pointages à remonter.
+
+   ⚠️ Pendant une coupure, c'est LA seule copie de ces pointages. Ne le supprime
+      pas, ne le déplace pas. Si la coupure dure plusieurs jours, fais une copie
+      de sauvegarde du fichier sur une clé USB : c'est la garantie absolue, même
+      en cas de panne du boîtier.
+
+────────────────────────────────────────────────────────────────────────────
+ CE QUE LE BOÎTIER N'EST PAS
+────────────────────────────────────────────────────────────────────────────
+   Il ne calcule rien, il ne décide rien : il porte les pointages jusqu'au
+   serveur, et c'est le serveur qui les interprète (heures, fuseau du pays,
+   doublons, anomalies). Deux boîtiers sur deux sites différents ne peuvent donc
+   pas compter les heures à leur façon : la règle est la même pour tout le monde.
