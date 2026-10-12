@@ -39,10 +39,9 @@ Je classe par gravité. Chaque point a été vérifié dans les dépôts.
 
 ### 🔴 Critique — à traiter cette semaine
 
-**C1. Des travaux annoncés comme faits ne sont pas sur GitHub.**
-Le Gardien des fondations annonce des tests automatisés (`src/services/__tests__/`), des migrations SQL (`supabase/migrations/`), un script de sauvegarde (`scripts/backup-restore.sh`), un fichier `CONTRIBUTING.md`, un `.env.example` et une intégration continue (`.github/workflows/ci.yml`). **Rien de tout cela n'existe dans `main`** (vérifié le 12/10). Le rapport indique que les correctifs ont été « appliqués dans VS Code par le Fondateur », donc ils existent peut-être seulement sur un ordinateur. Les identifiants de commits cités (`b27de36`, `cad1f3b` côté web) ne sont pas tous présents sur le dépôt public.
-*Exemple :* c'est comme un chef de chantier qui dit « les fondations sont coulées » alors que les photos n'existent pas dans le dossier du chantier.
-*Action :* pousser ces changements sur une branche, ouvrir une Pull Request, et ne compter comme « fait » que ce qui est fusionné dans `main`.
+**C1. Des travaux annoncés par le Gardien ne sont pas encore dans `main`.**
+Tests automatisés, migrations SQL, script de sauvegarde, `CONTRIBUTING.md`, `.env.example` et CI existent sous forme de patches déposés sur le Drive. Le fondateur les copie ensuite dans VS Code puis les pousse sur GitHub : c'est le flux de travail voulu. Le risque n'est donc pas un travail manquant, mais une étape manuelle à chaque copie et un décalage entre ce qui est « écrit » et ce qui est « fusionné ». La revue détaillée est dans `docs/REVUE-GARDIEN-FONDATIONS.md`.
+*Action :* une branche et une Pull Request par chantier, la CI verte comme condition de fusion.
 
 **C2. Une clé d'envoi d'e-mails (Brevo) reste visible dans l'historique public.**
 Le dépôt mobile public contient un commit « suppression de la clé Brevo en clair ». Supprimer une clé du code ne la supprime pas de l'historique : **quiconque peut lire le dépôt peut la retrouver**.
