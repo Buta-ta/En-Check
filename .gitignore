@@ -25,3 +25,11 @@ dist-ssr
 .vercel
 .env
 .env.local
+
+# Fichiers sensibles, certificats locaux, builds de dev et sauvegardes (Correctif C3 CEO)
+.cert/
+*.pem
+dev-dist/
+backups/
+essai-adms/config.json
+!essai-adms/config.example.json

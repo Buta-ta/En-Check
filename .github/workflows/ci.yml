@@ -1,0 +1,43 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# 🛡️ CI En-Check Web — Intégration Continue (Chantier VD-13)
+# ═══════════════════════════════════════════════════════════════════════════
+# POURQUOI : Aucune branche cassée ou régression sur les calculs financiers
+# (hoursCalculator, taxationService, payrollService) ne doit pouvoir être
+# fusionnée dans `main`.
+
+name: CI — En-Check Web (Gardien des fondations)
+
+on:
+  push:
+    branches: [main, staging, develop]
+  pull_request:
+    branches: [main, staging, develop]
+
+jobs:
+  verify-web:
+    name: Tests financiers, Lint & Build (Node 20)
+    runs-on: ubuntu-latest
+
+    env:
+      VITE_APP_ENV: test
+      VITE_SUPABASE_URL: https://staging-ci.supabase.co
+      VITE_SUPABASE_ANON_KEY: ci-anon-key-placeholder
+
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Installation de Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Installation des dépendances
+        run: npm ci
+
+      - name: Exécution des tests unitaires financiers (VD-15)
+        run: npm test
+
+      - name: Construction du bundle de production (Vite Build)
+        run: npm run build

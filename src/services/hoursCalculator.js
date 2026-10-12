@@ -1217,3 +1217,32 @@ function timeToMinutes(t) {
   const [h, m] = s.split(':').map(Number)
   return (h || 0) * 60 + (m || 0)
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🧪 EXPORTS POUR TESTS UNITAIRES (VD-15 — Gardien des fondations)
+// ═══════════════════════════════════════════════════════════════════════════
+// POURQUOI : La règle 4.4 de la Roadmap technique v1.1 et la règle 5.2 n°2
+// du Cap CEO v2.1 imposent de couvrir à ≥ 80 % toutes les branches de calcul
+// (chevauchement de nuit, bascule, jour férié, pause, heures sup et
+// majorations, grilles horaires multi-versions) sans dépendre de la base de
+// production.
+export const __internal = {
+  buildDaySummariesStrict,
+  computeDayStrict,
+  computeVirtualAutoCloseOut,
+  minutesDeBascule,
+  cleJourDeTravail,
+  grilleValableLe,
+  choisirGrilleParDefaut,
+  construirePlanningsParJour,
+  computeExpectedForRange,
+  computeExpectedForDay,
+  resolvePlanForExpected,
+  computeRetardsAlignedRetardsJSX,
+  resolveScheduleLikeRetards,
+  buildAbsenceDaySet,
+  formatDurationSeconds,
+  parseDurationToHours,
+  getPlanDayIndex,
+  timeToMinutes,
+}
