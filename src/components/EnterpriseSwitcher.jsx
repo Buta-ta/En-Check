@@ -5,15 +5,65 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useState, useRef, useEffect } from 'react'
-import { Building2, ChevronDown, Check, Zap } from 'lucide-react'
+import { Building2, ChevronDown, Check, Zap, Globe } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
 export default function EnterpriseSwitcher({ admin, onSwitch, autoOpen = false }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [fallbackEntreprises, setFallbackEntreprises] = useState([])
   const dropdownRef = useRef(null)
 
-  const entreprises = admin?.entreprises || []
+  const isSuperAdmin = admin?.role === 'super_admin'
+  const entreprises = (admin?.entreprises?.length > 0)
+    ? admin.entreprises
+    : fallbackEntreprises
   const selectedEnterprise = admin?.selectedEnterprise
-  const isMulti = entreprises.length > 1
+  const isMulti = isSuperAdmin || entreprises.length > 1 || (!selectedEnterprise && entreprises.length === 1)
+
+  // 🛡️ Auto-réparation Super Admin : si localStorage('admin') a perdu la liste
+  // `entreprises`, on la recharge automatiquement depuis Supabase pour que le
+  // sélecteur d'entreprise soit toujours fonctionnel.
+  useEffect(() => {
+    if (!admin) return
+    if (Array.isArray(admin.entreprises) && admin.entreprises.length > 0) return
+    if (!isSuperAdmin) return
+
+    let cancelled = false
+    supabase
+      .from('enterprises')
+      .select('id, name, code, logo_url, matricule_prefix, timezone, country_code, currency')
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data }) => {
+        if (cancelled || !data || data.length === 0) return
+        setFallbackEntreprises(data)
+        try {
+          const raw = localStorage.getItem('admin')
+          const parsed = raw ? JSON.parse(raw) : admin
+          const lastId =
+            (parsed?.id && localStorage.getItem(`last_enterprise_id_${parsed.id}`)) ||
+            localStorage.getItem('last_enterprise_id')
+          const restored =
+            (lastId && data.find(e => e.id === lastId)) ||
+            parsed?.selectedEnterprise ||
+            data[0]
+          const updated = {
+            ...parsed,
+            entreprises: data,
+            selectedEnterprise: restored,
+            isMultiEntreprise: data.length > 1,
+          }
+          localStorage.setItem('admin', JSON.stringify(updated))
+          if (restored?.id) {
+            localStorage.setItem('last_enterprise_id', restored.id)
+          }
+        } catch (err) {
+          console.warn('[EnterpriseSwitcher] Impossible de synchroniser localStorage:', err)
+        }
+      })
+
+    return () => { cancelled = true }
+  }, [admin, isSuperAdmin])
 
   // ✅ ouverture auto demandée (une seule fois côté parent)
   useEffect(() => {
@@ -42,9 +92,10 @@ export default function EnterpriseSwitcher({ admin, onSwitch, autoOpen = false }
       return
     }
 
-    // Mettre à jour localStorage
+    // Mettre à jour localStorage avec la liste complète d'entreprises
     const updatedAdmin = {
       ...admin,
+      entreprises,
       selectedEnterprise: enterprise
     }
     localStorage.setItem('admin', JSON.stringify(updatedAdmin))
@@ -65,12 +116,35 @@ export default function EnterpriseSwitcher({ admin, onSwitch, autoOpen = false }
     }
   }
 
-  if (!selectedEnterprise) {
+  // Permet au Super Admin de revenir à la vue globale « Toutes les entreprises »
+  const handleSelectGlobal = () => {
+    if (!selectedEnterprise) {
+      setIsOpen(false)
+      return
+    }
+    const updatedAdmin = {
+      ...admin,
+      entreprises,
+      selectedEnterprise: null
+    }
+    localStorage.setItem('admin', JSON.stringify(updatedAdmin))
+    localStorage.removeItem('last_enterprise_id')
+    if (admin?.id) {
+      localStorage.removeItem(`last_enterprise_id_${admin.id}`)
+    }
+    setIsOpen(false)
+    if (onSwitch) {
+      onSwitch(null, updatedAdmin)
+    }
+  }
+
+  // Si aucune entreprise n'existe encore en base et qu'on n'est pas Super Admin
+  if (!selectedEnterprise && entreprises.length === 0 && !isSuperAdmin) {
     return null
   }
 
-  // Si une seule entreprise, afficher sans dropdown
-  if (!isMulti) {
+  // Si une seule entreprise et déjà sélectionnée (admin mono-entreprise), afficher sans dropdown
+  if (!isMulti && selectedEnterprise) {
     return (
       <>
         <style>{switcherStyles}</style>
@@ -88,7 +162,7 @@ export default function EnterpriseSwitcher({ admin, onSwitch, autoOpen = false }
     )
   }
 
-  // Multi-entreprises : dropdown
+  // Multi-entreprises ou Super Admin : dropdown toujours visible (même si selectedEnterprise === null)
   return (
     <>
       <style>{switcherStyles}</style>
@@ -99,15 +173,19 @@ export default function EnterpriseSwitcher({ admin, onSwitch, autoOpen = false }
           type="button"
         >
           <div className="switcher-logo-wrap">
-            {selectedEnterprise.logo_url ? (
+            {selectedEnterprise?.logo_url ? (
               <img src={selectedEnterprise.logo_url} alt="" className="switcher-logo" />
-            ) : (
+            ) : selectedEnterprise ? (
               <Building2 size={16} color="#F59E0B" />
+            ) : (
+              <Globe size={16} color="#F59E0B" />
             )}
           </div>
           <div className="switcher-info">
             <span className="switcher-label">Entreprise</span>
-            <span className="switcher-name">{selectedEnterprise.name}</span>
+            <span className="switcher-name">
+              {selectedEnterprise ? selectedEnterprise.name : 'Toutes (choisir une entreprise)'}
+            </span>
           </div>
           <ChevronDown
             size={16}
@@ -123,11 +201,28 @@ export default function EnterpriseSwitcher({ admin, onSwitch, autoOpen = false }
           <div className="switcher-dropdown">
             <div className="dropdown-header">
               <Zap size={12} color="#F59E0B" />
-              <span>Vos entreprises</span>
+              <span>Choisir une entreprise</span>
               <span className="dropdown-count">{entreprises.length}</span>
             </div>
 
             <div className="dropdown-list">
+              {isSuperAdmin && (
+                <button
+                  className={`dropdown-item ${!selectedEnterprise ? 'selected' : ''}`}
+                  onClick={handleSelectGlobal}
+                  type="button"
+                >
+                  <div className="item-logo-wrap">
+                    <Globe size={16} color="#F59E0B" />
+                  </div>
+                  <span className="item-name">🌍 Toutes les entreprises (Vue globale)</span>
+                  {!selectedEnterprise && (
+                    <div className="item-check">
+                      <Check size={14} />
+                    </div>
+                  )}
+                </button>
+              )}
               {entreprises.map((enterprise) => {
                 const isSelected = enterprise.id === selectedEnterprise?.id
                 return (

@@ -70,12 +70,13 @@ import {
   Globe,
   Radio,
 } from 'lucide-react'
-import { formaterHeureLocale } from '../utils/timezoneUtils'
+import { formaterHeureLocale, minutesDepuisMinuit } from '../utils/timezoneUtils'
 
 export default function Dashboard() {
   const [admin, setAdmin] = useState(null)
   const [entreprises, setEntreprises] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [showAnalytics, setShowAnalytics] = useState(false)
@@ -135,28 +136,38 @@ export default function Dashboard() {
   } = useNotifications(admin)
   useRealtimeNotifications(admin)
 
-  // ✅ AJOUTER les modules en paramètre
+  // ✅ Mémoriser l'objet des modules activés pour éviter que `setCurrentTime`
+  //    (appelé chaque seconde) ne déclenche en boucle `useTabAnimations`.
+  const enabledModulesForTabs = useMemo(() => ({
+    moduleConges,
+    modulePlanning,
+    moduleTaches,
+    moduleGeofencing,
+    moduleRetards,
+    moduleHeuresSup,
+    moduleFichesPaie,
+    modulePredictions
+  }), [
+    moduleConges,
+    modulePlanning,
+    moduleTaches,
+    moduleGeofencing,
+    moduleRetards,
+    moduleHeuresSup,
+    moduleFichesPaie,
+    modulePredictions
+  ])
+
   const {
     tabStates,
     isCalculating,
     markTabAsViewed,
     clearTab,
     refreshAllTriggers,
-
   } = useTabAnimations(
     admin,
     admin?.selectedEnterprise?.id || admin?.enterprise_id,
-    // ✅ NOUVEAU : Passer les modules activés
-    {
-      moduleConges,
-      modulePlanning,
-      moduleTaches,
-      moduleGeofencing,
-      moduleRetards,
-      moduleHeuresSup,
-      moduleFichesPaie,
-      modulePredictions
-    }
+    enabledModulesForTabs
   )
 
   // ═══ HANDLER : Marquer onglet comme vu ═══
@@ -181,23 +192,47 @@ export default function Dashboard() {
 
   const loadData = async (adminData) => {
     setLoading(true)
+    setLoadError(null)
     try {
       const isSuperAdmin = adminData.role === 'super_admin'
       const selectedEnterprise = adminData.selectedEnterprise
       const enterpriseId = selectedEnterprise?.id || adminData.enterprise_id
 
       if (isSuperAdmin) {
-        const { data: entreprisesData } = await supabase
+        const { data: entreprisesData, error: entErr } = await supabase
           .from('enterprises')
           .select('*, employees(count)')
           .eq('is_active', true)
           .order('name')
-        setEntreprises(entreprisesData || [])
+        if (entErr) throw entErr
+        const list = entreprisesData || []
+        setEntreprises(list)
 
-        if (selectedEnterprise) {
-          await loadSingleEnterpriseDashboard(selectedEnterprise.id, entreprisesData?.length || 0, true)
+        // Synchroniser la liste des entreprises dans admin + localStorage
+        // pour que le sélecteur d'entreprise (EnterpriseSwitcher) et les
+        // onglets (Config Fiscale, Fiches de Paie, etc.) y aient toujours accès.
+        const lastId =
+          (adminData.id && localStorage.getItem(`last_enterprise_id_${adminData.id}`)) ||
+          localStorage.getItem('last_enterprise_id')
+        const resolvedSelected =
+          (selectedEnterprise?.id && list.find(e => e.id === selectedEnterprise.id)) ||
+          (lastId && list.find(e => e.id === lastId)) ||
+          selectedEnterprise ||
+          null
+
+        const syncedAdmin = {
+          ...adminData,
+          entreprises: list,
+          selectedEnterprise: resolvedSelected,
+          isMultiEntreprise: list.length > 1,
+        }
+        setAdmin(syncedAdmin)
+        localStorage.setItem('admin', JSON.stringify(syncedAdmin))
+
+        if (resolvedSelected) {
+          await loadSingleEnterpriseDashboard(resolvedSelected.id, list.length, true)
         } else {
-          await loadGlobalSuperAdminDashboard(entreprisesData || [])
+          await loadGlobalSuperAdminDashboard(list)
           setModulePlanning(true)
           setModuleRetards(true)
           setModuleConges(true)
@@ -218,8 +253,9 @@ export default function Dashboard() {
         }
       } else {
         if (enterpriseId) {
-          const { data: entrepriseData } = await supabase
+          const { data: entrepriseData, error: entErr } = await supabase
             .from('enterprises').select('*').eq('id', enterpriseId).single()
+          if (entErr) throw entErr
 
           if (entrepriseData) {
             setAdmin(prev => ({
@@ -251,6 +287,27 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Erreur chargement dashboard:', error)
+      const message = error?.message || 'Impossible de charger les données du tableau de bord'
+      setLoadError(message)
+      // ═══════════════════════════════════════════════════════════════════
+      // VD-01 — ÉTAT D'ERREUR HONNÊTE (anti-dashboard menteur)
+      // ═══════════════════════════════════════════════════════════════════
+      // POURQUOI : en cas d'échec réseau ou d'exception, les compteurs
+      // restent à zéro. Afficher « Aucune alerte critique — La journée se
+      // déroule normalement » produirait une fausse tranquillité. On
+      // remplace donc explicitement la liste d'alertes par une alerte
+      // d'erreur critique avec bouton « Réessayer ».
+      setAlerts([
+        {
+          type: 'error',
+          icon: AlertTriangle,
+          color: '#EF4444',
+          title: 'Impossible de charger les données',
+          subtitle: 'Une erreur est survenue lors de la récupération de l’activité du jour.',
+          action: 'Réessayer',
+          actionFn: () => loadData(adminData),
+        },
+      ])
     }
     setLoading(false)
   }
@@ -297,6 +354,9 @@ export default function Dashboard() {
       supabase.from('enterprises').select('id, name, logo_url, employees(count)').eq('is_active', true).order('name'),
       supabase.from('attendances').select('id, employee_id, enterprise_id').gte('check_time', startOfDay).lte('check_time', endOfDay).limit(5000),
     ])
+
+    if (employesRes.error) throw employesRes.error
+    if (attendancesTodayRes.error) throw attendancesTodayRes.error
 
     const entrepriseData = entrepriseRes.data
     const employesData = employesRes.data || []
@@ -405,6 +465,9 @@ export default function Dashboard() {
       supabase.from('attendances').select(`id, pointages_photos(id)`).gte('check_time', startOfDay).lte('check_time', endOfDay),
       supabase.from('attendances').select(`id, employee_id, enterprise_id, check_time, check_type`).eq('check_type', 'in').gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: true }),
     ])
+
+    if (employesCountRes.error) throw employesCountRes.error
+    if (attendancesTodayRes.error) throw attendancesTodayRes.error
 
     const attendancesToday = attendancesTodayRes.data || []
     const absencesToday = absencesTodayRes.data || []
@@ -1286,6 +1349,52 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* VD-01 : Bandeau d'erreur explicite si le chargement a échoué */}
+          {loadError && (
+            <div
+              role="alert"
+              style={{
+                background: 'linear-gradient(135deg, rgba(239,68,68,0.16), rgba(185,28,28,0.10))',
+                border: '1px solid rgba(239,68,68,0.45)',
+                borderRadius: 16,
+                padding: '16px 22px',
+                marginBottom: 24,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <AlertTriangle size={22} color="#EF4444" />
+              </div>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <p style={{ color: '#FCA5A5', fontSize: 15, fontWeight: 700, margin: '0 0 4px 0' }}>
+                  Impossible de charger les données — Réessayer
+                </p>
+                <p style={{ color: '#FECACA', fontSize: 13, margin: 0 }}>
+                  Les compteurs affichés ne reflètent pas l’activité réelle ({loadError}).
+                </p>
+              </div>
+              <button
+                onClick={() => admin && loadData(admin)}
+                style={{
+                  background: '#EF4444',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  padding: '10px 18px',
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Réessayer
+              </button>
+            </div>
+          )}
+
           {/* KPI Cards */}
           <div className="stats-grid" style={styles.statsGrid}>
             {kpiCards.map((card) => {
@@ -1532,7 +1641,29 @@ export default function Dashboard() {
               </div>
               <div style={styles.listContainer}>
                 {entreprises.slice(0, 5).map((entreprise, index) => (
-                  <div key={entreprise.id} className="afro-list-item" style={{ ...styles.listItem, animationDelay: `${index * 0.1}s`, borderLeft: admin?.selectedEnterprise?.id === entreprise.id ? '3px solid #F59E0B' : '3px solid transparent' }} onClick={() => navigate('/entreprises')}>
+                  <div
+                    key={entreprise.id}
+                    className="afro-list-item"
+                    style={{
+                      ...styles.listItem,
+                      animationDelay: `${index * 0.1}s`,
+                      borderLeft: admin?.selectedEnterprise?.id === entreprise.id ? '3px solid #F59E0B' : '3px solid transparent',
+                    }}
+                    title="Cliquer pour sélectionner cette entreprise et charger ses données"
+                    onClick={() => {
+                      const updatedAdmin = {
+                        ...admin,
+                        entreprises,
+                        selectedEnterprise: entreprise,
+                      }
+                      localStorage.setItem('admin', JSON.stringify(updatedAdmin))
+                      localStorage.setItem('last_enterprise_id', entreprise.id)
+                      if (admin?.id) {
+                        localStorage.setItem(`last_enterprise_id_${admin.id}`, entreprise.id)
+                      }
+                      window.location.reload()
+                    }}
+                  >
                     <div style={styles.listItemLeft}>
                       {entreprise.logo_url
                         ? <img src={entreprise.logo_url} alt="" style={styles.enterpriseLogo} />
@@ -1545,7 +1676,7 @@ export default function Dashboard() {
                             <span style={styles.activeBadge}><Zap size={10} /> Active</span>
                           )}
                         </div>
-                        <span style={styles.listItemSub}>{entreprise.employees?.[0]?.count || 0} employés</span>
+                        <span style={styles.listItemSub}>{entreprise.employees?.[0]?.count || 0} employés · Cliquer pour activer</span>
                       </div>
                     </div>
                     <ArrowRight size={18} color="#F59E0B" />

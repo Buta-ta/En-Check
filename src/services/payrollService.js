@@ -1503,6 +1503,20 @@ class PayrollService {
           config: taxCalculation.config,
         },
 
+        // ═══════════════════════════════════════════════════════════════════
+        // CF-2 / VD-15 — PROPAGATION DU FILET DE CONFORMITÉ FISCALE
+        // ═══════════════════════════════════════════════════════════════════
+        // POURQUOI : TaxationService.calculateDetailedPayslip() retourne
+        // `impot_a_verifier`, `avertissement`, `fiscal_parts` et
+        // `parts_non_renseignees`, et TaxationService.verifierAvantRemise(bulletin)
+        // lit `bulletin.impot_a_verifier` à la racine du bulletin. Sans cette
+        // propagation, un bulletin généré par PayrollService perdait son drapeau
+        // « PROVISOIRE » et contournait verifierAvantRemise().
+        impot_a_verifier: taxCalculation.impot_a_verifier === true,
+        avertissement: taxCalculation.avertissement || null,
+        fiscal_parts: taxCalculation.fiscal_parts ?? 1,
+        parts_non_renseignees: taxCalculation.parts_non_renseignees === true,
+
         sources: {
           encheck: enCheckData || {},
           imported: importedData || {},
@@ -1519,6 +1533,11 @@ class PayrollService {
       const baseSalary = this.safeNumber(profile?.base_salary)
       const fixedDeduction = this.safeNumber(profile?.fixed_deduction)
 
+      // ⚠️ PIÈGE CORRIGÉ (CF-2 / VD-15) : en cas d'échec du calcul fiscal,
+      // ce repli renvoie un bulletin sans impôt ni cotisations sociales. Il
+      // DOIT obligatoirement porter `impot_a_verifier: true` et un
+      // avertissement explicite pour que verifierAvantRemise() bloque toute
+      // remise ou impression officielle.
       return {
         employee: {
           id: employee.id,
@@ -1539,6 +1558,10 @@ class PayrollService {
           ? [{ code: 'fixed_deduction', label: 'Retenue fixe', amount: fixedDeduction, source: 'profile' }]
           : [],
         taxation: null,
+        impot_a_verifier: true,
+        avertissement:
+          '⚠️ Calcul fiscal incomplet (' + (error?.message || 'erreur inconnue') + '). '
+          + 'Ce bulletin ne contient ni impôt ni cotisations sociales et ne doit pas être remis au salarié.',
         sources: {},
         periodStart,
         periodEnd,
@@ -1714,13 +1737,44 @@ class PayrollService {
         yPos += blockHeight + 5
       }
 
-      doc.setFillColor(245, 158, 11)
+      const isProvisional = Boolean(
+        slip?.impot_a_verifier === true ||
+        slip?.taxation?.impot_a_verifier === true ||
+        slip?.details?.taxation?.impot_a_verifier === true
+      )
+      const provisionalWarning =
+        slip?.avertissement ||
+        slip?.taxation?.avertissement ||
+        slip?.details?.taxation?.avertissement ||
+        '⚠️ Barème fiscal à vérifier par votre comptable avant remise officielle au salarié.'
+
+      doc.setFillColor(isProvisional ? 217 : 245, isProvisional ? 119 : 158, isProvisional ? 6 : 11)
       doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 10, 2, 2, 'F')
       doc.setFontSize(12)
       doc.setFont('helvetica', 'bold')
       doc.setTextColor(255, 255, 255)
-      doc.text(`BULLETIN DE PAIE  ·  ${currency}`, pageWidth / 2, yPos + 7, { align: 'center' })
-      yPos += 14
+      doc.text(
+        isProvisional
+          ? `BULLETIN PROVISOIRE (À VÉRIFIER)  ·  ${currency}`
+          : `BULLETIN DE PAIE  ·  ${currency}`,
+        pageWidth / 2,
+        yPos + 7,
+        { align: 'center' }
+      )
+      yPos += 13
+
+      if (isProvisional) {
+        doc.setFillColor(254, 243, 199)
+        doc.setDrawColor(245, 158, 11)
+        const warnLines = doc.splitTextToSize(provisionalWarning, pageWidth - 2 * margin - 8)
+        const warnHeight = warnLines.length * 3.8 + 6
+        doc.roundedRect(margin, yPos, pageWidth - 2 * margin, warnHeight, 2, 2, 'FD')
+        doc.setFontSize(7.5)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(146, 64, 14)
+        doc.text(warnLines, margin + 4, yPos + 4.5)
+        yPos += warnHeight + 4
+      }
 
       doc.setFontSize(10)
       doc.setFont('helvetica', 'normal')

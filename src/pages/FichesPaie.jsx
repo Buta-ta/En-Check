@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import FeatureService, { FEATURES } from '../services/featureService'
 import PayrollService from '../services/payrollService'
+import TaxationService from '../services/taxationService'
 import * as XLSX from 'xlsx'
 import LeaveBalanceService from '../services/leaveBalanceService'
 import {
@@ -328,6 +329,7 @@ export default function FichesPaie() {
   const [enterpriseId, setEnterpriseId] = useState(null)
   const [enterpriseName, setEnterpriseName] = useState('')
   const [enterpriseData, setEnterpriseData] = useState(null)
+  const [enterprisesList, setEnterprisesList] = useState([])
 
   const [employees, setEmployees] = useState([])
   const [profiles, setProfiles] = useState([])
@@ -419,14 +421,104 @@ export default function FichesPaie() {
     initPage(parsedAdmin)
   }, [navigate])
 
+  const loadEnterpriseContext = async (targetEnterpriseId, adminId, start, end) => {
+    const { data: enterprise } = await supabase.from('enterprises').select('id, name, address, email, phone, logo_url, country_code, currency').eq('id', targetEnterpriseId).single()
+    setEnterpriseId(targetEnterpriseId)
+    setEnterpriseName(enterprise?.name || 'Entreprise')
+    setEnterpriseData(enterprise)
+    setPreviewRows([])
+
+    const [employeesRes, loadedSettings, loadedProfiles, loadedOvertimeSettings, loadedAllowanceTypes, loadedDeductionTypes] = await Promise.all([
+      supabase.from('employees').select('id, first_name, last_name, matricule, department, position, is_active, hire_date, cnps_number, professional_category, echelon, classification, contract_type, marital_status, dependents_count').eq('enterprise_id', targetEnterpriseId).eq('is_active', true).order('last_name'),
+      PayrollService.getPayrollSettings(targetEnterpriseId),
+      PayrollService.getEmployeePayrollProfiles(targetEnterpriseId),
+      FeatureService.getOvertimeSettings(targetEnterpriseId),
+      PayrollService.getAllowanceTypes(targetEnterpriseId),
+      PayrollService.getDeductionTypes(targetEnterpriseId),
+    ])
+
+    const employeesData = employeesRes.data || []
+    setEmployees(employeesData)
+    setProfiles(loadedProfiles || [])
+
+    const enrichedSettings = {
+      ...loadedSettings,
+      company_rccm: loadedSettings.company_rccm || '',
+      company_nif: loadedSettings.company_nif || '',
+      company_cnps_number: loadedSettings.company_cnps_number || '',
+      company_collective_agreement: loadedSettings.company_collective_agreement || '',
+      legal_mention: loadedSettings.legal_mention || 'Ce bulletin de paie doit être conservé sans limitation de durée. Il peut servir de justificatif pour faire valoir vos droits.',
+      signatory1_name: loadedSettings.signatory1_name || loadedSettings.signature_name || '',
+      signatory1_title: loadedSettings.signatory1_title || '',
+      signatory1_signature: loadedSettings.signatory1_signature || loadedSettings.signature_image || '',
+      signatory2_name: loadedSettings.signatory2_name || '',
+      signatory2_title: loadedSettings.signatory2_title || '',
+      signatory2_signature: loadedSettings.signatory2_signature || '',
+      company_stamp: loadedSettings.company_stamp || '',
+    }
+    setSettings(enrichedSettings)
+    setOvertimeSettings(loadedOvertimeSettings)
+    setAllowanceTypes(loadedAllowanceTypes)
+    setDeductionTypes(loadedDeductionTypes)
+
+    await loadSentSlips(targetEnterpriseId, start, end)
+
+    if (employeesData.length > 0) {
+      setSelectedEmployeeId(employeesData[0].id)
+      setProfileForm(prev => ({ ...prev, employee_id: employeesData[0].id }))
+    } else {
+      setSelectedEmployeeId('')
+    }
+
+    if (loadedAllowanceTypes.length === 0 || loadedDeductionTypes.length === 0) {
+      await PayrollService.initializeTypesFromTemplates(targetEnterpriseId, adminId)
+      const [freshAllowances, freshDeductions] = await Promise.all([
+        PayrollService.getAllowanceTypes(targetEnterpriseId),
+        PayrollService.getDeductionTypes(targetEnterpriseId),
+      ])
+      setAllowanceTypes(freshAllowances)
+      setDeductionTypes(freshDeductions)
+    }
+
+    await loadLeaveBalances(targetEnterpriseId, employeesData, new Date().getFullYear())
+  }
+
   const initPage = async (adminData) => {
     setLoading(true)
     try {
-      const targetEnterpriseId = adminData.selectedEnterprise?.id || adminData.enterprise_id
+      const isSuperAdmin = adminData.role === 'super_admin'
+      let targetEnterpriseId = adminData.selectedEnterprise?.id || adminData.enterprise_id
+
+      if (isSuperAdmin) {
+        const { data: allEnts } = await supabase
+          .from('enterprises')
+          .select('id, name, code, logo_url, country_code, currency')
+          .eq('is_active', true)
+          .order('name')
+        const list = allEnts || []
+        setEnterprisesList(list)
+
+        if (!targetEnterpriseId && list.length > 0) {
+          const lastId =
+            (adminData.id && localStorage.getItem(`last_enterprise_id_${adminData.id}`)) ||
+            localStorage.getItem('last_enterprise_id')
+          const picked = (lastId && list.find(e => e.id === lastId)) || list[0]
+          targetEnterpriseId = picked.id
+          const updatedAdmin = { ...adminData, entreprises: list, selectedEnterprise: picked }
+          setAdmin(updatedAdmin)
+          localStorage.setItem('admin', JSON.stringify(updatedAdmin))
+          localStorage.setItem('last_enterprise_id', picked.id)
+        }
+      } else if (Array.isArray(adminData.entreprises) && adminData.entreprises.length > 1) {
+        setEnterprisesList(adminData.entreprises)
+      }
+
       if (!targetEnterpriseId) { toast.error('Aucune entreprise sélectionnée'); navigate('/dashboard'); return }
 
-      const hasAccess = await FeatureService.hasFeature(targetEnterpriseId, FEATURES.FICHES_PAIE)
-      if (!hasAccess) { toast.error('Module fiches de paie non activé'); navigate('/dashboard'); return }
+      if (!isSuperAdmin) {
+        const hasAccess = await FeatureService.hasFeature(targetEnterpriseId, FEATURES.FICHES_PAIE)
+        if (!hasAccess) { toast.error('Module fiches de paie non activé'); navigate('/dashboard'); return }
+      }
 
       const today = new Date()
       const firstDay = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))
@@ -436,69 +528,29 @@ export default function FichesPaie() {
       setPeriodStart(start)
       setPeriodEnd(end)
 
-      const { data: enterprise } = await supabase.from('enterprises').select('id, name, address, email, phone, logo_url, country_code, currency').eq('id', targetEnterpriseId).single()
-      setEnterpriseId(targetEnterpriseId)
-      setEnterpriseName(enterprise?.name || 'Entreprise')
-      setEnterpriseData(enterprise)
-
-      const [employeesRes, loadedSettings, loadedProfiles, loadedOvertimeSettings, loadedAllowanceTypes, loadedDeductionTypes] = await Promise.all([
-        supabase.from('employees').select('id, first_name, last_name, matricule, department, position, is_active, hire_date, cnps_number, professional_category, echelon, classification, contract_type, marital_status, dependents_count').eq('enterprise_id', targetEnterpriseId).eq('is_active', true).order('last_name'),
-        PayrollService.getPayrollSettings(targetEnterpriseId),
-        PayrollService.getEmployeePayrollProfiles(targetEnterpriseId),
-        FeatureService.getOvertimeSettings(targetEnterpriseId),
-        PayrollService.getAllowanceTypes(targetEnterpriseId),
-        PayrollService.getDeductionTypes(targetEnterpriseId),
-      ])
-
-      const employeesData = employeesRes.data || []
-      setEmployees(employeesData)
-      setProfiles(loadedProfiles || [])
-
-      // Enrichir settings avec defaults pour nouveaux champs
-      const enrichedSettings = {
-        ...loadedSettings,
-        // Infos entreprise
-        company_rccm: loadedSettings.company_rccm || '',
-        company_nif: loadedSettings.company_nif || '',
-        company_cnps_number: loadedSettings.company_cnps_number || '',
-        company_collective_agreement: loadedSettings.company_collective_agreement || '',
-        legal_mention: loadedSettings.legal_mention || 'Ce bulletin de paie doit être conservé sans limitation de durée. Il peut servir de justificatif pour faire valoir vos droits.',
-        // Signataire 1
-        signatory1_name: loadedSettings.signatory1_name || loadedSettings.signature_name || '',
-        signatory1_title: loadedSettings.signatory1_title || '',
-        signatory1_signature: loadedSettings.signatory1_signature || loadedSettings.signature_image || '',
-        // Signataire 2
-        signatory2_name: loadedSettings.signatory2_name || '',
-        signatory2_title: loadedSettings.signatory2_title || '',
-        signatory2_signature: loadedSettings.signatory2_signature || '',
-        // Cachet
-        company_stamp: loadedSettings.company_stamp || '',
-      }
-      setSettings(enrichedSettings)
-      setOvertimeSettings(loadedOvertimeSettings)
-      setAllowanceTypes(loadedAllowanceTypes)
-      setDeductionTypes(loadedDeductionTypes)
-
-      await loadSentSlips(targetEnterpriseId, start, end)
-
-      if (employeesData.length > 0) {
-        setSelectedEmployeeId(employeesData[0].id)
-        setProfileForm(prev => ({ ...prev, employee_id: employeesData[0].id }))
-      }
-
-      if (loadedAllowanceTypes.length === 0 || loadedDeductionTypes.length === 0) {
-        await PayrollService.initializeTypesFromTemplates(targetEnterpriseId, adminData.id)
-        const [freshAllowances, freshDeductions] = await Promise.all([
-          PayrollService.getAllowanceTypes(targetEnterpriseId),
-          PayrollService.getDeductionTypes(targetEnterpriseId),
-        ])
-        setAllowanceTypes(freshAllowances)
-        setDeductionTypes(freshDeductions)
-      }
-
-      // Charger soldes congés
-      await loadLeaveBalances(targetEnterpriseId, employeesData, today.getFullYear())
+      await loadEnterpriseContext(targetEnterpriseId, adminData.id, start, end)
     } catch (err) { console.error(err); toast.error('Erreur chargement module paie'); navigate('/dashboard') }
+    setLoading(false)
+  }
+
+  const handleEnterpriseSelectChange = async (newEntId) => {
+    if (!newEntId || newEntId === enterpriseId) return
+    setLoading(true)
+    try {
+      const chosen = enterprisesList.find(e => e.id === newEntId)
+      if (chosen && admin) {
+        const updatedAdmin = { ...admin, selectedEnterprise: chosen }
+        setAdmin(updatedAdmin)
+        localStorage.setItem('admin', JSON.stringify(updatedAdmin))
+        localStorage.setItem('last_enterprise_id', chosen.id)
+        if (admin.id) localStorage.setItem(`last_enterprise_id_${admin.id}`, chosen.id)
+      }
+      await loadEnterpriseContext(newEntId, admin?.id, periodStart, periodEnd)
+      toast.success(`Entreprise chargée : ${chosen?.name || ''}`)
+    } catch (err) {
+      console.error('Erreur changement entreprise:', err)
+      toast.error('Impossible de charger cette entreprise')
+    }
     setLoading(false)
   }
 
@@ -892,6 +944,12 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
   const handleSendToEmployee = async (row) => {
     if (!enterpriseId || !row?.employee?.id) return
+    // 🛡️ CF-2 : Bloquer l'envoi officiel au salarié si le barème fiscal n'est pas validé
+    const controle = TaxationService.verifierAvantRemise(row)
+    if (!controle.remissable) {
+      toast.error(controle.motif || 'Ce bulletin est provisoire et son barème fiscal doit être validé avant envoi au salarié.', { duration: 6000 })
+      return
+    }
     try {
       const { error } = await supabase.from('employee_payslips').upsert(buildPayslipData(row), { onConflict: 'enterprise_id,employee_id,period_start,period_end' })
       if (error) throw error
@@ -903,6 +961,13 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
   const handleSendAllToEmployees = async () => {
     if (!previewRows.length) return
+    // 🛡️ CF-2 : Vérifier qu'aucun bulletin n'a un barème fiscal non validé avant envoi groupé
+    const nonRemissables = previewRows.filter(r => !TaxationService.verifierAvantRemise(r).remissable)
+    if (nonRemissables.length > 0) {
+      const premierMotif = TaxationService.verifierAvantRemise(nonRemissables[0]).motif
+      toast.error(premierMotif || `${nonRemissables.length} bulletin(s) ont un barème fiscal à vérifier avant remise officielle.`, { duration: 7000 })
+      return
+    }
     setSendingSlips(true)
     let ok = 0, ko = 0
     for (const row of previewRows) {
@@ -1145,7 +1210,34 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               <div style={S.logoBox}><Wallet size={22} color="#F59E0B" /></div>
               <div>
                 <h1 style={S.title}>FICHES DE PAIE</h1>
-                <p style={S.subtitle}>{enterpriseName}</p>
+                {enterprisesList.length > 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <span style={{ color: '#9CA3AF', fontSize: 12 }}>Entreprise :</span>
+                    <select
+                      value={enterpriseId || ''}
+                      onChange={(e) => handleEnterpriseSelectChange(e.target.value)}
+                      style={{
+                        background: 'rgba(245,158,11,0.12)',
+                        border: '1px solid rgba(245,158,11,0.4)',
+                        borderRadius: 8,
+                        padding: '5px 10px',
+                        color: '#F59E0B',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {enterprisesList.map((ent) => (
+                        <option key={ent.id} value={ent.id}>
+                          {ent.name} {ent.country_code ? `(${ent.country_code})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <p style={S.subtitle}>{enterpriseName}</p>
+                )}
               </div>
             </div>
             <div style={S.headerRight}>
@@ -1839,7 +1931,42 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
                           {row.taxation && (
                             <div style={S.taxBlock}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}><Shield size={15} color="#8B5CF6" /><span style={{ color: '#A78BFA', fontSize: 13, fontWeight: 700 }}>Fiscalité & Cotisations</span></div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                <Shield size={15} color="#8B5CF6" />
+                                <span style={{ color: '#A78BFA', fontSize: 13, fontWeight: 700 }}>Fiscalité & Cotisations</span>
+                                {(row.impot_a_verifier || row.taxation?.impot_a_verifier) && (
+                                  <span style={{
+                                    marginLeft: 'auto',
+                                    padding: '3px 8px',
+                                    borderRadius: 6,
+                                    background: 'rgba(245,158,11,0.16)',
+                                    border: '1px solid rgba(245,158,11,0.35)',
+                                    color: '#F59E0B',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                  }}>
+                                    ⚠️ Simulation provisoire — Barème à vérifier
+                                  </span>
+                                )}
+                              </div>
+                              {(row.avertissement || row.taxation?.avertissement) && (
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: 8,
+                                  padding: '10px 12px',
+                                  marginBottom: 10,
+                                  borderRadius: 10,
+                                  background: 'rgba(245,158,11,0.08)',
+                                  border: '1px solid rgba(245,158,11,0.28)',
+                                  color: '#FCD34D',
+                                  fontSize: 12,
+                                  lineHeight: 1.45,
+                                }}>
+                                  <AlertTriangle size={15} color="#F59E0B" style={{ flexShrink: 0, marginTop: 2 }} />
+                                  <span>{row.avertissement || row.taxation?.avertissement}</span>
+                                </div>
+                              )}
                               <div style={S.taxGrid}>
                                 <div style={S.taxMini}><span style={S.taxMiniLabel}>Revenu imposable</span><span style={S.taxMiniValue}>{fmt(row.taxation.taxableIncome || 0)}</span></div>
                                 <div style={S.taxMini}><span style={S.taxMiniLabel}>Net imposable</span><span style={S.taxMiniValue}>{fmt((row.grossSalary || 0) - (row.taxation?.contributions?.totalEmployee || 0))}</span></div>

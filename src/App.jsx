@@ -62,61 +62,103 @@ import PushNotifications from './pages/PushNotifications'
 import SpotlightSearch from './pages/SpotlightSearch'
 
 // ═══════════════════════════════════════════════════════════
-// 🔐 COMPOSANT DE PROTECTION DES ROUTES ADMIN
+// 🔐 COMPOSANT DE PROTECTION DES ROUTES ADMIN (VD-14 / Constat V5)
 // ═══════════════════════════════════════════════════════════
+// POURQUOI : La session Supabase Auth et le rôle serveur font foi.
+// Un utilisateur qui modifie `localStorage.getItem('admin')` dans la console
+// F12 (ex. en changeant `role: "super_admin"` ou `expiresAt`) est bloqué.
 function AdminRoute({ children, requireSuperAdmin = false }) {
   const [checking, setChecking] = useState(true)
   const [authorized, setAuthorized] = useState(false)
 
   useEffect(() => {
-    const checkAuth = () => {
-      try {
-        const adminRaw = localStorage.getItem('admin')
-        if (!adminRaw) {
-          setAuthorized(false)
-          setChecking(false)
-          return
-        }
+    let cancelled = false
 
-        const admin = JSON.parse(adminRaw)
-
-        // ✅ Vérifier l'expiration de session
-        if (!admin.expiresAt || Date.now() > admin.expiresAt) {
-          localStorage.removeItem('admin')
-          localStorage.removeItem('last_enterprise_id')
-          setAuthorized(false)
-          setChecking(false)
-          return
-        }
-
-        // ✅ Vérifier le rôle super_admin si requis
-        if (requireSuperAdmin && admin.role !== 'super_admin') {
-          setAuthorized(false)
-          setChecking(false)
-          return
-        }
-
-        // ✅ Vérifier la session Supabase Auth
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (!session) {
-            // Session Supabase expirée → déconnexion
-            localStorage.removeItem('admin')
-            localStorage.removeItem('last_enterprise_id')
-            setAuthorized(false)
-          } else {
-            setAuthorized(true)
-          }
-          setChecking(false)
-        })
-
-      } catch {
-        localStorage.removeItem('admin')
+    const denyAndClean = () => {
+      localStorage.removeItem('admin')
+      localStorage.removeItem('last_enterprise_id')
+      if (!cancelled) {
         setAuthorized(false)
         setChecking(false)
       }
     }
 
+    const checkAuth = async () => {
+      try {
+        const adminRaw = localStorage.getItem('admin')
+        if (!adminRaw) {
+          if (!cancelled) {
+            setAuthorized(false)
+            setChecking(false)
+          }
+          return
+        }
+
+        const admin = JSON.parse(adminRaw)
+
+        // 1. Vérifier l'expiration locale de session
+        if (!admin?.id || !admin.expiresAt || Date.now() > admin.expiresAt) {
+          denyAndClean()
+          return
+        }
+
+        // 2. La session Supabase Auth est la seule source de vérité
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError || !session?.user) {
+          denyAndClean()
+          return
+        }
+
+        // 3. Empêcher l'usurpation d'identité par modification du localStorage :
+        //    l'email de la session Supabase doit correspondre au profil admin stocké.
+        if (
+          admin.email &&
+          session.user.email &&
+          admin.email.trim().toLowerCase() !== session.user.email.trim().toLowerCase()
+        ) {
+          console.warn('[Sécurité VD-14] Incohérence entre session Supabase et profil local.')
+          denyAndClean()
+          return
+        }
+
+        // 4. Si la route exige le rôle super_admin, vérifier côté serveur (table `admins`)
+        //    pour qu'aucune modification F12 de `admin.role` dans localStorage ne fonctionne.
+        if (requireSuperAdmin) {
+          if (admin.role !== 'super_admin') {
+            if (!cancelled) {
+              setAuthorized(false)
+              setChecking(false)
+            }
+            return
+          }
+
+          const { data: serverAdmin, error: roleError } = await supabase
+            .from('admins')
+            .select('id, role, is_active')
+            .eq('id', admin.id)
+            .maybeSingle()
+
+          if (roleError || !serverAdmin || serverAdmin.is_active === false || serverAdmin.role !== 'super_admin') {
+            console.warn('[Sécurité VD-14] Accès Super Admin refusé par le serveur.')
+            if (!cancelled) {
+              setAuthorized(false)
+              setChecking(false)
+            }
+            return
+          }
+        }
+
+        if (!cancelled) {
+          setAuthorized(true)
+          setChecking(false)
+        }
+      } catch {
+        denyAndClean()
+      }
+    }
+
     checkAuth()
+    return () => { cancelled = true }
   }, [requireSuperAdmin])
 
   if (checking) {

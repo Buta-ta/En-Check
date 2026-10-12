@@ -90,6 +90,7 @@ export default function ConfigurationFiscale() {
 
   const [enterpriseId, setEnterpriseId] = useState(null)
   const [enterpriseName, setEnterpriseName] = useState('')
+  const [enterprisesList, setEnterprisesList] = useState([])
 
   // Plus de pays/devise inventés : tant que la donnée n'est pas chargée,
   // l'interface affiche « non défini » au lieu d'un faux 'CMR'/'XAF'.
@@ -145,10 +146,59 @@ export default function ConfigurationFiscale() {
     initPage(parsedAdmin)
   }, [navigate])
 
+  const loadEnterpriseData = async (targetEnterpriseId) => {
+    const { data: enterprise } = await supabase
+      .from('enterprises')
+      .select('id, name, country_code, currency, fiscal_country_label')
+      .eq('id', targetEnterpriseId)
+      .single()
+
+    setEnterpriseId(targetEnterpriseId)
+    setEnterpriseName(enterprise?.name || 'Entreprise')
+    setCurrentCountryCode(enterprise?.country_code || null)
+    setCurrentCurrency(
+      CurrencyService.resolveCurrency({ enterprise }) || null,
+    )
+    setCurrentFiscalCountryLabel(enterprise?.fiscal_country_label || '')
+
+    setPendingCountryCode(enterprise?.country_code || null)
+    setPendingCurrency(
+      CurrencyService.resolveCurrency({ enterprise }) || null,
+    )
+    setPendingFiscalCountryLabel(enterprise?.fiscal_country_label || '')
+
+    await loadCurrentConfig(targetEnterpriseId)
+  }
+
   const initPage = async (adminData) => {
     setLoading(true)
     try {
-      const targetEnterpriseId = adminData.selectedEnterprise?.id || adminData.enterprise_id
+      const isSuperAdmin = adminData.role === 'super_admin'
+      let targetEnterpriseId = adminData.selectedEnterprise?.id || adminData.enterprise_id
+
+      if (isSuperAdmin) {
+        const { data: allEnts } = await supabase
+          .from('enterprises')
+          .select('id, name, code, logo_url, country_code, currency, fiscal_country_label')
+          .eq('is_active', true)
+          .order('name')
+        const list = allEnts || []
+        setEnterprisesList(list)
+
+        if (!targetEnterpriseId && list.length > 0) {
+          const lastId =
+            (adminData.id && localStorage.getItem(`last_enterprise_id_${adminData.id}`)) ||
+            localStorage.getItem('last_enterprise_id')
+          const picked = (lastId && list.find(e => e.id === lastId)) || list[0]
+          targetEnterpriseId = picked.id
+          const updatedAdmin = { ...adminData, entreprises: list, selectedEnterprise: picked }
+          setAdmin(updatedAdmin)
+          localStorage.setItem('admin', JSON.stringify(updatedAdmin))
+          localStorage.setItem('last_enterprise_id', picked.id)
+        }
+      } else if (Array.isArray(adminData.entreprises) && adminData.entreprises.length > 1) {
+        setEnterprisesList(adminData.entreprises)
+      }
 
       if (!targetEnterpriseId) {
         toast.error('Aucune entreprise sélectionnée')
@@ -156,41 +206,47 @@ export default function ConfigurationFiscale() {
         return
       }
 
-      const hasAccess = await FeatureService.hasFeature(targetEnterpriseId, FEATURES.FICHES_PAIE)
-      if (!hasAccess) {
-        toast.error('Module fiches de paie non activé')
-        navigate('/dashboard')
-        return
+      // Le Super Admin a toujours accès à la Configuration Fiscale de toute entreprise
+      if (!isSuperAdmin) {
+        const hasAccess = await FeatureService.hasFeature(targetEnterpriseId, FEATURES.FICHES_PAIE)
+        if (!hasAccess) {
+          toast.error('Module fiches de paie non activé')
+          navigate('/dashboard')
+          return
+        }
       }
-
-      const { data: enterprise } = await supabase
-        .from('enterprises')
-        .select('id, name, country_code, currency, fiscal_country_label')
-        .eq('id', targetEnterpriseId)
-        .single()
-
-      setEnterpriseId(targetEnterpriseId)
-      setEnterpriseName(enterprise?.name || 'Entreprise')
-      setCurrentCountryCode(enterprise?.country_code || null)
-      setCurrentCurrency(
-        CurrencyService.resolveCurrency({ enterprise }) || null,
-      )
-      setCurrentFiscalCountryLabel(enterprise?.fiscal_country_label || '')
-
-      setPendingCountryCode(enterprise?.country_code || null)
-      setPendingCurrency(
-        CurrencyService.resolveCurrency({ enterprise }) || null,
-      )
-      setPendingFiscalCountryLabel(enterprise?.fiscal_country_label || '')
 
       const countries = await TaxationService.getAvailableCountries()
       setAvailableCountries(countries)
 
-      await loadCurrentConfig(targetEnterpriseId)
+      await loadEnterpriseData(targetEnterpriseId)
     } catch (err) {
       console.error(err)
       toast.error('Erreur chargement configuration')
       navigate('/dashboard')
+    }
+    setLoading(false)
+  }
+
+  const handleEnterpriseSelectChange = async (newEntId) => {
+    if (!newEntId || newEntId === enterpriseId) return
+    setLoading(true)
+    try {
+      const chosen = enterprisesList.find(e => e.id === newEntId)
+      if (chosen && admin) {
+        const updatedAdmin = { ...admin, selectedEnterprise: chosen }
+        setAdmin(updatedAdmin)
+        localStorage.setItem('admin', JSON.stringify(updatedAdmin))
+        localStorage.setItem('last_enterprise_id', chosen.id)
+        if (admin.id) {
+          localStorage.setItem(`last_enterprise_id_${admin.id}`, chosen.id)
+        }
+      }
+      await loadEnterpriseData(newEntId)
+      toast.success(`Entreprise chargée : ${chosen?.name || ''}`)
+    } catch (err) {
+      console.error('Erreur changement entreprise:', err)
+      toast.error('Impossible de charger cette entreprise')
     }
     setLoading(false)
   }
@@ -684,7 +740,7 @@ export default function ConfigurationFiscale() {
         <div style={S.container}>
           <header style={S.header}>
             <div style={S.headerLeft}>
-              <button onClick={() => navigate('/fiches-paie')} style={S.backBtn}>
+              <button onClick={() => navigate('/dashboard')} style={S.backBtn} title="Retour au tableau de bord">
                 <ArrowLeft size={18} />
               </button>
               <div style={S.logoBox}>
@@ -692,7 +748,34 @@ export default function ConfigurationFiscale() {
               </div>
               <div>
                 <h1 style={S.title}>CONFIGURATION FISCALE</h1>
-                <p style={S.subtitle}>{enterpriseName}</p>
+                {enterprisesList.length > 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <span style={{ color: '#9CA3AF', fontSize: 12 }}>Entreprise :</span>
+                    <select
+                      value={enterpriseId || ''}
+                      onChange={(e) => handleEnterpriseSelectChange(e.target.value)}
+                      style={{
+                        background: 'rgba(245,158,11,0.12)',
+                        border: '1px solid rgba(245,158,11,0.4)',
+                        borderRadius: 8,
+                        padding: '5px 10px',
+                        color: '#F59E0B',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {enterprisesList.map((ent) => (
+                        <option key={ent.id} value={ent.id}>
+                          {ent.name} {ent.country_code ? `(${ent.country_code})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <p style={S.subtitle}>{enterpriseName}</p>
+                )}
               </div>
             </div>
 
