@@ -40,9 +40,9 @@ import nodemailer from "npm:nodemailer@6.9.16";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-//  Le mot de passe partagé entre la base et cette fonction : le même que celui
-//  écrit dans alertes-par-email.sql (étape 3). À retirer en même temps que la clé.
-const EMAIL_TRIGGER_SECRET = Deno.env.get("EMAIL_TRIGGER_SECRET") ?? "959944d32035a13ff482880420158f58c52ecc704f7e613f";
+// Secret partagé entre pg_net et cette fonction. Il doit être défini dans les
+// secrets Supabase et ne doit jamais être conservé en clair dans le dépôt.
+const EMAIL_TRIGGER_SECRET = Deno.env.get("EMAIL_TRIGGER_SECRET") ?? "";
 
 const SMTP_HOST = Deno.env.get("SMTP_HOST") ?? "";
 const SMTP_PORT = Number(Deno.env.get("SMTP_PORT") ?? "587");
@@ -58,24 +58,90 @@ const MAIL_FROM_NAME = Deno.env.get("MAIL_FROM_NAME") ?? "En-Check";
 const APP_URL = (Deno.env.get("APP_URL") ?? "https://en-check.vercel.app").replace(/\/+$/, "");
 const LOGO_URL = Deno.env.get("LOGO_URL") ?? `${APP_URL}/pwa-192x192.png`;
 const CONTACT_EMAIL = Deno.env.get("CONTACT_EMAIL") ?? "en.check.contact@gmail.com";
-//  ⚠️⚠️  CLÉ D'ESSAI — À RETIRER AVANT D'ENVOYER CE FICHIER SUR UN DÉPÔT  ⚠️⚠️
-//  C'est la clé Brevo, ici en clair pour que tu voies où elle se branche.
-//  Dès que tu la poses en secret dans Supabase, c'est le secret qui gagne :
-//  tu remplaces alors la valeur entre guillemets par "" et cette ligne redevient inoffensive.
+// Clé Brevo : uniquement dans les Custom secrets du projet Supabase, jamais dans Git.
 const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY") ?? "";
 
-const ALLOWED_ORIGINS = (Deno.env.get("PUSH_ALLOWED_ORIGINS") ?? "")
-  .split(",")
-  .map((o) => o.trim().replace(/\/+$/, ""))
-  .filter(Boolean);
+const DEFAULT_APP_ORIGIN = (() => {
+  try {
+    return new URL(APP_URL).origin;
+  } catch {
+    return "";
+  }
+})();
+const ALLOWED_ORIGINS = [...new Set([
+  DEFAULT_APP_ORIGIN,
+  ...(Deno.env.get("PUSH_ALLOWED_ORIGINS") ?? "")
+    .split(",")
+    .map((o) => o.trim().replace(/\/+$/, ""))
+    .filter(Boolean),
+].filter(Boolean))];
 
 if (!SUPABASE_URL) throw new Error("SUPABASE_URL manquant");
 if (!SERVICE_KEY) throw new Error("SUPABASE_SERVICE_ROLE_KEY manquant");
-if (!EMAIL_TRIGGER_SECRET) throw new Error("EMAIL_TRIGGER_SECRET manquant");
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false },
 });
+
+type StatutDestinataire = "accepted" | "failed" | "not_sent" | "blocked";
+type ResultatDestinataire = {
+  email: string;
+  statut: StatutDestinataire;
+  erreur: string | null;
+};
+
+type EmailLogInput = {
+  enterpriseId: string | null;
+  sujet: string;
+  lignes: Ligne[];
+  destinataires: string[];
+  resultatsDestinataires?: ResultatDestinataire[];
+  envoyes?: number;
+  echecs?: number;
+  erreur?: string | null;
+  source: string;
+  dureeMs: number;
+  statut: string;
+  payload: Record<string, unknown>;
+  fournisseur?: string;
+  providerMessageId?: string | null;
+  retryOf?: string | null;
+};
+
+async function enregistrerJournal(input: EmailLogInput): Promise<{ id: string | null; erreur: string | null }> {
+  try {
+    const { data, error } = await supabase
+      .from("encheck_email_logs")
+      .insert({
+        enterprise_id: input.enterpriseId,
+        sujet: input.sujet,
+        nb_alertes: input.lignes.length,
+        destinataires: input.destinataires.join(", "),
+        destinataires_json: input.destinataires,
+        resultats_destinataires: input.resultatsDestinataires ?? [],
+        nb_destinataires: input.destinataires.length,
+        envoyes: input.envoyes ?? 0,
+        echecs: input.echecs ?? 0,
+        erreur: input.erreur ?? null,
+        source: input.source,
+        duree_ms: input.dureeMs,
+        statut: input.statut,
+        payload: input.payload,
+        fournisseur: input.fournisseur ?? "aucun",
+        provider_message_id: input.providerMessageId ?? null,
+        retry_of: input.retryOf ?? null,
+      })
+      .select("id")
+      .maybeSingle();
+
+    return { id: data?.id ?? null, erreur: error?.message ?? null };
+  } catch (error) {
+    return {
+      id: null,
+      erreur: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
 
 // ────────────────────────────────────────────────
 // 🧰 OUTILS
@@ -84,7 +150,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
   const base: Record<string, string> = {
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type, x-email-secret",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   };
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
     base["Access-Control-Allow-Origin"] = origin;
@@ -336,20 +402,58 @@ par courrier sont activées sur leur fiche. Pour ne plus le recevoir, décochez
 // ────────────────────────────────────────────────
 // 📤 L'ENVOI
 // ────────────────────────────────────────────────
+type ResultatEnvoi = {
+  envoyes: number;
+  echecs: number;
+  erreur: string | null;
+  fournisseur: string;
+  providerMessageId: string | null;
+  resultatsDestinataires: ResultatDestinataire[];
+};
+
+function resultatsPourTous(
+  destinataires: string[],
+  statut: StatutDestinataire,
+  erreur: string | null,
+): ResultatDestinataire[] {
+  return destinataires.map((email) => ({ email, statut, erreur }));
+}
+
+function adresseDepuisReponse(value: unknown): string {
+  let address = "";
+  if (typeof value === "string") address = value.trim();
+  else if (value && typeof value === "object") {
+    const rawAddress = (value as Record<string, unknown>).address;
+    if (typeof rawAddress === "string") address = rawAddress.trim();
+  }
+  const enclosed = address.match(/<([^<>\s]+@[^<>\s]+)>/);
+  return enclosed?.[1] ?? address;
+}
+
 async function envoyer(
   destinataires: string[],
   sujet: string,
   html: string,
   texteBrut: string,
-): Promise<{ envoyes: number; echecs: number; erreur: string | null }> {
+): Promise<ResultatEnvoi> {
   if (!MAIL_FROM) {
-    return { envoyes: 0, echecs: destinataires.length, erreur: "MAIL_FROM manquant dans les secrets de la fonction" };
+    const erreur = "MAIL_FROM manquant dans les secrets de la fonction";
+    return {
+      envoyes: 0,
+      echecs: destinataires.length,
+      erreur,
+      fournisseur: "aucun",
+      providerMessageId: null,
+      resultatsDestinataires: resultatsPourTous(destinataires, "not_sent", erreur),
+    };
   }
 
-  //  ① L'interface du fournisseur — HTTPS, elle passe toujours.
+  const erreurs: string[] = [];
+
+  // ① Brevo : son acceptation ne signifie pas encore une livraison en boîte.
   if (BREVO_API_KEY) {
     try {
-      const r = await fetch("https://api.brevo.com/v3/smtp/email", {
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -363,21 +467,42 @@ async function envoyer(
           textContent: texteBrut,
         }),
       });
-      if (r.ok) return { envoyes: destinataires.length, echecs: 0, erreur: null };
-      const t = await r.text();
-      const detail = `fournisseur ${r.status} : ${t.slice(0, 200)}`;
-      if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-        return { envoyes: 0, echecs: destinataires.length, erreur: detail };
+      const responseText = await response.text();
+      let responseBody: Record<string, unknown> = {};
+      try {
+        responseBody = responseText ? JSON.parse(responseText) as Record<string, unknown> : {};
+      } catch {
+        // Certaines réponses d'erreur du fournisseur ne sont pas du JSON.
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-        return { envoyes: 0, echecs: destinataires.length, erreur: msg };
+      if (response.ok) {
+        return {
+          envoyes: destinataires.length,
+          echecs: 0,
+          erreur: null,
+          fournisseur: "brevo",
+          providerMessageId: typeof responseBody.messageId === "string" ? responseBody.messageId : null,
+          resultatsDestinataires: resultatsPourTous(destinataires, "accepted", null),
+        };
       }
+      erreurs.push(`Brevo ${response.status} : ${responseText.slice(0, 300)}`);
+    } catch (error) {
+      erreurs.push(error instanceof Error ? error.message : String(error));
+    }
+
+    if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+      const erreur = erreurs.join(" · ") || "Échec de l’envoi par Brevo.";
+      return {
+        envoyes: 0,
+        echecs: destinataires.length,
+        erreur,
+        fournisseur: "brevo",
+        providerMessageId: null,
+        resultatsDestinataires: resultatsPourTous(destinataires, "failed", erreur),
+      };
     }
   }
 
-  //  ② Le courrier direct, si un serveur d'envoi est renseigné.
+  // ② SMTP de secours : conserve les adresses acceptées/refusées par le serveur.
   if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
     try {
       const transport = nodemailer.createTransport({
@@ -393,18 +518,70 @@ async function envoyer(
         text: texteBrut,
         html,
       });
-      const refuses = Array.isArray(info?.rejected) ? info.rejected.length : 0;
-      return { envoyes: destinataires.length - refuses, echecs: refuses, erreur: null };
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!BREVO_API_KEY) return { envoyes: 0, echecs: destinataires.length, erreur: msg };
+      const accepted = new Set(
+        (Array.isArray(info?.accepted) ? info.accepted : [])
+          .map(adresseDepuisReponse).filter(Boolean).map((email) => email.toLowerCase()),
+      );
+      const rejectedValues = Array.isArray(info?.rejected) ? info.rejected : [];
+      const rejected = new Set(
+        rejectedValues.map(adresseDepuisReponse).filter(Boolean).map((email) => email.toLowerCase()),
+      );
+      const refusSansAdresse = rejectedValues.length > 0 && rejected.size === 0;
+      const resultatsDestinataires = destinataires.map((email): ResultatDestinataire => {
+        const normalized = email.toLowerCase();
+        if (rejected.has(normalized)) {
+          return { email, statut: "failed", erreur: "Adresse refusée par le serveur SMTP." };
+        }
+        if (accepted.has(normalized) || (accepted.size === 0 && rejected.size === 0)) {
+          return { email, statut: "accepted", erreur: null };
+        }
+        if (refusSansAdresse) {
+          return { email, statut: "not_sent", erreur: "Le serveur SMTP n'a pas identifié l'adresse refusée." };
+        }
+        if (accepted.size > 0) {
+          return { email, statut: "not_sent", erreur: "Le serveur SMTP n'a pas confirmé cette adresse." };
+        }
+        return { email, statut: "accepted", erreur: null };
+      });
+      const envoyes = resultatsDestinataires.filter((item) => item.statut === "accepted").length;
+      const echecs = destinataires.length - envoyes;
+      const erreur = echecs > 0 ? `${echecs} destinataire(s) refusé(s) ou non confirmé(s) par SMTP` : null;
+      return {
+        envoyes,
+        echecs,
+        erreur,
+        fournisseur: "smtp",
+        providerMessageId: typeof info?.messageId === "string" ? info.messageId : null,
+        resultatsDestinataires,
+      };
+    } catch (error) {
+      erreurs.push(error instanceof Error ? error.message : String(error));
+      const erreur = erreurs.join(" · ");
+      return {
+        envoyes: 0,
+        echecs: destinataires.length,
+        erreur,
+        fournisseur: "smtp",
+        providerMessageId: null,
+        resultatsDestinataires: resultatsPourTous(destinataires, "failed", erreur),
+      };
     }
   }
 
+  const erreur = erreurs.length
+    ? erreurs.join(" · ")
+    : "Aucun fournisseur configuré : ajoute BREVO_API_KEY ou les paramètres SMTP dans les secrets.";
   return {
     envoyes: 0,
     echecs: destinataires.length,
-    erreur: "aucun fournisseur configuré : ajoute la clé BREVO_API_KEY dans les secrets de la fonction",
+    erreur,
+    fournisseur: erreurs.length ? "brevo" : "aucun",
+    providerMessageId: null,
+    resultatsDestinataires: resultatsPourTous(
+      destinataires,
+      erreurs.length ? "failed" : "not_sent",
+      erreur,
+    ),
   };
 }
 
@@ -418,11 +595,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(origin) });
   }
-  if (req.method !== "POST") {
+  if (req.method !== "GET" && req.method !== "POST") {
     return json(405, { error: "method_not_allowed" }, origin);
   }
 
-  const parLeSecret = !echec(req.headers.get("x-email-secret") ?? "", EMAIL_TRIGGER_SECRET);
+  const parLeSecret = EMAIL_TRIGGER_SECRET.length >= 32 &&
+    !echec(req.headers.get("x-email-secret") ?? "", EMAIL_TRIGGER_SECRET);
   const parLeResponsable = parLeSecret
     ? false
     : await appelantEstSuperAdmin(req.headers.get("authorization"));
@@ -431,18 +609,48 @@ serve(async (req) => {
     return json(401, { error: "unauthorized" }, origin);
   }
 
+  // Health check authentifié, sans envoi ni exposition de valeurs secrètes.
+  if (req.method === "GET") {
+    return json(200, {
+      service: "send-email",
+      version: "email-monitor-v1",
+      configuration: {
+        sender_configured: Boolean(MAIL_FROM),
+        provider_configured: Boolean(BREVO_API_KEY || (SMTP_HOST && SMTP_USER && SMTP_PASS)),
+        trigger_secret_configured: EMAIL_TRIGGER_SECRET.length >= 32,
+        origin_allowed: !origin || ALLOWED_ORIGINS.includes(origin),
+      },
+    }, origin);
+  }
+
+  let source = parLeSecret ? "base" : "tableau_de_bord";
   let brut: Record<string, unknown>;
   try {
     brut = await req.json();
   } catch {
-    return json(400, { error: "invalid_json" }, origin);
+    const journal = await enregistrerJournal({
+      enterpriseId: null,
+      sujet: "Requête e-mail invalide",
+      lignes: [],
+      destinataires: [],
+      erreur: "invalid_json",
+      source,
+      dureeMs: Date.now() - t0,
+      statut: "not_sent",
+      payload: {},
+    });
+    return json(400, { error: "invalid_json", journal_id: journal.id, journalise: !journal.erreur }, origin);
   }
 
   const enterpriseId = texte(brut.enterprise_id, 60) || null;
-  const source = parLeSecret ? "base" : "tableau_de_bord";
+  const retryOfValue = texte(brut.retry_of, 60);
+  const retryOf = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(retryOfValue)
+    ? retryOfValue
+    : null;
+  if (retryOf) source = "relance";
 
   const destinatairesImposes = Array.isArray(brut.destinataires)
-    ? (brut.destinataires as unknown[]).map((d) => texte(d, 200)).filter(adresseValide)
+    ? [...new Set((brut.destinataires as unknown[]).map((d) => texte(d, 200)).filter(adresseValide))]
     : [];
 
   const lignes: Ligne[] = Array.isArray(brut.lignes)
@@ -457,7 +665,19 @@ serve(async (req) => {
     });
   }
   if (lignes.length === 0) {
-    return json(400, { error: "aucune_alerte" }, origin);
+    const journal = await enregistrerJournal({
+      enterpriseId,
+      sujet: texte(brut.sujet, 160) || "Requête e-mail sans alerte",
+      lignes: [],
+      destinataires: [],
+      erreur: "aucune_alerte",
+      source,
+      dureeMs: Date.now() - t0,
+      statut: "not_sent",
+      payload: { enterprise_id: enterpriseId, sujet: texte(brut.sujet, 160), destinataires: [] },
+      retryOf,
+    });
+    return json(400, { error: "aucune_alerte", journal_id: journal.id, journalise: !journal.erreur }, origin);
   }
 
   // Nom de l'entreprise (le nom de la colonne varie selon les installations).
@@ -472,8 +692,29 @@ serve(async (req) => {
 
   // Destinataires : ceux imposés, sinon les responsables de l'entreprise.
   let destinataires = destinatairesImposes;
+  const analyseDestinataires: Record<string, unknown>[] = destinatairesImposes.map((email) => ({
+    email_auth: email,
+    inclus: true,
+    raison: "Adresse explicitement demandée par l'appelant.",
+  }));
+
   if (destinataires.length === 0) {
-    if (!enterpriseId) return json(400, { error: "enterprise_id_requis" }, origin);
+    if (!enterpriseId) {
+      const note = "enterprise_id_requis";
+      const journal = await enregistrerJournal({
+        enterpriseId: null,
+        sujet: texte(brut.sujet, 160) || "Alerte e-mail sans entreprise",
+        lignes,
+        destinataires: [],
+        erreur: note,
+        source,
+        dureeMs: Date.now() - t0,
+        statut: "not_sent",
+        payload: { sujet: texte(brut.sujet, 160), lignes, destinataires: [] },
+        retryOf,
+      });
+      return json(400, { error: note, journal_id: journal.id, journalise: !journal.erreur }, origin);
+    }
 
     const { data: liens, error: eLiens } = await supabase
       .from("admin_entreprises")
@@ -482,42 +723,142 @@ serve(async (req) => {
       .eq("is_active", true);
 
     if (eLiens) {
-      return json(500, { error: "lecture_des_rattachements_impossible", detail: eLiens.message }, origin);
+      const journal = await enregistrerJournal({
+        enterpriseId,
+        sujet: texte(brut.sujet, 160) || "Erreur de routage e-mail",
+        lignes,
+        destinataires: [],
+        erreur: `lecture_des_rattachements_impossible: ${eLiens.message}`,
+        source,
+        dureeMs: Date.now() - t0,
+        statut: "not_sent",
+        payload: { enterprise_id: enterpriseId, lignes, destinataires: [] },
+        retryOf,
+      });
+      return json(500, { error: "lecture_des_rattachements_impossible", detail: eLiens.message, journal_id: journal.id }, origin);
     }
 
-    const idsResponsables = (liens ?? [])
+    const idsResponsables = [...new Set((liens ?? [])
       .map((l) => String((l as Record<string, unknown>).admin_id ?? ""))
-      .filter(Boolean);
+      .filter(Boolean))];
 
     let responsables: Record<string, unknown>[] = [];
     if (idsResponsables.length > 0) {
       const { data, error: eAdmins } = await supabase
         .from("admins")
-        .select("id, user_id, is_active, alertes_email")
+        .select("id, user_id, is_active, alertes_email, first_name, last_name, email")
         .in("id", idsResponsables);
       if (eAdmins) {
-        return json(500, { error: "lecture_des_responsables_impossible", detail: eAdmins.message }, origin);
+        const journal = await enregistrerJournal({
+          enterpriseId,
+          sujet: texte(brut.sujet, 160) || "Erreur de routage e-mail",
+          lignes,
+          destinataires: [],
+          erreur: `lecture_des_responsables_impossible: ${eAdmins.message}`,
+          source,
+          dureeMs: Date.now() - t0,
+          statut: "not_sent",
+          payload: { enterprise_id: enterpriseId, lignes, destinataires: [] },
+          retryOf,
+        });
+        return json(500, { error: "lecture_des_responsables_impossible", detail: eAdmins.message, journal_id: journal.id }, origin);
       }
       responsables = (data ?? []) as Record<string, unknown>[];
     }
 
     for (const ligne of responsables) {
-      if (ligne.is_active === false) continue;
-      if (ligne.alertes_email === false) continue;
-      if (!ligne.user_id) continue;
-      try {
-        const { data } = await supabase.auth.admin.getUserById(String(ligne.user_id));
-        const email = texte(data?.user?.email, 200);
-        if (email && adresseValide(email)) destinataires.push(email);
-      } catch {
-        // un responsable mal rattaché ne doit pas empêcher les autres d'être prévenus
+      const audit: Record<string, unknown> = {
+        admin_id: String(ligne.id ?? ""),
+        nom: `${texte(ligne.first_name, 100)} ${texte(ligne.last_name, 100)}`.trim() || "Admin",
+        email_fiche: texte(ligne.email, 200) || null,
+        email_auth: null,
+        inclus: false,
+        raison: "",
+      };
+      if (ligne.is_active === false) {
+        audit.raison = "La fiche Admin est inactive.";
+      } else if (ligne.alertes_email === false) {
+        audit.raison = "Les alertes e-mail sont désactivées sur la fiche Admin.";
+      } else if (!ligne.user_id) {
+        audit.raison = "La fiche Admin n'est pas liée à un compte Supabase Auth.";
+      } else {
+        try {
+          const { data, error } = await supabase.auth.admin.getUserById(String(ligne.user_id));
+          const emailAuth = texte(data?.user?.email, 200);
+          if (error || !emailAuth) {
+            audit.raison = "Aucune adresse disponible sur le compte Supabase Auth.";
+          } else if (!adresseValide(emailAuth)) {
+            audit.raison = "L'adresse du compte Supabase Auth n'est pas valide.";
+          } else {
+            audit.email_auth = emailAuth;
+            audit.inclus = true;
+            if (audit.email_fiche && String(audit.email_fiche).toLowerCase() !== emailAuth.toLowerCase()) {
+              audit.raison = "L'adresse du compte Auth est utilisée; elle diffère de l'adresse de la fiche.";
+            } else {
+              audit.raison = "Prêt à recevoir les alertes e-mail.";
+            }
+            destinataires.push(emailAuth);
+          }
+        } catch {
+          audit.raison = "Impossible de lire l'adresse du compte Supabase Auth.";
+        }
       }
+      analyseDestinataires.push(audit);
     }
     destinataires = [...new Set(destinataires)];
   }
 
+  // Aperçu sans envoi : le superadmin peut voir les destinataires calculés
+  // avant de lancer un vrai test ou une relance, y compris quand la liste est vide.
+  if (brut.preview_only === true) {
+    return json(200, {
+      ok: true,
+      preview: true,
+      enterprise_id: enterpriseId,
+      entreprise,
+      destinataires,
+      analyse_destinataires: analyseDestinataires,
+      nb_destinataires: destinataires.length,
+      note: destinataires.length
+        ? "Aucun e-mail n'a été envoyé."
+        : enterpriseId && analyseDestinataires.length === 0
+        ? "Aucun rattachement actif trouvé dans admin_entreprises pour cette entreprise."
+        : "Aucun destinataire éligible; consulte les raisons de non-inclusion ci-dessous.",
+    }, origin);
+  }
+
   if (destinataires.length === 0) {
-    return json(200, { ok: true, envoyes: 0, echecs: 0, note: "aucun responsable joignable" }, origin);
+    const note = "Aucun responsable éligible : rattachement, préférence e-mail ou compte Auth manquant.";
+    const journal = await enregistrerJournal({
+      enterpriseId,
+      sujet: texte(brut.sujet, 160) || "Alerte e-mail sans destinataire",
+      lignes,
+      destinataires: [],
+      erreur: note,
+      source,
+      dureeMs: Date.now() - t0,
+      statut: "not_sent",
+      payload: {
+        enterprise_id: enterpriseId,
+        sujet: texte(brut.sujet, 160),
+        lien: texte(brut.lien, 300),
+        lignes,
+        destinataires: [],
+        analyse_destinataires: analyseDestinataires,
+      },
+      retryOf,
+    });
+    return json(200, {
+      ok: false,
+      envoyes: 0,
+      echecs: 0,
+      destinataires: [],
+      statut: "not_sent",
+      note,
+      journal_id: journal.id,
+      journalise: !journal.erreur,
+      erreur_journal: journal.erreur,
+    }, origin);
   }
 
   // Anti-emballement : au-delà de 40 messages en 10 minutes pour une même
@@ -529,9 +870,31 @@ serve(async (req) => {
         .from("encheck_email_logs")
         .select("id", { count: "exact", head: true })
         .eq("enterprise_id", enterpriseId)
+        .in("statut", ["accepted", "failed", "partial"])
         .gte("cree_le", depuis);
       if ((count ?? 0) >= 40) {
-        return json(429, { error: "trop_de_messages", fenetre_minutes: 10 }, origin);
+        const note = "Limite anti-emballement atteinte : 40 tentatives d’envoi sur 10 minutes.";
+        const journal = await enregistrerJournal({
+          enterpriseId,
+          sujet: texte(brut.sujet, 160) || "Envoi e-mail limité",
+          lignes,
+          destinataires,
+          resultatsDestinataires: resultatsPourTous(destinataires, "blocked", note),
+          erreur: note,
+          source,
+          dureeMs: Date.now() - t0,
+          statut: "blocked",
+          payload: {
+            enterprise_id: enterpriseId,
+            sujet: texte(brut.sujet, 160),
+            lien: texte(brut.lien, 300),
+            lignes,
+            destinataires,
+            analyse_destinataires: analyseDestinataires,
+          },
+          retryOf,
+        });
+        return json(429, { error: "trop_de_messages", detail: note, journal_id: journal.id }, origin);
       }
     } catch {
       // jamais bloquant
@@ -552,23 +915,42 @@ serve(async (req) => {
 
   const resultat = await envoyer(destinataires, sujet, html, texteBrut);
   const dureeMs = Date.now() - t0;
+  const statut = resultat.envoyes > 0 && resultat.echecs > 0
+    ? "partial"
+    : resultat.envoyes > 0
+    ? "accepted"
+    : resultat.resultatsDestinataires.length > 0 && resultat.resultatsDestinataires.every((item) => item.statut === "not_sent")
+    ? "not_sent"
+    : "failed";
+  const payloadJournal = {
+    enterprise_id: enterpriseId,
+    sujet: texte(brut.sujet, 160),
+    lien,
+    lignes,
+    // Garder la liste effectivement utilisée afin de permettre une relance
+    // contrôlée vers les mêmes boîtes, même si les rattachements changent ensuite.
+    destinataires,
+    analyse_destinataires: analyseDestinataires,
+    resultats_destinataires: resultat.resultatsDestinataires,
+  };
 
-  try {
-    await supabase.from("encheck_email_logs").insert({
-      enterprise_id: enterpriseId,
-      sujet,
-      nb_alertes: lignes.length,
-      destinataires: destinataires.join(", "),
-      nb_destinataires: destinataires.length,
-      envoyes: resultat.envoyes,
-      echecs: resultat.echecs,
-      erreur: resultat.erreur,
-      source,
-      duree_ms: dureeMs,
-    });
-  } catch {
-    // le journal ne doit jamais faire échouer l'envoi
-  }
+  const journal = await enregistrerJournal({
+    enterpriseId,
+    sujet,
+    lignes,
+    destinataires,
+    resultatsDestinataires: resultat.resultatsDestinataires,
+    envoyes: resultat.envoyes,
+    echecs: resultat.echecs,
+    erreur: resultat.erreur,
+    source,
+    dureeMs,
+    statut,
+    payload: payloadJournal,
+    fournisseur: resultat.fournisseur,
+    providerMessageId: resultat.providerMessageId,
+    retryOf,
+  });
 
   return json(
     resultat.erreur && resultat.envoyes === 0 ? 502 : 200,
@@ -577,8 +959,15 @@ serve(async (req) => {
       envoyes: resultat.envoyes,
       echecs: resultat.echecs,
       destinataires,
+      resultats_destinataires: resultat.resultatsDestinataires,
       erreur: resultat.erreur,
       duree_ms: dureeMs,
+      statut,
+      fournisseur: resultat.fournisseur,
+      provider_message_id: resultat.providerMessageId,
+      journal_id: journal.id,
+      journalise: !journal.erreur,
+      erreur_journal: journal.erreur,
     },
     origin,
   );
