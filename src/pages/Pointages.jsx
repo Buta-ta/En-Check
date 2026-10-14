@@ -787,7 +787,7 @@ export default function Pointages() {
           gps_accuracy, is_within_zone, distance_meters, geofence_id,
           face_score, face_verified, liveness_passed, face_attempts,
           notes, modifie_le, modifie_par, created_at,
-          origin, decision_raison, modifie_par_employe,
+          origine, decision_raison, modifie_par_employe,
           suspect, suspect_reason, clock_skew_seconds, device_id,
           pointages_photos (id, photo_url, created_at)
         `)
