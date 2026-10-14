@@ -157,10 +157,15 @@ export default function EmailDeliveryMonitor() {
     const { data, error } = await supabase.functions.invoke('send-email', { method: 'GET' })
     if (error) {
       const message = await functionErrorMessage(error)
+      const methodNotAllowed = error?.context?.status === 405 || /method_not_allowed/i.test(message)
       setFunctionHealth({
         state: 'old',
-        message: 'La fonction e-mail de Supabase doit être mise à jour avant les tests.',
-        detail: message,
+        message: methodNotAllowed
+          ? 'La fonction actuellement déployée sur Supabase est une ancienne version (HTTP 405).'
+          : 'La fonction e-mail de Supabase doit être mise à jour avant les tests.',
+        detail: methodNotAllowed
+          ? 'Elle ne reconnaît pas le contrôle de santé GET. Déploie la fonction « send-email » mise à jour depuis le dépôt, puis clique sur Actualiser. Les envois restent bloqués pour éviter un test sans aperçu fiable.'
+          : message,
       })
       return
     }
@@ -168,7 +173,7 @@ export default function EmailDeliveryMonitor() {
       setFunctionHealth({
         state: 'old',
         message: 'La fonction e-mail de Supabase doit être mise à jour avant les tests.',
-        detail: 'La version active ne possède pas encore le contrôle des destinataires et du journal.',
+        detail: 'La version active ne possède pas encore l’aperçu sans envoi et le journal. Déploie « send-email » depuis le dépôt, puis clique sur Actualiser.'
       })
       return
     }
@@ -486,7 +491,7 @@ export default function EmailDeliveryMonitor() {
   const filteredAdmins = admins.filter((admin) => admin.is_active && admin.email)
 
   return (
-    <section style={styles.page}>
+    <section className="email-monitor" style={styles.page}>
       <div style={styles.topBar}>
         <div>
           <h2 style={styles.title}>Contrôle des e-mails</h2>
@@ -502,8 +507,8 @@ export default function EmailDeliveryMonitor() {
         </div>
       </div>
 
-      <div style={{ ...styles.health, borderColor: automaticReady ? 'rgba(52,211,153,.25)' : 'rgba(251,191,36,.3)' }}>
-        {functionHealth.state === 'checking' ? <RefreshCw size={18} color="#FBBF24" className="email-spin" /> : automaticReady ? <ShieldCheck size={18} color="#34D399" /> : <AlertCircle size={18} color="#FBBF24" />}
+      <div style={{ ...styles.health, borderColor: automaticReady ? 'rgba(52,211,153,.35)' : functionHealth.state === 'old' ? 'rgba(248,113,113,.42)' : 'rgba(251,191,36,.3)' }}>
+        {functionHealth.state === 'checking' ? <RefreshCw size={18} color="#FBBF24" className="email-spin" /> : automaticReady ? <ShieldCheck size={18} color="#34D399" /> : functionHealth.state === 'old' ? <AlertCircle size={18} color="#F87171" /> : <AlertCircle size={18} color="#FBBF24" />}
         <div>
           <strong>{functionHealth.message}</strong>
           {functionHealth.detail && <p>{functionHealth.detail}</p>}
@@ -807,16 +812,19 @@ export default function EmailDeliveryMonitor() {
         </div>
       )}
 
-      <style>{`@keyframes emailSpin { to { transform: rotate(360deg); } }.email-spin { animation: emailSpin 1s linear infinite; }`}</style>
+      <style>{`@keyframes emailSpin { to { transform: rotate(360deg); } }.email-spin { animation: emailSpin 1s linear infinite; }.email-monitor button:disabled { opacity: .52; cursor: not-allowed; filter: saturate(.55); }.email-monitor button:not(:disabled):hover { filter: brightness(1.08); }.email-monitor button:focus-visible, .email-monitor input:focus-visible, .email-monitor select:focus-visible, .email-monitor textarea:focus-visible { outline: 2px solid rgba(245,158,11,.75); outline-offset: 2px; }`}</style>
     </section>
   )
 }
 
 function StatCard({ label, value, color, ...props }) {
   return (
-    <div style={{ ...styles.statCard, borderColor: `${color}40` }}>
+    <div style={styles.statCard}>
       <span style={{ ...styles.statIcon, color, background: `${color}14` }}>{createElement(props.Icon, { size: 19 })}</span>
-      <span><strong>{value}</strong><small>{label}</small></span>
+      <span style={styles.statText}>
+        <strong style={styles.statValue}>{value}</strong>
+        <small style={styles.statLabel}>{label}</small>
+      </span>
     </div>
   )
 }
@@ -826,15 +834,18 @@ const styles = {
   topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
   title: { color: '#F8FAFC', fontSize: 22, margin: 0 },
   subtitle: { color: '#94A3B8', fontSize: 13, margin: '5px 0 0' },
-  topActions: { display: 'flex', gap: 9, flexWrap: 'wrap' },
-  primaryButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: 0, borderRadius: 10, padding: '10px 14px', background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#111827', fontWeight: 800, cursor: 'pointer' },
-  secondaryButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, border: '1px solid rgba(255,255,255,.12)', borderRadius: 10, padding: '9px 12px', background: 'rgba(255,255,255,.04)', color: '#E2E8F0', fontWeight: 650, cursor: 'pointer' },
-  health: { display: 'flex', alignItems: 'flex-start', gap: 11, padding: '12px 14px', background: 'rgba(15,23,42,.75)', border: '1px solid', borderRadius: 12, color: '#CBD5E1', fontSize: 13 },
+  topActions: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap' },
+  primaryButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 42, boxSizing: 'border-box', border: 0, borderRadius: 10, padding: '10px 15px', background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#111827', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 7px 20px rgba(217,119,6,.18)' },
+  secondaryButton: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 42, boxSizing: 'border-box', border: '1px solid rgba(71,85,105,.7)', borderRadius: 10, padding: '9px 13px', background: 'rgba(15,23,42,.78)', color: '#E2E8F0', fontWeight: 650, cursor: 'pointer', whiteSpace: 'nowrap' },
+  health: { display: 'flex', alignItems: 'flex-start', gap: 11, padding: '13px 15px', background: 'linear-gradient(135deg,rgba(15,23,42,.95),rgba(17,24,39,.85))', border: '1px solid', borderRadius: 13, color: '#CBD5E1', fontSize: 13, lineHeight: 1.5 },
   setupError: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: 18, borderRadius: 14, background: 'rgba(127,29,29,.2)', border: '1px solid rgba(248,113,113,.32)', color: '#FCA5A5' },
-  stats: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 11 },
-  historyNote: { color: '#94A3B8', fontSize: 11, marginTop: -8 },
-  statCard: { display: 'flex', alignItems: 'center', gap: 12, padding: 15, border: '1px solid', borderRadius: 14, background: 'rgba(15,23,42,.7)' },
-  statIcon: { width: 40, height: 40, display: 'grid', placeItems: 'center', borderRadius: 12 },
+  stats: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,190px),1fr))', gap: 12 },
+  historyNote: { color: '#94A3B8', fontSize: 11, marginTop: -8, lineHeight: 1.5 },
+  statCard: { display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, padding: '15px 16px', border: '1px solid rgba(71,85,105,.48)', borderRadius: 14, background: 'linear-gradient(140deg,rgba(15,23,42,.96),rgba(17,24,39,.88))', boxShadow: '0 8px 22px rgba(0,0,0,.12)' },
+  statIcon: { width: 42, height: 42, flex: '0 0 42px', display: 'grid', placeItems: 'center', borderRadius: 12 },
+  statText: { display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 },
+  statValue: { display: 'block', color: '#F8FAFC', fontSize: 25, fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' },
+  statLabel: { display: 'block', color: '#A8B3C4', fontSize: 11, lineHeight: 1.35, overflowWrap: 'anywhere' },
   notice: { display: 'flex', gap: 9, alignItems: 'flex-start', padding: '10px 12px', color: '#CBD5E1', background: 'rgba(59,130,246,.08)', border: '1px solid rgba(96,165,250,.2)', borderRadius: 11, fontSize: 12, lineHeight: 1.5 },
   toolbar: { display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' },
   searchBox: { flex: '1 1 240px', display: 'flex', alignItems: 'center', gap: 8, minHeight: 38, padding: '0 10px', border: '1px solid rgba(255,255,255,.1)', borderRadius: 9, background: 'rgba(255,255,255,.035)' },
