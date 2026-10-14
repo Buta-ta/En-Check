@@ -309,7 +309,8 @@ export default function PushNotifications() {
         .delete-btn:hover { background: rgba(239,68,68,0.2) !important; color: #EF4444 !important; }
       `}</style>
 
-      <div style={styles.page}>
+      <div style={styles.pageShell}>
+        <div style={styles.page}>
         {/* HEADER */}
         <div style={styles.header}>
           <div style={styles.headerLeft}>
@@ -346,7 +347,7 @@ export default function PushNotifications() {
           <>
         {/* STATS */}
         <div style={styles.statsGrid}>
-          <div className="push-stat-card" style={{ ...styles.statCard, borderColor: 'rgba(245,158,11,0.2)' }}>
+          <div className="push-stat-card" style={{ ...styles.statCard, borderColor: 'rgba(51,65,85,.68)' }}>
             <div style={{ ...styles.statIcon, background: 'rgba(245,158,11,0.15)' }}>
               <Send size={20} color="#F59E0B" />
             </div>
@@ -356,7 +357,7 @@ export default function PushNotifications() {
             </div>
           </div>
 
-          <div className="push-stat-card" style={{ ...styles.statCard, borderColor: 'rgba(16,185,129,0.2)' }}>
+          <div className="push-stat-card" style={{ ...styles.statCard, borderColor: 'rgba(51,65,85,.68)' }}>
             <div style={{ ...styles.statIcon, background: 'rgba(16,185,129,0.15)' }}>
               <Calendar size={20} color="#10B981" />
             </div>
@@ -366,7 +367,7 @@ export default function PushNotifications() {
             </div>
           </div>
 
-          <div className="push-stat-card" style={{ ...styles.statCard, borderColor: 'rgba(99,102,241,0.2)' }}>
+          <div className="push-stat-card" style={{ ...styles.statCard, borderColor: 'rgba(51,65,85,.68)' }}>
             <div style={{ ...styles.statIcon, background: 'rgba(99,102,241,0.15)' }}>
               <TrendingUp size={20} color="#6366F1" />
             </div>
@@ -376,7 +377,7 @@ export default function PushNotifications() {
             </div>
           </div>
 
-          <div className="push-stat-card" style={{ ...styles.statCard, borderColor: 'rgba(139,92,246,0.2)' }}>
+          <div className="push-stat-card" style={{ ...styles.statCard, borderColor: 'rgba(51,65,85,.68)' }}>
             <div style={{ ...styles.statIcon, background: 'rgba(139,92,246,0.15)' }}>
               <Target size={20} color="#8B5CF6" />
             </div>
@@ -662,13 +663,14 @@ export default function PushNotifications() {
         ) : (
           <EmailDeliveryMonitor />
         )}
+        </div>
       </div>
     </>
   )
 }
 
 const styles = {
-  channelTabs: { display: 'flex', gap: '8px', padding: '5px', width: 'fit-content', maxWidth: '100%', overflowX: 'auto', borderRadius: '13px', background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '18px' },
+  channelTabs: { display: 'flex', gap: '8px', padding: '5px', width: 'fit-content', maxWidth: '100%', overflowX: 'auto', borderRadius: '13px', background: 'rgba(15,23,42,.55)', border: '1px solid rgba(51,65,85,.7)', marginBottom: '18px' },
   channelTab: { display: 'inline-flex', alignItems: 'center', gap: '8px', border: '1px solid transparent', borderRadius: '10px', padding: '10px 14px', background: 'transparent', color: '#94A3B8', cursor: 'pointer', fontWeight: 650, fontFamily: 'inherit', whiteSpace: 'nowrap' },
   channelTabActive: { color: '#F8FAFC', background: 'rgba(245,158,11,0.12)', borderColor: 'rgba(245,158,11,0.25)' },
   // Loading Screen
@@ -775,8 +777,9 @@ const styles = {
     animation: 'loading 1.5s ease-in-out infinite',
   },
 
-  // Existing styles
-  page: { padding: '20px', minHeight: '100vh', background: '#0A0A0F', maxWidth: '1400px', margin: '0 auto' },
+  // The shell paints the full viewport so wide displays never reveal a light gutter.
+  pageShell: { width: '100%', minHeight: '100vh', background: '#0A0A0F', color: '#E5E7EB', overflowX: 'hidden' },
+  page: { width: '100%', maxWidth: '1440px', minHeight: '100vh', boxSizing: 'border-box', padding: '24px clamp(16px, 2.5vw, 36px)', margin: '0 auto', background: 'transparent' },
   
   header: { 
     display: 'flex', 
@@ -808,7 +811,7 @@ const styles = {
     height: '40px',
     borderRadius: '12px',
     background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    border: '1px solid rgba(51,65,85,0.68)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -843,7 +846,7 @@ const styles = {
     gap: '16px', 
     padding: '20px', 
     background: 'rgba(20,20,30,0.6)', 
-    border: '1px solid rgba(255,255,255,0.08)', 
+    border: '1px solid rgba(51,65,85,0.68)',
     borderRadius: '16px',
     transition: 'all 0.3s ease',
   },
@@ -869,11 +872,12 @@ const styles = {
   },
   
   card: { 
-    background: 'rgba(20,20,30,0.6)', 
-    border: '1px solid rgba(255,255,255,0.08)', 
+    background: 'rgba(15,23,42,0.72)',
+    border: '1px solid rgba(51,65,85,0.7)',
     borderRadius: '18px', 
     padding: '24px',
     backdropFilter: 'blur(10px)',
+    boxShadow: '0 12px 32px rgba(0,0,0,.18)',
   },
   
   cardHeader: { 
@@ -934,7 +938,7 @@ const styles = {
     flex: 1,
     padding: '8px 12px',
     background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    border: '1px solid rgba(51,65,85,0.78)',
     borderRadius: '10px',
     color: '#FFF',
     fontSize: '13px',
@@ -960,7 +964,7 @@ const styles = {
   input: { 
     padding: '12px 14px', 
     background: 'rgba(255,255,255,0.04)', 
-    border: '1px solid rgba(255,255,255,0.1)', 
+    border: '1px solid rgba(51,65,85,0.78)',
     borderRadius: '10px', 
     color: '#FFF', 
     fontSize: '14px', 
@@ -972,7 +976,7 @@ const styles = {
   textarea: { 
     padding: '12px 14px', 
     background: 'rgba(255,255,255,0.04)', 
-    border: '1px solid rgba(255,255,255,0.1)', 
+    border: '1px solid rgba(51,65,85,0.78)',
     borderRadius: '10px', 
     color: '#FFF', 
     fontSize: '14px', 
@@ -985,7 +989,7 @@ const styles = {
   select: { 
     padding: '12px 14px', 
     background: 'rgba(255,255,255,0.04)', 
-    border: '1px solid rgba(255,255,255,0.1)', 
+    border: '1px solid rgba(51,65,85,0.78)',
     borderRadius: '10px', 
     color: '#FFF', 
     fontSize: '14px', 
@@ -1011,7 +1015,7 @@ const styles = {
     gap: '8px', 
     padding: '10px 14px', 
     background: 'rgba(255,255,255,0.04)', 
-    border: '1px solid rgba(255,255,255,0.08)', 
+    border: '1px solid rgba(51,65,85,0.68)',
     borderRadius: '10px', 
     cursor: 'pointer', 
     color: '#CCC', 
@@ -1078,7 +1082,7 @@ const styles = {
     justifyContent: 'space-between',
     gap: '12px',
     background: 'rgba(255,255,255,0.03)', 
-    border: '1px solid rgba(255,255,255,0.06)', 
+    border: '1px solid rgba(51,65,85,0.55)',
     borderRadius: '12px', 
     padding: '14px',
     transition: 'all 0.2s ease',
@@ -1114,7 +1118,7 @@ const styles = {
     height: '32px',
     borderRadius: '8px',
     background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    border: '1px solid rgba(51,65,85,0.55)',
     color: '#666',
     display: 'flex',
     alignItems: 'center',
