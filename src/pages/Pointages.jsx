@@ -787,6 +787,7 @@ export default function Pointages() {
           gps_accuracy, is_within_zone, distance_meters, geofence_id,
           face_score, face_verified, liveness_passed, face_attempts,
           notes, modifie_le, modifie_par, created_at,
+          origin, decision_raison, modifie_par_employe,
           suspect, suspect_reason, clock_skew_seconds, device_id,
           pointages_photos (id, photo_url, created_at)
         `)
@@ -2301,6 +2302,11 @@ function PointageCard({
     ? getAdminName(modifiedEntry.modifie_par)
     : null
 
+  // Une correction faite par l'EMPLOYÉ depuis l'application de pointage,
+  // pas par un administrateur. Le détail (ancien type, nouveau type, date)
+  // est conservé dans la table `attendance_corrections`.
+  const correctionEmploye = p.attendances.find(a => a.modifie_par_employe)
+
   return (
     <div
       className="afro-pointage-card"
@@ -2735,12 +2741,17 @@ function PointageCard({
           {/* Modification audit */}
           {isModified && modifiedEntry && (
             <div style={styles.modifiedRow}>
-              <Edit size={13} color="#6366F1" />
+              <Edit size={13} color={correctionEmploye ? "#F59E0B" : "#6366F1"} />
               <span style={styles.modifiedText}>
                 Modifié le{' '}
                 {new Date(modifiedEntry.modifie_le).toLocaleString('fr-FR')}
                 {modifiedByName && (
                   <> par <strong style={{ color: '#E5E5E5' }}>{modifiedByName}</strong></>
+                )}
+                {!modifiedByName && correctionEmploye && (
+                  <> par <strong style={{ color: '#F59E0B' }}>l'employé</strong>
+                    {' '}(depuis l'application de pointage)
+                  </>
                 )}
               </span>
             </div>
