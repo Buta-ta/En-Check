@@ -294,7 +294,8 @@ function detectAnomalies(pointages) {
       })
     }
 
-    if (p.attendances.some(a => a.modifie_le)) {
+    const modifie = p.attendances.find(x => x.modifie_le)
+    if (modifie) {
       anomalies.push({
         type: 'modified', severity: 'info', icon: '✏️',
         employee: empName, employeeId: empId,
@@ -302,8 +303,8 @@ function detectAnomalies(pointages) {
         //  La carte dit ce qu'elle sait de source sûre : la date du geste, inscrite
         //  sur le pointage par le serveur au moment de la correction. Le nom de la
         //  personne et le motif sont dans le journal des pointages de la journée.
-        detail: a.modifie_le
-          ? `Correction faite le ${new Date(a.modifie_le).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} — le journal de la journée dit par qui et pourquoi`
+        detail: modifie.modifie_le
+          ? `Correction faite le ${new Date(modifie.modifie_le).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} — le journal de la journée dit par qui et pourquoi`
           : `Modification manuelle effectuée`
       })
     }
