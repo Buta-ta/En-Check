@@ -3,15 +3,16 @@
 // 📢 GESTION NOTIFICATIONS PUSH MANUELLES (SUPERADMIN)
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { 
-  Send, Users, Building2, User, AlertTriangle, Info, Bell, 
+  Send, Users, Building2, User, AlertTriangle, Info, Bell, Mail,
   CheckCircle2, XCircle, ArrowLeft, Trash2, Volume2, VolumeX,
   Calendar, Clock, Target, Sparkles, TrendingUp, Filter, X
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
+import EmailDeliveryMonitor from '../components/EmailDeliveryMonitor'
 
 export default function PushNotifications() {
   const navigate = useNavigate()
@@ -19,6 +20,7 @@ export default function PushNotifications() {
   const [loading, setLoading] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [initialLoading, setInitialLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('push')
 
   // Form state
   const [targetType, setTargetType] = useState('all')
@@ -47,38 +49,7 @@ export default function PushNotifications() {
     by_severity: { info: 0, warning: 0, critical: 0 }
   })
 
-  useEffect(() => {
-    const initPage = async () => {
-      const adminData = JSON.parse(localStorage.getItem('admin') || '{}')
-      if (adminData.role !== 'super_admin') {
-        toast.error('Accès réservé aux super admins')
-        navigate('/dashboard')
-        return
-      }
-      setAdmin(adminData)
-      
-      await Promise.all([
-        fetchLists(),
-        fetchLogs(),
-        loadStats()
-      ])
-
-      // Son de notification
-      const soundPref = localStorage.getItem('push_sound_enabled')
-      if (soundPref !== null) {
-        setSoundEnabled(soundPref === 'true')
-      }
-
-      // Delay minimal pour voir l'animation
-      setTimeout(() => {
-        setInitialLoading(false)
-      }, 800)
-    }
-
-    initPage()
-  }, [navigate])
-
-  const fetchLists = async () => {
+  const fetchLists = useCallback(async () => {
     const [ents, adms, emps] = await Promise.all([
       supabase.from('enterprises').select('id, name, logo_url').eq('is_active', true).order('name'),
       supabase.from('admins').select('id, first_name, last_name, email, enterprise_id').eq('is_active', true).order('first_name'),
@@ -88,9 +59,9 @@ export default function PushNotifications() {
     setEnterprises(ents.data || [])
     setAdmins(adms.data || [])
     setEmployees(emps.data || [])
-  }
+  }, [])
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoadingLogs(true)
     let query = supabase
       .from('push_logs')
@@ -109,9 +80,9 @@ export default function PushNotifications() {
     const { data } = await query
     setLogs(data || [])
     setLoadingLogs(false)
-  }
+  }, [filterSeverity, filterTarget])
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     const today = new Date().toISOString().split('T')[0]
     const startOfDay = `${today}T00:00:00`
     const endOfDay = `${today}T23:59:59`
@@ -128,11 +99,11 @@ export default function PushNotifications() {
 
     const total = allLogs?.length || 0
     const today_count = todayLogs?.length || 0
-    
+
     const totalSent = allLogs?.reduce((sum, log) => sum + (log.success_count || 0), 0) || 0
     const totalFailed = allLogs?.reduce((sum, log) => sum + (log.failed_count || 0), 0) || 0
-    const success_rate = totalSent + totalFailed > 0 
-      ? Math.round((totalSent / (totalSent + totalFailed)) * 100) 
+    const success_rate = totalSent + totalFailed > 0
+      ? Math.round((totalSent / (totalSent + totalFailed)) * 100)
       : 0
 
     const by_severity = {
@@ -142,7 +113,41 @@ export default function PushNotifications() {
     }
 
     setStats({ total, today: today_count, success_rate, by_severity })
-  }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    let soundTimer
+    const initPage = async () => {
+      let adminData = {}
+      try { adminData = JSON.parse(localStorage.getItem('admin') || '{}') } catch { /* session invalide */ }
+      if (adminData.role !== 'super_admin') {
+        toast.error('Accès réservé aux super admins')
+        navigate('/dashboard')
+        return
+      }
+      if (!active) return
+      setAdmin(adminData)
+
+      await Promise.all([fetchLists(), loadStats()])
+      if (!active) return
+
+      const soundPref = localStorage.getItem('push_sound_enabled')
+      if (soundPref !== null) setSoundEnabled(soundPref === 'true')
+      soundTimer = window.setTimeout(() => setInitialLoading(false), 800)
+    }
+
+    initPage()
+    return () => {
+      active = false
+      if (soundTimer) window.clearTimeout(soundTimer)
+    }
+  }, [navigate, fetchLists, loadStats])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { fetchLogs() }, 0)
+    return () => window.clearTimeout(timer)
+  }, [fetchLogs])
 
   const handleSend = async (e) => {
     e.preventDefault()
@@ -315,17 +320,30 @@ export default function PushNotifications() {
               <Bell size={24} color="#F59E0B" />
             </div>
             <div>
-              <h1 style={styles.title}>Notifications Push</h1>
-              <p style={styles.subtitle}>Envoi manuel de notifications ciblées</p>
+              <h1 style={styles.title}>Notifications</h1>
+              <p style={styles.subtitle}>Push et suivi de tous les e-mails d’alerte</p>
             </div>
           </div>
           <div style={styles.headerRight}>
-            <button onClick={toggleSound} style={styles.soundBtn} title={soundEnabled ? 'Désactiver les sons' : 'Activer les sons'}>
-              {soundEnabled ? <Volume2 size={18} color="#10B981" /> : <VolumeX size={18} color="#666" />}
-            </button>
+            {activeTab === 'push' && (
+              <button onClick={toggleSound} style={styles.soundBtn} title={soundEnabled ? 'Désactiver les sons' : 'Activer les sons'}>
+                {soundEnabled ? <Volume2 size={18} color="#10B981" /> : <VolumeX size={18} color="#666" />}
+              </button>
+            )}
           </div>
         </div>
 
+        <div style={styles.channelTabs} role="tablist" aria-label="Canal de notification">
+          <button type="button" role="tab" aria-selected={activeTab === 'push'} onClick={() => setActiveTab('push')} style={{ ...styles.channelTab, ...(activeTab === 'push' ? styles.channelTabActive : {}) }}>
+            <Bell size={16} /> Notifications Push
+          </button>
+          <button type="button" role="tab" aria-selected={activeTab === 'email'} onClick={() => setActiveTab('email')} style={{ ...styles.channelTab, ...(activeTab === 'email' ? styles.channelTabActive : {}) }}>
+            <Mail size={16} /> E-mails automatiques
+          </button>
+        </div>
+
+        {activeTab === 'push' ? (
+          <>
         {/* STATS */}
         <div style={styles.statsGrid}>
           <div className="push-stat-card" style={{ ...styles.statCard, borderColor: 'rgba(245,158,11,0.2)' }}>
@@ -554,7 +572,7 @@ export default function PushNotifications() {
             <div style={styles.filters}>
               <div style={styles.filterGroup}>
                 <Filter size={14} color="#888" />
-                <select value={filterSeverity} onChange={(e) => { setFilterSeverity(e.target.value); fetchLogs() }} style={styles.filterSelect}>
+                <select value={filterSeverity} onChange={(e) => setFilterSeverity(e.target.value)} style={styles.filterSelect}>
                   <option value="all">Toutes priorités</option>
                   <option value="info">Info</option>
                   <option value="warning">Alerte</option>
@@ -564,7 +582,7 @@ export default function PushNotifications() {
 
               <div style={styles.filterGroup}>
                 <Target size={14} color="#888" />
-                <select value={filterTarget} onChange={(e) => { setFilterTarget(e.target.value); fetchLogs() }} style={styles.filterSelect}>
+                <select value={filterTarget} onChange={(e) => setFilterTarget(e.target.value)} style={styles.filterSelect}>
                   <option value="all">Tous types</option>
                   <option value="all">Broadcast</option>
                   <option value="admins">Admins</option>
@@ -640,12 +658,19 @@ export default function PushNotifications() {
             )}
           </div>
         </div>
+          </>
+        ) : (
+          <EmailDeliveryMonitor />
+        )}
       </div>
     </>
   )
 }
 
 const styles = {
+  channelTabs: { display: 'flex', gap: '8px', padding: '5px', width: 'fit-content', maxWidth: '100%', overflowX: 'auto', borderRadius: '13px', background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '18px' },
+  channelTab: { display: 'inline-flex', alignItems: 'center', gap: '8px', border: '1px solid transparent', borderRadius: '10px', padding: '10px 14px', background: 'transparent', color: '#94A3B8', cursor: 'pointer', fontWeight: 650, fontFamily: 'inherit', whiteSpace: 'nowrap' },
+  channelTabActive: { color: '#F8FAFC', background: 'rgba(245,158,11,0.12)', borderColor: 'rgba(245,158,11,0.25)' },
   // Loading Screen
   loadingScreen: {
     position: 'fixed',

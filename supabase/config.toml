@@ -9,3 +9,11 @@ entrypoint = "./functions/send-push/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/send-push/*.html" ]
+
+
+[functions.send-email]
+enabled = true
+# The function verifies either the shared x-email-secret or a superadmin JWT itself.
+# JWT verification is disabled at the gateway so PostgreSQL pg_net can use the shared secret.
+verify_jwt = false
+entrypoint = "./functions/send-email/index.ts"
