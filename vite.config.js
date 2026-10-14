@@ -132,11 +132,33 @@ export default defineConfig({
     }
   },
   
-  server: {
-    https: {
-      key: fs.readFileSync('./.cert/localhost-key.pem'),
-      cert: fs.readFileSync('./.cert/localhost.pem'),
-    },
-    port: 5173
-  }
+    // ─────────────────────────────────────────────────────────────────────────
+  //  SERVEUR LOCAL (ta machine seulement)
+  // ─────────────────────────────────────────────────────────────────────────
+  //  Le HTTPS local sert à tester l'appareil photo et la géolocalisation.
+  //  MAIS les certificats vivent dans .cert/, un dossier exclu par .gitignore :
+  //  il n'existe donc PAS sur Vercel. Les lire sans vérifier leur présence
+  //  faisait mourir le build ENTIER avant même la compilation :
+  //      Error: ENOENT: no such file or directory, open './.cert/localhost-key.pem'
+  //
+  //  On ne les lit donc QUE s'ils existent. Vercel gère son propre HTTPS :
+  //  il n'y a rien à configurer de ce côté-là.
+  //
+  //  En résumé :
+  //      en local  → .cert/ présent  → HTTPS activé  (comme avant, aucun changement)
+  //      sur Vercel→ .cert/ absent   → HTTPS ignoré  (le build passe enfin)
+  server: (() => {
+    const cle = './.cert/localhost-key.pem'
+    const cert = './.cert/localhost.pem'
+    if (fs.existsSync(cle) && fs.existsSync(cert)) {
+      return {
+        https: {
+          key: fs.readFileSync(cle),
+          cert: fs.readFileSync(cert),
+        },
+        port: 5173,
+      }
+    }
+    return { port: 5173 }
+  })(),
 })
