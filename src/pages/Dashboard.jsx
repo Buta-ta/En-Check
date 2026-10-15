@@ -70,7 +70,10 @@ import {
   Globe,
   Radio,
 } from 'lucide-react'
-import { formaterHeureLocale, minutesDepuisMinuit } from '../utils/timezoneUtils'
+import { formaterHeureLocale, minutesDepuisMinuit, jourLocal } from '../utils/timezoneUtils'
+import { compterRetardsDuJour } from '../services/hoursCalculator'
+
+export { compterRetardsDuJour }
 
 export default function Dashboard() {
   const [admin, setAdmin] = useState(null)
@@ -123,7 +126,7 @@ export default function Dashboard() {
   const [todayHoliday, setTodayHoliday] = useState(null)
 
   const navigate = useNavigate()
-  const today = new Date().toISOString().split('T')[0]
+  const today = jourLocal(new Date()) || new Date().toISOString().split('T')[0]
 
   // ═══ NOTIFICATIONS HOOK ═══
   const {
@@ -342,6 +345,8 @@ export default function Dashboard() {
       absencesTodayRes, recentActivityRes, photosTodayRes, retardEmployeesRes,
       allEnterprisesRes,
       allAttendancesTodayRes,
+      employeeSchedulesRes,
+      defaultSchedulesRes,
     ] = await Promise.all([
       supabase.from('enterprises').select('*').eq('id', enterpriseId).single(),
       supabase.from('employees').select('id, first_name, last_name, matricule, photo_url').eq('enterprise_id', enterpriseId).eq('is_active', true),
@@ -350,9 +355,11 @@ export default function Dashboard() {
       supabase.from('absences').select('id, employee_id, reason, status').eq('enterprise_id', enterpriseId).lte('start_date', today).gte('end_date', today),
       supabase.from('attendances').select(`id, check_time, check_type, employees (id, first_name, last_name, matricule, photo_url), pointages_photos (id, photo_url)`).eq('enterprise_id', enterpriseId).gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: false }).limit(8),
       supabase.from('attendances').select(`id, pointages_photos(id)`).eq('enterprise_id', enterpriseId).gte('check_time', startOfDay).lte('check_time', endOfDay),
-      supabase.from('attendances').select(`id, employee_id, check_time, check_type`).eq('enterprise_id', enterpriseId).eq('check_type', 'in').gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: true }),
+      supabase.from('attendances').select(`id, employee_id, enterprise_id, check_time, check_type`).eq('enterprise_id', enterpriseId).eq('check_type', 'in').gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: true }),
       supabase.from('enterprises').select('id, name, logo_url, employees(count)').eq('is_active', true).order('name'),
       supabase.from('attendances').select('id, employee_id, enterprise_id').gte('check_time', startOfDay).lte('check_time', endOfDay).limit(5000),
+      supabase.from('employee_schedules').select('*, work_schedules(*)').eq('is_active', true),
+      supabase.from('work_schedules').select('*').eq('enterprise_id', enterpriseId).eq('is_default', true).eq('is_active', true),
     ])
 
     if (employesRes.error) throw employesRes.error
@@ -405,11 +412,13 @@ export default function Dashboard() {
     const oublisSortie = [...dernierGesteDuJour.values()].filter(
       (d) => d.type === 'in' && Date.now() - d.t > 8 * 3600 * 1000,
     ).length
-    // Heure locale de l'entreprise.
-    // ⚠️ ATTENTION : le seuil 08:15 est FIGÉ EN DUR ici et n'utilise pas
-    // l'horaire configuré dans l'entreprise (le seuil configurable est
-    // un point à part).
-    const retardsToday = retardEntries.filter(att => minutesDepuisMinuit(att.check_time) > 8 * 60 + 15).length
+    // Heure locale de l'entreprise + respect du planning personnalisé ou par défaut de chaque employé.
+    const retardsToday = compterRetardsDuJour(
+      retardEntries,
+      employeeSchedulesRes?.data || [],
+      defaultSchedulesRes?.data || [],
+      today
+    )
     const tauxPresence = employesData.length > 0 ? Math.round((presentsToday / employesData.length) * 100) : 0
 
     const conflictsData = await loadConflicts(enterpriseId)
@@ -456,6 +465,7 @@ export default function Dashboard() {
     const [
       employesCountRes, pointagesTotalRes, attendancesTodayRes,
       absencesTodayRes, recentActivityRes, photosTodayRes, retardEntriesRes,
+      employeeSchedulesRes, defaultSchedulesRes,
     ] = await Promise.all([
       supabase.from('employees').select('*', { count: 'exact', head: true }).eq('is_active', true),
       supabase.from('attendances').select('*', { count: 'exact', head: true }),
@@ -464,6 +474,8 @@ export default function Dashboard() {
       supabase.from('attendances').select(`id, check_time, check_type, enterprise_id, employees (id, first_name, last_name, matricule, photo_url), pointages_photos (id, photo_url)`).gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: false }).limit(10),
       supabase.from('attendances').select(`id, pointages_photos(id)`).gte('check_time', startOfDay).lte('check_time', endOfDay),
       supabase.from('attendances').select(`id, employee_id, enterprise_id, check_time, check_type`).eq('check_type', 'in').gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: true }),
+      supabase.from('employee_schedules').select('*, work_schedules(*)').eq('is_active', true),
+      supabase.from('work_schedules').select('*').eq('is_default', true).eq('is_active', true),
     ])
 
     if (employesCountRes.error) throw employesCountRes.error
@@ -499,11 +511,13 @@ export default function Dashboard() {
     const oublisSortie = [...dernierGesteDuJour.values()].filter(
       (d) => d.type === 'in' && Date.now() - d.t > 8 * 3600 * 1000,
     ).length
-    // Heure locale de l'entreprise.
-    // ⚠️ ATTENTION : le seuil 08:15 est FIGÉ EN DUR ici et n'utilise pas
-    // l'horaire configuré dans l'entreprise (le seuil configurable est
-    // un point à part).
-    const retardsToday = retardEntries.filter(att => minutesDepuisMinuit(att.check_time) > 8 * 60 + 15).length
+    // Heure locale de l'entreprise + respect du planning personnalisé ou par défaut de chaque employé.
+    const retardsToday = compterRetardsDuJour(
+      retardEntries,
+      employeeSchedulesRes?.data || [],
+      defaultSchedulesRes?.data || [],
+      today
+    )
     const tauxPresence = totalEmployes > 0 ? Math.round((presentsToday / totalEmployes) * 100) : 0
 
     const conflictsData = await loadConflicts(null)

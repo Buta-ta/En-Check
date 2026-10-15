@@ -23,7 +23,10 @@ import {
   formaterHeureLocale,
   calculerDureeSecondes,
   formaterDureeComplete,
-  minutesDepuisMinuit
+  minutesDepuisMinuit,
+  jourLocal,
+  heureLocaleVersUTC,
+  getHeuresMinutesLocales,
 } from '../utils/timezoneUtils'
 
 import ModifierPointage from '../components/ModifierPointage'
@@ -35,6 +38,7 @@ import ImporterPointages from '../components/ImporterPointages'
 import PhotoSignee from '../components/PhotoSignee'
 import FeatureService, { FEATURES } from '../services/featureService'
 import HolidayService from '../services/holidayService'
+import { resoudrePointagesJournee } from '../services/hoursCalculator'
 
 // ═══════════════════════════════════════════════════════════
 // 🔧 REDUCER POUR GÉRER LES ÉTATS COMPLEXES
@@ -46,7 +50,7 @@ const initialState = {
   adminsMap: {}, // Map UUID -> {first_name, last_name}
   loading: true,
   error: null,
-  isOnline: navigator.onLine,
+  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
   lastSync: null,
 
   // Modals
@@ -186,6 +190,8 @@ function raisonGrave(raison) {
     || s.includes('delai_au_dela')
 }
 
+export { resoudrePointagesJournee }
+
 // ═══════════════════════════════════════════════════════════
 // 🔍 DÉTECTION D'ANOMALIES
 // ═══════════════════════════════════════════════════════════
@@ -206,7 +212,7 @@ function detectAnomalies(pointages) {
     }
 
     if (p.firstIn) {
-      const inHour = new Date(p.firstIn.check_time).getHours()
+      const inHour = getHeuresMinutesLocales(p.firstIn.check_time).heures
       if (inHour < 5) {
         anomalies.push({
           type: 'early_arrival', severity: 'info', icon: '🌅',
@@ -218,7 +224,7 @@ function detectAnomalies(pointages) {
     }
 
     if (p.lastOut && !p.lastOut.is_auto_closed) {
-      const outHour = new Date(p.lastOut.check_time).getHours()
+      const outHour = getHeuresMinutesLocales(p.lastOut.check_time).heures
       if (outHour >= 23 || outHour < 2) {
         anomalies.push({
           type: 'late_departure', severity: 'info', icon: '🌙',
@@ -594,7 +600,7 @@ export default function Pointages() {
   const loadingRef = useRef(false)
 
   // Filtres persistés dans l'URL
-  const selectedDate = searchParams.get('date') || new Date().toISOString().split('T')[0]
+  const selectedDate = searchParams.get('date') || jourLocal(new Date()) || new Date().toISOString().split('T')[0]
   const selectedEntrepriseId = searchParams.get('entreprise') || 'all'
 
   // un import doit viser UNE entreprise précise. Quand le
@@ -775,10 +781,22 @@ export default function Pointages() {
       const { data: employees, error: empError } = await employeesQuery
       if (empError) throw empError
 
-      const startOfDay = new Date(`${selectedDate}T00:00:00`)
-      const endOfNextDay = new Date(startOfDay)
-      endOfNextDay.setDate(endOfNextDay.getDate() + 1)
-      endOfNextDay.setHours(14, 0, 0, 0)
+      // Fenêtre élargie en heure locale : de la veille (J-1) à 12:00 jusqu'au lendemain (J+1) à 14:00
+      // afin d'identifier les gardes de nuit commencées à J-1 et d'inclure les sorties de nuit à J+1.
+      const prevDateObj = new Date(`${selectedDate}T00:00:00Z`)
+      prevDateObj.setUTCDate(prevDateObj.getUTCDate() - 1)
+      const prevDateStr = prevDateObj.toISOString().split('T')[0]
+
+      const nextDateObj = new Date(`${selectedDate}T00:00:00Z`)
+      nextDateObj.setUTCDate(nextDateObj.getUTCDate() + 1)
+      const nextDateStr = nextDateObj.toISOString().split('T')[0]
+
+      const queryStartISO =
+        heureLocaleVersUTC(prevDateStr, 12, 0, 0) ||
+        new Date(`${prevDateStr}T12:00:00Z`).toISOString()
+      const queryEndISO =
+        heureLocaleVersUTC(nextDateStr, 14, 0, 0) ||
+        new Date(`${nextDateStr}T14:00:00Z`).toISOString()
 
       let attQuery = supabase
         .from('attendances')
@@ -792,8 +810,8 @@ export default function Pointages() {
           suspect, suspect_reason, clock_skew_seconds, device_id,
           pointages_photos (id, photo_url, created_at)
         `)
-        .gte('check_time', startOfDay.toISOString())
-        .lte('check_time', endOfNextDay.toISOString())
+        .gte('check_time', queryStartISO)
+        .lte('check_time', queryEndISO)
         .order('check_time', { ascending: true })
 
       if (targetEid !== 'all') attQuery = attQuery.eq('enterprise_id', targetEid)
@@ -813,7 +831,10 @@ export default function Pointages() {
       const { data: conflictsData } = await conflictsQuery
       dispatch({ type: 'SET_CONFLICTS', payload: conflictsData || [] })
 
-      await createMissingConflicts(attendances || [], absencesData || [], conflictsData || [])
+      const attendancesDuJourSeul = (attendances || []).filter(
+        a => (jourLocal(a.check_time) || a.check_time.split('T')[0]) === selectedDate
+      )
+      await createMissingConflicts(attendancesDuJourSeul, absencesData || [], conflictsData || [])
 
       const { data: refreshedConflicts } = await conflictsQuery
       dispatch({ type: 'SET_CONFLICTS', payload: refreshedConflicts || [] })
@@ -822,7 +843,17 @@ export default function Pointages() {
         ? [targetEid]
         : [...new Set(employees?.map(e => e.enterprise_id).filter(Boolean) || [])]
 
-      const allSchedules = await FeatureService.loadSchedules(enterpriseIds)
+      const [allSchedules, { data: empSchedulesData }] = await Promise.all([
+        FeatureService.loadSchedules(enterpriseIds),
+        supabase
+          .from('employee_schedules')
+          .select('*, work_schedules(*)')
+          .eq('is_active', true),
+      ])
+      const employeeSchedulesMap = {}
+      ;(empSchedulesData || []).forEach(es => {
+        if (es.employee_id) employeeSchedulesMap[es.employee_id] = es
+      })
 
       const holidaySets = {}
       const holidayMaps = {}
@@ -843,49 +874,14 @@ export default function Pointages() {
         const holidayToday = employeeHolidayMap.get(selectedDate) || null
         const isHolidayToday = employeeHolidaySet.has(selectedDate)
 
-        const empAttendances = (attendances || []).filter(a => a.employee_id === employee.id)
-
-        let totalSecondes = 0
-        let currentIn = null
-        let validPairs = []
-
-        for (let i = 0; i < empAttendances.length; i++) {
-          const att = empAttendances[i]
-          const attDate = new Date(att.check_time)
-          const pointageDateStr = att.check_time.split('T')[0]
-
-          if (att.check_type === 'in') {
-            let isValidIn = false
-            if (pointageDateStr === selectedDate) {
-              isValidIn = true
-            } else {
-              if (validPairs.length > 0) {
-                const lastOutTime = new Date(validPairs[validPairs.length - 1].out.check_time)
-                const diffHours = (attDate - lastOutTime) / (1000 * 60 * 60)
-                if (diffHours < 8) isValidIn = true
-              }
-            }
-            if (isValidIn) currentIn = att
-            else currentIn = null
-          } else if (att.check_type === 'out' && currentIn) {
-            const inDate = new Date(currentIn.check_time)
-            const diffHours = (attDate - inDate) / (1000 * 60 * 60)
-            if (diffHours <= 16) {
-              totalSecondes += calculerDureeSecondes(currentIn.check_time, att.check_time)
-              validPairs.push({ in: currentIn, out: att })
-              currentIn = null
-            }
-          }
-        }
-
-        let firstIn = validPairs.length > 0 ? validPairs[0].in : null
-        let lastOut = validPairs.length > 0 ? validPairs[validPairs.length - 1].out : null
-        if (!firstIn && currentIn) firstIn = currentIn
-        if (!firstIn) {
-          firstIn = empAttendances.find(
-            a => a.check_type === 'in' && a.check_time.split('T')[0] === selectedDate
-          ) || null
-        }
+        const rawEmpAttendances = (attendances || []).filter(a => a.employee_id === employee.id)
+        const {
+          attendances: empAttendances,
+          validPairs,
+          totalSecondes,
+          firstIn,
+          lastOut,
+        } = resoudrePointagesJournee(rawEmpAttendances, selectedDate)
 
         const employeeAbsence = absencesData?.find(abs => abs.employee_id === employee.id)
         const employeeConflicts = (refreshedConflicts || []).filter(
@@ -916,12 +912,15 @@ export default function Pointages() {
 
         let overtimeData = null
         if (hasOvertimeFeature && totalSecondes > 0) {
-          const applicableSchedule = FeatureService.getApplicableSchedule(
-            employee.enterprise_id, selectedDate, allSchedules
-          )
-          overtimeData = FeatureService.calculateOvertimeWithSchedule(
-            totalSecondes, applicableSchedule, overtimeSettings, new Date(selectedDate)
-          )
+          overtimeData = FeatureService.calculateOvertimeForEmployeeDay({
+            totalWorkedSeconds: totalSecondes,
+            employeeSchedule: employeeSchedulesMap[employee.id] || null,
+            enterpriseId: employee.enterprise_id,
+            dateStr: selectedDate,
+            allSchedules,
+            overtimeSettings,
+            holiday: holidayToday,
+          })
         }
 
         return {
@@ -1636,37 +1635,7 @@ export default function Pointages() {
             selectedDate={selectedDate}
             pointagesJournee={(() => {
               const employeeData = state.pointages.find(p => p.employee.id === state.pointageToModify)
-              if (!employeeData) return []
-
-              return employeeData.attendances.filter(att => {
-                const attDateStr = att.check_time.split('T')[0]
-
-                // ✅ Garder tous les pointages du jour sélectionné
-                if (attDateStr === selectedDate) return true
-
-                // ✅ Pour les pointages du lendemain :
-                const nextDate = new Date(selectedDate)
-                nextDate.setDate(nextDate.getDate() + 1)
-                const nextDateStr = nextDate.toISOString().split('T')[0]
-
-                if (attDateStr === nextDateStr) {
-                  // ✅ Accepter SEULEMENT les OUT du lendemain (shifts de nuit)
-                  // ❌ Rejeter les IN du lendemain (nouveau shift)
-                  if (att.check_type === 'out') {
-                    // Vérifier que c'est bien lié à un shift de nuit (< 16h du dernier IN)
-                    const lastIn = employeeData.attendances
-                      .filter(a => a.check_type === 'in' && a.check_time.split('T')[0] === selectedDate)
-                      .sort((a, b) => b.check_time.localeCompare(a.check_time))[0]
-
-                    if (lastIn) {
-                      const diffHours = (new Date(att.check_time) - new Date(lastIn.check_time)) / (1000 * 60 * 60)
-                      return diffHours <= 16 // Shift max 16h (cohérent avec la logique existante)
-                    }
-                  }
-                }
-
-                return false
-              })
+              return employeeData?.attendances || []
             })()}
             onClose={() => dispatch({ type: 'CLOSE_MODIFIER_MODAL' })}
             onSuccess={loadPointages}
@@ -1842,7 +1811,7 @@ function FiltersSection({
 
         <button
           className="afro-nav-btn"
-          onClick={() => onUpdateFilter('date', new Date().toISOString().split('T')[0])}
+          onClick={() => onUpdateFilter('date', jourLocal(new Date()) || new Date().toISOString().split('T')[0])}
           style={{ ...styles.dateNavBtn, padding: '8px 14px', fontSize: '12px', fontWeight: '700', color: '#F59E0B' }}
           aria-label="Aujourd'hui"
         >
