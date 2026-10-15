@@ -15,8 +15,19 @@ ils échouent — et ils ont échoué, ce qui a fait croire que « le SQL ne mar
 | `../supabase/migrations/20261016000001_fondations_auto_close_structure.sql` | **`supabase db push`** (le propre), ou éditeur SQL du projet `cxggndvhwdolbtyezjde` | **LE correctif.** Mode ombre par défaut : il ne change aucun pointage, aucune paie |
 | `exporter-fonctions-prod-only.sql` | **Éditeur SQL Supabase** | Lit seule. Récupère le code des fonctions qui ne vivent QUE dans la prod, pour le versionner |
 | `diagnostic-auto-close-probleme2.sql` | Éditeur SQL Supabase (ou local) | Lecture seule. Le constat chiffré d'origine |
+| `controle-integrite-migration.sql` | **Éditeur SQL Supabase, APRÈS la migration** | Lecture seule. Dit `RIEN NE MANQUE` ou énumère ce qui manque : c'est LUI qui prouve que le fichier a bien été collé en entier |
 | `squelette-supabase-local.sql` | ⛔ **Postgres local seulement** | Imitation de Supabase (rôles, `auth`, tables). En prod : `permission denied for schema auth` |
 | `test-execution-migration.sql` | ⛔ **Postgres local seulement**, après le squelette | 25 assertions. Commence par `\set` (méta-commande psql) : dans l'éditeur → `syntax error at or near "\"` |
+
+Un mot sur les collages de fichiers volumineux, parce que c'est tombé dans l'actualité du
+projet : ne **jamais** copier une migration depuis un aperçu (Drive, onglet « Files changed »
+de GitHub). La vue rendue remplace la première ligne par le titre du fichier et peut rogner le
+reste — d'où `trailing junk after numeric literal at or near "2026..."`. Télécharger le fichier,
+l'ouvrir dans un éditeur de texte, vérifier l'empreinte (`sha256sum` : `9954e5f8…2454`,
+2 016 lignes, 103 323 octets), puis coller. Rassurance mesurée : comme tout le fichier tient dans
+un unique `BEGIN…COMMIT`, une copie interrompue **n'applique rien** (rollback à la déconnexion) —
+simulé sur Postgres local avec une coupe à la ligne 1100 : 0 table, 0 colonne, 0 fonction créées.
+C'est pour le cas où « ça passe sans erreur » qu'il y a un contrôle d'intégrité à lancer après.
 
 **Si tu ne dois lancer qu'une chose aujourd'hui** : la migration. Puis, pour me
 rendre ce qui manque au dépôt, l'export (`exporter-fonctions-prod-only.sql`).
