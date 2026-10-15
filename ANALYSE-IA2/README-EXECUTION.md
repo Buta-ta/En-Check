@@ -9,7 +9,7 @@ pointages**. Lis cette page avant de toucher à Supabase.
 | Fichier | À quoi ça sert | Où il s'exécute |
 |---|---|---|
 | `../supabase/migrations/20261016000001_fondations_auto_close_structure.sql` | **LE correctif.** Colonnes, seuils uniques, cascade à 5 niveaux, mode ombre, réconciliation, journaux, RLS, cron | Éditeur SQL Supabase (projet `cxggndvhwdolbtyezjde`), ou automatiquement si tu laisses la branche se déployer |
-| `test-execution-migration.sql` | La **fumée** : 24 contrôles qui disent « ok… := true » quand la règle est bien appliquée | Postgres **local uniquement**, jamais la production |
+| `test-execution-migration.sql` | La **fumée** : 26 contrôles qui disent « ok… := true » quand la règle est bien appliquée | Postgres **local uniquement**, jamais la production |
 | `squelette-supabase-local.sql` | Le mini-monde qui imite Supabase (rôles, `auth.jwt()`, tables partagées) pour pouvoir lancer la fumée | Postgres local |
 | `diagnostic-auto-close-probleme2.sql` | Le constat d'origine (sections A→G) : ce qui clochait avant, chiffres à l'appui | Lecture seule, n'importe où |
 
@@ -52,7 +52,7 @@ psql "postgresql://postgres:mdp@localhost:5433/postgres" -v ON_ERROR_STOP=0 \
      -f test-execution-migration.sql
 ```
 
-Ce qu'il faut voir défiler : **24 lignes `ok_… := true`** et **zéro ligne
+Ce qu'il faut voir défiler : **26 lignes `ok_… := true`** et **zéro ligne
 `ÉCHEC …`**. Les deux `ok_negatif`/`ok_oubli_pas_encore_mur` prouvent que le
 harnais sait aussi détecter une erreur et qu'un moteur honnête ne s'invente pas
 *avant* l'heure.

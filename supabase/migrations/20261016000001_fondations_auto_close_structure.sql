@@ -1708,6 +1708,18 @@ $$;
 
 -- L'ancienne porte d'entrée devient une ALIAS SÛRE (et non plus une porte d'écriture) :
 -- un bundle Vercel déjà déployé qui l'appelle encore ne peut plus fabriquer de données.
+--
+-- ⚠️ NE PAS REJOUER `20261015000002_...rebonds_qr_et_oublis_sortie.sql` APRÈS CE FICHIER.
+--   Sa section 3 re-installe un wrapper sur ce même nom par `CREATE OR REPLACE`, wrapper
+--   qui (a) n'a AUCUNE garde d'identité — il serait donc appelé par le navigateur pour
+--   n'importe quelle entreprise, et (b) rappelle `encheck_nettoyer_rebonds_qr` +
+--   `encheck_cloturer_sorties_oubliees` dans leur ancien ordre. Les dégâts restent
+--   bornés parce que ces deux fonctions sont neutralisées ICI (marquage, mode ombre) ;
+--   mais l'alias ci-dessous est écrasé et la garde du scan contournée. Si ce rejeu
+--   devient indispensable, rejouer CE fichier juste après. Contrôle manuel :
+--     SELECT prosrc LIKE '%encheck_alertes_scan%' AS alias_ok
+--       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+--      WHERE n.nspname = 'public' AND p.proname = 'encheck_alertes_controler';
 CREATE OR REPLACE FUNCTION public.encheck_alertes_controler(p_enterprise uuid DEFAULT NULL)
 RETURNS void
 LANGUAGE plpgsql VOLATILE
