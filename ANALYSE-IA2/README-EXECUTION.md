@@ -6,18 +6,19 @@ pointages**. Lis cette page avant de toucher à Supabase.
 
 ## Quels fichiers lancer, et où (à lire en premier)
 
-Sur les cinq fichiers SQL de ce dossier, **deux seulement se collent dans l'éditeur
+Les outils SQL vivent maintenant dans `../supabase/outils-sql/` (ce dossier-ci ne garde que
+les notes pour l'humain qui arbitre). Sur ces outils, **deux seulement se collent dans l'éditeur
 SQL de Supabase**. Les autres sont des outils de test locaux : collés en production,
 ils échouent — et ils ont échoué, ce qui a fait croire que « le SQL ne marche pas ».
 
 | Fichier | Se lance où | Ce qu'il fait |
 |---|---|---|
 | `../supabase/migrations/20261016000001_fondations_auto_close_structure.sql` | **`supabase db push`** (le propre), ou éditeur SQL du projet `cxggndvhwdolbtyezjde` | **LE correctif.** Mode ombre par défaut : il ne change aucun pointage, aucune paie |
-| `exporter-fonctions-prod-only.sql` | **Éditeur SQL Supabase** | Lit seule. Récupère le code des fonctions qui ne vivent QUE dans la prod, pour le versionner |
-| `diagnostic-auto-close-probleme2.sql` | Éditeur SQL Supabase (ou local) | Lecture seule. Le constat chiffré d'origine |
-| `controle-integrite-migration.sql` | **Éditeur SQL Supabase, APRÈS la migration** | Lecture seule. Dit `RIEN NE MANQUE` ou énumère ce qui manque : c'est LUI qui prouve que le fichier a bien été collé en entier |
-| `squelette-supabase-local.sql` | ⛔ **Postgres local seulement** | Imitation de Supabase (rôles, `auth`, tables). En prod : `permission denied for schema auth` |
-| `test-execution-migration.sql` | ⛔ **Postgres local seulement**, après le squelette | 25 assertions. Commence par `\set` (méta-commande psql) : dans l'éditeur → `syntax error at or near "\"` |
+| `../supabase/outils-sql/exporter-fonctions-prod-only.sql` | **Éditeur SQL Supabase** | Lit seule. Récupère le code des fonctions qui ne vivent QUE dans la prod, pour le versionner |
+| `../supabase/outils-sql/diagnostic-auto-close-probleme2.sql` | Éditeur SQL Supabase (ou local) | Lecture seule. Le constat chiffré d'origine |
+| `../supabase/outils-sql/controle-integrite-migration.sql` | **Éditeur SQL Supabase, APRÈS la migration** | Lecture seule. Dit `RIEN NE MANQUE` ou énumère ce qui manque : c'est LUI qui prouve que le fichier a bien été collé en entier |
+| `../supabase/outils-sql/squelette-supabase-local.sql` | ⛔ **Postgres local seulement** | Imitation de Supabase (rôles, `auth`, tables). En prod : `permission denied for schema auth` |
+| `../supabase/outils-sql/test-execution-migration.sql` | ⛔ **Postgres local seulement**, après le squelette | 25 assertions. Commence par `\set` (méta-commande psql) : dans l'éditeur → `syntax error at or near "\"` |
 
 Un mot sur les collages de fichiers volumineux, parce que c'est tombé dans l'actualité du
 projet : ne **jamais** copier une migration depuis un aperçu (Drive, onglet « Files changed »
@@ -73,13 +74,13 @@ docker run -d --name pgtest -e POSTGRES_PASSWORD=mdp -p 5433:54 postgres:16
 # 1) squelette, 2) migration à tester, 3) re-jeu de la migration (elle doit être
 #    rejouable sans erreur), 4) la fumée. ON_ERROR_STOP=0 exprès : on veut TOUTES
 #    les erreurs d'un coup, pas seulement la première.
-psql "postgresql://postgres:mdp@localhost:5433/postgres" -f squelette-supabase-local.sql
+psql "postgresql://postgres:mdp@localhost:5433/postgres" -f ../supabase/outils-sql/squelette-supabase-local.sql
 psql "postgresql://postgres:mdp@localhost:5433/postgres" -v ON_ERROR_STOP=1 \
      -f ../supabase/migrations/20261016000001_fondations_auto_close_structure.sql
 psql "postgresql://postgres:mdp@localhost:5433/postgres" -v ON_ERROR_STOP=1 \
      -f ../supabase/migrations/20261016000001_fondations_auto_close_structure.sql
 psql "postgresql://postgres:mdp@localhost:5433/postgres" -v ON_ERROR_STOP=0 \
-     -f test-execution-migration.sql
+     -f ../supabase/outils-sql/test-execution-migration.sql
 ```
 
 Ce qu'il faut voir défiler : **25 lignes `ok_… := true` et **zéro ligne

@@ -42,7 +42,7 @@ et l'absence de marqueur « inventé » → maintenant 5 colonnes traçables + l
 
 ## Ce que je demande avant d'activer
 
-Un tour dans l'éditeur SQL Supabase avec `ANALYSE-IA2/exporter-fonctions-prod-only.sql` :
+Un tour dans l'éditeur SQL Supabase avec `supabase/outils-sql/exporter-fonctions-prod-only.sql` :
 `encheck_punch`, `replace_attendance_day`, `encheck_alertes_controler_interne`,
 `encheck_signaux_controler` n'existent **dans aucun dépôt**. Elles ne sont pas touchées par
 cette migration, mais elles ne sont pas versionnées non plus — une prochaine migration
@@ -58,7 +58,7 @@ vaut `'"ombre"'`, donc **zéro heure inventée dans `attendances` et zéro euro 
 ## Comment vérifier par soi-même
 
 * Migration jouée **deux fois** sur Postgres 16 local + **25 contrôles** de fumée
-  → tout est `ok`, zéro échec : `ANALYSE-IA2/test-execution-migration.sql` (+ le squelette
+  → tout est `ok`, zéro échec : `supabase/outils-sql/test-execution-migration.sql` (+ le squelette
   pour rejouer chez soi).
 * L'exécution a sorti **4 bugs réels** qu'aucune relecture ni aucun parseur n'avaient vus
   (colonne mal aliasée dans la cascade, `round(double precision, integer)` dans les
