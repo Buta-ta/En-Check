@@ -247,8 +247,15 @@ export default function useNotifications(admin) {
           const dernierBalayage = Number(sessionStorage.getItem('alertes_balayage') || 0)
           if (Date.now() - dernierBalayage > 5 * 60 * 1000) {
             sessionStorage.setItem('alertes_balayage', String(Date.now()))
-            // Balayage des alertes de pointage
-            await supabase.rpc('encheck_alertes_controler', { p_enterprise: enterpriseId })
+            // Balayage des alertes de pointage.
+            //  ⚠️ Nom NOUVEAU : `encheck_alertes_scan`. L'ancien appel touchait une
+            //  fonction qui avait été RECOUVERTE par un monkey-patch dans une
+            //  migration (deux versions de la même logique, la dernière gagnait
+            //  sans que le code l'appelle). Décision §4.4 : un orchestrateur NOMMÉ,
+            //  appelé explicitement. `encheck_alertes_controler` reste définie comme
+            //  alias sûr (elle ne peut plus écraser de données) pour que le bundle
+            //  déjà déployé sur Vercel continue de fonctionner pendant le déploiement.
+            await supabase.rpc('encheck_alertes_scan', { p_enterprise: enterpriseId })
             // Balayage des signaux d'assiduité (1 par semaine par personne)
             await supabase.rpc('encheck_signaux_controler', { p_enterprise: enterpriseId })
           }
@@ -499,10 +506,21 @@ export default function useNotifications(admin) {
       // ═══ 3. OUBLIS ═══
       if (!signal.aborted) {
         try {
+          //  Oublis = sorties PRÉSUMÉES qui attendent un humain. Deux filtres de
+          //  plus que la version d'origine, et ils changent le sens du compteur :
+          //    · `estimation_validee_le IS NULL`  → une présomption validée n'est
+          //      plus une alerte, c'est un pointage comme un autre ;
+          //    · `estimation_remplacee_le IS NULL` → si l'employé a badgé sa vraie
+          //      sortie entre-temps, l'estimation est conservée en base (pour
+          //      mesurer l'erreur) mais ne doit plus être comptée comme un oubli.
+          //  Un balayage qui affiche « 3 oublis » alors que 2 ont déjà été corrigés
+          //  est un balayage que l'on ignore le lendemain.
           let query = supabase
             .from('attendances')
             .select('id')
             .eq('is_auto_closed', true)
+            .is('estimation_validee_le', null)
+            .is('estimation_remplacee_le', null)
             .gte('check_time', startOfDay)
             .lte('check_time', endOfDay)
 
@@ -520,8 +538,11 @@ export default function useNotifications(admin) {
               type: 'warning',
               priority: 'medium',
               category: 'pointages',
-              title: `${data.length} oubli${data.length > 1 ? 's de sortie' : ' de sortie'}`,
-              subtitle: 'Pointages auto-fermés à minuit',
+              title: `${data.length} sortie${data.length > 1 ? 's' : ''} présumée${data.length > 1 ? 's' : ''}`,
+              //  L'ancien libellé (« auto-fermés à minuit ») était FAUX : la
+              //  fermeture dépend de `auto_close_time` entreprise + des seuils, pas
+              //  de minuit. Un libellé inexact fait douter de tout le reste.
+              subtitle: '⏳ à valider — non comptées dans la paie',
               icon: 'clock',
               color: '#F59E0B',
               path: '/pointages',
