@@ -1,0 +1,268 @@
+// src/services/seuilsPointage.js
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚙️ SEUILS DE POINTAGE — SOURCE UNIQUE (arbitrage n°1, décision §4.4)
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// POURQUOI CE FICHIER EXISTE
+//   Avant l'arbitrage, chaque moteur avait SON chiffre dans SON code :
+//     · 12 h  → la pointeuse (`encheck_type_suggere`, dépôt pointage) déclarait
+//               la « sortie oubliée » ;
+//     · 14 h  → le SQL de clôture (`encheck_cloturer_sorties_oubliees`) décidait
+//               de l'oubli ET plafonnait la durée inventée ;
+//     · 16 h  → le JS (`hoursCalculator.js`) appariait entrée↔sortie ;
+//     · 60 s  → l'anti-rebond, implémenté deux fois (JS et SQL).
+//   Trois moteurs, quatre seuils : la même journée pouvait produire trois durées
+//   différentes selon l'écran regardé, et une sortie réelle arrivée en retard
+//   pouvait être écrasée par une estimation fabriquée la veille.
+//
+//   Ici : une seule liste, lue en base (`encheck_reglages_pointage`) avec ces
+//   constantes pour repli hors-ligne. Deux concepts qui étaient confondus sont
+//   désormais séparés et nommés :
+//     · `oubliSortieHeures`   = à partir de quand une session est un OUBLI ;
+//     · `plafondInventionHeures` = au-delà de quand on s'ARRÊTE d'estimer ;
+//     · `appariementHeures`   = tolérance pour relier une entrée à sa sortie
+//                              (une garde de 13 h reste une garde : ce n'est pas
+//                              un seuil d'oubli, et il ne faut surtout pas le
+//                              confondre avec les deux autres).
+//
+// RÈGLE DE CONDUITE POUR LES DEUX IA
+//   Aucun seuil de pointage ne doit être réécrit en dur dans un composant, une
+//   page ou une fonction SQL : `encheck_seuil()` côté base, `chargerSeuilsPointage()`
+//   côté app. Les valeurs par défaut ci-dessous sont le CONTRATOIR, pas un réglage.
+
+/** Valeurs de repli — identiques aux valeurs semées dans `encheck_reglages_pointage`. */
+export const SEUILS_PAR_DEFAUT = {
+  oubliSortieHeures: 12,
+  plafondInventionHeures: 12,
+  dureeMinimaleSessionMinutes: 30,
+  margeApresSortieEstimeeMinutes: 30,
+  appariementHeures: 16,
+  seuilRebondSecondes: 60,
+  clusterFenetreMinutes: 90,
+  clusterFenetreJours: 28,
+  clusterNbMin: 5,
+  clusterIqrMaxMinutes: 45,
+  nudgeApresMinutes: 20,
+  delaiContestationHeures: 48,
+  modeEstimation: 'ombre',
+}
+
+/** Correspondance nom JS ↔ clé SQL (`encheck_reglages_pointage.cle`). */
+const CLES = {
+  oubliSortieHeures: 'oubli_sortie_heures',
+  plafondInventionHeures: 'plafond_invention_heures',
+  dureeMinimaleSessionMinutes: 'duree_minimale_session_minutes',
+  margeApresSortieEstimeeMinutes: 'marge_apres_sortie_estimee_minutes',
+  appariementHeures: 'appariement_heures',
+  seuilRebondSecondes: 'seuil_rebond_secondes',
+  clusterFenetreMinutes: 'cluster_fenetre_minutes',
+  clusterFenetreJours: 'cluster_fenetre_jours',
+  clusterNbMin: 'cluster_nb_min',
+  clusterIqrMaxMinutes: 'cluster_iqr_max_minutes',
+  nudgeApresMinutes: 'nudge_apres_minutes',
+  delaiContestationHeures: 'delai_contestation_heures',
+  modeEstimation: 'mode_estimation',
+}
+
+// Cache par entreprise : une page de pointages lit ses seuils une fois, pas 40 fois.
+const _cache = new Map()
+
+function _versNombre(valeur, defaut) {
+  const n = Number(valeur)
+  return Number.isFinite(n) ? n : defaut
+}
+
+/**
+ * Charge les seuils d'une entreprise. Ne JAMAIS rejeter : si la table ou la
+ * colonne n'existe pas encore (base pas encore migrée), on retombe sur les
+ * constantes contractuelles — l'app continue d'afficher les mêmes chiffres que
+ * la base, ce qui est exactement le but de ce fichier.
+ */
+export async function chargerSeuilsPointage(enterpriseId, { force = false } = {}) {
+  const cle = enterpriseId || '__global__'
+  if (!force && _cache.has(cle)) return _cache.get(cle)
+
+  const seuils = { ...SEUILS_PAR_DEFAUT }
+  try {
+    // Import différé pour ne pas créer de dépendance circulaire avec lib/supabase.
+    const { supabase } = await import('../lib/supabase')
+    const { data } = await supabase
+      .from('encheck_reglages_pointage')
+      .select('cle,valeur,enterprise_id')
+      .in('enterprise_id', enterpriseId ? [enterpriseId, null] : [null])
+
+    const parCle = {}
+    for (const r of data || []) {
+      if (r.enterprise_id) parCle[r.cle] = r.valeur   // l'entreprise écrase le global
+      else if (parCle[r.cle] === undefined) parCle[r.cle] = r.valeur
+    }
+
+    for (const [nom, cleSql] of Object.entries(CLES)) {
+      if (parCle[cleSql] === undefined) continue
+      if (nom === 'modeEstimation') {
+        const brut = typeof parCle[cleSql] === 'string' ? parCle[cleSql] : parCle[cleSql]?.valeur
+        const txt = String(brut ?? '').replace(/"/g, '').trim().toLowerCase()
+        if (['ombre', 'actif', 'desactive'].includes(txt)) seuils[nom] = txt
+        continue
+      }
+      const brut = parCle[cleSql]
+      const num = typeof brut === 'number' ? brut : Number(brut)
+      if (Number.isFinite(num)) seuils[nom] = num
+    }
+  } catch {
+    // Base injoignable / table absente : contrat implicite, aucun écran cassé.
+  }
+
+  //  Réparation des réglages incohérents — un `0` ou un texte dans la base ne
+  //  doit JAMAIS devenir une règle d'affaires (déjà vu : un plafond à 0 efface
+  //  toutes les estimations d'une entreprise d'un seul edit de réglage). Une
+  //  valeur invalide retombe sur le CONTRÂT, elle n'est pas arrondie à 1.
+  const _positif = (v, defaut) => {
+    const n = Number(v)
+    return Number.isFinite(n) && n > 0 ? n : defaut
+  }
+  seuils.oubliSortieHeures = _positif(seuils.oubliSortieHeures, SEUILS_PAR_DEFAUT.oubliSortieHeures)
+  seuils.plafondInventionHeures = _positif(seuils.plafondInventionHeures, SEUILS_PAR_DEFAUT.plafondInventionHeures)
+  //  L'appariement doit rester AU MOINS aussi large que le seuil d'oubli : si la
+  //  tolérance de rapprochement est plus courte que ce qu'on appelle « oubli »,
+  //  une garde normale est coupée en deux journées et le total devient faux.
+  seuils.appariementHeures = Math.max(
+    seuils.oubliSortieHeures,
+    _positif(seuils.appariementHeures, SEUILS_PAR_DEFAUT.appariementHeures),
+  )
+
+  _cache.set(cle, seuils)
+  return seuils
+}
+
+/** Purge le cache (après modification des réglages côté entreprise). */
+export function invaliderCacheSeuils(enterpriseId) {
+  if (enterpriseId) _cache.delete(enterpriseId)
+  else _cache.clear()
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ESTIMATIONS — doctrine « on invente, on marque, on n'encaisse pas » (§4.1)
+// ═══════════════════════════════════════════════════════════════════════════
+//  Une sortie estimée n'est PAS un badge. Elle est :
+//    · marquée (`is_auto_closed`, `anomalie='sortie_presumee'`, méthode forcée
+//      `auto_close`) — donc jamais confondue avec une lecture QR ou un PIN ;
+//    · exclue de la paie et des notifications sortantes TANT QU'AUCUN HUMAIN NE
+//      L'A VALIDÉE (`estimation_validee_le`) ;
+//    · conservée, jamais supprimée, même当 une donnée réelle arrive après
+//      (`estimation_remplacee_le`) — c'est ce qui permet de MESURER l'erreur.
+//  ⚠️ Ces trois filtres sont lus dans TOUTES les vues qui touchent l'argent :
+//     `payrollService.js`, `Rapports.jsx`, `CoutSalarial`, `HeuresSupplementaires`.
+//     Un nouvel écran qui additionne des minutes doit appeler
+//     `filtrerPointagesPayables()` — sinon il remet une heure inventée dans la paie.
+
+/** Vrai si la ligne est une sortie estimée et pas (encore) validée par un humain. */
+export function estEstimationNonValidee(att) {
+  if (!att) return false
+  if (att.is_auto_closed !== true && att.is_auto_closed !== 'true') return false
+  if (att.estimation_remplacee_le) return true   // périmée : jamais payable
+  return !att.estimation_validee_le
+}
+
+/** Vrai si la ligne est une estimation remplacée par un vrai pointage. */
+export function estEstimationRemplacee(att) {
+  return !!att && !!att.estimation_remplacee_le
+}
+
+/** Vrai si le pointage a été neutralisé comme double lecture QR (rebond). */
+export function estRebondNeutralise(att) {
+  return !!att && att.anomalie === 'rebond_qr'
+}
+
+/**
+ * Les pointages qui peuvent entrer dans un calcul de paie : tout ce qui a été
+ * réellement badgé, plus les estimations VALIDÉES par un humain. Les rebonds
+ * neutralisés en sortent (avant, ils étaient soit supprimés en base, soit ignorés
+ * par un `continue` enfoui dans une boucle de 400 lignes).
+ */
+export function filtrerPointagesPayables(attendances) {
+  return (attendances || []).filter(
+    (a) => !estEstimationNonValidee(a) && !estRebondNeutralise(a),
+  )
+}
+
+/** Étiquette lisible d'une ligne estimée (réutilisée par toutes les vues). */
+export function etiquetteEstimation(att) {
+  if (!att) return ''
+  if (att.estimation_remplacee_le) return 'remplacée par un pointage réel'
+  if (att.estimation_validee_le) return 'présumée, validée'
+  if (att.is_auto_closed) return '⏳ présumée — non payée'
+  return ''
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FENÊTRE CIRCULAIRE — le piège n°3 de l'analyse (minuit et BETWEEN)
+// ═══════════════════════════════════════════════════════════════════════════
+//  `where heure_entree between '21:30' and '01:30'` ne renvoie AUCUNE ligne :
+//  bornes inversées. Tout worker de nuit disparaissait donc silencieusement du
+//  cluster d'apprentissage. Le calcul se fait sur les minutes du jour, modulo
+//  1440, en distance la plus courte des deux sens.
+
+export function minutesDuJour(valeur) {
+  if (valeur === null || valeur === undefined) return null
+  if (typeof valeur === 'number') return Number.isFinite(valeur) ? valeur : null
+  if (valeur instanceof Date) return valeur.getHours() * 60 + valeur.getMinutes()
+  const m = String(valeur).match(/(\d{1,2}):(\d{2})/)
+  if (!m) return null
+  return Number(m[1]) * 60 + Number(m[2])
+}
+
+/** Distance la plus courte entre deux heures du jour, en minutes (0…720). */
+export function distanceCirculaireMinutes(a, b) {
+  const ma = typeof a === 'number' ? a : minutesDuJour(a)
+  const mb = typeof b === 'number' ? b : minutesDuJour(b)
+  if (ma === null || mb === null) return null
+  const d = Math.abs((((ma % 1440) + 1440) % 1440) - (((mb % 1440) + 1440) % 1440))
+  return Math.min(d, 1440 - d)
+}
+
+/** Vrai si `a` et `b` tombent dans le même créneau d'±`demiFenetre` minutes. */
+export function dansLaFenetre(a, b, demiFenetreMinutes = SEUILS_PAR_DEFAUT.clusterFenetreMinutes) {
+  const d = distanceCirculaireMinutes(a, b)
+  return d !== null && d <= demiFenetreMinutes
+}
+
+/**
+ * Contrôle de cohérence d'une cible d'estimation (miroir JS des garde-fous SQL).
+ * Retourne `{ ok:false, motif }` au lieu de laisser passer une absurdité :
+ * la version d'origine plafonnait à 14 h et acceptait n'importe quoi en dessous.
+ */
+export function validerCibleEstimation(entreeMs, cibleMs, seuils = SEUILS_PAR_DEFAUT, nowMs = Date.now()) {
+  const entree = typeof entreeMs === 'number' ? entreeMs : new Date(entreeMs).getTime()
+  const cible = typeof cibleMs === 'number' ? cibleMs : new Date(cibleMs).getTime()
+  if (!Number.isFinite(entree) || !Number.isFinite(cible)) return { ok: false, motif: 'date_invalide' }
+  if (cible <= entree) return { ok: false, motif: 'cible_avant_entree' }
+
+  const minutes = (cible - entree) / 60000
+  if (minutes < seuils.dureeMinimaleSessionMinutes) return { ok: false, motif: 'session_trop_courte' }
+  if (minutes > seuils.plafondInventionHeures * 60) {
+    return {
+      ok: true,
+      plafonnee: true,
+      cible: entree + seuils.plafondInventionHeures * 3600000,
+      minutes: seuils.plafondInventionHeures * 60,
+    }
+  }
+  if (cible > nowMs) return { ok: false, motif: 'cible_dans_le_futur' }
+  return { ok: true, cible, minutes }
+}
+
+export default {
+  SEUILS_PAR_DEFAUT,
+  chargerSeuilsPointage,
+  invaliderCacheSeuils,
+  estEstimationNonValidee,
+  estEstimationRemplacee,
+  estRebondNeutralise,
+  filtrerPointagesPayables,
+  etiquetteEstimation,
+  minutesDuJour,
+  distanceCirculaireMinutes,
+  dansLaFenetre,
+  validerCibleEstimation,
+}

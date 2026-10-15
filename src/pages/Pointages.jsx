@@ -19,6 +19,7 @@ import {
   Smartphone, Copy, Check, Upload, Radio
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { etiquetteEstimation, estEstimationNonValidee } from '../services/seuilsPointage'
 import {
   formaterHeureLocale,
   calculerDureeSecondes,
@@ -203,11 +204,29 @@ function detectAnomalies(pointages) {
     const empId = p.employee.id
 
     if (p.lastOut?.is_auto_closed) {
+      //  Trois états, trois messages — et ils ne veulent pas dire la même chose
+      //  côté argent :
+      //    · présumée EN ATTENTE  → rien n'est payé, il faut trancher ;
+      //    · présumée VALIDÉE     → payé, sur décision humaine ;
+      //    · REMPLACÉE            → l'employé a fini par badger : l'estimation est
+      //      conservée pour mesurer l'erreur, mais ce n'est plus elle qui compte.
+      const validee = !!p.lastOut.estimation_validee_le
+      const remplacee = !!p.lastOut.estimation_remplacee_le
+      const niveau = p.lastOut.estimation_niveau
       anomalies.push({
-        type: 'auto_closed', severity: 'warning', icon: '⚠️',
+        type: 'auto_closed',
+        severity: remplacee ? 'info' : validee ? 'info' : 'warning',
+        icon: remplacee ? '✅' : validee ? '✅' : '⏳',
         employee: empName, employeeId: empId,
-        message: `Oubli de badge sortie`,
-        detail: `Fermé auto à ${formaterHeureLocale(p.lastOut.check_time)}`
+        message: remplacee
+          ? `Sortie réelle récupérée`
+          : validee
+            ? `Sortie présumée validée`
+            : `Sortie présumée — à valider`,
+        detail: remplacee
+          ? `Estimation du ${formaterHeureLocale(p.lastOut.check_time)} remplacée par un vrai badge (conservée pour l'audit)`
+          : `Fermée à ${formaterHeureLocale(p.lastOut.check_time)}${niveau ? ` · Niveau ${niveau}` : ''}` +
+            (validee ? ' · comptée dans la paie' : ' · NON comptée dans la paie'),
       })
     }
 
@@ -629,6 +648,43 @@ export default function Pointages() {
     }, { replace: true })
   }, [setSearchParams])
 
+  // ═════════════════════════════════════════════════════════════════════
+  // ⏳ SORTIES PRÉSUMÉES — tranchage humain (arbitrage n°1, §4.1 et §5)
+  // ═════════════════════════════════════════════════════════════════════
+  //  Une sortie ESTIMÉE par le moteur de clôture n'est pas un badge. Elle est
+  //  marquée, affichée, et EXCLUE de la paie tant qu'un humain n'a pas tranché.
+  //    · « Valider »  = « cette heure est juste, on peut la payer » ;
+  //    · « Écarter »  = « non » → la ligne RESTE en base (c'est la mesure de
+  //      l'erreur de l'algorithme, sans elle on ne saura jamais si le Niveau 2
+  //      apprend juste) mais ne sera jamais payée.
+  //  Le contrôle d'autorisation est DANS la fonction SQL (`encheck_estimation_
+  //  statuer`, SECURITY DEFINER + test admin interne) : un bouton caché ici ne
+  //  serait pas une sécurité, seulement du maquillage.
+  const [estimationEnCours, setEstimationEnCours] = useState(null)
+
+  const statuerEstimation = async (attendanceId, action) => {
+    if (!attendanceId) return
+    setEstimationEnCours(`${attendanceId}:${action}`)
+    try {
+      const { error } = await supabase.rpc('encheck_estimation_statuer', {
+        p_ids: [attendanceId],
+        p_action: action,
+      })
+      if (error) {
+        toast.error(`Le traitement de cette estimation a échoué : ${error.message}`)
+      } else {
+        toast.success(
+          action === 'rejeter'
+            ? 'Estimation écartée — la journée reste sans sortie payée.'
+            : 'Estimation validée — la journée compte désormais normalement.',
+        )
+        await loadPointages()
+      }
+    } finally {
+      setEstimationEnCours(null)
+    }
+  }
+
   // Permissions
   const [canEditPointages, setCanEditPointages] = useState(false)
   const [checkingPermissions, setCheckingPermissions] = useState(true)
@@ -805,6 +861,12 @@ export default function Pointages() {
         .select(`
           id, employee_id, enterprise_id, check_time, check_type,
           method, is_auto_closed, location_lat, location_lng,
+          //  Sorties PRÉSUMÉES : ces cinq colonnes arrivent avec la migration des
+          //  fondations. Sans elles, l'écran ne peut pas distinguer « le moteur a
+          //  deviné » de « l'employé a badgé » — et le manager ne peut ni valider
+          //  ni savoir ce qui a été écarté de la paie.
+          anomalie, estimation_validee_le, estimation_remplacee_le,
+          estimation_niveau, estimation_confiance,
           gps_accuracy, is_within_zone, distance_meters, geofence_id,
           face_score, face_verified, liveness_passed, face_attempts,
           notes, modifie_le, modifie_par, created_at,
@@ -1306,7 +1368,9 @@ export default function Pointages() {
         p.firstIn?.face_score ? (p.firstIn.face_score * 100).toFixed(0) + '%' : '',
         p.firstIn?.liveness_passed === true ? 'OK' : p.firstIn?.liveness_passed === false ? 'KO' : '',
         p.hasPhoto ? 'Oui' : 'Non',
-        p.lastOut?.is_auto_closed ? 'Oui' : 'Non',
+        p.lastOut?.is_auto_closed
+          ? (p.lastOut.estimation_validee_le ? 'Oui — validée' : 'Oui — PRÉSUMÉE, non payée')
+          : 'Non',
         p.firstIn?.is_within_zone === true ? 'Oui' : p.firstIn?.is_within_zone === false ? 'Non' : '',
         p.firstIn?.distance_meters != null ? Math.round(p.firstIn.distance_meters) : '',
         p.firstIn?.gps_accuracy != null ? Math.round(p.firstIn.gps_accuracy) : '',
@@ -2443,7 +2507,13 @@ function PointageCard({
                 ...styles.timeLabel,
                 color: p.lastOut?.is_auto_closed ? '#EF4444' : '#666'
               }}>
-                {p.lastOut?.is_auto_closed ? 'Auto-close' : 'Sortie'}
+                {p.lastOut?.is_auto_closed
+                  ? (p.lastOut.estimation_validee_le
+                      ? 'Sortie présumée ✓'
+                      : (p.lastOut.estimation_remplacee_le
+                          ? 'Sortie (estimation remplacée)'
+                          : 'Sortie présumée ⏳'))
+                  : 'Sortie'}
               </span>
               <span style={{
                 ...styles.timeValue,
@@ -2460,6 +2530,44 @@ function PointageCard({
               {formaterDureeComplete(p.totalSecondes)}
             </span>
           </div>
+
+          {/* ⏳ SORTIE PRÉSUMÉE — bandeau de décision (1 clic, §5).
+              Disparaît dès qu'un humain a validé ou qu'un vrai badge est arrivé :
+              on ne demande jamais deux fois la même chose. */}
+          {estEstimationNonValidee(p.lastOut) && (
+            <div style={styles.estimationBar}>
+              <AlertCircle size={13} color="#F59E0B" />
+              <span style={styles.estimationTexte}>
+                {etiquetteEstimation(p.lastOut)}
+                {p.lastOut.estimation_niveau
+                  ? ` · origine : niveau ${p.lastOut.estimation_niveau}` : ''}
+                {p.lastOut.estimation_confiance != null
+                  ? ` · confiance ${Math.round(p.lastOut.estimation_confiance * 100)}%` : ''}
+              </span>
+              {canEditPointages && (
+                <span style={styles.estimationActions}>
+                  <button
+                    type="button"
+                    style={styles.estimationBtnOk}
+                    disabled={estimationEnCours === `${p.lastOut.id}:valider`}
+                    onClick={() => statuerEstimation(p.lastOut.id, 'valider')}
+                    title="Compter cette sortie dans la paie"
+                  >
+                    <CheckCircle2 size={12} /> Valider
+                  </button>
+                  <button
+                    type="button"
+                    style={styles.estimationBtnNo}
+                    disabled={estimationEnCours === `${p.lastOut.id}:rejeter`}
+                    onClick={() => statuerEstimation(p.lastOut.id, 'rejeter')}
+                    title="Ne pas payer (la ligne reste en base pour l'audit)"
+                  >
+                    <Ban size={12} /> Écarter
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -3818,6 +3926,26 @@ const styles = {
     color: '#F59E0B', fontWeight: '700',
     fontFamily: "'SF Mono', monospace",
     fontSize: '12px', marginLeft: 'auto'
+  },
+  estimationBar: {
+    display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+    marginTop: 8, padding: '7px 10px',
+    background: 'rgba(245,158,11,0.10)',
+    border: '1px solid rgba(245,158,11,0.35)',
+    borderRadius: 10,
+  },
+  estimationTexte: { fontSize: 11.5, color: '#B45309', fontWeight: 600, flex: 1, minWidth: 160 },
+  estimationActions: { display: 'inline-flex', gap: 6 },
+  estimationBtnOk: {
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+    padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+    background: '#10B981', color: '#fff', border: 'none', borderRadius: 8,
+  },
+  estimationBtnNo: {
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+    padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+    background: 'transparent', color: '#B45309',
+    border: '1px solid rgba(180,83,9,0.45)', borderRadius: 8,
   },
   sessionAutoClosed: {
     background: 'rgba(239,68,68,0.1)', color: '#EF4444',

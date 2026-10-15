@@ -5,6 +5,7 @@ import HolidayService from './holidayService'
 import TaxationService from './taxationService'
 import CurrencyService from './currencyService'
 import { minutesDepuisMinuit } from '../utils/timezoneUtils'
+import { SEUILS_PAR_DEFAUT, filtrerPointagesPayables } from './seuilsPointage'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -800,9 +801,22 @@ class PayrollService {
     }
   }
 
-  static calculateWorkedMinutesByDay(employeeId, allAttendances) {
+  //  options.seuils : seuils de pointage (`encheck_reglages_pointage`). Aucun seuil
+  //  n'est plus écrit en dur ici — voir src/services/seuilsPointage.js.
+  static calculateWorkedMinutesByDay(employeeId, allAttendances, options = {}) {
+    const APPARIEMENT_H =
+      Number(options?.seuils?.appariementHeures) || SEUILS_PAR_DEFAUT.appariementHeures
+
     const empAttendances = (allAttendances || [])
       .filter(a => a.employee_id === employeeId)
+      // ═══ doctrine arbitrage n°1 §4.1 : « on invente, on marque, on n'encaisse pas »
+      // Une sortie ESTIMÉE (`is_auto_closed`) n'est pas un badge : elle ne doit
+      // entrer dans un bulletin que validée par un humain (`estimation_validee_le`).
+      // Une estimation remplacée par un vrai pointage, et un pointage neutralisé
+      // comme double scan QR, sortent aussi du calcul.
+      // AVANT : la clôture automatique payait jusqu'à 14 h par nuit oubliée, sans
+      // qu'aucun humain ait jamais regardé la ligne.
+      .filter(filtrerPointagesPayables)
       .sort((a, b) => new Date(a.check_time) - new Date(b.check_time))
 
     const dateSet = new Set(empAttendances.map(a => a.check_time.split('T')[0]))
@@ -841,7 +855,7 @@ class PayrollService {
         } else if (pt.check_type === 'out' && currentIn) {
           const inDate = new Date(currentIn.check_time)
           const diffHours = (ptDate - inDate) / (1000 * 60 * 60)
-          if (diffHours <= 16) {
+          if (diffHours <= APPARIEMENT_H) {
             totalSeconds += (ptDate - inDate) / 1000
             validPairs.push({ in: currentIn, out: pt })
             currentIn = null

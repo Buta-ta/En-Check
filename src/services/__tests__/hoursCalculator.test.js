@@ -415,7 +415,10 @@ describe('hoursCalculator — Fonctions pures de calcul des heures (VD-15)', () 
     expect(outSansPlanNuit.toISOString()).toBe('2026-10-13T05:00:00.000Z') // 22:00 + 8h = 06:00 J+1 locale
 
     // Continuité multi-jours : oubli de sortie le lundi 12 oct (08:00 IN), suivi d'une journée normale le mardi 13 oct (08:00 -> 17:00)
-    constsummaries: {
+    //  (le `constsummaries: {` qui traînait ici était un résidu d'éditeur : un
+    //  label JS valide mais vide de sens, qui faisait passer le bloc pour du code.
+    //  Remplacé par un vrai bloc scopé, aucun changement de comportement.)
+    {
       const summaries = buildDaySummariesStrict({
         attendances: [
           { id: 'lun-in', employee_id: 'emp-1', check_type: 'in', check_time: '2026-10-12T07:00:00.000Z' },

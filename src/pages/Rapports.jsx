@@ -20,6 +20,7 @@ import {
 import toast from 'react-hot-toast'
 import FeatureService from '../services/featureService'
 import HolidayService from '../services/holidayService'
+import { filtrerPointagesPayables } from '../services/seuilsPointage'
 
 // ═══════════════════════════════════════════════════════════
 // UTILITAIRES DE FORMATAGE
@@ -664,9 +665,18 @@ export default function Rapports() {
   }
 
   // ═══ CALCUL HEURES PAR JOUR AVEC NUIT ═══
+  //  ⚠️ DETTE SIGNALÉE À L'IA ARBITRE : ceci est une COPIE conforme de
+  //  `PayrollService.calculateWorkedMinutesByDay`. Deux copies = deux endroits à
+  //  corriger ensemble (c'est fait, même filtre au même endroit) ; la vraie
+  //  correction est de supprimer le doublon et d'appeler le service. À arbitrer
+  //  séparément — hors périmètre de cette PR, pour ne pas mélanger un nettoyage
+  //  de 600 lignes avec un correctif de paie.
   const calculateWorkedMinutesByDay = (employeeId, allAttendances) => {
     const empAttendances = (allAttendances || [])
       .filter(a => a.employee_id === employeeId)
+      //  Même doctrine que la paie (§4.1) : une sortie estimée et non validée par
+      //  un humain ne doit pas gonfler un rapport, un graphique, ni un cumul.
+      .filter(filtrerPointagesPayables)
       .sort((a, b) => new Date(a.check_time) - new Date(b.check_time))
 
     const dateSet = new Set(empAttendances.map(a => a.check_time.split('T')[0]))

@@ -17,6 +17,21 @@ import {
   jourLocal,
   heureLocaleVersUTC,
 } from '../utils/timezoneUtils'
+import {
+  SEUILS_PAR_DEFAUT,
+  chargerSeuilsPointage,
+  validerCibleEstimation,
+  estEstimationNonValidee,
+  estRebondNeutralise,
+} from './seuilsPointage'
+
+//  Aucun seuil de pointage n'est plus écrit en dur dans ce moteur : ils viennent
+//  de `encheck_reglages_pointage` (voir src/services/seuilsPointage.js). Les
+//  constantes ci-dessous ne sont que le repli contractuel, jamais un réglage.
+const H = (seuils, cle) => {
+  const n = Number(seuils?.[cle])
+  return Number.isFinite(n) && n > 0 ? n : SEUILS_PAR_DEFAUT[cle]
+}
 
 export async function calculateEmployeeHours(employeeId, enterpriseId, referenceDate = new Date()) {
   const ref = new Date(referenceDate)
@@ -30,13 +45,19 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
       .single(),
     supabase
       .from('enterprises')
-      .select('id, currency, auto_close_enabled, auto_close_time, auto_close_grace_minutes')
+      .select('id, currency, timezone, auto_close_enabled, auto_close_time, auto_close_grace_minutes')
       .eq('id', enterpriseId)
       .single(),
   ])
 
   if (empErr || !employee) throw new Error('Employé introuvable')
   if (entErr || !enterprise) throw new Error('Entreprise introuvable')
+
+  //  ⚙️ Les seuils viennent de la base (une seule source, décision §4.4).
+  //  `chargerSeuilsPointage` ne rejette jamais : hors-ligne / base non migrée,
+  //  il rend le contrat implicite, donc les chiffres affichés restent les mêmes
+  //  que ceux du moteur SQL.
+  const seuils = await chargerSeuilsPointage(enterprise.id)
 
   const enterpriseCfg = {
     id: enterprise.id,
@@ -46,6 +67,8 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     autoCloseGraceMinutes: Number.isFinite(enterprise.auto_close_grace_minutes)
       ? Number(enterprise.auto_close_grace_minutes)
       : 0,
+    timezone: enterprise.timezone || 'Africa/Porto-Novo',
+    seuils,
   }
 
   // ── 2) Périodes ──────────────────────────────────────────
@@ -58,9 +81,15 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   const yearEndISO = new Date(`${yearPeriod.endDate}T23:59:59.999`).toISOString()
 
   // ── 3) Charger attendances ──────────────────────────────────
+  //  Les colonnes `estimation_*` arrivent avec la migration des fondations :
+  //  elles servent à distinguer une sortie RÉELLE d'une sortie PRÉSUMÉE, et à
+  //  exclure les présomptions non validées de tout ce qui touche l'argent.
   const { data: attendancesRaw, error: attErr } = await supabase
     .from('attendances')
-    .select('id, employee_id, enterprise_id, check_time, check_type, is_auto_closed, method')
+    .select(
+      'id, employee_id, enterprise_id, check_time, check_type, is_auto_closed, method, ' +
+        'anomalie, estimation_validee_le, estimation_remplacee_le, estimation_niveau, estimation_confiance',
+    )
     .eq('employee_id', employeeId)
     .gte('check_time', yearStartISO)
     .lte('check_time', yearEndISO)
@@ -112,6 +141,12 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     enterpriseCfg,
     plan,
     plansParJour,
+    //  Niveau 1 = ce qui est ÉCRIT pour cet employé ; Niveau 3 = le réglage
+    //  général de l'entreprise. Les séparer est ce qui permet de dire « cette
+    //  clôture vient d'une décision, celle-là d'un défaut » (§5).
+    planPerso: resolvePlanForExpected(employeeScheduleRow, null),
+    planDefaut: resolvePlanForExpected(null, defaultScheduleRow),
+    seuils: enterpriseCfg.seuils,
     yearStartDate: yearPeriod.startDate,
     yearEndDate: yearPeriod.endDate,
   })
@@ -399,7 +434,17 @@ function buildDaySummariesStrict({
   yearStartDate,
   yearEndDate,
   basculeMinutes = 0,
+  seuils = null,
+  planPerso = null,
+  planDefaut = null,
 }) {
+  //  ⚙️ Une seule source de seuils pour la journée : `encheck_reglages_pointage`.
+  //  Avant, ce fichier écrivait un 16 (appariement), un 60 (anti-rebond) et un 14
+  //  (plafond d'invention) en dur à quatre endroits — et le plafond de 14 h
+  //  n'était même pas le même que celui du SQL.
+  const s = seuils || enterpriseCfg?.seuils || SEUILS_PAR_DEFAUT
+  const APPARIEMENT_H = H(s, 'appariementHeures')
+  const REBOND_S = H(s, 'seuilRebondSecondes')
   const summaries = {}
   const atts = [...(attendances || [])].sort((a, b) => new Date(a.check_time) - new Date(b.check_time))
 
@@ -419,7 +464,7 @@ function buildDaySummariesStrict({
     const s = ensure(dayKey)
 
     const duration = calculerDureeSecondes(inAtt.check_time, outAtt.check_time)
-    const cappedDuration = Math.min(duration, 16 * 3600)
+    const cappedDuration = Math.min(duration, APPARIEMENT_H * 3600)
     s.totalSeconds += cappedDuration
 
     s.validPairsCount += 1
@@ -449,17 +494,29 @@ function buildDaySummariesStrict({
     if (!openInAtt) return
     const inDate = new Date(openInAtt.check_time)
     const dayKey = cleJourDeTravail(inDate, basculeMinutes)
-    const planDuJour = (plansParJour && plansParJour[dayKey]) || plan || null
+    //  Cascade §5 : la grille EN VIGUEUR CE JOUR-LÀ (dates d'effet) vaut Niveau 1
+    //  si elle est personnelle/liée, sinon on redescend au Niveau 3 (grille par
+    //  défaut). Le JS reste un moteur D'AFFICHAGE : c'est `encheck_cloturer_pivotable`
+    //  qui décide de ce qui est consigné et de ce qui est payable.
+    const grilleDuJour = (plansParJour && plansParJour[dayKey]) || null
     const finalOut = calculerSortieAutoClose(openInAtt, {
-      plan: planDuJour,
+      plan: grilleDuJour || planPerso || plan,
+      planDefaut: grilleDuJour ? null : planDefaut,
+      estimation: openInAtt.estimation_ombre || null,
       enterpriseCfg,
+      seuils: s,
     })
 
     pushPairToDay(openInAtt, {
       id: `virtual-out-${openInAtt.id}`,
       check_time: finalOut.toISOString(),
       check_type: 'out',
+      //  Marque de la sortie estimée : payée seulement après validation humaine.
       is_auto_closed: true,
+      //  La méthode reste 'auto_close' en DUR, jamais celle du badge d'entrée :
+      //  recopier `method` ferait passer une invention pour un QR (trou n°2).
+      method: 'auto_close',
+      estimation_niveau: finalOut.autoCloseNiveau ?? null,
       __virtual: true,
     })
   }
@@ -477,7 +534,7 @@ function buildDaySummariesStrict({
         const attDay = cleJourDeTravail(new Date(att.check_time), basculeMinutes)
         const isConsecutiveInSameShift =
           diffHours >= 0 &&
-          diffHours <= 16 &&
+          diffHours <= APPARIEMENT_H &&
           (attDay === inDay || minutesDepuisMinuit(att.check_time) < 360)
 
         // Si ce n'est pas un double IN dans la même garde (ex: session oubliée la veille),
@@ -494,16 +551,20 @@ function buildDaySummariesStrict({
       const diffSeconds = (new Date(att.check_time) - new Date(currentIn.check_time)) / 1000
       const diffHours = diffSeconds / 3600
 
-      // Anti-rebond QR Code (< 60s) : un OUT à moins de 60s de l'IN est un double scan accidentel
-      if (diffSeconds >= 0 && diffSeconds < 60) {
+      // Anti-rebond QR Code : un OUT à moins de `seuilRebondSecondes` de l'IN est un
+      // double scan accidentel. ⚠️ On l'IGNORE ici, on ne le SUPPRIME nulle part :
+      // `encheck_nettoyer_rebonds_qr` effaçait aussi les vraies paires courtes, la
+      // fonction est donc neutralisée côté base (elle marque, elle ne détruit plus).
+      if (diffSeconds >= 0 && diffSeconds < REBOND_S) {
         continue
       }
 
-      if (diffHours > 0 && diffHours <= 16) {
+      if (diffHours > 0 && diffHours <= APPARIEMENT_H) {
         pushPairToDay(currentIn, att)
         currentIn = null
       } else {
-        // OUT trop loin (> 16h) => l'ancien IN était un oubli de dépointage : on le clôture virtuellement
+        // OUT trop loin (> appariement_heures) => l'ancien IN était un oubli de
+        // dépointage : on le clôture virtuellement (on marque, on n'efface pas).
         closeOpenSessionVirtually(currentIn)
         currentIn = null
       }
@@ -518,7 +579,10 @@ function buildDaySummariesStrict({
   return summaries
 }
 
-function computeDayStrict(selectedDate, empAttendances, enterpriseCfg, plan = null) {
+function computeDayStrict(selectedDate, empAttendances, enterpriseCfg, plan = null, seuils = null) {
+  const s = seuils || enterpriseCfg?.seuils || SEUILS_PAR_DEFAUT
+  const APPARIEMENT_H = H(s, 'appariementHeures')
+  const REBOND_S = H(s, 'seuilRebondSecondes')
   let totalSeconds = 0
   let validPairs = []
   let openSessionsCount = 0
@@ -534,17 +598,17 @@ function computeDayStrict(selectedDate, empAttendances, enterpriseCfg, plan = nu
         currentIn = att
       } else {
         const diffHours = (new Date(att.check_time) - new Date(currentIn.check_time)) / (1000 * 60 * 60)
-        if (diffHours > 16) {
+        if (diffHours > APPARIEMENT_H) {
           currentIn = att
         }
       }
     } else if (att.check_type === 'out' && currentIn) {
       const diffSeconds = (new Date(att.check_time) - new Date(currentIn.check_time)) / 1000
-      if (diffSeconds >= 0 && diffSeconds < 60) {
+      if (diffSeconds >= 0 && diffSeconds < REBOND_S) {
         continue
       }
       const duration = calculerDureeSecondes(currentIn.check_time, att.check_time)
-      const cappedDuration = Math.min(duration, 16 * 3600)
+      const cappedDuration = Math.min(duration, APPARIEMENT_H * 3600)
       
       totalSeconds += cappedDuration
       validPairs.push({ in: currentIn, out: att })
@@ -560,6 +624,7 @@ function computeDayStrict(selectedDate, empAttendances, enterpriseCfg, plan = nu
     const finalOut = calculerSortieAutoClose(currentIn, {
       plan,
       enterpriseCfg,
+      seuils: s,
     })
 
     const duration = calculerDureeSecondes(currentIn.check_time, finalOut.toISOString())
@@ -600,76 +665,161 @@ function computeDayStrict(selectedDate, empAttendances, enterpriseCfg, plan = nu
 }
 
 /**
- * Cascade intelligente à 3 niveaux pour clôturer un oubli de dépointage (avec support travailleurs de nuit) :
- *   Niveau 1 : Heure de fin du planning (horaire personnalisé ou grille liée/par défaut).
- *              - Si planning de nuit (end_time < start_time, ex: 22:00 -> 06:00) : clôture à end_time le lendemain (J+1).
- *              - Si planning de jour mais que l'employé est entré après end_time (garde de soir/nuit) : bascule sur Niveau 3 (+8h).
- *   Niveau 2 : Si pas de planning mais Auto-Close entreprise activé (autoCloseEnabled = true) :
- *              - Clôture à autoCloseTime + autoCloseGraceMinutes (ou bascule sur Niveau 3 si l'entrée a eu lieu après autoCloseTime).
- *   Niveau 3 : Ni planning ni horaires d'ouverture renseignés (règle universelle de secours) :
- *              - Clôture à Entrée + 8h00 (fonctionne aussi bien de jour que de nuit en traversant minuit sans couper à 23:59).
+ * Cascade à 5 niveaux pour clôturer une entrée sans sortie — alignée sur
+ * l'arbitrage n°1 (§5) et sur le moteur SQL `encheck_cloturer_pivotable`, pour
+ * que l'écran admin et la base rendent EXACTEMENT la même heure.
+ *
+ *   Niveau 1  Horaire PERSONNEL explicite (custom_*) ou grille explicitement
+ *             LIÉE à l'employé : c'est une décision écrite pour CET employé.
+ *   Niveau 2  Apprentissage comportemental, via `estimation` consignés par le
+ *             moteur SQL ({ heure_sortie, estimation_niveau, ... }). Le JS ne
+ *             recalcule PAS le cluster : une seule source de vérité.
+ *   Niveau 3  Grille PAR DÉFAUT de l'entreprise — et jamais une grille devinée
+ *             « fantôme » : sans grille résolue, on descend d'un étage.
+ *   Niveau 4  `auto_close_time` + `auto_close_grace_minutes` de l'entreprise.
+ *   Niveau 5  Entrée + 8h00 (secours universel ; traverse minuit sans couper à
+ *             23:59, donc valable aussi pour les travailleurs de nuit).
+ *
+ * Garde-fous, dans cet ordre, identiques côté SQL :
+ *   · jamais moins de `dureeMinimaleSessionMinutes` après l'entrée (un pointage
+ *     à une minute est un doublon, pas une journée de travail) ;
+ *   · jamais plus de `plafondInventionHeures` (12 h — c'était 14 h avant
+ *     l'arbitrage, et le dépôt pointage, lui, disait 12 h : ils sont enfin
+ *     d'accord) ;
+ *   · jamais dans le futur par rapport à `referenceNow` : on ne facture pas une
+ *     heure qui n'a pas encore sonné.
+ *
+ * ⚠️ Ce que rend cette fonction sert à AFFICHER une journée en cours ou
+ *    oubliée. Ce qui est PAYÉ se décide ailleurs : une sortie estimée reste
+ *    `is_auto_closed = true` et ne rentre dans la paie que validée par un
+ *    humain (`estimation_validee_le`) — doctrine « on invente, on marque, on
+ *    n'encaisse pas » (§4.1).
+ *
+ * @param {Date|string|{check_time:string}} inDateOrAtt entrée à clôturer
+ * @param {object} options
+ * @param {object|null} options.plan          grille liée/personnelle (Niveau 1)
+ * @param {object|null} options.planDefaut    grille par défaut (Niveau 3)
+ * @param {object|null} options.estimation    estimation SQL (Niveau 2)
+ * @param {object|null} options.enterpriseCfg cfg entreprise (+ `seuils`, `timezone`)
+ * @param {object|null} options.seuils        seuils explicites (sinon ceux de la cfg)
+ * @param {Date|string} options.referenceNow  « maintenant » (testable)
+ * @param {string} options.fuseau             fuseau IANA (sinon celui de l'entreprise)
+ * @returns {Date} instant de sortie retenu (jamais inventé au-delà des garde-fous)
  */
-export function calculerSortieAutoClose(inDateOrAtt, { plan = null, enterpriseCfg = null, referenceNow = null } = {}) {
+export function calculerSortieAutoClose(inDateOrAtt, options = {}) {
+  const {
+    plan = null,
+    planDefaut = null,
+    estimation = null,
+    enterpriseCfg = null,
+    seuils = null,
+    referenceNow = null,
+    fuseau = null,
+  } = options
+
   const inDate = inDateOrAtt instanceof Date
     ? inDateOrAtt
     : new Date(inDateOrAtt?.check_time || inDateOrAtt)
   const now = referenceNow ? new Date(referenceNow) : new Date()
+  const s = seuils || enterpriseCfg?.seuils || SEUILS_PAR_DEFAUT
+  const tz = fuseau || enterpriseCfg?.timezone || null
+
+  if (!Number.isFinite(inDate.getTime())) return new Date(now.getTime())
 
   const inDayStr = jourLocal(inDate) || toDateKeyLocal(inDate)
   const nextDateObj = new Date(`${inDayStr}T00:00:00Z`)
   nextDateObj.setUTCDate(nextDateObj.getUTCDate() + 1)
   const nextDayStr = nextDateObj.toISOString().split('T')[0]
 
-  let candidateOut = null
-
-  // Niveau 1 : Planning de l'employé ou de l'entreprise
-  if (plan && plan.start_time && plan.end_time) {
-    const [sH, sM] = String(plan.start_time).split(':').map(Number)
-    const [eH, eM] = String(plan.end_time).split(':').map(Number)
+  // Heure de fin d'une grille, en gérant la nuit (end < start ⇒ fin à J+1) et
+  // les gardes du soir (entrée APRÈS l'heure de fin d'une grille de jour ⇒ la
+  // grille ne parle pas de cette journée : on descend d'un étage au lieu de
+  // clôturer à une heure déjà passée).
+  const finDePlanning = (pln) => {
+    if (!pln || !pln.start_time || !pln.end_time) return null
+    const [sH, sM] = String(pln.start_time).split(':').map(Number)
+    const [eH, eM] = String(pln.end_time).split(':').map(Number)
     const startMin = (sH || 0) * 60 + (sM || 0)
     const endMin = (eH || 0) * 60 + (eM || 0)
+    if (endMin === startMin) return null
 
-    if (endMin < startMin) {
-      // Planning de nuit (ex: 22:00 -> 06:00) : fin à J+1
-      const targetISO = heureLocaleVersUTC(nextDayStr, eH || 0, eM || 0, 0)
-      if (targetISO) {
-        const d = new Date(targetISO)
-        if (d > inDate) candidateOut = d
-      }
-    } else if (endMin > startMin) {
-      // Planning de jour (ex: 08:00 -> 17:00) : fin à Jour J
-      const targetISO = heureLocaleVersUTC(inDayStr, eH || 0, eM || 0, 0)
-      if (targetISO) {
-        const d = new Date(targetISO)
-        if (d > inDate) candidateOut = d
+    const estNuit = endMin < startMin
+    const jourCible = estNuit ? nextDayStr : inDayStr
+    const iso = heureLocaleVersUTC(jourCible, eH || 0, eM || 0, 0, tz)
+    if (!iso) return null
+    const d = new Date(iso)
+    if (estNuit) return d > inDate ? d : null
+    // Grille de jour : si l'entrée est déjà après la fin prévue, cette grille
+    // ne décrit pas cette journée (astreinte, garde de nuit non planifiée).
+    return d > inDate ? d : null
+  }
+
+  let candidateOut = null
+  let niveauUtilise = null
+
+  // ── Niveau 1 : horaire personnel / grille liée ─────────────────────────
+  candidateOut = finDePlanning(plan)
+  if (candidateOut) niveauUtilise = 1
+
+  // ── Niveau 2 : apprentissage comportemental (consigné par le SQL) ──────
+  if (!candidateOut && estimation?.heure_sortie) {
+    const [eH, eM] = String(estimation.heure_sortie).split(':').map(Number)
+    for (const jour of [inDayStr, nextDayStr]) {
+      const iso = heureLocaleVersUTC(jour, eH || 0, eM || 0, 0, tz)
+      const d = iso ? new Date(iso) : null
+      if (d && d > inDate) {
+        candidateOut = d
+        niveauUtilise = 2
+        break
       }
     }
   }
 
-  // Niveau 2 : Configuration Auto-Close de l'entreprise (si activée et pas de candidat Niveau 1)
+  // ── Niveau 3 : grille par défaut de l'entreprise ────────────────────────
+  if (!candidateOut) {
+    candidateOut = finDePlanning(planDefaut)
+    if (candidateOut) niveauUtilise = 3
+  }
+
+  // ── Niveau 4 : auto_close de l'entreprise ───────────────────────────────
   if (!candidateOut && enterpriseCfg?.autoCloseEnabled && enterpriseCfg?.autoCloseTime) {
     const [acH, acM] = String(enterpriseCfg.autoCloseTime).split(':').map(Number)
     const graceMs = (Number(enterpriseCfg.autoCloseGraceMinutes) || 0) * 60000
-    const targetISO = heureLocaleVersUTC(inDayStr, acH || 0, acM || 0, 0)
-    if (targetISO) {
-      const d = new Date(new Date(targetISO).getTime() + graceMs)
-      if (d > inDate) candidateOut = d
+    for (const jour of [inDayStr, nextDayStr]) {
+      const iso = heureLocaleVersUTC(jour, acH || 0, acM || 0, 0, tz)
+      const d = iso ? new Date(new Date(iso).getTime() + graceMs) : null
+      if (d && d > inDate) {
+        candidateOut = d
+        niveauUtilise = 4
+        break
+      }
     }
   }
 
-  // Niveau 3 : Secours universel sans planning ni horaires renseignés -> Entrée + 8h00 (jour ou nuit)
+  // ── Niveau 5 : secours universel, entrée + 8h00 ────────────────────────
   if (!candidateOut) {
     candidateOut = new Date(inDate.getTime() + 8 * 3600 * 1000)
+    niveauUtilise = 5
   }
 
-  // Plafond de sécurité absolu : jamais plus de 14h et jamais dans le futur par rapport à `now`
-  const maxOut = new Date(inDate.getTime() + 14 * 3600 * 1000)
-  let finalOut = candidateOut > maxOut ? maxOut : candidateOut
-  if (finalOut > now && now > inDate) {
-    finalOut = now
-  }
+  // ── Garde-fous ──────────────────────────────────────────────────────────
+  const plancher = new Date(inDate.getTime() + Math.max(0, H(s, 'dureeMinimaleSessionMinutes')) * 60000)
+  const plafond = new Date(inDate.getTime() + H(s, 'plafondInventionHeures') * 3600000)
 
-  return finalOut
+  let finalOut = candidateOut
+  if (finalOut > plafond) finalOut = plafond
+  if (finalOut < plancher) finalOut = plancher
+  // Jamais dans le futur : tant que la journée est en cours, on s'arrête à
+  // « maintenant » (avant, une entrée récente pouvait déjà afficher 8 h de
+  // travail fictif sur le dashboard du jour).
+  if (finalOut > now && now > inDate) finalOut = now
+  if (finalOut <= inDate) finalOut = inDate
+
+  const sortie = new Date(finalOut.getTime())
+  // Trace de l'étage utilisé : affichée dans les badges, et surtout dans le
+  // journal SQL. Une estimation sans provenance est invérifiable.
+  sortie.autoCloseNiveau = niveauUtilise
+  return sortie
 }
 
 function computeVirtualAutoCloseOut(inDate, enterpriseCfg, plan = null) {
@@ -1349,6 +1499,10 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
   const sorted = [...(rawAttendances || [])].sort(
     (a, b) => new Date(a.check_time) - new Date(b.check_time)
   )
+  //  ⚙️ Même contrat que le moteur SQL : les seuils viennent de la base.
+  const s = options.seuils || SEUILS_PAR_DEFAUT
+  const APPARIEMENT_H = H(s, 'appariementHeures')
+  const REBOND_S = H(s, 'seuilRebondSecondes')
 
   let openIn = null
   let lastOpenIn = null
@@ -1370,7 +1524,7 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
         const diffHoursFromOpen = (attTime - new Date(openIn.check_time)) / (1000 * 60 * 60)
         const isConsecutiveInSameShift =
           diffHoursFromOpen >= 0 &&
-          diffHoursFromOpen <= 16 &&
+          diffHoursFromOpen <= APPARIEMENT_H &&
           (attDateStr === openDay || (attDateStr > openDay && attMinutes < 360))
 
         if (isConsecutiveInSameShift) {
@@ -1410,7 +1564,7 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
         // Anti-rebond QR Code (< 60s) : un OUT enregistré à moins de 60s de l'IN (ex: 06:32:20 -> 06:32:32)
         // est un double scan accidentel. On le conserve dans attendancesDuJour pour l'audit/modal Modifier,
         // mais il ne ferme PAS la session ouverte !
-        if (diffSecondsFromFirst >= 0 && diffSecondsFromFirst < 60 && !att.is_auto_closed && !att.modifie_le) {
+        if (diffSecondsFromFirst >= 0 && diffSecondsFromFirst < REBOND_S && !att.is_auto_closed && !att.modifie_le) {
           if (openDay === selectedDate) {
             attendancesDuJour.push(att)
           }
@@ -1418,9 +1572,9 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
         }
 
         const matchedIn =
-          diffFromFirst >= 0 && diffFromFirst <= 16
+          diffFromFirst >= 0 && diffFromFirst <= APPARIEMENT_H
             ? openIn
-            : diffFromLast >= 0 && diffFromLast <= 16
+            : diffFromLast >= 0 && diffFromLast <= APPARIEMENT_H
               ? lastOpenIn
               : null
 

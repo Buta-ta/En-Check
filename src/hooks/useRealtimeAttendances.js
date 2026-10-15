@@ -56,9 +56,20 @@ const useRealtimeAttendances = (enterpriseId, onNewAttendance) => {
         },
         (payload) => {
           console.log('🔄 Pointage mis à jour:', payload.new)
-          // Optionnel: gérer les mises à jour
           if (payload.new.is_auto_closed && !payload.old.is_auto_closed) {
             callbackRef.current?.(payload.new, 'auto_closed')
+          }
+          //  Réconciliation (§5) : quand une VRAIE sortie arrive après une
+          //  estimation, le moteur SQL marque la présomption « remplacée » (il ne
+          //  la supprime jamais) et recalcule la journée. Sans ce signal, l'écran
+          //  restait figé sur l'heure inventée jusqu'au prochain rafraîchissement
+          //  manuel — l'écart le plus trompeur pour un manager en direct.
+          if (payload.new.estimation_remplacee_le && !payload.old?.estimation_remplacee_le) {
+            callbackRef.current?.(payload.new, 'estimation_remplacee')
+          }
+          //  Validation humaine : la ligne devient payable, il faut redessiner.
+          if (payload.new.estimation_validee_le && !payload.old?.estimation_validee_le) {
+            callbackRef.current?.(payload.new, 'estimation_validee')
           }
         }
       )
