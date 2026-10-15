@@ -46,7 +46,7 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
 
       // Le décalage « J+1 » (travail de nuit) se compare en jours LOCAUX :
       // sur le jour UTC, un pointage de fin de soirée basculerait de date.
-      const isNextDay = jourISO !== selectedDate
+      const isNextDay = Boolean(jourISO && selectedDate && jourISO > selectedDate)
 
       return {
         id: p.id,
@@ -97,8 +97,8 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
     if (field === 'heures' && (value < 0 || value > 23)) return
     if ((field === 'minutes' || field === 'secondes') && (value < 0 || value > 59)) return
     
-    // Si on toggle le jour (même jour vs lendemain)
-    if (field === 'isNextDay') {
+    // Si on toggle le jour (même jour vs lendemain) ou le type (in/out)
+    if (field === 'isNextDay' || field === 'type') {
         updated[index][field] = value
     } else {
         updated[index][field] = String(value).padStart(2, '0')
@@ -382,10 +382,14 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
                           color: p.isNextDay ? '#6366F1' : '#666',
                           borderColor: p.isNextDay ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255,255,255,0.1)',
                         }}
-                        title="Cochez si ce pointage a eu lieu le lendemain (ex: sortie après un travail de nuit)"
+                        title={
+                          p.isNextDay
+                            ? 'Lendemain (J+1) activé — cliquez pour remettre au jour même (Jour J)'
+                            : 'Jour même (Jour J) — cliquez si ce pointage a eu lieu le lendemain après minuit (J+1)'
+                        }
                       >
                         <Moon size={14} />
-                        <span style={styles.nextDayText}>J+1</span>
+                        <span style={styles.nextDayText}>{p.isNextDay ? 'J+1' : 'Jour J'}</span>
                       </button>
                     </div>
 

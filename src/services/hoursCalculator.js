@@ -10,8 +10,7 @@
 import { supabase } from '../lib/supabase'
 import FeatureService, { FEATURES } from './featureService'
 import HolidayService from './holidayService'
-import { calculerDureeSecondes, formaterHeureLocale } from '../utils/timezoneUtils'
-import { minutesDepuisMinuit } from '../utils/timezoneUtils'
+import { calculerDureeSecondes, formaterHeureLocale, minutesDepuisMinuit, jourLocal } from '../utils/timezoneUtils'
 
 export async function calculateEmployeeHours(employeeId, enterpriseId, referenceDate = new Date()) {
   const ref = new Date(referenceDate)
@@ -186,13 +185,14 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     if (s.hasAutoCloseVirtual) monthVirtualAutoCloseDays += 1
 
     if (hasOvertimeFeature && overtimeSettings && s.totalSeconds > 0) {
-      const scheduleForDay = FeatureService.getApplicableSchedule(employee.enterprise_id, d, allSchedules)
-      const overtimeData = FeatureService.calculateOvertimeWithSchedule(
-        s.totalSeconds,
-        scheduleForDay,
+      const overtimeData = FeatureService.calculateOvertimeForEmployeeDay({
+        totalWorkedSeconds: s.totalSeconds,
+        employeeSchedule: employeeScheduleRow,
+        enterpriseId: employee.enterprise_id,
+        dateStr: d,
+        allSchedules,
         overtimeSettings,
-        new Date(`${d}T00:00:00`)
-      )
+      })
 
       const totalOt = overtimeData?.totalOvertimeSeconds || 0
       const majorOt = overtimeData?.overtimeMajorSeconds || 0
@@ -289,13 +289,14 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     if (s.firstInISO) yearPresenceDays += 1
 
     if (hasOvertimeFeature && overtimeSettings && s.totalSeconds > 0) {
-      const scheduleForDay = FeatureService.getApplicableSchedule(employee.enterprise_id, d, allSchedules)
-      const overtimeData = FeatureService.calculateOvertimeWithSchedule(
-        s.totalSeconds,
-        scheduleForDay,
+      const overtimeData = FeatureService.calculateOvertimeForEmployeeDay({
+        totalWorkedSeconds: s.totalSeconds,
+        employeeSchedule: employeeScheduleRow,
+        enterpriseId: employee.enterprise_id,
+        dateStr: d,
+        allSchedules,
         overtimeSettings,
-        new Date(`${d}T00:00:00`)
-      )
+      })
       yearOtSeconds += overtimeData?.totalOvertimeSeconds || 0
     }
   }
@@ -418,7 +419,23 @@ function buildDaySummariesStrict({ attendances, enterpriseCfg, yearStartDate, ye
   for (const att of atts) {
     // ✅ on ne filtre pas sur la "date du OUT", on paire globalement
     if (att.check_type === 'in') {
-      currentIn = att
+      if (!currentIn) {
+        currentIn = att
+      } else {
+        const diffHours = (new Date(att.check_time) - new Date(currentIn.check_time)) / (1000 * 60 * 60)
+        const inDay = cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes)
+        const attDay = cleJourDeTravail(new Date(att.check_time), basculeMinutes)
+        const isConsecutiveInSameShift =
+          diffHours >= 0 &&
+          diffHours <= 16 &&
+          (attDay === inDay || minutesDepuisMinuit(att.check_time) < 360)
+
+        // Si ce n'est pas un double IN dans la même garde (ex: session orpheline de la veille),
+        // on bascule sur le nouvel IN ; sinon on conserve le premier IN d'origine.
+        if (!isConsecutiveInSameShift) {
+          currentIn = att
+        }
+      }
       continue
     }
 
@@ -481,7 +498,14 @@ function computeDayStrict(selectedDate, empAttendances, enterpriseCfg) {
 
   for (const att of atts) {
     if (att.check_type === 'in') {
-      currentIn = att
+      if (!currentIn) {
+        currentIn = att
+      } else {
+        const diffHours = (new Date(att.check_time) - new Date(currentIn.check_time)) / (1000 * 60 * 60)
+        if (diffHours > 16) {
+          currentIn = att
+        }
+      }
     } else if (att.check_type === 'out' && currentIn) {
       const duration = calculerDureeSecondes(currentIn.check_time, att.check_time)
       const cappedDuration = Math.min(duration, 16 * 3600)
@@ -603,11 +627,13 @@ function minutesDeBascule(valeur) {
 }
 
 //  Le nom de la journée de travail d'un instant : on recule de la bascule, puis
-//  on prend le jour local. Avec une bascule à minuit, c'est le jour local.
+//  on prend le jour local (dans le fuseau de l'entreprise). Avec une bascule à minuit, c'est le jour local.
 function cleJourDeTravail(date, basculeMinutes = 0) {
   const bascule = minutesDeBascule(basculeMinutes)
-  if (!bascule) return toDateKeyLocal(date)
-  return toDateKeyLocal(new Date(date.getTime() - bascule * 60000))
+  const d = date instanceof Date ? date : new Date(date)
+  if (!bascule) return jourLocal(d) || toDateKeyLocal(d)
+  const decale = new Date(d.getTime() - bascule * 60000)
+  return jourLocal(decale) || toDateKeyLocal(decale)
 }
 
 function grilleValableLe(grille, jour) {
@@ -687,7 +713,11 @@ async function loadPlanningsDeLaPeriode({ supabase, employeeId, enterpriseId, st
   }
 
   const affectationsUtiles = (affectations || []).filter(
-    (r) => r && r.is_active !== false && r.work_schedules && grilleValableLe(r.work_schedules, startDate)
+    (r) =>
+      r &&
+      r.is_active !== false &&
+      ((r.use_custom_hours && r.custom_start_time && r.custom_end_time) ||
+        (r.work_schedules && grilleValableLe(r.work_schedules, startDate)))
   )
   const grillesUtiles = (grilles || []).filter((g) => grilleValableLe(g, startDate))
 
@@ -709,22 +739,33 @@ function construirePlanningsParJour({ affectations, grilles, startDate, endDate 
   if (!startDate || !endDate) return parJour
 
   for (const jour of listDaysInclusive(startDate, endDate)) {
-    const affectation =
+    const affectationCustom =
+      (affectations || []).find(
+        (r) => r && r.is_active !== false && r.use_custom_hours && r.custom_start_time && r.custom_end_time
+      ) || null
+
+    const affectationGrille =
       (affectations || [])
-        .filter((r) => grilleValableLe(r.work_schedules, jour))
+        .filter((r) => r && r.work_schedules && grilleValableLe(r.work_schedules, jour))
         .sort((a, b) => parDateEffetDecroissante(a.work_schedules, b.work_schedules))[0] || null
 
-    const grilleDuJour = affectation ? affectation.work_schedules : choisirGrilleParDefaut(grilles, jour)
-    if (!grilleDuJour) continue
+    const affectation = affectationCustom || affectationGrille
+    const grilleDuJour = affectation?.work_schedules || choisirGrilleParDefaut(grilles, jour)
+
+    if (!affectation && !grilleDuJour) continue
 
     const plan = resolvePlanForExpected(affectation, grilleDuJour)
     if (!plan) continue
 
     parJour[jour] = {
       ...plan,
-      grilleId: grilleDuJour.id || null,
-      grilleNom: grilleDuJour.name || null,
-      valide_du: grilleDuJour.valide_du || null,
+      grilleId: affectation?.use_custom_hours
+        ? `custom-${affectation.id || affectation.employee_id || 'emp'}`
+        : (grilleDuJour?.id || null),
+      grilleNom: affectation?.use_custom_hours
+        ? 'Horaire personnalisé'
+        : (grilleDuJour?.name || null),
+      valide_du: grilleDuJour?.valide_du || null,
     }
   }
 
@@ -930,7 +971,7 @@ function computeRetardsAlignedRetardsJSX({ attendances, scheduleResolved, holida
   const inAtts = attendances
     .filter(a => a.check_type === 'in')
     .filter(a => {
-      const d = a.check_time.split('T')[0]
+      const d = jourLocal(a.check_time) || a.check_time.split('T')[0]
       return d >= startDate && d <= endDate
     })
     .sort((a, b) => new Date(a.check_time) - new Date(b.check_time))
@@ -1219,6 +1260,203 @@ function timeToMinutes(t) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 🌙 RÉSOLUTION D'UNE JOURNÉE DE POINTAGE (JOUR LOCAL + GARDE DE NUIT)
+// ═══════════════════════════════════════════════════════════════════════════
+export function resoudrePointagesJournee(rawAttendances, selectedDate) {
+  const sorted = [...(rawAttendances || [])].sort(
+    (a, b) => new Date(a.check_time) - new Date(b.check_time)
+  )
+
+  let openIn = null
+  let lastOpenIn = null
+  let openDay = null
+  let lastClosedOut = null
+  let lastClosedDay = null
+
+  const attendancesDuJour = []
+  const validPairs = []
+  let totalSecondes = 0
+
+  for (const att of sorted) {
+    const attTime = new Date(att.check_time)
+    const attDateStr = jourLocal(att.check_time) || att.check_time.split('T')[0]
+    const attMinutes = minutesDepuisMinuit(att.check_time)
+
+    if (att.check_type === 'in') {
+      if (openIn) {
+        const diffHoursFromOpen = (attTime - new Date(openIn.check_time)) / (1000 * 60 * 60)
+        const isConsecutiveInSameShift =
+          diffHoursFromOpen >= 0 &&
+          diffHoursFromOpen <= 16 &&
+          (attDateStr === openDay || (attDateStr > openDay && attMinutes < 360))
+
+        if (isConsecutiveInSameShift) {
+          lastOpenIn = att
+          if (openDay === selectedDate) {
+            attendancesDuJour.push(att)
+          }
+          continue
+        }
+      }
+
+      if (!openIn && lastClosedOut && lastClosedDay === selectedDate && attDateStr > selectedDate && attMinutes < 360) {
+        const diffSinceLastOut = (attTime - new Date(lastClosedOut.check_time)) / (1000 * 60 * 60)
+        if (diffSinceLastOut >= 0 && diffSinceLastOut < 8) {
+          openIn = att
+          lastOpenIn = att
+          openDay = selectedDate
+          attendancesDuJour.push(att)
+          continue
+        }
+      }
+
+      openIn = att
+      lastOpenIn = att
+      openDay = attDateStr
+      if (openDay === selectedDate) {
+        attendancesDuJour.push(att)
+      }
+    } else if (att.check_type === 'out') {
+      if (openIn) {
+        const diffFromFirst = (attTime - new Date(openIn.check_time)) / (1000 * 60 * 60)
+        const diffFromLast = lastOpenIn
+          ? (attTime - new Date(lastOpenIn.check_time)) / (1000 * 60 * 60)
+          : diffFromFirst
+
+        const matchedIn =
+          diffFromFirst >= 0 && diffFromFirst <= 16
+            ? openIn
+            : diffFromLast >= 0 && diffFromLast <= 16
+              ? lastOpenIn
+              : null
+
+        if (matchedIn) {
+          if (openDay === selectedDate) {
+            attendancesDuJour.push(att)
+            totalSecondes += calculerDureeSecondes(matchedIn.check_time, att.check_time)
+            validPairs.push({ in: matchedIn, out: att })
+          }
+          lastClosedOut = att
+          lastClosedDay = openDay
+          openIn = null
+          lastOpenIn = null
+          openDay = null
+          continue
+        } else {
+          openIn = null
+          lastOpenIn = null
+          openDay = null
+        }
+      }
+
+      if (lastClosedOut && (attTime - new Date(lastClosedOut.check_time)) / (1000 * 60 * 60) <= 4 && attMinutes < 360) {
+        if (lastClosedDay === selectedDate) {
+          attendancesDuJour.push(att)
+        }
+      } else if (attDateStr === selectedDate) {
+        attendancesDuJour.push(att)
+      }
+    }
+  }
+
+  let firstIn = validPairs.length > 0 ? validPairs[0].in : null
+  let lastOut = validPairs.length > 0 ? validPairs[validPairs.length - 1].out : null
+
+  if (!firstIn && openIn && openDay === selectedDate) {
+    firstIn = openIn
+  }
+  if (!firstIn) {
+    firstIn = attendancesDuJour.find(a => a.check_type === 'in') || null
+  }
+
+  return {
+    attendances: attendancesDuJour,
+    validPairs,
+    totalSecondes,
+    firstIn,
+    lastOut,
+  }
+}
+
+export function compterRetardsDuJour(
+  retardEntries = [],
+  employeeSchedulesData = [],
+  defaultSchedulesData = [],
+  todayStr = null
+) {
+  const empSchedulesMap = {}
+  ;(employeeSchedulesData || []).forEach(es => {
+    if (es && es.employee_id && es.is_active !== false) {
+      empSchedulesMap[es.employee_id] = es
+    }
+  })
+
+  const defaultByEnterprise = {}
+  ;(defaultSchedulesData || []).forEach(ws => {
+    if (ws && ws.enterprise_id && ws.is_active !== false && !defaultByEnterprise[ws.enterprise_id]) {
+      defaultByEnterprise[ws.enterprise_id] = ws
+    }
+  })
+
+  const firstInByEmployee = new Map()
+  const sorted = [...(retardEntries || [])].sort(
+    (a, b) => new Date(a.check_time) - new Date(b.check_time)
+  )
+
+  for (const att of sorted) {
+    if (!att || !att.employee_id) continue
+    if (todayStr) {
+      const attDate = jourLocal(att.check_time) || att.check_time.split('T')[0]
+      if (attDate !== todayStr) continue
+    }
+    const mins = minutesDepuisMinuit(att.check_time)
+    if (mins < 300) continue
+    if (!firstInByEmployee.has(att.employee_id)) {
+      firstInByEmployee.set(att.employee_id, att)
+    }
+  }
+
+  let count = 0
+  for (const [empId, att] of firstInByEmployee.entries()) {
+    const schedulePerso = empSchedulesMap[empId]
+    const defaultSchedule =
+      (att.enterprise_id && defaultByEnterprise[att.enterprise_id]) ||
+      defaultSchedulesData?.[0] ||
+      null
+
+    let heureArrivee = '08:00'
+    let tolerance = 15
+
+    if (schedulePerso) {
+      if (schedulePerso.use_custom_hours && schedulePerso.custom_start_time) {
+        heureArrivee = schedulePerso.custom_start_time.slice(0, 5)
+        tolerance =
+          schedulePerso.custom_late_tolerance_minutes ||
+          defaultSchedule?.late_tolerance_minutes ||
+          15
+      } else if (schedulePerso.schedule_id && schedulePerso.work_schedules?.start_time) {
+        heureArrivee = schedulePerso.work_schedules.start_time.slice(0, 5)
+        tolerance = schedulePerso.work_schedules.late_tolerance_minutes || 15
+      } else if (defaultSchedule?.start_time) {
+        heureArrivee = defaultSchedule.start_time.slice(0, 5)
+        tolerance = defaultSchedule.late_tolerance_minutes || 15
+      }
+    } else if (defaultSchedule?.start_time) {
+      heureArrivee = defaultSchedule.start_time.slice(0, 5)
+      tolerance = defaultSchedule.late_tolerance_minutes || 15
+    }
+
+    const [hA, mA] = heureArrivee.split(':').map(Number)
+    const seuilRetard = (hA || 0) * 60 + (mA || 0) + (Number(tolerance) || 15)
+    if (minutesDepuisMinuit(att.check_time) > seuilRetard) {
+      count += 1
+    }
+  }
+
+  return count
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 🧪 EXPORTS POUR TESTS UNITAIRES (VD-15 — Gardien des fondations)
 // ═══════════════════════════════════════════════════════════════════════════
 // POURQUOI : La règle 4.4 de la Roadmap technique v1.1 et la règle 5.2 n°2
@@ -1245,4 +1483,6 @@ export const __internal = {
   parseDurationToHours,
   getPlanDayIndex,
   timeToMinutes,
+  resoudrePointagesJournee,
+  compterRetardsDuJour,
 }
