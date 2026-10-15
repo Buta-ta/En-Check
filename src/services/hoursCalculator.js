@@ -10,7 +10,13 @@
 import { supabase } from '../lib/supabase'
 import FeatureService, { FEATURES } from './featureService'
 import HolidayService from './holidayService'
-import { calculerDureeSecondes, formaterHeureLocale, minutesDepuisMinuit, jourLocal } from '../utils/timezoneUtils'
+import {
+  calculerDureeSecondes,
+  formaterHeureLocale,
+  minutesDepuisMinuit,
+  jourLocal,
+  heureLocaleVersUTC,
+} from '../utils/timezoneUtils'
 
 export async function calculateEmployeeHours(employeeId, enterpriseId, referenceDate = new Date()) {
   const ref = new Date(referenceDate)
@@ -104,6 +110,8 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     basculeMinutes: plan ? minutesDeBascule(plan.bascule) : 0,
     attendances,
     enterpriseCfg,
+    plan,
+    plansParJour,
     yearStartDate: yearPeriod.startDate,
     yearEndDate: yearPeriod.endDate,
   })
@@ -184,7 +192,13 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     monthOpenSessionsCount += s.openSessionsCount
     if (s.hasAutoCloseVirtual) monthVirtualAutoCloseDays += 1
 
-    if (hasOvertimeFeature && overtimeSettings && s.totalSeconds > 0) {
+    if (
+      hasOvertimeFeature &&
+      overtimeSettings &&
+      s.totalSeconds > 0 &&
+      !s.hasAutoCloseVirtual &&
+      !s.hasAutoClosedOut
+    ) {
       const overtimeData = FeatureService.calculateOvertimeForEmployeeDay({
         totalWorkedSeconds: s.totalSeconds,
         employeeSchedule: employeeScheduleRow,
@@ -288,7 +302,13 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     yearWorkedSeconds += s.totalSeconds
     if (s.firstInISO) yearPresenceDays += 1
 
-    if (hasOvertimeFeature && overtimeSettings && s.totalSeconds > 0) {
+    if (
+      hasOvertimeFeature &&
+      overtimeSettings &&
+      s.totalSeconds > 0 &&
+      !s.hasAutoCloseVirtual &&
+      !s.hasAutoClosedOut
+    ) {
       const overtimeData = FeatureService.calculateOvertimeForEmployeeDay({
         totalWorkedSeconds: s.totalSeconds,
         employeeSchedule: employeeScheduleRow,
@@ -371,7 +391,15 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
 // ✅ CALCUL STRICT JOUR PAR JOUR
 // ═══════════════════════════════════════════════════════════
 
-function buildDaySummariesStrict({ attendances, enterpriseCfg, yearStartDate, yearEndDate, basculeMinutes = 0 }) {
+function buildDaySummariesStrict({
+  attendances,
+  enterpriseCfg,
+  plan = null,
+  plansParJour = null,
+  yearStartDate,
+  yearEndDate,
+  basculeMinutes = 0,
+}) {
   const summaries = {}
   const atts = [...(attendances || [])].sort((a, b) => new Date(a.check_time) - new Date(b.check_time))
 
@@ -402,6 +430,9 @@ function buildDaySummariesStrict({ attendances, enterpriseCfg, yearStartDate, ye
       s.openSessionsCount += 1
       s.hasAutoCloseVirtual = true
     }
+    if (outAtt?.is_auto_closed) {
+      s.hasAutoClosedOut = true
+    }
 
     // entries (limitées)
     if (s.entries.length < 4) {
@@ -412,6 +443,25 @@ function buildDaySummariesStrict({ attendances, enterpriseCfg, yearStartDate, ye
         is_virtual: !!outAtt?.__virtual,
       })
     }
+  }
+
+  const closeOpenSessionVirtually = (openInAtt) => {
+    if (!openInAtt) return
+    const inDate = new Date(openInAtt.check_time)
+    const dayKey = cleJourDeTravail(inDate, basculeMinutes)
+    const planDuJour = (plansParJour && plansParJour[dayKey]) || plan || null
+    const finalOut = calculerSortieAutoClose(openInAtt, {
+      plan: planDuJour,
+      enterpriseCfg,
+    })
+
+    pushPairToDay(openInAtt, {
+      id: `virtual-out-${openInAtt.id}`,
+      check_time: finalOut.toISOString(),
+      check_type: 'out',
+      is_auto_closed: true,
+      __virtual: true,
+    })
   }
 
   let currentIn = null
@@ -430,9 +480,10 @@ function buildDaySummariesStrict({ attendances, enterpriseCfg, yearStartDate, ye
           diffHours <= 16 &&
           (attDay === inDay || minutesDepuisMinuit(att.check_time) < 360)
 
-        // Si ce n'est pas un double IN dans la même garde (ex: session orpheline de la veille),
-        // on bascule sur le nouvel IN ; sinon on conserve le premier IN d'origine.
+        // Si ce n'est pas un double IN dans la même garde (ex: session oubliée la veille),
+        // on clôture virtuellement la session oubliée de la veille avant d'ouvrir la nouvelle !
         if (!isConsecutiveInSameShift) {
+          closeOpenSessionVirtually(currentIn)
           currentIn = att
         }
       }
@@ -440,53 +491,34 @@ function buildDaySummariesStrict({ attendances, enterpriseCfg, yearStartDate, ye
     }
 
     if (att.check_type === 'out' && currentIn) {
-      const diffHours = (new Date(att.check_time) - new Date(currentIn.check_time)) / (1000 * 60 * 60)
+      const diffSeconds = (new Date(att.check_time) - new Date(currentIn.check_time)) / 1000
+      const diffHours = diffSeconds / 3600
+
+      // Anti-rebond QR Code (< 60s) : un OUT à moins de 60s de l'IN est un double scan accidentel
+      if (diffSeconds >= 0 && diffSeconds < 60) {
+        continue
+      }
 
       if (diffHours > 0 && diffHours <= 16) {
         pushPairToDay(currentIn, att)
         currentIn = null
       } else {
-        // OUT trop loin / incohérent => on abandonne l'IN
+        // OUT trop loin (> 16h) => l'ancien IN était un oubli de dépointage : on le clôture virtuellement
+        closeOpenSessionVirtually(currentIn)
         currentIn = null
       }
     }
   }
 
-  // ✅ Session ouverte (IN sans OUT dans toute la période)
+  // ✅ Session ouverte restante en fin de période (IN sans OUT)
   if (currentIn) {
-    const inDate = new Date(currentIn.check_time)
-    const inDateKey = toDateKeyLocal(inDate)
-    const now = new Date()
-    const nowDateKey = toDateKeyLocal(now)
-
-    let virtualOut
-
-    if (inDateKey < nowDateKey) {
-      virtualOut = computeVirtualAutoCloseOut(inDate, enterpriseCfg)
-      const endOfDay = new Date(`${inDateKey}T23:59:59`)
-      if (virtualOut > endOfDay) virtualOut = endOfDay
-    } else {
-      const configuredClose = computeVirtualAutoCloseOut(inDate, enterpriseCfg)
-      virtualOut = (now < configuredClose) ? now : configuredClose
-    }
-
-    const maxDuration = 14 * 3600 * 1000
-    const maxOut = new Date(inDate.getTime() + maxDuration)
-    const finalOut = (virtualOut > maxOut) ? maxOut : virtualOut
-
-    pushPairToDay(currentIn, {
-      id: `virtual-out-${currentIn.id}`,
-      check_time: finalOut.toISOString(),
-      check_type: 'out',
-      is_auto_closed: true,
-      __virtual: true,
-    })
+    closeOpenSessionVirtually(currentIn)
   }
 
   return summaries
 }
 
-function computeDayStrict(selectedDate, empAttendances, enterpriseCfg) {
+function computeDayStrict(selectedDate, empAttendances, enterpriseCfg, plan = null) {
   let totalSeconds = 0
   let validPairs = []
   let openSessionsCount = 0
@@ -507,6 +539,10 @@ function computeDayStrict(selectedDate, empAttendances, enterpriseCfg) {
         }
       }
     } else if (att.check_type === 'out' && currentIn) {
+      const diffSeconds = (new Date(att.check_time) - new Date(currentIn.check_time)) / 1000
+      if (diffSeconds >= 0 && diffSeconds < 60) {
+        continue
+      }
       const duration = calculerDureeSecondes(currentIn.check_time, att.check_time)
       const cappedDuration = Math.min(duration, 16 * 3600)
       
@@ -521,27 +557,10 @@ function computeDayStrict(selectedDate, empAttendances, enterpriseCfg) {
     openSessionsCount = 1
     hasAutoCloseVirtual = true
 
-    const inDate = new Date(currentIn.check_time)
-    const now = new Date()
-    const inDateKey = toDateKeyLocal(inDate)
-    const nowDateKey = toDateKeyLocal(now)
-
-    let virtualOut
-
-    if (inDateKey < nowDateKey) {
-      virtualOut = computeVirtualAutoCloseOut(inDate, enterpriseCfg)
-      const endOfDay = new Date(`${inDateKey}T23:59:59`)
-      if (virtualOut > endOfDay) {
-        virtualOut = endOfDay
-      }
-    } else {
-      const configuredClose = computeVirtualAutoCloseOut(inDate, enterpriseCfg)
-      virtualOut = (now < configuredClose) ? now : configuredClose
-    }
-
-    const maxDuration = 14 * 3600 * 1000
-    const maxOut = new Date(inDate.getTime() + maxDuration)
-    const finalOut = (virtualOut > maxOut) ? maxOut : virtualOut
+    const finalOut = calculerSortieAutoClose(currentIn, {
+      plan,
+      enterpriseCfg,
+    })
 
     const duration = calculerDureeSecondes(currentIn.check_time, finalOut.toISOString())
     totalSeconds += duration
@@ -580,17 +599,81 @@ function computeDayStrict(selectedDate, empAttendances, enterpriseCfg) {
   }
 }
 
-function computeVirtualAutoCloseOut(inDate, enterpriseCfg) {
-  const baseDateKey = toDateKeyLocal(inDate)
+/**
+ * Cascade intelligente à 3 niveaux pour clôturer un oubli de dépointage (avec support travailleurs de nuit) :
+ *   Niveau 1 : Heure de fin du planning (horaire personnalisé ou grille liée/par défaut).
+ *              - Si planning de nuit (end_time < start_time, ex: 22:00 -> 06:00) : clôture à end_time le lendemain (J+1).
+ *              - Si planning de jour mais que l'employé est entré après end_time (garde de soir/nuit) : bascule sur Niveau 3 (+8h).
+ *   Niveau 2 : Si pas de planning mais Auto-Close entreprise activé (autoCloseEnabled = true) :
+ *              - Clôture à autoCloseTime + autoCloseGraceMinutes (ou bascule sur Niveau 3 si l'entrée a eu lieu après autoCloseTime).
+ *   Niveau 3 : Ni planning ni horaires d'ouverture renseignés (règle universelle de secours) :
+ *              - Clôture à Entrée + 8h00 (fonctionne aussi bien de jour que de nuit en traversant minuit sans couper à 23:59).
+ */
+export function calculerSortieAutoClose(inDateOrAtt, { plan = null, enterpriseCfg = null, referenceNow = null } = {}) {
+  const inDate = inDateOrAtt instanceof Date
+    ? inDateOrAtt
+    : new Date(inDateOrAtt?.check_time || inDateOrAtt)
+  const now = referenceNow ? new Date(referenceNow) : new Date()
 
-  if (!enterpriseCfg.autoCloseEnabled) {
-    return new Date(`${baseDateKey}T23:59:59`)
+  const inDayStr = jourLocal(inDate) || toDateKeyLocal(inDate)
+  const nextDateObj = new Date(`${inDayStr}T00:00:00Z`)
+  nextDateObj.setUTCDate(nextDateObj.getUTCDate() + 1)
+  const nextDayStr = nextDateObj.toISOString().split('T')[0]
+
+  let candidateOut = null
+
+  // Niveau 1 : Planning de l'employé ou de l'entreprise
+  if (plan && plan.start_time && plan.end_time) {
+    const [sH, sM] = String(plan.start_time).split(':').map(Number)
+    const [eH, eM] = String(plan.end_time).split(':').map(Number)
+    const startMin = (sH || 0) * 60 + (sM || 0)
+    const endMin = (eH || 0) * 60 + (eM || 0)
+
+    if (endMin < startMin) {
+      // Planning de nuit (ex: 22:00 -> 06:00) : fin à J+1
+      const targetISO = heureLocaleVersUTC(nextDayStr, eH || 0, eM || 0, 0)
+      if (targetISO) {
+        const d = new Date(targetISO)
+        if (d > inDate) candidateOut = d
+      }
+    } else if (endMin > startMin) {
+      // Planning de jour (ex: 08:00 -> 17:00) : fin à Jour J
+      const targetISO = heureLocaleVersUTC(inDayStr, eH || 0, eM || 0, 0)
+      if (targetISO) {
+        const d = new Date(targetISO)
+        if (d > inDate) candidateOut = d
+      }
+    }
   }
 
-  const targetBase = new Date(`${baseDateKey}T${enterpriseCfg.autoCloseTime}`)
-  const target = new Date(targetBase.getTime() + enterpriseCfg.autoCloseGraceMinutes * 60000)
+  // Niveau 2 : Configuration Auto-Close de l'entreprise (si activée et pas de candidat Niveau 1)
+  if (!candidateOut && enterpriseCfg?.autoCloseEnabled && enterpriseCfg?.autoCloseTime) {
+    const [acH, acM] = String(enterpriseCfg.autoCloseTime).split(':').map(Number)
+    const graceMs = (Number(enterpriseCfg.autoCloseGraceMinutes) || 0) * 60000
+    const targetISO = heureLocaleVersUTC(inDayStr, acH || 0, acM || 0, 0)
+    if (targetISO) {
+      const d = new Date(new Date(targetISO).getTime() + graceMs)
+      if (d > inDate) candidateOut = d
+    }
+  }
 
-  return target
+  // Niveau 3 : Secours universel sans planning ni horaires renseignés -> Entrée + 8h00 (jour ou nuit)
+  if (!candidateOut) {
+    candidateOut = new Date(inDate.getTime() + 8 * 3600 * 1000)
+  }
+
+  // Plafond de sécurité absolu : jamais plus de 14h et jamais dans le futur par rapport à `now`
+  const maxOut = new Date(inDate.getTime() + 14 * 3600 * 1000)
+  let finalOut = candidateOut > maxOut ? maxOut : candidateOut
+  if (finalOut > now && now > inDate) {
+    finalOut = now
+  }
+
+  return finalOut
+}
+
+function computeVirtualAutoCloseOut(inDate, enterpriseCfg, plan = null) {
+  return calculerSortieAutoClose(inDate, { plan, enterpriseCfg })
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1260,9 +1343,9 @@ function timeToMinutes(t) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 🌙 RÉSOLUTION D'UNE JOURNÉE DE POINTAGE (JOUR LOCAL + GARDE DE NUIT)
+// 🌙 RÉSOLUTION D'UNE JOURNÉE DE POINTAGE (JOUR LOCAL + GARDE DE NUIT + ANTI-REBOND QR + AUTO-CLOSE)
 // ═══════════════════════════════════════════════════════════════════════════
-export function resoudrePointagesJournee(rawAttendances, selectedDate) {
+export function resoudrePointagesJournee(rawAttendances, selectedDate, options = {}) {
   const sorted = [...(rawAttendances || [])].sort(
     (a, b) => new Date(a.check_time) - new Date(b.check_time)
   )
@@ -1318,10 +1401,21 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate) {
       }
     } else if (att.check_type === 'out') {
       if (openIn) {
-        const diffFromFirst = (attTime - new Date(openIn.check_time)) / (1000 * 60 * 60)
+        const diffSecondsFromFirst = (attTime - new Date(openIn.check_time)) / 1000
+        const diffFromFirst = diffSecondsFromFirst / 3600
         const diffFromLast = lastOpenIn
           ? (attTime - new Date(lastOpenIn.check_time)) / (1000 * 60 * 60)
           : diffFromFirst
+
+        // Anti-rebond QR Code (< 60s) : un OUT enregistré à moins de 60s de l'IN (ex: 06:32:20 -> 06:32:32)
+        // est un double scan accidentel. On le conserve dans attendancesDuJour pour l'audit/modal Modifier,
+        // mais il ne ferme PAS la session ouverte !
+        if (diffSecondsFromFirst >= 0 && diffSecondsFromFirst < 60 && !att.is_auto_closed && !att.modifie_le) {
+          if (openDay === selectedDate) {
+            attendancesDuJour.push(att)
+          }
+          continue
+        }
 
         const matchedIn =
           diffFromFirst >= 0 && diffFromFirst <= 16
@@ -1359,8 +1453,61 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate) {
     }
   }
 
+  // Gestion des sessions restées ouvertes sur `selectedDate` (Oubli de dépointage vs Session en cours)
+  if (openIn && openDay === selectedDate && options?.enableAutoClose) {
+    const now = options.referenceNow ? new Date(options.referenceNow) : new Date()
+    const nowDayStr = jourLocal(now) || now.toISOString().split('T')[0]
+    const inDate = new Date(openIn.check_time)
+    const elapsedHours = (now - inDate) / (1000 * 60 * 60)
+    const inMinutes = minutesDepuisMinuit(openIn.check_time)
+
+    // Oubli de dépointage avéré :
+    // - soit plus de 14h se sont écoulées sans sortie (jour ou nuit),
+    // - soit la journée est passée (selectedDate < nowDayStr) et l'entrée était un service de jour (< 16:00).
+    // (Si l'employé est entré à 22:00 la veille et qu'il est 02:00 du matin, elapsedHours < 14 et inMinutes >= 960 :
+    //  sa garde de nuit est toujours en cours, on ne la coupe pas !)
+    const estOubliSortie =
+      elapsedHours >= 14 || (selectedDate < nowDayStr && inMinutes < 960 && elapsedHours >= 4)
+
+    if (estOubliSortie) {
+      const resolvedPlan =
+        options.plan ||
+        resolvePlanForExpected(options.employeeSchedule || null, options.defaultSchedule || null)
+
+      const virtualOutDate = calculerSortieAutoClose(openIn, {
+        plan: resolvedPlan,
+        enterpriseCfg: options.enterpriseCfg || null,
+        referenceNow: now,
+      })
+
+      if (virtualOutDate > inDate) {
+        const virtualOut = {
+          id: `virtual-out-${openIn.id}`,
+          employee_id: openIn.employee_id,
+          enterprise_id: openIn.enterprise_id,
+          check_time: virtualOutDate.toISOString(),
+          check_type: 'out',
+          is_auto_closed: true,
+          __virtual: true,
+        }
+        totalSecondes += calculerDureeSecondes(openIn.check_time, virtualOut.check_time)
+        validPairs.push({ in: openIn, out: virtualOut })
+        openIn = null
+        lastOpenIn = null
+        openDay = null
+      }
+    }
+  }
+
   let firstIn = validPairs.length > 0 ? validPairs[0].in : null
-  let lastOut = validPairs.length > 0 ? validPairs[validPairs.length - 1].out : null
+  // Si une nouvelle session est actuellement ouverte sur selectedDate (openIn non clôturé),
+  // l'employé est actuellement en service : lastOut reste null (--:--:--) au lieu d'afficher une sortie passée.
+  let lastOut =
+    openIn && openDay === selectedDate
+      ? null
+      : validPairs.length > 0
+        ? validPairs[validPairs.length - 1].out
+        : null
 
   if (!firstIn && openIn && openDay === selectedDate) {
     firstIn = openIn
@@ -1468,6 +1615,7 @@ export const __internal = {
   buildDaySummariesStrict,
   computeDayStrict,
   computeVirtualAutoCloseOut,
+  calculerSortieAutoClose,
   minutesDeBascule,
   cleJourDeTravail,
   grilleValableLe,

@@ -369,6 +369,18 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
                           style={styles.timeInput}
                         />
                       </div>
+                      <span style={styles.timeSeparator}>:</span>
+                      <div style={styles.timeFieldGroup}>
+                        <label style={styles.timeFieldLabel}>S</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="59"
+                          value={p.secondes}
+                          onChange={(e) => modifierPointage(index, 'secondes', e.target.value)}
+                          style={styles.timeInput}
+                        />
+                      </div>
                     </div>
 
                     {/* Toggle Jour +1 (Travail de nuit) */}

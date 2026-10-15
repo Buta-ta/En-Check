@@ -72,11 +72,16 @@ function identifiantEntreprise(e) {
   return e?.id || e?.enterprise_id || null
 }
 
-// ─── Le sens du geste : l'inverse du dernier pointage de la journée.
-//     Le mobile fait exactement le même calcul — un seul raisonnement pour tous
-//     les collecteurs.
-function sensSuivant(dernier) {
-  if (dernier && String(dernier.check_type || '').toLowerCase() === 'in') return 'out'
+// ─── Le sens du geste : l'inverse du dernier pointage de la garde en cours.
+//     Si le dernier pointage était une Entrée (IN) mais remonte à plus de 14 heures
+//     (oubli de dépointage de la veille), on repart proprement sur une nouvelle Entrée (IN).
+function sensSuivant(dernier, maintenant = Date.now()) {
+  if (!dernier) return 'in'
+  const ecartSecondes = ecartDepuis(dernier, maintenant)
+  if (ecartSecondes !== null && ecartSecondes > 14 * 3600) {
+    return 'in'
+  }
+  if (String(dernier.check_type || '').toLowerCase() === 'in') return 'out'
   return 'in'
 }
 
