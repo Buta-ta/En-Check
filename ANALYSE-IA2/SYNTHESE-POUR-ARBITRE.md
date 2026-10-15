@@ -57,7 +57,7 @@ vaut `'"ombre"'`, donc **zéro heure inventée dans `attendances` et zéro euro 
 
 ## Comment vérifier par soi-même
 
-* Migration jouée **deux fois** sur Postgres 16 local + **26 contrôles** de fumée
+* Migration jouée **deux fois** sur Postgres 16 local + **25 contrôles** de fumée
   → tout est `ok`, zéro échec : `ANALYSE-IA2/test-execution-migration.sql` (+ le squelette
   pour rejouer chez soi).
 * L'exécution a sorti **4 bugs réels** qu'aucune relecture ni aucun parseur n'avaient vus

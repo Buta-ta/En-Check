@@ -1918,6 +1918,25 @@ BEGIN
     RETURN;
   END IF;
 
+  -- ── Deux pièges à ne PAS transformer en échec du fichier entier ───────────────
+  -- (a) `pg_cron` est installé dans la base « postgres », pas dans la base applicative :
+  --     ici `cron.job` n'existe pas, donc undefined_table ;
+  -- (b) dans Supabase, le rôle SQL n'a pas toujours le privilège de LIRE cron.job :
+  --     c'est insufficient_privilege (42501), que `WHEN undefined_table` ne capture
+  --     PAS — et comme cette migration vit dans un unique BEGIN…COMMIT, ce refus
+  --     annulait TOUS les objets créés plus haut (le fichier « ne s'exécutait pas »).
+  -- D'où : on teste l'existence puis le privilège AVANT de toucher la table, et le
+  -- handler du bas attrape n'importe quel refus. Un cron non planifié reste une
+  -- dégradation visible (NOTICE), jamais une migration perdue.
+  IF to_regclass('cron.job') IS NULL THEN
+    RAISE NOTICE 'pg_cron invisible dans cette base : planifier les deux jobs depuis la base « postgres » (Database → Jobs) — encheck-alertes-scan */10 * * * * ; encheck-cloture-pivotable 30 3 * * *.';
+    RETURN;
+  END IF;
+  IF NOT has_table_privilege('cron.job', 'SELECT') THEN
+    RAISE NOTICE 'cron.job existe mais ce rôle ne peut pas le lire : planifier les deux jobs via Database → Jobs (encheck-alertes-scan */10 * * * * ; encheck-cloture-pivotable 30 3 * * *).';
+    RETURN;
+  END IF;
+
   BEGIN
     IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'encheck-alertes-scan') THEN
       PERFORM cron.unschedule('encheck-alertes-scan');
@@ -1933,8 +1952,8 @@ BEGIN
     -- Clôture pivotable : une fois par jour, pour les journées <= J-1 (§5).
     PERFORM cron.schedule('encheck-cloture-pivotable', '30 3 * * *',
       $cron$SELECT public.encheck_pipeline_toutes_entreprises()$cron$);
-  EXCEPTION WHEN undefined_table THEN
-    RAISE NOTICE 'cron.job inaccessible depuis ce rôle : planifier les deux jobs via le panneau jobs (encheck-alertes-scan */10 * * * * ; encheck-cloture-pivotable 30 3 * * *).';
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'planification pg_cron refusée (%) : les objets sont bien créés, mais les deux jobs restent à créer à la main dans Database → Jobs (encheck-alertes-scan */10 * * * * ; encheck-cloture-pivotable 30 3 * * *).', SQLERRM;
   END;
 END;
 $$;

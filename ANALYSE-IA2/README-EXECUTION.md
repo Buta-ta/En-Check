@@ -4,14 +4,33 @@ Ce dossier contient tout ce qu'il faut pour mettre en service la nouvelle
 architecture de clôture automatique **sans risque pour la paie ni pour les
 pointages**. Lis cette page avant de toucher à Supabase.
 
-## Les trois fichiers
+## Quels fichiers lancer, et où (à lire en premier)
 
-| Fichier | À quoi ça sert | Où il s'exécute |
+Sur les cinq fichiers SQL de ce dossier, **deux seulement se collent dans l'éditeur
+SQL de Supabase**. Les autres sont des outils de test locaux : collés en production,
+ils échouent — et ils ont échoué, ce qui a fait croire que « le SQL ne marche pas ».
+
+| Fichier | Se lance où | Ce qu'il fait |
 |---|---|---|
-| `../supabase/migrations/20261016000001_fondations_auto_close_structure.sql` | **LE correctif.** Colonnes, seuils uniques, cascade à 5 niveaux, mode ombre, réconciliation, journaux, RLS, cron | Éditeur SQL Supabase (projet `cxggndvhwdolbtyezjde`), ou automatiquement si tu laisses la branche se déployer |
-| `test-execution-migration.sql` | La **fumée** : 26 contrôles qui disent « ok… := true » quand la règle est bien appliquée | Postgres **local uniquement**, jamais la production |
-| `squelette-supabase-local.sql` | Le mini-monde qui imite Supabase (rôles, `auth.jwt()`, tables partagées) pour pouvoir lancer la fumée | Postgres local |
-| `diagnostic-auto-close-probleme2.sql` | Le constat d'origine (sections A→G) : ce qui clochait avant, chiffres à l'appui | Lecture seule, n'importe où |
+| `../supabase/migrations/20261016000001_fondations_auto_close_structure.sql` | **`supabase db push`** (le propre), ou éditeur SQL du projet `cxggndvhwdolbtyezjde` | **LE correctif.** Mode ombre par défaut : il ne change aucun pointage, aucune paie |
+| `exporter-fonctions-prod-only.sql` | **Éditeur SQL Supabase** | Lit seule. Récupère le code des fonctions qui ne vivent QUE dans la prod, pour le versionner |
+| `diagnostic-auto-close-probleme2.sql` | Éditeur SQL Supabase (ou local) | Lecture seule. Le constat chiffré d'origine |
+| `squelette-supabase-local.sql` | ⛔ **Postgres local seulement** | Imitation de Supabase (rôles, `auth`, tables). En prod : `permission denied for schema auth` |
+| `test-execution-migration.sql` | ⛔ **Postgres local seulement**, après le squelette | 25 assertions. Commence par `\set` (méta-commande psql) : dans l'éditeur → `syntax error at or near "\"` |
+
+**Si tu ne dois lancer qu'une chose aujourd'hui** : la migration. Puis, pour me
+rendre ce qui manque au dépôt, l'export (`exporter-fonctions-prod-only.sql`).
+Les deux outils locaux ne se lancent que quand on modifie la migration.
+
+Une note d'exécution, parce qu'elle a couté une fausse alerte : jusqu'au commit
+`P1` ci-dessous, la migration **pouvait avorter entièrement** sur Supabase. Son bloc
+pg_cron faisait `SELECT ... FROM cron.job` protégé par `EXCEPTION WHEN
+undefined_table` — mais quand le rôle n'a pas le privilège de lire `cron.job`,
+Postgres lève `insufficient_privilege` (42501), qui n'était pas capté ; comme tout le
+fichier vit dans un unique `BEGIN…COMMIT`, ce refus annulait tous les objets créés
+juste avant, sans message d'erreur explicite. Le bloc teste maintenant l'existence
+**et** le privilège avant d'y toucher, et attrape tout le reste (`WHEN OTHERS`) : un
+cron non planifié reste une `NOTICE` visible, jamais une migration perdue.
 
 ## Pourquoi un harnais d'exécution, alors que la migration « passe » déjà
 
@@ -52,7 +71,7 @@ psql "postgresql://postgres:mdp@localhost:5433/postgres" -v ON_ERROR_STOP=0 \
      -f test-execution-migration.sql
 ```
 
-Ce qu'il faut voir défiler : **26 lignes `ok_… := true`** et **zéro ligne
+Ce qu'il faut voir défiler : **25 lignes `ok_… := true` et **zéro ligne
 `ÉCHEC …`**. Les deux `ok_negatif`/`ok_oubli_pas_encore_mur` prouvent que le
 harnais sait aussi détecter une erreur et qu'un moteur honnête ne s'invente pas
 *avant* l'heure.

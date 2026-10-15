@@ -69,10 +69,23 @@ SELECT p.proname,
 --  mentionne. Ils sont aussi obligatoires dans l'export.
 SELECT tg.tgname AS declencheur,
        cl.relname AS table_sur_laquelle,
-       CASE tg.tgevent & 4  WHEN 4 THEN 'INSERT ' ELSE '' END ||
-       CASE tg.tgevent & 8  WHEN 8 THEN 'UPDATE ' ELSE '' END ||
-       CASE tg.tgevent & 16 WHEN 16 THEN 'DELETE ' ELSE '' END AS sur_evenement,
-       CASE WHEN tg.tgtype::int & 1 = 1 THEN 'BEFORE' ELSE 'AFTER' END AS moment,
+       -- pg_trigger n'a AUCUNE colonne tgevent : tout est dans le bitmask tgtype.
+       -- Bits officiels : 1 = FOR EACH ROW · 2 = BEFORE · 4 = INSERT · 8 = DELETE ·
+       -- 16 = UPDATE · 32 = TRUNCATE · 64 = INSTEAD OF.
+       -- (La version précédente avait DEUX torts : elle lisait une colonne inexistante,
+       --  et elle permutait UPDATE/DELETE. Un trigger AFTER UPDATE se serait annoncé
+       --  « DELETE » — pire qu'une erreur, parce que ça a l'air d'un résultat.)
+       -- ELSE '' est OBLIGATOIRE : sans lui, `||` propage NULL et la colonne sort vide
+       --  sans la moindre erreur.
+       trim(CASE WHEN tg.tgtype & 4  > 0 THEN 'INSERT '   ELSE '' END ||
+            CASE WHEN tg.tgtype & 8  > 0 THEN 'DELETE '   ELSE '' END ||
+            CASE WHEN tg.tgtype & 16 > 0 THEN 'UPDATE '   ELSE '' END ||
+            CASE WHEN tg.tgtype & 32 > 0 THEN 'TRUNCATE ' ELSE '' END) AS sur_evenement,
+       CASE WHEN tg.tgtype & 2  > 0 THEN 'BEFORE'
+            WHEN tg.tgtype & 64 > 0 THEN 'INSTEAD OF'
+            ELSE 'AFTER' END                                  AS moment,
+       CASE WHEN tg.tgtype & 1  > 0 THEN 'FOR EACH ROW'
+            ELSE 'FOR EACH STATEMENT' END                     AS niveau,
        pn.nspname || '.' || p.proname AS fonction_appelee,
        (SELECT count(*) FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e') AS vient_d_une_extension
   FROM pg_trigger tg

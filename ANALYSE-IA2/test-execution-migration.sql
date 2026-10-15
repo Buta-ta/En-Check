@@ -1,3 +1,8 @@
+-- ⛔ FICHIER POUR PSQL LOCAL UNIQUEMENT — À NE JAMAIS COLLER DANS L'ÉDITEUR SQL SUPABASE.
+--    Il commence par une méta-commande psql (\set ON_ERROR_STOP 0) que le serveur ne
+--    connaît pas (« syntax error at or near "\\" ») et il TRONQUE les tables en fin de
+--    compte : il est fait pour un Postgres jetable monté par squelette-supabase-local.sql.
+--    Commande : python3 run.py <migration> <ce fichier>   (voir README-EXECUTION.md)
 -- ═══════════════════════════════════════════════════════════════════════════
 -- 🧪 FUMÉE D'EXÉCUTION RÉELLE — migration 20261016000001
 --     « fondations_auto_close_structure »
@@ -52,7 +57,7 @@ TRUNCATE public.attendances, public.encheck_clotures_estimees, public.encheck_po
 DELETE FROM public.admins; DELETE FROM public.employees; DELETE FROM public.enterprises;
 DELETE FROM public.encheck_reglages_pointage WHERE enterprise_id IS NOT NULL;
 
-INSERT INTO public.enterprises (id, nom, timezone, is_active, auto_close_enabled, auto_close_time, auto_close_grace_minutes) VALUES
+INSERT INTO public.enterprises (id, name, timezone, is_active, auto_close_enabled, auto_close_time, auto_close_grace_minutes) VALUES
  -- A : grille par défaut 08:00→17:00 + auto-close 22:30 (+15 min de grâce)
  ('11111111-1111-1111-1111-111111111111','Test SARL','Africa/Porto-Novo',true, true ,'22:30:00',15),
  -- B : garde de nuit de 14 h annoncées → le plafond de 12 h doit la ramener
