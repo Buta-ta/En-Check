@@ -1,3 +1,7 @@
+-- ⛔ FICHIER POUR PSQL LOCAL UNIQUEMENT — À NE JAMAIS COLLER DANS L'ÉDITEUR SQL SUPABASE.
+--    Il crée des RÔLES et le schéma auth : en production il échoue sur le premier
+--    CREATE FUNCTION auth.jwt() (« permission denied for schema auth »), et s'il
+--    passait il tronquerait des tables. Usage : voir README-EXECUTION.md.
 -- ═══════════════════════════════════════════════════════════════════════════
 -- SQUELETTE « SUPABASE LOCAL » — uniquement pour la fumée d'exécution
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -33,7 +37,7 @@ $f$;
 
 CREATE TABLE IF NOT EXISTS public.enterprises (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  nom text, timezone text DEFAULT 'Africa/Porto-Novo', is_active boolean DEFAULT true,
+  name text, timezone text DEFAULT 'Africa/Porto-Novo', is_active boolean DEFAULT true,
   auto_close_enabled boolean DEFAULT false, auto_close_time time, auto_close_grace_minutes integer
 );
 CREATE TABLE IF NOT EXISTS public.employees (

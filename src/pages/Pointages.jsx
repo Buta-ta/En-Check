@@ -856,15 +856,20 @@ export default function Pointages() {
         heureLocaleVersUTC(nextDateStr, 14, 0, 0) ||
         new Date(`${nextDateStr}T14:00:00Z`).toISOString()
 
+      // Sorties PRÉSUMÉES : `anomalie` + les quatre colonnes `estimation_*` arrivent
+      // avec la migration des fondations (20261016000001). Sans elles, l'écran ne peut
+      // pas distinguer « le moteur a deviné » de « l'employé a badgé » — et le manager
+      // ne peut ni valider ni savoir ce qui a été écarté de la paie.
+      // ⚠️ Ces explications restent ICI, en commentaire JavaScript : à l'intérieur du
+      //    gabarit `.select(`...`)` elles ne sont PAS des commentaires — elles partent
+      //    dans l'URL et PostgREST répond 400 (PGRST100 « failed to parse select
+      //    parameter »), ce qui vide l'écran de pointages. C'est arrivé en prod le
+      //    16/10. Aucun `//` ni `--` ne doit jamais entrer dans une chaîne select.
       let attQuery = supabase
         .from('attendances')
         .select(`
           id, employee_id, enterprise_id, check_time, check_type,
           method, is_auto_closed, location_lat, location_lng,
-          //  Sorties PRÉSUMÉES : ces cinq colonnes arrivent avec la migration des
-          //  fondations. Sans elles, l'écran ne peut pas distinguer « le moteur a
-          //  deviné » de « l'employé a badgé » — et le manager ne peut ni valider
-          //  ni savoir ce qui a été écarté de la paie.
           anomalie, estimation_validee_le, estimation_remplacee_le,
           estimation_niveau, estimation_confiance,
           gps_accuracy, is_within_zone, distance_meters, geofence_id,
@@ -872,7 +877,7 @@ export default function Pointages() {
           notes, modifie_le, modifie_par, created_at,
           origine, decision_raison, modifie_par_employe,
           suspect, suspect_reason, clock_skew_seconds, device_id,
-          pointages_photos (id, photo_url, created_at)
+          pointages_photos (id, photo_url)
         `)
         .gte('check_time', queryStartISO)
         .lte('check_time', queryEndISO)

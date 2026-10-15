@@ -112,7 +112,27 @@ WHERE n.nspname='public'
 --    ou via le log, cherche un job qui appellerait encheck_cloturer_sorties_oubliees.
 --    S'il n'y en a pas, la clôture ne se déclenche QUE quand un admin ouvre le
 --    dashboard → c'est le trou n°6 de mon analyse.
-SELECT jobname, schedule, command FROM cron.job ORDER BY jobname;
+--  Cette requête, écrite telle quelle, FAIT ÉCHOUER tout le reste du script dans
+--  l'éditeur SQL (42501 permission denied pour `postgres`, ou relation absente quand
+--  pg_cron vit dans la base « postgres »). On la rend donc bavarde plutôt que
+--  retournante : les NOTICE sont lisibles dans l'onglet Messages.
+DO $cron$
+DECLARE r record; v_n integer := 0;
+BEGIN
+  IF to_regclass('cron.job') IS NULL THEN
+    RAISE NOTICE 'cron.job introuvable dans cette base (normal si pg_cron est installé dans « postgres ») : vérifier Database → Extensions et Database → Jobs.';
+  ELSIF NOT has_table_privilege('cron.job', 'SELECT') THEN
+    RAISE NOTICE 'cron.job existe mais ce rôle ne peut pas le lire : vérifier les jobs dans Database → Jobs.';
+  ELSE
+    FOR r IN SELECT jobname, schedule, command FROM cron.job ORDER BY jobname LOOP
+      v_n := v_n + 1;
+      RAISE NOTICE 'job % : « % » -> %', r.jobname, r.schedule, left(r.command, 90);
+    END LOOP;
+    IF v_n = 0 THEN
+      RAISE NOTICE 'AUCUN job pg_cron : la clôture ne se déclenche QUE quand un admin ouvre le tableau de bord (trou n°6 de l''analyse).';
+    END IF;
+  END IF;
+END $cron$;
 
 
 -- ──────────────────────────────────────────────────────────────────────────
@@ -328,9 +348,9 @@ tous AS (SELECT employee_id, count(*) n FROM paires GROUP BY 1)
 SELECT e.matricule,
        trim(coalesce(e.first_name,'')||' '||coalesce(e.last_name,'')) AS employe,
        tous.n AS journees_90j,
-       r.n AS n_30j,  round(r.med/60.0, 2) AS mediane_recent_h,
-       a.n AS n_j60_31, round(a.med/60.0, 2) AS mediane_passe_h,
-       round(abs(coalesce(r.med,0)-coalesce(a.med,0))/60.0, 2) AS derive_h
+       r.n AS n_30j,  round((r.med/60.0)::numeric, 2) AS mediane_recent_h,
+       a.n AS n_j60_31, round((a.med/60.0)::numeric, 2) AS mediane_passe_h,
+       round((abs(coalesce(r.med,0)-coalesce(a.med,0))/60.0)::numeric, 2) AS derive_h
 FROM tous
 JOIN public.employees e ON e.id = tous.employee_id
 LEFT JOIN recents r ON r.employee_id = tous.employee_id
