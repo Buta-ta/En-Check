@@ -47,6 +47,7 @@ const {
   formatDurationSeconds,
   resoudrePointagesJournee,
   compterRetardsDuJour,
+  calculerSortieAutoClose,
 } = __internal
 
 describe('hoursCalculator — Fonctions pures de calcul des heures (VD-15)', () => {
@@ -352,6 +353,89 @@ describe('hoursCalculator — Fonctions pures de calcul des heures (VD-15)', () 
     })
     expect(summaries['2026-10-13']?.totalSeconds).toBe(15917)
     expect(summaries['2026-10-14']).toBeUndefined()
+
+    resetActiveTimezone()
+  })
+
+  it('9. neutralise un rebond QR Code < 60s (Junior MANSTIAMINA : 06:32:20 IN -> 06:32:32 OUT -> 06:32:45 IN) et garde la session ouverte', () => {
+    setActiveTimezone('Africa/Porto-Novo')
+
+    const rebondJunior = [
+      { id: 'j1', employee_id: 'emp-junior', check_type: 'in', check_time: '2026-10-15T05:32:20.000Z' },
+      { id: 'j2', employee_id: 'emp-junior', check_type: 'out', check_time: '2026-10-15T05:32:32.000Z' },
+      { id: 'j3', employee_id: 'emp-junior', check_type: 'in', check_time: '2026-10-15T05:32:45.000Z' },
+    ]
+
+    // Pendant sa journée de travail (ex: à 10:00 locale) : Junior est toujours en service (lastOut = null, 0s)
+    const enCours = resoudrePointagesJournee(rebondJunior, '2026-10-15', {
+      enableAutoClose: true,
+      referenceNow: '2026-10-15T09:00:00.000Z',
+    })
+    expect(enCours.firstIn?.id).toBe('j1')
+    expect(enCours.lastOut).toBeNull()
+    expect(enCours.totalSecondes).toBe(0)
+    expect(enCours.attendances.map(a => a.id)).toEqual(['j1', 'j2', 'j3'])
+
+    // Quand Junior pointe sa vraie sortie à 17:00:00 locale (16:00:00 UTC) : 06:32:20 -> 17:00:00 = 10h 27min 40sec (37 660 s)
+    const avecSortieSoir = [
+      ...rebondJunior,
+      { id: 'j4', employee_id: 'emp-junior', check_type: 'out', check_time: '2026-10-15T16:00:00.000Z' },
+    ]
+    const terminee = resoudrePointagesJournee(avecSortieSoir, '2026-10-15')
+    expect(terminee.firstIn?.id).toBe('j1')
+    expect(terminee.lastOut?.id).toBe('j4')
+    expect(terminee.totalSecondes).toBe(37660)
+
+    resetActiveTimezone()
+  })
+
+  it('10. applique la cascade Auto-Close à 3 niveaux (planning jour/nuit, config entreprise, ou +8h sans planning) sans perdre la veille', () => {
+    setActiveTimezone('Africa/Porto-Novo')
+
+    // Niveau 1a : Planning de jour (08:00 -> 17:00) sur une entrée à 08:00 locale (07:00 UTC)
+    const outPlanJour = calculerSortieAutoClose('2026-10-12T07:00:00.000Z', {
+      plan: { start_time: '08:00:00', end_time: '17:00:00' },
+      referenceNow: '2026-10-15T10:00:00.000Z',
+    })
+    expect(outPlanJour.toISOString()).toBe('2026-10-12T16:00:00.000Z') // 17:00 locale
+
+    // Niveau 1b : Planning de nuit (22:00 -> 06:00) sur une entrée à 22:00 locale (21:00 UTC) -> 06:00 J+1 (05:00 UTC)
+    const outPlanNuit = calculerSortieAutoClose('2026-10-12T21:00:00.000Z', {
+      plan: { start_time: '22:00:00', end_time: '06:00:00' },
+      referenceNow: '2026-10-15T10:00:00.000Z',
+    })
+    expect(outPlanNuit.toISOString()).toBe('2026-10-13T05:00:00.000Z') // 06:00 J+1 locale
+
+    // Niveau 3 : Sans planning ni autoCloseEnabled -> Entrée + 8h00 (y compris pour un travailleur de nuit entré à 22:00)
+    const outSansPlanNuit = calculerSortieAutoClose('2026-10-12T21:00:00.000Z', {
+      plan: null,
+      enterpriseCfg: { autoCloseEnabled: false },
+      referenceNow: '2026-10-15T10:00:00.000Z',
+    })
+    expect(outSansPlanNuit.toISOString()).toBe('2026-10-13T05:00:00.000Z') // 22:00 + 8h = 06:00 J+1 locale
+
+    // Continuité multi-jours : oubli de sortie le lundi 12 oct (08:00 IN), suivi d'une journée normale le mardi 13 oct (08:00 -> 17:00)
+    constsummaries: {
+      const summaries = buildDaySummariesStrict({
+        attendances: [
+          { id: 'lun-in', employee_id: 'emp-1', check_type: 'in', check_time: '2026-10-12T07:00:00.000Z' },
+          { id: 'mar-in', employee_id: 'emp-1', check_type: 'in', check_time: '2026-10-13T07:00:00.000Z' },
+          { id: 'mar-out', employee_id: 'emp-1', check_type: 'out', check_time: '2026-10-13T16:00:00.000Z' },
+        ],
+        enterpriseCfg: { autoCloseEnabled: false, autoCloseTime: '23:59:00', autoCloseGraceMinutes: 0 },
+        plan: null,
+        yearStartDate: '2026-10-01',
+        yearEndDate: '2026-10-31',
+        basculeMinutes: 0,
+      })
+
+      // Le lundi 12 oct n'est plus perdu : il est auto-clôturé à +8h (28 800 s) avec hasAutoCloseVirtual = true
+      expect(summaries['2026-10-12']?.totalSeconds).toBe(8 * 3600)
+      expect(summaries['2026-10-12']?.hasAutoCloseVirtual).toBe(true)
+      // Le mardi 13 oct a bien ses 9h00 (32 400 s)
+      expect(summaries['2026-10-13']?.totalSeconds).toBe(9 * 3600)
+      expect(summaries['2026-10-13']?.hasAutoCloseVirtual).toBe(false)
+    }
 
     resetActiveTimezone()
   })

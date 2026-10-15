@@ -776,7 +776,9 @@ export default function Pointages() {
       dispatch({ type: 'SET_ADMINS_MAP', payload: adminsMap })
 
       let employeesQuery = supabase
-        .from('employees').select('*, enterprises(name)').eq('is_active', true)
+        .from('employees')
+        .select('*, enterprises(name, auto_close_enabled, auto_close_time, auto_close_grace_minutes)')
+        .eq('is_active', true)
       if (targetEid !== 'all') employeesQuery = employeesQuery.eq('enterprise_id', targetEid)
       const { data: employees, error: empError } = await employeesQuery
       if (empError) throw empError
@@ -875,13 +877,28 @@ export default function Pointages() {
         const isHolidayToday = employeeHolidaySet.has(selectedDate)
 
         const rawEmpAttendances = (attendances || []).filter(a => a.employee_id === employee.id)
+        const defaultSchedule = FeatureService.getApplicableSchedule(
+          employee.enterprise_id,
+          selectedDate,
+          allSchedules
+        )
+        const enterpriseCfg = {
+          autoCloseEnabled: employee.enterprises?.auto_close_enabled === true,
+          autoCloseTime: (employee.enterprises?.auto_close_time || '23:59:00').slice(0, 8),
+          autoCloseGraceMinutes: Number(employee.enterprises?.auto_close_grace_minutes || 0),
+        }
         const {
           attendances: empAttendances,
           validPairs,
           totalSecondes,
           firstIn,
           lastOut,
-        } = resoudrePointagesJournee(rawEmpAttendances, selectedDate)
+        } = resoudrePointagesJournee(rawEmpAttendances, selectedDate, {
+          enableAutoClose: true,
+          employeeSchedule: employeeSchedulesMap[employee.id] || null,
+          defaultSchedule,
+          enterpriseCfg,
+        })
 
         const employeeAbsence = absencesData?.find(abs => abs.employee_id === employee.id)
         const employeeConflicts = (refreshedConflicts || []).filter(
@@ -910,8 +927,9 @@ export default function Pointages() {
           a => a.method === 'face' || a.method === 'pin_face'
         )
 
+        // Règle anti-fraude : aucune heure supplémentaire automatique sur un oubli de dépointage (Auto-Close)
         let overtimeData = null
-        if (hasOvertimeFeature && totalSecondes > 0) {
+        if (hasOvertimeFeature && totalSecondes > 0 && !lastOut?.is_auto_closed) {
           overtimeData = FeatureService.calculateOvertimeForEmployeeDay({
             totalWorkedSeconds: totalSecondes,
             employeeSchedule: employeeSchedulesMap[employee.id] || null,
