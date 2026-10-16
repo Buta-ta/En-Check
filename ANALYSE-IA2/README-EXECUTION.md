@@ -17,6 +17,9 @@ ils échouent — et ils ont échoué, ce qui a fait croire que « le SQL ne mar
 | `../supabase/outils-sql/exporter-fonctions-prod-only.sql` | **Éditeur SQL Supabase** | Lit seule. Récupère le code des fonctions qui ne vivent QUE dans la prod, pour le versionner |
 | `../supabase/outils-sql/diagnostic-auto-close-probleme2.sql` | Éditeur SQL Supabase (ou local) | Lecture seule. Le constat chiffré d'origine |
 | `../supabase/outils-sql/controle-integrite-migration.sql` | **Éditeur SQL Supabase, APRÈS la migration** | Lecture seule. Dit `RIEN NE MANQUE` ou énumère ce qui manque : c'est LUI qui prouve que le fichier a bien été collé en entier |
+| `../supabase/outils-sql/diagnostic-pointage-qui-passe-minuit.sql` | **Éditeur SQL Supabase** | Lecture seule. Répond en chiffres à « une sortie pointée après minuit rattache-t-elle sa journée ? » (sections A→G, une seule ligne à éditer : le matricule) |
+| `../supabase/outils-sql/regler-appariement-nuit.sql` | **Éditeur SQL Supabase, sur décision d'arbitre uniquement** | ⚠️ Écrit une ligne de réglage (`appariement_heures`, une entreprise). Contrôlé avant/après, annulable (section 6) |
+
 | `../supabase/outils-sql/squelette-supabase-local.sql` | ⛔ **Postgres local seulement** | Imitation de Supabase (rôles, `auth`, tables). En prod : `permission denied for schema auth` |
 | `../supabase/outils-sql/test-execution-migration.sql` | ⛔ **Postgres local seulement**, après le squelette | 25 assertions. Commence par `\set` (méta-commande psql) : dans l'éditeur → `syntax error at or near "\"` |
 

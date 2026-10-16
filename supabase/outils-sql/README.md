@@ -11,6 +11,15 @@ appliqué automatiquement, et il ne laisse aucune trace dans
 `supabase_migrations.schema_migrations`. Rien dans ce dossier ne doit donc porter un
 nom en `AAAAMMJJHHMMSS_…` : ce préfixe est ce qui dit « applique-moi ça ».
 
+**Une exception, assumée** : un *réglage ponctuel d'entreprise* (une ligne dans
+`encheck_reglages_pointage`) vit ici aussi, pas dans `migrations/`. Ce n'est pas de la
+structure — donc `db push` n'a rien à en faire — et le mettre dans `migrations/`
+reviendrait à imposer ce chiffre à **toutes** les entreprises pour toujours, par
+l'effet de bord d'un déploiement. Voir `regler-appariement-nuit.sql`, qui est le seul
+fichier du dossier à écrire : il est encadré en conséquence (contrôle préalable qui
+refuse toute valeur incohérente, `lignes_ecrites` qui prouve que la ligne est bien
+posée, annulation en section 6).
+
 ## Qui se lance où
 
 | Fichier | Se lance | Effet |
@@ -18,6 +27,8 @@ nom en `AAAAMMJJHHMMSS_…` : ce préfixe est ce qui dit « applique-moi ça ».
 | `controle-integrite-migration.sql` | **éditeur SQL Supabase, après la migration** | lecture seule — dit `RIEN NE MANQUE` ou énumère ce qui manque |
 | `exporter-fonctions-prod-only.sql` | **éditeur SQL Supabase** | lecture seule — récupère le code des fonctions qui ne vivent que dans la prod |
 | `diagnostic-auto-close-probleme2.sql` | éditeur SQL Supabase ou local, **facultatif** | lecture seule — le constat chiffré d'avant correctif |
+| `diagnostic-pointage-qui-passe-minuit.sql` | **éditeur SQL Supabase** | lecture seule — une sortie pointée après minuit rattache-t-elle sa journée ? verdict chiffré, section C |
+| `regler-appariement-nuit.sql` | **éditeur SQL Supabase**, une fois, sur décision d'arbitre | ⚠️ écrit **une ligne de réglage** (`encheck_reglages_pointage`) pour UNE entreprise — ni structure, ni donnée de paie |
 | `squelette-supabase-local.sql` | ⛔ **Postgres local seulement** | monte un faux Supabase (rôles, `auth`, tables partagées) |
 | `test-execution-migration.sql` | ⛔ **Postgres local seulement**, après le squelette | 25 assertions : la migration, exécutée pour de vrai |
 
