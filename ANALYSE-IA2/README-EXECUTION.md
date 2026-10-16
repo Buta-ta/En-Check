@@ -20,6 +20,7 @@ ils échouent — et ils ont échoué, ce qui a fait croire que « le SQL ne mar
 | `../supabase/outils-sql/diagnostic-pointage-qui-passe-minuit.sql` | **Éditeur SQL Supabase** | Lecture seule. Répond en chiffres à « une sortie pointée après minuit rattache-t-elle sa journée ? » (sections A→G, une seule ligne à éditer : le matricule) |
 | `../supabase/outils-sql/regler-appariement-nuit.sql` | **Éditeur SQL Supabase, sur décision d'arbitre uniquement** | ⚠️ Écrit une ligne de réglage (`appariement_heures`, une entreprise). Contrôlé avant/après, annulable (section 6) |
 
+| `../supabase/outils-sql/lister-signatures-fonctions.sql` | Éditeur SQL Supabase | Lecture seule. Donne les signatures réelles des 28 fonctions appelées par l'app sans être déclarées dans ce dépôt (comble l'angle mort de `cablageRpc.test.js`) |
 | `../supabase/outils-sql/squelette-supabase-local.sql` | ⛔ **Postgres local seulement** | Imitation de Supabase (rôles, `auth`, tables). En prod : `permission denied for schema auth` |
 | `../supabase/outils-sql/test-execution-migration.sql` | ⛔ **Postgres local seulement**, après le squelette | 25 assertions. Commence par `\set` (méta-commande psql) : dans l'éditeur → `syntax error at or near "\"` |
 
@@ -90,6 +91,17 @@ Ce qu'il faut voir défiler : **25 lignes `ok_… := true` et **zéro ligne
 `ÉCHEC …`**. Les deux `ok_negatif`/`ok_oubli_pas_encore_mur` prouvent que le
 harnais sait aussi détecter une erreur et qu'un moteur honnête ne s'invente pas
 *avant* l'heure.
+
+## État de la base au 16/10, 08:36 (relevé après coup, pour qu'on sache d'où on part)
+
+Un réglage a été posé **en production** ce matin-là, par collage de
+`../supabase/outils-sql/regler-appariement-nuit.sql` : une ligne dans
+`encheck_reglages_pointage`, `cle = 'appariement_heures'`, `valeur = 20`, en **override
+entreprise** pour l'entreprise de `ENN-0002`. Preuve rendue par le fichier lui-même
+(section 5) : `appariement_en_vigueur = 20`, `valeur_demandee = 20`. La valeur **globale**
+est restée à 16 : les autres entreprises ne bougent pas, et le verrou
+`autoCloseEstimation.test.js` 1.a (qui verrouille le contrat 12/12/16) n'est pas touché.
+Pour revenir en arrière : section 6 du même fichier (un `DELETE` de l'override), et c'est tout.
 
 ## Après la mise en service du 16/10 : rien à coller
 

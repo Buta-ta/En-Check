@@ -231,3 +231,54 @@ Un garde-fou de non-régression est posé côté app : `src/services/__tests__/n
 actuel *et* l'effet du relevé de seuil, pour que personne ne découvre plus tard, en
 changeant un chiffre, qu'une sortie à 22:00 → 02:00 ou un badge 36 h plus tard
 sont deux cas que la règle doit continuer de distinguer.
+
+---
+
+## Problème 4 (16/10, 08:36) — `Valider / Écarter` répondait 404 : le contrat RPC
+
+Juste après la mise en service du relevé d'appariement (override `appariement_heures = 20`
+posé en base à 08:36, section 5 du fichier : `appariement_en_vigueur = 20`), le clic sur
+**Valider** une sortie présumée sortait :
+
+```
+POST /rest/v1/rpc/encheck_estimation_statuer → 404 (Not Found)
+Could not find the function public.encheck_estimation_statuer(p_action, p_ids) in the schema cache
+```
+
+La base déclare `encheck_estimation_statuer(p_ids uuid[], p_decision text, p_motif text)`
+(migration l.1237-1239). L'appel JS envoyait `{ p_ids, p_action }`. En SQL, un appel par
+noms d'arguments se fiche de l'ordre ; **PostgREST, lui, construit une signature avec les
+noms que tu envoies** — un nom qui ne correspond à aucun paramètre déclaré ne provoque pas
+une erreur de typage mais un **404 « fonction introuvable »**. Les deux boutons du bandeau
+d'estimation étaient donc morts depuis leur écriture, sans qu'aucun outil ne le voie :
+l'objet est bien formé, `p_action` est un mot comme un autre, et la fonction vit dans un
+autre langage. `vite build` muet, la porte de lint muette, `npm test` muet (aucun test
+n'appelait ce contrat).
+
+Corrigé côté JS (`p_decision`, et plus rien du côté base — pas de `CREATE OR REPLACE` d'une
+fonction partagée), et **le faux succès est traité** : la fonction SQL renvoie un nombre de
+lignes statées ; renvoyer 0 signifiait hier « estimation validée » dans une bulle verte sans
+rien avoir écrit. Aujourd'hui `data === 0` affiche un avertissement et recharge la page.
+
+Le garde-fou est devenu un test, pas une promesse : `src/services/__tests__/cablageRpc.test.js`
+croise chaque `.rpc('nom', { … })` du `src/` avec les `CREATE FUNCTION` des
+`supabase/migrations/*.sql` — noms envoyés ⊆ noms déclarés, paramètres non-`DEFAULT` présents,
+et surcharges prises en compte. **Validé en réinjectant le bug** : `p_decision` → `p_action` le
+rend rouge avec le message exact (« PostgREST traduirait la clé « p_action » en argument nommé :
+aucune fonction « encheck_estimation_statuer » de ce dépôt n'a ce paramètre »). Suite :
+**9 fichiers / 79 tests** verts, porte lint 0 erreur.
+
+**Angle mort assumé, et sa mesure.** Sur 34 appels `rpc()` du dépôt, **2** seulement ciblent
+une fonction déclarée dans `supabase/migrations/` d'ici (le reste vit dans le dépôt de Dev 1 ou
+n'a jamais été rapatrié). Le test le dit au lieu de le cacher : ces 28 noms sont listés dans une
+constante `HORS_DEPOT`, et tout *nouvel* appel vers une fonction absente de cette liste fait
+rougir le test. Pour combler le trou sans deviner : `supabase/outils-sql/lister-signatures-fonctions.sql`
+(lecture seule, exécuté sur Postgres 16 local : 0 erreur) rend les signatures **réelles** de ces
+28 fonctions via `pg_get_function_arguments` — 28 lignes attendues en prod. Colle-le, envoie le
+résultat, j'en fais un fichier de référence du dépôt (pas une migration : rien à appliquer) et le
+garde-fou passera de 2 à 34 appels couverts. Si une fonction de la liste ne revient pas, c'est
+qu'elle n'existe pas sous ce nom dans `public` — donc son appel JS est candidat au même 404.
+
+Ce qui reste à dire à Dev 1, sans drame mais sans l'oublier : ses 28 fonctions sont appelées par
+cette app avec des arguments nommés, et **aucun** test ne vérifie aujourd'hui ce contrat de son
+côté. Un `p_action` chez lui produirait exactement le même silence.
