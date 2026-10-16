@@ -23,7 +23,7 @@ import {
   etiquetteEstimation,
   estEstimationAStatuer, estEstimationEcartee,
   estJourneeOubliBadge,
-  estLigneConsigneeEnBase, estIdentifiantDeBase, formatConfianceEstimation,
+  estIdentifiantDeBase, formatConfianceEstimation,
   chargerSeuilsPointage,
 } from '../services/seuilsPointage'
 import {
@@ -692,56 +692,57 @@ export default function Pointages() {
   //  se lisent ici, parce qu'aucun outil de ce dépôt ne les voyait passer.
   const [estimationEnCours, setEstimationEnCours] = useState(null)
 
-  const statuerEstimation = async (attendanceId, action) => {
-    if (!attendanceId) return
-    //  Une décision ne porte que sur une ligne ÉCRITE en base. Les sorties que le
-    //    moteur d'affichage invente à la lecture portent un id de facture
-    //    `virtual-out-<uuid>` : la base réclame `p_ids uuid[]`, Postgres répond
-    //    `22P02 invalid input syntax for type uuid` (400), et le manager lit un
-    //    message illisible pour une action qui n'avait rien à faire ici. On
-    //    n'invente pas un faux uuid pour faire plaisir au bouton : on dit qu'il
-    //    n'y a rien à statuer tant que la ligne n'est pas consignée.
-    if (!estIdentifiantDeBase(attendanceId)) {
-      toast.warning(
-        'Sortie estimée à l’écran, pas en base : rien à statuer. Le serveur ne clôture ' +
-        'JAMAIS la journée en cours, et il n’y écrit quoi que ce soit que si le mode ' +
-        'estimation de l’entreprise est « actif » (mode « ombre » = rien d’écrit dans ' +
-        'attendances). Pour trancher maintenant : « Modifier le pointage ».',
-      )
+  //  « TOUJOURS STATUER » (16/10 soir, décision du commanditaire) : les
+  //  boutons Valider/Écarter fonctionnent que la sortie présumée soit
+  //  CONSIGNÉE en base (mode actif du cron) ou seulement AFFICHÉE à l'écran
+  //  (mode ombre). Un seul contrat : `encheck_estimation_decider` —
+  //    · Valider → l'heure présumée reste, MARQUÉE (jamais blanchie) ;
+  //    · Écarter → l'heure présumée disparaît des écrans (hors calcul),
+  //      la décision reste journalisée pour l'audit.
+  //  Les NOMS des paramètres sont le contrat avec PostgREST (leçon 404 du
+  //  16/10 : `p_action` n'existait pas) ; ne pas les renommer.
+  const statuerEstimation = async (ligne, action) => {
+    const attendanceId = ligne?.id || null
+    //  Sortie inventée à la lecture : `virtual-out-<uuid de l'ENTRÉE>` — le
+    //  uuid après le préfixe EST le pointage d'entrée (estimation_source_id).
+    const sourceId = ligne?.estimation_source_id
+      || (typeof attendanceId === 'string' && attendanceId.startsWith('virtual-out-')
+        ? attendanceId.slice('virtual-out-'.length)
+        : null)
+    const ligneEnBase = estIdentifiantDeBase(attendanceId) ? attendanceId : null
+    if (!ligneEnBase && !sourceId) {
+      toast.warning('Aucune heure présumée consignée pour cette ligne.')
       return
     }
-    setEstimationEnCours(`${attendanceId}:${action}`)
+    setEstimationEnCours(`${attendanceId || sourceId}:${action}`)
     try {
-      // ⚠️ Les NOMS des paramètres sont le contrat avec PostgREST : `rpc()` traduit
-      //    chaque clé en argument nommé, et une clé qui ne correspond à aucun
-      //    paramètre déclaré ne produit pas une erreur de typage — elle produit un
-      //    404 « Could not find the function public.encheck_estimation_statuer(
-      //    p_action, p_ids) in the schema cache », parce qu'une fonction portant ces
-      //    noms-là n'existe nulle part. La signature en base (migration 20261016000001
-      //    l.1237-1239) est `p_ids uuid[], p_decision text, p_motif text`. Le
-      //    16/10, l'appel envoyait `p_action` : les deux boutons du bandeau
-      //    d'estimation étaient donc morts, silencieusement pour l'affichage et en
-      //    404 pour l'action. Garde-fou : src/services/__tests__/cablageRpc.test.js.
-      const { data: statuees, error } = await supabase.rpc('encheck_estimation_statuer', {
-        p_ids: [attendanceId],
+      const { data: resultat, error } = await supabase.rpc('encheck_estimation_decider', {
+        p_id: ligneEnBase,
+        p_source: sourceId,
         p_decision: action,
+        p_heure_sortie: ligne?.check_time || null,
+        p_niveau: Number.isFinite(Number(ligne?.estimation_niveau))
+          ? Number(ligne.estimation_niveau)
+          : null,
+        p_confiance: typeof ligne?.estimation_confiance === 'string'
+          ? ligne.estimation_confiance
+          : null,
+        p_motif: null,
       })
       if (error) {
         toast.error(`Le traitement de cette estimation a échoué : ${error.message}`)
-      } else if (!statuees) {
-        // La fonction SQL a répondu 0 : la ligne n'était plus dans l'état attendu
-        // (déjà validée, déjà écartée, ou remplacée entre-temps par un vrai badge).
-        // Annoncer un succès ici serait mentir au manager sur ce qui rentre en paie.
+      } else if (resultat && resultat.ok === false) {
+        toast.error(resultat.erreur || 'Le traitement de cette estimation a échoué.')
+      } else if (resultat && resultat.statut === 'deja_statuee') {
         toast.warning(
-          'Aucune estimation à statuer sur cette ligne — elle a déjà été traitée, ' +
-          "ou un vrai pointage l'a remplacée. La page est rechargée.",
+          'Cette estimation a déjà été traitée — la page est rechargée.',
         )
         await loadPointages()
       } else {
         toast.success(
           action === 'rejeter'
-            ? 'Estimation écartée — la journée reste sans sortie payée.'
-            : 'Estimation validée — la journée compte désormais normalement.',
+            ? 'Estimation écartée — cette heure disparaît et la journée reste sans sortie payée.'
+            : 'Estimation validée — cette heure reste, marquée « sortie présumée », et compte désormais normalement.',
         )
         await loadPointages()
       }
@@ -2680,14 +2681,14 @@ function PointageCard({
                   ? ` · origine : niveau ${p.lastOut.estimation_niveau}` : ''}
                 {confianceEstimation ? ` · confiance ${confianceEstimation}` : ''}
               </span>
-              {canEdit && (estLigneConsigneeEnBase(p.lastOut) ? (
+              {canEdit && (
                 <span style={styles.estimationActions}>
                   <button
                     type="button"
                     style={styles.estimationBtnOk}
                     disabled={estimationEnCours === `${p.lastOut.id}:valider`}
-                    onClick={() => statuerEstimation(p.lastOut.id, 'valider')}
-                    title="Compter cette sortie dans la paie"
+                    onClick={() => statuerEstimation(p.lastOut, 'valider')}
+                    title="Compter cette sortie dans la paie — l'heure reste, marquée « sortie présumée »"
                   >
                     <CheckCircle2 size={12} /> Valider
                   </button>
@@ -2695,25 +2696,13 @@ function PointageCard({
                     type="button"
                     style={styles.estimationBtnNo}
                     disabled={estimationEnCours === `${p.lastOut.id}:rejeter`}
-                    onClick={() => statuerEstimation(p.lastOut.id, 'rejeter')}
-                    title="Ne pas payer (la ligne reste en base pour l'audit)"
+                    onClick={() => statuerEstimation(p.lastOut, 'rejeter')}
+                    title="Ne pas payer : cette heure disparaît des écrans (la décision reste dans l'audit)"
                   >
                     <Ban size={12} /> Écarter
                   </button>
                 </span>
-              ) : (
-                //  Boutons retirés, ET DITS. Une estimation inventée à la lecture
-                //  n'a pas de ligne à marquer : `encheck_estimation_statuer` ne
-                //  met à jour qu'une ligne `attendances` déjà écrite. Un bouton
-                //  grisé sans explication aurait envoyé le manager chercher une
-                //  panne là où il n'y a qu'un ordre du temps (et un mode).
-                <span
-                  style={styles.estimationNote}
-                  title="Le serveur ne clôture jamais la journée en cours ; il n'écrit une sortie présumée dans « attendances » que si le mode estimation de l'entreprise est « actif » (sinon tout reste en mode ombre, dans « encheck_clotures_estimees »). Rien à valider donc, pour l'instant, sur cette ligne affichée."
-                >
-                  sortie estimée à l’écran · rien à statuer
-                </span>
-              ))}
+              )}
             </div>
           )}
         </div>

@@ -36,7 +36,6 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
   const lignesEditables = (pointagesJournee || []).filter(
     (p) => estIdentifiantDeBase(p.id) && !estLigneHorsCalcul(p)
   )
-  const nbLignesMasquees = (pointagesJournee || []).length - lignesEditables.length
 
   useEffect(() => {
     
@@ -74,7 +73,13 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
         secondes: String(secondes).padStart(2, '0'),
         isNextDay: isNextDay,
         isExisting: true,
-        original_time: p.check_time // Pour l'audit log
+        original_time: p.check_time, // Pour l'audit log
+        //  ⏳✅ SORTIE PRÉSUMÉE (décision 16/10 soir) : la ligne RESTE dans la
+        //  fiche, et elle est MARQUÉE. Elle ne passe jamais par
+        //  `replace_attendance_day` (qui blanchirait la marque) : voir handleSubmit.
+        __estimation: Boolean(p.is_auto_closed || p.estimation_source_id || p.estimation_validee_le),
+        __sourceId: p.estimation_source_id || null,
+        __estimationEtat: p.estimation_validee_le ? 'validee' : 'a_statuer',
       }
     })
     
@@ -160,7 +165,15 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
       const enterpriseId = pointagesJournee[0].enterprise_id
 
       // 1. Préparer les nouvelles données (avec gestion du J+1)
-      const nouveauxPointages = pointages.map(p => {
+      //  Les lignes PRÉSUMÉES ne passent jamais par `replace_attendance_day` :
+      //  cette fonction ne recopie que check_type/check_time et BLANCHIRAIT une
+      //  sortie présumée en badge réel (la marque disparaissait à
+      //  l'enregistrement). Elles sont gérées plus bas, EN PLACE, par
+      //  `encheck_estimation_deplacer` / `encheck_estimation_decider`.
+      const lignesPresumees = pointages.filter(p => p.__estimation)
+      const lignesBadges = pointages.filter(p => !p.__estimation)
+
+      const nouveauxPointages = lignesBadges.map(p => {
         // « Lendemain » coché : on décale le JOUR du calendrier, sans jamais
         // passer par un objet Date local (aucun risque de saut d'heure).
         let finalDateStr = selectedDate
@@ -231,12 +244,14 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
       //     peut modifier ni supprimer depuis l'application ;
       //   • l'auteur (`admin`) est déduit du JWT côté serveur, pas du
       //     navigateur.
-      //  `idsToDelete` = UNIQUEMENT les lignes exploitables (vrais badges +
-      //  estimations validées, celles qui s'affichent). Les lignes d'audit
-      //  (écartées / remplacées) ne sont ni affichées, ni supprimées : elles
-      //  restent en base pour l'audit — et surtout, elles ne peuvent plus
-      //  ressusciter en vrai pointage via un enregistrement de cette fiche.
-      const idsToDelete = lignesEditables.map(p => p.id)
+      //  `idsToDelete` = UNIQUEMENT les vrais badges affichés. Les lignes
+      //  d'audit (écartées / remplacées) ne sont ni affichées, ni touchées ;
+      //  les lignes PRÉSUMÉES (validées ou à statuer) ne sont ni supprimées ni
+      //  ré-insérées : elles gardent leur marque — cf. le traitement dédié plus
+      //  bas (déplacement en place, ou « Écarter » si la ligne a été retirée).
+      const idsToDelete = lignesEditables
+        .filter(p => !p.__estimation)
+        .map(p => p.id)
 
       const { data: rpcResult, error: rpcError } = await supabase.rpc(
         'replace_attendance_day',
@@ -257,6 +272,46 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
       const remplaces = rpcResult?.remplaces ?? 0
       const crees = rpcResult?.crees ?? nouveauxPointages.length
       const photos = rpcResult?.photos_conservees ?? 0
+
+      // ── LIGNES PRÉSUMÉES — la marque survit à l'enregistrement ──────────
+      //  Règle du 16/10 soir : VALIDÉE → la ligne reste et reste marquée ;
+      //  ÉCARTÉE (ou retirée du formulaire) → elle disparaît des écrans
+      //  (décision journalisée, jamais de suppression en base).
+      const idsPresumesAvant = lignesEditables
+        .filter(p => p.__estimation)
+        .map(p => p.id)
+
+      for (const p of lignesPresumees) {
+        let jourFinal = selectedDate
+        if (p.isNextDay) {
+          const d = new Date(`${selectedDate}T00:00:00Z`)
+          d.setUTCDate(d.getUTCDate() + 1)
+          jourFinal = d.toISOString().split('T')[0]
+        }
+        const nouvelleHeure = heureLocaleVersUTC(jourFinal, p.heures, p.minutes, p.secondes)
+        if (nouvelleHeure && nouvelleHeure !== p.original_time) {
+          const { error: errDeplace } = await supabase.rpc('encheck_estimation_deplacer', {
+            p_id: p.id,
+            p_heure: nouvelleHeure,
+            p_type: p.type,
+            p_motif: motif.trim() || null,
+          })
+          if (errDeplace) throw errDeplace
+        }
+      }
+
+      const idsPresumesRestants = new Set(lignesPresumees.map(p => p.id))
+      for (const id of idsPresumesAvant.filter((id) => !idsPresumesRestants.has(id))) {
+        const origine = lignesEditables.find(p => p.id === id)
+        const { error: errEcarte } = await supabase.rpc('encheck_estimation_decider', {
+          p_id: id,
+          p_source: origine?.__sourceId || null,
+          p_decision: 'rejeter',
+          p_heure_sortie: origine?.check_time || null,
+          p_motif: motif.trim() || null,
+        })
+        if (errEcarte) throw errEcarte
+      }
 
       toast.success(
         `✅ ${crees} pointage${crees > 1 ? 's' : ''} enregistré${crees > 1 ? 's' : ''}` +
@@ -445,6 +500,29 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
                       </div>
                     </div>
 
+                    {/* ⏳✅ SORTIE PRÉSUMÉE — la ligne RESTE et elle est MARQUÉE
+                        (décision 16/10 soir) : l'admin distingue toujours un
+                        badge réel d'une heure supposée, même après validation. */}
+                    {p.__estimation && (
+                      <span
+                        style={{
+                          ...styles.chipPresumee,
+                          color: p.__estimationEtat === 'validee' ? '#10B981' : '#F59E0B',
+                          background: p.__estimationEtat === 'validee'
+                            ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
+                          border: p.__estimationEtat === 'validee'
+                            ? '1px solid rgba(16,185,129,0.35)' : '1px solid rgba(245,158,11,0.35)',
+                        }}
+                        title={p.__estimationEtat === 'validee'
+                          ? 'Sortie présumée VALIDÉE par un admin : l\'heure fait foi pour la paie, mais la ligne reste une supposition (jamais un badge).'
+                          : 'Sortie présumée, encore à statuer : non payée tant qu\'un admin ne l\'a pas validée.'}
+                      >
+                        {p.__estimationEtat === 'validee'
+                          ? '✅ Sortie présumée validée'
+                          : '⏳ Sortie présumée — à statuer'}
+                      </span>
+                    )}
+
                     {/* Toggle Jour +1 (Travail de nuit) */}
                     <div style={styles.nextDayToggleWrap}>
                       <button
@@ -488,18 +566,7 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
                 )}
               </div>
 
-              {/* 🚫 LIGNES D'AUDIT MASQUÉES — on dit qu'elles existent, et
-                  pourquoi on ne les montre pas : une estimation écartée ou
-                  remplacée ne doit jamais redevenir un vrai pointage. */}
-              {nbLignesMasquees > 0 && (
-                <p style={styles.noteAudit}>
-                  ℹ {nbLignesMasquees} ligne{nbLignesMasquees > 1 ? 's' : ''} d'audit masquée{nbLignesMasquees > 1 ? 's' : ''} sur cette journée
-                  (sortie{nbLignesMasquees > 1 ? 's' : ''} présumée{nbLignesMasquees > 1 ? 's' : ''} écartée{nbLignesMasquees > 1 ? 's' : ''} ou remplacée{nbLignesMasquees > 1 ? 's' : ''}) :
-                  non modifiable{nbLignesMasquees > 1 ? 's' : ''} ici, conservée{nbLignesMasquees > 1 ? 's' : ''} pour l'audit.
-                </p>
-              )}
-
-              {/* Add Button */}
+              {/* Ajouter un pointage */}
               <button
                 type="button"
                 onClick={ajouterPointage}
@@ -648,6 +715,7 @@ const styles = {
   deleteRowBtn: { background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '8px', color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   emptyPointages: { textAlign: 'center', padding: '40px 20px', color: '#555' },
   noteAudit: { margin: '10px 2px 0', padding: '10px 12px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '10px', color: '#B45309', fontSize: '12px', lineHeight: '1.5' },
+  chipPresumee: { display: 'inline-flex', alignItems: 'center', padding: '3px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: '700', whiteSpace: 'nowrap' },
   addBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', background: 'rgba(16, 185, 129, 0.06)', color: '#10B981', border: '2px dashed rgba(16, 185, 129, 0.25)', borderRadius: '14px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' },
   motifSection: { display: 'flex', flexDirection: 'column', gap: '8px' },
   motifLabel: { display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '13px', fontWeight: '600' },

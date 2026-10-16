@@ -203,7 +203,7 @@ describe('câblage rpc() ↔ signatures SQL', () => {
     // soit que les migrations aient été déplacées, soit que l'appel ait changé de
     // forme (variables dynamiques) — dans les deux cas, le corriger, pas le supprimer.
     expect(VERIFIES.length, 'aucun appel rpc() vers une fonction déclarée dans ce dépôt').toBeGreaterThan(0)
-    expect(VERIFIES.map((a) => a.nom)).toContain('encheck_estimation_statuer')
+    expect(VERIFIES.map((a) => a.nom)).toContain('encheck_estimation_decider')
   })
 
   it.each(VERIFIES.map((a) => [`${a.fichier}:${a.ligne} → ${a.nom}(${a.cles.join(', ')})`, a]))(
@@ -239,8 +239,32 @@ describe('câblage rpc() ↔ signatures SQL', () => {
     const s = SIGNATURES.get('encheck_estimation_statuer')[0]
     expect(s.params.map((p) => p.nom)).toEqual(['p_ids', 'p_decision', 'p_motif'])
     expect(s.params.find((p) => p.nom === 'p_motif').requis).toBe(false)
-    const appel = APPELS.find((a) => a.nom === 'encheck_estimation_statuer')
-    expect([...appel.cles].sort()).toEqual(['p_decision', 'p_ids'])   // l'ordre n'a pas d'sens pour PostgREST, les noms si
+  })
+
+  it('« toujours statuer » (16/10 soir) : decider = p_id + p_source + p_decision (+ optionnels)', () => {
+    // Le bandeau appelle UNIQUEMENT `encheck_estimation_decider` — il statue
+    // que la sortie soit consignée en base (p_id) ou seulement à l'écran
+    // (p_source = pointage d'entrée, mode ombre). Les NOMS des clés envoyées
+    // par le navigateur doivent exister dans la signature SQL.
+    const s = SIGNATURES.get('encheck_estimation_decider')[0]
+    expect(s.params.map((p) => p.nom)).toEqual(
+      ['p_id', 'p_source', 'p_decision', 'p_heure_sortie', 'p_niveau', 'p_confiance', 'p_motif'],
+    )
+    //  Le BANDEAU (Pointages.jsx) envoie le contrat complet ; la fiche
+    //  (ModifierPointage.jsx) n'envoie que le sous-ensemble dont elle a besoin
+    //  (les clés omises ont une valeur par défaut en SQL). On vérifie les deux.
+    const bandeau = APPELS.find(
+      (a) => a.nom === 'encheck_estimation_decider' && a.fichier === 'src/pages/Pointages.jsx',
+    )
+    expect([...bandeau.cles].sort()).toEqual(
+      ['p_confiance', 'p_decision', 'p_heure_sortie', 'p_id', 'p_motif', 'p_niveau', 'p_source'],
+    )
+    const fiche = APPELS.find(
+      (a) => a.nom === 'encheck_estimation_decider' && a.fichier === 'src/components/ModifierPointage.jsx',
+    )
+    expect([...fiche.cles].sort()).toEqual(
+      ['p_decision', 'p_heure_sortie', 'p_id', 'p_motif', 'p_source'],
+    )
   })
 
   it('tout appel vers une fonction hors de ce dépôt est sur la liste assumée', () => {
