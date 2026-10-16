@@ -133,9 +133,11 @@ describe('séparation des préoccupations — verrou, pas bénédiction', () => 
   })
 
   it('les deux prédicats ne sont pas la même question', () => {
-    // « non validée » ≠ « statuable » : la ligne inventée est non validée ET non
-    // statuable ; la ligne validée est statuable par id mais le bandeau a déjà
-    // disparu. Écrire les deux assertions ensemble empêche de les confondre un jour.
+    // « non validée » ≠ « consignée en base » : la ligne inventée à l'écran est
+    // non validée et pas (encore) en base ; la ligne validée est consignée par
+    // id. (Depuis le 16/10 soir, même la ligne à l'écran est STATUABLE via
+    // `encheck_estimation_decider` — ces prédicats parlent de STOCKAGE, pas de
+    // boutons.) Écrire les deux assertions ensemble empêche de les confondre.
     expect(estEstimationNonValidee(sortieConsignee)).toBe(true)
     expect(estLigneConsigneeEnBase(sortieConsignee)).toBe(true)
     expect(estEstimationNonValidee(null)).toBe(false)
@@ -157,19 +159,20 @@ describe('marquage de toute sortie inventée — lecture des sources', () => {
     }
   })
 
-  it('les deux boutons du bandeau sont derrière le garde-fou, nulle part ailleurs', () => {
+  it('les deux boutons du bandeau STATUENT TOUJOURS (base ET écran) — règle du 16/10 soir', () => {
+    //  Décision du commanditaire : « je voudrais que les sorties présumées
+    //  soient toujours statuer ». L'ancien garde-fou `estLigneConsigneeEnBase`
+    //  (« sortie estimée à l'écran · rien à statuer ») a été RETIRÉ : les
+    //  boutons appellent `encheck_estimation_decider`, qui consigne la décision
+    //  même en mode ombre.
     const pageSrc = readFileSync(
       new URL('../../pages/Pointages.jsx', import.meta.url),
       'utf8',
     )
-    const garde = pageSrc.indexOf('estLigneConsigneeEnBase(p.lastOut)')
-    expect(garde).toBeGreaterThan(-1)
-    const appels = [...pageSrc.matchAll(/statuerEstimation\(p\.lastOut\.id/g)]
+    expect(pageSrc).not.toContain('estLigneConsigneeEnBase(p.lastOut)')
+    expect(pageSrc).not.toContain('rien à statuer')
+    const appels = [...pageSrc.matchAll(/statuerEstimation\(p\.lastOut,/g)]
     expect(appels.length).toBe(2) // Valider + Écarter, un seul bandeau dans l’app
-    for (const a of appels) {
-      expect(a.index).toBeGreaterThan(garde)
-      expect(a.index - garde).toBeLessThan(2000) // même bloc, pas un appel exfiltré plus bas
-    }
   })
 })
 

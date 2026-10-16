@@ -53,18 +53,29 @@ describe('« Modifier le pointage » — les lignes d’audit ne s’y éditent 
     expect(init[0]).not.toMatch(/pointagesJournee\.map\(/)
   })
 
-  it('3) `p_delete_ids` partage le MÊME filtre — l’enregistrement ne touche jamais aux lignes d’audit', () => {
-    // C'EST LE BUG : `pointagesJournee.map(p => p.id)` envoyait les lignes
-    // d'audit à la suppression / ré-insertion → l'heure écartée ressuscitait en
-    // vrai pointage. La seule source légitime est `lignesEditables`.
-    expect(source).toMatch(/idsToDelete\s*=\s*lignesEditables\.map\(p\s*=>\s*p\.id\)/)
+  it('3) `p_delete_ids` exclut les lignes présumées — jamais de « blanchiment » en badge', () => {
+    // Règle du 16/10 soir : une sortie présumée (validée OU à statuer) reste
+    // MARQUÉE — `replace_attendance_day` ne recopie que check_type/check_time
+    // et la re-créerait en badge réel. Les vrais badges seuls passent par lui ;
+    // les lignes présumées sont gérées en place (encheck_estimation_deplacer /
+    // encheck_estimation_decider). Les lignes d'audit ne sont ni affichées ni
+    // touchées : jamais de résurrection (bug MADEDE).
+    expect(source).toMatch(/idsToDelete\s*=\s*lignesEditables/)
+    expect(source).toMatch(/\.filter\(\s*p\s*=>\s*!p\.__estimation\s*\)/)
     expect(source).not.toMatch(/idsToDelete\s*=\s*pointagesJournee\.map/)
   })
 
-  it('4) le formulaire DIT que des lignes d’audit sont masquées (pas de disparition silencieuse)', () => {
-    // Honnêteté : si des lignes sont cachées, l'admin doit le voir — sinon il
-    // croit que la journée est vide ou se demande où est passée son heure.
-    expect(source).toMatch(/nbLignesMasquees/)
-    expect(source).toMatch(/noteAudit/)
+  it('4) « Écarter » = DISPARITION de la fiche ; « Valider » = la ligne reste, MARQUÉE', () => {
+    // Décision du commanditaire (16/10 soir) :
+    //   « quand l'admin valide, l'heure de sortie présumée reste et est marquée
+    //    dans « modifier le pointage », quand l'admin écarte, ces heures
+    //    présumées disparaissent. »
+    //  → le chip de marque existe (⏳ à statuer / ✅ validée) ;
+    //  → plus aucune notice « N lignes d'audit masquées » (elles disparaissent) ;
+    //  → retirer une ligne présumée du formulaire = « Écarter » (decider 'rejeter').
+    expect(source).toMatch(/Sortie présumée/)
+    expect(source).toMatch(/__estimationEtat/)
+    expect(source).not.toMatch(/nbLignesMasquees/)
+    expect(source).toMatch(/p_decision:\s*'rejeter'/)
   })
 })

@@ -376,8 +376,9 @@ BEGIN
   v_au := COALESCE(p_au, CURRENT_DATE);
 
   RETURN QUERY
-    SELECT p.id, e.id, e.first_name, e.last_name, e.matricule,
-           ent.id, ent.name, p.jour,
+    SELECT p.id, e.id,
+           e.first_name::text, e.last_name::text, e.matricule::text,
+           ent.id, ent.name::text, p.jour,
            p.debut, p.fin, p.duree_minutes,
            p.statut, p.source, p.motif, p.anomalie
       FROM public.encheck_pauses p
