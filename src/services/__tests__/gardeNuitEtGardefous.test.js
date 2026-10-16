@@ -44,6 +44,7 @@ import {
   estEstimationAStatuer,
   estEstimationEcartee,
   estEstimationNonValidee,
+  estJourneeOubliBadge,
   estLigneHorsCalcul,
   etiquetteEstimation,
   filtrerPointagesPayables,
@@ -279,5 +280,65 @@ describe('paie — non-rétroactivité de la règle « non validée = non payée
   it('6c) sans date : inconnu = strict, jamais comptée', () => {
     const lignes = [nonValidee(undefined)]
     expect(filtrerPointagesPayables(lignes)).toHaveLength(0)
+  })
+})
+
+// ───────────────────────────────────────────────────────────────────────────
+// 6) C5 — LE COMPTEUR « OUBLIS BADGE » — le cas MADEDE, 16/10 (après « Écarter »)
+// ───────────────────────────────────────────────────────────────────────────
+describe('compteur Oublis badge — une journée sans sortie réelle EST un oubli', () => {
+  const entree = badge('2026-10-16T08:52:11', 'in')
+  const estim17h = (sur = {}) => badge('2026-10-16T17:00:00', 'out', {
+    is_auto_closed: true,
+    anomalie: 'sortie_presumee',
+    estimation_source_id: entree.id,
+    ...sur,
+  })
+  //  Le lendemain de l'arrivée, après 8 h : le seuil est mesuré sur la SESSION
+  //  (l'arrivée de 08:52), jamais sur la supposition de 17:00.
+  const MAINTENANT = new Date('2026-10-16T18:30:00+01:00').getTime()
+
+  it('7a) arrivée seule, journée commencée depuis +8 h : oubli', () => {
+    expect(estJourneeOubliBadge([entree], MAINTENANT)).toBe(true)
+  })
+
+  it('7b) supposée à statuer (⏳) : oubli — la supposition masque l’oubli, elle ne le règle pas', () => {
+    expect(estJourneeOubliBadge([entree, estim17h()], MAINTENANT)).toBe(true)
+  })
+
+  it('7c) supposée ÉCARTÉE (🚫) : oubli RECOMPTÉ — l’admin vient de dire « cette heure est fausse », la vraie sortie manque plus que jamais (cas MADEDE 16/10)', () => {
+    const ecartee = estim17h({
+      anomalie: 'sortie_presumee_rejetee',
+      estimation_remplacee_le: '2026-10-16T18:20:00Z',
+    })
+    expect(estJourneeOubliBadge([entree, ecartee], MAINTENANT)).toBe(true)
+  })
+
+  it('7d) supposée VALIDÉE : plus un oubli — l’humain a tranché l’heure, elle fait foi', () => {
+    const validee = estim17h({ estimation_validee_le: '2026-10-16T18:20:00Z' })
+    expect(estJourneeOubliBadge([entree, validee], MAINTENANT)).toBe(false)
+  })
+
+  it('7e) supposée REMPLACÉE par un vrai badge : plus un oubli — la vérité terrain est arrivée', () => {
+    const remplacee = estim17h({
+      anomalie: 'sortie_presumee_remplacee',
+      estimation_remplacee_le: '2026-10-16T19:21:42Z',
+    })
+    const vraiOut = badge('2026-10-16T19:21:42', 'out')
+    expect(estJourneeOubliBadge([entree, remplacee, vraiOut], MAINTENANT)).toBe(false)
+  })
+
+  it('7f) vraie sortie après l’arrivée : jamais un oubli', () => {
+    const vraiOut = badge('2026-10-16T17:20:00', 'out')
+    expect(estJourneeOubliBadge([entree, vraiOut], MAINTENANT)).toBe(false)
+  })
+
+  it('7g) session commencée depuis moins de 8 h : pas (encore) un oubli', () => {
+    expect(estJourneeOubliBadge([entree], new Date('2026-10-16T12:00:00+01:00').getTime())).toBe(false)
+  })
+
+  it('7h) fin de garde de nuit rattachée à la veille (sortie seule) : pas un oubli', () => {
+    const sortieNuit = badge('2026-10-16T01:14:00', 'out')
+    expect(estJourneeOubliBadge([sortieNuit], MAINTENANT)).toBe(false)
   })
 })

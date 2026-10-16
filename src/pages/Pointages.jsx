@@ -22,6 +22,7 @@ import toast from 'react-hot-toast'
 import {
   etiquetteEstimation,
   estEstimationAStatuer, estEstimationEcartee,
+  estJourneeOubliBadge,
   estLigneConsigneeEnBase, estIdentifiantDeBase, formatConfianceEstimation,
   chargerSeuilsPointage,
 } from '../services/seuilsPointage'
@@ -465,35 +466,15 @@ function calculateEnrichedStats(pointages, hasOvertimeFeature) {
     conflits: pointages.filter(p => p.status === 'conflit_absence_pointage').length,
     withPhotos: pointages.filter(p => p.hasPhoto).length,
     faceCount: pointages.filter(p => p.hasFaceRecognition && p.status === 'present').length,
-    //  Oublis de badge : (a) le dernier geste de la journée est une arrivée
-    //  vieille de plus de 8 heures — la sortie n'a jamais été pointée, OU
-    //  (b) la sortie est une ESTIMATION encore à statuer : l'oubli est réel,
-    //  il est seulement maquillé par une sortie présumée. Compter uniquement
-    //  les derniers gestes « in » (l'ancienne mesure) remettait le compteur à 0
-    //  dès que le moteur écrivait l'estimation — l'oubli disparaissait de
-    //  l'écran alors qu'il n'avait jamais été réglé (cas Mercia, 16/10).
-    autoClosedCount: (() => {
-      const SEUIL_OUBLI = 8 * 3600 * 1000
-      let oublis = 0
-      for (const p of pointages) {
-        const gestes = (p.attendances || [])
-          .map((a) => ({ t: new Date(a.check_time).getTime(), type: String(a.check_type || '').toLowerCase(), row: a }))
-          .filter((g) => !isNaN(g.t))
-          .sort((a, b) => b.t - a.t)
-        const dernier = gestes[0]
-        if (!dernier) continue
-        if (dernier.type === 'in' && Date.now() - dernier.t > SEUIL_OUBLI) {
-          oublis++
-        } else if (
-          dernier.type === 'out' &&
-          estEstimationAStatuer(dernier.row) &&
-          Date.now() - dernier.t > SEUIL_OUBLI
-        ) {
-          oublis++
-        }
-      }
-      return oublis
-    })(),
+    //  Oublis de badge — PRÉDICAT UNIQUE : `estJourneeOubliBadge` (dans
+    //  seuilsPointage.js, testé). Une journée compte comme oubli tant qu'elle
+    //  n'a AUCUNE sortie réelle : arrivée seule, sortie présumée à statuer (⏳),
+    //  ou sortie présumée ÉCARTÉE (🚫 — l'admin vient de dire « cette heure est
+    //  fausse » : la vraie sortie manque plus que jamais, le compteur doit le
+    //  RECOMPTER — cas MADEDE 16/10). Seuil de 8 h mesuré sur l'arrivée, pas sur
+    //  la supposition. Une validée, une remplacée ou un vrai badge ferment la
+    //  journée : ce n'est plus un oubli.
+    autoClosedCount: pointages.filter((p) => estJourneeOubliBadge(p.attendances)).length,
     modifiedCount: pointages.filter(p => p.attendances.some(a => a.modifie_le)).length,
     outOfZoneCount: pointages.filter(p => p.firstIn?.is_within_zone === false).length,
     overtimeCount: pointages.filter(p => p.overtimeData?.hasOvertime).length,
@@ -1478,9 +1459,11 @@ export default function Pointages() {
         p.firstIn?.face_score ? (p.firstIn.face_score * 100).toFixed(0) + '%' : '',
         p.firstIn?.liveness_passed === true ? 'OK' : p.firstIn?.liveness_passed === false ? 'KO' : '',
         p.hasPhoto ? 'Oui' : 'Non',
-        p.lastOut?.is_auto_closed
-          ? (p.lastOut.estimation_validee_le ? 'Oui — validée' : 'Oui — PRÉSUMÉE, non payée')
-          : 'Non',
+        //  « Oubli Badge » — MÊME prédicat que le compteur de l'écran
+        //  (estJourneeOubliBadge) : Oui = aucune sortie réelle (arrivée seule,
+        //  supposition ⏳ à statuer, ou supposition 🚫 écartée) ; Non = journée
+        //  fermée (vrai badge, validée, ou remplacée).
+        estJourneeOubliBadge(p.attendances) ? 'Oui' : 'Non',
         p.firstIn?.is_within_zone === true ? 'Oui' : p.firstIn?.is_within_zone === false ? 'Non' : '',
         p.firstIn?.distance_meters != null ? Math.round(p.firstIn.distance_meters) : '',
         p.firstIn?.gps_accuracy != null ? Math.round(p.firstIn.gps_accuracy) : '',

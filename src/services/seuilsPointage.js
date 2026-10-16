@@ -214,6 +214,61 @@ export function estEstimationRemplacee(att) {
   return !!att && !!att.estimation_remplacee_le
 }
 
+/**
+ * UNE JOURNÉE EST-ELLE UN « OUBLI DE BADGE » ? — le prédicat unique du
+ * compteur « Oublis badge » (Pointages) et de la colonne CSV « Oubli Badge ».
+ *
+ * Un oubli, c'est une session qui n'a TOUJOURS PAS de sortie réelle :
+ *   · dernier geste = une arrivée, sans rien après elle ; ou
+ *   · la session n'est fermée que par une ESTIMATION —
+ *       - encore à statuer (⏳) : l'oubli est réel, maquillé par une supposition ;
+ *       - ÉCARTÉE (🚫) : l'admin vient de dire « cette heure est fausse » — la
+ *         sortie réelle manque donc PLUS que jamais. Le compteur doit le
+ *         RECOMPTER immédiatement (cas MADEDE 16/10 : après « Écarter », le
+ *         badge « Oublis » retombait à 0 alors que la journée restait ouverte).
+ *
+ * Ce qui FERME une journée (ce n'est donc plus un oubli) :
+ *   · un vrai badge de sortie ;
+ *   · une estimation VALIDÉE (l'humain a tranché l'heure : elle fait foi) ;
+ *   · une estimation REMPLACÉE par un vrai badge (la vérité terrain est arrivée).
+ *
+ * Le seuil de 8 h est mesuré sur la SESSION (l'arrivée), jamais sur
+ * l'estimation : une journée commencée il y a 9 h sans sortie réelle est un
+ * oubli, même si la supposition du moteur n'a que 30 minutes.
+ */
+export function estJourneeOubliBadge(attendances, maintenantMs = Date.now(), seuilMs = 8 * 3600 * 1000) {
+  const gestes = (attendances || [])
+    .map((a) => ({
+      t: new Date(a.check_time).getTime(),
+      type: String(a.check_type || '').toLowerCase(),
+      row: a,
+    }))
+    .filter((g) => Number.isFinite(g.t))
+    .sort((a, b) => a.t - b.t)
+
+  //  Dernière session = dernière arrivée. Pas d'arrivée ce jour-là (fin de
+  //  garde de nuit rattachée à la veille, journée de congé…) : pas d'oubli.
+  const inDernier = [...gestes].reverse().find((g) => g.type === 'in')
+  if (!inDernier) return false
+
+  //  Session encore en cours ou trop récente : ce n'est pas (encore) un oubli.
+  if (maintenantMs - inDernier.t <= seuilMs) return false
+
+  //  Une vérité (vrai badge) ou une décision (validée / remplacée) ferme la
+  //  session. À STATUER ou ÉCARTÉE = la sortie réelle manque toujours.
+  const fermee = gestes.some((g) => {
+    if (g.type !== 'out' || g.t <= inDernier.t) return false
+    const row = g.row
+    const auto = row.is_auto_closed === true || row.is_auto_closed === 'true'
+    if (!auto) return true
+    if (estEstimationEcartee(row)) return false
+    if (row.estimation_validee_le) return true
+    if (row.estimation_remplacee_le) return true
+    return false
+  })
+  return !fermee
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 //  CONSIGNÉE ou INVENTÉE — la distinction qui a coûté un 400 le 16/10 à 08:54.
 // ───────────────────────────────────────────────────────────────────────────
