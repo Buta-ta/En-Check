@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import FeatureService, { FEATURES } from '../services/featureService'
 import JournalPointage from './JournalPointage'
 import { utcVersHeureLocale, heureLocaleVersUTC } from '../utils/timezoneUtils'
+import { estLigneHorsCalcul, estIdentifiantDeBase } from '../services/seuilsPointage'
 import { 
   Clock, X, Sparkles, AlertTriangle, Plus, Trash2, 
   Shield, Zap, Check, ChevronDown, Edit3, Save,
@@ -20,6 +21,22 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
   const [pointages, setPointages] = useState([])
   const [motif, setMotif] = useState('')
   // `admin` (localStorage) n'est plus utilisé pour l'écriture : voir handleSubmit.
+
+  // ════════════════════════════════════════════════════════════════════════
+  //  SEULES LES LIGNES EXPLOITABLES S'ÉDITENT ICI (cas MADEDE, 16/10/2026)
+  // ════════════════════════════════════════════════════════════════════════
+  //  Un formulaire de modification re-sauvegarde TOUT ce qu'il affiche : les
+  //  lignes d'audit — estimation ÉCARTÉE (« cette heure est fausse ») ou
+  //  REMPLACÉE par un vrai badge — ne doivent JAMAIS y figurer. Le piège était
+  //  réel : ouvrir « Modifier » sur la journée de MADEDE montrait le 17:00
+  //  écarté, et enregistrer la fiche (même sans rien toucher) le ré-INSÉRAIT
+  //  comme un VRAI pointage de sortie — l'heure rejetée ressuscitait.
+  //  Filtrage identique pour l'ÉTAT AFFICHÉ et pour p_delete_ids : les lignes
+  //  d'audit restent en base, intactes, pour la mesure d'erreur et l'audit.
+  const lignesEditables = (pointagesJournee || []).filter(
+    (p) => estIdentifiantDeBase(p.id) && !estLigneHorsCalcul(p)
+  )
+  const nbLignesMasquees = (pointagesJournee || []).length - lignesEditables.length
 
   useEffect(() => {
     
@@ -38,7 +55,7 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
   }
 
   const initPointages = () => {
-    const formatted = pointagesJournee.map(p => {
+    const formatted = lignesEditables.map(p => {
       // ⭐ LIVRAISON 04 : l'administrateur doit voir l'heure LOCALE de son
       // entreprise, pas l'heure UTC. Un pointage de 08:00 à Cotonou était
       // affiché « 07:00 » dans ce formulaire.
@@ -214,7 +231,12 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
       //     peut modifier ni supprimer depuis l'application ;
       //   • l'auteur (`admin`) est déduit du JWT côté serveur, pas du
       //     navigateur.
-      const idsToDelete = pointagesJournee.map(p => p.id)
+      //  `idsToDelete` = UNIQUEMENT les lignes exploitables (vrais badges +
+      //  estimations validées, celles qui s'affichent). Les lignes d'audit
+      //  (écartées / remplacées) ne sont ni affichées, ni supprimées : elles
+      //  restent en base pour l'audit — et surtout, elles ne peuvent plus
+      //  ressusciter en vrai pointage via un enregistrement de cette fiche.
+      const idsToDelete = lignesEditables.map(p => p.id)
 
       const { data: rpcResult, error: rpcError } = await supabase.rpc(
         'replace_attendance_day',
@@ -466,6 +488,17 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
                 )}
               </div>
 
+              {/* 🚫 LIGNES D'AUDIT MASQUÉES — on dit qu'elles existent, et
+                  pourquoi on ne les montre pas : une estimation écartée ou
+                  remplacée ne doit jamais redevenir un vrai pointage. */}
+              {nbLignesMasquees > 0 && (
+                <p style={styles.noteAudit}>
+                  ℹ {nbLignesMasquees} ligne{nbLignesMasquees > 1 ? 's' : ''} d'audit masquée{nbLignesMasquees > 1 ? 's' : ''} sur cette journée
+                  (sortie{nbLignesMasquees > 1 ? 's' : ''} présumée{nbLignesMasquees > 1 ? 's' : ''} écartée{nbLignesMasquees > 1 ? 's' : ''} ou remplacée{nbLignesMasquees > 1 ? 's' : ''}) :
+                  non modifiable{nbLignesMasquees > 1 ? 's' : ''} ici, conservée{nbLignesMasquees > 1 ? 's' : ''} pour l'audit.
+                </p>
+              )}
+
               {/* Add Button */}
               <button
                 type="button"
@@ -614,6 +647,7 @@ const styles = {
 
   deleteRowBtn: { background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '8px', color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   emptyPointages: { textAlign: 'center', padding: '40px 20px', color: '#555' },
+  noteAudit: { margin: '10px 2px 0', padding: '10px 12px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '10px', color: '#B45309', fontSize: '12px', lineHeight: '1.5' },
   addBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', background: 'rgba(16, 185, 129, 0.06)', color: '#10B981', border: '2px dashed rgba(16, 185, 129, 0.25)', borderRadius: '14px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' },
   motifSection: { display: 'flex', flexDirection: 'column', gap: '8px' },
   motifLabel: { display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '13px', fontWeight: '600' },
