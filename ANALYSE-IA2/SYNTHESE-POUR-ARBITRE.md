@@ -152,3 +152,82 @@ correctif (8 échecs qui nomment l'oubli), vert après.
    seul fichier, à lever dès que le doublon est supprimé. Qui tranche : DEV 1 (push), ou moi
    sur ordre.
 
+---
+
+## Problème 3 (16/10, soir) — une sortie qui passe minuit ne rattache pas sa journée
+
+Cas réel, non théorique : **Hippo BIYOKILA (ENN-0002, « Associé »)** a pointé
+**entrée le 15/10 à 08:54:39** et **sortie le 16/10 à 01:14** — 16 h 19 min 21 s.
+Le badge de sortie EST en base (l'appli de pointage lui avait bien redemandé un choix,
+il a répondu). Et pourtant :
+
+| écran | ce qu'il dit | ce que ça veut dire |
+|---|---|---|
+| 15/10 | `✓ Présent · Entrée 08:54:39 · Sortie --:--:-- · 0 sec` | la sortie n'a pas été rattachée |
+| 16/10 | `✗ Absent · 🚩 Pointage signalé par le serveur` | la sortie est orpheline, et le serveur l'a marquée `suspect` |
+
+Mesuré sur Postgres 16 local rejoué (`supabase/outils-sql/diagnostic-pointage-qui-passe-minuit.sql`,
+section C), avec les données du cas :
+
+```
+entree 2026-10-15 à 07:54:39 | sortie 2026-10-16 à 00:14:00 | 16.323 h | appariement 16 h
+→ ⭐ REFUSÉE PAR LA RÈGLE — badge réel ignoré de 19 min au-dessus de la tolérance de 16 h
+→ et elle passe minuit avant 06:00 : suite évidente de la garde
+```
+
+**Dix-neuf minutes.** C'est tout ce qui sépare une journée correctement payée d'une
+journée ouverte à vie. Le détail qui tue : `resoudrePointagesJournee()` (hoursCalculator.js
+l.1566-1597), quand il refuse l'appariement, **efface aussi `openIn`/`openDay`** — donc le
+bloc « oubli de dépointage » (l.1610) ne se déclenche plus : ni badge rattaché, ni estimation.
+La journée ne sera jamais fermée par personne.
+
+Et le même 16 h gouverne, côté base, la réconciliation « un vrai badge remplace
+l'estimation » (migration l.1139 et l.1204). **En mode `actif`, cette journée aurait donc été
+payée 12 h** (`plafond_invention_heures`) au lieu de 16 h 19 réellement pointées. Le mode
+ombre a encaissé la panne d'affichage, pas la perte : c'est exactement ce qu'il devait faire,
+et c'est la preuve que la doctrine marche — mais le chiffre, lui, était faux des deux côtés.
+
+### Ce que je propose, et ce que je ne fais pas
+
+Le fichier `supabase/outils-sql/regler-appariement-nuit.sql` pose un **override
+d'entreprise** `appariement_heures = 20` (une ligne dans `encheck_reglages_pointage`,
+`encheck_seuil()` : override → global → défaut, donc les autres entreprises restent à 16 —
+et le verrou de `autoCloseEstimation.test.js` 1.a sur le global n'est pas touché).
+Vérifié sur le harnais : `controle_prealable = ok`, `INSERT 0 1`, `lignes_ecrites = 1`, et la
+section 3 du même fichier passe le verdict à `ok : la sortie rattache bien la journée`.
+Aucun redéploiement nécessaire (les seuils sont lus en base), juste recharger la page.
+
+**Je ne le lance pas à ta place.** Un chiffre de tolérance est une règle de paie, pas un
+détail d'affichage. Trois questions te reviennent :
+
+1. **La valeur.** 20 h pour cette entreprise ? Ou la règle doit-elle changer de nature —
+   deux badges *réels* ne devraient pas avoir besoin d'une tolérance (la tolérance sert à
+   décider *laquelle* des sorties relie *quelle* entrée, et à refaire d'*inventer*) ? Ma
+   préférence : garde-nuit expresse (« une sortie avant 06:00 le lendemain appartient à la
+   garde ouverte la veille ») plafonnée par un nouveau seuil nommé, `garde_max_heures`
+   (24 h), lu par les deux moteurs. Ça ne se décrète pas à la légère : une migration
+   supplémentaire (la closure + la réconciliation SQL), et l'alignement de Dev 1.
+2. **L'imputation.** Ces 16 h 19 vont-elles toutes au 15/10 (comportement actuel de
+   l'appariement), ou coupées à minuit — 15 h 06 au 15, 1 h 14 au 16 ? Pour un « Associé »
+   sans heures supplémentaires majorées, la réponse est peut-être « aucune importance »,
+   mais dès qu'il y a une majoration de nuit ou un plafond journalier, le choix devient
+   un choix d'argent. Je ne tranche pas.
+3. **Le 16 au matin.** Une fois la sortie rattachée au 15, l'écran du 16 n'a plus aucun
+   badge : il affichera donc `✗ Absent`, sans 🚩. Est-ce acceptable, ou faut-il un statut
+   intermédiaire — « nuit du 15 terminée à 01:14 », sans alerte d'absence ? Le 15/10
+   (migration `20261015000001`) supprime déjà les fausses alertes de nuit (< 06:00) côté
+   Dev 1 : il manque l'équivalent côté statut.
+
+**Point d'alignement Dev 1** : le motif posé par son déclencheur est
+`hors_fenetre:58761_seconds` — 58 761 s = 16 h 19, exactement la durée mesurée. Si son
+fenêtrage lit `appariement_heures` comme les deux nôtres, l'override à 20 h fait
+disparaître le 🚩 sur les prochains badges ; s'il a son propre 16 en dur, il faudra
+qu'il l'aligne, sinon la base marquera « suspect » des journées que nos moteurs trouvent
+correctes. La section E du diagnostic est écrite pour trancher ça en une lecture (elle
+empile les motifs et les écarts constatés).
+
+Un garde-fou de non-régression est posé côté app : `src/services/__tests__/nuitPasseMinuit.test.js`
+(7 cas, suite complète **8 fichiers / 74 tests** verts) — il verrouille le comportement
+actuel *et* l'effet du relevé de seuil, pour que personne ne découvre plus tard, en
+changeant un chiffre, qu'une sortie à 22:00 → 02:00 ou un badge 36 h plus tard
+sont deux cas que la règle doit continuer de distinguer.
