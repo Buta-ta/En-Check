@@ -65,17 +65,7 @@ export default [
     plugins: { 'react-hooks': reactHooks },
     rules: REGLES_QUI_CRASHENT,
   },
-  // Dette préexistante, découverte au tout premier lancement de cette porte :
-  // `src/services/pushNotificationService.js` déclare subscribe() DEUX FOIS — l.38
-  // (avec try/catch et contrôle de permission) et l.101 (avec contrôle des clés) — la
-  // seconde écrase silencieusement la première. Même famille de bug qu'un monkey-patch
-  // SQL : une définition qui en remplace une autre sans que personne ne le voie.
-  // Ce n'est pas le périmètre de cette PR et ce n'est pas à moi de choisir laquelle
-  // garder, donc l'exception est nommée, datée, et signalée à l'arbitre dans le corps
-  // de la PR. À LEVER dès que le doublon est supprimé (un seul bloc, aucune
-  // dépendance à l'outillage : retirer ce bloc suffit).
-  {
-    files: ['src/services/pushNotificationService.js'],
-    rules: { 'no-dupe-class-members': 'off' },
-  },
+  //  (L'exception `no-dupe-class-members` pour `pushNotificationService.js` a
+  //  été LEVÉE le 16/10/2026 — arbitrage n°2, décision B3 : le doublon de
+  //  `subscribe()` est supprimé, le fichier est de nouveau couvert par la porte.)
 ]

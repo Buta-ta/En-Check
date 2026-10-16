@@ -37,6 +37,13 @@ export const SEUILS_PAR_DEFAUT = {
   dureeMinimaleSessionMinutes: 30,
   margeApresSortieEstimeeMinutes: 30,
   appariementHeures: 16,
+  //  Règle « garde de nuit » (arbitrage n°2, cas Hippo 15→16/10) : une sortie
+  //  réelle pointée avant 06:00 le lendemain appartient à la garde ouverte la
+  //  veille, même au-delà de la tolérance d'appariement, dans la limite de ce
+  //  plafond. Deux VRAIS badges ne doivent pas se perdre parce qu'un chef est
+  //  resté 16 h 19 au bureau. Le plafond empêche de coller deux journées
+  //  différentes (au-delà de 22 h, ce n'est plus une garde, c'est un oubli).
+  gardeMaxHeures: 22,
   seuilRebondSecondes: 60,
   clusterFenetreMinutes: 90,
   clusterFenetreJours: 28,
@@ -54,6 +61,7 @@ const CLES = {
   dureeMinimaleSessionMinutes: 'duree_minimale_session_minutes',
   margeApresSortieEstimeeMinutes: 'marge_apres_sortie_estimee_minutes',
   appariementHeures: 'appariement_heures',
+  gardeMaxHeures: 'garde_max_heures',
   seuilRebondSecondes: 'seuil_rebond_secondes',
   clusterFenetreMinutes: 'cluster_fenetre_minutes',
   clusterFenetreJours: 'cluster_fenetre_jours',
@@ -130,6 +138,13 @@ export async function chargerSeuilsPointage(enterpriseId, { force = false } = {}
     seuils.oubliSortieHeures,
     _positif(seuils.appariementHeures, SEUILS_PAR_DEFAUT.appariementHeures),
   )
+  //  La garde de nuit couvre AU MINUS la tolérance d'appariement : un plafond
+  //  plus petit que la fenêtre normale n'aurait aucun sens (règle R2 de
+  //  l'arbitrage n°2 — sortie avant 06:00, plafond garde_max_heures).
+  seuils.gardeMaxHeures = Math.max(
+    seuils.appariementHeures,
+    _positif(seuils.gardeMaxHeures, SEUILS_PAR_DEFAUT.gardeMaxHeures),
+  )
 
   _cache.set(cle, seuils)
   return seuils
@@ -156,12 +171,42 @@ export function invaliderCacheSeuils(enterpriseId) {
 //     Un nouvel écran qui additionne des minutes doit appeler
 //     `filtrerPointagesPayables()` — sinon il remet une heure inventée dans la paie.
 
-/** Vrai si la ligne est une sortie estimée et pas (encore) validée par un humain. */
+/** Vrai si la ligne est une sortie estimée et pas (encore) validée par un humain.
+ *  ATTENTION — cette fonction veut dire « NON PAYABLE », pas « à statuer ».
+ *  Une estimation REMPLACÉE (estimation_remplacee_le rempli) reste « non
+ *  payable » : c'est ce qui protège la paie. Pour l'affichage des boutons
+ *  Valider/Écarter, utiliser `estEstimationAStatuer` — sinon les boutons ne
+ *  disparaissent jamais après un clic (bug du 16/10, cas Mercia). */
 export function estEstimationNonValidee(att) {
   if (!att) return false
   if (att.is_auto_closed !== true && att.is_auto_closed !== 'true') return false
   if (att.estimation_remplacee_le) return true   // périmée : jamais payable
   return !att.estimation_validee_le
+}
+
+/** Vrai si l'estimation attend ENCORE une décision humaine (boutons Valider/Écarter). */
+export function estEstimationAStatuer(att) {
+  if (!att) return false
+  if (att.is_auto_closed !== true && att.is_auto_closed !== 'true') return false
+  return !att.estimation_validee_le && !att.estimation_remplacee_le
+}
+
+/** Vrai si l'estimation a été ÉCARTÉE par un admin (rejetée — jamais payée). */
+export function estEstimationEcartee(att) {
+  return !!att && att.anomalie === 'sortie_presumee_rejetee'
+}
+
+/**
+ * Vrai si la ligne n'est plus un badge exploitable : estimation écartée par un
+ * admin, ou estimation remplacée par un vrai pointage. Ces lignes restent en
+ * base pour l'audit et la mesure d'erreur, mais ne doivent JAMAIS être
+ * appariées, ni comptées dans une durée, ni ré-estimées (cas Mercia 16/10 :
+ * l'écran comptait encore 4h16m sur une estimation que l'admin venait
+ * d'écarter).
+ */
+export function estLigneHorsCalcul(att) {
+  return !!att && (estEstimationEcartee(att) || att.anomalie === 'sortie_presumee_remplacee'
+    || (!!att.estimation_remplacee_le && !!att.estimation_source_id))
 }
 
 /** Vrai si la ligne est une estimation remplacée par un vrai pointage. */
@@ -215,11 +260,26 @@ export function estRebondNeutralise(att) {
  * réellement badgé, plus les estimations VALIDÉES par un humain. Les rebonds
  * neutralisés en sortent (avant, ils étaient soit supprimés en base, soit ignorés
  * par un `continue` enfoui dans une boucle de 400 lignes).
+ *
+ * B1 (arbitrage n°2, décision argent) — ZÉRO RÉTROACTIVITÉ : le cadre
+ * « estimation non validée = non payée » ne s'applique qu'aux pointages du
+ * 16/10/2026 (mise en service) et après. Les sorties automatiques ANTÉRIEURES
+ * restent comptées comme avant : un bulletin déjà édité ne doit pas fondre.
  */
+export const BORNE_APPLICATION_ESTIMATION = '2026-10-16'
+
 export function filtrerPointagesPayables(attendances) {
-  return (attendances || []).filter(
-    (a) => !estEstimationNonValidee(a) && !estRebondNeutralise(a),
-  )
+  return (attendances || []).filter((a) => {
+    if (estRebondNeutralise(a)) return false
+    if (estEstimationNonValidee(a)) {
+      //  B1 — NON-RÉTROACTIVITÉ : avant la mise en service du cadre
+      //  (16/10/2026 EXCLUS), comportement historique, ces heures ont été
+      //  payées de bonne foi : comptées. Une ligne SANS date n'est pas
+      //  « avant la borne » : inconnue = stricte (jamais payée).
+      return Boolean(a.check_time) && String(a.check_time) < BORNE_APPLICATION_ESTIMATION
+    }
+    return true
+  })
 }
 
 /**
@@ -244,9 +304,14 @@ export function formatConfianceEstimation(valeur) {
   return String(valeur)
 }
 
-/** Étiquette lisible d'une ligne estimée (réutilisée par toutes les vues). */
+/** Étiquette lisible d'une ligne estimée (réutilisée par toutes les vues).
+ *  Arbitrage n°3 — les deux sorties d'une estimation ne se ressemblent pas :
+ *  « ÉCARTÉE » (l'admin a jugé l'heure fausse) ≠ « REMPLACÉE » (un vrai badge
+ *  est arrivé). Les deux remplissent `estimation_remplacee_le` mais le champ
+ *  `anomalie` les distingue : c'est lui qu'il faut lire. */
 export function etiquetteEstimation(att) {
   if (!att) return ''
+  if (estEstimationEcartee(att)) return 'écartée par l\'admin — non payée'
   if (att.estimation_remplacee_le) return 'remplacée par un pointage réel'
   if (att.estimation_validee_le) return 'présumée, validée'
   if (att.is_auto_closed) return '⏳ présumée — non payée'
@@ -315,6 +380,9 @@ export default {
   chargerSeuilsPointage,
   invaliderCacheSeuils,
   estEstimationNonValidee,
+  estEstimationAStatuer,
+  estEstimationEcartee,
+  estLigneHorsCalcul,
   estEstimationRemplacee,
   estIdentifiantDeBase,
   estLigneConsigneeEnBase,
