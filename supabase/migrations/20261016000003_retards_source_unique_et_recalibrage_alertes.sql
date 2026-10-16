@@ -43,29 +43,38 @@ BEGIN;
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 0. PRÉFLIGHT SCHÉMA — message clair si les fondations manquent
 -- ─────────────────────────────────────────────────────────────────────────────
+--  Vérification par NOM (et non par signature exacte) : `encheck_seuil` est
+--  déclarée `(uuid, text, numeric)` — un contrôle sur `(uuid, text, integer)`
+--  la manquait alors qu'elle fonctionne (16/10 : préflight faux-négatif).
 DO $$
+DECLARE
+  v_manquant text;
 BEGIN
-  IF to_regprocedure('public.encheck_grille_au_jour(uuid,uuid,date)') IS NULL
-     OR to_regprocedure('public.encheck_journee_recalculee(uuid,uuid,date)') IS NULL
-     OR to_regprocedure('public.encheck_minutes_de_bascule(text)') IS NULL
-     OR to_regprocedure('public.encheck_duree_circulaire(text,text)') IS NULL THEN
-    RAISE EXCEPTION 'Préflight : encheck_grille_au_jour / encheck_journee_recalculee / '
-      'encheck_minutes_de_bascule / encheck_duree_circulaire introuvables. '
-      'Exécutez d''abord 20261016000001_fondations_auto_close_structure.sql, puis relancez ce script en entier.';
-  END IF;
-  IF to_regprocedure('public.encheck_table_alertes()') IS NULL
-     OR to_regprocedure('public.encheck_alertes_purger(uuid,boolean,integer)') IS NULL
-     OR to_regprocedure('public.encheck_alertes_scan(uuid)') IS NULL THEN
-    RAISE EXCEPTION 'Préflight : chaîne d''alertes (encheck_table_alertes / encheck_alertes_purger / '
-      'encheck_alertes_scan) introuvable. Exécutez d''abord 20261016000001 puis relancez ce script en entier.';
-  END IF;
-  IF to_regprocedure('public.encheck_est_admin_de(uuid)') IS NULL THEN
-    RAISE EXCEPTION 'Préflight : encheck_est_admin_de introuvable. '
-      'Exécutez d''abord 20261016000001 puis relancez ce script en entier.';
-  END IF;
-  IF to_regprocedure('public.encheck_seuil(uuid,text,integer)') IS NULL THEN
-    RAISE EXCEPTION 'Préflight : encheck_seuil introuvable. '
-      'Exécutez d''abord les migrations fondations puis relancez ce script en entier.';
+  SELECT string_agg(f.nom, ', ' ORDER BY f.nom) INTO v_manquant
+    FROM (VALUES ('encheck_grille_au_jour'),
+                 ('encheck_journee_recalculee'),
+                 ('encheck_minutes_de_bascule'),
+                 ('encheck_duree_circulaire'),
+                 ('encheck_colonne_existe'),
+                 ('encheck_fuseau'),
+                 ('encheck_est_admin_de'),
+                 ('encheck_seuil'),
+                 ('encheck_table_alertes'),
+                 ('encheck_alerte_journaliser'),
+                 ('encheck_alertes_purger'),
+                 ('encheck_alertes_scan'),
+                 ('encheck_generateur_alertes'),
+                 ('encheck_reconcilier_estimations'),
+                 ('encheck_mode_estimation')) AS f(nom)
+   WHERE NOT EXISTS (
+     SELECT 1 FROM pg_proc p
+       JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = f.nom
+   );
+  IF v_manquant IS NOT NULL THEN
+    RAISE EXCEPTION 'Préflight : fonctions introuvables (%) — exécutez d''abord '
+      '20261016000001_fondations_auto_close_structure.sql (et 20261016000002), '
+      'puis relancez ce script en entier. Rien n''a été appliqué.', v_manquant;
   END IF;
 END $$;
 
@@ -161,7 +170,9 @@ BEGIN
     v_nom    := 'Horaire personnalisé';
     v_start  := left(v_es->>'custom_start_time', 5);
     v_end    := left(v_es->>'custom_end_time', 5);
-    v_days   := v_es->'custom_work_days';
+    -- Sans jours déclarés : Lun–Ven, comme les autres étages et l'UI par défaut
+    -- (avant : v_days NULL → est_jour_ouvre faux TOUJOURS → tout disparaissait).
+    v_days   := COALESCE(v_es->'custom_work_days', to_jsonb(ARRAY[1,2,3,4,5]));
     v_basc   := public.encheck_minutes_de_bascule(v_es->>'custom_bascule');
     IF (v_es->>'custom_has_break') IS NOT NULL THEN
       v_tol := COALESCE(v_tol, 15);

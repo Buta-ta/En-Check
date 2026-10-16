@@ -157,21 +157,18 @@ BEGIN
   RAISE NOTICE 'SECTION 4 : table d''alertes = %, colonne de date = %', v_tbl, v_coldate;
 
   v_sql := format(
-    'SELECT a.id,
+    'SELECT to_jsonb(a.*) AS alerte,
             trim(COALESCE(e.first_name,'''' ) || '' '' || COALESCE(e.last_name,'''')) AS employe,
             e.matricule,
-            (%I)::date AS jour,
-            a.titre,
-            a.detail,
-            a.created_at
+            (%I)::date AS jour
        FROM public.%I a
        LEFT JOIN public.employees e ON e.id = a.employee_id
       WHERE a.titre = %L
         AND (%I)::date BETWEEN DATE ''2026-10-14'' AND DATE ''2026-10-17''
-      ORDER BY 4, 6',
+      ORDER BY 4',
     v_coldate, v_tbl, 'Retard à l''arrivée', v_coldate);
 
-  EXECUTE v_sql;   -- résultat : la ligne Hippo avec son texte exact
+  EXECUTE v_sql;   -- résultat : la ligne Hippo avec son texte exact (dump JSON complet)
 END $$;
 
 -- Quel générateur est installé en base (hors dépôts = moteur hérité) ?
