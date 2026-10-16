@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import HolidayService from '../services/holidayService'
-import { getHeuresMinutesLocales, jourDeTravail, minutesDeBascule } from '../utils/timezoneUtils'
+import { construireRetards } from '../services/retardsService'
 import { 
   Footprints, 
   ArrowLeft,
@@ -126,64 +126,16 @@ const loadRetards = async () => {
       targetEnterpriseId = admin.selectedEnterprise?.id || admin.enterprise_id
     }
 
-    // ═══ 1. EMPLOYÉS ═══
-    let employeesQuery = supabase
-      .from('employees')
-      .select('*, enterprises(id, name)')
+    // ═══ 1. JOURS FÉRIÉS (filtre d'affichage inchangé) ═══
+    // On charge par enterprise (chacune a ses propres fériés).
+    const { data: entList } = await supabase
+      .from('enterprises')
+      .select('id')
       .eq('is_active', true)
 
-    if (targetEnterpriseId !== 'all') {
-      employeesQuery = employeesQuery.eq('enterprise_id', targetEnterpriseId)
-    }
-
-    const { data: employees } = await employeesQuery
-    const employeeIds = employees?.map(e => e.id) || []
-
-    if (employeeIds.length === 0) {
-      setRetards([])
-      setStats({
-        totalRetards: 0, totalMinutesRetard: 0,
-        employesPonctuels: 0, employesEnRetard: 0,
-        employesSansPlanningIgnores: 0,
-      })
-      setLoading(false)
-      return
-    }
-
-    // ═══ 2. PLANNINGS INDIVIDUELS ═══
-    const { data: employeeSchedules } = await supabase
-      .from('employee_schedules')
-      .select('*, work_schedules(*)')
-      .in('employee_id', employeeIds)
-
-    const employeeSchedulesMap = {}
-    ;(employeeSchedules || []).forEach(s => {
-      employeeSchedulesMap[s.employee_id] = s
-    })
-
-    // ═══ 3. PLANNINGS PAR DÉFAUT PAR ENTREPRISE ═══
-    const enterpriseIds = [...new Set((employees || []).map(e => e.enterprise_id))]
-
-    const { data: defaultSchedules } = await supabase
-      .from('work_schedules')
-      .select('*')
-      .in('enterprise_id', enterpriseIds)
-      .eq('is_default', true)
-      .eq('is_active', true)
-
-    const defaultScheduleByEnterprise = {}
-    ;(defaultSchedules || []).forEach(s => {
-      if (!defaultScheduleByEnterprise[s.enterprise_id]) {
-        defaultScheduleByEnterprise[s.enterprise_id] = s
-      }
-    })
-
-    // ═══ 4. JOURS FÉRIÉS ═══
-    // On charge par enterprise (chacune a ses propres fériés)
-    // Si mode "all" on charge pour chaque enterprise distincte
     const holidaysByEnterprise = {}
     const enterpriseIdsToLoad = targetEnterpriseId === 'all'
-      ? enterpriseIds
+      ? (entList || []).map(e => e.id)
       : [targetEnterpriseId]
 
     await Promise.all(
@@ -198,138 +150,27 @@ const loadRetards = async () => {
       })
     )
 
-    // ═══ 5. POINTAGES ═══
-    let attendancesQuery = supabase
-      .from('attendances')
-      .select('*')
-      .gte('check_time', `${startDate}T00:00:00`)
-      .lte('check_time', `${endDate}T23:59:59`)
-      .eq('check_type', 'in')
-      .in('employee_id', employeeIds)
-      .order('check_time', { ascending: true })
-
-    if (targetEnterpriseId !== 'all') {
-      attendancesQuery = attendancesQuery.eq('enterprise_id', targetEnterpriseId)
-    }
-
-    const { data: attendances } = await attendancesQuery
-
-    // ═══ 6. CALCULER LES RETARDS ═══
-    const retardsCalcules = []
-    let totalRetards  = 0
-    let totalMinutes  = 0
-    const employesPonctuelSet = new Set()
-    const employesEnRetardSet = new Set()
-    let employesSansPlanningIgnores = 0
-
-    employees?.forEach(employee => {
-      const schedulePerso = employeeSchedulesMap[employee.id]
-      let heureArrivee = null
-      let tolerance    = 15
-      let bascule      = 0
-
-      if (schedulePerso) {
-        if (schedulePerso.use_custom_hours && schedulePerso.custom_start_time) {
-          heureArrivee = schedulePerso.custom_start_time.slice(0, 5)
-          tolerance    = schedulePerso.custom_late_tolerance_minutes || 15
-          bascule      = minutesDeBascule(schedulePerso.custom_bascule)
-        } else if (schedulePerso.schedule_id && schedulePerso.work_schedules) {
-          heureArrivee = schedulePerso.work_schedules.start_time?.slice(0, 5) || null
-          tolerance    = schedulePerso.work_schedules.late_tolerance_minutes || 15
-          bascule      = minutesDeBascule(schedulePerso.work_schedules.bascule)
-        }
+    // ═══ 2. CALCUL DES RETARDS — source unique SQL ═══
+    //  `encheck_retards_plage` juge chaque (employé, jour) via
+    //  `encheck_journee_recalculee` → `encheck_grille_au_jour` : affectations
+    //  actives, dates d'effet, horaires personnalisés, option Planning.
+    //  Jamais de lecture directe de employee_schedules / work_schedules ici.
+    const { data: lignesRetards, error: errorRetards } = await supabase.rpc(
+      'encheck_retards_plage',
+      {
+        p_enterprise: targetEnterpriseId === 'all' ? null : targetEnterpriseId,
+        p_du: startDate,
+        p_au: endDate,
       }
+    )
+    if (errorRetards) throw errorRetards
 
-      if (!heureArrivee) {
-        const defaultSchedule = defaultScheduleByEnterprise[employee.enterprise_id]
-        if (defaultSchedule) {
-          heureArrivee = defaultSchedule.start_time?.slice(0, 5) || null
-          tolerance    = defaultSchedule.late_tolerance_minutes || 15
-          bascule      = minutesDeBascule(defaultSchedule.bascule)
-        }
-      }
-
-      if (!heureArrivee) {
-        employesSansPlanningIgnores++
-        return
-      }
-
-      const employeeAttendances = attendances?.filter(
-        a => a.employee_id === employee.id
-      ) || []
-
-      const parJour = {}
-      employeeAttendances.forEach(att => {
-        //  La journée de travail, et non la date UTC : un pointage de 00h30 avec
-        //  une bascule à 04:00 appartient à la veille.
-        const jour = jourDeTravail(att.check_time, undefined, bascule)
-        if (!parJour[jour]) parJour[jour] = att
-      })
-
-      Object.entries(parJour).forEach(([jour, premierPointage]) => {
-        //  Une bascule peut ranger un pointage sur une journée hors de la
-        //  période demandée : on ne compte pas de retard pour celle-là.
-        if (jour < startDate || jour > endDate) return
-
-        // ── FILTRE JOUR FÉRIÉ ──────────────────────────────
-        const holidaySet = holidaysByEnterprise[employee.enterprise_id]
-        if (holidaySet && holidaySet.has(jour)) {
-          // Jour férié non travaillé → pas de retard comptabilisé
-          return
-        }
-        // ──────────────────────────────────────────────────
-
-        // ⭐ LIVRAISON 04 : heure locale de l'entreprise (voir l'en-tête de
-        // timezoneUtils.js). C'est LE correctif qui remet les retards justes.
-        const { heures: hLocale, minutes: mLocale } = getHeuresMinutesLocales(premierPointage.check_time)
-        const heurePointage = `${String(hLocale).padStart(2, '0')}:${String(mLocale).padStart(2, '0')}`
-
-        const [hA, mA] = heureArrivee.split(':').map(Number)
-        const [hP, mP] = heurePointage.split(':').map(Number)
-
-        const minutesArriveeBase = hA * 60 + mA
-        const minutesArriveeMax  = minutesArriveeBase + tolerance
-        const minutesPointage    = hP * 60 + mP
-
-        const retardMinutes = minutesPointage - minutesArriveeBase
-        const estEnRetard   = minutesPointage > minutesArriveeMax
-
-        if (estEnRetard && retardMinutes > 0) {
-          totalRetards++
-          totalMinutes += retardMinutes
-          employesEnRetardSet.add(employee.id)
-
-          retardsCalcules.push({
-            id: premierPointage.id,
-            employee,
-            date: jour,
-            heureArrivee,
-            heurePointage,
-            retardMinutes,
-            tolerance,
-            sourceHoraire: schedulePerso
-              ? (schedulePerso.use_custom_hours ? 'personnalisé' : 'planning')
-              : 'entreprise',
-          })
-        } else {
-          employesPonctuelSet.add(employee.id)
-        }
-      })
-    })
-
-    retardsCalcules.sort((a, b) => {
-      if (a.date !== b.date) return b.date.localeCompare(a.date)
-      return b.retardMinutes - a.retardMinutes
-    })
+    const { retards: retardsCalcules, stats: statsCalcules } = construireRetards(
+      lignesRetards || [], holidaysByEnterprise
+    )
 
     setRetards(retardsCalcules)
-    setStats({
-      totalRetards,
-      totalMinutesRetard: totalMinutes,
-      employesPonctuels:  employesPonctuelSet.size,
-      employesEnRetard:   employesEnRetardSet.size,
-      employesSansPlanningIgnores,
-    })
+    setStats(statsCalcules)
 
   } catch (error) {
     console.error('Erreur chargement retards:', error)
