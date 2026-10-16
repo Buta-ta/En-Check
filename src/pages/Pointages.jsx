@@ -20,8 +20,10 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
-  etiquetteEstimation, estEstimationNonValidee,
+  etiquetteEstimation,
+  estEstimationAStatuer, estEstimationEcartee,
   estLigneConsigneeEnBase, estIdentifiantDeBase, formatConfianceEstimation,
+  chargerSeuilsPointage,
 } from '../services/seuilsPointage'
 import {
   formaterHeureLocale,
@@ -207,29 +209,47 @@ function detectAnomalies(pointages) {
     const empId = p.employee.id
 
     if (p.lastOut?.is_auto_closed) {
-      //  Trois états, trois messages — et ils ne veulent pas dire la même chose
-      //  côté argent :
+      //  QUATRE états, quatre messages — et ils ne veulent pas dire la même
+      //  chose côté argent (arbitrage n°3 : « ÉCARTÉE » ≠ « REMPLACÉE ») :
       //    · présumée EN ATTENTE  → rien n'est payé, il faut trancher ;
       //    · présumée VALIDÉE     → payé, sur décision humaine ;
       //    · REMPLACÉE            → l'employé a fini par badger : l'estimation est
-      //      conservée pour mesurer l'erreur, mais ce n'est plus elle qui compte.
+      //      conservée pour mesurer l'erreur, mais ce n'est plus elle qui compte ;
+      //    · ÉCARTÉE              → l'admin a jugé l'heure fausse : jamais payée,
+      //      jamais comptée, et on ne redemande pas une décision.
       const validee = !!p.lastOut.estimation_validee_le
       const remplacee = !!p.lastOut.estimation_remplacee_le
+      const ecartee = estEstimationEcartee(p.lastOut)
       const niveau = p.lastOut.estimation_niveau
       anomalies.push({
         type: 'auto_closed',
-        severity: remplacee ? 'info' : validee ? 'info' : 'warning',
-        icon: remplacee ? '✅' : validee ? '✅' : '⏳',
+        severity: (remplacee || validee || ecartee) ? 'info' : 'warning',
+        icon: ecartee ? '🚫' : (remplacee ? '✅' : validee ? '✅' : '⏳'),
         employee: empName, employeeId: empId,
-        message: remplacee
-          ? `Sortie réelle récupérée`
-          : validee
-            ? `Sortie présumée validée`
-            : `Sortie présumée — à valider`,
-        detail: remplacee
-          ? `Estimation du ${formaterHeureLocale(p.lastOut.check_time)} remplacée par un vrai badge (conservée pour l'audit)`
-          : `Fermée à ${formaterHeureLocale(p.lastOut.check_time)}${niveau ? ` · Niveau ${niveau}` : ''}` +
-            (validee ? ' · comptée dans la paie' : ' · NON comptée dans la paie'),
+        message: ecartee
+          ? `Sortie présumée écartée`
+          : remplacee
+            ? `Sortie réelle récupérée`
+            : validee
+              ? `Sortie présumée validée`
+              : `Sortie présumée — à valider`,
+        detail: ecartee
+          ? `Estimation du ${formaterHeureLocale(p.lastOut.check_time)} écartée par l'admin — non payée, non comptée (conservée pour l'audit)`
+          : remplacee
+            ? `Estimation du ${formaterHeureLocale(p.lastOut.check_time)} remplacée par un vrai badge (conservée pour l'audit)`
+            : `Fermée à ${formaterHeureLocale(p.lastOut.check_time)}${niveau ? ` · Niveau ${niveau}` : ''}` +
+              (validee ? ' · comptée dans la paie' : ' · NON comptée dans la paie'),
+      })
+    } else if (p.estimationEcartee) {
+      //  L'estimation écartée n'est plus la sortie de la journée (elle ne
+      //  compte plus) — mais l'admin doit VOIR qu'il y a eu une décision.
+      anomalies.push({
+        type: 'estimation_ecartee',
+        severity: 'info',
+        icon: '🚫',
+        employee: empName, employeeId: empId,
+        message: `Sortie présumée écartée`,
+        detail: `Estimation du ${formaterHeureLocale(p.estimationEcartee.heure)} écartée — journée non fermée, non payée`,
       })
     }
 
@@ -445,21 +465,32 @@ function calculateEnrichedStats(pointages, hasOvertimeFeature) {
     conflits: pointages.filter(p => p.status === 'conflit_absence_pointage').length,
     withPhotos: pointages.filter(p => p.hasPhoto).length,
     faceCount: pointages.filter(p => p.hasFaceRecognition && p.status === 'present').length,
-    //  Oublis de badge : le dernier geste de la journée est une arrivée, et il date
-    //  de plus de 8 heures — la sortie n'a jamais été pointée. Même seuil que l'alerte
-    //  « Sortie manquante », pour que l'écran et la cloche disent la même chose.
-    //  (L'ancienne mesure lisait un indicateur que rien ne remplissait jamais : d'où
-    //  le 0 permanent.)
+    //  Oublis de badge : (a) le dernier geste de la journée est une arrivée
+    //  vieille de plus de 8 heures — la sortie n'a jamais été pointée, OU
+    //  (b) la sortie est une ESTIMATION encore à statuer : l'oubli est réel,
+    //  il est seulement maquillé par une sortie présumée. Compter uniquement
+    //  les derniers gestes « in » (l'ancienne mesure) remettait le compteur à 0
+    //  dès que le moteur écrivait l'estimation — l'oubli disparaissait de
+    //  l'écran alors qu'il n'avait jamais été réglé (cas Mercia, 16/10).
     autoClosedCount: (() => {
       const SEUIL_OUBLI = 8 * 3600 * 1000
       let oublis = 0
       for (const p of pointages) {
         const gestes = (p.attendances || [])
-          .map((a) => ({ t: new Date(a.check_time).getTime(), type: String(a.check_type || '').toLowerCase() }))
+          .map((a) => ({ t: new Date(a.check_time).getTime(), type: String(a.check_type || '').toLowerCase(), row: a }))
           .filter((g) => !isNaN(g.t))
           .sort((a, b) => b.t - a.t)
         const dernier = gestes[0]
-        if (dernier && dernier.type === 'in' && Date.now() - dernier.t > SEUIL_OUBLI) oublis++
+        if (!dernier) continue
+        if (dernier.type === 'in' && Date.now() - dernier.t > SEUIL_OUBLI) {
+          oublis++
+        } else if (
+          dernier.type === 'out' &&
+          estEstimationAStatuer(dernier.row) &&
+          Date.now() - dernier.t > SEUIL_OUBLI
+        ) {
+          oublis++
+        }
       }
       return oublis
     })(),
@@ -507,6 +538,10 @@ function generateWhatsAppMessage(pointage, selectedDate) {
       statusText = 'Conflit RH'
       statusEmoji = '⚠️'
       break
+    case 'nuit_rattachee':
+      statusText = 'Fin de garde de nuit'
+      statusEmoji = '🌙'
+      break
     default:
       statusText = 'Inconnu'
       statusEmoji = '❓'
@@ -532,9 +567,15 @@ function generateWhatsAppMessage(pointage, selectedDate) {
     if (p.totalSecondes > 0) {
       message += `⏱️ Durée: *${formaterDureeComplete(p.totalSecondes)}*\n`
     }
+    if (p.totalSecondesPresumes > 0) {
+      message += `⏳ Dont présumée (non payée): *${formaterDureeComplete(p.totalSecondesPresumes)}*\n`
+    }
     if (p.validPairs && p.validPairs.length > 1) {
       message += `📊 Sessions: ${p.validPairs.length}\n`
     }
+  } else if (p.status === 'nuit_rattachee' && p.nuitRattachee) {
+    message += `🌙 Garde du ${p.nuitRattachee.jourOrigine} terminée à ${formaterHeureLocale(p.nuitRattachee.heure)}\n`
+    message += `⏱️ Durée de la garde: *${formaterDureeComplete(p.nuitRattachee.dureeSecondes)}*\n`
   }
 
   message += `━━━━━━━━━━━━━━━━━\n`
@@ -882,8 +923,12 @@ export default function Pointages() {
       const { data: employees, error: empError } = await employeesQuery
       if (empError) throw empError
 
-      // Fenêtre élargie en heure locale : de la veille (J-1) à 12:00 jusqu'au lendemain (J+1) à 14:00
-      // afin d'identifier les gardes de nuit commencées à J-1 et d'inclure les sorties de nuit à J+1.
+      // Fenêtre élargie en heure locale : de la veille (J-1) à 00:00 jusqu'au
+      // lendemain (J+1) à 14:00 afin d'identifier les gardes de nuit commencées
+      // à J-1 et d'inclure les sorties de nuit à J+1.
+      // (Arbitrage n°2, faille 2 : la fenêtre commençait à 12:00 la veille —
+      // une entrée de 08:54 était INVISIBLE quand on ouvrait le lendemain, et
+      // sa sortie de 01:12 se retrouvait orpheline sur la mauvaise journée.)
       const prevDateObj = new Date(`${selectedDate}T00:00:00Z`)
       prevDateObj.setUTCDate(prevDateObj.getUTCDate() - 1)
       const prevDateStr = prevDateObj.toISOString().split('T')[0]
@@ -893,8 +938,8 @@ export default function Pointages() {
       const nextDateStr = nextDateObj.toISOString().split('T')[0]
 
       const queryStartISO =
-        heureLocaleVersUTC(prevDateStr, 12, 0, 0) ||
-        new Date(`${prevDateStr}T12:00:00Z`).toISOString()
+        heureLocaleVersUTC(prevDateStr, 0, 0, 0) ||
+        new Date(`${prevDateStr}T00:00:00Z`).toISOString()
       const queryEndISO =
         heureLocaleVersUTC(nextDateStr, 14, 0, 0) ||
         new Date(`${nextDateStr}T14:00:00Z`).toISOString()
@@ -913,7 +958,7 @@ export default function Pointages() {
         .select(`
           id, employee_id, enterprise_id, check_time, check_type,
           method, is_auto_closed, location_lat, location_lng,
-          anomalie, estimation_validee_le, estimation_remplacee_le,
+          anomalie, estimation_source_id, estimation_validee_le, estimation_remplacee_le,
           estimation_niveau, estimation_confiance,
           gps_accuracy, is_within_zone, distance_meters, geofence_id,
           face_score, face_verified, liveness_passed, face_attempts,
@@ -969,12 +1014,18 @@ export default function Pointages() {
 
       const holidaySets = {}
       const holidayMaps = {}
+      const seuilsByEnterprise = {}
       await Promise.all(
         enterpriseIds.map(async (entId) => {
           const holidays = await HolidayService.getHolidaysForRange(entId, selectedDate, selectedDate)
           const active = holidays.filter(h => !h.is_worked)
           holidaySets[entId] = HolidayService.buildHolidaySet(active)
           holidayMaps[entId] = HolidayService.buildHolidayMap(active)
+          //  Arbitrage n°2, faille 1 : les seuils (appariement, garde de nuit…)
+          //  sont lus en base UNE fois par entreprise, puis passés au moteur.
+          //  Sans ça, le réglage `appariement_heures = 20` n'avait AUCUN effet
+          //  sur cette page (elle utilisait toujours le défaut 16 h).
+          seuilsByEnterprise[entId] = await chargerSeuilsPointage(entId)
         })
       )
       setHolidaysByEnterprise(holidaySets)
@@ -1001,6 +1052,9 @@ export default function Pointages() {
           attendances: empAttendances,
           validPairs,
           totalSecondes,
+          totalSecondesPresumes,
+          nuitRattachee,
+          estimationEcartee,
           firstIn,
           lastOut,
         } = resoudrePointagesJournee(rawEmpAttendances, selectedDate, {
@@ -1008,6 +1062,8 @@ export default function Pointages() {
           employeeSchedule: employeeSchedulesMap[employee.id] || null,
           defaultSchedule,
           enterpriseCfg,
+          //  Arbitrage n°2, faille 1 : les seuils de la base, enfin transmis.
+          seuils: seuilsByEnterprise[employee.enterprise_id] || null,
         })
 
         const employeeAbsence = absencesData?.find(abs => abs.employee_id === employee.id)
@@ -1028,6 +1084,10 @@ export default function Pointages() {
         } else if (employeeAbsence) {
           status = 'en_conge'
           absenceReason = employeeAbsence.reason
+        } else if (nuitRattachee) {
+          //  A6 — pas de faux « Absent » le lendemain d'une garde de nuit :
+          //  la journée d'hier s'est terminée dans la nuit de ce jour.
+          status = 'nuit_rattachee'
         } else if (isHolidayToday) {
           status = 'jour_ferie'
         }
@@ -1053,6 +1113,7 @@ export default function Pointages() {
 
         return {
           employee, firstIn, lastOut, totalSecondes, status,
+          totalSecondesPresumes, nuitRattachee, estimationEcartee,
           absenceReason, attendances: empAttendances, hasPhoto,
           conflictData, employeeAbsence, overtimeData,
           hasFaceRecognition, isHolidayToday, holidayToday, validPairs,
@@ -1410,7 +1471,8 @@ export default function Pointages() {
           : p.status === 'en_conge' ? 'En congé'
             : p.status === 'jour_ferie' ? 'Jour férié'
               : p.status === 'conflit_absence_pointage' ? 'Conflit'
-                : 'Absent'),
+                : p.status === 'nuit_rattachee' ? 'Fin de garde de nuit'
+                  : 'Absent'),
         escape(p.firstIn?.method || ''),
         p.hasFaceRecognition ? 'Oui' : 'Non',
         p.firstIn?.face_score ? (p.firstIn.face_score * 100).toFixed(0) + '%' : '',
@@ -2014,6 +2076,7 @@ function FiltersSection({
             <option value="tous">Tous les statuts</option>
             <option value="present">✓ Présents</option>
             <option value="absent">✗ Absents</option>
+            <option value="nuit_rattachee">🌙 Fins de garde de nuit</option>
             <option value="en_conge">🌴 En congé</option>
             <option value="jour_ferie">🎌 Jour férié</option>
             <option value="conflit_absence_pointage">⚠ Conflits</option>
@@ -2409,6 +2472,10 @@ function PointageCard({
     conflit_absence_pointage: {
       color: '#F97316', bg: 'rgba(249,115,22,0.12)', border: 'rgba(249,115,22,0.25)',
       label: `⚠ Conflit`, dotColor: '#F97316'
+    },
+    nuit_rattachee: {
+      color: '#38BDF8', bg: 'rgba(56,189,248,0.12)', border: 'rgba(56,189,248,0.25)',
+      label: `🌙 Fin de garde de nuit`, dotColor: '#38BDF8'
     }
   }
 
@@ -2579,9 +2646,11 @@ function PointageCard({
                 {p.lastOut?.is_auto_closed
                   ? (p.lastOut.estimation_validee_le
                       ? 'Sortie présumée ✓'
-                      : (p.lastOut.estimation_remplacee_le
-                          ? 'Sortie (estimation remplacée)'
-                          : 'Sortie présumée ⏳'))
+                      : (estEstimationEcartee(p.lastOut)
+                          ? 'Sortie présumée 🚫'
+                          : (p.lastOut.estimation_remplacee_le
+                              ? 'Sortie (estimation remplacée)'
+                              : 'Sortie présumée ⏳')))
                   : 'Sortie'}
               </span>
               <span style={{
@@ -2597,13 +2666,29 @@ function PointageCard({
             <Clock size={12} color="#F59E0B" />
             <span style={styles.durationText}>
               {formaterDureeComplete(p.totalSecondes)}
+              {p.totalSecondesPresumes > 0
+                ? ` (+ ${formaterDureeComplete(p.totalSecondesPresumes)} présumée)`
+                : ''}
             </span>
           </div>
 
+          {/* 🚫 ESTIMATION ÉCARTÉE — l'admin a jugé l'heure fausse : la journée
+              n'est pas fermée, rien n'est compté, et on ne re-propose pas la
+              même estimation (arbitrage n°3, cas Mercia). */}
+          {p.estimationEcartee && (
+            <div style={{ ...styles.estimationNote, color: '#EF4444' }}>
+              <Ban size={12} style={{ marginRight: 4 }} />
+              Estimation du {formaterHeureLocale(p.estimationEcartee.heure)} écartée — non comptée
+            </div>
+          )}
+
           {/* ⏳ SORTIE PRÉSUMÉE — bandeau de décision (1 clic, §5).
-              Disparaît dès qu'un humain a validé ou qu'un vrai badge est arrivé :
-              on ne demande jamais deux fois la même chose. */}
-          {estEstimationNonValidee(p.lastOut) && (
+              Disparaît dès qu'un humain a statué (validée OU écartée) ou qu'un
+              vrai badge est arrivé : on ne demande jamais deux fois la même
+              chose. `estEstimationAStatuer` et NON `estEstimationNonValidee` —
+              cette dernière reste vraie après un Écarter (elle protège la paie)
+              et gardait les boutons affichés à vie (bug du 16/10). */}
+          {estEstimationAStatuer(p.lastOut) && (
             <div style={styles.estimationBar}>
               <AlertCircle size={13} color="#F59E0B" />
               <span style={styles.estimationTexte}>

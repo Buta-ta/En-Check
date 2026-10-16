@@ -11,18 +11,34 @@
 //    Écran du 16 : « ✗ Absent · 🚩 Pointage signalé par le serveur »
 //
 //  LA RÈGLE QUI A MORDU, et qu'aucun test ne couvrait
-//    `resoudrePointagesJournee()` ne relie une sortie à l'entrée ouverte que si
+//    `resoudrePointagesJournee()` ne reliait une sortie à l'entrée ouverte que si
 //      `sortie - entrée <= appariementHeures`        (16 h, seuil arbitré, verrouillé
 //                                                      par autoCloseEstimation.test.js 1.a)
-//    16 h 19 dépasse de **19 minutes**. Et le `else` de cette branche efface
+//    16 h 19 dépasse de **19 minutes**. Et le `else` de cette branche effaçait
 //    `openIn`/`openDay` : le bloc « oubli de dépointage », qui exige
-//    `openDay === selectedDate`, ne se déclenche donc plus non plus. Résultat : une
+//    `openDay === selectedDate`, ne se déclenchait donc plus non plus. Résultat : une
 //    journée ni fermée par un badge, ni fermée par une estimation — ouverte à vie,
 //    à 0 seconde.
 //
+//  L'ARBITRAGE DU 16/10/2026 (cas n°2) — CE QUI A CHANGÉ, ET POURQUOI
+//    Ce fichier a d'abord écrit l'ancien comportement. L'arbitrage n°2 l'a
+//    changé VOLONTAIREMENT (règle R2, « garde de nuit ») :
+//      · une sortie RÉELLE pointée avant 06:00 le lendemain appartient à la
+//        garde de la veille, même au-delà de la tolérance d'appariement,
+//        dans la limite de `gardeMaxHeures` (22 h, seuil DB `garde_max_heures`) ;
+//      · deux vrais badges ne se perdent plus — jamais une estimation à la
+//        place d'une réalité ;
+//      · le `else` n'écrase plus `openIn` (A4) : la journée reste consultable.
+//    Les cas 1 et 2 verrouillent donc MAINTENANT la règle arbitrée. Si quelqu'un
+//    la change, ce test le dira — il ne bénit pas le comportement, il l'écrit.
+//
 //  CE QUE VERROUILLE CE FICHIER
-//    · la règle telle qu'elle est aujourd'hui (cas 1 et 2) : si quelqu'un la change,
-//      ce test le dit — il ne bénit pas le comportement, il l'écrit ;
+//    · la règle R2 arbitrée (cas 1, 2) : la garde de 16 h 19 se ferme sur le
+//      BADGE RÉEL, et rien n'est inventé ;
+//    · qu'un plafond, ça garde : au-delà de `gardeMaxHeures` (22 h), même en
+//      pleine nuit, on n'apparie plus (cas 2b) ;
+//    · que la règle porte sur le CRÉNEAU horaire : une sortie à 07:00 n'est pas
+//      une fin de garde, même dans la fenêtre (cas 2c) ;
 //    · qu'un relevé de seuil plus large (override entreprise à 20 h,
 //      `supabase/outils-sql/regler-appariement-nuit.sql`) referme la journée SUR LE
 //      BADGE RÉEL et pas sur une estimation (cas 3) ;
@@ -30,8 +46,8 @@
 //    · qu'un plafond, ça garde : une sortie 36 h après l'entrée ne doit JAMAIS être
 //      appariée, même à 20 h (cas 5) ;
 //    · qu'une sortie avalée par la veille ne crée pas de journée fantôme le
-//      lendemain (cas 6) — c'est ce qui empêchera le « ✗ Absent » d'être lu comme une
-//      faute.
+//      lendemain — et que ce lendemain annonce désormais la FIN DE GARDE DE NUIT
+//      (A6) au lieu d'un « ✗ Absent » (cas 6).
 //
 //  Aucun appel réseau : `../../lib/supabase` est mocké, comme dans le reste de la suite.
 
@@ -86,23 +102,27 @@ const options = (sur = {}) => ({
 beforeEach(() => setActiveTimezone('Africa/Porto-Novo'))
 afterEach(() => resetActiveTimezone())
 
-describe('sortie qui passe minuit — ce que la règle fait aujourd’hui', () => {
-  it('1) à la tolérance arbitrée (16 h), la garde de 16 h 19 n’est pas appariable', () => {
+describe('sortie qui passe minuit — la règle R2 arbitrée (garde de nuit)', () => {
+  it('1) la garde de 16 h 19 se ferme sur le BADGE RÉEL (règle R2, arbitrage n°2)', () => {
     const r = resoudrePointagesJournee(LIGNES, J15, {
       ...options(),
       seuils: seuilsAvec({ appariementHeures: 16 }),
     })
 
-    // C'est exactement l'écran « Sortie --:--:-- · 0 sec » du 15/10.
-    expect(r.validPairs).toHaveLength(0)
-    expect(r.lastOut).toBeNull()
-    expect(r.totalSecondes).toBe(0)
-    // …mais l'entrée, elle, est bien visible : la journée n'est pas vide, elle est
-    // ouverte. C'est ce qui rend le ticket crédible aux yeux de l'employé.
-    expect(r.firstIn?.check_time).toBe(entree15.check_time)
+    // AVANT l'arbitrage : validPairs vide, « Sortie --:--:-- · 0 sec » (le 15/10).
+    // MAINTENANT : la sortie de 01:14 (avant 06:00) est la fin de la garde de la
+    // veille — deux vrais badges, jamais une estimation à la place d'une réalité.
+    expect(r.validPairs).toHaveLength(1)
+    const [paire] = r.validPairs
+    expect(paire.in.check_time).toBe(entree15.check_time)
+    expect(paire.out.check_time).toBe(sortie16.check_time)
+    expect(paire.out.is_auto_closed).toBe(false)          // jamais une invention
+    expect(r.totalSecondes).toBe(H16)                     // 16 h 19 min 21 s, exactement
+    expect(r.totalSecondesPresumes).toBe(0)
+    expect(r.lastOut?.check_time).toBe(sortie16.check_time)
   })
 
-  it('2) et le bloc « oubli de dépointage » ne prend pas le relais : journée ouverte à vie', () => {
+  it('2) avec l’auto-close armé, rien n’est inventé non plus : la journée est fermée', () => {
     const r = resoudrePointagesJournee(LIGNES, J15, {
       ...options(),
       enableAutoClose: true,
@@ -110,13 +130,37 @@ describe('sortie qui passe minuit — ce que la règle fait aujourd’hui', () =
       seuils: seuilsAvec({ appariementHeures: 16, oubliSortieHeures: 12, plafondInventionHeures: 12 }),
     })
 
-    // La sortie réelle a fait tomber `openIn`/`openDay` (branche `else` de
-    // l'appariement) : le bloc qui aurait pu poser une sortie estimée ne s'exécute
-    // pas. Double échec, et c'est bien pire qu’un seul des deux.
-    expect(r.validPairs).toHaveLength(0)
-    expect(r.lastOut).toBeNull()
+    // Le badge réel ferme la journée : le moteur d'estimation n'a RIEN à faire.
+    expect(r.validPairs).toHaveLength(1)
     expect(r.attendances.filter((a) => a.is_auto_closed)).toHaveLength(0)
-    expect(r.attendances.some((a) => a.check_type === 'out')).toBe(false)
+    expect(r.lastOut?.check_time).toBe(sortie16.check_time)
+    expect(r.lastOut?.is_auto_closed).toBe(false)
+    expect(r.nonRattachees ?? []).toHaveLength(0)
+  })
+
+  it('2b) un plafond reste un plafond : au-delà de gardeMaxHeures (22 h), plus de R2', () => {
+    const lignes = [
+      badge('2026-10-15T08:00:00', 'in'),
+      badge('2026-10-16T06:30:00', 'out'),   // 22 h 30 : en pleine nuit, mais trop long
+    ]
+    const r = resoudrePointagesJournee(lignes, J15, {
+      ...options(),
+      seuils: seuilsAvec({ appariementHeures: 16 }),   // gardeMaxHeures = 22 (défaut)
+    })
+    expect(r.validPairs).toHaveLength(0)
+    expect(r.totalSecondes).toBe(0)
+  })
+
+  it('2c) la règle porte sur le créneau : une sortie à 07:00 n’est pas une fin de garde', () => {
+    const lignes = [
+      badge('2026-10-15T08:00:00', 'in'),
+      badge('2026-10-16T07:00:00', 'out'),   // 23 h mais à 07:00 : hors créneau < 06:00
+    ]
+    const r = resoudrePointagesJournee(lignes, J15, {
+      ...options(),
+      seuils: seuilsAvec({ appariementHeures: 16 }),
+    })
+    expect(r.validPairs).toHaveLength(0)
   })
 })
 
@@ -171,15 +215,18 @@ describe('sortie qui passe minuit — ce que change un relevé de tolérance', (
   it('6) le 16 au matin ne devient pas une journée fantôme : la sortie appartient au 15', () => {
     const r = resoudrePointagesJournee(LIGNES, '2026-10-16', {
       ...options(),
-      seuils: seuilsAvec({ appariementHeures: 20 }),
+      seuils: seuilsAvec({ appariementHeures: 16 }),
     })
-    // Aucune entrée le 16 : le statut reste « absent », mais ce n’est plus un
-    // employé qui a déserté, c’est la fin de la veille. Aucun badge ne lui est
-    // compté, et le 🚩 « hors fenêtre » disparaît de la carte puisqu’il n'y a plus
-    // de ligne ce jour-là.
+    // Aucune entrée le 16 : rien n'est compté au 16. Mais l'écran annonce
+    // MAINTENANT (A6) « 🌙 Fin de garde de nuit » — c'est la fin de la veille,
+    // pas un employé qui a déserté, et le 🚩 « hors fenêtre » disparaît.
     expect(r.firstIn).toBeNull()
     expect(r.validPairs).toHaveLength(0)
     expect(r.totalSecondes).toBe(0)
+    expect(r.nuitRattachee).not.toBeNull()
+    expect(r.nuitRattachee?.jourOrigine).toBe('2026-10-15')
+    expect(r.nuitRattachee?.heure).toBe(sortie16.check_time)
+    expect(r.nuitRattachee?.dureeSecondes).toBe(H16)
   })
 })
 

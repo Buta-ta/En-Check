@@ -22,6 +22,8 @@ import {
   chargerSeuilsPointage,
   validerCibleEstimation,
   estEstimationNonValidee,
+  estEstimationEcartee,
+  estLigneHorsCalcul,
   estRebondNeutralise,
 } from './seuilsPointage'
 
@@ -524,6 +526,8 @@ function buildDaySummariesStrict({
   let currentIn = null
 
   for (const att of atts) {
+    //  Estimations écartées/remplacées : audit seulement, jamais appariées.
+    if (estLigneHorsCalcul(att)) continue
     // ✅ on ne filtre pas sur la "date du OUT", on paire globalement
     if (att.check_type === 'in') {
       if (!currentIn) {
@@ -593,6 +597,8 @@ function computeDayStrict(selectedDate, empAttendances, enterpriseCfg, plan = nu
   let currentIn = null
 
   for (const att of atts) {
+    //  Estimations écartées/remplacées : audit seulement, jamais appariées.
+    if (estLigneHorsCalcul(att)) continue
     if (att.check_type === 'in') {
       if (!currentIn) {
         currentIn = att
@@ -1500,15 +1506,35 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
     (a, b) => new Date(a.check_time) - new Date(b.check_time)
   )
   //  ⚙️ Même contrat que le moteur SQL : les seuils viennent de la base.
-  const s = options.seuils || SEUILS_PAR_DEFAUT
+  //  (Arbitrage n°2, faille 1 : la page Pointages ne passait AUCUN seuil ici —
+  //  le réglage `appariement_heures = 20` écrit en base n'était jamais lu, et
+  //  `resoudrePointagesJournee` ne consultait même pas `enterpriseCfg.seuils`.)
+  const s = options.seuils || options.enterpriseCfg?.seuils || SEUILS_PAR_DEFAUT
   const APPARIEMENT_H = H(s, 'appariementHeures')
   const REBOND_S = H(s, 'seuilRebondSecondes')
+  //  R2 — règle « garde de nuit » (arbitrage n°2) : sortie avant 06:00 le
+  //  lendemain → fin de la garde ouverte la veille, dans la limite GARDE_MAX_H.
+  const GARDE_MAX_H = H(s, 'gardeMaxHeures')
+  const OUBLI_H = H(s, 'oubliSortieHeures')
+  //  Garde-fou « date future » : un badge ne peut pas se trouver dans le futur
+  //  (marge de 10 min pour la dérive des horloges de boîtier). Le bouton « J+1 »
+  //  de ModifierPointage a déjà envoyé une sortie au lendemain par erreur :
+  //  la journée s'était nouée sur un instant qui n'était pas encore arrivé.
+  const TOLERANCE_FUTUR_MS = 10 * 60 * 1000
+  const maintenantMs = options.referenceNow ? new Date(options.referenceNow).getTime() : Date.now()
 
   let openIn = null
   let lastOpenIn = null
   let openDay = null
   let lastClosedOut = null
   let lastClosedDay = null
+
+  //  Arbitrage n°3 — états qui ne doivent jamais disparaître silencieusement :
+  let totalSecondesPresumes = 0   // durées d'estimations (non payées tant que non validées)
+  let nuitRattachee = null        // fin de garde de nuit tombée sur CE jour (A6)
+  let estimationEcartee = null    // estimation qu'un admin a écartée sur cette journée
+  const nonRattachees = []        // sorties réelles impossibles à rattacher (A4)
+  const horsCalcul = []           // estimations écartées/remplacées (audit, jamais comptées)
 
   const attendancesDuJour = []
   const validPairs = []
@@ -1518,6 +1544,37 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
     const attTime = new Date(att.check_time)
     const attDateStr = jourLocal(att.check_time) || att.check_time.split('T')[0]
     const attMinutes = minutesDepuisMinuit(att.check_time)
+
+    // ── LIGNE HORS CALCUL (estimation ÉCARTÉE ou REMPLACÉE) ──────────────
+    //  Ces lignes restent en base pour l'audit et la mesure d'erreur, mais ce
+    //  ne sont pas des badges : jamais appariées, jamais comptées. (Cas Mercia
+    //  16/10 : une estimation écartée continuait de gonfler la journée.)
+    if (estLigneHorsCalcul(att)) {
+      horsCalcul.push(att)
+      if (estEstimationEcartee(att)) {
+        estimationEcartee = estimationEcartee || {
+          heure: att.check_time,
+          sourceId: att.estimation_source_id || null,
+        }
+      }
+      if (attDateStr === selectedDate) {
+        attendancesDuJour.push(att)
+      }
+      continue
+    }
+
+    // ── GARDE-FOU « DATE FUTURE » ────────────────────────────────────────
+    //  Un pointage ne peut pas se trouver dans le futur. On l'affiche (pour que
+    //  l'admin le voie et le corrige via Modifier) mais on ne l'apparie jamais :
+    //  sinon la journée se noue sur un instant qui n'est pas encore arrivé
+    //  (cas Hippo 16/10 : entrée 10:57 appariée à une sortie « datée » du 17 →
+    //  14h15 de service inventées + 2 fausses alertes).
+    if (attTime.getTime() > maintenantMs + TOLERANCE_FUTUR_MS) {
+      if (attDateStr === selectedDate) {
+        attendancesDuJour.push({ ...att, __futur: true })
+      }
+      continue
+    }
 
     if (att.check_type === 'in') {
       if (openIn) {
@@ -1571,18 +1628,39 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
           continue
         }
 
+        //  R1 : tolérance d'appariement normale. R2 (arbitrage n°2) : une sortie
+        //  avant 06:00 dans les GARDE_MAX_H après une entrée ouverte est la fin
+        //  de la garde de la veille — deux VRAIS badges ne se perdent plus.
         const matchedIn =
           diffFromFirst >= 0 && diffFromFirst <= APPARIEMENT_H
             ? openIn
             : diffFromLast >= 0 && diffFromLast <= APPARIEMENT_H
               ? lastOpenIn
-              : null
+              : attMinutes < 360 && diffFromFirst > APPARIEMENT_H && diffFromFirst <= GARDE_MAX_H
+                ? openIn
+                : attMinutes < 360 && diffFromLast > APPARIEMENT_H && diffFromLast <= GARDE_MAX_H
+                  ? lastOpenIn
+                  : null
 
         if (matchedIn) {
+          const payable = !att.is_auto_closed || !!att.estimation_validee_le
           if (openDay === selectedDate) {
             attendancesDuJour.push(att)
-            totalSecondes += calculerDureeSecondes(matchedIn.check_time, att.check_time)
+            const duree = calculerDureeSecondes(matchedIn.check_time, att.check_time)
+            //  Une estimation non validée ne gonfle JAMAIS la durée travaillée
+            //  (décision « on invente, on marque, on n'encaisse pas ») : elle
+            //  est comptée à part, en attendant la décision humaine.
+            if (payable) totalSecondes += duree
+            else totalSecondesPresumes += duree
             validPairs.push({ in: matchedIn, out: att })
+          } else if (attDateStr === selectedDate && openDay && openDay < selectedDate) {
+            //  A6 — la garde de la veille s'est terminée dans la nuit de CE jour :
+            //  l'écran affichera « Fin de garde de nuit » au lieu de « Absent ».
+            nuitRattachee = {
+              heure: att.check_time,
+              jourOrigine: openDay,
+              dureeSecondes: calculerDureeSecondes(matchedIn.check_time, att.check_time),
+            }
           }
           lastClosedOut = att
           lastClosedDay = openDay
@@ -1591,9 +1669,16 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
           openDay = null
           continue
         } else {
-          openIn = null
-          lastOpenIn = null
-          openDay = null
+          //  A4 — NE JAMAIS effacer la session ouverte ici (arbitrage n°2,
+          //  faille 4). Avant, ce bloc vidait `openIn` : la journée n'était ni
+          //  fermée par le badge ni par l'estimation → « 0 sec » à vie. La
+          //  sortie devient « non rattachée » (visible, corrigeable en 1 clic)
+          //  et la session reste ouverte pour l'auto-clôture/estimation.
+          nonRattachees.push(att)
+          if (attDateStr === selectedDate) {
+            attendancesDuJour.push({ ...att, __nonRattachee: true })
+          }
+          continue
         }
       }
 
@@ -1616,14 +1701,22 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
     const inMinutes = minutesDepuisMinuit(openIn.check_time)
 
     // Oubli de dépointage avéré :
-    // - soit plus de 14h se sont écoulées sans sortie (jour ou nuit),
+    // - soit plus de `oubliSortieHeures` se sont écoulées sans sortie (jour ou nuit),
     // - soit la journée est passée (selectedDate < nowDayStr) et l'entrée était un service de jour (< 16:00).
-    // (Si l'employé est entré à 22:00 la veille et qu'il est 02:00 du matin, elapsedHours < 14 et inMinutes >= 960 :
+    // (Si l'employé est entré à 22:00 la veille et qu'il est 02:00 du matin, elapsed < oubli et inMinutes >= 960 :
     //  sa garde de nuit est toujours en cours, on ne la coupe pas !)
     const estOubliSortie =
-      elapsedHours >= 14 || (selectedDate < nowDayStr && inMinutes < 960 && elapsedHours >= 4)
+      elapsedHours >= OUBLI_H || (selectedDate < nowDayStr && inMinutes < 960 && elapsedHours >= 4)
 
-    if (estOubliSortie) {
+    //  Ne JAMAIS ré-inventer une sortie sur une session dont l'estimation a déjà
+    //  été ÉCARTÉE par un admin : il a dit « cette heure est fausse ». On montre
+    //  la journée comme non fermée, on ne redevine pas à l'identique.
+    const estimationDejaTraitee = horsCalcul.some(
+      (a) => (a.estimation_source_id && a.estimation_source_id === openIn.id) ||
+        (!a.estimation_source_id && estEstimationEcartee(a) && a.check_type === 'out')
+    )
+
+    if (estOubliSortie && !estimationDejaTraitee) {
       const resolvedPlan =
         options.plan ||
         resolvePlanForExpected(options.employeeSchedule || null, options.defaultSchedule || null)
@@ -1644,7 +1737,9 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
           is_auto_closed: true,
           __virtual: true,
         }
-        totalSecondes += calculerDureeSecondes(openIn.check_time, virtualOut.check_time)
+        //  Durée INVENTÉE = jamais dans le total « travaillé » (décision §4.1) :
+        //  comptée dans `totalSecondesPresumes`, affichée à part, non payée.
+        totalSecondesPresumes += calculerDureeSecondes(openIn.check_time, virtualOut.check_time)
         validPairs.push({ in: openIn, out: virtualOut })
         openIn = null
         lastOpenIn = null
@@ -1674,6 +1769,10 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
     attendances: attendancesDuJour,
     validPairs,
     totalSecondes,
+    totalSecondesPresumes,
+    nuitRattachee,
+    estimationEcartee,
+    nonRattachees,
     firstIn,
     lastOut,
   }

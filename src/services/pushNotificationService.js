@@ -35,6 +35,13 @@ class PushNotificationService {
     }
   }
 
+  //  `subscribe` est déclarée UNE seule fois (arbitrage n°2, décision B3) :
+  //  elle l'était deux fois (l.38 et l.101), la seconde écrasait la première
+  //  sans erreur — même famille de bug qu'un monkey-patch SQL. La version
+  //  retenue garde la robustesse de la première (permission déjà accordée =
+  //  pas de re-demande inutile, erreurs journalisées) et les précisions de la
+  //  seconde (`user_type` : 'admin' | 'employee' ; `user_id` : auth.users.id
+  //  pour un admin, employees.id pour un employé).
   async subscribe({ userType, userId, enterpriseId }) {
     if (!this.isSupported()) {
       throw new Error('Push non supporté sur ce navigateur')
@@ -74,8 +81,8 @@ class PushNotificationService {
         .from('push_subscriptions')
         .upsert(
           {
-            user_type: userType,
-            user_id: userId,
+            user_type: userType,                 // 'admin' | 'employee'
+            user_id: userId,                     // admin => auth.users.id ; employee => employees.id
             enterprise_id: enterpriseId || null,
             endpoint: sub.endpoint,
             keys_p256dh: sub.keys.p256dh,
@@ -96,47 +103,6 @@ class PushNotificationService {
       console.error('❌ Push subscription error:', err)
       throw err
     }
-  }
-
-  async subscribe({ userType, userId, enterpriseId }) {
-    if (!this.isSupported()) throw new Error('Push non supporté sur ce navigateur')
-    if (!VAPID_PUBLIC_KEY) throw new Error('VITE_VAPID_PUBLIC_KEY manquante')
-
-    await this.requestPermission()
-    const reg = await this.ensurePushSW()
-
-    let subscription = await reg.pushManager.getSubscription()
-    if (!subscription) {
-      subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      })
-    }
-
-    const sub = subscription.toJSON()
-    if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) {
-      throw new Error('Subscription invalide (keys manquantes)')
-    }
-
-    const { error } = await supabase
-      .from('push_subscriptions')
-      .upsert(
-        {
-          user_type: userType,                 // 'admin' | 'employee'
-          user_id: userId,                     // admin => auth.users.id ; employee => employees.id
-          enterprise_id: enterpriseId || null,
-          endpoint: sub.endpoint,
-          keys_p256dh: sub.keys.p256dh,
-          keys_auth: sub.keys.auth,
-          user_agent: navigator.userAgent,
-          is_active: true,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'endpoint' }
-      )
-
-    if (error) throw error
-    return subscription
   }
 
   async unsubscribeCurrent() {

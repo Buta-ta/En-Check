@@ -99,6 +99,23 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
     
     // Si on toggle le jour (même jour vs lendemain) ou le type (in/out)
     if (field === 'isNextDay' || field === 'type') {
+        //  Garde-fou « J+1 dans le futur » (arbitrage n°3) : le bouton ajoute
+        //  UN JOUR à la date affichée. Si ce jour n'est pas encore arrivé, le
+        //  geste est forcément une erreur — on l'explique au lieu de le faire.
+        if (field === 'isNextDay' && value === true) {
+          const lendemain = new Date(`${selectedDate}T00:00:00Z`)
+          lendemain.setUTCDate(lendemain.getUTCDate() + 1)
+          const aujourdhui = new Date()
+          const lendemainISO = lendemain.toISOString().split('T')[0]
+          const aujourdhuiISO = `${aujourdhui.getFullYear()}-${String(aujourdhui.getMonth() + 1).padStart(2, '0')}-${String(aujourdhui.getDate()).padStart(2, '0')}`
+          if (lendemainISO > aujourdhuiISO) {
+            toast.error(
+              `« J+1 » mettrait ce pointage le ${lendemainISO}, dans le futur. ` +
+              'Ce bouton est fait pour un pointage survenu après minuit, le lendemain du jour affiché.'
+            )
+            return
+          }
+        }
         updated[index][field] = value
     } else {
         updated[index][field] = String(value).padStart(2, '0')
@@ -150,6 +167,29 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
           check_time: heureLocaleVersUTC(finalDateStr, p.heures, p.minutes, p.secondes),
         }
       })
+
+      // ═══════════════════════════════════════════════════════════════════
+      // GARDE-FOU « DATE FUTURE » (arbitrage n°3 — cas Hippo 16/10/2026)
+      // ═══════════════════════════════════════════════════════════════════
+      // Le bouton « J+1 » ajoute UN JOUR à la date AFFICHÉE. Depuis la page du
+      // 16, il envoyait une sortie au 17 (dans le futur) : la journée du 16
+      // s'est nouée sur un instant qui n'était pas encore arrivé (14h15 de
+      // service inventées + 2 fausses alertes). Un pointage ne peut pas se
+      // trouver dans le futur — marge de 10 min pour la dérive des horloges.
+      const TOLERANCE_FUTUR_MS = 10 * 60 * 1000
+      const maintenantMs = Date.now()
+      const pointageFutur = nouveauxPointages.find(
+        p => p.check_time && new Date(p.check_time).getTime() > maintenantMs + TOLERANCE_FUTUR_MS
+      )
+      if (pointageFutur) {
+        toast.error(
+          'Refusé : ce pointage serait enregistré dans le futur. ' +
+          'Le bouton « J+1 » ajoute un jour à la date affichée — cliquez-le seulement ' +
+          'pour un pointage réellement survenu le lendemain après minuit.'
+        )
+        setLoading(false)
+        return
+      }
 
       // ═══════════════════════════════════════════════════════════════════
       // 2 → 5 : UN SEUL APPEL SERVEUR, ATOMIQUE (livraison 03)
@@ -397,7 +437,7 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
                         title={
                           p.isNextDay
                             ? 'Lendemain (J+1) activé — cliquez pour remettre au jour même (Jour J)'
-                            : 'Jour même (Jour J) — cliquez si ce pointage a eu lieu le lendemain après minuit (J+1)'
+                            : 'Jour même (Jour J) — cliquez si ce pointage a eu lieu le lendemain après minuit. ⚠ Attention : J+1 ajoute UN JOUR à la date affichée (ex. depuis le 16, il met le pointage au 17).'
                         }
                       >
                         <Moon size={14} />
