@@ -46,8 +46,11 @@ BEGIN;
 DO $$
 BEGIN
   IF to_regprocedure('public.encheck_grille_au_jour(uuid,uuid,date)') IS NULL
-     OR to_regprocedure('public.encheck_journee_recalculee(uuid,uuid,date)') IS NULL THEN
-    RAISE EXCEPTION 'Préflight : encheck_grille_au_jour / encheck_journee_recalculee introuvables. '
+     OR to_regprocedure('public.encheck_journee_recalculee(uuid,uuid,date)') IS NULL
+     OR to_regprocedure('public.encheck_minutes_de_bascule(text)') IS NULL
+     OR to_regprocedure('public.encheck_duree_circulaire(text,text)') IS NULL THEN
+    RAISE EXCEPTION 'Préflight : encheck_grille_au_jour / encheck_journee_recalculee / '
+      'encheck_minutes_de_bascule / encheck_duree_circulaire introuvables. '
       'Exécutez d''abord 20261016000001_fondations_auto_close_structure.sql, puis relancez ce script en entier.';
   END IF;
   IF to_regprocedure('public.encheck_table_alertes()') IS NULL
@@ -65,6 +68,215 @@ BEGIN
       'Exécutez d''abord les migrations fondations puis relancez ce script en entier.';
   END IF;
 END $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 0 bis. ENCHECK_GRILLE_au_JOUR — DURCI contre le schéma réel des tables
+-- ─────────────────────────────────────────────────────────────────────────────
+--  ERREUR DE PRODUCTION du 16/10 : « column es.valide_du does not exist » —
+--  `employee_schedules` et `work_schedules` sont créées par un schéma HISTORIQUE
+--  (ni notre dépôt, ni celui du pointage n'en portent le CREATE TABLE), et leurs
+--  colonnes varient. La version de 20261016000001 filtrait déjà valide_du /
+--  valide_au via `encheck_colonne_existe`, MAIS référait `is_active`,
+--  `updated_at`, `created_at` en clair dans son SQL dynamique : colonne absente =
+--  exception attrapée en silence = les affectations individuelles étaient
+--  IGNORÉES (Hippo redevenait « 08:00 » par la trappe du défaut).
+--
+--  Ici : le MÊME algorithme, à l'identique, mais CHAQUE référence de colonne
+--  devient conditionnelle (is_active, valide_du, valide_au, updated_at,
+--  created_at). Si toutes les colonnes existent, le comportement est
+--  strictement le même qu'avant ; s'il en manque, la résolution continue au
+--  lieu d'échouer en silence. Aucune autre fonction n'est touchée.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.encheck_grille_au_jour(
+  p_employee uuid,
+  p_enterprise uuid,
+  p_date date
+)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_es      jsonb;
+  v_esl     record;
+  v_wsj     jsonb;
+  v_def     jsonb;
+  v_clause  text;
+  v_actif   text;
+  v_order   text;
+  v_found   boolean := false;
+  v_nom     text;
+  v_start   text;
+  v_end     text;
+  v_pause   integer := 0;
+  v_basc    integer := 0;
+  v_tol     integer := 15;
+  v_days    jsonb;
+  v_source  text := 'aucune';
+  v_amp     integer;
+BEGIN
+  -- ── Affectation individuelle de l'employé, en vigueur CE JOUR-LÀ ──────────
+  v_clause := '';
+  IF public.encheck_colonne_existe('employee_schedules', 'valide_du') THEN
+    v_clause := v_clause || ' AND (es.valide_du IS NULL OR es.valide_du <= $2::date)';
+  END IF;
+  IF public.encheck_colonne_existe('employee_schedules', 'valide_au') THEN
+    v_clause := v_clause || ' AND (es.valide_au IS NULL OR es.valide_au >= $2::date)';
+  END IF;
+
+  v_actif := '';
+  IF public.encheck_colonne_existe('employee_schedules', 'is_active') THEN
+    v_actif := ' AND COALESCE(es.is_active, true) = true';
+  END IF;
+
+  v_order := '';
+  IF public.encheck_colonne_existe('employee_schedules', 'valide_du') THEN
+    v_order := v_order || 'COALESCE(es.valide_du, DATE ''1900-01-01'') DESC NULLS LAST, ';
+  END IF;
+  IF public.encheck_colonne_existe('employee_schedules', 'updated_at') THEN
+    v_order := v_order || 'COALESCE(es.updated_at, ''infinity''::timestamptz) DESC NULLS LAST, ';
+  END IF;
+  IF public.encheck_colonne_existe('employee_schedules', 'created_at') THEN
+    v_order := v_order || 'COALESCE(es.created_at, ''infinity''::timestamptz) DESC NULLS LAST, ';
+  END IF;
+  v_order := v_order || 'es.id DESC';
+
+  BEGIN
+    EXECUTE '
+      SELECT to_jsonb(es.*)
+        FROM public.employee_schedules es
+       WHERE es.employee_id = $1' || v_actif || v_clause || '
+       ORDER BY ' || v_order || '
+       LIMIT 1'
+      INTO v_es USING p_employee, p_date;
+    v_found := v_es IS NOT NULL;
+  EXCEPTION WHEN OTHERS THEN
+    v_found := false;
+    v_es    := NULL;
+  END;
+
+  IF v_found AND COALESCE((v_es->>'use_custom_hours')::boolean, false)
+              AND v_es->>'custom_start_time' IS NOT NULL AND v_es->>'custom_end_time' IS NOT NULL THEN
+    v_source := 'custom';
+    v_nom    := 'Horaire personnalisé';
+    v_start  := left(v_es->>'custom_start_time', 5);
+    v_end    := left(v_es->>'custom_end_time', 5);
+    v_days   := v_es->'custom_work_days';
+    v_basc   := public.encheck_minutes_de_bascule(v_es->>'custom_bascule');
+    IF (v_es->>'custom_has_break') IS NOT NULL THEN
+      v_tol := COALESCE(v_tol, 15);
+    END IF;
+
+  ELSIF v_found AND v_es->>'schedule_id' IS NOT NULL THEN
+    BEGIN
+      EXECUTE 'SELECT to_jsonb(ws.*) FROM public.work_schedules ws WHERE ws.id = $1 LIMIT 1'
+        INTO v_wsj USING (v_es->>'schedule_id')::uuid;
+    EXCEPTION WHEN OTHERS THEN
+      v_wsj := NULL;
+    END;
+    IF v_wsj IS NOT NULL AND v_wsj->>'start_time' IS NOT NULL AND v_wsj->>'end_time' IS NOT NULL THEN
+      v_source := 'liee';
+      v_nom    := COALESCE(NULLIF(v_wsj->>'name',''), 'Grille liée');
+      v_start  := left(v_wsj->>'start_time', 5);
+      v_end    := left(v_wsj->>'end_time', 5);
+      v_days   := COALESCE(v_wsj->'work_days', to_jsonb(ARRAY[1,2,3,4,5]));
+      v_tol    := COALESCE((v_wsj->>'late_tolerance_minutes')::int, v_tol);
+      v_basc   := public.encheck_minutes_de_bascule(v_wsj->>'bascule');
+    END IF;
+  END IF;
+
+  -- ── Pause : déduite du service attendu (12:00-13:00 = 60 min) ─────────────
+  IF v_source <> 'aucune' THEN
+    IF v_source = 'custom'
+       AND COALESCE((v_es->>'custom_has_break')::boolean, true)
+       AND v_es->>'custom_break_start' IS NOT NULL AND v_es->>'custom_break_end' IS NOT NULL THEN
+      v_pause := COALESCE(public.encheck_duree_circulaire(left(v_es->>'custom_break_start',5),
+                                                           left(v_es->>'custom_break_end',5)), 0);
+    ELSIF v_wsj IS NOT NULL
+          AND COALESCE((v_wsj->>'has_break')::boolean, false)
+          AND v_wsj->>'break_start' IS NOT NULL AND v_wsj->>'break_end' IS NOT NULL THEN
+      v_pause := COALESCE(public.encheck_duree_circulaire(left(v_wsj->>'break_start',5),
+                                                           left(v_wsj->>'break_end',5)), 0);
+    END IF;
+  END IF;
+
+  -- ── Grille par DÉFAUT de l'entreprise, uniquement si rien de personnel ────
+  IF v_source = 'aucune' THEN
+    v_clause := '';
+    IF public.encheck_colonne_existe('work_schedules', 'valide_du') THEN
+      v_clause := v_clause || ' AND (ws.valide_du IS NULL OR ws.valide_du <= $2::date)';
+    END IF;
+    IF public.encheck_colonne_existe('work_schedules', 'valide_au') THEN
+      v_clause := v_clause || ' AND (ws.valide_au IS NULL OR ws.valide_au >= $2::date)';
+    END IF;
+
+    v_actif := '';
+    IF public.encheck_colonne_existe('work_schedules', 'is_active') THEN
+      v_actif := ' AND COALESCE(ws.is_active, true) = true';
+    END IF;
+
+    v_order := 'COALESCE(ws.is_default, false) DESC, ';
+    IF public.encheck_colonne_existe('work_schedules', 'created_at') THEN
+      v_order := v_order || 'COALESCE(ws.created_at, ''infinity''::timestamptz) DESC, ';
+    END IF;
+    v_order := v_order || 'ws.id DESC';
+
+    BEGIN
+      EXECUTE '
+        SELECT to_jsonb(ws.*)
+          FROM public.work_schedules ws
+         WHERE ws.enterprise_id = $1
+           AND ws.start_time IS NOT NULL AND ws.end_time IS NOT NULL' || v_actif || v_clause || '
+         ORDER BY ' || v_order || '
+         LIMIT 1'
+        INTO v_def USING p_enterprise, p_date;
+    EXCEPTION WHEN OTHERS THEN
+      v_def := NULL;
+    END;
+
+    IF v_def IS NOT NULL THEN
+      v_source := 'defaut';
+      v_nom    := COALESCE(NULLIF(v_def->>'name',''), 'Journée de travail');
+      v_start  := left(v_def->>'start_time', 5);
+      v_end    := left(v_def->>'end_time', 5);
+      v_days   := COALESCE(v_def->'work_days', to_jsonb(ARRAY[1,2,3,4,5]));
+      v_tol    := COALESCE((v_def->>'late_tolerance_minutes')::int, v_tol);
+      v_basc   := public.encheck_minutes_de_bascule(v_def->>'bascule');
+      IF COALESCE((v_def->>'has_break')::boolean, false)
+         AND v_def->>'break_start' IS NOT NULL AND v_def->>'break_end' IS NOT NULL THEN
+        v_pause := COALESCE(public.encheck_duree_circulaire(left(v_def->>'break_start',5),
+                                                             left(v_def->>'break_end',5)), 0);
+      END IF;
+    END IF;
+  END IF;
+
+  -- ── Aucun horaire n'existe : on le dit. Fin du 08:00–17:00 imaginaire. ─────
+  IF v_source = 'aucune' THEN
+    RETURN jsonb_build_object('trouvee', false, 'source', 'aucune', 'date_jour', p_date::text);
+  END IF;
+
+  v_amp := COALESCE(public.encheck_duree_circulaire(v_start, v_end), 0);
+
+  RETURN jsonb_build_object(
+    'trouvee',                 true,
+    'explicite',               v_source IN ('custom','liee'),
+    'source',                  v_source,
+    'nom',                     v_nom,
+    'start_time',              v_start,
+    'end_time',                v_end,
+    'start_minutes',           COALESCE(public.encheck_duree_circulaire('00:00', v_start), 0),
+    'end_minutes',             COALESCE(public.encheck_duree_circulaire('00:00', v_end), 0),
+    'amplitude_minutes',       v_amp,
+    'pause_minutes',           v_pause,
+    'service_attendu_minutes', GREATEST(0, v_amp - v_pause),
+    'bascule_minutes',         v_basc,
+    'tolerance_minutes',       v_tol,
+    'work_days',               v_days,
+    'est_jour_ouvre',          (v_days IS NOT NULL AND v_days @> to_jsonb(ARRAY[EXTRACT(ISODOW FROM p_date)::int])),
+    'date_jour',               p_date::text
+  );
+END;
+$$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 1. CALCUL DES RETARDS SUR UNE PLAGE — la source unique, enfin branchée
