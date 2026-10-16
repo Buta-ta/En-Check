@@ -30,6 +30,7 @@ posée, annulation en section 6).
 | `diagnostic-pointage-qui-passe-minuit.sql` | **éditeur SQL Supabase** | lecture seule — une sortie pointée après minuit rattache-t-elle sa journée ? verdict chiffré, section C |
 | `regler-appariement-nuit.sql` | **éditeur SQL Supabase**, une fois, sur décision d'arbitre | ⚠️ écrit **une ligne de réglage** (`encheck_reglages_pointage`) pour UNE entreprise — ni structure, ni donnée de paie |
 | `squelette-supabase-local.sql` | ⛔ **Postgres local seulement** | monte un faux Supabase (rôles, `auth`, tables partagées) |
+| `lister-signatures-fonctions.sql` | **éditeur SQL Supabase** | lecture seule — les signatures réelles des fonctions que l'app appelle mais que ce dépôt ne déclare pas |
 | `test-execution-migration.sql` | ⛔ **Postgres local seulement**, après le squelette | 25 assertions : la migration, exécutée pour de vrai |
 
 Les deux derniers sont la raison de deux erreurs vues dans l'éditeur le 16/10 :

@@ -666,12 +666,31 @@ export default function Pointages() {
     if (!attendanceId) return
     setEstimationEnCours(`${attendanceId}:${action}`)
     try {
-      const { error } = await supabase.rpc('encheck_estimation_statuer', {
+      // ⚠️ Les NOMS des paramètres sont le contrat avec PostgREST : `rpc()` traduit
+      //    chaque clé en argument nommé, et une clé qui ne correspond à aucun
+      //    paramètre déclaré ne produit pas une erreur de typage — elle produit un
+      //    404 « Could not find the function public.encheck_estimation_statuer(
+      //    p_action, p_ids) in the schema cache », parce qu'une fonction portant ces
+      //    noms-là n'existe nulle part. La signature en base (migration 20261016000001
+      //    l.1237-1239) est `p_ids uuid[], p_decision text, p_motif text`. Le
+      //    16/10, l'appel envoyait `p_action` : les deux boutons du bandeau
+      //    d'estimation étaient donc morts, silencieusement pour l'affichage et en
+      //    404 pour l'action. Garde-fou : src/services/__tests__/cablageRpc.test.js.
+      const { data: statuees, error } = await supabase.rpc('encheck_estimation_statuer', {
         p_ids: [attendanceId],
-        p_action: action,
+        p_decision: action,
       })
       if (error) {
         toast.error(`Le traitement de cette estimation a échoué : ${error.message}`)
+      } else if (!statuees) {
+        // La fonction SQL a répondu 0 : la ligne n'était plus dans l'état attendu
+        // (déjà validée, déjà écartée, ou remplacée entre-temps par un vrai badge).
+        // Annoncer un succès ici serait mentir au manager sur ce qui rentre en paie.
+        toast.warning(
+          'Aucune estimation à statuer sur cette ligne — elle a déjà été traitée, ' +
+          "ou un vrai pointage l'a remplacée. La page est rechargée.",
+        )
+        await loadPointages()
       } else {
         toast.success(
           action === 'rejeter'
