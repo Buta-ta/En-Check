@@ -103,6 +103,35 @@ est restée à 16 : les autres entreprises ne bougent pas, et le verrou
 `autoCloseEstimation.test.js` 1.a (qui verrouille le contrat 12/12/16) n'est pas touché.
 Pour revenir en arrière : section 6 du même fichier (un `DELETE` de l'override), et c'est tout.
 
+## État au 16/10, 08:54 — le 404 est mort, le 400 est né, les deux sont enterrés
+
+La PR #9 (`p_action` → `p_decision`) a été **fusionnée** : `main` = `be1c00d`, Vercel
+redéployé. Le log Postgres du 16/10 08:54 le prouve — la requête arrive bien avec
+`"p_ids" uuid[], "p_decision" text`. Le clic a alors échoué plus loin, sur la **valeur** :
+`invalid input syntax for type uuid: "virtual-out-e24bb1d9-…"`, parce que le bandeau
+proposait une décision sur une sortie que le moteur d'affichage venait d'inventer à la
+lecture (aucune ligne en base). Corrigé côté JS, **rien à coller en base** : le bouton
+n'apparaît plus sur ces lignes, et `statuerEstimation` refuse tout identifiant qui n'est
+pas une clé primaire, en le disant.
+
+Ce que cette erreur a révélé est plus utile qu'elle : en mode `ombre` — le défaut de toute
+entreprise — le serveur **n'écrit aucune sortie présumée dans `attendances`** (migration
+l.874 et l.992) et ne clôture **jamais** la journée en cours. Le bandeau de décision n'a
+donc rien à statuer par construction, sauf sur des lignes legacy. Le nombre exact de lignes
+décidables, entreprise par entreprise, se lit maintenant dans
+`../supabase/outils-sql/controle-estimations-decidables.sql` (lecture seule, 4 sections +
+ligne de fin de collage).
+
+### Fichiers à coller, ce tour
+
+| Fichier | Coller ? | Ce qu'il doit rendre |
+|---|---|---|
+| `../supabase/outils-sql/controle-estimations-decidables.sql` | ✅ oui — c'est la seule chose à faire en base ce tour | 4 jeux de résultats, dernière ligne `FIN DU CONTRÔLE — sections 1 à 4 collées entièrement` |
+| `../supabase/migrations/20261016000001_fondations_auto_close_structure.sql` | ⛔ **non**, déjà appliquée | changer un octet du fichier rendrait le dépôt différent de la base |
+| `regler-appariement-nuit.sql` | ⛔ **non**, appliqué à 08:36 (`appariement_en_vigueur = 20`) | au besoin : section 6 du même fichier = annulation |
+| `diagnostic-pointage-qui-passe-minuit.sql` | ⛔ non, collé à 08:36 | à relancer seulement pour re-mesurer après un changement de règle |
+| `squelette-supabase-local.sql`, `test-execution-migration.sql` | ⛔ **jamais** en prod | méta-commandes psql, `CREATE FUNCTION auth.jwt()`, `TRUNCATE` |
+
 ## Après la mise en service du 16/10 : rien à coller
 
 Les deux pannes signalées après l'application de la migration (HTTP 400 sur le chargement

@@ -19,7 +19,10 @@ import {
   Smartphone, Copy, Check, Upload, Radio
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { etiquetteEstimation, estEstimationNonValidee } from '../services/seuilsPointage'
+import {
+  etiquetteEstimation, estEstimationNonValidee,
+  estLigneConsigneeEnBase, estIdentifiantDeBase, formatConfianceEstimation,
+} from '../services/seuilsPointage'
 import {
   formaterHeureLocale,
   calculerDureeSecondes,
@@ -660,10 +663,31 @@ export default function Pointages() {
   //  Le contrôle d'autorisation est DANS la fonction SQL (`encheck_estimation_
   //  statuer`, SECURITY DEFINER + test admin interne) : un bouton caché ici ne
   //  serait pas une sécurité, seulement du maquillage.
+  //  Deux ratés ont été corrigés dans ce chemin, le 16/10 : 08:36 un NOM de
+  //  paramètre (`p_action` au lieu de `p_decision`) → 404 ; 08:54 un TYPE de
+  //  valeur (un id virtuel envoyé comme uuid) → 400. Le premier est gardé par
+  //  cablageRpc.test.js, le second par estimationConsignee.test.js — et les deux
+  //  se lisent ici, parce qu'aucun outil de ce dépôt ne les voyait passer.
   const [estimationEnCours, setEstimationEnCours] = useState(null)
 
   const statuerEstimation = async (attendanceId, action) => {
     if (!attendanceId) return
+    //  Une décision ne porte que sur une ligne ÉCRITE en base. Les sorties que le
+    //    moteur d'affichage invente à la lecture portent un id de facture
+    //    `virtual-out-<uuid>` : la base réclame `p_ids uuid[]`, Postgres répond
+    //    `22P02 invalid input syntax for type uuid` (400), et le manager lit un
+    //    message illisible pour une action qui n'avait rien à faire ici. On
+    //    n'invente pas un faux uuid pour faire plaisir au bouton : on dit qu'il
+    //    n'y a rien à statuer tant que la ligne n'est pas consignée.
+    if (!estIdentifiantDeBase(attendanceId)) {
+      toast.warning(
+        'Sortie estimée à l’écran, pas en base : rien à statuer. Le serveur ne clôture ' +
+        'JAMAIS la journée en cours, et il n’y écrit quoi que ce soit que si le mode ' +
+        'estimation de l’entreprise est « actif » (mode « ombre » = rien d’écrit dans ' +
+        'attendances). Pour trancher maintenant : « Modifier le pointage ».',
+      )
+      return
+    }
     setEstimationEnCours(`${attendanceId}:${action}`)
     try {
       // ⚠️ Les NOMS des paramètres sont le contrat avec PostgREST : `rpc()` traduit
@@ -2360,6 +2384,10 @@ function PointageCard({
   onToggleExpand, onEdit, onDelete, onConflict, onPhotoClick, onShare,
   getMethodeDisplay, getAdminName
 }) {
+  //  La confiance vit dans une colonne `text` (`attendances.estimation_confiance`,
+  //  migration l.65) : convertie UNE fois ici, jamais multipliée à la volée —
+  //  `Math.round('faible' * 100)` rendait « confiance NaN% » sur toute ligne réellement estimée.
+  const confianceEstimation = formatConfianceEstimation(p.lastOut?.estimation_confiance)
   const statusConfig = {
     present: {
       color: '#10B981', bg: 'rgba(16,185,129,0.12)',
@@ -2582,10 +2610,9 @@ function PointageCard({
                 {etiquetteEstimation(p.lastOut)}
                 {p.lastOut.estimation_niveau
                   ? ` · origine : niveau ${p.lastOut.estimation_niveau}` : ''}
-                {p.lastOut.estimation_confiance != null
-                  ? ` · confiance ${Math.round(p.lastOut.estimation_confiance * 100)}%` : ''}
+                {confianceEstimation ? ` · confiance ${confianceEstimation}` : ''}
               </span>
-              {canEdit && (
+              {canEdit && (estLigneConsigneeEnBase(p.lastOut) ? (
                 <span style={styles.estimationActions}>
                   <button
                     type="button"
@@ -2606,7 +2633,19 @@ function PointageCard({
                     <Ban size={12} /> Écarter
                   </button>
                 </span>
-              )}
+              ) : (
+                //  Boutons retirés, ET DITS. Une estimation inventée à la lecture
+                //  n'a pas de ligne à marquer : `encheck_estimation_statuer` ne
+                //  met à jour qu'une ligne `attendances` déjà écrite. Un bouton
+                //  grisé sans explication aurait envoyé le manager chercher une
+                //  panne là où il n'y a qu'un ordre du temps (et un mode).
+                <span
+                  style={styles.estimationNote}
+                  title="Le serveur ne clôture jamais la journée en cours ; il n'écrit une sortie présumée dans « attendances » que si le mode estimation de l'entreprise est « actif » (sinon tout reste en mode ombre, dans « encheck_clotures_estimees »). Rien à valider donc, pour l'instant, sur cette ligne affichée."
+                >
+                  sortie estimée à l’écran · rien à statuer
+                </span>
+              ))}
             </div>
           )}
         </div>
@@ -3977,6 +4016,7 @@ const styles = {
   },
   estimationTexte: { fontSize: 11.5, color: '#B45309', fontWeight: 600, flex: 1, minWidth: 160 },
   estimationActions: { display: 'inline-flex', gap: 6 },
+  estimationNote: { fontSize: 11, color: '#B45309', fontStyle: 'italic', whiteSpace: 'nowrap' },
   estimationBtnOk: {
     display: 'inline-flex', alignItems: 'center', gap: 4,
     padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',

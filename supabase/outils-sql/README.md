@@ -31,10 +31,11 @@ posée, annulation en section 6).
 | `regler-appariement-nuit.sql` | **éditeur SQL Supabase**, une fois, sur décision d'arbitre | ⚠️ écrit **une ligne de réglage** (`encheck_reglages_pointage`) pour UNE entreprise — ni structure, ni donnée de paie |
 | `squelette-supabase-local.sql` | ⛔ **Postgres local seulement** | monte un faux Supabase (rôles, `auth`, tables partagées) |
 | `lister-signatures-fonctions.sql` | **éditeur SQL Supabase** | lecture seule — les signatures réelles des fonctions que l'app appelle mais que ce dépôt ne déclare pas |
+| `controle-estimations-decidables.sql` | **éditeur SQL Supabase** | lecture seule — combien de lignes estimées sont réellement en base, le tournage du déclencheur, et les journées qui ne seront jamais consignées |
 | `test-execution-migration.sql` | ⛔ **Postgres local seulement**, après le squelette | 25 assertions : la migration, exécutée pour de vrai |
 
-Les deux derniers sont la raison de deux erreurs vues dans l'éditeur le 16/10 :
-collés en prod, ils échouent (`\set` n'est pas du SQL — c'est une méta-commande psql —
+`squelette-supabase-local.sql` et `test-execution-migration.sql` sont la raison de deux
+erreurs vues dans l'éditeur le 16/10 : collés en prod, ils échouent (`\set` n'est pas du SQL — c'est une méta-commande psql —
 et `CREATE FUNCTION auth.jwt()` n'est pas permis), et `test-execution-migration.sql`
 **tronque** les tables. Un outil de test n'a rien à faire dans un éditeur branché sur
 une base de paie : d'où ce dossier, séparé des migrations, et ces lignes en tête de

@@ -169,6 +169,42 @@ export function estEstimationRemplacee(att) {
   return !!att && !!att.estimation_remplacee_le
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+//  CONSIGNÉE ou INVENTÉE — la distinction qui a coûté un 400 le 16/10 à 08:54.
+// ───────────────────────────────────────────────────────────────────────────
+//  Un bandeau « Valider / Écarter » présuppose qu'il existe UNE LIGNE à statuer.
+//  Or le moteur d'affichage invente des sorties qu'il ne stocke nulle part :
+//  `hoursCalculator.js` fabrique trois objets `{ id: 'virtual-out-<uuid>',
+//  __virtual: true }` (l.511, l.636, l.1639). Envoyer cet identifiant à
+//  `encheck_estimation_statuer(p_ids uuid[], …)`, c'est demander à Postgres de
+//  caster `'virtual-out-e24bb1d9-…'` en `uuid` :
+//    22P02  invalid input syntax for type uuid: "virtual-out-e24bb1d9-…"
+//  Le 404 de 08:36 (mauvais NOM de paramètre) et ce 400 de 08:54 (mauvais
+//  TYPE de valeur) sont deux visages de la même absence de contrat : le JS
+//  envoie ce qu'il a sous la main, la base attend une clé primaire.
+//  On ne répare PAS en fabriquant un faux uuid — on arrête de proposer une
+//  décision sur du vent. `encheck_cloturer_pivotable` est REVOQUÉE pour
+//  `authenticated` (migration l.1866/1880) : le navigateur ne peut pas
+//  consigner lui-même, c'est le cron 30 3 * * * qui écrit, puis l'humain statue.
+const UUID_DE_BASE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Vrai si `valeur` a la forme d'une clé primaire `attendances.id`. */
+export function estIdentifiantDeBase(valeur) {
+  return typeof valeur === 'string' && UUID_DE_BASE.test(valeur)
+}
+
+/**
+ * Vrai si cette sortie estimée est une ligne RÉELLEMENT EN BASE, donc statuable.
+ * Faux pour une sortie inventée à la lecture (`__virtual`) et faux pour tout
+ * identifiant qui n'est pas un uuid — la seconde vérification sert de garde-fou si un
+ * objet est fabriqué plus tard sans la marque `__virtual`.
+ */
+export function estLigneConsigneeEnBase(att) {
+  if (!att) return false
+  if (att.__virtual === true) return false
+  return estIdentifiantDeBase(att.id)
+}
+
 /** Vrai si le pointage a été neutralisé comme double lecture QR (rebond). */
 export function estRebondNeutralise(att) {
   return !!att && att.anomalie === 'rebond_qr'
@@ -184,6 +220,28 @@ export function filtrerPointagesPayables(attendances) {
   return (attendances || []).filter(
     (a) => !estEstimationNonValidee(a) && !estRebondNeutralise(a),
   )
+}
+
+/**
+ * La confiance d'une estimation se lit-elle en pourcentage ? Non, en l'état : la
+ * colonne `attendances.estimation_confiance` est déclarée `text` par la migration
+ * (l.65) et le SQL y écrit un MOT — `COALESCE(v_det->>'confiance','faible')`
+ * (l.1006). L'écran faisait `Math.round(valeur * 100) + '%'`, ce qui rend
+ * « confiance NaN% » dès qu'une ligne estimée existe vraiment en base. Ce
+ * convertisseur accepte les deux formes sans en inventer une troisième : nombre
+ * 0…1 → pourcentage, nombre 1…100 → pourcentage déjà échelonné, sinon le mot.
+ */
+export function formatConfianceEstimation(valeur) {
+  if (valeur === null || valeur === undefined || valeur === '') return null
+  //  Un nombre qui n'en est pas un (NaN, Infinity) ne doit JAMAIS trouver le
+  //  chemin de l'écran : « confiance NaN% » était déjà le bug d'origine.
+  if (typeof valeur === 'number' && !Number.isFinite(valeur)) return null
+  const n = Number(valeur)
+  if (Number.isFinite(n)) {
+    if (n >= 0 && n <= 1) return `${Math.round(n * 100)} %`
+    if (n > 1 && n <= 100) return `${Math.round(n)} %`
+  }
+  return String(valeur)
 }
 
 /** Étiquette lisible d'une ligne estimée (réutilisée par toutes les vues). */
@@ -258,9 +316,12 @@ export default {
   invaliderCacheSeuils,
   estEstimationNonValidee,
   estEstimationRemplacee,
+  estIdentifiantDeBase,
+  estLigneConsigneeEnBase,
   estRebondNeutralise,
   filtrerPointagesPayables,
   etiquetteEstimation,
+  formatConfianceEstimation,
   minutesDuJour,
   distanceCirculaireMinutes,
   dansLaFenetre,

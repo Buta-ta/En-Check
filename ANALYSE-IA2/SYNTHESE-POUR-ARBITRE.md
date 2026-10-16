@@ -266,7 +266,7 @@ croise chaque `.rpc('nom', { … })` du `src/` avec les `CREATE FUNCTION` des
 et surcharges prises en compte. **Validé en réinjectant le bug** : `p_decision` → `p_action` le
 rend rouge avec le message exact (« PostgREST traduirait la clé « p_action » en argument nommé :
 aucune fonction « encheck_estimation_statuer » de ce dépôt n'a ce paramètre »). Suite :
-**9 fichiers / 79 tests** verts, porte lint 0 erreur.
+**9 fichiers / 79 tests** verts, porte lint 0 erreur (chiffre de cette PR-là ; la suite est à 10 fichiers / 94 depuis le Problème 5).
 
 **Angle mort assumé, et sa mesure.** Sur 34 appels `rpc()` du dépôt, **2** seulement ciblent
 une fonction déclarée dans `supabase/migrations/` d'ici (le reste vit dans le dépôt de Dev 1 ou
@@ -282,3 +282,59 @@ qu'elle n'existe pas sous ce nom dans `public` — donc son appel JS est candida
 Ce qui reste à dire à Dev 1, sans drame mais sans l'oublier : ses 28 fonctions sont appelées par
 cette app avec des arguments nommés, et **aucun** test ne vérifie aujourd'hui ce contrat de son
 côté. Un `p_action` chez lui produirait exactement le même silence.
+
+## Problème 5 (16/10, 08:54) — « Valider » répond 400 : une décision sur une ligne qui n'existe pas
+
+Le 404 réparé (PR #9, fusionnée — `main` = `be1c00d`), le même clic a passé le contrat des
+noms et buté sur le contrat des **valeurs** :
+
+```
+POST /rest/v1/rpc/encheck_estimation_statuer → 400 (Bad Request)
+invalid input syntax for type uuid: "virtual-out-e24bb1d9-222e-4ef6-90d3-71f9676f68ea"
+```
+
+Dans le log Postgres, `json_to_record(…) AS ("p_ids" uuid[], "p_decision" text)` : le nom
+était bon, et `p_ids` contenait `virtual-out-e24bb1d9-…` — un identifiant **fabriqué par le
+moteur d'affichage**. `hoursCalculator.js` invente des sorties de clôture qu'il ne stocke
+pas, avec `id: 'virtual-out-' + id_du_badge_d_entree` (l.511, l.636, l.1639). La fonction
+SQL, elle, ne fait que `UPDATE attendances WHERE id = v_id AND is_auto_closed` : elle
+réclame une clé primaire, Postgres castte, `22P02`, 400.
+
+Il y avait deux réparations possibles, et une seule est honnête :
+
+| Réparation | Ce qu'elle fait | Verdict |
+|---|---|---|
+| Fabriquer un uuid de complaisance (v5 de l'agrégat, par exemple) | le bouton « marche », `UPDATE … WHERE id = <uuid>` ne trouve rien, renvoie 0, la bulle dit « rien à statuer » | ❌ **refusée** — ça rendrait le symptôme muet sans créer la ligne, donc sans rien payer de plus |
+| Ne plus proposer la décision là où il n'y a pas de ligne, et le dire | `estLigneConsigneeEnBase()` (`seuilsPointage.js`) : marque `__virtual` **ou** forme uuid ; garde du bandeau + garde d'entrée de `statuerEstimation` ; message qui explique le mode et la voie de contournement | ✅ **appliquée** — verrouillée par `estimationConsignee.test.js` (15 cas : 11 sur la consignation, 4 sur l’étiquette de confiance découverte au passage), suite portée à **10 fichiers / 94 tests** |
+
+**Et ce que l'erreur a révélé, qui est plus important qu'elle.** En creusant pourquoi il
+n'existe aucune ligne à statuer, la migration répond elle-même : `mode_estimation` vaut
+**`'ombre'` par défaut pour toute entreprise** (l.164), et dans ce mode
+`encheck_cloturer_pivotable` écrit `applique := false` et **ne touche pas `attendances`**
+(l.874, l.992 `IF v_mode = 'actif'`) — tout part dans `encheck_clotures_estimees`. S'y
+ajoute la règle d'or du §8 : *jamais une journée en cours* (`jour_travail >= aujourd'hui`).
+
+Conséquence, à vérifier chez toi plutôt qu'à supposer — c'est le rôle de
+`supabase/outils-sql/controle-estimations-decidables.sql` :
+
+- tant que le mode est « ombre », **aucune** sortie présumée n'atteint `attendances`, donc
+  **le bandeau « Valider / Écarter » n'a structurellement rien à statuer** : il ne peut
+  s'afficher que sur les lignes inventées à l'écran. Les boutons ne sont pas cassés, ils
+  sont **hors service par construction** ;
+- les seules lignes `is_auto_closed` susceptibles d'être statuées sont des **legacy** écrites
+  avant cette migration — le nombre que rend la section 1 de l'outil le dit, entreprise par
+  entreprise ;
+- si `pg_cron` n'est ni installé ni planifié (la migration a pu rendre le NOTICE
+  « pg_cron absent : clôture non planifiée » sans que personne ne le lise, section 15
+  l.1912-1959), alors même le mode « actif » n'écrirait jamais rien : la section 2 de
+  l'outil le mesure par `encheck_pipeline_runs` (0 run = 0 consignation possible).
+
+**Ce que je ne fais pas, et pourquoi.** Activer `mode_estimation = 'actif'` pour ton
+entreprise (une ligne dans `encheck_reglages_pointage`, le même chemin que le relevé
+d'appariement) ferait exister des lignes à valider — mais c'est aussi ce qui fait passer
+une heure **inventée** dans la paie, avec un seul humain entre les deux. Ce n'est pas un
+correctif, c'est une politique : à l'arbitre de la poser, pas à moi. Deuxième voie, refusée
+ici : exposer une fonction de consignation à la demande au rôle `authenticated` — la
+migration a explicitement `REVOKE` `encheck_cloturer_pivotable` de ce rôle (l.1866) au
+motif « le navigateur d'un admin ne déclenche plus d'écritures » (§9). Rouvrir cette porte
+est une décision de sécurité, pas de confort.
