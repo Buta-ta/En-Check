@@ -88,6 +88,16 @@ Ce qu'il faut voir défiler : **25 lignes `ok_… := true` et **zéro ligne
 harnais sait aussi détecter une erreur et qu'un moteur honnête ne s'invente pas
 *avant* l'heure.
 
+## Après la mise en service du 16/10 : rien à coller
+
+Les deux pannes signalées après l'application de la migration (HTTP 400 sur le chargement
+des pointages, puis page blanche `canEditPointages is not defined`) étaient **du côté de
+l'application**, pas de la base. Elles sont corrigées dans le dépôt (PR #7) et demandent
+seulement **un redéploiement Vercel**. Aucun fichier SQL de ce dossier n'est à rejouer :
+ni la migration (déjà appliquée — la rejouer ne casserait rien, elle est idempotente, mais
+elle est inutile), ni le contrôle d'intégrité (lecture seule, à coller seulement si on veut
+revoir la carte), ni les outils marqués ⛔ (locaux uniquement).
+
 ## Ordre de mise en service en production
 
 1. **Appliquer la migration.** À ce stade, `mode_estimation = "ombre"` : le

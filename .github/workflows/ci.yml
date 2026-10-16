@@ -39,5 +39,15 @@ jobs:
       - name: Exécution des tests unitaires financiers (VD-15)
         run: npm test
 
+      # ⚠️ Ajouté le 16/10 : le lint était promis par le nom du job (« Tests
+      # financiers, Lint & Build ») mais aucun step ne l'exécutait. C'est exactement lui
+      # qui voyait les cinq identifiants libres de Pointages.jsx —
+      # 'canEditPointages' is not defined — avant la mise en prod, pour rien.
+      # On ne lance pas `npm run lint` ici : le dépôt traîne ~367 remarques
+      # stylistiques, et une porte rouge le premier jour reste rouge pour toujours.
+      # `eslint.gate.config.js` ne garde que les règles qui décrivent un crash.
+      - name: Porte de lint (no-undef, règles des hooks) — ce qui casse à l'exécution
+        run: npx eslint src --config eslint.gate.config.js
+
       - name: Construction du bundle de production (Vite Build)
         run: npm run build
