@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // GARDE-FOU « PAS DE COMMENTAIRE DANS UNE REQUÊTE » — né d'un incident de prod
@@ -23,7 +24,9 @@ import { join } from 'node:path'
 //  parenthère déséquilibrés dans un select, autre façon de fabriquer un 400.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const RACINE_SRC = join(__dirname, '..', '..')
+// `__dirname` n'existe pas en modules ES : eslint (globals.browser) le signalait en
+// no-undef. On le déduit de l'URL du module, ce qui marche aussi sous vitest.
+const RACINE_SRC = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const EXTENSIONS = ['.js', '.jsx', '.ts', '.tsx']
 
 function fichiersSources(dossier, acc = []) {

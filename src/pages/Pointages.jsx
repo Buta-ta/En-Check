@@ -1606,6 +1606,8 @@ export default function Pointages() {
               expandedCards={state.expandedCards}
               adminsMap={state.adminsMap}
               canEdit={canEditPointages}
+              statuerEstimation={statuerEstimation}
+              estimationEnCours={estimationEnCours}
               canManageConflict={canManageConflict}
               hasOvertimeFeature={hasOvertimeFeature}
               anomalies={anomalies}
@@ -1625,6 +1627,8 @@ export default function Pointages() {
               expandedCards={state.expandedCards}
               adminsMap={state.adminsMap}
               canEdit={canEditPointages}
+              statuerEstimation={statuerEstimation}
+              estimationEnCours={estimationEnCours}
               canManageConflict={canManageConflict}
               hasOvertimeFeature={hasOvertimeFeature}
               anomalies={anomalies}
@@ -2200,6 +2204,7 @@ function EmptyState({ searchQuery, activeFiltersCount, onResetFilters }) {
 function GroupedList({
   groups, expandedGroups, expandedCards, adminsMap,
   canEdit, canManageConflict, hasOvertimeFeature, anomalies,
+  statuerEstimation, estimationEnCours,
   onToggleGroup, onToggleCard, onEdit, onDelete,
   onConflict, onPhotoClick, onShare, getMethodeDisplay, getAdminName
 }) {
@@ -2272,6 +2277,8 @@ function GroupedList({
                     onShare={() => onShare(p)}
                     getMethodeDisplay={getMethodeDisplay}
                     getAdminName={getAdminName}
+                    statuerEstimation={statuerEstimation}
+                    estimationEnCours={estimationEnCours}
                   />
                 ))}
               </div>
@@ -2287,6 +2294,7 @@ function GroupedList({
 function FlatList({
   pointages, expandedCards, adminsMap,
   canEdit, canManageConflict, hasOvertimeFeature, anomalies,
+  statuerEstimation, estimationEnCours,
   onToggleCard, onEdit, onDelete,
   onConflict, onPhotoClick, onShare, getMethodeDisplay, getAdminName
 }) {
@@ -2311,6 +2319,8 @@ function FlatList({
           onShare={() => onShare(p)}
           getMethodeDisplay={getMethodeDisplay}
           getAdminName={getAdminName}
+          statuerEstimation={statuerEstimation}
+          estimationEnCours={estimationEnCours}
         />
       ))}
     </div>
@@ -2318,9 +2328,16 @@ function FlatList({
 }
 
 // ═══════════════════════════════════════════════════════════
+// `statuerEstimation` et `estimationEnCours` viennent du composant de page, via
+// GroupedList et FlatList : la carte ne les déclare pas elle-même, sinon le bouton
+// « Valider » référence un identifiant libre et c'est TOUTE la page qui part en
+// ReferenceError (c'est ce qui est arrivé le 16/10, après la PR #6 — et `npm test`
+// comme `vite build` ne le voyaient pas : voir src/services/__tests__/
+// cablagePointageCard.test.js et eslint.gate.config.js).
 function PointageCard({
   pointage: p, index, expanded, adminsMap,
   canEdit, canManageConflict, hasOvertimeFeature, anomalies,
+  statuerEstimation, estimationEnCours,
   onToggleExpand, onEdit, onDelete, onConflict, onPhotoClick, onShare,
   getMethodeDisplay, getAdminName
 }) {
@@ -2549,7 +2566,7 @@ function PointageCard({
                 {p.lastOut.estimation_confiance != null
                   ? ` · confiance ${Math.round(p.lastOut.estimation_confiance * 100)}%` : ''}
               </span>
-              {canEditPointages && (
+              {canEdit && (
                 <span style={styles.estimationActions}>
                   <button
                     type="button"
