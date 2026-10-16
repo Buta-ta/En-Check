@@ -30,6 +30,7 @@ import {
   Building2,
   Users,
   Clock,
+  Coffee,
   LogOut,
   Plus,
   ChevronRight,
@@ -1021,6 +1022,17 @@ export default function Dashboard() {
                   />
                 )}
 
+                {/* ⏸ PAUSES (pas de module — l'arbitre statue) */}
+                <button
+                  className="afro-nav-btn"
+                  style={styles.mobileNavBtn}
+                  onClick={() => { navigate('/pauses'); setMobileMenuOpen(false) }}
+                >
+                  <Coffee size={20} color="#F59E0B" />
+                  <span>Pauses</span>
+                  <ChevronRight size={16} color="#666" />
+                </button>
+
                 {/* ✅ HEURES SUP AVEC ANIMATION */}
                 {(isSuperAdmin || moduleHeuresSup) && (
                   <AnimatedTabButton
@@ -1724,6 +1736,7 @@ export default function Dashboard() {
                 { label: 'Équipes', sub: 'Structurer les équipes', icon: Users2, color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)', path: '/equipes', show: isSuperAdmin || moduleTaches, animated: false },
                 { label: 'Prédictions', sub: 'Charge, besoins, tendances', icon: Sparkles, color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.15)', path: '/predictions', show: isSuperAdmin || modulePredictions, animated: true, tabKey: 'PREDICTIONS' },
                 { label: 'Retards', sub: 'Suivi & alertes', icon: AlertTriangle, color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)', path: '/retards', show: isSuperAdmin || moduleRetards, animated: true, tabKey: 'RETARDS' },
+                { label: 'Pauses', sub: 'Pointées · présumées · arbitrées', icon: Coffee, color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)', path: '/pauses', show: true },
                 { label: 'Heures Sup', sub: 'Calcul & majorations', icon: Timer, color: '#F97316', bg: 'rgba(249, 115, 22, 0.15)', path: '/heures-supplementaires', show: isSuperAdmin || moduleHeuresSup, animated: true, tabKey: 'HEURES_SUP' },
                 { label: 'Geofencing', sub: 'Zones GPS autorisées', icon: MapPin, color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)', path: '/geofencing', show: isSuperAdmin || moduleGeofencing, animated: true, tabKey: 'GEOFENCING' },
                 { label: 'Enrôlements Faciaux', sub: 'Valider les profils', icon: Users, color: '#EC4899', bg: 'rgba(236,72,153,0.15)', path: '/enrollements-faciaux', show: isSuperAdmin || moduleRecoFaciale, animated: false },

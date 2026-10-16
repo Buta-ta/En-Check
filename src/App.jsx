@@ -18,6 +18,7 @@ import Rapports from './pages/Rapports'
 import Admins from './pages/Admins'
 import Planning from './pages/Planning'
 import Retards from './pages/Retards'
+import Pauses from './pages/Pauses'
 import SystemMessages from './pages/SystemMessages'
 import Absences from './pages/Absences'
 import HeuresSupplementaires from './pages/HeuresSupplementaires'
@@ -277,6 +278,11 @@ function App() {
           <Route path="/retards" element={
             <AdminRoute>
               <Retards />
+            </AdminRoute>
+          } />
+          <Route path="/pauses" element={
+            <AdminRoute>
+              <Pauses />
             </AdminRoute>
           } />
           <Route path="/system-messages" element={
