@@ -2,13 +2,23 @@
 -- RÉPARATION DES LIGNES CORROMPUES — cas Hippo BIYOKILA et Mercia MAYOUMA
 --                                    (pointages du 15-16/10/2026)
 -- Auteur  : IA ARBITRE — arbitrage n°2/3, VALIDÉ par le commanditaire.
+-- Version : 2 du 16/10/2026 — corrige l'erreur « column estimation_remplacee_par_id
+--           of relation attendances does not exist » (42703).
+--
+-- ⚠ CE QUI S'EST PASSÉ AVEC LA VERSION 1
+--   Le script citait `estimation_remplacee_par_id`, une colonne qui existe dans
+--   le SCHÉMA PRISMA de l'app de pointage mais que NOS migrations ne créent
+--   JAMAIS. Notre propre fonction `encheck_estimation_remplacer` n'écrit jamais
+--   cette colonne non plus : elle garde « qui a remplacé » dans le JOURNAL
+--   (`encheck_pointages_journal`) et dans `encheck_clotures_estimees.detail`.
+--   Cette version suit exactement notre propre cadre : `estimation_remplacee_le`
+--   + `anomalie` sur la ligne, et l'audit dans `estimation_detail` + le journal.
+--
 -- À JOUER  : APRÈS le déploiement du code et APRÈS la migration
 --            20261016000002_garde_nuit_garde_fous_double_lecture.sql.
---
--- Ce script ne touche QUE les lignes identifiées des deux dossiers. Les
--- commentaires racontent ce qui s'est passé, pour que la preuve reste lisible
--- même dans 6 mois. À rejouer : c'est idempotent (les UPDATE ne visent que ces
--- horaires précis).
+-- SÉCURITÉ : tout est dans UNE transaction (si une ligne échoue, RIEN n'est
+--            appliqué) ; chaque réparation ne vise QUE les horaires précis des
+--            deux dossiers ; rejouable (idempotent).
 --
 -- ─── Ce qui a été constaté ─────────────────────────────────────────────────
 -- HIPPO BIYOKILA (PHA-0001), pointage du 15/10 :
@@ -16,7 +26,7 @@
 --   • 18:38:18 OUT corrigé par l'admin → 18:24:51 (confirmé dans l'historique),
 --     mais sa LIGNE de pointage n'avait pas été réécrite (18:38:18 toujours en
 --     base) — le bouton « Confirmer » de la fiche « Sortie présumée » enregistre
---     l'heurE mais pas l'heurE de la LIGNE (faille F1 de l'app pointage).
+--     l'heure mais pas la ligne (faille F1 de l'app pointage).
 --   • 21:58:12 OUT (contre-enregistrement de l'out corrigé, refuse 18:24:51) —
 --     la journée s'est nouée à 21:58:12 (4h16m55s) au lieu de 18:24:51 (43s).
 --   • Alertes « Départ très tardif » et « Shift anormalement long » déclenchées
@@ -48,21 +58,56 @@
 --      la session de l'après-midi ; la journée du 16 se ferme pour de vrai).
 --   2. HIPPO 16/10 : tous les AUTRES « out » (présumés ou contre-enregistrements)
 --      de cette session deviennent `sortie_presumee_remplacee` — non payés,
---      jamais comptés, conservés pour l'audit (le comportement du pipeline
---      corrigé le ferait lui-même lors de la prochaine réconciliation).
+--      jamais comptés, conservés pour l'audit.
 --   3. HIPPO 15/10 : la ligne 18:38:18 est réécrite à 18:24:51 (la correction
 --      réelle de l'admin, confirmée dans `attendance_history`) ; les estimations
 --      17:00 et 22:12 deviennent `sortie_presumee_remplacee` ; la journée reste
 --      (à tort) sur 21:58:12 — voir note en bas pour la version « dur ».
 --   4. MERCIA 16/10 : les estimations 17:00 (et toute estimation de la session
 --      12:46 → fin) deviennent `sortie_presumee_rejetee` (l'admin a ÉCARTÉ :
---      c'est son arbitrage, il est définitif). Journée comptée 12:46:25 → 17:00
---      est ramenée à une durée honnête : comptée 0 (pas de sortie réelle).
+--      c'est son arbitrage, il est définitif).
 --   5. Journal : chaque réparation est écrite dans `encheck_pointages_journal`
---      (audit) et `attendance_history` (preuve lecture seule).
+--      (audit) — le même endroit où notre cadre garde déjà « qui a remplacé ».
 -- =============================================================================
 
 BEGIN;
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- 0. VÉRIFICATION DU SCHÉMA AVANT DE TOUCHER À QUOI QUE CE SOIT
+--    (si quelque chose manque, message clair + rien n'est appliqué)
+-- ════════════════════════════════════════════════════════════════════════════
+DO $$
+DECLARE
+  v_manquantes text;
+BEGIN
+  SELECT string_agg(c.colonne, ', ') INTO v_manquantes
+    FROM (VALUES
+      ('is_auto_closed'), ('anomalie'), ('estimation_source_id'),
+      ('estimation_validee_le'), ('estimation_remplacee_le'), ('notes')
+    ) AS c(colonne)
+   WHERE NOT EXISTS (
+     SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'attendances'
+        AND column_name = c.colonne);
+
+  IF v_manquantes IS NOT NULL THEN
+    RAISE EXCEPTION
+      'Colonnes absentes de public.attendances : %. Exécutez d''abord la migration 20261016000001_fondations_auto_close_structure.sql (elle crée ces colonnes), puis relancez ce script.',
+      v_manquantes;
+  END IF;
+
+  IF to_regclass('public.encheck_pointages_journal') IS NULL THEN
+    RAISE EXCEPTION
+      'La table public.encheck_pointages_journal est absente. Exécutez d''abord la migration 20261016000001_fondations_auto_close_structure.sql, puis relancez ce script.';
+  END IF;
+END $$;
+
+-- Colonne du schéma Prisma de l'app de pointage que NOS migrations ne créent
+-- pas (découverte le 16/10/2026 en production). Le présent script n'en a PLUS
+-- besoin ; on l'ajoute quand même si elle est absente, pour que le schéma de
+-- l'app et celui de la base ne divergent plus. Idempotent, sans danger.
+ALTER TABLE public.attendances
+  ADD COLUMN IF NOT EXISTS estimation_remplacee_par_id uuid;
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- RÉPARATION 1+2+3 — HIPPO BIYOKILA (PHA-0001)
@@ -74,26 +119,48 @@ BEGIN;
 UPDATE public.attendances
    SET check_time = '2026-10-16 19:21:42+00',
        notes = COALESCE(notes || ' — ', '') ||
-               'Réparation arbitrage n°3 (16/10/2026) : sortie réaffichée à 17:30:15 puis placée à 19:21:42 (≈2 h de présence réelle constatée) — l''avait été dévorée par le « Confirmer » de l''estimation (faille F1).'
+               'Réparation arbitrage n°3 (16/10/2026) : sortie réaffichée à 17:30:15 puis placée à 19:21:42 (≈2 h de présence réelle constatée) — elle avait été dévorée par le « Confirmer » de l''estimation (faille F1).'
  WHERE employee_id = '120a48c7-02c8-46c5-9d06-b1d734cb3f72'
    AND check_type = 'out'
    AND check_time = '2026-10-16 17:30:15+00';
 
 -- 2) Les autres « out » de la session du 16 après-midi (estimations 22:12 et
 --    consorts, contre-enregistrements) : remplacées — non payées, conservées.
+--    « Qui a remplacé » va dans estimation_detail + le journal (notre cadre),
+--    JAMAIS dans une colonne qui n'existe pas.
 UPDATE public.attendances
    SET anomalie = 'sortie_presumee_remplacee',
        estimation_remplacee_le = now(),
-       estimation_remplacee_par_id = (
-         SELECT id FROM public.attendances
-          WHERE employee_id = '120a48c7-02c8-46c5-9d06-b1d734cb3f72'
-            AND check_type = 'out'
-            AND check_time = '2026-10-16 19:21:42+00'
-          LIMIT 1)
+       estimation_detail = COALESCE(estimation_detail, '{}'::jsonb) || jsonb_build_object(
+         'reparation_arbitrage_03', jsonb_build_object(
+           'remplacee_par_attendance_id', (
+             SELECT id FROM public.attendances
+              WHERE employee_id = '120a48c7-02c8-46c5-9d06-b1d734cb3f72'
+                AND check_type = 'out'
+                AND check_time = '2026-10-16 19:21:42+00'
+              LIMIT 1),
+           'le', now()))
  WHERE employee_id = '120a48c7-02c8-46c5-9d06-b1d734cb3f72'
    AND check_type = 'out'
-   AND check_time > '2026-10-16 12:46:25+00'
+   AND check_time >  '2026-10-16 12:46:25+00'
+   AND check_time <  '2026-10-17 00:00:00+00'
    AND check_time <> '2026-10-16 19:21:42+00';
+
+-- 2bis) S'il subsiste une trace du « out » envoyé DANS LE FUTUR par le bouton
+--    « J+1 » (17/10 01:12:51) : c'était la ligne de 17:30:15 mal datée d'un
+--    jour. La réparation 1 a remis la vraie sortie à 19:21:42 ; cette copie
+--    faussaire devient hors-calc. Si elle a déjà été supprimée, cette requête
+--    ne touche aucune ligne — c'est voulu (idempotent).
+UPDATE public.attendances
+   SET anomalie = 'sortie_presumee_remplacee',
+       estimation_remplacee_le = now(),
+       estimation_detail = COALESCE(estimation_detail, '{}'::jsonb) || jsonb_build_object(
+         'reparation_arbitrage_03', jsonb_build_object(
+           'remarque', 'copie faussaire du bouton « J+1 » (16 → 17/10 01:12:51) — la vraie sortie est à 19:21:42 le 16/10',
+           'le', now()))
+ WHERE employee_id = '120a48c7-02c8-46c5-9d06-b1d734cb3f72'
+   AND check_type = 'out'
+   AND check_time = '2026-10-17 01:12:51+00';
 
 -- 3a) 15/10 : la ligne de pointage de la sortie corrigée par l'admin —
 --     18:38:18 n'avait pas été réécrite au moment de la correction 18:24:51.
@@ -112,12 +179,15 @@ UPDATE public.attendances
 UPDATE public.attendances
    SET anomalie = 'sortie_presumee_remplacee',
        estimation_remplacee_le = now(),
-       estimation_remplacee_par_id = (
-         SELECT id FROM public.attendances
-          WHERE employee_id = '120a48c7-02c8-46c5-9d06-b1d734cb3f72'
-            AND check_type = 'out'
-            AND check_time = '2026-10-15 21:58:12+00'
-          LIMIT 1)
+       estimation_detail = COALESCE(estimation_detail, '{}'::jsonb) || jsonb_build_object(
+         'reparation_arbitrage_03', jsonb_build_object(
+           'remplacee_par_attendance_id', (
+             SELECT id FROM public.attendances
+              WHERE employee_id = '120a48c7-02c8-46c5-9d06-b1d734cb3f72'
+                AND check_type = 'out'
+                AND check_time = '2026-10-15 21:58:12+00'
+              LIMIT 1),
+           'le', now()))
  WHERE employee_id = '120a48c7-02c8-46c5-9d06-b1d734cb3f72'
    AND check_type = 'out'
    AND is_auto_closed = true
@@ -134,7 +204,9 @@ UPDATE public.attendances
 UPDATE public.attendances
    SET anomalie = 'sortie_presumee_rejetee',
        estimation_remplacee_le = now(),
-       estimation_remplacee_par_id = NULL,
+       estimation_detail = COALESCE(estimation_detail, '{}'::jsonb) || jsonb_build_object(
+         'reparation_arbitrage_03', jsonb_build_object(
+           'decision', 'ecartee_par_admin', 'le', now())),
        notes = COALESCE(notes || ' — ', '') ||
                'Écartée par l''admin (bouton « Écarter » du 16/10/2026, arbitrage n°3) : heure jugée fausse, journée laissée non fermée.'
  WHERE employee_id = '04f3c327-f4d5-4536-8e72-2361f51e24c1'
@@ -144,13 +216,14 @@ UPDATE public.attendances
    AND check_time < '2026-10-17 00:00:00+00';
 
 -- ════════════════════════════════════════════════════════════════════════════
--- JOURNAL — trace lisible des réparations (audit)
+-- JOURNAL — trace lisible des réparations (audit), comme le cadre en tient
+-- déjà pour les remplacements d'estimations.
 -- ════════════════════════════════════════════════════════════════════════════
 INSERT INTO public.encheck_pointages_journal
       (enterprise_id, employee_id, attendance_id, action, motif, snapshot, pipeline, auteur)
 SELECT a.enterprise_id, a.employee_id, a.id, 'reparation_arbitrage_03',
        'Réparation des lignes corrompues des cas Hippo/Mercia (15-16/10/2026) — voir supabase/outils-sql/20261016_reparer-cas-hippo-mercia.sql',
-       jsonb_build_object('cas', 'arbitrage-n2-n3', 'avant', a.check_time, 'apres', a.check_time),
+       jsonb_build_object('cas', 'arbitrage-n2-n3', 'check_time', a.check_time),
        'arbitre-reparation', public.encheck_auteur_actuel()
   FROM public.attendances a
  WHERE (a.employee_id, a.check_time) IN (
@@ -167,9 +240,8 @@ COMMIT;
 -- l'admin (18:24:51) ne devient la sortie réelle que si on tranche. Si la
 -- direction le décide, exécuter ci-dessous (idempotent) :
 --
---   -- 21:58:12 → contre-enregistrement écarté (déplace le problème : les 4h16m
---   -- tombent à 0 — ce n'était pas plus vrai comme durée, c'était 0 h 03 selon
---   -- le GPS de 17:41 à 18:24 selon les témoignages).
+--   -- 21:58:12 → contre-enregistrement écarté (la durée tombe à 43 s de
+--   -- 17:41:14 à 18:24:51 — c'était la réalité du terrain).
 --   UPDATE public.attendances
 --      SET anomalie = 'sortie_presumee_remplacee', estimation_remplacee_le = now()
 --    WHERE employee_id = '120a48c7-02c8-46c5-9d06-b1d734cb3f72'
@@ -178,7 +250,7 @@ COMMIT;
 --   -- 18:24:51 devient la sortie réelle du 15/10
 --   UPDATE public.attendances
 --      SET anomalie = NULL, is_auto_closed = false, method = 'face_id',
---          estimation_remplacee_le = NULL, estimation_remplacee_par_id = NULL
+--          estimation_remplacee_le = NULL
 --    WHERE employee_id = '120a48c7-02c8-46c5-9d06-b1d734cb3f72'
 --      AND check_type = 'out' AND check_time = '2026-10-15 18:24:51+00';
 -- =============================================================================

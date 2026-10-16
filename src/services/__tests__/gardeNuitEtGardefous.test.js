@@ -178,7 +178,6 @@ describe('estimation écartée — le cas Mercia après « Écarter »', () => {
     anomalie: 'sortie_presumee_rejetee',
     estimation_source_id: entreeMercia.id,
     estimation_remplacee_le: '2026-10-16T20:10:00Z',
-    estimation_remplacee_par_id: null,
   })
 
   it('4) après « Écarter » : rien n’est compté, et le moteur ne ré-invente PAS', () => {
