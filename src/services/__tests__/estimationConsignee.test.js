@@ -172,7 +172,7 @@ describe('marquage de toute sortie inventée — lecture des sources', () => {
     expect(pageSrc).not.toContain('estLigneConsigneeEnBase(p.lastOut)')
     expect(pageSrc).not.toContain('rien à statuer')
     const appels = [...pageSrc.matchAll(/statuerEstimation\(p\.lastOut,/g)]
-    expect(appels.length).toBe(2) // Valider + Écarter, un seul bandeau dans l’app
+    expect(appels.length).toBe(3) // Valider + Écarter + Ajuster, un seul bandeau (arbitrage contextuel) dans l’app
   })
 })
 

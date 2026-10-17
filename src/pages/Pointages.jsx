@@ -38,6 +38,7 @@ import {
 
 import ModifierPointage from '../components/ModifierPointage'
 import AnalysePointage from '../components/AnalysePointage'
+import { enrichirPropositions } from '../services/propositionsPointage'
 // import des pointages depuis une clé USB (fichier de pointeuse)
 import ImporterPointages from '../components/ImporterPointages'
 // la photo de pointage vient d'un bucket privé : cette pièce
@@ -717,7 +718,29 @@ export default function Pointages() {
     }
     setEstimationEnCours(`${attendanceId || sourceId}:${action}`)
     try {
-      const { data: resultat, error } = await supabase.rpc('encheck_estimation_decider', {
+      let reponse
+      if (ligne?.__contextuelle) {
+        let minutes = 0
+        let motif = null
+        if (action === 'ajuster') {
+          const saisie = window.prompt('Décalage en minutes par rapport à la proposition (ex. -10 ou 15) :', '0')
+          if (saisie === null) return
+          minutes = Number(saisie)
+          if (!Number.isInteger(minutes)) { toast.error('Saisissez un nombre entier de minutes.'); return }
+          motif = window.prompt('Motif de cet ajustement (obligatoire) :', '')
+          if (!motif?.trim()) return
+          const cible = new Date(new Date(ligne.check_time).getTime() + minutes * 60000)
+          if (!Number.isFinite(cible.getTime()) || !window.confirm(`Valider la sortie présumée à ${formaterHeureLocale(cible.toISOString())} et la compter en paie ?`)) return
+        }
+        reponse = await supabase.rpc('encheck_proposition_decider', {
+          p_source: sourceId,
+          p_decision: action === 'ajuster' ? 'valider' : action,
+          p_attendue: ligne.check_time,
+          p_ajustement_minutes: minutes,
+          p_motif: motif,
+        })
+      } else {
+        reponse = await supabase.rpc('encheck_estimation_decider', {
         p_id: ligneEnBase,
         p_source: sourceId,
         p_decision: action,
@@ -730,10 +753,13 @@ export default function Pointages() {
           : null,
         p_motif: null,
       })
+      }
+      const { data: resultat, error } = reponse
       if (error) {
         toast.error(`Le traitement de cette estimation a échoué : ${error.message}`)
-      } else if (resultat && resultat.ok === false) {
-        toast.error(resultat.erreur || 'Le traitement de cette estimation a échoué.')
+      } else if ((ligne?.__contextuelle && resultat?.ok !== true) || (resultat && resultat.ok === false)) {
+        toast.error(resultat?.erreur || 'Le traitement de cette estimation a échoué.')
+        if (ligne?.__contextuelle) await loadPointages()
       } else if (resultat && resultat.statut === 'deja_statuee') {
         toast.warning(
           'Cette estimation a déjà été traitée — la page est rechargée.',
@@ -747,6 +773,8 @@ export default function Pointages() {
         )
         await loadPointages()
       }
+    } catch (error) {
+      toast.error(error.message || 'Décision indisponible, veuillez réessayer.')
     } finally {
       setEstimationEnCours(null)
     }
@@ -1104,7 +1132,7 @@ export default function Pointages() {
         }
       }) || []
 
-      dispatch({ type: 'SET_POINTAGES', payload: pointagesData })
+      dispatch({ type: 'SET_POINTAGES', payload: await enrichirPropositions(pointagesData) })
     } catch (error) {
       console.error('Erreur chargement pointages:', error)
       dispatch({ type: 'SET_ERROR', payload: error.message || 'Erreur lors du chargement' })
@@ -2664,7 +2692,7 @@ function PointageCard({
             </p>
           )}
           {p.firstIn?.id && (!p.lastOut || estEstimationAStatuer(p.lastOut)) && !p.estimationEcartee && (
-            <AnalysePointage key={p.firstIn.id} sourceId={p.firstIn.id} currentOut={p.lastOut?.check_time || null} />
+            <AnalysePointage key={p.firstIn.id} sourceId={p.sourceProposition || p.firstIn.id} currentOut={p.lastOut?.check_time || null} context={p.contexteProposition} />
           )}
 
           {/* 🚫 ESTIMATION ÉCARTÉE — l'admin a jugé l'heure fausse : la journée
@@ -2696,10 +2724,14 @@ function PointageCard({
               </span>
               {canEdit && (
                 <span style={styles.estimationActions}>
+                  {p.lastOut.__contextuelle && <button type="button" style={styles.estimationBtnNo}
+                    disabled={Boolean(estimationEnCours)} onClick={() => statuerEstimation(p.lastOut, 'ajuster')}>
+                    Ajuster puis valider
+                  </button>}
                   <button
                     type="button"
                     style={styles.estimationBtnOk}
-                    disabled={estimationEnCours === `${p.lastOut.id}:valider`}
+                    disabled={Boolean(estimationEnCours)}
                     onClick={() => statuerEstimation(p.lastOut, 'valider')}
                     title="Compter cette sortie dans la paie — l'heure reste, marquée « sortie présumée »"
                   >
@@ -2708,7 +2740,7 @@ function PointageCard({
                   <button
                     type="button"
                     style={styles.estimationBtnNo}
-                    disabled={estimationEnCours === `${p.lastOut.id}:rejeter`}
+                    disabled={Boolean(estimationEnCours)}
                     onClick={() => statuerEstimation(p.lastOut, 'rejeter')}
                     title="Ne pas payer : cette heure disparaît des écrans (la décision reste dans l'audit)"
                   >
