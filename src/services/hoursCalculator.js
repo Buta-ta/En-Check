@@ -1730,6 +1730,7 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
       if (virtualOutDate > inDate) {
         const virtualOut = {
           id: `virtual-out-${openIn.id}`,
+          estimation_niveau: virtualOutDate.autoCloseNiveau,
           employee_id: openIn.employee_id,
           enterprise_id: openIn.enterprise_id,
           check_time: virtualOutDate.toISOString(),

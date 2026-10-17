@@ -37,6 +37,7 @@ import {
 } from '../utils/timezoneUtils'
 
 import ModifierPointage from '../components/ModifierPointage'
+import AnalysePointage from '../components/AnalysePointage'
 // import des pointages depuis une clé USB (fichier de pointeuse)
 import ImporterPointages from '../components/ImporterPointages'
 // la photo de pointage vient d'un bucket privé : cette pièce
@@ -1099,6 +1100,7 @@ export default function Pointages() {
           absenceReason, attendances: empAttendances, hasPhoto,
           conflictData, employeeAbsence, overtimeData,
           hasFaceRecognition, isHolidayToday, holidayToday, validPairs,
+          reglagesEnSecours: seuilsByEnterprise[employee.enterprise_id]?.chargement === 'secours',
         }
       }) || []
 
@@ -2656,6 +2658,15 @@ function PointageCard({
             </span>
           </div>
 
+          {p.reglagesEnSecours && (
+            <p role="status" style={{ color: '#B45309', fontSize: 12 }}>
+              Réglages indisponibles : valeurs de secours utilisées. Rechargez pour réessayer.
+            </p>
+          )}
+          {p.firstIn?.id && (!p.lastOut || estEstimationAStatuer(p.lastOut)) && !p.estimationEcartee && (
+            <AnalysePointage key={p.firstIn.id} sourceId={p.firstIn.id} />
+          )}
+
           {/* 🚫 ESTIMATION ÉCARTÉE — l'admin a jugé l'heure fausse : la journée
               n'est pas fermée, rien n'est compté, et on ne re-propose pas la
               même estimation (arbitrage n°3, cas Mercia). */}
@@ -2677,6 +2688,7 @@ function PointageCard({
               <AlertCircle size={13} color="#F59E0B" />
               <span style={styles.estimationTexte}>
                 {etiquetteEstimation(p.lastOut)}
+                {p.lastOut.estimation_niveau === 5 ? ' · Suggestion forfaitaire +8 h, sans indice observé' : ''}
                 {p.lastOut.estimation_niveau
                   ? ` · origine : niveau ${p.lastOut.estimation_niveau}` : ''}
                 {confianceEstimation ? ` · confiance ${confianceEstimation}` : ''}
