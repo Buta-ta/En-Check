@@ -8,7 +8,7 @@ DECLARE missing text;
 BEGIN
  SELECT string_agg(x.nom, ', ') INTO missing FROM (VALUES
  ('encheck_analyser_pointage'),('encheck_grille_au_jour'),('encheck_heure_de_fin_prevue'),
- ('encheck_fuseau'),('encheck_seuil'),('encheck_est_admin_de'),('encheck_auteur_actuel')) x(nom)
+ ('encheck_mode_estimation'),('encheck_fuseau'),('encheck_seuil'),('encheck_est_admin_de'),('encheck_auteur_actuel')) x(nom)
  WHERE NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
  WHERE n.nspname='public' AND p.proname=x.nom);
  IF missing IS NOT NULL THEN RAISE EXCEPTION 'Préflight : fonctions absentes : %. Exécuter le socle et 000007.',missing; END IF;
@@ -71,6 +71,9 @@ BEGIN
  SELECT * INTO s FROM public.attendances WHERE id=p_source;
  IF NOT FOUND THEN RAISE EXCEPTION 'Pointage inaccessible' USING ERRCODE='42501'; END IF;
  IF NOT public.encheck_est_admin_de(s.enterprise_id) THEN RAISE EXCEPTION 'Pointage inaccessible' USING ERRCODE='42501'; END IF;
+ IF public.encheck_mode_estimation(s.enterprise_id)='desactive' THEN
+   RETURN jsonb_build_object('kind','desactive','eligible',false,'reason','Les estimations sont désactivées pour cette entreprise.');
+ END IF;
  IF EXISTS(SELECT 1 FROM public.attendances WHERE estimation_source_id=p_source) THEN
    RETURN jsonb_build_object('kind','deja_consignee','eligible',false,'reason','Une estimation existe déjà : conserver sa décision et recharger la fiche.');
  END IF;

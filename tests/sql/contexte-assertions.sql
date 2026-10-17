@@ -13,6 +13,10 @@ BEGIN
  target:=(r->>'proposed_out')::timestamptz;
  ASSERT target='2026-05-05 15:32:06+01'::timestamptz;
  ASSERT r->>'history_count'='0';
+ PERFORM set_config('test.mode','desactive',true);
+ ASSERT encheck_proposer_pointage(source)->>'kind'='desactive';
+ ASSERT encheck_proposition_decider(source,'valider',target)->>'ok'='false';
+ PERFORM set_config('test.mode','ombre',true);
  UPDATE employees SET site_id=gen_random_uuid() WHERE id=b;
  ASSERT encheck_proposer_pointage(source)->>'eligible'='false';
  UPDATE employees SET site_id=NULL WHERE id=b;

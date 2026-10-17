@@ -13,3 +13,5 @@ CREATE FUNCTION encheck_grille_au_jour(uuid,uuid,date) RETURNS jsonb LANGUAGE sq
 CREATE FUNCTION encheck_heure_de_fin_prevue(timestamptz,jsonb,text) RETURNS timestamptz LANGUAGE sql AS $$ SELECT ($2->>'end')::timestamptz $$;
 
 CREATE TABLE team_members(employee_id uuid,team_id uuid,joined_at timestamptz,removed_at timestamptz,is_active boolean);
+
+CREATE FUNCTION encheck_mode_estimation(uuid) RETURNS text LANGUAGE sql AS $$ SELECT coalesce(nullif(current_setting('test.mode',true),''),'ombre') $$;
