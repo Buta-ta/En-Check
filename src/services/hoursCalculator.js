@@ -1202,7 +1202,7 @@ async function loadHolidaySet(enterpriseId, startDate, endDate) {
 // ═══════════════════════════════════════════════════════════
 
 function computeRetardsAlignedRetardsJSX({ attendances, scheduleResolved, holidaysSet, startDate, endDate }) {
-  const { heureArrivee, tolerance, bascule } = scheduleResolved || {}
+  const { heureArrivee, tolerance, bascule, workDays } = scheduleResolved || {}
   if (!heureArrivee) {
     return { count: 0, total_minutes: 0, ignored_no_schedule: true }
   }
@@ -1210,7 +1210,7 @@ function computeRetardsAlignedRetardsJSX({ attendances, scheduleResolved, holida
   const inAtts = attendances
     .filter(a => a.check_type === 'in')
     .filter(a => {
-      const d = jourLocal(a.check_time) || a.check_time.split('T')[0]
+      const d = cleJourDeTravail(new Date(a.check_time), bascule)
       return d >= startDate && d <= endDate
     })
     .sort((a, b) => new Date(a.check_time) - new Date(b.check_time))
@@ -1224,21 +1224,24 @@ function computeRetardsAlignedRetardsJSX({ attendances, scheduleResolved, holida
   }
 
   const [hA, mA] = heureArrivee.split(':').map(Number)
-  const minutesArriveeBase = hA * 60 + mA
-  const minutesArriveeMax = minutesArriveeBase + (tolerance || 15)
+  const arriveeCivile = hA * 60 + mA
+  const minutesArriveeBase = arriveeCivile + (arriveeCivile < (bascule || 0) ? 1440 : 0)
+  const minutesArriveeMax = minutesArriveeBase + (tolerance ?? 15)
 
   let count = 0
   let totalMinutes = 0
 
   for (const [jour, premierPointage] of Object.entries(firstInByDay)) {
     if (holidaysSet && holidaysSet.has(jour)) continue
+    if (!Array.isArray(workDays) || !workDays.includes(getPlanDayIndex(jour))) continue
 
     // Le retard se calcule sur l'heure LOCALE de l'entreprise.
     // Avant, on comparait l'heure UTC à un horaire configuré en heure locale :
     // pour un client au Cameroun, tout le monde arrivait « à l'heure » une
     // heure trop tard, et pour un client au Canada, tout le monde était
     // compté 4 heures en retard.
-    const minutesPointage = minutesDepuisMinuit(premierPointage.check_time)
+    const minutesCiviles = minutesDepuisMinuit(premierPointage.check_time)
+    const minutesPointage = minutesCiviles + (minutesCiviles < (bascule || 0) ? 1440 : 0)
 
     const retardMinutes = minutesPointage - minutesArriveeBase
     const estEnRetard = minutesPointage > minutesArriveeMax
@@ -1253,29 +1256,27 @@ function computeRetardsAlignedRetardsJSX({ attendances, scheduleResolved, holida
 }
 
 function resolveScheduleLikeRetards(employeeScheduleRow, defaultScheduleRow) {
-  let heureArrivee = null
-  let tolerance = 15
-  let bascule = 0
-
-  if (employeeScheduleRow) {
-    if (employeeScheduleRow.use_custom_hours && employeeScheduleRow.custom_start_time) {
-      heureArrivee = employeeScheduleRow.custom_start_time.slice(0, 5)
-      tolerance = employeeScheduleRow.custom_late_tolerance_minutes || 15
-      bascule = minutesDeBascule(employeeScheduleRow.custom_bascule)
-    } else if (employeeScheduleRow.schedule_id && employeeScheduleRow.work_schedules) {
-      heureArrivee = employeeScheduleRow.work_schedules.start_time?.slice(0, 5) || null
-      tolerance = employeeScheduleRow.work_schedules.late_tolerance_minutes || 15
-      bascule = minutesDeBascule(employeeScheduleRow.work_schedules.bascule)
+  const perso = employeeScheduleRow?.is_active === false ? null : employeeScheduleRow
+  let selected = null
+  if (perso?.use_custom_hours) {
+    // Un jour de repos personnel n'est PAS une absence de planning.
+    selected = {
+      start_time: perso.custom_start_time,
+      late_tolerance_minutes: perso.custom_late_tolerance_minutes,
+      bascule: perso.custom_bascule,
+      work_days: perso.custom_work_days,
     }
+  } else if (perso?.schedule_id && perso.work_schedules) {
+    selected = perso.work_schedules
+  } else if (defaultScheduleRow?.is_active !== false) {
+    selected = defaultScheduleRow
   }
-
-  if (!heureArrivee && defaultScheduleRow) {
-    heureArrivee = defaultScheduleRow.start_time?.slice(0, 5) || null
-    tolerance = defaultScheduleRow.late_tolerance_minutes || 15
-    bascule = minutesDeBascule(defaultScheduleRow.bascule)
+  return {
+    heureArrivee: selected?.start_time?.slice(0, 5) || null,
+    tolerance: selected?.late_tolerance_minutes ?? 15,
+    bascule: minutesDeBascule(selected?.bascule),
+    workDays: Array.isArray(selected?.work_days) ? selected.work_days.map(Number) : [1, 2, 3, 4, 5],
   }
-
-  return { heureArrivee, tolerance, bascule }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1786,72 +1787,42 @@ export function compterRetardsDuJour(
   todayStr = null
 ) {
   const empSchedulesMap = {}
-  ;(employeeSchedulesData || []).forEach(es => {
-    if (es && es.employee_id && es.is_active !== false) {
+  ;[...(employeeSchedulesData || [])].filter(Boolean).sort(parDateEffetDecroissante).forEach(es => {
+    if (es.employee_id && es.is_active !== false && grilleValableLe(es, todayStr) && !empSchedulesMap[es.employee_id]) {
       empSchedulesMap[es.employee_id] = es
     }
   })
 
   const defaultByEnterprise = {}
-  ;(defaultSchedulesData || []).forEach(ws => {
-    if (ws && ws.enterprise_id && ws.is_active !== false && !defaultByEnterprise[ws.enterprise_id]) {
+  ;[...(defaultSchedulesData || [])].filter(Boolean).sort(parDateEffetDecroissante).forEach(ws => {
+    if (ws.enterprise_id && ws.is_active !== false && grilleValableLe(ws, todayStr) && !defaultByEnterprise[ws.enterprise_id]) {
       defaultByEnterprise[ws.enterprise_id] = ws
     }
   })
 
-  const firstInByEmployee = new Map()
-  const sorted = [...(retardEntries || [])].sort(
-    (a, b) => new Date(a.check_time) - new Date(b.check_time)
-  )
-
-  for (const att of sorted) {
-    if (!att || !att.employee_id) continue
-    if (todayStr) {
-      const attDate = jourLocal(att.check_time) || att.check_time.split('T')[0]
-      if (attDate !== todayStr) continue
-    }
-    const mins = minutesDepuisMinuit(att.check_time)
-    if (mins < 300) continue
-    if (!firstInByEmployee.has(att.employee_id)) {
-      firstInByEmployee.set(att.employee_id, att)
-    }
+  const grouped = new Map()
+  for (const att of retardEntries || []) {
+    if (!att?.employee_id || att.check_type !== 'in') continue
+    const key = `${att.enterprise_id}:${att.employee_id}`
+    if (!grouped.has(key)) grouped.set(key, [])
+    grouped.get(key).push(att)
   }
-
   let count = 0
-  for (const [empId, att] of firstInByEmployee.entries()) {
-    const schedulePerso = empSchedulesMap[empId]
-    const defaultSchedule =
-      (att.enterprise_id && defaultByEnterprise[att.enterprise_id]) ||
-      defaultSchedulesData?.[0] ||
-      null
-
-    let heureArrivee = '08:00'
-    let tolerance = 15
-
-    if (schedulePerso) {
-      if (schedulePerso.use_custom_hours && schedulePerso.custom_start_time) {
-        heureArrivee = schedulePerso.custom_start_time.slice(0, 5)
-        tolerance =
-          schedulePerso.custom_late_tolerance_minutes ||
-          defaultSchedule?.late_tolerance_minutes ||
-          15
-      } else if (schedulePerso.schedule_id && schedulePerso.work_schedules?.start_time) {
-        heureArrivee = schedulePerso.work_schedules.start_time.slice(0, 5)
-        tolerance = schedulePerso.work_schedules.late_tolerance_minutes || 15
-      } else if (defaultSchedule?.start_time) {
-        heureArrivee = defaultSchedule.start_time.slice(0, 5)
-        tolerance = defaultSchedule.late_tolerance_minutes || 15
-      }
-    } else if (defaultSchedule?.start_time) {
-      heureArrivee = defaultSchedule.start_time.slice(0, 5)
-      tolerance = defaultSchedule.late_tolerance_minutes || 15
-    }
-
-    const [hA, mA] = heureArrivee.split(':').map(Number)
-    const seuilRetard = (hA || 0) * 60 + (mA || 0) + (Number(tolerance) || 15)
-    if (minutesDepuisMinuit(att.check_time) > seuilRetard) {
-      count += 1
-    }
+  for (const entries of grouped.values()) {
+    const att = entries[0]
+    const perso = empSchedulesMap[att.employee_id]
+    const defaultSchedule = defaultByEnterprise[att.enterprise_id] || null
+    const resolved = resolveScheduleLikeRetards(
+      perso && (!todayStr || grilleValableLe(perso, todayStr)) ? perso : null,
+      defaultSchedule && (!todayStr || grilleValableLe(defaultSchedule, todayStr)) ? defaultSchedule : null,
+    )
+    const result = computeRetardsAlignedRetardsJSX({
+      attendances: entries,
+      scheduleResolved: resolved,
+      startDate: todayStr || '0000-01-01',
+      endDate: todayStr || '9999-12-31',
+    })
+    if (result.count > 0) count += 1
   }
 
   return count

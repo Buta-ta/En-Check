@@ -202,6 +202,7 @@ describe('hoursCalculator — Fonctions pures de calcul des heures (VD-15)', () 
       heureArrivee: '08:00',
       tolerance: 15, // retard à partir de 08:16 locale
       bascule: 0,
+      workDays: [1, 2, 3, 4, 5], // contrat : vérifier le jour avant l'heure
     }
 
     const attendances = [
