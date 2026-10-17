@@ -1,10 +1,70 @@
 import { useRef, useState, useEffect } from 'react'
+import { Sparkles, Users, ArrowRight, ShieldCheck, RefreshCw, AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { formaterHeureLocale } from '../utils/timezoneUtils'
+import { formaterHeureLocale, formaterHeureLocaleShort } from '../utils/timezoneUtils'
+import './AnalysePointage.css'
 
-// Première livraison : observation uniquement. Ni réécriture ni validation
-// financière tant que planning/historique n'ont pas été confrontés aux indices.
-export default function AnalysePointage({ sourceId }) {
+// Présentation seule : les indices ne remplacent pas une décision de paie.
+export function ResultatAnalysePointage({ result, currentOut }) {
+  const departure = result.kind === 'depart_probable'
+  const evidence = Array.isArray(result.evidence) ? result.evidence.filter(Boolean) : []
+  return (
+    <div className="analyse-pointage__result" role="status">
+      {result.proposed_out ? (
+        <>
+          <div className="analyse-pointage__comparison">
+            <div className="analyse-pointage__time-box">
+              <span className="analyse-pointage__label">Sortie affichée sur la carte</span>
+              <strong className="analyse-pointage__current-time">{formaterHeureLocale(currentOut)}</strong>
+              <span className="analyse-pointage__muted">Inchangée par cette analyse</span>
+            </div>
+            <div className="analyse-pointage__time-box analyse-pointage__time-box--proposal">
+              <span className="analyse-pointage__label">{departure ? 'Départ possible' : 'Proposition du groupe'}</span>
+              <strong className="analyse-pointage__proposed-time">
+                {departure ? formaterHeureLocale(result.proposed_out) : formaterHeureLocaleShort(result.proposed_out)}
+                {!departure && <small> environ</small>}
+              </strong>
+              <span className="analyse-pointage__muted">{departure ? 'Badge existant · sens à confirmer' : 'Hypothèse · non appliquée'}</span>
+            </div>
+          </div>
+          {result.colleagues > 0 && <div className="analyse-pointage__peers">
+            <Users size={15} aria-hidden="true" />
+            <span>{result.colleagues} collègues distincts dans la même entreprise</span>
+          </div>}
+        </>
+      ) : <strong className="analyse-pointage__empty-title">Pas de proposition fiable pour le moment</strong>}
+
+      <p className="analyse-pointage__reason">{result.reason}</p>
+      {departure && <p className="analyse-pointage__warning">
+        Entrée inconnue : durée indéterminée. À confirmer auprès du responsable.
+      </p>}
+
+      {evidence.length > 0 && <details className="analyse-pointage__evidence" open>
+        <summary>Horaires utilisés <span>{evidence.length}</span></summary>
+        <div className="analyse-pointage__evidence-rows">
+          {evidence.map((item, index) => (
+            <div className="analyse-pointage__evidence-row" key={item.id || item.sortie_id || index}>
+              <span className="analyse-pointage__peer-label">Repère {index + 1}</span>
+              <div className="analyse-pointage__evidence-times">
+                {item.entree && <><span><small>Entrée</small><time dateTime={item.entree}>{formaterHeureLocale(item.entree)}</time></span>
+                  <ArrowRight size={14} aria-hidden="true" /></>}
+                <span><small>Sortie</small><time dateTime={item.sortie || undefined}>{formaterHeureLocale(item.sortie)}</time></span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </details>}
+      <div className="analyse-pointage__notice">
+        <ShieldCheck size={16} aria-hidden="true" />
+        <span>{currentOut
+          ? <>Les boutons <strong>Valider / Écarter</strong> de la carte concernent toujours <strong>{formaterHeureLocale(currentOut)}</strong>, pas cette proposition.</>
+          : 'Aucun horaire ajouté. Cette hypothèse ne peut pas encore être validée depuis ce panneau.'}</span>
+      </div>
+    </div>
+  )
+}
+
+export default function AnalysePointage({ sourceId, currentOut = null }) {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,6 +75,7 @@ export default function AnalysePointage({ sourceId }) {
   }, [])
 
   async function analyser() {
+    if (loading) return
     setLoading(true)
     setError('')
     setResult(null)
@@ -24,39 +85,29 @@ export default function AnalysePointage({ sourceId }) {
       if (!data || typeof data.kind !== 'string') throw new Error('Réponse d’analyse invalide')
       if (active.current) setResult(data)
     } catch (e) {
-      if (active.current) setError(`Analyse indisponible : ${e.message}. Vérifiez que la migration 000007 est appliquée.`)
+      if (active.current) setError(e.message || 'La connexion a échoué.')
     } finally {
       if (active.current) setLoading(false)
     }
   }
 
   return (
-    <section style={{ padding: 10, marginTop: 8, border: '1px solid #94A3B8', borderRadius: 8, fontSize: 12 }}>
-      <button type="button" onClick={analyser} disabled={loading}>
-        {loading ? 'Analyse…' : 'Analyser les indices du groupe'}
+    <section className="analyse-pointage" aria-label="Analyse des indices du groupe" aria-busy={loading}>
+      <header className="analyse-pointage__header">
+        <div className="analyse-pointage__title"><Sparkles size={17} aria-hidden="true" /><strong>Indices du groupe</strong></div>
+        <span className="analyse-pointage__badge">Observation</span>
+      </header>
+      <p className="analyse-pointage__intro">Comparez les badges des collègues. Aucun horaire ni montant n’est modifié.</p>
+      <button className="analyse-pointage__button" type="button" onClick={analyser} disabled={loading}>
+        {loading || result ? <RefreshCw size={15} aria-hidden="true" /> : <Users size={15} aria-hidden="true" />}
+        {loading ? 'Analyse en cours…' : result ? 'Actualiser l’analyse' : error ? 'Réessayer l’analyse' : 'Analyser les indices du groupe'}
       </button>
-      <div>Mode observation — aucun badge ni montant modifié.</div>
-      {error && <p role="alert">{error}</p>}
-      {result && (
-        <div role="status">
-          <p>{result.reason}</p>
-          {result.proposed_out && <p>
-            {result.kind === 'depart_probable' ? 'Badge de départ possible' : 'Sortie collective proposée'} :{' '}
-            {formaterHeureLocale(result.proposed_out).slice(0, 5)}
-            {result.kind === 'sortie_cohorte' ? ' environ' : ''}
-          </p>}
-          {result.kind === 'depart_probable' && <p>Entrée inconnue — durée indéterminée. Confirmer auprès du responsable.</p>}
-          {result.colleagues > 0 && <p>{result.colleagues} collègues distincts dans la même entreprise.</p>}
-          {result.evidence?.length > 0 && <details>
-            <summary>Voir les horaires utilisés</summary>
-            <ul>{result.evidence.map((item) => <li key={item.id || item.sortie_id}>
-              {item.entree ? `${formaterHeureLocale(item.entree)} → ` : 'Départ : '}
-              {formaterHeureLocale(item.sortie)}
-            </li>)}</ul>
-          </details>}
-          <p>Hypothèse à vérifier, non validable depuis ce panneau. Les badges originaux restent inchangés.</p>
-        </div>
-      )}
+      {loading && <p className="analyse-pointage__muted" role="status">Recherche des pointages comparables…</p>}
+      {error && <div className="analyse-pointage__error" role="alert">
+        <AlertCircle size={17} aria-hidden="true" />
+        <div><strong>Analyse indisponible</strong><p>{error}</p><small>Réessayez. Si l’erreur persiste, vérifiez que la migration 000007 est appliquée.</small></div>
+      </div>}
+      {result && <ResultatAnalysePointage result={result} currentOut={currentOut} />}
     </section>
   )
 }
