@@ -94,10 +94,15 @@ export async function chargerSeuilsPointage(enterpriseId, { force = false } = {}
   try {
     // Import différé pour ne pas créer de dépendance circulaire avec lib/supabase.
     const { supabase } = await import('../lib/supabase')
-    const { data } = await supabase
+    const query = supabase
       .from('encheck_reglages_pointage')
       .select('cle,valeur,enterprise_id')
-      .in('enterprise_id', enterpriseId ? [enterpriseId, null] : [null])
+    // NULL se sélectionne avec IS NULL, jamais dans une liste d'UUID.
+    const { data, error } = await (enterpriseId
+      ? query.or(`enterprise_id.eq.${enterpriseId},enterprise_id.is.null`)
+      : query.is('enterprise_id', null))
+    if (error) throw error
+    seuils.chargement = 'base'
 
     const parCle = {}
     for (const r of data || []) {
@@ -118,7 +123,8 @@ export async function chargerSeuilsPointage(enterpriseId, { force = false } = {}
       if (Number.isFinite(num)) seuils[nom] = num
     }
   } catch {
-    // Base injoignable / table absente : contrat implicite, aucun écran cassé.
+    // Dégradation explicite, et pas de cache d'échec : le prochain chargement réessaie.
+    seuils.chargement = 'secours'
   }
 
   //  Réparation des réglages incohérents — un `0` ou un texte dans la base ne
@@ -146,7 +152,7 @@ export async function chargerSeuilsPointage(enterpriseId, { force = false } = {}
     _positif(seuils.gardeMaxHeures, SEUILS_PAR_DEFAUT.gardeMaxHeures),
   )
 
-  _cache.set(cle, seuils)
+  if (seuils.chargement === 'base') _cache.set(cle, seuils)
   return seuils
 }
 

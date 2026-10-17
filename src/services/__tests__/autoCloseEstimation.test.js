@@ -79,7 +79,7 @@ describe('1. Seuils — une seule source (décision §4.4)', () => {
     const { supabase } = await import('../../lib/supabase')
     supabase.from.mockImplementation(() => ({
       select: () => ({
-        in: () =>
+        or: () =>
           Promise.resolve({
             data: [
               { cle: 'oubli_sortie_heures', valeur: 10, enterprise_id: null },
@@ -101,7 +101,7 @@ describe('1. Seuils — une seule source (décision §4.4)', () => {
     const { supabase } = await import('../../lib/supabase')
     supabase.from.mockImplementation(() => ({
       select: () => ({
-        in: () => Promise.resolve({
+        or: () => Promise.resolve({
           data: [
             { cle: 'oubli_sortie_heures', valeur: 20, enterprise_id: null },
             { cle: 'appariement_heures', valeur: 4, enterprise_id: null },
