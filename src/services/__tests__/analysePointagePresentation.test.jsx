@@ -49,6 +49,12 @@ describe('Présentation lisible des indices (sans décision financière)', () =>
     expect(html).toContain('--:--:--')
     expect(html).toContain('Repère 1')
   })
+  it('une proposition activée renvoie aux actions de la carte, sans avertissement obsolète', () => {
+    const html = renderToStaticMarkup(<ResultatAnalysePointage contextual result={{ ...result, eligible: true }} currentOut={result.proposed_out} />)
+    expect(html).toContain('Proposition retenue')
+    expect(html).toContain('Valider ou ajuster')
+    expect(html).not.toContain('pas cette proposition')
+  })
   it('rend le panneau initial explicitement en observation', () => {
     const html = renderToStaticMarkup(<AnalysePointage sourceId="source" />)
     expect(html).toContain('Observation')
