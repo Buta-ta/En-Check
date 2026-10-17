@@ -2664,7 +2664,7 @@ function PointageCard({
             </p>
           )}
           {p.firstIn?.id && (!p.lastOut || estEstimationAStatuer(p.lastOut)) && !p.estimationEcartee && (
-            <AnalysePointage key={p.firstIn.id} sourceId={p.firstIn.id} />
+            <AnalysePointage key={p.firstIn.id} sourceId={p.firstIn.id} currentOut={p.lastOut?.check_time || null} />
           )}
 
           {/* 🚫 ESTIMATION ÉCARTÉE — l'admin a jugé l'heure fausse : la journée
@@ -2688,6 +2688,7 @@ function PointageCard({
               <AlertCircle size={13} color="#F59E0B" />
               <span style={styles.estimationTexte}>
                 {etiquetteEstimation(p.lastOut)}
+                {` · décision sur ${formaterHeureLocale(p.lastOut.check_time)}`}
                 {p.lastOut.estimation_niveau === 5 ? ' · Suggestion forfaitaire +8 h, sans indice observé' : ''}
                 {p.lastOut.estimation_niveau
                   ? ` · origine : niveau ${p.lastOut.estimation_niveau}` : ''}
@@ -4083,19 +4084,19 @@ const styles = {
     border: '1px solid rgba(245,158,11,0.35)',
     borderRadius: 10,
   },
-  estimationTexte: { fontSize: 11.5, color: '#B45309', fontWeight: 600, flex: 1, minWidth: 160 },
-  estimationActions: { display: 'inline-flex', gap: 6 },
+  estimationTexte: { fontSize: 12, color: '#FDE68A', fontWeight: 600, flex: 1, minWidth: 160 },
+  estimationActions: { display: 'inline-flex', flexWrap: 'wrap', gap: 6 },
   estimationNote: { fontSize: 11, color: '#B45309', fontStyle: 'italic', whiteSpace: 'nowrap' },
   estimationBtnOk: {
     display: 'inline-flex', alignItems: 'center', gap: 4,
-    padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
-    background: '#10B981', color: '#fff', border: 'none', borderRadius: 8,
+    padding: '8px 10px', minHeight: 36, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+    background: '#10B981', color: '#052E25', border: 'none', borderRadius: 8,
   },
   estimationBtnNo: {
     display: 'inline-flex', alignItems: 'center', gap: 4,
-    padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
-    background: 'transparent', color: '#B45309',
-    border: '1px solid rgba(180,83,9,0.45)', borderRadius: 8,
+    padding: '8px 10px', minHeight: 36, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+    background: 'transparent', color: '#FDE68A',
+    border: '1px solid #8B6725', borderRadius: 8,
   },
   sessionAutoClosed: {
     background: 'rgba(239,68,68,0.1)', color: '#EF4444',

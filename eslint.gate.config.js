@@ -65,6 +65,11 @@ export default [
     plugins: { 'react-hooks': reactHooks },
     rules: REGLES_QUI_CRASHENT,
   },
+  // Les tests Vitest s'exécutent sous Node, contrairement au code navigateur.
+  {
+    files: ['src/**/__tests__/**/*.{js,jsx}'],
+    languageOptions: { globals: globals.node },
+  },
   //  (L'exception `no-dupe-class-members` pour `pushNotificationService.js` a
   //  été LEVÉE le 16/10/2026 — arbitrage n°2, décision B3 : le doublon de
   //  `subscribe()` est supprimé, le fichier est de nouveau couvert par la porte.)
