@@ -24,6 +24,7 @@ import {
   EmployesCulturalHero,
   EmployesExecutiveKpis,
   EmployesLiveStatusBanner,
+  EmployesPortraitCard,
 } from '../components/EmployesAfroTechSections'
 import { useTheme } from '../contexts/ThemeContext'
 import { construirePauses } from '../services/pausesService'
@@ -100,7 +101,7 @@ export default function Employes() {
   const [minLoadingDone, setMinLoadingDone] = useState(false)
   const [liveStatusByEmployee, setLiveStatusByEmployee] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
-  const [viewMode, setViewMode] = useState('list')
+  const [viewMode, setViewMode] = useState('grid')
   const { darkMode, toggleTheme } = useTheme()
 
   useEffect(() => {
@@ -1025,17 +1026,17 @@ export default function Employes() {
       `}</style>
 
       <div className="pointages-afrotech-shell" data-theme={darkMode ? 'dark' : 'light'} style={styles.container}>
+        <EmployesCulturalHero
+          totalCount={employes.length}
+          departmentsCount={departments.length}
+          darkMode={darkMode}
+          onToggleTheme={toggleTheme}
+          onBackDashboard={() => navigate('/dashboard')}
+          onAddEmployee={handleAdd}
+        />
+
         {/* ═══ MAIN ═══ */}
         <main style={styles.main}>
-          <EmployesCulturalHero
-            totalCount={employes.length}
-            departmentsCount={departments.length}
-            darkMode={darkMode}
-            onToggleTheme={toggleTheme}
-            onBackDashboard={() => navigate('/dashboard')}
-            onAddEmployee={handleAdd}
-          />
-
           <EmployesExecutiveKpis
             employes={employes}
             liveStatusByEmployee={liveStatusByEmployee}
@@ -1043,53 +1044,55 @@ export default function Employes() {
             onFilterSearch={(val) => setSearchTerm(val)}
           />
 
-          <EmployesAnalyticsCharts
-            employes={employes}
-            plannings={plannings}
-            onSelectDepartment={(dept) => setSearchTerm(dept)}
-          />
+          <div className="employes-middle-showcase">
+            <div className="employes-directory-head-col">
+              <div className="employes-directory-title-row">
+                <h2>Annuaire des Employés</h2>
+                <div className="employes-directory-dots" aria-hidden="true">
+                  <span />
+                  <span className="is-active" />
+                </div>
+              </div>
 
-          {/* ═══════════════════════════════════════════════════════════
-              06.B.8 — L'ALERTE QUI EMPÊCHE UN BLOCAGE SILENCIEUX
-              ═══════════════════════════════════════════════════════════
-              Les employés de l'ancien système ont un mot de passe et un
-              portail ACTIF : sans ce bandeau, rien ne signale qu'ils
-              doivent être migrés. On les croirait déjà équipés.
-              Or la fermeture des Fiches de paie exige que TOUS aient un
-              compte : un seul oubli bloque tout, définitivement. */}
-          {employes.filter(e => estAncienSysteme(e)).length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', marginBottom: 16, background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 12 }}>
-              <AlertTriangle size={20} color="#F59E0B" style={{ flexShrink: 0 }} />
-              <div>
-                <p style={{ color: '#F59E0B', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>
-                  {employes.filter(e => estAncienSysteme(e)).length} employé{employes.filter(e => estAncienSysteme(e)).length > 1 ? 's' : ''} à migrer vers le nouveau système
-                </p>
-                <p style={{ color: '#999', fontSize: 12, margin: 0, lineHeight: 1.5 }}>
-                  Ils se connectent encore par l'ancienne méthode. Cliquez la <strong style={{ color: '#FFF' }}>clé</strong> sur leur ligne
-                  pour leur créer un compte, puis <strong style={{ color: '#FFF' }}>communiquez-leur le nouveau mot de passe</strong> :
-                  l'ancien cessera de fonctionner. Tant qu'ils ne sont pas migrés, la fermeture des Fiches de paie reste bloquée.
-                </p>
+              {/* Toolbar */}
+              <div style={styles.toolbar}>
+                <div className="afro-search" style={styles.searchContainer}>
+                  <Search size={18} color="#888" />
+                  <input type="text" placeholder="Rechercher par nom, matricule, poste, contrat..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={styles.searchInput} />
+                  {searchTerm && <button onClick={() => setSearchTerm('')} style={styles.clearSearch}><X size={16} /></button>}
+                </div>
+                <div style={styles.toolbarRight}>
+                  <div style={styles.viewToggle}>
+                    <button className="afro-view-btn" onClick={() => setViewMode('grid')} style={{ ...styles.viewBtn, ...(viewMode === 'grid' ? styles.viewBtnActive : {}) }} title="Vue Cartes Portrait"><Grid3X3 size={16} /></button>
+                    <button className="afro-view-btn" onClick={() => setViewMode('list')} style={{ ...styles.viewBtn, ...(viewMode === 'list' ? styles.viewBtnActive : {}) }} title="Vue Liste"><LayoutList size={16} /></button>
+                  </div>
+                  <div style={styles.resultCount}>
+                    <span style={styles.resultNumber}>{employesFiltres.length}</span>
+                    <span style={styles.resultText}>résultat{employesFiltres.length > 1 ? 's' : ''}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* Toolbar */}
-          <div style={styles.toolbar}>
-            <div className="afro-search" style={styles.searchContainer}>
-              <Search size={18} color="#666" />
-              <input type="text" placeholder="Rechercher par nom, matricule, poste, contrat..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={styles.searchInput} />
-              {searchTerm && <button onClick={() => setSearchTerm('')} style={styles.clearSearch}><X size={16} /></button>}
+              {employes.filter(e => estAncienSysteme(e)).length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 12 }}>
+                  <AlertTriangle size={18} color="#F59E0B" style={{ flexShrink: 0 }} />
+                  <div>
+                    <p style={{ color: '#F59E0B', fontSize: 12, fontWeight: 700, margin: '0 0 2px 0' }}>
+                      {employes.filter(e => estAncienSysteme(e)).length} employé{employes.filter(e => estAncienSysteme(e)).length > 1 ? 's' : ''} à migrer vers le nouveau portail
+                    </p>
+                    <p style={{ color: 'var(--pt-muted)', fontSize: 11, margin: 0 }}>
+                      Cliquez sur « Migrer portail » sur leur carte pour activer leur nouveau mot de passe.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
-            <div style={styles.toolbarRight}>
-              <div style={styles.viewToggle}>
-                <button className="afro-view-btn" onClick={() => setViewMode('list')} style={{ ...styles.viewBtn, ...(viewMode === 'list' ? styles.viewBtnActive : {}) }}><LayoutList size={16} /></button>
-                <button className="afro-view-btn" onClick={() => setViewMode('grid')} style={{ ...styles.viewBtn, ...(viewMode === 'grid' ? styles.viewBtnActive : {}) }}><Grid3X3 size={16} /></button>
-              </div>
-              <div style={styles.resultCount}>
-                <span style={styles.resultNumber}>{employesFiltres.length}</span>
-                <span style={styles.resultText}>résultat{employesFiltres.length > 1 ? 's' : ''}</span>
-              </div>
-            </div>
+
+            <EmployesAnalyticsCharts
+              employes={employes}
+              plannings={plannings}
+              onSelectDepartment={(dept) => setSearchTerm(dept)}
+            />
           </div>
 
           {/* ═══ EMPLOYEE LIST ═══ */}
@@ -1101,82 +1104,29 @@ export default function Employes() {
               {!searchTerm && <button onClick={handleAdd} className="afro-add-btn" style={styles.emptyAddBtn}><UserPlus size={18} /><span>Ajouter un employé</span></button>}
             </div>
           ) : viewMode === 'grid' ? (
-            /* ─── GRID VIEW ─── */
-            <div style={styles.gridView}>
-              {employesFiltres.map((employee, index) => {
+            /* ─── PORTRAIT CARDS VIEW (FIDÈLE À L'IMAGE CHOISIE) ─── */
+            <div className="employes-portrait-grid">
+              {employesFiltres.map((employee) => {
                 const stats = weeklyStats[employee.id]
-                const scheduleInfo = getEmployeeScheduleInfo(employee)
                 const portalEnabled = isPortalModuleEnabled(employee)
-                const seniority = calculateSeniority(employee.hire_date)
-
                 return (
-                  <div key={employee.id} className="afro-grid-card" style={{ ...styles.gridCard, animation: `fadeInUp 0.4s ease ${index * 0.05}s forwards`, opacity: 0 }}>
-                    <div style={styles.cardGlowLine}></div>
-
-                    {/* Badges en haut à droite */}
-                    <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                      {employee.contract_type && (
-                        <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 9, fontWeight: 700, background: `${getContractColor(employee.contract_type)}18`, color: getContractColor(employee.contract_type), border: `1px solid ${getContractColor(employee.contract_type)}30` }}>
-                          {getContractLabel(employee.contract_type)}
-                        </span>
-                      )}
-                      {aUnCompteEmploye(employee) && (
-                        <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 9, fontWeight: 700, background: estAncienSysteme(employee) ? 'rgba(245, 158, 11, 0.15)' : (employee.employee_portal_enabled ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'), color: estAncienSysteme(employee) ? '#F59E0B' : (employee.employee_portal_enabled ? '#22C55E' : '#EF4444'), border: `1px solid ${estAncienSysteme(employee) ? 'rgba(245, 158, 11, 0.3)' : (employee.employee_portal_enabled ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)')}`, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {estAncienSysteme(employee) ? <AlertTriangle size={10} /> : (employee.employee_portal_enabled ? <UserCheck size={10} /> : <UserX size={10} />)} {estAncienSysteme(employee) ? 'À migrer' : 'Portail'}
-                        </span>
-                      )}
-                      {/* 06.B.7 — a-t-il déjà utilisé son accès ? */}
-                      {aUnCompteEmploye(employee) && (
-                        <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 9, fontWeight: 700, background: aDejaConnecte(employee) ? 'rgba(59, 130, 246, 0.15)' : 'rgba(245, 158, 11, 0.15)', color: aDejaConnecte(employee) ? '#60A5FA' : '#F59E0B', border: `1px solid ${aDejaConnecte(employee) ? 'rgba(59, 130, 246, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Clock size={10} /> {aDejaConnecte(employee) ? 'Vu' : 'Jamais vu'}
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={styles.gridAvatarSection}>
-                      <div style={styles.gridAvatar}>
-                        {employee.photo_url ? <img src={employee.photo_url} alt="" style={styles.gridAvatarImg} /> : <span style={styles.gridAvatarInitials}>{employee.first_name?.[0]}{employee.last_name?.[0]}</span>}
-                      </div>
-                      <h4 style={styles.gridName}>{employee.first_name} {employee.last_name}</h4>
-                      <span style={styles.gridMatricule}>{employee.matricule}</span>
-                    </div>
-
-                    <div style={styles.gridInfoSection}>
-                      {employee.position && <div style={styles.gridInfoRow}><Briefcase size={12} color="#888" /><span>{employee.position}</span></div>}
-                      {employee.department && <div style={styles.gridInfoRow}><Building2 size={12} color="#888" /><span>{employee.department}</span></div>}
-                      {employee.classification && <div style={styles.gridInfoRow}><Award size={12} color="#6366F1" /><span style={{ color: '#818CF8' }}>{getClassificationLabel(employee.classification)}</span></div>}
-                      {employee.machine_pin
-                        ? <div style={styles.gridInfoRow}><Radio size={12} color="#14B8A6" /><span style={{ color: '#14B8A6' }}>Pointeuse : {employee.machine_pin}</span></div>
-                        : <div style={styles.gridInfoRow}><Radio size={12} color="#D1D5DB" /><span style={{ color: '#9CA3AF' }}>Sans numéro de pointeuse</span></div>}
-                      {seniority && <div style={styles.gridInfoRow}><Calendar size={12} color="#10B981" /><span style={{ color: '#10B981' }}>{seniority}</span></div>}
-                      {scheduleInfo && <div style={styles.gridInfoRow}><Clock size={12} color="#10B981" /><span style={{ color: '#10B981' }}>{scheduleInfo}</span></div>}
-                    </div>
-
-                    {stats && (
-                      <div style={styles.gridProgress}>
-                        <div style={styles.gridProgressHeader}>
-                          <span style={styles.gridProgressLabel}>Cette semaine</span>
-                          <span style={{ ...styles.gridProgressValue, color: getHoursColor(stats.hours) }}>{stats.label}</span>
-                        </div>
-                        <div style={styles.progressTrack}><div className="progress-bar-fill" style={{ ...styles.progressFill, '--target-width': `${stats.percentage}%`, background: `linear-gradient(90deg, ${getHoursColor(stats.hours)}, ${getHoursColor(stats.hours)}88)` }}></div></div>
-                      </div>
-                    )}
-
-                    <EmployesLiveStatusBanner
-                      liveStatus={liveStatusByEmployee[employee.id]}
-                      scheduleRegimeLabel={getScheduleRegimeLabel(employee)}
-                      onOpenPointages={() => navigate(`/pointages?q=${encodeURIComponent(employee.matricule || employee.last_name || '')}`)}
-                    />
-
-                    <div style={styles.gridActions}>
-                      {isModulePlanningEnabled(employee) && <button className="afro-action-icon" onClick={() => handleOpenSchedule(employee)} style={{ ...styles.gridActionBtn, background: 'rgba(16, 185, 129, 0.1)', color: '#10B981' }} title="Horaires"><Clock size={15} /></button>}
-                      <button className="afro-action-icon" onClick={() => handleShowBadge(employee)} style={{ ...styles.gridActionBtn, background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B' }} title="Badge QR"><QrCode size={15} /></button>
-                      {isModulePlanningEnabled(employee) && <button className="afro-action-icon" onClick={() => handleShareSchedule(employee)} style={{ ...styles.gridActionBtn, background: 'rgba(37, 211, 102, 0.1)', color: '#25D366' }} title="WhatsApp"><Share2 size={15} /></button>}
-                      {portalEnabled && <button className="afro-action-icon" onClick={() => handleOpenPasswordModal(employee)} style={{ ...styles.gridActionBtn, background: aUnCompteEmploye(employee) ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: aUnCompteEmploye(employee) ? '#22C55E' : '#F59E0B' }} title={aUnCompteSupabase(employee) ? 'Modifier mot de passe' : (estAncienSysteme(employee) ? "Migrer vers le nouveau systeme (cree un compte)" : 'Créer accès portail')}><Key size={15} /></button>}
-                      <button className="afro-action-icon" onClick={() => handleEdit(employee)} style={{ ...styles.gridActionBtn, background: 'rgba(99, 102, 241, 0.1)', color: '#6366F1' }} title="Modifier"><Edit size={15} /></button>
-                      <button className="afro-action-icon" onClick={() => initiateDelete(employee)} style={{ ...styles.gridActionBtn, background: 'rgba(239, 68, 68, 0.1)', color: '#EF4444' }} title="Supprimer"><Trash2 size={15} /></button>
-                    </div>
-                  </div>
+                  <EmployesPortraitCard
+                    key={employee.id}
+                    employee={employee}
+                    liveStatus={liveStatusByEmployee[employee.id]}
+                    weeklyStats={stats}
+                    scheduleRegimeLabel={getScheduleRegimeLabel(employee)}
+                    portalEnabled={portalEnabled}
+                    hasAccount={aUnCompteEmploye(employee)}
+                    isLegacyAccount={estAncienSysteme(employee)}
+                    canEditPlanning={isModulePlanningEnabled(employee)}
+                    onOpenFiche={handleEdit}
+                    onShowBadge={handleShowBadge}
+                    onOpenSchedule={handleOpenSchedule}
+                    onOpenPointages={(emp) => navigate(`/pointages?q=${encodeURIComponent(emp.matricule || emp.last_name || '')}`)}
+                    onOpenPassword={handleOpenPasswordModal}
+                    onDelete={initiateDelete}
+                  />
                 )
               })}
             </div>

@@ -1,34 +1,135 @@
-// Bibliothèque d'illustrations et d'icônes vectorielles africaines (Kente, Bogolan, Adinkra, Tama, Cauris)
+// Bibliothèque d'illustrations et de motifs textiles vectoriels africains (Kente, Bogolan, Adinkra, Tama, Cauris)
 
-export function KenteFriezeSvg({ className = '' }) {
+export function KenteWovenTapestrySvg({ className = '' }) {
   return (
     <svg
       className={className}
-      viewBox="0 0 720 28"
+      viewBox="0 0 960 28"
       fill="none"
       preserveAspectRatio="none"
       aria-hidden="true"
       focusable="false"
     >
       <defs>
-        <pattern id="encheck-kente-rich" x="0" y="0" width="72" height="28" patternUnits="userSpaceOnUse">
-          {/* Bandeau de fond tissé */}
-          <rect x="0" y="0" width="72" height="28" fill="rgba(184,107,53,0.06)" />
-          {/* Losange royal Kente à double contour */}
-          <path d="M18 3 L31 14 L18 25 L5 14 Z" stroke="#B86B35" strokeWidth="1.7" fill="rgba(212,175,55,0.16)" />
-          <path d="M18 7.5 L25.5 14 L18 20.5 L10.5 14 Z" stroke="#26734D" strokeWidth="1.3" fill="rgba(38,115,77,0.14)" />
-          <circle cx="18" cy="14" r="2.3" fill="#3D2B1F" />
-          {/* Chevrons Bogolan */}
-          <path d="M36 4 L44 14 L36 24" stroke="#D4AF37" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M43 4 L51 14 L43 24" stroke="#26734D" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M50 4 L58 14 L50 24" stroke="#B86B35" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          {/* Motif escalier Adinkra ( Nkyinkyim ) */}
-          <path d="M62 5 H67 V11 H62 V17 H67 V23" stroke="#3D2B1F" strokeWidth="1.5" strokeOpacity="0.65" strokeLinecap="round" strokeLinejoin="round" />
+        <pattern id="encheck-kente-tapestry" x="0" y="0" width="240" height="28" patternUnits="userSpaceOnUse">
+          {/* Fond sombre expresso */}
+          <rect width="240" height="28" fill="#1A120C" />
+
+          {/* Bloc 1 : Tissage Or & Terracotta à rayures horizontales */}
+          <rect x="0" y="0" width="38" height="28" fill="#C85A28" />
+          <rect x="0" y="4" width="38" height="4" fill="#E8AE3E" />
+          <rect x="0" y="12" width="38" height="4" fill="#1E140E" />
+          <rect x="0" y="20" width="38" height="4" fill="#E8AE3E" />
+          <path d="M5 0 V28 M19 0 V28 M33 0 V28" stroke="#F4D078" strokeWidth="1.5" strokeOpacity="0.65" />
+
+          {/* Bloc 2 : Damier Kente Or / Émeraude / Noir */}
+          <rect x="38" y="0" width="34" height="28" fill="#1E5E3E" />
+          <rect x="40" y="2" width="9" height="7" fill="#E8AE3E" />
+          <rect x="51" y="2" width="9" height="7" fill="#1A120C" />
+          <rect x="62" y="2" width="8" height="7" fill="#E8AE3E" />
+          <rect x="40" y="11" width="9" height="6" fill="#C85A28" />
+          <rect x="51" y="11" width="9" height="6" fill="#E8AE3E" />
+          <rect x="62" y="11" width="8" height="6" fill="#C85A28" />
+          <rect x="40" y="19" width="9" height="7" fill="#E8AE3E" />
+          <rect x="51" y="19" width="9" height="7" fill="#1A120C" />
+          <rect x="62" y="19" width="8" height="7" fill="#E8AE3E" />
+
+          {/* Bloc 3 : Losange Royal Bogolan sur fond Indigo-Ardoise */}
+          <rect x="72" y="0" width="44" height="28" fill="#24384A" />
+          <polygon points="94,2 112,14 94,26 76,14" fill="#E8AE3E" stroke="#1A120C" strokeWidth="1.5" />
+          <polygon points="94,6 105,14 94,22 83,14" fill="#C85A28" />
+          <circle cx="94" cy="14" r="2.8" fill="#FFF3D1" />
+
+          {/* Bloc 4 : Chevrons tissés Terre de Sienne & Or */}
+          <rect x="116" y="0" width="46" height="28" fill="#8C3418" />
+          <path d="M120 3 L130 14 L120 25" stroke="#E8AE3E" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M130 3 L140 14 L130 25" stroke="#288256" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M140 3 L150 14 L140 25" stroke="#E8AE3E" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M150 3 L159 14 L150 25" stroke="#F5D78E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+
+          {/* Bloc 5 : Tissage Vert Émeraude & Or */}
+          <rect x="162" y="0" width="38" height="28" fill="#1F6A45" />
+          <rect x="162" y="5" width="38" height="4" fill="#E8AE3E" />
+          <rect x="162" y="13" width="38" height="3" fill="#C85A28" />
+          <rect x="162" y="20" width="38" height="4" fill="#E8AE3E" />
+          <path d="M170 0 V28 M181 0 V28 M192 0 V28" stroke="#1A120C" strokeWidth="2" />
+
+          {/* Bloc 6 : Sabliers Adinkra Or & Ocre */}
+          <rect x="200" y="0" width="40" height="28" fill="#B54B22" />
+          <polygon points="206,3 234,3 220,14 234,25 206,25 220,14" fill="#E8AE3E" stroke="#1A120C" strokeWidth="1.4" />
+          <line x1="200" y1="0" x2="200" y2="28" stroke="#E8AE3E" strokeWidth="2" />
+          <line x1="239" y1="0" x2="239" y2="28" stroke="#E8AE3E" strokeWidth="2" />
         </pattern>
       </defs>
-      <rect width="720" height="28" fill="url(#encheck-kente-rich)" />
+      <rect width="960" height="28" fill="url(#encheck-kente-tapestry)" />
     </svg>
   )
+}
+
+// Carré d'art textile africain tissé (4 variantes pour les 4 cartes KPI)
+export function WovenKenteBadgeSvg({ variant = 1, size = 46 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+      style={{ borderRadius: 10, flexShrink: 0 }}
+    >
+      <rect width="48" height="48" rx="9" fill="#23160E" stroke="#D58D4B" strokeWidth="1.5" />
+      {variant === 1 && (
+        <g>
+          <rect x="3" y="3" width="42" height="10" rx="3" fill="#C85A28" />
+          <path d="M5 8 L11 4 L17 8 L23 4 L29 8 L35 4 L41 8" stroke="#F4D078" strokeWidth="2" strokeLinecap="round" />
+          <rect x="3" y="15" width="42" height="18" fill="#E8AE3E" />
+          <polygon points="12,17 20,24 12,31 4,24" fill="#1E5E3E" />
+          <polygon points="24,17 32,24 24,31 16,24" fill="#C85A28" />
+          <polygon points="36,17 44,24 36,31 28,24" fill="#1E5E3E" />
+          <rect x="3" y="35" width="42" height="10" rx="3" fill="#8C3418" />
+          <path d="M6 40 H42" stroke="#F4D078" strokeWidth="2.2" strokeDasharray="4 3" />
+        </g>
+      )}
+      {variant === 2 && (
+        <g>
+          <rect x="3" y="3" width="42" height="11" rx="3" fill="#9E3B1C" />
+          <path d="M6 9 L12 5 L18 9 L24 5 L30 9 L36 5 L42 9" stroke="#E8AE3E" strokeWidth="2" />
+          <rect x="3" y="16" width="42" height="16" fill="#23160E" />
+          <polygon points="14,17 24,24 14,31 4,24" fill="#E8AE3E" />
+          <polygon points="34,17 44,24 34,31 24,24" fill="#C85A28" />
+          <circle cx="14" cy="24" r="2.5" fill="#1E5E3E" />
+          <circle cx="34" cy="24" r="2.5" fill="#F4D078" />
+          <rect x="3" y="34" width="42" height="11" rx="3" fill="#D9822B" />
+          <path d="M5 39 H43" stroke="#23160E" strokeWidth="2.2" strokeDasharray="3 3" />
+        </g>
+      )}
+      {variant === 3 && (
+        <g>
+          <rect x="3" y="3" width="42" height="9" rx="2" fill="#E8AE3E" />
+          <rect x="3" y="14" width="42" height="20" fill="#1E5E3E" />
+          <polygon points="24,15 39,24 24,33 9,24" fill="#C85A28" stroke="#F4D078" strokeWidth="1.5" />
+          <circle cx="24" cy="24" r="3.5" fill="#F4D078" />
+          <rect x="3" y="36" width="42" height="9" rx="2" fill="#C85A28" />
+          <path d="M6 40.5 H42" stroke="#F4D078" strokeWidth="2" strokeDasharray="5 3" />
+        </g>
+      )}
+      {variant === 4 && (
+        <g>
+          <rect x="3" y="3" width="42" height="10" rx="2" fill="#B54B22" />
+          <path d="M5 8 H43" stroke="#F4D078" strokeWidth="2.2" />
+          <rect x="3" y="15" width="42" height="18" fill="#D9822B" />
+          <path d="M6 19 L14 29 L22 19 L30 29 L38 19 L43 26" stroke="#23160E" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="3" y="35" width="42" height="10" rx="2" fill="#1E5E3E" />
+          <path d="M6 40 H42" stroke="#E8AE3E" strokeWidth="2" strokeDasharray="4 3" />
+        </g>
+      )}
+    </svg>
+  )
+}
+
+export function KenteFriezeSvg({ className = '' }) {
+  return <KenteWovenTapestrySvg className={className} />
 }
 
 export function CulturalCornerMotifSvg({ className = '' }) {
@@ -52,7 +153,6 @@ export function CulturalCornerMotifSvg({ className = '' }) {
   )
 }
 
-// Filigrane Adinkra décoratif pour les cartes KPI et panneaux
 export function AdinkraWatermarkSvg({ className = '' }) {
   return (
     <svg
@@ -73,7 +173,6 @@ export function AdinkraWatermarkSvg({ className = '' }) {
   )
 }
 
-// 1. Présence : Soleil Royal Akan & couronne tressée
 export function CulturalPresenceSvg({ size = 22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -91,7 +190,6 @@ export function CulturalPresenceSvg({ size = 22 }) {
   )
 }
 
-// 2. Ponctualité & Planning : Tambour parlant Tama (rythme & respect de l'heure)
 export function CulturalTimeDrumSvg({ size = 22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -111,7 +209,6 @@ export function CulturalTimeDrumSvg({ size = 22 }) {
   )
 }
 
-// 3. Gardes de nuit, Sorties & Vigilance : Bouclier sculpté & Lune étoilée
 export function CulturalShieldSvg({ size = 22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -132,7 +229,6 @@ export function CulturalShieldSvg({ size = 22 }) {
   )
 }
 
-// 4. Géolocalisation, Reco Faciale & Preuves : Boussole Cauris & Rose des vents
 export function CulturalProofSvg({ size = 22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden="true">
@@ -151,7 +247,6 @@ export function CulturalProofSvg({ size = 22 }) {
   )
 }
 
-// 5. Pauses & Repos : Calebasse gravée de partage
 export function CulturalCalabashPauseSvg({ size = 20 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden="true">
