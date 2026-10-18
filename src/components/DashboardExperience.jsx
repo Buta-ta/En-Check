@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -7,19 +8,25 @@ import {
   Calendar,
   CalendarDays,
   CalendarOff,
+  Camera,
   CheckCircle2,
   ChevronRight,
   Clock,
+  GripVertical,
   Coffee,
   FileSearch,
   FileText,
-  Footprints,
   Globe,
   LayoutDashboard,
   LogOut,
   MapPin,
   Menu,
   Moon,
+  MoveDown,
+  MoveUp,
+  Plus,
+  RotateCcw,
+  SlidersHorizontal,
   Radio,
   Search,
   Settings,
@@ -41,9 +48,18 @@ import EnterpriseSwitcher from './EnterpriseSwitcher'
 import NotificationBell from './NotificationBell'
 import SpotlightFAB from './SpotlightFAB'
 import SystemMessageBanner from './SystemMessageBanner'
-import AttendanceIllustration from './AttendanceIllustration'
+import AttendanceHeroImage from './AttendanceHeroImage'
+import EnCheckBrandMark from './EnCheckBrandMark'
 import LandingAnalytics from '../pages/LandingAnalytics'
 import { formaterHeureLocale } from '../utils/timezoneUtils'
+import {
+  addDashboardWidget,
+  DEFAULT_DASHBOARD_WIDGETS,
+  moveDashboardWidget,
+  moveDashboardWidgetByOffset,
+  normalizeDashboardWidgetIds,
+  removeDashboardWidget,
+} from '../utils/dashboardWidgets'
 import '../pages/Dashboard.css'
 
 const formatName = (person) => {
@@ -56,6 +72,15 @@ const formatDate = (date) => {
   const parsed = new Date(date)
   if (Number.isNaN(parsed.getTime())) return ''
   return parsed.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
+const readDashboardWidgetLayout = (storageKey, availableIds, fallbackIds) => {
+  try {
+    const saved = window.localStorage.getItem(storageKey)
+    return normalizeDashboardWidgetIds(saved ? JSON.parse(saved) : null, availableIds, fallbackIds)
+  } catch {
+    return normalizeDashboardWidgetIds(null, availableIds, fallbackIds)
+  }
 }
 
 function DashboardNavItem({ item, isActive, tabState, onSelect }) {
@@ -144,6 +169,9 @@ export default function DashboardExperience({
     ? Math.max(0, Math.min(100, Math.round((presentCount / employeeCount) * 100)))
     : 0
   const reviewCount = conflictCount + scheduleRequestsPending.length + forgottenExits
+  const metricValue = (value, pad = false) => loadError ? '—' : (pad ? String(value).padStart(2, '0') : value)
+  const metricCaption = (caption) => loadError ? 'Données indisponibles' : caption
+  const metricShare = (value) => loadError ? null : (employeeCount ? Math.min(100, Math.round((value / employeeCount) * 100)) : 0)
   const adminName = `${admin?.first_name || ''} ${admin?.last_name || ''}`.trim() || 'Administrateur'
   const adminInitials = `${admin?.first_name?.[0] || ''}${admin?.last_name?.[0] || ''}` || 'EC'
   const adminRole = isSuperAdmin ? 'Super administrateur' : (isMultiEntreprise ? 'Administrateur multi-entreprises' : 'Administrateur')
@@ -274,6 +302,62 @@ export default function DashboardExperience({
     { label: 'Créer un rapport', description: 'Exporter les données', icon: FileText, path: '/rapports', show: true },
   ].filter((action) => action.show)
 
+  const widgetCatalog = [
+    { id: 'present', label: 'Présents aujourd’hui', description: 'Membres de l’équipe ayant pointé.', icon: UserCheck, value: loadError ? '—' : `${presentCount} / ${employeeCount}`, caption: metricCaption(`${presenceRate}% de l’équipe`), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Pointages', path: '/pointages' },
+    { id: 'review', label: 'À traiter', description: 'Conflits, demandes et sorties à vérifier.', icon: ShieldCheck, value: metricValue(reviewCount, true), caption: metricCaption('Situations à examiner'), tone: 'review', progress: metricShare(reviewCount), sourceLabel: 'Activité', path: '/pointages' },
+    { id: 'late', label: 'Retards', description: 'Arrivées après l’horaire prévu.', icon: Timer, value: metricValue(lateCount, true), caption: metricCaption('Retards du jour'), tone: 'late', progress: metricShare(lateCount), sourceLabel: 'Retards', path: isSuperAdmin || moduleRetards ? '/retards' : '/pointages' },
+    { id: 'absence', label: 'Absents', description: 'Membres sans pointage ni congé déclaré.', icon: UserX, value: metricValue(absentCount, true), caption: metricCaption('Sans pointage déclaré'), tone: 'absent', progress: metricShare(absentCount), sourceLabel: 'Pointages', path: '/pointages' },
+    { id: 'leaves', label: 'Congés / maladie', description: 'Absences autorisées aujourd’hui.', icon: CalendarOff, value: metricValue(leaveCount, true), caption: metricCaption('Congés ou maladie'), tone: 'leave', progress: metricShare(leaveCount), sourceLabel: 'Absences', path: '/absences', available: isSuperAdmin || moduleConges },
+    { id: 'presence-rate', label: 'Taux de présence', description: 'Part de l’équipe présente aujourd’hui.', icon: TrendingUp, value: metricValue(`${presenceRate}%`), caption: metricCaption('Taux du jour'), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Rapports', path: '/rapports' },
+    { id: 'punches', label: 'Pointages enregistrés', description: 'Entrées et sorties du jour.', icon: Clock, value: metricValue(Number(stats?.pointages) || 0), caption: metricCaption('Pointages aujourd’hui'), tone: 'neutral', sourceLabel: 'Pointages', path: '/pointages' },
+    { id: 'team-size', label: 'Effectif', description: 'Collaborateurs actifs dans l’entreprise.', icon: Users, value: metricValue(employeeCount), caption: metricCaption('Collaborateurs'), tone: 'team', sourceLabel: 'Équipe', path: '/employes' },
+    { id: 'checkouts', label: 'Sorties à confirmer', description: 'Arrivées qui n’ont pas encore de sortie.', icon: LogOut, value: metricValue(forgottenExits, true), caption: metricCaption('Sorties manquantes'), tone: 'review', progress: metricShare(forgottenExits), sourceLabel: 'Pointages', path: '/pointages' },
+    { id: 'conflicts', label: 'Conflits à examiner', description: 'Pointages effectués pendant une absence.', icon: ShieldCheck, value: metricValue(conflictCount, true), caption: metricCaption('Pointage / absence'), tone: 'late', progress: metricShare(conflictCount), sourceLabel: 'Absences', path: '/pointages' },
+    { id: 'photos', label: 'Photos de pointage', description: 'Preuves photo enregistrées aujourd’hui.', icon: Camera, value: metricValue(Number(stats?.photosToday) || 0), caption: metricCaption('Photos aujourd’hui'), tone: 'photos', sourceLabel: 'Pointages', path: '/pointages' },
+    { id: 'companies', label: 'Entreprises actives', description: 'Vue consolidée de votre portefeuille.', icon: Building2, value: metricValue(Number(stats?.entreprises) || entreprises.length), caption: metricCaption('Entreprises'), tone: 'team', sourceLabel: 'Administration', path: '/entreprises', available: Boolean(isSuperAdmin) },
+  ]
+  const availableWidgets = widgetCatalog.filter((widget) => widget.available !== false)
+  const availableWidgetIds = availableWidgets.map((widget) => widget.id)
+  const defaultWidgetIds = DEFAULT_DASHBOARD_WIDGETS.filter((id) => availableWidgetIds.includes(id))
+  const widgetStorageKey = `encheck_dashboard_widgets_v1:${admin?.id || 'preview'}:${admin?.selectedEnterprise?.id || admin?.enterprise_id || 'all'}`
+  const [widgetIds, setWidgetIds] = useState(() => readDashboardWidgetLayout(widgetStorageKey, availableWidgetIds, defaultWidgetIds))
+  const [isCustomizing, setIsCustomizing] = useState(false)
+  const [isWidgetCatalogOpen, setIsWidgetCatalogOpen] = useState(false)
+  const [draggedWidgetId, setDraggedWidgetId] = useState(null)
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(widgetStorageKey, JSON.stringify(widgetIds))
+    } catch {
+      // La personnalisation reste fonctionnelle même si le stockage est bloqué.
+    }
+  }, [widgetStorageKey, widgetIds])
+
+  const visibleWidgets = widgetIds
+    .map((id) => availableWidgets.find((widget) => widget.id === id))
+    .filter(Boolean)
+  const unaddedWidgets = availableWidgets.filter((widget) => !widgetIds.includes(widget.id))
+
+  const handleWidgetDragStart = (event, widgetId) => {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', widgetId)
+    setDraggedWidgetId(widgetId)
+  }
+  const handleWidgetDrop = (event, targetId) => {
+    event.preventDefault()
+    const sourceId = event.dataTransfer.getData('text/plain') || draggedWidgetId
+    if (sourceId) setWidgetIds((current) => moveDashboardWidget(current, sourceId, targetId))
+    setDraggedWidgetId(null)
+  }
+  const addWidget = (widgetId) => {
+    setWidgetIds((current) => addDashboardWidget(current, widgetId))
+    setIsCustomizing(true)
+    setIsWidgetCatalogOpen(false)
+  }
+  const removeWidget = (widgetId) => setWidgetIds((current) => removeDashboardWidget(current, widgetId))
+  const moveWidget = (widgetId, offset) => setWidgetIds((current) => moveDashboardWidgetByOffset(current, widgetId, offset))
+  const resetWidgets = () => setWidgetIds(defaultWidgetIds)
+
   const themeLabel = darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'
 
   return (
@@ -290,8 +374,11 @@ export default function DashboardExperience({
 
         <aside className={`dashboard-sidebar${mobileMenuOpen ? ' is-open' : ''}`} aria-label="Navigation principale">
           <div className="sidebar-brand">
-            <div className="sidebar-brand-mark"><Footprints size={22} strokeWidth={1.8} /></div>
-            <div className="sidebar-brand-wordmark">en-check<span>ADMINISTRATION</span></div>
+            <EnCheckBrandMark className="sidebar-brand-mark" size={48} />
+            <div className="sidebar-brand-copy">
+              <span className="sidebar-brand-wordmark">En-Check</span>
+              <span className="sidebar-brand-tagline">Des équipes qui avancent</span>
+            </div>
           </div>
 
           <div className="dashboard-sidebar-scroll">
@@ -361,6 +448,27 @@ export default function DashboardExperience({
             <div className="topbar-actions">
               <button type="button" className="topbar-search" onClick={() => navigate('/search')} aria-label="Ouvrir la recherche">
                 <Search size={14} /><span>Rechercher</span><kbd>⌘ K</kbd>
+              </button>
+              <button
+                type="button"
+                className={`dashboard-customize-button${isCustomizing ? ' is-active' : ''}`}
+                onClick={() => setIsCustomizing((value) => !value)}
+                aria-pressed={isCustomizing}
+                aria-label={isCustomizing ? 'Terminer la personnalisation' : 'Personnaliser le tableau'}
+                title={isCustomizing ? 'Terminer la personnalisation' : 'Personnaliser le tableau'}
+              >
+                {isCustomizing ? <CheckCircle2 size={15} /> : <SlidersHorizontal size={15} />}
+                <span>{isCustomizing ? 'Terminer' : 'Personnaliser le tableau'}</span>
+              </button>
+              <button
+                type="button"
+                className="dashboard-add-widget-button"
+                aria-label="Ajouter un widget"
+                onClick={() => setIsWidgetCatalogOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={isWidgetCatalogOpen}
+              >
+                <Plus size={15} /><span>Ajouter un widget</span>
               </button>
               <button
                 type="button"
@@ -450,30 +558,68 @@ export default function DashboardExperience({
                   {conflictCount > 0 && <span className="dashboard-meta-chip is-alert"><AlertTriangle size={13} />{conflictCount} à examiner</span>}
                 </div>
               </div>
-              <div className="dashboard-hero-art"><AttendanceIllustration /></div>
+              <div className="dashboard-hero-art"><AttendanceHeroImage /></div>
             </section>
 
-            <section className="dashboard-kpis" aria-label="Indicateurs du jour">
-              <article className="dashboard-kpi dashboard-kpi--present">
-                <div className="dashboard-kpi-top"><span className="dashboard-kpi-label">Présents aujourd’hui</span><span className="dashboard-kpi-icon"><UserCheck size={16} /></span></div>
-                <strong className="dashboard-kpi-value">{presentCount}<span className="dashboard-kpi-total"> / {employeeCount}</span></strong>
-                <span className="dashboard-kpi-caption">Employés avec au moins un pointage</span>
-              </article>
-              <article className="dashboard-kpi dashboard-kpi--review">
-                <div className="dashboard-kpi-top"><span className="dashboard-kpi-label">À traiter</span><span className="dashboard-kpi-icon"><ShieldCheck size={16} /></span></div>
-                <strong className="dashboard-kpi-value">{reviewCount}</strong>
-                <span className="dashboard-kpi-caption">Conflits, demandes et sorties à vérifier</span>
-              </article>
-              <article className="dashboard-kpi dashboard-kpi--late">
-                <div className="dashboard-kpi-top"><span className="dashboard-kpi-label">Retards</span><span className="dashboard-kpi-icon"><Timer size={16} /></span></div>
-                <strong className="dashboard-kpi-value">{lateCount}</strong>
-                <span className="dashboard-kpi-caption">Arrivées après l’horaire prévu</span>
-              </article>
-              <article className="dashboard-kpi dashboard-kpi--absent">
-                <div className="dashboard-kpi-top"><span className="dashboard-kpi-label">Absents</span><span className="dashboard-kpi-icon"><UserX size={16} /></span></div>
-                <strong className="dashboard-kpi-value">{absentCount}</strong>
-                <span className="dashboard-kpi-caption">Sans pointage ni congé déclaré</span>
-              </article>
+            {isCustomizing && (
+              <div className="dashboard-customize-hint" role="status">
+                <span>Glisse une poignée pour réorganiser les cartes. Sur mobile, utilise les flèches.</span>
+                <button type="button" onClick={resetWidgets}><RotateCcw size={13} /> Réinitialiser</button>
+              </div>
+            )}
+            <section className={`dashboard-kpis${isCustomizing ? ' is-customizing' : ''}`} aria-label="Indicateurs du jour">
+              {visibleWidgets.map((widget, index) => {
+                const Icon = widget.icon
+                return (
+                  <article
+                    className={`dashboard-kpi dashboard-kpi--${widget.tone}${draggedWidgetId === widget.id ? ' is-dragging' : ''}`}
+                    key={widget.id}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => handleWidgetDrop(event, widget.id)}
+                  >
+                    <div className="dashboard-kpi-top">
+                      <span className="dashboard-kpi-label">{widget.label}</span>
+                      {!isCustomizing ? (
+                        <span className="dashboard-kpi-icon"><Icon size={16} /></span>
+                      ) : (
+                        <div className="dashboard-widget-controls" aria-label={`Contrôles de ${widget.label}`}>
+                          <button
+                            type="button"
+                            className="dashboard-widget-drag-handle"
+                            draggable="true"
+                            onDragStart={(event) => handleWidgetDragStart(event, widget.id)}
+                            onDragEnd={() => setDraggedWidgetId(null)}
+                            aria-label={`Déplacer ${widget.label}`}
+                            title="Faire glisser pour déplacer"
+                          >
+                            <GripVertical size={14} />
+                          </button>
+                          <button type="button" onClick={() => moveWidget(widget.id, -1)} disabled={index === 0} aria-label={`Déplacer ${widget.label} vers le début`} title="Monter"><MoveUp size={13} /></button>
+                          <button type="button" onClick={() => moveWidget(widget.id, 1)} disabled={index === visibleWidgets.length - 1} aria-label={`Déplacer ${widget.label} vers la fin`} title="Descendre"><MoveDown size={13} /></button>
+                          <button type="button" onClick={() => removeWidget(widget.id)} disabled={visibleWidgets.length === 1} aria-label={`Retirer ${widget.label}`} title={visibleWidgets.length === 1 ? 'Conservez au moins un widget' : 'Retirer du tableau'}><X size={13} /></button>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="dashboard-kpi-content"
+                      onClick={() => widget.path && navigate(widget.path)}
+                      disabled={isCustomizing || !widget.path}
+                      aria-label={`Ouvrir ${widget.label}`}
+                    >
+                      <strong className="dashboard-kpi-value">{widget.value}</strong>
+                      {typeof widget.progress === 'number' && (
+                        <span className="dashboard-kpi-progress" aria-hidden="true">
+                          <span style={{ width: `${Math.max(0, Math.min(100, widget.progress))}%` }} />
+                        </span>
+                      )}
+                      <span className="dashboard-kpi-caption">{widget.caption}</span>
+                      {!isCustomizing && <ArrowRight className="dashboard-kpi-arrow" size={14} aria-hidden="true" />}
+                    </button>
+                    <span className="dashboard-kpi-source">{widget.sourceLabel}</span>
+                  </article>
+                )
+              })}
             </section>
 
             <section className="dashboard-content-grid">
@@ -666,6 +812,54 @@ export default function DashboardExperience({
       </div>
 
       <SpotlightFAB admin={admin} />
+
+      {isWidgetCatalogOpen && (
+        <div className="dashboard-widget-catalog-overlay" role="presentation" onClick={() => setIsWidgetCatalogOpen(false)}>
+          <section
+            className="dashboard-widget-catalog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dashboard-widget-catalog-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="dashboard-widget-catalog-header">
+              <div>
+                <span className="dashboard-eyebrow">En-Check · Tableau personnel</span>
+                <h2 id="dashboard-widget-catalog-title">Ajouter un widget</h2>
+                <p>Choisis tes indicateurs. Seules les données réellement chargées par tes modules sont proposées.</p>
+              </div>
+              <button type="button" className="dashboard-widget-catalog-close" onClick={() => setIsWidgetCatalogOpen(false)} aria-label="Fermer la liste des widgets"><X size={17} /></button>
+            </header>
+            <div className="dashboard-widget-catalog-body">
+              {unaddedWidgets.length > 0 ? (
+                <div className="dashboard-widget-catalog-grid">
+                  {unaddedWidgets.map((widget) => {
+                    const Icon = widget.icon
+                    return (
+                      <article className={`dashboard-widget-choice dashboard-kpi--${widget.tone}`} key={widget.id}>
+                        <span className="dashboard-widget-choice-icon"><Icon size={16} /></span>
+                        <div className="dashboard-widget-choice-copy">
+                          <strong>{widget.label}</strong>
+                          <span>{widget.description}</span>
+                          <small>{widget.sourceLabel}</small>
+                        </div>
+                        <button type="button" onClick={() => addWidget(widget.id)} aria-label={`Ajouter ${widget.label}`}><Plus size={15} /><span>Ajouter</span></button>
+                      </article>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="dashboard-widget-catalog-empty">
+                  <CheckCircle2 size={22} />
+                  <strong>Tous les indicateurs disponibles sont déjà sur ton tableau.</strong>
+                  <span>Tu peux les réorganiser ou retirer ceux dont tu n’as pas besoin.</span>
+                </div>
+              )}
+              <p className="dashboard-widget-storage-note">Ta disposition est enregistrée sur cet appareil et pour ce compte.</p>
+            </div>
+          </section>
+        </div>
+      )}
 
       {showConflictModal && selectedConflict && (
         <div className="dashboard-conflict-overlay" role="presentation" onClick={() => setShowConflictModal(false)}>
