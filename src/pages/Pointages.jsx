@@ -48,6 +48,14 @@ import PhotoSignee from '../components/PhotoSignee'
 import FeatureService, { FEATURES } from '../services/featureService'
 import HolidayService from '../services/holidayService'
 import { resoudrePointagesJournee } from '../services/hoursCalculator'
+import { useTheme } from '../contexts/ThemeContext'
+import PointagesLoadingScreen from '../components/PointagesLoadingScreen'
+import {
+  PointagesCulturalHero,
+  PointagesLivePulseRibbon,
+  PointagesPassportGrid,
+  PointagesSlideOverDrawer,
+} from '../components/PointagesAfroTechSections'
 
 // ═══════════════════════════════════════════════════════════
 // 🔧 REDUCER POUR GÉRER LES ÉTATS COMPLEXES
@@ -640,9 +648,11 @@ function shareOnWhatsApp(text, phoneNumber = null) {
 export default function Pointages() {
   const [admin, setAdmin] = useState(null)
   const [afficherImport, setAfficherImport] = useState(false)   //
+  const [inspectedPointage, setInspectedPointage] = useState(null)
   const [state, dispatch] = useReducer(reducer, initialState)
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { darkMode } = useTheme()
   const loadingRef = useRef(false)
 
   // Filtres persistés dans l'URL
@@ -1524,20 +1534,9 @@ export default function Pointages() {
   // 🎨 RENDER
   // ═══════════════════════════════════════════════════════════
 
-  // Skeleton Loading
+  // Loading PIN -> QR Code
   if (state.loading && !state.pointages.length) {
-    return (
-      <>
-        <style>{skeletonCSS}</style>
-        <div style={styles.container}>
-          <div style={styles.bgPattern}></div>
-          <PageHeader title="POINTAGES" />
-          <main style={styles.main}>
-            <SkeletonLoader />
-          </main>
-        </div>
-      </>
-    )
+    return <PointagesLoadingScreen darkMode={darkMode} />
   }
 
   // État d'erreur
@@ -1573,7 +1572,7 @@ export default function Pointages() {
     <>
       <style>{componentCSS}</style>
 
-      <div style={styles.container}>
+      <div className="pointages-afrotech-shell" data-theme={darkMode ? 'dark' : 'light'} style={styles.container}>
         <div style={styles.bgPattern}></div>
         <div style={styles.bgOrb1}></div>
         <div style={styles.bgOrb2}></div>
@@ -1586,52 +1585,24 @@ export default function Pointages() {
           </div>
         )}
 
-        <PageHeader title="POINTAGES" />
+        <PageHeader title="POINTAGES" subtitle="On gère !" />
 
         <main style={styles.main}>
-          {/* ═══ TITRE + BADGES ═══ */}
-          <div style={styles.titleSection}>
-            <div style={styles.titleLeft}>
-              <div style={styles.titleIcon}>
-                <Clock size={24} color="#F59E0B" />
-              </div>
-              <div>
-                <h2 style={styles.pageTitle}>Suivi des Pointages</h2>
-                <p style={styles.pageSubtitle}>{formatDate(selectedDate)}</p>
-              </div>
-            </div>
-            <div style={styles.titleRight}>
-              {!checkingPermissions && (
-                <div style={{
-                  ...styles.permBadge,
-                  background: canEditPointages ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-                  borderColor: canEditPointages ? 'rgba(16,185,129,0.25)' : 'rgba(245,158,11,0.25)',
-                  color: canEditPointages ? '#10B981' : '#F59E0B'
-                }}>
-                  {canEditPointages ? <><Edit size={12} /> Modif. ON</> : <><Lock size={12} /> Lecture</>}
-                </div>
-              )}
-              {anomalies.length > 0 && (
-                <button
-                  onClick={() => dispatch({ type: 'TOGGLE_ALERTS_PANEL' })}
-                  style={{
-                    ...styles.alertsBadge,
-                    background: anomaliesCritical.length > 0 ? 'rgba(239,68,68,0.12)' : 'rgba(249,115,22,0.12)',
-                    borderColor: anomaliesCritical.length > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(249,115,22,0.25)',
-                    color: anomaliesCritical.length > 0 ? '#EF4444' : '#F97316',
-                  }}
-                  aria-label={`${anomalies.length} alertes`}
-                >
-                  <AlertTriangle size={14} />
-                  <span>{anomalies.length}</span>
-                </button>
-              )}
-              <button onClick={handleShareDailyReport} style={styles.shareReportBtn} aria-label="Partager rapport">
-                <Share2 size={14} />
-                <span className="desktop-only">Partager</span>
-              </button>
-            </div>
-          </div>
+          <PointagesCulturalHero
+            formattedDate={formatDate(selectedDate)}
+            checkingPermissions={checkingPermissions}
+            canEditPointages={canEditPointages}
+            anomaliesCount={anomalies.length}
+            criticalAnomaliesCount={anomaliesCritical.length}
+            onToggleAlerts={() => dispatch({ type: 'TOGGLE_ALERTS_PANEL' })}
+            onShareWhatsApp={handleShareDailyReport}
+          />
+
+          <PointagesLivePulseRibbon
+            pointages={filteredAndSortedPointages}
+            selectedEmployeeId={inspectedPointage?.employee?.id || null}
+            onSelectPointage={(p) => setInspectedPointage(p)}
+          />
 
           {/* ═══ PANNEAU ALERTES ═══ */}
           {state.showAlertsPanel && anomalies.length > 0 && (
@@ -1674,6 +1645,13 @@ export default function Pointages() {
 
           {/* ═══ STATS ═══ */}
           <StatsSection stats={stats} hasOvertimeFeature={hasOvertimeFeature} />
+
+          {/* ═══ PASSEPORT DE PRÉSENCE (AFRO-TECH) ═══ */}
+          <PointagesPassportGrid
+            pointages={filteredAndSortedPointages}
+            selectedEmployeeId={inspectedPointage?.employee?.id || null}
+            onSelectPointage={(p) => setInspectedPointage(p)}
+          />
 
           {/* ═══ LISTE HEADER ═══ */}
           <div style={styles.listHeader}>
@@ -1763,7 +1741,18 @@ export default function Pointages() {
           )}
         </main>
 
-        {/* ═══ MODALS ═══ */}
+          {/* ═══ TIROIR D'INSPECTION RAPIDE (SLIDE-OVER) ═══ */}
+          <PointagesSlideOverDrawer
+            pointage={inspectedPointage}
+            canEdit={canEditPointages}
+            statuerEstimation={statuerEstimation}
+            estimationEnCours={estimationEnCours}
+            onModify={handleEditClick}
+            onShareEmployee={handleShareEmployee}
+            onClose={() => setInspectedPointage(null)}
+          />
+
+          {/* ═══ MODALS ═══ */}
 
         {/* Modal Suppression */}
         {state.showDeleteModal && (

@@ -354,17 +354,17 @@ export default function DashboardExperience({
   ].filter((action) => action.show)
 
   const widgetCatalog = [
-    { id: 'present', label: 'Présents aujourd’hui', description: 'Membres de l’équipe ayant pointé.', icon: UserCheck, value: loadError ? '—' : `${presentCount} / ${employeeCount}`, caption: metricCaption(`${presenceRate}% de l’équipe`), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Pointages', path: '/pointages' },
+    { id: 'present', label: 'Présents aujourd’hui', description: 'Membres de l’équipe ayant pointé.', icon: UserCheck, value: loadError ? '—' : `${presentCount} / ${employeeCount}`, caption: metricCaption(`${presenceRate}% de l’équipe`), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Pointages', path: '/pointages?status=present' },
     { id: 'review', label: 'À traiter', description: 'Conflits, demandes et sorties à vérifier.', icon: ShieldCheck, value: metricValue(reviewCount, true), caption: metricCaption('Situations à examiner'), tone: 'review', progress: metricShare(reviewCount), sourceLabel: 'Activité', path: '/pointages' },
-    { id: 'late', label: 'Retards', description: 'Arrivées après l’horaire prévu.', icon: Timer, value: metricValue(lateCount, true), caption: metricCaption('Retards du jour'), tone: 'late', progress: metricShare(lateCount), sourceLabel: 'Retards', path: isSuperAdmin || moduleRetards ? '/retards' : '/pointages' },
-    { id: 'absence', label: 'Absents', description: 'Membres sans pointage ni congé déclaré.', icon: UserX, value: metricValue(absentCount, true), caption: metricCaption('Sans pointage déclaré'), tone: 'absent', progress: metricShare(absentCount), sourceLabel: 'Pointages', path: '/pointages' },
+    { id: 'late', label: 'Retards', description: 'Arrivées après l’horaire prévu.', icon: Timer, value: metricValue(lateCount, true), caption: metricCaption('Retards du jour'), tone: 'late', progress: metricShare(lateCount), sourceLabel: 'Retards', path: isSuperAdmin || moduleRetards ? '/retards' : '/pointages?status=present' },
+    { id: 'absence', label: 'Absents', description: 'Membres sans pointage ni congé déclaré.', icon: UserX, value: metricValue(absentCount, true), caption: metricCaption('Sans pointage déclaré'), tone: 'absent', progress: metricShare(absentCount), sourceLabel: 'Pointages', path: '/pointages?status=absent' },
     { id: 'leaves', label: 'Congés / maladie', description: 'Absences autorisées aujourd’hui.', icon: CalendarOff, value: metricValue(leaveCount, true), caption: metricCaption('Congés ou maladie'), tone: 'leave', progress: metricShare(leaveCount), sourceLabel: 'Absences', path: '/absences', available: isSuperAdmin || moduleConges },
     { id: 'presence-rate', label: 'Taux de présence', description: 'Part de l’équipe présente aujourd’hui.', icon: TrendingUp, value: metricValue(`${presenceRate}%`), caption: metricCaption('Taux du jour'), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Rapports', path: '/rapports' },
     { id: 'punches', label: 'Pointages enregistrés', description: 'Entrées et sorties du jour.', icon: Clock, value: metricValue(Number(stats?.pointages) || 0), caption: metricCaption('Pointages aujourd’hui'), tone: 'neutral', sourceLabel: 'Pointages', path: '/pointages' },
     { id: 'team-size', label: 'Effectif', description: 'Collaborateurs actifs dans l’entreprise.', icon: Users, value: metricValue(employeeCount), caption: metricCaption('Collaborateurs'), tone: 'team', sourceLabel: 'Équipe', path: '/employes' },
-    { id: 'checkouts', label: 'Sorties à confirmer', description: 'Arrivées qui n’ont pas encore de sortie.', icon: LogOut, value: metricValue(forgottenExits, true), caption: metricCaption('Sorties manquantes'), tone: 'review', progress: metricShare(forgottenExits), sourceLabel: 'Pointages', path: '/pointages' },
-    { id: 'conflicts', label: 'Conflits à examiner', description: 'Pointages effectués pendant une absence.', icon: ShieldCheck, value: metricValue(conflictCount, true), caption: metricCaption('Pointage / absence'), tone: 'late', progress: metricShare(conflictCount), sourceLabel: 'Absences', path: '/pointages' },
-    { id: 'photos', label: 'Photos de pointage', description: 'Preuves photo enregistrées aujourd’hui.', icon: Camera, value: metricValue(Number(stats?.photosToday) || 0), caption: metricCaption('Photos aujourd’hui'), tone: 'photos', sourceLabel: 'Pointages', path: '/pointages' },
+    { id: 'checkouts', label: 'Sorties à confirmer', description: 'Arrivées qui n’ont pas encore de sortie.', icon: LogOut, value: metricValue(forgottenExits, true), caption: metricCaption('Sorties manquantes'), tone: 'review', progress: metricShare(forgottenExits), sourceLabel: 'Pointages', path: '/pointages?status=present' },
+    { id: 'conflicts', label: 'Conflits à examiner', description: 'Pointages effectués pendant une absence.', icon: ShieldCheck, value: metricValue(conflictCount, true), caption: metricCaption('Pointage / absence'), tone: 'late', progress: metricShare(conflictCount), sourceLabel: 'Absences', path: '/pointages?status=conflit_absence_pointage' },
+    { id: 'photos', label: 'Photos de pointage', description: 'Preuves photo enregistrées aujourd’hui.', icon: Camera, value: metricValue(Number(stats?.photosToday) || 0), caption: metricCaption('Photos aujourd’hui'), tone: 'photos', sourceLabel: 'Pointages', path: '/pointages?photos=with' },
     { id: 'companies', label: 'Entreprises actives', description: 'Vue consolidée de votre portefeuille.', icon: Building2, value: metricValue(Number(stats?.entreprises) || entreprises.length), caption: metricCaption('Entreprises'), tone: 'team', sourceLabel: 'Administration', path: '/entreprises', available: Boolean(isSuperAdmin) },
   ]
   const availableWidgets = widgetCatalog.filter((widget) => widget.available !== false)
@@ -403,6 +403,13 @@ export default function DashboardExperience({
   const [isCustomizingQuickActions, setIsCustomizingQuickActions] = useState(false)
   const [isQuickActionCatalogOpen, setIsQuickActionCatalogOpen] = useState(false)
   const [draggedQuickActionId, setDraggedQuickActionId] = useState(null)
+  useEffect(() => {
+    ;['/images/pointage-loading-pin.jpg', '/images/pointage-loading-qr.jpg'].forEach((src) => {
+      const img = new window.Image()
+      img.src = src
+    })
+  }, [])
+
   useEffect(() => {
     try {
       window.localStorage.setItem(widgetStorageKey, JSON.stringify(widgetIds))
@@ -1440,8 +1447,16 @@ export default function DashboardExperience({
                 </div>
               )}
               <div className="dashboard-conflict-actions">
-                <button type="button" className="dashboard-conflict-option is-keep" onClick={() => { setSelectedActivityItem(null); navigate('/pointages') }}>
-                  <Clock size={17} /><span><strong>Ouvrir dans Pointages</strong><small>Consulter ou modifier la journée complète.</small></span><ChevronRight size={15} />
+                <button
+                  type="button"
+                  className="dashboard-conflict-option is-keep"
+                  onClick={() => {
+                    const query = selectedActivityItem.employee?.matricule || selectedActivityItem.employee?.last_name || ''
+                    setSelectedActivityItem(null)
+                    navigate(query ? `/pointages?q=${encodeURIComponent(query)}` : '/pointages')
+                  }}
+                >
+                  <Clock size={17} /><span><strong>Ouvrir dans Pointages</strong><small>Consulter ou modifier la journée complète de ce collaborateur.</small></span><ChevronRight size={15} />
                 </button>
               </div>
             </div>
