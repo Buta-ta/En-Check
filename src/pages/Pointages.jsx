@@ -51,7 +51,9 @@ import { resoudrePointagesJournee } from '../services/hoursCalculator'
 import { useTheme } from '../contexts/ThemeContext'
 import PointagesLoadingScreen from '../components/PointagesLoadingScreen'
 import {
+  PointagesAnalyticsCharts,
   PointagesCulturalHero,
+  PointagesExecutiveKpis,
   PointagesLivePulseRibbon,
   PointagesPassportGrid,
   PointagesSlideOverDrawer,
@@ -649,11 +651,17 @@ export default function Pointages() {
   const [admin, setAdmin] = useState(null)
   const [afficherImport, setAfficherImport] = useState(false)   //
   const [inspectedPointage, setInspectedPointage] = useState(null)
+  const [minLoadingDone, setMinLoadingDone] = useState(false)
   const [state, dispatch] = useReducer(reducer, initialState)
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { darkMode } = useTheme()
   const loadingRef = useRef(false)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMinLoadingDone(true), 4500)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   // Filtres persistés dans l'URL
   const selectedDate = searchParams.get('date') || jourLocal(new Date()) || new Date().toISOString().split('T')[0]
@@ -1534,17 +1542,15 @@ export default function Pointages() {
   // 🎨 RENDER
   // ═══════════════════════════════════════════════════════════
 
-  // Loading PIN -> QR Code
-  if (state.loading && !state.pointages.length) {
-    return <PointagesLoadingScreen darkMode={darkMode} />
+  // Loading PIN -> QR Code (durée minimale confortable de 4,5s pour voir les 2 scènes)
+  if ((state.loading && !state.pointages.length) || !minLoadingDone) {
+    return <PointagesLoadingScreen darkMode={darkMode} onSkip={() => setMinLoadingDone(true)} />
   }
 
   // État d'erreur
   if (state.error) {
     return (
-      <div style={styles.container}>
-        <div style={styles.bgPattern}></div>
-        <PageHeader title="POINTAGES" />
+      <div className="pointages-afrotech-shell" data-theme={darkMode ? 'dark' : 'light'} style={styles.container}>
         <main style={styles.main}>
           <div style={styles.errorContainer}>
             <div style={styles.errorIcon}><AlertTriangle size={48} color="#EF4444" /></div>
@@ -1573,10 +1579,6 @@ export default function Pointages() {
       <style>{componentCSS}</style>
 
       <div className="pointages-afrotech-shell" data-theme={darkMode ? 'dark' : 'light'} style={styles.container}>
-        <div style={styles.bgPattern}></div>
-        <div style={styles.bgOrb1}></div>
-        <div style={styles.bgOrb2}></div>
-
         {/* Offline banner */}
         {!state.isOnline && (
           <div style={styles.offlineBanner} role="alert">
@@ -1585,8 +1587,6 @@ export default function Pointages() {
           </div>
         )}
 
-        <PageHeader title="POINTAGES" subtitle="On gère !" />
-
         <main style={styles.main}>
           <PointagesCulturalHero
             formattedDate={formatDate(selectedDate)}
@@ -1594,8 +1594,25 @@ export default function Pointages() {
             canEditPointages={canEditPointages}
             anomaliesCount={anomalies.length}
             criticalAnomaliesCount={anomaliesCritical.length}
+            onBackDashboard={() => navigate('/dashboard')}
             onToggleAlerts={() => dispatch({ type: 'TOGGLE_ALERTS_PANEL' })}
             onShareWhatsApp={handleShareDailyReport}
+          />
+
+          {/* ═══ 4 VRAIES CARTES KPI AVEC ICÔNES SVG CULTURELLES & SPARKLINES ═══ */}
+          <PointagesExecutiveKpis
+            stats={stats}
+            pointages={state.pointages}
+            filterStatus={filterStatus}
+            filterPhotos={filterPhotos}
+            onUpdateFilter={updateFilter}
+            onToggleAlerts={() => dispatch({ type: 'TOGGLE_ALERTS_PANEL' })}
+          />
+
+          {/* ═══ 2 VRAIS GRAPHIQUES D'ANALYSE (FLUX HORAIRE & MÉTHODES) ═══ */}
+          <PointagesAnalyticsCharts
+            pointages={state.pointages}
+            stats={stats}
           />
 
           <PointagesLivePulseRibbon
@@ -1642,9 +1659,6 @@ export default function Pointages() {
               }, { replace: true })
             }}
           />
-
-          {/* ═══ STATS ═══ */}
-          <StatsSection stats={stats} hasOvertimeFeature={hasOvertimeFeature} />
 
           {/* ═══ PASSEPORT DE PRÉSENCE (AFRO-TECH) ═══ */}
           <PointagesPassportGrid
@@ -3570,10 +3584,10 @@ const componentCSS = `
     .desktop-only { display: none !important; }
   }
 
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-track { background: #0A0A0F; }
-  ::-webkit-scrollbar-thumb { background: #F59E0B; border-radius: 3px; }
-  select option { background: #141423; color: #E5E5E5; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--pt-canvas); }
+  ::-webkit-scrollbar-thumb { background: var(--pt-copper); border-radius: 3px; }
+  select option { background: var(--pt-surface); color: var(--pt-ink); }
 `
 
 // ═══════════════════════════════════════════════════════════
@@ -3581,27 +3595,21 @@ const componentCSS = `
 // ═══════════════════════════════════════════════════════════
 const styles = {
   container: {
-    minHeight: '100vh', background: '#0A0A0F',
+    minHeight: '100vh', background: 'var(--pt-canvas)',
     position: 'relative', overflow: 'hidden'
   },
   bgPattern: {
     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundImage: `
-      radial-gradient(circle at 15% 50%, rgba(245,158,11,0.03) 0%, transparent 50%),
-      radial-gradient(circle at 85% 20%, rgba(99,102,241,0.03) 0%, transparent 50%)
-    `,
     pointerEvents: 'none', zIndex: 0
   },
   bgOrb1: {
     position: 'fixed', top: '-15%', right: '-10%',
     width: '500px', height: '500px', borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(245,158,11,0.04) 0%, transparent 70%)',
     pointerEvents: 'none', zIndex: 0
   },
   bgOrb2: {
     position: 'fixed', bottom: '-25%', left: '-10%',
     width: '600px', height: '600px', borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(99,102,241,0.03) 0%, transparent 70%)',
     pointerEvents: 'none', zIndex: 0
   },
 
@@ -3622,8 +3630,8 @@ const styles = {
   // Error
   errorContainer: {
     textAlign: 'center', padding: '80px 20px',
-    background: 'rgba(20,20,35,0.6)', borderRadius: '24px',
-    border: '1px solid rgba(239,68,68,0.15)',
+    background: 'var(--pt-surface)', borderRadius: '24px',
+    border: '1px solid rgba(239,68,68,0.2)',
     maxWidth: '500px', margin: '40px auto'
   },
   errorIcon: {
@@ -3632,8 +3640,8 @@ const styles = {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     margin: '0 auto 24px'
   },
-  errorTitle: { color: '#FFF', fontSize: '22px', fontWeight: '700', margin: '0 0 12px' },
-  errorMessage: { color: '#888', fontSize: '14px', margin: '0 0 28px', lineHeight: '1.5' },
+  errorTitle: { color: 'var(--pt-ink)', fontSize: '22px', fontWeight: '700', margin: '0 0 12px' },
+  errorMessage: { color: 'var(--pt-muted)', fontSize: '14px', margin: '0 0 28px', lineHeight: '1.5' },
   retryBtn: {
     display: 'inline-flex', alignItems: 'center', gap: '8px',
     background: 'linear-gradient(135deg, #F59E0B, #D97706)',
@@ -3653,11 +3661,11 @@ const styles = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
   },
   pageTitle: {
-    color: '#FFF', fontSize: 'clamp(18px, 3.5vw, 26px)',
+    color: 'var(--pt-ink)', fontSize: 'clamp(18px, 3.5vw, 26px)',
     fontWeight: '600', margin: 0
   },
   pageSubtitle: {
-    color: '#888', fontSize: '13px',
+    color: 'var(--pt-muted)', fontSize: '13px',
     margin: '2px 0 0 0', textTransform: 'capitalize'
   },
   titleRight: {
@@ -3685,8 +3693,8 @@ const styles = {
 
   // Alerts Panel
   alertsPanel: {
-    background: 'rgba(20,20,35,0.9)', backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(249,115,22,0.15)', borderRadius: '18px',
+    background: 'var(--pt-surface)', backdropFilter: 'blur(12px)',
+    border: '1px solid var(--pt-line)', borderRadius: '18px',
     padding: '20px', marginBottom: '20px',
     maxHeight: '380px', overflowY: 'auto'
   },
@@ -3696,7 +3704,7 @@ const styles = {
   },
   alertsPanelTitle: {
     display: 'flex', alignItems: 'center', gap: '10px',
-    color: '#FFF', fontSize: '15px', fontWeight: '700'
+    color: 'var(--pt-ink)', fontSize: '15px', fontWeight: '700'
   },
   alertsPanelCount: {
     background: 'rgba(249,115,22,0.15)', color: '#F97316',
@@ -3704,10 +3712,10 @@ const styles = {
     fontSize: '12px', fontWeight: '700'
   },
   alertsCloseBtn: {
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'var(--pt-surface-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '8px', padding: '6px', cursor: 'pointer',
-    color: '#888', display: 'flex'
+    color: 'var(--pt-muted)', display: 'flex'
   },
   alertSection: { marginBottom: '12px' },
   alertSectionTitle: {
@@ -3717,16 +3725,16 @@ const styles = {
   alertItem: {
     display: 'flex', alignItems: 'flex-start', gap: '10px',
     padding: '9px 11px', borderRadius: '10px', border: '1px solid',
-    marginBottom: '5px', background: 'rgba(255,255,255,0.02)'
+    marginBottom: '5px', background: 'var(--pt-surface-soft)'
   },
   alertIcon: { fontSize: '15px', flexShrink: 0, marginTop: '1px' },
   alertContent: {
     display: 'flex', flexDirection: 'column', gap: '2px', flex: 1
   },
-  alertEmployee: { color: '#FFF', fontSize: '13px', fontWeight: '600' },
-  alertMessage: { color: '#CCC', fontSize: '12px' },
+  alertEmployee: { color: 'var(--pt-ink)', fontSize: '13px', fontWeight: '600' },
+  alertMessage: { color: 'var(--pt-ink-soft)', fontSize: '12px' },
   alertDetail: {
-    color: '#888', fontSize: '11px',
+    color: 'var(--pt-muted)', fontSize: '11px',
     fontFamily: "'SF Mono', monospace"
   },
 
@@ -3737,14 +3745,14 @@ const styles = {
   },
   dateNavRow: {
     display: 'flex', alignItems: 'center', gap: '6px',
-    background: 'rgba(20,20,35,0.8)', backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'var(--pt-surface)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '14px', padding: '5px'
   },
   dateNavBtn: {
-    background: 'rgba(245,158,11,0.08)',
-    border: '1px solid rgba(245,158,11,0.12)',
-    borderRadius: '10px', padding: '10px', color: '#F59E0B',
+    background: 'var(--pt-copper-soft)',
+    border: '1px solid var(--pt-line)',
+    borderRadius: '10px', padding: '10px', color: 'var(--pt-copper-strong)',
     cursor: 'pointer', display: 'flex', alignItems: 'center',
     justifyContent: 'center', transition: 'all 0.2s ease', flexShrink: 0
   },
@@ -3754,7 +3762,7 @@ const styles = {
   },
   dateInput: {
     border: 'none', background: 'transparent',
-    fontSize: '14px', color: '#FFF', cursor: 'pointer',
+    fontSize: '14px', color: 'var(--pt-ink)', cursor: 'pointer',
     outline: 'none', fontFamily: 'inherit', maxWidth: '140px'
   },
   searchRow: {
@@ -3762,19 +3770,19 @@ const styles = {
   },
   searchInputWrap: {
     display: 'flex', alignItems: 'center', gap: '10px',
-    background: 'rgba(20,20,35,0.8)', backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'var(--pt-surface)',
+    border: '1px solid var(--pt-line)',
     padding: '10px 16px', borderRadius: '12px', flex: 1
   },
   searchInput: {
     border: 'none', background: 'transparent',
-    fontSize: '14px', color: '#E5E5E5', outline: 'none',
+    fontSize: '14px', color: 'var(--pt-ink)', outline: 'none',
     width: '100%', fontFamily: 'inherit'
   },
   searchClearBtn: {
-    background: 'rgba(255,255,255,0.06)', border: 'none',
+    background: 'var(--pt-surface-soft)', border: 'none',
     borderRadius: '6px', padding: '4px', cursor: 'pointer',
-    color: '#888', display: 'flex', flexShrink: 0
+    color: 'var(--pt-muted)', display: 'flex', flexShrink: 0
   },
   clearAllFiltersBtn: {
     display: 'flex', alignItems: 'center', gap: '6px',
@@ -3790,20 +3798,20 @@ const styles = {
   },
   filterGroup: {
     display: 'flex', alignItems: 'center', gap: '8px',
-    background: 'rgba(20,20,35,0.8)', backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'var(--pt-surface)',
+    border: '1px solid var(--pt-line)',
     padding: '8px 12px', borderRadius: '10px',
     flex: '1 1 150px', minWidth: '120px'
   },
   filterSelect: {
     border: 'none', background: 'transparent',
-    fontSize: '13px', color: '#E5E5E5', cursor: 'pointer',
+    fontSize: '13px', color: 'var(--pt-ink)', cursor: 'pointer',
     outline: 'none', width: '100%', fontFamily: 'inherit'
   },
   exportBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    gap: '6px', background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-    color: '#000', padding: '10px 16px', borderRadius: '10px',
+    gap: '6px', background: 'linear-gradient(135deg, #C87B3E, #9C5321)',
+    color: '#FFF', padding: '10px 16px', borderRadius: '10px',
     border: 'none', fontWeight: '700', fontSize: '13px',
     cursor: 'pointer', transition: 'all 0.3s', flexShrink: 0
   },
@@ -3813,7 +3821,7 @@ const styles = {
   // (violet), deux gestes aux conséquences très différentes.
   importBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    gap: '6px', background: 'linear-gradient(135deg, #6366F1, #4338CA)',
+    gap: '6px', background: 'linear-gradient(135deg, #3D2B1F, #231911)',
     color: '#fff', padding: '10px 16px', borderRadius: '10px',
     border: 'none', fontWeight: '700', fontSize: '13px',
     cursor: 'pointer', transition: 'all 0.3s', flexShrink: 0
@@ -3827,10 +3835,10 @@ const styles = {
     gap: '10px', marginBottom: '10px'
   },
   statCard: {
-    background: 'rgba(20,20,35,0.8)', backdropFilter: 'blur(10px)',
+    background: 'var(--pt-surface)',
     borderRadius: '16px', padding: 'clamp(12px, 2.5vw, 18px)',
     display: 'flex', alignItems: 'center', gap: '12px',
-    border: '1px solid rgba(255,255,255,0.06)', cursor: 'default'
+    border: '1px solid var(--pt-line)', cursor: 'default'
   },
   statIconWrap: {
     width: '42px', height: '42px', borderRadius: '12px',
@@ -3839,24 +3847,24 @@ const styles = {
   statContent: { display: 'flex', flexDirection: 'column', minWidth: 0 },
   statNumber: {
     fontSize: 'clamp(20px, 3vw, 28px)',
-    fontWeight: '700', color: '#FFF', lineHeight: 1
+    fontWeight: '700', color: 'var(--pt-ink)', lineHeight: 1
   },
-  statLabel: { fontSize: '11px', color: '#888', fontWeight: '500', marginTop: '2px' },
+  statLabel: { fontSize: '11px', color: 'var(--pt-muted)', fontWeight: '500', marginTop: '2px' },
 
   statsDetailRow: {
     display: 'flex', gap: '8px', flexWrap: 'wrap',
     padding: '10px 14px',
-    background: 'rgba(20,20,35,0.5)',
-    border: '1px solid rgba(255,255,255,0.04)',
+    background: 'var(--pt-surface)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '12px'
   },
   statsDetailItem: {
     display: 'flex', alignItems: 'center', gap: '6px',
     flex: '1 1 auto', minWidth: 'fit-content'
   },
-  statsDetailLabel: { color: '#666', fontSize: '11px', whiteSpace: 'nowrap' },
+  statsDetailLabel: { color: 'var(--pt-muted)', fontSize: '11px', whiteSpace: 'nowrap' },
   statsDetailValue: {
-    color: '#FFF', fontSize: '12px', fontWeight: '700',
+    color: 'var(--pt-ink)', fontSize: '12px', fontWeight: '700',
     fontFamily: "'SF Mono', monospace"
   },
 
@@ -3868,58 +3876,59 @@ const styles = {
   listHeaderLeft: { display: 'flex', alignItems: 'center', gap: '10px' },
   listHeaderIcon: {
     width: '34px', height: '34px', borderRadius: '10px',
-    background: 'rgba(245,158,11,0.1)',
+    background: 'var(--pt-copper-soft)',
     display: 'flex', alignItems: 'center', justifyContent: 'center'
   },
   listTitle: {
-    color: '#FFF', fontSize: '15px', fontWeight: '600',
+    color: 'var(--pt-ink)', fontSize: '15px', fontWeight: '700',
     margin: 0, display: 'flex', alignItems: 'center', gap: '8px'
   },
   listCount: {
-    background: 'rgba(245,158,11,0.15)', color: '#F59E0B',
+    background: 'var(--pt-copper-soft)', color: 'var(--pt-copper-strong)',
     padding: '2px 9px', borderRadius: '10px',
     fontSize: '12px', fontWeight: '700'
   },
-  listFiltered: { color: '#666', fontSize: '12px' },
+  listFiltered: { color: 'var(--pt-muted)', fontSize: '12px' },
   listHeaderRight: {
     display: 'flex', alignItems: 'center', gap: '10px'
   },
   viewToggleBtn: {
     display: 'flex', alignItems: 'center', gap: '6px',
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--pt-surface)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '10px', padding: '7px 12px',
-    color: '#888', cursor: 'pointer', fontSize: '12px',
+    color: 'var(--pt-ink-soft)', cursor: 'pointer', fontSize: '12px',
     fontWeight: '600', transition: 'all 0.2s'
   },
 
   // Empty
   empty: {
     textAlign: 'center', padding: '50px 20px',
-    background: 'rgba(20,20,35,0.6)', borderRadius: '20px',
-    border: '1px solid rgba(255,255,255,0.06)'
+    background: 'var(--pt-surface)', borderRadius: '20px',
+    border: '1px solid var(--pt-line)'
   },
   emptyIcon: {
     width: '72px', height: '72px', borderRadius: '18px',
-    background: 'rgba(245,158,11,0.08)',
+    background: 'var(--pt-copper-soft)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     margin: '0 auto 18px'
   },
-  emptyTitle: { color: '#FFF', fontSize: '17px', fontWeight: '600', margin: '0 0 6px' },
-  emptySubtitle: { color: '#666', fontSize: '13px', margin: '0 0 20px' },
+  emptyTitle: { color: 'var(--pt-ink)', fontSize: '17px', fontWeight: '600', margin: '0 0 6px' },
+  emptySubtitle: { color: 'var(--pt-muted)', fontSize: '13px', margin: '0 0 20px' },
   emptyResetBtn: {
-    background: 'rgba(245,158,11,0.1)',
-    border: '1px solid rgba(245,158,11,0.2)',
-    color: '#F59E0B', borderRadius: '10px',
+    background: 'var(--pt-copper-soft)',
+    border: '1px solid var(--pt-line)',
+    color: 'var(--pt-copper-strong)', borderRadius: '10px',
     padding: '10px 24px', fontSize: '13px',
     fontWeight: '600', cursor: 'pointer'
   },
 
   // Group
   groupContainer: {
-    background: 'rgba(20,20,35,0.5)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: '16px', overflow: 'hidden'
+    background: 'var(--pt-surface)',
+    border: '1px solid var(--pt-line)',
+    borderRadius: '16px', overflow: 'hidden',
+    boxShadow: '0 6px 18px rgba(61, 43, 31, 0.04)'
   },
   groupHeader: {
     width: '100%', display: 'flex', justifyContent: 'space-between',
@@ -3936,7 +3945,7 @@ const styles = {
     fontSize: '12px', fontWeight: '700'
   },
   groupAvgTime: {
-    color: '#666', fontSize: '11px',
+    color: 'var(--pt-muted)', fontSize: '11px',
     fontFamily: "'SF Mono', monospace"
   },
   groupItems: {
@@ -3946,8 +3955,8 @@ const styles = {
 
   // Pointage Card
   pointageCard: {
-    background: 'rgba(20,20,35,0.7)', backdropFilter: 'blur(10px)',
-    borderRadius: '14px', border: '1px solid',
+    background: 'var(--pt-surface)',
+    borderRadius: '14px', border: '1px solid var(--pt-line)',
     padding: 'clamp(12px, 2.5vw, 16px)',
     display: 'flex', flexDirection: 'column', gap: '10px',
     overflow: 'hidden'
@@ -3966,32 +3975,32 @@ const styles = {
   },
   avatar: {
     width: '42px', height: '42px', borderRadius: '12px',
-    background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.05))',
+    background: 'var(--pt-surface-soft)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden', flexShrink: 0, position: 'relative'
   },
   avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
   avatarInitials: {
-    color: '#F59E0B', fontWeight: '700',
+    color: 'var(--pt-copper-strong)', fontWeight: '700',
     fontSize: '14px', letterSpacing: '1px'
   },
   statusDot: {
     position: 'absolute', bottom: '-1px', right: '-1px',
     width: '10px', height: '10px', borderRadius: '50%',
-    border: '2px solid #0F0F19'
+    border: '2px solid var(--pt-surface)'
   },
   employeeInfo: { flex: 1, minWidth: 0 },
   employeeNameRow: {
     display: 'flex', alignItems: 'center',
     gap: '6px', flexWrap: 'wrap'
   },
-  employeeName: { fontWeight: '600', color: '#FFF', fontSize: '14px' },
+  employeeName: { fontWeight: '700', color: 'var(--pt-ink)', fontSize: '14px' },
   employeeMeta: {
     display: 'flex', alignItems: 'center', gap: '6px',
-    color: '#666', fontSize: '11px', marginTop: '2px', flexWrap: 'wrap'
+    color: 'var(--pt-muted)', fontSize: '11px', marginTop: '2px', flexWrap: 'wrap'
   },
   employeeMatricule: { fontFamily: "'SF Mono', monospace", fontSize: '11px' },
-  employeePosition: { color: '#555', fontSize: '11px' },
+  employeePosition: { color: 'var(--pt-muted)', fontSize: '11px' },
   faceBadge: {
     display: 'inline-flex', alignItems: 'center', gap: '3px',
     background: 'rgba(99,102,241,0.12)',
@@ -4003,9 +4012,9 @@ const styles = {
   photoBadgeInline: { fontSize: '12px' },
   methodeBadge: {
     display: 'inline-flex', alignItems: 'center',
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    color: '#888', padding: '0px 6px', borderRadius: '5px',
+    background: 'var(--pt-surface-soft)',
+    border: '1px solid var(--pt-line)',
+    color: 'var(--pt-ink-soft)', padding: '0px 6px', borderRadius: '5px',
     fontSize: '10px', fontWeight: '600'
   },
   statusBadge: {
@@ -4029,12 +4038,12 @@ const styles = {
     padding: '2px 9px', borderRadius: '7px',
     fontSize: '11px', fontWeight: '600', border: '1px solid'
   },
-  anomalyMore: { color: '#888', fontSize: '11px', fontWeight: '600' },
+  anomalyMore: { color: 'var(--pt-muted)', fontSize: '11px', fontWeight: '600' },
 
   // Time row
   timeRow: {
     display: 'flex', alignItems: 'center', gap: '8px',
-    background: 'rgba(255,255,255,0.02)', borderRadius: '10px',
+    background: 'var(--pt-surface-soft)', borderRadius: '10px',
     padding: '10px', flexWrap: 'wrap'
   },
   timeBlock: {
@@ -4048,7 +4057,7 @@ const styles = {
   timeInfo: { display: 'flex', flexDirection: 'column' },
   timeLabel: {
     fontSize: '9px', textTransform: 'uppercase',
-    letterSpacing: '0.8px', fontWeight: '600', color: '#666'
+    letterSpacing: '0.8px', fontWeight: '600', color: 'var(--pt-muted)'
   },
   timeValue: {
     fontSize: '15px', fontWeight: '700',
@@ -4057,67 +4066,67 @@ const styles = {
   timeSeparator: {
     display: 'flex', alignItems: 'center', gap: '4px', flex: '0 0 auto'
   },
-  timeLine: { width: '14px', height: '1px', background: 'rgba(245,158,11,0.2)' },
+  timeLine: { width: '14px', height: '1px', background: 'rgba(184,107,53,0.28)' },
   durationBadge: {
     display: 'flex', alignItems: 'center', gap: '5px',
-    background: 'rgba(245,158,11,0.08)',
-    border: '1px solid rgba(245,158,11,0.15)',
+    background: 'var(--pt-copper-soft)',
+    border: '1px solid var(--pt-line)',
     padding: '5px 10px', borderRadius: '8px', marginLeft: 'auto'
   },
   durationText: {
-    color: '#F59E0B', fontSize: '12px', fontWeight: '700',
+    color: 'var(--pt-copper-strong)', fontSize: '12px', fontWeight: '700',
     fontFamily: "'SF Mono', monospace"
   },
 
   // Sessions
   sessionsContainer: {
-    background: 'rgba(99,102,241,0.04)',
-    border: '1px solid rgba(99,102,241,0.1)',
+    background: 'var(--pt-surface-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '10px', padding: '10px'
   },
   sessionsTitle: {
     display: 'flex', alignItems: 'center', gap: '6px',
-    color: '#6366F1', fontSize: '11px', fontWeight: '700',
+    color: 'var(--pt-copper-strong)', fontSize: '11px', fontWeight: '700',
     marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px'
   },
   sessionItem: {
     display: 'flex', alignItems: 'center', gap: '8px',
     padding: '5px 8px', borderRadius: '6px',
-    background: 'rgba(255,255,255,0.02)',
+    background: 'var(--pt-surface)',
     marginBottom: '4px', flexWrap: 'wrap'
   },
   sessionIndex: {
-    color: '#6366F1', fontWeight: '700',
+    color: 'var(--pt-copper-strong)', fontWeight: '700',
     fontSize: '11px', fontFamily: "'SF Mono', monospace"
   },
   sessionTime: {
-    color: '#CCC', fontFamily: "'SF Mono', monospace", fontSize: '12px'
+    color: 'var(--pt-ink)', fontFamily: "'SF Mono', monospace", fontSize: '12px'
   },
   sessionDuration: {
-    color: '#F59E0B', fontWeight: '700',
+    color: 'var(--pt-copper-strong)', fontWeight: '700',
     fontFamily: "'SF Mono', monospace",
     fontSize: '12px', marginLeft: 'auto'
   },
   estimationBar: {
     display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
     marginTop: 8, padding: '7px 10px',
-    background: 'rgba(245,158,11,0.10)',
-    border: '1px solid rgba(245,158,11,0.35)',
+    background: 'var(--pt-copper-soft)',
+    border: '1px solid var(--pt-copper)',
     borderRadius: 10,
   },
-  estimationTexte: { fontSize: 12, color: '#FDE68A', fontWeight: 600, flex: 1, minWidth: 160 },
+  estimationTexte: { fontSize: 12, color: 'var(--pt-ink)', fontWeight: 600, flex: 1, minWidth: 160 },
   estimationActions: { display: 'inline-flex', flexWrap: 'wrap', gap: 6 },
   estimationNote: { fontSize: 11, color: '#B45309', fontStyle: 'italic', whiteSpace: 'nowrap' },
   estimationBtnOk: {
     display: 'inline-flex', alignItems: 'center', gap: 4,
     padding: '8px 10px', minHeight: 36, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-    background: '#10B981', color: '#052E25', border: 'none', borderRadius: 8,
+    background: '#26734D', color: '#FFFFFF', border: 'none', borderRadius: 8,
   },
   estimationBtnNo: {
     display: 'inline-flex', alignItems: 'center', gap: 4,
     padding: '8px 10px', minHeight: 36, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-    background: 'transparent', color: '#FDE68A',
-    border: '1px solid #8B6725', borderRadius: 8,
+    background: 'var(--pt-surface)', color: 'var(--pt-ink)',
+    border: '1px solid var(--pt-line)', borderRadius: 8,
   },
   sessionAutoClosed: {
     background: 'rgba(239,68,68,0.1)', color: '#EF4444',
@@ -4291,17 +4300,17 @@ const styles = {
   // Actions
   actionsRow: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    borderTop: '1px solid rgba(255,255,255,0.04)',
+    borderTop: '1px solid var(--pt-line)',
     paddingTop: '10px', marginTop: '2px',
     gap: '8px', flexWrap: 'wrap'
   },
   actionsRight: { display: 'flex', gap: '5px', flexWrap: 'wrap' },
   expandBtn: {
     display: 'flex', alignItems: 'center', gap: '5px',
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--pt-surface-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '8px', padding: '6px 11px',
-    color: '#888', cursor: 'pointer', fontSize: '12px',
+    color: 'var(--pt-ink-soft)', cursor: 'pointer', fontSize: '12px',
     fontWeight: '600', transition: 'all 0.2s'
   },
   sessionCountBadge: {
@@ -4311,10 +4320,10 @@ const styles = {
   },
   shareBtn: {
     display: 'flex', alignItems: 'center', gap: '5px',
-    background: 'rgba(16,185,129,0.08)',
-    border: '1px solid rgba(16,185,129,0.15)',
+    background: 'var(--pt-good-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '8px', padding: '6px 11px',
-    color: '#10B981', cursor: 'pointer', fontSize: '12px',
+    color: 'var(--pt-good)', cursor: 'pointer', fontSize: '12px',
     fontWeight: '600', transition: 'all 0.2s'
   },
   conflictActionBtn: {
@@ -4327,37 +4336,37 @@ const styles = {
   },
   editBtn: {
     display: 'flex', alignItems: 'center', gap: '5px',
-    background: 'rgba(245,158,11,0.08)',
-    border: '1px solid rgba(245,158,11,0.12)',
+    background: 'var(--pt-copper-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '8px', padding: '6px 11px',
-    color: '#F59E0B', cursor: 'pointer', fontSize: '12px',
+    color: 'var(--pt-copper-strong)', cursor: 'pointer', fontSize: '12px',
     fontWeight: '600', transition: 'all 0.2s'
   },
   editBtnLocked: {
-    background: 'rgba(100,100,100,0.06)',
-    borderColor: 'rgba(100,100,100,0.1)', color: '#888'
+    background: 'var(--pt-surface-soft)',
+    borderColor: 'var(--pt-line)', color: 'var(--pt-muted)'
   },
   deleteBtn: {
     display: 'flex', alignItems: 'center', gap: '5px',
-    background: 'rgba(239,68,68,0.08)',
-    border: '1px solid rgba(239,68,68,0.12)',
+    background: 'var(--pt-danger-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '8px', padding: '6px 11px',
-    color: '#EF4444', cursor: 'pointer', fontSize: '12px',
+    color: 'var(--pt-danger)', cursor: 'pointer', fontSize: '12px',
     fontWeight: '600', transition: 'all 0.2s'
   },
 
   // Modals communs
   modalOverlay: {
     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+    background: 'rgba(23, 18, 14, 0.58)', backdropFilter: 'blur(8px)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     padding: '16px', zIndex: 1000
   },
   confirmModal: {
-    background: '#141423', border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--pt-surface)', border: '1px solid var(--pt-line)',
     borderRadius: '22px', width: '100%', maxWidth: '460px',
     padding: 'clamp(20px, 5vw, 32px)', textAlign: 'center',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+    boxShadow: '0 20px 60px rgba(0,0,0,0.35)'
   },
   modalIconWrap: {
     width: '60px', height: '60px', borderRadius: '16px',
@@ -4366,36 +4375,36 @@ const styles = {
     margin: '0 auto 18px'
   },
   modalTitle: {
-    fontSize: '18px', fontWeight: '700', color: '#FFF', marginBottom: '10px'
+    fontSize: '18px', fontWeight: '700', color: 'var(--pt-ink)', marginBottom: '10px'
   },
   modalText: {
-    color: '#888', marginBottom: '20px', lineHeight: 1.6, fontSize: '13px'
+    color: 'var(--pt-muted)', marginBottom: '20px', lineHeight: 1.6, fontSize: '13px'
   },
   confirmInputGroup: { textAlign: 'left', marginBottom: '22px' },
   confirmLabel: {
-    display: 'block', color: '#CCC', fontSize: '12px',
+    display: 'block', color: 'var(--pt-ink-soft)', fontSize: '12px',
     marginBottom: '8px', fontWeight: '500'
   },
   confirmInputExample: {
-    background: 'rgba(245,158,11,0.08)',
-    border: '1px solid rgba(245,158,11,0.15)',
+    background: 'var(--pt-copper-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '8px', padding: '8px 12px',
-    color: '#F59E0B', fontSize: '14px', fontWeight: '700',
+    color: 'var(--pt-copper-strong)', fontSize: '14px', fontWeight: '700',
     marginBottom: '10px', fontFamily: "'SF Mono', monospace"
   },
   confirmInput: {
     width: '100%', padding: '11px 14px',
-    borderRadius: '10px', border: '1px solid',
-    background: 'rgba(255,255,255,0.04)', color: '#FFF',
+    borderRadius: '10px', border: '1px solid var(--pt-line)',
+    background: 'var(--pt-surface-soft)', color: 'var(--pt-ink)',
     fontSize: '14px', outline: 'none', fontFamily: 'inherit',
     boxSizing: 'border-box', transition: 'border-color 0.2s'
   },
   modalButtons: { display: 'flex', gap: '10px' },
   cancelBtn: {
     flex: 1, padding: '12px',
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: '#E5E5E5', borderRadius: '12px',
+    background: 'var(--pt-surface-soft)',
+    border: '1px solid var(--pt-line)',
+    color: 'var(--pt-ink)', borderRadius: '12px',
     fontWeight: '600', fontSize: '13px', cursor: 'pointer'
   },
   confirmDeleteBtn: {
@@ -4408,28 +4417,28 @@ const styles = {
   },
   closeModalBtn: {
     position: 'absolute', top: '12px', right: '12px',
-    background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255,255,255,0.1)',
+    background: 'var(--pt-surface-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '10px', width: '36px', height: '36px',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    cursor: 'pointer', color: '#FFF', zIndex: 10
+    cursor: 'pointer', color: 'var(--pt-ink)', zIndex: 10
   },
 
   // Photo Modal
   photoModal: {
-    background: '#141423', border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--pt-surface)', border: '1px solid var(--pt-line)',
     borderRadius: '22px', width: '100%', maxWidth: '520px',
     maxHeight: '90vh', overflow: 'hidden', position: 'relative',
     display: 'flex', flexDirection: 'column',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+    boxShadow: '0 20px 60px rgba(0,0,0,0.35)'
   },
   photoContainer: {
-    background: '#000', display: 'flex', alignItems: 'center',
+    background: '#111', display: 'flex', alignItems: 'center',
     justifyContent: 'center', flex: 1, overflow: 'hidden', minHeight: '200px'
   },
   fullPhoto: { width: '100%', maxHeight: '50vh', objectFit: 'contain' },
   photoModalFooter: {
-    padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.06)',
+    padding: '14px 18px', borderTop: '1px solid var(--pt-line)',
     display: 'flex', justifyContent: 'space-between', alignItems: 'center'
   },
   photoModalInfo: { display: 'flex', flexDirection: 'column', gap: '2px' },
@@ -4443,72 +4452,72 @@ const styles = {
 
   // Upgrade Modal
   upgradeModal: {
-    background: '#141423', border: '1px solid rgba(255,255,255,0.08)',
+    background: 'var(--pt-surface)', border: '1px solid var(--pt-line)',
     borderRadius: '22px', width: '100%', maxWidth: '460px',
     maxHeight: '90vh', overflow: 'auto', position: 'relative',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+    boxShadow: '0 20px 60px rgba(0,0,0,0.35)'
   },
   upgradeHeader: {
     textAlign: 'center', padding: '36px 28px 20px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)'
+    borderBottom: '1px solid var(--pt-line)'
   },
   upgradeIconWrap: {
     width: '64px', height: '64px', borderRadius: '18px',
-    background: 'rgba(245,158,11,0.1)',
-    border: '1px solid rgba(245,158,11,0.2)',
+    background: 'var(--pt-copper-soft)',
+    border: '1px solid var(--pt-line)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     margin: '0 auto 18px'
   },
   upgradeTitle: {
-    color: '#FFF', fontSize: '20px', fontWeight: '700', margin: '0 0 8px'
+    color: 'var(--pt-ink)', fontSize: '20px', fontWeight: '700', margin: '0 0 8px'
   },
-  upgradeSubtitle: { color: '#888', fontSize: '13px', margin: 0, lineHeight: 1.5 },
+  upgradeSubtitle: { color: 'var(--pt-muted)', fontSize: '13px', margin: 0, lineHeight: 1.5 },
   upgradeBody: { padding: '20px 28px' },
   upgradeFeatureCard: {
     display: 'flex', alignItems: 'flex-start', gap: '14px',
-    padding: '18px', background: 'rgba(139,92,246,0.06)',
-    border: '1px solid rgba(139,92,246,0.12)',
+    padding: '18px', background: 'var(--pt-surface-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '14px', marginBottom: '16px'
   },
   upgradeFeatureIcon: {
     width: '44px', height: '44px', borderRadius: '12px',
-    background: 'rgba(139,92,246,0.15)',
+    background: 'var(--pt-copper-soft)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
   },
   upgradeFeatureName: {
-    color: '#FFF', fontSize: '15px', fontWeight: '600', margin: '0 0 4px'
+    color: 'var(--pt-ink)', fontSize: '15px', fontWeight: '600', margin: '0 0 4px'
   },
-  upgradeFeatureDesc: { color: '#888', fontSize: '12px', margin: 0, lineHeight: 1.5 },
+  upgradeFeatureDesc: { color: 'var(--pt-muted)', fontSize: '12px', margin: 0, lineHeight: 1.5 },
   upgradeBenefits: {
-    background: 'rgba(16,185,129,0.05)',
-    border: '1px solid rgba(16,185,129,0.12)',
+    background: 'var(--pt-good-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '10px', padding: '14px'
   },
   upgradeBenefitItem: {
-    color: '#10B981', fontSize: '12px', margin: '0 0 6px',
+    color: 'var(--pt-good)', fontSize: '12px', margin: '0 0 6px',
     display: 'flex', alignItems: 'center', gap: '6px'
   },
   upgradeFooter: {
     padding: '18px 28px 28px',
-    borderTop: '1px solid rgba(255,255,255,0.06)', textAlign: 'center'
+    borderTop: '1px solid var(--pt-line)', textAlign: 'center'
   },
   upgradeOkBtn: {
     padding: '12px 28px',
-    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-    color: '#000', border: 'none', borderRadius: '12px',
+    background: 'linear-gradient(135deg, #C87B3E, #9C5321)',
+    color: '#FFF', border: 'none', borderRadius: '12px',
     fontSize: '14px', fontWeight: '700', cursor: 'pointer'
   },
 
   // Conflict Modal
   conflictModal: {
-    background: '#141423', border: '1px solid rgba(249,115,22,0.2)',
+    background: 'var(--pt-surface)', border: '1px solid var(--pt-line)',
     borderRadius: '22px', width: '100%', maxWidth: '540px',
     maxHeight: '90vh', overflow: 'auto',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+    boxShadow: '0 20px 60px rgba(0,0,0,0.35)'
   },
   conflictModalHeader: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)'
+    padding: '20px', borderBottom: '1px solid var(--pt-line)'
   },
   conflictModalTitleWrap: { display: 'flex', alignItems: 'center', gap: '12px' },
   conflictModalIcon: {
@@ -4517,14 +4526,14 @@ const styles = {
     display: 'flex', alignItems: 'center', justifyContent: 'center'
   },
   conflictModalTitle: {
-    color: '#FFF', fontSize: '18px', fontWeight: '700', margin: 0
+    color: 'var(--pt-ink)', fontSize: '18px', fontWeight: '700', margin: 0
   },
   conflictModalSubtitle: { color: '#F97316', fontSize: '12px', margin: '3px 0 0' },
   closeBtn: {
     width: '34px', height: '34px', borderRadius: '10px',
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: '#888', display: 'flex', alignItems: 'center',
+    background: 'var(--pt-surface-soft)',
+    border: '1px solid var(--pt-line)',
+    color: 'var(--pt-muted)', display: 'flex', alignItems: 'center',
     justifyContent: 'center', cursor: 'pointer'
   },
   conflictModalBody: {
@@ -4536,24 +4545,24 @@ const styles = {
     gap: '10px'
   },
   conflictSummaryItem: {
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.05)',
+    background: 'var(--pt-surface-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '10px', padding: '12px'
   },
   conflictSummaryLabel: {
-    display: 'block', color: '#666', fontSize: '10px',
+    display: 'block', color: 'var(--pt-muted)', fontSize: '10px',
     marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px'
   },
   conflictSummaryValue: {
-    display: 'block', color: '#FFF', fontSize: '13px', fontWeight: '600'
+    display: 'block', color: 'var(--pt-ink)', fontSize: '13px', fontWeight: '600'
   },
-  fieldLabel: { color: '#E5E5E5', fontSize: '12px', fontWeight: '500' },
+  fieldLabel: { color: 'var(--pt-ink-soft)', fontSize: '12px', fontWeight: '500' },
   textarea: {
     minHeight: '80px', resize: 'vertical',
     padding: '12px 14px', borderRadius: '10px',
-    border: '1px solid rgba(255,255,255,0.1)',
-    background: 'rgba(255,255,255,0.04)',
-    color: '#FFF', fontFamily: 'inherit', fontSize: '13px', outline: 'none'
+    border: '1px solid var(--pt-line)',
+    background: 'var(--pt-surface-soft)',
+    color: 'var(--pt-ink)', fontFamily: 'inherit', fontSize: '13px', outline: 'none'
   },
   conflictActionsList: { display: 'flex', flexDirection: 'column', gap: '10px' },
   resolveBtnKeep: {
@@ -4571,7 +4580,7 @@ const styles = {
   resolveBtnIgnore: {
     display: 'flex', alignItems: 'center', gap: '12px', padding: '14px',
     borderRadius: '12px', border: '1px solid rgba(107,114,128,0.2)',
-    background: 'rgba(107,114,128,0.06)', color: '#9CA3AF',
+    background: 'rgba(107,114,128,0.06)', color: 'var(--pt-muted)',
     cursor: 'pointer', textAlign: 'left'
   },
   resolveBtnTextWrap: { display: 'flex', flexDirection: 'column', gap: '3px' },
@@ -4580,10 +4589,10 @@ const styles = {
 
   // Share Modal
   shareModal: {
-    background: '#141423', border: '1px solid rgba(16,185,129,0.15)',
+    background: 'var(--pt-surface)', border: '1px solid var(--pt-line)',
     borderRadius: '22px', width: '100%', maxWidth: '520px',
     maxHeight: '90vh', overflow: 'auto', position: 'relative',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+    boxShadow: '0 20px 60px rgba(0,0,0,0.35)'
   },
   shareModalHeader: {
     display: 'flex', alignItems: 'center', gap: '14px',
@@ -4596,18 +4605,18 @@ const styles = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
   },
   shareModalTitle: {
-    color: '#FFF', fontSize: '18px', fontWeight: '700', margin: 0
+    color: 'var(--pt-ink)', fontSize: '18px', fontWeight: '700', margin: 0
   },
   shareModalSub: { color: '#10B981', fontSize: '13px', margin: '3px 0 0' },
   sharePreview: {
     margin: '0 20px',
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    background: 'var(--pt-surface-soft)',
+    border: '1px solid var(--pt-line)',
     borderRadius: '12px', padding: '14px',
     maxHeight: '200px', overflowY: 'auto'
   },
   sharePreviewText: {
-    color: '#CCC', fontSize: '12px', lineHeight: '1.6',
+    color: 'var(--pt-ink)', fontSize: '12px', lineHeight: '1.6',
     fontFamily: "'SF Mono', monospace",
     margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word'
   },
@@ -4617,16 +4626,16 @@ const styles = {
   },
   sharePhoneLabel: {
     display: 'flex', alignItems: 'center', gap: '6px',
-    color: '#888', fontSize: '12px', fontWeight: '600',
+    color: 'var(--pt-muted)', fontSize: '12px', fontWeight: '600',
     textTransform: 'uppercase', letterSpacing: '0.5px'
   },
   sharePhoneInput: {
-    padding: '11px 14px', border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '10px', background: 'rgba(255,255,255,0.04)',
-    color: '#FFF', fontSize: '14px', outline: 'none', fontFamily: 'inherit'
+    padding: '11px 14px', border: '1px solid var(--pt-line)',
+    borderRadius: '10px', background: 'var(--pt-surface-soft)',
+    color: 'var(--pt-ink)', fontSize: '14px', outline: 'none', fontFamily: 'inherit'
   },
   sharePhoneHint: {
-    color: '#555', fontSize: '11px'
+    color: 'var(--pt-muted)', fontSize: '11px'
   },
   shareActions: {
     display: 'flex', gap: '10px', padding: '16px 20px 24px',
@@ -4634,9 +4643,9 @@ const styles = {
   },
   shareCopyBtn: {
     display: 'flex', alignItems: 'center', gap: '7px',
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: '#E5E5E5', borderRadius: '12px',
+    background: 'var(--pt-surface-soft)',
+    border: '1px solid var(--pt-line)',
+    color: 'var(--pt-ink)', borderRadius: '12px',
     padding: '12px 20px', fontSize: '14px',
     fontWeight: '600', cursor: 'pointer', flex: '0 0 auto'
   },
