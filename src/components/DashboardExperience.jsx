@@ -374,7 +374,7 @@ export default function DashboardExperience({
 
         <aside className={`dashboard-sidebar${mobileMenuOpen ? ' is-open' : ''}`} aria-label="Navigation principale">
           <div className="sidebar-brand">
-            <EnCheckBrandMark className="sidebar-brand-mark" size={48} />
+            <EnCheckBrandMark className="sidebar-brand-mark" size={42} />
             <div className="sidebar-brand-copy">
               <span className="sidebar-brand-wordmark">En-Check</span>
               <span className="sidebar-brand-tagline">Des équipes qui avancent</span>

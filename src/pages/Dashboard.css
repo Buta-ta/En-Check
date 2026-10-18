@@ -131,17 +131,16 @@
 .sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 3px;
   padding: 2px 9px 25px;
 }
 
 .sidebar-brand-mark {
   display: block;
-  width: 47px;
-  height: 47px;
-  flex: 0 0 47px;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
   overflow: visible;
-  filter: drop-shadow(0 4px 9px rgba(0, 0, 0, 0.22));
 }
 
 .sidebar-brand-copy { display: grid; gap: 4px; min-width: 0; }
