@@ -7,6 +7,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
 import DashboardExperience from '../components/DashboardExperience'
+import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import { useNavigate } from 'react-router-dom'
 import useNotifications from '../hooks/useNotifications'
 import HolidayService from '../services/holidayService'
@@ -21,7 +22,6 @@ import useTabAnimations from '../hooks/useTabAnimations'
 
 
 import {
-  Footprints,
   Building2,
   Users,
   Clock,
@@ -39,7 +39,6 @@ import {
   X,
   Zap,
   Activity,
-  BarChart3,
   ArrowRight,
   UserCheck,
   UserX,
@@ -741,38 +740,10 @@ export default function Dashboard() {
   const isSuperAdmin = admin?.role === 'super_admin'
   const isMultiEntreprise = admin?.isMultiEntreprise || (admin?.entreprises?.length > 1)
 
-  const greeting = () => {
-    const hour = currentTime.getHours()
-    if (hour < 12) return 'Bonjour'
-    if (hour < 18) return 'Bon après-midi'
-    return 'Bonsoir'
-  }
-
-  const kpiCards = useMemo(() => {
-    const cards = []
-    if (isSuperAdmin) {
-      cards.push({ key: 'entreprises', icon: Building2, color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)', value: stats.entreprises, label: 'Entreprises', decor: BarChart3 })
-    } else if (!isSuperAdmin && isMultiEntreprise) {
-      cards.push({ key: 'entreprises', icon: Building2, color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)', value: admin?.entreprises?.length || 0, label: 'Mes entreprises', decor: BarChart3 })
-    }
-    cards.push(
-      { key: 'employes', icon: Users, color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)', value: stats.employes, label: 'Employés', decor: Users },
-      { key: 'pointages', icon: Clock, color: '#6366F1', bg: 'rgba(99, 102, 241, 0.15)', value: stats.pointages, label: 'Pointages', decor: Clock },
-      { key: 'presentsToday', icon: UserCheck, color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)', value: stats.presentsToday, label: 'Présents aujourd\'hui', decor: UserCheck },
-      { key: 'absentsToday', icon: UserX, color: '#EF4444', bg: 'rgba(239, 68, 68, 0.15)', value: stats.absentsToday, label: 'Absents aujourd\'hui', decor: UserX },
-      { key: 'congesToday', icon: CalendarOff, color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.15)', value: stats.congesToday, label: 'Congés / maladie', decor: CalendarOff },
-      { key: 'retardsToday', icon: AlertTriangle, color: '#F97316', bg: 'rgba(249, 115, 22, 0.15)', value: stats.retardsToday, label: 'Retards du jour', decor: AlertTriangle },
-      { key: 'conflitsPending', icon: ShieldCheck, color: '#F97316', bg: 'rgba(249, 115, 22, 0.15)', value: stats.conflitsPending, label: 'Conflits à traiter', decor: ShieldCheck },
-      { key: 'tauxPresence', icon: TrendingUp, color: '#14B8A6', bg: 'rgba(20, 184, 166, 0.15)', value: `${stats.tauxPresence}%`, label: 'Taux de présence', decor: TrendingUp },
-      { key: 'photosToday', icon: Camera, color: '#EC4899', bg: 'rgba(236, 72, 153, 0.15)', value: stats.photosToday, label: 'Photos aujourd\'hui', decor: Camera }
-    )
-    return cards
-  }, [isSuperAdmin, isMultiEntreprise, stats, admin])
-
   if (loading) {
     return (
       <div className="encheck-dashboard dashboard-loading" data-theme={darkMode ? 'dark' : 'light'} role="status" aria-live="polite">
-        <div className="dashboard-loading-mark"><Footprints size={26} /></div>
+        <div className="dashboard-loading-mark"><EnCheckBrandMark size={42} /></div>
         <p>Préparation de votre tableau de bord…</p>
         <span className="dashboard-loading-track"><span /></span>
       </div>
