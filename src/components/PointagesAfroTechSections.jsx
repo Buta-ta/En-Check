@@ -40,7 +40,6 @@ import {
   formaterDureeComplete,
   formaterHeureLocale,
   getHeuresMinutesLocales,
-  jourLocal,
   minutesDepuisMinuit,
 } from '../utils/timezoneUtils'
 import '../pages/PointagesAfroTech.css'
@@ -63,16 +62,29 @@ const isLatePointage = (p) => {
   return typeof checkMins === 'number' && checkMins > startMins + tolerance
 }
 
-const isNightShiftPointage = (p, selectedDate) => {
+const isNightShiftPointage = (p) => {
   if (!p) return false
-  if (p.status === 'nuit_rattachee' || p.nuitRattachee) return true
+  // 1) Fin de garde de nuit rattachée à la veille (aucune entrée de jour aujourd'hui)
+  if (p.status === 'nuit_rattachee') return true
+
+  // 2) Prise de service nocturne (entrée entre 20h00 et 04h59)
   if (p.firstIn?.check_time) {
-    const hm = getHeuresMinutesLocales(p.firstIn.check_time)
-    if (hm && (hm.heures >= 20 || hm.heures < 5)) return true
-  }
-  if (p.lastOut?.check_time && selectedDate) {
-    const outDay = jourLocal(p.lastOut.check_time)
-    if (outDay && outDay !== selectedDate) return true
+    const inParts = getHeuresMinutesLocales(p.firstIn.check_time)
+    if (inParts && (inParts.heures >= 20 || inParts.heures < 5)) return true
+
+    // 3) Service commencé en soirée (>= 18h) et terminé le lendemain matin (< 09h)
+    if (p.lastOut?.check_time && !p.lastOut.is_auto_closed && !p.lastOut.__virtual) {
+      const outParts = getHeuresMinutesLocales(p.lastOut.check_time)
+      if (
+        inParts?.jourISO &&
+        outParts?.jourISO &&
+        outParts.jourISO > inParts.jourISO &&
+        inParts.heures >= 18 &&
+        outParts.heures < 9
+      ) {
+        return true
+      }
+    }
   }
   return false
 }
@@ -901,7 +913,7 @@ export function PointagesPassportGrid({
                       : p.status === 'en_conge'
                         ? 'En congé'
                         : p.status === 'nuit_rattachee'
-                          ? `Sortie à ${formaterHeureLocale(p.nuitRattachee?.sortie)}`
+                          ? `Sortie à ${formaterHeureLocale(p.nuitRattachee?.heure || p.nuitRattachee?.sortie)}`
                           : '—'}
                   </span>
                 </div>
