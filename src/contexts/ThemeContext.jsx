@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
 const ThemeContext = createContext(null)
-const THEME_STORAGE_KEY = 'admin_dark_mode'
+const THEME_STORAGE_KEY = 'encheck_admin_dark_mode_v2'
 
 export const useTheme = () => {
   const context = useContext(ThemeContext)
@@ -13,9 +13,11 @@ export const useTheme = () => {
 
 const getInitialTheme = () => {
   try {
-    return window.localStorage.getItem(THEME_STORAGE_KEY) === 'true'
+    const saved = window.localStorage.getItem(THEME_STORAGE_KEY)
+    if (saved === null) return true
+    return saved !== 'false'
   } catch {
-    return false
+    return true
   }
 }
 
@@ -26,7 +28,7 @@ export const ThemeProvider = ({ children }) => {
     const theme = darkMode ? 'dark' : 'light'
     document.documentElement.dataset.theme = theme
     document.body.dataset.theme = theme
-    document.body.style.backgroundColor = darkMode ? '#171715' : '#F5F2EB'
+    document.body.style.backgroundColor = darkMode ? '#15110E' : '#F5F2EB'
 
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, String(darkMode))

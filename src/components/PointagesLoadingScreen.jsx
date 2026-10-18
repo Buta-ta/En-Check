@@ -4,7 +4,7 @@ import EnCheckBrandMark from './EnCheckBrandMark'
 import { CulturalCornerMotifSvg, KenteFriezeSvg } from './AfroCulturalSvg'
 import '../pages/PointagesAfroTech.css'
 
-export default function PointagesLoadingScreen({ darkMode = false, onSkip }) {
+export default function PointagesLoadingScreen({ darkMode = true, onSkip }) {
   const [activeStep, setActiveStep] = useState(0)
   const [progress, setProgress] = useState(14)
 

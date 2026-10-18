@@ -67,6 +67,7 @@ import {
 } from 'lucide-react'
 import { formaterHeureLocale, minutesDepuisMinuit, jourLocal } from '../utils/timezoneUtils'
 import { compterRetardsDuJour } from '../services/hoursCalculator'
+import { construirePauses } from '../services/pausesService'
 
 export { compterRetardsDuJour }
 
@@ -121,6 +122,7 @@ export default function Dashboard() {
   const [processingScheduleRequestId, setProcessingScheduleRequestId] = useState(null)
   const [forgottenExitItems, setForgottenExitItems] = useState([])
   const [savingForgottenExitId, setSavingForgottenExitId] = useState(null)
+  const [pausesToday, setPausesToday] = useState([])
   const [todayHoliday, setTodayHoliday] = useState(null)
 
   const navigate = useNavigate()
@@ -437,6 +439,7 @@ export default function Dashboard() {
 
     const scheduleRequests = await loadScheduleRequests(enterpriseId)
     const todayHolidayData = await loadTodayHoliday(enterpriseId)
+    await loadDashboardPauses(enterpriseId, attendancesToday, empSchedData, defSchedData)
 
     setStats({ entreprises: entreprisesCount, employes: employesData.length, pointages: pointagesTotalRes.count || 0, presentsToday, absentsToday, congesToday, retardsToday, photosToday, oublisSortie, tauxPresence, conflitsPending })
 
@@ -567,6 +570,7 @@ export default function Dashboard() {
     const conflitsPending = conflictsData.length
     const scheduleRequests = await loadScheduleRequests(null)
     setTodayHoliday(null)
+    await loadDashboardPauses(null, attendancesToday, empSchedData, defSchedData)
 
     setStats({ entreprises: entreprisesData.length || 0, employes: totalEmployes, pointages: pointagesTotalRes.count || 0, presentsToday, absentsToday, congesToday, retardsToday, photosToday, oublisSortie, tauxPresence, conflitsPending })
 
@@ -864,6 +868,113 @@ export default function Dashboard() {
     }
   }
 
+  const loadDashboardPauses = async (enterpriseId, attendancesToday = [], empSchedData = [], defSchedData = []) => {
+    try {
+      const entArg = !enterpriseId || enterpriseId === 'all' ? null : enterpriseId
+      let directQuery = supabase.from('encheck_pauses').select('*').eq('jour', today)
+      if (entArg) directQuery = directQuery.eq('enterprise_id', entArg)
+
+      const [rpcRes, directRes] = await Promise.all([
+        supabase
+          .rpc('encheck_pauses_lire', { p_enterprise: entArg, p_du: today, p_au: today })
+          .then((r) => r)
+          .catch(() => ({ data: [] })),
+        directQuery.then((r) => r).catch(() => ({ data: [] })),
+      ])
+
+      const rows = (rpcRes?.data && rpcRes.data.length > 0) ? rpcRes.data : (directRes?.data || [])
+      const basePauses = construirePauses(rows).paies || []
+
+      const empById = new Map()
+      const byEmployeeAtts = new Map()
+      for (const a of attendancesToday || []) {
+        if (!a?.employee_id) continue
+        if (a.employees) empById.set(a.employee_id, a.employees)
+        if (!byEmployeeAtts.has(a.employee_id)) byEmployeeAtts.set(a.employee_id, [])
+        byEmployeeAtts.get(a.employee_id).push(a)
+      }
+
+      const empSchedMap = new Map()
+      for (const es of empSchedData || []) {
+        if (es?.employee_id && !empSchedMap.has(es.employee_id)) empSchedMap.set(es.employee_id, es)
+      }
+      const defSchedByEnt = new Map()
+      for (const ws of defSchedData || []) {
+        if (ws?.enterprise_id && !defSchedByEnt.has(ws.enterprise_id)) defSchedByEnt.set(ws.enterprise_id, ws)
+      }
+
+      const hasPlannedBreakForEmp = (empId, entId) => {
+        const es = empSchedMap.get(empId)
+        if (es) {
+          return es.use_custom_hours ? Boolean(es.custom_has_break) : Boolean(es.work_schedules?.has_break)
+        }
+        const def = defSchedByEnt.get(entId)
+        return Boolean(def?.has_break)
+      }
+
+      const enriched = basePauses
+        .filter((p) => p.statut !== 'ecartee')
+        .map((p) => {
+          const emp = empById.get(p.employe_id)
+          const planned = hasPlannedBreakForEmp(p.employe_id, p.enterprise_id || entArg)
+          return {
+            ...p,
+            employe: p.employe || `${emp?.first_name || ''} ${emp?.last_name || ''}`.trim() || 'Employé',
+            matricule: p.matricule || emp?.matricule || '',
+            debutHHMM: p.debutISO ? formaterHeureLocale(p.debutISO) : p.debutHHMM,
+            finHHMM: p.finISO ? formaterHeureLocale(p.finISO) : p.finHHMM,
+            estNonPlanifiee: p.source !== 'presumee' && !planned,
+          }
+        })
+
+      // Ajouter aussi les pauses effectuées entre deux sessions de pointage (Sortie -> Entrée)
+      for (const [empId, atts] of byEmployeeAtts.entries()) {
+        const sorted = [...atts]
+          .filter((x) => x?.check_time)
+          .sort((a, b) => new Date(a.check_time).getTime() - new Date(b.check_time).getTime())
+
+        for (let i = 0; i < sorted.length - 1; i++) {
+          const cur = sorted[i]
+          const nxt = sorted[i + 1]
+          if (String(cur.check_type || '').toLowerCase() !== 'out' || String(nxt.check_type || '').toLowerCase() !== 'in') continue
+          if (cur.is_auto_closed) continue
+          const startMs = new Date(cur.check_time).getTime()
+          const endMs = new Date(nxt.check_time).getTime()
+          const gapMin = Math.round((endMs - startMs) / 60000)
+          if (!Number.isFinite(gapMin) || gapMin < 2 || gapMin > 360) continue
+
+          const duplicate = enriched.some((ex) => ex.employe_id === empId && ex.debutISO && Math.abs(new Date(ex.debutISO).getTime() - startMs) < 10 * 60000)
+          if (!duplicate) {
+            const emp = empById.get(empId)
+            const planned = hasPlannedBreakForEmp(empId, cur.enterprise_id || entArg)
+            enriched.push({
+              id: `dash-intersession-${cur.id}-${nxt.id}`,
+              employe_id: empId,
+              employe: `${emp?.first_name || ''} ${emp?.last_name || ''}`.trim() || 'Employé',
+              matricule: emp?.matricule || '',
+              enterprise_id: cur.enterprise_id || entArg,
+              jour: today,
+              debutISO: cur.check_time,
+              finISO: nxt.check_time,
+              debutHHMM: formaterHeureLocale(cur.check_time),
+              finHHMM: formaterHeureLocale(nxt.check_time),
+              dureeMinutes: gapMin,
+              statut: 'reelle',
+              source: 'inter_sessions',
+              ouverte: false,
+              estNonPlanifiee: !planned,
+            })
+          }
+        }
+      }
+
+      setPausesToday(enriched)
+    } catch (err) {
+      console.error('Erreur chargement pauses dashboard:', err)
+      setPausesToday([])
+    }
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('admin')
     localStorage.removeItem('last_enterprise_id')
@@ -924,6 +1035,7 @@ export default function Dashboard() {
         forgottenExitItems={forgottenExitItems}
         confirmForgottenExit={confirmForgottenExit}
         savingForgottenExitId={savingForgottenExitId}
+        pausesToday={pausesToday}
         todayHoliday={todayHoliday}
         currentTime={currentTime}
         loadError={loadError}
