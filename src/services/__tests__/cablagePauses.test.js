@@ -50,13 +50,13 @@ describe('🔌 Câblage Pauses — app de pointage + migration 000004', () => {
     expect(migration).toContain('PERFORM public.encheck_pauses_controler(p_enterprise)')
   })
 
-  it('page Pauses + service câblés (App.jsx, Dashboard.jsx)', () => {
+  it('page Pauses + service câblés (App.jsx, navigation Dashboard)', () => {
     expect(existsSync(ROOT + '/src/pages/Pauses.jsx')).toBe(true)
     const app = readFileSync(ROOT + '/src/App.jsx', 'utf8')
-    const dash = readFileSync(ROOT + '/src/pages/Dashboard.jsx', 'utf8')
+    const dashboardNavigation = readFileSync(ROOT + '/src/components/DashboardExperience.jsx', 'utf8')
     expect(app).toContain("import Pauses from './pages/Pauses'")
     expect(app).toContain('path="/pauses"')
     // accès sans module (pas de gate option) — l'arbitre statue
-    expect(dash).toContain("navigate('/pauses')")
+    expect(dashboardNavigation).toContain("label: 'Pauses', icon: Coffee, path: '/pauses', show: true")
   })
 })
