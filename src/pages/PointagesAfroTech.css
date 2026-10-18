@@ -1468,6 +1468,25 @@
   padding-top: 8px;
 }
 
+.employes-live-strip {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--pt-line);
+}
+
+.employes-live-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
 @media (max-width: 1040px) {
   .pointages-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
