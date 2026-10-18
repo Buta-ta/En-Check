@@ -1,19 +1,20 @@
-export default function EnCheckBrandMark({ size = 46, className = '' }) {
+export default function EnCheckBrandMark({ size = 42, className = '' }) {
   return (
     <svg
       className={className}
       width={size}
       height={size}
-      viewBox="0 0 48 48"
+      viewBox="0 0 40 50"
       fill="none"
       aria-hidden="true"
       focusable="false"
     >
-      <ellipse cx="14.2" cy="34.1" rx="10.4" ry="7.4" transform="rotate(-37 14.2 34.1)" fill="#E9914E" />
-      <circle cx="8.7" cy="21.1" r="4.2" fill="#E9914E" />
-      <circle cx="13.4" cy="11.6" r="4.5" fill="#F0A257" />
-      <circle cx="23.7" cy="6.9" r="4.4" fill="#F0A257" />
-      <circle cx="34.2" cy="10.2" r="3.7" fill="#D87940" />
+      <g fill="#D58D4B">
+        <circle cx="13" cy="37" r="10.5" />
+        <ellipse cx="7.5" cy="19" rx="3.2" ry="4.1" transform="rotate(-18 7.5 19)" />
+        <ellipse cx="17" cy="13" rx="4.6" ry="5.6" transform="rotate(-18 17 13)" />
+        <ellipse cx="31" cy="8" rx="6.5" ry="7.5" transform="rotate(-18 31 8)" />
+      </g>
     </svg>
   )
 }
