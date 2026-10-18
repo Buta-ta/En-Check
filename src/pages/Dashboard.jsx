@@ -743,7 +743,13 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="encheck-dashboard dashboard-loading" data-theme={darkMode ? 'dark' : 'light'} role="status" aria-live="polite">
-        <div className="dashboard-loading-mark"><EnCheckBrandMark size={42} /></div>
+        <div className="dashboard-loading-brand">
+          <EnCheckBrandMark className="dashboard-loading-mark" size={46} />
+          <div className="dashboard-loading-copy">
+            <strong>En-Check</strong>
+            <span>Des équipes qui avancent</span>
+          </div>
+        </div>
         <p>Préparation de votre tableau de bord…</p>
         <span className="dashboard-loading-track"><span /></span>
       </div>

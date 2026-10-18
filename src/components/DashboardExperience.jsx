@@ -83,6 +83,38 @@ const readDashboardWidgetLayout = (storageKey, availableIds, fallbackIds) => {
   }
 }
 
+const readDashboardLayoutIds = (storageKey, availableIds, fallbackIds, allowEmpty = false) => {
+  try {
+    const saved = window.localStorage.getItem(storageKey)
+    if (saved === null) return fallbackIds.filter((id) => availableIds.includes(id))
+    const parsed = JSON.parse(saved)
+    if (!Array.isArray(parsed)) return fallbackIds.filter((id) => availableIds.includes(id))
+    const available = new Set(availableIds)
+    const validIds = [...new Set(parsed.filter((id) => typeof id === 'string' && available.has(id)))]
+    return validIds.length || (allowEmpty && parsed.length === 0) ? validIds : fallbackIds.filter((id) => available.has(id))
+  } catch {
+    return fallbackIds.filter((id) => availableIds.includes(id))
+  }
+}
+
+const TOPBAR_LEFT_CATALOG = [
+  { id: 'enterprise', label: 'Entreprise active', description: 'Changer d’entreprise affichée.', icon: Building2, region: 'left' },
+  { id: 'date', label: 'Date du jour', description: 'Afficher la date courante.', icon: CalendarDays, region: 'left' },
+]
+const TOPBAR_RIGHT_CATALOG = [
+  { id: 'search', label: 'Recherche', description: 'Accéder à la recherche globale.', icon: Search, region: 'right' },
+  { id: 'dashboard-customize', label: 'Personnaliser le tableau', description: 'Réorganiser les widgets KPI.', icon: SlidersHorizontal, region: 'right' },
+  { id: 'add-widget', label: 'Ajouter un widget', description: 'Ajouter un KPI au tableau.', icon: Plus, region: 'right' },
+  { id: 'theme', label: 'Thème clair / sombre', description: 'Changer l’apparence du tableau.', icon: Moon, region: 'right' },
+  { id: 'notifications', label: 'Notifications', description: 'Consulter les notifications.', icon: Bell, region: 'right' },
+  { id: 'profile', label: 'Profil administrateur', description: 'Voir le compte connecté.', icon: Users, region: 'right' },
+]
+const TOPBAR_LEFT_AVAILABLE_IDS = TOPBAR_LEFT_CATALOG.map((item) => item.id)
+const TOPBAR_RIGHT_AVAILABLE_IDS = TOPBAR_RIGHT_CATALOG.map((item) => item.id)
+const ALL_TOPBAR_AVAILABLE_IDS = [...TOPBAR_LEFT_AVAILABLE_IDS, ...TOPBAR_RIGHT_AVAILABLE_IDS]
+const DEFAULT_TOPBAR_LEFT_ITEM_IDS = ['enterprise', 'date']
+const DEFAULT_TOPBAR_RIGHT_ITEM_IDS = ['search', 'dashboard-customize', 'add-widget', 'theme', 'notifications', 'profile']
+
 function DashboardNavItem({ item, isActive, tabState, onSelect }) {
   const Icon = item.icon
   const hasNewActivity = Boolean(tabState?.activeTriggers?.length && !tabState.viewed)
@@ -295,11 +327,21 @@ export default function DashboardExperience({
   }
   const visibleReviewItems = reviewItems.slice(0, 4)
 
-  const quickActions = [
-    { label: 'Ajouter un employé', description: 'Compléter l’équipe', icon: UserPlus, path: '/employes', show: true },
-    { label: 'Consulter les pointages', description: 'Entrées et sorties', icon: Clock, path: '/pointages', show: true },
-    { label: 'Ouvrir le planning', description: 'Horaires et équipes', icon: Calendar, path: '/planning', show: isSuperAdmin || modulePlanning },
-    { label: 'Créer un rapport', description: 'Exporter les données', icon: FileText, path: '/rapports', show: true },
+  const quickActionCatalog = [
+    { id: 'add-employee', label: 'Ajouter un employé', description: 'Compléter l’équipe', icon: UserPlus, path: '/employes', category: 'Équipe', show: true },
+    { id: 'attendance', label: 'Consulter les pointages', description: 'Entrées et sorties', icon: Clock, path: '/pointages', category: 'Présence', show: true },
+    { id: 'planning', label: 'Ouvrir le planning', description: 'Horaires et équipes', icon: Calendar, path: '/planning', category: 'Planning', show: isSuperAdmin || modulePlanning },
+    { id: 'reports', label: 'Créer un rapport', description: 'Exporter les données', icon: FileText, path: '/rapports', category: 'Rapports', show: true },
+    { id: 'absences', label: 'Consulter les absences', description: 'Congés et maladies', icon: CalendarOff, path: '/absences', category: 'Absences', show: isSuperAdmin || moduleConges },
+    { id: 'lateness', label: 'Voir les retards', description: 'Arrivées à vérifier', icon: Timer, path: '/retards', category: 'Retards', show: isSuperAdmin || moduleRetards },
+    { id: 'breaks', label: 'Gérer les pauses', description: 'Suivre les pauses en cours', icon: Coffee, path: '/pauses', category: 'Présence', show: true },
+    { id: 'overtime', label: 'Heures supplémentaires', description: 'Consulter les heures déclarées', icon: Timer, path: '/heures-supplementaires', category: 'Paie', show: isSuperAdmin || moduleHeuresSup },
+    { id: 'payslips', label: 'Ouvrir les fiches de paie', description: 'Accéder aux bulletins', icon: Wallet, path: '/fiches-paie', category: 'Paie', show: isSuperAdmin || moduleFichesPaie },
+    { id: 'remuneration', label: 'Gérer les rémunérations', description: 'Consulter les rémunérations', icon: Wallet, path: '/remunerations', category: 'Paie', show: isSuperAdmin || moduleRemunerations },
+    { id: 'salary-cost', label: 'Voir le coût salarial', description: 'Accéder aux indicateurs de coût', icon: TrendingUp, path: '/cout-salarial', category: 'Paie', show: isSuperAdmin || moduleCoutSalarial },
+    { id: 'teams', label: 'Gérer les équipes', description: 'Consulter les équipes et tâches', icon: Users, path: '/equipes', category: 'Outils', show: isSuperAdmin || moduleTaches },
+    { id: 'predictions', label: 'Ouvrir les prédictions', description: 'Consulter les prévisions disponibles', icon: Sparkles, path: '/predictions', category: 'Outils', show: isSuperAdmin || modulePredictions },
+    { id: 'companies', label: 'Gérer les entreprises', description: 'Accéder aux entreprises', icon: Building2, path: '/entreprises', category: 'Administration', show: Boolean(isSuperAdmin) },
   ].filter((action) => action.show)
 
   const widgetCatalog = [
@@ -325,6 +367,28 @@ export default function DashboardExperience({
   const [isWidgetCatalogOpen, setIsWidgetCatalogOpen] = useState(false)
   const [draggedWidgetId, setDraggedWidgetId] = useState(null)
 
+  const topbarLeftCatalog = TOPBAR_LEFT_CATALOG
+  const topbarRightCatalog = TOPBAR_RIGHT_CATALOG
+  const topbarLeftAvailableIds = ALL_TOPBAR_AVAILABLE_IDS
+  const topbarRightAvailableIds = ALL_TOPBAR_AVAILABLE_IDS
+  const defaultTopbarLeftItemIds = DEFAULT_TOPBAR_LEFT_ITEM_IDS
+  const defaultTopbarRightItemIds = DEFAULT_TOPBAR_RIGHT_ITEM_IDS
+  const layoutOwnerKey = `${admin?.id || 'preview'}:${admin?.selectedEnterprise?.id || admin?.enterprise_id || 'all'}`
+  const topbarLeftStorageKey = `encheck_dashboard_topbar_left_v1:${layoutOwnerKey}`
+  const topbarRightStorageKey = `encheck_dashboard_topbar_right_v1:${layoutOwnerKey}`
+  const [topbarLeftItemIds, setTopbarLeftItemIds] = useState(() => readDashboardLayoutIds(topbarLeftStorageKey, topbarLeftAvailableIds, defaultTopbarLeftItemIds, true))
+  const [topbarRightItemIds, setTopbarRightItemIds] = useState(() => readDashboardLayoutIds(topbarRightStorageKey, topbarRightAvailableIds, defaultTopbarRightItemIds, true))
+  const [isTopbarCustomizing, setIsTopbarCustomizing] = useState(false)
+  const [isTopbarCatalogOpen, setIsTopbarCatalogOpen] = useState(false)
+  const [draggedTopbarItemId, setDraggedTopbarItemId] = useState(null)
+
+  const availableQuickActionIds = quickActionCatalog.map((action) => action.id)
+  const defaultQuickActionIds = ['add-employee', 'attendance', 'planning', 'reports'].filter((id) => availableQuickActionIds.includes(id))
+  const quickActionStorageKey = `encheck_dashboard_quick_actions_v1:${layoutOwnerKey}`
+  const [quickActionIds, setQuickActionIds] = useState(() => readDashboardLayoutIds(quickActionStorageKey, availableQuickActionIds, defaultQuickActionIds, true))
+  const [isCustomizingQuickActions, setIsCustomizingQuickActions] = useState(false)
+  const [isQuickActionCatalogOpen, setIsQuickActionCatalogOpen] = useState(false)
+  const [draggedQuickActionId, setDraggedQuickActionId] = useState(null)
   useEffect(() => {
     try {
       window.localStorage.setItem(widgetStorageKey, JSON.stringify(widgetIds))
@@ -333,10 +397,47 @@ export default function DashboardExperience({
     }
   }, [widgetStorageKey, widgetIds])
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(topbarLeftStorageKey, JSON.stringify(topbarLeftItemIds))
+    } catch {
+      // La disposition reste utilisable si le stockage du navigateur est bloqué.
+    }
+  }, [topbarLeftStorageKey, topbarLeftItemIds])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(topbarRightStorageKey, JSON.stringify(topbarRightItemIds))
+    } catch {
+      // La disposition reste utilisable si le stockage du navigateur est bloqué.
+    }
+  }, [topbarRightStorageKey, topbarRightItemIds])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(quickActionStorageKey, JSON.stringify(quickActionIds))
+    } catch {
+      // La disposition reste utilisable si le stockage du navigateur est bloqué.
+    }
+  }, [quickActionStorageKey, quickActionIds])
+
   const visibleWidgets = widgetIds
     .map((id) => availableWidgets.find((widget) => widget.id === id))
     .filter(Boolean)
   const unaddedWidgets = availableWidgets.filter((widget) => !widgetIds.includes(widget.id))
+  const visibleTopbarLeftItems = topbarLeftItemIds
+    .map((id) => topbarLeftCatalog.find((item) => item.id === id))
+    .filter(Boolean)
+  const visibleTopbarRightItems = topbarRightItemIds
+    .map((id) => topbarRightCatalog.find((item) => item.id === id))
+    .filter(Boolean)
+  const unaddedTopbarItems = [...topbarLeftCatalog, ...topbarRightCatalog].filter((item) =>
+    !topbarLeftItemIds.includes(item.id) && !topbarRightItemIds.includes(item.id),
+  )
+  const quickActions = quickActionIds
+    .map((id) => quickActionCatalog.find((action) => action.id === id))
+    .filter(Boolean)
+  const unaddedQuickActions = quickActionCatalog.filter((action) => !quickActionIds.includes(action.id))
 
   const handleWidgetDragStart = (event, widgetId) => {
     event.dataTransfer.effectAllowed = 'move'
@@ -357,6 +458,152 @@ export default function DashboardExperience({
   const removeWidget = (widgetId) => setWidgetIds((current) => removeDashboardWidget(current, widgetId))
   const moveWidget = (widgetId, offset) => setWidgetIds((current) => moveDashboardWidgetByOffset(current, widgetId, offset))
   const resetWidgets = () => setWidgetIds(defaultWidgetIds)
+
+  const addTopbarItem = (item) => {
+    if (item.region === 'left') setTopbarLeftItemIds((current) => addDashboardWidget(current, item.id))
+    else setTopbarRightItemIds((current) => addDashboardWidget(current, item.id))
+    setIsTopbarCustomizing(true)
+    setIsTopbarCatalogOpen(false)
+  }
+  const removeTopbarItem = (itemId, region) => {
+    const setter = region === 'left' ? setTopbarLeftItemIds : setTopbarRightItemIds
+    setter((current) => removeDashboardWidget(current, itemId))
+  }
+  const moveTopbarItem = (itemId, offset, region) => {
+    const setter = region === 'left' ? setTopbarLeftItemIds : setTopbarRightItemIds
+    setter((current) => moveDashboardWidgetByOffset(current, itemId, offset))
+  }
+  const handleTopbarDragStart = (event, itemId) => {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', itemId)
+    setDraggedTopbarItemId(itemId)
+  }
+  const handleTopbarDrop = (event, targetId, targetRegion) => {
+    event.preventDefault()
+    const sourceId = event.dataTransfer.getData('text/plain') || draggedTopbarItemId
+    const sourceRegion = topbarLeftItemIds.includes(sourceId)
+      ? 'left'
+      : topbarRightItemIds.includes(sourceId) ? 'right' : null
+    if (sourceId && sourceRegion) {
+      if (sourceRegion === targetRegion) {
+        const setter = targetRegion === 'left' ? setTopbarLeftItemIds : setTopbarRightItemIds
+        setter((current) => moveDashboardWidget(current, sourceId, targetId))
+      } else {
+        const sourceSetter = sourceRegion === 'left' ? setTopbarLeftItemIds : setTopbarRightItemIds
+        const targetSetter = targetRegion === 'left' ? setTopbarLeftItemIds : setTopbarRightItemIds
+        sourceSetter((current) => removeDashboardWidget(current, sourceId))
+        targetSetter((current) => {
+          const next = removeDashboardWidget(current, sourceId)
+          const targetIndex = next.indexOf(targetId)
+          next.splice(targetIndex < 0 ? next.length : targetIndex, 0, sourceId)
+          return next
+        })
+      }
+    }
+    setDraggedTopbarItemId(null)
+  }
+  const resetTopbarLayout = () => {
+    setTopbarLeftItemIds(defaultTopbarLeftItemIds)
+    setTopbarRightItemIds(defaultTopbarRightItemIds)
+  }
+
+  const addQuickAction = (actionId) => {
+    setQuickActionIds((current) => addDashboardWidget(current, actionId))
+    setIsCustomizingQuickActions(true)
+    setIsQuickActionCatalogOpen(false)
+  }
+  const removeQuickAction = (actionId) => setQuickActionIds((current) => removeDashboardWidget(current, actionId))
+  const moveQuickAction = (actionId, offset) => setQuickActionIds((current) => moveDashboardWidgetByOffset(current, actionId, offset))
+  const handleQuickActionDragStart = (event, actionId) => {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', actionId)
+    setDraggedQuickActionId(actionId)
+  }
+  const handleQuickActionDrop = (event, targetId) => {
+    event.preventDefault()
+    const sourceId = event.dataTransfer.getData('text/plain') || draggedQuickActionId
+    if (sourceId) setQuickActionIds((current) => moveDashboardWidget(current, sourceId, targetId))
+    setDraggedQuickActionId(null)
+  }
+  const resetQuickActions = () => setQuickActionIds(defaultQuickActionIds)
+
+  const renderTopbarElement = (itemId) => {
+    if (itemId === 'enterprise') {
+      return <div className="topbar-company"><EnterpriseSwitcher admin={admin} onSwitch={handleEnterpriseSwitch} /></div>
+    }
+    if (itemId === 'date') return <span className="topbar-date">{todayLabel}</span>
+    if (itemId === 'search') {
+      return <button type="button" className="topbar-search" onClick={() => navigate('/search')} aria-label="Ouvrir la recherche"><Search size={14} /><span>Rechercher</span><kbd>⌘ K</kbd></button>
+    }
+    if (itemId === 'dashboard-customize') {
+      return (
+        <button
+          type="button"
+          className={`dashboard-customize-button${isCustomizing ? ' is-active' : ''}`}
+          onClick={() => setIsCustomizing((value) => !value)}
+          aria-pressed={isCustomizing}
+          aria-label={isCustomizing ? 'Terminer la personnalisation du tableau' : 'Personnaliser le tableau'}
+          title={isCustomizing ? 'Terminer la personnalisation' : 'Personnaliser le tableau'}
+        >
+          {isCustomizing ? <CheckCircle2 size={15} /> : <SlidersHorizontal size={15} />}
+          <span>{isCustomizing ? 'Terminer' : 'Personnaliser le tableau'}</span>
+        </button>
+      )
+    }
+    if (itemId === 'add-widget') {
+      return (
+        <button type="button" className="dashboard-add-widget-button" aria-label="Ajouter un widget" onClick={() => setIsWidgetCatalogOpen(true)} aria-haspopup="dialog" aria-expanded={isWidgetCatalogOpen}>
+          <Plus size={15} /><span>Ajouter un widget</span>
+        </button>
+      )
+    }
+    if (itemId === 'theme') {
+      return (
+        <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={themeLabel} aria-pressed={darkMode} title={themeLabel}>
+          {darkMode ? <Sun size={15} /> : <Moon size={15} />}
+          <span>{darkMode ? 'Clair' : 'Sombre'}</span>
+        </button>
+      )
+    }
+    if (itemId === 'notifications') {
+      return (
+        <div className="topbar-icon-button">
+          <NotificationBell notifications={notifications} unreadCount={unreadCount} hasHighPriority={hasHighPriority} markAsRead={markAsRead} markAllAsRead={markAllAsRead} />
+        </div>
+      )
+    }
+    if (itemId === 'profile') {
+      return (
+        <div className="topbar-admin" title={`${adminName} · ${adminRole}`}>
+          <div className="topbar-avatar">{adminInitials}</div>
+          <div className="topbar-admin-copy">
+            <span className="topbar-admin-name">{adminName}</span>
+            <span className="topbar-admin-role">{adminRole}</span>
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
+
+  const renderTopbarLayoutItem = (item, region, index, itemCount) => (
+    <div
+      className={`topbar-layout-item${isTopbarCustomizing ? ' is-editing' : ''}${draggedTopbarItemId === item.id ? ' is-dragging' : ''}`}
+      key={item.id}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => handleTopbarDrop(event, item.id, region)}
+    >
+      {isTopbarCustomizing && (
+        <div className="topbar-layout-controls" aria-label={`Contrôles de ${item.label}`}>
+          <button type="button" className="topbar-layout-drag-handle" draggable="true" onDragStart={(event) => handleTopbarDragStart(event, item.id)} onDragEnd={() => setDraggedTopbarItemId(null)} aria-label={`Déplacer ${item.label}`} title="Glisser pour déplacer"><GripVertical size={13} /></button>
+          <button type="button" onClick={() => moveTopbarItem(item.id, -1, region)} disabled={index === 0} aria-label={`Déplacer ${item.label} vers le début`} title="Monter"><MoveUp size={12} /></button>
+          <button type="button" onClick={() => moveTopbarItem(item.id, 1, region)} disabled={index === itemCount - 1} aria-label={`Déplacer ${item.label} vers la fin`} title="Descendre"><MoveDown size={12} /></button>
+          <button type="button" onClick={() => removeTopbarItem(item.id, region)} aria-label={`Retirer ${item.label}`} title="Retirer de la barre du haut"><X size={12} /></button>
+        </div>
+      )}
+      {renderTopbarElement(item.id)}
+    </div>
+  )
 
   const themeLabel = darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'
 
@@ -429,7 +676,7 @@ export default function DashboardExperience({
         </aside>
 
         <div className="dashboard-workspace">
-          <header className="dashboard-topbar">
+          <header className={`dashboard-topbar${isTopbarCustomizing ? ' is-customizing-layout' : ''}`}>
             <div className="topbar-left">
               <button
                 type="button"
@@ -439,64 +686,29 @@ export default function DashboardExperience({
               >
                 {mobileMenuOpen ? <X size={17} /> : <Menu size={17} />}
               </button>
-              <div className="topbar-company">
-                <EnterpriseSwitcher admin={admin} onSwitch={handleEnterpriseSwitch} />
-              </div>
-              <span className="topbar-date">{todayLabel}</span>
+              {visibleTopbarLeftItems.map((item, index) => renderTopbarLayoutItem(item, 'left', index, visibleTopbarLeftItems.length))}
             </div>
 
             <div className="topbar-actions">
-              <button type="button" className="topbar-search" onClick={() => navigate('/search')} aria-label="Ouvrir la recherche">
-                <Search size={14} /><span>Rechercher</span><kbd>⌘ K</kbd>
-              </button>
-              <button
-                type="button"
-                className={`dashboard-customize-button${isCustomizing ? ' is-active' : ''}`}
-                onClick={() => setIsCustomizing((value) => !value)}
-                aria-pressed={isCustomizing}
-                aria-label={isCustomizing ? 'Terminer la personnalisation' : 'Personnaliser le tableau'}
-                title={isCustomizing ? 'Terminer la personnalisation' : 'Personnaliser le tableau'}
-              >
-                {isCustomizing ? <CheckCircle2 size={15} /> : <SlidersHorizontal size={15} />}
-                <span>{isCustomizing ? 'Terminer' : 'Personnaliser le tableau'}</span>
-              </button>
-              <button
-                type="button"
-                className="dashboard-add-widget-button"
-                aria-label="Ajouter un widget"
-                onClick={() => setIsWidgetCatalogOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={isWidgetCatalogOpen}
-              >
-                <Plus size={15} /><span>Ajouter un widget</span>
-              </button>
-              <button
-                type="button"
-                className="theme-toggle"
-                onClick={toggleTheme}
-                aria-label={themeLabel}
-                aria-pressed={darkMode}
-                title={themeLabel}
-              >
-                {darkMode ? <Sun size={15} /> : <Moon size={15} />}
-                <span>{darkMode ? 'Clair' : 'Sombre'}</span>
-              </button>
-              <div className="topbar-icon-button">
-                <NotificationBell
-                  notifications={notifications}
-                  unreadCount={unreadCount}
-                  hasHighPriority={hasHighPriority}
-                  markAsRead={markAsRead}
-                  markAllAsRead={markAllAsRead}
-                />
+              <div className="topbar-actions-list">
+                {visibleTopbarRightItems.map((item, index) => renderTopbarLayoutItem(item, 'right', index, visibleTopbarRightItems.length))}
+                {isTopbarCustomizing && (
+                  <button type="button" className="topbar-add-item-button" onClick={() => setIsTopbarCatalogOpen(true)} aria-label="Ajouter un élément à la barre du haut" title="Ajouter un élément" aria-haspopup="dialog" aria-expanded={isTopbarCatalogOpen}>
+                    <Plus size={14} /><span>Ajouter un élément</span>
+                  </button>
+                )}
               </div>
-              <div className="topbar-admin" title={`${adminName} · ${adminRole}`}>
-                <div className="topbar-avatar">{adminInitials}</div>
-                <div className="topbar-admin-copy">
-                  <span className="topbar-admin-name">{adminName}</span>
-                  <span className="topbar-admin-role">{adminRole}</span>
-                </div>
-              </div>
+              <button
+                type="button"
+                className={`dashboard-topbar-layout-toggle${isTopbarCustomizing ? ' is-active' : ''}`}
+                onClick={() => setIsTopbarCustomizing((value) => !value)}
+                aria-pressed={isTopbarCustomizing}
+                aria-label={isTopbarCustomizing ? 'Terminer la personnalisation de la barre du haut' : 'Personnaliser la barre du haut'}
+                title={isTopbarCustomizing ? 'Terminer la personnalisation de la barre du haut' : 'Personnaliser la barre du haut'}
+              >
+                {isTopbarCustomizing ? <CheckCircle2 size={15} /> : <SlidersHorizontal size={15} />}
+                <span>{isTopbarCustomizing ? 'Terminer' : 'En-tête'}</span>
+              </button>
             </div>
           </header>
 
@@ -564,7 +776,10 @@ export default function DashboardExperience({
             {isCustomizing && (
               <div className="dashboard-customize-hint" role="status">
                 <span>Glisse une poignée pour réorganiser les cartes. Sur mobile, utilise les flèches.</span>
-                <button type="button" onClick={resetWidgets}><RotateCcw size={13} /> Réinitialiser</button>
+                <div className="dashboard-customize-hint-actions">
+                  <button type="button" onClick={resetWidgets}><RotateCcw size={13} /> Réinitialiser</button>
+                  <button type="button" onClick={() => setIsCustomizing(false)}><CheckCircle2 size={13} /> Terminer</button>
+                </div>
               </div>
             )}
             <section className={`dashboard-kpis${isCustomizing ? ' is-customizing' : ''}`} aria-label="Indicateurs du jour">
@@ -791,18 +1006,61 @@ export default function DashboardExperience({
                   <span className="dashboard-panel-icon"><Sparkles size={16} /></span>
                   <div><h2 className="dashboard-panel-title">Accès rapide</h2><p className="dashboard-panel-subtitle">Les actions courantes, sans parcourir les menus.</p></div>
                 </div>
+                <div className="dashboard-quick-action-tools">
+                  {isCustomizingQuickActions && (
+                    <button type="button" className="dashboard-panel-link" onClick={() => setIsQuickActionCatalogOpen(true)} aria-haspopup="dialog" aria-expanded={isQuickActionCatalogOpen}>
+                      <Plus size={14} /> Ajouter une action
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={`dashboard-panel-link dashboard-quick-action-edit${isCustomizingQuickActions ? ' is-active' : ''}`}
+                    onClick={() => setIsCustomizingQuickActions((value) => !value)}
+                    aria-pressed={isCustomizingQuickActions}
+                  >
+                    {isCustomizingQuickActions ? <CheckCircle2 size={14} /> : <SlidersHorizontal size={14} />}
+                    {isCustomizingQuickActions ? 'Terminer' : 'Personnaliser'}
+                  </button>
+                </div>
               </div>
-              <div className="dashboard-quick-actions">
-                {quickActions.map((action) => {
+              {isCustomizingQuickActions && (
+                <div className="dashboard-quick-action-hint" role="status">
+                  Glisse les poignées ou utilise les flèches pour organiser tes actions. Tu peux aussi les retirer ou en ajouter.
+                  <button type="button" onClick={resetQuickActions}><RotateCcw size={12} /> Réinitialiser</button>
+                </div>
+              )}
+              <div className={`dashboard-quick-actions${isCustomizingQuickActions ? ' is-customizing' : ''}`}>
+                {quickActions.map((action, index) => {
                   const Icon = action.icon
                   return (
-                    <button type="button" className="dashboard-quick-action" key={action.path} onClick={() => navigate(action.path)}>
-                      <span className="dashboard-quick-action-icon"><Icon size={15} /></span>
-                      <span className="dashboard-quick-action-copy"><span className="dashboard-quick-action-title">{action.label}</span><span className="dashboard-quick-action-subtitle">{action.description}</span></span>
-                      <ChevronRight size={13} />
-                    </button>
+                    <article
+                      className={`dashboard-quick-action-item${isCustomizingQuickActions ? ' is-editing' : ''}${draggedQuickActionId === action.id ? ' is-dragging' : ''}`}
+                      key={action.id}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => handleQuickActionDrop(event, action.id)}
+                    >
+                      {isCustomizingQuickActions && (
+                        <div className="quick-action-layout-controls" aria-label={`Contrôles de ${action.label}`}>
+                          <button type="button" className="quick-action-drag-handle" draggable="true" onDragStart={(event) => handleQuickActionDragStart(event, action.id)} onDragEnd={() => setDraggedQuickActionId(null)} aria-label={`Déplacer ${action.label}`} title="Glisser pour déplacer"><GripVertical size={13} /></button>
+                          <button type="button" onClick={() => moveQuickAction(action.id, -1)} disabled={index === 0} aria-label={`Déplacer ${action.label} vers le début`} title="Monter"><MoveUp size={12} /></button>
+                          <button type="button" onClick={() => moveQuickAction(action.id, 1)} disabled={index === quickActions.length - 1} aria-label={`Déplacer ${action.label} vers la fin`} title="Descendre"><MoveDown size={12} /></button>
+                          <button type="button" onClick={() => removeQuickAction(action.id)} aria-label={`Retirer ${action.label}`} title="Retirer des accès rapides"><X size={12} /></button>
+                        </div>
+                      )}
+                      <button type="button" className="dashboard-quick-action" onClick={() => navigate(action.path)} disabled={isCustomizingQuickActions}>
+                        <span className="dashboard-quick-action-icon"><Icon size={15} /></span>
+                        <span className="dashboard-quick-action-copy"><span className="dashboard-quick-action-title">{action.label}</span><span className="dashboard-quick-action-subtitle">{action.description}</span></span>
+                        {!isCustomizingQuickActions && <ChevronRight size={13} />}
+                      </button>
+                    </article>
                   )
                 })}
+                {quickActions.length === 0 && (
+                  <div className="dashboard-quick-actions-empty">
+                    <Sparkles size={17} />
+                    <span>Aucune action rapide pour le moment. Ajoute celles que tu utilises le plus.</span>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -856,6 +1114,93 @@ export default function DashboardExperience({
                 </div>
               )}
               <p className="dashboard-widget-storage-note">Ta disposition est enregistrée sur cet appareil et pour ce compte.</p>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {isTopbarCatalogOpen && (
+        <div className="dashboard-widget-catalog-overlay" role="presentation" onClick={() => setIsTopbarCatalogOpen(false)}>
+          <section className="dashboard-widget-catalog" role="dialog" aria-modal="true" aria-labelledby="dashboard-topbar-catalog-title" onClick={(event) => event.stopPropagation()}>
+            <header className="dashboard-widget-catalog-header">
+              <div>
+                <span className="dashboard-eyebrow">En-Check · En-tête personnel</span>
+                <h2 id="dashboard-topbar-catalog-title">Ajouter un élément en haut</h2>
+                <p>Choisis les éléments visibles dans la barre. Tu pourras ensuite les glisser, les retirer ou les réordonner.</p>
+              </div>
+              <div className="dashboard-widget-catalog-header-actions">
+                <button type="button" className="dashboard-widget-catalog-reset" onClick={resetTopbarLayout}><RotateCcw size={13} /><span>Réinitialiser</span></button>
+                <button type="button" className="dashboard-widget-catalog-close" onClick={() => setIsTopbarCatalogOpen(false)} aria-label="Fermer le catalogue de la barre du haut"><X size={17} /></button>
+              </div>
+            </header>
+            <div className="dashboard-widget-catalog-body">
+              {unaddedTopbarItems.length > 0 ? (
+                <div className="dashboard-widget-catalog-grid">
+                  {unaddedTopbarItems.map((item) => {
+                    const Icon = item.icon
+                    return (
+                      <article className="dashboard-widget-choice dashboard-topbar-choice" key={item.id}>
+                        <span className="dashboard-widget-choice-icon"><Icon size={16} /></span>
+                        <div className="dashboard-widget-choice-copy">
+                          <strong>{item.label}</strong>
+                          <span>{item.description}</span>
+                          <small>Zone par défaut · {item.region === 'left' ? 'entreprise et date' : 'commandes'}</small>
+                        </div>
+                        <button type="button" onClick={() => addTopbarItem(item)} aria-label={`Ajouter ${item.label}`}><Plus size={15} /><span>Ajouter</span></button>
+                      </article>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="dashboard-widget-catalog-empty">
+                  <CheckCircle2 size={22} />
+                  <strong>Tous les éléments de la barre sont déjà affichés.</strong>
+                  <span>Tu peux les réorganiser ou retirer ceux que tu n’utilises pas.</span>
+                </div>
+              )}
+              <p className="dashboard-widget-storage-note">La disposition est mémorisée par compte et par entreprise sur cet appareil.</p>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {isQuickActionCatalogOpen && (
+        <div className="dashboard-widget-catalog-overlay" role="presentation" onClick={() => setIsQuickActionCatalogOpen(false)}>
+          <section className="dashboard-widget-catalog" role="dialog" aria-modal="true" aria-labelledby="dashboard-quick-action-catalog-title" onClick={(event) => event.stopPropagation()}>
+            <header className="dashboard-widget-catalog-header">
+              <div>
+                <span className="dashboard-eyebrow">En-Check · Actions rapides</span>
+                <h2 id="dashboard-quick-action-catalog-title">Ajouter une action rapide</h2>
+                <p>Choisis les raccourcis vers les pages auxquelles ton compte a accès.</p>
+              </div>
+              <button type="button" className="dashboard-widget-catalog-close" onClick={() => setIsQuickActionCatalogOpen(false)} aria-label="Fermer le catalogue des actions"><X size={17} /></button>
+            </header>
+            <div className="dashboard-widget-catalog-body">
+              {unaddedQuickActions.length > 0 ? (
+                <div className="dashboard-widget-catalog-grid">
+                  {unaddedQuickActions.map((action) => {
+                    const Icon = action.icon
+                    return (
+                      <article className="dashboard-widget-choice dashboard-quick-action-choice" key={action.id}>
+                        <span className="dashboard-widget-choice-icon"><Icon size={16} /></span>
+                        <div className="dashboard-widget-choice-copy">
+                          <strong>{action.label}</strong>
+                          <span>{action.description}</span>
+                          <small>{action.category}</small>
+                        </div>
+                        <button type="button" onClick={() => addQuickAction(action.id)} aria-label={`Ajouter ${action.label}`}><Plus size={15} /><span>Ajouter</span></button>
+                      </article>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="dashboard-widget-catalog-empty">
+                  <CheckCircle2 size={22} />
+                  <strong>Toutes les actions disponibles sont déjà dans tes accès rapides.</strong>
+                  <span>Tu peux les réorganiser ou retirer celles dont tu n’as pas besoin.</span>
+                </div>
+              )}
+              <p className="dashboard-widget-storage-note">Seuls les raccourcis vers les modules accessibles à ton compte sont proposés.</p>
             </div>
           </section>
         </div>
