@@ -4,6 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 import fs from 'fs'
 
 export default defineConfig({
+  // Vite n'expose pas les variables Vercel à l'app par défaut : on ne transmet
+  // que l'environnement non sensible, pour activer la démo sur les Preview.
+  define: {
+    'import.meta.env.VITE_VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV || ''),
+  },
   plugins: [
     react(),
     VitePWA({
