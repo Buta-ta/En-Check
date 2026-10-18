@@ -48,8 +48,9 @@ import PhotoSignee from '../components/PhotoSignee'
 import FeatureService, { FEATURES } from '../services/featureService'
 import HolidayService from '../services/holidayService'
 import { resoudrePointagesJournee } from '../services/hoursCalculator'
-import { construirePauses } from '../services/pausesService'
+import { construirePauses, fusionnerPausesEmploye } from '../services/pausesService'
 import { useTheme } from '../contexts/ThemeContext'
+import FicheEmployeModal from '../components/FicheEmployeModal'
 import PointagesLoadingScreen from '../components/PointagesLoadingScreen'
 import {
   PointagesAnalyticsCharts,
@@ -652,11 +653,12 @@ export default function Pointages() {
   const [admin, setAdmin] = useState(null)
   const [afficherImport, setAfficherImport] = useState(false)   //
   const [inspectedPointage, setInspectedPointage] = useState(null)
+  const [ficheEmployeeTarget, setFicheEmployeeTarget] = useState(null)
   const [minLoadingDone, setMinLoadingDone] = useState(false)
   const [state, dispatch] = useReducer(reducer, initialState)
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { darkMode } = useTheme()
+  const { darkMode, toggleTheme } = useTheme()
   const loadingRef = useRef(false)
 
   useEffect(() => {
@@ -1030,7 +1032,13 @@ export default function Pointages() {
         ? [targetEid]
         : [...new Set(employees?.map(e => e.enterprise_id).filter(Boolean) || [])]
 
-      const [allSchedules, { data: empSchedulesData }, pausesRpcRes] = await Promise.all([
+      let directPausesQuery = supabase
+        .from('encheck_pauses')
+        .select('*')
+        .eq('jour', selectedDate)
+      if (targetEid !== 'all') directPausesQuery = directPausesQuery.eq('enterprise_id', targetEid)
+
+      const [allSchedules, { data: empSchedulesData }, pausesRpcRes, directPausesRes] = await Promise.all([
         FeatureService.loadSchedules(enterpriseIds),
         supabase
           .from('employee_schedules')
@@ -1044,13 +1052,17 @@ export default function Pointages() {
           })
           .then((res) => res)
           .catch(() => ({ data: [] })),
+        directPausesQuery.then((res) => res).catch(() => ({ data: [] })),
       ])
       const employeeSchedulesMap = {}
       ;(empSchedulesData || []).forEach(es => {
         if (es.employee_id) employeeSchedulesMap[es.employee_id] = es
       })
+      const rawPausesRows = (pausesRpcRes?.data && pausesRpcRes.data.length > 0)
+        ? pausesRpcRes.data
+        : (directPausesRes?.data || [])
       const pausesByEmployee = {}
-      const parsedPauses = construirePauses(pausesRpcRes?.data || []).paies || []
+      const parsedPauses = construirePauses(rawPausesRows).paies || []
       parsedPauses.forEach((pa) => {
         if (!pa.employe_id) return
         if (!pausesByEmployee[pa.employe_id]) pausesByEmployee[pa.employe_id] = []
@@ -1211,7 +1223,13 @@ export default function Pointages() {
           }
         }
 
-        const employeePauses = pausesByEmployee[employee.id] || []
+        const employeePauses = fusionnerPausesEmploye({
+          pausesTable: pausesByEmployee[employee.id] || [],
+          validPairs,
+          employee,
+          scheduleInfo,
+          selectedDate,
+        })
 
         // Règle anti-fraude : aucune heure supplémentaire automatique sur un oubli de dépointage (Auto-Close)
         let overtimeData = null
@@ -1682,6 +1700,8 @@ export default function Pointages() {
             canEditPointages={canEditPointages}
             anomaliesCount={anomalies.length}
             criticalAnomaliesCount={anomaliesCritical.length}
+            darkMode={darkMode}
+            onToggleTheme={toggleTheme}
             onBackDashboard={() => navigate('/dashboard')}
             onToggleAlerts={() => dispatch({ type: 'TOGGLE_ALERTS_PANEL' })}
             onShareWhatsApp={handleShareDailyReport}
@@ -1756,6 +1776,7 @@ export default function Pointages() {
             selectedDate={selectedDate}
             selectedEmployeeId={inspectedPointage?.employee?.id || null}
             onSelectPointage={(p) => setInspectedPointage(p)}
+            onOpenEmployeeFiche={(p) => setFicheEmployeeTarget(p)}
           />
 
           {/* ═══ LISTE HEADER ═══ */}
@@ -1853,9 +1874,21 @@ export default function Pointages() {
             statuerEstimation={statuerEstimation}
             estimationEnCours={estimationEnCours}
             onModify={handleEditClick}
+            onOpenEmployeeFiche={(p) => setFicheEmployeeTarget(p)}
             onShareEmployee={handleShareEmployee}
             onClose={() => setInspectedPointage(null)}
           />
+
+          {/* ═══ FICHE DE L'EMPLOYÉ (SANS QUITTER LA PAGE POINTAGES) ═══ */}
+          {ficheEmployeeTarget && (
+            <FicheEmployeModal
+              employee={ficheEmployeeTarget.employee}
+              scheduleInfo={ficheEmployeeTarget.scheduleInfo}
+              canEdit={canEditPointages}
+              onClose={() => setFicheEmployeeTarget(null)}
+              onSaved={loadPointages}
+            />
+          )}
 
           {/* ═══ MODALS ═══ */}
 

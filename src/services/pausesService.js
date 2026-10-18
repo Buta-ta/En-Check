@@ -1,12 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // SERVICE PAUSES — présentation pure des lignes de `encheck_pauses_lire`
+// + détection des pauses effectuées non planifiées et chronomètre temps réel
 // ═══════════════════════════════════════════════════════════════════════════
-//  Doctrine (16/10/2026) : la pause RÉELLE gagne ; la PRÉSUMÉE (déduite du
-//  créneau de la grille) est TOUJOURS marquée ; l'admin statue (Valider /
-//  Écarter) ; on ne supprime jamais — la ligne reste pour l'audit.
-//  Couche de présentation PURE : aucun calcul de grille ici (source unique =
-//  SQL : encheck_pause_prevue / encheck_pauses_controler).
-// ═══════════════════════════════════════════════════════════════════════════
+import { formaterHeureLocale } from '../utils/timezoneUtils'
 
 export const STATUTS_BADGES = {
   reelle: { label: 'Pause réelle', color: '#10B981' },
@@ -29,7 +25,7 @@ function hhmm (timestamptz) {
 
 /**
  * Construit la liste affichable + les statistiques de la page Pauses.
- * @param {Array} lignesSql  lignes de `encheck_pauses_lire`
+ * @param {Array} lignesSql  lignes de `encheck_pauses_lire` ou `encheck_pauses`
  * @returns {{ paies: Array, stats: Object }}
  */
 export function construirePauses (lignesSql) {
@@ -52,17 +48,26 @@ export function construirePauses (lignesSql) {
     else if (l.statut === 'ecartee') nbEcartees++
     if (l.statut !== 'ecartee' && !ouverte) dureeTotale += Number(l.duree_minutes) || 0
 
+    const empId = l.employe_id || l.employee_id || null
+    const debutMs = l.debut ? new Date(l.debut).getTime() : NaN
+    const finMs = l.fin ? new Date(l.fin).getTime() : NaN
+    const computedMin = Number.isFinite(debutMs) && Number.isFinite(finMs) && finMs >= debutMs
+      ? Math.round((finMs - debutMs) / 60000)
+      : 0
+
     paies.push({
       id: l.id,
-      employe_id: l.employe_id,
-      employe: `${l.prenom || ''} ${l.nom || ''}`.trim(),
-      matricule: l.matricule,
-      entreprise_nom: l.entreprise_nom,
+      employe_id: empId,
+      employe: `${l.prenom || l.employees?.first_name || ''} ${l.nom || l.employees?.last_name || ''}`.trim(),
+      matricule: l.matricule || l.employees?.matricule || '',
+      entreprise_nom: l.entreprise_nom || '',
       enterprise_id: l.enterprise_id,
       jour: l.jour,
+      debutISO: l.debut || null,
+      finISO: l.fin || null,
       debutHHMM: hhmm(l.debut),
       finHHMM: ouverte ? null : hhmm(l.fin),
-      dureeMinutes: Number(l.duree_minutes) || 0,
+      dureeMinutes: Number(l.duree_minutes ?? computedMin) || 0,
       statut: l.statut,
       source: l.source,
       motif: l.motif,
@@ -73,8 +78,8 @@ export function construirePauses (lignesSql) {
   }
 
   paies.sort((a, b) => {
-    if (a.jour !== b.jour) return b.jour.localeCompare(a.jour)
-    return b.debutHHMM.localeCompare(a.debutHHMM)
+    if (a.jour !== b.jour) return String(b.jour || '').localeCompare(String(a.jour || ''))
+    return String(b.debutHHMM || '').localeCompare(String(a.debutHHMM || ''))
   })
 
   return {
@@ -90,6 +95,105 @@ export function construirePauses (lignesSql) {
       dureeTotale,
     },
   }
+}
+
+/**
+ * Fusionne les pauses enregistrées dans `encheck_pauses` ET les pauses effectuées
+ * entre deux sessions de pointage (`validPairs`), même lorsqu'aucun planning
+ * (ni personnel ni général) ne prévoit de pause.
+ */
+export function fusionnerPausesEmploye ({
+  pausesTable = [],
+  validPairs = [],
+  employee = null,
+  scheduleInfo = null,
+  selectedDate = null,
+}) {
+  const hasPlannedBreak = Boolean(
+    scheduleInfo &&
+    scheduleInfo.mode !== 'none' &&
+    scheduleInfo.hasBreak
+  )
+
+  const result = (pausesTable || [])
+    .filter((p) => p.statut !== 'ecartee')
+    .map((p) => ({
+      ...p,
+      debutHHMM: p.debutISO ? formaterHeureLocale(p.debutISO) : p.debutHHMM,
+      finHHMM: p.finISO ? formaterHeureLocale(p.finISO) : p.finHHMM,
+      estNonPlanifiee: p.source !== 'presumee' && !hasPlannedBreak,
+    }))
+
+  // Détecter aussi les coupures (Sortie -> Nouvelle Entrée) effectuées dans la journée
+  if (Array.isArray(validPairs) && validPairs.length > 1) {
+    const sortedPairs = [...validPairs]
+      .filter((pair) => pair?.in?.check_time)
+      .sort((a, b) => new Date(a.in.check_time).getTime() - new Date(b.in.check_time).getTime())
+
+    for (let i = 0; i < sortedPairs.length - 1; i++) {
+      const prevOut = sortedPairs[i]?.out
+      const nextIn = sortedPairs[i + 1]?.in
+      if (!prevOut?.check_time || !nextIn?.check_time || prevOut.is_auto_closed) continue
+
+      const startMs = new Date(prevOut.check_time).getTime()
+      const endMs = new Date(nextIn.check_time).getTime()
+      if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) continue
+
+      const gapMinutes = Math.round((endMs - startMs) / 60000)
+      if (gapMinutes < 2 || gapMinutes > 360) continue
+
+      const alreadyCovered = result.some((existing) => {
+        if (!existing.debutISO) return false
+        const exStart = new Date(existing.debutISO).getTime()
+        return Math.abs(exStart - startMs) < 10 * 60000
+      })
+
+      if (!alreadyCovered) {
+        result.push({
+          id: `intersession-${prevOut.id || i}-${nextIn.id || i + 1}`,
+          employe_id: employee?.id || null,
+          employe: `${employee?.first_name || ''} ${employee?.last_name || ''}`.trim(),
+          matricule: employee?.matricule || '',
+          enterprise_id: employee?.enterprise_id || null,
+          jour: selectedDate,
+          debutISO: prevOut.check_time,
+          finISO: nextIn.check_time,
+          debutHHMM: formaterHeureLocale(prevOut.check_time),
+          finHHMM: formaterHeureLocale(nextIn.check_time),
+          dureeMinutes: gapMinutes,
+          statut: 'reelle',
+          source: 'inter_sessions',
+          motif: 'Coupure pointée entre 2 sessions',
+          anomalie: null,
+          ouverte: false,
+          aStatuer: false,
+          estNonPlanifiee: !hasPlannedBreak,
+        })
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * Calcule en temps réel le temps écoulé d'une pause en cours (`ouverte === true`).
+ */
+export function formaterTempsPauseEnDirect (pause, nowMs = Date.now()) {
+  if (!pause) return '0 min'
+  if (!pause.ouverte || !pause.debutISO) {
+    return formatDuree(pause.dureeMinutes)
+  }
+  const startMs = new Date(pause.debutISO).getTime()
+  if (!Number.isFinite(startMs)) return formatDuree(pause.dureeMinutes)
+  const elapsedSec = Math.max(0, Math.floor((nowMs - startMs) / 1000))
+  const hours = Math.floor(elapsedSec / 3600)
+  const mins = Math.floor((elapsedSec % 3600) / 60)
+  const secs = elapsedSec % 60
+  if (hours > 0) {
+    return `${hours}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`
+  }
+  return `${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`
 }
 
 /** Libellé/teinte du badge de statut (défaut : neutre). */
