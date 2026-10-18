@@ -4,7 +4,8 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'
-import { Footprints, Play, LogIn, User } from 'lucide-react'
+import { Play, LogIn, User } from 'lucide-react'
+import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import { useNavigate } from 'react-router-dom'
 import { analytics } from '../services/analyticsService'
 
@@ -342,21 +343,7 @@ const PLANS = [
 // LOGO
 // ═══════════════════════════════════════════════════════════
 function Logo({ size = 32 }) {
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size * 0.28,
-        background: 'linear-gradient(135deg,#F59E0B,#D97706)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Footprints size={size * 0.6} color="#000" />
-    </div>
-  )
+  return <EnCheckBrandMark size={size} />
 }
 
 // ═══════════════════════════════════════════════════════════

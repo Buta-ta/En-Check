@@ -49,8 +49,13 @@ import SpotlightFAB from './SpotlightFAB'
 import SystemMessageBanner from './SystemMessageBanner'
 import AttendanceHeroImage from './AttendanceHeroImage'
 import EnCheckBrandMark from './EnCheckBrandMark'
+import PhotoSignee from './PhotoSignee'
 import LandingAnalytics from '../pages/LandingAnalytics'
 import { formaterHeureLocale } from '../utils/timezoneUtils'
+import {
+  loadRemoteDashboardPreferences,
+  saveRemoteDashboardPreferences,
+} from '../services/dashboardPreferencesService'
 import {
   addDashboardWidget,
   DEFAULT_DASHBOARD_WIDGETS,
@@ -157,6 +162,11 @@ export default function DashboardExperience({
   topEntreprises = [],
   conflictsPending = [],
   scheduleRequestsPending = [],
+  handleQuickScheduleRequest,
+  processingScheduleRequestId,
+  forgottenExitItems = [],
+  confirmForgottenExit,
+  savingForgottenExitId,
   todayHoliday,
   currentTime,
   loadError,
@@ -299,6 +309,7 @@ export default function DashboardExperience({
       description: `À examiner dans le planning${request.created_at ? ` · reçue le ${formatDate(request.created_at)}` : ''}`,
       actionLabel: 'Ouvrir',
       onAction: () => navigate('/planning'),
+      quickScheduleRequest: canManageConflict && handleQuickScheduleRequest ? request : null,
     })
   })
   if (forgottenExits > 0) {
@@ -309,7 +320,7 @@ export default function DashboardExperience({
       title: `${forgottenExits} sortie${forgottenExits > 1 ? 's' : ''} à confirmer`,
       description: 'Des arrivées n’ont pas encore de sortie enregistrée.',
       actionLabel: 'Vérifier',
-      onAction: () => navigate('/pointages'),
+      onAction: () => (forgottenExitItems.length > 0 ? setIsForgottenExitModalOpen(true) : navigate('/pointages')),
     })
   }
   if (lateCount > 0) {
@@ -380,6 +391,10 @@ export default function DashboardExperience({
   const [isTopbarCatalogOpen, setIsTopbarCatalogOpen] = useState(false)
   const [draggedTopbarItemId, setDraggedTopbarItemId] = useState(null)
   const [activityFilter, setActivityFilter] = useState('all')
+  const [selectedActivityItem, setSelectedActivityItem] = useState(null)
+  const [isForgottenExitModalOpen, setIsForgottenExitModalOpen] = useState(false)
+  const [exitTimesById, setExitTimesById] = useState({})
+  const enterpriseScopeKey = String(admin?.selectedEnterprise?.id || admin?.enterprise_id || 'all')
 
   const availableQuickActionIds = quickActionCatalog.map((action) => action.id)
   const defaultQuickActionIds = ['add-employee', 'attendance', 'planning', 'reports'].filter((id) => availableQuickActionIds.includes(id))
@@ -419,6 +434,54 @@ export default function DashboardExperience({
       // La disposition reste utilisable si le stockage du navigateur est bloqué.
     }
   }, [quickActionStorageKey, quickActionIds])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!admin?.id) return undefined
+    loadRemoteDashboardPreferences(admin.id, enterpriseScopeKey).then((remote) => {
+      if (cancelled || !remote) return
+      if (Array.isArray(remote.widgetIds)) {
+        const nextWidgets = normalizeDashboardWidgetIds(remote.widgetIds, availableWidgetIds, defaultWidgetIds)
+        if (nextWidgets.length) setWidgetIds(nextWidgets)
+      }
+      if (Array.isArray(remote.topbarLeftItemIds)) {
+        const validLeft = remote.topbarLeftItemIds.filter((id) => topbarLeftAvailableIds.includes(id))
+        setTopbarLeftItemIds(validLeft)
+      }
+      if (Array.isArray(remote.topbarRightItemIds)) {
+        const validRight = remote.topbarRightItemIds.filter((id) => topbarRightAvailableIds.includes(id))
+        setTopbarRightItemIds(validRight)
+      }
+      if (Array.isArray(remote.quickActionIds)) {
+        const validActions = remote.quickActionIds.filter((id) => availableQuickActionIds.includes(id))
+        setQuickActionIds(validActions)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [
+    admin?.id,
+    enterpriseScopeKey,
+    availableWidgetIds,
+    defaultWidgetIds,
+    topbarLeftAvailableIds,
+    topbarRightAvailableIds,
+    availableQuickActionIds,
+  ])
+
+  useEffect(() => {
+    if (!admin?.id) return undefined
+    const timer = window.setTimeout(() => {
+      saveRemoteDashboardPreferences(admin.id, enterpriseScopeKey, {
+        widgetIds,
+        topbarLeftItemIds,
+        topbarRightItemIds,
+        quickActionIds,
+      })
+    }, 650)
+    return () => window.clearTimeout(timer)
+  }, [admin?.id, enterpriseScopeKey, widgetIds, topbarLeftItemIds, topbarRightItemIds, quickActionIds])
 
   const visibleWidgets = widgetIds
     .map((id) => availableWidgets.find((widget) => widget.id === id))
@@ -919,6 +982,7 @@ export default function DashboardExperience({
                   <div className="dashboard-review-list">
                     {visibleReviewItems.map((item) => {
                       const Icon = item.icon
+                      const isProcessingReq = Boolean(item.quickScheduleRequest && processingScheduleRequestId === item.quickScheduleRequest.id)
                       return (
                         <div className={`dashboard-review-row is-${item.kind}`} key={item.key}>
                           <span className="dashboard-review-icon"><Icon size={15} /></span>
@@ -926,7 +990,33 @@ export default function DashboardExperience({
                             <span className="dashboard-review-title">{item.title}</span>
                             <span className="dashboard-review-description">{item.description}</span>
                           </div>
-                          <button type="button" className="dashboard-review-action" onClick={item.onAction}>{item.actionLabel}<ChevronRight size={12} /></button>
+                          <div className="dashboard-review-actions-group">
+                            {item.quickScheduleRequest && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="dashboard-review-action is-approve"
+                                  disabled={isProcessingReq}
+                                  onClick={() => handleQuickScheduleRequest(item.quickScheduleRequest, 'approved')}
+                                  title="Approuver directement"
+                                >
+                                  <CheckCircle2 size={12} />
+                                  <span>Approuver</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="dashboard-review-action is-reject"
+                                  disabled={isProcessingReq}
+                                  onClick={() => handleQuickScheduleRequest(item.quickScheduleRequest, 'rejected')}
+                                  title="Refuser directement"
+                                >
+                                  <X size={12} />
+                                  <span>Refuser</span>
+                                </button>
+                              </>
+                            )}
+                            <button type="button" className="dashboard-review-action" onClick={item.onAction}>{item.actionLabel}<ChevronRight size={12} /></button>
+                          </div>
                         </div>
                       )
                     })}
@@ -982,6 +1072,7 @@ export default function DashboardExperience({
                         { id: 'all', label: 'Tous' },
                         { id: 'in', label: 'Entrées' },
                         { id: 'out', label: 'Sorties' },
+                        { id: 'late', label: 'Retards' },
                       ].map((filter) => (
                         <button
                           type="button"
@@ -997,16 +1088,41 @@ export default function DashboardExperience({
                     <button type="button" className="dashboard-panel-link" onClick={() => navigate('/pointages')}>Pointages <ArrowRight size={13} /></button>
                   </div>
                 </div>
-                {recentActivity.filter((item) => activityFilter === 'all' || String(item.type || '').toLowerCase() === activityFilter).length > 0 ? (
+                {recentActivity.filter((item) => (
+                  activityFilter === 'all'
+                    ? true
+                    : activityFilter === 'late'
+                      ? Boolean(item.isLate)
+                      : String(item.type || '').toLowerCase() === activityFilter
+                )).length > 0 ? (
                   <div className="dashboard-activity-list">
                     {recentActivity
-                      .filter((item) => activityFilter === 'all' || String(item.type || '').toLowerCase() === activityFilter)
+                      .filter((item) => (
+                        activityFilter === 'all'
+                          ? true
+                          : activityFilter === 'late'
+                            ? Boolean(item.isLate)
+                            : String(item.type || '').toLowerCase() === activityFilter
+                      ))
                       .slice(0, 5)
                       .map((item) => {
                       const isEntry = String(item.type || '').toLowerCase() === 'in'
                       const Icon = isEntry ? UserCheck : LogOut
                       return (
-                        <div className="dashboard-activity-row" key={item.id}>
+                        <div
+                          className="dashboard-activity-row is-interactive"
+                          key={item.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setSelectedActivityItem(item)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              setSelectedActivityItem(item)
+                            }
+                          }}
+                          aria-label={`Voir le détail du pointage de ${formatName(item.employee)}`}
+                        >
                           <div className="dashboard-activity-avatar">
                             {item.employee?.photo_url
                               ? <img src={item.employee.photo_url} alt="" />
@@ -1017,6 +1133,11 @@ export default function DashboardExperience({
                             <span className="dashboard-activity-meta">{item.employee?.matricule || 'Pointage'}{item.hasPhoto ? ' · Photo enregistrée' : ''}</span>
                           </div>
                           <div className="dashboard-activity-right">
+                            {item.isLate && (
+                              <span className="dashboard-type-pill is-late" style={{ '--pill-color': 'var(--danger)', '--pill-bg': 'var(--danger-soft)' }}>
+                                <Timer size={11} />Retard
+                              </span>
+                            )}
                             <span className={`dashboard-type-pill ${isEntry ? 'is-entry' : 'is-exit'}`} style={{ '--pill-color': isEntry ? 'var(--good)' : 'var(--accent-strong)', '--pill-bg': isEntry ? 'var(--good-soft)' : 'var(--accent-soft)' }}><Icon size={11} />{isEntry ? 'Entrée' : 'Sortie'}</span>
                             <time className="dashboard-activity-time">{formaterHeureLocale(item.time)}</time>
                           </div>
@@ -1291,6 +1412,97 @@ export default function DashboardExperience({
                 </div>
               )}
               <p className="dashboard-widget-storage-note">Seuls les raccourcis vers les modules accessibles à ton compte sont proposés.</p>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {selectedActivityItem && (
+        <div className="dashboard-conflict-overlay" role="presentation" onClick={() => setSelectedActivityItem(null)}>
+          <section className="dashboard-conflict-modal" role="dialog" aria-modal="true" aria-labelledby="dashboard-activity-detail-title" onClick={(event) => event.stopPropagation()}>
+            <header className="dashboard-conflict-header">
+              <div className="dashboard-conflict-heading-icon"><Clock size={20} /></div>
+              <div className="dashboard-conflict-heading-copy">
+                <h2 id="dashboard-activity-detail-title">{formatName(selectedActivityItem.employee)}</h2>
+                <p>{selectedActivityItem.employee?.matricule || 'Employé'} · {String(selectedActivityItem.type || '').toLowerCase() === 'in' ? 'Entrée' : 'Sortie'}</p>
+              </div>
+              <button type="button" className="dashboard-conflict-close" onClick={() => setSelectedActivityItem(null)} aria-label="Fermer"><X size={17} /></button>
+            </header>
+            <div className="dashboard-conflict-body">
+              <div className="dashboard-conflict-facts">
+                <div><span>Heure enregistrée</span><strong>{formaterHeureLocale(selectedActivityItem.time)}</strong></div>
+                <div><span>Statut</span><strong>{selectedActivityItem.isLate ? 'Arrivée en retard' : (String(selectedActivityItem.type || '').toLowerCase() === 'in' ? 'Arrivée à l’heure' : (selectedActivityItem.isAutoClosed ? 'Sortie auto-clôturée' : 'Sortie enregistrée'))}</strong></div>
+                <div><span>Preuve</span><strong>{selectedActivityItem.hasPhoto ? 'Photo de pointage vérifiée' : 'Badge / Poste En-Check'}</strong></div>
+              </div>
+              {selectedActivityItem.photoUrl && (
+                <div className="dashboard-activity-photo-preview">
+                  <PhotoSignee url={selectedActivityItem.photoUrl} alt={`Pointage de ${formatName(selectedActivityItem.employee)}`} />
+                </div>
+              )}
+              <div className="dashboard-conflict-actions">
+                <button type="button" className="dashboard-conflict-option is-keep" onClick={() => { setSelectedActivityItem(null); navigate('/pointages') }}>
+                  <Clock size={17} /><span><strong>Ouvrir dans Pointages</strong><small>Consulter ou modifier la journée complète.</small></span><ChevronRight size={15} />
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {isForgottenExitModalOpen && (
+        <div className="dashboard-conflict-overlay" role="presentation" onClick={() => setIsForgottenExitModalOpen(false)}>
+          <section className="dashboard-conflict-modal" role="dialog" aria-modal="true" aria-labelledby="dashboard-forgotten-exit-title" onClick={(event) => event.stopPropagation()}>
+            <header className="dashboard-conflict-header">
+              <div className="dashboard-conflict-heading-icon"><LogOut size={20} /></div>
+              <div className="dashboard-conflict-heading-copy">
+                <h2 id="dashboard-forgotten-exit-title">Sorties à confirmer</h2>
+                <p>Régularise en 1 clic les arrivées sans sortie enregistrée.</p>
+              </div>
+              <button type="button" className="dashboard-conflict-close" onClick={() => setIsForgottenExitModalOpen(false)} aria-label="Fermer"><X size={17} /></button>
+            </header>
+            <div className="dashboard-conflict-body">
+              {forgottenExitItems.length > 0 ? (
+                <div className="dashboard-forgotten-exit-list">
+                  {forgottenExitItems.map((item) => {
+                    const exitTime = exitTimesById[item.id] || '18:00'
+                    const isSaving = savingForgottenExitId === item.id
+                    return (
+                      <div className="dashboard-forgotten-exit-row" key={item.id}>
+                        <div className="dashboard-forgotten-exit-copy">
+                          <strong>{formatName(item.employee)}</strong>
+                          <span>Arrivée à {formaterHeureLocale(item.check_time)}</span>
+                        </div>
+                        <div className="dashboard-forgotten-exit-controls">
+                          <input
+                            type="time"
+                            value={exitTime}
+                            aria-label={`Heure de sortie pour ${formatName(item.employee)}`}
+                            onChange={(event) => setExitTimesById((current) => ({ ...current, [item.id]: event.target.value }))}
+                          />
+                          <button
+                            type="button"
+                            disabled={isSaving || !confirmForgottenExit}
+                            onClick={async () => {
+                              const ok = await confirmForgottenExit(item, exitTime)
+                              if (ok && forgottenExitItems.length <= 1) setIsForgottenExitModalOpen(false)
+                            }}
+                          >
+                            <CheckCircle2 size={13} />
+                            <span>{isSaving ? 'Enregistrement…' : 'Confirmer'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="dashboard-widget-storage-note">Toutes les sorties en attente ont été confirmées.</p>
+              )}
+              <div className="dashboard-conflict-actions">
+                <button type="button" className="dashboard-conflict-option is-ignore" onClick={() => { setIsForgottenExitModalOpen(false); navigate('/pointages') }}>
+                  <Clock size={17} /><span><strong>Voir tous les pointages</strong><small>Accéder au journal complet des entrées et sorties.</small></span><ChevronRight size={15} />
+                </button>
+              </div>
             </div>
           </section>
         </div>

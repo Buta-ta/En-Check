@@ -6,6 +6,7 @@ import { useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { X, Download, Share2, Footprints, Sparkles, CheckCircle2 } from 'lucide-react'
 import html2canvas from 'html2canvas'
+import EnCheckBrandMark from './EnCheckBrandMark'
 
 export default function BadgeEmploye({ 
   employee, 
@@ -183,7 +184,7 @@ export default function BadgeEmploye({
                 
                 {/* Header avec logo En-Check */}
                 <div style={styles.badgeHeader}>
-                  <Footprints size={18} color="rgba(255,255,255,0.8)" />
+                  <EnCheckBrandMark size={22} />
                   <span style={styles.enCheckText}>EN-CHECK</span>
                 </div>
 
@@ -280,8 +281,8 @@ export default function BadgeEmploye({
                   
                   {/* Signature En-Check */}
                   <div style={styles.enCheckSignature}>
-                    <Footprints size={12} color="#CCCCCC" />
-                    <span style={styles.poweredBy}>En-Check</span>
+                    <EnCheckBrandMark size={14} />
+                    <span style={styles.poweredBy}>En-Check · On gère !</span>
                   </div>
                 </div>
               </div>

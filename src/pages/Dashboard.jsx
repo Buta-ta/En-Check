@@ -118,6 +118,9 @@ export default function Dashboard() {
   const [conflictEmployees, setConflictEmployees] = useState({})
 
   const [scheduleRequestsPending, setScheduleRequestsPending] = useState([])
+  const [processingScheduleRequestId, setProcessingScheduleRequestId] = useState(null)
+  const [forgottenExitItems, setForgottenExitItems] = useState([])
+  const [savingForgottenExitId, setSavingForgottenExitId] = useState(null)
   const [todayHoliday, setTodayHoliday] = useState(null)
 
   const navigate = useNavigate()
@@ -349,7 +352,7 @@ export default function Dashboard() {
       supabase.from('attendances').select('*', { count: 'exact', head: true }).eq('enterprise_id', enterpriseId),
       supabase.from('attendances').select(`id, employee_id, enterprise_id, check_time, check_type, is_auto_closed, employees (id, first_name, last_name, matricule, photo_url), pointages_photos (id, photo_url)`).eq('enterprise_id', enterpriseId).gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: false }),
       supabase.from('absences').select('id, employee_id, reason, status').eq('enterprise_id', enterpriseId).lte('start_date', today).gte('end_date', today),
-      supabase.from('attendances').select(`id, check_time, check_type, employees (id, first_name, last_name, matricule, photo_url), pointages_photos (id, photo_url)`).eq('enterprise_id', enterpriseId).gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: false }).limit(8),
+      supabase.from('attendances').select(`id, employee_id, enterprise_id, check_time, check_type, is_auto_closed, employees (id, first_name, last_name, matricule, photo_url), pointages_photos (id, photo_url)`).eq('enterprise_id', enterpriseId).gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: false }).limit(16),
       supabase.from('attendances').select(`id, pointages_photos(id)`).eq('enterprise_id', enterpriseId).gte('check_time', startOfDay).lte('check_time', endOfDay),
       supabase.from('attendances').select(`id, employee_id, enterprise_id, check_time, check_type`).eq('enterprise_id', enterpriseId).eq('check_type', 'in').gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: true }),
       supabase.from('enterprises').select('id, name, logo_url, employees(count)').eq('is_active', true).order('name'),
@@ -402,17 +405,29 @@ export default function Dashboard() {
       if (isNaN(t)) continue
       const deja = dernierGesteDuJour.get(a.employee_id)
       if (!deja || t > deja.t) {
-        dernierGesteDuJour.set(a.employee_id, { t, type: String(a.check_type || '').toLowerCase() })
+        dernierGesteDuJour.set(a.employee_id, { t, type: String(a.check_type || '').toLowerCase(), row: a })
       }
     }
-    const oublisSortie = [...dernierGesteDuJour.values()].filter(
+    const missingExitEntries = [...dernierGesteDuJour.values()].filter(
       (d) => d.type === 'in' && Date.now() - d.t > 8 * 3600 * 1000,
-    ).length
+    )
+    const oublisSortie = missingExitEntries.length
+    setForgottenExitItems(
+      missingExitEntries.map((d) => ({
+        id: d.row.id,
+        employee_id: d.row.employee_id,
+        enterprise_id: d.row.enterprise_id || enterpriseId,
+        check_time: d.row.check_time,
+        employee: d.row.employees,
+      }))
+    )
     // Heure locale de l'entreprise + respect du planning personnalisé ou par défaut de chaque employé.
+    const empSchedData = employeeSchedulesRes?.data || []
+    const defSchedData = defaultSchedulesRes?.data || []
     const retardsToday = compterRetardsDuJour(
       retardEntries,
-      employeeSchedulesRes?.data || [],
-      defaultSchedulesRes?.data || [],
+      empSchedData,
+      defSchedData,
       today
     )
     const tauxPresence = employesData.length > 0 ? Math.round((presentsToday / employesData.length) * 100) : 0
@@ -425,7 +440,27 @@ export default function Dashboard() {
 
     setStats({ entreprises: entreprisesCount, employes: employesData.length, pointages: pointagesTotalRes.count || 0, presentsToday, absentsToday, congesToday, retardsToday, photosToday, oublisSortie, tauxPresence, conflitsPending })
 
-    setRecentActivity(recentData.map(item => ({ id: item.id, type: item.check_type, time: item.check_time, employee: item.employees, hasPhoto: item.pointages_photos?.length > 0 })))
+    setRecentActivity(recentData.map(item => {
+      const isEntry = String(item.check_type || '').toLowerCase() === 'in'
+      const isLate = isEntry && compterRetardsDuJour(
+        [{ ...item, enterprise_id: item.enterprise_id || enterpriseId }],
+        empSchedData,
+        defSchedData,
+        today
+      ) > 0
+      return {
+        id: item.id,
+        employee_id: item.employee_id,
+        enterprise_id: item.enterprise_id || enterpriseId,
+        type: item.check_type,
+        time: item.check_time,
+        employee: item.employees,
+        hasPhoto: item.pointages_photos?.length > 0,
+        photoUrl: item.pointages_photos?.[0]?.photo_url || null,
+        isAutoClosed: Boolean(item.is_auto_closed),
+        isLate,
+      }
+    }))
 
     buildAlerts(
       retardsToday,
@@ -467,7 +502,7 @@ export default function Dashboard() {
       supabase.from('attendances').select('*', { count: 'exact', head: true }),
       supabase.from('attendances').select(`id, employee_id, enterprise_id, check_time, check_type, is_auto_closed, employees (id, first_name, last_name, matricule, photo_url), pointages_photos (id, photo_url)`).gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: false }),
       supabase.from('absences').select('id, employee_id, reason, status, enterprise_id').lte('start_date', today).gte('end_date', today),
-      supabase.from('attendances').select(`id, check_time, check_type, enterprise_id, employees (id, first_name, last_name, matricule, photo_url), pointages_photos (id, photo_url)`).gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: false }).limit(10),
+      supabase.from('attendances').select(`id, employee_id, enterprise_id, check_time, check_type, is_auto_closed, employees (id, first_name, last_name, matricule, photo_url), pointages_photos (id, photo_url)`).gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: false }).limit(16),
       supabase.from('attendances').select(`id, pointages_photos(id)`).gte('check_time', startOfDay).lte('check_time', endOfDay),
       supabase.from('attendances').select(`id, employee_id, enterprise_id, check_time, check_type`).eq('check_type', 'in').gte('check_time', startOfDay).lte('check_time', endOfDay).order('check_time', { ascending: true }),
       supabase.from('employee_schedules').select('*, work_schedules(*)').eq('is_active', true),
@@ -501,17 +536,29 @@ export default function Dashboard() {
       if (isNaN(t)) continue
       const deja = dernierGesteDuJour.get(a.employee_id)
       if (!deja || t > deja.t) {
-        dernierGesteDuJour.set(a.employee_id, { t, type: String(a.check_type || '').toLowerCase() })
+        dernierGesteDuJour.set(a.employee_id, { t, type: String(a.check_type || '').toLowerCase(), row: a })
       }
     }
-    const oublisSortie = [...dernierGesteDuJour.values()].filter(
+    const missingExitEntries = [...dernierGesteDuJour.values()].filter(
       (d) => d.type === 'in' && Date.now() - d.t > 8 * 3600 * 1000,
-    ).length
+    )
+    const oublisSortie = missingExitEntries.length
+    setForgottenExitItems(
+      missingExitEntries.map((d) => ({
+        id: d.row.id,
+        employee_id: d.row.employee_id,
+        enterprise_id: d.row.enterprise_id,
+        check_time: d.row.check_time,
+        employee: d.row.employees,
+      }))
+    )
     // Heure locale de l'entreprise + respect du planning personnalisé ou par défaut de chaque employé.
+    const empSchedData = employeeSchedulesRes?.data || []
+    const defSchedData = defaultSchedulesRes?.data || []
     const retardsToday = compterRetardsDuJour(
       retardEntries,
-      employeeSchedulesRes?.data || [],
-      defaultSchedulesRes?.data || [],
+      empSchedData,
+      defSchedData,
       today
     )
     const tauxPresence = totalEmployes > 0 ? Math.round((presentsToday / totalEmployes) * 100) : 0
@@ -523,7 +570,27 @@ export default function Dashboard() {
 
     setStats({ entreprises: entreprisesData.length || 0, employes: totalEmployes, pointages: pointagesTotalRes.count || 0, presentsToday, absentsToday, congesToday, retardsToday, photosToday, oublisSortie, tauxPresence, conflitsPending })
 
-    setRecentActivity(recentData.map(item => ({ id: item.id, type: item.check_type, time: item.check_time, enterprise_id: item.enterprise_id, employee: item.employees, hasPhoto: item.pointages_photos?.length > 0 })))
+    setRecentActivity(recentData.map(item => {
+      const isEntry = String(item.check_type || '').toLowerCase() === 'in'
+      const isLate = isEntry && compterRetardsDuJour(
+        [item],
+        empSchedData,
+        defSchedData,
+        today
+      ) > 0
+      return {
+        id: item.id,
+        employee_id: item.employee_id,
+        enterprise_id: item.enterprise_id,
+        type: item.check_type,
+        time: item.check_time,
+        employee: item.employees,
+        hasPhoto: item.pointages_photos?.length > 0,
+        photoUrl: item.pointages_photos?.[0]?.photo_url || null,
+        isAutoClosed: Boolean(item.is_auto_closed),
+        isLate,
+      }
+    }))
 
     buildAlerts(
       retardsToday,
@@ -685,6 +752,74 @@ export default function Dashboard() {
     setResolvingConflict(false)
   }
 
+  const handleQuickScheduleRequest = async (request, decision) => {
+    if (!request?.id || !admin || !['approved', 'rejected'].includes(decision)) return
+    setProcessingScheduleRequestId(request.id)
+    try {
+      if (decision === 'approved') {
+        const payload = {
+          employee_id: request.employee_id,
+          schedule_id: request.use_custom_hours ? null : request.requested_schedule_id || null,
+          use_custom_hours: Boolean(request.use_custom_hours),
+          custom_start_time: request.use_custom_hours ? request.requested_start_time : null,
+          custom_end_time: request.use_custom_hours ? request.requested_end_time : null,
+          custom_break_start: request.use_custom_hours && request.requested_has_break ? request.requested_break_start : null,
+          custom_break_end: request.use_custom_hours && request.requested_has_break ? request.requested_break_end : null,
+          custom_has_break: request.use_custom_hours ? Boolean(request.requested_has_break) : true,
+          custom_work_days: request.use_custom_hours ? request.requested_work_days : null,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        }
+        const { error: scheduleError } = await supabase
+          .from('employee_schedules')
+          .upsert(payload, { onConflict: 'employee_id' })
+        if (scheduleError) throw scheduleError
+      }
+
+      const { error: requestError } = await supabase
+        .from('schedule_change_requests')
+        .update({
+          status: decision,
+          admin_comment: decision === 'approved' ? 'Approuvée depuis le Dashboard' : 'Refusée depuis le Dashboard',
+          reviewed_by: admin.id,
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', request.id)
+
+      if (requestError) throw requestError
+      await loadData(admin)
+      refreshNotifications()
+    } catch (error) {
+      console.error('Erreur traitement rapide demande horaire:', error)
+    } finally {
+      setProcessingScheduleRequestId(null)
+    }
+  }
+
+  const confirmForgottenExit = async (item, exitTimeStr = '18:00') => {
+    if (!item?.employee_id || !item?.enterprise_id) return false
+    setSavingForgottenExitId(item.id)
+    try {
+      const checkTimeIso = new Date(`${today}T${exitTimeStr || '18:00'}:00`).toISOString()
+      const { error } = await supabase.from('attendances').insert({
+        employee_id: item.employee_id,
+        enterprise_id: item.enterprise_id,
+        check_type: 'out',
+        check_time: checkTimeIso,
+      })
+      if (error) throw error
+      await loadData(admin)
+      refreshNotifications()
+      return true
+    } catch (error) {
+      console.error('Erreur régularisation sortie manquante:', error)
+      return false
+    } finally {
+      setSavingForgottenExitId(null)
+    }
+  }
+
   const loadScheduleRequests = async (targetId) => {
     try {
       let query = supabase
@@ -784,6 +919,11 @@ export default function Dashboard() {
         topEntreprises={topEntreprises}
         conflictsPending={conflictsPending}
         scheduleRequestsPending={scheduleRequestsPending}
+        handleQuickScheduleRequest={handleQuickScheduleRequest}
+        processingScheduleRequestId={processingScheduleRequestId}
+        forgottenExitItems={forgottenExitItems}
+        confirmForgottenExit={confirmForgottenExit}
+        savingForgottenExitId={savingForgottenExitId}
         todayHoliday={todayHoliday}
         currentTime={currentTime}
         loadError={loadError}
