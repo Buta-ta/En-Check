@@ -421,7 +421,12 @@ export default function DashboardExperience({
   const [isQuickActionCatalogOpen, setIsQuickActionCatalogOpen] = useState(false)
   const [draggedQuickActionId, setDraggedQuickActionId] = useState(null)
   useEffect(() => {
-    ;['/images/pointage-loading-pin.jpg', '/images/pointage-loading-qr.jpg'].forEach((src) => {
+    ;[
+      '/images/pointage-loading-pin.jpg',
+      '/images/pointage-loading-qr.jpg',
+      '/images/employes-loading-badge.jpg',
+      '/images/employes-loading-team.jpg',
+    ].forEach((src) => {
       const img = new window.Image()
       img.src = src
     })

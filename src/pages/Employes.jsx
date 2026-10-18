@@ -17,6 +17,17 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BadgeEmploye from '../components/BadgeEmploye'
+import EnCheckBrandMark from '../components/EnCheckBrandMark'
+import EmployesLoadingScreen from '../components/EmployesLoadingScreen'
+import {
+  EmployesAnalyticsCharts,
+  EmployesCulturalHero,
+  EmployesExecutiveKpis,
+  EmployesLiveStatusBanner,
+} from '../components/EmployesAfroTechSections'
+import { useTheme } from '../contexts/ThemeContext'
+import { construirePauses } from '../services/pausesService'
+import { formaterHeureLocale, jourLocal } from '../utils/timezoneUtils'
 
 // ═══════════════════════════════════════════════════════════
 // COMPOSANT SECTION REPLIABLE
@@ -86,8 +97,16 @@ export default function Employes() {
   const [entreprises, setEntreprises] = useState([])
   const [plannings, setPlannings] = useState([])
   const [loading, setLoading] = useState(true)
+  const [minLoadingDone, setMinLoadingDone] = useState(false)
+  const [liveStatusByEmployee, setLiveStatusByEmployee] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState('list')
+  const { darkMode, toggleTheme } = useTheme()
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMinLoadingDone(true), 4500)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   const [weeklyStats, setWeeklyStats] = useState({})
 
@@ -360,6 +379,7 @@ export default function Employes() {
         })
 
         await calculateWeeklyStats(employeeIds, targetEnterpriseId)
+        await loadTodayLiveEmployeeStatus(employesAvecHoraires, targetEnterpriseId)
       }
 
       setEmployes(employesAvecHoraires)
@@ -432,6 +452,119 @@ export default function Employes() {
       stats[empId] = { totalSeconds, hours, minutes, label: `${hours}h ${minutes}m`, percentage: Math.min((hours / 40) * 100, 100) }
     })
     setWeeklyStats(stats)
+  }
+
+  const loadTodayLiveEmployeeStatus = async (employesList, targetEnterpriseId) => {
+    try {
+      const todayStr = jourLocal(new Date()) || new Date().toISOString().split('T')[0]
+      const startOfDay = new Date(`${todayStr}T00:00:00`).toISOString()
+      const endOfDay = new Date(`${todayStr}T23:59:59`).toISOString()
+      const empIds = (employesList || []).map((e) => e.id)
+      if (!empIds.length) return
+
+      let directPausesQuery = supabase.from('encheck_pauses').select('*').eq('jour', todayStr)
+      if (targetEnterpriseId) directPausesQuery = directPausesQuery.eq('enterprise_id', targetEnterpriseId)
+
+      const [attRes, absRes, rpcPausesRes, directPausesRes] = await Promise.all([
+        supabase
+          .from('attendances')
+          .select('id, employee_id, check_time, check_type, is_auto_closed')
+          .in('employee_id', empIds)
+          .gte('check_time', startOfDay)
+          .lte('check_time', endOfDay)
+          .order('check_time', { ascending: true }),
+        supabase
+          .from('absences')
+          .select('id, employee_id, reason')
+          .in('employee_id', empIds)
+          .lte('start_date', todayStr)
+          .gte('end_date', todayStr),
+        supabase
+          .rpc('encheck_pauses_lire', {
+            p_enterprise: targetEnterpriseId || null,
+            p_du: todayStr,
+            p_au: todayStr,
+          })
+          .then((r) => r)
+          .catch(() => ({ data: [] })),
+        directPausesQuery.then((r) => r).catch(() => ({ data: [] })),
+      ])
+
+      const rawPauses = (rpcPausesRes?.data && rpcPausesRes.data.length > 0)
+        ? rpcPausesRes.data
+        : (directPausesRes?.data || [])
+      const parsedPauses = construirePauses(rawPauses).paies || []
+      const atts = attRes?.data || []
+      const absences = absRes?.data || []
+
+      const nextMap = {}
+      for (const emp of employesList) {
+        const empAtts = atts.filter((a) => a.employee_id === emp.id)
+        const empAbs = absences.find((ab) => ab.employee_id === emp.id)
+        const sched = emp.employee_schedules?.[0]
+        const hasPlannedBreak = Boolean(
+          sched && (sched.use_custom_hours ? sched.custom_has_break : sched.work_schedules?.has_break)
+        )
+
+        const empPauses = parsedPauses
+          .filter((pa) => pa.employe_id === emp.id && pa.statut !== 'ecartee')
+          .map((pa) => ({
+            ...pa,
+            debutHHMM: pa.debutISO ? formaterHeureLocale(pa.debutISO) : pa.debutHHMM,
+            finHHMM: pa.finISO ? formaterHeureLocale(pa.finISO) : pa.finHHMM,
+            estNonPlanifiee: pa.source !== 'presumee' && !hasPlannedBreak,
+          }))
+
+        // Détecter aussi les coupures (Sortie -> Entrée) hors planning dans la journée
+        for (let i = 0; i < empAtts.length - 1; i++) {
+          const cur = empAtts[i]
+          const nxt = empAtts[i + 1]
+          if (String(cur.check_type || '').toLowerCase() !== 'out' || String(nxt.check_type || '').toLowerCase() !== 'in') continue
+          if (cur.is_auto_closed) continue
+          const gapMin = Math.round((new Date(nxt.check_time).getTime() - new Date(cur.check_time).getTime()) / 60000)
+          if (gapMin >= 2 && gapMin <= 360) {
+            empPauses.push({
+              id: `emp-intersession-${cur.id}-${nxt.id}`,
+              employe_id: emp.id,
+              debutISO: cur.check_time,
+              finISO: nxt.check_time,
+              debutHHMM: formaterHeureLocale(cur.check_time),
+              finHHMM: formaterHeureLocale(nxt.check_time),
+              dureeMinutes: gapMin,
+              statut: 'reelle',
+              source: 'inter_sessions',
+              ouverte: false,
+              estNonPlanifiee: !hasPlannedBreak,
+            })
+          }
+        }
+
+        const activePause = empPauses.find((pa) => pa.ouverte) || null
+        const firstIn = empAtts.find((a) => String(a.check_type || '').toLowerCase() === 'in') || null
+        const lastPunch = empAtts.length > 0 ? empAtts[empAtts.length - 1] : null
+        const lastOut = lastPunch && String(lastPunch.check_type || '').toLowerCase() === 'out' ? lastPunch : null
+
+        let state = 'non_pointe'
+        if (activePause) state = 'en_pause'
+        else if (firstIn && !lastOut) state = 'en_poste'
+        else if (firstIn && lastOut) state = 'termine'
+        else if (empAbs) state = 'en_conge'
+
+        nextMap[emp.id] = {
+          state,
+          activePause,
+          entryHHMM: firstIn ? formaterHeureLocale(firstIn.check_time) : null,
+          exitHHMM: lastOut ? formaterHeureLocale(lastOut.check_time) : null,
+          pausesCount: empPauses.length,
+          unplannedPausesCount: empPauses.filter((pa) => pa.estNonPlanifiee).length,
+          totalPauseMinutes: empPauses.reduce((acc, pa) => acc + (Number(pa.dureeMinutes) || 0), 0),
+        }
+      }
+
+      setLiveStatusByEmployee(nextMap)
+    } catch (err) {
+      console.error('Erreur statut live employés:', err)
+    }
   }
 
   const getHoursColor = (hours) => {
@@ -831,16 +964,31 @@ export default function Employes() {
     )
   })
 
+  const getScheduleRegimeLabel = (employee) => {
+    const scheduleData = employee.employee_schedules?.[0]
+    if (scheduleData) {
+      if (scheduleData.use_custom_hours) {
+        const start = scheduleData.custom_start_time?.slice(0, 5) || '08:00'
+        const end = scheduleData.custom_end_time?.slice(0, 5) || '17:00'
+        return `Planning perso (${start}–${end})`
+      }
+      if (scheduleData.work_schedules) {
+        return `Planning · ${scheduleData.work_schedules.name}`
+      }
+    }
+    const defaultEntPlan = plannings.find((pl) => pl.enterprise_id === employee.enterprise_id && pl.is_default && pl.is_active !== false)
+    if (employee.enterprises?.module_planning !== false && defaultEntPlan) {
+      return `Planning général · ${defaultEntPlan.name}`
+    }
+    return employee.enterprises?.module_planning === false
+      ? 'Sans option planning · Horaire libre'
+      : 'Horaire libre'
+  }
+
   const departments = [...new Set(employes.map(e => e.department).filter(Boolean))]
 
-  if (loading) {
-    return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.loadingPulse}><Footprints size={50} color="#F59E0B" /></div>
-        <p style={styles.loadingText}>Chargement des employés...</p>
-        <div style={styles.loadingBar}><div style={styles.loadingBarFill}></div></div>
-      </div>
-    )
+  if (loading || !minLoadingDone) {
+    return <EmployesLoadingScreen darkMode={darkMode} onSkip={() => setMinLoadingDone(true)} />
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -876,53 +1024,30 @@ export default function Employes() {
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
       `}</style>
 
-      <div style={styles.container}>
-        <div style={styles.bgPattern}></div>
-        <div style={styles.bgOrb1}></div>
-        <div style={styles.bgOrb2}></div>
-
-        {/* ═══ HEADER ═══ */}
-        <header style={styles.header}>
-          <div style={styles.headerInner}>
-            <div style={styles.headerLeft}>
-              <button className="afro-back-btn" onClick={() => navigate('/dashboard')} style={styles.backBtn}><ArrowLeft size={20} /></button>
-              <div style={styles.logoMark}><Footprints size={22} color="#F59E0B" /></div>
-              <div>
-                <h1 style={styles.headerTitle}>EMPLOYÉS</h1>
-                <span style={styles.headerSub}>Gestion du personnel</span>
-              </div>
-            </div>
-            <button className="afro-add-btn" onClick={handleAdd} style={styles.addBtnHeader}>
-              <UserPlus size={18} />
-              <span className="desktop-only">Ajouter</span>
-            </button>
-          </div>
-        </header>
-
+      <div className="pointages-afrotech-shell" data-theme={darkMode ? 'dark' : 'light'} style={styles.container}>
         {/* ═══ MAIN ═══ */}
         <main style={styles.main}>
-          {/* Summary */}
-          <div style={styles.summaryStrip}>
-            <div style={styles.summaryCard}>
-              <div style={{ ...styles.summaryIcon, background: 'rgba(245, 158, 11, 0.12)' }}><Users size={20} color="#F59E0B" /></div>
-              <div style={styles.summaryInfo}><span style={styles.summaryNumber}>{employes.length}</span><span style={styles.summaryLabel}>Total</span></div>
-            </div>
-            <div style={styles.summaryDivider}></div>
-            <div style={styles.summaryCard}>
-              <div style={{ ...styles.summaryIcon, background: 'rgba(99, 102, 241, 0.12)' }}><Briefcase size={20} color="#6366F1" /></div>
-              <div style={styles.summaryInfo}><span style={styles.summaryNumber}>{departments.length}</span><span style={styles.summaryLabel}>Dépts</span></div>
-            </div>
-            <div style={styles.summaryDivider}></div>
-            <div style={styles.summaryCard}>
-              <div style={{ ...styles.summaryIcon, background: 'rgba(16, 185, 129, 0.12)' }}><Activity size={20} color="#10B981" /></div>
-              <div style={styles.summaryInfo}><span style={styles.summaryNumber}>{Object.values(weeklyStats).filter(s => s.totalSeconds > 0).length}</span><span style={styles.summaryLabel}>Actifs</span></div>
-            </div>
-            <div style={styles.summaryDivider}></div>
-            <div style={styles.summaryCard}>
-              <div style={{ ...styles.summaryIcon, background: 'rgba(34, 197, 94, 0.12)' }}><Key size={20} color="#22C55E" /></div>
-              <div style={styles.summaryInfo}><span style={styles.summaryNumber}>{employes.filter(e => e.employee_portal_enabled).length}</span><span style={styles.summaryLabel}>Portail</span></div>
-            </div>
-          </div>
+          <EmployesCulturalHero
+            totalCount={employes.length}
+            departmentsCount={departments.length}
+            darkMode={darkMode}
+            onToggleTheme={toggleTheme}
+            onBackDashboard={() => navigate('/dashboard')}
+            onAddEmployee={handleAdd}
+          />
+
+          <EmployesExecutiveKpis
+            employes={employes}
+            liveStatusByEmployee={liveStatusByEmployee}
+            plannings={plannings}
+            onFilterSearch={(val) => setSearchTerm(val)}
+          />
+
+          <EmployesAnalyticsCharts
+            employes={employes}
+            plannings={plannings}
+            onSelectDepartment={(dept) => setSearchTerm(dept)}
+          />
 
           {/* ═══════════════════════════════════════════════════════════
               06.B.8 — L'ALERTE QUI EMPÊCHE UN BLOCAGE SILENCIEUX
@@ -1037,6 +1162,12 @@ export default function Employes() {
                       </div>
                     )}
 
+                    <EmployesLiveStatusBanner
+                      liveStatus={liveStatusByEmployee[employee.id]}
+                      scheduleRegimeLabel={getScheduleRegimeLabel(employee)}
+                      onOpenPointages={() => navigate(`/pointages?q=${encodeURIComponent(employee.matricule || employee.last_name || '')}`)}
+                    />
+
                     <div style={styles.gridActions}>
                       {isModulePlanningEnabled(employee) && <button className="afro-action-icon" onClick={() => handleOpenSchedule(employee)} style={{ ...styles.gridActionBtn, background: 'rgba(16, 185, 129, 0.1)', color: '#10B981' }} title="Horaires"><Clock size={15} /></button>}
                       <button className="afro-action-icon" onClick={() => handleShowBadge(employee)} style={{ ...styles.gridActionBtn, background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B' }} title="Badge QR"><QrCode size={15} /></button>
@@ -1116,6 +1247,12 @@ export default function Employes() {
                             <span style={{ ...styles.listProgressLabel, color: getHoursColor(stats.hours) }}>{stats.label}</span>
                           </div>
                         )}
+
+                        <EmployesLiveStatusBanner
+                          liveStatus={liveStatusByEmployee[employee.id]}
+                          scheduleRegimeLabel={getScheduleRegimeLabel(employee)}
+                          onOpenPointages={() => navigate(`/pointages?q=${encodeURIComponent(employee.matricule || employee.last_name || '')}`)}
+                        />
                       </div>
                     </div>
 
@@ -1144,7 +1281,7 @@ export default function Employes() {
 
           <div style={styles.footer}>
             <div style={styles.footerLine}></div>
-            <p style={styles.footerText}><Footprints size={14} color="#F59E0B" />EN-CHECK • Gestion du Personnel</p>
+            <p style={styles.footerText}><EnCheckBrandMark size={18} />EN-CHECK • On gère ! • Gestion du Personnel</p>
           </div>
         </main>
 
@@ -1627,130 +1764,130 @@ export default function Employes() {
 // ═══════════════════════════════════════════════════════════
 
 const styles = {
-  container: { minHeight: '100vh', background: '#0A0A0F', position: 'relative', overflow: 'hidden' },
-  bgPattern: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(circle at 20% 30%, rgba(245, 158, 11, 0.03) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(99, 102, 241, 0.03) 0%, transparent 50%), radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.02) 0%, transparent 50%)`, pointerEvents: 'none', zIndex: 0 },
-  bgOrb1: { position: 'fixed', top: '-20%', right: '-8%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245, 158, 11, 0.04) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 },
-  bgOrb2: { position: 'fixed', bottom: '-25%', left: '-12%', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.03) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 },
-  loadingContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, background: '#0A0A0F' },
+  container: { minHeight: '100vh', background: 'var(--pt-canvas)', position: 'relative', overflow: 'hidden' },
+  bgPattern: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 0 },
+  bgOrb1: { position: 'fixed', top: '-20%', right: '-8%', width: 500, height: 500, borderRadius: '50%', pointerEvents: 'none', zIndex: 0 },
+  bgOrb2: { position: 'fixed', bottom: '-25%', left: '-12%', width: 600, height: 600, borderRadius: '50%', pointerEvents: 'none', zIndex: 0 },
+  loadingContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, background: 'var(--pt-canvas)' },
   loadingPulse: { animation: 'float 2s ease-in-out infinite' },
-  loadingText: { color: '#888', fontSize: 16, letterSpacing: 2 },
+  loadingText: { color: 'var(--pt-muted)', fontSize: 16, letterSpacing: 2 },
   loadingBar: { width: 200, height: 2, background: 'rgba(245,158,11,0.1)', borderRadius: 2, overflow: 'hidden' },
   loadingBarFill: { width: '40%', height: '100%', background: 'linear-gradient(90deg, #F59E0B, #D97706)', borderRadius: 2, animation: 'shimmer 1.5s infinite', backgroundSize: '200% 100%' },
-  header: { background: 'rgba(15, 15, 25, 0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(245, 158, 11, 0.12)', position: 'sticky', top: 0, zIndex: 100 },
+  header: { background: 'var(--pt-surface)', borderBottom: '1px solid var(--pt-line)', position: 'sticky', top: 0, zIndex: 100 },
   headerInner: { maxWidth: 1400, margin: '0 auto', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { display: 'flex', alignItems: 'center', gap: 12 },
-  backBtn: { background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.15)', borderRadius: 10, padding: 8, color: '#F59E0B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
-  logoMark: { width: 38, height: 38, borderRadius: 10, background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: 700, letterSpacing: 3, margin: 0, lineHeight: 1.2 },
-  headerSub: { color: '#F59E0B', fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', fontWeight: 500 },
-  addBtnHeader: { display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#000', padding: '10px 20px', borderRadius: 12, border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.3s ease', letterSpacing: 0.5 },
+  backBtn: { background: 'var(--pt-surface-soft)', border: '1px solid var(--pt-line)', borderRadius: 10, padding: 8, color: 'var(--pt-copper-strong)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
+  logoMark: { width: 38, height: 38, borderRadius: 10, background: 'var(--pt-copper-soft)', border: '1px solid var(--pt-line)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { color: 'var(--pt-ink)', fontSize: 18, fontWeight: 700, letterSpacing: 3, margin: 0, lineHeight: 1.2 },
+  headerSub: { color: 'var(--pt-copper-strong)', fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', fontWeight: 500 },
+  addBtnHeader: { display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #C87B3E, #9C5321)', color: '#FFF', padding: '10px 20px', borderRadius: 12, border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.3s ease', letterSpacing: 0.5 },
   main: { padding: 20, maxWidth: 1400, margin: '0 auto', position: 'relative', zIndex: 1 },
-  summaryStrip: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, background: 'rgba(20, 20, 35, 0.7)', backdropFilter: 'blur(10px)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', padding: '16px 24px', marginBottom: 20, flexWrap: 'wrap' },
+  summaryStrip: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, background: 'var(--pt-surface)', borderRadius: 16, border: '1px solid var(--pt-line)', padding: '16px 24px', marginBottom: 20, flexWrap: 'wrap' },
   summaryCard: { display: 'flex', alignItems: 'center', gap: 12, padding: '4px 20px', flex: '1 1 auto', justifyContent: 'center', minWidth: 100 },
-  summaryDivider: { width: 1, height: 32, background: 'rgba(255,255,255,0.08)' },
+  summaryDivider: { width: 1, height: 32, background: 'var(--pt-line)' },
   summaryIcon: { width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   summaryInfo: { display: 'flex', flexDirection: 'column' },
-  summaryNumber: { color: '#FFFFFF', fontSize: 22, fontWeight: 700, lineHeight: 1 },
-  summaryLabel: { color: '#666', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 },
+  summaryNumber: { color: 'var(--pt-ink)', fontSize: 22, fontWeight: 700, lineHeight: 1 },
+  summaryLabel: { color: 'var(--pt-muted)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 },
   toolbar: { display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' },
-  searchContainer: { flex: '1 1 280px', display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(20, 20, 35, 0.8)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.06)', padding: '12px 16px', borderRadius: 14, transition: 'all 0.3s ease' },
-  searchInput: { flex: 1, border: 'none', outline: 'none', fontSize: 14, background: 'transparent', color: '#E5E5E5', fontFamily: 'inherit' },
-  clearSearch: { background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 6, padding: 4, cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  searchContainer: { flex: '1 1 280px', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--pt-surface)', border: '1px solid var(--pt-line)', padding: '12px 16px', borderRadius: 14, transition: 'all 0.3s ease' },
+  searchInput: { flex: 1, border: 'none', outline: 'none', fontSize: 14, background: 'transparent', color: 'var(--pt-ink)', fontFamily: 'inherit' },
+  clearSearch: { background: 'var(--pt-surface-soft)', border: 'none', borderRadius: 6, padding: 4, cursor: 'pointer', color: 'var(--pt-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   toolbarRight: { display: 'flex', alignItems: 'center', gap: 12 },
-  viewToggle: { display: 'flex', gap: 2, background: 'rgba(20, 20, 35, 0.8)', borderRadius: 10, padding: 3, border: '1px solid rgba(255,255,255,0.06)' },
-  viewBtn: { background: 'transparent', border: 'none', borderRadius: 8, padding: '8px 10px', color: '#666', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
-  viewBtnActive: { background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B' },
+  viewToggle: { display: 'flex', gap: 2, background: 'var(--pt-surface)', borderRadius: 10, padding: 3, border: '1px solid var(--pt-line)' },
+  viewBtn: { background: 'transparent', border: 'none', borderRadius: 8, padding: '8px 10px', color: 'var(--pt-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
+  viewBtnActive: { background: 'var(--pt-copper-soft)', color: 'var(--pt-copper-strong)' },
   resultCount: { display: 'flex', alignItems: 'baseline', gap: 6 },
-  resultNumber: { color: '#F59E0B', fontSize: 20, fontWeight: 700 },
-  resultText: { color: '#666', fontSize: 12 },
-  empty: { textAlign: 'center', padding: '80px 20px', background: 'rgba(20, 20, 35, 0.5)', borderRadius: 24, border: '1px solid rgba(255,255,255,0.04)' },
-  emptyIcon: { width: 80, height: 80, borderRadius: 20, background: 'rgba(245, 158, 11, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto' },
-  emptyTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: 600, margin: '0 0 8px 0' },
-  emptySubtitle: { color: '#666', fontSize: 14, margin: '0 0 24px 0' },
-  emptyAddBtn: { display: 'inline-flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#000', padding: '12px 24px', borderRadius: 12, border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.3s ease' },
+  resultNumber: { color: 'var(--pt-copper-strong)', fontSize: 20, fontWeight: 700 },
+  resultText: { color: 'var(--pt-muted)', fontSize: 12 },
+  empty: { textAlign: 'center', padding: '80px 20px', background: 'var(--pt-surface)', borderRadius: 24, border: '1px solid var(--pt-line)' },
+  emptyIcon: { width: 80, height: 80, borderRadius: 20, background: 'var(--pt-copper-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto' },
+  emptyTitle: { color: 'var(--pt-ink)', fontSize: 20, fontWeight: 600, margin: '0 0 8px 0' },
+  emptySubtitle: { color: 'var(--pt-muted)', fontSize: 14, margin: '0 0 24px 0' },
+  emptyAddBtn: { display: 'inline-flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #C87B3E, #9C5321)', color: '#FFF', padding: '12px 24px', borderRadius: 12, border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.3s ease' },
   gridView: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 14 },
-  gridCard: { background: 'rgba(20, 20, 35, 0.7)', backdropFilter: 'blur(10px)', borderRadius: 20, border: '1px solid rgba(255,255,255,0.06)', padding: '24px 20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, position: 'relative', overflow: 'hidden' },
-  cardGlowLine: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.4), transparent)' },
+  gridCard: { background: 'var(--pt-surface)', borderRadius: 20, border: '1px solid var(--pt-line)', padding: '24px 20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, position: 'relative', overflow: 'hidden' },
+  cardGlowLine: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, rgba(213, 141, 75, 0.45), transparent)' },
   gridAvatarSection: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
-  gridAvatar: { width: 64, height: 64, borderRadius: 18, background: 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.05))', border: '2px solid rgba(245, 158, 11, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  gridAvatar: { width: 64, height: 64, borderRadius: 18, background: 'var(--pt-surface-soft)', border: '2px solid var(--pt-copper)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   gridAvatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
-  gridAvatarInitials: { color: '#F59E0B', fontWeight: 700, fontSize: 20, letterSpacing: 2 },
-  gridName: { color: '#FFFFFF', fontSize: 16, fontWeight: 600, margin: 0, textAlign: 'center' },
-  gridMatricule: { color: '#F59E0B', fontSize: 12, fontWeight: 600, letterSpacing: 1, opacity: 0.8 },
+  gridAvatarInitials: { color: 'var(--pt-copper-strong)', fontWeight: 700, fontSize: 20, letterSpacing: 2 },
+  gridName: { color: 'var(--pt-ink)', fontSize: 16, fontWeight: 700, margin: 0, textAlign: 'center' },
+  gridMatricule: { color: 'var(--pt-copper-strong)', fontSize: 12, fontWeight: 700, letterSpacing: 1 },
   gridInfoSection: { display: 'flex', flexDirection: 'column', gap: 6, width: '100%' },
-  gridInfoRow: { display: 'flex', alignItems: 'center', gap: 8, color: '#888', fontSize: 12 },
-  gridProgress: { width: '100%', padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 10 },
+  gridInfoRow: { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--pt-muted)', fontSize: 12 },
+  gridProgress: { width: '100%', padding: 12, background: 'var(--pt-surface-soft)', borderRadius: 10 },
   gridProgressHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  gridProgressLabel: { color: '#666', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
+  gridProgressLabel: { color: 'var(--pt-muted)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
   gridProgressValue: { fontSize: 14, fontWeight: 700, fontFamily: "'SF Mono', 'Fira Code', monospace" },
-  progressTrack: { width: '100%', height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' },
+  progressTrack: { width: '100%', height: 4, background: 'var(--pt-line)', borderRadius: 2, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 2, width: 'var(--target-width)' },
-  gridActions: { display: 'flex', gap: 6, width: '100%', justifyContent: 'center', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.04)', flexWrap: 'wrap' },
+  gridActions: { display: 'flex', gap: 6, width: '100%', justifyContent: 'center', paddingTop: 8, borderTop: '1px solid var(--pt-line)', flexWrap: 'wrap' },
   gridActionBtn: { border: 'none', borderRadius: 10, padding: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
   listView: { display: 'flex', flexDirection: 'column', gap: 8 },
-  listCard: { background: 'rgba(20, 20, 35, 0.7)', backdropFilter: 'blur(10px)', borderRadius: 16, border: '1px solid rgba(255,255,255,0.06)', padding: 'clamp(12px, 3vw, 18px)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
+  listCard: { background: 'var(--pt-surface)', borderRadius: 16, border: '1px solid var(--pt-line)', padding: 'clamp(12px, 3vw, 18px)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
   listCardLeft: { display: 'flex', alignItems: 'center', gap: 14, flex: '1 1 300px', minWidth: 0 },
-  listAvatar: { width: 48, height: 48, borderRadius: 14, background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05))', border: '2px solid rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, position: 'relative' },
+  listAvatar: { width: 48, height: 48, borderRadius: 14, background: 'var(--pt-surface-soft)', border: '2px solid var(--pt-copper)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, position: 'relative' },
   listAvatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
-  listAvatarInitials: { color: '#F59E0B', fontWeight: 700, fontSize: 15, letterSpacing: 1 },
+  listAvatarInitials: { color: 'var(--pt-copper-strong)', fontWeight: 700, fontSize: 15, letterSpacing: 1 },
   avatarStatusRing: { position: 'absolute', inset: -3, borderRadius: 16, border: '2px solid', pointerEvents: 'none' },
   listInfo: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 },
   listNameRow: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  listName: { color: '#FFFFFF', fontWeight: 600, fontSize: 15 },
-  listMatricule: { color: '#F59E0B', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, opacity: 0.7, background: 'rgba(245, 158, 11, 0.08)', padding: '2px 8px', borderRadius: 6 },
+  listName: { color: 'var(--pt-ink)', fontWeight: 700, fontSize: 15 },
+  listMatricule: { color: 'var(--pt-copper-strong)', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, background: 'var(--pt-copper-soft)', padding: '2px 8px', borderRadius: 6 },
   listMetaRow: { display: 'flex', flexWrap: 'wrap', gap: 8 },
-  listMeta: { display: 'inline-flex', alignItems: 'center', gap: 4, color: '#888', fontSize: 12 },
+  listMeta: { display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--pt-muted)', fontSize: 12 },
   listProgressContainer: { display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, maxWidth: 200 },
-  progressTrackSmall: { flex: 1, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' },
+  progressTrackSmall: { flex: 1, height: 3, background: 'var(--pt-line)', borderRadius: 2, overflow: 'hidden' },
   progressFillSmall: { height: '100%', borderRadius: 2, width: 'var(--target-width)' },
   listProgressLabel: { fontSize: 11, fontWeight: 700, fontFamily: "'SF Mono', 'Fira Code', monospace", whiteSpace: 'nowrap' },
   listActions: { display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' },
-  listActionBtn: { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', color: '#888' },
-  listDeleteBtn: { borderColor: 'rgba(239, 68, 68, 0.15)', color: '#EF4444' },
+  listActionBtn: { background: 'var(--pt-surface-soft)', border: '1px solid var(--pt-line)', borderRadius: 10, padding: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', color: 'var(--pt-ink-soft)' },
+  listDeleteBtn: { borderColor: 'rgba(239, 68, 68, 0.25)', color: '#EF4444' },
   footer: { marginTop: 48, paddingBottom: 24 },
-  footerLine: { height: 1, background: 'linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.2), transparent)', marginBottom: 20 },
-  footerText: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#555', fontSize: 12, letterSpacing: 2 },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 },
-  confirmModal: { background: '#141423', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, width: '100%', maxWidth: 420, padding: 'clamp(24px, 5vw, 36px)', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' },
+  footerLine: { height: 1, background: 'linear-gradient(90deg, transparent, rgba(213, 141, 75, 0.3), transparent)', marginBottom: 20 },
+  footerText: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--pt-muted)', fontSize: 12, letterSpacing: 2 },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 12, 9, 0.72)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 },
+  confirmModal: { background: 'var(--pt-surface)', border: '1px solid var(--pt-line)', borderRadius: 24, width: '100%', maxWidth: 420, padding: 'clamp(24px, 5vw, 36px)', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' },
   modalIconWrap: { width: 64, height: 64, borderRadius: 18, background: 'rgba(239, 68, 68, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' },
-  modalTitle: { fontSize: 20, fontWeight: 700, color: '#FFFFFF', marginBottom: 12 },
-  modalText: { color: '#888', marginBottom: 28, lineHeight: 1.6, fontSize: 14 },
+  modalTitle: { fontSize: 20, fontWeight: 700, color: 'var(--pt-ink)', marginBottom: 12 },
+  modalText: { color: 'var(--pt-muted)', marginBottom: 28, lineHeight: 1.6, fontSize: 14 },
   modalBtns: { display: 'flex', gap: 12 },
-  modalCancelBtn: { flex: 1, padding: 14, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#E5E5E5', borderRadius: 14, fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s ease', fontFamily: 'inherit' },
+  modalCancelBtn: { flex: 1, padding: 14, background: 'var(--pt-surface-soft)', border: '1px solid var(--pt-line)', color: 'var(--pt-ink)', borderRadius: 14, fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s ease', fontFamily: 'inherit' },
   modalDeleteBtn: { flex: 1, padding: 14, background: 'linear-gradient(135deg, #EF4444, #B91C1C)', color: '#FFF', border: 'none', borderRadius: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s ease', fontFamily: 'inherit' },
-  formModal: { background: '#0F0F19', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 80px rgba(0,0,0,0.6)' },
-  formModalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 },
+  formModal: { background: 'var(--pt-surface)', border: '1px solid var(--pt-line)', borderRadius: 24, width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 80px rgba(0,0,0,0.6)' },
+  formModalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--pt-line)', flexShrink: 0 },
   formModalTitleWrap: { display: 'flex', alignItems: 'center', gap: 14 },
   formModalIcon: { width: 42, height: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  formModalTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: 700, margin: 0 },
-  formModalSub: { color: '#666', fontSize: 12, marginTop: 2, display: 'block' },
-  formCloseBtn: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: 8, color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
+  formModalTitle: { color: 'var(--pt-ink)', fontSize: 18, fontWeight: 700, margin: 0 },
+  formModalSub: { color: 'var(--pt-muted)', fontSize: 12, marginTop: 2, display: 'block' },
+  formCloseBtn: { background: 'var(--pt-surface-soft)', border: '1px solid var(--pt-line)', borderRadius: 10, padding: 8, color: 'var(--pt-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
   formModalBody: { padding: 24, overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 },
-  formModalFooter: { display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 },
-  modalSaveBtn: { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#000', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s ease', fontFamily: 'inherit' },
+  formModalFooter: { display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 24px', borderTop: '1px solid var(--pt-line)', flexShrink: 0 },
+  modalSaveBtn: { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: 'linear-gradient(135deg, #C87B3E, #9C5321)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s ease', fontFamily: 'inherit' },
   photoUploadSection: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 8 },
-  photoUploadCircle: { width: 90, height: 90, borderRadius: 20, background: 'rgba(245, 158, 11, 0.08)', border: '2px dashed rgba(245, 158, 11, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'all 0.2s ease' },
+  photoUploadCircle: { width: 90, height: 90, borderRadius: 20, background: 'var(--pt-copper-soft)', border: '2px dashed var(--pt-copper)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'all 0.2s ease' },
   photoUploadImg: { width: '100%', height: '100%', objectFit: 'cover' },
   photoUploadPlaceholder: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
   photoUploadOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', padding: 6, display: 'flex', justifyContent: 'center' },
   photoRemoveBtn: { display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer', fontWeight: 600 },
   formField: { display: 'flex', flexDirection: 'column', gap: 6 },
   formRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
-  formLabel: { fontSize: 12, fontWeight: 600, color: '#888', display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
-  formHint: { fontSize: 10, color: '#555', fontWeight: 400, textTransform: 'none', letterSpacing: 0 },
-  formInput: { padding: '12px 14px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, fontSize: 14, outline: 'none', transition: 'border-color 0.2s', width: '100%', boxSizing: 'border-box', background: 'rgba(255,255,255,0.04)', color: '#E5E5E5', fontFamily: 'inherit' },
-  formSelect: { padding: '12px 14px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, fontSize: 14, outline: 'none', background: 'rgba(255,255,255,0.04)', color: '#E5E5E5', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', cursor: 'pointer' },
+  formLabel: { fontSize: 12, fontWeight: 600, color: 'var(--pt-muted)', display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  formHint: { fontSize: 10, color: 'var(--pt-muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 },
+  formInput: { padding: '12px 14px', border: '1px solid var(--pt-line)', borderRadius: 12, fontSize: 14, outline: 'none', transition: 'border-color 0.2s', width: '100%', boxSizing: 'border-box', background: 'var(--pt-surface-soft)', color: 'var(--pt-ink)', fontFamily: 'inherit' },
+  formSelect: { padding: '12px 14px', border: '1px solid var(--pt-line)', borderRadius: 12, fontSize: 14, outline: 'none', background: 'var(--pt-surface-soft)', color: 'var(--pt-ink)', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', cursor: 'pointer' },
   pinFieldWrap: { position: 'relative', display: 'flex', alignItems: 'center' },
-  pinEyeBtn: { position: 'absolute', right: 12, background: 'none', border: 'none', cursor: 'pointer', color: '#666', display: 'flex', alignItems: 'center' },
+  pinEyeBtn: { position: 'absolute', right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pt-muted)', display: 'flex', alignItems: 'center' },
   scheduleChoiceWrap: { display: 'flex', flexDirection: 'column', gap: 8 },
-  scheduleOption: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: 16, borderRadius: 14, border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', transition: 'all 0.2s ease' },
+  scheduleOption: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: 16, borderRadius: 14, border: '1px solid var(--pt-line)', cursor: 'pointer', transition: 'all 0.2s ease' },
   radioInput: { width: 18, height: 18, accentColor: '#F59E0B', marginTop: 2, flexShrink: 0 },
-  scheduleOptionTitle: { display: 'block', fontWeight: 600, color: '#FFFFFF', fontSize: 14 },
-  scheduleOptionDesc: { display: 'block', fontSize: 12, color: '#666', marginTop: 2 },
-  checkboxWrap: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', cursor: 'pointer' },
+  scheduleOptionTitle: { display: 'block', fontWeight: 600, color: 'var(--pt-ink)', fontSize: 14 },
+  scheduleOptionDesc: { display: 'block', fontSize: 12, color: 'var(--pt-muted)', marginTop: 2 },
+  checkboxWrap: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, background: 'var(--pt-surface-soft)', cursor: 'pointer' },
   checkboxInput: { width: 18, height: 18, accentColor: '#F59E0B' },
-  checkboxText: { color: '#E5E5E5', fontSize: 14, fontWeight: 500 },
+  checkboxText: { color: 'var(--pt-ink)', fontSize: 14, fontWeight: 500 },
   daysRow: { display: 'flex', gap: 6, flexWrap: 'wrap' },
-  dayChip: { padding: '10px 14px', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, background: 'rgba(255,255,255,0.03)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#888', transition: 'all 0.2s ease' },
-  dayChipActive: { background: 'linear-gradient(135deg, #F59E0B, #D97706)', borderColor: '#F59E0B', color: '#000' },
+  dayChip: { padding: '10px 14px', border: '1px solid var(--pt-line)', borderRadius: 10, background: 'var(--pt-surface-soft)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--pt-muted)', transition: 'all 0.2s ease' },
+  dayChipActive: { background: 'linear-gradient(135deg, #C87B3E, #9C5321)', borderColor: '#C87B3E', color: '#FFF' },
 }
