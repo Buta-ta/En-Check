@@ -111,7 +111,7 @@ const TOPBAR_LEFT_AVAILABLE_IDS = TOPBAR_LEFT_CATALOG.map((item) => item.id)
 const TOPBAR_RIGHT_AVAILABLE_IDS = TOPBAR_RIGHT_CATALOG.map((item) => item.id)
 const ALL_TOPBAR_AVAILABLE_IDS = [...TOPBAR_LEFT_AVAILABLE_IDS, ...TOPBAR_RIGHT_AVAILABLE_IDS]
 const DEFAULT_TOPBAR_LEFT_ITEM_IDS = ['enterprise', 'date']
-const DEFAULT_TOPBAR_RIGHT_ITEM_IDS = ['dashboard-customize', 'add-widget', 'theme', 'notifications', 'profile']
+const DEFAULT_TOPBAR_RIGHT_ITEM_IDS = ['dashboard-customize', 'theme', 'notifications', 'profile']
 
 function DashboardNavItem({ item, isActive, tabState, onSelect }) {
   const Icon = item.icon
@@ -372,13 +372,14 @@ export default function DashboardExperience({
   const defaultTopbarLeftItemIds = DEFAULT_TOPBAR_LEFT_ITEM_IDS
   const defaultTopbarRightItemIds = DEFAULT_TOPBAR_RIGHT_ITEM_IDS
   const layoutOwnerKey = `${admin?.id || 'preview'}:${admin?.selectedEnterprise?.id || admin?.enterprise_id || 'all'}`
-  const topbarLeftStorageKey = `encheck_dashboard_topbar_left_v1:${layoutOwnerKey}`
-  const topbarRightStorageKey = `encheck_dashboard_topbar_right_v1:${layoutOwnerKey}`
+  const topbarLeftStorageKey = `encheck_dashboard_topbar_left_v2:${layoutOwnerKey}`
+  const topbarRightStorageKey = `encheck_dashboard_topbar_right_v2:${layoutOwnerKey}`
   const [topbarLeftItemIds, setTopbarLeftItemIds] = useState(() => readDashboardLayoutIds(topbarLeftStorageKey, topbarLeftAvailableIds, defaultTopbarLeftItemIds, true))
   const [topbarRightItemIds, setTopbarRightItemIds] = useState(() => readDashboardLayoutIds(topbarRightStorageKey, topbarRightAvailableIds, defaultTopbarRightItemIds, true))
   const [isTopbarCustomizing, setIsTopbarCustomizing] = useState(false)
   const [isTopbarCatalogOpen, setIsTopbarCatalogOpen] = useState(false)
   const [draggedTopbarItemId, setDraggedTopbarItemId] = useState(null)
+  const [activityFilter, setActivityFilter] = useState('all')
 
   const availableQuickActionIds = quickActionCatalog.map((action) => action.id)
   const defaultQuickActionIds = ['add-employee', 'attendance', 'planning', 'reports'].filter((id) => availableQuickActionIds.includes(id))
@@ -633,7 +634,7 @@ export default function DashboardExperience({
             <EnCheckBrandMark className="sidebar-brand-mark" size={42} />
             <div className="sidebar-brand-copy">
               <span className="sidebar-brand-wordmark">En-Check</span>
-              <span className="sidebar-brand-tagline">Des équipes qui avancent</span>
+              <span className="sidebar-brand-tagline">On gère !</span>
             </div>
           </div>
 
@@ -727,6 +728,15 @@ export default function DashboardExperience({
                     : 'Glisse une poignée pour réorganiser les cartes, ou personnalise l’en-tête.'}
                 </span>
                 <div className="dashboard-customize-hint-actions">
+                  <button
+                    type="button"
+                    onClick={() => setIsWidgetCatalogOpen(true)}
+                    aria-haspopup="dialog"
+                    aria-expanded={isWidgetCatalogOpen}
+                  >
+                    <Plus size={13} />
+                    <span>Ajouter un widget</span>
+                  </button>
                   <button
                     type="button"
                     className={`dashboard-customize-header-button${isTopbarCustomizing ? ' is-active' : ''}`}
@@ -966,11 +976,33 @@ export default function DashboardExperience({
                     <span className="dashboard-panel-icon"><Activity size={16} /></span>
                     <div><h2 className="dashboard-panel-title">Activité récente</h2><p className="dashboard-panel-subtitle">Les derniers mouvements enregistrés.</p></div>
                   </div>
-                  <button type="button" className="dashboard-panel-link" onClick={() => navigate('/pointages')}>Pointages <ArrowRight size={13} /></button>
+                  <div className="dashboard-panel-actions">
+                    <div className="dashboard-activity-filters" role="group" aria-label="Filtrer l’activité">
+                      {[
+                        { id: 'all', label: 'Tous' },
+                        { id: 'in', label: 'Entrées' },
+                        { id: 'out', label: 'Sorties' },
+                      ].map((filter) => (
+                        <button
+                          type="button"
+                          key={filter.id}
+                          className={`dashboard-activity-filter${activityFilter === filter.id ? ' is-active' : ''}`}
+                          onClick={() => setActivityFilter(filter.id)}
+                          aria-pressed={activityFilter === filter.id}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button type="button" className="dashboard-panel-link" onClick={() => navigate('/pointages')}>Pointages <ArrowRight size={13} /></button>
+                  </div>
                 </div>
-                {recentActivity.length > 0 ? (
+                {recentActivity.filter((item) => activityFilter === 'all' || String(item.type || '').toLowerCase() === activityFilter).length > 0 ? (
                   <div className="dashboard-activity-list">
-                    {recentActivity.slice(0, 5).map((item) => {
+                    {recentActivity
+                      .filter((item) => activityFilter === 'all' || String(item.type || '').toLowerCase() === activityFilter)
+                      .slice(0, 5)
+                      .map((item) => {
                       const isEntry = String(item.type || '').toLowerCase() === 'in'
                       const Icon = isEntry ? UserCheck : LogOut
                       return (

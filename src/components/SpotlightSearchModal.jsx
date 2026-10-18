@@ -1,7 +1,8 @@
 // src/components/SpotlightSearchModal.jsx
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Footprints, Sparkles } from 'lucide-react'
+import { X, Sparkles } from 'lucide-react'
+import EnCheckBrandMark from './EnCheckBrandMark'
 import { useNavigate } from 'react-router-dom'
 import SearchBar from './SpotlightSearch/SearchBar'
 import SearchResults from './SpotlightSearch/SearchResults'
@@ -144,7 +145,7 @@ export default function SpotlightSearchModal({ admin, onClose, isOpen }) {
         {/* Header simplifié */}
         <div className="spotlight-modal-header-compact">
           <div className="spotlight-modal-logo-compact">
-            <Footprints size={24} color="#F59E0B" />
+            <EnCheckBrandMark size={26} loading={loading} />
             <span>EN-CHECK</span>
           </div>
 
@@ -214,7 +215,7 @@ export default function SpotlightSearchModal({ admin, onClose, isOpen }) {
         {/* Message multi-entreprise */}
         {!canSearch && (
           <div className="spotlight-modal-warning">
-            <Footprints size={32} color="#F59E0B" />
+            <EnCheckBrandMark size={34} loading={loading} />
             <p>Sélectionnez une entreprise pour rechercher</p>
           </div>
         )}

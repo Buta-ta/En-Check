@@ -3,7 +3,8 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Footprints } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import EnCheckBrandMark from './EnCheckBrandMark'
 
 export default function PageHeader({ title, subtitle, showBackButton = true }) {
   const navigate = useNavigate()
@@ -116,7 +117,7 @@ export default function PageHeader({ title, subtitle, showBackButton = true }) {
           )}
           
           <div className="afro-logo-mark">
-            <Footprints size={20} color="#F59E0B" />
+            <EnCheckBrandMark size={28} />
           </div>
           
           <div className="afro-title-block">

@@ -6,11 +6,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import {
-  Footprints, User, Lock, LogIn, Eye, EyeOff,
+  User, Lock, LogIn, Eye, EyeOff,
   Zap, Shield, AlertTriangle, Clock
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ConnectionLogService from '../services/connectionLogService'
+import EnCheckBrandMark from '../components/EnCheckBrandMark'
 
 // ═══════════════════════════════════════════════════════════
 // 🔒 CONSTANTES DE SÉCURITÉ
@@ -653,7 +654,7 @@ export default function Login() {
                   : 'borderGlow 3s ease-in-out infinite',
               }}></div>
               <div style={styles.logoInner}>
-                <Footprints size={36} color={blockState.blocked ? '#EF4444' : '#F59E0B'} />
+                <EnCheckBrandMark size={54} loading={loading} />
               </div>
             </div>
 
@@ -661,7 +662,7 @@ export default function Login() {
               <h1 style={styles.title}>EN-CHECK</h1>
               <div style={styles.subtitleRow}>
                 <div style={styles.subtitleLine}></div>
-                <span style={styles.subtitle}>ADMINISTRATION</span>
+                <span style={styles.subtitle}>ON GÈRE ! · ADMINISTRATION</span>
                 <div style={styles.subtitleLine}></div>
               </div>
             </div>
@@ -831,8 +832,8 @@ export default function Login() {
         </div>
 
         <div style={styles.bottomBrand}>
-          <Footprints size={12} color="rgba(245,158,11,0.4)" />
-          <span>EN-CHECK v2.0</span>
+          <EnCheckBrandMark size={16} />
+          <span>EN-CHECK · On gère !</span>
         </div>
       </div>
     </>

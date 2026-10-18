@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { getActiveTimezone, getPartsLocaux, libelleFuseau } from '../utils/timezoneUtils'
 import { useNavigate } from 'react-router-dom'
-import { Footprints, ArrowRight, LogOut, LayoutDashboard, Menu, X } from 'lucide-react'
+import { ArrowRight, LogOut, LayoutDashboard, Menu, X } from 'lucide-react'
+import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import { supabase } from '../lib/supabase'
 
 import SearchBar from '../components/SpotlightSearch/SearchBar'
@@ -607,10 +608,10 @@ useEffect(() => {
           <header className="spotlight-header">
             <div className="spotlight-logo-container">
               <div className="spotlight-logo-icon">
-                <Footprints size={60} className="spotlight-logo-footprints" />
+                <EnCheckBrandMark size={64} loading={loading} className="spotlight-logo-footprints" />
               </div>
               <h1 className="spotlight-logo-text">EN-CHECK</h1>
-              <p className="spotlight-logo-subtitle">Intelligence Hub</p>
+              <p className="spotlight-logo-subtitle">On gère ! • Intelligence Hub</p>
             </div>
 
             <div className="spotlight-clock">
@@ -703,8 +704,8 @@ useEffect(() => {
           <footer className="spotlight-footer">
             <div className="spotlight-footer-line" />
             <p className="spotlight-footer-text">
-              <Footprints size={14} />
-              EN-CHECK • Intelligence Hub
+              <EnCheckBrandMark size={16} />
+              EN-CHECK • On gère !
             </p>
           </footer>
         </div>
