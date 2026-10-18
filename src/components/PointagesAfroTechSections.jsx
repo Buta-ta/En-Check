@@ -1,5 +1,7 @@
+import { useMemo } from 'react'
 import {
   AlertTriangle,
+  ArrowLeft,
   Camera,
   CheckCircle2,
   Edit,
@@ -7,13 +9,26 @@ import {
   MapPin,
   MessageCircle,
   QrCode,
+  ScanFace,
   Smartphone,
   X,
 } from 'lucide-react'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
+import {
+  CulturalPresenceSvg,
+  CulturalProofSvg,
+  CulturalShieldSvg,
+  CulturalTimeDrumSvg,
+  KenteFriezeSvg,
+} from './AfroCulturalSvg'
 import { estEstimationAStatuer } from '../services/seuilsPointage'
-import { formaterDureeComplete, formaterHeureLocale, minutesDepuisMinuit } from '../utils/timezoneUtils'
+import {
+  formaterDureeComplete,
+  formaterHeureLocale,
+  getHeuresMinutesLocales,
+  minutesDepuisMinuit,
+} from '../utils/timezoneUtils'
 import '../pages/PointagesAfroTech.css'
 
 const isLatePointage = (p) => {
@@ -37,65 +52,423 @@ export function PointagesCulturalHero({
   canEditPointages,
   anomaliesCount = 0,
   criticalAnomaliesCount = 0,
+  onBackDashboard,
   onToggleAlerts,
   onShareWhatsApp,
 }) {
   return (
-    <section className="pointages-cultural-hero" aria-label="Bandeau Pointages En-Check">
-      <div className="pointages-cultural-brand">
-        <EnCheckBrandMark size={44} />
-        <div className="pointages-cultural-copy">
-          <strong>En-Check · Pointages</strong>
-          <span>On gère ! · Passeport de présence & preuves terrain</span>
+    <header className="pointages-cultural-hero" aria-label="En-tête Pointages En-Check">
+      <KenteFriezeSvg className="pointages-hero-frieze" />
+      <div className="pointages-cultural-hero-row">
+        <div className="pointages-cultural-brand">
+          {onBackDashboard && (
+            <button
+              type="button"
+              className="pointages-back-dashboard-btn"
+              onClick={onBackDashboard}
+              title="Retour au Dashboard"
+              aria-label="Retour au Dashboard"
+            >
+              <ArrowLeft size={17} />
+            </button>
+          )}
+          <EnCheckBrandMark size={44} />
+          <div className="pointages-cultural-copy">
+            <strong>En-Check · Pointages</strong>
+            <span>On gère ! · Analyse & journal de présence</span>
+          </div>
+        </div>
+
+        <div className="pointages-cultural-right">
+          <span className="pointages-cultural-date">{formattedDate}</span>
+
+          {!checkingPermissions && (
+            <span
+              className="pointages-cultural-date"
+              style={{
+                color: canEditPointages ? 'var(--pt-good)' : 'var(--pt-copper)',
+                borderColor: canEditPointages ? 'rgba(38,115,77,0.28)' : 'rgba(184,107,53,0.28)',
+              }}
+            >
+              {canEditPointages ? (
+                <>
+                  <Edit size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                  Modif. ON
+                </>
+              ) : (
+                <>
+                  <Lock size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                  Lecture
+                </>
+              )}
+            </span>
+          )}
+
+          {anomaliesCount > 0 && (
+            <button
+              type="button"
+              className="pointages-cultural-date"
+              onClick={onToggleAlerts}
+              style={{
+                cursor: 'pointer',
+                color: criticalAnomaliesCount > 0 ? 'var(--pt-danger)' : 'var(--pt-amber)',
+                borderColor: criticalAnomaliesCount > 0 ? 'rgba(194,59,43,0.32)' : 'rgba(201,122,22,0.32)',
+              }}
+            >
+              <AlertTriangle size={12} style={{ verticalAlign: 'middle', marginRight: 5 }} />
+              {anomaliesCount} alerte{anomaliesCount > 1 ? 's' : ''}
+            </button>
+          )}
+
+          <button type="button" className="pointages-whatsapp-btn" onClick={onShareWhatsApp}>
+            <MessageCircle size={14} />
+            <span>Partager sur WhatsApp</span>
+          </button>
         </div>
       </div>
+    </header>
+  )
+}
 
-      <div className="pointages-cultural-right">
-        <span className="pointages-cultural-date">{formattedDate}</span>
+export function PointagesExecutiveKpis({
+  stats = {},
+  pointages = [],
+  filterStatus = 'tous',
+  filterPhotos = 'all',
+  onUpdateFilter,
+  onToggleAlerts,
+}) {
+  const total = Number(stats.total) || pointages.length || 0
+  const presents = Number(stats.presents) || 0
+  const absents = Number(stats.absents) || 0
+  const conges = Number(stats.en_conge) || 0
+  const conflits = Number(stats.conflits) || 0
+  const avecPhoto = Number(stats.avecPhoto) || 0
+  const avecGPS = Number(stats.avecGPS) || 0
 
-        {!checkingPermissions && (
-          <span
-            className="pointages-cultural-date"
-            style={{
-              color: canEditPointages ? '#26734d' : '#b86b35',
-              borderColor: canEditPointages ? 'rgba(38,115,77,0.28)' : 'rgba(184,107,53,0.28)',
-            }}
-          >
-            {canEditPointages ? (
-              <>
-                <Edit size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-                Modif. ON
-              </>
-            ) : (
-              <>
-                <Lock size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-                Lecture
-              </>
-            )}
-          </span>
-        )}
+  const lateCount = useMemo(
+    () => pointages.filter((p) => isLatePointage(p)).length,
+    [pointages]
+  )
+  const presumedCount = useMemo(
+    () => pointages.filter((p) => p.lastOut && estEstimationAStatuer(p.lastOut)).length,
+    [pointages]
+  )
 
-        {anomaliesCount > 0 && (
+  const presenceRate = total > 0 ? Math.round((presents / total) * 100) : 0
+  const onTimeCount = Math.max(0, presents - lateCount)
+  const punctualityRate = presents > 0 ? Math.round((onTimeCount / presents) * 100) : 100
+  const reviewTotal = presumedCount + conflits
+  const proofCount = Math.max(avecPhoto, avecGPS, presents)
+  const proofRate = presents > 0 ? Math.min(100, Math.round(((avecPhoto + avecGPS) / (presents * 2)) * 100)) : 0
+
+  const cards = [
+    {
+      id: 'presence',
+      title: '1. Pointages du jour',
+      value: `${presents} / ${total}`,
+      badge: `${presenceRate}% présents`,
+      subtitle: `${absents} absent${absents > 1 ? 's' : ''} · ${conges} en congé`,
+      progress: presenceRate,
+      tone: 'good',
+      active: filterStatus === 'present',
+      onClick: () => onUpdateFilter && onUpdateFilter('status', filterStatus === 'present' ? 'tous' : 'present'),
+      IconSvg: CulturalPresenceSvg,
+      sparkPoints: '4,22 18,18 32,19 46,13 60,10 74,6 88,4',
+    },
+    {
+      id: 'punctuality',
+      title: '2. Ponctualité & Retards',
+      value: String(lateCount).padStart(2, '0'),
+      badge: `${punctualityRate}% à l’heure`,
+      subtitle: `${onTimeCount} arrivée${onTimeCount > 1 ? 's' : ''} à l’heure aujourd’hui`,
+      progress: punctualityRate,
+      tone: 'amber',
+      active: false,
+      onClick: () => onUpdateFilter && onUpdateFilter('status', 'present'),
+      IconSvg: CulturalTimeDrumSvg,
+      sparkPoints: '4,16 18,14 32,18 46,12 60,15 74,9 88,8',
+    },
+    {
+      id: 'review',
+      title: '3. Sorties & Conflits',
+      value: String(reviewTotal).padStart(2, '0'),
+      badge: reviewTotal > 0 ? 'À statuer' : 'Tout validé',
+      subtitle: `${presumedCount} sortie${presumedCount > 1 ? 's' : ''} présumée${presumedCount > 1 ? 's' : ''} · ${conflits} conflit${conflits > 1 ? 's' : ''}`,
+      progress: total > 0 ? Math.min(100, Math.round((reviewTotal / total) * 100)) : 0,
+      tone: reviewTotal > 0 ? 'danger' : 'good',
+      active: filterStatus === 'conflit_absence_pointage',
+      onClick: () => {
+        if (conflits > 0 && onUpdateFilter) {
+          onUpdateFilter('status', filterStatus === 'conflit_absence_pointage' ? 'tous' : 'conflit_absence_pointage')
+        } else if (onToggleAlerts) {
+          onToggleAlerts()
+        }
+      },
+      IconSvg: CulturalShieldSvg,
+      sparkPoints: '4,20 18,19 32,14 46,16 60,11 74,13 88,10',
+    },
+    {
+      id: 'proofs',
+      title: '4. Preuves Tech & Terrain',
+      value: String(proofCount).padStart(2, '0'),
+      badge: `${avecPhoto} photos · ${avecGPS} GPS`,
+      subtitle: 'Code PIN, QR Code, Photo signée & GPS',
+      progress: Math.max(24, proofRate),
+      tone: 'copper',
+      active: filterPhotos === 'with',
+      onClick: () => onUpdateFilter && onUpdateFilter('photos', filterPhotos === 'with' ? 'all' : 'with'),
+      IconSvg: CulturalProofSvg,
+      sparkPoints: '4,21 18,17 32,15 46,12 60,9 74,7 88,5',
+    },
+  ]
+
+  return (
+    <section className="pointages-kpi-grid" aria-label="Indicateurs clés des pointages">
+      {cards.map((card) => {
+        const IconSvg = card.IconSvg
+        return (
           <button
             type="button"
-            className="pointages-cultural-date"
-            onClick={onToggleAlerts}
-            style={{
-              cursor: 'pointer',
-              color: criticalAnomaliesCount > 0 ? '#c23b2b' : '#c97a16',
-              borderColor: criticalAnomaliesCount > 0 ? 'rgba(194,59,43,0.32)' : 'rgba(201,122,22,0.32)',
-            }}
+            key={card.id}
+            className={`pointages-kpi-card is-${card.tone}${card.active ? ' is-active' : ''}`}
+            onClick={card.onClick}
           >
-            <AlertTriangle size={12} style={{ verticalAlign: 'middle', marginRight: 5 }} />
-            {anomaliesCount} alerte{anomaliesCount > 1 ? 's' : ''}
-          </button>
-        )}
+            <div className="pointages-kpi-top">
+              <span className="pointages-kpi-title">{card.title}</span>
+              <span className="pointages-kpi-icon">
+                <IconSvg size={21} />
+              </span>
+            </div>
 
-        <button type="button" className="pointages-whatsapp-btn" onClick={onShareWhatsApp}>
-          <MessageCircle size={14} />
-          <span>Partager sur WhatsApp</span>
-        </button>
-      </div>
+            <div className="pointages-kpi-main">
+              <div>
+                <strong className="pointages-kpi-value">{card.value}</strong>
+                <span className="pointages-kpi-badge">{card.badge}</span>
+              </div>
+              <svg className="pointages-kpi-sparkline" viewBox="0 0 92 26" fill="none" aria-hidden="true">
+                <polyline
+                  points={card.sparkPoints}
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+
+            <div className="pointages-kpi-progress" aria-hidden="true">
+              <span style={{ width: `${Math.max(6, Math.min(100, card.progress))}%` }} />
+            </div>
+
+            <span className="pointages-kpi-subtitle">{card.subtitle}</span>
+          </button>
+        )
+      })}
+    </section>
+  )
+}
+
+export function PointagesAnalyticsCharts({ pointages = [], stats = {} }) {
+  const hourlyBuckets = useMemo(() => {
+    const hours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    const map = new Map(hours.map((h) => [h, { hour: h, label: `${String(h).padStart(2, '0')}h`, inCount: 0, outCount: 0 }]))
+
+    for (const p of pointages) {
+      for (const att of p.attendances || []) {
+        if (!att?.check_time) continue
+        const hm = getHeuresMinutesLocales(att.check_time)
+        const h = hm ? hm.heures : new Date(att.check_time).getHours()
+        const clamped = Math.max(6, Math.min(20, h))
+        const bucket = map.get(clamped)
+        if (!bucket) continue
+        if (String(att.check_type || '').toLowerCase() === 'in') bucket.inCount += 1
+        else bucket.outCount += 1
+      }
+    }
+
+    return [...map.values()]
+  }, [pointages])
+
+  const maxHourly = useMemo(
+    () => Math.max(4, ...hourlyBuckets.map((b) => Math.max(b.inCount, b.outCount))),
+    [hourlyBuckets]
+  )
+
+  const peakHour = useMemo(() => {
+    let best = hourlyBuckets[2] || { label: '08h', inCount: 0 }
+    for (const b of hourlyBuckets) {
+      if (b.inCount > best.inCount) best = b
+    }
+    return best
+  }, [hourlyBuckets])
+
+  const methodStats = useMemo(() => {
+    let pinCount = 0
+    let qrCount = 0
+    let photoCount = 0
+    let gpsCount = 0
+    let faceCount = 0
+
+    for (const p of pointages) {
+      if (p.status !== 'present' && p.status !== 'conflit_absence_pointage') continue
+      const m = String(p.firstIn?.method || '').toLowerCase()
+      if (m.includes('qr')) qrCount += 1
+      else pinCount += 1
+      if (p.hasPhoto) photoCount += 1
+      if (p.hasGPS) gpsCount += 1
+      if (p.hasFaceRecognition) faceCount += 1
+    }
+
+    const base = Math.max(1, Number(stats.presents) || pinCount + qrCount || 1)
+    return [
+      { id: 'pin', label: 'Code PIN / Poste', count: pinCount, pct: Math.min(100, Math.round((pinCount / base) * 100)), color: '#B86B35', Icon: Smartphone },
+      { id: 'qr', label: 'Scan QR Code', count: qrCount, pct: Math.min(100, Math.round((qrCount / base) * 100)), color: '#26734D', Icon: QrCode },
+      { id: 'photo', label: 'Photo vérifiée', count: photoCount, pct: Math.min(100, Math.round((photoCount / base) * 100)), color: '#D4AF37', Icon: Camera },
+      { id: 'gps', label: 'GPS validé', count: gpsCount, pct: Math.min(100, Math.round((gpsCount / base) * 100)), color: '#3D2B1F', Icon: MapPin },
+      { id: 'face', label: 'Reco faciale', count: faceCount, pct: Math.min(100, Math.round((faceCount / base) * 100)), color: '#7C5CFC', Icon: ScanFace },
+    ]
+  }, [pointages, stats.presents])
+
+  const totalTeam = Math.max(1, Number(stats.total) || pointages.length || 1)
+  const presentShare = Math.round(((Number(stats.presents) || 0) / totalTeam) * 100)
+  const circumference = 2 * Math.PI * 36
+  const presentStroke = (presentShare / 100) * circumference
+
+  return (
+    <section className="pointages-charts-grid" aria-label="Graphiques d’analyse des pointages">
+      {/* CHART 1: FLUX HORAIRE */}
+      <article className="pointages-chart-card">
+        <div className="pointages-chart-header">
+          <div>
+            <h3>Flux horaire des Arrivées & Sorties</h3>
+            <p>Répartition des pointages enregistrés entre 06h et 20h</p>
+          </div>
+          <div className="pointages-chart-legend">
+            <span className="is-in">● Entrées (pic : {peakHour.label})</span>
+            <span className="is-out">● Sorties</span>
+          </div>
+        </div>
+
+        <div className="pointages-hourly-chart">
+          <svg viewBox="0 0 540 165" className="pointages-hourly-svg" role="img" aria-label="Histogramme horaire des entrées et sorties">
+            {[0, 0.5, 1].map((ratio, idx) => {
+              const y = 20 + ratio * 112
+              return (
+                <line
+                  key={idx}
+                  x1="16"
+                  y1={y}
+                  x2="524"
+                  y2={y}
+                  stroke="currentColor"
+                  strokeOpacity="0.1"
+                  strokeDasharray="3 3"
+                />
+              )
+            })}
+
+            {hourlyBuckets.map((b, idx) => {
+              const slotWidth = 508 / hourlyBuckets.length
+              const xCenter = 16 + idx * slotWidth + slotWidth / 2
+              const inHeight = Math.max(3, (b.inCount / maxHourly) * 108)
+              const outHeight = Math.max(3, (b.outCount / maxHourly) * 108)
+              const baseLine = 132
+
+              return (
+                <g key={b.hour}>
+                  <rect
+                    x={xCenter - 8}
+                    y={baseLine - inHeight}
+                    width="7"
+                    height={inHeight}
+                    rx="3.5"
+                    fill="#26734D"
+                  >
+                    <title>{`${b.label} · ${b.inCount} entrée(s)`}</title>
+                  </rect>
+                  <rect
+                    x={xCenter + 1}
+                    y={baseLine - outHeight}
+                    width="7"
+                    height={outHeight}
+                    rx="3.5"
+                    fill="#B86B35"
+                  >
+                    <title>{`${b.label} · ${b.outCount} sortie(s)`}</title>
+                  </rect>
+                  {idx % 2 === 0 && (
+                    <text
+                      x={xCenter}
+                      y="152"
+                      textAnchor="middle"
+                      fontSize="10"
+                      fontWeight="700"
+                      fill="currentColor"
+                      opacity="0.68"
+                    >
+                      {b.label}
+                    </text>
+                  )}
+                </g>
+              )
+            })}
+          </svg>
+        </div>
+      </article>
+
+      {/* CHART 2: DONUT + MÉTHODES DE VÉRIFICATION */}
+      <article className="pointages-chart-card">
+        <div className="pointages-chart-header">
+          <div>
+            <h3>Méthodes & Preuves de Pointage</h3>
+            <p>Canaux d’authentification utilisés aujourd’hui</p>
+          </div>
+        </div>
+
+        <div className="pointages-methods-layout">
+          <div className="pointages-donut-wrap">
+            <svg viewBox="0 0 100 100" className="pointages-donut-svg" aria-hidden="true">
+              <circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" strokeOpacity="0.12" strokeWidth="10" />
+              <circle
+                cx="50"
+                cy="50"
+                r="36"
+                fill="none"
+                stroke="#26734D"
+                strokeWidth="10"
+                strokeLinecap="round"
+                strokeDasharray={`${presentStroke} ${circumference}`}
+                transform="rotate(-90 50 50)"
+              />
+            </svg>
+            <div className="pointages-donut-center">
+              <strong>{presentShare}%</strong>
+              <span>Présence</span>
+            </div>
+          </div>
+
+          <div className="pointages-methods-bars">
+            {methodStats.map((m) => {
+              const Icon = m.Icon
+              return (
+                <div className="pointages-method-row" key={m.id}>
+                  <div className="pointages-method-label">
+                    <span>
+                      <Icon size={12} style={{ verticalAlign: 'middle', marginRight: 5 }} />
+                      {m.label}
+                    </span>
+                    <strong>{m.count} ({m.pct}%)</strong>
+                  </div>
+                  <div className="pointages-method-track">
+                    <span style={{ width: `${Math.max(6, m.pct)}%`, background: m.color }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </article>
     </section>
   )
 }
@@ -112,7 +485,7 @@ export function PointagesLivePulseRibbon({
       <div className="pointages-live-pulse-header">
         <span className="pointages-live-pulse-title">
           <span className="pointages-live-pulse-dot" />
-          Live Pulse · Équipe du jour
+          Live Pulse · Équipe du jour ({pointages.length})
         </span>
         <div className="pointages-live-pulse-legend">
           <span style={{ color: 'var(--pt-good)' }}>● À l’heure</span>
