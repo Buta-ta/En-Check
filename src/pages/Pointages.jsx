@@ -48,6 +48,7 @@ import PhotoSignee from '../components/PhotoSignee'
 import FeatureService, { FEATURES } from '../services/featureService'
 import HolidayService from '../services/holidayService'
 import { resoudrePointagesJournee } from '../services/hoursCalculator'
+import { construirePauses } from '../services/pausesService'
 import { useTheme } from '../contexts/ThemeContext'
 import PointagesLoadingScreen from '../components/PointagesLoadingScreen'
 import {
@@ -946,7 +947,7 @@ export default function Pointages() {
 
       let employeesQuery = supabase
         .from('employees')
-        .select('*, enterprises(name, auto_close_enabled, auto_close_time, auto_close_grace_minutes)')
+        .select('*, enterprises(name, module_planning, auto_close_enabled, auto_close_time, auto_close_grace_minutes)')
         .eq('is_active', true)
       if (targetEid !== 'all') employeesQuery = employeesQuery.eq('enterprise_id', targetEid)
       const { data: employees, error: empError } = await employeesQuery
@@ -1029,16 +1030,31 @@ export default function Pointages() {
         ? [targetEid]
         : [...new Set(employees?.map(e => e.enterprise_id).filter(Boolean) || [])]
 
-      const [allSchedules, { data: empSchedulesData }] = await Promise.all([
+      const [allSchedules, { data: empSchedulesData }, pausesRpcRes] = await Promise.all([
         FeatureService.loadSchedules(enterpriseIds),
         supabase
           .from('employee_schedules')
           .select('*, work_schedules(*)')
           .eq('is_active', true),
+        supabase
+          .rpc('encheck_pauses_lire', {
+            p_enterprise: targetEid === 'all' ? null : targetEid,
+            p_du: selectedDate,
+            p_au: selectedDate,
+          })
+          .then((res) => res)
+          .catch(() => ({ data: [] })),
       ])
       const employeeSchedulesMap = {}
       ;(empSchedulesData || []).forEach(es => {
         if (es.employee_id) employeeSchedulesMap[es.employee_id] = es
+      })
+      const pausesByEmployee = {}
+      const parsedPauses = construirePauses(pausesRpcRes?.data || []).paies || []
+      parsedPauses.forEach((pa) => {
+        if (!pa.employe_id) return
+        if (!pausesByEmployee[pa.employe_id]) pausesByEmployee[pa.employe_id] = []
+        pausesByEmployee[pa.employe_id].push(pa)
       })
 
       const holidaySets = {}
@@ -1123,8 +1139,79 @@ export default function Pointages() {
 
         const hasPhoto = empAttendances.some(a => a.pointages_photos?.length > 0)
         const hasFaceRecognition = empAttendances.some(
-          a => a.method === 'face' || a.method === 'pin_face'
+          a => a.method === 'face' || a.method === 'pin_face' || a.face_verified === true || a.face_score != null
         )
+        const gpsAtt = empAttendances.find(a => a.location_lat != null && a.location_lng != null)
+        const hasGPS = Boolean(gpsAtt)
+        const gpsDetails = gpsAtt
+          ? {
+              lat: Number(gpsAtt.location_lat),
+              lng: Number(gpsAtt.location_lng),
+              accuracy: gpsAtt.gps_accuracy != null ? Math.round(Number(gpsAtt.gps_accuracy)) : null,
+              isWithinZone: gpsAtt.is_within_zone,
+              distanceMeters: gpsAtt.distance_meters != null ? Math.round(Number(gpsAtt.distance_meters)) : null,
+            }
+          : null
+        const faceAtt = empAttendances.find(
+          a => a.method === 'face' || a.method === 'pin_face' || a.face_verified != null || a.face_score != null
+        )
+        const faceDetails = faceAtt
+          ? {
+              score: faceAtt.face_score != null ? Number(faceAtt.face_score) : null,
+              verified: Boolean(faceAtt.face_verified ?? true),
+              livenessPassed: faceAtt.liveness_passed,
+              attempts: faceAtt.face_attempts,
+            }
+          : null
+
+        const empSched = employeeSchedulesMap[employee.id] || null
+        const planningEnabledOnEnterprise = employee.enterprises?.module_planning !== false
+        let scheduleInfo
+        if (empSched && (empSched.use_custom_hours || empSched.work_schedules)) {
+          const startRaw = empSched.use_custom_hours ? empSched.custom_start_time : empSched.work_schedules?.start_time
+          const endRaw = empSched.use_custom_hours ? empSched.custom_end_time : empSched.work_schedules?.end_time
+          const hasBreak = empSched.use_custom_hours ? Boolean(empSched.custom_has_break) : Boolean(empSched.work_schedules?.has_break)
+          const breakStart = empSched.use_custom_hours ? empSched.custom_break_start : empSched.work_schedules?.break_start
+          const breakEnd = empSched.use_custom_hours ? empSched.custom_break_end : empSched.work_schedules?.break_end
+          scheduleInfo = {
+            mode: 'personal',
+            label: empSched.work_schedules?.name && !empSched.use_custom_hours
+              ? `Planning perso · ${empSched.work_schedules.name}`
+              : 'Planning personnalisé',
+            startTime: startRaw ? String(startRaw).slice(0, 5) : '08:00',
+            endTime: endRaw ? String(endRaw).slice(0, 5) : '18:00',
+            hasBreak,
+            breakStart: breakStart ? String(breakStart).slice(0, 5) : null,
+            breakEnd: breakEnd ? String(breakEnd).slice(0, 5) : null,
+            toleranceMinutes: Number(empSched.work_schedules?.late_tolerance_minutes || 0),
+          }
+        } else if (planningEnabledOnEnterprise && defaultSchedule) {
+          scheduleInfo = {
+            mode: 'enterprise',
+            label: defaultSchedule.name ? `Planning général · ${defaultSchedule.name}` : 'Planning général entreprise',
+            startTime: defaultSchedule.start_time ? String(defaultSchedule.start_time).slice(0, 5) : '08:00',
+            endTime: defaultSchedule.end_time ? String(defaultSchedule.end_time).slice(0, 5) : '18:00',
+            hasBreak: Boolean(defaultSchedule.has_break),
+            breakStart: defaultSchedule.break_start ? String(defaultSchedule.break_start).slice(0, 5) : null,
+            breakEnd: defaultSchedule.break_end ? String(defaultSchedule.break_end).slice(0, 5) : null,
+            toleranceMinutes: Number(defaultSchedule.late_tolerance_minutes || 0),
+          }
+        } else {
+          scheduleInfo = {
+            mode: 'none',
+            label: employee.enterprises?.module_planning === false
+              ? 'Sans option planning · Horaire libre'
+              : 'Horaire libre (sans planning)',
+            startTime: null,
+            endTime: null,
+            hasBreak: false,
+            breakStart: null,
+            breakEnd: null,
+            toleranceMinutes: 0,
+          }
+        }
+
+        const employeePauses = pausesByEmployee[employee.id] || []
 
         // Règle anti-fraude : aucune heure supplémentaire automatique sur un oubli de dépointage (Auto-Close)
         let overtimeData = null
@@ -1144,6 +1231,7 @@ export default function Pointages() {
           employee, firstIn, lastOut, totalSecondes, status,
           totalSecondesPresumes, nuitRattachee, estimationEcartee,
           absenceReason, attendances: empAttendances, hasPhoto,
+          hasGPS, gpsDetails, faceDetails, scheduleInfo, pauses: employeePauses,
           conflictData, employeeAbsence, overtimeData,
           hasFaceRecognition, isHolidayToday, holidayToday, validPairs,
           reglagesEnSecours: seuilsByEnterprise[employee.enterprise_id]?.chargement === 'secours',
@@ -1603,6 +1691,7 @@ export default function Pointages() {
           <PointagesExecutiveKpis
             stats={stats}
             pointages={state.pointages}
+            selectedDate={selectedDate}
             filterStatus={filterStatus}
             filterPhotos={filterPhotos}
             onUpdateFilter={updateFilter}
@@ -1617,6 +1706,7 @@ export default function Pointages() {
 
           <PointagesLivePulseRibbon
             pointages={filteredAndSortedPointages}
+            selectedDate={selectedDate}
             selectedEmployeeId={inspectedPointage?.employee?.id || null}
             onSelectPointage={(p) => setInspectedPointage(p)}
           />
@@ -1663,6 +1753,7 @@ export default function Pointages() {
           {/* ═══ PASSEPORT DE PRÉSENCE (AFRO-TECH) ═══ */}
           <PointagesPassportGrid
             pointages={filteredAndSortedPointages}
+            selectedDate={selectedDate}
             selectedEmployeeId={inspectedPointage?.employee?.id || null}
             onSelectPointage={(p) => setInspectedPointage(p)}
           />
