@@ -63,6 +63,11 @@ import Predictions from './pages/Predictions'
 import PushNotifications from './pages/PushNotifications'
 import SpotlightSearch from './pages/SpotlightSearch'
 
+// La page de démo est disponible en local et sur les déploiements Vercel Preview,
+// mais jamais dans le site de production.
+const isVercelPreview = import.meta.env.VITE_VERCEL_ENV === 'preview'
+const canShowDashboardPreview = import.meta.env.DEV || isVercelPreview
+
 // ═══════════════════════════════════════════════════════════
 // 🔐 COMPOSANT DE PROTECTION DES ROUTES ADMIN (VD-14 / Constat V5)
 // ═══════════════════════════════════════════════════════════
@@ -224,12 +229,12 @@ function App() {
         <SessionListener />
         <VerrouOptions>
         <Routes>
-          {import.meta.env.DEV && (
+          {canShowDashboardPreview && (
             <Route path="/dashboard-preview" element={<DashboardDesignPreview />} />
           )}
 
-          {/* ═══ LANDING PAGE ═══ */}
-          <Route path="/" element={<LandingPage />} />
+          {/* Le lien Vercel Preview ouvre directement la démo; la production garde l'accueil public. */}
+          <Route path="/" element={isVercelPreview ? <DashboardDesignPreview /> : <LandingPage />} />
 
           {/* ═══ AUTH ═══ */}
           <Route path="/login" element={<Login />} />
