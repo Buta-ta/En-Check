@@ -28,7 +28,6 @@ import {
   RotateCcw,
   SlidersHorizontal,
   Radio,
-  Search,
   Settings,
   Shield,
   ShieldCheck,
@@ -102,8 +101,7 @@ const TOPBAR_LEFT_CATALOG = [
   { id: 'date', label: 'Date du jour', description: 'Afficher la date courante.', icon: CalendarDays, region: 'left' },
 ]
 const TOPBAR_RIGHT_CATALOG = [
-  { id: 'search', label: 'Recherche', description: 'Accéder à la recherche globale.', icon: Search, region: 'right' },
-  { id: 'dashboard-customize', label: 'Personnaliser le tableau', description: 'Réorganiser les widgets KPI.', icon: SlidersHorizontal, region: 'right' },
+  { id: 'dashboard-customize', label: 'Personnaliser le tableau', description: 'Réorganiser les widgets KPI et l’en-tête.', icon: SlidersHorizontal, region: 'right' },
   { id: 'add-widget', label: 'Ajouter un widget', description: 'Ajouter un KPI au tableau.', icon: Plus, region: 'right' },
   { id: 'theme', label: 'Thème clair / sombre', description: 'Changer l’apparence du tableau.', icon: Moon, region: 'right' },
   { id: 'notifications', label: 'Notifications', description: 'Consulter les notifications.', icon: Bell, region: 'right' },
@@ -113,7 +111,7 @@ const TOPBAR_LEFT_AVAILABLE_IDS = TOPBAR_LEFT_CATALOG.map((item) => item.id)
 const TOPBAR_RIGHT_AVAILABLE_IDS = TOPBAR_RIGHT_CATALOG.map((item) => item.id)
 const ALL_TOPBAR_AVAILABLE_IDS = [...TOPBAR_LEFT_AVAILABLE_IDS, ...TOPBAR_RIGHT_AVAILABLE_IDS]
 const DEFAULT_TOPBAR_LEFT_ITEM_IDS = ['enterprise', 'date']
-const DEFAULT_TOPBAR_RIGHT_ITEM_IDS = ['search', 'dashboard-customize', 'add-widget', 'theme', 'notifications', 'profile']
+const DEFAULT_TOPBAR_RIGHT_ITEM_IDS = ['dashboard-customize', 'add-widget', 'theme', 'notifications', 'profile']
 
 function DashboardNavItem({ item, isActive, tabState, onSelect }) {
   const Icon = item.icon
@@ -425,15 +423,17 @@ export default function DashboardExperience({
     .map((id) => availableWidgets.find((widget) => widget.id === id))
     .filter(Boolean)
   const unaddedWidgets = availableWidgets.filter((widget) => !widgetIds.includes(widget.id))
+  const allTopbarCatalog = [...topbarLeftCatalog, ...topbarRightCatalog]
   const visibleTopbarLeftItems = topbarLeftItemIds
-    .map((id) => topbarLeftCatalog.find((item) => item.id === id))
+    .map((id) => allTopbarCatalog.find((item) => item.id === id))
     .filter(Boolean)
   const visibleTopbarRightItems = topbarRightItemIds
-    .map((id) => topbarRightCatalog.find((item) => item.id === id))
+    .map((id) => allTopbarCatalog.find((item) => item.id === id))
     .filter(Boolean)
-  const unaddedTopbarItems = [...topbarLeftCatalog, ...topbarRightCatalog].filter((item) =>
+  const unaddedTopbarItems = allTopbarCatalog.filter((item) =>
     !topbarLeftItemIds.includes(item.id) && !topbarRightItemIds.includes(item.id),
   )
+  const hasTopbarCustomizeButton = topbarLeftItemIds.includes('dashboard-customize') || topbarRightItemIds.includes('dashboard-customize')
   const quickActions = quickActionIds
     .map((id) => quickActionCatalog.find((action) => action.id === id))
     .filter(Boolean)
@@ -462,6 +462,7 @@ export default function DashboardExperience({
   const addTopbarItem = (item) => {
     if (item.region === 'left') setTopbarLeftItemIds((current) => addDashboardWidget(current, item.id))
     else setTopbarRightItemIds((current) => addDashboardWidget(current, item.id))
+    setIsCustomizing(true)
     setIsTopbarCustomizing(true)
     setIsTopbarCatalogOpen(false)
   }
@@ -480,21 +481,24 @@ export default function DashboardExperience({
   }
   const handleTopbarDrop = (event, targetId, targetRegion) => {
     event.preventDefault()
+    event.stopPropagation()
     const sourceId = event.dataTransfer.getData('text/plain') || draggedTopbarItemId
     const sourceRegion = topbarLeftItemIds.includes(sourceId)
       ? 'left'
       : topbarRightItemIds.includes(sourceId) ? 'right' : null
     if (sourceId && sourceRegion) {
       if (sourceRegion === targetRegion) {
-        const setter = targetRegion === 'left' ? setTopbarLeftItemIds : setTopbarRightItemIds
-        setter((current) => moveDashboardWidget(current, sourceId, targetId))
+        if (targetId) {
+          const setter = targetRegion === 'left' ? setTopbarLeftItemIds : setTopbarRightItemIds
+          setter((current) => moveDashboardWidget(current, sourceId, targetId))
+        }
       } else {
         const sourceSetter = sourceRegion === 'left' ? setTopbarLeftItemIds : setTopbarRightItemIds
         const targetSetter = targetRegion === 'left' ? setTopbarLeftItemIds : setTopbarRightItemIds
         sourceSetter((current) => removeDashboardWidget(current, sourceId))
         targetSetter((current) => {
           const next = removeDashboardWidget(current, sourceId)
-          const targetIndex = next.indexOf(targetId)
+          const targetIndex = targetId ? next.indexOf(targetId) : -1
           next.splice(targetIndex < 0 ? next.length : targetIndex, 0, sourceId)
           return next
         })
@@ -527,20 +531,25 @@ export default function DashboardExperience({
   }
   const resetQuickActions = () => setQuickActionIds(defaultQuickActionIds)
 
+  const toggleDashboardCustomize = () => {
+    setIsCustomizing((value) => {
+      const next = !value
+      if (!next) setIsTopbarCustomizing(false)
+      return next
+    })
+  }
+
   const renderTopbarElement = (itemId) => {
     if (itemId === 'enterprise') {
       return <div className="topbar-company"><EnterpriseSwitcher admin={admin} onSwitch={handleEnterpriseSwitch} /></div>
     }
     if (itemId === 'date') return <span className="topbar-date">{todayLabel}</span>
-    if (itemId === 'search') {
-      return <button type="button" className="topbar-search" onClick={() => navigate('/search')} aria-label="Ouvrir la recherche"><Search size={14} /><span>Rechercher</span><kbd>⌘ K</kbd></button>
-    }
     if (itemId === 'dashboard-customize') {
       return (
         <button
           type="button"
           className={`dashboard-customize-button${isCustomizing ? ' is-active' : ''}`}
-          onClick={() => setIsCustomizing((value) => !value)}
+          onClick={toggleDashboardCustomize}
           aria-pressed={isCustomizing}
           aria-label={isCustomizing ? 'Terminer la personnalisation du tableau' : 'Personnaliser le tableau'}
           title={isCustomizing ? 'Terminer la personnalisation' : 'Personnaliser le tableau'}
@@ -677,7 +686,11 @@ export default function DashboardExperience({
 
         <div className="dashboard-workspace">
           <header className={`dashboard-topbar${isTopbarCustomizing ? ' is-customizing-layout' : ''}`}>
-            <div className="topbar-left">
+            <div
+              className="topbar-left"
+              onDragOver={(event) => isTopbarCustomizing && event.preventDefault()}
+              onDrop={(event) => isTopbarCustomizing && handleTopbarDrop(event, null, 'left')}
+            >
               <button
                 type="button"
                 className="mobile-menu-button"
@@ -690,7 +703,11 @@ export default function DashboardExperience({
             </div>
 
             <div className="topbar-actions">
-              <div className="topbar-actions-list">
+              <div
+                className="topbar-actions-list"
+                onDragOver={(event) => isTopbarCustomizing && event.preventDefault()}
+                onDrop={(event) => isTopbarCustomizing && handleTopbarDrop(event, null, 'right')}
+              >
                 {visibleTopbarRightItems.map((item, index) => renderTopbarLayoutItem(item, 'right', index, visibleTopbarRightItems.length))}
                 {isTopbarCustomizing && (
                   <button type="button" className="topbar-add-item-button" onClick={() => setIsTopbarCatalogOpen(true)} aria-label="Ajouter un élément à la barre du haut" title="Ajouter un élément" aria-haspopup="dialog" aria-expanded={isTopbarCatalogOpen}>
@@ -698,21 +715,61 @@ export default function DashboardExperience({
                   </button>
                 )}
               </div>
-              <button
-                type="button"
-                className={`dashboard-topbar-layout-toggle${isTopbarCustomizing ? ' is-active' : ''}`}
-                onClick={() => setIsTopbarCustomizing((value) => !value)}
-                aria-pressed={isTopbarCustomizing}
-                aria-label={isTopbarCustomizing ? 'Terminer la personnalisation de la barre du haut' : 'Personnaliser la barre du haut'}
-                title={isTopbarCustomizing ? 'Terminer la personnalisation de la barre du haut' : 'Personnaliser la barre du haut'}
-              >
-                {isTopbarCustomizing ? <CheckCircle2 size={15} /> : <SlidersHorizontal size={15} />}
-                <span>{isTopbarCustomizing ? 'Terminer' : 'En-tête'}</span>
-              </button>
             </div>
           </header>
 
           <main className="dashboard-main">
+            {isCustomizing && (
+              <div className="dashboard-customize-hint" role="status">
+                <span>
+                  {isTopbarCustomizing
+                    ? 'Glisse ou utilise les flèches pour organiser l’en-tête et les cartes du tableau.'
+                    : 'Glisse une poignée pour réorganiser les cartes, ou personnalise l’en-tête.'}
+                </span>
+                <div className="dashboard-customize-hint-actions">
+                  <button
+                    type="button"
+                    className={`dashboard-customize-header-button${isTopbarCustomizing ? ' is-active' : ''}`}
+                    onClick={() => setIsTopbarCustomizing((value) => !value)}
+                    aria-pressed={isTopbarCustomizing}
+                    aria-label={isTopbarCustomizing ? 'Terminer la personnalisation de la barre du haut' : 'Personnaliser la barre du haut'}
+                  >
+                    <SlidersHorizontal size={13} />
+                    <span>En-tête</span>
+                  </button>
+                  {isTopbarCustomizing && (
+                    <button
+                      type="button"
+                      onClick={() => setIsTopbarCatalogOpen(true)}
+                      aria-haspopup="dialog"
+                      aria-expanded={isTopbarCatalogOpen}
+                    >
+                      <Plus size={13} />
+                      <span>Ajouter en haut</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetWidgets()
+                      if (isTopbarCustomizing) resetTopbarLayout()
+                    }}
+                  >
+                    <RotateCcw size={13} /> Réinitialiser
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCustomizing(false)
+                      setIsTopbarCustomizing(false)
+                    }}
+                  >
+                    <CheckCircle2 size={13} /> Terminer
+                  </button>
+                </div>
+              </div>
+            )}
+
             {showSystemMessages && <SystemMessageBanner userType="admins" />}
 
             {isSuperAdmin && showAnalytics && (
@@ -768,20 +825,21 @@ export default function DashboardExperience({
                   <span className="dashboard-meta-chip is-positive"><UserCheck size={13} />{presentCount} présent{presentCount > 1 ? 's' : ''}</span>
                   {todayHoliday && <span className="dashboard-meta-chip"><Calendar size={13} />{todayHoliday.name}</span>}
                   {conflictCount > 0 && <span className="dashboard-meta-chip is-alert"><AlertTriangle size={13} />{conflictCount} à examiner</span>}
+                  {!hasTopbarCustomizeButton && !isCustomizing && (
+                    <button
+                      type="button"
+                      className="dashboard-meta-chip dashboard-customize-fallback"
+                      onClick={() => setIsCustomizing(true)}
+                    >
+                      <SlidersHorizontal size={13} />
+                      <span>Personnaliser le tableau</span>
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="dashboard-hero-art"><AttendanceHeroImage /></div>
             </section>
 
-            {isCustomizing && (
-              <div className="dashboard-customize-hint" role="status">
-                <span>Glisse une poignée pour réorganiser les cartes. Sur mobile, utilise les flèches.</span>
-                <div className="dashboard-customize-hint-actions">
-                  <button type="button" onClick={resetWidgets}><RotateCcw size={13} /> Réinitialiser</button>
-                  <button type="button" onClick={() => setIsCustomizing(false)}><CheckCircle2 size={13} /> Terminer</button>
-                </div>
-              </div>
-            )}
             <section className={`dashboard-kpis${isCustomizing ? ' is-customizing' : ''}`} aria-label="Indicateurs du jour">
               {visibleWidgets.map((widget, index) => {
                 const Icon = widget.icon
