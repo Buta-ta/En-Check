@@ -156,9 +156,11 @@ export default defineConfig({
           key: fs.readFileSync(cle),
           cert: fs.readFileSync(cert),
         },
+        host: '0.0.0.0',
         port: 5173,
+        allowedHosts: ['.e2b.app'],
       }
     }
-    return { port: 5173 }
+    return { host: '0.0.0.0', port: 5173, allowedHosts: ['.e2b.app'] }
   })(),
 })

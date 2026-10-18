@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 
-const ThemeContext = createContext()
+const ThemeContext = createContext(null)
+const THEME_STORAGE_KEY = 'admin_dark_mode'
 
 export const useTheme = () => {
   const context = useContext(ThemeContext)
@@ -10,21 +11,34 @@ export const useTheme = () => {
   return context
 }
 
+const getInitialTheme = () => {
+  try {
+    return window.localStorage.getItem(THEME_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 export const ThemeProvider = ({ children }) => {
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('admin_dark_mode')
-    return saved === 'true'
-  })
+  const [darkMode, setDarkMode] = useState(getInitialTheme)
 
   useEffect(() => {
-    localStorage.setItem('admin_dark_mode', darkMode)
-    document.body.style.backgroundColor = darkMode ? '#1a1a1a' : '#E5D4C0'
+    const theme = darkMode ? 'dark' : 'light'
+    document.documentElement.dataset.theme = theme
+    document.body.dataset.theme = theme
+    document.body.style.backgroundColor = darkMode ? '#171715' : '#F5F2EB'
+
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, String(darkMode))
+    } catch {
+      // L’interface reste utilisable si le navigateur bloque le stockage local.
+    }
   }, [darkMode])
 
-  const toggleTheme = () => setDarkMode(prev => !prev)
+  const toggleTheme = () => setDarkMode((previous) => !previous)
 
   return (
-    <ThemeContext.Provider value={{ darkMode, toggleTheme }}>
+    <ThemeContext.Provider value={{ darkMode, setDarkMode, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   )

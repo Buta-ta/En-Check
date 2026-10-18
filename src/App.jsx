@@ -11,6 +11,7 @@ import LandingPage from './pages/en-check'
 // Admin pages
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import DashboardDesignPreview from './pages/DashboardDesignPreview'
 import Employes from './pages/Employes'
 import Pointages from './pages/Pointages'
 import Entreprises from './pages/Entreprises'
@@ -223,6 +224,9 @@ function App() {
         <SessionListener />
         <VerrouOptions>
         <Routes>
+          {import.meta.env.DEV && (
+            <Route path="/dashboard-preview" element={<DashboardDesignPreview />} />
+          )}
 
           {/* ═══ LANDING PAGE ═══ */}
           <Route path="/" element={<LandingPage />} />
