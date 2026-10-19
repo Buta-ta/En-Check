@@ -2,21 +2,25 @@
 
 ## Ce que ce lot branche réellement
 
-Dans le panneau Assistant En-Check, deux modes explicites :
+L’interface propose désormais une seule conversation et une seule saisie.
+Entrée ou la flèche envoie le message ; aucune sélection de moteur ni de mode.
+Les recherches métier reconnues restent traitées localement. Un routeur conservateur
+oriente certaines formulations générales vers le modèle, après activation explicite
+pour la session. Les suites courtes comme « Comment ? » reprennent uniquement le
+contexte général s’il existe ; sinon elles déclenchent une clarification locale.
 
-- **Consulter En-Check** : recherches métier existantes, calculs RH et explications
-  publiques fixes. « Comment ? » demande désormais une précision au lieu d’être
-  envoyé au moteur de téléchargement. Les phrases non reconnues ne sont jamais
-  transférées automatiquement à un fournisseur.
-- **Discussion générale** : questions libres et réponses génératives, avec les
-  trois derniers échanges complets comme contexte. Ce n’est plus une liste de
-  notions prédéfinies. Nouveau texte saisi volontairement dans ce mode ; aucune
-  reprise automatique du brouillon, de l’historique ou des résultats RH.
+Le dernier échange est affiché. La mémoire fournisseur contient au maximum les
+trois derniers échanges généraux ; elle est effacée lors d’une demande locale,
+à la fermeture, à la nouvelle discussion, à l’expiration et au changement de compte.
+Aucun résultat métier n’est ajouté à cette mémoire. Les demandes inconnues ne sont
+pas systématiquement transmises : le routage n’est pas un interpréteur universel.
 
-Identité à l’écran : Assistant En-Check. Chargement commun « Je prépare votre
-réponse… ». Pas de nom de fournisseur ni de sélection de modèle dans le dialogue.
-Les réponses restent du texte échappé React, sans HTML ou exécution d’action.
-Elles sont identifiées comme réponses IA générales à vérifier.
+Identité à l’écran : Assistant En-Check, sans badges de provenance techniques.
+Sources et limites sont conservées dans « Sources et précisions », les avertissements
+métier importants restent visibles. Chargement commun « Je prépare votre réponse… ».
+L’information de transfert apparaît avant le premier envoi général de la session,
+puis reste accessible dans « Confidentialité et fonctionnement ». Pas de case à
+cocher à chaque message. L’activation peut être refusée sans envoi externe.
 
 ## Avant activation — données et responsabilités
 
@@ -29,7 +33,7 @@ applicables, notamment pour les données personnelles/confidentielles et les
 utilisateurs dans les régions où une offre payante est exigée.
 
 L’utilisateur est averti du transfert externe des messages et du contexte général.
-Il confirme à **chaque envoi** l’absence de données personnelles/confidentielles.
+Il active explicitement ce traitement pour la session, réservé aux messages non personnels et non confidentiels. Cette activation ne remplace pas les obligations d’information et de conformité.
 Les adresses mail, numéros longs et certains secrets explicites sont bloqués côté
 client et serveur avant la réservation du quota. Cette détection est volontairement
 limitée : elle ne sait pas garantir l’anonymisation, ni détecter tous les noms,
@@ -64,12 +68,12 @@ aucune analyse de dossiers RH ne doit être déduit de ce mode.
    atomique : **5 demandes/utilisateur/jour et 30/projet/jour UTC, partagées avec
    les explications**. Ne pas exécuter les SQL de test en production.
 7. Fusionner la PR et déployer le frontend.
-8. Ouvrir la barre → **Discussion générale**. Saisir une question sans données
-   réelles, par exemple « Comment organiser une réunion utile ? », confirmer
-   l’absence de données privées, puis envoyer. Poursuivre par « Comment ? ».
+8. Ouvrir la barre, saisir « Comment organiser une réunion utile ? », puis
+   envoyer. Lire l’information et choisir « Activer et poursuivre ». Continuer
+   avec « Comment ? », sans nouvelle confirmation dans cette session.
    Ce test consomme le quota chat/explications, **pas** le quota diagnostic 3/jour.
 
-Rollback : `AI_CHAT_ENABLED=false`. Le mode métier et les explications existantes
+Rollback : `AI_CHAT_ENABLED=false`. Les consultations métier et les explications existantes
 restent indépendants. Aucun secret ni token à copier dans la conversation.
 
 ## Limites opérationnelles
@@ -82,7 +86,7 @@ restent indépendants. Aucun secret ni token à copier dans la conversation.
 - 2 000 caractères par message, trois échanges précédents + le nouveau message
   (7 messages envoyés maximum). Pas de résumé caché ni de stockage de l’historique
   dans la base ou localStorage. Métadonnées quota uniquement dans En-Check.
-- Effacement au changement de mode, fermeture, route, compte/entreprise,
+- Effacement à la fermeture, au changement de route, compte/entreprise,
   connexion/déconnexion, demande « Nouvelle discussion » ou 15 minutes d’inactivité.
 - Erreurs, quota épuisé et fonction non activée ne sont jamais présentés comme
   une réponse générée. Une fonction absente/non déployée peut afficher le message
@@ -103,3 +107,17 @@ restent indépendants. Aucun secret ni token à copier dans la conversation.
 - Installation locale : xlsx npm 0.18.5 temporaire (CDN inaccessible), manifestes
   et lock restaurés. Aucune dépendance modifiée livrée. Test DOM avec jsdom dans
   un dossier temporaire externe au dépôt.
+
+## Mise à jour interface unifiée
+
+Le routeur est volontairement restrictif : questions générales et quelques suites
+contextuelles seulement, blocage local de thèmes RH/identifiants évidents. Il ne
+constitue PAS un filtre exhaustif : une formulation contenant un nom ou une donnée
+confidentielle peut échapper aux règles. Respecter les conditions d’usage et
+l’information initiale reste nécessaire. Ne pas annoncer une anonymisation garantie.
+
+Cette mise à jour est frontend seulement : aucun nouveau SQL, secret ou déploiement
+Edge si `assistant-chat` du lot précédent est déjà installé/activé. Aucun appel
+fournisseur réel dans les tests. 268 tests Vitest et 55 tests Edge ; test DOM monté
+complémentaire du Dock : activation, second tour sans confirmation, absence de
+résultat RH dans le payload, nouvelle discussion et rejet des réponses périmées.
