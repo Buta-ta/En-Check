@@ -48,8 +48,14 @@ import PhotoSignee from '../components/PhotoSignee'
 import FeatureService, { FEATURES } from '../services/featureService'
 import HolidayService from '../services/holidayService'
 import { resoudrePointagesJournee } from '../services/hoursCalculator'
-import { construirePauses, fusionnerPausesEmploye } from '../services/pausesService'
+import {
+  construirePauses,
+  estPointageEnRetard,
+  estServiceDeNuit,
+  fusionnerPausesEmploye,
+} from '../services/pausesService'
 import { useTheme } from '../contexts/ThemeContext'
+import ExaminerEstimationModal from '../components/ExaminerEstimationModal'
 import FicheEmployeModal from '../components/FicheEmployeModal'
 import PointagesLoadingScreen from '../components/PointagesLoadingScreen'
 import {
@@ -653,6 +659,7 @@ export default function Pointages() {
   const [admin, setAdmin] = useState(null)
   const [afficherImport, setAfficherImport] = useState(false)   //
   const [inspectedPointage, setInspectedPointage] = useState(null)
+  const [estimationModalTarget, setEstimationModalTarget] = useState(null)
   const [ficheEmployeeTarget, setFicheEmployeeTarget] = useState(null)
   const [minLoadingDone, setMinLoadingDone] = useState(false)
   const [state, dispatch] = useReducer(reducer, initialState)
@@ -1211,9 +1218,7 @@ export default function Pointages() {
         } else {
           scheduleInfo = {
             mode: 'none',
-            label: employee.enterprises?.module_planning === false
-              ? 'Sans option planning · Horaire libre'
-              : 'Horaire libre (sans planning)',
+            label: 'Planning non disponible dans En-Check',
             startTime: null,
             endTime: null,
             hasBreak: false,
@@ -1313,17 +1318,13 @@ export default function Pointages() {
 
     if (filterStatus !== 'tous') {
       if (filterStatus === 'retard') {
-        result = result.filter(p => {
-          if (p?.status !== 'present' || !p?.firstIn?.check_time) return false
-          const sched = p?.scheduleInfo
-          if (!sched || sched.mode === 'none' || !sched.startTime) return false
-          const [h, m] = String(sched.startTime).split(':').map(Number)
-          if (!Number.isFinite(h) || !Number.isFinite(m)) return false
-          const startMins = h * 60 + m
-          const tolerance = Number(sched.toleranceMinutes) || 0
-          const checkMins = minutesDepuisMinuit(p.firstIn.check_time)
-          return typeof checkMins === 'number' && checkMins > startMins + tolerance
-        })
+        result = result.filter(p => estPointageEnRetard(p))
+      } else if (filterStatus === 'service_nuit') {
+        result = result.filter(p => estServiceDeNuit(p))
+      } else if (filterStatus === 'pause_en_cours') {
+        result = result.filter(p => (p.pauses || []).some(pa => pa.ouverte))
+      } else if (filterStatus === 'sortie_presumee') {
+        result = result.filter(p => Boolean(p.lastOut && estEstimationAStatuer(p.lastOut)))
       } else {
         result = result.filter(p => p.status === filterStatus)
       }
@@ -1859,11 +1860,9 @@ export default function Pointages() {
               pointages={filteredAndSortedPointages}
               selectedDate={selectedDate}
               selectedEmployeeId={inspectedPointage?.employee?.id || null}
-              canEdit={canEditPointages}
-              statuerEstimation={statuerEstimation}
-              estimationEnCours={estimationEnCours}
               onSelectPointage={(p) => setInspectedPointage(p)}
               onOpenEmployeeFiche={(p) => setFicheEmployeeTarget(p)}
+              onExamineEstimation={(p) => setEstimationModalTarget(p)}
             />
           ) : viewMode === 'grouped' ? (
             <GroupedList
@@ -1914,13 +1913,26 @@ export default function Pointages() {
           <PointagesSlideOverDrawer
             pointage={inspectedPointage}
             canEdit={canEditPointages}
-            statuerEstimation={statuerEstimation}
-            estimationEnCours={estimationEnCours}
+            isInert={Boolean(estimationModalTarget)}
             onModify={handleEditClick}
             onOpenEmployeeFiche={(p) => setFicheEmployeeTarget(p)}
+            onExamineEstimation={(p) => setEstimationModalTarget(p)}
             onShareEmployee={handleShareEmployee}
             onClose={() => setInspectedPointage(null)}
           />
+
+          {/* ═══ FENÊTRE DÉDIÉE : EXAMINER LA SORTIE PRÉSUMÉE ═══ */}
+          {estimationModalTarget && (
+            <ExaminerEstimationModal
+              pointage={estimationModalTarget}
+              selectedDate={selectedDate}
+              canEdit={canEditPointages}
+              statuerEstimation={statuerEstimation}
+              estimationEnCours={estimationEnCours}
+              onModify={handleEditClick}
+              onClose={() => setEstimationModalTarget(null)}
+            />
+          )}
 
           {/* ═══ FICHE DE L'EMPLOYÉ (SANS QUITTER LA PAGE POINTAGES) ═══ */}
           {ficheEmployeeTarget && (
@@ -2260,8 +2272,11 @@ function FiltersSection({
             <option value="tous">Tous les statuts</option>
             <option value="present">✓ Présents</option>
             <option value="retard">⏰ En retard</option>
+            <option value="service_nuit">🌙 Services de nuit (tous)</option>
+            <option value="nuit_rattachee">↩️ Fins de garde de la veille</option>
+            <option value="pause_en_cours">☕ Pauses en cours</option>
+            <option value="sortie_presumee">⏳ Sorties présumées à confirmer</option>
             <option value="absent">✗ Absents</option>
-            <option value="nuit_rattachee">🌙 Fins de garde de nuit</option>
             <option value="en_conge">🌴 En congé</option>
             <option value="jour_ferie">🎌 Jour férié</option>
             <option value="conflit_absence_pointage">⚠ Conflits</option>
