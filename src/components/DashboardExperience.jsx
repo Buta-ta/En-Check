@@ -45,7 +45,6 @@ import {
 import { useNavigate } from 'react-router-dom'
 import EnterpriseSwitcher from './EnterpriseSwitcher'
 import NotificationBell from './NotificationBell'
-import SpotlightFAB from './SpotlightFAB'
 import SystemMessageBanner from './SystemMessageBanner'
 import AttendanceHeroImage from './AttendanceHeroImage'
 import EnCheckBrandMark from './EnCheckBrandMark'
@@ -1343,7 +1342,6 @@ export default function DashboardExperience({
         </div>
       </div>
 
-      <SpotlightFAB admin={admin} />
 
       {isWidgetCatalogOpen && (
         <div className="dashboard-widget-catalog-overlay" role="presentation" onClick={() => setIsWidgetCatalogOpen(false)}>
