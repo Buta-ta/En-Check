@@ -20,7 +20,7 @@ describe('Barre assistant — interface, sans modèle externe', () => {
     const html = renderToStaticMarkup(<MemoryRouter><AssistantDock /></MemoryRouter>)
     expect(html).toContain('ec-assistant-dock')
     expect(html).toContain('ec-assistant-weave')
-    expect(html).toContain('Ex. : Retards aujourd&#x27;hui')
+    expect(html).toContain('Retards aujourd&#x27;hui')
     expect(html).toContain('Exemples à demander')
     expect(html).not.toContain('Recherche détaillée')
     expect(html).toContain('aria-haspopup="dialog"')

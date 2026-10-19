@@ -4,6 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowUp, Sparkles, X } from 'lucide-react'
 import { searchSpotlight } from '../services/spotlightService'
 import { supabase } from '../lib/supabase'
+import AssistantAnswer from './AssistantAnswer'
+import { conversationalRequest } from '../services/assistantConversation'
 import { answerRhQuestion } from '../services/assistantRh'
 import { answerExplanation, EXPLANATION_QUESTIONS } from '../services/assistantExplanation'
 import HolidayService from '../services/holidayService'
@@ -26,6 +28,7 @@ export default function AssistantDock() {
   const [results, setResults] = useState([])
   const [message, setMessage] = useState('')
   const [answer, setAnswer] = useState(null)
+  const [lastQuestion, setLastQuestion] = useState('')
   const rhContext = useRef(null)
   const [busy, setBusy] = useState(false)
   const [opened, setOpened] = useState(false)
@@ -56,6 +59,7 @@ export default function AssistantDock() {
     setScanning(false)
     setAnswer(null)
     rhContext.current = null
+    setLastQuestion('')
     requestId.current++
     dialog.current?.close()
     setOpened(false)
@@ -90,6 +94,7 @@ export default function AssistantDock() {
     setOpened(false)
     setBusy(false)
     setDraft('')
+    setLastQuestion('')
     setAnswer(null)
     rhContext.current = null
     setScanning(false)
@@ -120,15 +125,20 @@ export default function AssistantDock() {
     })
   }, [results])
 
-  async function search(event) {
-    event.preventDefault()
+  async function search(event, followup) {
+    event?.preventDefault()
     if (busy) return
-    const query = draft.trim()
+    const original = (followup || draft).trim()
+    const conversation = conversationalRequest(original)
+    const query = conversation.query || original
     const admin = opened ? readAssistantContext() : open()
     setContext(admin)
     setAnswer(null)
     const id = ++requestId.current
     setResults([])
+    setLastQuestion(original)
+    setDraft('')
+    if (conversation.answer) { setAnswer(conversation.answer); setMessage(''); return }
     if (!query) { setMessage('Saisissez un nom, un matricule ou une recherche.'); return }
     if (!admin || !(admin.selectedEnterprise?.id || admin.enterprise_id)) {
       setMessage('Sélectionnez une entreprise dans En-Check avant de rechercher.'); return
@@ -149,7 +159,7 @@ export default function AssistantDock() {
       })
       if (id !== requestId.current) return
       if (rh) {
-        setAnswer(rh)
+        setAnswer(conversation.greeting ? { ...rh, text: `Bonjour ! ${rh.text}` } : rh)
         rhContext.current = rh.context || null
         setMessage('')
         return
@@ -190,7 +200,6 @@ export default function AssistantDock() {
     requestId.current++
     setBusy(false)
     setDraft(example)
-    setAnswer(null)
     open()
     // Choosing an example only prepares the input. Submit remains explicit.
   }
@@ -218,36 +227,25 @@ export default function AssistantDock() {
       </aside>
       <dialog ref={dialog} className="ec-assistant-panel" aria-labelledby="ec-assistant-title" onCancel={event => { event.preventDefault(); if (scanning) stopScanning(); else close() }} onClick={event => { if (event.target === dialog.current) close() }}>
         <div className="ec-assistant-weave" aria-hidden="true" />
-        <header className="ec-assistant-panel-header"><div><h2 id="ec-assistant-title">Assistant En-Check</h2><p>Recherche guidée · Données En-Check</p></div><button type="button" onClick={close} aria-label="Fermer l’assistant"><X size={22} /></button></header>
+        <header className="ec-assistant-panel-header"><div><h2 id="ec-assistant-title">Assistant En-Check</h2><p>Votre entreprise, en conversation</p></div><button type="button" onClick={close} aria-label="Fermer l’assistant"><X size={22} /></button></header>
         <div className="ec-assistant-content">
           {scanning ? <Suspense fallback={<p>Ouverture du scanner…</p>}><QRScanner onClose={stopScanning} onScan={receiveScan} /></Suspense> : <>
           <p className="ec-assistant-context">Entreprise : {context?.selectedEnterprise?.name || (context?.enterprise_id ? 'entreprise de votre compte' : 'à sélectionner')}</p>
-          <h3>Comment puis-je vous aider ?</h3>
-          <p>Recherchez un employé, des pointages ou des tâches. Les données RH restent dans En-Check. Pour expliquer une notion, seuls des textes génériques de documentation peuvent être transmis à l’IA.</p>
-          <p className="ec-assistant-note">Les chiffres proviennent des règles En-Check. Les explications générales peuvent être reformulées par IA, avec une référence métier en secours. Le dialogue libre et l’anticipation ne sont pas encore connectés.</p>
-          <details className="ec-assistant-examples" open>
-            <summary>Exemples à demander</summary>
-            {examples}
-            <p>Le choix d’un exemple ne lance aucune recherche.</p>
-          </details>
-          <div className="ec-assistant-example-list" aria-label="Questions RH">
-            {['Combien de pointages', 'Qui est en retard', 'Sorties présumées à confirmer'].map(question => <button key={question} type="button" onClick={() => chooseExample(question)}>{question}</button>)}
-          </div>
+          {!lastQuestion && <div className="ec-dialogue-welcome">
+            <span className="ec-dialogue-emblem" aria-hidden="true">✧</span>
+            <h3>Bonjour, que souhaitez-vous vérifier ?</h3>
+            <p>Vos pointages, vos retards ou une notion à comprendre : commençons par votre question.</p>
+          </div>}
+          {lastQuestion && <div className="ec-dialogue-user">{lastQuestion}</div>}
+          {answer && <AssistantAnswer answer={answer} onChoice={choice => search(null, choice)} onNavigate={go} />}
           <details className="ec-assistant-examples">
-            <summary>Comprendre avec l’assistant</summary>
+            <summary>Idées de questions</summary>
+            {examples}
             <div className="ec-assistant-example-list">{EXPLANATION_QUESTIONS.map(question => <button type="button" key={question} onClick={() => chooseExample(question)}>{question}</button>)}</div>
-            <p>Seul le sujet public est transmis, jamais votre phrase ni vos dossiers RH.</p>
+            <p>Un exemple remplit la saisie. Envoyez-le quand vous êtes prêt.</p>
           </details>
-          {shortcuts}
-          {answer && <section className="ec-assistant-answer" aria-label="Réponse RH" aria-live="polite">
-            <h3>{answer.title}</h3><p>{answer.text}</p>
-            {answer.period && <p><strong>{answer.enterprise}</strong> · {answer.period} · {answer.timezone}</p>}
-            {answer.notes?.map(note => <p key={note} className="ec-assistant-note">{note}</p>)}
-            {answer.rows?.length > 0 && <ul>{answer.rows.map(row => <li key={row.id}><strong>{row.label}</strong><br />{row.detail}</li>)}</ul>}
-            {answer.source && <p className="ec-assistant-note">Source : {answer.source}{answer.updatedAt && <><br />Lecture demandée à {new Date(answer.updatedAt).toLocaleTimeString('fr-FR', { timeZone: answer.timezone })} ({answer.timezone}).</>}</p>}
-            {answer.choices && <div className="ec-assistant-example-list">{answer.choices.map(choice => <button key={choice} type="button" onClick={() => chooseExample(choice)}>{choice}</button>)}</div>}
-            {answer.path && <button type="button" onClick={() => go(answer.path)}>Ouvrir {answer.path === '/retards' ? 'Retards' : 'Pointages'} — filtres à vérifier dans la page</button>}
-          </section>}
+          <details className="ec-assistant-examples"><summary>Accès rapides</summary>{shortcuts}</details>
+          <details className="ec-dialogue-sources"><summary>À propos de cet assistant</summary><p>Les chiffres viennent des règles En-Check. Seules les explications publiques peuvent être reformulées par IA. Le dialogue libre et l’anticipation ne sont pas encore connectés. Aucun dossier RH n’est transmis aux modèles.</p></details>
           <div role="status" aria-live="polite" aria-busy={busy}>{message && <p>{message}</p>}</div>
           {results.length > 0 && <div className="ec-assistant-results" ref={resultsArea} onKeyDown={event => {
             if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.result-card, .result-card-modern')) { event.preventDefault(); event.target.click() }
@@ -255,7 +253,7 @@ export default function AssistantDock() {
           </>}
         </div>
         <form hidden={scanning} className="ec-assistant-form ec-assistant-panel-form" onSubmit={search}>
-          <input ref={panelInput} aria-label="Rechercher dans En-Check" placeholder="Un nom, un matricule, une recherche…" value={draft} maxLength={300} onChange={e => { requestId.current++; setBusy(false); setResults([]); setMessage(''); setAnswer(null); setDraft(e.target.value) }} autoComplete="off" />
+          <input ref={panelInput} aria-label="Rechercher dans En-Check" placeholder="Un nom, un matricule, une recherche…" value={draft} maxLength={300} onChange={e => { requestId.current++; setBusy(false); setResults([]); setMessage(''); setDraft(e.target.value) }} autoComplete="off" />
           <button type="submit" className="ec-assistant-send" disabled={busy} aria-label="Lancer la recherche"><ArrowUp size={21} /></button>
         </form>
         <footer>Aucune modification sans votre confirmation.</footer>
