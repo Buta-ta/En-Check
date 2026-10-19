@@ -1,4 +1,6 @@
 import { TOPICS, isTopic } from '../../supabase/functions/assistant-explain/topics.js'
+// Two sequential model attempts (30s each), plus transport/Auth/DB margin.
+export const EXPLANATION_TIMEOUT_MS = 70000
 const normalize = text => String(text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   .replace(/’/g, "'").replace(/[?!.]/g, '').trim().replace(/\s+/g, ' ')
 const QUESTIONS = {
@@ -23,7 +25,7 @@ export async function answerExplanation(query, client) {
   const base = { title: reference.title, text: reference.fallback, source: 'Référence En-Check — explication générale',
     notes: ['Aucun dossier RH consulté pour cette explication. Aucune action ni validation effectuée.'] }
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 18000)
+  const timer = setTimeout(() => controller.abort(), EXPLANATION_TIMEOUT_MS)
   try {
     // Deliberately never send query, context, history, personal data or enterprise ID.
     const { data, error } = await client.functions.invoke('assistant-explain', {

@@ -14,7 +14,7 @@ IMPORTANT : ce test demande un format précis et vérifie la connectivité / res
 
 ## Limites et coût
 
-Trois essais par jour UTC pour TOUT le projet (maximum six appels, trois par modèle). Réservation atomique dans une table technique, indépendante du nombre d'instances Edge. Un essai réservé reste consommé même si le fournisseur échoue. Aucun retry automatique. Timeout 12 secondes par modèle et sortie plafonnée à 256 tokens. Les quotas de Google restent distincts, avec leur propre heure de remise à zéro.
+Trois essais par jour UTC pour TOUT le projet (maximum six appels, trois par modèle). Réservation atomique dans une table technique, indépendante du nombre d'instances Edge. Un essai réservé reste consommé même si le fournisseur échoue. Aucun retry automatique. Timeout 30 secondes par modèle (appels parallèles ; attente navigateur 40 secondes) et sortie plafonnée à 256 tokens. Les quotas de Google restent distincts, avec leur propre heure de remise à zéro.
 
 Désactivé par défaut. Ne pas activer la facturation Google. Ce code ne peut pas garantir que la clé soit liée à un projet gratuit : vérifier le niveau dans AI Studio. Le test utilise les ressources habituelles Supabase Edge/DB et ses quotas d'hébergement.
 

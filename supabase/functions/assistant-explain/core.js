@@ -1,8 +1,9 @@
 import { TOPICS, isTopic } from './topics.js'
-export const MODELS = ['gemma-4-31b-it', 'gemini-3.5-flash-lite']
+export const MODELS = Object.freeze(['gemini-3.5-flash-lite', 'gemma-4-31b-it'])
+export const MODEL_TIMEOUT_MS = 30000
 const fallback = topic => ({ kind: 'reference', topic, title: TOPICS[topic].title, text: TOPICS[topic].fallback })
 
-export async function explain(topic, key, fetchImpl = fetch, timeout = 7000) {
+export async function explain(topic, key, fetchImpl = fetch, timeout = MODEL_TIMEOUT_MS) {
   for (const model of MODELS) {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), timeout)
