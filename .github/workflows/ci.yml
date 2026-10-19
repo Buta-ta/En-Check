@@ -37,7 +37,7 @@ jobs:
         run: npm ci
 
       - name: Test IA isolé — authentification, quotas et sortie contrôlée
-        run: node --test tests/edge/test-ai-search.mjs
+        run: node --test tests/edge/*.mjs
 
       - name: Exécution des tests unitaires financiers (VD-15)
         run: npm test

@@ -1,0 +1,27 @@
+.ai-test { min-height: 100vh; background: #f4f6f8; color: #172738; padding: 28px 18px 48px; }
+.ai-test-shell { max-width: 820px; margin: 0 auto; }
+.ai-test .ai-test-back { color: #245674; text-decoration: underline; }
+.ai-test header { margin: 32px 0 24px; }
+.ai-test h1 { font-size: clamp(26px, 5vw, 36px); line-height: 1.2; margin: 8px 0 16px; }
+.ai-test h2 { font-size: 21px; margin: 0 0 14px; }
+.ai-test h3 { font-size: 17px; overflow-wrap: anywhere; margin: 0 0 12px; }
+.ai-test p { line-height: 1.65; margin: 12px 0; }
+.ai-test .ai-test-eyebrow { color: #456073; letter-spacing: .07em; font-size: 12px; font-weight: 700; }
+.ai-test-card { background: white; border: 1px solid #d9e1e7; border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+.ai-test code { overflow-wrap: anywhere; font-size: .92em; color: #25465d; }
+.ai-test-origin { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: #eef3f7; padding: 14px; border-radius: 8px; }
+.ai-test button { min-height: 44px; padding: 10px 16px; background: white; color: #20455f; border: 1px solid #70889b; border-radius: 8px; cursor: pointer; font: inherit; }
+.ai-test button:disabled { opacity: .6; cursor: not-allowed; }
+.ai-test button:focus-visible, .ai-test input:focus-visible, .ai-test summary:focus-visible { outline: 3px solid #157baa; outline-offset: 3px; }
+.ai-test .ai-test-run { background: #194d6b; color: white; border-color: #194d6b; width: 100%; font-weight: 700; }
+.ai-test blockquote { border-left: 3px solid #44839d; padding: 12px 16px; margin: 16px 0; background: #f2f7fa; line-height: 1.6; }
+.ai-test-consent { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0; line-height: 1.5; cursor: pointer; }
+.ai-test-consent input { margin-top: 4px; width: 20px; height: 20px; flex-shrink: 0; }
+.ai-test-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 14px; margin-top: 20px; }
+.ai-test-result { border: 1px solid; padding: 18px; border-radius: 10px; }
+.ai-test .is-success { color: #165237; background: #f0faf3; border-color: #8fc7a4; }
+.ai-test .is-failure, .ai-test .ai-test-error { color: #873316; background: #fff5eb; border-color: #dfb38c; }
+.ai-test-error { padding: 16px; border-radius: 8px; }
+.ai-test-reminder { color: #455969; }
+.ai-test summary { cursor: pointer; padding: 10px 0; }
+@media (max-width: 480px) { .ai-test-card { padding: 18px; } }
