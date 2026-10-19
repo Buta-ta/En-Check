@@ -54,3 +54,32 @@ test('undeployed function or network failure keeps reference usable',async()=>{
  const r=await answerExplanation('Explique les retards',{functions:{invoke:async()=>{throw Error('secret')}}})
  assert.ok(r.source.startsWith('Référence'));assert.ok(!JSON.stringify(r).includes('secret'))
 })
+
+test('Gemini is primary; Gemma is only called after primary failure', async () => {
+ assert.deepEqual(MODELS, ['gemini-3.5-flash-lite', 'gemma-4-31b-it'])
+ const urls=[]
+ await explain('lateness','key',async url=>{urls.push(url);return good()})
+ assert.equal(urls.length,1)
+ assert.ok(urls[0].includes('gemini-3.5-flash-lite'))
+})
+test('Gemini timeout actually reaches Gemma and accepts its response', async () => {
+ const urls=[]
+ const result=await explain('lateness','key',(url,options)=>{
+  urls.push(url)
+  if (urls.length===2) return Promise.resolve(good())
+  return new Promise((_,reject)=>options.signal.addEventListener('abort',()=>reject(Error('timeout')),{once:true}))
+ },2)
+ assert.equal(result.kind,'generated')
+ assert.equal(urls.length,2)
+ assert.ok(urls[1].includes('gemma-4-31b-it'))
+})
+test('production timeout budgets allow both attempts plus client margin', async () => {
+ const { MODEL_TIMEOUT_MS }=await import('../../supabase/functions/assistant-explain/core.js')
+ const { MODEL_TIMEOUT_MS: diagnosticTimeout }=await import('../../supabase/functions/test-ai-search/core.js')
+ const { EXPLANATION_TIMEOUT_MS }=await import('../../src/services/assistantExplanation.js')
+ const { AI_TEST_TIMEOUT_MS }=await import('../../src/services/aiSmokeTest.js')
+ assert.equal(MODEL_TIMEOUT_MS,30000)
+ assert.equal(diagnosticTimeout,30000)
+ assert.ok(EXPLANATION_TIMEOUT_MS > 2 * MODEL_TIMEOUT_MS)
+ assert.ok(AI_TEST_TIMEOUT_MS > diagnosticTimeout)
+})

@@ -1,5 +1,6 @@
 // Runtime-independent core: no employee data, client prompt, or provider tool.
 export const MODELS = Object.freeze(['gemma-4-31b-it', 'gemini-3.5-flash-lite'])
+export const MODEL_TIMEOUT_MS = 30000
 export const PROMPT = `Tu testes la compréhension d'une recherche fictive. Tu n'as accès à aucune base.
 Demande : « Affiche les sorties présumées à confirmer cette semaine. »
 Ne produis ni SQL ni résultats, n'appelle aucun outil.
@@ -17,7 +18,7 @@ function validInterpretation(text) {
   } catch { return false }
 }
 
-export async function testModel(model, apiKey, fetchImpl = fetch, timeoutMs = 12000) {
+export async function testModel(model, apiKey, fetchImpl = fetch, timeoutMs = MODEL_TIMEOUT_MS) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {

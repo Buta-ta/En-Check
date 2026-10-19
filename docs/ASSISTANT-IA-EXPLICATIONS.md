@@ -10,12 +10,12 @@ Le seul corps HTTP autorisé est `{ "topic": "presumed_exit" }` (ou `lateness`, 
 Les réponses RH chiffrées restent fournies par les moteurs En-Check, pas par Google. La génération ne déclenche ni validation ni modification. Le redesign et la barre basse ne changent pas.
 
 ## Secours et véracité
-1. Gemma `gemma-4-31b-it`, un appel, délai fournisseur 7 s.
-2. Si erreur, timeout ou format inexploitable : Gemini `gemini-3.5-flash-lite`, un appel, délai fournisseur 7 s.
+1. Gemini `gemini-3.5-flash-lite`, un appel, délai fournisseur 30 s.
+2. Si erreur, timeout ou format inexploitable : Gemma `gemma-4-31b-it`, un appel, délai fournisseur 30 s.
 3. Si les deux échouent, si le quota manque, si le secret/compteur manque ou si l'IA est désactivée : référence En-Check fixe.
 4. Si la fonction n'est pas encore déployée, si CORS/session/réseau bloque : même référence disponible dans le frontend (documentation publique uniquement).
 
-Aucune boucle de retry, 2 appels au maximum par demande ; jusqu'à 14 s d'attente fournisseur, hors Auth/DB. Le navigateur abandonne à 18 s, sans prétendre annuler un appel déjà exécuté côté serveur. Chaque réservation reste consommée même en cas d'échec. Pas de circuit-breaker persistant dans ce lot : la protection budgétaire est le quota atomique.
+Aucune boucle de retry, 2 appels au maximum par demande ; jusqu'à 60 s d'attente fournisseur, hors Auth/DB. Le navigateur abandonne à 70 s, sans prétendre annuler un appel déjà exécuté côté serveur. Chaque réservation reste consommée même en cas d'échec. Pas de circuit-breaker persistant dans ce lot : la protection budgétaire est le quota atomique.
 
 Affichage explicite « Reformulation IA ... à vérifier » ou « Référence En-Check ». Une reformulation valide syntaxiquement peut contenir une erreur : la référence métier est toujours visible à côté, les décisions restent humaines. Aucun message technique brut, nom de modèle ou secret n'est exposé aux utilisateurs. Pas de faux indicateur de génération si le texte vient du secours.
 
@@ -40,3 +40,6 @@ Nouvelle table technique (date UTC, périmètre projet ou UUID utilisateur, comp
 - PGlite local jetable : migration deux fois, 5 réservations/utilisateur, 30/projet, refus utilisateur nul et permissions contrôlées. Pas de stress-test multiconnexion PostgreSQL réel ; atomicité fournie par le verrou transactionnel.
 - Appels Google entièrement simulés, aucune clé réelle utilisée, aucun déploiement Supabase. Disponibilité effective Gemma toujours non confirmée (timeout au test utilisateur précédent), Gemini avait réussi le test isolé mais pas encore cette nouvelle fonction.
 - Installation locale temporaire xlsx npm 0.18.5 pour contourner CDN inaccessible ; manifestes/lock restaurés, aucune dépendance modifiée livrée.
+
+## Mise à jour : Gemini principal, Gemma secours
+Redéployer `assistant-explain` avec ses trois fichiers existants et `test-ai-search` avec ses deux fichiers (`index.ts`, `core.js`). Le test isolé conserve deux appels parallèles pour vérifier les deux modèles, même si Gemini réussit ; il ne simule pas la chaîne de secours. Son délai passe de 12 à 30 secondes par modèle, avec 40 secondes côté navigateur. Déployer également le frontend pour appliquer les nouveaux délais client. Aucun nouveau SQL ou secret. Ne pas déduire la disponibilité réelle de Gemma des tests simulés. Aucun essai réel lancé par cette mise à jour.

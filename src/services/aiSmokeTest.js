@@ -1,5 +1,7 @@
 // No prompt, model, API key or employee data can be supplied by the caller.
 export const AI_TEST_MODELS = ['gemma-4-31b-it', 'gemini-3.5-flash-lite']
+// Both diagnostics run concurrently, each with a 30-second provider budget.
+export const AI_TEST_TIMEOUT_MS = 40000
 export const AI_TEST_MESSAGES = {
   test_disabled: 'Le test est désactivé. Vérifiez AI_SMOKE_TEST_ENABLED dans Supabase.',
   authentication_required: 'Votre session a expiré. Reconnectez-vous à En-Check.',
@@ -25,7 +27,7 @@ const ownCode = (code, fallback) => typeof code === 'string' && Object.hasOwn(AI
 export async function runAiSmokeTest(client) {
   // Use the existing Auth session; never ask the user to copy a token.
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 35000)
+  const timer = setTimeout(() => controller.abort(), AI_TEST_TIMEOUT_MS)
   try {
     const { data: sessionData, error: sessionError } = await client.auth.getSession()
     if (sessionError || !sessionData?.session) return { error: 'authentication_required' }
