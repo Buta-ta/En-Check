@@ -57,3 +57,7 @@
 .ec-assistant-panel .qr-scanner-overlay { position: static; padding: 12px 0; background: transparent; backdrop-filter: none; }
 .ec-assistant-panel .qr-scanner-modal { width: 100%; max-width: 100%; }
 .ec-assistant-panel .qr-scanner-modal h3 { color: #fff; }
+.ec-assistant-answer { margin-top: 18px; padding: 16px; background: #f5eee0; border: 1px solid #d9c7aa; border-radius: 12px; }
+.ec-assistant-answer li { padding: 9px 0; border-bottom: 1px solid #e0d4c2; font-size: 14px; }
+.ec-assistant-answer ul { padding-left: 18px; }
+.ec-assistant-answer > button { border: 1px solid #79614b; border-radius: 8px; padding: 12px; background: #244c40; color: white; min-height: 44px; }

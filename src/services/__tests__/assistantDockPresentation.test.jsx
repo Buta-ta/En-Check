@@ -6,6 +6,8 @@ import AssistantDock, { readAssistantContext } from '../../components/AssistantD
 import { ASSISTANT_EXAMPLES } from '../../hooks/useAssistantExamples'
 import { parseQuery } from '../queryParser'
 
+vi.mock('../../lib/supabase', () => ({ supabase: {} }))
+vi.mock('../holidayService', () => ({ default: {} }))
 vi.mock('react-dom', () => ({ createPortal: children => children }))
 const { search } = vi.hoisted(() => ({ search: vi.fn() }))
 vi.mock('../spotlightService', () => ({ searchSpotlight: search }))

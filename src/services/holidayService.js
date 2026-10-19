@@ -49,12 +49,12 @@ class HolidayService {
    * @param {number} year - défaut: année courante
    * @returns {Array} jours fériés résolus et dédoublonnés
    */
-  static async getHolidaysForEnterprise(enterpriseId, year = null) {
+  static async getHolidaysForEnterprise(enterpriseId, year = null, { strict = false } = {}) {
     const targetYear = year || new Date().getFullYear()
     const cacheKey = `${enterpriseId}_${targetYear}`
 
     // Vérif cache
-    if (this._cache.has(cacheKey)) {
+    if (!strict && this._cache.has(cacheKey)) {
       const expiry = this._cacheExpiry.get(cacheKey)
       if (Date.now() < expiry) return this._cache.get(cacheKey)
     }
@@ -108,11 +108,14 @@ class HolidayService {
       const merged = this._mergeHolidays(resolvedGlobals, resolvedOwned)
 
       // Mise en cache
-      this._cache.set(cacheKey, merged)
-      this._cacheExpiry.set(cacheKey, Date.now() + this.CACHE_TTL)
+      if (!strict) {
+        this._cache.set(cacheKey, merged)
+        this._cacheExpiry.set(cacheKey, Date.now() + this.CACHE_TTL)
+      }
 
       return merged
     } catch (err) {
+      if (strict) throw err
       console.error('HolidayService.getHolidaysForEnterprise:', err)
       return []
     }
@@ -122,27 +125,24 @@ class HolidayService {
    * Jours fériés sur une plage de dates
    * Gère le multi-année automatiquement
    */
-  static async getHolidaysForRange(enterpriseId, startDate, endDate) {
+  static async getHolidaysForRange(enterpriseId, startDate, endDate, { strict = false } = {}) {
     try {
       const start = new Date(startDate + 'T12:00:00Z')
       const end   = new Date(endDate   + 'T12:00:00Z')
 
       const years = new Set()
-      const cursor = new Date(start)
-      while (cursor <= end) {
-        years.add(cursor.getUTCFullYear())
-        cursor.setUTCFullYear(cursor.getUTCFullYear() + 1)
-      }
+      for (let year = start.getUTCFullYear(); year <= end.getUTCFullYear(); year++) years.add(year)
 
       const allHolidays = []
       for (const year of years) {
-        const holidays = await this.getHolidaysForEnterprise(enterpriseId, year)
+        const holidays = await this.getHolidaysForEnterprise(enterpriseId, year, { strict })
         allHolidays.push(...holidays)
       }
 
       // Filtrer la plage exacte
       return allHolidays.filter(h => h.date >= startDate && h.date <= endDate)
     } catch (err) {
+      if (strict) throw err
       console.error('HolidayService.getHolidaysForRange:', err)
       return []
     }
