@@ -279,6 +279,7 @@ export default function DashboardExperience({
         { label: 'Journal des connexions', icon: Activity, path: '/connexions', show: isSuperAdmin },
         { label: 'Carte des connexions', icon: Globe, path: '/connexions-map', show: isSuperAdmin },
         { label: 'Notifications push', icon: Bell, path: '/push-notifications', show: isSuperAdmin },
+        { label: 'Test IA (isolé)', icon: Sparkles, path: '/test-ia', show: isSuperAdmin },
         { label: 'Analytics du site', icon: TrendingUp, show: isSuperAdmin, action: () => setShowAnalytics((visible) => !visible) },
       ],
     },

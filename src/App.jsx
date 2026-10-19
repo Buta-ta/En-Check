@@ -61,6 +61,7 @@ import TaskDetail from './pages/TaskDetail'
 import EmployeeTasks from './pages/employee/EmployeeTasks'
 import Predictions from './pages/Predictions'
 import PushNotifications from './pages/PushNotifications'
+import AiConnectionTest from './pages/AiConnectionTest'
 import SpotlightSearch from './pages/SpotlightSearch'
 
 // La page de démo est disponible en local et sur les déploiements Vercel Preview,
@@ -297,6 +298,12 @@ function App() {
           <Route path="/system-messages" element={
             <AdminRoute>
               <SystemMessages />
+            </AdminRoute>
+          } />
+
+          <Route path="/test-ia" element={
+            <AdminRoute requireSuperAdmin>
+              <AiConnectionTest />
             </AdminRoute>
           } />
 

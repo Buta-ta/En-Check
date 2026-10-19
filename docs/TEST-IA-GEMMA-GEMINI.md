@@ -33,3 +33,20 @@ Désactivé par défaut. Ne pas activer la facturation Google. Ce code ne peut p
 `node --test tests/edge/test-ai-search.mjs`
 
 Ces tests simulent Auth, le quota et Google. Aucun appel Gemini réel ni déploiement Supabase n'a lieu pendant les tests. Les modèles réels, le lien admins.user_id et les réponses effectives doivent encore être vérifiés sur le projet après déploiement.
+
+## Page de test mobile pour le super-administrateur
+
+La page `/test-ia` est accessible depuis le menu du tableau de bord **Test IA (isolé)**, uniquement pour le super-administrateur. Elle utilise le client Supabase existant et sa session Auth ; aucun jeton à copier, aucun secret dans le frontend. La route utilise `AdminRoute requireSuperAdmin`, et le serveur Edge garde la vérification décisive de la session et du rôle actif.
+
+Après mise en ligne de cette page :
+1. Se connecter à En-Check avec son compte super-administrateur et ouvrir **Test IA (isolé)**.
+2. Copier l'adresse affichée dans la page (l'origine du site, sans chemin ni slash final). Dans Supabase → Edge Functions → Secrets, mettre cette valeur dans `AI_TEST_ALLOWED_ORIGINS`. Si d'autres origines sont déjà autorisées, les conserver, séparées par des virgules. Pas de `*`.
+3. Pour un déploiement réalisé via l'éditeur Dashboard, vérifier séparément le réglage de la fonction **Verify JWT with legacy secret** : il doit être désactivé, comme `verify_jwt=false` dans le dépôt. Le Dashboard n'applique pas automatiquement le fichier local `config.toml`. Ne jamais supprimer la vérification interne `getUser` + `admins`.
+4. Conserver `GEMINI_API_KEY` côté serveur et `AI_SMOKE_TEST_ENABLED=true` pendant cette séance. Vérifier soi-même dans AI Studio que le projet reste au niveau sans frais : la case de confirmation dans la page ne vérifie pas la facturation.
+5. Cocher la confirmation et cliquer **une seule fois** sur « Tester Gemma et Gemini ». Aucun appel au montage de la page ; double clic verrouillé pendant la requête ; aucune relance automatique. Un essai réservé reste consommé même en cas d'erreur du fournisseur. Un souci réseau peut masquer un essai déjà consommé : ne pas multiplier les clics.
+6. Lire chaque carte séparément (un HTTP 200 seul ne signifie pas réussite). Les résultats ne sont pas persistés dans le navigateur ; le compteur affiché est celui renvoyé par le serveur au moment de la réponse, pas un suivi temps réel des autres onglets.
+7. Remettre `AI_SMOKE_TEST_ENABLED=false` après les essais.
+
+Sans réponse lisible (réseau, CORS ou rejet au gateway), la page ne peut pas distinguer la cause exacte : vérifier ces réglages sans exposer les secrets. Aucun message brut du fournisseur ou de Supabase n'est affiché.
+
+Tests client + Edge : `node --test tests/edge/*.mjs`. Le rendu initial est aussi couvert par Vitest (`aiConnectionTestPresentation.test.jsx`). Ces tests ne remplacent pas un essai authentifié dans le projet réel.
