@@ -1,3 +1,5 @@
+> Mise à jour : le premier lot de réponses RH déterministes est décrit dans [ASSISTANT-REPONSES-RH.md](ASSISTANT-REPONSES-RH.md). Les sections ci-dessous décrivent la livraison initiale de la barre ; la génération cloud reste non branchée.
+
 # Assistant En-Check — barre basse (lot interface)
 
 ## Périmètre

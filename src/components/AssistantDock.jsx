@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowUp, Sparkles, X } from 'lucide-react'
 import { searchSpotlight } from '../services/spotlightService'
+import { supabase } from '../lib/supabase'
+import { answerRhQuestion } from '../services/assistantRh'
+import HolidayService from '../services/holidayService'
 import SearchResults from './SpotlightSearch/SearchResults'
 import useAssistantExamples, { ASSISTANT_EXAMPLES } from '../hooks/useAssistantExamples'
 // Preserve the existing result-card styles after removal of the standalone hub.
@@ -11,7 +14,7 @@ import '../styles/assistantDock.css'
 
 const QRScanner = lazy(() => import('./SpotlightSearch/QRScanner'))
 
-// UI only: no provider call, free-text prompt transmission, or new RH permissions.
+// Read-only assistant: no provider call, external prompt transmission, or new RH permissions.
 export function readAssistantContext() {
   try { return JSON.parse(localStorage.getItem('admin') || 'null') } catch { return null }
 }
@@ -21,6 +24,8 @@ export default function AssistantDock() {
   const [context, setContext] = useState(null)
   const [results, setResults] = useState([])
   const [message, setMessage] = useState('')
+  const [answer, setAnswer] = useState(null)
+  const rhContext = useRef(null)
   const [busy, setBusy] = useState(false)
   const [opened, setOpened] = useState(false)
   const [scanning, setScanning] = useState(false)
@@ -28,6 +33,8 @@ export default function AssistantDock() {
   const receiveScan = useCallback(value => {
     setScanning(false)
     setDraft(value.slice(0, 300))
+    setAnswer(null)
+    rhContext.current = null
     setResults([])
     setBusy(false)
     setMessage('Badge lu. Envoyez la recherche pour consulter les résultats.')
@@ -46,6 +53,8 @@ export default function AssistantDock() {
 
   function close() {
     setScanning(false)
+    setAnswer(null)
+    rhContext.current = null
     requestId.current++
     dialog.current?.close()
     setOpened(false)
@@ -80,6 +89,8 @@ export default function AssistantDock() {
     setOpened(false)
     setBusy(false)
     setDraft('')
+    setAnswer(null)
+    rhContext.current = null
     setScanning(false)
     setResults([])
     setMessage('')
@@ -112,7 +123,9 @@ export default function AssistantDock() {
     event.preventDefault()
     if (busy) return
     const query = draft.trim()
-    const admin = opened ? context : open()
+    const admin = opened ? readAssistantContext() : open()
+    setContext(admin)
+    setAnswer(null)
     const id = ++requestId.current
     setResults([])
     if (!query) { setMessage('Saisissez un nom, un matricule ou une recherche.'); return }
@@ -122,6 +135,17 @@ export default function AssistantDock() {
     setBusy(true)
     setMessage('Recherche dans les données En-Check…')
     try {
+      const rh = await answerRhQuestion({ query, admin, client: supabase, previous: rhContext.current,
+        loadHolidays: (enterprise, from, to) => HolidayService.getHolidaysForRange(enterprise, from, to, { strict: true }),
+      })
+      if (id !== requestId.current) return
+      if (rh) {
+        setAnswer(rh)
+        rhContext.current = rh.context || null
+        setMessage('')
+        return
+      }
+      rhContext.current = null
       const found = await searchSpotlight(query, admin)
       if (id !== requestId.current) return
       setResults(found || [])
@@ -157,6 +181,7 @@ export default function AssistantDock() {
     requestId.current++
     setBusy(false)
     setDraft(example)
+    setAnswer(null)
     open()
     // Choosing an example only prepares the input. Submit remains explicit.
   }
@@ -188,15 +213,27 @@ export default function AssistantDock() {
         <div className="ec-assistant-content">
           {scanning ? <Suspense fallback={<p>Ouverture du scanner…</p>}><QRScanner onClose={stopScanning} onScan={receiveScan} /></Suspense> : <>
           <p className="ec-assistant-context">Entreprise : {context?.selectedEnterprise?.name || (context?.enterprise_id ? 'entreprise de votre compte' : 'à sélectionner')}</p>
-          <h3>Que souhaitez-vous retrouver ?</h3>
+          <h3>Comment puis-je vous aider ?</h3>
           <p>Recherchez un employé, des pointages ou des tâches. Les données restent dans En-Check ; aucun texte n’est envoyé à un modèle externe.</p>
-          <p className="ec-assistant-note">La conversation IA et l’anticipation des risques ne sont pas encore connectées dans cette version.</p>
+          <p className="ec-assistant-note">Les réponses RH ci-dessous utilisent les règles En-Check. La génération cloud et l’anticipation des risques ne sont pas encore connectées.</p>
           <details className="ec-assistant-examples" open>
             <summary>Exemples à demander</summary>
             {examples}
             <p>Le choix d’un exemple ne lance aucune recherche.</p>
           </details>
+          <div className="ec-assistant-example-list" aria-label="Questions RH">
+            {['Combien de pointages', 'Qui est en retard', 'Sorties présumées à confirmer'].map(question => <button key={question} type="button" onClick={() => chooseExample(question)}>{question}</button>)}
+          </div>
           {shortcuts}
+          {answer && <section className="ec-assistant-answer" aria-label="Réponse RH" aria-live="polite">
+            <h3>{answer.title}</h3><p>{answer.text}</p>
+            {answer.period && <p><strong>{answer.enterprise}</strong> · {answer.period} · {answer.timezone}</p>}
+            {answer.notes?.map(note => <p key={note} className="ec-assistant-note">{note}</p>)}
+            {answer.rows?.length > 0 && <ul>{answer.rows.map(row => <li key={row.id}><strong>{row.label}</strong><br />{row.detail}</li>)}</ul>}
+            {answer.source && <p className="ec-assistant-note">Source : {answer.source}<br />Lecture demandée à {new Date(answer.updatedAt).toLocaleTimeString('fr-FR', { timeZone: answer.timezone })} ({answer.timezone}).</p>}
+            {answer.choices && <div className="ec-assistant-example-list">{answer.choices.map(choice => <button key={choice} type="button" onClick={() => chooseExample(choice)}>{choice}</button>)}</div>}
+            {answer.path && <button type="button" onClick={() => go(answer.path)}>Ouvrir {answer.path === '/retards' ? 'Retards' : 'Pointages'} — filtres à vérifier dans la page</button>}
+          </section>}
           <div role="status" aria-live="polite" aria-busy={busy}>{message && <p>{message}</p>}</div>
           {results.length > 0 && <div className="ec-assistant-results" ref={resultsArea} onKeyDown={event => {
             if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.result-card, .result-card-modern')) { event.preventDefault(); event.target.click() }
@@ -204,7 +241,7 @@ export default function AssistantDock() {
           </>}
         </div>
         <form hidden={scanning} className="ec-assistant-form ec-assistant-panel-form" onSubmit={search}>
-          <input ref={panelInput} aria-label="Rechercher dans En-Check" placeholder="Un nom, un matricule, une recherche…" value={draft} maxLength={300} onChange={e => { requestId.current++; setBusy(false); setResults([]); setMessage(''); setDraft(e.target.value) }} autoComplete="off" />
+          <input ref={panelInput} aria-label="Rechercher dans En-Check" placeholder="Un nom, un matricule, une recherche…" value={draft} maxLength={300} onChange={e => { requestId.current++; setBusy(false); setResults([]); setMessage(''); setAnswer(null); setDraft(e.target.value) }} autoComplete="off" />
           <button type="submit" className="ec-assistant-send" disabled={busy} aria-label="Lancer la recherche"><ArrowUp size={21} /></button>
         </form>
         <footer>Aucune modification sans votre confirmation.</footer>
