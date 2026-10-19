@@ -99,3 +99,10 @@
 @media (max-width: 480px) { .ec-dialogue-records li { padding: 12px; gap: 8px; } .ec-dialogue-badge { font-size: 10px; } }
 .ec-dialogue-provenance { font-size: 11px !important; color: #795828; margin: 5px 0; }
 .ec-assistant-results [style*="color: rgb(255, 255, 255)"] { color: #30251e !important; }
+/* Shared progress state: no provider branding, no artificial waiting time. */
+.ec-assistant-loading { display: flex; align-items: center; gap: 12px; margin: 16px 0; padding: 14px 16px; border: 1px solid #e5ded2; border-radius: 14px; background: #f6f0e6; color: #285340; }
+.ec-assistant-loading p { margin: 5px 0 0; font-size: 14px; color: #514638; }
+.ec-assistant-loading-icon { flex-shrink: 0; animation: ec-assistant-spin 1s linear infinite; }
+.ec-assistant-send:disabled { opacity: .55; cursor: wait; }
+@keyframes ec-assistant-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ec-assistant-loading-icon { animation: none; } }
