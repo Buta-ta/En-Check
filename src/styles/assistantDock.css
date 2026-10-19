@@ -106,3 +106,9 @@
 .ec-assistant-send:disabled { opacity: .55; cursor: wait; }
 @keyframes ec-assistant-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .ec-assistant-loading-icon { animation: none; } }
+.ec-public-chat textarea { display: block; width: 100%; box-sizing: border-box; margin: 8px 0; padding: 12px; border: 1px solid #c8d8ce; border-radius: 12px; font: inherit; color: #30251e; background: #fff; resize: vertical; }
+.ec-public-chat-confirm { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0; font-size: 13px; line-height: 1.5; }
+.ec-public-chat-confirm input { flex-shrink: 0; margin-top: 4px; }
+.ec-public-chat-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ec-public-chat button:disabled { opacity: .55; cursor: not-allowed; }
+.ec-dialogue-followups button[aria-pressed="true"] { background: #285340; color: #fff; }
