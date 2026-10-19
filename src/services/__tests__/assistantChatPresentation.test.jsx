@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import AssistantAnswer from '../../components/AssistantAnswer'
 import { usesGeneralConversation } from '../assistantRouting'
 import { resolveDialogue } from '../assistantDialogue'
+import { detectNaturalCompanyIntent, answerNaturalCompanyQuestion } from '../assistantNaturalRh'
 
 describe('Conversation unifiée', () => {
   it('route les questions générales et les suites sans importer le contexte métier', () => {
@@ -52,5 +53,49 @@ describe('Conversation unifiée', () => {
     expect(source).toContain('if (general && !activated.current && !activate)')
     expect(source).toContain('if (!general) publicHistory.current = []')
     expect(source).toContain('chatAbort.current?.abort()')
+  })
+  it('comprend les questions RH naturelles (« qui a dépointé ? », « qui est encore là ? », « qui a pointé ? »)', async () => {
+    expect(detectNaturalCompanyIntent('qui a dépointé ?')).toEqual({ intent: 'checked_out', period: "aujourd'hui" })
+    expect(detectNaturalCompanyIntent('qui est encore en poste ?')).toEqual({ intent: 'still_in', period: "aujourd'hui" })
+    expect(detectNaturalCompanyIntent('qui a pointé ?')).toEqual({ intent: 'checked_in', period: "aujourd'hui" })
+    expect(detectNaturalCompanyIntent('qui est absent ?')).toEqual({ intent: 'absents', period: "aujourd'hui" })
+    expect(detectNaturalCompanyIntent("combien d'employés ?")).toEqual({ intent: 'headcount', period: null })
+
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      gte: () => builder,
+      lt: () => builder,
+      lte: () => builder,
+      order: () => builder,
+      maybeSingle: async () => ({ data: { id: 'demo', name: 'EN-NOUS', timezone: 'Africa/Porto-Novo' } }),
+      limit: async () => ({
+        data: [
+          {
+            id: 'att-1',
+            employee_id: 'emp-1',
+            check_time: '2026-10-19T10:42:00Z',
+            check_type: 'in',
+            is_auto_closed: false,
+            employees: { first_name: 'Hippo', last_name: 'BIYOKILA', matricule: 'EMP-01' },
+          },
+        ],
+      }),
+    }
+    const client = {
+      auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) },
+      rpc: async () => ({ data: true }),
+      from: () => builder,
+    }
+
+    const answer = await answerNaturalCompanyQuestion({
+      query: 'qui a dépointé ?',
+      admin: { enterprise_id: 'demo' },
+      client,
+      now: new Date('2026-10-19T14:00:00Z'),
+    })
+    expect(answer.title).toBe('Collaborateurs ayant dépointé')
+    expect(answer.text).toContain('Personne n’a encore dépointé')
+    expect(answer.text).toContain('Hippo BIYOKILA')
   })
 })

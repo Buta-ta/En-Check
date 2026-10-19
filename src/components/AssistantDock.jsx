@@ -16,7 +16,8 @@ import {
 } from '../services/assistantConversation'
 import { usesGeneralConversation } from '../services/assistantRouting'
 import { resolveDialogue, dialogueScope, currentDialogue, SESSION_TTL } from '../services/assistantDialogue'
-import { answerRhQuestion } from '../services/assistantRh'
+import { answerRhQuestion, parseRhQuestion } from '../services/assistantRh'
+import { answerNaturalCompanyQuestion } from '../services/assistantNaturalRh'
 import { answerExplanation, EXPLANATION_QUESTIONS } from '../services/assistantExplanation'
 import HolidayService from '../services/holidayService'
 import SearchResults from './SpotlightSearch/SearchResults'
@@ -272,6 +273,18 @@ export default function AssistantDock() {
       if (!isCurrent()) return
       if (explanation) {
         setAnswer(explanation)
+        rhContext.current = null
+        dialogueSession.current = { scope, at: Date.now(), state: null }
+        setMessage('')
+        return
+      }
+      const naturalRh = !parseRhQuestion(query, rhContext.current)?.intent
+        ? await answerNaturalCompanyQuestion({ query: original, admin, client: supabase })
+        : null
+      if (id !== requestId.current) return
+      if (!isCurrent()) return
+      if (naturalRh) {
+        setAnswer(conversation.greeting ? { ...naturalRh, text: `Bonjour ! ${naturalRh.text}` } : naturalRh)
         rhContext.current = null
         dialogueSession.current = { scope, at: Date.now(), state: null }
         setMessage('')
