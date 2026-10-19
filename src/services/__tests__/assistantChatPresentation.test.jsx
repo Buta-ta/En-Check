@@ -8,10 +8,15 @@ import { resolveDialogue } from '../assistantDialogue'
 describe('Conversation unifiée', () => {
   it('route les questions générales et les suites sans importer le contexte métier', () => {
     expect(usesGeneralConversation('Comment organiser une réunion utile ?')).toBe(true)
+    expect(usesGeneralConversation('Que faire pour motiver une équipe ?')).toBe(true)
+    expect(usesGeneralConversation('Peux-tu rédiger un message d’accueil ?')).toBe(true)
     expect(usesGeneralConversation('Comment ?')).toBe(true)
     expect(usesGeneralConversation('Bonjour')).toBe(true)
     expect(usesGeneralConversation('Merci')).toBe(true)
     expect(resolveDialogue('Comment ?').answer).toBeTruthy()
+    expect(resolveDialogue('que peux tu faire ?').answer.text).toContain('assistant conversationnel')
+    expect(resolveDialogue('qui es-tu ?').answer.text).toContain('assistant conversationnel')
+    expect(resolveDialogue('comment ça va ?').answer.text).toContain('Tout va très bien')
     expect(usesGeneralConversation('Comment ?', [{role:'user',text:'Réunion'}])).toBe(true)
     for (const text of ['Sara Dupont', 'Les retards hier', 'et hier ?', 'Comment calculer le salaire de Sara ?', 'Comment gérer mon dossier ?', 'Pourquoi exemple@example.org ?', 'Explique une sortie présumée']) {
       expect(usesGeneralConversation(text, [{role:'user',text:'Réunion'}])).toBe(false)

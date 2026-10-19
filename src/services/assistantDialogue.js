@@ -37,6 +37,37 @@ export function resolveDialogue(value, previous = null) {
     if (state.intent && RH_QUESTIONS[state.intent]) return { query: `${RH_QUESTIONS[state.intent]} ${state.period || ''}`.trim(), state: { ...state, pending: null } }
     return { answer: clarification('Que souhaitez-vous consulter ?', Object.values(RH_QUESTIONS)), state: null }
   }
+  // Réponses conversationnelles sur les autres modules d'En-Check (pauses, plannings, employés, absences, paie)
+  if (/\b(?:pause|pauses)\b/.test(text)) {
+    return {
+      answer: {
+        text: "Dans En-Check, les pauses pointées (planifiées ou hors planning) ainsi que le chronomètre en direct des pauses en cours sont visibles sur le Dashboard, sur la page Pointages et dans l’espace Pauses.",
+        path: '/pauses',
+        choices: ["Combien de pointages aujourd'hui", "Qui est en retard aujourd'hui", 'Sorties présumées à confirmer'],
+      },
+      state: previous,
+    }
+  }
+  if (/\b(?:planning|plannings|horaire|horaires)\b/.test(text) && !/retard|pointage|sortie/.test(text)) {
+    return {
+      answer: {
+        text: "Vous pouvez configurer les grilles d’horaires de l’entreprise, attribuer un planning personnalisé à un collaborateur ou traiter les demandes de modification depuis la page Planning.",
+        path: '/planning',
+        choices: ["Qui est en retard aujourd'hui", 'Comment sont calculés les retards ?'],
+      },
+      state: previous,
+    }
+  }
+  if (/\b(?:absence|absences|conge|conges)\b/.test(text) && !/pointage|retard/.test(text)) {
+    return {
+      answer: {
+        text: "La gestion des congés, arrêts maladie et absences déclarées se fait depuis la page Absences. Lorsqu’un pointage a lieu pendant une absence déclarée, En-Check signale automatiquement un conflit à vérifier.",
+        path: '/absences',
+        choices: ["Combien de pointages aujourd'hui", 'Sorties présumées à confirmer'],
+      },
+      state: previous,
+    }
+  }
   const parsed = parseRhQuestion(query, state)
   if (parsed && !parsed.unsupported) return { query: `${RH_QUESTIONS[parsed.intent]} ${parsed.period || ''}`.trim(), greeting: courtesy.greeting,
     state: { intent: parsed.intent, period: parsed.period, pending: null } }
