@@ -1,7 +1,11 @@
+import EnCheckBrandMark from './EnCheckBrandMark'
+import { AdinkraWatermarkSvg } from './AfroCulturalSvg'
+
 const initials = name => name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase()
 export default function AssistantAnswer({ answer, onChoice, onNavigate, live = true }) {
   return <section className="ec-dialogue-answer" aria-label="Réponse de l’assistant" aria-live={live ? "polite" : "off"}>
-    <div className="ec-dialogue-speaker">✧ Assistant En-Check</div>
+    <AdinkraWatermarkSvg className="ec-dialogue-watermark" />
+    <div className="ec-dialogue-speaker"><EnCheckBrandMark size={18} /><span>✧ Assistant En-Check</span></div>
     {answer.title && <h3>{answer.title}</h3>}
     <p className="ec-dialogue-text">{answer.text}</p>
     {answer.period && <p className="ec-dialogue-scope">{answer.enterprise} · {answer.period}</p>}
@@ -20,7 +24,7 @@ export default function AssistantAnswer({ answer, onChoice, onNavigate, live = t
       {answer.updatedAt && <p>Lecture demandée à {new Date(answer.updatedAt).toLocaleTimeString('fr-FR', { timeZone: answer.timezone })} · {answer.timezone}.</p>}
       {answer.notes?.map(note => <p key={note}>{note}</p>)}
     </details>}
-    {answer.path && <button className="ec-dialogue-open" type="button" onClick={() => onNavigate(answer.path)}>Ouvrir {answer.path === '/retards' ? 'Retards' : 'Pointages'} ↗</button>}
+    {answer.path && <button className="ec-dialogue-open" type="button" onClick={() => onNavigate(answer.path)}>Ouvrir {answer.path === '/retards' ? 'Retards' : answer.path === '/pauses' ? 'Pauses' : answer.path === '/planning' ? 'Planning' : answer.path === '/absences' ? 'Absences' : 'Pointages'} ↗</button>}
     {answer.path && <small className="ec-dialogue-page-note">Vérifiez les filtres dans la page ouverte.</small>}
   </section>
 }

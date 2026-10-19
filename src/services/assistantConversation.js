@@ -21,9 +21,32 @@ const ACK_PATTERN =
 const GOODBYE_PATTERN =
   /^(?:au revoir|bonne journee|bonne soiree|a bientot|a plus tard|a plus|bye)$/
 
+const ENCHECK_ABOUT_PATTERN =
+  /^(?:(?:bonjour|bonsoir|salut|coucou|dis[- ]moi)\s+)*(?:en[- ]?check|c'est quoi en[- ]?check|qu'est[- ]ce qu'en[- ]?check|qu est ce qu en[- ]?check|parle[- ]moi d'en[- ]?check|presente en[- ]?check|explique en[- ]?check)$/
+
 export function conversationalRequest(value) {
   const original = String(value || '').trim()
   const norm = normalize(original)
+
+  if (ENCHECK_ABOUT_PATTERN.test(norm)) {
+    return {
+      answer: {
+        text:
+          "En-Check (« On gère ! ») est votre plateforme de suivi de présence, de pointage et de gestion d’équipe. Ici, dans notre conversation, je peux :\n\n" +
+          "• Faire le point en direct sur les pointages enregistrés, les collaborateurs en retard ou les sorties présumées à confirmer.\n" +
+          "• Retrouver immédiatement la fiche, le badge QR ou l’activité d’un salarié par son nom ou son matricule.\n" +
+          "• Vous expliquer chaque règle métier (retards, sorties présumées, pauses en direct, plannings).\n" +
+          "• Échanger avec vous et vous conseiller sur l’organisation de votre équipe.\n\n" +
+          "Que souhaitez-vous vérifier ou me demander aujourd’hui ?",
+        choices: [
+          "Qui est en retard aujourd'hui",
+          "Combien de pointages aujourd'hui",
+          'Sorties présumées à confirmer',
+          'Explique une sortie présumée',
+        ],
+      },
+    }
+  }
 
   if (CAPABILITY_PATTERN.test(norm)) {
     return {

@@ -1,11 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowUp, Sparkles, X } from 'lucide-react'
+import { ArrowUp, RotateCcw, Sparkles, X } from 'lucide-react'
 import { searchSpotlight } from '../services/spotlightService'
 import { supabase } from '../lib/supabase'
 import AssistantAnswer from './AssistantAnswer'
 import AssistantStatus from './AssistantStatus'
+import EnCheckBrandMark from './EnCheckBrandMark'
+import { KenteWovenTapestrySvg, WovenKenteBadgeSvg } from './AfroCulturalSvg'
 import { answerPublicChat, publicMessages, CHAT_ERRORS } from '../services/assistantChat'
 import { usesGeneralConversation } from '../services/assistantRouting'
 import { resolveDialogue, dialogueScope, currentDialogue, SESSION_TTL } from '../services/assistantDialogue'
@@ -27,7 +29,24 @@ export function readAssistantContext() {
 
 const readChatScope = () => dialogueScope(readAssistantContext())
 
+const readActiveTheme = () => {
+  try {
+    if (typeof document !== 'undefined') {
+      const domTheme = document.documentElement?.dataset?.theme || document.body?.dataset?.theme
+      if (domTheme === 'light' || domTheme === 'dark') return domTheme
+    }
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('encheck_admin_dark_mode_v2')
+      if (saved === 'false') return 'light'
+    }
+  } catch {
+    // Default to dark mode
+  }
+  return 'dark'
+}
+
 export default function AssistantDock() {
+  const [theme, setTheme] = useState(readActiveTheme)
   const [activation, setActivation] = useState(null)
   const activated = useRef(false)
   const publicHistory = useRef([])
@@ -104,6 +123,21 @@ export default function AssistantDock() {
     panelInput.current?.focus()
     return admin
   }
+
+  useEffect(() => {
+    setTheme(readActiveTheme())
+    if (typeof MutationObserver === 'undefined' || typeof document === 'undefined' || !document.documentElement) {
+      return undefined
+    }
+    const observer = new MutationObserver(() => setTheme(readActiveTheme()))
+    if (document.documentElement instanceof Node) {
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    }
+    if (document.body instanceof Node) {
+      observer.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] })
+    }
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     if (!opened && restoreFocus.current) {
@@ -254,13 +288,18 @@ export default function AssistantDock() {
       if (id !== requestId.current) return
       if (!isCurrent()) return
       setResults(found || [])
-      if (!found?.length) setAnswer({
-        text: `Je n’ai trouvé aucune fiche correspondant à « ${query} » dans cette entreprise. Vous pouvez m’indiquer le nom ou le matricule d’un collaborateur, me demander le point sur votre équipe (pointages, retards, sorties présumées) ou me poser une question générale !`,
-        choices: ["Qui est en retard aujourd'hui", "Combien de pointages aujourd'hui", 'Sorties présumées à confirmer', 'Que peux-tu faire ?'],
-      })
-      setMessage(found?.length
-        ? 'Voici les résultats de la recherche En-Check. Sélectionnez une fiche pour la consulter.'
-        : '')
+      if (found?.length) {
+        setAnswer({
+          text: `J’ai trouvé ${found.length} résultat${found.length > 1 ? 's' : ''} correspondant à « ${original} » dans En-Check. Sélectionnez une fiche ci-dessous pour la consulter ou poursuivez notre échange.`,
+        })
+        setMessage('')
+      } else {
+        setAnswer({
+          text: `Je n’ai trouvé aucune fiche correspondant à « ${query} » dans cette entreprise. Vous pouvez m’indiquer le nom ou le matricule d’un collaborateur, me demander le point sur votre équipe (pointages, retards, sorties présumées) ou me poser une question générale !`,
+          choices: ["Qui est en retard aujourd'hui", "Combien de pointages aujourd'hui", 'Sorties présumées à confirmer', 'Que peux-tu faire ?'],
+        })
+        setMessage('')
+      }
     } catch {
       if (isCurrent()) {
         dialogueSession.current = { scope, at: Date.now(), state: null }
@@ -342,9 +381,9 @@ export default function AssistantDock() {
   return <>
     <div className="ec-assistant-space" aria-hidden="true" />
     {createPortal(<>
-      <aside className="ec-assistant-dock" aria-label="Assistant En-Check" hidden={opened} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false) }}>
-        <div className="ec-assistant-weave" aria-hidden="true" />
-        <div className="ec-assistant-label"><span><Sparkles size={14} /> ASSISTANT EN-CHECK</span><span>Rechercher · Comprendre · Anticiper</span></div>
+      <aside className="ec-assistant-dock" data-theme={theme} aria-label="Assistant En-Check" hidden={opened} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false) }}>
+        <div className="ec-assistant-weave" aria-hidden="true"><KenteWovenTapestrySvg className="ec-assistant-kente-svg" /></div>
+        <div className="ec-assistant-label"><span><EnCheckBrandMark size={18} /> ASSISTANT EN-CHECK · ON GÈRE !</span><span>Converser · Vérifier · Comprendre</span></div>
         <form className="ec-assistant-form" onSubmit={search}>
           <button ref={launcher} type="button" className="ec-assistant-open" onClick={open} aria-label="Ouvrir l’assistant En-Check" aria-haspopup="dialog"><Sparkles size={20} /></button>
           <input aria-label="Votre recherche En-Check" placeholder={placeholder} value={draft} maxLength={2000} onChange={e => setDraft(e.target.value)} autoComplete="off" />
@@ -356,9 +395,27 @@ export default function AssistantDock() {
           <p>Choisissez un exemple, adaptez-le, puis envoyez.</p>
         </details>
       </aside>
-      <dialog ref={dialog} className="ec-assistant-panel" aria-labelledby="ec-assistant-title" onCancel={event => { event.preventDefault(); if (scanning) stopScanning(); else close() }} onClick={event => { if (event.target === dialog.current) close() }}>
-        <div className="ec-assistant-weave" aria-hidden="true" />
-        <header className="ec-assistant-panel-header"><div><h2 id="ec-assistant-title">Assistant En-Check</h2><p>Votre entreprise, en conversation</p></div><button type="button" className="ec-assistant-new" onClick={() => { close(); open() }}>Nouvelle discussion</button><button type="button" onClick={close} aria-label="Fermer l’assistant"><X size={22} /></button></header>
+      <dialog ref={dialog} className="ec-assistant-panel" data-theme={theme} aria-labelledby="ec-assistant-title" onCancel={event => { event.preventDefault(); if (scanning) stopScanning(); else close() }} onClick={event => { if (event.target === dialog.current) close() }}>
+        <div className="ec-assistant-weave" aria-hidden="true"><KenteWovenTapestrySvg className="ec-assistant-kente-svg" /></div>
+        <header className="ec-assistant-panel-header">
+          <div className="ec-assistant-panel-brand">
+            <WovenKenteBadgeSvg variant={1} size={40} />
+            <EnCheckBrandMark size={38} />
+            <div>
+              <h2 id="ec-assistant-title">Assistant En-Check</h2>
+              <p>On gère ! · Votre entreprise, en conversation</p>
+            </div>
+          </div>
+          <div className="ec-assistant-header-actions">
+            <button type="button" className="ec-assistant-new" onClick={() => { close(); open() }}>
+              <RotateCcw size={14} />
+              <span>Nouvelle discussion</span>
+            </button>
+            <button type="button" className="ec-assistant-close" onClick={close} aria-label="Fermer l’assistant">
+              <X size={20} />
+            </button>
+          </div>
+        </header>
         <div className="ec-assistant-content" ref={resultsArea} onKeyDown={event => {
           if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.result-card, .result-card-modern')) { event.preventDefault(); event.target.click() }
         }}>
