@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
+  Building2,
   ChevronDown,
   ChevronRight,
   Key,
@@ -17,10 +18,46 @@ import {
 import { formaterTempsPauseEnDirect } from '../services/pausesService'
 import '../pages/PointagesAfroTech.css'
 
+// Construit dynamiquement une courbe cubique lisse + aire fermée à partir de 5 valeurs réelles
+function buildDynamicSplineGeometry(values = [0, 0, 0, 0, 0], maxValue = 1) {
+  const safeMax = Math.max(1, maxValue)
+  const xs = [34, 82, 130, 178, 226]
+  const baseLine = 86
+  const topLine = 18
+  const span = baseLine - topLine
+
+  const pts = xs.map((x, idx) => {
+    const v = Math.max(0, Number(values[idx]) || 0)
+    const y = Math.round(baseLine - (v / safeMax) * span)
+    return { x, y, v }
+  })
+
+  let linePath = `M ${pts[0].x} ${pts[0].y}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i]
+    const p1 = pts[i + 1]
+    const midX = Math.round((p0.x + p1.x) / 2)
+    linePath += ` C ${midX} ${p0.y}, ${midX} ${p1.y}, ${p1.x} ${p1.y}`
+  }
+
+  const areaPath = `${linePath} L ${pts[pts.length - 1].x} ${baseLine} L ${pts[0].x} ${baseLine} Z`
+
+  let peak = pts[0]
+  for (const pt of pts) {
+    if (pt.v > peak.v) peak = pt
+  }
+
+  return { pts, linePath, areaPath, peak, baseLine }
+}
+
 export function EmployesCulturalHero({
   darkMode = true,
+  entreprises = [],
+  selectedEnterpriseId = 'all',
+  onSelectEnterprise,
   onToggleTheme,
   onBackDashboard,
+  onNavigate,
   onAddEmployee,
 }) {
   return (
@@ -46,9 +83,36 @@ export function EmployesCulturalHero({
           </div>
         </div>
 
-        <h1 className="employes-concept-center-title">Employés</h1>
+        <div className="employes-concept-center-col">
+          <h1 className="employes-concept-center-title">Employés</h1>
+          {onNavigate && (
+            <nav className="pointages-quick-nav" aria-label="Navigation rapide En-Check">
+              <button type="button" onClick={() => onNavigate('/dashboard')}>Dashboard</button>
+              <button type="button" onClick={() => onNavigate('/pointages')}>Pointages</button>
+              <button type="button" className="is-active" aria-current="page">Employés</button>
+              <button type="button" onClick={() => onNavigate('/pauses')}>Pauses</button>
+              <button type="button" onClick={() => onNavigate('/planning')}>Planning</button>
+            </nav>
+          )}
+        </div>
 
         <div className="employes-concept-actions">
+          {entreprises.length > 1 && onSelectEnterprise && (
+            <label className="employes-enterprise-select-pill" title="Filtrer par entreprise">
+              <Building2 size={13} />
+              <select
+                value={selectedEnterpriseId || 'all'}
+                onChange={(e) => onSelectEnterprise(e.target.value)}
+                aria-label="Sélectionner une entreprise"
+              >
+                <option value="all">Toutes les entreprises</option>
+                {entreprises.map((ent) => (
+                  <option key={ent.id} value={ent.id}>{ent.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
           {onToggleTheme && (
             <button
               type="button"
@@ -81,6 +145,8 @@ export function EmployesExecutiveKpis({
   employes = [],
   liveStatusByEmployee = {},
   plannings = [],
+  categoryFilter = 'all',
+  onCategoryFilterChange,
   onFilterSearch,
 }) {
   const total = employes.length
@@ -89,28 +155,33 @@ export function EmployesExecutiveKpis({
     let cdi = 0
     let cdd = 0
     let stage = 0
+    let autres = 0
     for (const e of employes) {
       if (e.contract_type === 'CDI') cdi += 1
       else if (e.contract_type === 'CDD') cdd += 1
-      else if (e.contract_type) stage += 1
+      else if (e.contract_type === 'Stage') stage += 1
+      else autres += 1
     }
-    return { cdi, cdd, stage }
+    return { cdi, cdd, stage, autres }
   }, [employes])
 
   const liveCounts = useMemo(() => {
     let enPoste = 0
     let enPause = 0
+    let termine = 0
     let enConge = 0
+    let nonPointe = 0
     let horsPlanningPauses = 0
     for (const e of employes) {
       const st = liveStatusByEmployee[e.id]
-      if (!st) continue
-      if (st.state === 'en_pause') enPause += 1
-      else if (st.state === 'en_poste' || st.state === 'termine') enPoste += 1
+      if (!st || st.state === 'non_pointe') nonPointe += 1
+      else if (st.state === 'en_pause') enPause += 1
+      else if (st.state === 'en_poste') enPoste += 1
+      else if (st.state === 'termine') termine += 1
       else if (st.state === 'en_conge') enConge += 1
-      if (st.unplannedPausesCount > 0) horsPlanningPauses += st.unplannedPausesCount
+      if (st?.unplannedPausesCount > 0) horsPlanningPauses += st.unplannedPausesCount
     }
-    return { enPoste, enPause, enConge, horsPlanningPauses }
+    return { enPoste, enPause, termine, enConge, nonPointe, horsPlanningPauses }
   }, [employes, liveStatusByEmployee])
 
   const enrollmentCounts = useMemo(() => {
@@ -142,142 +213,237 @@ export function EmployesExecutiveKpis({
     return { perso, general, libre }
   }, [employes, plannings])
 
+  // Courbes dynamiques calculées sur les vraies données RH
+  const headcountSpline = useMemo(
+    () =>
+      buildDynamicSplineGeometry(
+        [contractCounts.cdi, contractCounts.cdd, contractCounts.stage, contractCounts.autres, total],
+        Math.max(1, total)
+      ),
+    [contractCounts, total]
+  )
+
+  const scheduleSpline = useMemo(
+    () =>
+      buildDynamicSplineGeometry(
+        [scheduleCounts.perso, scheduleCounts.general, scheduleCounts.libre, enrollmentCounts.portal, enrollmentCounts.machinePin],
+        Math.max(1, total)
+      ),
+    [scheduleCounts, enrollmentCounts, total]
+  )
+
+  const livePresenceSpline = useMemo(
+    () =>
+      buildDynamicSplineGeometry(
+        [liveCounts.enPoste, liveCounts.enPause, liveCounts.termine, liveCounts.enConge, liveCounts.nonPointe],
+        Math.max(1, total)
+      ),
+    [liveCounts, total]
+  )
+
+  const livePauseSpline = useMemo(
+    () =>
+      buildDynamicSplineGeometry(
+        [liveCounts.enPause, liveCounts.horsPlanningPauses, liveCounts.enPoste, liveCounts.termine, liveCounts.enConge],
+        Math.max(1, total)
+      ),
+    [liveCounts, total]
+  )
+
+  const headcountAxisLabels = [
+    { label: 'CDI', val: contractCounts.cdi },
+    { label: 'CDD', val: contractCounts.cdd },
+    { label: 'Stage', val: contractCounts.stage },
+    { label: 'Autres', val: contractCounts.autres },
+    { label: 'Total', val: total },
+  ]
+
+  const liveAxisLabels = [
+    { label: 'Poste', val: liveCounts.enPoste },
+    { label: 'Pause', val: liveCounts.enPause },
+    { label: 'Pointé', val: liveCounts.termine },
+    { label: 'Congé', val: liveCounts.enConge },
+    { label: 'Non pt.', val: liveCounts.nonPointe },
+  ]
+
+  const yAxisTicks = [total, Math.round(total * 0.75), Math.round(total * 0.5), 0]
+
   return (
     <section className="employes-top-cards-grid" aria-label="Indicateurs RH des employés">
-      {/* CARTE 1 : EFFECTIF ACTIF (COURBES SPLINE LUMINEUSES) */}
-      <article className="employes-framed-card" onClick={() => onFilterSearch && onFilterSearch('')}>
+      {/* CARTE 1 : EFFECTIF ACTIF (COURBE DYNAMIQUE BASÉE SUR LES VRAIS CONTRATS) */}
+      <article
+        className="employes-framed-card"
+        onClick={() => {
+          if (onCategoryFilterChange) onCategoryFilterChange('all')
+          if (onFilterSearch) onFilterSearch('')
+        }}
+      >
         <div className="employes-framed-card-head">
           <div className="employes-framed-card-title-wrap">
             <WovenKenteBadgeSvg variant={1} size={46} />
             <div>
-              <strong>Effectif<br />Actif</strong>
-              <small>{total} collaborateur{total > 1 ? 's' : ''} ({contractCounts.cdi} CDI)</small>
+              <strong>Effectif<br />Actif ({total})</strong>
+              <small>{contractCounts.cdi} CDI · {contractCounts.cdd} CDD · {contractCounts.stage} Stage</small>
             </div>
           </div>
           <span className="employes-circle-chevron"><ChevronDown size={15} /></span>
         </div>
 
         <div className="employes-spline-chart-wrap">
-          <svg viewBox="0 0 260 112" className="employes-spline-svg" aria-hidden="true">
+          <svg viewBox="0 0 260 112" className="employes-spline-svg" aria-label="Courbe de répartition de l'effectif actif">
             <defs>
               <linearGradient id="emp-spline-copper" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#E38B42" stopOpacity="0.38" />
                 <stop offset="100%" stopColor="#E38B42" stopOpacity="0.0" />
               </linearGradient>
             </defs>
-            {/* Grille graduée */}
-            <text x="4" y="18" fontSize="9" fill="currentColor" opacity="0.55">100</text>
-            <text x="4" y="42" fontSize="9" fill="currentColor" opacity="0.55">75</text>
-            <text x="4" y="66" fontSize="9" fill="currentColor" opacity="0.55">50</text>
-            <text x="8" y="90" fontSize="9" fill="currentColor" opacity="0.55">0</text>
-            {[15, 39, 63, 87].map((y) => (
-              <line key={y} x1="26" y1={y} x2="252" y2={y} stroke="currentColor" strokeOpacity="0.12" strokeDasharray="3 3" />
+            {[18, 40, 63, 86].map((y, idx) => (
+              <g key={y}>
+                <text x="4" y={y + 3} fontSize="8.5" fill="currentColor" opacity="0.58">
+                  {yAxisTicks[idx]}
+                </text>
+                <line x1="26" y1={y} x2="248" y2={y} stroke="currentColor" strokeOpacity="0.12" strokeDasharray="3 3" />
+              </g>
             ))}
-            {/* Aire sous courbe */}
+            <path d={headcountSpline.areaPath} fill="url(#emp-spline-copper)" />
             <path
-              d="M 28 56 C 52 68, 72 44, 102 44 C 132 44, 148 16, 174 16 C 202 16, 224 52, 250 48 L 250 87 L 28 87 Z"
-              fill="url(#emp-spline-copper)"
-            />
-            {/* Courbe secondaire dorée */}
-            <path
-              d="M 28 60 C 62 56, 86 42, 114 36 C 146 30, 172 68, 206 58 C 226 52, 238 42, 250 38"
+              d={scheduleSpline.linePath}
               fill="none"
               stroke="#C49A52"
-              strokeWidth="1.8"
-              strokeOpacity="0.85"
+              strokeWidth="1.7"
+              strokeOpacity="0.82"
             />
-            {/* Courbe principale cuivrée */}
             <path
-              d="M 28 56 C 52 68, 72 44, 102 44 C 132 44, 148 16, 174 16 C 202 16, 224 52, 250 48"
+              d={headcountSpline.linePath}
               fill="none"
               stroke="#E68A3E"
               strokeWidth="2.4"
               strokeLinecap="round"
             />
-            {/* Repère étoile africaine sur le sommet */}
-            <line x1="114" y1="36" x2="114" y2="56" stroke="#F4D078" strokeWidth="1.6" strokeDasharray="2 2" />
-            <g transform="translate(114, 32)" stroke="#A39584" strokeWidth="1.6">
-              <line x1="-6" y1="0" x2="6" y2="0" />
-              <line x1="0" y1="-6" x2="0" y2="6" />
-              <line x1="-4.5" y1="-4.5" x2="4.5" y2="4.5" />
-              <line x1="-4.5" y1="4.5" x2="4.5" y2="-4.5" />
-            </g>
-            {['20', '40', '50', '50', '60'].map((lbl, idx) => (
-              <text key={idx} x={48 + idx * 46} y="105" textAnchor="middle" fontSize="9" fill="currentColor" opacity="0.55">
-                {lbl}
+            {total > 0 && (
+              <>
+                <line
+                  x1={headcountSpline.peak.x}
+                  y1={headcountSpline.peak.y}
+                  x2={headcountSpline.peak.x}
+                  y2={headcountSpline.baseLine}
+                  stroke="#F4D078"
+                  strokeWidth="1.4"
+                  strokeDasharray="2 2"
+                />
+                <g transform={`translate(${headcountSpline.peak.x}, ${headcountSpline.peak.y})`} stroke="#F4D078" strokeWidth="1.6">
+                  <line x1="-5" y1="0" x2="5" y2="0" />
+                  <line x1="0" y1="-5" x2="0" y2="5" />
+                  <line x1="-3.5" y1="-3.5" x2="3.5" y2="3.5" />
+                  <line x1="-3.5" y1="3.5" x2="3.5" y2="-3.5" />
+                </g>
+              </>
+            )}
+            {headcountAxisLabels.map((item, idx) => (
+              <text
+                key={item.label}
+                x={34 + idx * 48}
+                y="104"
+                textAnchor="middle"
+                fontSize="8.5"
+                fill="currentColor"
+                opacity="0.68"
+              >
+                {`${item.label}(${item.val})`}
               </text>
             ))}
           </svg>
         </div>
       </article>
 
-      {/* CARTE 2 : EN POSTE & EN PAUSE EN DIRECT (COURBES ÉMERAUDE & CUIVRE) */}
-      <article className="employes-framed-card" onClick={() => onFilterSearch && onFilterSearch('')}>
+      {/* CARTE 2 : EN POSTE & EN PAUSE EN DIRECT (COURBE DYNAMIQUE BASÉE SUR L'ÉTAT RÉEL DU JOUR) */}
+      <article
+        className="employes-framed-card"
+        onClick={() => {
+          if (onCategoryFilterChange) onCategoryFilterChange(categoryFilter === 'live_on_duty' ? 'all' : 'live_on_duty')
+        }}
+      >
         <div className="employes-framed-card-head">
           <div className="employes-framed-card-title-wrap">
             <WovenKenteBadgeSvg variant={2} size={46} />
             <div>
               <strong>En Poste & En<br />Pause en Direct</strong>
-              <small>{liveCounts.enPoste} en poste · {liveCounts.enPause} en pause</small>
+              <small>
+                {liveCounts.enPoste + liveCounts.termine} présents · {liveCounts.enPause} en pause · {liveCounts.nonPointe} non pointés
+              </small>
             </div>
           </div>
           <span className="employes-circle-chevron"><ChevronDown size={15} /></span>
         </div>
 
         <div className="employes-spline-chart-wrap">
-          <svg viewBox="0 0 260 112" className="employes-spline-svg" aria-hidden="true">
+          <svg viewBox="0 0 260 112" className="employes-spline-svg" aria-label="Courbe de présence et pauses en direct">
             <defs>
               <linearGradient id="emp-spline-emerald" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#2CC974" stopOpacity="0.3" />
                 <stop offset="100%" stopColor="#2CC974" stopOpacity="0.0" />
               </linearGradient>
             </defs>
-            <text x="4" y="18" fontSize="9" fill="currentColor" opacity="0.55">100</text>
-            <text x="4" y="42" fontSize="9" fill="currentColor" opacity="0.55">75</text>
-            <text x="4" y="66" fontSize="9" fill="currentColor" opacity="0.55">50</text>
-            <text x="8" y="90" fontSize="9" fill="currentColor" opacity="0.55">0</text>
-            {[15, 39, 63, 87].map((y) => (
-              <line key={y} x1="26" y1={y} x2="252" y2={y} stroke="currentColor" strokeOpacity="0.12" strokeDasharray="3 3" />
+            {[18, 40, 63, 86].map((y, idx) => (
+              <g key={y}>
+                <text x="4" y={y + 3} fontSize="8.5" fill="currentColor" opacity="0.58">
+                  {yAxisTicks[idx]}
+                </text>
+                <line x1="26" y1={y} x2="248" y2={y} stroke="currentColor" strokeOpacity="0.12" strokeDasharray="3 3" />
+              </g>
             ))}
+            <path d={livePresenceSpline.areaPath} fill="url(#emp-spline-emerald)" />
             <path
-              d="M 28 66 C 48 40, 74 42, 98 54 C 126 68, 160 64, 198 22 C 218 36, 234 50, 250 62 L 250 87 L 28 87 Z"
-              fill="url(#emp-spline-emerald)"
-            />
-            {/* Courbe émeraude (En poste) */}
-            <path
-              d="M 28 66 C 48 40, 74 42, 98 54 C 126 68, 160 64, 198 22 C 218 36, 234 50, 250 62"
+              d={livePresenceSpline.linePath}
               fill="none"
               stroke="#32C48D"
-              strokeWidth="2.2"
+              strokeWidth="2.3"
               strokeLinecap="round"
             />
-            {/* Courbe cuivre (En pause) */}
             <path
-              d="M 28 74 C 58 60, 86 52, 118 66 C 146 76, 170 46, 196 56 C 220 66, 236 62, 250 56"
+              d={livePauseSpline.linePath}
               fill="none"
               stroke="#E68A3E"
-              strokeWidth="2.1"
+              strokeWidth="2"
               strokeLinecap="round"
             />
-            {/* Symbole étoile émeraude */}
-            <line x1="102" y1="48" x2="102" y2="66" stroke="#E8AE3E" strokeWidth="1.6" strokeDasharray="2 2" />
-            <g transform="translate(102, 45)" stroke="#32C48D" strokeWidth="1.8">
-              <line x1="-6" y1="0" x2="6" y2="0" />
-              <line x1="0" y1="-6" x2="0" y2="6" />
-              <line x1="-4.5" y1="-4.5" x2="4.5" y2="4.5" />
-              <line x1="-4.5" y1="4.5" x2="4.5" y2="-4.5" />
-            </g>
-            <rect x="136" y="64" width="9" height="9" rx="2" fill="#E68A3E" />
-            {['10', '30', '40', '50', '60', '70'].map((lbl, idx) => (
-              <text key={idx} x={38 + idx * 40} y="105" textAnchor="middle" fontSize="9" fill="currentColor" opacity="0.55">
-                {lbl}
+            {total > 0 && (
+              <>
+                <line
+                  x1={livePresenceSpline.peak.x}
+                  y1={livePresenceSpline.peak.y}
+                  x2={livePresenceSpline.peak.x}
+                  y2={livePresenceSpline.baseLine}
+                  stroke="#32C48D"
+                  strokeWidth="1.4"
+                  strokeDasharray="2 2"
+                />
+                <g transform={`translate(${livePresenceSpline.peak.x}, ${livePresenceSpline.peak.y})`} stroke="#32C48D" strokeWidth="1.7">
+                  <line x1="-5" y1="0" x2="5" y2="0" />
+                  <line x1="0" y1="-5" x2="0" y2="5" />
+                  <line x1="-3.5" y1="-3.5" x2="3.5" y2="3.5" />
+                  <line x1="-3.5" y1="3.5" x2="3.5" y2="-3.5" />
+                </g>
+              </>
+            )}
+            {liveAxisLabels.map((item, idx) => (
+              <text
+                key={item.label}
+                x={34 + idx * 48}
+                y="104"
+                textAnchor="middle"
+                fontSize="8.5"
+                fill="currentColor"
+                opacity="0.68"
+              >
+                {`${item.label}(${item.val})`}
               </text>
             ))}
           </svg>
         </div>
       </article>
 
-      {/* CARTE 3 : BADGES QR, PIN & PORTAIL */}
+      {/* CARTE 3 : BADGES QR, PIN & PORTAIL (VRAI MENU DÉROULANT DE FILTRE) */}
       <article className="employes-framed-card">
         <div className="employes-framed-card-head">
           <div className="employes-framed-card-title-wrap">
@@ -290,23 +456,37 @@ export function EmployesExecutiveKpis({
           <span className="employes-circle-chevron"><ChevronDown size={15} /></span>
         </div>
 
-        <button
-          type="button"
+        <select
           className="employes-card-select-box"
-          onClick={() => onFilterSearch && onFilterSearch('')}
+          aria-label="Filtrer par équipement et portail"
+          value={
+            ['portal_active', 'portal_migrate', 'machine_pin', 'no_machine_pin'].includes(categoryFilter)
+              ? categoryFilter
+              : 'all'
+          }
+          onChange={(e) => onCategoryFilterChange && onCategoryFilterChange(e.target.value)}
         >
-          <span>Badges QR, PIN & Portail</span>
-          <ChevronDown size={15} />
-        </button>
+          <option value="all">Tous les équipements ({total})</option>
+          <option value="portal_active">🔑 Portail Employé actif ({enrollmentCounts.portal})</option>
+          <option value="portal_migrate">⚠️ À migrer vers nouveau portail ({enrollmentCounts.toMigrate})</option>
+          <option value="machine_pin">📻 Avec N° Pointeuse ({enrollmentCounts.machinePin})</option>
+          <option value="no_machine_pin">⚪ Sans N° Pointeuse ({Math.max(0, total - enrollmentCounts.machinePin)})</option>
+        </select>
 
         <div className="employes-card-mini-pills">
-          <span>✓ {total} Badges QR</span>
-          <span>🔑 {enrollmentCounts.portal} Portail</span>
-          <span>📻 {enrollmentCounts.machinePin} Pointeuse</span>
+          <span onClick={() => onCategoryFilterChange && onCategoryFilterChange('all')} style={{ cursor: 'pointer' }}>
+            ✓ {total} Badges QR
+          </span>
+          <span onClick={() => onCategoryFilterChange && onCategoryFilterChange('portal_active')} style={{ cursor: 'pointer' }}>
+            🔑 {enrollmentCounts.portal} Portail
+          </span>
+          <span onClick={() => onCategoryFilterChange && onCategoryFilterChange('machine_pin')} style={{ cursor: 'pointer' }}>
+            📻 {enrollmentCounts.machinePin} Pointeuse
+          </span>
         </div>
       </article>
 
-      {/* CARTE 4 : PLANNINGS & CONTRATS */}
+      {/* CARTE 4 : PLANNINGS & CONTRATS (VRAI MENU DÉROULANT DE FILTRE) */}
       <article className="employes-framed-card">
         <div className="employes-framed-card-head">
           <div className="employes-framed-card-title-wrap">
@@ -319,23 +499,35 @@ export function EmployesExecutiveKpis({
           <span className="employes-circle-chevron"><ChevronDown size={15} /></span>
         </div>
 
-        <button
-          type="button"
+        <select
           className="employes-card-select-box"
-          onClick={() => onFilterSearch && onFilterSearch('CDI')}
+          aria-label="Filtrer par planning ou type de contrat"
+          value={
+            ['sched_personal', 'sched_general', 'sched_free', 'contract_CDI', 'contract_CDD', 'contract_other'].includes(categoryFilter)
+              ? categoryFilter
+              : 'all'
+          }
+          onChange={(e) => onCategoryFilterChange && onCategoryFilterChange(e.target.value)}
         >
-          <span>Plannings & Contrats</span>
-          <ChevronDown size={15} />
-        </button>
+          <option value="all">Tous les plannings & contrats ({total})</option>
+          <option value="sched_personal">📅 Planning personnalisé ({scheduleCounts.perso})</option>
+          <option value="sched_general">🏢 Planning général ({scheduleCounts.general})</option>
+          <option value="sched_free">⏱️ Horaire libre ({scheduleCounts.libre})</option>
+          <option value="contract_CDI">📄 Contrat CDI ({contractCounts.cdi})</option>
+          <option value="contract_CDD">📄 Contrat CDD ({contractCounts.cdd})</option>
+          <option value="contract_other">📄 Stage / Autre ({contractCounts.stage + contractCounts.autres})</option>
+        </select>
 
         <div className="employes-card-mini-pills">
-          <span onClick={() => onFilterSearch && onFilterSearch('CDI')} style={{ cursor: 'pointer' }}>
+          <span onClick={() => onCategoryFilterChange && onCategoryFilterChange('contract_CDI')} style={{ cursor: 'pointer' }}>
             {contractCounts.cdi} CDI
           </span>
-          <span onClick={() => onFilterSearch && onFilterSearch('CDD')} style={{ cursor: 'pointer' }}>
+          <span onClick={() => onCategoryFilterChange && onCategoryFilterChange('contract_CDD')} style={{ cursor: 'pointer' }}>
             {contractCounts.cdd} CDD
           </span>
-          <span>{scheduleCounts.libre} Horaire libre</span>
+          <span onClick={() => onCategoryFilterChange && onCategoryFilterChange('sched_free')} style={{ cursor: 'pointer' }}>
+            {scheduleCounts.libre} Horaire libre
+          </span>
         </div>
       </article>
     </section>
@@ -347,32 +539,32 @@ export function EmployesAnalyticsCharts({
   plannings = [],
   onSelectDepartment,
 }) {
-  const total = Math.max(1, employes.length)
+  const total = employes.length
 
+  // Zéro faux département inventé : uniquement les vrais départements/postes des employés
   const deptBuckets = useMemo(() => {
+    if (!employes.length) {
+      return [{ label: 'Aucun employé', count: 0, isFallback: true }]
+    }
     const map = new Map()
     for (const e of employes) {
-      const label = (e.department || e.position || 'Équipe').trim()
+      const raw = (e.department || e.position || '').trim()
+      const label = raw || 'Non renseigné'
       map.set(label, (map.get(label) || 0) + 1)
     }
-    const sorted = [...map.entries()]
-      .map(([label, count]) => ({ label, count }))
+    return [...map.entries()]
+      .map(([label, count]) => ({ label, count, isFallback: label === 'Non renseigné' }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-
-    while (sorted.length < 5) {
-      const fallbackLabels = ['Opérations', 'Pharmacie', 'Caisse', 'Logistique', 'Admin']
-      sorted.push({ label: fallbackLabels[sorted.length], count: Math.max(1, Math.round(total / (sorted.length + 2))) })
-    }
-    return sorted
-  }, [employes, total])
+      .slice(0, 6)
+  }, [employes])
 
   const maxDept = useMemo(
-    () => Math.max(3, ...deptBuckets.map((d) => d.count)),
+    () => Math.max(1, ...deptBuckets.map((d) => d.count)),
     [deptBuckets]
   )
 
-  const coverageRatio = useMemo(() => {
+  const { equippedCount, coverageRatio } = useMemo(() => {
+    if (!employes.length) return { equippedCount: 0, coverageRatio: 0 }
     let equipped = 0
     const hasDefaultByEnt = new Set(
       (plannings || []).filter((pl) => pl.is_default && pl.is_active !== false).map((pl) => pl.enterprise_id)
@@ -380,69 +572,85 @@ export function EmployesAnalyticsCharts({
     for (const e of employes) {
       const hasPortal = Boolean(e.employee_portal_enabled && (e.user_id || e.password_hash))
       const hasSched = Boolean(e.employee_schedules?.[0] || hasDefaultByEnt.has(e.enterprise_id))
-      if (hasPortal || hasSched || e.machine_pin || e.contract_type) equipped += 1
+      if (hasPortal || hasSched || e.machine_pin) equipped += 1
     }
-    return employes.length > 0 ? Math.max(68, Math.min(92, Math.round((equipped / total) * 100))) : 74
-  }, [employes, plannings, total])
+    return {
+      equippedCount: equipped,
+      coverageRatio: Math.round((equipped / employes.length) * 100),
+    }
+  }, [employes, plannings])
 
   const circumference = 2 * Math.PI * 42
   const greenArc = (coverageRatio / 100) * circumference
-  const orangeArc = circumference - greenArc
+  const orangeArc = Math.max(0, circumference - greenArc)
+  const remainingCount = Math.max(0, total - equippedCount)
+
+  const yTicks = [
+    { label: String(maxDept), y: 18 },
+    { label: String(Math.round(maxDept * 0.75)), y: 45 },
+    { label: String(Math.round(maxDept * 0.5)), y: 73 },
+    { label: String(Math.round(maxDept * 0.25)), y: 100 },
+    { label: '0', y: 128 },
+  ]
 
   return (
     <div className="employes-charts-pair">
-      {/* GRAPHIQUE 1 : RÉPARTITION PAR DÉPARTEMENT (BARRES VERTICALES OR & CUIVRE) */}
+      {/* GRAPHIQUE 1 : RÉPARTITION PAR DÉPARTEMENT (100% VRAIES DONNÉES) */}
       <article className="employes-framed-card employes-chart-box">
-        <h3 className="employes-chart-box-title">Répartition par Département</h3>
+        <h3 className="employes-chart-box-title">Répartition par Département & Poste</h3>
         <svg viewBox="0 0 260 165" className="employes-dept-bars-svg" role="img" aria-label="Répartition par département">
-          {[
-            { label: '100', y: 18 },
-            { label: '80', y: 40 },
-            { label: '60', y: 62 },
-            { label: '40', y: 84 },
-            { label: '20', y: 106 },
-            { label: '0', y: 128 },
-          ].map((row) => (
-            <g key={row.label}>
-              <text x="6" y={row.y + 3} fontSize="9.5" fill="currentColor" opacity="0.6">{row.label}</text>
-              <line x1="30" y1={row.y} x2="248" y2={row.y} stroke="currentColor" strokeOpacity="0.12" strokeDasharray="3 3" />
+          {yTicks.map((row, i) => (
+            <g key={i}>
+              <text x="6" y={row.y + 3} fontSize="9" fill="currentColor" opacity="0.6">{row.label}</text>
+              <line x1="28" y1={row.y} x2="250" y2={row.y} stroke="currentColor" strokeOpacity="0.12" strokeDasharray="3 3" />
             </g>
           ))}
 
           {deptBuckets.map((b, idx) => {
-            const slotWidth = 214 / deptBuckets.length
-            const xCenter = 32 + idx * slotWidth + slotWidth / 2
-            const barHeight = Math.max(24, (b.count / maxDept) * 102)
+            const slotWidth = 220 / deptBuckets.length
+            const xCenter = 30 + idx * slotWidth + slotWidth / 2
+            const barHeight = b.count > 0 ? Math.max(12, (b.count / maxDept) * 106) : 4
             const baseLine = 128
             const isGold = idx % 2 === 0
             const fill = isGold ? '#F3C784' : '#EA7B36'
+            const shortLabel = b.label.length > 10 ? `${b.label.slice(0, 9)}…` : b.label
 
             return (
               <g
                 key={`${b.label}-${idx}`}
                 style={{ cursor: 'pointer' }}
-                onClick={() => onSelectDepartment && onSelectDepartment(b.label)}
+                onClick={() => onSelectDepartment && onSelectDepartment(b.isFallback ? '' : b.label)}
               >
                 <rect
-                  x={xCenter - 9}
+                  x={xCenter - 11}
                   y={baseLine - barHeight}
-                  width="18"
+                  width="22"
                   height={barHeight}
                   rx="6"
                   fill={fill}
                 >
-                  <title>{`${b.label} · ${b.count}`}</title>
+                  <title>{`${b.label} · ${b.count} employé(s)`}</title>
                 </rect>
+                <text
+                  x={xCenter}
+                  y={baseLine - barHeight - 5}
+                  textAnchor="middle"
+                  fontSize="9.5"
+                  fontWeight="800"
+                  fill="currentColor"
+                >
+                  {b.count}
+                </text>
                 <text
                   x={xCenter}
                   y="148"
                   textAnchor="middle"
-                  fontSize="9"
+                  fontSize="8.5"
                   fontWeight="700"
                   fill="currentColor"
-                  opacity="0.65"
+                  opacity="0.78"
                 >
-                  {b.label.slice(0, 4).toUpperCase()}
+                  {shortLabel}
                 </text>
               </g>
             )
@@ -450,42 +658,54 @@ export function EmployesAnalyticsCharts({
         </svg>
       </article>
 
-      {/* GRAPHIQUE 2 : COUVERTURE D'ENRÔLEMENT (ANNEAU BICOLORE ÉMERAUDE / CUIVRE) */}
+      {/* GRAPHIQUE 2 : COUVERTURE D'ENRÔLEMENT (VRAI % AU CENTRE + LÉGENDE EXPLICITE) */}
       <article className="employes-framed-card employes-chart-box">
         <h3 className="employes-chart-box-title">Couverture d’Enrôlement</h3>
         <div className="employes-bicolor-donut-wrap">
-          <svg viewBox="0 0 120 120" className="employes-bicolor-donut-svg" aria-hidden="true">
-            {/* Segment Cuivre-Orange */}
-            <circle
-              cx="60"
-              cy="60"
-              r="42"
-              fill="none"
-              stroke="#EA7B36"
-              strokeWidth="18"
-              strokeDasharray={`${Math.max(8, orangeArc - 6)} ${circumference}`}
-              strokeDashoffset={-greenArc - 3}
-              transform="rotate(-90 60 60)"
-            />
-            {/* Segment Vert Émeraude */}
-            <circle
-              cx="60"
-              cy="60"
-              r="42"
-              fill="none"
-              stroke="#1FC76A"
-              strokeWidth="18"
-              strokeDasharray={`${Math.max(12, greenArc - 6)} ${circumference}`}
-              transform="rotate(-90 60 60)"
-            />
-          </svg>
+          <div style={{ position: 'relative', width: 132, height: 132 }}>
+            <svg viewBox="0 0 120 120" className="employes-bicolor-donut-svg" style={{ width: '100%', height: '100%' }} aria-hidden="true">
+              <circle cx="60" cy="60" r="42" fill="none" stroke="currentColor" strokeOpacity="0.1" strokeWidth="16" />
+              {orangeArc > 0 && (
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="42"
+                  fill="none"
+                  stroke="#EA7B36"
+                  strokeWidth="16"
+                  strokeDasharray={`${orangeArc} ${circumference}`}
+                  strokeDashoffset={-greenArc}
+                  transform="rotate(-90 60 60)"
+                />
+              )}
+              {greenArc > 0 && (
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="42"
+                  fill="none"
+                  stroke="#1FC76A"
+                  strokeWidth="16"
+                  strokeDasharray={`${greenArc} ${circumference}`}
+                  transform="rotate(-90 60 60)"
+                />
+              )}
+            </svg>
+            <div className="pointages-donut-center">
+              <strong>{coverageRatio}%</strong>
+              <span>{equippedCount}/{total} équipés</span>
+            </div>
+          </div>
+          <div className="employes-donut-legend">
+            <span style={{ color: '#1FC76A' }}>● Équipés ({equippedCount})</span>
+            <span style={{ color: '#EA7B36' }}>● À compléter ({remainingCount})</span>
+          </div>
         </div>
       </article>
     </div>
   )
 }
 
-// Carte Portrait Employé fidèle à l'image choisie (avec les 4 gros boutons pilules colorés)
 export function EmployesPortraitCard({
   employee,
   liveStatus,
@@ -514,27 +734,37 @@ export function EmployesPortraitCard({
   const activePause = liveStatus?.activePause || null
   const isPause = state === 'en_pause'
   const isOnDuty = state === 'en_poste' || state === 'termine'
+  const isLeave = state === 'en_conge'
 
   const statusHeadline = isPause && activePause
     ? `En pause ${formaterTempsPauseEnDirect(activePause, nowMs)}`
     : state === 'en_poste'
-      ? 'En poste'
+      ? `En poste${liveStatus?.entryHHMM ? ` · ${liveStatus.entryHHMM}` : ''}`
       : state === 'termine'
-        ? `Pointé (${liveStatus?.entryHHMM || ''})`
-        : state === 'en_conge'
-          ? 'En congé'
-          : scheduleRegimeLabel?.includes('Horaire libre')
-            ? 'Horaire libre'
-            : 'Non pointé'
+        ? `Pointé (${liveStatus?.entryHHMM || ''} → ${liveStatus?.exitHHMM || ''})`
+        : isLeave
+          ? 'En congé / absence'
+          : 'Non pointé aujourd’hui'
 
-  const pillTone = isPause || (!isOnDuty && statusHeadline === 'Horaire libre') ? 'is-amber' : 'is-green'
-  const pillText = isPause
-    ? 'En pause | →'
+  const pillTone = isPause
+    ? 'is-amber'
     : isOnDuty
-      ? 'En poste | →'
-      : 'Statut | →'
+      ? 'is-green'
+      : isLeave
+        ? 'is-violet'
+        : 'is-neutral'
 
-  const contractBadge = employee.contract_type || 'CDI'
+  const pillText = isPause
+    ? '☕ En pause | →'
+    : state === 'en_poste'
+      ? '🟢 En poste | →'
+      : state === 'termine'
+        ? '✓ Pointé | →'
+        : isLeave
+          ? '🌴 En congé | →'
+          : '⚪ Non pointé | →'
+
+  const contractBadge = employee.contract_type || 'Non précisé'
   const shortRegime = scheduleRegimeLabel?.includes('Planning perso')
     ? 'Planning perso'
     : scheduleRegimeLabel?.includes('Planning général')
@@ -545,7 +775,12 @@ export function EmployesPortraitCard({
 
   return (
     <article className="employes-portrait-card">
-      <span className="employes-portrait-corner-dot" />
+      <span
+        className="employes-portrait-corner-dot"
+        style={{
+          background: isOnDuty ? '#33cf7a' : isPause ? '#f29d52' : isLeave ? '#8B5CF6' : 'rgba(166,147,126,0.45)',
+        }}
+      />
 
       <div className="employes-portrait-top">
         <div className="employes-portrait-avatar">
@@ -579,15 +814,15 @@ export function EmployesPortraitCard({
 
       <div className="employes-portrait-details-list">
         <div className="employes-portrait-detail-row" onClick={() => onOpenPointages && onOpenPointages(employee)}>
-          <span>Live · {weeklyStats?.label || '0h 0m'}</span>
+          <span>Cette semaine : {weeklyStats?.label || '0h 0m'}</span>
           <span className="employes-portrait-live-dots">
-            <i className="is-green" />
-            <i className="is-muted" />
+            <i className={isOnDuty ? 'is-green' : 'is-muted'} />
+            <i className={isPause ? 'is-green' : 'is-muted'} />
           </span>
         </div>
 
         <div className="employes-portrait-detail-row" onClick={() => onOpenFiche && onOpenFiche(employee)}>
-          <span>{employee.position || 'Poste'} · {employee.department || 'Équipe'}</span>
+          <span>{employee.position || 'Poste non renseigné'} · {employee.department || 'Équipe'}</span>
           <ChevronRight size={13} />
         </div>
 
@@ -603,7 +838,6 @@ export function EmployesPortraitCard({
         </div>
       </div>
 
-      {/* LES 4 GROS BOUTONS PILULES COLORÉS DE L'IMAGE CHOISIE */}
       <div className="employes-portrait-pills-grid">
         <button
           type="button"
