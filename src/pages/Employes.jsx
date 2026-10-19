@@ -1008,9 +1008,7 @@ export default function Employes() {
     if (employee.enterprises?.module_planning !== false && defaultEntPlan) {
       return `Planning général · ${defaultEntPlan.name}`
     }
-    return employee.enterprises?.module_planning === false
-      ? 'Sans option planning · Horaire libre'
-      : 'Horaire libre'
+    return 'Planning non disponible dans En-Check'
   }
 
   const departments = [...new Set(employes.map(e => e.department).filter(Boolean))]

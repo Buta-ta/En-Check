@@ -2,7 +2,11 @@
 // SERVICE PAUSES — présentation pure des lignes de `encheck_pauses_lire`
 // + détection des pauses effectuées non planifiées et chronomètre temps réel
 // ═══════════════════════════════════════════════════════════════════════════
-import { formaterHeureLocale } from '../utils/timezoneUtils'
+import {
+  formaterHeureLocale,
+  getHeuresMinutesLocales,
+  minutesDepuisMinuit,
+} from '../utils/timezoneUtils'
 
 export const STATUTS_BADGES = {
   reelle: { label: 'Pause réelle', color: '#10B981' },
@@ -225,4 +229,48 @@ export function exportCsvPauses (paies) {
   return [entetes, ...lignes]
     .map(cols => cols.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';'))
     .join('\n')
+}
+
+/**
+ * Définition unique d'un service de nuit (partagée entre compteur, badge et filtre) :
+ * 1) Fin de garde de nuit rattachée à la veille (`status === 'nuit_rattachee'`),
+ * 2) Entrée pointée la nuit (`20h00 – 04h59`),
+ * 3) Service commencé en soirée (`>= 18h00`) avec une vraie sortie le lendemain matin (`< 09h00`).
+ */
+export function estServiceDeNuit (p) {
+  if (!p) return false
+  if (p.status === 'nuit_rattachee') return true
+  if (p.firstIn?.check_time) {
+    const inParts = getHeuresMinutesLocales(p.firstIn.check_time)
+    if (inParts && (inParts.heures >= 20 || inParts.heures < 5)) return true
+
+    if (p.lastOut?.check_time && !p.lastOut.is_auto_closed && !p.lastOut.__virtual) {
+      const outParts = getHeuresMinutesLocales(p.lastOut.check_time)
+      if (
+        inParts?.jourISO &&
+        outParts?.jourISO &&
+        outParts.jourISO > inParts.jourISO &&
+        inParts.heures >= 18 &&
+        outParts.heures < 9
+      ) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+/**
+ * Définition unique d'un retard selon le planning applicable de l'employé.
+ */
+export function estPointageEnRetard (p) {
+  if (p?.status !== 'present' || !p?.firstIn?.check_time) return false
+  const sched = p?.scheduleInfo
+  if (!sched || sched.mode === 'none' || !sched.startTime) return false
+  const [h, m] = String(sched.startTime).split(':').map(Number)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return false
+  const startMins = h * 60 + m
+  const tolerance = Number(sched.toleranceMinutes) || 0
+  const checkMins = minutesDepuisMinuit(p.firstIn.check_time)
+  return typeof checkMins === 'number' && checkMins > startMins + tolerance
 }

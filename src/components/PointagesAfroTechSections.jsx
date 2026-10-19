@@ -34,59 +34,29 @@ import {
   CulturalTimeDrumSvg,
   KenteFriezeSvg,
 } from './AfroCulturalSvg'
-import { formaterTempsPauseEnDirect } from '../services/pausesService'
+import {
+  estPointageEnRetard,
+  estServiceDeNuit,
+  formaterTempsPauseEnDirect,
+} from '../services/pausesService'
 import { estEstimationAStatuer } from '../services/seuilsPointage'
 import {
   formaterDureeComplete,
   formaterHeureLocale,
   getHeuresMinutesLocales,
-  minutesDepuisMinuit,
 } from '../utils/timezoneUtils'
 import '../pages/PointagesAfroTech.css'
 
-const parseHHMMToMinutes = (hhmm) => {
-  if (!hhmm || typeof hhmm !== 'string') return null
-  const [h, m] = hhmm.split(':').map(Number)
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
-  return h * 60 + m
-}
+const isLatePointage = (p) => estPointageEnRetard(p)
+const isNightShiftPointage = (p) => estServiceDeNuit(p)
 
-const isLatePointage = (p) => {
-  if (p?.status !== 'present' || !p?.firstIn?.check_time) return false
-  const sched = p?.scheduleInfo
-  if (!sched || sched.mode === 'none' || !sched.startTime) return false
-  const startMins = parseHHMMToMinutes(sched.startTime)
-  if (startMins == null) return false
-  const tolerance = Number(sched.toleranceMinutes) || 0
-  const checkMins = minutesDepuisMinuit(p.firstIn.check_time)
-  return typeof checkMins === 'number' && checkMins > startMins + tolerance
-}
-
-const isNightShiftPointage = (p) => {
-  if (!p) return false
-  // 1) Fin de garde de nuit rattachée à la veille (aucune entrée de jour aujourd'hui)
-  if (p.status === 'nuit_rattachee') return true
-
-  // 2) Prise de service nocturne (entrée entre 20h00 et 04h59)
-  if (p.firstIn?.check_time) {
-    const inParts = getHeuresMinutesLocales(p.firstIn.check_time)
-    if (inParts && (inParts.heures >= 20 || inParts.heures < 5)) return true
-
-    // 3) Service commencé en soirée (>= 18h) et terminé le lendemain matin (< 09h)
-    if (p.lastOut?.check_time && !p.lastOut.is_auto_closed && !p.lastOut.__virtual) {
-      const outParts = getHeuresMinutesLocales(p.lastOut.check_time)
-      if (
-        inParts?.jourISO &&
-        outParts?.jourISO &&
-        outParts.jourISO > inParts.jourISO &&
-        inParts.heures >= 18 &&
-        outParts.heures < 9
-      ) {
-        return true
-      }
-    }
-  }
-  return false
+const formatMethodLabel = (method) => {
+  const m = String(method || '').toLowerCase()
+  if (m.includes('qr')) return 'QR Code'
+  if (m.includes('face')) return 'Reco faciale'
+  if (m.includes('poste')) return 'Poste kiosque'
+  if (m.includes('pin') || m.includes('code')) return 'Code PIN'
+  return 'Badge'
 }
 
 const getFirstPhotoUrl = (p) => {
@@ -336,11 +306,9 @@ export function PointagesCulturalHero({
 export function PointagesExecutiveKpis({
   stats = {},
   pointages = [],
-  selectedDate,
   filterStatus = 'tous',
   filterPhotos = 'all',
   onUpdateFilter,
-  onToggleAlerts,
 }) {
   const total = Number(stats.total) || pointages.length || 0
   const presents = Number(stats.presents) || 0
@@ -354,8 +322,12 @@ export function PointagesExecutiveKpis({
     [pointages]
   )
   const nightCount = useMemo(
-    () => pointages.filter((p) => isNightShiftPointage(p, selectedDate)).length,
-    [pointages, selectedDate]
+    () => pointages.filter((p) => isNightShiftPointage(p)).length,
+    [pointages]
+  )
+  const rattachedNightCount = useMemo(
+    () => pointages.filter((p) => p.status === 'nuit_rattachee').length,
+    [pointages]
   )
   const presumedCount = useMemo(
     () => pointages.filter((p) => p.lastOut && estEstimationAStatuer(p.lastOut)).length,
@@ -421,8 +393,8 @@ export function PointagesExecutiveKpis({
       value: String(lateCount).padStart(2, '0'),
       badge: scheduleBreakdown.personal + scheduleBreakdown.enterprise > 0
         ? `${punctualityRate}% à l’heure`
-        : 'Horaire libre',
-      subtitle: `${lateCount} en retard · ${scheduleBreakdown.personal} perso · ${scheduleBreakdown.enterprise} général · ${scheduleBreakdown.free} libre`,
+        : 'Planning non disponible',
+      subtitle: `${lateCount} en retard · ${scheduleBreakdown.personal} perso · ${scheduleBreakdown.enterprise} général · ${scheduleBreakdown.free} sans planning`,
       progress: lateCount > 0 ? Math.min(100, Math.round((lateCount / Math.max(1, presents)) * 100)) : punctualityRate,
       tone: 'amber',
       active: filterStatus === 'retard',
@@ -435,31 +407,51 @@ export function PointagesExecutiveKpis({
     },
     {
       id: 'night-and-breaks',
-      title: '3. Gardes de nuit, Pauses & Sorties',
-      value: `${nightCount} 🌙 · ${pausesSummary.totalCount} ☕`,
+      title: '3. Services de nuit, Pauses & Sorties',
+      value: `${nightCount} 🌙 · ${presumedCount} ⏳`,
       badge: pausesSummary.activeCount > 0
         ? `⏱️ ${pausesSummary.activeCount} pause(s) en cours`
-        : presumedCount + conflits > 0
-          ? `${presumedCount + conflits} à statuer`
-          : `${pausesSummary.unplannedCount} non planifiée(s)`,
-      subtitle: `${nightCount} nuit · ${pausesSummary.totalCount} pause${pausesSummary.totalCount > 1 ? 's' : ''} (${pausesSummary.unplannedCount} hors planning) · ${presumedCount} sortie${presumedCount > 1 ? 's' : ''} présumée${presumedCount > 1 ? 's' : ''}`,
+        : presumedCount > 0
+          ? `${presumedCount} sortie(s) présumée(s)`
+          : `${nightCount} service(s) de nuit`,
+      subtitle: 'Chaque sous-compteur ci-dessous active son propre filtre :',
       progress: nightCount + pausesSummary.totalCount + presumedCount > 0
         ? Math.min(100, Math.max(18, (nightCount + pausesSummary.totalCount + presumedCount) * 16))
         : 0,
       tone: pausesSummary.activeCount > 0 || presumedCount + conflits > 0 ? 'danger' : 'copper',
-      active: filterStatus === 'nuit_rattachee',
-      onClick: () => {
-        if (nightCount > 0 && onUpdateFilter) {
-          onUpdateFilter('status', filterStatus === 'nuit_rattachee' ? 'tous' : 'nuit_rattachee')
-        } else if (onToggleAlerts) {
-          onToggleAlerts()
-        }
-      },
+      active: ['service_nuit', 'nuit_rattachee', 'pause_en_cours', 'sortie_presumee'].includes(filterStatus),
+      onClick: () => onUpdateFilter && onUpdateFilter('status', filterStatus === 'service_nuit' ? 'tous' : 'service_nuit'),
       IconSvg: CulturalShieldSvg,
       sparkPoints: buildDynamicSparkPoints(
         Math.min(100, (nightCount + pausesSummary.totalCount + presumedCount) * 20),
         nightCount + pausesSummary.totalCount + presumedCount > 0
       ),
+      subFilters: [
+        {
+          id: 'service_nuit',
+          label: `🌙 Services de nuit (${nightCount})`,
+          active: filterStatus === 'service_nuit',
+          onClick: () => onUpdateFilter && onUpdateFilter('status', filterStatus === 'service_nuit' ? 'tous' : 'service_nuit'),
+        },
+        {
+          id: 'nuit_rattachee',
+          label: `↩️ Fins garde J-1 (${rattachedNightCount})`,
+          active: filterStatus === 'nuit_rattachee',
+          onClick: () => onUpdateFilter && onUpdateFilter('status', filterStatus === 'nuit_rattachee' ? 'tous' : 'nuit_rattachee'),
+        },
+        {
+          id: 'pause_en_cours',
+          label: `☕ Pauses en cours (${pausesSummary.activeCount})`,
+          active: filterStatus === 'pause_en_cours',
+          onClick: () => onUpdateFilter && onUpdateFilter('status', filterStatus === 'pause_en_cours' ? 'tous' : 'pause_en_cours'),
+        },
+        {
+          id: 'sortie_presumee',
+          label: `⏳ Sorties présumées (${presumedCount})`,
+          active: filterStatus === 'sortie_presumee',
+          onClick: () => onUpdateFilter && onUpdateFilter('status', filterStatus === 'sortie_presumee' ? 'tous' : 'sortie_presumee'),
+        },
+      ],
     },
     {
       id: 'proofs',
@@ -519,6 +511,31 @@ export function PointagesExecutiveKpis({
             </div>
 
             <span className="pointages-kpi-subtitle">{card.subtitle}</span>
+
+            {card.subFilters && (
+              <div
+                className="pointages-kpi-subfilters"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {card.subFilters.map((sf) => (
+                  <span
+                    key={sf.id}
+                    role="button"
+                    tabIndex={0}
+                    className={`pointages-kpi-subfilter-chip${sf.active ? ' is-active' : ''}`}
+                    onClick={sf.onClick}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        sf.onClick()
+                      }
+                    }}
+                  >
+                    {sf.label}
+                  </span>
+                ))}
+              </div>
+            )}
           </button>
         )
       })}
@@ -838,11 +855,9 @@ export function PointagesPassportGrid({
   pointages = [],
   selectedDate,
   selectedEmployeeId,
-  canEdit = false,
-  statuerEstimation,
-  estimationEnCours,
   onSelectPointage,
   onOpenEmployeeFiche,
+  onExamineEstimation,
 }) {
   const [nowMs, setNowMs] = useState(() => Date.now())
 
@@ -860,14 +875,16 @@ export function PointagesPassportGrid({
           const late = isLatePointage(p)
           const night = isNightShiftPointage(p, selectedDate)
           const isPresent = p.status === 'present' || p.status === 'conflit_absence_pointage'
-          const sched = p.scheduleInfo || { mode: 'none', label: 'Horaire libre (sans planning)' }
+          const sched = p.scheduleInfo || { mode: 'none', label: 'Planning non disponible dans En-Check' }
           const hasScheduleBounds = sched.mode !== 'none' && sched.startTime && sched.endTime
           const needsEstimation = Boolean(p.lastOut && estEstimationAStatuer(p.lastOut))
+          const isValidatedEstimation = Boolean(p.lastOut?.is_auto_closed && p.lastOut?.estimation_validee_le && !needsEstimation)
+          const isRealExit = Boolean(p.lastOut?.check_time && !p.lastOut.is_auto_closed)
 
-          const entryLabel = p.firstIn?.check_time
-            ? formaterHeureLocale(p.firstIn.check_time)
-            : (p.status === 'nuit_rattachee' ? '🌙 Garde J-1' : 'Sans entrée')
+          const entryLabel = p.firstIn?.check_time ? formaterHeureLocale(p.firstIn.check_time) : null
+          const entryMethodLabel = p.firstIn ? formatMethodLabel(p.firstIn.method) : null
           const exitLabel = p.lastOut?.check_time ? formaterHeureLocale(p.lastOut.check_time) : null
+          const exitMethodLabel = isRealExit ? formatMethodLabel(p.lastOut.method || p.firstIn?.method) : null
 
           const progressPct = isPresent
             ? Math.max(16, Math.min(100, Math.round(((p.totalSecondes || 14400) / (8 * 3600)) * 100)))
@@ -875,9 +892,6 @@ export function PointagesPassportGrid({
               ? 100
               : 0
 
-          const rawMethod = String(p.firstIn?.method || '').toLowerCase()
-          const usedQr = isPresent && rawMethod.includes('qr')
-          const usedPin = isPresent && !usedQr
           const pausesList = p.pauses || []
           const activePause = pausesList.find((pa) => pa.ouverte)
           const hasUnplannedPause = pausesList.some((pa) => pa.estNonPlanifiee)
@@ -930,47 +944,88 @@ export function PointagesPassportGrid({
                 <span className={`pointages-schedule-tag is-${sched.mode}`}>
                   <Calendar size={11} />
                   <span>
-                    {sched.label}
+                    {sched.mode === 'none' ? 'Planning non disponible dans En-Check' : sched.label}
                     {hasScheduleBounds ? ` (${sched.startTime} – ${sched.endTime})` : ''}
                   </span>
                 </span>
                 {night && (
                   <span className="pointages-schedule-tag is-night">
                     <Moon size={11} />
-                    <span>Garde de nuit</span>
+                    <span>Service de nuit</span>
                   </span>
                 )}
               </div>
 
+              {/* DISTINCTION EXPLICITE : ENTRÉE BADGÉE vs SORTIE BADGÉE / PRÉSUMÉE À CONFIRMER / PRÉSUMÉE VALIDÉE */}
               <div className="pointages-passport-timeline">
-                <div className="pointages-passport-timeline-top">
-                  <span>{isPresent ? `Entrée ${entryLabel}` : entryLabel}</span>
-                  <span>
-                    {p.totalSecondes > 0
-                      ? formaterDureeComplete(p.totalSecondes)
-                      : p.status === 'en_conge'
+                {isPresent ? (
+                  <div className="pointages-explicit-hours">
+                    <div className="pointages-explicit-hour-row is-entry">
+                      <span className="pointages-explicit-hour-kind">Entrée badgée</span>
+                      <strong className="pointages-explicit-hour-val">
+                        {entryLabel} · <small>{entryMethodLabel}</small>
+                      </strong>
+                    </div>
+
+                    {needsEstimation ? (
+                      <div className="pointages-explicit-hour-row is-presumed-pending">
+                        <span className="pointages-explicit-hour-kind">⏳ Sortie présumée — à confirmer</span>
+                        <strong className="pointages-explicit-hour-val">
+                          {exitLabel} · <small>À confirmer</small>
+                        </strong>
+                      </div>
+                    ) : isValidatedEstimation ? (
+                      <div className="pointages-explicit-hour-row is-presumed-validated">
+                        <span className="pointages-explicit-hour-kind">✓ Sortie présumée validée</span>
+                        <strong className="pointages-explicit-hour-val">
+                          {exitLabel} · <small>Origine présumée</small>
+                        </strong>
+                      </div>
+                    ) : isRealExit ? (
+                      <div className="pointages-explicit-hour-row is-real-exit">
+                        <span className="pointages-explicit-hour-kind">Sortie badgée</span>
+                        <strong className="pointages-explicit-hour-val">
+                          {exitLabel} · <small>{exitMethodLabel}</small>
+                        </strong>
+                      </div>
+                    ) : (
+                      <div className="pointages-explicit-hour-row is-open-shift">
+                        <span className="pointages-explicit-hour-kind">Sortie</span>
+                        <strong className="pointages-explicit-hour-val">En poste (aucune sortie)</strong>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="pointages-passport-timeline-top">
+                    <span>{p.status === 'nuit_rattachee' ? '🌙 Fin de garde J-1' : 'Sans entrée'}</span>
+                    <span>
+                      {p.status === 'en_conge'
                         ? 'En congé'
                         : p.status === 'nuit_rattachee'
-                          ? `Sortie à ${formaterHeureLocale(p.nuitRattachee?.heure || p.nuitRattachee?.sortie)}`
+                          ? `Sortie badgée à ${formaterHeureLocale(p.nuitRattachee?.heure || p.nuitRattachee?.sortie)}`
                           : '—'}
-                  </span>
-                </div>
-                <div className={`pointages-passport-bar${late ? ' is-late' : ''}${night ? ' is-night' : ''}`}>
+                    </span>
+                  </div>
+                )}
+
+                <div className={`pointages-passport-bar${late ? ' is-late' : ''}${night ? ' is-night' : ''}`} style={{ marginTop: 8 }}>
                   <span style={{ width: `${progressPct}%` }} />
                 </div>
+
                 <div className="pointages-passport-timeline-bottom">
-                  {hasScheduleBounds ? (
-                    <>
-                      <span>Prévu {sched.startTime}</span>
-                      <span>{exitLabel ? `Sortie ${exitLabel}` : `Prévu ${sched.endTime}`}</span>
-                    </>
-                  ) : isPresent ? (
-                    <>
-                      <span>Arrivée {entryLabel}</span>
-                      <span>{exitLabel ? `Sortie ${exitLabel}` : 'En poste (horaire libre)'}</span>
-                    </>
+                  {needsEstimation ? (
+                    <span className="pointages-unpaid-presumed-note">
+                      Durée présumée non payée avant validation ({formaterDureeComplete(p.totalSecondesPresumes || 0)})
+                    </span>
                   ) : (
-                    <span>Aucun créneau imposé</span>
+                    <>
+                      <span>
+                        {p.totalSecondes > 0 ? `Durée : ${formaterDureeComplete(p.totalSecondes)}` : 'Durée : —'}
+                      </span>
+                      <span>
+                        {hasScheduleBounds ? `Prévu ${sched.startTime}–${sched.endTime}` : 'Sans créneau En-Check'}
+                      </span>
+                    </>
                   )}
                 </div>
               </div>
@@ -1001,16 +1056,6 @@ export function PointagesPassportGrid({
 
               {isPresent ? (
                 <div className="pointages-passport-badges">
-                  {usedPin && (
-                    <span className="pointages-proof-chip is-verified">
-                      <Smartphone size={12} /> Code PIN
-                    </span>
-                  )}
-                  {usedQr && (
-                    <span className="pointages-proof-chip is-verified">
-                      <QrCode size={12} /> QR Code
-                    </span>
-                  )}
                   {p.hasPhoto && (
                     <span className="pointages-proof-chip is-verified">
                       <Camera size={12} /> Photo vérifiée
@@ -1039,23 +1084,15 @@ export function PointagesPassportGrid({
                 </div>
               )}
 
-              {canEdit && needsEstimation && statuerEstimation && (
+              {/* UN SEUL BOUTON « EXAMINER L'ESTIMATION » SUR LE PASSEPORT */}
+              {needsEstimation && onExamineEstimation && (
                 <div className="pointages-passport-estimation-actions" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
-                    className="pointages-passport-est-btn is-validate"
-                    disabled={Boolean(estimationEnCours)}
-                    onClick={() => statuerEstimation(p.lastOut, 'valider')}
+                    className="pointages-passport-est-btn is-examine"
+                    onClick={() => onExamineEstimation(p)}
                   >
-                    ✓ Valider sortie ({formaterHeureLocale(p.lastOut.check_time)})
-                  </button>
-                  <button
-                    type="button"
-                    className="pointages-passport-est-btn is-reject"
-                    disabled={Boolean(estimationEnCours)}
-                    onClick={() => statuerEstimation(p.lastOut, 'rejeter')}
-                  >
-                    🚫 Écarter
+                    ⏳ Examiner l’estimation ({exitLabel})
                   </button>
                 </div>
               )}
@@ -1070,10 +1107,10 @@ export function PointagesPassportGrid({
 export function PointagesSlideOverDrawer({
   pointage,
   canEdit,
-  statuerEstimation,
-  estimationEnCours,
+  isInert = false,
   onModify,
   onOpenEmployeeFiche,
+  onExamineEstimation,
   onShareEmployee,
   onClose,
 }) {
@@ -1088,18 +1125,28 @@ export function PointagesSlideOverDrawer({
   if (!pointage) return null
   const checkPhotoUrl = getFirstPhotoUrl(pointage) || pointage.employee?.photo_url || null
   const needsEstimationDecision = Boolean(pointage.lastOut && estEstimationAStatuer(pointage.lastOut))
-  const sched = pointage.scheduleInfo || { mode: 'none', label: 'Horaire libre (sans planning)' }
+  const isValidatedEstimation = Boolean(pointage.lastOut?.is_auto_closed && pointage.lastOut?.estimation_validee_le && !needsEstimationDecision)
+  const isRealExit = Boolean(pointage.lastOut?.check_time && !pointage.lastOut.is_auto_closed)
+  const sched = pointage.scheduleInfo || { mode: 'none', label: 'Planning non disponible dans En-Check' }
   const gps = pointage.gpsDetails
   const face = pointage.faceDetails
   const pauses = pointage.pauses || []
   const fullName = `${pointage.employee?.first_name || ''} ${pointage.employee?.last_name || ''}`.trim() || 'Employé'
+  const entryMethodLabel = pointage.firstIn ? formatMethodLabel(pointage.firstIn.method) : null
+  const exitMethodLabel = isRealExit ? formatMethodLabel(pointage.lastOut.method || pointage.firstIn?.method) : null
 
   return (
-    <div className="pointages-drawer-backdrop" role="presentation" onClick={onClose}>
+    <div
+      className="pointages-drawer-backdrop"
+      role="presentation"
+      onClick={onClose}
+      aria-hidden={isInert || undefined}
+      style={isInert ? { pointerEvents: 'none', opacity: 0.45 } : undefined}
+    >
       <aside
         className="pointages-drawer"
         role="dialog"
-        aria-modal="true"
+        aria-modal={!isInert}
         aria-label={`Inspection du pointage de ${fullName}`}
         onClick={(event) => event.stopPropagation()}
       >
@@ -1142,16 +1189,53 @@ export function PointagesSlideOverDrawer({
           )}
         </div>
 
-        {/* 1. PLANNING & HORAIRES */}
+        {/* 1. PLANNING & NATURE EXPLICITE DES HEURES */}
         <div className="pointages-passport-timeline" style={{ marginBottom: 10 }}>
-          <div className="pointages-passport-timeline-top">
-            <span>Entrée : {pointage.firstIn?.check_time ? formaterHeureLocale(pointage.firstIn.check_time) : '—'}</span>
-            <span>Sortie : {pointage.lastOut?.check_time ? formaterHeureLocale(pointage.lastOut.check_time) : '—'}</span>
+          <div className="pointages-explicit-hours">
+            <div className="pointages-explicit-hour-row is-entry">
+              <span className="pointages-explicit-hour-kind">Entrée badgée</span>
+              <strong className="pointages-explicit-hour-val">
+                {pointage.firstIn?.check_time ? `${formaterHeureLocale(pointage.firstIn.check_time)} · ${entryMethodLabel}` : '—'}
+              </strong>
+            </div>
+
+            {needsEstimationDecision ? (
+              <div className="pointages-explicit-hour-row is-presumed-pending">
+                <span className="pointages-explicit-hour-kind">⏳ Sortie présumée — à confirmer</span>
+                <strong className="pointages-explicit-hour-val">
+                  {formaterHeureLocale(pointage.lastOut.check_time)} · À confirmer
+                </strong>
+              </div>
+            ) : isValidatedEstimation ? (
+              <div className="pointages-explicit-hour-row is-presumed-validated">
+                <span className="pointages-explicit-hour-kind">✓ Sortie présumée validée</span>
+                <strong className="pointages-explicit-hour-val">
+                  {formaterHeureLocale(pointage.lastOut.check_time)} · Origine présumée conservée
+                </strong>
+              </div>
+            ) : isRealExit ? (
+              <div className="pointages-explicit-hour-row is-real-exit">
+                <span className="pointages-explicit-hour-kind">Sortie badgée</span>
+                <strong className="pointages-explicit-hour-val">
+                  {formaterHeureLocale(pointage.lastOut.check_time)} · {exitMethodLabel}
+                </strong>
+              </div>
+            ) : (
+              <div className="pointages-explicit-hour-row is-open-shift">
+                <span className="pointages-explicit-hour-kind">Sortie</span>
+                <strong className="pointages-explicit-hour-val">—</strong>
+              </div>
+            )}
           </div>
-          <div className="pointages-passport-timeline-bottom">
-            <span>Durée : {formaterDureeComplete(pointage.totalSecondes || 0)}</span>
+
+          <div className="pointages-passport-timeline-bottom" style={{ marginTop: 8 }}>
             <span>
-              {sched.label}
+              {needsEstimationDecision
+                ? `Durée présumée non payée : ${formaterDureeComplete(pointage.totalSecondesPresumes || 0)}`
+                : `Durée : ${formaterDureeComplete(pointage.totalSecondes || 0)}`}
+            </span>
+            <span>
+              {sched.mode === 'none' ? 'Planning non disponible dans En-Check' : sched.label}
               {sched.startTime && sched.endTime ? ` (${sched.startTime}–${sched.endTime})` : ''}
             </span>
           </div>
@@ -1257,6 +1341,17 @@ export function PointagesSlideOverDrawer({
         </div>
 
         <div className="pointages-drawer-actions">
+          {needsEstimationDecision && onExamineEstimation && (
+            <button
+              type="button"
+              className="pointages-drawer-btn is-copper"
+              onClick={() => onExamineEstimation(pointage)}
+            >
+              <Clock size={15} />
+              <span>⏳ Examiner l’estimation</span>
+            </button>
+          )}
+
           {onOpenEmployeeFiche && (
             <button
               type="button"
@@ -1268,65 +1363,34 @@ export function PointagesSlideOverDrawer({
             </button>
           )}
 
-          {canEdit && needsEstimationDecision && statuerEstimation && (
-            <>
-              <button
-                type="button"
-                className="pointages-drawer-btn is-primary"
-                disabled={Boolean(estimationEnCours)}
-                onClick={() => statuerEstimation(pointage.lastOut, 'valider')}
-              >
-                <CheckCircle2 size={15} />
-                <span>✓ Valider la sortie présumée</span>
-              </button>
-              {pointage.lastOut?.__contextuelle && (
-                <button
-                  type="button"
-                  className="pointages-drawer-btn is-copper"
-                  disabled={Boolean(estimationEnCours)}
-                  onClick={() => statuerEstimation(pointage.lastOut, 'ajuster')}
-                >
-                  <Clock size={15} />
-                  <span>⚖️ Ajuster l’heure (± min)</span>
-                </button>
-              )}
+          {/* Actions secondaires regroupées */}
+          <div className="pointages-drawer-secondary-row">
+            {canEdit && (
               <button
                 type="button"
                 className="pointages-drawer-btn is-outline"
-                disabled={Boolean(estimationEnCours)}
-                onClick={() => statuerEstimation(pointage.lastOut, 'rejeter')}
+                onClick={() => {
+                  onModify(pointage)
+                  onClose()
+                }}
               >
-                <X size={15} />
-                <span>🚫 Écarter la sortie présumée</span>
+                <Edit size={14} />
+                <span>Modifier</span>
               </button>
-            </>
-          )}
+            )}
 
-          {canEdit && (
             <button
               type="button"
-              className="pointages-drawer-btn is-copper"
+              className="pointages-drawer-btn is-outline"
               onClick={() => {
-                onModify(pointage)
+                onShareEmployee(pointage)
                 onClose()
               }}
             >
-              <Edit size={15} />
-              <span>Corriger / Modifier le pointage</span>
+              <MessageCircle size={14} />
+              <span>Partager</span>
             </button>
-          )}
-
-          <button
-            type="button"
-            className="pointages-drawer-btn is-outline"
-            onClick={() => {
-              onShareEmployee(pointage)
-              onClose()
-            }}
-          >
-            <MessageCircle size={15} />
-            <span>Partager ce pointage</span>
-          </button>
+          </div>
         </div>
       </aside>
     </div>

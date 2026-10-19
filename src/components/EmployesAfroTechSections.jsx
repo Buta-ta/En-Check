@@ -512,7 +512,7 @@ export function EmployesExecutiveKpis({
           <option value="all">Tous les plannings & contrats ({total})</option>
           <option value="sched_personal">📅 Planning personnalisé ({scheduleCounts.perso})</option>
           <option value="sched_general">🏢 Planning général ({scheduleCounts.general})</option>
-          <option value="sched_free">⏱️ Horaire libre ({scheduleCounts.libre})</option>
+          <option value="sched_free">⏱️ Planning non disponible dans En-Check ({scheduleCounts.libre})</option>
           <option value="contract_CDI">📄 Contrat CDI ({contractCounts.cdi})</option>
           <option value="contract_CDD">📄 Contrat CDD ({contractCounts.cdd})</option>
           <option value="contract_other">📄 Stage / Autre ({contractCounts.stage + contractCounts.autres})</option>
@@ -526,7 +526,7 @@ export function EmployesExecutiveKpis({
             {contractCounts.cdd} CDD
           </span>
           <span onClick={() => onCategoryFilterChange && onCategoryFilterChange('sched_free')} style={{ cursor: 'pointer' }}>
-            {scheduleCounts.libre} Horaire libre
+            {scheduleCounts.libre} Sans planning En-Check
           </span>
         </div>
       </article>
@@ -767,9 +767,9 @@ export function EmployesPortraitCard({
   const contractBadge = employee.contract_type || 'Non précisé'
   const shortRegime = scheduleRegimeLabel?.includes('Planning perso')
     ? 'Planning perso'
-    : scheduleRegimeLabel?.includes('Planning général')
+    : scheduleRegimeLabel?.includes('Planning général') || scheduleRegimeLabel?.includes('Planning ·')
       ? 'Planning général'
-      : 'Horaire libre'
+      : 'Planning non disponible dans En-Check'
 
   const initials = `${employee.first_name?.[0] || ''}${employee.last_name?.[0] || ''}` || 'EC'
 
