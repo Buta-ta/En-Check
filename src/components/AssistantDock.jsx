@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowUp, Sparkles, X } from 'lucide-react'
 import { searchSpotlight } from '../services/spotlightService'
 import SearchResults from './SpotlightSearch/SearchResults'
+import useAssistantExamples, { ASSISTANT_EXAMPLES } from '../hooks/useAssistantExamples'
+// Preserve the existing result-card styles after removal of the standalone hub.
+import '../styles/spotlight.css'
 import '../styles/assistantDock.css'
+
+const QRScanner = lazy(() => import('./SpotlightSearch/QRScanner'))
 
 // UI only: no provider call, free-text prompt transmission, or new RH permissions.
 export function readAssistantContext() {
@@ -18,6 +23,18 @@ export default function AssistantDock() {
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [opened, setOpened] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  const stopScanning = useCallback(() => setScanning(false), [])
+  const receiveScan = useCallback(value => {
+    setScanning(false)
+    setDraft(value.slice(0, 300))
+    setResults([])
+    setBusy(false)
+    setMessage('Badge lu. Envoyez la recherche pour consulter les résultats.')
+  }, [])
+  const [focused, setFocused] = useState(false)
+  const [examplesOpen, setExamplesOpen] = useState(false)
+  const placeholder = useAssistantExamples(opened || focused || examplesOpen || Boolean(draft))
   const dialog = useRef(null)
   const panelInput = useRef(null)
   const launcher = useRef(null)
@@ -28,6 +45,7 @@ export default function AssistantDock() {
   const navigate = useNavigate()
 
   function close() {
+    setScanning(false)
     requestId.current++
     dialog.current?.close()
     setOpened(false)
@@ -43,7 +61,7 @@ export default function AssistantDock() {
     setResults([])
     setMessage('')
     setOpened(true)
-    dialog.current?.showModal()
+    if (!dialog.current?.open) dialog.current?.showModal()
     panelInput.current?.focus()
     return admin
   }
@@ -62,8 +80,11 @@ export default function AssistantDock() {
     setOpened(false)
     setBusy(false)
     setDraft('')
+    setScanning(false)
     setResults([])
     setMessage('')
+    // Compatibility for old hub bookmarks; dashboard remains Auth-protected.
+    if (new URLSearchParams(location.search).get('assistant') === '1') open()
     return () => { requestId.current++ }
   }, [location.pathname, location.search])
 
@@ -114,50 +135,75 @@ export default function AssistantDock() {
 
   function go(path) { close(); navigate(path) }
   function select(result) {
-    const paths = { employee: '/employes', attendance: '/pointages', retard: '/retards', task: '/taches', payslip: '/fiches-paie' }
+    if (result.type === 'action' && result.action === 'openScanner') { setScanning(true); return }
+    const paths = { employee: '/employes', attendance: '/pointages', retard: '/retards', task: '/taches', payslip: '/fiches-paie', absence: '/absences', leave_request: '/absences', team: '/equipes', geofence: '/geofencing', schedule_request: '/planning', face_enrollment: '/enrollements-faciaux' }
     const actions = { goDashboard: '/dashboard', goReports: '/rapports', goMap: '/carte-temps-reel', goPredictions: '/predictions' }
     if (result.type === 'download_app' || result.type === 'hours_detail') return
     if (result.type === 'employee') return go(`/employes?id=${encodeURIComponent(result.id)}`)
     if (result.type === 'task') return go(`/taches/${encodeURIComponent(result.id)}`)
     const path = result.type === 'action' ? actions[result.action] : paths[result.type]
     if (path) go(path)
-    else setMessage('Consultez la recherche détaillée pour poursuivre avec ce résultat.')
+    else setMessage('Ce résultat est consultable ici. Pour poursuivre, ouvrez la page métier correspondante depuis En-Check.')
   }
 
   const shortcuts = <nav className="ec-assistant-shortcuts" aria-label="Raccourcis de l’assistant">
     <button type="button" onClick={() => go('/pointages')}>Pointages à vérifier</button>
     <button type="button" onClick={() => go('/planning')}>Ouvrir le planning</button>
-    <button type="button" onClick={() => go('/search')}>Recherche détaillée</button>
+    <button type="button" onClick={() => go('/rapports')}>Rapports et exports</button>
+    <button type="button" onClick={() => { requestId.current++; setResults([]); setBusy(false); setScanning(true) }}>Scanner un badge</button>
   </nav>
+
+  function chooseExample(example) {
+    requestId.current++
+    setBusy(false)
+    setDraft(example)
+    open()
+    // Choosing an example only prepares the input. Submit remains explicit.
+  }
+
+  const examples = <div className="ec-assistant-example-list">
+    {ASSISTANT_EXAMPLES.map(example => <button type="button" key={example} onClick={() => chooseExample(example)}>{example}<ArrowUp size={14} aria-hidden="true" /></button>)}
+  </div>
 
   return <>
     <div className="ec-assistant-space" aria-hidden="true" />
     {createPortal(<>
-      <aside className="ec-assistant-dock" aria-label="Assistant En-Check" hidden={opened}>
+      <aside className="ec-assistant-dock" aria-label="Assistant En-Check" hidden={opened} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false) }}>
         <div className="ec-assistant-weave" aria-hidden="true" />
         <div className="ec-assistant-label"><span><Sparkles size={14} /> ASSISTANT EN-CHECK</span><span>Rechercher · Comprendre · Anticiper</span></div>
         <form className="ec-assistant-form" onSubmit={search}>
           <button ref={launcher} type="button" className="ec-assistant-open" onClick={open} aria-label="Ouvrir l’assistant En-Check" aria-haspopup="dialog"><Sparkles size={20} /></button>
-          <input aria-label="Votre recherche En-Check" placeholder="Demandez à En-Check…" value={draft} maxLength={300} onChange={e => setDraft(e.target.value)} autoComplete="off" />
+          <input aria-label="Votre recherche En-Check" placeholder={placeholder} value={draft} maxLength={300} onChange={e => setDraft(e.target.value)} autoComplete="off" />
           <button type="submit" className="ec-assistant-send" aria-label="Rechercher"><ArrowUp size={21} /></button>
         </form>
-        {shortcuts}
+        <details className="ec-assistant-examples" onToggle={event => setExamplesOpen(event.currentTarget.open)}>
+          <summary>Exemples à demander</summary>
+          {examples}
+          <p>Choisissez un exemple, adaptez-le, puis envoyez.</p>
+        </details>
       </aside>
-      <dialog ref={dialog} className="ec-assistant-panel" aria-labelledby="ec-assistant-title" onCancel={event => { event.preventDefault(); close() }} onClick={event => { if (event.target === dialog.current) close() }}>
+      <dialog ref={dialog} className="ec-assistant-panel" aria-labelledby="ec-assistant-title" onCancel={event => { event.preventDefault(); if (scanning) stopScanning(); else close() }} onClick={event => { if (event.target === dialog.current) close() }}>
         <div className="ec-assistant-weave" aria-hidden="true" />
         <header className="ec-assistant-panel-header"><div><h2 id="ec-assistant-title">Assistant En-Check</h2><p>Recherche guidée · Données En-Check</p></div><button type="button" onClick={close} aria-label="Fermer l’assistant"><X size={22} /></button></header>
         <div className="ec-assistant-content">
+          {scanning ? <Suspense fallback={<p>Ouverture du scanner…</p>}><QRScanner onClose={stopScanning} onScan={receiveScan} /></Suspense> : <>
           <p className="ec-assistant-context">Entreprise : {context?.selectedEnterprise?.name || (context?.enterprise_id ? 'entreprise de votre compte' : 'à sélectionner')}</p>
           <h3>Que souhaitez-vous retrouver ?</h3>
           <p>Recherchez un employé, des pointages ou des tâches. Les données restent dans En-Check ; aucun texte n’est envoyé à un modèle externe.</p>
           <p className="ec-assistant-note">La conversation IA et l’anticipation des risques ne sont pas encore connectées dans cette version.</p>
+          <details className="ec-assistant-examples" open>
+            <summary>Exemples à demander</summary>
+            {examples}
+            <p>Le choix d’un exemple ne lance aucune recherche.</p>
+          </details>
           {shortcuts}
           <div role="status" aria-live="polite" aria-busy={busy}>{message && <p>{message}</p>}</div>
           {results.length > 0 && <div className="ec-assistant-results" ref={resultsArea} onKeyDown={event => {
             if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.result-card, .result-card-modern')) { event.preventDefault(); event.target.click() }
           }}><SearchResults results={results} selectedIndex={-1} onSelect={select} /></div>}
+          </>}
         </div>
-        <form className="ec-assistant-form ec-assistant-panel-form" onSubmit={search}>
+        <form hidden={scanning} className="ec-assistant-form ec-assistant-panel-form" onSubmit={search}>
           <input ref={panelInput} aria-label="Rechercher dans En-Check" placeholder="Un nom, un matricule, une recherche…" value={draft} maxLength={300} onChange={e => { requestId.current++; setBusy(false); setResults([]); setMessage(''); setDraft(e.target.value) }} autoComplete="off" />
           <button type="submit" className="ec-assistant-send" disabled={busy} aria-label="Lancer la recherche"><ArrowUp size={21} /></button>
         </form>

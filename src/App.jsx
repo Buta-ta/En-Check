@@ -62,7 +62,6 @@ import EmployeeTasks from './pages/employee/EmployeeTasks'
 import Predictions from './pages/Predictions'
 import PushNotifications from './pages/PushNotifications'
 import AiConnectionTest from './pages/AiConnectionTest'
-import SpotlightSearch from './pages/SpotlightSearch'
 import AssistantDock from './components/AssistantDock'
 
 // La page de démo est disponible en local et sur les déploiements Vercel Preview,
@@ -374,8 +373,8 @@ function App() {
             </AdminRoute>
           } />
 
-          {/* ⚡ NOUVELLE ROUTE SPOTLIGHT */}
-          <Route path="/search" element={<AdminRoute><SpotlightSearch /></AdminRoute>} />
+          {/* Anciens favoris du hub : redirection vers le panneau global. */}
+          <Route path="/search" element={<Navigate to="/dashboard?assistant=1" replace />} />
 
 
           {/* ═══ ROUTES SUPER ADMIN UNIQUEMENT ═══ */}

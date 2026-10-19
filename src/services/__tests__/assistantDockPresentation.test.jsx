@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import AssistantDock, { readAssistantContext } from '../../components/AssistantDock'
+import { ASSISTANT_EXAMPLES } from '../../hooks/useAssistantExamples'
+import { parseQuery } from '../queryParser'
 
 vi.mock('react-dom', () => ({ createPortal: children => children }))
 const { search } = vi.hoisted(() => ({ search: vi.fn() }))
@@ -16,7 +18,9 @@ describe('Barre assistant — interface, sans modèle externe', () => {
     const html = renderToStaticMarkup(<MemoryRouter><AssistantDock /></MemoryRouter>)
     expect(html).toContain('ec-assistant-dock')
     expect(html).toContain('ec-assistant-weave')
-    expect(html).toContain('Demandez à En-Check…')
+    expect(html).toContain('Ex. : Retards aujourd&#x27;hui')
+    expect(html).toContain('Exemples à demander')
+    expect(html).not.toContain('Recherche détaillée')
     expect(html).toContain('aria-haspopup="dialog"')
     expect(html).toContain('aria-labelledby="ec-assistant-title"')
     expect(html).not.toContain('<dialog open')
@@ -29,12 +33,19 @@ describe('Barre assistant — interface, sans modèle externe', () => {
     vi.stubGlobal('localStorage', { getItem: () => null })
     expect(readAssistantContext()).toBeNull()
   })
-  it('monte uniquement après la protection admin, conserve la recherche détaillée', () => {
+  it('monte après la protection admin et redirige les anciens favoris vers le panneau', () => {
     const app = readFileSync(new URL('../../App.jsx', import.meta.url), 'utf8')
     expect(app).toContain('return <>{children}<AssistantDock /></>')
-    expect(app).toContain('<Route path="/search" element={<AdminRoute><SpotlightSearch /></AdminRoute>} />')
+    expect(app).toContain('<Route path="/search" element={<Navigate to="/dashboard?assistant=1" replace />} />')
+    expect(app).not.toContain("import SpotlightSearch")
+    expect(existsSync(new URL('../../pages/SpotlightSearch.jsx', import.meta.url))).toBe(false)
     const dashboard = readFileSync(new URL('../../components/DashboardExperience.jsx', import.meta.url), 'utf8')
     expect(dashboard).not.toContain('SpotlightFAB')
+  })
+  it('propose des exemples reconnus par le moteur existant', () => {
+    expect(ASSISTANT_EXAMPLES.map(example => parseQuery(example).type)).toEqual([
+      'COMMAND', 'ATTENDANCE_SEARCH', 'TASK_SEARCH', 'PAYSLIP_SEARCH',
+    ])
   })
   it('ignore les réponses périmées et ne contient aucun appel fournisseur', () => {
     const source = readFileSync(new URL('../../components/AssistantDock.jsx', import.meta.url), 'utf8')
