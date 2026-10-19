@@ -44,3 +44,16 @@
 .ec-assistant-results { background: #181923; color: #f5f2ec; padding: 14px; border-radius: 12px; margin-top: 14px; }
 .ec-assistant-results .result-card:focus-visible, .ec-assistant-results .result-card-modern:focus-visible { outline: 3px solid #cda566; outline-offset: 2px; }
 .ec-assistant-results h3 { color: #f5f2ec; }
+/* Examples expand inside the bottom dock, upwards rather than below the viewport. */
+.ec-assistant-examples { margin-top: 8px; }
+.ec-assistant-examples summary { cursor: pointer; padding: 8px 4px; min-height: 44px; display: list-item; list-style-position: inside; font-size: 13px; }
+.ec-assistant-examples summary:focus-visible { outline: 2px solid #cda566; outline-offset: 2px; border-radius: 6px; }
+.ec-assistant-example-list { display: grid; gap: 6px; max-height: min(180px, 30dvh); overflow-y: auto; overscroll-behavior: contain; }
+.ec-assistant-example-list button { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; min-height: 44px; padding: 10px 12px; background: #43362c; color: #fff4e5; border: 1px solid #79614b; border-radius: 8px; font-size: 14px; }
+.ec-assistant-example-list button:hover { background: #594534; }
+.ec-assistant-examples p { margin: 8px 0; font-size: 12px; }
+.ec-assistant-dock { max-height: calc(100dvh - 130px); overflow-y: auto; }
+.ec-assistant-panel-form[hidden] { display: none; }
+.ec-assistant-panel .qr-scanner-overlay { position: static; padding: 12px 0; background: transparent; backdrop-filter: none; }
+.ec-assistant-panel .qr-scanner-modal { width: 100%; max-width: 100%; }
+.ec-assistant-panel .qr-scanner-modal h3 { color: #fff; }
