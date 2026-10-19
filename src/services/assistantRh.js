@@ -87,7 +87,10 @@ export async function answerRhQuestion({ query, admin, client, previous, now = n
     const { data, count, error } = await request.order('check_time', { ascending: false }).order('id', { ascending: true }).limit(20)
     if (error || !Array.isArray(data) || !Number.isSafeInteger(count) || count < 0) throw Error('attendance')
     return { ...common, title: intent === 'confirmations' ? 'Sorties présumées enregistrées à confirmer' : 'Pointages enregistrés', source: 'Table attendances · lecture autorisée · date locale de chaque ligne',
-      text: intent === 'confirmations' ? `Je retrouve ${count} sortie${count > 1 ? 's' : ''} présumée${count > 1 ? 's' : ''} enregistrée${count > 1 ? 's' : ''} à confirmer sur cette période.`
+      text: intent === 'confirmations'
+        ? (count === 0
+            ? 'Je retrouve 0 sortie présumée enregistrée à confirmer sur cette période. Pour examiner et valider les sorties présumées calculées à l’ouverture sur les journées sans badge de départ, ouvrez la page Pointages.'
+            : `Je retrouve ${count} sortie${count > 1 ? 's' : ''} présumée${count > 1 ? 's' : ''} enregistrée${count > 1 ? 's' : ''} à confirmer sur cette période.`)
         : `Je retrouve ${count} enregistrement${count > 1 ? 's' : ''} de pointage pour ${company.name} sur cette période.`,
       warning: intent === 'confirmations' ? 'Les propositions virtuelles ne sont pas incluses : ce résultat ne garantit pas que tout est confirmé.' : null,
       notes: [intent === 'confirmations' ? 'Les propositions virtuelles calculées à l’ouverture de Pointages ne sont pas incluses. Même un résultat à zéro ne signifie pas que tout est confirmé.'

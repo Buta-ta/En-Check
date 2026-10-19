@@ -9,6 +9,11 @@ import AssistantStatus from './AssistantStatus'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import { KenteWovenTapestrySvg, WovenKenteBadgeSvg } from './AfroCulturalSvg'
 import { answerPublicChat, publicMessages, CHAT_ERRORS } from '../services/assistantChat'
+import {
+  conversationalRequest,
+  buildConversationalFallback,
+  looksLikeConversationalQuestion,
+} from '../services/assistantConversation'
 import { usesGeneralConversation } from '../services/assistantRouting'
 import { resolveDialogue, dialogueScope, currentDialogue, SESSION_TTL } from '../services/assistantDialogue'
 import { answerRhQuestion } from '../services/assistantRh'
@@ -250,7 +255,9 @@ export default function AssistantDock() {
         if (!isCurrent()) return
         chatAbort.current = null
         if (result.error) {
-          const fallback = resolveDialogue(original, previous)?.answer
+          const fallback =
+            resolveDialogue(original, previous)?.answer ||
+            (['disabled', 'unavailable'].includes(result.error) ? buildConversationalFallback(original) : null)
           if (fallback) { setAnswer(fallback); return }
           setMessage(CHAT_ERRORS[result.error]); return
         }
@@ -292,6 +299,9 @@ export default function AssistantDock() {
         setAnswer({
           text: `J’ai trouvé ${found.length} résultat${found.length > 1 ? 's' : ''} correspondant à « ${original} » dans En-Check. Sélectionnez une fiche ci-dessous pour la consulter ou poursuivez notre échange.`,
         })
+        setMessage('')
+      } else if (looksLikeConversationalQuestion(original)) {
+        setAnswer(conversationalRequest(original)?.answer || buildConversationalFallback(original))
         setMessage('')
       } else {
         setAnswer({
