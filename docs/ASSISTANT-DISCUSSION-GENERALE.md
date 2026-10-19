@@ -6,10 +6,11 @@ L’interface propose désormais une seule conversation et une seule saisie.
 Entrée ou la flèche envoie le message ; aucune sélection de moteur ni de mode.
 Les recherches métier reconnues restent traitées localement. Un routeur conservateur
 oriente certaines formulations générales vers le modèle, après activation explicite
-pour la session. Les suites courtes comme « Comment ? » reprennent uniquement le
-contexte général s’il existe ; sinon elles déclenchent une clarification locale.
+pour la session. Les salutations et les suites courtes comme « Comment ? » passent directement au
+modèle après activation, même sans contexte : il peut alors demander une précision
+naturelle plutôt que laisser le système proposer automatiquement des choix RH.
 
-Le dernier échange est affiché. La mémoire fournisseur contient au maximum les
+Les dix derniers échanges au maximum restent visibles dans un fil local. La mémoire fournisseur contient au maximum les
 trois derniers échanges généraux ; elle est effacée lors d’une demande locale,
 à la fermeture, à la nouvelle discussion, à l’expiration et au changement de compte.
 Aucun résultat métier n’est ajouté à cette mémoire. Les demandes inconnues ne sont
@@ -121,3 +122,17 @@ Edge si `assistant-chat` du lot précédent est déjà installé/activé. Aucun 
 fournisseur réel dans les tests. 268 tests Vitest et 55 tests Edge ; test DOM monté
 complémentaire du Dock : activation, second tour sans confirmation, absence de
 résultat RH dans le payload, nouvelle discussion et rejet des réponses périmées.
+
+## Fil de chat et priorité conversationnelle
+
+Les idées de questions et accès rapides sont conservés. Les réponses générées
+n’ont plus de titre automatique « Voici ce que je vous propose » ; elles sont
+présentées comme des messages. Suppression du footer répétitif. Sources repliées
+et accès discret à la confidentialité conservés. Défilement vers la fin du fil.
+
+Le fil local (10 échanges maximum) et le contexte fournisseur (3 échanges généraux)
+sont distincts : les cartes RH archivées à l’écran ne partent pas au modèle.
+Le routage métier reste prioritaire pour les demandes de données reconnues et
+les critères privés détectés. Ce lot ne rend pas toutes les formulations libres
+transmissibles et ne garantit pas une détection exhaustive des données personnelles.
+Aucune modification Edge ni SQL. Aucun appel réel fournisseur exécuté.

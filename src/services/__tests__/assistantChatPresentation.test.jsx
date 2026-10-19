@@ -8,7 +8,9 @@ import { resolveDialogue } from '../assistantDialogue'
 describe('Conversation unifiée', () => {
   it('route les questions générales et les suites sans importer le contexte métier', () => {
     expect(usesGeneralConversation('Comment organiser une réunion utile ?')).toBe(true)
-    expect(usesGeneralConversation('Comment ?')).toBe(false)
+    expect(usesGeneralConversation('Comment ?')).toBe(true)
+    expect(usesGeneralConversation('Bonjour')).toBe(true)
+    expect(usesGeneralConversation('Merci')).toBe(true)
     expect(resolveDialogue('Comment ?').answer).toBeTruthy()
     expect(usesGeneralConversation('Comment ?', [{role:'user',text:'Réunion'}])).toBe(true)
     for (const text of ['Sara Dupont', 'Les retards hier', 'et hier ?', 'Comment calculer le salaire de Sara ?', 'Comment gérer mon dossier ?', 'Pourquoi exemple@example.org ?', 'Explique une sortie présumée']) {
@@ -26,7 +28,7 @@ describe('Conversation unifiée', () => {
     const source = readFileSync(new URL('../../components/AssistantDock.jsx', import.meta.url), 'utf8')
     expect(source).not.toMatch(/generalChat|AssistantChat|type="checkbox"|Votre message général/)
     expect(source).toContain('Activer et poursuivre')
-    expect(source).toContain('Confidentialité et fonctionnement')
+    expect(source).toContain('Confidentialité')
     expect(source).toContain('Nouvelle discussion')
     expect(source).toContain('if (general && !activated.current && !activate)')
     expect(source).toContain('if (!general) publicHistory.current = []')

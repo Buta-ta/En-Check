@@ -1,8 +1,8 @@
 const initials = name => name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase()
-export default function AssistantAnswer({ answer, onChoice, onNavigate }) {
-  return <section className="ec-dialogue-answer" aria-label="Réponse de l’assistant" aria-live="polite">
+export default function AssistantAnswer({ answer, onChoice, onNavigate, live = true }) {
+  return <section className="ec-dialogue-answer" aria-label="Réponse de l’assistant" aria-live={live ? "polite" : "off"}>
     <div className="ec-dialogue-speaker">✧ Assistant En-Check</div>
-    <h3>{answer.title}</h3>
+    {answer.title && <h3>{answer.title}</h3>}
     <p className="ec-dialogue-text">{answer.text}</p>
     {answer.period && <p className="ec-dialogue-scope">{answer.enterprise} · {answer.period}</p>}
     {answer.warning && <p className="ec-dialogue-warning">{answer.warning}</p>}
