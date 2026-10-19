@@ -215,7 +215,11 @@ export default function AssistantDock() {
         const result = await answerPublicChat(messages, supabase, controller)
         if (!isCurrent()) return
         chatAbort.current = null
-        if (result.error) { setMessage(CHAT_ERRORS[result.error]); return }
+        if (result.error) {
+          const fallback = resolveDialogue(original, previous)?.answer
+          if (fallback) { setAnswer(fallback); return }
+          setMessage(CHAT_ERRORS[result.error]); return
+        }
         publicHistory.current = [...messages, { role: 'assistant', text: result.text }]
         setAnswer({ text: result.text,
           source: 'Réponse générée à partir de cette discussion, sans consultation des dossiers ni recherche web en direct.',
@@ -251,9 +255,8 @@ export default function AssistantDock() {
       if (!isCurrent()) return
       setResults(found || [])
       if (!found?.length) setAnswer({
-        title: 'Pouvez-vous préciser ?',
-        text: 'Je n’ai pas trouvé de résultat. Si vous cherchez une personne, précisez son nom ou son matricule. Si vous souhaitez un bilan, dites-moi quel sujet vous intéresse : pointages, retards ou sorties présumées. Je ne peux pas encore répondre librement à tous les sujets.',
-        choices: ['Combien de pointages', 'Qui est en retard', 'Sorties présumées à confirmer'],
+        text: `Je n’ai trouvé aucune fiche correspondant à « ${query} » dans cette entreprise. Vous pouvez m’indiquer le nom ou le matricule d’un collaborateur, me demander le point sur votre équipe (pointages, retards, sorties présumées) ou me poser une question générale !`,
+        choices: ["Qui est en retard aujourd'hui", "Combien de pointages aujourd'hui", 'Sorties présumées à confirmer', 'Que peux-tu faire ?'],
       })
       setMessage(found?.length
         ? 'Voici les résultats de la recherche En-Check. Sélectionnez une fiche pour la consulter.'

@@ -5,11 +5,20 @@ const normalize = text => String(text || '').normalize('NFD').replace(/[\u0300-\
   .replace(/’/g, "'").replace(/[?!.]/g, '').trim().replace(/\s+/g, ' ')
 const QUESTIONS = {
   'explique une sortie presumee': 'presumed_exit',
+  'explique les sorties presumees': 'presumed_exit',
   "qu'est-ce qu'une sortie presumee": 'presumed_exit',
+  'qu est ce qu une sortie presumee': 'presumed_exit',
+  "c'est quoi une sortie presumee": 'presumed_exit',
+  'comment fonctionne une sortie presumee': 'presumed_exit',
   'comment sont calcules les retards': 'lateness',
+  'comment calcule-t-on les retards': 'lateness',
+  'comment tu calcules les retards': 'lateness',
   'explique les retards': 'lateness',
+  "c'est quoi un retard": 'lateness',
   'que signifie le nombre de pointages': 'attendance_count',
   'explique le nombre de pointages': 'attendance_count',
+  "c'est quoi le nombre de pointages": 'attendance_count',
+  'comment sont comptes les pointages': 'attendance_count',
 }
 export const EXPLANATION_QUESTIONS = [
   'Explique une sortie présumée', 'Comment sont calculés les retards ?', 'Que signifie le nombre de pointages ?',
