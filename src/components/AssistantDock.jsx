@@ -5,6 +5,7 @@ import { ArrowUp, Sparkles, X } from 'lucide-react'
 import { searchSpotlight } from '../services/spotlightService'
 import { supabase } from '../lib/supabase'
 import AssistantAnswer from './AssistantAnswer'
+import AssistantStatus from './AssistantStatus'
 import { resolveDialogue, dialogueScope, currentDialogue, SESSION_TTL } from '../services/assistantDialogue'
 import { answerRhQuestion } from '../services/assistantRh'
 import { answerExplanation, EXPLANATION_QUESTIONS } from '../services/assistantExplanation'
@@ -291,6 +292,7 @@ export default function AssistantDock() {
             <p>Vos pointages, vos retards ou une notion à comprendre : commençons par votre question.</p>
           </div>}
           {lastQuestion && <div className="ec-dialogue-user">{lastQuestion}</div>}
+          <AssistantStatus busy={busy} message={message} />
           {answer && <AssistantAnswer answer={answer} onChoice={choice => search(null, choice)} onNavigate={go} />}
           <details className="ec-assistant-examples">
             <summary>Idées de questions</summary>
@@ -300,7 +302,6 @@ export default function AssistantDock() {
           </details>
           <details className="ec-assistant-examples"><summary>Accès rapides</summary>{shortcuts}</details>
           <details className="ec-dialogue-sources"><summary>À propos de cet assistant</summary><p>Les chiffres viennent des règles En-Check. Seules les explications publiques peuvent être reformulées par IA. Le contexte de discussion est temporaire et reste dans En-Check. Je peux demander une précision ou reprendre une période. Le dialogue génératif libre et l’anticipation ne sont pas encore connectés. Aucun dossier RH n’est transmis aux modèles.</p></details>
-          <div role="status" aria-live="polite" aria-busy={busy}>{message && <p>{message}</p>}</div>
           {results.length > 0 && <div className="ec-assistant-results" ref={resultsArea} onKeyDown={event => {
             if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.result-card, .result-card-modern')) { event.preventDefault(); event.target.click() }
           }}><SearchResults results={results} selectedIndex={-1} onSelect={select} /></div>}
@@ -308,7 +309,7 @@ export default function AssistantDock() {
         </div>
         <form hidden={scanning} className="ec-assistant-form ec-assistant-panel-form" onSubmit={search}>
           <input ref={panelInput} aria-label="Rechercher dans En-Check" placeholder="Dites-moi ce que vous souhaitez vérifier…" value={draft} maxLength={300} onChange={e => { requestId.current++; setBusy(false); setResults([]); setMessage(''); setDraft(e.target.value) }} autoComplete="off" />
-          <button type="submit" className="ec-assistant-send" disabled={busy} aria-label="Lancer la recherche"><ArrowUp size={21} /></button>
+          <button type="submit" className="ec-assistant-send" disabled={busy} aria-label={busy ? "Réponse en préparation" : "Lancer la recherche"}><ArrowUp size={21} /></button>
         </form>
         <footer>Aucune modification sans votre confirmation.</footer>
       </dialog>
