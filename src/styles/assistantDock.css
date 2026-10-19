@@ -116,3 +116,6 @@
 .ec-assistant-activation { margin: 16px 0; padding: 16px; border: 1px solid #e5ded2; border-radius: 14px; background: #f6f0e6; }
 .ec-assistant-activation p { font-size: 14px; line-height: 1.6; }
 @media (max-width: 480px) { .ec-assistant-panel-header .ec-assistant-new { max-width: 85px; } }
+.ec-dialogue-turn { border-bottom: 1px solid #eee5d8; padding-bottom: 12px; margin-bottom: 18px; }
+.ec-dialogue-answer .ec-dialogue-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ec-assistant-privacy { font-size: 11px; }

@@ -38,6 +38,7 @@ export default function AssistantDock() {
   const [message, setMessage] = useState('')
   const [answer, setAnswer] = useState(null)
   const [lastQuestion, setLastQuestion] = useState('')
+  const [thread, setThread] = useState([])
   const rhContext = useRef(null)
   const dialogueSession = useRef(null)
   const activeScope = useRef(null)
@@ -64,6 +65,7 @@ export default function AssistantDock() {
   const panelInput = useRef(null)
   const launcher = useRef(null)
   const resultsArea = useRef(null)
+  const threadEnd = useRef(null)
   const restoreFocus = useRef(false)
   const requestId = useRef(0)
   const location = useLocation()
@@ -81,6 +83,7 @@ export default function AssistantDock() {
     rhContext.current = null
     dialogueSession.current = null
     setLastQuestion('')
+    setThread([])
     requestId.current++
     dialog.current?.close()
     setOpened(false)
@@ -121,6 +124,7 @@ export default function AssistantDock() {
     setBusy(false)
     setDraft('')
     setLastQuestion('')
+    setThread([])
     setAnswer(null)
     rhContext.current = null
     dialogueSession.current = null
@@ -150,14 +154,20 @@ export default function AssistantDock() {
       card.tabIndex = 0
       card.setAttribute('role', 'button')
     })
-  }, [results])
+  }, [results, thread])
+
+  useEffect(() => {
+    if (opened) threadEnd.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [opened, answer, message, busy, thread.length, activation])
 
   async function search(event, followup, activate = false) {
     event?.preventDefault()
     if (busy) return
     const original = (followup || draft).trim()
+    if (!original) return
     const admin = opened ? readAssistantContext() : open()
     const scope = dialogueScope(admin)
+    const expired = dialogueSession.current && Date.now() - dialogueSession.current.at >= SESSION_TTL
     const previous = currentDialogue(dialogueSession.current, scope)
     if (!previous) rhContext.current = null
     if (!currentDialogue(dialogueSession.current, scope)) {
@@ -171,6 +181,10 @@ export default function AssistantDock() {
     if (!general) publicHistory.current = []
     const query = conversation.query || original
     dialogueSession.current = { scope, at: Date.now(), state: conversation.state }
+    if (activeScope.current !== scope || expired) setThread([])
+    else if (!activation && lastQuestion && (answer || message || results.length)) {
+      setThread(turns => [...turns, { question: lastQuestion, answer, message, results }].slice(-9))
+    }
     setContext(admin)
     setAnswer(null)
     chatAbort.current?.abort()
@@ -203,7 +217,7 @@ export default function AssistantDock() {
         chatAbort.current = null
         if (result.error) { setMessage(CHAT_ERRORS[result.error]); return }
         publicHistory.current = [...messages, { role: 'assistant', text: result.text }]
-        setAnswer({ title: 'Voici ce que je vous propose', text: result.text,
+        setAnswer({ text: result.text,
           source: 'Réponse générée à partir de cette discussion, sans consultation des dossiers ni recherche web en direct.',
           notes: ['Cette réponse peut contenir des erreurs. Vérifiez les informations importantes.'] })
         return
@@ -266,6 +280,7 @@ export default function AssistantDock() {
       setAnswer(null)
       setResults([])
       setLastQuestion('')
+      setThread([])
       setDraft('')
       setMessage('')
       setBusy(false)
@@ -341,7 +356,9 @@ export default function AssistantDock() {
       <dialog ref={dialog} className="ec-assistant-panel" aria-labelledby="ec-assistant-title" onCancel={event => { event.preventDefault(); if (scanning) stopScanning(); else close() }} onClick={event => { if (event.target === dialog.current) close() }}>
         <div className="ec-assistant-weave" aria-hidden="true" />
         <header className="ec-assistant-panel-header"><div><h2 id="ec-assistant-title">Assistant En-Check</h2><p>Votre entreprise, en conversation</p></div><button type="button" className="ec-assistant-new" onClick={() => { close(); open() }}>Nouvelle discussion</button><button type="button" onClick={close} aria-label="Fermer l’assistant"><X size={22} /></button></header>
-        <div className="ec-assistant-content">
+        <div className="ec-assistant-content" ref={resultsArea} onKeyDown={event => {
+          if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.result-card, .result-card-modern')) { event.preventDefault(); event.target.click() }
+        }}>
           {scanning ? <Suspense fallback={<p>Ouverture du scanner…</p>}><QRScanner onClose={stopScanning} onScan={receiveScan} /></Suspense> : <>
           <p className="ec-assistant-context">Entreprise : {context?.selectedEnterprise?.name || (context?.enterprise_id ? 'entreprise de votre compte' : 'à sélectionner')}</p>
           {!lastQuestion && <div className="ec-dialogue-welcome">
@@ -349,6 +366,14 @@ export default function AssistantDock() {
             <h3>Bonjour ! Que souhaitez-vous vérifier ou comprendre aujourd’hui ?</h3>
             <p>Posez votre question, puis poursuivez naturellement la discussion.</p>
           </div>}
+          <div className="ec-dialogue-thread" aria-label="Historique de la conversation">
+            {thread.map((turn, index) => <div key={index} className="ec-dialogue-turn">
+              <div className="ec-dialogue-user">{turn.question}</div>
+              {turn.answer && <AssistantAnswer answer={turn.answer} onChoice={choice => search(null, choice)} onNavigate={go} live={false} />}
+              {turn.message && <p>{turn.message}</p>}
+              {turn.results?.length > 0 && <SearchResults results={turn.results} selectedIndex={-1} onSelect={select} />}
+            </div>)}
+          </div>
           {lastQuestion && <div className="ec-dialogue-user">{lastQuestion}</div>}
           <AssistantStatus busy={busy} message={message} />
           {activation && <section className="ec-assistant-activation" aria-label="Activer la conversation">
@@ -367,17 +392,16 @@ export default function AssistantDock() {
             <p>Un exemple remplit la saisie. Envoyez-le quand vous êtes prêt.</p>
           </details>
           <details className="ec-assistant-examples"><summary>Accès rapides</summary>{shortcuts}</details>
-          <details className="ec-dialogue-sources"><summary>Confidentialité et fonctionnement</summary><p>Les consultations métier restent soumises à vos droits. Après activation, les questions générales et jusqu’à trois échanges précédents sont traités par un service IA externe. N’y incluez aucune donnée personnelle ou confidentielle. Le routage technique ne garantit pas l’anonymisation. Le fournisseur et ses conditions sont décrits dans l’information de confidentialité du service. La mémoire est temporaire ; une nouvelle discussion l’efface. Les sources et limites de chaque réponse sont accessibles dans ses précisions.</p></details>
-          {results.length > 0 && <div className="ec-assistant-results" ref={resultsArea} onKeyDown={event => {
-            if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.result-card, .result-card-modern')) { event.preventDefault(); event.target.click() }
-          }}><SearchResults results={results} selectedIndex={-1} onSelect={select} /></div>}
+          <details className="ec-dialogue-sources ec-assistant-privacy"><summary>Confidentialité</summary><p>Les consultations métier restent soumises à vos droits. Après activation, les questions générales et jusqu’à trois échanges précédents sont traités par un service IA externe. N’y incluez aucune donnée personnelle ou confidentielle. Le routage technique ne garantit pas l’anonymisation. Le fournisseur et ses conditions sont décrits dans l’information de confidentialité du service. La mémoire est temporaire ; une nouvelle discussion l’efface. Les sources et limites de chaque réponse sont accessibles dans ses précisions.</p></details>
+          {results.length > 0 && <div className="ec-assistant-results" ><SearchResults results={results} selectedIndex={-1} onSelect={select} /></div>}
+          <div ref={threadEnd} />
           </>}
         </div>
         <form hidden={scanning} className="ec-assistant-form ec-assistant-panel-form" onSubmit={search}>
           <input ref={panelInput} aria-label="Rechercher dans En-Check" placeholder="Que souhaitez-vous savoir ?" value={draft} maxLength={2000} onChange={e => { requestId.current++; chatAbort.current?.abort(); setActivation(null); setBusy(false); setResults([]); setMessage(''); setDraft(e.target.value) }} autoComplete="off" />
           <button type="submit" className="ec-assistant-send" disabled={busy} aria-label={busy ? "Réponse en préparation" : "Lancer la recherche"}><ArrowUp size={21} /></button>
         </form>
-        <footer>Aucune modification sans votre confirmation.</footer>
+
       </dialog>
     </>, document.body)}
   </>

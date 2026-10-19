@@ -27,7 +27,7 @@ describe('Attente unifiée Assistant En-Check', () => {
     expect(source).toContain('<AssistantStatus busy={busy} message={message} />')
     expect(source.indexOf('setBusy(true)')).toBeLessThan(source.indexOf('await answerExplanation'))
     expect(source).toContain('finally { if (id === requestId.current) setBusy(false) }')
-    expect(source.indexOf('<AssistantStatus')).toBeLessThan(source.indexOf('<AssistantAnswer'))
+    expect(source.indexOf('<AssistantStatus')).toBeLessThan(source.indexOf('<AssistantAnswer answer={answer}'))
     const css = readFileSync(new URL('../../styles/assistantDock.css', import.meta.url), 'utf8')
     expect(css).toContain('@media (prefers-reduced-motion: reduce) { .ec-assistant-loading-icon { animation: none; } }')
   })
