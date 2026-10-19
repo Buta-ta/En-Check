@@ -5,6 +5,7 @@ import { ArrowUp, Sparkles, X } from 'lucide-react'
 import { searchSpotlight } from '../services/spotlightService'
 import { supabase } from '../lib/supabase'
 import { answerRhQuestion } from '../services/assistantRh'
+import { answerExplanation, EXPLANATION_QUESTIONS } from '../services/assistantExplanation'
 import HolidayService from '../services/holidayService'
 import SearchResults from './SpotlightSearch/SearchResults'
 import useAssistantExamples, { ASSISTANT_EXAMPLES } from '../hooks/useAssistantExamples'
@@ -14,7 +15,7 @@ import '../styles/assistantDock.css'
 
 const QRScanner = lazy(() => import('./SpotlightSearch/QRScanner'))
 
-// Read-only assistant: no provider call, external prompt transmission, or new RH permissions.
+// Read-only: RH data stays in En-Check. Only approved public explanation topics can reach AI.
 export function readAssistantContext() {
   try { return JSON.parse(localStorage.getItem('admin') || 'null') } catch { return null }
 }
@@ -135,6 +136,14 @@ export default function AssistantDock() {
     setBusy(true)
     setMessage('Recherche dans les données En-Check…')
     try {
+      const explanation = await answerExplanation(query, supabase)
+      if (id !== requestId.current) return
+      if (explanation) {
+        setAnswer(explanation)
+        rhContext.current = null
+        setMessage('')
+        return
+      }
       const rh = await answerRhQuestion({ query, admin, client: supabase, previous: rhContext.current,
         loadHolidays: (enterprise, from, to) => HolidayService.getHolidaysForRange(enterprise, from, to, { strict: true }),
       })
@@ -214,8 +223,8 @@ export default function AssistantDock() {
           {scanning ? <Suspense fallback={<p>Ouverture du scanner…</p>}><QRScanner onClose={stopScanning} onScan={receiveScan} /></Suspense> : <>
           <p className="ec-assistant-context">Entreprise : {context?.selectedEnterprise?.name || (context?.enterprise_id ? 'entreprise de votre compte' : 'à sélectionner')}</p>
           <h3>Comment puis-je vous aider ?</h3>
-          <p>Recherchez un employé, des pointages ou des tâches. Les données restent dans En-Check ; aucun texte n’est envoyé à un modèle externe.</p>
-          <p className="ec-assistant-note">Les réponses RH ci-dessous utilisent les règles En-Check. La génération cloud et l’anticipation des risques ne sont pas encore connectées.</p>
+          <p>Recherchez un employé, des pointages ou des tâches. Les données RH restent dans En-Check. Pour expliquer une notion, seuls des textes génériques de documentation peuvent être transmis à l’IA.</p>
+          <p className="ec-assistant-note">Les chiffres proviennent des règles En-Check. Les explications générales peuvent être reformulées par IA, avec une référence métier en secours. Le dialogue libre et l’anticipation ne sont pas encore connectés.</p>
           <details className="ec-assistant-examples" open>
             <summary>Exemples à demander</summary>
             {examples}
@@ -224,13 +233,18 @@ export default function AssistantDock() {
           <div className="ec-assistant-example-list" aria-label="Questions RH">
             {['Combien de pointages', 'Qui est en retard', 'Sorties présumées à confirmer'].map(question => <button key={question} type="button" onClick={() => chooseExample(question)}>{question}</button>)}
           </div>
+          <details className="ec-assistant-examples">
+            <summary>Comprendre avec l’assistant</summary>
+            <div className="ec-assistant-example-list">{EXPLANATION_QUESTIONS.map(question => <button type="button" key={question} onClick={() => chooseExample(question)}>{question}</button>)}</div>
+            <p>Seul le sujet public est transmis, jamais votre phrase ni vos dossiers RH.</p>
+          </details>
           {shortcuts}
           {answer && <section className="ec-assistant-answer" aria-label="Réponse RH" aria-live="polite">
             <h3>{answer.title}</h3><p>{answer.text}</p>
             {answer.period && <p><strong>{answer.enterprise}</strong> · {answer.period} · {answer.timezone}</p>}
             {answer.notes?.map(note => <p key={note} className="ec-assistant-note">{note}</p>)}
             {answer.rows?.length > 0 && <ul>{answer.rows.map(row => <li key={row.id}><strong>{row.label}</strong><br />{row.detail}</li>)}</ul>}
-            {answer.source && <p className="ec-assistant-note">Source : {answer.source}<br />Lecture demandée à {new Date(answer.updatedAt).toLocaleTimeString('fr-FR', { timeZone: answer.timezone })} ({answer.timezone}).</p>}
+            {answer.source && <p className="ec-assistant-note">Source : {answer.source}{answer.updatedAt && <><br />Lecture demandée à {new Date(answer.updatedAt).toLocaleTimeString('fr-FR', { timeZone: answer.timezone })} ({answer.timezone}).</>}</p>}
             {answer.choices && <div className="ec-assistant-example-list">{answer.choices.map(choice => <button key={choice} type="button" onClick={() => chooseExample(choice)}>{choice}</button>)}</div>}
             {answer.path && <button type="button" onClick={() => go(answer.path)}>Ouvrir {answer.path === '/retards' ? 'Retards' : 'Pointages'} — filtres à vérifier dans la page</button>}
           </section>}

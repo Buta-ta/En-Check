@@ -24,3 +24,8 @@ enabled = true
 # an active super_admin lookup. This also supports newer asymmetric JWTs.
 verify_jwt = false
 entrypoint = "./functions/test-ai-search/index.ts"
+
+[functions.assistant-explain]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/assistant-explain/index.ts"
