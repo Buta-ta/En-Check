@@ -70,7 +70,7 @@ describe('Assistant RH — autorisation et résultats', () => {
     expect(s.calls).toContainEqual(['gte', 'check_time', '2026-10-19T23:00:00.000Z'])
     expect(s.calls).toContainEqual(['lt', 'check_time', '2026-10-20T23:00:00.000Z'])
     expect(s.calls).toContainEqual(['eq', 'enterprise_id', 'company'])
-    expect(r.text).toContain('45 ligne(s)'); expect(r.text).toContain('ni un nombre d’employés')
+    expect(r.text).toContain('45 enregistrements'); expect(r.notes[0]).toContain('ni un nombre d’employés')
   })
   it('ne considère pas une panne ou un fuseau absent comme zéro', async () => {
     for (const override of [{ attendance: { error: { message: 'private' } } }, { attendance: { count: null } }, { company: { data: { timezone: 'invalid' } } }]) {

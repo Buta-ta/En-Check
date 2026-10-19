@@ -61,3 +61,41 @@
 .ec-assistant-answer li { padding: 9px 0; border-bottom: 1px solid #e0d4c2; font-size: 14px; }
 .ec-assistant-answer ul { padding-left: 18px; }
 .ec-assistant-answer > button { border: 1px solid #79614b; border-radius: 8px; padding: 12px; background: #244c40; color: white; min-height: 44px; }
+/* Conversational layer scoped to this panel only; no page/sidebar redesign. */
+.ec-assistant-panel { background: #fffcf6; border-color: #e2d7c6; width: min(760px, calc(100% - 24px)); }
+.ec-assistant-panel-header { flex-shrink: 0; }
+.ec-assistant-content { padding-top: 8px; }
+.ec-assistant-context { display: inline-block; border: 1px solid #e5dac7; border-radius: 20px; padding: 5px 12px; background: #f6f0e6; }
+.ec-dialogue-welcome { padding: 18px 0; }
+.ec-dialogue-emblem { font-size: 32px; color: #9a713c; }
+.ec-dialogue-user { margin: 18px 0 22px auto; max-width: 85%; width: fit-content; border-radius: 18px 18px 4px 18px; background: #e8f0e9; color: #244c40; padding: 14px 18px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.ec-dialogue-answer { margin: 18px 0 24px; }
+.ec-dialogue-speaker { color: #705c42; font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+.ec-dialogue-answer h3 { font-size: 17px; margin: 12px 0 8px; }
+.ec-dialogue-answer .ec-dialogue-text { font-size: 16px; line-height: 1.75; }
+.ec-dialogue-scope { font-size: 12px !important; color: #706556; }
+.ec-dialogue-records { list-style: none; margin: 16px 0; padding: 0; display: grid; gap: 8px; }
+.ec-dialogue-records li { display: flex; align-items: center; gap: 12px; padding: 15px; background: #fff; border: 1px solid #e5ded2; border-radius: 14px; }
+.ec-dialogue-records li > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ec-dialogue-records li strong { font-size: 14px; color: #30251e; }
+.ec-dialogue-records li div > span { display: block; font-size: 13px; color: #756958; margin-top: 5px; }
+.ec-dialogue-avatar { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: #f2ebdf; color: #7a5a32; flex-shrink: 0; font-size: 12px; font-weight: 700; }
+.ec-dialogue-badge { background: #edf5ee; color: #286044; padding: 5px 8px; border-radius: 14px; font-size: 11px; }
+.ec-dialogue-badge.is-estimate { background: #fff1dd; color: #805318; }
+.ec-dialogue-warning { border-left: 3px solid #bc8a42; padding: 8px 12px; background: #faf2e6; color: #73501e; }
+.ec-dialogue-followups { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.ec-dialogue-followups button, .ec-dialogue-open { border: 1px solid #c8d8ce; border-radius: 22px; padding: 10px 14px; min-height: 44px; color: #285340; background: #f5f9f5; }
+.ec-dialogue-followups button::first-letter { text-transform: uppercase; }
+.ec-dialogue-sources { border-top: 1px solid #e9e1d5; color: #706556; margin: 15px 0; font-size: 13px; }
+.ec-dialogue-sources summary { cursor: pointer; padding: 14px 0; min-height: 44px; }
+.ec-dialogue-sources summary:focus-visible { outline: 2px solid #9a713c; }
+.ec-dialogue-sources p { font-size: 12px; }
+.ec-dialogue-page-note { display: block; margin-top: 6px; color: #706556; font-size: 11px; }
+/* Retained specialized Spotlight cards (hours, downloads) get the same light surface. */
+.ec-assistant-panel .ec-assistant-results { background: transparent; color: #30251e; padding: 0; }
+.ec-assistant-results :is(.result-card,.result-card-modern,.hours-detail-card,.download-app-card) { background: #fff !important; border: 1px solid #e5ded2 !important; box-shadow: none !important; border-radius: 14px; }
+.ec-assistant-results :is(h3,h4,.employee-name,.employee-info,.hours-detail-period-value,.hours-detail-employee-name) { color: #30251e !important; }
+.ec-assistant-results :is(p,.employee-detail-item,.employee-matricule,.hours-detail-period-label,.hours-detail-period-meta) { color: #6f6251 !important; }
+@media (max-width: 480px) { .ec-dialogue-records li { padding: 12px; gap: 8px; } .ec-dialogue-badge { font-size: 10px; } }
+.ec-dialogue-provenance { font-size: 11px !important; color: #795828; margin: 5px 0; }
+.ec-assistant-results [style*="color: rgb(255, 255, 255)"] { color: #30251e !important; }

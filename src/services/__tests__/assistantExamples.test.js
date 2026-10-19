@@ -3,7 +3,7 @@ import useAssistantExamples, { ASSISTANT_EXAMPLES } from '../../hooks/useAssista
 const hooks = vi.hoisted(() => ({ effects: [], setIndex: vi.fn() }))
 // Test timer lifecycle independently from the DOM renderer.
 vi.mock('react', () => ({
-  useState: () => [0, hooks.setIndex],
+  useState: initial => [initial, hooks.setIndex],
   useEffect: effect => hooks.effects.push(effect),
 }))
 let media, page, cleanup
@@ -27,39 +27,49 @@ function mount(paused = false) {
   return value
 }
 describe('Exemples déroulants — cycle et accessibilité', () => {
-  it('propose un exemple immédiatement et tourne toutes les 4,5 secondes', () => {
-    expect(mount()).toBe(`Ex. : ${ASSISTANT_EXAMPLES[0]}`)
-    vi.advanceTimersByTime(4499)
+  it('efface le premier exemple puis écrit le suivant caractère par caractère', () => {
+    expect(mount()).toBe(ASSISTANT_EXAMPLES[0])
+    hooks.setIndex.mockClear()
+    vi.advanceTimersByTime(2199)
     expect(hooks.setIndex).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
-    const next = hooks.setIndex.mock.calls[0][0]
-    expect(next(0)).toBe(1)
-    expect(next(ASSISTANT_EXAMPLES.length - 1)).toBe(0)
+    expect(hooks.setIndex).toHaveBeenLastCalledWith(ASSISTANT_EXAMPLES[0].slice(0, -1))
+    vi.advanceTimersByTime((ASSISTANT_EXAMPLES[0].length - 1) * 35)
+    expect(hooks.setIndex).toHaveBeenLastCalledWith('')
+    vi.advanceTimersByTime(350)
+    expect(hooks.setIndex).toHaveBeenLastCalledWith(ASSISTANT_EXAMPLES[1][0])
+    vi.advanceTimersByTime(75)
+    expect(hooks.setIndex).toHaveBeenLastCalledWith(ASSISTANT_EXAMPLES[1].slice(0, 2))
   })
   it('ne tourne pas pendant saisie, focus, liste ouverte ou dialogue ouvert', () => {
     mount(true)
+    hooks.setIndex.mockClear()
     vi.advanceTimersByTime(20000)
     expect(hooks.setIndex).not.toHaveBeenCalled()
   })
   it('respecte la réduction des animations et les changements de préférence', () => {
     media.matches = true
     mount()
+    hooks.setIndex.mockClear()
     vi.advanceTimersByTime(20000)
     expect(hooks.setIndex).not.toHaveBeenCalled()
     media.matches = false
     media.dispatchEvent(new Event('change'))
-    vi.advanceTimersByTime(4500)
+    hooks.setIndex.mockClear()
+    vi.advanceTimersByTime(2200)
     expect(hooks.setIndex).toHaveBeenCalledTimes(1)
   })
   it('suspend la rotation dans un onglet masqué et nettoie le timer', () => {
     mount()
     page.visibilityState = 'hidden'
     page.dispatchEvent(new Event('visibilitychange'))
+    hooks.setIndex.mockClear()
     vi.advanceTimersByTime(20000)
     expect(hooks.setIndex).not.toHaveBeenCalled()
     page.visibilityState = 'visible'
     page.dispatchEvent(new Event('visibilitychange'))
-    vi.advanceTimersByTime(4500)
+    hooks.setIndex.mockClear()
+    vi.advanceTimersByTime(2200)
     expect(hooks.setIndex).toHaveBeenCalledTimes(1)
     cleanup()
     vi.advanceTimersByTime(20000)
