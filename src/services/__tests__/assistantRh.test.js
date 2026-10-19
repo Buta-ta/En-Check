@@ -34,7 +34,8 @@ describe('Assistant RH — compréhension prudente', () => {
   })
   it('ne supprime jamais silencieusement un nom ou une période inconnue', () => {
     expect(parseRhQuestion('retards Amadou hier')).toEqual({ unsupported: true })
-    expect(parseRhQuestion('pointages la semaine dernière')).toEqual({ unsupported: true })
+    expect(parseRhQuestion('pointages la semaine dernière')).toEqual({ intent: 'pointages', period: 'la semaine precedente' })
+    expect(parseRhQuestion('pointages le mois dernier')).toEqual({ unsupported: true })
     expect(parseRhQuestion('hier')).toEqual({ unsupported: true })
     expect(parseRhQuestion('matricule ABC-123')).toBeNull()
   })

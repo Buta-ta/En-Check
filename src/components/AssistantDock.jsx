@@ -5,7 +5,7 @@ import { ArrowUp, Sparkles, X } from 'lucide-react'
 import { searchSpotlight } from '../services/spotlightService'
 import { supabase } from '../lib/supabase'
 import AssistantAnswer from './AssistantAnswer'
-import { conversationalRequest } from '../services/assistantConversation'
+import { resolveDialogue, dialogueScope, currentDialogue, SESSION_TTL } from '../services/assistantDialogue'
 import { answerRhQuestion } from '../services/assistantRh'
 import { answerExplanation, EXPLANATION_QUESTIONS } from '../services/assistantExplanation'
 import HolidayService from '../services/holidayService'
@@ -30,6 +30,7 @@ export default function AssistantDock() {
   const [answer, setAnswer] = useState(null)
   const [lastQuestion, setLastQuestion] = useState('')
   const rhContext = useRef(null)
+  const dialogueSession = useRef(null)
   const [busy, setBusy] = useState(false)
   const [opened, setOpened] = useState(false)
   const [scanning, setScanning] = useState(false)
@@ -39,6 +40,7 @@ export default function AssistantDock() {
     setDraft(value.slice(0, 300))
     setAnswer(null)
     rhContext.current = null
+    dialogueSession.current = null
     setResults([])
     setBusy(false)
     setMessage('Badge lu. Envoyez la recherche pour consulter les résultats.')
@@ -59,6 +61,7 @@ export default function AssistantDock() {
     setScanning(false)
     setAnswer(null)
     rhContext.current = null
+    dialogueSession.current = null
     setLastQuestion('')
     requestId.current++
     dialog.current?.close()
@@ -97,6 +100,7 @@ export default function AssistantDock() {
     setLastQuestion('')
     setAnswer(null)
     rhContext.current = null
+    dialogueSession.current = null
     setScanning(false)
     setResults([])
     setMessage('')
@@ -129,12 +133,17 @@ export default function AssistantDock() {
     event?.preventDefault()
     if (busy) return
     const original = (followup || draft).trim()
-    const conversation = conversationalRequest(original)
-    const query = conversation.query || original
     const admin = opened ? readAssistantContext() : open()
+    const scope = dialogueScope(admin)
+    const previous = currentDialogue(dialogueSession.current, scope)
+    if (!previous) rhContext.current = null
+    const conversation = resolveDialogue(original, previous)
+    const query = conversation.query || original
+    dialogueSession.current = { scope, at: Date.now(), state: conversation.state }
     setContext(admin)
     setAnswer(null)
     const id = ++requestId.current
+    const isCurrent = () => id === requestId.current && scope === dialogueScope(readAssistantContext())
     setResults([])
     setLastQuestion(original)
     setDraft('')
@@ -148,9 +157,11 @@ export default function AssistantDock() {
     try {
       const explanation = await answerExplanation(query, supabase)
       if (id !== requestId.current) return
+      if (!isCurrent()) return
       if (explanation) {
         setAnswer(explanation)
         rhContext.current = null
+        dialogueSession.current = { scope, at: Date.now(), state: null }
         setMessage('')
         return
       }
@@ -158,23 +169,66 @@ export default function AssistantDock() {
         loadHolidays: (enterprise, from, to) => HolidayService.getHolidaysForRange(enterprise, from, to, { strict: true }),
       })
       if (id !== requestId.current) return
+      if (!isCurrent()) return
       if (rh) {
         setAnswer(conversation.greeting ? { ...rh, text: `Bonjour ! ${rh.text}` } : rh)
         rhContext.current = rh.context || null
+        if (!rh.context) dialogueSession.current = { scope, at: Date.now(), state: null }
         setMessage('')
         return
       }
       rhContext.current = null
+      dialogueSession.current = { scope, at: Date.now(), state: null }
       const found = await searchSpotlight(query, admin)
       if (id !== requestId.current) return
+      if (!isCurrent()) return
       setResults(found || [])
+      if (!found?.length) setAnswer({
+        title: 'Pouvez-vous préciser ?',
+        text: 'Je n’ai pas trouvé de résultat. Si vous cherchez une personne, précisez son nom ou son matricule. Si vous souhaitez un bilan, dites-moi quel sujet vous intéresse : pointages, retards ou sorties présumées. Je ne peux pas encore répondre librement à tous les sujets.',
+        choices: ['Combien de pointages', 'Qui est en retard', 'Sorties présumées à confirmer'],
+      })
       setMessage(found?.length
         ? 'Voici les résultats de la recherche En-Check. Sélectionnez une fiche pour la consulter.'
-        : 'Aucun résultat pour cette recherche. Essayez un nom, un matricule ou une formulation plus précise. Ce résultat ne constitue pas une analyse des risques.')
+        : '')
     } catch {
-      if (id === requestId.current) setMessage('La recherche est momentanément indisponible. Vous pouvez toujours ouvrir les pages métier ci-dessous.')
+      if (isCurrent()) {
+        dialogueSession.current = { scope, at: Date.now(), state: null }
+        setMessage('La recherche est momentanément indisponible. Vous pouvez toujours ouvrir les pages métier ci-dessous.')
+      }
     } finally { if (id === requestId.current) setBusy(false) }
   }
+
+  // Forget context on auth changes, cross-tab account changes and inactivity.
+  // No conversation or RH result is written to storage or sent to a model.
+  useEffect(() => {
+    const reset = () => {
+      requestId.current++
+      rhContext.current = null
+      dialogueSession.current = null
+      setAnswer(null)
+      setResults([])
+      setLastQuestion('')
+      setDraft('')
+      setMessage('')
+      setBusy(false)
+      setContext(readAssistantContext())
+    }
+    const onStorage = event => { if (event.key === 'admin' || event.key === null) reset() }
+    const subscription = supabase.auth?.onAuthStateChange?.(event => {
+      if (event === 'SIGNED_OUT' || event === 'SIGNED_IN' || event === 'USER_UPDATED') reset()
+    })
+    const timer = setInterval(() => {
+      const session = dialogueSession.current
+      if (session && (session.scope !== dialogueScope(readAssistantContext()) || Date.now() - session.at >= SESSION_TTL)) reset()
+    }, 1000)
+    window.addEventListener('storage', onStorage)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('storage', onStorage)
+      subscription?.data?.subscription?.unsubscribe()
+    }
+  }, [])
 
   function go(path) { close(); navigate(path) }
   function select(result) {
@@ -245,7 +299,7 @@ export default function AssistantDock() {
             <p>Un exemple remplit la saisie. Envoyez-le quand vous êtes prêt.</p>
           </details>
           <details className="ec-assistant-examples"><summary>Accès rapides</summary>{shortcuts}</details>
-          <details className="ec-dialogue-sources"><summary>À propos de cet assistant</summary><p>Les chiffres viennent des règles En-Check. Seules les explications publiques peuvent être reformulées par IA. Le dialogue libre et l’anticipation ne sont pas encore connectés. Aucun dossier RH n’est transmis aux modèles.</p></details>
+          <details className="ec-dialogue-sources"><summary>À propos de cet assistant</summary><p>Les chiffres viennent des règles En-Check. Seules les explications publiques peuvent être reformulées par IA. Le contexte de discussion est temporaire et reste dans En-Check. Je peux demander une précision ou reprendre une période. Le dialogue génératif libre et l’anticipation ne sont pas encore connectés. Aucun dossier RH n’est transmis aux modèles.</p></details>
           <div role="status" aria-live="polite" aria-busy={busy}>{message && <p>{message}</p>}</div>
           {results.length > 0 && <div className="ec-assistant-results" ref={resultsArea} onKeyDown={event => {
             if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.result-card, .result-card-modern')) { event.preventDefault(); event.target.click() }
@@ -253,7 +307,7 @@ export default function AssistantDock() {
           </>}
         </div>
         <form hidden={scanning} className="ec-assistant-form ec-assistant-panel-form" onSubmit={search}>
-          <input ref={panelInput} aria-label="Rechercher dans En-Check" placeholder="Un nom, un matricule, une recherche…" value={draft} maxLength={300} onChange={e => { requestId.current++; setBusy(false); setResults([]); setMessage(''); setDraft(e.target.value) }} autoComplete="off" />
+          <input ref={panelInput} aria-label="Rechercher dans En-Check" placeholder="Dites-moi ce que vous souhaitez vérifier…" value={draft} maxLength={300} onChange={e => { requestId.current++; setBusy(false); setResults([]); setMessage(''); setDraft(e.target.value) }} autoComplete="off" />
           <button type="submit" className="ec-assistant-send" disabled={busy} aria-label="Lancer la recherche"><ArrowUp size={21} /></button>
         </form>
         <footer>Aucune modification sans votre confirmation.</footer>

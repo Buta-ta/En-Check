@@ -1,3 +1,4 @@
+import { splitDialoguePeriod, localRhIntent } from './assistantIntent'
 import { getPartsLocaux, heureLocaleVersUTC, isValidTimezone, formaterHeureLocaleShort } from '../utils/timezoneUtils'
 import { construireRetards } from './retardsService'
 
@@ -6,20 +7,14 @@ export const RH_QUESTIONS = {
   retards: 'Qui est en retard',
   confirmations: 'Sorties présumées à confirmer',
 }
-const normalized = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[’]/g, "'").replace(/[?!.,]/g, '').trim().replace(/\s+/g, ' ')
 const dayAfter = (date, days = 1) => new Date(Date.parse(`${date}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10)
 const choices = intent => ["aujourd'hui", 'les 7 derniers jours', 'la semaine précédente'].map(period => `${RH_QUESTIONS[intent]} ${period}`)
 
 export function parseRhQuestion(query, previous) {
-  let text = normalized(query).replace(/^(bonjour|bonsoir|salut)\s+/, '').replace(/\s+s'il te plait$/, '').replace(/\bde (?:la|cette) semaine$/, 'cette semaine')
-  let period = null
-  const match = text.match(/(?:^|\s)(aujourd'hui|hier|cette semaine|les 7 derniers jours|la semaine precedente|\d{4}-\d{2}-\d{2})$/)
-  if (match) { period = match[1]; text = text.slice(0, match.index).trim() }
+  const { text, period } = splitDialoguePeriod(query)
   if ((!text || text === 'et') && period && previous?.intent && RH_QUESTIONS[previous.intent]) return { intent: previous.intent, period }
   if ((!text || text === 'et') && period) return { unsupported: true }
-  const intent = /^(combien de pointages|pointages|montre les pointages|montre-moi les pointages|montre moi les pointages|affiche les pointages|les pointages)$/.test(text) ? 'pointages'
-    : /^(qui est en retard|quels sont les retards|retards|montre les retards)$/.test(text) ? 'retards'
-      : /^(sorties presumees a confirmer|quelles sorties restent a confirmer|montre les sorties presumees a confirmer)$/.test(text) ? 'confirmations' : null
+  const intent = localRhIntent(text)
   if (intent) return { intent, period }
   // Do not silently discard a person's name, an unsupported date or extra filter.
   if (/pointage|retard|sortie.*confirm|presumee/.test(text)) return { unsupported: true }
