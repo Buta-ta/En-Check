@@ -1,23 +1,35 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import AssistantChat from '../../components/AssistantChat'
+import { readFileSync } from 'node:fs'
+import AssistantAnswer from '../../components/AssistantAnswer'
+import { usesGeneralConversation } from '../assistantRouting'
 import { resolveDialogue } from '../assistantDialogue'
-vi.mock('../../lib/supabase', () => ({ supabase: {} }))
-describe('Discussion générale et clarification', () => {
-  it('ne traite plus comment comme une recherche de téléchargement', () => {
-    expect(resolveDialogue('comment ?').query).toBeUndefined()
-    expect(resolveDialogue('comment ?').answer.title).toBe('Précisons ensemble')
-    expect(resolveDialogue('comment ?', { intent: 'retards' }).answer.choices).toContain('Comment sont calculés les retards ?')
+
+describe('Conversation unifiée', () => {
+  it('route les questions générales et les suites sans importer le contexte métier', () => {
+    expect(usesGeneralConversation('Comment organiser une réunion utile ?')).toBe(true)
+    expect(usesGeneralConversation('Comment ?')).toBe(false)
+    expect(resolveDialogue('Comment ?').answer).toBeTruthy()
+    expect(usesGeneralConversation('Comment ?', [{role:'user',text:'Réunion'}])).toBe(true)
+    for (const text of ['Sara Dupont', 'Les retards hier', 'et hier ?', 'Comment calculer le salaire de Sara ?', 'Comment gérer mon dossier ?', 'Pourquoi exemple@example.org ?', 'Explique une sortie présumée']) {
+      expect(usesGeneralConversation(text, [{role:'user',text:'Réunion'}])).toBe(false)
+    }
   })
-  it('présente un envoi explicite et non précoché, sans marque fournisseur', () => {
-    const html = renderToStaticMarkup(<AssistantChat scope="demo" readScope={() => 'demo'} />)
-    expect(html).toContain('Discussion générale')
-    expect(html).toContain('service IA externe')
-    expect(html).toContain('type="checkbox"')
-    expect(html).not.toContain('checked=""')
-    expect(html).toContain('disabled=""')
-    expect(html).not.toMatch(/Gemini|Gemma|Google/)
-    expect(html).toContain('ne garantit pas leur anonymisation')
-    expect(html).toContain('Mémoire limitée')
+  it('présente une seule identité et garde la provenance dans les précisions', () => {
+    const html = renderToStaticMarkup(<AssistantAnswer answer={{title:'Réponse',text:'Texte',source:'Reformulation IA — à vérifier',warning:'Résultat partiel'}} />)
+    expect(html).toContain('Assistant En-Check')
+    expect(html).not.toContain('ec-dialogue-provenance')
+    expect(html.indexOf('Reformulation IA')).toBeGreaterThan(html.indexOf('<details'))
+    expect(html.indexOf('Résultat partiel')).toBeLessThan(html.indexOf('<details'))
+  })
+  it('une saisie, pas de modes ni confirmation répétitive; activation avant appel', () => {
+    const source = readFileSync(new URL('../../components/AssistantDock.jsx', import.meta.url), 'utf8')
+    expect(source).not.toMatch(/generalChat|AssistantChat|type="checkbox"|Votre message général/)
+    expect(source).toContain('Activer et poursuivre')
+    expect(source).toContain('Confidentialité et fonctionnement')
+    expect(source).toContain('Nouvelle discussion')
+    expect(source).toContain('if (general && !activated.current && !activate)')
+    expect(source).toContain('if (!general) publicHistory.current = []')
+    expect(source).toContain('chatAbort.current?.abort()')
   })
 })

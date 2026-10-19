@@ -112,3 +112,7 @@
 .ec-public-chat-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .ec-public-chat button:disabled { opacity: .55; cursor: not-allowed; }
 .ec-dialogue-followups button[aria-pressed="true"] { background: #285340; color: #fff; }
+.ec-assistant-panel-header .ec-assistant-new { font-size: 12px; color: #705c42; background: transparent; border: 0; padding: 8px; }
+.ec-assistant-activation { margin: 16px 0; padding: 16px; border: 1px solid #e5ded2; border-radius: 14px; background: #f6f0e6; }
+.ec-assistant-activation p { font-size: 14px; line-height: 1.6; }
+@media (max-width: 480px) { .ec-assistant-panel-header .ec-assistant-new { max-width: 85px; } }

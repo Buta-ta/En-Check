@@ -26,7 +26,8 @@ describe('Barre assistant — interface, sans modèle externe', () => {
     expect(html).toContain('aria-haspopup="dialog"')
     expect(html).toContain('aria-labelledby="ec-assistant-title"')
     expect(html).not.toContain('<dialog open')
-    expect(html).toContain('ne sont pas encore connectés')
+    expect(html).toContain('Confidentialité et fonctionnement')
+    expect(html).not.toContain('Mode de l’assistant')
     expect(search).not.toHaveBeenCalled()
   })
   it('ne considère pas un profil absent ou corrompu comme un contexte', () => {

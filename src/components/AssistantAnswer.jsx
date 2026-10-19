@@ -2,8 +2,6 @@ const initials = name => name.split(/\s+/).filter(Boolean).slice(0, 2).map(word 
 export default function AssistantAnswer({ answer, onChoice, onNavigate }) {
   return <section className="ec-dialogue-answer" aria-label="Réponse de l’assistant" aria-live="polite">
     <div className="ec-dialogue-speaker">✧ Assistant En-Check</div>
-    {answer.source?.startsWith('Reformulation IA') && <p className="ec-dialogue-provenance">Explication IA · à vérifier</p>}
-    {answer.source?.startsWith('Référence En-Check') && <p className="ec-dialogue-provenance">Référence En-Check</p>}
     <h3>{answer.title}</h3>
     <p className="ec-dialogue-text">{answer.text}</p>
     {answer.period && <p className="ec-dialogue-scope">{answer.enterprise} · {answer.period}</p>}
