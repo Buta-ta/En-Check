@@ -407,7 +407,6 @@ async function searchPayslips(parsed, enterpriseId) {
  */
 function detectDownloadQuery(query) {
   const normalized = query.toLowerCase().trim()
-  console.log('🔍 Recherche download pour:', normalized) // ✅ DEBUG
   
   const downloadKeywords = [
     'télécharger', 'telecharger', 'telechargement', 'téléchargement',

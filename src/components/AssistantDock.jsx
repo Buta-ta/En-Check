@@ -6,6 +6,7 @@ import { searchSpotlight } from '../services/spotlightService'
 import { supabase } from '../lib/supabase'
 import AssistantAnswer from './AssistantAnswer'
 import AssistantStatus from './AssistantStatus'
+import AssistantChat from './AssistantChat'
 import { resolveDialogue, dialogueScope, currentDialogue, SESSION_TTL } from '../services/assistantDialogue'
 import { answerRhQuestion } from '../services/assistantRh'
 import { answerExplanation, EXPLANATION_QUESTIONS } from '../services/assistantExplanation'
@@ -18,12 +19,15 @@ import '../styles/assistantDock.css'
 
 const QRScanner = lazy(() => import('./SpotlightSearch/QRScanner'))
 
-// Read-only: RH data stays in En-Check. Only approved public explanation topics can reach AI.
+// RH stays local; general chat has its own explicit public-only input and memory.
 export function readAssistantContext() {
   try { return JSON.parse(localStorage.getItem('admin') || 'null') } catch { return null }
 }
 
+const readChatScope = () => dialogueScope(readAssistantContext())
+
 export default function AssistantDock() {
+  const [generalChat, setGeneralChat] = useState(false)
   const [draft, setDraft] = useState('')
   const [context, setContext] = useState(null)
   const [results, setResults] = useState([])
@@ -32,6 +36,7 @@ export default function AssistantDock() {
   const [lastQuestion, setLastQuestion] = useState('')
   const rhContext = useRef(null)
   const dialogueSession = useRef(null)
+  const activeScope = useRef(null)
   const [busy, setBusy] = useState(false)
   const [opened, setOpened] = useState(false)
   const [scanning, setScanning] = useState(false)
@@ -59,6 +64,8 @@ export default function AssistantDock() {
   const navigate = useNavigate()
 
   function close() {
+    activeScope.current = null
+    setGeneralChat(false)
     setScanning(false)
     setAnswer(null)
     rhContext.current = null
@@ -75,6 +82,7 @@ export default function AssistantDock() {
 
   function open() {
     const admin = readAssistantContext()
+    activeScope.current = dialogueScope(admin)
     setContext(admin)
     setResults([])
     setMessage('')
@@ -92,6 +100,7 @@ export default function AssistantDock() {
   }, [opened])
 
   useEffect(() => {
+    setGeneralChat(false)
     // No query/history survives a change of route or enterprise context.
     requestId.current++
     dialog.current?.close()
@@ -204,6 +213,7 @@ export default function AssistantDock() {
   // No conversation or RH result is written to storage or sent to a model.
   useEffect(() => {
     const reset = () => {
+      setGeneralChat(false)
       requestId.current++
       rhContext.current = null
       dialogueSession.current = null
@@ -213,6 +223,7 @@ export default function AssistantDock() {
       setDraft('')
       setMessage('')
       setBusy(false)
+      activeScope.current = readChatScope()
       setContext(readAssistantContext())
     }
     const onStorage = event => { if (event.key === 'admin' || event.key === null) reset() }
@@ -221,6 +232,7 @@ export default function AssistantDock() {
     })
     const timer = setInterval(() => {
       const session = dialogueSession.current
+      if (activeScope.current && activeScope.current !== readChatScope()) { reset(); return }
       if (session && (session.scope !== dialogueScope(readAssistantContext()) || Date.now() - session.at >= SESSION_TTL)) reset()
     }, 1000)
     window.addEventListener('storage', onStorage)
@@ -286,6 +298,14 @@ export default function AssistantDock() {
         <div className="ec-assistant-content">
           {scanning ? <Suspense fallback={<p>Ouverture du scanner…</p>}><QRScanner onClose={stopScanning} onScan={receiveScan} /></Suspense> : <>
           <p className="ec-assistant-context">Entreprise : {context?.selectedEnterprise?.name || (context?.enterprise_id ? 'entreprise de votre compte' : 'à sélectionner')}</p>
+          <div className="ec-dialogue-followups" aria-label="Mode de l’assistant">
+            <button type="button" aria-pressed={!generalChat} onClick={() => { setGeneralChat(false); requestId.current++; setBusy(false) }}>Consulter En-Check</button>
+            <button type="button" aria-pressed={generalChat} onClick={() => {
+              requestId.current++; setBusy(false); setGeneralChat(true); setAnswer(null); setResults([]); setLastQuestion(''); setDraft(''); setMessage('');
+              rhContext.current = null; dialogueSession.current = null
+            }}>Discussion générale</button>
+          </div>
+          {generalChat && opened ? <AssistantChat scope={dialogueScope(context)} readScope={readChatScope} /> : <>
           {!lastQuestion && <div className="ec-dialogue-welcome">
             <span className="ec-dialogue-emblem" aria-hidden="true">✧</span>
             <h3>Bonjour, que souhaitez-vous vérifier ?</h3>
@@ -301,13 +321,14 @@ export default function AssistantDock() {
             <p>Un exemple remplit la saisie. Envoyez-le quand vous êtes prêt.</p>
           </details>
           <details className="ec-assistant-examples"><summary>Accès rapides</summary>{shortcuts}</details>
-          <details className="ec-dialogue-sources"><summary>À propos de cet assistant</summary><p>Les chiffres viennent des règles En-Check. Seules les explications publiques peuvent être reformulées par IA. Le contexte de discussion est temporaire et reste dans En-Check. Je peux demander une précision ou reprendre une période. Le dialogue génératif libre et l’anticipation ne sont pas encore connectés. Aucun dossier RH n’est transmis aux modèles.</p></details>
+          <details className="ec-dialogue-sources"><summary>À propos de cet assistant</summary><p>Les chiffres viennent des règles En-Check. Seules les explications publiques peuvent être reformulées par IA. Le contexte de discussion est temporaire et reste dans En-Check. Je peux demander une précision ou reprendre une période. La discussion générale est disponible dans son mode dédié, sans accès aux dossiers. Les analyses génératives RH et l’anticipation ne sont pas encore connectés. Aucun dossier RH n’est transmis aux modèles.</p></details>
           {results.length > 0 && <div className="ec-assistant-results" ref={resultsArea} onKeyDown={event => {
             if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.result-card, .result-card-modern')) { event.preventDefault(); event.target.click() }
           }}><SearchResults results={results} selectedIndex={-1} onSelect={select} /></div>}
           </>}
+          </>}
         </div>
-        <form hidden={scanning} className="ec-assistant-form ec-assistant-panel-form" onSubmit={search}>
+        <form hidden={scanning || generalChat} className="ec-assistant-form ec-assistant-panel-form" onSubmit={search}>
           <input ref={panelInput} aria-label="Rechercher dans En-Check" placeholder="Dites-moi ce que vous souhaitez vérifier…" value={draft} maxLength={300} onChange={e => { requestId.current++; setBusy(false); setResults([]); setMessage(''); setDraft(e.target.value) }} autoComplete="off" />
           <button type="submit" className="ec-assistant-send" disabled={busy} aria-label={busy ? "Réponse en préparation" : "Lancer la recherche"}><ArrowUp size={21} /></button>
         </form>

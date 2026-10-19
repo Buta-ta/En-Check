@@ -44,7 +44,7 @@ export function resolveDialogue(value, previous = null) {
     answer: clarification('Pour cette période, souhaitez-vous consulter les retards, les pointages ou les sorties présumées ?',
       Object.values(RH_QUESTIONS).map(question => `${question} ${period}`)), state: null,
   }
-  if (/^(?:et pourquoi|pourquoi|explique|et ensuite|et eux|et pour eux)$/.test(text)) return {
+  if (/^(?:comment|comment ca|et comment|et pourquoi|pourquoi|explique|et ensuite|et eux|et pour eux)$/.test(text)) return {
     answer: clarification('Je ne veux pas supposer une cause ou un groupe de personnes. Pouvez-vous préciser ce que vous souhaitez comprendre ?', state.intent === 'retards' ? ['Comment sont calculés les retards ?', 'Comment réduire les retards ?'] : Object.values(RH_QUESTIONS)), state: previous,
   }
   return { query, greeting: courtesy.greeting, state: null }
