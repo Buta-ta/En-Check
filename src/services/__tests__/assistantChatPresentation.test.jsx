@@ -16,6 +16,7 @@ describe('Conversation unifiée', () => {
     expect(resolveDialogue('Comment ?').answer).toBeTruthy()
     expect(resolveDialogue('que peux tu faire ?').answer.text).toContain('assistant conversationnel')
     expect(resolveDialogue('qui es-tu ?').answer.text).toContain('assistant conversationnel')
+    expect(resolveDialogue('EN check').answer.text).toContain('plateforme de suivi')
     expect(resolveDialogue('comment ça va ?').answer.text).toContain('Tout va très bien')
     expect(usesGeneralConversation('Comment ?', [{role:'user',text:'Réunion'}])).toBe(true)
     for (const text of ['Sara Dupont', 'Les retards hier', 'et hier ?', 'Comment calculer le salaire de Sara ?', 'Comment gérer mon dossier ?', 'Pourquoi exemple@example.org ?', 'Explique une sortie présumée']) {

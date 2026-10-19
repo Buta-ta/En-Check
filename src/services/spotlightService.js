@@ -407,16 +407,13 @@ async function searchPayslips(parsed, enterpriseId) {
  */
 function detectDownloadQuery(query) {
   const normalized = query.toLowerCase().trim()
-  
+
   const downloadKeywords = [
     'télécharger', 'telecharger', 'telechargement', 'téléchargement',
-    'download', 'install', 'installer', 'installation',
-    'app', 'application', 'mobile', 'pwa',
-    'en-check', 'encheck', 'en check',
+    'download', 'installer l\'app', 'installer en-check', 'installer pwa',
   ]
 
-  // Compter les mots-clés présents
-  const matchCount = downloadKeywords.filter(keyword => 
+  const matchCount = downloadKeywords.filter(keyword =>
     normalized.includes(keyword)
   ).length
 
