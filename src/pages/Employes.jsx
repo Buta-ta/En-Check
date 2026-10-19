@@ -40,8 +40,8 @@ function CollapsibleSection({ title, icon: Icon, iconColor = '#F59E0B', defaultO
   return (
     <div style={{
       borderRadius: 14,
-      border: '1px solid rgba(255,255,255,0.06)',
-      background: 'rgba(255,255,255,0.02)',
+      border: '1px solid var(--pt-line)',
+      background: 'var(--pt-surface-soft)',
       overflow: 'hidden',
     }}>
       <button
@@ -67,7 +67,7 @@ function CollapsibleSection({ title, icon: Icon, iconColor = '#F59E0B', defaultO
           }}>
             <Icon size={15} color={iconColor} />
           </div>
-          <span style={{ color: '#DDD', fontSize: 13, fontWeight: 700 }}>{title}</span>
+          <span style={{ color: 'var(--pt-ink)', fontSize: 13, fontWeight: 700 }}>{title}</span>
           {badge && (
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
@@ -75,7 +75,7 @@ function CollapsibleSection({ title, icon: Icon, iconColor = '#F59E0B', defaultO
             }}>{badge}</span>
           )}
         </div>
-        <div style={{ color: '#666', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+        <div style={{ color: 'var(--pt-muted)', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
           <ChevronDown size={18} />
         </div>
       </button>
@@ -101,6 +101,8 @@ export default function Employes() {
   const [minLoadingDone, setMinLoadingDone] = useState(false)
   const [liveStatusByEmployee, setLiveStatusByEmployee] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [selectedEnterpriseFilter, setSelectedEnterpriseFilter] = useState('all')
   const [viewMode, setViewMode] = useState('grid')
   const { darkMode, toggleTheme } = useTheme()
 
@@ -951,8 +953,33 @@ export default function Employes() {
   // FILTRAGE
   // ═══════════════════════════════════════════════════════════
 
+  const hasDefaultPlanByEnterprise = new Set(
+    (plannings || []).filter((pl) => pl.is_default && pl.is_active !== false).map((pl) => pl.enterprise_id)
+  )
+
   const employesFiltres = employes.filter(emp => {
+    if (selectedEnterpriseFilter !== 'all' && emp.enterprise_id !== selectedEnterpriseFilter) {
+      return false
+    }
+    if (categoryFilter !== 'all') {
+      const sched = emp.employee_schedules?.[0]
+      const hasPersonal = Boolean(sched && (sched.use_custom_hours || sched.schedule_id))
+      const hasGeneral = !hasPersonal && emp.enterprises?.module_planning !== false && hasDefaultPlanByEnterprise.has(emp.enterprise_id)
+      const st = liveStatusByEmployee[emp.id]
+      if (categoryFilter === 'portal_active' && !(emp.employee_portal_enabled && aUnCompteEmploye(emp))) return false
+      if (categoryFilter === 'portal_migrate' && !estAncienSysteme(emp)) return false
+      if (categoryFilter === 'machine_pin' && !emp.machine_pin) return false
+      if (categoryFilter === 'no_machine_pin' && emp.machine_pin) return false
+      if (categoryFilter === 'sched_personal' && !hasPersonal) return false
+      if (categoryFilter === 'sched_general' && !hasGeneral) return false
+      if (categoryFilter === 'sched_free' && (hasPersonal || hasGeneral)) return false
+      if (categoryFilter === 'contract_CDI' && emp.contract_type !== 'CDI') return false
+      if (categoryFilter === 'contract_CDD' && emp.contract_type !== 'CDD') return false
+      if (categoryFilter === 'contract_other' && (!emp.contract_type || emp.contract_type === 'CDI' || emp.contract_type === 'CDD')) return false
+      if (categoryFilter === 'live_on_duty' && !(st?.state === 'en_poste' || st?.state === 'en_pause' || st?.state === 'termine')) return false
+    }
     const search = searchTerm.toLowerCase()
+    if (!search) return true
     return (
       emp.first_name?.toLowerCase().includes(search) ||
       emp.last_name?.toLowerCase().includes(search) ||
@@ -1027,20 +1054,26 @@ export default function Employes() {
 
       <div className="pointages-afrotech-shell" data-theme={darkMode ? 'dark' : 'light'} style={styles.container}>
         <EmployesCulturalHero
-          totalCount={employes.length}
+          totalCount={employesFiltres.length}
           departmentsCount={departments.length}
+          entreprises={entreprises}
+          selectedEnterpriseId={selectedEnterpriseFilter}
+          onSelectEnterprise={(val) => setSelectedEnterpriseFilter(val)}
           darkMode={darkMode}
           onToggleTheme={toggleTheme}
           onBackDashboard={() => navigate('/dashboard')}
+          onNavigate={(path) => navigate(path)}
           onAddEmployee={handleAdd}
         />
 
         {/* ═══ MAIN ═══ */}
         <main style={styles.main}>
           <EmployesExecutiveKpis
-            employes={employes}
+            employes={employesFiltres}
             liveStatusByEmployee={liveStatusByEmployee}
             plannings={plannings}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={(val) => setCategoryFilter(val)}
             onFilterSearch={(val) => setSearchTerm(val)}
           />
 
@@ -1059,7 +1092,18 @@ export default function Employes() {
                 <div className="afro-search" style={styles.searchContainer}>
                   <Search size={18} color="#888" />
                   <input type="text" placeholder="Rechercher par nom, matricule, poste, contrat..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={styles.searchInput} />
-                  {searchTerm && <button onClick={() => setSearchTerm('')} style={styles.clearSearch}><X size={16} /></button>}
+                  {(searchTerm || categoryFilter !== 'all') && (
+                    <button
+                      onClick={() => {
+                        setSearchTerm('')
+                        setCategoryFilter('all')
+                      }}
+                      style={styles.clearSearch}
+                      title="Réinitialiser les filtres"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
                 <div style={styles.toolbarRight}>
                   <div style={styles.viewToggle}>
@@ -1089,7 +1133,7 @@ export default function Employes() {
             </div>
 
             <EmployesAnalyticsCharts
-              employes={employes}
+              employes={employesFiltres}
               plannings={plannings}
               onSelectDepartment={(dept) => setSearchTerm(dept)}
             />

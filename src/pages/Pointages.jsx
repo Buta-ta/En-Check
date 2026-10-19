@@ -682,12 +682,12 @@ export default function Pointages() {
   const filterMethode = searchParams.get('methode') || 'toutes'
   const filterStatus = searchParams.get('status') || 'tous'
   const sortBy = searchParams.get('sort') || 'name_asc'
-  const viewMode = searchParams.get('view') || 'grouped' // 'grouped' ou 'list'
+  const viewMode = searchParams.get('view') || 'passport' // 'passport' | 'grouped' | 'list'
 
   const updateFilter = useCallback((key, value) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev)
-      if (value === '' || value === 'all' || value === 'tous' || value === 'toutes' || value === 'name_asc' || value === 'grouped') {
+      if (value === '' || value === 'all' || value === 'tous' || value === 'toutes' || value === 'name_asc' || value === 'passport') {
         next.delete(key)
       } else {
         next.set(key, value)
@@ -1312,10 +1312,24 @@ export default function Pointages() {
     }
 
     if (filterStatus !== 'tous') {
-      result = result.filter(p => p.status === filterStatus)
+      if (filterStatus === 'retard') {
+        result = result.filter(p => {
+          if (p?.status !== 'present' || !p?.firstIn?.check_time) return false
+          const sched = p?.scheduleInfo
+          if (!sched || sched.mode === 'none' || !sched.startTime) return false
+          const [h, m] = String(sched.startTime).split(':').map(Number)
+          if (!Number.isFinite(h) || !Number.isFinite(m)) return false
+          const startMins = h * 60 + m
+          const tolerance = Number(sched.toleranceMinutes) || 0
+          const checkMins = minutesDepuisMinuit(p.firstIn.check_time)
+          return typeof checkMins === 'number' && checkMins > startMins + tolerance
+        })
+      } else {
+        result = result.filter(p => p.status === filterStatus)
+      }
     }
 
-    if (filterPhotos === 'with_photo') result = result.filter(p => p.hasPhoto)
+    if (filterPhotos === 'with_photo' || filterPhotos === 'with') result = result.filter(p => p.hasPhoto)
     if (filterPhotos === 'without_photo') result = result.filter(p => !p.hasPhoto)
 
     if (filterGPS === 'dans_zone') result = result.filter(p => p.firstIn?.is_within_zone === true)
@@ -1703,6 +1717,7 @@ export default function Pointages() {
             darkMode={darkMode}
             onToggleTheme={toggleTheme}
             onBackDashboard={() => navigate('/dashboard')}
+            onNavigate={(path) => navigate(path)}
             onToggleAlerts={() => dispatch({ type: 'TOGGLE_ALERTS_PANEL' })}
             onShareWhatsApp={handleShareDailyReport}
           />
@@ -1770,16 +1785,7 @@ export default function Pointages() {
             }}
           />
 
-          {/* ═══ PASSEPORT DE PRÉSENCE (AFRO-TECH) ═══ */}
-          <PointagesPassportGrid
-            pointages={filteredAndSortedPointages}
-            selectedDate={selectedDate}
-            selectedEmployeeId={inspectedPointage?.employee?.id || null}
-            onSelectPointage={(p) => setInspectedPointage(p)}
-            onOpenEmployeeFiche={(p) => setFicheEmployeeTarget(p)}
-          />
-
-          {/* ═══ LISTE HEADER ═══ */}
+          {/* ═══ LISTE HEADER (SÉLECTEUR DE VUE SANS DOUBLON) ═══ */}
           <div style={styles.listHeader}>
             <div style={styles.listHeaderLeft}>
               <div style={styles.listHeaderIcon}>
@@ -1794,21 +1800,47 @@ export default function Pointages() {
               </h3>
             </div>
             <div style={styles.listHeaderRight}>
-              <button
-                onClick={() => updateFilter('view', viewMode === 'grouped' ? 'list' : 'grouped')}
-                style={styles.viewToggleBtn}
-                aria-label="Changer de vue"
-              >
-                {viewMode === 'grouped' ? <BarChart3 size={14} /> : <Users size={14} />}
-                <span className="desktop-only">{viewMode === 'grouped' ? 'Vue groupée' : 'Vue liste'}</span>
-              </button>
+              <div style={{ display: 'inline-flex', gap: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => updateFilter('view', 'passport')}
+                  style={{
+                    ...styles.viewToggleBtn,
+                    ...(viewMode === 'passport' ? { borderColor: 'var(--pt-copper)', color: 'var(--pt-copper-strong)', background: 'var(--pt-copper-soft)' } : {}),
+                  }}
+                >
+                  <span>Passeports</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateFilter('view', 'grouped')}
+                  style={{
+                    ...styles.viewToggleBtn,
+                    ...(viewMode === 'grouped' ? { borderColor: 'var(--pt-copper)', color: 'var(--pt-copper-strong)', background: 'var(--pt-copper-soft)' } : {}),
+                  }}
+                >
+                  <BarChart3 size={14} />
+                  <span className="desktop-only">Groupée</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateFilter('view', 'list')}
+                  style={{
+                    ...styles.viewToggleBtn,
+                    ...(viewMode === 'list' ? { borderColor: 'var(--pt-copper)', color: 'var(--pt-copper-strong)', background: 'var(--pt-copper-soft)' } : {}),
+                  }}
+                >
+                  <Users size={14} />
+                  <span className="desktop-only">Liste</span>
+                </button>
+              </div>
               {state.loading && state.pointages.length > 0 && (
                 <RefreshCw size={16} className="spin-icon" color="#F59E0B" />
               )}
             </div>
           </div>
 
-          {/* ═══ LISTE DES POINTAGES ═══ */}
+          {/* ═══ LISTE DES POINTAGES (1 SEULE VUE ACTIVE : PASSEPORT, GROUPÉE OU LISTE) ═══ */}
           {filteredAndSortedPointages.length === 0 ? (
             <EmptyState
               searchQuery={searchQuery}
@@ -1821,6 +1853,17 @@ export default function Pointages() {
                   return next
                 }, { replace: true })
               }}
+            />
+          ) : viewMode === 'passport' ? (
+            <PointagesPassportGrid
+              pointages={filteredAndSortedPointages}
+              selectedDate={selectedDate}
+              selectedEmployeeId={inspectedPointage?.employee?.id || null}
+              canEdit={canEditPointages}
+              statuerEstimation={statuerEstimation}
+              estimationEnCours={estimationEnCours}
+              onSelectPointage={(p) => setInspectedPointage(p)}
+              onOpenEmployeeFiche={(p) => setFicheEmployeeTarget(p)}
             />
           ) : viewMode === 'grouped' ? (
             <GroupedList
@@ -2216,6 +2259,7 @@ function FiltersSection({
           >
             <option value="tous">Tous les statuts</option>
             <option value="present">✓ Présents</option>
+            <option value="retard">⏰ En retard</option>
             <option value="absent">✗ Absents</option>
             <option value="nuit_rattachee">🌙 Fins de garde de nuit</option>
             <option value="en_conge">🌴 En congé</option>

@@ -1905,6 +1905,121 @@
   background: #f29d52;
 }
 
+.employes-portrait-status-pill.is-violet {
+  color: #fff;
+  background: #7c5cfc;
+}
+
+.employes-portrait-status-pill.is-neutral {
+  color: var(--pt-ink-soft);
+  border: 1px solid var(--pt-line);
+  background: var(--pt-surface-soft);
+}
+
+.pointages-quick-nav {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--pt-line);
+  border-radius: 999px;
+  background: var(--pt-surface-soft);
+}
+
+.pointages-quick-nav button {
+  padding: 5px 11px;
+  color: var(--pt-ink-soft);
+  font-size: 11px;
+  font-weight: 740;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.pointages-quick-nav button:hover {
+  color: var(--pt-ink);
+}
+
+.pointages-quick-nav button.is-active {
+  color: #1c130c;
+  background: linear-gradient(135deg, #f0a86e, #d9884a);
+}
+
+.employes-concept-center-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.employes-enterprise-select-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  color: var(--pt-ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(213, 141, 75, 0.35);
+  border-radius: 999px;
+  background: var(--pt-surface);
+}
+
+.employes-enterprise-select-pill select {
+  max-width: 155px;
+  color: var(--pt-ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  border: 0;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+
+.employes-donut-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 740;
+}
+
+.pointages-passport-estimation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.pointages-passport-est-btn {
+  flex: 1 1 auto;
+  min-height: 31px;
+  padding: 0 9px;
+  font-size: 10px;
+  font-weight: 760;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.pointages-passport-est-btn.is-validate {
+  color: #fff;
+  border: 1px solid var(--pt-good);
+  background: var(--pt-good);
+}
+
+.pointages-passport-est-btn.is-reject {
+  color: var(--pt-ink);
+  border: 1px solid var(--pt-line);
+  background: var(--pt-surface-soft);
+}
+
 .employes-portrait-regime-row {
   display: flex;
   flex-wrap: wrap;

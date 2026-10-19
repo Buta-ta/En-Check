@@ -211,6 +211,18 @@ function PointageInlineMap({ gps, attendances = [], employeeName = 'Employé' })
   )
 }
 
+const buildDynamicSparkPoints = (progress = 0, hasActivity = true) => {
+  if (!hasActivity || progress <= 0) {
+    return '4,23 18,23 32,23 46,23 60,23 74,23 88,23'
+  }
+  const ratio = Math.max(0.08, Math.min(1, progress / 100))
+  const ys = [0.25, 0.4, 0.35, 0.6, 0.72, 0.88, 1].map((step) =>
+    Math.round(23 - step * ratio * 18)
+  )
+  const xs = [4, 18, 32, 46, 60, 74, 88]
+  return xs.map((x, idx) => `${x},${ys[idx]}`).join(' ')
+}
+
 export function PointagesCulturalHero({
   formattedDate,
   checkingPermissions,
@@ -220,6 +232,7 @@ export function PointagesCulturalHero({
   darkMode = true,
   onToggleTheme,
   onBackDashboard,
+  onNavigate,
   onToggleAlerts,
   onShareWhatsApp,
 }) {
@@ -245,6 +258,16 @@ export function PointagesCulturalHero({
             <span>On gère ! · Analyse 24h, plannings, pauses en direct, GPS & reco faciale</span>
           </div>
         </div>
+
+        {onNavigate && (
+          <nav className="pointages-quick-nav" aria-label="Navigation rapide En-Check">
+            <button type="button" onClick={() => onNavigate('/dashboard')}>Dashboard</button>
+            <button type="button" className="is-active" aria-current="page">Pointages</button>
+            <button type="button" onClick={() => onNavigate('/employes')}>Employés</button>
+            <button type="button" onClick={() => onNavigate('/pauses')}>Pauses</button>
+            <button type="button" onClick={() => onNavigate('/planning')}>Planning</button>
+          </nav>
+        )}
 
         <div className="pointages-cultural-right">
           <span className="pointages-cultural-date">{formattedDate}</span>
@@ -390,7 +413,7 @@ export function PointagesExecutiveKpis({
       active: filterStatus === 'present',
       onClick: () => onUpdateFilter && onUpdateFilter('status', filterStatus === 'present' ? 'tous' : 'present'),
       IconSvg: CulturalPresenceSvg,
-      sparkPoints: '4,22 18,18 32,19 46,13 60,10 74,6 88,4',
+      sparkPoints: buildDynamicSparkPoints(presenceRate, presents > 0),
     },
     {
       id: 'punctuality',
@@ -399,13 +422,16 @@ export function PointagesExecutiveKpis({
       badge: scheduleBreakdown.personal + scheduleBreakdown.enterprise > 0
         ? `${punctualityRate}% à l’heure`
         : 'Horaire libre',
-      subtitle: `${scheduleBreakdown.personal} perso · ${scheduleBreakdown.enterprise} général · ${scheduleBreakdown.free} libre`,
-      progress: punctualityRate,
+      subtitle: `${lateCount} en retard · ${scheduleBreakdown.personal} perso · ${scheduleBreakdown.enterprise} général · ${scheduleBreakdown.free} libre`,
+      progress: lateCount > 0 ? Math.min(100, Math.round((lateCount / Math.max(1, presents)) * 100)) : punctualityRate,
       tone: 'amber',
-      active: false,
-      onClick: () => onUpdateFilter && onUpdateFilter('status', 'present'),
+      active: filterStatus === 'retard',
+      onClick: () => onUpdateFilter && onUpdateFilter('status', filterStatus === 'retard' ? 'tous' : 'retard'),
       IconSvg: CulturalTimeDrumSvg,
-      sparkPoints: '4,16 18,14 32,18 46,12 60,15 74,9 88,8',
+      sparkPoints: buildDynamicSparkPoints(
+        lateCount > 0 ? Math.min(100, Math.round((lateCount / Math.max(1, presents)) * 100)) : (presents > 0 ? punctualityRate : 0),
+        presents > 0 || lateCount > 0
+      ),
     },
     {
       id: 'night-and-breaks',
@@ -417,7 +443,9 @@ export function PointagesExecutiveKpis({
           ? `${presumedCount + conflits} à statuer`
           : `${pausesSummary.unplannedCount} non planifiée(s)`,
       subtitle: `${nightCount} nuit · ${pausesSummary.totalCount} pause${pausesSummary.totalCount > 1 ? 's' : ''} (${pausesSummary.unplannedCount} hors planning) · ${presumedCount} sortie${presumedCount > 1 ? 's' : ''} présumée${presumedCount > 1 ? 's' : ''}`,
-      progress: Math.min(100, Math.max(18, (nightCount + pausesSummary.totalCount + presumedCount) * 14)),
+      progress: nightCount + pausesSummary.totalCount + presumedCount > 0
+        ? Math.min(100, Math.max(18, (nightCount + pausesSummary.totalCount + presumedCount) * 16))
+        : 0,
       tone: pausesSummary.activeCount > 0 || presumedCount + conflits > 0 ? 'danger' : 'copper',
       active: filterStatus === 'nuit_rattachee',
       onClick: () => {
@@ -428,7 +456,10 @@ export function PointagesExecutiveKpis({
         }
       },
       IconSvg: CulturalShieldSvg,
-      sparkPoints: '4,20 18,19 32,14 46,16 60,11 74,13 88,10',
+      sparkPoints: buildDynamicSparkPoints(
+        Math.min(100, (nightCount + pausesSummary.totalCount + presumedCount) * 20),
+        nightCount + pausesSummary.totalCount + presumedCount > 0
+      ),
     },
     {
       id: 'proofs',
@@ -436,12 +467,15 @@ export function PointagesExecutiveKpis({
       value: String(verifiedTotal).padStart(2, '0'),
       badge: `${gpsCount} GPS · ${faceCount} Reco · ${avecPhoto} Photos`,
       subtitle: 'Cliquez sur un employé pour voir la carte GPS & sa fiche',
-      progress: presents > 0 ? Math.min(100, Math.max(22, Math.round((verifiedTotal / presents) * 100))) : 20,
+      progress: presents > 0 ? Math.min(100, Math.round((verifiedTotal / presents) * 100)) : 0,
       tone: 'copper',
       active: filterPhotos === 'with',
       onClick: () => onUpdateFilter && onUpdateFilter('photos', filterPhotos === 'with' ? 'all' : 'with'),
       IconSvg: CulturalProofSvg,
-      sparkPoints: '4,21 18,17 32,15 46,12 60,9 74,7 88,5',
+      sparkPoints: buildDynamicSparkPoints(
+        presents > 0 ? Math.min(100, Math.round((verifiedTotal / presents) * 100)) : 0,
+        verifiedTotal > 0
+      ),
     },
   ]
 
@@ -746,7 +780,7 @@ export function PointagesLivePulseRibbon({
       </div>
 
       <div className="pointages-live-pulse-track">
-        {pointages.slice(0, 18).map((p) => {
+        {pointages.map((p) => {
           const late = isLatePointage(p)
           const night = isNightShiftPointage(p, selectedDate)
           const hasOpenPause = (p.pauses || []).some((pa) => pa.ouverte)
@@ -804,6 +838,9 @@ export function PointagesPassportGrid({
   pointages = [],
   selectedDate,
   selectedEmployeeId,
+  canEdit = false,
+  statuerEstimation,
+  estimationEnCours,
   onSelectPointage,
   onOpenEmployeeFiche,
 }) {
@@ -819,12 +856,13 @@ export function PointagesPassportGrid({
   return (
     <section className="pointages-passport-section" aria-label="Passeport de Présence">
       <div className="pointages-passport-grid">
-        {pointages.slice(0, 8).map((p) => {
+        {pointages.map((p) => {
           const late = isLatePointage(p)
           const night = isNightShiftPointage(p, selectedDate)
           const isPresent = p.status === 'present' || p.status === 'conflit_absence_pointage'
           const sched = p.scheduleInfo || { mode: 'none', label: 'Horaire libre (sans planning)' }
           const hasScheduleBounds = sched.mode !== 'none' && sched.startTime && sched.endTime
+          const needsEstimation = Boolean(p.lastOut && estEstimationAStatuer(p.lastOut))
 
           const entryLabel = p.firstIn?.check_time
             ? formaterHeureLocale(p.firstIn.check_time)
@@ -998,6 +1036,27 @@ export function PointagesPassportGrid({
                     : p.status === 'nuit_rattachee'
                       ? '🌙 Fin de garde de nuit rattachée à la veille'
                       : 'Aucun pointage enregistré aujourd’hui'}
+                </div>
+              )}
+
+              {canEdit && needsEstimation && statuerEstimation && (
+                <div className="pointages-passport-estimation-actions" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="pointages-passport-est-btn is-validate"
+                    disabled={Boolean(estimationEnCours)}
+                    onClick={() => statuerEstimation(p.lastOut, 'valider')}
+                  >
+                    ✓ Valider sortie ({formaterHeureLocale(p.lastOut.check_time)})
+                  </button>
+                  <button
+                    type="button"
+                    className="pointages-passport-est-btn is-reject"
+                    disabled={Boolean(estimationEnCours)}
+                    onClick={() => statuerEstimation(p.lastOut, 'rejeter')}
+                  >
+                    🚫 Écarter
+                  </button>
                 </div>
               )}
             </article>
@@ -1210,15 +1269,37 @@ export function PointagesSlideOverDrawer({
           )}
 
           {canEdit && needsEstimationDecision && statuerEstimation && (
-            <button
-              type="button"
-              className="pointages-drawer-btn is-primary"
-              disabled={estimationEnCours === pointage.lastOut?.id}
-              onClick={() => statuerEstimation(pointage.lastOut, 'valider')}
-            >
-              <CheckCircle2 size={15} />
-              <span>Valider Pointage</span>
-            </button>
+            <>
+              <button
+                type="button"
+                className="pointages-drawer-btn is-primary"
+                disabled={Boolean(estimationEnCours)}
+                onClick={() => statuerEstimation(pointage.lastOut, 'valider')}
+              >
+                <CheckCircle2 size={15} />
+                <span>✓ Valider la sortie présumée</span>
+              </button>
+              {pointage.lastOut?.__contextuelle && (
+                <button
+                  type="button"
+                  className="pointages-drawer-btn is-copper"
+                  disabled={Boolean(estimationEnCours)}
+                  onClick={() => statuerEstimation(pointage.lastOut, 'ajuster')}
+                >
+                  <Clock size={15} />
+                  <span>⚖️ Ajuster l’heure (± min)</span>
+                </button>
+              )}
+              <button
+                type="button"
+                className="pointages-drawer-btn is-outline"
+                disabled={Boolean(estimationEnCours)}
+                onClick={() => statuerEstimation(pointage.lastOut, 'rejeter')}
+              >
+                <X size={15} />
+                <span>🚫 Écarter la sortie présumée</span>
+              </button>
+            </>
           )}
 
           {canEdit && (
