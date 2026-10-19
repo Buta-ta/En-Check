@@ -2,6 +2,15 @@ import EnCheckBrandMark from './EnCheckBrandMark'
 import { AdinkraWatermarkSvg } from './AfroCulturalSvg'
 
 const initials = name => name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase()
+const PREFIXES = ['Combien de pointages ', 'Qui est en retard ', 'Sorties présumées à confirmer ']
+
+function formatChoiceLabel(choice, allChoices = []) {
+  const sharedPrefix = PREFIXES.find(prefix =>
+    allChoices.length > 1 && allChoices.every(item => typeof item === 'string' && item.startsWith(prefix))
+  )
+  return sharedPrefix ? choice.slice(sharedPrefix.length) : choice
+}
+
 export default function AssistantAnswer({ answer, onChoice, onNavigate, live = true }) {
   return <section className="ec-dialogue-answer" aria-label="Réponse de l’assistant" aria-live={live ? "polite" : "off"}>
     <AdinkraWatermarkSvg className="ec-dialogue-watermark" />
@@ -17,7 +26,7 @@ export default function AssistantAnswer({ answer, onChoice, onNavigate, live = t
     </li>)}</ul>}
     {answer.resultHint && <p className="ec-dialogue-scope">{answer.resultHint}</p>}
     {answer.periodHint && <p>{answer.periodHint}</p>}
-    {answer.choices && <div className="ec-dialogue-followups">{answer.choices.map(choice => <button type="button" key={choice} onClick={() => onChoice(choice)}>{choice.replace(/^(Combien de pointages|Qui est en retard|Sorties présumées à confirmer) /, '')}</button>)}</div>}
+    {answer.choices && <div className="ec-dialogue-followups">{answer.choices.map(choice => <button type="button" key={choice} onClick={() => onChoice(choice)}>{formatChoiceLabel(choice, answer.choices)}</button>)}</div>}
     {(answer.source || answer.notes?.length) && <details className="ec-dialogue-sources">
       <summary>Sources et précisions</summary>
       {answer.source && <p>Source : {answer.source}</p>}

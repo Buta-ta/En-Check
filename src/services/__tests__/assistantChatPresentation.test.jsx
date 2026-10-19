@@ -16,6 +16,8 @@ describe('Conversation unifiée', () => {
     expect(resolveDialogue('Comment ?').answer).toBeTruthy()
     expect(resolveDialogue('que peux tu faire ?').answer.text).toContain('assistant conversationnel')
     expect(resolveDialogue('qui es-tu ?').answer.text).toContain('assistant conversationnel')
+    expect(resolveDialogue('tu es un assistant ?').answer.text).toContain('assistant IA conversationnel')
+    expect(resolveDialogue('tu es une IA ?').answer.text).toContain('assistant IA conversationnel')
     expect(resolveDialogue('EN check').answer.text).toContain('plateforme de suivi')
     expect(resolveDialogue('comment ça va ?').answer.text).toContain('Tout va très bien')
     expect(usesGeneralConversation('Comment ?', [{role:'user',text:'Réunion'}])).toBe(true)
@@ -29,6 +31,17 @@ describe('Conversation unifiée', () => {
     expect(html).not.toContain('ec-dialogue-provenance')
     expect(html.indexOf('Reformulation IA')).toBeGreaterThan(html.indexOf('<details'))
     expect(html.indexOf('Résultat partiel')).toBeLessThan(html.indexOf('<details'))
+    const mixedChoicesHtml = renderToStaticMarkup(
+      <AssistantAnswer
+        answer={{
+          text: 'Bonjour',
+          choices: ["Qui est en retard aujourd'hui", "Combien de pointages aujourd'hui", 'Sorties présumées à confirmer'],
+        }}
+        onChoice={() => {}}
+      />
+    )
+    expect(mixedChoicesHtml).toContain("Qui est en retard aujourd&#x27;hui")
+    expect(mixedChoicesHtml).toContain("Combien de pointages aujourd&#x27;hui")
   })
   it('une saisie, pas de modes ni confirmation répétitive; activation avant appel', () => {
     const source = readFileSync(new URL('../../components/AssistantDock.jsx', import.meta.url), 'utf8')
