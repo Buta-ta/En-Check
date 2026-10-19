@@ -1119,6 +1119,7 @@ export default function Pointages() {
           totalSecondesPresumes,
           nuitRattachee,
           estimationEcartee,
+          sortiesNonRetenues,
           firstIn,
           lastOut,
         } = resoudrePointagesJournee(rawEmpAttendances, selectedDate, {
@@ -1252,7 +1253,7 @@ export default function Pointages() {
 
         return {
           employee, firstIn, lastOut, totalSecondes, status,
-          totalSecondesPresumes, nuitRattachee, estimationEcartee,
+          totalSecondesPresumes, nuitRattachee, estimationEcartee, sortiesNonRetenues,
           absenceReason, attendances: empAttendances, hasPhoto,
           hasGPS, gpsDetails, faceDetails, scheduleInfo, pauses: employeePauses,
           conflictData, employeeAbsence, overtimeData,
