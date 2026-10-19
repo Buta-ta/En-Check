@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { getHeuresMinutesLocales } from '../utils/timezoneUtils'
+import { loadNotificationRetardContext } from '../services/notificationRetardContext'
+import { getHeuresMinutesLocales, isValidTimezone } from '../utils/timezoneUtils'
 
 const POLLING_INTERVAL = 60000
 const DEFAULT_TITLE = 'En-Check | Administration'
@@ -370,56 +371,13 @@ export default function useNotifications(admin) {
             employeesQuery = employeesQuery.eq('enterprise_id', adminParams.selectedEnterpriseId)
           }
 
-          const { data: employees } = await employeesQuery
-          const employeeIds = (employees || []).map(e => e.id)
+          const { data: candidates, error: employeeError } = await employeesQuery
+          if (employeeError) throw employeeError
+          const { employees, employeeSchedulesMap, defaultScheduleByEnterprise, timezones } =
+            await loadNotificationRetardContext(supabase, candidates || [])
+          const employeeIds = employees.map(e => e.id)
 
           if (employeeIds.length > 0) {
-            // Simplifier la logique des retards
-            const { data: employeeSchedules } = await supabase
-              .from('employee_schedules')
-              .select('employee_id, use_custom_hours, custom_start_time, schedule_id')
-              .in('employee_id', employeeIds)
-
-            const scheduleIds = [...new Set((employeeSchedules || []).map(s => s.schedule_id).filter(Boolean))]
-
-            let workSchedulesById = {}
-            if (scheduleIds.length > 0) {
-              const { data: linkedSchedules } = await supabase
-                .from('work_schedules')
-                .select('id, start_time, late_tolerance_minutes')
-                .in('id', scheduleIds)
-
-              ;(linkedSchedules || []).forEach(ws => {
-                workSchedulesById[ws.id] = ws
-              })
-            }
-
-            const employeeSchedulesMap = {}
-            ;(employeeSchedules || []).forEach(s => {
-              employeeSchedulesMap[s.employee_id] = {
-                ...s,
-                work_schedule: s.schedule_id ? workSchedulesById[s.schedule_id] || null : null,
-              }
-            })
-
-            const enterpriseIds = [...new Set((employees || []).map(e => e.enterprise_id).filter(Boolean))]
-
-            let defaultScheduleByEnterprise = {}
-            if (enterpriseIds.length > 0) {
-              const { data: defaultSchedules } = await supabase
-                .from('work_schedules')
-                .select('enterprise_id, start_time, late_tolerance_minutes')
-                .in('enterprise_id', enterpriseIds)
-                .eq('is_default', true)
-                .eq('is_active', true)
-
-              ;(defaultSchedules || []).forEach(s => {
-                if (!defaultScheduleByEnterprise[s.enterprise_id]) {
-                  defaultScheduleByEnterprise[s.enterprise_id] = s
-                }
-              })
-            }
-
             let retardQuery = supabase
               .from('attendances')
               .select('id, employee_id, check_time, enterprise_id')
@@ -434,11 +392,14 @@ export default function useNotifications(admin) {
               retardQuery = retardQuery.eq('enterprise_id', adminParams.selectedEnterpriseId)
             }
 
-            const { data: retardEntries } = await retardQuery
+            const { data: retardEntries, error: entriesError } = await retardQuery
+              .order('check_time', { ascending: true }).order('id', { ascending: true })
+            if (entriesError) throw entriesError
 
             const retardsAvecNom = []
 
             ;(employees || []).forEach(employee => {
+              if (!isValidTimezone(timezones[employee.enterprise_id])) return
               const schedulePerso = employeeSchedulesMap[employee.id]
               let heureArrivee = null
               let tolerance = 15
@@ -446,9 +407,9 @@ export default function useNotifications(admin) {
               if (schedulePerso) {
                 if (schedulePerso.use_custom_hours && schedulePerso.custom_start_time) {
                   heureArrivee = schedulePerso.custom_start_time.slice(0, 5)
-                } else if (schedulePerso.schedule_id && schedulePerso.work_schedule) {
+                } else if (schedulePerso.schedule_id && schedulePerso.work_schedule?.enterprise_id === employee.enterprise_id) {
                   heureArrivee = schedulePerso.work_schedule.start_time?.slice(0, 5) || null
-                  tolerance = schedulePerso.work_schedule.late_tolerance_minutes || 15
+                  tolerance = schedulePerso.work_schedule.late_tolerance_minutes ?? 15
                 }
               }
 
@@ -456,7 +417,7 @@ export default function useNotifications(admin) {
                 const defaultSchedule = defaultScheduleByEnterprise[employee.enterprise_id]
                 if (defaultSchedule) {
                   heureArrivee = defaultSchedule.start_time?.slice(0, 5) || null
-                  tolerance = defaultSchedule.late_tolerance_minutes || 15
+                  tolerance = defaultSchedule.late_tolerance_minutes ?? 15
                 }
               }
 
@@ -466,7 +427,7 @@ export default function useNotifications(admin) {
               if (!att) return
 
               // ⭐ LIVRAISON 04 : heure locale de l'entreprise
-              const { heures: hP, minutes: mP } = getHeuresMinutesLocales(att.check_time)
+              const { heures: hP, minutes: mP } = getHeuresMinutesLocales(att.check_time, timezones[employee.enterprise_id])
               const [hA, mA] = heureArrivee.split(':').map(Number)
 
               const minutesArriveeBase = hA * 60 + mA

@@ -1534,6 +1534,7 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
   let totalSecondesPresumes = 0   // durées d'estimations (non payées tant que non validées)
   let nuitRattachee = null        // fin de garde de nuit tombée sur CE jour (A6)
   let estimationEcartee = null    // estimation qu'un admin a écartée sur cette journée
+  const sortiesNonRetenues = []   // réelles, conservées à l’audit ; jamais supprimées
   const nonRattachees = []        // sorties réelles impossibles à rattacher (A4)
   const horsCalcul = []           // estimations écartées/remplacées (audit, jamais comptées)
 
@@ -1625,6 +1626,7 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
         if (diffSecondsFromFirst >= 0 && diffSecondsFromFirst < REBOND_S && !att.is_auto_closed && !att.modifie_le) {
           if (openDay === selectedDate) {
             attendancesDuJour.push(att)
+            sortiesNonRetenues.push({ id: att.id, check_time: att.check_time, entry_id: openIn.id, ecartSecondes: diffSecondsFromFirst, seuilSecondes: REBOND_S, raison: 'anti_rebond' })
           }
           continue
         }
@@ -1775,6 +1777,7 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
     nuitRattachee,
     estimationEcartee,
     nonRattachees,
+    sortiesNonRetenues,
     firstIn,
     lastOut,
   }
