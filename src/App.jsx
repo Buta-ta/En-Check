@@ -63,6 +63,7 @@ import Predictions from './pages/Predictions'
 import PushNotifications from './pages/PushNotifications'
 import AiConnectionTest from './pages/AiConnectionTest'
 import SpotlightSearch from './pages/SpotlightSearch'
+import AssistantDock from './components/AssistantDock'
 
 // La page de démo est disponible en local et sur les déploiements Vercel Preview,
 // mais jamais dans le site de production.
@@ -194,7 +195,7 @@ function AdminRoute({ children, requireSuperAdmin = false }) {
     return <Navigate to="/login" replace />
   }
 
-  return children
+  return <>{children}<AssistantDock /></>
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -374,7 +375,7 @@ function App() {
           } />
 
           {/* ⚡ NOUVELLE ROUTE SPOTLIGHT */}
-          <Route path="/search" element={<SpotlightSearch />} />
+          <Route path="/search" element={<AdminRoute><SpotlightSearch /></AdminRoute>} />
 
 
           {/* ═══ ROUTES SUPER ADMIN UNIQUEMENT ═══ */}

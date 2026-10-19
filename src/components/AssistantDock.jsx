@@ -1,0 +1,168 @@
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { ArrowUp, Sparkles, X } from 'lucide-react'
+import { searchSpotlight } from '../services/spotlightService'
+import SearchResults from './SpotlightSearch/SearchResults'
+import '../styles/assistantDock.css'
+
+// UI only: no provider call, free-text prompt transmission, or new RH permissions.
+export function readAssistantContext() {
+  try { return JSON.parse(localStorage.getItem('admin') || 'null') } catch { return null }
+}
+
+export default function AssistantDock() {
+  const [draft, setDraft] = useState('')
+  const [context, setContext] = useState(null)
+  const [results, setResults] = useState([])
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [opened, setOpened] = useState(false)
+  const dialog = useRef(null)
+  const panelInput = useRef(null)
+  const launcher = useRef(null)
+  const resultsArea = useRef(null)
+  const restoreFocus = useRef(false)
+  const requestId = useRef(0)
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  function close() {
+    requestId.current++
+    dialog.current?.close()
+    setOpened(false)
+    setBusy(false)
+    setResults([])
+    setMessage('')
+    restoreFocus.current = true
+  }
+
+  function open() {
+    const admin = readAssistantContext()
+    setContext(admin)
+    setResults([])
+    setMessage('')
+    setOpened(true)
+    dialog.current?.showModal()
+    panelInput.current?.focus()
+    return admin
+  }
+
+  useEffect(() => {
+    if (!opened && restoreFocus.current) {
+      launcher.current?.focus()
+      restoreFocus.current = false
+    }
+  }, [opened])
+
+  useEffect(() => {
+    // No query/history survives a change of route or enterprise context.
+    requestId.current++
+    dialog.current?.close()
+    setOpened(false)
+    setBusy(false)
+    setDraft('')
+    setResults([])
+    setMessage('')
+    return () => { requestId.current++ }
+  }, [location.pathname, location.search])
+
+  useEffect(() => {
+    const onKey = event => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        // Do not steal focus from another modal or a pointage validation.
+        if (document.querySelector('dialog[open], [role="dialog"], [aria-modal="true"]')) return
+        event.preventDefault()
+        open()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  useEffect(() => {
+    resultsArea.current?.querySelectorAll('.result-card, .result-card-modern').forEach(card => {
+      card.tabIndex = 0
+      card.setAttribute('role', 'button')
+    })
+  }, [results])
+
+  async function search(event) {
+    event.preventDefault()
+    if (busy) return
+    const query = draft.trim()
+    const admin = opened ? context : open()
+    const id = ++requestId.current
+    setResults([])
+    if (!query) { setMessage('Saisissez un nom, un matricule ou une recherche.'); return }
+    if (!admin || !(admin.selectedEnterprise?.id || admin.enterprise_id)) {
+      setMessage('Sélectionnez une entreprise dans En-Check avant de rechercher.'); return
+    }
+    setBusy(true)
+    setMessage('Recherche dans les données En-Check…')
+    try {
+      const found = await searchSpotlight(query, admin)
+      if (id !== requestId.current) return
+      setResults(found || [])
+      setMessage(found?.length
+        ? 'Voici les résultats de la recherche En-Check. Sélectionnez une fiche pour la consulter.'
+        : 'Aucun résultat pour cette recherche. Essayez un nom, un matricule ou une formulation plus précise. Ce résultat ne constitue pas une analyse des risques.')
+    } catch {
+      if (id === requestId.current) setMessage('La recherche est momentanément indisponible. Vous pouvez toujours ouvrir les pages métier ci-dessous.')
+    } finally { if (id === requestId.current) setBusy(false) }
+  }
+
+  function go(path) { close(); navigate(path) }
+  function select(result) {
+    const paths = { employee: '/employes', attendance: '/pointages', retard: '/retards', task: '/taches', payslip: '/fiches-paie' }
+    const actions = { goDashboard: '/dashboard', goReports: '/rapports', goMap: '/carte-temps-reel', goPredictions: '/predictions' }
+    if (result.type === 'download_app' || result.type === 'hours_detail') return
+    if (result.type === 'employee') return go(`/employes?id=${encodeURIComponent(result.id)}`)
+    if (result.type === 'task') return go(`/taches/${encodeURIComponent(result.id)}`)
+    const path = result.type === 'action' ? actions[result.action] : paths[result.type]
+    if (path) go(path)
+    else setMessage('Consultez la recherche détaillée pour poursuivre avec ce résultat.')
+  }
+
+  const shortcuts = <nav className="ec-assistant-shortcuts" aria-label="Raccourcis de l’assistant">
+    <button type="button" onClick={() => go('/pointages')}>Pointages à vérifier</button>
+    <button type="button" onClick={() => go('/planning')}>Ouvrir le planning</button>
+    <button type="button" onClick={() => go('/search')}>Recherche détaillée</button>
+  </nav>
+
+  return <>
+    <div className="ec-assistant-space" aria-hidden="true" />
+    {createPortal(<>
+      <aside className="ec-assistant-dock" aria-label="Assistant En-Check" hidden={opened}>
+        <div className="ec-assistant-weave" aria-hidden="true" />
+        <div className="ec-assistant-label"><span><Sparkles size={14} /> ASSISTANT EN-CHECK</span><span>Rechercher · Comprendre · Anticiper</span></div>
+        <form className="ec-assistant-form" onSubmit={search}>
+          <button ref={launcher} type="button" className="ec-assistant-open" onClick={open} aria-label="Ouvrir l’assistant En-Check" aria-haspopup="dialog"><Sparkles size={20} /></button>
+          <input aria-label="Votre recherche En-Check" placeholder="Demandez à En-Check…" value={draft} maxLength={300} onChange={e => setDraft(e.target.value)} autoComplete="off" />
+          <button type="submit" className="ec-assistant-send" aria-label="Rechercher"><ArrowUp size={21} /></button>
+        </form>
+        {shortcuts}
+      </aside>
+      <dialog ref={dialog} className="ec-assistant-panel" aria-labelledby="ec-assistant-title" onCancel={event => { event.preventDefault(); close() }} onClick={event => { if (event.target === dialog.current) close() }}>
+        <div className="ec-assistant-weave" aria-hidden="true" />
+        <header className="ec-assistant-panel-header"><div><h2 id="ec-assistant-title">Assistant En-Check</h2><p>Recherche guidée · Données En-Check</p></div><button type="button" onClick={close} aria-label="Fermer l’assistant"><X size={22} /></button></header>
+        <div className="ec-assistant-content">
+          <p className="ec-assistant-context">Entreprise : {context?.selectedEnterprise?.name || (context?.enterprise_id ? 'entreprise de votre compte' : 'à sélectionner')}</p>
+          <h3>Que souhaitez-vous retrouver ?</h3>
+          <p>Recherchez un employé, des pointages ou des tâches. Les données restent dans En-Check ; aucun texte n’est envoyé à un modèle externe.</p>
+          <p className="ec-assistant-note">La conversation IA et l’anticipation des risques ne sont pas encore connectées dans cette version.</p>
+          {shortcuts}
+          <div role="status" aria-live="polite" aria-busy={busy}>{message && <p>{message}</p>}</div>
+          {results.length > 0 && <div className="ec-assistant-results" ref={resultsArea} onKeyDown={event => {
+            if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('.result-card, .result-card-modern')) { event.preventDefault(); event.target.click() }
+          }}><SearchResults results={results} selectedIndex={-1} onSelect={select} /></div>}
+        </div>
+        <form className="ec-assistant-form ec-assistant-panel-form" onSubmit={search}>
+          <input ref={panelInput} aria-label="Rechercher dans En-Check" placeholder="Un nom, un matricule, une recherche…" value={draft} maxLength={300} onChange={e => { requestId.current++; setBusy(false); setResults([]); setMessage(''); setDraft(e.target.value) }} autoComplete="off" />
+          <button type="submit" className="ec-assistant-send" disabled={busy} aria-label="Lancer la recherche"><ArrowUp size={21} /></button>
+        </form>
+        <footer>Aucune modification sans votre confirmation.</footer>
+      </dialog>
+    </>, document.body)}
+  </>
+}
