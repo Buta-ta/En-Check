@@ -17,3 +17,10 @@ enabled = true
 # JWT verification is disabled at the gateway so PostgreSQL pg_net can use the shared secret.
 verify_jwt = false
 entrypoint = "./functions/send-email/index.ts"
+
+[functions.test-ai-search]
+enabled = true
+# Auth is validated explicitly with getUser inside the function, followed by
+# an active super_admin lookup. This also supports newer asymmetric JWTs.
+verify_jwt = false
+entrypoint = "./functions/test-ai-search/index.ts"

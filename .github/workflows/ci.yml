@@ -36,6 +36,9 @@ jobs:
       - name: Installation des dépendances
         run: npm ci
 
+      - name: Test IA isolé — authentification, quotas et sortie contrôlée
+        run: node --test tests/edge/test-ai-search.mjs
+
       - name: Exécution des tests unitaires financiers (VD-15)
         run: npm test
 
