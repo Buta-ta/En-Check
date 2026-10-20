@@ -1692,32 +1692,87 @@
   max-width: 640px;
 }
 
-.sk-day-scale {
+/* Règle horaire unique alignée sur les pistes */
+.sk-day-ruler {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-right: 10px;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding-left: 2px;
+}
+
+.sk-day-ruler-spacer {
+  width: 232px;
   flex-shrink: 0;
 }
 
-.sk-day-scale-spacer {
-  display: block;
-  height: 1px;
+.sk-day-ruler-hours {
+  position: relative;
+  height: 16px;
+  flex: 1;
+  min-width: 220px;
+  border-bottom: 1px solid var(--sk-border-soft);
+  margin-right: 96px;
 }
 
-.sk-day-hours {
+.sk-day-ruler-hour {
+  position: absolute;
+  bottom: 2px;
+  transform: translateX(-50%);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--sk-text-muted);
+  white-space: nowrap;
+}
+
+.sk-day-ruler-hour.is-major {
+  color: var(--sk-text-soft);
+}
+
+/* Deux pistes superposées : PRÉVU puis RÉEL (plus aucun chevauchement) */
+.sk-day-lanes {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sk-day-lane-row {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.sk-day-hour {
+.sk-day-lane-label {
+  width: 34px;
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sk-text-muted);
+  border: 1px solid var(--sk-border-soft);
+  border-radius: 5px;
+  padding: 1px 0;
+  text-align: center;
+}
+
+.sk-day-lane-label.is-real {
+  color: var(--sk-accent);
+  border-color: rgba(245, 158, 11, 0.4);
+  border-style: dashed;
+}
+
+.sk-day-none {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 10px;
   color: var(--sk-text-muted);
-  font-weight: 700;
-  height: 44px;
-  display: flex;
-  align-items: center;
+  font-style: italic;
+  pointer-events: none;
 }
 
 .sk-day-rows {
@@ -1776,13 +1831,19 @@
 
 .sk-day-track {
   position: relative;
-  height: 44px;
+  height: 22px;
   flex: 1;
   min-width: 220px;
-  border-radius: 8px;
+  border-radius: 7px;
   background: var(--sk-bg-cell);
   border: 1px solid var(--sk-border-soft);
   overflow: hidden;
+}
+
+.sk-day-track.is-real {
+  background: transparent;
+  border-style: dashed;
+  border-color: rgba(245, 158, 11, 0.35);
 }
 
 .sk-day-grid-line {
@@ -1795,8 +1856,8 @@
 
 .sk-day-block {
   position: absolute;
-  top: 5px;
-  bottom: 5px;
+  top: 2px;
+  bottom: 2px;
   border-radius: 7px;
   background: linear-gradient(145deg, #B56235, #8B4630);
   color: #FFF7ED;
@@ -1860,8 +1921,64 @@
 .sk-day-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex-shrink: 0;
+}
+
+.sk-day-actions-hours {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--sk-text-soft);
+}
+
+.sk-day-actions-hours span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.sk-day-actions-hours span.is-real {
+  color: var(--sk-accent);
+}
+
+.sk-day-actions-hours em {
+  font-size: 8.5px;
+  font-weight: 700;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sk-text-muted);
+}
+
+.sk-day-ecart {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--sk-bg-panel);
+  border: 1px solid var(--sk-border-soft);
+  font-size: 10px;
+}
+
+.sk-day-ecart.is-pos {
+  color: #10B981;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.sk-day-ecart.is-neg {
+  color: #EF4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.sk-day-auto {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.16);
+  color: var(--sk-accent);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .sk-day-empty {
@@ -2355,7 +2472,19 @@
     gap: 8px;
   }
 
+  .sk-day-ruler-spacer {
+    width: 0;
+  }
+
+  .sk-day-ruler-hours {
+    margin-right: 0;
+  }
+
   .sk-day-emp {
+    width: 100%;
+  }
+
+  .sk-day-lanes {
     width: 100%;
   }
 
@@ -2363,8 +2492,14 @@
     min-width: 100%;
   }
 
+  .sk-day-block-label,
+  .sk-day-real-label {
+    font-size: 8.5px;
+  }
+
   .sk-day-actions {
     margin-left: auto;
+    flex-wrap: wrap;
   }
 
   /* Demandes */
