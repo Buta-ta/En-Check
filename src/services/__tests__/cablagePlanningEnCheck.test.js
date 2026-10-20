@@ -142,6 +142,24 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningSrc).toContain('removeDay && !shiftData && existingES')
   })
 
+  it("19. sauvegarde l'état plié / déplié de chaque équipe", () => {
+    expect(planningSrc).toContain('COLLAPSED_GROUPS_STORAGE_KEY')
+    expect(planningSrc).toContain('encheck_planning_teams_collapsed_v1')
+    expect(planningSrc).toContain('readStorage(COLLAPSED_GROUPS_STORAGE_KEY, {})')
+    expect(planningSrc).toContain('writeStorage(COLLAPSED_GROUPS_STORAGE_KEY, collapsedGroups)')
+  })
+
+  it('20. affiche « en cours » quand la sortie n\'est pas encore pointée', () => {
+    expect(planningSrc).toContain('formatRealLabel')
+    expect(planningSrc).toContain('realIsOpen')
+    expect(planningSrc).toContain('en cours')
+    // Plus de valeur tronquée du type « 10:07 → … »
+    expect(planningSrc).not.toContain('" → …"')
+    expect(planningCss).toContain('.sk-open-dot')
+    expect(planningCss).toContain('.sk-day-real-block.is-open')
+    expect(planningCss).toContain('@keyframes skOpenPulse')
+  })
+
   it('11. lie les compteurs du haut au groupe déplié et au focus sélectionné', () => {
     expect(planningSrc).toContain('visibleEmployees')
     expect(planningSrc).toContain('scopedEmployees')

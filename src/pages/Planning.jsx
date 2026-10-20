@@ -58,6 +58,7 @@ const AVAILABILITY_STORAGE_KEY = "encheck_planning_availability_v1";
 const TEAMS_STORAGE_KEY = "encheck_planning_teams_v1";
 const TEAM_ASSIGNMENTS_STORAGE_KEY = "encheck_planning_team_assignments_v1";
 const MONTH_MODELS_STORAGE_KEY = "encheck_planning_month_models_v1";
+const COLLAPSED_GROUPS_STORAGE_KEY = "encheck_planning_teams_collapsed_v1";
 
 // Palette de couleurs personnalisables En-Check (modèles & cases)
 const ENCHECK_COLOR_PALETTE = [
@@ -274,7 +275,10 @@ export default function Planning() {
   // Vues En-Check : "semaine" (défaut) | "mois" | "jour" | "demandes"
   const [planningView, setPlanningView] = useState("semaine");
   const [dockOpen, setDockOpen] = useState(true);
-  const [collapsedGroups, setCollapsedGroups] = useState({});
+  // État plié / déplié de chaque équipe, sauvegardé d'une visite à l'autre
+  const [collapsedGroups, setCollapsedGroups] = useState(() =>
+    readStorage(COLLAPSED_GROUPS_STORAGE_KEY, {})
+  );
   const [selectedEntreprise, setSelectedEntreprise] = useState("all");
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
@@ -425,6 +429,10 @@ export default function Planning() {
   useEffect(() => {
     writeStorage(TEAMS_STORAGE_KEY, teams);
   }, [teams]);
+
+  useEffect(() => {
+    writeStorage(COLLAPSED_GROUPS_STORAGE_KEY, collapsedGroups);
+  }, [collapsedGroups]);
 
   useEffect(() => {
     writeStorage(TEAM_ASSIGNMENTS_STORAGE_KEY, teamAssignments);
@@ -1874,6 +1882,17 @@ export default function Planning() {
 
   const getRealAttendance = (empId, dateStr) => realAttendanceMap.get(`${empId}|${dateStr}`) || null;
 
+  // Libellé des entrées / sorties réelles.
+  // Quand la sortie n'est pas encore pointée, on affiche « en cours » (comme la page
+  // Pointages) au lieu d'un « → … » incomplet.
+  const formatRealLabel = (real) => {
+    if (!real || !real.firstIn) return null;
+    const entree = heureLocale(real.firstIn);
+    return real.lastOut ? `${entree} → ${heureLocale(real.lastOut)}` : `${entree} → en cours`;
+  };
+
+  const realIsOpen = (real) => Boolean(real && real.firstIn && !real.lastOut);
+
 
   // ═══ TOTAUX JOURNALIERS POUR LE PIED DE PAGE EN-CHECK ═══
   // Les compteurs (X pers. · XXh) suivent les équipes dépliées et le focus sélectionné.
@@ -3170,10 +3189,13 @@ export default function Planning() {
                                                 {realAtt && realAtt.firstIn && (
                                                   <div className="sk-shift-real">
                                                     <span>
-                                                      Réel {heureLocale(realAtt.firstIn)}
-                                                      {realAtt.lastOut
-                                                        ? ` → ${heureLocale(realAtt.lastOut)}`
-                                                        : ""}
+                                                      Réel {formatRealLabel(realAtt)}
+                                                      {realIsOpen(realAtt) && (
+                                                        <span
+                                                          className="sk-open-dot"
+                                                          aria-hidden="true"
+                                                        />
+                                                      )}
                                                     </span>
                                                     <span
                                                       className={`sk-real-diff ${
@@ -3186,8 +3208,10 @@ export default function Planning() {
                                                           : ""
                                                       }`}
                                                     >
-                                                      {formatHoursCompact(realAtt.minutes)}
-                                                      {netMins
+                                                      {realAtt.lastOut
+                                                        ? formatHoursCompact(realAtt.minutes)
+                                                        : "en cours"}
+                                                      {netMins && realAtt.lastOut
                                                         ? ` · ${
                                                             realAtt.minutes === netMins
                                                               ? "à l'heure"
@@ -3217,10 +3241,7 @@ export default function Planning() {
                                                   "Déposer ici"
                                                 ) : realAtt && realAtt.firstIn ? (
                                                   <span className="sk-empty-real">
-                                                    Pointé {heureLocale(realAtt.firstIn)}
-                                                    {realAtt.lastOut
-                                                      ? ` → ${heureLocale(realAtt.lastOut)}`
-                                                      : ""}
+                                                    Pointé {formatRealLabel(realAtt)}
                                                     <br />
                                                     <strong>
                                                       {formatHoursCompact(realAtt.minutes)} non
@@ -3472,18 +3493,28 @@ export default function Planning() {
 
                             {real && realStartPct !== null ? (
                               <div
-                                className="sk-day-real-block"
+                                className={`sk-day-real-block ${
+                                  realIsOpen(real) ? "is-open" : ""
+                                }`}
                                 style={{
                                   left: `${realStartPct}%`,
                                   width: `${Math.max(1.5, realWidthPct)}%`,
                                 }}
-                                title={`Réel : ${heureLocale(real.firstIn)} → ${
-                                  real.lastOut ? heureLocale(real.lastOut) : "en cours"
-                                } · ${formatHoursCompact(real.minutes)}`}
+                                title={
+                                  real.lastOut
+                                    ? `Réel : ${formatRealLabel(real)} · ${formatHoursCompact(
+                                        real.minutes
+                                      )}`
+                                    : `Entrée pointée à ${heureLocale(
+                                        real.firstIn
+                                      )} — sortie pas encore pointée (journée en cours)`
+                                }
                               >
                                 <span className="sk-day-real-label">
-                                  {heureLocale(real.firstIn)}
-                                  {real.lastOut ? ` → ${heureLocale(real.lastOut)}` : " → …"}
+                                  {formatRealLabel(real)}
+                                  {realIsOpen(real) && (
+                                    <span className="sk-open-dot" aria-hidden="true" />
+                                  )}
                                 </span>
                               </div>
                             ) : (
@@ -3500,10 +3531,14 @@ export default function Planning() {
                             <em>prévu</em>
                           </span>
                           <span className="is-real">
-                            {real ? formatHoursCompact(real.minutes) : "—"}
+                            {real
+                              ? real.lastOut
+                                ? formatHoursCompact(real.minutes)
+                                : "en cours"
+                              : "—"}
                             <em>réel</em>
                           </span>
-                          {diff !== null && netM > 0 && (
+                          {diff !== null && netM > 0 && real?.lastOut && (
                             <span
                               className={`sk-day-ecart ${
                                 diff === 0 ? "" : diff > 0 ? "is-pos" : "is-neg"
@@ -3699,8 +3734,19 @@ export default function Planning() {
                             </span>
                             {netM > 0 && <span className="sk-cal-pill-net">{formatHoursCompact(netM)}</span>}
                             {real && real.firstIn && (
-                              <span className="sk-cal-pill-real">
-                                ▸ {heureLocale(real.firstIn)}
+                              <span
+                                className={`sk-cal-pill-real ${
+                                  realIsOpen(real) ? "is-open" : ""
+                                }`}
+                                title={
+                                  real.lastOut
+                                    ? `Pointé ${formatRealLabel(real)}`
+                                    : `Entrée ${heureLocale(
+                                        real.firstIn
+                                      )} — sortie pas encore pointée`
+                                }
+                              >
+                                ▸ {real.lastOut ? formatRealLabel(real) : `${heureLocale(real.firstIn)} · en cours`}
                               </span>
                             )}
                             {shift && !shift.isHoliday && !shift.isAbsence && (
