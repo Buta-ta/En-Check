@@ -498,45 +498,36 @@ export function PointagesExecutiveKpis({
     <>
       {pausesSummary.activeItems.length > 0 && (
         <section className="pauses-v2-live-banner" aria-label="Pauses réelles en cours en direct">
-          <div className="pauses-v2-live-banner-header">
-            <span className="pauses-v2-live-banner-title">
-              <span className="pauses-v2-live-dot" />
-              ☕ {pausesSummary.activeItems.length} collaborateur{pausesSummary.activeItems.length > 1 ? 's' : ''} actuellement en pause réelle
-            </span>
-            <button
-              type="button"
-              className="pauses-v2-action-btn"
-              onClick={() => onUpdateFilter && onUpdateFilter('status', filterStatus === 'pause_en_cours' ? 'tous' : 'pause_en_cours')}
-            >
-              {filterStatus === 'pause_en_cours' ? 'Voir toute l’équipe' : 'Filtrer les pauses en cours'}
-            </button>
-          </div>
-          <div className="pauses-v2-live-cards">
+          <div className="pauses-v2-live-banner-left">
+            <span className="pauses-v2-live-pulse-dot" />
+            <strong style={{ fontSize: '0.88rem', color: 'var(--pv-text, var(--pt-text, #F7F2EB))' }}>
+              {pausesSummary.activeItems.length === 1
+                ? '1 collaborateur est actuellement en pause réelle :'
+                : `${pausesSummary.activeItems.length} collaborateurs sont actuellement en pause réelle :`}
+            </strong>
             {pausesSummary.activeItems.map(({ pause, employee }) => {
               const fullName = `${employee?.first_name || ''} ${employee?.last_name || ''}`.trim() || pause.employe || 'Employé'
-              const initials = `${employee?.first_name?.[0] || ''}${employee?.last_name?.[0] || ''}` || 'EC'
+              const matricule = employee?.matricule || pause.matricule || ''
               return (
-                <div className="pauses-v2-live-card" key={pause.id}>
-                  <div className="pauses-v2-emp-cell" style={{ minWidth: 0 }}>
-                    <span className="pauses-v2-avatar">
-                      {employee?.photo_url ? <img src={employee.photo_url} alt="" /> : initials}
-                    </span>
-                    <div className="pauses-v2-emp-meta">
-                      <strong>{fullName}</strong>
-                      <span>
-                        Depuis {pause.debutHHMM || '--:--'}
-                        {employee?.matricule ? ` · #${employee.matricule}` : ''}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="pauses-v2-live-timer">
-                    <Timer size={14} />
-                    {formaterTempsPauseEnDirect(pause, nowMs)}
+                <span key={pause.id} className="pauses-v2-live-chip">
+                  <Timer size={14} color="#f59e0b" />
+                  <strong>{fullName}</strong>
+                  {matricule && <span style={{ opacity: 0.72 }}>({matricule})</span>}
+                  <span style={{ opacity: 0.8 }}>depuis {pause.debutHHMM || '--:--'}</span>
+                  <span className="pauses-v2-live-timer-mono">
+                    ⏱️ {formaterTempsPauseEnDirect(pause, nowMs)}
                   </span>
-                </div>
+                </span>
               )
             })}
           </div>
+          <button
+            type="button"
+            className="pauses-v2-Ghost-btn"
+            onClick={() => onUpdateFilter && onUpdateFilter('status', filterStatus === 'pause_en_cours' ? 'tous' : 'pause_en_cours')}
+          >
+            {filterStatus === 'pause_en_cours' ? 'Voir toute l’équipe' : 'Filtrer les pauses en direct'}
+          </button>
         </section>
       )}
       <section className="pointages-kpi-grid" aria-label="Indicateurs clés des pointages">

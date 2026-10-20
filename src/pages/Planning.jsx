@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// 📅 EN-CHECK · PLANNING — SYSTÈME SKELLO DRAG & DROP × IDENTITÉ AFRO-TECH
-// Matrice hebdomadaire glisser-déposer + Dock de modèles + Vues Semaine/Mois/Jour + Demandes
+// 📅 EN-CHECK · PLANNING — SYSTÈME DRAG & DROP × IDENTITÉ AFRO-TECH
+// Matrice hebdomadaire glisser-déposer + Modèles personnalisables + Équipes
+// + Disponibilités + Vues Semaine/Mois/Jour + Demandes
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useMemo } from "react";
@@ -40,13 +41,42 @@ import {
   Ban,
   Copy,
   Sparkles,
+  Sun,
+  Moon,
+  Palette,
+  Layers,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import "./PlanningAfroTech.css";
 
-const OVERRIDES_STORAGE_KEY = "encheck_skello_day_overrides_v1";
+const OVERRIDES_STORAGE_KEY = "encheck_planning_day_overrides_v1";
+const CUSTOM_MODELS_STORAGE_KEY = "encheck_planning_custom_models_v1";
+const AVAILABILITY_STORAGE_KEY = "encheck_planning_availability_v1";
+const TEAMS_STORAGE_KEY = "encheck_planning_teams_v1";
+const TEAM_ASSIGNMENTS_STORAGE_KEY = "encheck_planning_team_assignments_v1";
+const MONTH_MODELS_STORAGE_KEY = "encheck_planning_month_models_v1";
 
-// Briques par défaut du Dock Skello (fidèles à la maquette validée)
+// Palette de couleurs personnalisables En-Check (modèles & cases)
+const ENCHECK_COLOR_PALETTE = [
+  { id: "copper", label: "Cuivre", value: "#B56235" },
+  { id: "amber", label: "Ambre", value: "#D97706" },
+  { id: "emerald", label: "Émeraude", value: "#10B981" },
+  { id: "indigo", label: "Indigo", value: "#4F46E5" },
+  { id: "violet", label: "Violet", value: "#7C3AED" },
+  { id: "ocean", label: "Océan", value: "#0E7490" },
+  { id: "rubis", label: "Rubis", value: "#BE123C" },
+  { id: "ardoise", label: "Ardoise", value: "#475569" },
+];
+
+// Types de modèles créables par l'entreprise
+const MODEL_KINDS = [
+  { id: "shift", label: "Horaire de travail / Garde / Nuit" },
+  { id: "break_only", label: "Pause" },
+  { id: "rest", label: "Repos" },
+  { id: "leave", label: "Congé / Absence" },
+];
+
+// Briques par défaut du Dock En-Check (fidèles à la maquette validée)
 const DEFAULT_DOCK_TEMPLATES = [
   {
     id: "tpl-matin",
@@ -59,6 +89,8 @@ const DEFAULT_DOCK_TEMPLATES = [
     break_end: "13:00",
     variant: "standard",
     kind: "shift",
+    color: "#B56235",
+    isPreset: true,
   },
   {
     id: "tpl-garde",
@@ -71,6 +103,8 @@ const DEFAULT_DOCK_TEMPLATES = [
     break_end: "18:30",
     variant: "garde",
     kind: "shift",
+    color: "#9A5B25",
+    isPreset: true,
   },
   {
     id: "tpl-nuit",
@@ -83,6 +117,8 @@ const DEFAULT_DOCK_TEMPLATES = [
     break_end: "01:30",
     variant: "nuit",
     kind: "shift",
+    color: "#4B3869",
+    isPreset: true,
   },
   {
     id: "tpl-pause",
@@ -95,6 +131,8 @@ const DEFAULT_DOCK_TEMPLATES = [
     break_end: "13:00",
     variant: "standard",
     kind: "break_only",
+    color: "#0E7490",
+    isPreset: true,
   },
   {
     id: "tpl-repos",
@@ -105,8 +143,33 @@ const DEFAULT_DOCK_TEMPLATES = [
     has_break: false,
     variant: "conge",
     kind: "rest",
+    color: "#2D5A43",
+    isPreset: true,
   },
 ];
+
+function readStorage(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore quota error
+  }
+}
+
+// Convertit une couleur hex en dégradé CSS pour les cartes du planning
+function buildShiftGradient(color) {
+  if (!color) return undefined;
+  return `linear-gradient(145deg, ${color} 0%, ${color}CC 100%)`;
+}
 
 function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate();
@@ -185,7 +248,7 @@ function formatHoursCompact(minutes) {
 }
 
 export default function Planning() {
-  const { darkMode } = useTheme();
+  const { darkMode, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const [admin, setAdmin] = useState(null);
@@ -197,15 +260,15 @@ export default function Planning() {
   const [absences, setAbsences] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Vues Skello : "semaine" (défaut) | "mois" | "jour" | "modeles" | "demandes"
-  const [skelloView, setSkelloView] = useState("semaine");
+  // Vues En-Check : "semaine" (défaut) | "mois" | "jour" | "demandes"
+  const [planningView, setPlanningView] = useState("semaine");
   const [dockOpen, setDockOpen] = useState(true);
   const [collapsedGroups, setCollapsedGroups] = useState({});
   const [selectedEntreprise, setSelectedEntreprise] = useState("all");
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
 
-  // État Drag & Drop Skello
+  // État Drag & Drop En-Check
   const [draggedPayload, setDraggedPayload] = useState(null);
   const [dropTargetCell, setDropTargetCell] = useState(null); // { empId, dateStr, dayNum } ou { empId, rowDrop: true }
   const [isAltPressed, setIsAltPressed] = useState(false);
@@ -225,11 +288,50 @@ export default function Planning() {
   // Modals existants
   const [showModal, setShowModal] = useState(false);
   const [editingPlanning, setEditingPlanning] = useState(null);
+
+  // ═══ MODÈLES PERSONNALISÉS (créés par l'entreprise : horaire, pause, congé, repos) ═══
+  const [customModels, setCustomModels] = useState(() =>
+    readStorage(CUSTOM_MODELS_STORAGE_KEY, [])
+  );
+  const [showModelModal, setShowModelModal] = useState(false);
+  const [editingCustomModel, setEditingCustomModel] = useState(null);
+  const [modelForm, setModelForm] = useState({
+    name: "",
+    kind: "shift",
+    start_time: "08:00",
+    end_time: "17:00",
+    has_break: true,
+    break_start: "12:00",
+    break_end: "13:00",
+    color: "#B56235",
+  });
+
+  // ═══ ÉQUIPES PERSONNALISÉES (création / renommage / suppression) ═══
+  const [teams, setTeams] = useState(() => readStorage(TEAMS_STORAGE_KEY, []));
+  const [teamAssignments, setTeamAssignments] = useState(() =>
+    readStorage(TEAM_ASSIGNMENTS_STORAGE_KEY, {})
+  );
+  const [showTeamModal, setShowTeamModal] = useState(false);
+  const [editingTeam, setEditingTeam] = useState(null);
+  const [teamForm, setTeamForm] = useState({ name: "", memberIds: [] });
+
+  // ═══ DISPONIBILITÉS COLLABORATEURS (aujourd'hui / cette semaine) ═══
+  const [availability, setAvailability] = useState(() =>
+    readStorage(AVAILABILITY_STORAGE_KEY, {})
+  );
+
+  // ═══ MODÈLES DÉPOSÉS SUR LE CALENDRIER MENSUEL (date -> [modèles]) ═══
+  const [monthModels, setMonthModels] = useState(() =>
+    readStorage(MONTH_MODELS_STORAGE_KEY, {})
+  );
+  const [monthDropDate, setMonthDropDate] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [planningToDelete, setPlanningToDelete] = useState(null);
 
   const [showEmployeeScheduleModal, setShowEmployeeScheduleModal] = useState(false);
   const [editingEmployeeSchedule, setEditingEmployeeSchedule] = useState(null);
+  // Contexte de la case en cours d'édition (permet de personnaliser la couleur de la case)
+  const [cellEditContext, setCellEditContext] = useState(null);
 
   const [holidaysByEnterprise, setHolidaysByEnterprise] = useState({});
   const [holidayMapsByEnterprise, setHolidayMapsByEnterprise] = useState({});
@@ -275,6 +377,7 @@ export default function Planning() {
     custom_break_end: "13:00",
     custom_has_break: true,
     custom_work_days: [1, 2, 3, 4, 5],
+    custom_color: "#B56235",
   });
 
   // Écoute de la touche Alt pour dupliquer au lieu de déplacer
@@ -294,12 +397,28 @@ export default function Planning() {
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(OVERRIDES_STORAGE_KEY, JSON.stringify(dayOverrides));
-    } catch {
-      // ignore quota error
-    }
+    writeStorage(OVERRIDES_STORAGE_KEY, dayOverrides);
   }, [dayOverrides]);
+
+  useEffect(() => {
+    writeStorage(CUSTOM_MODELS_STORAGE_KEY, customModels);
+  }, [customModels]);
+
+  useEffect(() => {
+    writeStorage(TEAMS_STORAGE_KEY, teams);
+  }, [teams]);
+
+  useEffect(() => {
+    writeStorage(TEAM_ASSIGNMENTS_STORAGE_KEY, teamAssignments);
+  }, [teamAssignments]);
+
+  useEffect(() => {
+    writeStorage(AVAILABILITY_STORAGE_KEY, availability);
+  }, [availability]);
+
+  useEffect(() => {
+    writeStorage(MONTH_MODELS_STORAGE_KEY, monthModels);
+  }, [monthModels]);
 
   useEffect(() => {
     const adminData = localStorage.getItem("admin");
@@ -343,7 +462,7 @@ export default function Planning() {
       let employeesQuery = supabase
         .from("employees")
         .select(
-          "id, enterprise_id, first_name, last_name, matricule, department, position, photo_url, is_active, enterprises(name)"
+          "id, enterprise_id, first_name, last_name, matricule, department, position, photo_url, is_active, enterprises(name, module_planning)"
         )
         .eq("is_active", true)
         .order("first_name");
@@ -388,7 +507,7 @@ export default function Planning() {
       const { data: requestsData } = await scheduleRequestsQuery;
       setScheduleRequests(requestsData || []);
 
-      // Chargement des absences validées sur la période pour affichage sur la grille Skello
+      // Chargement des absences validées sur la période pour affichage sur la grille En-Check
       const year = calendarDate.getFullYear();
       const month = calendarDate.getMonth();
       const rangeStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
@@ -471,7 +590,7 @@ export default function Planning() {
   const getHolidaySet = (id) => holidaysByEnterprise[id] || new Set();
   const getHolidayMap = (id) => holidayMapsByEnterprise[id] || new Map();
 
-  // ═══ JOURS DE LA SEMAINE SKELLO (Lun -> Dim) ═══
+  // ═══ JOURS DE LA SEMAINE EN-CHECK (Lun -> Dim) ═══
   const weekDays = useMemo(() => {
     const monday = getStartOfWeekMonday(calendarDate);
     const todayIso = toIsoDateLocal(new Date());
@@ -495,15 +614,15 @@ export default function Planning() {
     });
   }, [calendarDate]);
 
-  // Libellé de période style Skello : "Lun 19 – Dim 25 Oct. 2026"
+  // Libellé de période style En-Check : "Lun 19 – Dim 25 Oct. 2026"
   const periodLabel = useMemo(() => {
-    if (skelloView === "mois") {
+    if (planningView === "mois") {
       return calendarDate.toLocaleDateString("fr-FR", {
         month: "long",
         year: "numeric",
       });
     }
-    if (skelloView === "jour") {
+    if (planningView === "jour") {
       return calendarDate.toLocaleDateString("fr-FR", {
         weekday: "short",
         day: "numeric",
@@ -516,13 +635,13 @@ export default function Planning() {
     const monthShort = last.dateObj.toLocaleDateString("fr-FR", { month: "short" });
     const capMonth = monthShort.charAt(0).toUpperCase() + monthShort.slice(1);
     return `${first.court} ${first.dayOfMonth} – ${last.court} ${last.dayOfMonth} ${capMonth} ${last.dateObj.getFullYear()}`;
-  }, [weekDays, calendarDate, skelloView]);
+  }, [weekDays, calendarDate, planningView]);
 
   const navigatePeriod = (direction) => {
     const next = new Date(calendarDate);
-    if (skelloView === "mois") {
+    if (planningView === "mois") {
       next.setMonth(next.getMonth() + direction);
-    } else if (skelloView === "jour") {
+    } else if (planningView === "jour") {
       next.setDate(next.getDate() + direction);
     } else {
       next.setDate(next.getDate() + direction * 7);
@@ -530,7 +649,9 @@ export default function Planning() {
     setCalendarDate(next);
   };
 
-  // ═══ MODÈLES GLISSABLES DU DOCK SKELLO ═══
+  // ═══ MODÈLES GLISSABLES DU DOCK EN-CHECK ═══
+  // 1. Modèles standards En-Check + 2. Modèles d'horaires entreprise (work_schedules)
+  // 3. Modèles personnalisés créés par l'utilisateur (pause, congé, repos, garde...)
   const dockTemplates = useMemo(() => {
     const customScheduleBricks = filteredPlannings.map((p) => {
       const st = formatTime(p.start_time);
@@ -550,11 +671,257 @@ export default function Planning() {
         work_days: p.work_days || [1, 2, 3, 4, 5],
         variant: isNight ? "nuit" : isGarde ? "garde" : "standard",
         kind: "work_schedule",
+        color: ENCHECK_COLOR_PALETTE[0].value,
         rawSchedule: p,
       };
     });
-    return [...DEFAULT_DOCK_TEMPLATES, ...customScheduleBricks];
-  }, [filteredPlannings]);
+
+    const userModels = customModels.map((m) => ({
+      ...m,
+      id: m.id || `cm-${m.name}`,
+      label:
+        m.kind === "rest" || m.kind === "leave"
+          ? m.name
+          : m.kind === "break_only"
+          ? `${m.name} ${formatTime(m.break_start)}-${formatTime(m.break_end)}`
+          : `${m.name} ${formatTime(m.start_time)}-${formatTime(m.end_time)}`,
+      variant:
+        m.kind === "rest"
+          ? "conge"
+          : m.kind === "leave"
+          ? "conge"
+          : m.kind === "break_only"
+          ? "pause"
+          : m.variant || "standard",
+      isCustom: true,
+    }));
+
+    return [...DEFAULT_DOCK_TEMPLATES, ...customScheduleBricks, ...userModels];
+  }, [filteredPlannings, customModels]);
+
+  // ═══ CRUD DES MODÈLES PERSONNALISÉS ═══
+  const openNewModelModal = () => {
+    setEditingCustomModel(null);
+    setModelForm({
+      name: "",
+      kind: "shift",
+      start_time: "08:00",
+      end_time: "17:00",
+      has_break: true,
+      break_start: "12:00",
+      break_end: "13:00",
+      color: "#B56235",
+    });
+    setShowModelModal(true);
+  };
+
+  const openEditModelModal = (model) => {
+    setEditingCustomModel(model);
+    setModelForm({
+      name: model.name || "",
+      kind: model.kind || "shift",
+      start_time: model.start_time || "08:00",
+      end_time: model.end_time || "17:00",
+      has_break: model.has_break ?? true,
+      break_start: model.break_start || "12:00",
+      break_end: model.break_end || "13:00",
+      color: model.color || "#B56235",
+    });
+    setShowModelModal(true);
+  };
+
+  const handleSaveCustomModel = () => {
+    if (!modelForm.name.trim()) {
+      toast.error("Donnez un nom à votre modèle");
+      return;
+    }
+    const timesNeeded = modelForm.kind === "shift";
+    if (timesNeeded && (!modelForm.start_time || !modelForm.end_time)) {
+      toast.error("Renseignez l'heure de début et de fin");
+      return;
+    }
+    const payload = {
+      ...modelForm,
+      name: modelForm.name.trim(),
+      variant:
+        modelForm.kind === "rest" || modelForm.kind === "leave"
+          ? "conge"
+          : modelForm.kind === "break_only"
+          ? "pause"
+          : "standard",
+    };
+
+    if (editingCustomModel) {
+      setCustomModels((prev) =>
+        prev.map((m) => (m.id === editingCustomModel.id ? { ...m, ...payload } : m))
+      );
+      toast.success(`Modèle "${payload.name}" mis à jour`);
+    } else {
+      const newModel = { ...payload, id: `cm-${Date.now()}` };
+      setCustomModels((prev) => [...prev, newModel]);
+      toast.success(`Modèle "${payload.name}" créé — glissez-le dans la grille`);
+    }
+    setShowModelModal(false);
+    setEditingCustomModel(null);
+  };
+
+  const handleDeleteCustomModel = (model) => {
+    setCustomModels((prev) => prev.filter((m) => m.id !== model.id));
+    toast.success(`Modèle "${model.name}" supprimé`);
+  };
+
+  // ═══ CRUD DES ÉQUIPES (création, renommage, affectation des membres) ═══
+  // Une équipe peut être héritée du champ "department" de l'employé ou définie
+  // manuellement depuis En-Check (les collaborateurs sans équipe vont dans "SANS ÉQUIPE").
+  const getEmployeeTeamName = (emp) => {
+    const override = teamAssignments[emp.id];
+    if (override) return override;
+    const dept = (emp?.department || "").trim().toUpperCase();
+    return dept || null;
+  };
+
+  const openNewTeamModal = () => {
+    setEditingTeam(null);
+    setTeamForm({ name: "", memberIds: [] });
+    setShowTeamModal(true);
+  };
+
+  const openEditTeamModal = (title) => {
+    const members = filteredEmployees
+      .filter((emp) => (getEmployeeTeamName(emp) || "") === title)
+      .map((emp) => emp.id);
+    setEditingTeam({ name: title });
+    setTeamForm({ name: title, memberIds: members });
+    setShowTeamModal(true);
+  };
+
+  const handleSaveTeam = async () => {
+    const name = teamForm.name.trim().toUpperCase();
+    if (!name) {
+      toast.error("Nommez votre équipe");
+      return;
+    }
+    const previousName = editingTeam?.name || null;
+
+    // 1. Enregistrer le nom de l'équipe dans la liste des équipes En-Check
+    setTeams((prev) => {
+      const exists = prev.includes(name);
+      if (exists) return prev;
+      return [...prev.filter((t) => t !== previousName), name];
+    });
+
+    // 2. Affecter les membres sélectionnés (mise à jour du champ department + mémorisation locale)
+    setTeamAssignments((prev) => {
+      const next = { ...prev };
+      teamForm.memberIds.forEach((id) => {
+        next[id] = name;
+      });
+      return next;
+    });
+
+    if (teamForm.memberIds.length > 0) {
+      try {
+        await supabase
+          .from("employees")
+          .update({ department: name })
+          .in("id", teamForm.memberIds);
+        setEmployees((prev) =>
+          prev.map((emp) =>
+            teamForm.memberIds.includes(emp.id) ? { ...emp, department: name } : emp
+          )
+        );
+        toast.success(`Équipe "${name}" enregistrée (${teamForm.memberIds.length} membre(s))`);
+      } catch (err) {
+        console.error(err);
+        toast.error("Erreur lors de l'affectation de l'équipe");
+      }
+    } else {
+      toast.success(`Équipe "${name}" enregistrée`);
+    }
+
+    setShowTeamModal(false);
+    setEditingTeam(null);
+  };
+
+  const handleDeleteTeam = (title) => {
+    setTeams((prev) => prev.filter((t) => t !== title));
+    setTeamAssignments((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((empId) => {
+        if (next[empId] === title) delete next[empId];
+      });
+      return next;
+    });
+    toast.success(`Équipe "${title}" supprimée`);
+  };
+
+  // ═══ DÉPÔT D'UN MODÈLE SUR UNE CASE DU CALENDRIER MENSUEL ═══
+  const handleDropOnCalendarDay = (e, dateStr) => {
+    e.preventDefault();
+    setMonthDropDate(null);
+    const payload = draggedPayload;
+    setDraggedPayload(null);
+    if (!payload) return;
+
+    const tpl =
+      payload.sourceType === "dock"
+        ? payload.template
+        : payload.shift
+        ? {
+            name: payload.shift.name || "Créneau",
+            label: `${payload.shift.start_time} - ${payload.shift.end_time}`,
+            color: payload.shift.color,
+          }
+        : null;
+
+    if (!tpl) return;
+
+    const entry = {
+      id: tpl.id || `shift-${Date.now()}`,
+      name: tpl.name || "Modèle",
+      label:
+        tpl.label ||
+        (tpl.kind === "rest" || tpl.kind === "leave"
+          ? tpl.name
+          : `${tpl.name} ${formatTime(tpl.start_time)}-${formatTime(tpl.end_time)}`),
+      color: tpl.color || "#B56235",
+      kind: tpl.kind || "shift",
+    };
+
+    setMonthModels((prev) => ({
+      ...prev,
+      [dateStr]: [...(prev[dateStr] || []), entry],
+    }));
+    toast.success(`« ${entry.label} » placé sur le ${dateStr}`);
+  };
+
+  const removeMonthModel = (dateStr, index) => {
+    setMonthModels((prev) => ({
+      ...prev,
+      [dateStr]: (prev[dateStr] || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  // ═══ DISPONIBILITÉS COLLABORATEURS (Aujourd'hui / Cette semaine) ═══
+  const setEmployeeAvailability = (empId, scope, value) => {
+    setAvailability((prev) => {
+      const current = prev[empId] || {};
+      const nextValue = current[scope] === value ? null : value;
+      return {
+        ...prev,
+        [empId]: { ...current, [scope]: nextValue },
+      };
+    });
+  };
+
+  // L'option Planning est payante : aucune grille horaire n'est affichée pour les
+  // entreprises qui n'y ont pas souscrit (module_planning === false).
+  const isPlanningModuleEnabled = (emp) => emp?.enterprises?.module_planning !== false;
+
+  const employeesWithoutPlanningOption = useMemo(
+    () => filteredEmployees.filter((emp) => !isPlanningModuleEnabled(emp)),
+    [filteredEmployees]
+  );
 
   // ═══ RÉSOLUTION DU SHIFT D'UN EMPLOYÉ SUR UN JOUR DONNÉ ═══
   const resolveCellShift = (emp, dayItem) => {
@@ -599,6 +966,9 @@ export default function Planning() {
         label: empAbs.reason || "Congé",
       };
     }
+
+    // Option Planning non souscrite par l'entreprise : aucun horaire affiché
+    if (!isPlanningModuleEnabled(emp)) return null;
 
     // Planning personnalisé de l'employé (employee_schedules)
     const es = employeeSchedules.find((row) => row.employee_id === emp.id && row.is_active !== false);
@@ -665,19 +1035,7 @@ export default function Planning() {
       };
     }
 
-    // Par défaut (Lun-Ven 08:00-17:00) pour que la grille Skello soit toujours exploitable
-    if (dayNum <= 5) {
-      return {
-        start_time: "08:00",
-        end_time: "17:00",
-        has_break: true,
-        break_start: "12:00",
-        break_end: "13:00",
-        variant: "standard",
-        source: "fallback",
-      };
-    }
-
+    // ⚠️ Aucun horaire fictif n'est inventé : sans planning attribué la case reste vide.
     return null;
   };
 
@@ -737,7 +1095,7 @@ export default function Planning() {
     }
   };
 
-  // ═══ GESTIONNAIRES DRAG & DROP SKELLO ═══
+  // ═══ GESTIONNAIRES DRAG & DROP EN-CHECK ═══
   const handleDragStartTemplate = (e, tpl) => {
     const payload = {
       sourceType: "dock",
@@ -812,12 +1170,38 @@ export default function Planning() {
         return;
       }
 
+      if (tpl.kind === "leave") {
+        setDayOverrides((prev) => ({
+          ...prev,
+          [targetEmp.id]: {
+            ...(prev[targetEmp.id] || {}),
+            [targetDay.dateStr]: {
+              isLeave: true,
+              start_time: "Congé",
+              end_time: tpl.name || "Absence",
+              has_break: false,
+              variant: "conge",
+              color: tpl.color,
+              label: tpl.name,
+            },
+          },
+        }));
+        setPendingChangesCount((c) => c + 1);
+        await persistEmployeeShiftToSupabase(targetEmp, null, targetDay.dayNum, true);
+        toast.success(
+          `« ${tpl.name} » appliqué pour ${targetEmp.first_name} (${targetDay.labelHeader})`
+        );
+        return;
+      }
+
       if (tpl.kind === "break_only") {
-        const currentShift = resolveCellShift(targetEmp, targetDay) || {
-          start_time: "08:00",
-          end_time: "17:00",
-          variant: "standard",
-        };
+        const currentShift = resolveCellShift(targetEmp, targetDay);
+        if (!currentShift || currentShift.isHoliday || currentShift.isAbsence) {
+          toast.error(
+            `Déposez d'abord un horaire sur ${targetDay.labelHeader} avant d'y ajouter une pause`
+          );
+          return;
+        }
         const updatedShift = {
           ...currentShift,
           has_break: true,
@@ -919,6 +1303,16 @@ export default function Planning() {
     weekDays.forEach((d) => {
       if (tpl.kind === "rest") {
         weekMap[d.dateStr] = { isRest: true };
+      } else if (tpl.kind === "leave") {
+        weekMap[d.dateStr] = {
+          isLeave: true,
+          start_time: "Congé",
+          end_time: tpl.name || "Absence",
+          has_break: false,
+          variant: "conge",
+          color: tpl.color,
+          label: tpl.name,
+        };
       } else if (d.dayNum <= 5) {
         weekMap[d.dateStr] = {
           start_time: tpl.start_time || "08:00",
@@ -1011,7 +1405,7 @@ export default function Planning() {
           let refShift = null;
           weekDays.forEach((d) => {
             const s = resolveCellShift(emp, d);
-            if (s && !s.isHoliday && !s.isAbsence && !s.isRest) {
+            if (s && !s.isHoliday && !s.isAbsence && !s.isRest && !s.isLeave) {
               activeDays.push(d.dayNum);
               if (!refShift) refShift = s;
             }
@@ -1035,52 +1429,59 @@ export default function Planning() {
     setPublishing(false);
   };
 
-  // ═══ GROUPEMENT DES EMPLOYÉS PAR ÉQUIPE / DÉPARTEMENT FAÇON SKELLO ═══
+  // ═══ GROUPEMENT DES EMPLOYÉS PAR ÉQUIPE EN-CHECK (TOUTES PLIABLES) ═══
+  // Chaque équipe — y compris GARDE & LOGISTIQUE — possède sa propre barre pliable.
   const employeeGroups = useMemo(() => {
     const groupsMap = new Map();
-    filteredEmployees.forEach((emp, idx) => {
-      const rawDept = (emp.department || "").trim();
-      let groupTitle = "GARDE & LOGISTIQUE";
-      if (rawDept) {
-        groupTitle = rawDept.toUpperCase();
-      } else if (idx % 2 === 0) {
-        groupTitle = "GARDE & LOGISTIQUE";
-      } else {
-        groupTitle = "ÉQUIPE OFFICINE & VENTE";
-      }
-      if (!groupsMap.has(groupTitle)) {
-        groupsMap.set(groupTitle, []);
-      }
+    const NO_TEAM = "SANS ÉQUIPE";
+
+    filteredEmployees.forEach((emp) => {
+      const groupTitle = getEmployeeTeamName(emp) || NO_TEAM;
+      if (!groupsMap.has(groupTitle)) groupsMap.set(groupTitle, []);
       groupsMap.get(groupTitle).push(emp);
     });
 
-    // S'assurer que l'en-tête "ÉQUIPE OFFICINE & VENTE" est toujours visible comme sur la maquette
-    if (!groupsMap.has("ÉQUIPE OFFICINE & VENTE") && filteredEmployees.length > 0) {
-      return [
-        { title: "ÉQUIPE OFFICINE & VENTE", employees: [], isBannerOnly: true },
-        ...Array.from(groupsMap.entries()).map(([title, emps]) => ({
-          title,
-          employees: emps,
-          isBannerOnly: false,
-        })),
-      ];
-    }
+    // Les équipes déclarées dans En-Check apparaissent même si elles sont vides
+    teams.forEach((t) => {
+      const title = String(t).toUpperCase();
+      if (!groupsMap.has(title)) groupsMap.set(title, []);
+    });
 
-    return Array.from(groupsMap.entries()).map(([title, emps]) => ({
+    // Ordre d'affichage : GARDE & LOGISTIQUE puis ÉQUIPE OFFICINE & VENTE puis les autres
+    const priority = ["GARDE & LOGISTIQUE", "ÉQUIPE OFFICINE & VENTE"];
+    const entries = Array.from(groupsMap.entries());
+    entries.sort((a, b) => {
+      const ia = priority.indexOf(a[0]);
+      const ib = priority.indexOf(b[0]);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      if (a[0] === NO_TEAM) return 1;
+      if (b[0] === NO_TEAM) return -1;
+      return a[0].localeCompare(b[0], "fr");
+    });
+
+    return entries.map(([title, emps]) => ({
       title,
       employees: emps,
       isBannerOnly: false,
     }));
-  }, [filteredEmployees]);
+  }, [filteredEmployees, teams, teamAssignments]);
 
-  // ═══ TOTAUX JOURNALIERS POUR LE PIED DE PAGE SKELLO ═══
+  // ═══ TOTAUX JOURNALIERS POUR LE PIED DE PAGE EN-CHECK ═══
   const dailyTotals = useMemo(() => {
     return weekDays.map((dayItem) => {
       let headcount = 0;
       let totalMinutes = 0;
       filteredEmployees.forEach((emp) => {
         const shift = resolveCellShift(emp, dayItem);
-        if (shift && !shift.isRest && !shift.isAbsence && !shift.isHoliday) {
+        if (
+          shift &&
+          !shift.isRest &&
+          !shift.isLeave &&
+          !shift.isAbsence &&
+          !shift.isHoliday
+        ) {
           headcount += 1;
           totalMinutes += computeShiftNetMinutes(shift);
         }
@@ -1249,6 +1650,11 @@ export default function Planning() {
   };
 
   const openCellEditorModal = (emp, dayItem = null, currentShift = null) => {
+    setCellEditContext(
+      dayItem
+        ? { empId: emp.id, dateStr: dayItem.dateStr, dayNum: dayItem.dayNum }
+        : null
+    );
     const existingES = employeeSchedules.find((es) => es.employee_id === emp.id);
     if (existingES) {
       setEditingEmployeeSchedule(existingES);
@@ -1287,6 +1693,7 @@ export default function Planning() {
         custom_break_end: currentShift?.break_end?.slice(0, 5) || "13:00",
         custom_has_break: currentShift?.has_break ?? true,
         custom_work_days: dayItem ? [1, 2, 3, 4, 5] : [1, 2, 3, 4, 5],
+        custom_color: currentShift?.color || "#B56235",
       });
     }
     setShowEmployeeScheduleModal(true);
@@ -1356,6 +1763,26 @@ export default function Planning() {
         delete next[employeeScheduleForm.employee_id];
         return next;
       });
+
+      // Personnalisation de la couleur de la case éditée
+      if (cellEditContext) {
+        const color = employeeScheduleForm.custom_color || "#B56235";
+        setDayOverrides((prev) => ({
+          ...prev,
+          [cellEditContext.empId]: {
+            ...(prev[cellEditContext.empId] || {}),
+            [cellEditContext.dateStr]: {
+              start_time: employeeScheduleForm.custom_start_time,
+              end_time: employeeScheduleForm.custom_end_time,
+              has_break: employeeScheduleForm.custom_has_break,
+              break_start: employeeScheduleForm.custom_break_start,
+              break_end: employeeScheduleForm.custom_break_end,
+              variant: "standard",
+              color,
+            },
+          },
+        }));
+      }
 
       toast.success("Planning collaborateur enregistré !");
       setShowEmployeeScheduleModal(false);
@@ -1524,13 +1951,13 @@ export default function Planning() {
       >
         <WovenKenteBadgeSvg size={48} />
         <p style={{ fontSize: 13, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--sk-text-soft)" }}>
-          Chargement du planning Skello × En-Check...
+          Chargement du planning En-Check...
         </p>
       </div>
     );
   }
 
-  // Totaux globaux pour la barre de pied Skello
+  // Totaux globaux pour la barre de pied En-Check
   const summaryDay = dailyTotals[0] || { headcount: filteredEmployees.length, hoursLabel: "48h00" };
   const totalActiveEmployees = filteredEmployees.length;
   const totalDayHoursLabel =
@@ -1545,7 +1972,7 @@ export default function Planning() {
         <KenteWovenTapestrySvg />
       </div>
 
-      {/* ═══ BARRE DE COMMANDE SUPÉRIEURE FAÇON SKELLO ═══ */}
+      {/* ═══ BARRE DE COMMANDE SUPÉRIEURE FAÇON EN-CHECK ═══ */}
       <header className="sk-topbar">
         <div className="sk-topbar-inner">
           {/* Gauche : Flèche retour ← + Titre En-Check · Planning + Filtre Entreprise */}
@@ -1624,29 +2051,29 @@ export default function Planning() {
             <div className="sk-view-Inline" role="tablist" aria-label="Vues du planning">
               <button
                 type="button"
-                className={`sk-view-link ${skelloView === "semaine" ? "active" : ""}`}
-                onClick={() => setSkelloView("semaine")}
+                className={`sk-view-link ${planningView === "semaine" ? "active" : ""}`}
+                onClick={() => setPlanningView("semaine")}
               >
                 Semaine
               </button>
               <button
                 type="button"
-                className={`sk-view-link ${skelloView === "mois" ? "active" : ""}`}
-                onClick={() => setSkelloView("mois")}
+                className={`sk-view-link ${planningView === "mois" ? "active" : ""}`}
+                onClick={() => setPlanningView("mois")}
               >
                 Mois
               </button>
               <button
                 type="button"
-                className={`sk-view-link ${skelloView === "jour" ? "active" : ""}`}
-                onClick={() => setSkelloView("jour")}
+                className={`sk-view-link ${planningView === "jour" ? "active" : ""}`}
+                onClick={() => setPlanningView("jour")}
               >
                 Jour
               </button>
               <button
                 type="button"
-                className={`sk-view-link ${skelloView === "demandes" ? "active" : ""}`}
-                onClick={() => setSkelloView("demandes")}
+                className={`sk-view-link ${planningView === "demandes" ? "active" : ""}`}
+                onClick={() => setPlanningView("demandes")}
               >
                 Demandes
                 {pendingRequestsCount > 0 && (
@@ -1654,6 +2081,17 @@ export default function Planning() {
                 )}
               </button>
             </div>
+
+            {/* Bouton Mode Clair / Mode Sombre */}
+            <button
+              type="button"
+              className="sk-theme-btn"
+              onClick={toggleTheme}
+              title={darkMode ? "Passer en mode clair" : "Passer en mode sombre"}
+              aria-label={darkMode ? "Passer en mode clair" : "Passer en mode sombre"}
+            >
+              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
 
             <button
               type="button"
@@ -1681,8 +2119,24 @@ export default function Planning() {
         </div>
       </header>
 
-      {/* ═══ ESPACE DE TRAVAIL PRINCIPAL SKELLO ═══ */}
+      {/* ═══ ESPACE DE TRAVAIL PRINCIPAL EN-CHECK ═══ */}
       <main className="sk-workspace">
+        {/* Bandeau : entreprises n'ayant pas souscrit à l'option Planning (aucun horaire inventé) */}
+        {employeesWithoutPlanningOption.length > 0 && (
+          <div className="sk-no-option-banner" role="status">
+            <span>
+              <AlertTriangle size={15} color="#F59E0B" />{" "}
+              <strong>{employeesWithoutPlanningOption.length}</strong> collaborateur(s)
+              appartiennent à une entreprise qui n&apos;a pas souscrit à l&apos;option
+              <strong> Planning </strong>: aucune grille horaire n&apos;est affichée pour eux.
+            </span>
+            <span style={{ fontSize: 12, color: "var(--sk-text-muted)" }}>
+              Activez l&apos;option Planning sur la fiche entreprise pour planifier ces
+              équipes.
+            </span>
+          </div>
+        )}
+
         {/* 1. DOCK DRAG & DROP : "▾ Modèles à glisser-déposer (Drag & Drop)" */}
         <section className="sk-dock-panel" aria-label="Modèles à glisser-déposer">
           <div className="sk-dock-header">
@@ -1692,15 +2146,38 @@ export default function Planning() {
               onClick={() => setDockOpen((o) => !o)}
             >
               <span className={`sk-dock-caret ${dockOpen ? "" : "collapsed"}`}>▼</span>
-              <span>Modèles à glisser-déposer (Drag & Drop)</span>
+              <span>Modèles à glisser-déposer (Drag &amp; Drop)</span>
             </button>
 
             <div className="sk-dock-actions">
               <span className="sk-dock-hint">
-                Glissez un modèle sur une case jour ou sur un collaborateur • Maintenez{" "}
-                <strong>Alt</strong> pour dupliquer un shift
+                Glissez un modèle sur une case jour, sur un collaborateur ou sur le
+                calendrier • Maintenez <strong>Alt</strong> pour dupliquer un shift
               </span>
-              <button type="button" className="sk-dock-add-btn" onClick={handleAdd}>
+              <button
+                type="button"
+                className="sk-dock-add-btn"
+                onClick={openNewTeamModal}
+                title="Créer, renommer une équipe et y affecter des collaborateurs"
+              >
+                <Users size={13} />
+                Gérer les équipes
+              </button>
+              <button
+                type="button"
+                className="sk-dock-add-btn"
+                onClick={handleAdd}
+                title="Créer un modèle d'horaires entreprise (work_schedules)"
+              >
+                <Briefcase size={13} />
+                Horaires entreprise
+              </button>
+              <button
+                type="button"
+                className="sk-dock-add-btn"
+                onClick={openNewModelModal}
+                title="Créer votre propre modèle En-Check (horaire, pause, congé, repos)"
+              >
                 <Plus size={13} />
                 Nouveau modèle
               </button>
@@ -1713,13 +2190,14 @@ export default function Planning() {
                 <div
                   key={tpl.id}
                   className="sk-brick"
+                  style={{ "--brick-color": tpl.color || "#B56235" }}
                   draggable
                   onDragStart={(e) => handleDragStartTemplate(e, tpl)}
                   onDragEnd={() => {
                     setDraggedPayload(null);
                     setDropTargetCell(null);
                   }}
-                  title={`Glisser "${tpl.label}" vers la grille`}
+                  title={`Glisser "${tpl.label}" vers la grille ou le calendrier`}
                 >
                   <div className="sk-brick-left">
                     <div className="sk-drag-dots" aria-hidden="true">
@@ -1730,64 +2208,84 @@ export default function Planning() {
                       <span />
                       <span />
                     </div>
-                    <span className="sk-brick-title">{tpl.label}</span>
+                    <span className="sk-brick-title">
+                      {tpl.label}
+                      <span className="sk-brick-sub">
+                        {tpl.kind === "rest"
+                          ? "Repos"
+                          : tpl.kind === "leave"
+                          ? "Congé / Absence"
+                          : tpl.kind === "break_only"
+                          ? `Pause ${formatTime(tpl.break_start)}-${formatTime(tpl.break_end)}`
+                          : `${formatTime(tpl.start_time)} - ${formatTime(tpl.end_time)}`}
+                        {tpl.isCustom ? " · Modèle En-Check" : ""}
+                        {tpl.kind === "work_schedule" ? " · Horaires entreprise" : ""}
+                      </span>
+                    </span>
                   </div>
 
-                  {tpl.rawSchedule && (
-                    <button
-                      type="button"
-                      className="sk-brick-edit"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(tpl.rawSchedule);
-                      }}
-                      title="Modifier ce modèle d'horaire"
-                    >
-                      <Edit size={13} />
-                    </button>
-                  )}
+                  <div className="sk-brick-actions">
+                    {tpl.isCustom && (
+                      <>
+                        <button
+                          type="button"
+                          className="sk-brick-edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditModelModal(tpl);
+                          }}
+                          title="Modifier ce modèle (nom, couleur, horaires)"
+                        >
+                          <Edit size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          className="sk-brick-edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCustomModel(tpl);
+                          }}
+                          title="Supprimer ce modèle"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </>
+                    )}
+
+                    {tpl.rawSchedule && (
+                      <button
+                        type="button"
+                        className="sk-brick-edit"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(tpl.rawSchedule);
+                        }}
+                        title="Modifier ce modèle d'horaire"
+                      >
+                        <Edit size={13} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </section>
 
-        {/* 2. VUE SEMAINE (MATRICE SKELLO DRAG & DROP) */}
-        {skelloView === "semaine" && (
+        {/* 2. VUE SEMAINE (MATRICE EN-CHECK DRAG & DROP) */}
+        {planningView === "semaine" && (
           <>
-            {/* Bannière d'équipe repliable comme sur la maquette : "▾ ÉQUIPE OFFICINE & VENTE" */}
-            {employeeGroups
-              .filter((g) => g.isBannerOnly)
-              .map((g) => (
-                <div
-                  key={g.title}
-                  className="sk-team-banner"
-                  onClick={() =>
-                    setCollapsedGroups((prev) => ({
-                      ...prev,
-                      [g.title]: !prev[g.title],
-                    }))
-                  }
-                >
-                  <div className="sk-team-banner-left">
-                    <span className="sk-dock-caret">▼</span>
-                    <span>{g.title}</span>
-                  </div>
-                  <div className="sk-team-banner-meta">
-                    <span>Glisser-déposer actif</span>
-                  </div>
-                </div>
-              ))}
-
-            {/* Grille Matrice Hebdomadaire Skello */}
+            {/* Grille Matrice Hebdomadaire En-Check */}
             <div className="sk-matrix-card">
               <div className="sk-matrix-scroll">
                 <table className="sk-matrix-table">
                   <thead>
                     <tr>
                       <th className="sk-col-emp sk-th-emp">
-                        <span style={{ color: "var(--sk-accent-warm)", marginRight: 8 }}>▼</span>
-                        {employeeGroups.find((g) => !g.isBannerOnly)?.title || "GARDE & LOGISTIQUE"}
+                        <span style={{ color: "var(--sk-accent-warm)", marginRight: 8 }}>
+                          <Users size={13} />
+                        </span>
+                        Collaborateurs &amp; Équipes
                       </th>
                       {weekDays.map((dayItem, idx) => {
                         const dt = dailyTotals[idx];
@@ -1822,28 +2320,59 @@ export default function Planning() {
                     ) : (
                       employeeGroups
                         .filter((g) => !g.isBannerOnly)
-                        .map((group, groupIdx) => {
+                        .map((group) => {
                           const isCollapsed = Boolean(collapsedGroups[group.title]);
                           return [
-                            groupIdx > 0 && (
-                              <tr
-                                key={`grp-${group.title}`}
-                                className="sk-group-row"
-                                onClick={() =>
-                                  setCollapsedGroups((prev) => ({
-                                    ...prev,
-                                    [group.title]: !prev[group.title],
-                                  }))
-                                }
-                              >
-                                <td colSpan={8}>
-                                  <span style={{ color: "var(--sk-accent-warm)", marginRight: 8 }}>
-                                    {isCollapsed ? "▶" : "▼"}
+                            <tr
+                              key={`grp-${group.title}`}
+                              className="sk-group-row"
+                              onClick={() =>
+                                setCollapsedGroups((prev) => ({
+                                  ...prev,
+                                  [group.title]: !prev[group.title],
+                                }))
+                              }
+                            >
+                              <td colSpan={8}>
+                                <div className="sk-group-row-inner">
+                                  <span className="sk-group-row-left">
+                                    <span
+                                      style={{
+                                        color: "var(--sk-accent-warm)",
+                                        marginRight: 4,
+                                      }}
+                                    >
+                                      {isCollapsed ? "▶" : "▼"}
+                                    </span>
+                                    <span>{group.title}</span>
+                                    <span className="sk-group-count-badge">
+                                      {group.employees.length} pers.
+                                    </span>
                                   </span>
-                                  {group.title} ({group.employees.length})
-                                </td>
-                              </tr>
-                            ),
+                                  <span
+                                    className="sk-group-row-actions"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="sk-group-row-btn"
+                                      onClick={() => openEditTeamModal(group.title)}
+                                      title={`Renommer / gérer les membres de ${group.title}`}
+                                    >
+                                      <Edit size={12} /> Gérer
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="sk-group-row-btn is-danger"
+                                      onClick={() => handleDeleteTeam(group.title)}
+                                      title={`Supprimer l'équipe ${group.title}`}
+                                    >
+                                      <Trash2 size={12} /> Supprimer
+                                    </button>
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>,
                             !isCollapsed &&
                               group.employees.map((emp) => {
                                 // Calcul du total d'heures planifiées sur la semaine pour ce collaborateur
@@ -1905,6 +2434,58 @@ export default function Planning() {
                                               style={{ width: `${progressPct}%` }}
                                             />
                                           </div>
+
+                                          {/* Disponibilité du collaborateur : aujourd'hui / cette semaine */}
+                                          <div className="sk-avail-row">
+                                            <button
+                                              type="button"
+                                              className={`sk-avail-pill ${
+                                                availability[emp.id]?.today === "available"
+                                                  ? "is-on"
+                                                  : availability[emp.id]?.today === "unavailable"
+                                                  ? "is-off"
+                                                  : ""
+                                              }`}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEmployeeAvailability(
+                                                  emp.id,
+                                                  "today",
+                                                  availability[emp.id]?.today === "available"
+                                                    ? "unavailable"
+                                                    : "available"
+                                                );
+                                              }}
+                                              title="Marquer la disponibilité d'aujourd'hui"
+                                            >
+                                              <span className="sk-avail-dot" />
+                                              Auj.
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className={`sk-avail-pill ${
+                                                availability[emp.id]?.week === "available"
+                                                  ? "is-on"
+                                                  : availability[emp.id]?.week === "unavailable"
+                                                  ? "is-off"
+                                                  : ""
+                                              }`}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEmployeeAvailability(
+                                                  emp.id,
+                                                  "week",
+                                                  availability[emp.id]?.week === "available"
+                                                    ? "unavailable"
+                                                    : "available"
+                                                );
+                                              }}
+                                              title="Marquer la disponibilité de la semaine"
+                                            >
+                                              <span className="sk-avail-dot" />
+                                              Sem.
+                                            </button>
+                                          </div>
                                         </div>
                                       </div>
                                     </td>
@@ -1929,7 +2510,7 @@ export default function Planning() {
                                           onDragLeave={() => setDropTargetCell(null)}
                                           onDrop={(e) => handleDropOnCell(e, emp, dayItem)}
                                         >
-                                          {/* Infobulle flottante Skello lors du survol en Drag & Drop */}
+                                          {/* Infobulle flottante En-Check lors du survol en Drag & Drop */}
                                           {isDropOver && (
                                             <div className="sk-drag-tooltip">
                                               Glisser pour déplacer ou
@@ -1944,6 +2525,11 @@ export default function Planning() {
                                                 className={`sk-shift-card variant-${
                                                   shift.variant || "standard"
                                                 }`}
+                                                style={{
+                                                  "--shift-custom-bg": buildShiftGradient(
+                                                    shift.color
+                                                  ),
+                                                }}
                                                 draggable={!shift.isHoliday && !shift.isAbsence}
                                                 onDragStart={(e) =>
                                                   handleDragStartCellShift(e, emp, dayItem, shift)
@@ -1964,16 +2550,35 @@ export default function Planning() {
                                                     <span />
                                                   </div>
                                                   {!shift.isHoliday && !shift.isAbsence && (
-                                                    <button
-                                                      type="button"
-                                                      className="sk-shift-del-btn"
-                                                      onClick={(e) =>
-                                                        handleClearCellShift(e, emp, dayItem)
-                                                      }
-                                                      title="Passer ce jour en repos"
-                                                    >
-                                                      <X size={11} />
-                                                    </button>
+                                                    <>
+                                                      <button
+                                                        type="button"
+                                                        className="sk-shift-color-mini"
+                                                        style={{
+                                                          background:
+                                                            shift.color || "#B56235",
+                                                        }}
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          openCellEditorModal(
+                                                            emp,
+                                                            dayItem,
+                                                            shift
+                                                          );
+                                                        }}
+                                                        title="Personnaliser la couleur de cette case"
+                                                      />
+                                                      <button
+                                                        type="button"
+                                                        className="sk-shift-del-btn"
+                                                        onClick={(e) =>
+                                                          handleClearCellShift(e, emp, dayItem)
+                                                        }
+                                                        title="Passer ce jour en repos"
+                                                      >
+                                                        <X size={11} />
+                                                      </button>
+                                                    </>
                                                   )}
                                                 </div>
 
@@ -2030,7 +2635,7 @@ export default function Planning() {
               </div>
             </div>
 
-            {/* Barre Récapitulative Fixe en Bas (Pied de Grille Skello) */}
+            {/* Barre Récapitulative Fixe en Bas (Pied de Grille En-Check) */}
             <footer className="sk-bottom-bar">
               <div className="sk-bottom-slots">
                 <div className="sk-bottom-slot">
@@ -2038,7 +2643,7 @@ export default function Planning() {
                     Effectif: <strong>{totalActiveEmployees}</strong>
                   </span>
                 </div>
-                {dailyTotals.slice(0, 4).map((dt) => (
+                {dailyTotals.map((dt) => (
                   <div key={dt.dateStr} className="sk-bottom-slot">
                     <span>
                       {draggedPayload
@@ -2061,8 +2666,8 @@ export default function Planning() {
           </>
         )}
 
-        {/* 3. VUE JOUR (TIMELINE JOURNALIÈRE SKELLO) */}
-        {skelloView === "jour" && (
+        {/* 3. VUE JOUR (TIMELINE JOURNALIÈRE EN-CHECK) */}
+        {planningView === "jour" && (
           <div className="sk-matrix-card" style={{ padding: 20 }}>
             <div
               style={{
@@ -2084,7 +2689,7 @@ export default function Planning() {
               <button
                 type="button"
                 className="sk-btn-secondary"
-                onClick={() => setSkelloView("semaine")}
+                onClick={() => setPlanningView("semaine")}
               >
                 Retour à la grille Semaine
               </button>
@@ -2172,7 +2777,7 @@ export default function Planning() {
         )}
 
         {/* 4. VUE MOIS (CALENDRIER MENSUEL + JOURS FÉRIÉS) */}
-        {skelloView === "mois" && (
+        {planningView === "mois" && (
           <div className="sk-matrix-card" style={{ padding: 20 }}>
             <div
               style={{
@@ -2204,7 +2809,7 @@ export default function Planning() {
                     <div
                       key={cell.id}
                       style={{
-                        minHeight: 86,
+                        minHeight: 112,
                         background: "transparent",
                         borderRadius: 10,
                       }}
@@ -2212,28 +2817,28 @@ export default function Planning() {
                   );
                 }
                 const isSelected = selectedCalendarDay?.date === cell.date;
+                const dayModels = monthModels[cell.date] || [];
+                const isMonthDropOver = monthDropDate === cell.date;
                 return (
                   <div
                     key={cell.id}
+                    className={`sk-cal-cell ${isMonthDropOver ? "is-drop-over" : ""}`}
+                    style={
+                      cell.isHoliday
+                        ? { background: "rgba(139, 92, 246, 0.14)" }
+                        : undefined
+                    }
                     onClick={() => {
                       setSelectedCalendarDay(cell);
                       setCalendarDate(new Date(cell.date + "T12:00:00"));
                     }}
-                    style={{
-                      minHeight: 92,
-                      padding: 10,
-                      borderRadius: 12,
-                      background: cell.isHoliday
-                        ? "rgba(139, 92, 246, 0.14)"
-                        : "var(--sk-bg-cell)",
-                      border: isSelected
-                        ? "2px solid var(--sk-accent)"
-                        : "1px solid var(--sk-border-soft)",
-                      cursor: "pointer",
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (monthDropDate !== cell.date) setMonthDropDate(cell.date);
                     }}
+                    onDragLeave={() => setMonthDropDate(null)}
+                    onDrop={(e) => handleDropOnCalendarDay(e, cell.date)}
+                    title="Déposez un modèle ici pour l'afficher sur cette journée"
                   >
                     <div
                       style={{
@@ -2246,10 +2851,41 @@ export default function Planning() {
                       <span>{cell.day}</span>
                       {cell.isHoliday && <span title={cell.holiday?.name}>🎌</span>}
                     </div>
-                    <div style={{ fontSize: 11.5, color: "var(--sk-text-soft)" }}>
-                      {cell.isHoliday
-                        ? cell.holiday?.name
-                        : `${cell.schPlannings.length} modèle(s) • ${cell.actES.length} perso`}
+
+                    <div style={{ fontSize: 11, color: "var(--sk-text-muted)" }}>
+                      {cell.isHoliday ? (
+                        cell.holiday?.name
+                      ) : (
+                        <>
+                          {cell.schPlannings.length} modèle(s) • {cell.actES.length} perso
+                        </>
+                      )}
+                    </div>
+
+                    {/* Modèles déposés sur cette journée */}
+                    <div className="sk-cal-pills-list">
+                      {dayModels.map((m, mIdx) => (
+                        <span
+                          key={`${m.id}-${mIdx}`}
+                          className="sk-cal-pill"
+                          style={{ "--cal-pill-bg": buildShiftGradient(m.color) }}
+                          title={m.label || m.name}
+                        >
+                          <span>{m.label || m.name}</span>
+                          <button
+                            type="button"
+                            className="sk-shift-del-btn"
+                            style={{ width: 16, height: 16 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeMonthModel(cell.date, mIdx);
+                            }}
+                            title="Retirer ce modèle de la journée"
+                          >
+                            <X size={10} />
+                          </button>
+                        </span>
+                      ))}
                     </div>
                   </div>
                 );
@@ -2259,7 +2895,7 @@ export default function Planning() {
         )}
 
         {/* 5. VUE DEMANDES DES COLLABORATEURS (schedule_change_requests) */}
-        {skelloView === "demandes" && (
+        {planningView === "demandes" && (
           <div className="sk-matrix-card" style={{ padding: 20 }}>
             <div
               style={{
@@ -2280,9 +2916,9 @@ export default function Planning() {
               <button
                 type="button"
                 className="sk-btn-secondary"
-                onClick={() => setSkelloView("semaine")}
+                onClick={() => setPlanningView("semaine")}
               >
-                Retour à la grille Skello
+                Retour à la grille En-Check
               </button>
             </div>
 
@@ -2396,7 +3032,9 @@ export default function Planning() {
                 <h2 className="sk-modal-title">
                   {editingPlanning ? "Modifier le modèle" : "Nouveau modèle glissable"}
                 </h2>
-                <span className="sk-modal-sub">Modèle d'horaire entreprise (Dock Skello)</span>
+                <span className="sk-modal-sub">
+                  Modèle d&apos;horaires entreprise (work_schedules)
+                </span>
               </div>
               <button
                 type="button"
@@ -2609,7 +3247,9 @@ export default function Planning() {
                     ? "Ajuster le planning du collaborateur"
                     : "Attribuer un planning"}
                 </h2>
-                <span className="sk-modal-sub">Configuration individuelle Skello</span>
+                <span className="sk-modal-sub">
+                  Configuration individuelle En-Check
+                </span>
               </div>
               <button
                 type="button"
@@ -2789,6 +3429,44 @@ export default function Planning() {
                   </div>
                 </>
               )}
+
+              {/* Personnalisation de la couleur de la case / du créneau */}
+              <div>
+                <label className="sk-field-label">
+                  <Palette size={13} /> Couleur de la case
+                </label>
+                <div className="sk-color-swatches">
+                  {ENCHECK_COLOR_PALETTE.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`sk-color-swatch ${
+                        employeeScheduleForm.custom_color === c.value ? "active" : ""
+                      }`}
+                      style={{ background: c.value }}
+                      title={c.label}
+                      onClick={() =>
+                        setEmployeeScheduleForm({
+                          ...employeeScheduleForm,
+                          custom_color: c.value,
+                        })
+                      }
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    className="sk-color-input"
+                    value={employeeScheduleForm.custom_color || "#B56235"}
+                    onChange={(e) =>
+                      setEmployeeScheduleForm({
+                        ...employeeScheduleForm,
+                        custom_color: e.target.value,
+                      })
+                    }
+                    title="Couleur libre"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="sk-modal-foot">
@@ -2805,6 +3483,323 @@ export default function Planning() {
                 onClick={handleSaveEmployeeSchedule}
               >
                 <Save size={14} /> Enregistrer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ MODAL CRÉATION / ÉDITION D'UN MODÈLE PERSONNALISÉ EN-CHECK ═══ */}
+      {showModelModal && (
+        <div className="sk-modal-backdrop" onClick={() => setShowModelModal(false)}>
+          <div className="sk-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="sk-modal-head">
+              <div>
+                <h2 className="sk-modal-title">
+                  {editingCustomModel ? "Modifier le modèle" : "Nouveau modèle En-Check"}
+                </h2>
+                <span className="sk-modal-sub">
+                  Horaire, pause, congé ou repos — 100 % personnalisable
+                </span>
+              </div>
+              <button
+                type="button"
+                className="sk-back-btn"
+                onClick={() => setShowModelModal(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="sk-modal-body">
+              <div>
+                <label className="sk-field-label">Nom du modèle *</label>
+                <input
+                  className="sk-input"
+                  type="text"
+                  value={modelForm.name}
+                  onChange={(e) => setModelForm({ ...modelForm, name: e.target.value })}
+                  placeholder="Ex : Pause déjeuner, Congé payé, Garde nuit..."
+                />
+              </div>
+
+              <div>
+                <label className="sk-field-label">
+                  <Layers size={13} /> Type de modèle *
+                </label>
+                <select
+                  className="sk-select"
+                  value={modelForm.kind}
+                  onChange={(e) => setModelForm({ ...modelForm, kind: e.target.value })}
+                >
+                  {MODEL_KINDS.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {modelForm.kind === "shift" && (
+                <div className="sk-row-2">
+                  <div>
+                    <label className="sk-field-label">
+                      <Clock size={13} /> Début
+                    </label>
+                    <input
+                      className="sk-input"
+                      type="time"
+                      value={modelForm.start_time}
+                      onChange={(e) =>
+                        setModelForm({ ...modelForm, start_time: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="sk-field-label">
+                      <Clock size={13} /> Fin
+                    </label>
+                    <input
+                      className="sk-input"
+                      type="time"
+                      value={modelForm.end_time}
+                      onChange={(e) =>
+                        setModelForm({ ...modelForm, end_time: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              {modelForm.kind === "break_only" && (
+                <div className="sk-row-2">
+                  <div>
+                    <label className="sk-field-label">
+                      <Coffee size={13} /> Début de la pause
+                    </label>
+                    <input
+                      className="sk-input"
+                      type="time"
+                      value={modelForm.break_start}
+                      onChange={(e) =>
+                        setModelForm({ ...modelForm, break_start: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="sk-field-label">
+                      <Coffee size={13} /> Fin de la pause
+                    </label>
+                    <input
+                      className="sk-input"
+                      type="time"
+                      value={modelForm.break_end}
+                      onChange={(e) =>
+                        setModelForm({ ...modelForm, break_end: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              {modelForm.kind === "shift" && (
+                <div>
+                  <label className="sk-field-label" style={{ cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={modelForm.has_break}
+                      onChange={(e) =>
+                        setModelForm({ ...modelForm, has_break: e.target.checked })
+                      }
+                    />
+                    <Coffee size={14} color="#F59E0B" />
+                    <span>Inclure une pause</span>
+                  </label>
+                </div>
+              )}
+
+              {modelForm.kind === "shift" && modelForm.has_break && (
+                <div className="sk-row-2">
+                  <div>
+                    <label className="sk-field-label">Début pause</label>
+                    <input
+                      className="sk-input"
+                      type="time"
+                      value={modelForm.break_start}
+                      onChange={(e) =>
+                        setModelForm({ ...modelForm, break_start: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="sk-field-label">Fin pause</label>
+                    <input
+                      className="sk-input"
+                      type="time"
+                      value={modelForm.break_end}
+                      onChange={(e) =>
+                        setModelForm({ ...modelForm, break_end: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="sk-field-label">
+                  <Palette size={13} /> Couleur du modèle et des cases
+                </label>
+                <div className="sk-color-swatches">
+                  {ENCHECK_COLOR_PALETTE.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`sk-color-swatch ${
+                        modelForm.color === c.value ? "active" : ""
+                      }`}
+                      style={{ background: c.value }}
+                      title={c.label}
+                      onClick={() => setModelForm({ ...modelForm, color: c.value })}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    className="sk-color-input"
+                    value={modelForm.color}
+                    onChange={(e) => setModelForm({ ...modelForm, color: e.target.value })}
+                    title="Couleur libre"
+                  />
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  background: buildShiftGradient(modelForm.color),
+                  color: "#FFF7ED",
+                  fontSize: 13,
+                  fontWeight: 700,
+                }}
+              >
+                Aperçu : {modelForm.name || "Mon modèle"}
+                {modelForm.kind === "shift"
+                  ? ` — ${formatTime(modelForm.start_time)} - ${formatTime(
+                      modelForm.end_time
+                    )}`
+                  : modelForm.kind === "break_only"
+                  ? ` — ${formatTime(modelForm.break_start)} - ${formatTime(
+                      modelForm.break_end
+                    )}`
+                  : modelForm.kind === "leave"
+                  ? " — Congé / Absence"
+                  : " — Repos"}
+              </div>
+            </div>
+
+            <div className="sk-modal-foot">
+              <button
+                type="button"
+                className="sk-btn-secondary"
+                onClick={() => setShowModelModal(false)}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="sk-btn-publish"
+                onClick={handleSaveCustomModel}
+              >
+                <Save size={14} /> {editingCustomModel ? "Enregistrer" : "Créer le modèle"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ MODAL CRÉATION / ÉDITION D'UNE ÉQUIPE ═══ */}
+      {showTeamModal && (
+        <div className="sk-modal-backdrop" onClick={() => setShowTeamModal(false)}>
+          <div className="sk-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="sk-modal-head">
+              <div>
+                <h2 className="sk-modal-title">
+                  {editingTeam ? `Équipe ${editingTeam.name}` : "Nouvelle équipe"}
+                </h2>
+                <span className="sk-modal-sub">
+                  Nommez votre équipe et affectez ses membres
+                </span>
+              </div>
+              <button
+                type="button"
+                className="sk-back-btn"
+                onClick={() => setShowTeamModal(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="sk-modal-body">
+              <div>
+                <label className="sk-field-label">
+                  <Users size={13} /> Nom de l&apos;équipe *
+                </label>
+                <input
+                  className="sk-input"
+                  type="text"
+                  value={teamForm.name}
+                  onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
+                  placeholder="Ex : GARDE & LOGISTIQUE, ÉQUIPE OFFICINE & VENTE..."
+                />
+              </div>
+
+              <div>
+                <label className="sk-field-label">
+                  Membres de l&apos;équipe ({teamForm.memberIds.length} sélectionné(s))
+                </label>
+                <div className="sk-team-member-list">
+                  {filteredEmployees.map((emp) => {
+                    const checked = teamForm.memberIds.includes(emp.id);
+                    return (
+                      <label key={emp.id} className="sk-team-member-row">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setTeamForm({
+                              ...teamForm,
+                              memberIds: checked
+                                ? teamForm.memberIds.filter((id) => id !== emp.id)
+                                : [...teamForm.memberIds, emp.id],
+                            })
+                          }
+                        />
+                        <span>
+                          {emp.first_name} {emp.last_name}
+                          {emp.matricule ? ` · ${emp.matricule}` : ""}
+                        </span>
+                      </label>
+                    );
+                  })}
+                  {filteredEmployees.length === 0 && (
+                    <span style={{ fontSize: 12.5, color: "var(--sk-text-muted)" }}>
+                      Aucun collaborateur disponible pour ce filtre.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="sk-modal-foot">
+              <button
+                type="button"
+                className="sk-btn-secondary"
+                onClick={() => setShowTeamModal(false)}
+              >
+                Annuler
+              </button>
+              <button type="button" className="sk-btn-publish" onClick={handleSaveTeam}>
+                <Save size={14} /> Enregistrer l&apos;équipe
               </button>
             </div>
           </div>

@@ -2758,18 +2758,18 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  color: var(--pv-text-soft);
+  color: var(--pv-text-soft, var(--pt-text-soft, #d5c7b8));
   font-size: 0.78rem;
   font-weight: 700;
-  border: 1px solid var(--pv-border);
+  border: 1px solid var(--pv-border, var(--pt-border, rgba(245, 158, 11, 0.25)));
   border-radius: 10px;
-  background: var(--pv-card);
+  background: var(--pv-card, var(--pt-card, rgba(29, 23, 19, 0.92)));
   cursor: pointer;
 }
 
 .pauses-v2-Ghost-btn:hover {
-  color: var(--pv-text);
-  border-color: var(--pv-border-strong);
+  color: var(--pv-text, var(--pt-text, #f7f2eb));
+  border-color: var(--pv-border-strong, rgba(245, 158, 11, 0.55));
 }
 
 /* ── Live Active Break Banner ── */
@@ -2813,7 +2813,7 @@
   border: 1px solid rgba(245, 158, 11, 0.38);
   border-radius: 999px;
   background: rgba(245, 158, 11, 0.14);
-  color: var(--pv-text);
+  color: var(--pv-text, var(--pt-text, #f7f2eb));
   font-size: 0.8rem;
   font-weight: 700;
 }
