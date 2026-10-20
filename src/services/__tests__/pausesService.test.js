@@ -15,6 +15,8 @@ import {
   fusionnerPausesEmploye,
   formaterTempsPauseEnDirect,
   formaterChronoPauseDigital,
+  pausesVisiblesDansPointages,
+  estPresumeeValidee,
 } from '../pausesService.js'
 
 beforeEach(() => {
@@ -184,4 +186,35 @@ describe('⏸ Service Pauses — présentation pure (16/10/2026)', () => {
     expect(formaterTempsPauseEnDirect(pauseOuverte, now1h05m09s)).toBe('1h 05m 09s')
     expect(formaterChronoPauseDigital(pauseOuverte, now1h05m09s)).toBe('01:05:09')
   })
+
+  it('pausesVisiblesDansPointages : une pause présumée validée reste visible, une écartée non', () => {
+    const pointee = { id: '1', source: 'pointee', statut: 'validee' }
+    const admin = { id: '2', source: 'admin', statut: 'validee' }
+    const presumeeAStatuer = { id: '3', source: 'presumee', statut: 'presumee' }
+    const presumeeValidee = { id: '4', source: 'presumee', statut: 'validee' }
+    const presumeeEcartee = { id: '5', source: 'presumee', statut: 'ecartee' }
+    const interSessions = { id: '6', source: 'inter_sessions', statut: 'validee' }
+
+    const visibles = pausesVisiblesDansPointages([
+      pointee, admin, presumeeAStatuer, presumeeValidee, presumeeEcartee, interSessions,
+    ])
+    const ids = visibles.map((p) => p.id)
+
+    expect(ids).toContain('1')
+    expect(ids).toContain('2')
+    expect(ids).toContain('4')
+    expect(ids).not.toContain('3') // présumée à statuer : reste dans l'onglet Présumées
+    expect(ids).not.toContain('5') // écartée : invisible partout
+    expect(ids).not.toContain('6') // simple intervalle entre deux pointages
+  })
+
+  it('estPresumeeValidee : origine présumée conservée après validation humaine', () => {
+    expect(estPresumeeValidee({ source: 'presumee', statut: 'validee' })).toBe(true)
+    expect(estPresumeeValidee({ source: 'presumee', statut: 'presumee' })).toBe(false)
+    expect(estPresumeeValidee({ source: 'pointee', statut: 'validee' })).toBe(false)
+    expect(estPresumeeValidee(null)).toBe(false)
+    // Une présumée validée n'est JAMAIS comptée comme réelle
+    expect(estPauseReelleEffectuee({ source: 'presumee', statut: 'validee' })).toBe(false)
+  })
+
 })

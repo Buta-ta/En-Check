@@ -39,9 +39,12 @@ import {
   estPausePresumee,
   estPauseReelleEffectuee,
   estPointageEnRetard,
+  estPresumeeValidee,
   estServiceDeNuit,
   formaterTempsPauseEnDirect,
+  pausesVisiblesDansPointages,
 } from '../services/pausesService'
+import FeatureService from '../services/featureService'
 import { estEstimationAStatuer } from '../services/seuilsPointage'
 import {
   formaterDureeComplete,
@@ -603,6 +606,10 @@ export function PointagesExecutiveKpis({
 }
 
 export function PointagesAnalyticsCharts({ pointages = [], stats = {} }) {
+  //  Heure actuellement parcourue dans le flux 24h (null = aucun filtre).
+  //  Les données sont relues à chaque changement de `pointages` : le panneau
+  //  de détail est donc toujours synchronisé avec la journée affichée.
+  const [activeHour, setActiveHour] = useState(null)
   const hourlyBuckets = useMemo(() => {
     const hours = Array.from({ length: 24 }, (_, h) => h)
     const map = new Map(
@@ -614,6 +621,8 @@ export function PointagesAnalyticsCharts({ pointages = [], stats = {} }) {
           isNight: h < 6 || h >= 20,
           inCount: 0,
           outCount: 0,
+          entrees: [],
+          sorties: [],
         },
       ])
     )
@@ -626,8 +635,21 @@ export function PointagesAnalyticsCharts({ pointages = [], stats = {} }) {
         const clamped = Math.max(0, Math.min(23, h))
         const bucket = map.get(clamped)
         if (!bucket) continue
-        if (String(att.check_type || '').toLowerCase() === 'in') bucket.inCount += 1
-        else bucket.outCount += 1
+        const nom = `${p.employee?.first_name || ''} ${p.employee?.last_name || ''}`.trim() || 'Employé'
+        const ligne = {
+          employeId: p.employee?.id || null,
+          nom,
+          matricule: p.employee?.matricule || '',
+          heure: formaterHeureLocale(att.check_time),
+          methode: formatMethodLabel(att.method),
+        }
+        if (String(att.check_type || '').toLowerCase() === 'in') {
+          bucket.inCount += 1
+          bucket.entrees.push(ligne)
+        } else {
+          bucket.outCount += 1
+          bucket.sorties.push(ligne)
+        }
       }
     }
 
@@ -642,6 +664,11 @@ export function PointagesAnalyticsCharts({ pointages = [], stats = {} }) {
   const nightActivityTotal = useMemo(
     () => hourlyBuckets.filter((b) => b.isNight).reduce((acc, b) => acc + b.inCount + b.outCount, 0),
     [hourlyBuckets]
+  )
+
+  const activeBucket = useMemo(
+    () => (activeHour === null ? null : hourlyBuckets.find((b) => b.hour === activeHour) || null),
+    [activeHour, hourlyBuckets]
   )
 
   const methodStats = useMemo(() => {
@@ -731,13 +758,44 @@ export function PointagesAnalyticsCharts({ pointages = [], stats = {} }) {
 
             {hourlyBuckets.map((b, idx) => {
               const slotWidth = 572 / hourlyBuckets.length
-              const xCenter = 14 + idx * slotWidth + slotWidth / 2
+              const slotX = 14 + idx * slotWidth
+              const xCenter = slotX + slotWidth / 2
               const inHeight = Math.max(3, (b.inCount / maxHourly) * 104)
               const outHeight = Math.max(3, (b.outCount / maxHourly) * 104)
               const baseLine = 134
+              const isActiveHour = activeHour === b.hour
 
               return (
-                <g key={b.hour}>
+                <g
+                  key={b.hour}
+                  className={`pointages-hourly-slot${isActiveHour ? ' is-active' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${b.label} : ${b.inCount} entrée(s), ${b.outCount} sortie(s) — voir le détail`}
+                  onClick={() => setActiveHour(isActiveHour ? null : b.hour)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setActiveHour(isActiveHour ? null : b.hour)
+                    } else if (event.key === 'ArrowRight') {
+                      event.preventDefault()
+                      setActiveHour((prev) => (prev === null ? 0 : (prev + 1) % 24))
+                    } else if (event.key === 'ArrowLeft') {
+                      event.preventDefault()
+                      setActiveHour((prev) => (prev === null ? 23 : (prev + 23) % 24))
+                    } else if (event.key === 'Escape') {
+                      setActiveHour(null)
+                    }
+                  }}
+                >
+                  <rect
+                    className="pointages-hourly-hit"
+                    x={slotX}
+                    y={14}
+                    width={slotWidth}
+                    height={146}
+                    rx="6"
+                  />
                   <rect
                     x={xCenter - 5.5}
                     y={baseLine - inHeight}
@@ -775,6 +833,66 @@ export function PointagesAnalyticsCharts({ pointages = [], stats = {} }) {
               )
             })}
           </svg>
+
+          {activeBucket ? (
+            <div className="pointages-hourly-detail" role="status" aria-live="polite">
+              <div className="pointages-hourly-detail-head">
+                <strong>
+                  {activeBucket.label}
+                  {activeBucket.isNight ? ' · 🌙 Nuit' : ''}
+                </strong>
+                <span>
+                  {activeBucket.entrees.length} entrée
+                  {activeBucket.entrees.length > 1 ? 's' : ''} ·{' '}
+                  {activeBucket.sorties.length} sortie
+                  {activeBucket.sorties.length > 1 ? 's' : ''}
+                </span>
+                <button
+                  type="button"
+                  className="pointages-hourly-detail-close"
+                  onClick={() => setActiveHour(null)}
+                >
+                  Fermer
+                </button>
+              </div>
+
+              {activeBucket.entrees.length === 0 && activeBucket.sorties.length === 0 ? (
+                <p className="pointages-hourly-detail-empty">
+                  Aucun badge enregistré entre {activeBucket.label} et{' '}
+                  {`${String((activeBucket.hour + 1) % 24).padStart(2, '0')}h`}.
+                </p>
+              ) : (
+                <ul className="pointages-hourly-detail-list">
+                  {activeBucket.entrees.map((ligne, i) => (
+                    <li key={`in-${i}`} className="is-in-row">
+                      <span className="pointages-hourly-dot is-in" aria-hidden="true" />
+                      <strong>{ligne.nom}</strong>
+                      {ligne.matricule ? <em>{ligne.matricule}</em> : null}
+                      <span className="pointages-hourly-time">{ligne.heure}</span>
+                      <span className="pointages-hourly-method">Entrée · {ligne.methode}</span>
+                    </li>
+                  ))}
+                  {activeBucket.sorties.map((ligne, i) => (
+                    <li key={`out-${i}`} className="is-out-row">
+                      <span className="pointages-hourly-dot is-out" aria-hidden="true" />
+                      <strong>{ligne.nom}</strong>
+                      {ligne.matricule ? <em>{ligne.matricule}</em> : null}
+                      <span className="pointages-hourly-time">{ligne.heure}</span>
+                      <span className="pointages-hourly-method">Sortie · {ligne.methode}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <p className="pointages-hourly-detail-hint">
+                Cliquez une heure du graphique pour l’ouvrir · ← → pour parcourir · Échap pour quitter.
+              </p>
+            </div>
+          ) : (
+            <p className="pointages-hourly-detail-hint is-idle">
+              Cliquez sur une heure du graphique (ou utilisez ← →) pour lire qui a badgé, à quelle heure et par quel canal.
+            </p>
+          )}
         </div>
       </article>
 
@@ -930,6 +1048,7 @@ export function PointagesPassportGrid({
   pointages = [],
   selectedDate,
   selectedEmployeeId,
+  hasOvertimeFeature = false,
   onSelectPointage,
   onOpenEmployeeFiche,
   onExamineEstimation,
@@ -967,8 +1086,13 @@ export function PointagesPassportGrid({
               ? 100
               : 0
 
-          const pausesList = (p.pauses || []).filter((pa) => estPauseReelleEffectuee(pa))
-          const activePause = pausesList.find((pa) => pa.ouverte)
+          //  Pauses réelles + pauses présumées VALIDÉES par un humain : une
+          //  pause validée ne disparaît pas de l'écran, elle est seulement
+          //  étiquetée (jamais comptée comme réelle).
+          const pausesList = pausesVisiblesDansPointages(p.pauses)
+          const pausesReelles = (p.pauses || []).filter((pa) => estPauseReelleEffectuee(pa))
+          const activePause = pausesReelles.find((pa) => pa.ouverte)
+          const presumedValidees = pausesList.filter((pa) => estPresumeeValidee(pa)).length
           const hasUnplannedPause = pausesList.some((pa) => pa.estNonPlanifiee)
           const totalPauseMin = pausesList.reduce((acc, pa) => acc + (Number(pa.dureeMinutes) || 0), 0)
           const initials = `${p.employee?.first_name?.[0] || ''}${p.employee?.last_name?.[0] || ''}` || 'EC'
@@ -1101,6 +1225,28 @@ export function PointagesPassportGrid({
                       <span>
                         {hasScheduleBounds ? `Prévu ${sched.startTime}–${sched.endTime}` : 'Sans créneau En-Check'}
                       </span>
+                      {hasOvertimeFeature && p.overtimeData?.hasOvertime && (
+                        <span
+                          className="pointages-passport-overtime"
+                          title={
+                            p.overtimeData.overtimeMajorSeconds > 0
+                              ? `Normal ${FeatureService.formatOvertimeDisplay(p.overtimeData.overtimeSeconds)} (${p.overtimeData.rateApplied}%) · Majoré ${FeatureService.formatOvertimeDisplay(p.overtimeData.overtimeMajorSeconds)} (${p.overtimeData.rateMajorApplied}%)`
+                              : `Heures supplémentaires au taux de ${p.overtimeData.rateApplied}%`
+                          }
+                        >
+                          <Timer size={11} />
+                          <span>
+                            HS {FeatureService.formatOvertimeDisplay(p.overtimeData.totalOvertimeSeconds)}
+                          </span>
+                          <em>({p.overtimeData.rateApplied}%)</em>
+                          {p.overtimeData.overtimeMajorSeconds > 0 && (
+                            <em className="is-major">
+                              + majoré {FeatureService.formatOvertimeDisplay(p.overtimeData.overtimeMajorSeconds)}
+                              {' '}({p.overtimeData.rateMajorApplied}%)
+                            </em>
+                          )}
+                        </span>
+                      )}
                     </>
                   )}
                 </div>
@@ -1125,6 +1271,12 @@ export function PointagesPassportGrid({
                     )}
                     {hasUnplannedPause && (
                       <em className="pointages-unplanned-pill">Hors planning</em>
+                    )}
+                    {presumedValidees > 0 && (
+                      <em className="pointages-unplanned-pill is-presumed-validated">
+                        dont {presumedValidees} présumée{presumedValidees > 1 ? 's' : ''} validée
+                        {presumedValidees > 1 ? 's' : ''}
+                      </em>
                     )}
                   </span>
                 </div>

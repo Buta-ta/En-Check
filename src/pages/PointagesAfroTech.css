@@ -559,6 +559,173 @@
   color: var(--pt-ink);
 }
 
+/* ═══ FLUX 24H PARCOURABLE (clic / clavier sur chaque heure) ═══ */
+.pointages-hourly-slot {
+  cursor: pointer;
+  outline: none;
+}
+
+.pointages-hourly-hit {
+  fill: transparent;
+  transition: fill 160ms ease;
+}
+
+.pointages-hourly-slot:hover .pointages-hourly-hit,
+.pointages-hourly-slot:focus-visible .pointages-hourly-hit {
+  fill: rgba(245, 158, 11, 0.12);
+}
+
+.pointages-hourly-slot.is-active .pointages-hourly-hit {
+  fill: rgba(245, 158, 11, 0.2);
+  stroke: var(--pt-copper);
+  stroke-width: 1.5;
+}
+
+.pointages-hourly-slot:focus-visible .pointages-hourly-hit {
+  stroke: var(--pt-copper);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+
+.pointages-hourly-detail {
+  margin-top: 10px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--pt-copper) 40%, var(--pt-line));
+  border-radius: 12px;
+  background: var(--pt-surface-soft);
+}
+
+.pointages-hourly-detail-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.pointages-hourly-detail-head strong {
+  color: var(--pt-ink);
+  font-size: 0.92rem;
+}
+
+.pointages-hourly-detail-head span {
+  color: var(--pt-ink-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.pointages-hourly-detail-close {
+  margin-left: auto;
+  padding: 4px 10px;
+  color: var(--pt-copper-strong);
+  font-size: 0.72rem;
+  font-weight: 800;
+  border: 1px solid var(--pt-line);
+  border-radius: 999px;
+  background: var(--pt-surface);
+  cursor: pointer;
+}
+
+.pointages-hourly-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.pointages-hourly-detail-list li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--pt-surface);
+  font-size: 0.78rem;
+}
+
+.pointages-hourly-detail-list li strong {
+  color: var(--pt-ink);
+}
+
+.pointages-hourly-detail-list li em {
+  color: var(--pt-ink-soft);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.pointages-hourly-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+}
+.pointages-hourly-dot.is-in { background: var(--pt-good); }
+.pointages-hourly-dot.is-out { background: var(--pt-copper); }
+
+.pointages-hourly-time {
+  color: var(--pt-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.pointages-hourly-method {
+  margin-left: auto;
+  color: var(--pt-ink-soft);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.pointages-hourly-detail-empty {
+  margin: 0 0 8px;
+  color: var(--pt-ink-soft);
+  font-size: 0.8rem;
+}
+
+.pointages-hourly-detail-hint {
+  margin: 0;
+  color: var(--pt-ink-soft);
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.pointages-hourly-detail-hint.is-idle {
+  margin-top: 8px;
+}
+
+/* ═══ HEURES SUPPLÉMENTAIRES DANS LE PASSEPORT ═══ */
+.pointages-passport-overtime {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  color: #F97316;
+  font-size: 0.68rem;
+  font-weight: 800;
+  border: 1px solid rgba(249, 115, 22, 0.32);
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.1);
+}
+
+.pointages-passport-overtime em {
+  font-style: normal;
+  opacity: 0.85;
+}
+
+.pointages-passport-overtime em.is-major {
+  color: var(--pt-bad);
+}
+
+.pointages-unplanned-pill.is-presumed-validated {
+  color: #26734D;
+  border-color: rgba(38, 115, 77, 0.35);
+  background: rgba(38, 115, 77, 0.12);
+}
+
 .pointages-methods-layout {
   display: grid;
   grid-template-columns: 118px minmax(0, 1fr);

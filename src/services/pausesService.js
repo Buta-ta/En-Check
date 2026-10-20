@@ -69,6 +69,33 @@ export function filtrerPausesPresumees (pauses = []) {
 }
 
 /**
+ * Pauses à afficher dans la page POINTAGES.
+ *
+ * Doctrine « On invente, on marque, on n'encaisse pas » : une pause présumée
+ * VALIDÉE par un humain n'est pas effacée de l'écran — elle reste visible,
+ * mais jamais mélangée aux pauses réellement pointées : son libellé rappelle
+ * son origine (« ✓ Pause présumée validée »).
+ * Les pauses ÉCARTÉES restent invisibles partout : elles ne sont pas payées.
+ */
+export function pausesVisiblesDansPointages (pauses = []) {
+  return (pauses || []).filter((p) => {
+    if (!p) return false
+    if (p.statut === 'ecartee') return false
+    if (estPauseReelleEffectuee(p)) return true
+    return estPausePresumee(p) && p.statut === 'validee'
+  })
+}
+
+/**
+ * Vrai si la pause est une pause présumée validée par un humain.
+ * Une pause présumée validée reste « d'origine présumée » : elle n'est pas
+ * comptée comme réelle, elle est seulement rendue visible.
+ */
+export function estPresumeeValidee (p) {
+  return Boolean(p) && estPausePresumee(p) && p.statut === 'validee'
+}
+
+/**
  * Libellé explicite distinguant la nature exacte d'une pause :
  * pause réelle pointée (non présumée) vs pause présumée à statuer vs pause présumée validée.
  */

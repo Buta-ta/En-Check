@@ -52,9 +52,11 @@ import {
   construirePauses,
   estPauseReelleEffectuee,
   estPointageEnRetard,
+  estPresumeeValidee,
   estServiceDeNuit,
   formaterTempsPauseEnDirect,
   fusionnerPausesEmploye,
+  pausesVisiblesDansPointages,
 } from '../services/pausesService'
 import { useTheme } from '../contexts/ThemeContext'
 import ExaminerEstimationModal from '../components/ExaminerEstimationModal'
@@ -1926,6 +1928,7 @@ export default function Pointages() {
               pointages={filteredAndSortedPointages}
               selectedDate={selectedDate}
               selectedEmployeeId={inspectedPointage?.employee?.id || null}
+              hasOvertimeFeature={hasOvertimeFeature}
               onSelectPointage={(p) => setInspectedPointage(p)}
               onOpenEmployeeFiche={(p) => setFicheEmployeeTarget(p)}
               onExamineEstimation={(p) => setEstimationModalTarget(p)}
@@ -2762,6 +2765,11 @@ function PointageCard({
   // pas par un administrateur. Le détail (ancien type, nouveau type, date)
   // est conservé dans la table `attendance_corrections`.
   const correctionEmploye = p.attendances.find(a => a.modifie_par_employe)
+  //  Pauses réellement effectuées + pauses présumées VALIDÉES : une pause
+  //  validée reste affichée (elle ne disparaît plus), mais n'est jamais
+  //  comptée comme réelle — le libellé le dit explicitement.
+  const pausesVisibles = pausesVisiblesDansPointages(p.pauses)
+  const presumedValidees = pausesVisibles.filter(pa => estPresumeeValidee(pa)).length
   const realPauses = (p.pauses || []).filter(pa => estPauseReelleEffectuee(pa))
   const activePause = realPauses.find(pa => pa.ouverte) || null
   const [nowMs, setNowMs] = useState(() => Date.now())
@@ -2858,7 +2866,7 @@ function PointageCard({
       </div>
 
       {/* PAUSES RÉELLES EN DIRECT / EFFECTUÉES */}
-      {realPauses.length > 0 && (
+      {pausesVisibles.length > 0 && (
         <div
           className={`pointages-pause-inline${activePause ? ' is-live' : ''}`}
           style={{ marginTop: 10, marginBottom: 4 }}
@@ -2872,8 +2880,11 @@ function PointageCard({
               </>
             ) : (
               <>
-                ☕ {realPauses.length} pause{realPauses.length > 1 ? 's' : ''} réelle{realPauses.length > 1 ? 's' : ''} :{' '}
-                {realPauses.map(pa => `${pa.debutHHMM}→${pa.finHHMM || ''} (${pa.dureeMinutes} min)`).join(' · ')}
+                ☕ {pausesVisibles.length} pause{pausesVisibles.length > 1 ? 's' : ''}
+                {presumedValidees > 0
+                  ? ` (dont ${presumedValidees} présumée${presumedValidees > 1 ? 's' : ''} validée${presumedValidees > 1 ? 's' : ''})`
+                  : ` réelle${pausesVisibles.length > 1 ? 's' : ''}`} :{' '}
+                {pausesVisibles.map(pa => `${pa.debutHHMM}→${pa.finHHMM || ''} (${pa.dureeMinutes} min)`).join(' · ')}
               </>
             )}
           </span>
