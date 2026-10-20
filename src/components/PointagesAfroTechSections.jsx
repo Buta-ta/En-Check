@@ -1,3 +1,4 @@
+import IgnoredExitNotice from './IgnoredExitNotice'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -961,6 +962,7 @@ export function PointagesPassportGrid({
               </div>
 
               {/* DISTINCTION EXPLICITE : ENTRÉE BADGÉE vs SORTIE BADGÉE / PRÉSUMÉE À CONFIRMER / PRÉSUMÉE VALIDÉE */}
+              <IgnoredExitNotice exits={p.sortiesNonRetenues} />
               <div className="pointages-passport-timeline">
                 {isPresent ? (
                   <div className="pointages-explicit-hours">
@@ -995,7 +997,7 @@ export function PointagesPassportGrid({
                     ) : (
                       <div className="pointages-explicit-hour-row is-open-shift">
                         <span className="pointages-explicit-hour-kind">Sortie</span>
-                        <strong className="pointages-explicit-hour-val">En poste (aucune sortie)</strong>
+                        <strong className="pointages-explicit-hour-val">Session non clôturée (sortie à vérifier)</strong>
                       </div>
                     )}
                   </div>
@@ -1195,6 +1197,7 @@ export function PointagesSlideOverDrawer({
           )}
         </div>
 
+        <IgnoredExitNotice exits={pointage.sortiesNonRetenues} />
         {/* 1. PLANNING & NATURE EXPLICITE DES HEURES */}
         <div className="pointages-passport-timeline" style={{ marginBottom: 10 }}>
           <div className="pointages-explicit-hours">

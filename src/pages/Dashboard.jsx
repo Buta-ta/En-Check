@@ -1,3 +1,4 @@
+import { findMissingExitEntries } from '../services/missingExits'
 // ═══════════════════════════════════════════════════════════
 // 📊 PAGE DASHBOARD AFROFUTURISTE ENRICHI
 // Avec conflits absence/pointage intégrés + Notifications + ANIMATIONS
@@ -397,22 +398,8 @@ export default function Dashboard() {
     const congesToday = absencesToday.length
     const absentsToday = employesData.filter(emp => !employeeIdsWithAttendance.has(emp.id) && !employeeIdsOnLeave.has(emp.id)).length
     const photosToday = photosData.filter(a => a.pointages_photos?.length > 0).length
-    // Oublis de badge : l'employé a pointé son arrivée et n'a jamais pointé sa
-    // sortie. On regarde le DERNIER geste de la journée : s'il est à l'entrée et
-    // qu'il date de plus de 8 heures, la sortie a été oubliée — le même seuil que
-    // l'alerte « Sortie manquante », pour que l'écran et la cloche disent la même chose.
-    const dernierGesteDuJour = new Map()
-    for (const a of attendancesToday) {
-      const t = new Date(a.check_time).getTime()
-      if (isNaN(t)) continue
-      const deja = dernierGesteDuJour.get(a.employee_id)
-      if (!deja || t > deja.t) {
-        dernierGesteDuJour.set(a.employee_id, { t, type: String(a.check_type || '').toLowerCase(), row: a })
-      }
-    }
-    const missingExitEntries = [...dernierGesteDuJour.values()].filter(
-      (d) => d.type === 'in' && Date.now() - d.t > 8 * 3600 * 1000,
-    )
+    // Alerte de sortie manquante, seuil configuré commun (pas une estimation).
+    const missingExitEntries = await findMissingExitEntries(attendancesToday, { enterpriseId })
     const oublisSortie = missingExitEntries.length
     setForgottenExitItems(
       missingExitEntries.map((d) => ({
@@ -529,22 +516,8 @@ export default function Dashboard() {
     const congesToday = absencesToday.length
     const absentsToday = Math.max(totalEmployes - presentsToday - employeeIdsOnLeave.size, 0)
     const photosToday = photosData.filter(a => a.pointages_photos?.length > 0).length
-    // Oublis de badge : l'employé a pointé son arrivée et n'a jamais pointé sa
-    // sortie. On regarde le DERNIER geste de la journée : s'il est à l'entrée et
-    // qu'il date de plus de 8 heures, la sortie a été oubliée — le même seuil que
-    // l'alerte « Sortie manquante », pour que l'écran et la cloche disent la même chose.
-    const dernierGesteDuJour = new Map()
-    for (const a of attendancesToday) {
-      const t = new Date(a.check_time).getTime()
-      if (isNaN(t)) continue
-      const deja = dernierGesteDuJour.get(a.employee_id)
-      if (!deja || t > deja.t) {
-        dernierGesteDuJour.set(a.employee_id, { t, type: String(a.check_type || '').toLowerCase(), row: a })
-      }
-    }
-    const missingExitEntries = [...dernierGesteDuJour.values()].filter(
-      (d) => d.type === 'in' && Date.now() - d.t > 8 * 3600 * 1000,
-    )
+    // Alerte de sortie manquante, seuil configuré commun (pas une estimation).
+    const missingExitEntries = await findMissingExitEntries(attendancesToday)
     const oublisSortie = missingExitEntries.length
     setForgottenExitItems(
       missingExitEntries.map((d) => ({

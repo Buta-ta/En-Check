@@ -323,7 +323,7 @@ export default function DashboardExperience({
       key: 'forgotten-exits',
       kind: 'missing',
       icon: Clock,
-      title: `${forgottenExits} sortie${forgottenExits > 1 ? 's' : ''} à confirmer`,
+      title: `${forgottenExits} sortie${forgottenExits > 1 ? 's' : ''} manquante${forgottenExits > 1 ? 's' : ''} à vérifier`,
       description: 'Des arrivées n’ont pas encore de sortie enregistrée.',
       actionLabel: 'Vérifier',
       onAction: () => (forgottenExitItems.length > 0 ? setIsForgottenExitModalOpen(true) : navigate('/pointages')),
@@ -371,15 +371,15 @@ export default function DashboardExperience({
   ].filter((action) => action.show)
 
   const widgetCatalog = [
-    { id: 'present', label: 'Présents aujourd’hui', description: 'Membres de l’équipe ayant pointé.', icon: UserCheck, value: loadError ? '—' : `${presentCount} / ${employeeCount}`, caption: metricCaption(`${presenceRate}% de l’équipe`), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Pointages', path: '/pointages?status=present' },
+    { id: 'present', label: 'Ayant pointé aujourd’hui', description: 'Membres de l’équipe ayant pointé.', icon: UserCheck, value: loadError ? '—' : `${presentCount} / ${employeeCount}`, caption: metricCaption(`${presenceRate}% de l’équipe`), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Pointages', path: '/pointages?status=present' },
     { id: 'review', label: 'À traiter', description: 'Conflits, demandes et sorties à vérifier.', icon: ShieldCheck, value: metricValue(reviewCount, true), caption: metricCaption('Situations à examiner'), tone: 'review', progress: metricShare(reviewCount), sourceLabel: 'Activité', path: '/pointages' },
     { id: 'late', label: 'Retards', description: 'Arrivées après l’horaire prévu.', icon: Timer, value: metricValue(lateCount, true), caption: metricCaption('Retards du jour'), tone: 'late', progress: metricShare(lateCount), sourceLabel: 'Retards', path: isSuperAdmin || moduleRetards ? '/retards' : '/pointages?status=present' },
     { id: 'absence', label: 'Absents', description: 'Membres sans pointage ni congé déclaré.', icon: UserX, value: metricValue(absentCount, true), caption: metricCaption('Sans pointage déclaré'), tone: 'absent', progress: metricShare(absentCount), sourceLabel: 'Pointages', path: '/pointages?status=absent' },
     { id: 'leaves', label: 'Congés / maladie', description: 'Absences autorisées aujourd’hui.', icon: CalendarOff, value: metricValue(leaveCount, true), caption: metricCaption('Congés ou maladie'), tone: 'leave', progress: metricShare(leaveCount), sourceLabel: 'Absences', path: '/absences', available: isSuperAdmin || moduleConges },
-    { id: 'presence-rate', label: 'Taux de présence', description: 'Part de l’équipe présente aujourd’hui.', icon: TrendingUp, value: metricValue(`${presenceRate}%`), caption: metricCaption('Taux du jour'), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Rapports', path: '/rapports' },
+    { id: 'presence-rate', label: 'Taux de pointage', description: 'Part de l’équipe ayant pointé aujourd’hui.', icon: TrendingUp, value: metricValue(`${presenceRate}%`), caption: metricCaption('Taux du jour'), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Rapports', path: '/rapports' },
     { id: 'punches', label: 'Pointages enregistrés', description: 'Entrées et sorties du jour.', icon: Clock, value: metricValue(Number(stats?.pointages) || 0), caption: metricCaption('Pointages aujourd’hui'), tone: 'neutral', sourceLabel: 'Pointages', path: '/pointages' },
     { id: 'team-size', label: 'Effectif', description: 'Collaborateurs actifs dans l’entreprise.', icon: Users, value: metricValue(employeeCount), caption: metricCaption('Collaborateurs'), tone: 'team', sourceLabel: 'Équipe', path: '/employes' },
-    { id: 'checkouts', label: 'Sorties à confirmer', description: 'Arrivées qui n’ont pas encore de sortie.', icon: LogOut, value: metricValue(forgottenExits, true), caption: metricCaption('Sorties manquantes'), tone: 'review', progress: metricShare(forgottenExits), sourceLabel: 'Pointages', path: '/pointages?status=present' },
+    { id: 'checkouts', label: 'Sorties manquantes à vérifier', description: 'Arrivées qui n’ont pas encore de sortie.', icon: LogOut, value: metricValue(forgottenExits, true), caption: metricCaption('Sorties manquantes'), tone: 'review', progress: metricShare(forgottenExits), sourceLabel: 'Pointages', path: '/pointages?status=present' },
     { id: 'conflicts', label: 'Conflits à examiner', description: 'Pointages effectués pendant une absence.', icon: ShieldCheck, value: metricValue(conflictCount, true), caption: metricCaption('Pointage / absence'), tone: 'late', progress: metricShare(conflictCount), sourceLabel: 'Absences', path: '/pointages?status=conflit_absence_pointage' },
     { id: 'photos', label: 'Photos de pointage', description: 'Preuves photo enregistrées aujourd’hui.', icon: Camera, value: metricValue(Number(stats?.photosToday) || 0), caption: metricCaption('Photos aujourd’hui'), tone: 'photos', sourceLabel: 'Pointages', path: '/pointages?photos=with' },
     { id: 'breaks', label: 'Pauses du jour', description: 'Pauses réelles en cours, planifiées et hors planning.', icon: Coffee, value: metricValue(realPausesToday.length, true), caption: metricCaption(activePauses.length > 0 ? `${activePauses.length} en cours (${formaterTempsPauseEnDirect(activePauses[0], nowMs)})` : `${unplannedPauses.length} hors planning`), tone: 'review', progress: metricShare(realPausesToday.length), sourceLabel: 'Pauses', path: '/pauses' },
@@ -944,7 +944,7 @@ export default function DashboardExperience({
                 <p className="dashboard-subtitle">Voici la présence de votre équipe et les points à vérifier aujourd’hui.</p>
                 <div className="dashboard-hero-meta">
                   <span className="dashboard-meta-chip"><Building2 size={13} />{selectedEnterpriseName}</span>
-                  <span className="dashboard-meta-chip is-positive"><UserCheck size={13} />{presentCount} présent{presentCount > 1 ? 's' : ''}</span>
+                  <span className="dashboard-meta-chip is-positive"><UserCheck size={13} />{presentCount} ayant pointé aujourd’hui</span>
                   {realPausesToday.length > 0 && (
                     <button
                       type="button"
@@ -1110,12 +1110,12 @@ export default function DashboardExperience({
                     <div className="dashboard-presence-ring-inner"><strong>{presenceRate}%</strong><span>présence</span></div>
                   </div>
                   <div className="dashboard-presence-copy">
-                    <strong>{presentCount} sur {employeeCount} présents</strong>
+                    <strong>{presentCount} sur {employeeCount} ont pointé</strong>
                     <p>Mis à jour à {currentTimeLabel}</p>
                   </div>
                 </div>
                 <div className="dashboard-presence-legend">
-                  <div className="dashboard-legend-row"><span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--good)' }} /><span>Présents</span><strong className="dashboard-legend-value">{presentCount}</strong></div>
+                  <div className="dashboard-legend-row"><span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--good)' }} /><span>Ayant pointé</span><strong className="dashboard-legend-value">{presentCount}</strong></div>
                   <div className="dashboard-legend-row"><span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--violet)' }} /><span>Congés / maladie</span><strong className="dashboard-legend-value">{leaveCount}</strong></div>
                   <div className="dashboard-legend-row"><span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--surface-raised)' }} /><span>Sans pointage déclaré</span><strong className="dashboard-legend-value">{absentCount}</strong></div>
                 </div>
@@ -1236,7 +1236,7 @@ export default function DashboardExperience({
                           </span>
                           <span className="dashboard-company-copy">
                             <span className="dashboard-company-name">{enterprise.name}</span>
-                            <span className="dashboard-company-meta">{enterprise.presentsToday}/{enterprise.employeesCount} présents</span>
+                            <span className="dashboard-company-meta">{enterprise.presentsToday}/{enterprise.employeesCount} ont pointé</span>
                           </span>
                           <strong className="dashboard-company-rate">{enterprise.tauxPresence}%</strong>
                         </div>
@@ -1256,7 +1256,7 @@ export default function DashboardExperience({
                   </div>
                   <div className="dashboard-distribution-list">
                     {[
-                      { label: 'Présents', value: presentCount, color: 'var(--good)' },
+                      { label: 'Ayant pointé', value: presentCount, color: 'var(--good)' },
                       { label: 'Absents', value: absentCount, color: 'var(--danger)' },
                       { label: 'Congés / maladie', value: leaveCount, color: 'var(--violet)' },
                     ].map((item) => {
@@ -1525,8 +1525,8 @@ export default function DashboardExperience({
             <header className="dashboard-conflict-header">
               <div className="dashboard-conflict-heading-icon"><LogOut size={20} /></div>
               <div className="dashboard-conflict-heading-copy">
-                <h2 id="dashboard-forgotten-exit-title">Sorties à confirmer</h2>
-                <p>Régularise en 1 clic les arrivées sans sortie enregistrée.</p>
+                <h2 id="dashboard-forgotten-exit-title">Sorties manquantes à vérifier</h2>
+                <p>Vérifiez les badges avant de renseigner une sortie manquante. Cette alerte ne constitue pas une estimation.</p>
               </div>
               <button type="button" className="dashboard-conflict-close" onClick={() => setIsForgottenExitModalOpen(false)} aria-label="Fermer"><X size={17} /></button>
             </header>
