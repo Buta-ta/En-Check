@@ -18,6 +18,7 @@ import {
   WovenKenteBadgeSvg,
 } from "../components/AfroCulturalSvg";
 import PlanningLoadingScreen from "../components/PlanningLoadingScreen";
+import useLoadingMinimum from "../hooks/useLoadingMinimum";
 import {
   ArrowLeft,
   Plus,
@@ -278,6 +279,7 @@ export default function Planning() {
   const [seuilsByEnterprise, setSeuilsByEnterprise] = useState({});
   const [allSchedules, setAllSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { minLoadingDone, skipLoading } = useLoadingMinimum();
 
   // Filtre de focus : totaux et grille liés au groupe ou au collaborateur sélectionné
   const [focusFilter, setFocusFilter] = useState({ type: "all", value: null });
@@ -2411,8 +2413,19 @@ export default function Planning() {
     holidayMapsByEnterprise,
   ]);
 
-  if (loading) {
-    return <PlanningLoadingScreen darkMode={darkMode} onSkip={() => setLoading(false)} />;
+  //  Deux scènes à voir : l'écran reste au moins `DUREE_MIN_CHARGEMENT_MS`,
+  //  même quand les données arrivent tout de suite. « Passer l'animation »
+  //  lève le plancher ; la page ne s'affiche jamais avant la fin du chargement.
+  if (loading || !minLoadingDone) {
+    return (
+      <PlanningLoadingScreen
+        darkMode={darkMode}
+        onSkip={() => {
+          skipLoading();
+          setLoading(false);
+        }}
+      />
+    );
   }
 
   // Totaux globaux pour la barre de pied En-Check

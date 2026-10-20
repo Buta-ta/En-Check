@@ -697,27 +697,66 @@
   margin-top: 8px;
 }
 
-/* ═══ HEURES SUPPLÉMENTAIRES DANS LE PASSEPORT ═══ */
+/* ═══ HEURES SUPPLÉMENTAIRES DANS LE PASSEPORT ═══
+   Trois niveaux de lecture, jamais imbriqués :
+   [HS +11h12]  (Normal +6h36 · 25 %)  (Majoré +4h36 · 50 %)                */
 .pointages-passport-overtime {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  max-width: 100%;
+  padding: 3px 8px;
   color: #F97316;
   font-size: 0.68rem;
   font-weight: 800;
   border: 1px solid rgba(249, 115, 22, 0.32);
-  border-radius: 999px;
+  border-radius: 10px;
   background: rgba(249, 115, 22, 0.1);
 }
 
-.pointages-passport-overtime em {
-  font-style: normal;
-  opacity: 0.85;
+.pointages-passport-overtime-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
 }
 
-.pointages-passport-overtime em.is-major {
+.pointages-passport-overtime-parts {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pointages-passport-overtime-rate {
+  padding: 1px 7px;
+  color: inherit;
+  font-style: normal;
+  font-size: 0.64rem;
+  font-weight: 700;
+  white-space: nowrap;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.16);
+}
+
+.pointages-passport-overtime-rate.is-major {
   color: var(--pt-bad);
+  background: rgba(239, 68, 68, 0.14);
+}
+
+/* Sur petit écran, les heures sup prennent leur propre ligne entière */
+@media (max-width: 720px) {
+  .pointages-passport-timeline-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .pointages-passport-overtime {
+    flex: 1 0 100%;
+    padding: 5px 8px;
+  }
 }
 
 .pointages-unplanned-pill.is-presumed-validated {
@@ -1231,6 +1270,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   margin-top: 6px;
   color: var(--pt-muted);
   font-size: 10px;
@@ -3172,6 +3213,157 @@
   border: 1px solid var(--pv-border);
   border-radius: 16px;
   background: var(--pv-card);
+}
+
+/* ═══ ACTIVITÉ DES PAUSES PARCOURABLE (clic / clavier sur chaque tranche) ═══ */
+.pauses-v2-hour-slot {
+  cursor: pointer;
+  outline: none;
+}
+
+.pauses-v2-hour-hit {
+  fill: transparent;
+  transition: fill 160ms ease;
+}
+
+.pauses-v2-hour-slot:hover .pauses-v2-hour-hit,
+.pauses-v2-hour-slot:focus-visible .pauses-v2-hour-hit {
+  fill: rgba(240, 178, 84, 0.14);
+}
+
+.pauses-v2-hour-slot.is-active .pauses-v2-hour-hit {
+  fill: rgba(240, 178, 84, 0.22);
+  stroke: var(--pv-gold);
+  stroke-width: 1.5;
+}
+
+.pauses-v2-hour-slot:focus-visible .pauses-v2-hour-hit {
+  stroke: var(--pv-gold);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+
+.pauses-v2-hour-detail {
+  margin-top: 12px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--pv-gold) 42%, var(--pv-border));
+  border-radius: 12px;
+  background: var(--pv-surface-soft);
+}
+
+.pauses-v2-hour-detail-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.pauses-v2-hour-detail-head strong {
+  color: var(--pv-text);
+  font-size: 0.95rem;
+}
+
+.pauses-v2-hour-detail-head span {
+  color: var(--pv-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.pauses-v2-hour-detail-close {
+  margin-left: auto;
+  padding: 4px 10px;
+  color: var(--pv-gold);
+  font-size: 0.72rem;
+  font-weight: 800;
+  border: 1px solid var(--pv-border);
+  border-radius: 999px;
+  background: var(--pv-card);
+  cursor: pointer;
+}
+
+.pauses-v2-hour-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.pauses-v2-hour-detail-list li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 9px;
+  border-radius: 9px;
+  background: var(--pv-card);
+  font-size: 0.78rem;
+}
+
+.pauses-v2-hour-detail-list li strong {
+  color: var(--pv-text);
+}
+
+.pauses-v2-hour-detail-list li em {
+  color: var(--pv-muted);
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.pauses-v2-hour-detail-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+}
+.pauses-v2-hour-detail-dot.is-real { background: #10b981; }
+.pauses-v2-hour-detail-dot.is-presumed { background: #f0b254; }
+
+.pauses-v2-hour-detail-time {
+  color: var(--pv-text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.pauses-v2-hour-detail-nature {
+  padding: 2px 7px;
+  color: var(--pv-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  border: 1px solid var(--pv-border);
+  border-radius: 999px;
+}
+
+.pauses-v2-hour-detail-duree {
+  margin-left: auto;
+  color: var(--pv-text);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.pauses-v2-hour-detail-empty,
+.pauses-v2-hour-detail-hint {
+  margin: 0;
+  color: var(--pv-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.pauses-v2-hour-detail-hint.is-idle {
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .pauses-v2-hour-detail-list li {
+    gap: 6px;
+  }
+
+  .pauses-v2-hour-detail-duree {
+    margin-left: 0;
+  }
 }
 
 .pauses-v2-panel-head {
