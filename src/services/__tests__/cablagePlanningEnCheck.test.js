@@ -129,6 +129,19 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningSrc).toContain('variant: "conge"')
   })
 
+  it("18. retire réellement un modèle d'une case (plus de faux repos résiduel)", () => {
+    // Marqueur de case vidée : resolveCellShift renvoie null (case réellement vide)
+    expect(planningSrc).toContain('isEmpty: true')
+    expect(planningSrc).toContain('if (override.isEmpty) return null;')
+    // Le retrait passe par une fonction dédiée utilisée en Semaine, Mois et Jour
+    expect(planningSrc).toContain('clearShiftForDate')
+    expect(planningSrc).toContain('handleClearCellShift')
+    // Le déplacement (sans Alt) vide la case source au lieu d'y laisser un repos
+    expect(planningSrc).toContain('[payload.fromDateStr]: { isEmpty: true }')
+    // Aucun horaire inventé en base lors d'un retrait sur grille entreprise
+    expect(planningSrc).toContain('removeDay && !shiftData && existingES')
+  })
+
   it('11. lie les compteurs du haut au groupe déplié et au focus sélectionné', () => {
     expect(planningSrc).toContain('visibleEmployees')
     expect(planningSrc).toContain('scopedEmployees')

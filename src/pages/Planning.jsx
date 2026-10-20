@@ -1096,6 +1096,7 @@ export default function Planning() {
       ...prev,
       [dateStr]: (prev[dateStr] || []).filter((_, i) => i !== index),
     }));
+    toast.success("Modèle retiré de la journée");
   };
 
   // ═══ DISPONIBILITÉS COLLABORATEURS (Aujourd'hui / Cette semaine / jour précis) ═══
@@ -1156,6 +1157,9 @@ export default function Planning() {
     const override = empOverrides[dateStr] ?? empOverrides[`day-${dayNum}`];
 
     if (override) {
+      // Case explicitement vidée par l'utilisateur : aucun créneau affiché
+      if (override.isEmpty) return null;
+
       // Un repos / congé déposé doit rester VISIBLE dans la case (carte dédiée)
       if (override.isRest) {
         return {
@@ -1280,6 +1284,14 @@ export default function Planning() {
   const persistEmployeeShiftToSupabase = async (emp, shiftData, targetDayNum, removeDay = false) => {
     try {
       const existingES = employeeSchedules.find((row) => row.employee_id === emp.id);
+
+      // Retirer un jour sur un collaborateur rattaché à une grille entreprise :
+      // on n'écrit surtout pas des horaires inventés en base. La surcharge locale
+      // (isEmpty) masque déjà le jour dans la grille, la grille entreprise reste intacte.
+      if (removeDay && !shiftData && existingES && !existingES.use_custom_hours && existingES.schedule_id) {
+        return;
+      }
+
       const currentDays = existingES
         ? existingES.use_custom_hours
           ? existingES.custom_work_days || [1, 2, 3, 4, 5]
@@ -1526,11 +1538,11 @@ export default function Planning() {
           ...(next[targetEmp.id] || {}),
           [targetDay.dateStr]: movedShift,
         };
-        // Si ce n'est pas une duplication (Alt), vider la case source
+        // Si ce n'est pas une duplication (Alt), vider réellement la case source
         if (!duplicateMode) {
           next[payload.fromEmpId] = {
             ...(next[payload.fromEmpId] || {}),
-            [payload.fromDateStr]: { isRest: true },
+            [payload.fromDateStr]: { isEmpty: true },
           };
         }
         return next;
@@ -1619,18 +1631,23 @@ export default function Planning() {
     toast.success(`Modèle "${tpl.label}" appliqué sur la semaine de ${targetEmp.first_name}`);
   };
 
-  const handleClearCellShift = async (e, emp, dayItem) => {
-    e.stopPropagation();
+  // Retire réellement un créneau (Semaine, Mois ou Jour) : la case redevient vide
+  const clearShiftForDate = async (emp, dateStr, dayNum) => {
     setDayOverrides((prev) => ({
       ...prev,
       [emp.id]: {
         ...(prev[emp.id] || {}),
-        [dayItem.dateStr]: { isRest: true },
+        [dateStr]: { isEmpty: true },
       },
     }));
     setPendingChangesCount((c) => c + 1);
-    await persistEmployeeShiftToSupabase(emp, null, dayItem.dayNum, true);
-    toast.success(`Shift retiré (${emp.first_name} · ${dayItem.labelHeader})`);
+    await persistEmployeeShiftToSupabase(emp, null, dayNum, true);
+  };
+
+  const handleClearCellShift = async (e, emp, dayItem) => {
+    e.stopPropagation();
+    await clearShiftForDate(emp, dayItem.dateStr, dayItem.dayNum);
+    toast.success(`Créneau retiré (${emp.first_name} · ${dayItem.labelHeader})`);
   };
 
   // Action "Dupliquer la semaine"
@@ -3685,6 +3702,23 @@ export default function Planning() {
                               <span className="sk-cal-pill-real">
                                 ▸ {heureLocale(real.firstIn)}
                               </span>
+                            )}
+                            {shift && !shift.isHoliday && !shift.isAbsence && (
+                              <button
+                                type="button"
+                                className="sk-shift-del-btn"
+                                style={{ width: 16, height: 16 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  clearShiftForDate(emp, cell.date, cellDayNum);
+                                  toast.success(
+                                    `Créneau retiré (${emp.first_name} · ${cell.date})`
+                                  );
+                                }}
+                                title={`Retirer le créneau de ${emp.first_name} le ${cell.date}`}
+                              >
+                                <X size={10} />
+                              </button>
                             )}
                           </span>
                         );
