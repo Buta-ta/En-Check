@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// ⏸ PAGE PAUSES — Design Afro-Tech Kente & Adinkra
+// ⏸ PAGE PAUSES — Design Afro-Tech Kente & Adinkra (fidèle à la maquette)
 // ═══════════════════════════════════════════════════════════════════════════
 //  Doctrine :
 //   · Pauses réellement effectuées (non présumées : pointées ou saisies admin)
@@ -19,16 +19,14 @@ import {
 } from '../services/pausesService'
 import PausesLoadingScreen from '../components/PausesLoadingScreen'
 import {
+  PausesAdinkraSidePillarSvg,
   PausesAnalyticsCharts,
   PausesCollaborateursSection,
   PausesCulturalHero,
   PausesExecutiveKpis,
+  PausesKenteTopBannerSvg,
 } from '../components/PausesAfroTechSections'
 import FicheEmployeModal from '../components/FicheEmployeModal'
-import {
-  AdinkraWatermarkSvg,
-  CulturalCornerMotifSvg,
-} from '../components/AfroCulturalSvg'
 import { formaterHeureLocale } from '../utils/timezoneUtils'
 import toast from 'react-hot-toast'
 import './PointagesAfroTech.css'
@@ -45,7 +43,7 @@ export default function Pauses () {
   const [empSchedules, setEmpSchedules] = useState([])
   const [workSchedules, setWorkSchedules] = useState([])
   const [selectedEntrepriseId, setSelectedEntrepriseId] = useState('all')
-  const [viewMode, setViewMode] = useState('semaine')
+  const [viewMode, setViewMode] = useState('jour')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [showForm, setShowForm] = useState(false)
   const [activeTab, setActiveTab] = useState('reelles')
@@ -268,148 +266,203 @@ export default function Pauses () {
 
   return (
     <div
-      className="pointages-afrotech-shell employes-concept-shell"
+      className="pointages-afrotech-shell"
       data-theme={darkMode ? 'dark' : 'light'}
+      style={{
+        minHeight: '100vh',
+        background: darkMode ? '#120E0A' : 'var(--pt-bg)',
+        padding: 0,
+      }}
     >
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-right" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-right" />
-      <AdinkraWatermarkSvg className="employes-adinkra-side is-left" />
-      <AdinkraWatermarkSvg className="employes-adinkra-side is-right" />
+      <style>{`
+        @media (max-width: 1120px) {
+          .pauses-kpi-four-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .pauses-charts-two-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 860px) {
+          .pauses-adinkra-side-col {
+            display: none !important;
+          }
+          .pauses-collab-row-card {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 620px) {
+          .pauses-kpi-four-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
 
-      <div className="pointages-afrotech-container employes-concept-container">
-        <PausesCulturalHero
-          darkMode={darkMode}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          selectedDate={selectedDate}
-          onShiftDate={shiftDate}
-          onDateChange={setSelectedDate}
-          entreprises={entreprises}
-          selectedEnterpriseId={selectedEntrepriseId}
-          onSelectEnterprise={setSelectedEntrepriseId}
-          isSuperAdmin={admin?.role === 'super_admin'}
-          onToggleTheme={toggleTheme}
-          onBackDashboard={() => navigate('/dashboard')}
-          onNavigate={(path) => navigate(path)}
-          onToggleAddForm={() => setShowForm((prev) => !prev)}
-          showAddForm={showForm}
-          onExportCsv={exporterCsv}
-        />
+      {/* Frise Kente géométrique supérieure pleine largeur */}
+      <PausesKenteTopBannerSvg />
 
-        {/* Formulaire de saisie manuelle d'une pause réelle par l'admin */}
-        {showForm && (
-          <section
-            className="employes-framed-card"
-            aria-label="Nouvelle pause réelle"
-            style={{
-              padding: '16px 18px',
-              marginBottom: 16,
-              border: '1px solid rgba(245, 158, 11, 0.48)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: '0.96rem', color: '#F3C784', fontWeight: 800 }}>
-                Nouvelle pause réelle (correction / saisie manuelle par l’administrateur)
-              </h3>
-            </div>
-            <div
+      {/* Disposition principale : Pilier Adinkra Gauche | Grand Cadre Central | Pilier Adinkra Droit */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+          alignItems: 'stretch',
+          maxWidth: 1600,
+          margin: '0 auto',
+          padding: '10px 4px 28px',
+        }}
+      >
+        <div className="pauses-adinkra-side-col" style={{ paddingTop: 6 }}>
+          <PausesAdinkraSidePillarSvg side="left" />
+        </div>
+
+        <main
+          style={{
+            background: darkMode
+              ? 'linear-gradient(180deg, #1A140F 0%, #14100C 100%)'
+              : 'var(--pt-surface)',
+            border: '1.5px solid rgba(196, 147, 74, 0.45)',
+            borderRadius: 18,
+            padding: '18px 22px 24px',
+            boxShadow: '0 22px 50px rgba(0, 0, 0, 0.52)',
+          }}
+        >
+          <PausesCulturalHero
+            darkMode={darkMode}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            selectedDate={selectedDate}
+            onShiftDate={shiftDate}
+            onDateChange={setSelectedDate}
+            entreprises={entreprises}
+            selectedEnterpriseId={selectedEntrepriseId}
+            onSelectEnterprise={setSelectedEntrepriseId}
+            isSuperAdmin={admin?.role === 'super_admin'}
+            onToggleTheme={toggleTheme}
+            onBackDashboard={() => navigate('/dashboard')}
+            onToggleAddForm={() => setShowForm((prev) => !prev)}
+            showAddForm={showForm}
+            onExportCsv={exporterCsv}
+          />
+
+          {/* Formulaire de saisie manuelle d'une pause réelle par l'admin */}
+          {showForm && (
+            <section
+              aria-label="Nouvelle pause réelle"
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))',
-                gap: 10,
+                background: 'rgba(28, 21, 15, 0.96)',
+                border: '1px solid rgba(226, 168, 75, 0.5)',
+                borderRadius: 14,
+                padding: '16px 18px',
+                marginBottom: 16,
               }}
             >
-              <select
-                className="employes-card-select-box"
-                value={form.employee_id}
-                onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
-                style={{ margin: 0 }}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <h3 style={{ margin: 0, fontSize: '0.96rem', color: '#F3C784', fontWeight: 800 }}>
+                  Nouvelle pause réelle (correction / saisie manuelle par l’administrateur)
+                </h3>
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))',
+                  gap: 10,
+                }}
               >
-                <option value="">— Collaborateur —</option>
-                {employes.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.first_name} {emp.last_name} ({emp.matricule})
-                  </option>
-                ))}
-              </select>
-              <input
-                type="date"
-                className="employes-card-select-box"
-                value={form.jour}
-                onChange={(e) => setForm({ ...form, jour: e.target.value })}
-                style={{ margin: 0 }}
-              />
-              <input
-                type="time"
-                className="employes-card-select-box"
-                value={form.debut}
-                onChange={(e) => setForm({ ...form, debut: e.target.value })}
-                style={{ margin: 0 }}
-              />
-              <input
-                type="time"
-                className="employes-card-select-box"
-                value={form.fin}
-                onChange={(e) => setForm({ ...form, fin: e.target.value })}
-                style={{ margin: 0 }}
-              />
-              <input
-                type="text"
-                className="employes-card-select-box"
-                placeholder="Motif (facultatif)"
-                value={form.motif}
-                onChange={(e) => setForm({ ...form, motif: e.target.value })}
-                style={{ margin: 0 }}
-              />
-              <button
-                type="button"
-                className="employes-add-pill-btn"
-                onClick={creerPause}
-                style={{ justifyContent: 'center' }}
-              >
-                Enregistrer la pause réelle
-              </button>
-            </div>
-          </section>
-        )}
+                <select
+                  className="employes-card-select-box"
+                  value={form.employee_id}
+                  onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
+                  style={{ margin: 0 }}
+                >
+                  <option value="">— Collaborateur —</option>
+                  {employes.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.first_name} {emp.last_name} ({emp.matricule})
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  className="employes-card-select-box"
+                  value={form.jour}
+                  onChange={(e) => setForm({ ...form, jour: e.target.value })}
+                  style={{ margin: 0 }}
+                />
+                <input
+                  type="time"
+                  className="employes-card-select-box"
+                  value={form.debut}
+                  onChange={(e) => setForm({ ...form, debut: e.target.value })}
+                  style={{ margin: 0 }}
+                />
+                <input
+                  type="time"
+                  className="employes-card-select-box"
+                  value={form.fin}
+                  onChange={(e) => setForm({ ...form, fin: e.target.value })}
+                  style={{ margin: 0 }}
+                />
+                <input
+                  type="text"
+                  className="employes-card-select-box"
+                  placeholder="Motif (facultatif)"
+                  value={form.motif}
+                  onChange={(e) => setForm({ ...form, motif: e.target.value })}
+                  style={{ margin: 0 }}
+                />
+                <button
+                  type="button"
+                  className="employes-add-pill-btn"
+                  onClick={creerPause}
+                  style={{ justifyContent: 'center' }}
+                >
+                  Enregistrer la pause réelle
+                </button>
+              </div>
+            </section>
+          )}
 
-        {/* 4 Cartes KPI exécutives */}
-        <PausesExecutiveKpis
-          paies={paies}
-          activeTab={activeTab}
-          subFilter={subFilter}
-          onSelectTab={setActiveTab}
-          onSelectSubFilter={setSubFilter}
-          nowMs={nowMs}
-        />
+          {/* 4 Cartes KPI exécutives */}
+          <PausesExecutiveKpis
+            paies={paies}
+            activeTab={activeTab}
+            subFilter={subFilter}
+            onSelectTab={setActiveTab}
+            onSelectSubFilter={setSubFilter}
+            nowMs={nowMs}
+          />
 
-        {/* 2 Graphiques analytiques (Activité 24h Réelles vs Présumées + Donut Répartition) */}
-        <PausesAnalyticsCharts
-          paies={paies}
-          onSelectTab={(tab) => {
-            setActiveTab(tab)
-            setSubFilter('all')
-          }}
-        />
+          {/* 2 Graphiques analytiques (Activité 24h Réelles vs Présumées + Donut Répartition) */}
+          <PausesAnalyticsCharts
+            paies={paies}
+            onSelectTab={(tab) => {
+              setActiveTab(tab)
+              setSubFilter('all')
+            }}
+          />
 
-        {/* Liste des pauses collaborateurs (Historique des pauses réelles vs Pauses présumées) */}
-        <PausesCollaborateursSection
-          paies={paies}
-          employesById={employesById}
-          activeTab={activeTab}
-          subFilter={subFilter}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onSelectTab={setActiveTab}
-          onSelectSubFilter={setSubFilter}
-          onStatuer={statuer}
-          onOpenEmployeeFiche={(emp) => setFicheEmployee(emp)}
-          onOpenPointages={(p) =>
-            navigate(`/pointages?search=${encodeURIComponent(p.employe || p.matricule || '')}`)
-          }
-        />
+          {/* Liste des pauses collaborateurs (Historique des pauses réelles vs Pauses présumées) */}
+          <PausesCollaborateursSection
+            paies={paies}
+            employesById={employesById}
+            activeTab={activeTab}
+            subFilter={subFilter}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onSelectTab={setActiveTab}
+            onSelectSubFilter={setSubFilter}
+            onStatuer={statuer}
+            onOpenEmployeeFiche={(emp) => setFicheEmployee(emp)}
+            onOpenPointages={(p) =>
+              navigate(`/pointages?search=${encodeURIComponent(p.employe || p.matricule || '')}`)
+            }
+          />
+        </main>
+
+        <div className="pauses-adinkra-side-col" style={{ paddingTop: 6 }}>
+          <PausesAdinkraSidePillarSvg side="right" />
+        </div>
       </div>
 
       {ficheEmployee && (
