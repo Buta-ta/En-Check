@@ -59,4 +59,21 @@ describe('🔌 Câblage Pauses — app de pointage + migration 000004', () => {
     // accès sans module (pas de gate option) — l'arbitre statue
     expect(dashboardNavigation).toContain("label: 'Pauses', icon: Coffee, path: '/pauses', show: true")
   })
+
+  it('timer dynamique des pauses réelles câblé en direct sur Pauses, Dashboard et Pointages', () => {
+    const pausesPage = readFileSync(ROOT + '/src/pages/Pauses.jsx', 'utf8')
+    const pausesSections = readFileSync(ROOT + '/src/components/PausesAfroTechSections.jsx', 'utf8')
+    const dashboardPage = readFileSync(ROOT + '/src/pages/Dashboard.jsx', 'utf8')
+    const dashboardExp = readFileSync(ROOT + '/src/components/DashboardExperience.jsx', 'utf8')
+    const pointagesPage = readFileSync(ROOT + '/src/pages/Pointages.jsx', 'utf8')
+    const pointagesSections = readFileSync(ROOT + '/src/components/PointagesAfroTechSections.jsx', 'utf8')
+
+    expect(pausesPage).toContain("table: 'encheck_pauses'")
+    expect(pausesSections).toContain('formaterTempsPauseEnDirect')
+    expect(dashboardPage).toContain("table: 'encheck_pauses'")
+    expect(dashboardExp).toContain('formaterTempsPauseEnDirect')
+    expect(pointagesPage).toContain("table: 'encheck_pauses'")
+    expect(pointagesPage).toContain('formaterTempsPauseEnDirect')
+    expect(pointagesSections).toContain('formaterTempsPauseEnDirect')
+  })
 })

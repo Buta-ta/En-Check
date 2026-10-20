@@ -13,6 +13,8 @@ import {
   filtrerHistoriquePausesReelles,
   filtrerPausesPresumees,
   fusionnerPausesEmploye,
+  formaterTempsPauseEnDirect,
+  formaterChronoPauseDigital,
 } from '../pausesService.js'
 
 beforeEach(() => {
@@ -161,5 +163,25 @@ describe('⏸ Service Pauses — présentation pure (16/10/2026)', () => {
     expect(lignes[0]).toContain('Anomalie')
     expect(lignes[1]).toContain('Jean Dupont')
     expect(lignes[1]).toContain('Pause réelle')
+  })
+
+  it('formaterTempsPauseEnDirect et formaterChronoPauseDigital : chronomètre dynamique seconde par seconde', () => {
+    const startIso = '2026-10-20T12:15:00+01:00'
+    const startMs = new Date(startIso).getTime()
+    const pauseOuverte = {
+      id: 'pause-open-1',
+      ouverte: true,
+      debutISO: startIso,
+      dureeMinutes: 0,
+    }
+    // +14m 22s
+    const now14m22s = startMs + (14 * 60 + 22) * 1000
+    expect(formaterTempsPauseEnDirect(pauseOuverte, now14m22s)).toBe('14m 22s')
+    expect(formaterChronoPauseDigital(pauseOuverte, now14m22s)).toBe('14:22')
+
+    // +1h 05m 09s
+    const now1h05m09s = startMs + (3600 + 5 * 60 + 9) * 1000
+    expect(formaterTempsPauseEnDirect(pauseOuverte, now1h05m09s)).toBe('1h 05m 09s')
+    expect(formaterChronoPauseDigital(pauseOuverte, now1h05m09s)).toBe('01:05:09')
   })
 })

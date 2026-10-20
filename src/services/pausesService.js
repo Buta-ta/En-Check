@@ -228,11 +228,13 @@ export function fusionnerPausesEmploye ({
  */
 export function formaterTempsPauseEnDirect (pause, nowMs = Date.now()) {
   if (!pause) return '0 min'
-  if (!pause.ouverte || !pause.debutISO) {
-    return formatDuree(pause.dureeMinutes)
+  const debutRaw = pause.debutISO || pause.debut || null
+  const isOpen = Boolean(pause.ouverte ?? (!pause.finISO && !pause.fin && !pause.finHHMM))
+  if (!isOpen || !debutRaw) {
+    return formatDuree(pause.dureeMinutes ?? pause.duree_minutes)
   }
-  const startMs = new Date(pause.debutISO).getTime()
-  if (!Number.isFinite(startMs)) return formatDuree(pause.dureeMinutes)
+  const startMs = new Date(debutRaw).getTime()
+  if (!Number.isFinite(startMs)) return formatDuree(pause.dureeMinutes ?? pause.duree_minutes)
   const elapsedSec = Math.max(0, Math.floor((nowMs - startMs) / 1000))
   const hours = Math.floor(elapsedSec / 3600)
   const mins = Math.floor((elapsedSec % 3600) / 60)
@@ -241,6 +243,28 @@ export function formaterTempsPauseEnDirect (pause, nowMs = Date.now()) {
     return `${hours}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`
   }
   return `${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`
+}
+
+/**
+ * Format chronomètre digital (`MM:SS` ou `HH:MM:SS`) pour une pause réelle en cours.
+ */
+export function formaterChronoPauseDigital (pause, nowMs = Date.now()) {
+  if (!pause) return '00:00'
+  const debutRaw = pause.debutISO || pause.debut || null
+  const isOpen = Boolean(pause.ouverte ?? (!pause.finISO && !pause.fin && !pause.finHHMM))
+  if (!isOpen || !debutRaw) {
+    return formatDuree(pause.dureeMinutes ?? pause.duree_minutes)
+  }
+  const startMs = new Date(debutRaw).getTime()
+  if (!Number.isFinite(startMs)) return formatDuree(pause.dureeMinutes ?? pause.duree_minutes)
+  const elapsedSec = Math.max(0, Math.floor((nowMs - startMs) / 1000))
+  const hours = Math.floor(elapsedSec / 3600)
+  const mins = Math.floor((elapsedSec % 3600) / 60)
+  const secs = elapsedSec % 60
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 }
 
 /** Libellé/teinte du badge de statut (défaut : neutre). */

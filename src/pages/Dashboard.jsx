@@ -844,7 +844,10 @@ export default function Dashboard() {
   const loadDashboardPauses = async (enterpriseId, attendancesToday = [], empSchedData = [], defSchedData = []) => {
     try {
       const entArg = !enterpriseId || enterpriseId === 'all' ? null : enterpriseId
-      let directQuery = supabase.from('encheck_pauses').select('*').eq('jour', today)
+      let directQuery = supabase
+        .from('encheck_pauses')
+        .select('*, employees(id, first_name, last_name, matricule, photo_url)')
+        .eq('jour', today)
       if (entArg) directQuery = directQuery.eq('enterprise_id', entArg)
 
       const [rpcRes, directRes] = await Promise.all([
@@ -862,6 +865,12 @@ export default function Dashboard() {
       for (const a of attendancesToday || []) {
         if (!a?.employee_id) continue
         if (a.employees) empById.set(a.employee_id, a.employees)
+      }
+      for (const row of directRes?.data || []) {
+        const empId = row?.employee_id || row?.employe_id
+        if (empId && row?.employees && !empById.has(empId)) {
+          empById.set(empId, row.employees)
+        }
       }
 
       const empSchedMap = new Map()
@@ -906,6 +915,25 @@ export default function Dashboard() {
       setPausesToday([])
     }
   }
+
+  useEffect(() => {
+    if (!admin) return undefined
+    const targetEnterpriseId = admin.selectedEnterprise?.id || admin.enterprise_id || null
+    const channel = supabase
+      .channel('dashboard_pauses_live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'encheck_pauses' },
+        () => {
+          loadDashboardPauses(targetEnterpriseId)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [admin])
 
   const handleLogout = () => {
     localStorage.removeItem('admin')

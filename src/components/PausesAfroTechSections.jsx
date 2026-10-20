@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
-  ArrowLeft,
+  BarChart3,
   Building2,
+  Calendar,
+  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -10,19 +12,20 @@ import {
   Coffee,
   Download,
   FileText,
+  Home,
+  Hourglass,
   Moon,
+  PieChart,
   Plus,
   Search,
   Sun,
   Timer,
-  XCircle,
+  Users,
+  X,
 } from 'lucide-react'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
-import {
-  KenteWovenTapestrySvg,
-  WovenKenteBadgeSvg,
-} from './AfroCulturalSvg'
+import { KenteWovenTapestrySvg } from './AfroCulturalSvg'
 import {
   badgeAnomalie,
   estPausePresumee,
@@ -30,65 +33,63 @@ import {
   formatDuree,
   formaterTempsPauseEnDirect,
 } from '../services/pausesService'
-import { getHeuresMinutesLocales } from '../utils/timezoneUtils'
+import { getHeuresMinutesLocales, jourLocal } from '../utils/timezoneUtils'
 import '../pages/PointagesAfroTech.css'
 
-function buildDynamicSplineGeometry(values = [0, 0, 0, 0, 0, 0, 0], maxValue = 1) {
-  const safeMax = Math.max(1, maxValue)
-  const count = Math.max(2, values.length)
-  const startX = 16
-  const endX = 244
-  const stepX = (endX - startX) / (count - 1)
-  const baseLine = 54
-  const topLine = 12
-  const span = baseLine - topLine
+function formatPeriodRangeLabel(selectedDate, viewMode = 'semaine') {
+  if (!selectedDate) return ''
+  const parsed = new Date(`${selectedDate}T12:00:00`)
+  if (Number.isNaN(parsed.getTime())) return selectedDate
 
-  const pts = values.map((raw, idx) => {
-    const v = Math.max(0, Number(raw) || 0)
-    const x = Math.round(startX + idx * stepX)
-    const y = Math.round(baseLine - (v / safeMax) * span)
-    return { x, y, v }
-  })
-
-  let linePath = `M ${pts[0].x} ${pts[0].y}`
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i]
-    const p1 = pts[i + 1]
-    const midX = Math.round((p0.x + p1.x) / 2)
-    linePath += ` C ${midX} ${p0.y}, ${midX} ${p1.y}, ${p1.x} ${p1.y}`
+  if (viewMode === 'jour') {
+    const raw = parsed.toLocaleDateString('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    })
+    return raw.charAt(0).toUpperCase() + raw.slice(1)
   }
 
-  const areaPath = `${linePath} L ${pts[pts.length - 1].x} ${baseLine} L ${pts[0].x} ${baseLine} Z`
-  return { pts, linePath, areaPath, baseLine }
+  if (viewMode === 'mois') {
+    const raw = parsed.toLocaleDateString('fr-FR', {
+      month: 'long',
+      year: 'numeric',
+    })
+    return raw.charAt(0).toUpperCase() + raw.slice(1)
+  }
+
+  const dayOfWeek = parsed.getDay()
+  const monday = new Date(parsed)
+  monday.setDate(parsed.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+
+  const d1 = monday.getDate()
+  const d2 = sunday.getDate()
+  const m1 = monday.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '')
+  const m2 = sunday.toLocaleDateString('fr-FR', { month: 'short' }).replace('.', '')
+  const year = sunday.getFullYear()
+  const capM2 = m2.charAt(0).toUpperCase() + m2.slice(1)
+
+  if (monday.getMonth() === sunday.getMonth()) {
+    return `${d1} – ${d2} ${capM2} ${year}`
+  }
+  const capM1 = m1.charAt(0).toUpperCase() + m1.slice(1)
+  return `${d1} ${capM1} – ${d2} ${capM2} ${year}`
 }
 
-function build24hCurveGeometry(points = [], maxVal = 1) {
-  const safeMax = Math.max(1, maxVal)
-  const leftX = 38
-  const rightX = 582
-  const topY = 24
-  const baseY = 142
-  const spanY = baseY - topY
-  const count = Math.max(2, points.length)
-  const stepX = (rightX - leftX) / (count - 1)
-
-  const coords = points.map((v, idx) => {
-    const num = Math.max(0, Number(v) || 0)
-    const x = Math.round(leftX + idx * stepX)
-    const y = Math.round(baseY - (num / safeMax) * spanY)
-    return { x, y, v: num }
+function formatTableRowDate(dateStr) {
+  if (!dateStr) return '—'
+  const parsed = new Date(`${dateStr}T12:00:00`)
+  if (Number.isNaN(parsed.getTime())) return dateStr
+  const raw = parsed.toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
   })
-
-  let linePath = `M ${coords[0].x} ${coords[0].y}`
-  for (let i = 0; i < coords.length - 1; i++) {
-    const p0 = coords[i]
-    const p1 = coords[i + 1]
-    const midX = Math.round((p0.x + p1.x) / 2)
-    linePath += ` C ${midX} ${p0.y}, ${midX} ${p1.y}, ${p1.x} ${p1.y}`
-  }
-
-  const areaPath = `${linePath} L ${coords[coords.length - 1].x} ${baseY} L ${coords[0].x} ${baseY} Z`
-  return { coords, linePath, areaPath, baseY }
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
 }
 
 export function PausesCulturalHero({
@@ -102,6 +103,7 @@ export function PausesCulturalHero({
   selectedEnterpriseId = 'all',
   onSelectEnterprise,
   isSuperAdmin = false,
+  admin = null,
   onToggleTheme,
   onBackDashboard,
   onNavigate,
@@ -109,204 +111,218 @@ export function PausesCulturalHero({
   showAddForm = false,
   onExportCsv,
 }) {
-  const formattedDateLabel = useMemo(() => {
-    if (!selectedDate) return ''
-    const parsed = new Date(`${selectedDate}T12:00:00`)
-    if (Number.isNaN(parsed.getTime())) return selectedDate
-    const raw = parsed.toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    })
-    return raw.charAt(0).toUpperCase() + raw.slice(1)
-  }, [selectedDate])
+  const dateInputRef = useRef(null)
+  const periodLabel = useMemo(
+    () => formatPeriodRangeLabel(selectedDate, viewMode),
+    [selectedDate, viewMode]
+  )
+
+  const todayIso = jourLocal(new Date()) || new Date().toISOString().split('T')[0]
+  const adminFullName = `${admin?.first_name || ''} ${admin?.last_name || ''}`.trim() || 'Administrateur'
+  const adminRoleLabel = isSuperAdmin
+    ? 'RH · Super Admin'
+    : (admin?.selectedEnterprise?.name || 'RH · Siège')
+  const adminInitials = `${admin?.first_name?.[0] || ''}${admin?.last_name?.[0] || ''}`.toUpperCase() || 'AD'
+
+  const openDatePicker = () => {
+    const el = dateInputRef.current
+    if (!el) return
+    if (typeof el.showPicker === 'function') {
+      try {
+        el.showPicker()
+        return
+      } catch {
+        // Fallback ci-dessous
+      }
+    }
+    el.focus()
+    el.click()
+  }
 
   return (
-    <header className="employes-concept-header" aria-label="En-tête Pauses En-Check">
-      <KenteWovenTapestrySvg className="employes-kente-top-banner" />
-      <div className="employes-concept-topbar" style={{ flexWrap: 'wrap', gap: 14 }}>
-        <div className="employes-concept-brand">
-          {onBackDashboard && (
-            <button
-              type="button"
-              className="pointages-back-dashboard-btn"
-              onClick={onBackDashboard}
-              title="Retour au Dashboard"
-              aria-label="Retour au Dashboard"
-            >
-              <ArrowLeft size={17} />
-            </button>
-          )}
-          <EnCheckBrandMark size={46} />
-          <div className="employes-concept-brand-text">
-            <strong style={{ fontSize: '1.22rem', letterSpacing: '0.03em' }}>PAUSES — ON GÈRE !</strong>
-            <span>Réelles pointées (non présumées) · Présumées séparées · Pauses en direct &amp; Hors planning</span>
+    <header aria-label="En-tête Pauses En-Check">
+      <div className="pauses-v2-topbar">
+        {/* Marque En-Check */}
+        <div className="pauses-v2-brand">
+          <div
+            onClick={onBackDashboard}
+            role={onBackDashboard ? 'button' : undefined}
+            tabIndex={onBackDashboard ? 0 : undefined}
+            style={{ cursor: onBackDashboard ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 11 }}
+            title="Retour au Dashboard"
+          >
+            <EnCheckBrandMark size={42} />
+            <div className="pauses-v2-brand-copy">
+              <strong>En-Check</strong>
+              <span>Humain · Temps · Performance</span>
+            </div>
           </div>
         </div>
 
+        {/* Navigation principale (fidèle à la maquette) */}
         {onNavigate && (
-          <nav className="pointages-quick-nav" aria-label="Navigation rapide En-Check">
-            <button type="button" onClick={() => onNavigate('/dashboard')}>Dashboard</button>
-            <button type="button" onClick={() => onNavigate('/pointages')}>Pointages</button>
-            <button type="button" onClick={() => onNavigate('/employes')}>Employés</button>
-            <button type="button" className="is-active" aria-current="page">Pauses</button>
-            <button type="button" onClick={() => onNavigate('/planning')}>Planning</button>
+          <nav className="pauses-v2-nav" aria-label="Navigation principale En-Check">
+            <button type="button" className="pauses-v2-nav-item" onClick={() => onNavigate('/dashboard')}>
+              <Home size={15} />
+              <span>Dashboard</span>
+            </button>
+            <button type="button" className="pauses-v2-nav-item" onClick={() => onNavigate('/pointages')}>
+              <Clock size={15} />
+              <span>Pointages</span>
+            </button>
+            <button type="button" className="pauses-v2-nav-item" onClick={() => onNavigate('/employes')}>
+              <Users size={15} />
+              <span>Employés</span>
+            </button>
+            <button type="button" className="pauses-v2-nav-item is-active" aria-current="page">
+              <Coffee size={15} />
+              <span>Pauses</span>
+            </button>
+            <button type="button" className="pauses-v2-nav-item" onClick={() => onNavigate('/planning')}>
+              <Calendar size={15} />
+              <span>Planning</span>
+            </button>
           </nav>
         )}
 
-        <div className="employes-concept-actions" style={{ flexWrap: 'wrap', gap: 8 }}>
+        {/* Contrôles de droite */}
+        <div className="pauses-v2-actions">
           {/* Sélecteur Jour | Semaine | Mois */}
-          <div
-            role="group"
-            aria-label="Mode de période"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              background: 'rgba(243, 199, 132, 0.08)',
-              border: '1px solid rgba(243, 199, 132, 0.28)',
-              borderRadius: 999,
-              padding: 3,
-              gap: 2,
-            }}
-          >
-            {['jour', 'semaine', 'mois'].map((mode) => {
-              const active = viewMode === mode
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => onViewModeChange && onViewModeChange(mode)}
-                  style={{
-                    border: 'none',
-                    borderRadius: 999,
-                    padding: '6px 13px',
-                    fontSize: '0.78rem',
-                    fontWeight: active ? 800 : 600,
-                    cursor: 'pointer',
-                    background: active ? 'linear-gradient(135deg, #E6A24C, #C87A28)' : 'transparent',
-                    color: active ? '#17120C' : 'var(--pt-text)',
-                    transition: 'all 0.18s ease',
-                  }}
-                >
-                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                </button>
-              )
-            })}
+          <div className="pauses-v2-period-pills" role="group" aria-label="Mode de période">
+            {['jour', 'semaine', 'mois'].map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className={`pauses-v2-period-pill${viewMode === mode ? ' is-active' : ''}`}
+                onClick={() => onViewModeChange && onViewModeChange(mode)}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </button>
+            ))}
           </div>
 
-          {/* Navigateur de date */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: 'rgba(243, 199, 132, 0.07)',
-              border: '1px solid rgba(243, 199, 132, 0.25)',
-              borderRadius: 999,
-              padding: '4px 10px',
-            }}
-          >
+          {/* Sélecteur de plage de dates fonctionnel */}
+          <div className="pauses-v2-date-box">
             <button
               type="button"
+              className="pauses-v2-date-nav-btn"
               onClick={() => onShiftDate && onShiftDate(-1)}
               aria-label="Période précédente"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--pt-text)',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: 2,
-              }}
+              title="Période précédente"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={15} />
             </button>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>
-              <span>{formattedDateLabel}</span>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => onDateChange && onDateChange(e.target.value)}
-                aria-label="Choisir une date"
-                style={{
-                  position: 'absolute',
-                  opacity: 0,
-                  width: 1,
-                  height: 1,
-                  pointerEvents: 'none',
-                }}
-              />
-            </label>
+
             <button
               type="button"
+              className="pauses-v2-date-trigger"
+              onClick={openDatePicker}
+              title="Choisir une date au calendrier"
+            >
+              <Calendar size={14} color="var(--pv-gold)" />
+              <span>{periodLabel}</span>
+            </button>
+
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={selectedDate}
+              onChange={(e) => onDateChange && onDateChange(e.target.value)}
+              aria-label="Choisir une date"
+              style={{
+                position: 'absolute',
+                width: 1,
+                height: 1,
+                opacity: 0,
+                pointerEvents: 'none',
+              }}
+            />
+
+            <button
+              type="button"
+              className="pauses-v2-date-nav-btn"
               onClick={() => onShiftDate && onShiftDate(1)}
               aria-label="Période suivante"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--pt-text)',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: 2,
-              }}
+              title="Période suivante"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={15} />
             </button>
+
+            {selectedDate !== todayIso && (
+              <button
+                type="button"
+                className="pauses-v2-date-nav-btn"
+                onClick={() => onDateChange && onDateChange(todayIso)}
+                style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--pv-gold)', padding: '2px 6px' }}
+                title="Revenir à aujourd’hui"
+              >
+                Auj.
+              </button>
+            )}
           </div>
 
+          {/* Filtre entreprise pour Super Admin */}
           {isSuperAdmin && entreprises.length > 0 && onSelectEnterprise && (
-            <label className="employes-enterprise-select-pill" title="Filtrer par entreprise">
-              <Building2 size={13} />
-              <select
-                value={selectedEnterpriseId || 'all'}
-                onChange={(e) => onSelectEnterprise(e.target.value)}
-                aria-label="Sélectionner une entreprise"
-              >
-                <option value="all">Toutes les entreprises</option>
-                {entreprises.map((ent) => (
-                  <option key={ent.id} value={ent.id}>{ent.name}</option>
-                ))}
-              </select>
-            </label>
-          )}
-
-          {onToggleTheme && (
-            <button
-              type="button"
-              className="employes-theme-pill"
-              onClick={onToggleTheme}
-              title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+            <select
+              className="pauses-v2-select"
+              value={selectedEnterpriseId || 'all'}
+              onChange={(e) => onSelectEnterprise(e.target.value)}
+              aria-label="Sélectionner une entreprise"
             >
-              {darkMode ? <Sun size={14} /> : <Moon size={14} />}
-              <span>{darkMode ? 'Clair' : 'Sombre'}</span>
-            </button>
+              <option value="all">Toutes les entreprises</option>
+              {entreprises.map((ent) => (
+                <option key={ent.id} value={ent.id}>{ent.name}</option>
+              ))}
+            </select>
           )}
 
+          {/* Bouton + Ajouter une pause */}
           {onToggleAddForm && (
             <button
               type="button"
-              className="employes-add-pill-btn"
+              className="pauses-v2-add-btn"
               onClick={onToggleAddForm}
             >
-              <Plus size={15} />
-              <span>{showAddForm ? 'Fermer le formulaire' : '+ Ajouter une pause'}</span>
+              <Plus size={15} strokeWidth={2.5} />
+              <span>{showAddForm ? 'Fermer' : 'Ajouter une pause'}</span>
             </button>
           )}
 
+          {/* Export CSV */}
           {onExportCsv && (
             <button
               type="button"
-              className="employes-theme-pill"
+              className="pauses-v2-Ghost-btn"
               onClick={onExportCsv}
-              title="Exporter la vue actuelle en CSV"
+              title="Exporter en CSV"
             >
               <Download size={14} />
               <span>CSV</span>
             </button>
           )}
+
+          {/* Thème Clair / Sombre */}
+          {onToggleTheme && (
+            <button
+              type="button"
+              className="pauses-v2-Ghost-btn"
+              onClick={onToggleTheme}
+              title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+            >
+              {darkMode ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+          )}
+
+          {/* Profil Admin */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, paddingLeft: 4 }}>
+            <div className="pauses-v2-avatar" style={{ width: 36, height: 36, flexBasis: 36, fontSize: '0.74rem' }}>
+              {adminInitials}
+            </div>
+            <div style={{ lineHeight: 1.2 }}>
+              <strong style={{ display: 'block', fontSize: '0.78rem', color: 'var(--pv-text)' }}>{adminFullName}</strong>
+              <span style={{ fontSize: '0.68rem', color: 'var(--pv-muted)' }}>{adminRoleLabel}</span>
+            </div>
+          </div>
         </div>
       </div>
     </header>
@@ -315,340 +331,244 @@ export function PausesCulturalHero({
 
 export function PausesExecutiveKpis({
   paies = [],
-  activeTab = 'reelles',
+  activeTab = 'all',
   subFilter = 'all',
   onSelectTab,
   onSelectSubFilter,
   nowMs = Date.now(),
 }) {
+  const activeRecords = useMemo(() => paies.filter((p) => p.statut !== 'ecartee'), [paies])
   const realPauses = useMemo(() => paies.filter((p) => estPauseReelleEffectuee(p)), [paies])
-  const presumedPauses = useMemo(() => paies.filter((p) => estPausePresumee(p) && p.statut !== 'ecartee'), [paies])
-  const presumedPending = useMemo(() => paies.filter((p) => p.statut === 'presumee'), [paies])
-  const presumedValidated = useMemo(() => paies.filter((p) => estPausePresumee(p) && p.statut === 'validee'), [paies])
   const openPauses = useMemo(() => realPauses.filter((p) => p.ouverte), [realPauses])
-  const unplannedRealPauses = useMemo(() => realPauses.filter((p) => p.estNonPlanifiee), [realPauses])
+  const presumedPending = useMemo(() => paies.filter((p) => p.statut === 'presumee'), [paies])
   const anomaliesPauses = useMemo(() => paies.filter((p) => Boolean(p.anomalie) && p.statut !== 'ecartee'), [paies])
 
   const realDurationMin = useMemo(
-    () => realPauses.filter((p) => !p.ouverte).reduce((acc, p) => acc + (Number(p.dureeMinutes) || 0), 0),
-    [realPauses]
-  )
-
-  const pointeeCount = useMemo(() => realPauses.filter((p) => p.source === 'pointee').length, [realPauses])
-  const adminCount = useMemo(() => realPauses.filter((p) => p.source === 'admin').length, [realPauses])
-  const realValidatedCount = useMemo(() => realPauses.filter((p) => p.statut === 'validee').length, [realPauses])
-
-  const maxBase = Math.max(1, paies.length)
-
-  const splineCard1 = useMemo(
     () =>
-      buildDynamicSplineGeometry(
-        [
-          pointeeCount,
-          adminCount,
-          realValidatedCount,
-          unplannedRealPauses.length,
-          openPauses.length,
-          realPauses.length,
-          Math.max(1, realPauses.length),
-        ],
-        maxBase
-      ),
-    [pointeeCount, adminCount, realValidatedCount, unplannedRealPauses.length, openPauses.length, realPauses.length, maxBase]
+      realPauses.reduce((acc, p) => {
+        if (p.ouverte && p.debutISO) {
+          const elapsedMin = Math.max(0, Math.round((nowMs - new Date(p.debutISO).getTime()) / 60000))
+          return acc + elapsedMin
+        }
+        return acc + (Number(p.dureeMinutes) || 0)
+      }, 0),
+    [realPauses, nowMs]
   )
 
-  const splineCard2 = useMemo(
-    () =>
-      buildDynamicSplineGeometry(
-        [
-          realPauses.length,
-          pointeeCount,
-          realValidatedCount,
-          adminCount,
-          Math.max(0, realPauses.length - unplannedRealPauses.length),
-          unplannedRealPauses.length,
-          realPauses.length,
-        ],
-        maxBase
-      ),
-    [realPauses.length, pointeeCount, realValidatedCount, adminCount, unplannedRealPauses.length, maxBase]
-  )
-
-  const splineCard3 = useMemo(
-    () =>
-      buildDynamicSplineGeometry(
-        [
-          openPauses.length,
-          unplannedRealPauses.length,
-          openPauses.length + unplannedRealPauses.length,
-          openPauses.length,
-          unplannedRealPauses.length,
-          openPauses.length,
-          openPauses.length + unplannedRealPauses.length,
-        ],
-        Math.max(1, realPauses.length)
-      ),
-    [openPauses.length, unplannedRealPauses.length, realPauses.length]
-  )
-
-  const splineCard4 = useMemo(
-    () =>
-      buildDynamicSplineGeometry(
-        [
-          presumedPending.length,
-          presumedValidated.length,
-          presumedPauses.length,
-          anomaliesPauses.length,
-          paies.filter((p) => p.anomalie === 'sans_reprise').length,
-          paies.filter((p) => p.anomalie === 'trop_longue').length,
-          presumedPending.length + anomaliesPauses.length,
-        ],
-        maxBase
-      ),
-    [presumedPending.length, presumedValidated.length, presumedPauses.length, anomaliesPauses.length, paies, maxBase]
-  )
-
-  const liveTimerSample = openPauses.length > 0 ? formaterTempsPauseEnDirect(openPauses[0], nowMs) : '0 min'
+  const totalBase = Math.max(1, activeRecords.length)
+  const openPct = activeRecords.length > 0 ? Math.min(100, Math.round((openPauses.length / Math.max(1, realPauses.length)) * 100)) : 0
+  const realPct = activeRecords.length > 0 ? Math.min(100, Math.round((realPauses.length / totalBase) * 100)) : 0
+  const presumedPct = activeRecords.length > 0 ? Math.min(100, Math.round((presumedPending.length / totalBase) * 100)) : 0
+  const anomaliesPct = activeRecords.length > 0 ? Math.min(100, Math.round((anomaliesPauses.length / totalBase) * 100)) : 0
 
   return (
-    <section className="employes-top-cards-grid" aria-label="Indicateurs exécutifs des pauses">
-      {/* CARTE 1 : PAUSES RÉELLEMENT EFFECTUÉES (NON PRÉSUMÉES) */}
-      <article
-        className="employes-framed-card"
-        style={{
-          borderColor: activeTab === 'reelles' ? 'rgba(243, 199, 132, 0.68)' : undefined,
-          cursor: 'pointer',
-        }}
-        onClick={() => {
-          onSelectTab && onSelectTab('reelles')
-          onSelectSubFilter && onSelectSubFilter('all')
-        }}
-      >
-        <div className="employes-framed-card-head">
-          <div className="employes-framed-card-title-wrap">
-            <WovenKenteBadgeSvg variant={1} size={44} />
-            <div>
-              <strong style={{ fontSize: '1.35rem', color: '#F3C784' }}>
-                {realPauses.length} <span style={{ fontSize: '0.88rem', fontWeight: 700 }}>Pauses réelles</span>
-              </strong>
-              <small style={{ display: 'block', fontWeight: 700, color: 'var(--pt-text)' }}>
-                {formatDuree(realDurationMin)} · Non présumées
-              </small>
-            </div>
-          </div>
-        </div>
-
-        <div className="employes-spline-chart-wrap" style={{ height: 64 }}>
-          <svg viewBox="0 0 260 64" className="employes-spline-svg" aria-hidden="true">
-            <defs>
-              <linearGradient id="pause-kpi-gold" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.34" />
-                <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
-            <path d={splineCard1.areaPath} fill="url(#pause-kpi-gold)" />
-            <path d={splineCard1.linePath} fill="none" stroke="#F59E0B" strokeWidth="2.2" strokeLinecap="round" />
-            {splineCard1.pts.map((pt, i) => (
-              <circle key={i} cx={pt.x} cy={pt.y} r="2.8" fill="#FDE68A" stroke="#D97706" strokeWidth="1.2" />
+    <>
+      {/* Bandeau Chronomètre Dynamique en Direct dès qu'une pause réelle est déclenchée */}
+      {openPauses.length > 0 && (
+        <section className="pauses-v2-live-banner" aria-label="Pauses réelles en cours en direct">
+          <div className="pauses-v2-live-banner-left">
+            <span className="pauses-v2-live-pulse-dot" />
+            <strong style={{ fontSize: '0.88rem', color: 'var(--pv-text)' }}>
+              {openPauses.length === 1
+                ? '1 collaborateur est actuellement en pause réelle :'
+                : `${openPauses.length} collaborateurs sont actuellement en pause réelle :`}
+            </strong>
+            {openPauses.map((op) => (
+              <span key={op.id} className="pauses-v2-live-chip">
+                <Timer size={14} color="#f59e0b" />
+                <strong>{op.employe}</strong>
+                {op.matricule && <span style={{ opacity: 0.72 }}>({op.matricule})</span>}
+                <span style={{ opacity: 0.8 }}>depuis {op.debutHHMM}</span>
+                <span className="pauses-v2-live-timer-mono">
+                  ⏱️ {formaterTempsPauseEnDirect(op, nowMs)}
+                </span>
+              </span>
             ))}
-          </svg>
-        </div>
-      </article>
+          </div>
+          <button
+            type="button"
+            className="pauses-v2-Ghost-btn"
+            onClick={() => {
+              onSelectTab && onSelectTab('reelles')
+              onSelectSubFilter && onSelectSubFilter('en_direct')
+            }}
+          >
+            Filtrer les pauses en direct
+          </button>
+        </section>
+      )}
 
-      {/* CARTE 2 : RÉELLES POINTÉES & VALIDÉES */}
-      <article
-        className="employes-framed-card"
-        style={{
-          borderColor: activeTab === 'reelles' && subFilter !== 'all' ? 'rgba(16, 185, 129, 0.65)' : undefined,
-        }}
-      >
-        <div
-          className="employes-framed-card-head"
-          style={{ cursor: 'pointer' }}
+      {/* 4 Cartes KPI Exécutives (fidèles à redesign-pauses-v2.png) */}
+      <section className="pauses-v2-kpi-grid" aria-label="Indicateurs exécutifs des pauses">
+        {/* CARTE 1 : EN PAUSE EN DIRECT */}
+        <button
+          type="button"
+          className={`pauses-v2-kpi-card is-amber${subFilter === 'en_direct' ? ' is-selected' : ''}`}
           onClick={() => {
-            onSelectTab && onSelectTab('reelles')
-            onSelectSubFilter && onSelectSubFilter('all')
-          }}
-        >
-          <div className="employes-framed-card-title-wrap">
-            <WovenKenteBadgeSvg variant={2} size={44} />
-            <div>
-              <strong style={{ fontSize: '1.35rem', color: '#34D399' }}>
-                {realPauses.length} <span style={{ fontSize: '0.88rem', fontWeight: 700 }}>Réelles &amp; Validées</span>
-              </strong>
-              <small style={{ display: 'block' }}>
-                {pointeeCount} pointée(s) · {adminCount} admin
-              </small>
-            </div>
-          </div>
-        </div>
-
-        <select
-          className="employes-card-select-box"
-          aria-label="Filtrer les pauses réellement effectuées"
-          value={
-            ['reelles_pointees', 'reelles_admin', 'reelles_planifiees', 'reelles_hors_planning'].includes(subFilter)
-              ? subFilter
-              : 'all'
-          }
-          onChange={(e) => {
-            onSelectTab && onSelectTab('reelles')
-            onSelectSubFilter && onSelectSubFilter(e.target.value)
-          }}
-          style={{ marginTop: 4, marginBottom: 4 }}
-        >
-          <option value="all">✓ Toutes les pauses réelles ({realPauses.length})</option>
-          <option value="reelles_pointees">📱 Pointées par l’employé ({pointeeCount})</option>
-          <option value="reelles_admin">🛡️ Saisies par l’admin ({adminCount})</option>
-          <option value="reelles_planifiees">📅 Planifiées ({Math.max(0, realPauses.length - unplannedRealPauses.length)})</option>
-          <option value="reelles_hors_planning">⚡ Hors planning ({unplannedRealPauses.length})</option>
-        </select>
-
-        <div className="employes-spline-chart-wrap" style={{ height: 48 }}>
-          <svg viewBox="0 0 260 64" className="employes-spline-svg" aria-hidden="true">
-            <defs>
-              <linearGradient id="pause-kpi-emerald" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10B981" stopOpacity="0.34" />
-                <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
-            <path d={splineCard2.areaPath} fill="url(#pause-kpi-emerald)" />
-            <path d={splineCard2.linePath} fill="none" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" />
-            {splineCard2.pts.map((pt, i) => (
-              <circle key={i} cx={pt.x} cy={pt.y} r="2.8" fill="#A7F3D0" stroke="#059669" strokeWidth="1.2" />
-            ))}
-          </svg>
-        </div>
-      </article>
-
-      {/* CARTE 3 : EN PAUSE EN DIRECT & HORS PLANNING */}
-      <article
-        className="employes-framed-card"
-        style={{
-          borderColor: subFilter === 'en_direct' ? 'rgba(245, 158, 11, 0.7)' : undefined,
-          cursor: 'pointer',
-        }}
-        onClick={() => {
-          onSelectTab && onSelectTab('reelles')
-          onSelectSubFilter && onSelectSubFilter(subFilter === 'en_direct' ? 'all' : 'en_direct')
-        }}
-      >
-        <div className="employes-framed-card-head">
-          <div className="employes-framed-card-title-wrap">
-            <WovenKenteBadgeSvg variant={3} size={44} />
-            <div>
-              <strong style={{ fontSize: '1.35rem', color: '#FBBF24' }}>
-                {openPauses.length} <span style={{ fontSize: '0.88rem', fontWeight: 700 }}>En pause en direct</span>
-              </strong>
-              <small style={{ display: 'block', color: openPauses.length > 0 ? '#FBBF24' : undefined, fontWeight: 700 }}>
-                {openPauses.length > 0
-                  ? `(⏱ ${liveTimerSample}) · ${unplannedRealPauses.length} hors planning`
-                  : `${unplannedRealPauses.length} pause(s) réelle(s) hors planning`}
-              </small>
-            </div>
-          </div>
-        </div>
-
-        <div className="employes-spline-chart-wrap" style={{ height: 64 }}>
-          <svg viewBox="0 0 260 64" className="employes-spline-svg" aria-hidden="true">
-            <defs>
-              <linearGradient id="pause-kpi-amber" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.34" />
-                <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
-            <path d={splineCard3.areaPath} fill="url(#pause-kpi-amber)" />
-            <path d={splineCard3.linePath} fill="none" stroke="#F59E0B" strokeWidth="2.2" strokeLinecap="round" />
-            {splineCard3.pts.map((pt, i) => (
-              <circle key={i} cx={pt.x} cy={pt.y} r="2.8" fill="#FDE68A" stroke="#D97706" strokeWidth="1.2" />
-            ))}
-          </svg>
-        </div>
-      </article>
-
-      {/* CARTE 4 : PAUSES PRÉSUMÉES À STATUER & ANOMALIES */}
-      <article
-        className="employes-framed-card"
-        style={{
-          borderColor: activeTab === 'presumees' || activeTab === 'anomalies' ? 'rgba(239, 68, 68, 0.65)' : undefined,
-        }}
-      >
-        <div
-          className="employes-framed-card-head"
-          style={{ cursor: 'pointer' }}
-          onClick={() => {
-            onSelectTab && onSelectTab('presumees')
-            onSelectSubFilter && onSelectSubFilter('all')
-          }}
-        >
-          <div className="employes-framed-card-title-wrap">
-            <WovenKenteBadgeSvg variant={4} size={44} />
-            <div>
-              <strong style={{ fontSize: '1.35rem', color: '#F87171' }}>
-                {presumedPending.length} <span style={{ fontSize: '0.88rem', fontWeight: 700 }}>Présumées à statuer</span>
-              </strong>
-              <small style={{ display: 'block' }}>
-                · {anomaliesPauses.length} Anomalie{anomaliesPauses.length > 1 ? 's' : ''} ({presumedPauses.length} présumée{presumedPauses.length > 1 ? 's' : ''} au total)
-              </small>
-            </div>
-          </div>
-        </div>
-
-        <select
-          className="employes-card-select-box"
-          aria-label="Filtrer les pauses présumées et anomalies"
-          value={
-            ['presumees_a_statuer', 'presumees_toutes', 'presumees_validees', 'anomalies_toutes', 'anomalie_sans_reprise', 'anomalie_trop_longue'].includes(subFilter)
-              ? subFilter
-              : 'presumees_a_statuer'
-          }
-          onChange={(e) => {
-            const val = e.target.value
-            if (val.startsWith('anomalie')) {
-              onSelectTab && onSelectTab('anomalies')
+            if (subFilter === 'en_direct') {
+              onSelectTab && onSelectTab('all')
+              onSelectSubFilter && onSelectSubFilter('all')
             } else {
-              onSelectTab && onSelectTab('presumees')
+              onSelectTab && onSelectTab('reelles')
+              onSelectSubFilter && onSelectSubFilter('en_direct')
             }
-            onSelectSubFilter && onSelectSubFilter(val)
           }}
-          style={{ marginTop: 4, marginBottom: 4 }}
         >
-          <option value="presumees_a_statuer">⏳ Présumées à statuer ({presumedPending.length})</option>
-          <option value="presumees_toutes">📋 Toutes les pauses présumées ({presumedPauses.length})</option>
-          <option value="presumees_validees">✓ Présumées validées ({presumedValidated.length})</option>
-          <option value="anomalies_toutes">⚠️ Toutes les anomalies ({anomaliesPauses.length})</option>
-          <option value="anomalie_sans_reprise">🚫 Sans reprise ({paies.filter((p) => p.anomalie === 'sans_reprise').length})</option>
-          <option value="anomalie_trop_longue">⚠️ Très longue ({paies.filter((p) => p.anomalie === 'trop_longue').length})</option>
-        </select>
+          <div className="pauses-v2-kpi-top">
+            <div className="pauses-v2-kpi-circle">
+              <Coffee size={24} />
+            </div>
+            <div>
+              <strong className="pauses-v2-kpi-number">
+                {String(openPauses.length).padStart(2, '0')}
+              </strong>
+              <span className="pauses-v2-kpi-label">En pause en direct</span>
+              {openPauses.length > 0 && (
+                <span className="pauses-v2-kpi-live-sub">
+                  <Timer size={12} />
+                  <span>
+                    {openPauses[0].employe} · {formaterTempsPauseEnDirect(openPauses[0], nowMs)} (depuis {openPauses[0].debutHHMM})
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="pauses-v2-kpi-bar-row">
+            <div className="pauses-v2-kpi-track">
+              <span
+                className="pauses-v2-kpi-fill"
+                style={{
+                  width: `${openPauses.length > 0 ? Math.max(16, openPct) : 0}%`,
+                  background: 'linear-gradient(90deg, #f0b254, #d97706)',
+                }}
+              />
+            </div>
+            <span className="pauses-v2-kpi-pct">{openPct}%</span>
+          </div>
+        </button>
 
-        <div className="employes-spline-chart-wrap" style={{ height: 48 }}>
-          <svg viewBox="0 0 260 64" className="employes-spline-svg" aria-hidden="true">
-            <defs>
-              <linearGradient id="pause-kpi-coral" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#EF4444" stopOpacity="0.34" />
-                <stop offset="100%" stopColor="#EF4444" stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
-            <path d={splineCard4.areaPath} fill="url(#pause-kpi-coral)" />
-            <path d={splineCard4.linePath} fill="none" stroke="#F87171" strokeWidth="2.2" strokeLinecap="round" />
-            {splineCard4.pts.map((pt, i) => (
-              <circle key={i} cx={pt.x} cy={pt.y} r="2.8" fill="#FECACA" stroke="#DC2626" strokeWidth="1.2" />
-            ))}
-          </svg>
-        </div>
-      </article>
-    </section>
+        {/* CARTE 2 : PAUSES RÉELLES */}
+        <button
+          type="button"
+          className={`pauses-v2-kpi-card is-emerald${activeTab === 'reelles' && subFilter !== 'en_direct' ? ' is-selected' : ''}`}
+          onClick={() => {
+            onSelectTab && onSelectTab(activeTab === 'reelles' && subFilter === 'all' ? 'all' : 'reelles')
+            onSelectSubFilter && onSelectSubFilter('all')
+          }}
+        >
+          <div className="pauses-v2-kpi-top">
+            <div className="pauses-v2-kpi-circle">
+              <Users size={24} />
+            </div>
+            <div>
+              <strong className="pauses-v2-kpi-number">
+                {String(realPauses.length).padStart(2, '0')}
+              </strong>
+              <span className="pauses-v2-kpi-label">
+                Pauses réelles · {formatDuree(realDurationMin)}
+              </span>
+            </div>
+          </div>
+          <div className="pauses-v2-kpi-bar-row">
+            <div className="pauses-v2-kpi-track">
+              <span
+                className="pauses-v2-kpi-fill"
+                style={{
+                  width: `${realPauses.length > 0 ? Math.max(12, realPct) : 0}%`,
+                  background: 'linear-gradient(90deg, #10b981, #34d399)',
+                }}
+              />
+            </div>
+            <span className="pauses-v2-kpi-pct">{realPct}%</span>
+          </div>
+        </button>
+
+        {/* CARTE 3 : PRÉSUMÉES À STATUER */}
+        <button
+          type="button"
+          className={`pauses-v2-kpi-card is-copper${activeTab === 'presumees' ? ' is-selected' : ''}`}
+          onClick={() => {
+            onSelectTab && onSelectTab(activeTab === 'presumees' ? 'all' : 'presumees')
+            onSelectSubFilter && onSelectSubFilter('presumees_a_statuer')
+          }}
+        >
+          <div className="pauses-v2-kpi-top">
+            <div className="pauses-v2-kpi-circle">
+              <Hourglass size={23} />
+            </div>
+            <div>
+              <strong className="pauses-v2-kpi-number">
+                {String(presumedPending.length).padStart(2, '0')}
+              </strong>
+              <span className="pauses-v2-kpi-label">Présumées à statuer</span>
+            </div>
+          </div>
+          <div className="pauses-v2-kpi-bar-row">
+            <div className="pauses-v2-kpi-track">
+              <span
+                className="pauses-v2-kpi-fill"
+                style={{
+                  width: `${presumedPending.length > 0 ? Math.max(12, presumedPct) : 0}%`,
+                  background: 'linear-gradient(90deg, #e07a38, #f0b254)',
+                }}
+              />
+            </div>
+            <span className="pauses-v2-kpi-pct">{presumedPct}%</span>
+          </div>
+        </button>
+
+        {/* CARTE 4 : ANOMALIES */}
+        <button
+          type="button"
+          className={`pauses-v2-kpi-card is-coral${activeTab === 'anomalies' ? ' is-selected' : ''}`}
+          onClick={() => {
+            onSelectTab && onSelectTab(activeTab === 'anomalies' ? 'all' : 'anomalies')
+            onSelectSubFilter && onSelectSubFilter('anomalies_toutes')
+          }}
+        >
+          <div className="pauses-v2-kpi-top">
+            <div className="pauses-v2-kpi-circle">
+              <AlertTriangle size={23} />
+            </div>
+            <div>
+              <strong className="pauses-v2-kpi-number">
+                {String(anomaliesPauses.length).padStart(2, '0')}
+              </strong>
+              <span className="pauses-v2-kpi-label">
+                {anomaliesPauses.length > 1 ? 'Anomalies' : 'Anomalie'}
+              </span>
+            </div>
+          </div>
+          <div className="pauses-v2-kpi-bar-row">
+            <div className="pauses-v2-kpi-track">
+              <span
+                className="pauses-v2-kpi-fill"
+                style={{
+                  width: `${anomaliesPauses.length > 0 ? Math.max(10, anomaliesPct) : 0}%`,
+                  background: 'linear-gradient(90deg, #ef4444, #f87171)',
+                }}
+              />
+            </div>
+            <span className="pauses-v2-kpi-pct">{anomaliesPct}%</span>
+          </div>
+        </button>
+      </section>
+    </>
   )
 }
 
 export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
-  // Calcul 100 % réel heure par heure (00h–23h) séparant Pauses Réelles (non présumées) et Pauses Présumées
-  const { realByHour, presumedByHour, maxHourly } = useMemo(() => {
-    const r = Array(24).fill(0)
-    const pr = Array(24).fill(0)
+  const [chartScope, setChartScope] = useState('all')
+
+  // Histogramme horaire (08h -> 18h par défaut, étendu si pauses matinales/nocturnes)
+  const { slots, maxCount } = useMemo(() => {
+    const countsByHour = Array(24).fill(0)
 
     for (const p of paies) {
       if (p.statut === 'ecartee') continue
+      if (chartScope === 'reelles' && !estPauseReelleEffectuee(p)) continue
+      if (chartScope === 'presumees' && !estPausePresumee(p)) continue
+
       let hour = null
       if (p.debutISO) {
         const parts = getHeuresMinutesLocales(p.debutISO)
@@ -657,249 +577,224 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
       if (hour === null && p.debutHHMM && /^\d{2}:\d{2}/.test(p.debutHHMM)) {
         hour = parseInt(p.debutHHMM.slice(0, 2), 10)
       }
-      if (!Number.isFinite(hour) || hour < 0 || hour > 23) continue
-
-      if (estPauseReelleEffectuee(p)) {
-        r[hour] += 1
-      } else if (estPausePresumee(p)) {
-        pr[hour] += 1
+      if (Number.isFinite(hour) && hour >= 0 && hour <= 23) {
+        countsByHour[hour] += 1
       }
     }
 
-    // Regroupement en 12 points horaires (00h, 02h, ..., 22h) pour une courbe lisse lisible
-    const rPoints = []
-    const prPoints = []
-    for (let h = 0; h < 24; h += 2) {
-      rPoints.push(r[h] + (r[h + 1] || 0))
-      prPoints.push(pr[h] + (pr[h + 1] || 0))
+    let minH = 8
+    let maxH = 18
+    for (let h = 0; h < 24; h++) {
+      if (countsByHour[h] > 0) {
+        if (h < minH) minH = h
+        if (h > maxH) maxH = h
+      }
     }
 
-    const maxVal = Math.max(2, ...rPoints, ...prPoints)
-    return { realByHour: rPoints, presumedByHour: prPoints, maxHourly: maxVal }
-  }, [paies])
+    const result = []
+    for (let h = minH; h <= maxH; h++) {
+      result.push({
+        hour: h,
+        label: `${String(h).padStart(2, '0')}h`,
+        count: countsByHour[h],
+      })
+    }
 
-  const realCurve = useMemo(() => build24hCurveGeometry(realByHour, maxHourly), [realByHour, maxHourly])
-  const presumedCurve = useMemo(() => build24hCurveGeometry(presumedByHour, maxHourly), [presumedByHour, maxHourly])
+    const peak = Math.max(4, ...result.map((s) => s.count))
+    return { slots: result, maxCount: peak }
+  }, [paies, chartScope])
 
-  const yTicks = useMemo(() => {
-    return [
-      { val: maxHourly, y: 24 },
-      { val: Math.round(maxHourly * 0.75), y: 53 },
-      { val: Math.round(maxHourly * 0.5), y: 83 },
-      { val: Math.round(maxHourly * 0.25), y: 112 },
-      { val: 0, y: 142 },
-    ]
-  }, [maxHourly])
-
-  // Donut : Répartition entre Pauses réelles (non présumées), Pauses présumées et Pauses en direct
+  // Statistiques du Donut (Réelles vs Présumées vs Anomalies)
   const donutStats = useMemo(() => {
     const active = paies.filter((p) => p.statut !== 'ecartee')
-    const realClosed = active.filter((p) => estPauseReelleEffectuee(p) && !p.ouverte).length
-    const realOpen = active.filter((p) => estPauseReelleEffectuee(p) && p.ouverte).length
-    const presumed = active.filter((p) => estPausePresumee(p)).length
-    const totalReal = realClosed + realOpen
-    const grandTotal = Math.max(1, totalReal + presumed)
+    const realList = active.filter((p) => estPauseReelleEffectuee(p))
+    const presumedList = active.filter((p) => estPausePresumee(p))
+    const anomalyList = active.filter((p) => Boolean(p.anomalie))
 
-    const realPct = active.length > 0 ? Math.round((totalReal / grandTotal) * 100) : 0
-    const presumedPct = active.length > 0 ? Math.round((presumed / grandTotal) * 100) : 0
-    const openPct = active.length > 0 ? Math.round((realOpen / grandTotal) * 100) : 0
+    const realMin = realList.reduce((acc, p) => acc + (Number(p.dureeMinutes) || 0), 0)
+    const presumedMin = presumedList.reduce((acc, p) => acc + (Number(p.dureeMinutes) || 0), 0)
+    const anomalyMin = anomalyList.reduce((acc, p) => acc + (Number(p.dureeMinutes) || 0), 0)
+
+    const total = Math.max(1, realList.length + presumedList.length)
+    const realPct = active.length > 0 ? Math.round((realList.length / total) * 100) : 0
+    const presumedPct = active.length > 0 ? Math.max(0, 100 - realPct) : 0
+    const anomalyPct = active.length > 0 ? Math.min(100, Math.round((anomalyList.length / total) * 100)) : 0
 
     return {
-      totalActive: active.length,
-      totalReal,
-      realClosed,
-      realOpen,
-      presumed,
+      realCount: realList.length,
+      presumedCount: presumedList.length,
+      anomalyCount: anomalyList.length,
+      realMin,
+      presumedMin,
+      anomalyMin,
       realPct,
       presumedPct,
-      openPct,
-      grandTotal,
+      anomalyPct,
+      total,
     }
   }, [paies])
 
-  const circumference = 2 * Math.PI * 44
-  const realClosedArc = (donutStats.realClosed / donutStats.grandTotal) * circumference
-  const presumedArc = (donutStats.presumed / donutStats.grandTotal) * circumference
-  const openArc = (donutStats.realOpen / donutStats.grandTotal) * circumference
+  const circumference = 2 * Math.PI * 46
+  const realArc = (donutStats.realCount / donutStats.total) * circumference
+  const presumedArc = (donutStats.presumedCount / donutStats.total) * circumference
+
+  const yTicks = useMemo(() => {
+    const top = Math.ceil(maxCount / 3) * 3
+    return [
+      { label: top, y: 26 },
+      { label: Math.round((top * 2) / 3), y: 66 },
+      { label: Math.round(top / 3), y: 106 },
+      { label: 0, y: 146 },
+    ]
+  }, [maxCount])
+
+  const chartTopVal = yTicks[0].label || 4
 
   return (
-    <section
-      aria-label="Graphiques analytiques des pauses"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1.85fr) minmax(290px, 1fr)',
-        gap: 16,
-        marginBottom: 18,
-      }}
-    >
-      {/* GRAPHIQUE 1 : ACTIVITÉ DES PAUSES — 24 HEURES (RÉELLES NON PRÉSUMÉES VS PRÉSUMÉES) */}
-      <article className="employes-framed-card employes-chart-box" style={{ padding: '16px 18px' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 10,
-            marginBottom: 8,
-          }}
-        >
-          <h3 className="employes-chart-box-title" style={{ margin: 0 }}>
-            Activité des pauses — 24 heures
-          </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: '0.78rem', fontWeight: 700 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#34D399' }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-              Réelles pointées (non présumées)
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#F87171' }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#E07A5F', display: 'inline-block' }} />
-              Présumées (grille horaire)
-            </span>
+    <section className="pauses-v2-charts-grid" aria-label="Graphiques analytiques des pauses">
+      {/* GRAPHIQUE GAUCHE : ACTIVITÉ DES PAUSES (HISTOGRAMME HORAIRE) */}
+      <article className="pauses-v2-panel">
+        <div className="pauses-v2-panel-head">
+          <div className="pauses-v2-panel-title-wrap">
+            <div className="pauses-v2-panel-icon">
+              <BarChart3 size={18} />
+            </div>
+            <div>
+              <h3 className="pauses-v2-panel-title">Activité des pauses</h3>
+              <p className="pauses-v2-panel-subtitle">Nombre de pauses par tranche horaire</p>
+            </div>
           </div>
+
+          <select
+            className="pauses-v2-select"
+            value={chartScope}
+            onChange={(e) => setChartScope(e.target.value)}
+            aria-label="Filtrer les pauses du graphique"
+          >
+            <option value="all">Toutes les pauses</option>
+            <option value="reelles">Pauses réelles pointées</option>
+            <option value="presumees">Pauses présumées</option>
+          </select>
         </div>
 
         <svg
-          viewBox="0 0 600 168"
+          viewBox="0 0 580 174"
           style={{ width: '100%', height: 'auto', display: 'block' }}
           role="img"
-          aria-label="Courbe 24 heures distinguant les pauses réelles pointées et les pauses présumées"
+          aria-label="Histogramme du nombre de pauses par tranche horaire"
         >
           <defs>
-            <linearGradient id="pauses-24h-emerald" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10B981" stopOpacity="0.36" />
-              <stop offset="100%" stopColor="#10B981" stopOpacity="0.02" />
-            </linearGradient>
-            <linearGradient id="pauses-24h-coral" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#E07A5F" stopOpacity="0.34" />
-              <stop offset="100%" stopColor="#E07A5F" stopOpacity="0.02" />
+            <linearGradient id="pauses-v2-bar-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f2a950" />
+              <stop offset="100%" stopColor="#d97228" />
             </linearGradient>
           </defs>
 
-          {/* Zones de nuit 00h–06h et 18h–23h */}
-          <rect
-            x="38"
-            y="18"
-            width="148"
-            height="124"
-            rx="6"
-            fill="rgba(124, 92, 252, 0.14)"
-            stroke="rgba(167, 139, 250, 0.28)"
-            strokeDasharray="3 3"
-          />
-          <rect
-            x="434"
-            y="18"
-            width="148"
-            height="124"
-            rx="6"
-            fill="rgba(124, 92, 252, 0.14)"
-            stroke="rgba(167, 139, 250, 0.28)"
-            strokeDasharray="3 3"
-          />
-          <text x="112" y="34" textAnchor="middle" fontSize="10" fontWeight="700" fill="#C4B5FD">
-            Nuit
-          </text>
-          <text x="508" y="34" textAnchor="middle" fontSize="10" fontWeight="700" fill="#C4B5FD">
-            Nuit
-          </text>
-
-          {/* Grille horizontale */}
+          {/* Lignes de grille horizontales */}
           {yTicks.map((t, idx) => (
             <g key={idx}>
-              <text x="14" y={t.y + 3} fontSize="9.5" fill="currentColor" opacity="0.65">
-                {t.val}
+              <text x="8" y={t.y + 3} fontSize="10" fill="currentColor" opacity="0.55">
+                {t.label}
               </text>
               <line
-                x1="38"
+                x1="34"
                 y1={t.y}
-                x2="582"
+                x2="566"
                 y2={t.y}
                 stroke="currentColor"
-                strokeOpacity="0.12"
-                strokeDasharray="3 3"
+                strokeOpacity="0.1"
               />
             </g>
           ))}
 
-          {/* Courbe Pauses Présumées */}
-          <path d={presumedCurve.areaPath} fill="url(#pauses-24h-coral)" />
-          <path
-            d={presumedCurve.linePath}
-            fill="none"
-            stroke="#E07A5F"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-          />
-          {presumedCurve.coords.map((pt, idx) => (
-            <circle key={`pr-${idx}`} cx={pt.x} cy={pt.y} r="3.2" fill="#FECACA" stroke="#E07A5F" strokeWidth="1.5">
-              <title>{`${String(idx * 2).padStart(2, '0')}h · ${pt.v} pause(s) présumée(s)`}</title>
-            </circle>
-          ))}
+          {/* Barres horaires */}
+          {slots.map((slot, idx) => {
+            const slotWidth = 524 / Math.max(1, slots.length)
+            const xCenter = 38 + idx * slotWidth + slotWidth / 2
+            const barWidth = Math.min(28, Math.max(14, slotWidth * 0.56))
+            const baseLine = 146
+            const maxBarHeight = 116
+            const rawHeight = (slot.count / chartTopVal) * maxBarHeight
+            const barHeight = slot.count > 0 ? Math.max(8, rawHeight) : 2
 
-          {/* Courbe Pauses Réelles (Non présumées) */}
-          <path d={realCurve.areaPath} fill="url(#pauses-24h-emerald)" />
-          <path
-            d={realCurve.linePath}
-            fill="none"
-            stroke="#10B981"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-          />
-          {realCurve.coords.map((pt, idx) => (
-            <circle key={`re-${idx}`} cx={pt.x} cy={pt.y} r="3.4" fill="#A7F3D0" stroke="#059669" strokeWidth="1.5">
-              <title>{`${String(idx * 2).padStart(2, '0')}h · ${pt.v} pause(s) réelle(s) pointée(s)`}</title>
-            </circle>
-          ))}
-
-          {/* Repères horaires X */}
-          {['00h', '03h', '06h', '09h', '12h', '15h', '18h', '21h', '23h'].map((lbl, idx, arr) => {
-            const x = Math.round(38 + (idx * (582 - 38)) / (arr.length - 1))
             return (
-              <text
-                key={lbl}
-                x={x}
-                y="159"
-                textAnchor="middle"
-                fontSize="9.5"
-                fontWeight="700"
-                fill="currentColor"
-                opacity="0.72"
-              >
-                {lbl}
-              </text>
+              <g key={slot.label}>
+                <rect
+                  x={xCenter - barWidth / 2}
+                  y={baseLine - barHeight}
+                  width={barWidth}
+                  height={barHeight}
+                  rx="4"
+                  fill={slot.count > 0 ? 'url(#pauses-v2-bar-grad)' : 'currentColor'}
+                  fillOpacity={slot.count > 0 ? 1 : 0.14}
+                >
+                  <title>{`${slot.label} · ${slot.count} pause(s)`}</title>
+                </rect>
+                {slot.count > 0 && (
+                  <text
+                    x={xCenter}
+                    y={baseLine - barHeight - 6}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fontWeight="800"
+                    fill="currentColor"
+                    opacity="0.9"
+                  >
+                    {slot.count}
+                  </text>
+                )}
+                <text
+                  x={xCenter}
+                  y="164"
+                  textAnchor="middle"
+                  fontSize="10"
+                  fontWeight="650"
+                  fill="currentColor"
+                  opacity="0.65"
+                >
+                  {slot.label}
+                </text>
+              </g>
             )
           })}
         </svg>
       </article>
 
-      {/* GRAPHIQUE 2 : RÉPARTITION DES PAUSES (DONUT 0–100 %) */}
-      <article className="employes-framed-card employes-chart-box" style={{ padding: '16px 18px' }}>
-        <h3 className="employes-chart-box-title" style={{ margin: '0 0 10px' }}>
-          Répartition des pauses
-        </h3>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-around',
-            gap: 14,
-            flexWrap: 'wrap',
-            marginTop: 6,
-          }}
-        >
-          <div style={{ position: 'relative', width: 136, height: 136 }}>
+      {/* GRAPHIQUE DROITE : RÉPARTITION DES PAUSES (DONUT + LÉGENDE ALIGNÉE) */}
+      <article className="pauses-v2-panel">
+        <div className="pauses-v2-panel-head">
+          <div className="pauses-v2-panel-title-wrap">
+            <div className="pauses-v2-panel-icon">
+              <PieChart size={18} />
+            </div>
+            <div>
+              <h3 className="pauses-v2-panel-title">Répartition des pauses</h3>
+              <p className="pauses-v2-panel-subtitle">Sur la période sélectionnée</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="pauses-v2-donut-layout">
+          <div style={{ position: 'relative', width: 156, height: 156, margin: '0 auto' }}>
             <svg viewBox="0 0 120 120" style={{ width: '100%', height: '100%' }} aria-hidden="true">
-              <circle cx="60" cy="60" r="44" fill="none" stroke="currentColor" strokeOpacity="0.1" strokeWidth="15" />
-              {realClosedArc > 0 && (
+              <circle
+                cx="60"
+                cy="60"
+                r="46"
+                fill="none"
+                stroke="currentColor"
+                strokeOpacity="0.1"
+                strokeWidth="14"
+              />
+              {realArc > 0 && (
                 <circle
                   cx="60"
                   cy="60"
-                  r="44"
+                  r="46"
                   fill="none"
-                  stroke="#10B981"
-                  strokeWidth="15"
-                  strokeDasharray={`${realClosedArc} ${circumference}`}
+                  stroke="#10b981"
+                  strokeWidth="14"
+                  strokeDasharray={`${realArc} ${circumference}`}
                   transform="rotate(-90 60 60)"
                 />
               )}
@@ -907,97 +802,75 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
                 <circle
                   cx="60"
                   cy="60"
-                  r="44"
+                  r="46"
                   fill="none"
-                  stroke="#E07A5F"
-                  strokeWidth="15"
+                  stroke="#e07a38"
+                  strokeWidth="14"
                   strokeDasharray={`${presumedArc} ${circumference}`}
-                  strokeDashoffset={-realClosedArc}
-                  transform="rotate(-90 60 60)"
-                />
-              )}
-              {openArc > 0 && (
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="44"
-                  fill="none"
-                  stroke="#F59E0B"
-                  strokeWidth="15"
-                  strokeDasharray={`${openArc} ${circumference}`}
-                  strokeDashoffset={-(realClosedArc + presumedArc)}
+                  strokeDashoffset={-realArc}
                   transform="rotate(-90 60 60)"
                 />
               )}
             </svg>
             <div className="pointages-donut-center">
-              <strong style={{ fontSize: '1.35rem' }}>{donutStats.realPct}%</strong>
-              <span style={{ color: '#34D399', fontWeight: 700 }}>Réelles</span>
+              <strong style={{ fontSize: '1.5rem', fontWeight: 850 }}>{donutStats.realPct}%</strong>
+              <span style={{ fontSize: '0.74rem', color: 'var(--pv-text-soft)', fontWeight: 700 }}>
+                Pauses réelles
+              </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.82rem' }}>
+          <div className="pauses-v2-donut-legend">
             <button
               type="button"
+              className="pauses-v2-legend-item"
               onClick={() => onSelectTab && onSelectTab('reelles')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--pt-text)',
-                textAlign: 'left',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                fontWeight: 700,
-              }}
             >
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
-              <span>
-                <strong>{donutStats.totalReal}</strong> Réelles · {donutStats.realPct}%
-              </span>
+              <div className="pauses-v2-legend-left">
+                <span className="pauses-v2-legend-dot" style={{ background: '#10b981' }} />
+                <div>
+                  <strong>Pauses réelles</strong>
+                  <small>
+                    {donutStats.realCount} pause{donutStats.realCount > 1 ? 's' : ''} · {formatDuree(donutStats.realMin)}
+                  </small>
+                </div>
+              </div>
+              <span className="pauses-v2-legend-pct">{donutStats.realPct}%</span>
             </button>
 
             <button
               type="button"
+              className="pauses-v2-legend-item"
               onClick={() => onSelectTab && onSelectTab('presumees')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--pt-text)',
-                textAlign: 'left',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                fontWeight: 700,
-              }}
             >
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#E07A5F', display: 'inline-block' }} />
-              <span>
-                <strong>{donutStats.presumed}</strong> Présumées · {donutStats.presumedPct}%
-              </span>
+              <div className="pauses-v2-legend-left">
+                <span className="pauses-v2-legend-dot" style={{ background: '#e07a38' }} />
+                <div>
+                  <strong>Pauses présumées</strong>
+                  <small>
+                    {donutStats.presumedCount} pause{donutStats.presumedCount > 1 ? 's' : ''} · {formatDuree(donutStats.presumedMin)}
+                  </small>
+                </div>
+              </div>
+              <span className="pauses-v2-legend-pct">{donutStats.presumedPct}%</span>
             </button>
 
             <button
               type="button"
-              onClick={() => onSelectTab && onSelectTab('reelles')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--pt-text)',
-                textAlign: 'left',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                fontWeight: 700,
-              }}
+              className="pauses-v2-legend-item"
+              onClick={() => onSelectTab && onSelectTab('anomalies')}
+              style={{ borderBottomColor: 'transparent' }}
             >
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} />
-              <span>
-                <strong>{donutStats.realOpen}</strong> En direct · {donutStats.openPct}%
-              </span>
+              <div className="pauses-v2-legend-left">
+                <span className="pauses-v2-legend-dot" style={{ background: '#ef4444' }} />
+                <div>
+                  <strong>Anomalies</strong>
+                  <small>
+                    {donutStats.anomalyCount} pause{donutStats.anomalyCount > 1 ? 's' : ''} · {formatDuree(donutStats.anomalyMin)}
+                  </small>
+                </div>
+              </div>
+              <span className="pauses-v2-legend-pct">{donutStats.anomalyPct}%</span>
             </button>
           </div>
         </div>
@@ -1009,7 +882,7 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
 export function PausesCollaborateursSection({
   paies = [],
   employesById = {},
-  activeTab = 'reelles',
+  activeTab = 'all',
   subFilter = 'all',
   searchTerm = '',
   onSearchChange,
@@ -1018,25 +891,13 @@ export function PausesCollaborateursSection({
   onStatuer,
   onOpenEmployeeFiche,
   onOpenPointages,
+  nowMs = Date.now(),
 }) {
-  const [nowMs, setNowMs] = useState(() => Date.now())
-
-  const hasOpenPause = useMemo(() => paies.some((p) => p.ouverte), [paies])
-
-  useEffect(() => {
-    if (!hasOpenPause) return undefined
-    const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
-    return () => window.clearInterval(timer)
-  }, [hasOpenPause])
-
-  // Séparation stricte :
-  // 1) Historique des pauses réellement effectuées (non présumées)
-  // 2) Pauses présumées (créneau de la grille horaire, non pointées)
-  // 3) Anomalies
   const realPauses = useMemo(() => paies.filter((p) => estPauseReelleEffectuee(p)), [paies])
-  const presumedPauses = useMemo(() => paies.filter((p) => estPausePresumee(p)), [paies])
+  const presumedPauses = useMemo(() => paies.filter((p) => estPausePresumee(p) && p.statut !== 'ecartee'), [paies])
   const presumedPending = useMemo(() => presumedPauses.filter((p) => p.statut === 'presumee'), [presumedPauses])
   const anomaliesPauses = useMemo(() => paies.filter((p) => Boolean(p.anomalie) && p.statut !== 'ecartee'), [paies])
+  const openPauses = useMemo(() => realPauses.filter((p) => p.ouverte), [realPauses])
 
   const filteredList = useMemo(() => {
     let base = []
@@ -1044,628 +905,433 @@ export function PausesCollaborateursSection({
       base = realPauses
       if (subFilter === 'reelles_pointees') base = base.filter((p) => p.source === 'pointee')
       else if (subFilter === 'reelles_admin') base = base.filter((p) => p.source === 'admin')
-      else if (subFilter === 'reelles_planifiees') base = base.filter((p) => !p.estNonPlanifiee)
       else if (subFilter === 'reelles_hors_planning') base = base.filter((p) => p.estNonPlanifiee)
       else if (subFilter === 'en_direct') base = base.filter((p) => p.ouverte)
     } else if (activeTab === 'presumees') {
       base = presumedPauses
       if (subFilter === 'presumees_a_statuer') base = base.filter((p) => p.statut === 'presumee')
       else if (subFilter === 'presumees_validees') base = base.filter((p) => p.statut === 'validee')
-      else if (subFilter === 'presumees_ecartees') base = base.filter((p) => p.statut === 'ecartee')
-      else base = base.filter((p) => p.statut !== 'ecartee')
     } else if (activeTab === 'anomalies') {
       base = anomaliesPauses
       if (subFilter === 'anomalie_sans_reprise') base = base.filter((p) => p.anomalie === 'sans_reprise')
       else if (subFilter === 'anomalie_trop_longue') base = base.filter((p) => p.anomalie === 'trop_longue')
     } else {
+      // Vue 'all' : pauses en direct en tête, puis réelles et présumées non écartées
       base = paies.filter((p) => p.statut !== 'ecartee')
+      if (subFilter === 'en_direct') base = base.filter((p) => p.ouverte)
+      else if (subFilter === 'reelles_hors_planning') base = base.filter((p) => p.estNonPlanifiee)
     }
 
     const q = String(searchTerm || '').trim().toLowerCase()
-    if (!q) return base
-    return base.filter((p) => {
-      const hay = `${p.employe || ''} ${p.matricule || ''} ${p.entreprise_nom || ''} ${p.motif || ''}`.toLowerCase()
-      return hay.includes(q)
-    })
-  }, [activeTab, subFilter, realPauses, presumedPauses, anomaliesPauses, paies, searchTerm])
+    const searched = !q
+      ? base
+      : base.filter((p) => {
+          const emp = employesById[p.employe_id]
+          const dept = emp?.department || emp?.position || ''
+          const hay = `${p.employe || ''} ${p.matricule || ''} ${p.entreprise_nom || ''} ${dept} ${p.motif || ''}`.toLowerCase()
+          return hay.includes(q)
+        })
 
-  const sectionTitle =
-    activeTab === 'reelles'
-      ? 'Historique des pauses réellement effectuées (non présumées)'
-      : activeTab === 'presumees'
-        ? 'Pauses présumées par la grille horaire (non pointées)'
-        : activeTab === 'anomalies'
-          ? 'Anomalies de pause à contrôler'
-          : 'Registre complet (Pauses réelles + Présumées)'
+    // Toujours mettre les pauses en cours en tout premier pour les voir immédiatement
+    return [...searched].sort((a, b) => {
+      if (a.ouverte && !b.ouverte) return -1
+      if (!a.ouverte && b.ouverte) return 1
+      return 0
+    })
+  }, [activeTab, subFilter, realPauses, presumedPauses, anomaliesPauses, paies, searchTerm, employesById])
+
+  const selectDropdownValue = useMemo(() => {
+    if (subFilter === 'en_direct') return 'en_direct'
+    if (activeTab === 'reelles' && subFilter === 'reelles_pointees') return 'reelles_pointees'
+    if (activeTab === 'reelles' && subFilter === 'reelles_admin') return 'reelles_admin'
+    if (subFilter === 'reelles_hors_planning') return 'reelles_hors_planning'
+    if (activeTab === 'reelles') return 'reelles_all'
+    if (activeTab === 'presumees' && subFilter === 'presumees_a_statuer') return 'presumees_a_statuer'
+    if (activeTab === 'presumees' && subFilter === 'presumees_validees') return 'presumees_validees'
+    if (activeTab === 'presumees') return 'presumees_all'
+    if (activeTab === 'anomalies') return 'anomalies_all'
+    return 'all'
+  }, [activeTab, subFilter])
+
+  const handleStatusDropdownChange = (val) => {
+    if (val === 'all') {
+      onSelectTab && onSelectTab('all')
+      onSelectSubFilter && onSelectSubFilter('all')
+    } else if (val === 'en_direct') {
+      onSelectTab && onSelectTab('reelles')
+      onSelectSubFilter && onSelectSubFilter('en_direct')
+    } else if (val === 'reelles_all') {
+      onSelectTab && onSelectTab('reelles')
+      onSelectSubFilter && onSelectSubFilter('all')
+    } else if (val === 'reelles_pointees' || val === 'reelles_admin' || val === 'reelles_hors_planning') {
+      onSelectTab && onSelectTab('reelles')
+      onSelectSubFilter && onSelectSubFilter(val)
+    } else if (val === 'presumees_all') {
+      onSelectTab && onSelectTab('presumees')
+      onSelectSubFilter && onSelectSubFilter('all')
+    } else if (val === 'presumees_a_statuer' || val === 'presumees_validees') {
+      onSelectTab && onSelectTab('presumees')
+      onSelectSubFilter && onSelectSubFilter(val)
+    } else if (val === 'anomalies_all') {
+      onSelectTab && onSelectTab('anomalies')
+      onSelectSubFilter && onSelectSubFilter('anomalies_toutes')
+    }
+  }
 
   return (
-    <section aria-label="Pauses des collaborateurs" style={{ marginTop: 6 }}>
-      {/* En-tête de section + Onglets de séparation Réelles vs Présumées */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-          marginBottom: 12,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <h2 style={{ margin: 0, fontSize: '1.12rem', fontWeight: 800 }}>
-            Pauses des collaborateurs
-          </h2>
-          <span
-            style={{
-              background: 'rgba(243, 199, 132, 0.16)',
-              border: '1px solid rgba(243, 199, 132, 0.38)',
-              color: '#F3C784',
-              borderRadius: 8,
-              padding: '2px 9px',
-              fontSize: '0.8rem',
-              fontWeight: 800,
-            }}
-          >
-            {filteredList.length}
-          </span>
+    <section className="pauses-v2-panel" aria-label="Pauses des employés">
+      {/* En-tête de la table (fidèle à redesign-pauses-v2.png) */}
+      <div className="pauses-v2-panel-head" style={{ marginBottom: 14 }}>
+        <div className="pauses-v2-panel-title-wrap">
+          <div className="pauses-v2-panel-icon">
+            <Users size={18} />
+          </div>
+          <div>
+            <h2 className="pauses-v2-panel-title">Pauses des employés</h2>
+            <p className="pauses-v2-panel-subtitle">
+              Détail des pauses sur la période ({filteredList.length} affichée{filteredList.length > 1 ? 's' : ''})
+            </p>
+          </div>
         </div>
 
-        {/* Onglets distinguant explicitement Pauses réelles (non présumées) et Pauses présumées */}
-        <div
-          role="tablist"
-          aria-label="Filtrer par nature de pause"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            flexWrap: 'wrap',
-          }}
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'reelles'}
-            onClick={() => {
-              onSelectTab && onSelectTab('reelles')
-              onSelectSubFilter && onSelectSubFilter('all')
-            }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
-              borderRadius: 999,
-              fontSize: '0.8rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              border: activeTab === 'reelles' ? '1px solid #10B981' : '1px solid rgba(243, 199, 132, 0.22)',
-              background: activeTab === 'reelles' ? 'rgba(16, 185, 129, 0.18)' : 'rgba(243, 199, 132, 0.05)',
-              color: activeTab === 'reelles' ? '#34D399' : 'var(--pt-text)',
-            }}
-          >
-            <CheckCircle2 size={14} />
-            <span>Historique · Pauses réelles ({realPauses.length})</span>
-          </button>
+        {/* Barre de recherche + Filtre de statut + Actions en lot */}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          {presumedPending.length > 1 && onStatuer && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <button
+                type="button"
+                className="pauses-v2-btn-validate"
+                onClick={() => onStatuer(presumedPending.map((p) => p.id), 'valider')}
+                title="Valider toutes les pauses présumées en attente"
+              >
+                <Check size={13} />
+                <span>Valider les {presumedPending.length} présumées</span>
+              </button>
+              <button
+                type="button"
+                className="pauses-v2-btn-reject"
+                onClick={() => onStatuer(presumedPending.map((p) => p.id), 'ecarter')}
+                title="Écarter toutes les pauses présumées en attente"
+              >
+                <X size={13} />
+                <span>Tout écarter</span>
+              </button>
+            </div>
+          )}
 
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'presumees'}
-            onClick={() => {
-              onSelectTab && onSelectTab('presumees')
-              onSelectSubFilter && onSelectSubFilter('all')
-            }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
-              borderRadius: 999,
-              fontSize: '0.8rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              border: activeTab === 'presumees' ? '1px solid #F59E0B' : '1px solid rgba(243, 199, 132, 0.22)',
-              background: activeTab === 'presumees' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(243, 199, 132, 0.05)',
-              color: activeTab === 'presumees' ? '#FBBF24' : 'var(--pt-text)',
-            }}
-          >
-            <Clock size={14} />
-            <span>Pauses présumées ({presumedPauses.filter((p) => p.statut !== 'ecartee').length})</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'anomalies'}
-            onClick={() => {
-              onSelectTab && onSelectTab('anomalies')
-              onSelectSubFilter && onSelectSubFilter('anomalies_toutes')
-            }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 14px',
-              borderRadius: 999,
-              fontSize: '0.8rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              border: activeTab === 'anomalies' ? '1px solid #EF4444' : '1px solid rgba(243, 199, 132, 0.22)',
-              background: activeTab === 'anomalies' ? 'rgba(239, 68, 68, 0.18)' : 'rgba(243, 199, 132, 0.05)',
-              color: activeTab === 'anomalies' ? '#F87171' : 'var(--pt-text)',
-            }}
-          >
-            <AlertTriangle size={14} />
-            <span>Anomalies ({anomaliesPauses.length})</span>
-          </button>
-
-          {/* Recherche rapide */}
+          {/* Recherche employé */}
           <label
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 7,
-              background: 'rgba(243, 199, 132, 0.06)',
-              border: '1px solid rgba(243, 199, 132, 0.24)',
-              borderRadius: 999,
-              padding: '6px 12px',
+              gap: 8,
+              padding: '7px 13px',
+              borderRadius: 9,
+              border: '1px solid var(--pv-border)',
+              background: 'var(--pv-card-elevated)',
             }}
           >
-            <Search size={14} style={{ opacity: 0.7 }} />
+            <Search size={14} color="var(--pv-muted)" />
             <input
               type="search"
-              placeholder="Collaborateur, matricule…"
+              placeholder="Rechercher un employé..."
               value={searchTerm}
               onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
               style={{
-                background: 'transparent',
                 border: 'none',
                 outline: 'none',
-                color: 'var(--pt-text)',
+                background: 'transparent',
+                color: 'var(--pv-text)',
                 fontSize: '0.8rem',
-                width: 170,
+                width: 190,
               }}
             />
           </label>
+
+          {/* Menu déroulant Tous les statuts */}
+          <select
+            className="pauses-v2-select"
+            value={selectDropdownValue}
+            onChange={(e) => handleStatusDropdownChange(e.target.value)}
+            aria-label="Filtrer par statut de pause"
+          >
+            <option value="all">Tous les statuts ({paies.filter((p) => p.statut !== 'ecartee').length})</option>
+            <option value="en_direct">⏱️ En pause en direct ({openPauses.length})</option>
+            <option value="reelles_all">✓ Pauses réelles ({realPauses.length})</option>
+            <option value="reelles_pointees">📱 Réelles pointées ({realPauses.filter((p) => p.source === 'pointee').length})</option>
+            <option value="reelles_admin">🛡️ Saisies par l’admin ({realPauses.filter((p) => p.source === 'admin').length})</option>
+            <option value="reelles_hors_planning">⚡ Hors planning ({realPauses.filter((p) => p.estNonPlanifiee).length})</option>
+            <option value="presumees_a_statuer">⏳ Présumées à statuer ({presumedPending.length})</option>
+            <option value="presumees_all">📋 Toutes les présumées ({presumedPauses.length})</option>
+            <option value="presumees_validees">✓ Présumées validées ({presumedPauses.filter((p) => p.statut === 'validee').length})</option>
+            <option value="anomalies_all">⚠️ Anomalies ({anomaliesPauses.length})</option>
+          </select>
         </div>
       </div>
 
-      {/* Bandeau d'explication contextuelle + action en lot pour les présumées */}
+      {/* Onglets rapides */}
       <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 10,
-          padding: '10px 14px',
-          marginBottom: 12,
-          borderRadius: 12,
-          background:
-            activeTab === 'reelles'
-              ? 'rgba(16, 185, 129, 0.08)'
-              : activeTab === 'presumees'
-                ? 'rgba(245, 158, 11, 0.1)'
-                : 'rgba(239, 68, 68, 0.09)',
-          border:
-            activeTab === 'reelles'
-              ? '1px solid rgba(16, 185, 129, 0.28)'
-              : activeTab === 'presumees'
-                ? '1px solid rgba(245, 158, 11, 0.32)'
-                : '1px solid rgba(239, 68, 68, 0.28)',
-          fontSize: '0.8rem',
-        }}
+        role="tablist"
+        aria-label="Onglets rapides des pauses"
+        style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}
       >
-        <div>
-          <strong style={{ marginRight: 6 }}>{sectionTitle} :</strong>
-          {activeTab === 'reelles' ? (
-            <span>
-              Cet historique ne contient <strong>que les pauses réellement effectuées (non présumées)</strong>. Les pauses présumées par la grille horaire en sont exclues.
-            </span>
-          ) : activeTab === 'presumees' ? (
-            <span>
-              Ces pauses sont <strong>présumées à partir de la grille horaire</strong> (aucune pause réelle pointée par l’employé). Validez-les ou écartez-les.
-            </span>
-          ) : (
-            <span>
-              Pauses ouvertes sans reprise ou dépassant la durée maximale autorisée.
-            </span>
-          )}
-        </div>
-
-        {activeTab === 'presumees' && presumedPending.length > 1 && onStatuer && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => onStatuer(presumedPending.map((p) => p.id), 'valider')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                background: 'rgba(16, 185, 129, 0.18)',
-                border: '1px solid rgba(16, 185, 129, 0.45)',
-                color: '#34D399',
-                borderRadius: 999,
-                padding: '5px 12px',
-                fontSize: '0.76rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
-            >
-              <CheckCircle2 size={13} />
-              <span>Valider les {presumedPending.length} présumées</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onStatuer(presumedPending.map((p) => p.id), 'ecarter')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.4)',
-                color: '#F87171',
-                borderRadius: 999,
-                padding: '5px 12px',
-                fontSize: '0.76rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-              }}
-            >
-              <XCircle size={13} />
-              <span>Écarter les {presumedPending.length} présumées</span>
-            </button>
-          </div>
-        )}
+        {[
+          { id: 'all', label: `Toutes (${paies.filter((p) => p.statut !== 'ecartee').length})`, active: activeTab === 'all' && subFilter === 'all' },
+          { id: 'en_direct', label: `⏱️ En direct (${openPauses.length})`, active: subFilter === 'en_direct' },
+          { id: 'reelles', label: `✓ Pauses réelles (${realPauses.length})`, active: activeTab === 'reelles' && subFilter !== 'en_direct' },
+          { id: 'presumees', label: `⏳ Présumées (${presumedPauses.length})`, active: activeTab === 'presumees' },
+          { id: 'anomalies', label: `⚠️ Anomalies (${anomaliesPauses.length})`, active: activeTab === 'anomalies' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={t.active}
+            className="pauses-v2-Ghost-btn"
+            style={{
+              borderColor: t.active ? 'var(--pv-gold)' : undefined,
+              color: t.active ? 'var(--pv-gold)' : undefined,
+              background: t.active ? 'rgba(240, 178, 84, 0.12)' : undefined,
+            }}
+            onClick={() => {
+              if (t.id === 'en_direct') {
+                onSelectTab && onSelectTab('reelles')
+                onSelectSubFilter && onSelectSubFilter('en_direct')
+              } else {
+                onSelectTab && onSelectTab(t.id)
+                onSelectSubFilter && onSelectSubFilter('all')
+              }
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* Liste des cartes collaborateurs */}
+      {/* Tableau RH des pauses */}
       {filteredList.length === 0 ? (
-        <div
-          className="employes-framed-card"
-          style={{
-            textAlign: 'center',
-            padding: '44px 20px',
-          }}
-        >
-          <Coffee size={36} color="#F3C784" style={{ opacity: 0.75, marginBottom: 8 }} />
-          <h3 style={{ margin: '0 0 6px', fontSize: '1.02rem', fontWeight: 800 }}>
-            {activeTab === 'reelles'
-              ? 'Aucune pause réellement effectuée sur cette période'
-              : activeTab === 'presumees'
-                ? 'Aucune pause présumée sur cette période'
-                : 'Aucune anomalie de pause sur cette période'}
+        <div style={{ textAlign: 'center', padding: '42px 18px', color: 'var(--pv-muted)' }}>
+          <Coffee size={36} color="var(--pv-gold)" style={{ opacity: 0.75, marginBottom: 8 }} />
+          <h3 style={{ margin: '0 0 6px', color: 'var(--pv-text)', fontSize: '1rem', fontWeight: 800 }}>
+            Aucune pause trouvée pour ce filtre
           </h3>
-          <p style={{ margin: '0 auto', maxWidth: 520, fontSize: '0.82rem', opacity: 0.78, lineHeight: 1.55 }}>
-            {activeTab === 'reelles' ? (
-              presumedPauses.length > 0 ? (
-                <>
-                  Aucun collaborateur n’a pointé de pause réelle sur la période sélectionnée.{' '}
-                  <strong>{presumedPauses.length} pause(s) présumée(s)</strong> par la grille horaire sont disponibles dans l’onglet{' '}
-                  <button
-                    type="button"
-                    onClick={() => onSelectTab && onSelectTab('presumees')}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#FBBF24',
-                      fontWeight: 800,
-                      textDecoration: 'underline',
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
-                  >
-                    Pauses présumées
-                  </button>
-                  .
-                </>
-              ) : (
-                'Seules les pauses réellement pointées par les collaborateurs (ou enregistrées par l’administrateur) figurent dans cet historique.'
-              )
-            ) : (
-              'Aucune ligne ne correspond aux filtres sélectionnés.'
-            )}
+          <p style={{ margin: '0 auto', maxWidth: 460, fontSize: '0.82rem' }}>
+            Changez la période en haut (Jour / Semaine / Mois) ou sélectionnez « Toutes » pour afficher l’ensemble des pauses.
           </p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {filteredList.map((p) => {
-            const empObj = employesById[p.employe_id] || null
-            const initials = (p.employe || 'EC')
-              .split(' ')
-              .filter(Boolean)
-              .map((w) => w[0])
-              .slice(0, 2)
-              .join('')
-              .toUpperCase()
-            const anomalie = badgeAnomalie(p.anomalie)
-            const isPresumed = estPausePresumee(p)
-            const isReal = estPauseReelleEffectuee(p)
+        <div className="pauses-v2-table-wrap">
+          <table className="pauses-v2-table">
+            <thead>
+              <tr>
+                <th>Employé</th>
+                <th>Service</th>
+                <th>Date</th>
+                <th>Plage horaire</th>
+                <th>Durée</th>
+                <th>Statut</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredList.map((p) => {
+                const empObj = employesById[p.employe_id] || null
+                const initials = (p.employe || 'EC')
+                  .split(' ')
+                  .filter(Boolean)
+                  .map((w) => w[0])
+                  .slice(0, 2)
+                  .join('')
+                  .toUpperCase()
+                const serviceLabel =
+                  empObj?.department ||
+                  empObj?.position ||
+                  p.entreprise_nom ||
+                  'Équipe'
+                const anomalie = badgeAnomalie(p.anomalie)
+                const isPresumed = estPausePresumee(p)
+                const isReal = estPauseReelleEffectuee(p)
+                const liveElapsed = p.ouverte ? formaterTempsPauseEnDirect(p, nowMs) : null
 
-            return (
-              <article
-                key={p.id}
-                className="employes-framed-card"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(210px, 1.25fr) minmax(200px, 1.15fr) minmax(210px, 1.3fr) auto',
-                  alignItems: 'center',
-                  gap: 14,
-                  padding: '12px 16px',
-                }}
-              >
-                {/* Colonne 1 : Collaborateur (Avatar + Nom + Matricule) */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                  <div
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 12,
-                      overflow: 'hidden',
-                      flexShrink: 0,
-                      border: '1.5px solid rgba(243, 199, 132, 0.42)',
-                      background: 'rgba(243, 199, 132, 0.12)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: '0.92rem',
-                      color: '#F3C784',
-                    }}
-                  >
-                    {empObj?.photo_url ? (
-                      <PhotoSignee
-                        url={empObj.photo_url}
-                        alt={p.employe}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        fallback={<span>{initials}</span>}
-                      />
-                    ) : (
-                      <span>{initials}</span>
-                    )}
-                  </div>
+                return (
+                  <tr key={p.id} className={p.ouverte ? 'is-live-row' : undefined}>
+                    {/* 1. Employé */}
+                    <td>
+                      <div className="pauses-v2-emp-cell">
+                        <div className="pauses-v2-avatar">
+                          {empObj?.photo_url ? (
+                            <PhotoSignee
+                              url={empObj.photo_url}
+                              alt={p.employe}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              fallback={<span>{initials}</span>}
+                            />
+                          ) : (
+                            <span>{initials}</span>
+                          )}
+                        </div>
+                        <div>
+                          <strong className="pauses-v2-emp-name">{p.employe || 'Collaborateur'}</strong>
+                          <span className="pauses-v2-emp-mat">
+                            {p.matricule ? `#${p.matricule}` : 'Collaborateur'}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
 
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.98rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {p.employe || 'Collaborateur'}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 3 }}>
-                      {p.matricule && (
-                        <span
-                          style={{
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            padding: '1px 7px',
-                            borderRadius: 6,
-                            background: 'rgba(243, 199, 132, 0.1)',
-                            border: '1px solid rgba(243, 199, 132, 0.25)',
-                            color: 'var(--pt-text)',
-                          }}
-                        >
-                          {p.matricule}
+                    {/* 2. Service */}
+                    <td style={{ color: 'var(--pv-text-soft)', fontWeight: 600 }}>
+                      {serviceLabel}
+                    </td>
+
+                    {/* 3. Date */}
+                    <td style={{ color: 'var(--pv-text-soft)', whiteSpace: 'nowrap' }}>
+                      {formatTableRowDate(p.jour)}
+                    </td>
+
+                    {/* 4. Plage horaire */}
+                    <td style={{ whiteSpace: 'nowrap', fontWeight: 800 }}>
+                      {p.ouverte ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: 'var(--pv-amber)' }}>
+                          <span className="pauses-v2-live-pulse-dot" />
+                          <span>{p.debutHHMM} → En cours</span>
+                        </span>
+                      ) : (
+                        <span>
+                          {p.debutHHMM} <span style={{ opacity: 0.5, margin: '0 3px' }}>→</span> {p.finHHMM || '--:--'}
                         </span>
                       )}
-                      <span style={{ fontSize: '0.73rem', opacity: 0.72 }}>
-                        {p.jour}{p.entreprise_nom ? ` · ${p.entreprise_nom}` : ''}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                    </td>
 
-                {/* Colonne 2 : Créneau horaire ou Chronomètre en direct */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  {p.ouverte ? (
-                    <div
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        color: '#F59E0B',
-                        fontWeight: 900,
-                        fontSize: '1.14rem',
-                        letterSpacing: '0.02em',
-                      }}
-                    >
-                      <Timer size={20} color="#F59E0B" />
-                      <span>En cours : {formaterTempsPauseEnDirect(p, nowMs)}</span>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                      <strong style={{ fontSize: '1.22rem', fontWeight: 800, letterSpacing: '0.02em' }}>
-                        {p.debutHHMM} <span style={{ opacity: 0.55, margin: '0 2px' }}>→</span> {p.finHHMM || '--:--'}
-                      </strong>
-                      <span style={{ fontSize: '0.84rem', opacity: 0.78, fontWeight: 700 }}>
-                        ({formatDuree(p.dureeMinutes)})
-                      </span>
-                    </div>
-                  )}
-                </div>
+                    {/* 5. Durée (ou Timer Dynamique en Direct) */}
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {p.ouverte ? (
+                        <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
+                          <span
+                            className="pauses-v2-live-timer-mono"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              fontSize: '0.92rem',
+                            }}
+                          >
+                            <Timer size={14} />
+                            <span>{liveElapsed}</span>
+                          </span>
+                          <small style={{ fontSize: '0.69rem', color: 'var(--pv-muted)', fontWeight: 600 }}>
+                            Depuis {p.debutHHMM}
+                          </small>
+                        </div>
+                      ) : (
+                        <strong style={{ fontWeight: 750 }}>{formatDuree(p.dureeMinutes)}</strong>
+                      )}
+                    </td>
 
-                {/* Colonne 3 : Badges de nature (Pause réelle non présumée vs Pause présumée + Hors planning + Anomalie) */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  {isReal && (
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        padding: '5px 12px',
-                        borderRadius: 999,
-                        fontSize: '0.76rem',
-                        fontWeight: 800,
-                        background: 'rgba(16, 185, 129, 0.16)',
-                        border: '1px solid rgba(16, 185, 129, 0.45)',
-                        color: '#34D399',
-                      }}
-                    >
-                      {p.natureLabel || '✓ Pause réelle pointée'}
-                    </span>
-                  )}
+                    {/* 6. Statut */}
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                        {p.ouverte ? (
+                          <span className="pauses-v2-status-pill is-live">
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }} />
+                            <span>En pause en direct</span>
+                          </span>
+                        ) : isReal ? (
+                          <span className="pauses-v2-status-pill is-real">
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981' }} />
+                            <span>
+                              {p.source === 'admin'
+                                ? 'Pause réelle (admin)'
+                                : p.statut === 'validee'
+                                  ? 'Pause réelle validée'
+                                  : 'Pause réelle pointée'}
+                            </span>
+                          </span>
+                        ) : isPresumed ? (
+                          <span className="pauses-v2-status-pill is-presumed">
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f0b254' }} />
+                            <span>
+                              {p.statut === 'validee' ? 'Présumée validée' : 'Pause présumée'}
+                            </span>
+                          </span>
+                        ) : null}
 
-                  {isPresumed && (
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        padding: '5px 12px',
-                        borderRadius: 999,
-                        fontSize: '0.76rem',
-                        fontWeight: 800,
-                        background: p.statut === 'validee' ? 'rgba(59, 130, 246, 0.16)' : 'rgba(224, 122, 95, 0.18)',
-                        border: p.statut === 'validee' ? '1px solid rgba(59, 130, 246, 0.45)' : '1px solid rgba(224, 122, 95, 0.5)',
-                        color: p.statut === 'validee' ? '#60A5FA' : '#FDBA74',
-                      }}
-                    >
-                      {p.statut === 'validee'
-                        ? '✓ Pause présumée validée'
-                        : '⏳ Pause présumée — à statuer'}
-                    </span>
-                  )}
+                        {p.estNonPlanifiee && isReal && (
+                          <span className="pauses-v2-status-pill is-presumed" title="Pause prise hors planning prévu">
+                            ⚡ Hors planning
+                          </span>
+                        )}
 
-                  {p.estNonPlanifiee && isReal && (
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        padding: '5px 11px',
-                        borderRadius: 999,
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        background: 'rgba(245, 158, 11, 0.16)',
-                        border: '1px solid rgba(245, 158, 11, 0.42)',
-                        color: '#FBBF24',
-                      }}
-                    >
-                      ⚡ Hors planning
-                    </span>
-                  )}
+                        {anomalie && (
+                          <span className="pauses-v2-status-pill is-anomaly">
+                            {anomalie.label}
+                          </span>
+                        )}
+                      </div>
+                    </td>
 
-                  {anomalie && (
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        padding: '5px 11px',
-                        borderRadius: 999,
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        background: 'rgba(239, 68, 68, 0.16)',
-                        border: '1px solid rgba(239, 68, 68, 0.45)',
-                        color: '#F87171',
-                      }}
-                    >
-                      {anomalie.label}
-                    </span>
-                  )}
+                    {/* 7. Actions */}
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                        {p.aStatuer && onStatuer ? (
+                          <>
+                            <button
+                              type="button"
+                              className="pauses-v2-btn-validate"
+                              onClick={() => onStatuer([p.id], 'valider')}
+                            >
+                              <Check size={13} />
+                              <span>Valider</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="pauses-v2-btn-reject"
+                              onClick={() => onStatuer([p.id], 'ecarter')}
+                            >
+                              <X size={13} />
+                              <span>Écarter</span>
+                            </button>
+                          </>
+                        ) : p.statut === 'validee' ? (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--pv-emerald)', fontWeight: 700, marginRight: 4 }}>
+                            ✓ Validée
+                          </span>
+                        ) : null}
 
-                  {p.motif && p.motif !== 'créneau de la grille' && (
-                    <span style={{ fontSize: '0.75rem', opacity: 0.75, fontStyle: 'italic' }}>
-                      « {p.motif} »
-                    </span>
-                  )}
-                </div>
+                        {onOpenEmployeeFiche && empObj && (
+                          <button
+                            type="button"
+                            className="pauses-v2-icon-btn"
+                            onClick={() => onOpenEmployeeFiche(empObj)}
+                            title="Ouvrir la fiche de l’employé"
+                          >
+                            <FileText size={13} />
+                            <span>Fiche</span>
+                          </button>
+                        )}
 
-                {/* Colonne 4 : Boutons d'action (Valider / Écarter / Fiche / Pointages) */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  {p.aStatuer && onStatuer && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => onStatuer([p.id], 'valider')}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          padding: '6px 13px',
-                          borderRadius: 999,
-                          fontSize: '0.77rem',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          background: 'rgba(16, 185, 129, 0.2)',
-                          border: '1px solid rgba(16, 185, 129, 0.5)',
-                          color: '#34D399',
-                        }}
-                      >
-                        <CheckCircle2 size={13} />
-                        <span>Valider</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onStatuer([p.id], 'ecarter')}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          padding: '6px 13px',
-                          borderRadius: 999,
-                          fontSize: '0.77rem',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          background: 'rgba(239, 68, 68, 0.18)',
-                          border: '1px solid rgba(239, 68, 68, 0.48)',
-                          color: '#F87171',
-                        }}
-                      >
-                        <XCircle size={13} />
-                        <span>Écarter</span>
-                      </button>
-                    </>
-                  )}
-
-                  {onOpenEmployeeFiche && empObj && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenEmployeeFiche(empObj)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        padding: '6px 12px',
-                        borderRadius: 999,
-                        fontSize: '0.76rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        background: 'rgba(243, 199, 132, 0.08)',
-                        border: '1px solid rgba(243, 199, 132, 0.28)',
-                        color: 'var(--pt-text)',
-                      }}
-                    >
-                      <FileText size={13} />
-                      <span>Fiche</span>
-                    </button>
-                  )}
-
-                  {onOpenPointages && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenPointages(p)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        padding: '6px 12px',
-                        borderRadius: 999,
-                        fontSize: '0.76rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        background: 'rgba(243, 199, 132, 0.08)',
-                        border: '1px solid rgba(243, 199, 132, 0.28)',
-                        color: 'var(--pt-text)',
-                      }}
-                    >
-                      <Clock size={13} />
-                      <span>Pointages</span>
-                    </button>
-                  )}
-                </div>
-              </article>
-            )
-          })}
+                        {onOpenPointages && (
+                          <button
+                            type="button"
+                            className="pauses-v2-icon-btn"
+                            onClick={() => onOpenPointages(p)}
+                            title="Voir le pointage de ce collaborateur à cette date"
+                          >
+                            <Clock size={13} />
+                            <span>Pointages</span>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </section>
   )
 }
+
+export { KenteWovenTapestrySvg }
