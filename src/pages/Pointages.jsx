@@ -50,8 +50,10 @@ import HolidayService from '../services/holidayService'
 import { resoudrePointagesJournee } from '../services/hoursCalculator'
 import {
   construirePauses,
+  estPauseReelleEffectuee,
   estPointageEnRetard,
   estServiceDeNuit,
+  formaterTempsPauseEnDirect,
   fusionnerPausesEmploye,
 } from '../services/pausesService'
 import { useTheme } from '../contexts/ThemeContext'
@@ -661,17 +663,13 @@ export default function Pointages() {
   const [inspectedPointage, setInspectedPointage] = useState(null)
   const [estimationModalTarget, setEstimationModalTarget] = useState(null)
   const [ficheEmployeeTarget, setFicheEmployeeTarget] = useState(null)
-  const [minLoadingDone, setMinLoadingDone] = useState(false)
+  const [minLoadingDone, setMinLoadingDone] = useState(true)
   const [state, dispatch] = useReducer(reducer, initialState)
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { darkMode, toggleTheme } = useTheme()
   const loadingRef = useRef(false)
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setMinLoadingDone(true), 4500)
-    return () => window.clearTimeout(timer)
-  }, [])
+  const loadPointagesRef = useRef(null)
 
   // Filtres persistés dans l'URL
   const selectedDate = searchParams.get('date') || jourLocal(new Date()) || new Date().toISOString().split('T')[0]
@@ -913,6 +911,40 @@ export default function Pointages() {
   // Chargement principal
   useEffect(() => {
     if (admin) loadPointages()
+  }, [admin, selectedDate, selectedEntrepriseId])
+
+  useEffect(() => {
+    loadPointagesRef.current = loadPointages
+  })
+
+  // Temps réel : mise à jour immédiate quand une pause réelle ou un pointage est déclenché
+  useEffect(() => {
+    if (!admin) return undefined
+    let debounceTimer = null
+    const scheduleReload = () => {
+      if (debounceTimer) window.clearTimeout(debounceTimer)
+      debounceTimer = window.setTimeout(() => {
+        if (loadPointagesRef.current) loadPointagesRef.current()
+      }, 350)
+    }
+    const channel = supabase
+      .channel(`pointages_live_${selectedDate}_${selectedEntrepriseId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'encheck_pauses' },
+        scheduleReload
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'attendances' },
+        scheduleReload
+      )
+      .subscribe()
+
+    return () => {
+      if (debounceTimer) window.clearTimeout(debounceTimer)
+      supabase.removeChannel(channel)
+    }
   }, [admin, selectedDate, selectedEntrepriseId])
 
   const loadEntreprises = async (adminData) => {
@@ -2695,6 +2727,15 @@ function PointageCard({
   // pas par un administrateur. Le détail (ancien type, nouveau type, date)
   // est conservé dans la table `attendance_corrections`.
   const correctionEmploye = p.attendances.find(a => a.modifie_par_employe)
+  const realPauses = (p.pauses || []).filter(pa => estPauseReelleEffectuee(pa))
+  const activePause = realPauses.find(pa => pa.ouverte) || null
+  const [nowMs, setNowMs] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!activePause) return undefined
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [activePause])
 
   return (
     <div
@@ -2702,18 +2743,20 @@ function PointageCard({
       style={{
         ...styles.pointageCard,
         animationDelay: `${index * 0.04}s`,
-        borderColor: hasCriticalAnomaly
-          ? 'rgba(239,68,68,0.25)'
-          : p.hasFaceRecognition
-            ? 'rgba(99,102,241,0.15)'
-            : 'rgba(255,255,255,0.06)',
+        borderColor: activePause
+          ? 'rgba(245,158,11,0.45)'
+          : hasCriticalAnomaly
+            ? 'rgba(239,68,68,0.25)'
+            : p.hasFaceRecognition
+              ? 'rgba(99,102,241,0.15)'
+              : 'rgba(255,255,255,0.06)',
       }}
       role="listitem"
     >
       {/* TOP ROW */}
       <div style={styles.cardTopRow}>
         <div style={styles.cardLeft}>
-          <div style={{ ...styles.avatar, border: `2px solid ${sc.dotColor}40` }}>
+          <div style={{ ...styles.avatar, border: `2px solid ${activePause ? '#F59E0B' : `${sc.dotColor}40`}` }}>
             {p.employee.photo_url ? (
               <img src={p.employee.photo_url} alt="" style={styles.avatarImg} />
             ) : (
@@ -2721,7 +2764,7 @@ function PointageCard({
                 {p.employee.first_name?.[0]}{p.employee.last_name?.[0]}
               </span>
             )}
-            <div style={{ ...styles.statusDot, background: sc.dotColor }}></div>
+            <div style={{ ...styles.statusDot, background: activePause ? '#F59E0B' : sc.dotColor }}></div>
           </div>
 
           <div style={styles.employeeInfo}>
@@ -2756,6 +2799,12 @@ function PointageCard({
         </div>
 
         <div style={styles.cardRight}>
+          {activePause && (
+            <span className="pauses-v2-live-timer">
+              <Timer size={12} />
+              <span>☕ En pause · {formaterTempsPauseEnDirect(activePause, nowMs)}</span>
+            </span>
+          )}
           {hasOvertimeFeature && p.overtimeData?.hasOvertime && (
             <div className="overtime-badge" style={styles.overtimeBadge}>
               <Timer size={11} />
@@ -2772,6 +2821,29 @@ function PointageCard({
           </div>
         </div>
       </div>
+
+      {/* PAUSES RÉELLES EN DIRECT / EFFECTUÉES */}
+      {realPauses.length > 0 && (
+        <div
+          className={`pointages-pause-inline${activePause ? ' is-live' : ''}`}
+          style={{ marginTop: 10, marginBottom: 4 }}
+        >
+          <Timer size={13} />
+          <span>
+            {activePause ? (
+              <>
+                <strong>⏱️ En pause réelle en direct : {formaterTempsPauseEnDirect(activePause, nowMs)}</strong>
+                {` (depuis ${activePause.debutHHMM})`}
+              </>
+            ) : (
+              <>
+                ☕ {realPauses.length} pause{realPauses.length > 1 ? 's' : ''} réelle{realPauses.length > 1 ? 's' : ''} :{' '}
+                {realPauses.map(pa => `${pa.debutHHMM}→${pa.finHHMM || ''} (${pa.dureeMinutes} min)`).join(' · ')}
+              </>
+            )}
+          </span>
+        </div>
+      )}
 
       {/* ANOMALIES INLINE */}
       {hasAnomalies && (

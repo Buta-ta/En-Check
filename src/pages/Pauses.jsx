@@ -1,11 +1,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// ⏸ PAGE PAUSES — Design Afro-Tech Kente & Adinkra
+// ⏸ PAGE PAUSES — Design Afro-Tech Kente & Adinkra + Chronomètre Dynamique
 // ═══════════════════════════════════════════════════════════════════════════
 //  Doctrine :
 //   · Pauses réellement effectuées (non présumées : pointées ou saisies admin)
-//     constituent seules l'historique des pauses effectuées.
+//     avec chronomètre dynamique en direct dès qu'une pause réelle est ouverte.
 //   · Les pauses présumées (créneaux de la grille horaire, non pointées)
-//     sont strictement distinguées et isolées pour décision (Valider / Écarter).
+//     sont strictement distinguées pour décision (Valider / Écarter).
 //   · Le moteur (`encheck_pauses_controler`) tourne au chargement.
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
@@ -19,60 +19,51 @@ import {
 } from '../services/pausesService'
 import PausesLoadingScreen from '../components/PausesLoadingScreen'
 import {
+  KenteWovenTapestrySvg,
   PausesAnalyticsCharts,
   PausesCollaborateursSection,
   PausesCulturalHero,
   PausesExecutiveKpis,
 } from '../components/PausesAfroTechSections'
 import FicheEmployeModal from '../components/FicheEmployeModal'
-import {
-  AdinkraWatermarkSvg,
-  CulturalCornerMotifSvg,
-} from '../components/AfroCulturalSvg'
-import { formaterHeureLocale } from '../utils/timezoneUtils'
+import { formaterHeureLocale, jourLocal } from '../utils/timezoneUtils'
 import toast from 'react-hot-toast'
 import './PointagesAfroTech.css'
 
 export default function Pauses () {
   const navigate = useNavigate()
   const { darkMode, toggleTheme } = useTheme()
+  const todayIso = jourLocal(new Date()) || new Date().toISOString().split('T')[0]
+
   const [admin, setAdmin] = useState(null)
   const [paies, setPaies] = useState([])
   const [loading, setLoading] = useState(true)
-  const [loadingHold, setLoadingHold] = useState(true)
   const [entreprises, setEntreprises] = useState([])
   const [employes, setEmployes] = useState([])
   const [empSchedules, setEmpSchedules] = useState([])
   const [workSchedules, setWorkSchedules] = useState([])
   const [selectedEntrepriseId, setSelectedEntrepriseId] = useState('all')
   const [viewMode, setViewMode] = useState('semaine')
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(todayIso)
   const [showForm, setShowForm] = useState(false)
-  const [activeTab, setActiveTab] = useState('reelles')
+  const [activeTab, setActiveTab] = useState('all')
   const [subFilter, setSubFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [ficheEmployee, setFicheEmployee] = useState(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [form, setForm] = useState({
     employee_id: '',
-    jour: new Date().toISOString().split('T')[0],
+    jour: todayIso,
     debut: '12:00',
     fin: '13:00',
     motif: '',
   })
 
-  // Maintien volontaire de 4,5 secondes (4500ms) pour l'écran de chargement illustré 2 scènes
+  // Chronomètre dynamique temps réel (1 tick / seconde)
   useEffect(() => {
-    const timer = window.setTimeout(() => setLoadingHold(false), 4500)
-    return () => window.clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    const hasOpen = paies.some((p) => p.ouverte)
-    if (!hasOpen) return undefined
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
     return () => window.clearInterval(timer)
-  }, [paies])
+  }, [])
 
   useEffect(() => {
     const parsed = JSON.parse(localStorage.getItem('admin') || 'null')
@@ -122,6 +113,15 @@ export default function Pauses () {
     return map
   }, [employes])
 
+  const employesForForm = useMemo(() => {
+    let target = selectedEntrepriseId
+    if (admin && admin.role !== 'super_admin') {
+      target = admin.selectedEnterprise?.id || admin.enterprise_id
+    }
+    if (!target || target === 'all') return employes
+    return employes.filter((emp) => emp.enterprise_id === target)
+  }, [employes, selectedEntrepriseId, admin])
+
   const hasPlannedBreakForEmployee = useCallback(
     (empId, entId) => {
       const es = empSchedules.find((row) => row.employee_id === empId)
@@ -140,7 +140,7 @@ export default function Pauses () {
     if (!admin) return
     setLoading(true)
     try {
-      const date = new Date(selectedDate)
+      const date = new Date(`${selectedDate}T12:00:00`)
       let startDate
       let endDate
       if (viewMode === 'jour') {
@@ -152,11 +152,13 @@ export default function Pauses () {
         monday.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
         const sunday = new Date(monday)
         sunday.setDate(monday.getDate() + 6)
-        startDate = monday.toISOString().split('T')[0]
-        endDate = sunday.toISOString().split('T')[0]
+        startDate = jourLocal(monday) || monday.toISOString().split('T')[0]
+        endDate = jourLocal(sunday) || sunday.toISOString().split('T')[0]
       } else {
-        startDate = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0]
-        endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0]
+        const firstDay = new Date(date.getFullYear(), date.getMonth(), 1, 12, 0, 0)
+        const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0, 12, 0, 0)
+        startDate = jourLocal(firstDay) || firstDay.toISOString().split('T')[0]
+        endDate = jourLocal(lastDay) || lastDay.toISOString().split('T')[0]
       }
 
       let target = selectedEntrepriseId
@@ -168,6 +170,12 @@ export default function Pauses () {
       // ── Le moteur d'abord : présumées + anomalies à jour, puis lecture ──
       if (entArg) {
         await supabase.rpc('encheck_pauses_controler', { p_enterprise: entArg })
+      } else if (entreprises.length > 0) {
+        await Promise.allSettled(
+          entreprises.map((ent) =>
+            supabase.rpc('encheck_pauses_controler', { p_enterprise: ent.id })
+          )
+        )
       }
 
       const { data: lignes, error } = await supabase.rpc('encheck_pauses_lire', {
@@ -193,11 +201,30 @@ export default function Pauses () {
       toast.error('Erreur lors du chargement')
     }
     setLoading(false)
-  }, [admin, selectedDate, selectedEntrepriseId, viewMode, hasPlannedBreakForEmployee])
+  }, [admin, selectedDate, selectedEntrepriseId, viewMode, entreprises, hasPlannedBreakForEmployee])
 
   useEffect(() => {
     loadPauses()
   }, [loadPauses])
+
+  // Abonnement Realtime sur `encheck_pauses` pour détecter immédiatement un départ ou retour de pause
+  useEffect(() => {
+    if (!admin) return undefined
+    const channel = supabase
+      .channel('pauses_realtime_live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'encheck_pauses' },
+        () => {
+          loadPauses()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [admin, loadPauses])
 
   const statuer = async (ids, decision) => {
     const { error } = await supabase.rpc('encheck_pauses_statuer', {
@@ -239,7 +266,7 @@ export default function Pauses () {
     const sourceForCsv =
       activeTab === 'reelles'
         ? paies.filter((p) => estPauseReelleEffectuee(p))
-        : paies
+        : paies.filter((p) => p.statut !== 'ecartee')
     const csv = exportCsvPauses(sourceForCsv)
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -251,34 +278,29 @@ export default function Pauses () {
   }
 
   const shiftDate = (dir) => {
-    const d = new Date(selectedDate)
+    const d = new Date(`${selectedDate}T12:00:00`)
     const delta = viewMode === 'jour' ? dir : viewMode === 'semaine' ? dir * 7 : dir * 30
     d.setDate(d.getDate() + delta)
-    setSelectedDate(d.toISOString().split('T')[0])
+    setSelectedDate(jourLocal(d) || d.toISOString().split('T')[0])
   }
 
-  if (loadingHold || (loading && paies.length === 0)) {
+  if (loading && paies.length === 0) {
     return (
       <PausesLoadingScreen
         darkMode={darkMode}
-        onSkip={() => setLoadingHold(false)}
+        onSkip={() => setLoading(false)}
       />
     )
   }
 
   return (
     <div
-      className="pointages-afrotech-shell employes-concept-shell"
+      className="pauses-v2-shell"
       data-theme={darkMode ? 'dark' : 'light'}
     >
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-right" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-right" />
-      <AdinkraWatermarkSvg className="employes-adinkra-side is-left" />
-      <AdinkraWatermarkSvg className="employes-adinkra-side is-right" />
+      <KenteWovenTapestrySvg className="pauses-v2-kente-strip" />
 
-      <div className="pointages-afrotech-container employes-concept-container">
+      <div className="pauses-v2-container">
         <PausesCulturalHero
           darkMode={darkMode}
           viewMode={viewMode}
@@ -290,6 +312,7 @@ export default function Pauses () {
           selectedEnterpriseId={selectedEntrepriseId}
           onSelectEnterprise={setSelectedEntrepriseId}
           isSuperAdmin={admin?.role === 'super_admin'}
+          admin={admin}
           onToggleTheme={toggleTheme}
           onBackDashboard={() => navigate('/dashboard')}
           onNavigate={(path) => navigate(path)}
@@ -301,17 +324,16 @@ export default function Pauses () {
         {/* Formulaire de saisie manuelle d'une pause réelle par l'admin */}
         {showForm && (
           <section
-            className="employes-framed-card"
+            className="pauses-v2-panel"
             aria-label="Nouvelle pause réelle"
             style={{
-              padding: '16px 18px',
-              marginBottom: 16,
-              border: '1px solid rgba(245, 158, 11, 0.48)',
+              marginBottom: 18,
+              borderColor: 'var(--pv-border-strong)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: '0.96rem', color: '#F3C784', fontWeight: 800 }}>
-                Nouvelle pause réelle (correction / saisie manuelle par l’administrateur)
+              <h3 style={{ margin: 0, fontSize: '0.94rem', color: 'var(--pv-gold)', fontWeight: 800 }}>
+                Saisir une pause réelle (correction / saisie manuelle par l’administrateur)
               </h3>
             </div>
             <div
@@ -322,13 +344,12 @@ export default function Pauses () {
               }}
             >
               <select
-                className="employes-card-select-box"
+                className="pauses-v2-select"
                 value={form.employee_id}
                 onChange={(e) => setForm({ ...form, employee_id: e.target.value })}
-                style={{ margin: 0 }}
               >
                 <option value="">— Collaborateur —</option>
-                {employes.map((emp) => (
+                {employesForForm.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.first_name} {emp.last_name} ({emp.matricule})
                   </option>
@@ -336,46 +357,42 @@ export default function Pauses () {
               </select>
               <input
                 type="date"
-                className="employes-card-select-box"
+                className="pauses-v2-select"
                 value={form.jour}
                 onChange={(e) => setForm({ ...form, jour: e.target.value })}
-                style={{ margin: 0 }}
               />
               <input
                 type="time"
-                className="employes-card-select-box"
+                className="pauses-v2-select"
                 value={form.debut}
                 onChange={(e) => setForm({ ...form, debut: e.target.value })}
-                style={{ margin: 0 }}
               />
               <input
                 type="time"
-                className="employes-card-select-box"
+                className="pauses-v2-select"
                 value={form.fin}
                 onChange={(e) => setForm({ ...form, fin: e.target.value })}
-                style={{ margin: 0 }}
               />
               <input
                 type="text"
-                className="employes-card-select-box"
+                className="pauses-v2-select"
                 placeholder="Motif (facultatif)"
                 value={form.motif}
                 onChange={(e) => setForm({ ...form, motif: e.target.value })}
-                style={{ margin: 0 }}
               />
               <button
                 type="button"
-                className="employes-add-pill-btn"
+                className="pauses-v2-add-btn"
                 onClick={creerPause}
                 style={{ justifyContent: 'center' }}
               >
-                Enregistrer la pause réelle
+                Enregistrer la pause
               </button>
             </div>
           </section>
         )}
 
-        {/* 4 Cartes KPI exécutives */}
+        {/* 4 Cartes KPI exécutives + Bandeau Chronomètre Dynamique en direct */}
         <PausesExecutiveKpis
           paies={paies}
           activeTab={activeTab}
@@ -385,7 +402,7 @@ export default function Pauses () {
           nowMs={nowMs}
         />
 
-        {/* 2 Graphiques analytiques (Activité 24h Réelles vs Présumées + Donut Répartition) */}
+        {/* 2 Graphiques analytiques (Histogramme horaire + Donut Répartition) */}
         <PausesAnalyticsCharts
           paies={paies}
           onSelectTab={(tab) => {
@@ -394,7 +411,7 @@ export default function Pauses () {
           }}
         />
 
-        {/* Liste des pauses collaborateurs (Historique des pauses réelles vs Pauses présumées) */}
+        {/* Tableau des pauses des employés */}
         <PausesCollaborateursSection
           paies={paies}
           employesById={employesById}
@@ -406,9 +423,14 @@ export default function Pauses () {
           onSelectSubFilter={setSubFilter}
           onStatuer={statuer}
           onOpenEmployeeFiche={(emp) => setFicheEmployee(emp)}
-          onOpenPointages={(p) =>
-            navigate(`/pointages?search=${encodeURIComponent(p.employe || p.matricule || '')}`)
-          }
+          onOpenPointages={(p) => {
+            const q = p.matricule || p.employe || ''
+            const params = new URLSearchParams()
+            if (q) params.set('q', q)
+            if (p.jour) params.set('date', p.jour)
+            navigate(`/pointages?${params.toString()}`)
+          }}
+          nowMs={nowMs}
         />
       </div>
 

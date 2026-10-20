@@ -206,10 +206,18 @@ export default function DashboardExperience({
   const lateCount = Number(stats?.retardsToday) || 0
   const forgottenExits = Number(stats?.oublisSortie) || 0
   const conflictCount = conflictsPending.length || Number(stats?.conflitsPending) || 0
-  const nowMs = currentTime?.getTime ? currentTime.getTime() : 0
+  const [liveNowMs, setLiveNowMs] = useState(() => Date.now())
   const realPausesToday = pausesToday.filter((pa) => estPauseReelleEffectuee(pa))
   const activePauses = realPausesToday.filter((pa) => pa?.ouverte)
   const unplannedPauses = realPausesToday.filter((pa) => pa?.estNonPlanifiee)
+
+  useEffect(() => {
+    if (!activePauses.length) return undefined
+    const timer = window.setInterval(() => setLiveNowMs(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [activePauses.length])
+
+  const nowMs = currentTime?.getTime ? currentTime.getTime() : liveNowMs
   const presenceRate = employeeCount > 0
     ? Math.max(0, Math.min(100, Math.round((presentCount / employeeCount) * 100)))
     : 0
@@ -239,7 +247,7 @@ export default function DashboardExperience({
         { label: 'Planning', icon: Calendar, path: '/planning', show: isSuperAdmin || modulePlanning, tabKey: 'PLANNING', count: scheduleRequestsPending.length },
         { label: 'Absences', icon: CalendarOff, path: '/absences', show: isSuperAdmin || moduleConges, tabKey: 'ABSENCES' },
         { label: 'Retards', icon: Timer, path: '/retards', show: isSuperAdmin || moduleRetards, tabKey: 'RETARDS', count: lateCount },
-        { label: 'Pauses', icon: Coffee, path: '/pauses', show: true },
+        { label: 'Pauses', icon: Coffee, path: '/pauses', show: true, count: activePauses.length },
         { label: 'Rapports', icon: FileText, path: '/rapports', show: true },
         { label: 'Jours fériés', icon: CalendarDays, path: '/jours-feries', show: true, tabKey: 'JOURS_FERIES' },
       ],
@@ -293,6 +301,17 @@ export default function DashboardExperience({
   }
 
   const reviewItems = []
+  activePauses.slice(0, 3).forEach((pa) => {
+    reviewItems.push({
+      key: `pause-live-${pa.id}`,
+      kind: 'late',
+      icon: Coffee,
+      title: `☕ En pause en direct · ${pa.employe || 'Employé'} — ⏱️ ${formaterTempsPauseEnDirect(pa, nowMs)}`,
+      description: `Pause réelle déclenchée à ${pa.debutHHMM}${pa.matricule ? ` · ${pa.matricule}` : ''}${pa.estNonPlanifiee ? ' · Hors planning' : ''}`,
+      actionLabel: 'Suivre',
+      onAction: () => navigate('/pauses'),
+    })
+  })
   conflictsPending.slice(0, 2).forEach((conflict) => {
     const name = formatName(conflict.employees)
     const reason = conflict.absences?.reason ? `Absence déclarée · ${conflict.absences.reason}` : 'Pointage effectué pendant une absence déclarée'
@@ -329,17 +348,6 @@ export default function DashboardExperience({
       onAction: () => (forgottenExitItems.length > 0 ? setIsForgottenExitModalOpen(true) : navigate('/pointages')),
     })
   }
-  activePauses.slice(0, 2).forEach((pa) => {
-    reviewItems.push({
-      key: `pause-live-${pa.id}`,
-      kind: 'late',
-      icon: Coffee,
-      title: `Pause en cours · ${pa.employe || 'Employé'} (${formaterTempsPauseEnDirect(pa, nowMs)})`,
-      description: `Depuis ${pa.debutHHMM}${pa.estNonPlanifiee ? ' · Pause hors planning' : ''}`,
-      actionLabel: 'Suivre',
-      onAction: () => navigate('/pauses'),
-    })
-  })
   if (lateCount > 0) {
     reviewItems.push({
       key: 'late-arrivals',
@@ -924,12 +932,12 @@ export default function DashboardExperience({
                 <div className="dashboard-alert-banner-copy">
                   <strong>
                     {activePauses.length > 0
-                      ? `⏱️ ${activePauses.length} pause${activePauses.length > 1 ? 's' : ''} en cours en direct`
+                      ? `⏱️ ${activePauses.length} collaborateur${activePauses.length > 1 ? 's' : ''} en pause réelle en direct`
                       : `${realPausesToday.length} pause${realPausesToday.length > 1 ? 's' : ''} réelle${realPausesToday.length > 1 ? 's' : ''} effectuée${realPausesToday.length > 1 ? 's' : ''} aujourd’hui (${unplannedPauses.length} hors planning)`}
                   </strong>
                   <span>
                     {(activePauses.length > 0 ? activePauses : realPausesToday).slice(0, 3).map((pa) => (
-                      `${pa.employe} : ${formaterTempsPauseEnDirect(pa, nowMs)}${pa.ouverte ? ` (depuis ${pa.debutHHMM})` : ` (${pa.debutHHMM}→${pa.finHHMM || ''})`}${pa.estNonPlanifiee ? ' [Hors planning]' : ''}`
+                      `${pa.employe} : ⏱️ ${formaterTempsPauseEnDirect(pa, nowMs)}${pa.ouverte ? ` (depuis ${pa.debutHHMM})` : ` (${pa.debutHHMM}→${pa.finHHMM || ''})`}${pa.estNonPlanifiee ? ' [Hors planning]' : ''}`
                     )).join(' · ')}
                   </span>
                 </div>
@@ -954,7 +962,7 @@ export default function DashboardExperience({
                       <Coffee size={13} />
                       <span>
                         {activePauses.length > 0
-                          ? `Pause en cours : ${formaterTempsPauseEnDirect(activePauses[0], nowMs)}`
+                          ? `☕ ${activePauses[0].employe} en pause : ⏱️ ${formaterTempsPauseEnDirect(activePauses[0], nowMs)} (depuis ${activePauses[0].debutHHMM})`
                           : `${realPausesToday.length} pause${realPausesToday.length > 1 ? 's' : ''} réelle${realPausesToday.length > 1 ? 's' : ''} (${unplannedPauses.length} hors planning)`}
                       </span>
                     </button>

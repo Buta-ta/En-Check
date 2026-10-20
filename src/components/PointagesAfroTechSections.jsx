@@ -336,20 +336,37 @@ export function PointagesExecutiveKpis({
     () => pointages.filter((p) => p.lastOut && estEstimationAStatuer(p.lastOut)).length,
     [pointages]
   )
+  const [nowMs, setNowMs] = useState(() => Date.now())
   const pausesSummary = useMemo(() => {
     let totalCount = 0
     let activeCount = 0
     let unplannedCount = 0
+    const activeItems = []
     for (const p of pointages) {
       for (const pa of p.pauses || []) {
         if (!estPauseReelleEffectuee(pa)) continue
         totalCount += 1
-        if (pa.ouverte) activeCount += 1
+        if (pa.ouverte) {
+          activeCount += 1
+          activeItems.push({ pointage: p, pause: pa, employee: p.employee })
+        }
         if (pa.estNonPlanifiee) unplannedCount += 1
       }
     }
-    return { totalCount, activeCount, unplannedCount }
+    return {
+      totalCount,
+      activeCount,
+      unplannedCount,
+      activeItems,
+      firstActivePause: activeItems[0]?.pause || null,
+    }
   }, [pointages])
+
+  useEffect(() => {
+    if (!pausesSummary.activeCount) return undefined
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [pausesSummary.activeCount])
 
   const gpsCount = useMemo(
     () => pointages.filter((p) => p.hasGPS).length,
@@ -413,8 +430,8 @@ export function PointagesExecutiveKpis({
       id: 'night-and-breaks',
       title: '3. Services de nuit, Pauses & Sorties',
       value: `${nightCount} 🌙 · ${presumedCount} ⏳`,
-      badge: pausesSummary.activeCount > 0
-        ? `⏱️ ${pausesSummary.activeCount} pause(s) en cours`
+      badge: pausesSummary.activeCount > 0 && pausesSummary.firstActivePause
+        ? `⏱️ ${pausesSummary.activeCount} pause(s) en cours · ${formaterTempsPauseEnDirect(pausesSummary.firstActivePause, nowMs)}`
         : presumedCount > 0
           ? `${presumedCount} sortie(s) présumée(s)`
           : `${nightCount} service(s) de nuit`,
@@ -445,7 +462,9 @@ export function PointagesExecutiveKpis({
         },
         {
           id: 'pause_en_cours',
-          label: `☕ Pauses en cours (${pausesSummary.activeCount})`,
+          label: pausesSummary.activeCount > 0 && pausesSummary.firstActivePause
+            ? `☕ Pauses en cours (${pausesSummary.activeCount} · ⏱️ ${formaterTempsPauseEnDirect(pausesSummary.firstActivePause, nowMs)})`
+            : `☕ Pauses en cours (${pausesSummary.activeCount})`,
           active: filterStatus === 'pause_en_cours',
           onClick: () => onUpdateFilter && onUpdateFilter('status', filterStatus === 'pause_en_cours' ? 'tous' : 'pause_en_cours'),
         },
@@ -476,7 +495,51 @@ export function PointagesExecutiveKpis({
   ]
 
   return (
-    <section className="pointages-kpi-grid" aria-label="Indicateurs clés des pointages">
+    <>
+      {pausesSummary.activeItems.length > 0 && (
+        <section className="pauses-v2-live-banner" aria-label="Pauses réelles en cours en direct">
+          <div className="pauses-v2-live-banner-header">
+            <span className="pauses-v2-live-banner-title">
+              <span className="pauses-v2-live-dot" />
+              ☕ {pausesSummary.activeItems.length} collaborateur{pausesSummary.activeItems.length > 1 ? 's' : ''} actuellement en pause réelle
+            </span>
+            <button
+              type="button"
+              className="pauses-v2-action-btn"
+              onClick={() => onUpdateFilter && onUpdateFilter('status', filterStatus === 'pause_en_cours' ? 'tous' : 'pause_en_cours')}
+            >
+              {filterStatus === 'pause_en_cours' ? 'Voir toute l’équipe' : 'Filtrer les pauses en cours'}
+            </button>
+          </div>
+          <div className="pauses-v2-live-cards">
+            {pausesSummary.activeItems.map(({ pause, employee }) => {
+              const fullName = `${employee?.first_name || ''} ${employee?.last_name || ''}`.trim() || pause.employe || 'Employé'
+              const initials = `${employee?.first_name?.[0] || ''}${employee?.last_name?.[0] || ''}` || 'EC'
+              return (
+                <div className="pauses-v2-live-card" key={pause.id}>
+                  <div className="pauses-v2-emp-cell" style={{ minWidth: 0 }}>
+                    <span className="pauses-v2-avatar">
+                      {employee?.photo_url ? <img src={employee.photo_url} alt="" /> : initials}
+                    </span>
+                    <div className="pauses-v2-emp-meta">
+                      <strong>{fullName}</strong>
+                      <span>
+                        Depuis {pause.debutHHMM || '--:--'}
+                        {employee?.matricule ? ` · #${employee.matricule}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="pauses-v2-live-timer">
+                    <Timer size={14} />
+                    {formaterTempsPauseEnDirect(pause, nowMs)}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+      <section className="pointages-kpi-grid" aria-label="Indicateurs clés des pointages">
       {cards.map((card) => {
         const IconSvg = card.IconSvg
         return (
@@ -543,7 +606,8 @@ export function PointagesExecutiveKpis({
           </button>
         )
       })}
-    </section>
+      </section>
+    </>
   )
 }
 
@@ -784,6 +848,18 @@ export function PointagesLivePulseRibbon({
   selectedEmployeeId,
   onSelectPointage,
 }) {
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  const hasAnyOpenPause = useMemo(
+    () => pointages.some((p) => (p.pauses || []).some((pa) => pa.ouverte && estPauseReelleEffectuee(pa))),
+    [pointages]
+  )
+
+  useEffect(() => {
+    if (!hasAnyOpenPause) return undefined
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [hasAnyOpenPause])
+
   if (!pointages.length) return null
 
   return (
@@ -805,7 +881,8 @@ export function PointagesLivePulseRibbon({
         {pointages.map((p) => {
           const late = isLatePointage(p)
           const night = isNightShiftPointage(p, selectedDate)
-          const hasOpenPause = (p.pauses || []).some((pa) => pa.ouverte)
+          const openRealPause = (p.pauses || []).find((pa) => pa.ouverte && estPauseReelleEffectuee(pa))
+          const hasOpenPause = Boolean(openRealPause) || (p.pauses || []).some((pa) => pa.ouverte)
           const isPresent = p.status === 'present' || p.status === 'conflit_absence_pointage'
           const ringColor = hasOpenPause
             ? '#F59E0B'
@@ -816,15 +893,17 @@ export function PointagesLivePulseRibbon({
                 : p.status === 'en_conge'
                   ? '#8B5CF6'
                   : 'rgba(125, 106, 88, 0.35)'
-          const stateLabel = hasOpenPause
-            ? '☕ En pause'
-            : night
-              ? '🌙 Nuit'
-              : isPresent
-                ? (late ? 'Retard' : 'Présent')
-                : p.status === 'en_conge'
-                  ? 'Congé'
-                  : 'Absent'
+          const stateLabel = openRealPause
+            ? `☕ ${formaterTempsPauseEnDirect(openRealPause, nowMs)}`
+            : hasOpenPause
+              ? '☕ En pause'
+              : night
+                ? '🌙 Nuit'
+                : isPresent
+                  ? (late ? 'Retard' : 'Présent')
+                  : p.status === 'en_conge'
+                    ? 'Congé'
+                    : 'Absent'
           const initials = `${p.employee?.first_name?.[0] || ''}${p.employee?.last_name?.[0] || ''}` || 'EC'
 
           return (
@@ -833,7 +912,7 @@ export function PointagesLivePulseRibbon({
               key={p.employee?.id}
               className={`pointages-pulse-avatar-btn${selectedEmployeeId === p.employee?.id ? ' is-selected' : ''}`}
               onClick={() => onSelectPointage(p)}
-              title={`${p.employee?.first_name || ''} ${p.employee?.last_name || ''} · ${stateLabel}`}
+              title={`${p.employee?.first_name || ''} ${p.employee?.last_name || ''} · ${stateLabel}${openRealPause ? ` (depuis ${openRealPause.debutHHMM})` : ''}`}
             >
               <span className="pointages-pulse-ring" style={{ '--ring-color': ringColor }}>
                 <span className="pointages-pulse-photo">
