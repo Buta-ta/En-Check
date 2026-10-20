@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
+  ArrowLeft,
   Building2,
   Check,
   ChevronLeft,
   ChevronRight,
-  Download,
   Moon,
   Plus,
   Search,
@@ -361,10 +361,8 @@ export function PausesKpiIconSvg({ kind = 'pause', size = 44 }) {
     const ticks = Array.from({ length: 12 }, (_, i) => (i * Math.PI * 2) / 12)
     return (
       <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}>
-        {/* Bouton-poussoir supérieur du chronomètre */}
         <path d="M19 4 H29 M24 4 V8" stroke="#E5A235" strokeWidth="2.6" strokeLinecap="round" />
         <path d="M35 9 L38 12" stroke="#E5A235" strokeWidth="2.4" strokeLinecap="round" />
-        {/* Cadran */}
         <circle cx="24" cy="26" r="17.5" fill="#261B0E" stroke="#E5A235" strokeWidth="2.4" />
         {ticks.map((ang, idx) => (
           <line
@@ -377,7 +375,6 @@ export function PausesKpiIconSvg({ kind = 'pause', size = 44 }) {
             strokeWidth="1.6"
           />
         ))}
-        {/* Aiguilles */}
         <path d="M24 26 V16.5 M24 26 L30 29" stroke="#FBBF24" strokeWidth="2.4" strokeLinecap="round" />
         <circle cx="24" cy="26" r="2" fill="#FBBF24" />
       </svg>
@@ -511,8 +508,32 @@ export function PausesCulturalHero({
           padding: '6px 4px 2px',
         }}
       >
-        {/* Gauche : Médaillon circulaire doré + PAUSES — ON GÈRE ! */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Gauche : Flèche retour + Médaillon circulaire doré + PAUSES — ON GÈRE ! */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {onBackDashboard && (
+            <button
+              type="button"
+              className="pauses-v2-back-btn"
+              onClick={onBackDashboard}
+              title="Retour au Dashboard"
+              aria-label="Retour au Dashboard"
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 11,
+                border: '1px solid rgba(196, 147, 74, 0.45)',
+                background: 'rgba(26, 20, 14, 0.92)',
+                color: '#E5A846',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                flexShrink: 0,
+              }}
+            >
+              <ArrowLeft size={18} />
+            </button>
+          )}
           <div
             onClick={onBackDashboard}
             title="Retour au Dashboard"
@@ -548,7 +569,6 @@ export function PausesCulturalHero({
 
         {/* Droite : Jour | Semaine | Mois + < Date > + + Ajouter une pause + CSV */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          {/* Sélecteur segmenté Jour | Semaine | Mois fidèle à l'image */}
           <div
             role="group"
             aria-label="Mode de période"
@@ -1256,7 +1276,7 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
             Nuit
           </text>
 
-          {/* Lignes horizontales et axe Y (0 à 8) */}
+          {/* Lignes horizontales et axe Y */}
           {yTicks.map((t, idx) => (
             <g key={idx}>
               <text x="20" y={t.y + 3} textAnchor="end" fontSize="9.5" fill="#B8AC9C">

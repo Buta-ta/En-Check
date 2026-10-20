@@ -1,67 +1,71 @@
 // ═══════════════════════════════════════════════════════════
-// ✏️ MODAL MODIFICATION POINTAGE - AFROFUTURISTE (AVEC NUIT & AUDIT)
+// ✏️ MODAL MODIFICATION POINTAGE V2 — AFRO-TECH + THÈME DYNAMIQUE
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import FeatureService, { FEATURES } from '../services/featureService'
 import JournalPointage from './JournalPointage'
 import { utcVersHeureLocale, heureLocaleVersUTC } from '../utils/timezoneUtils'
 import { estLigneHorsCalcul, estIdentifiantDeBase } from '../services/seuilsPointage'
-import { 
-  Clock, X, Sparkles, AlertTriangle, Plus, Trash2, 
-  Shield, Zap, Check, ChevronDown, Edit3, Save,
-  LogIn, LogOut, Moon
+import { useTheme } from '../contexts/ThemeContext'
+import {
+  AdinkraWatermarkSvg,
+  KenteWovenTapestrySvg,
+  WovenKenteBadgeSvg,
+} from './AfroCulturalSvg'
+import {
+  Clock,
+  X,
+  Sparkles,
+  Plus,
+  Trash2,
+  Shield,
+  Check,
+  Edit3,
+  Save,
+  LogIn,
+  LogOut,
+  Moon,
+  Sun,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import '../pages/PointagesAfroTech.css'
 
-export default function ModifierPointage({ employeeId, selectedDate, pointagesJournee, onClose, onSuccess }) {
+const MOTIFS_RAPIDES = [
+  'Oubli de badge',
+  'Erreur de saisie',
+  'Mission externe',
+  'Garde de nuit',
+  'Correction RH',
+]
+
+export default function ModifierPointage({
+  employeeId,
+  employee: employeeProp = null,
+  enterpriseId: enterpriseIdProp = null,
+  selectedDate,
+  pointagesJournee,
+  onClose,
+  onSuccess,
+}) {
+  const { darkMode = true } = useTheme() || { darkMode: true }
   const [hasAccess, setHasAccess] = useState(null)
   const [loading, setLoading] = useState(false)
   const [pointages, setPointages] = useState([])
   const [motif, setMotif] = useState('')
-  // `admin` (localStorage) n'est plus utilisé pour l'écriture : voir handleSubmit.
+  const [employeeInfo, setEmployeeInfo] = useState(employeeProp)
 
   // ════════════════════════════════════════════════════════════════════════
   //  SEULES LES LIGNES EXPLOITABLES S'ÉDITENT ICI (cas MADEDE, 16/10/2026)
   // ════════════════════════════════════════════════════════════════════════
-  //  Un formulaire de modification re-sauvegarde TOUT ce qu'il affiche : les
-  //  lignes d'audit — estimation ÉCARTÉE (« cette heure est fausse ») ou
-  //  REMPLACÉE par un vrai badge — ne doivent JAMAIS y figurer. Le piège était
-  //  réel : ouvrir « Modifier » sur la journée de MADEDE montrait le 17:00
-  //  écarté, et enregistrer la fiche (même sans rien toucher) le ré-INSÉRAIT
-  //  comme un VRAI pointage de sortie — l'heure rejetée ressuscitait.
-  //  Filtrage identique pour l'ÉTAT AFFICHÉ et pour p_delete_ids : les lignes
-  //  d'audit restent en base, intactes, pour la mesure d'erreur et l'audit.
   const lignesEditables = (pointagesJournee || []).filter(
     (p) => estIdentifiantDeBase(p.id) && !estLigneHorsCalcul(p)
   )
 
-  useEffect(() => {
-    
-    if (pointagesJournee && pointagesJournee.length > 0) {
-      checkAccess(pointagesJournee[0].enterprise_id)
-      initPointages()
-    }
-  }, [pointagesJournee])
-
-  const checkAccess = async (enterpriseId) => {
-    const access = await FeatureService.hasFeature(
-      enterpriseId,
-      FEATURES.MODIFICATION_POINTAGES
-    )
-    setHasAccess(access)
-  }
-
   const initPointages = () => {
     const formatted = lignesEditables.map(p => {
-      // ⭐ LIVRAISON 04 : l'administrateur doit voir l'heure LOCALE de son
-      // entreprise, pas l'heure UTC. Un pointage de 08:00 à Cotonou était
-      // affiché « 07:00 » dans ce formulaire.
       const { heures, minutes, secondes, jourISO } = utcVersHeureLocale(p.check_time)
-
-      // Le décalage « J+1 » (travail de nuit) se compare en jours LOCAUX :
-      // sur le jour UTC, un pointage de fin de soirée basculerait de date.
       const isNextDay = Boolean(jourISO && selectedDate && jourISO > selectedDate)
 
       return {
@@ -73,40 +77,126 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
         secondes: String(secondes).padStart(2, '0'),
         isNextDay: isNextDay,
         isExisting: true,
-        original_time: p.check_time, // Pour l'audit log
-        //  ⏳✅ SORTIE PRÉSUMÉE (décision 16/10 soir) : la ligne RESTE dans la
-        //  fiche, et elle est MARQUÉE. Elle ne passe jamais par
-        //  `replace_attendance_day` (qui blanchirait la marque) : voir handleSubmit.
+        original_time: p.check_time,
         __estimation: Boolean(p.is_auto_closed || p.estimation_source_id || p.estimation_validee_le),
         __sourceId: p.estimation_source_id || null,
         __estimationEtat: p.estimation_validee_le ? 'validee' : 'a_statuer',
       }
     })
-    
+
     setPointages(formatted.sort((a, b) => {
-      // Tri en prenant en compte le J+1
       const dayOffsetA = a.isNextDay ? 1 : 0
       const dayOffsetB = b.isNextDay ? 1 : 0
-      
       if (dayOffsetA !== dayOffsetB) return dayOffsetA - dayOffsetB
-      
       const timeA = `${a.heures}:${a.minutes}:${a.secondes}`
       const timeB = `${b.heures}:${b.minutes}:${b.secondes}`
       return timeA.localeCompare(timeB)
     }))
   }
 
+  useEffect(() => {
+    initPointages()
+
+    let cancelled = false
+    const resolveAndCheck = async () => {
+      let currentEmp = employeeProp
+      if (!currentEmp && employeeId) {
+        try {
+          const { data } = await supabase
+            .from('employees')
+            .select('id, first_name, last_name, matricule, photo_url, enterprise_id, position, department')
+            .eq('id', employeeId)
+            .maybeSingle()
+          if (!cancelled && data) {
+            currentEmp = data
+            setEmployeeInfo(data)
+          }
+        } catch {
+          // ignore
+        }
+      } else if (employeeProp) {
+        setEmployeeInfo(employeeProp)
+      }
+
+      // Super Admin a toujours accès
+      try {
+        const rawAdmin = window.localStorage.getItem('admin')
+        const parsedAdmin = rawAdmin ? JSON.parse(rawAdmin) : null
+        if (parsedAdmin?.role === 'super_admin') {
+          if (!cancelled) setHasAccess(true)
+          return
+        }
+      } catch {
+        // ignore
+      }
+
+      const targetEid =
+        pointagesJournee?.[0]?.enterprise_id ||
+        enterpriseIdProp ||
+        currentEmp?.enterprise_id ||
+        null
+
+      if (!targetEid) {
+        if (!cancelled) setHasAccess(true)
+        return
+      }
+
+      try {
+        const access = await FeatureService.hasFeature(
+          targetEid,
+          FEATURES.MODIFICATION_POINTAGES
+        )
+        if (!cancelled) setHasAccess(Boolean(access))
+      } catch {
+        if (!cancelled) setHasAccess(true)
+      }
+    }
+
+    resolveAndCheck()
+    return () => {
+      cancelled = true
+    }
+  }, [employeeId, employeeProp, enterpriseIdProp, pointagesJournee])
+
+  // Calcul en temps réel de la durée totale à partir des lignes saisies
+  const liveDurationLabel = useMemo(() => {
+    let totalSec = 0
+    let openInSec = null
+    for (const p of pointages) {
+      const h = Math.max(0, Math.min(23, parseInt(p.heures, 10) || 0))
+      const m = Math.max(0, Math.min(59, parseInt(p.minutes, 10) || 0))
+      const s = Math.max(0, Math.min(59, parseInt(p.secondes, 10) || 0))
+      const offsetSec = (p.isNextDay ? 86400 : 0) + h * 3600 + m * 60 + s
+      if (p.type === 'in') {
+        openInSec = offsetSec
+      } else if (p.type === 'out' && openInSec !== null) {
+        const diff = offsetSec - openInSec
+        if (diff > 0) totalSec += diff
+        openInSec = null
+      }
+    }
+    const hrs = Math.floor(totalSec / 3600)
+    const mins = Math.floor((totalSec % 3600) / 60)
+    return `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`
+  }, [pointages])
+
   const ajouterPointage = () => {
-    setPointages([...pointages, {
-      id: `new_${Date.now()}`,
-      type: 'in',
-      date: selectedDate,
-      heures: '08',
-      minutes: '00',
-      secondes: '00',
-      isNextDay: false, // Par défaut le même jour
-      isExisting: false
-    }])
+    const lastRow = pointages[pointages.length - 1]
+    const nextType = lastRow && lastRow.type === 'in' ? 'out' : 'in'
+    const defaultHour = nextType === 'in' ? '08' : '17'
+    setPointages([
+      ...pointages,
+      {
+        id: `new_${Date.now()}`,
+        type: nextType,
+        date: selectedDate,
+        heures: defaultHour,
+        minutes: '00',
+        secondes: '00',
+        isNextDay: false,
+        isExisting: false,
+      },
+    ])
   }
 
   const supprimerPointage = (index) => {
@@ -115,40 +205,36 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
 
   const modifierPointage = (index, field, value) => {
     const updated = [...pointages]
-    
+
     if (field === 'heures' && (value < 0 || value > 23)) return
     if ((field === 'minutes' || field === 'secondes') && (value < 0 || value > 59)) return
-    
-    // Si on toggle le jour (même jour vs lendemain) ou le type (in/out)
+
     if (field === 'isNextDay' || field === 'type') {
-        //  Garde-fou « J+1 dans le futur » (arbitrage n°3) : le bouton ajoute
-        //  UN JOUR à la date affichée. Si ce jour n'est pas encore arrivé, le
-        //  geste est forcément une erreur — on l'explique au lieu de le faire.
-        if (field === 'isNextDay' && value === true) {
-          const lendemain = new Date(`${selectedDate}T00:00:00Z`)
-          lendemain.setUTCDate(lendemain.getUTCDate() + 1)
-          const aujourdhui = new Date()
-          const lendemainISO = lendemain.toISOString().split('T')[0]
-          const aujourdhuiISO = `${aujourdhui.getFullYear()}-${String(aujourdhui.getMonth() + 1).padStart(2, '0')}-${String(aujourdhui.getDate()).padStart(2, '0')}`
-          if (lendemainISO > aujourdhuiISO) {
-            toast.error(
-              `« J+1 » mettrait ce pointage le ${lendemainISO}, dans le futur. ` +
+      if (field === 'isNextDay' && value === true) {
+        const lendemain = new Date(`${selectedDate}T00:00:00Z`)
+        lendemain.setUTCDate(lendemain.getUTCDate() + 1)
+        const aujourdhui = new Date()
+        const lendemainISO = lendemain.toISOString().split('T')[0]
+        const aujourdhuiISO = `${aujourdhui.getFullYear()}-${String(aujourdhui.getMonth() + 1).padStart(2, '0')}-${String(aujourdhui.getDate()).padStart(2, '0')}`
+        if (lendemainISO > aujourdhuiISO) {
+          toast.error(
+            `« J+1 » mettrait ce pointage le ${lendemainISO}, dans le futur. ` +
               'Ce bouton est fait pour un pointage survenu après minuit, le lendemain du jour affiché.'
-            )
-            return
-          }
+          )
+          return
         }
-        updated[index][field] = value
+      }
+      updated[index][field] = value
     } else {
-        updated[index][field] = String(value).padStart(2, '0')
+      updated[index][field] = String(value).padStart(2, '0')
     }
-    
+
     setPointages(updated)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!hasAccess) {
       toast.error('Cette fonctionnalité nécessite un abonnement premium')
       return
@@ -162,20 +248,15 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
     setLoading(true)
 
     try {
-      const enterpriseId = pointagesJournee[0].enterprise_id
+      const enterpriseId =
+        pointagesJournee?.[0]?.enterprise_id ||
+        enterpriseIdProp ||
+        employeeInfo?.enterprise_id
 
-      // 1. Préparer les nouvelles données (avec gestion du J+1)
-      //  Les lignes PRÉSUMÉES ne passent jamais par `replace_attendance_day` :
-      //  cette fonction ne recopie que check_type/check_time et BLANCHIRAIT une
-      //  sortie présumée en badge réel (la marque disparaissait à
-      //  l'enregistrement). Elles sont gérées plus bas, EN PLACE, par
-      //  `encheck_estimation_deplacer` / `encheck_estimation_decider`.
       const lignesPresumees = pointages.filter(p => p.__estimation)
       const lignesBadges = pointages.filter(p => !p.__estimation)
 
       const nouveauxPointages = lignesBadges.map(p => {
-        // « Lendemain » coché : on décale le JOUR du calendrier, sans jamais
-        // passer par un objet Date local (aucun risque de saut d'heure).
         let finalDateStr = selectedDate
         if (p.isNextDay) {
           const d = new Date(`${selectedDate}T00:00:00Z`)
@@ -184,28 +265,11 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
         }
 
         return {
-          // ⚠️ `modifie_le` et `modifie_par` ne sont plus envoyés par le
-          // navigateur : le serveur les renseigne lui-même (now() et
-          // l'administrateur déduit du JWT). Un auteur déclaré par le client
-          // n'a aucune valeur probante.
           check_type: p.type,
-          // ⭐ LIVRAISON 04 : l'heure saisie est une heure LOCALE de
-          // l'entreprise. On la convertit vers l'instant UTC réellement
-          // stocké en base. Avant, on collait « +00:00 » dessus : corriger un
-          // pointage à 08:00 le déplaçait à 07:00, c'est-à-dire qu'on créait
-          // le décalage qu'on cherchait à corriger.
           check_time: heureLocaleVersUTC(finalDateStr, p.heures, p.minutes, p.secondes),
         }
       })
 
-      // ═══════════════════════════════════════════════════════════════════
-      // GARDE-FOU « DATE FUTURE » (arbitrage n°3 — cas Hippo 16/10/2026)
-      // ═══════════════════════════════════════════════════════════════════
-      // Le bouton « J+1 » ajoute UN JOUR à la date AFFICHÉE. Depuis la page du
-      // 16, il envoyait une sortie au 17 (dans le futur) : la journée du 16
-      // s'est nouée sur un instant qui n'était pas encore arrivé (14h15 de
-      // service inventées + 2 fausses alertes). Un pointage ne peut pas se
-      // trouver dans le futur — marge de 10 min pour la dérive des horloges.
       const TOLERANCE_FUTUR_MS = 10 * 60 * 1000
       const maintenantMs = Date.now()
       const pointageFutur = nouveauxPointages.find(
@@ -214,41 +278,13 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
       if (pointageFutur) {
         toast.error(
           'Refusé : ce pointage serait enregistré dans le futur. ' +
-          'Le bouton « J+1 » ajoute un jour à la date affichée — cliquez-le seulement ' +
-          'pour un pointage réellement survenu le lendemain après minuit.'
+            'Le bouton « J+1 » ajoute un jour à la date affichée — cliquez-le seulement ' +
+            'pour un pointage réellement survenu le lendemain après minuit.'
         )
         setLoading(false)
         return
       }
 
-      // ═══════════════════════════════════════════════════════════════════
-      // 2 → 5 : UN SEUL APPEL SERVEUR, ATOMIQUE (livraison 03)
-      // ═══════════════════════════════════════════════════════════════════
-      // AVANT : un DELETE puis un INSERT, séparés par un aller-retour réseau.
-      //   Conséquences constatées :
-      //     • les photos de pointage (liées par une clé étrangère en CASCADE)
-      //       étaient DÉTRUITES — la preuve disparaissait au moment où on la
-      //       contestait ;
-      //     • si l'INSERT échouait, la journée entière était perdue (le DELETE
-      //       était déjà validé) ;
-      //     • l'auteur de la modification venait du localStorage, donc
-      //       modifiable dans le navigateur.
-      //
-      // MAINTENANT : tout se joue dans UNE transaction PostgreSQL.
-      //   • soit tout réussit, soit rien ne change : la journée est toujours
-      //     dans un état cohérent ;
-      //   • les photos survivent et gardent leur sens (employé + heure
-      //     recopiés sur la photo) ;
-      //   • chaque suppression et chaque création est écrite dans
-      //     `attendance_history`, une table en lecture seule que personne ne
-      //     peut modifier ni supprimer depuis l'application ;
-      //   • l'auteur (`admin`) est déduit du JWT côté serveur, pas du
-      //     navigateur.
-      //  `idsToDelete` = UNIQUEMENT les vrais badges affichés. Les lignes
-      //  d'audit (écartées / remplacées) ne sont ni affichées, ni touchées ;
-      //  les lignes PRÉSUMÉES (validées ou à statuer) ne sont ni supprimées ni
-      //  ré-insérées : elles gardent leur marque — cf. le traitement dédié plus
-      //  bas (déplacement en place, ou « Écarter » si la ligne a été retirée).
       const idsToDelete = lignesEditables
         .filter(p => !p.__estimation)
         .map(p => p.id)
@@ -273,10 +309,6 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
       const crees = rpcResult?.crees ?? nouveauxPointages.length
       const photos = rpcResult?.photos_conservees ?? 0
 
-      // ── LIGNES PRÉSUMÉES — la marque survit à l'enregistrement ──────────
-      //  Règle du 16/10 soir : VALIDÉE → la ligne reste et reste marquée ;
-      //  ÉCARTÉE (ou retirée du formulaire) → elle disparaît des écrans
-      //  (décision journalisée, jamais de suppression en base).
       const idsPresumesAvant = lignesEditables
         .filter(p => p.__estimation)
         .map(p => p.id)
@@ -330,406 +362,391 @@ export default function ModifierPointage({ employeeId, selectedDate, pointagesJo
 
   if (!pointagesJournee) return null
 
-  // Chargement
+  const fullName =
+    `${employeeInfo?.first_name || ''} ${employeeInfo?.last_name || ''}`.trim() ||
+    'Collaborateur En-Check'
+  const initials =
+    `${employeeInfo?.first_name?.[0] || ''}${employeeInfo?.last_name?.[0] || ''}`.toUpperCase() ||
+    'EC'
+  const matriculeLabel = employeeInfo?.matricule ? `#${employeeInfo.matricule}` : ''
+  const formattedDate = selectedDate
+    ? new Date(`${selectedDate}T12:00:00`).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : ''
+  const capitalizedDate = formattedDate
+    ? formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)
+    : selectedDate
+
   if (hasAccess === null) {
     return (
-      <>
-        <style>{modalStyles}</style>
-        <div className="modal-overlay" style={styles.overlay}>
-          <div className="modal-content" style={styles.loadingModal}>
-            <div style={styles.loadingSpinner}></div>
-            <p style={styles.loadingText}>Vérification des permissions...</p>
-          </div>
+      <div
+        className="fiche-v2-overlay"
+        data-theme={darkMode ? 'dark' : 'light'}
+        onClick={onClose}
+      >
+        <div
+          className="modif-pt-v2-modal"
+          style={{ maxWidth: 420, padding: 28, textAlign: 'center', alignItems: 'center' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Clock size={28} color="#F59E0B" />
+          <p style={{ margin: '12px 0 0', fontWeight: 700 }}>
+            Vérification des permissions…
+          </p>
         </div>
-      </>
+      </div>
     )
   }
 
-  // Pas d'accès : Modal Premium
   if (!hasAccess) {
     return (
-      <>
-        <style>{modalStyles}</style>
-        <div className="modal-overlay" style={styles.overlay} onClick={onClose}>
-          <div className="modal-content" style={styles.premiumModal} onClick={(e) => e.stopPropagation()}>
-            <button onClick={onClose} className="close-btn" style={styles.closeBtn}>
-              <X size={20} />
-            </button>
-
-            <div style={styles.premiumHeader}>
-              <div style={styles.premiumIconWrap}>
-                <div style={styles.premiumIconGlow}></div>
-                <Sparkles size={32} color="#F59E0B" />
+      <div
+        className="fiche-v2-overlay"
+        data-theme={darkMode ? 'dark' : 'light'}
+        onClick={onClose}
+      >
+        <div
+          className="modif-pt-v2-modal"
+          style={{ maxWidth: 480 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <KenteWovenTapestrySvg className="fiche-v2-kente-top" />
+          <header className="fiche-v2-header">
+            <div className="fiche-v2-header-left">
+              <Sparkles size={22} color="#F59E0B" />
+              <div className="fiche-v2-header-title">
+                <h2>Fonctionnalité Premium</h2>
+                <span>Abonnement Pro ou Entreprise requis</span>
               </div>
-              <h2 style={styles.premiumTitle}>Fonctionnalité Premium</h2>
-              <p style={styles.premiumSubtitle}>
-                La modification des pointages nécessite un abonnement Pro ou Entreprise
-              </p>
             </div>
-
-            <div style={styles.premiumFeatures}>
+            <button type="button" className="fiche-v2-close-btn" onClick={onClose}>
+              <X size={18} />
+            </button>
+          </header>
+          <div className="modif-pt-v2-body">
+            <p style={{ margin: 0, fontSize: '0.88rem', lineHeight: 1.5 }}>
+              La modification manuelle des heures de pointage avec piste d’audit complète nécessite l’activation du module sur votre entreprise.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[
-                { icon: <Edit3 size={16} />, text: 'Modifier les heures de pointage' },
-                { icon: <Clock size={16} />, text: 'Contrôle heures, minutes, secondes' },
-                { icon: <Plus size={16} />, text: 'Ajouter / Supprimer des pointages' },
-                { icon: <Shield size={16} />, text: 'Traçabilité complète des modifications' },
-              ].map((feature, i) => (
-                <div key={i} style={styles.premiumFeatureItem}>
-                  <div style={styles.premiumFeatureIcon}>{feature.icon}</div>
-                  <span style={styles.premiumFeatureText}>{feature.text}</span>
+                { icon: <Edit3 size={15} />, text: 'Modifier les heures d’entrée et de sortie' },
+                { icon: <Clock size={15} />, text: 'Contrôle précis heures, minutes, secondes & J+1' },
+                { icon: <Plus size={15} />, text: 'Ajouter ou retirer des pointages sur la journée' },
+                { icon: <Shield size={15} />, text: 'Traçabilité immuable dans le journal d’audit' },
+              ].map((feat, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '9px 12px',
+                    borderRadius: 10,
+                    border: '1px solid var(--fv-border)',
+                    background: 'var(--fv-surface-soft)',
+                    fontSize: '0.82rem',
+                  }}
+                >
+                  <span style={{ color: '#F59E0B', display: 'inline-flex' }}>{feat.icon}</span>
+                  <span>{feat.text}</span>
                 </div>
               ))}
             </div>
-
-            <div style={styles.premiumFooter}>
-              <p style={styles.premiumContactText}>
-                Contactez votre administrateur système pour activer cette fonctionnalité
-              </p>
-              <button onClick={onClose} style={styles.premiumOkBtn}>
-                <Check size={18} />
-                J'ai compris
-              </button>
-            </div>
           </div>
+          <footer className="fiche-v2-footer">
+            <button type="button" className="fiche-v2-btn-save" onClick={onClose}>
+              <Check size={16} />
+              <span>J’ai compris</span>
+            </button>
+          </footer>
         </div>
-      </>
+      </div>
     )
   }
 
-  // A accès : Formulaire de modification
   return (
-    <>
-      <style>{modalStyles}</style>
-      <div className="modal-overlay" style={styles.overlay} onClick={onClose}>
-        <div className="modal-content" style={styles.modal} onClick={(e) => e.stopPropagation()}>
-          <button onClick={onClose} className="close-btn" style={styles.closeBtn}>
-            <X size={20} />
-          </button>
+    <div
+      className="fiche-v2-overlay"
+      data-theme={darkMode ? 'dark' : 'light'}
+      role="presentation"
+      onClick={onClose}
+    >
+      <section
+        className="modif-pt-v2-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Modifier les pointages de ${fullName}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Frise textile africaine Kente */}
+        <KenteWovenTapestrySvg className="fiche-v2-kente-top" />
 
-          {/* Header */}
-          <div style={styles.header}>
-            <div style={styles.headerIcon}>
-              <Clock size={24} color="#F59E0B" />
-            </div>
-            <div>
-              <h2 style={styles.title}>Modifier les pointages</h2>
-              <p style={styles.subtitle}>
-                {new Date(selectedDate).toLocaleDateString('fr-FR', {
-                  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-                })}
-              </p>
+        {/* En-tête de la modale */}
+        <header className="fiche-v2-header">
+          <div className="fiche-v2-header-left">
+            <WovenKenteBadgeSvg variant={4} size={36} />
+            <div className="fiche-v2-header-title">
+              <h2>Modifier les pointages</h2>
+              <span> Ajustement horaire avec traçabilité RH En-Check</span>
             </div>
           </div>
+          <button
+            type="button"
+            className="fiche-v2-close-btn"
+            onClick={onClose}
+            aria-label="Fermer"
+          >
+            <X size={18} />
+          </button>
+        </header>
 
-          <form onSubmit={handleSubmit} style={styles.form}>
-            {/* Liste des pointages */}
-            <div style={styles.pointagesSection}>
-              <div style={styles.sectionHeader}>
-                <span style={styles.sectionTitle}>Pointages de la journée</span>
-                <span style={styles.sectionCount}>{pointages.length}</span>
+        <form onSubmit={handleSubmit} style={{ display: 'contents' }}>
+          <div className="modif-pt-v2-body">
+            {/* Bandeau récapitulatif de l'employé + Durée calculée en direct */}
+            <div className="modif-pt-v2-emp-banner">
+              <AdinkraWatermarkSvg className="fiche-v2-watermark" />
+              <div className="modif-pt-v2-emp-left">
+                <span className="modif-pt-v2-avatar">
+                  {employeeInfo?.photo_url ? (
+                    <img src={employeeInfo.photo_url} alt={fullName} />
+                  ) : (
+                    initials
+                  )}
+                </span>
+                <div className="modif-pt-v2-emp-meta">
+                  <strong>{fullName}</strong>
+                  <span>
+                    {matriculeLabel ? `Matricule ${matriculeLabel} · ` : ''}
+                    {capitalizedDate}
+                  </span>
+                </div>
               </div>
 
-              <div style={styles.pointagesList}>
-                {pointages.map((p, index) => (
-                  <div 
-                    key={p.id} 
-                    className="pointage-row"
-                    style={{
-                      ...styles.pointageRow,
-                      borderLeftColor: p.type === 'in' ? '#10B981' : '#F59E0B',
-                    }}
-                  >
-                    {/* Type Badge */}
-                    <div style={styles.typeBadgeWrap}>
-                      <button
-                        type="button"
-                        onClick={() => modifierPointage(index, 'type', p.type === 'in' ? 'out' : 'in')}
-                        style={{
-                          ...styles.typeBadge,
-                          background: p.type === 'in' 
-                            ? 'rgba(16, 185, 129, 0.12)' 
-                            : 'rgba(245, 158, 11, 0.12)',
-                          color: p.type === 'in' ? '#10B981' : '#F59E0B',
-                          borderColor: p.type === 'in' 
-                            ? 'rgba(16, 185, 129, 0.25)' 
-                            : 'rgba(245, 158, 11, 0.25)',
-                        }}
-                      >
-                        {p.type === 'in' ? <LogIn size={14} /> : <LogOut size={14} />}
-                        <span>{p.type === 'in' ? 'Entrée' : 'Sortie'}</span>
-                        <ChevronDown size={12} style={{ opacity: 0.5 }} />
-                      </button>
-                    </div>
+              <span className="modif-pt-v2-duration-pill">
+                <Clock size={14} />
+                <span>Durée calculée : {liveDurationLabel}</span>
+              </span>
+            </div>
 
-                    {/* Time Inputs */}
-                    <div style={styles.timeInputsWrap}>
-                      <div style={styles.timeFieldGroup}>
-                        <label style={styles.timeFieldLabel}>H</label>
+            {/* Section : Pointages de la journée */}
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 10,
+                }}
+              >
+                <strong style={{ fontSize: '0.86rem', color: 'var(--fv-text)' }}>
+                  Pointages de la journée
+                </strong>
+                <span
+                  style={{
+                    fontSize: '0.74rem',
+                    fontWeight: 800,
+                    padding: '2px 9px',
+                    borderRadius: 999,
+                    background: 'rgba(245, 158, 11, 0.14)',
+                    color: 'var(--fv-copper)',
+                  }}
+                >
+                  {pointages.length} ligne{pointages.length > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {pointages.length === 0 ? (
+                <div
+                  style={{
+                    padding: '18px 14px',
+                    textAlign: 'center',
+                    borderRadius: 12,
+                    border: '1px dashed var(--fv-border)',
+                    color: 'var(--fv-muted)',
+                    fontSize: '0.82rem',
+                    marginBottom: 10,
+                  }}
+                >
+                  Aucun pointage enregistré sur cette journée. Cliquez ci-dessous pour ajouter une Entrée ou une Sortie.
+                </div>
+              ) : (
+                <div className="modif-pt-v2-rows" style={{ marginBottom: 10 }}>
+                  {pointages.map((p, index) => (
+                    <div key={p.id} className="modif-pt-v2-row">
+                      {/* Sélecteur segmenté Entrée / Sortie */}
+                      <div className="modif-pt-v2-seg" role="group" aria-label="Type de pointage">
+                        <button
+                          type="button"
+                          className={`modif-pt-v2-seg-btn is-in${p.type === 'in' ? ' is-active' : ''}`}
+                          onClick={() => modifierPointage(index, 'type', 'in')}
+                        >
+                          <LogIn size={13} />
+                          <span>Entrée</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`modif-pt-v2-seg-btn is-out${p.type === 'out' ? ' is-active' : ''}`}
+                          onClick={() => modifierPointage(index, 'type', 'out')}
+                        >
+                          <LogOut size={13} />
+                          <span>Sortie</span>
+                        </button>
+                      </div>
+
+                      {/* Saisie HH : MM : SS */}
+                      <div className="modif-pt-v2-time-group">
                         <input
                           type="number"
                           min="0"
                           max="23"
+                          className="modif-pt-v2-time-input"
                           value={p.heures}
                           onChange={(e) => modifierPointage(index, 'heures', e.target.value)}
-                          style={styles.timeInput}
+                          aria-label="Heures"
                         />
-                      </div>
-                      <span style={styles.timeSeparator}>:</span>
-                      <div style={styles.timeFieldGroup}>
-                        <label style={styles.timeFieldLabel}>M</label>
+                        <span style={{ fontWeight: 800, color: 'var(--fv-muted)' }}>:</span>
                         <input
                           type="number"
                           min="0"
                           max="59"
+                          className="modif-pt-v2-time-input"
                           value={p.minutes}
                           onChange={(e) => modifierPointage(index, 'minutes', e.target.value)}
-                          style={styles.timeInput}
+                          aria-label="Minutes"
                         />
-                      </div>
-                      <span style={styles.timeSeparator}>:</span>
-                      <div style={styles.timeFieldGroup}>
-                        <label style={styles.timeFieldLabel}>S</label>
+                        <span style={{ fontWeight: 800, color: 'var(--fv-muted)' }}>:</span>
                         <input
                           type="number"
                           min="0"
                           max="59"
+                          className="modif-pt-v2-time-input"
                           value={p.secondes}
                           onChange={(e) => modifierPointage(index, 'secondes', e.target.value)}
-                          style={styles.timeInput}
+                          aria-label="Secondes"
                         />
                       </div>
-                    </div>
 
-                    {/* ⏳✅ SORTIE PRÉSUMÉE — la ligne RESTE et elle est MARQUÉE
-                        (décision 16/10 soir) : l'admin distingue toujours un
-                        badge réel d'une heure supposée, même après validation. */}
-                    {p.__estimation && (
-                      <span
-                        style={{
-                          ...styles.chipPresumee,
-                          color: p.__estimationEtat === 'validee' ? '#10B981' : '#F59E0B',
-                          background: p.__estimationEtat === 'validee'
-                            ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
-                          border: p.__estimationEtat === 'validee'
-                            ? '1px solid rgba(16,185,129,0.35)' : '1px solid rgba(245,158,11,0.35)',
-                        }}
-                        title={p.__estimationEtat === 'validee'
-                          ? 'Sortie présumée VALIDÉE par un admin : l\'heure fait foi pour la paie, mais la ligne reste une supposition (jamais un badge).'
-                          : 'Sortie présumée, encore à statuer : non payée tant qu\'un admin ne l\'a pas validée.'}
-                      >
-                        {p.__estimationEtat === 'validee'
-                          ? '✅ Sortie présumée validée'
-                          : '⏳ Sortie présumée — à statuer'}
-                      </span>
-                    )}
-
-                    {/* Toggle Jour +1 (Travail de nuit) */}
-                    <div style={styles.nextDayToggleWrap}>
+                      {/* Toggle Même jour / Lendemain (J+1) */}
                       <button
                         type="button"
+                        className={`modif-pt-v2-day-pill${p.isNextDay ? ' is-next-day' : ''}`}
                         onClick={() => modifierPointage(index, 'isNextDay', !p.isNextDay)}
-                        style={{
-                          ...styles.nextDayToggle,
-                          background: p.isNextDay ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
-                          color: p.isNextDay ? '#6366F1' : '#666',
-                          borderColor: p.isNextDay ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255,255,255,0.1)',
-                        }}
                         title={
                           p.isNextDay
-                            ? 'Lendemain (J+1) activé — cliquez pour remettre au jour même (Jour J)'
-                            : 'Jour même (Jour J) — cliquez si ce pointage a eu lieu le lendemain après minuit. ⚠ Attention : J+1 ajoute UN JOUR à la date affichée (ex. depuis le 16, il met le pointage au 17).'
+                            ? 'Pointage effectué le lendemain après minuit (garde de nuit)'
+                            : 'Cliquer si ce pointage a eu lieu le lendemain après minuit (J+1)'
                         }
                       >
-                        <Moon size={14} />
-                        <span style={styles.nextDayText}>{p.isNextDay ? 'J+1' : 'Jour J'}</span>
+                        {p.isNextDay ? <Moon size={13} /> : <Sun size={13} />}
+                        <span>{p.isNextDay ? 'Lendemain (J+1)' : 'Même jour'}</span>
+                      </button>
+
+                      {/* Marque explicite si ligne présumée */}
+                      {p.__estimation && (
+                        <span
+                          style={{
+                            fontSize: '0.73rem',
+                            fontWeight: 750,
+                            padding: '4px 10px',
+                            borderRadius: 999,
+                            color: p.__estimationEtat === 'validee' ? '#10B981' : '#F59E0B',
+                            border: `1px solid ${p.__estimationEtat === 'validee' ? 'rgba(16,185,129,0.4)' : 'rgba(245,158,11,0.4)'}`,
+                            background:
+                              p.__estimationEtat === 'validee'
+                                ? 'rgba(16,185,129,0.12)'
+                                : 'rgba(245,158,11,0.12)',
+                          }}
+                          title="Sortie présumée par le moteur : la supprimer équivaut à l'écarter"
+                        >
+                          {p.__estimationEtat === 'validee'
+                            ? '✅ Sortie présumée validée'
+                            : '⏳ Sortie présumée — à statuer'}
+                        </span>
+                      )}
+
+                      {/* Supprimer la ligne */}
+                      <button
+                        type="button"
+                        className="modif-pt-v2-del-btn"
+                        onClick={() => supprimerPointage(index)}
+                        title="Supprimer cette ligne de pointage"
+                        aria-label="Supprimer cette ligne de pointage"
+                      >
+                        <Trash2 size={15} />
                       </button>
                     </div>
+                  ))}
+                </div>
+              )}
 
-                    {/* Delete Button */}
-                    <button
-                      type="button"
-                      onClick={() => supprimerPointage(index)}
-                      className="delete-row-btn"
-                      style={styles.deleteRowBtn}
-                      title="Supprimer ce pointage"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-
-                {pointages.length === 0 && (
-                  <div style={styles.emptyPointages}>
-                    <Clock size={32} color="#555" />
-                    <p>Aucun pointage</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Ajouter un pointage */}
+              {/* Bouton + Ajouter un pointage */}
               <button
                 type="button"
+                className="modif-pt-v2-add-btn"
                 onClick={ajouterPointage}
-                className="add-btn"
-                style={styles.addBtn}
               >
-                <Plus size={18} />
-                <span>Ajouter un pointage</span>
+                <Plus size={16} />
+                <span>+ Ajouter un pointage (Entrée ou Sortie)</span>
               </button>
             </div>
 
-            {/* Motif */}
-            <div style={styles.motifSection}>
-              <label style={styles.motifLabel}>
-                <AlertTriangle size={14} color="#F59E0B" />
+            {/* Motif obligatoire + Puces rapides */}
+            <div className="fiche-v2-field">
+              <label style={{ color: 'var(--fv-copper)' }}>
                 Motif de la modification *
               </label>
-              <textarea
+              <input
+                type="text"
+                required
                 value={motif}
                 onChange={(e) => setMotif(e.target.value)}
-                style={styles.motifTextarea}
-                rows="2"
-                placeholder="Ex: Oubli de sortie de l'employé"
-                required
+                placeholder="Indiquez la raison de cet ajustement (obligatoire pour l’audit RH)…"
               />
+              <div className="modif-pt-v2-reason-chips">
+                {MOTIFS_RAPIDES.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    className={`modif-pt-v2-reason-chip${motif === chip ? ' is-active' : ''}`}
+                    onClick={() => setMotif(chip)}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Warning */}
-            <div style={styles.warningBox}>
-              <AlertTriangle size={18} color="#F59E0B" style={{flexShrink:0}}/>
-              <p style={styles.warningText}>
-                Cette action remplace les anciens pointages. Elle est enregistrée dans le journal ci-dessous,
-                avec votre nom et l'heure du geste — et signalée dans la cloche.
-              </p>
-            </div>
+            {/* Journal des modifications (Audit Trail) */}
+            <JournalPointage employeeId={employeeId} date={selectedDate} />
+          </div>
 
-            {/* Le journal de la journée : qui a écrit, modifié ou supprimé quoi */}
-            <JournalPointage
-              pointageIds={(pointages || []).filter((p) => p.isExisting && p.id).map((p) => p.id)}
-              employeeId={employeeId}
-              jour={selectedDate}
-            />
-
-            {/* Buttons */}
-            <div style={styles.buttonsRow}>
-              <button 
-                type="button" 
-                onClick={onClose} 
-                style={styles.cancelBtn}
-                disabled={loading}
-              >
-                Annuler
-              </button>
-              <button 
-                type="submit" 
-                className="submit-btn"
-                style={styles.submitBtn}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <div style={styles.btnSpinner}></div>
-                    <span>Enregistrement...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save size={18} />
-                    <span>Enregistrer</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </>
+          {/* Pied de modale */}
+          <footer className="fiche-v2-footer">
+            <button
+              type="button"
+              className="fiche-v2-btn-cancel"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              className="fiche-v2-btn-save"
+              disabled={loading || !motif.trim()}
+            >
+              <Save size={16} />
+              <span>
+                {loading ? 'Enregistrement…' : 'Enregistrer les modifications'}
+              </span>
+            </button>
+          </footer>
+        </form>
+      </section>
+    </div>
   )
-}
-
-// ═══════════════════════════════════════════════════════════
-// 🎨 CSS ANIMATIONS & STYLES (Identiques, avec ajout bouton J+1)
-// ═══════════════════════════════════════════════════════════
-
-const modalStyles = `
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes pulse { 0%, 100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.1); } }
-  .modal-overlay { animation: fadeIn 0.25s ease; }
-  .modal-content { animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
-  .close-btn:hover { background: rgba(239, 68, 68, 0.15) !important; color: #EF4444 !important; }
-  .pointage-row { transition: all 0.2s ease; }
-  .pointage-row:hover { background: rgba(255, 255, 255, 0.04) !important; }
-  .delete-row-btn:hover { background: rgba(239, 68, 68, 0.15) !important; color: #EF4444 !important; transform: scale(1.1); }
-  .add-btn:hover { background: rgba(16, 185, 129, 0.12) !important; border-color: rgba(16, 185, 129, 0.4) !important; }
-  .submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(245, 158, 11, 0.35); }
-  input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-  input[type="number"] { -moz-appearance: textfield; }
-  textarea:focus, input:focus { border-color: rgba(245, 158, 11, 0.5) !important; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1) !important; }
-`
-
-const styles = {
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(6, 6, 12, 0.92)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' },
-  loadingModal: { background: '#0F0F18', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.08)', padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' },
-  loadingSpinner: { width: '32px', height: '32px', border: '3px solid rgba(245, 158, 11, 0.2)', borderTopColor: '#F59E0B', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
-  loadingText: { color: '#888', fontSize: '14px', margin: 0 },
-  premiumModal: { background: '#0F0F18', borderRadius: '24px', border: '1px solid rgba(245, 158, 11, 0.15)', maxWidth: '440px', width: '100%', padding: '32px', position: 'relative', boxShadow: '0 30px 80px rgba(0,0,0,0.5)' },
-  premiumHeader: { textAlign: 'center', marginBottom: '24px' },
-  premiumIconWrap: { position: 'relative', width: '72px', height: '72px', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(245, 158, 11, 0.08)', borderRadius: '20px', border: '1px solid rgba(245, 158, 11, 0.2)' },
-  premiumIconGlow: { position: 'absolute', inset: '-10px', borderRadius: '30px', background: 'radial-gradient(circle, rgba(245, 158, 11, 0.15), transparent 70%)', animation: 'pulse 3s ease-in-out infinite' },
-  premiumTitle: { color: '#FFFFFF', fontSize: '22px', fontWeight: '700', margin: '0 0 8px 0' },
-  premiumSubtitle: { color: '#888', fontSize: '14px', margin: 0, lineHeight: '1.5' },
-  premiumFeatures: { display: 'flex', flexDirection: 'column', gap: '10px', padding: '20px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.05)', marginBottom: '24px' },
-  premiumFeatureItem: { display: 'flex', alignItems: 'center', gap: '12px' },
-  premiumFeatureIcon: { width: '32px', height: '32px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  premiumFeatureText: { color: '#E5E5E5', fontSize: '14px', fontWeight: '500' },
-  premiumFooter: { textAlign: 'center' },
-  premiumContactText: { color: '#666', fontSize: '12px', marginBottom: '16px' },
-  premiumOkBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', padding: '14px', background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#000', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' },
-  modal: { background: '#0F0F18', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.08)', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflow: 'auto', position: 'relative', padding: '24px', boxShadow: '0 30px 80px rgba(0,0,0,0.5)' },
-  closeBtn: { position: 'absolute', top: '16px', right: '16px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '10px', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888', zIndex: 10, transition: 'all 0.2s ease' },
-  header: { display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px', paddingRight: '50px' },
-  headerIcon: { width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  title: { color: '#FFFFFF', fontSize: '20px', fontWeight: '700', margin: 0 },
-  subtitle: { color: '#F59E0B', fontSize: '13px', margin: '4px 0 0 0', textTransform: 'capitalize' },
-  form: { display: 'flex', flexDirection: 'column', gap: '20px' },
-  pointagesSection: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  sectionHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { color: '#888', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' },
-  sectionCount: { background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '10px' },
-  pointagesList: { display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflow: 'auto', padding: '4px' },
-  pointageRow: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', padding: '12px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.05)', borderLeft: '3px solid' },
-  typeBadgeWrap: { flex: '0 0 auto' },
-  typeBadge: { display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 10px', borderRadius: '10px', border: '1px solid', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
-  timeInputsWrap: { display: 'flex', alignItems: 'center', gap: '4px', flex: '0 0 auto' },
-  timeFieldGroup: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' },
-  timeFieldLabel: { fontSize: '9px', color: '#666', fontWeight: '600', textTransform: 'uppercase' },
-  timeInput: { width: '40px', padding: '8px 4px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', fontSize: '15px', fontWeight: '700', fontFamily: "'SF Mono', 'Fira Code', monospace", textAlign: 'center', color: '#FFFFFF', outline: 'none' },
-  timeSeparator: { fontSize: '18px', fontWeight: '300', color: '#555', marginTop: '12px' },
-  
-  // NOUVEAU STYLE : Bouton J+1
-  nextDayToggleWrap: { flex: '1 1 auto', display: 'flex', justifyContent: 'center' },
-  nextDayToggle: { display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 10px', borderRadius: '8px', border: '1px solid', cursor: 'pointer', transition: 'all 0.2s' },
-  nextDayText: { fontSize: '11px', fontWeight: '700' },
-
-  deleteRowBtn: { background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '10px', padding: '8px', color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  emptyPointages: { textAlign: 'center', padding: '40px 20px', color: '#555' },
-  noteAudit: { margin: '10px 2px 0', padding: '10px 12px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '10px', color: '#B45309', fontSize: '12px', lineHeight: '1.5' },
-  chipPresumee: { display: 'inline-flex', alignItems: 'center', padding: '3px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: '700', whiteSpace: 'nowrap' },
-  addBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '14px', background: 'rgba(16, 185, 129, 0.06)', color: '#10B981', border: '2px dashed rgba(16, 185, 129, 0.25)', borderRadius: '14px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' },
-  motifSection: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  motifLabel: { display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontSize: '13px', fontWeight: '600' },
-  motifTextarea: { padding: '14px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', fontSize: '14px', color: '#E5E5E5', outline: 'none', resize: 'vertical', fontFamily: 'inherit', minHeight: '60px' },
-  warningBox: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.15)', borderRadius: '12px' },
-  warningText: { fontSize: '12px', color: '#F59E0B', margin: 0, lineHeight: '1.4', flex: 1 },
-  buttonsRow: { display: 'flex', gap: '12px', flexDirection: 'column' },
-  cancelBtn: { flex: 1, padding: '14px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#E5E5E5', borderRadius: '12px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
-  submitBtn: { flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '14px', background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#000', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' },
-  btnSpinner: { width: '18px', height: '18px', border: '2px solid rgba(0, 0, 0, 0.2)', borderTopColor: '#000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
-}
-
-if (typeof window !== 'undefined' && window.innerWidth > 768) {
-  Object.assign(styles, {
-    buttonsRow: { ...styles.buttonsRow, flexDirection: 'row' },
-  })
 }

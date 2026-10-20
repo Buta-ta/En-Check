@@ -27,7 +27,7 @@ import {
   PausesKenteTopBannerSvg,
 } from '../components/PausesAfroTechSections'
 import FicheEmployeModal from '../components/FicheEmployeModal'
-import { formaterHeureLocale } from '../utils/timezoneUtils'
+import { formaterHeureLocale, jourLocal } from '../utils/timezoneUtils'
 import toast from 'react-hot-toast'
 import './PointagesAfroTech.css'
 
@@ -44,7 +44,9 @@ export default function Pauses () {
   const [workSchedules, setWorkSchedules] = useState([])
   const [selectedEntrepriseId, setSelectedEntrepriseId] = useState('all')
   const [viewMode, setViewMode] = useState('jour')
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(
+    () => jourLocal(new Date()) || new Date().toISOString().split('T')[0]
+  )
   const [showForm, setShowForm] = useState(false)
   const [activeTab, setActiveTab] = useState('reelles')
   const [subFilter, setSubFilter] = useState('all')
@@ -53,7 +55,7 @@ export default function Pauses () {
   const [nowMs, setNowMs] = useState(() => Date.now())
   const [form, setForm] = useState({
     employee_id: '',
-    jour: new Date().toISOString().split('T')[0],
+    jour: jourLocal(new Date()) || new Date().toISOString().split('T')[0],
     debut: '12:00',
     fin: '13:00',
     motif: '',
@@ -138,7 +140,7 @@ export default function Pauses () {
     if (!admin) return
     setLoading(true)
     try {
-      const date = new Date(selectedDate)
+      const date = new Date(`${selectedDate}T12:00:00`)
       let startDate
       let endDate
       if (viewMode === 'jour') {
@@ -150,11 +152,13 @@ export default function Pauses () {
         monday.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
         const sunday = new Date(monday)
         sunday.setDate(monday.getDate() + 6)
-        startDate = monday.toISOString().split('T')[0]
-        endDate = sunday.toISOString().split('T')[0]
+        startDate = jourLocal(monday) || monday.toISOString().split('T')[0]
+        endDate = jourLocal(sunday) || sunday.toISOString().split('T')[0]
       } else {
-        startDate = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0]
-        endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0).toISOString().split('T')[0]
+        const firstDay = new Date(date.getFullYear(), date.getMonth(), 1, 12, 0, 0)
+        const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0, 12, 0, 0)
+        startDate = jourLocal(firstDay) || firstDay.toISOString().split('T')[0]
+        endDate = jourLocal(lastDay) || lastDay.toISOString().split('T')[0]
       }
 
       let target = selectedEntrepriseId
@@ -166,6 +170,12 @@ export default function Pauses () {
       // ── Le moteur d'abord : présumées + anomalies à jour, puis lecture ──
       if (entArg) {
         await supabase.rpc('encheck_pauses_controler', { p_enterprise: entArg })
+      } else if (entreprises.length > 0) {
+        await Promise.allSettled(
+          entreprises.map((ent) =>
+            supabase.rpc('encheck_pauses_controler', { p_enterprise: ent.id })
+          )
+        )
       }
 
       const { data: lignes, error } = await supabase.rpc('encheck_pauses_lire', {
@@ -191,11 +201,30 @@ export default function Pauses () {
       toast.error('Erreur lors du chargement')
     }
     setLoading(false)
-  }, [admin, selectedDate, selectedEntrepriseId, viewMode, hasPlannedBreakForEmployee])
+  }, [admin, selectedDate, selectedEntrepriseId, viewMode, entreprises, hasPlannedBreakForEmployee])
 
   useEffect(() => {
     loadPauses()
   }, [loadPauses])
+
+  // Abonnement Realtime sur `encheck_pauses` pour détecter immédiatement un départ ou retour de pause
+  useEffect(() => {
+    if (!admin) return undefined
+    const channel = supabase
+      .channel('pauses_realtime_live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'encheck_pauses' },
+        () => {
+          loadPauses()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [admin, loadPauses])
 
   const statuer = async (ids, decision) => {
     const { error } = await supabase.rpc('encheck_pauses_statuer', {
@@ -237,7 +266,7 @@ export default function Pauses () {
     const sourceForCsv =
       activeTab === 'reelles'
         ? paies.filter((p) => estPauseReelleEffectuee(p))
-        : paies
+        : paies.filter((p) => p.statut !== 'ecartee')
     const csv = exportCsvPauses(sourceForCsv)
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -249,10 +278,10 @@ export default function Pauses () {
   }
 
   const shiftDate = (dir) => {
-    const d = new Date(selectedDate)
+    const d = new Date(`${selectedDate}T12:00:00`)
     const delta = viewMode === 'jour' ? dir : viewMode === 'semaine' ? dir * 7 : dir * 30
     d.setDate(d.getDate() + delta)
-    setSelectedDate(d.toISOString().split('T')[0])
+    setSelectedDate(jourLocal(d) || d.toISOString().split('T')[0])
   }
 
   if (loadingHold || (loading && paies.length === 0)) {
@@ -454,9 +483,13 @@ export default function Pauses () {
             onSelectSubFilter={setSubFilter}
             onStatuer={statuer}
             onOpenEmployeeFiche={(emp) => setFicheEmployee(emp)}
-            onOpenPointages={(p) =>
-              navigate(`/pointages?search=${encodeURIComponent(p.employe || p.matricule || '')}`)
-            }
+            onOpenPointages={(p) => {
+              const q = p.matricule || p.employe || ''
+              const params = new URLSearchParams()
+              if (q) params.set('q', q)
+              if (p.jour) params.set('date', p.jour)
+              navigate(`/pointages?${params.toString()}`)
+            }}
           />
         </main>
 
