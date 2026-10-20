@@ -117,4 +117,82 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningSrc).toContain('Dupliquer la semaine')
     expect(planningSrc).toContain('Publier le planning')
   })
+
+  it('10. affiche TOUJOURS le modèle déposé dans la case cible (congé, pause, modèle créé)', () => {
+    // Le repos/congé n'est plus masqué : resolveCellShift renvoie une carte visible
+    expect(planningSrc).toContain('override.isRest)')
+    expect(planningSrc).not.toMatch(/if \(override\.isRest\) return null;/)
+    // Pause déposée sur une case vide = carte autonome (plus de simple message d'erreur)
+    expect(planningSrc).toContain('isPauseOnly')
+    expect(planningSrc).toContain('standalonePause')
+    // Le modèle déposé garde son nom et sa couleur pour être identifiable dans la case
+    expect(planningSrc).toContain('variant: "conge"')
+  })
+
+  it('11. lie les compteurs du haut au groupe déplié et au focus sélectionné', () => {
+    expect(planningSrc).toContain('visibleEmployees')
+    expect(planningSrc).toContain('scopedEmployees')
+    expect(planningSrc).toContain('matchesFocus')
+    expect(planningSrc).toContain('focusFilter')
+    expect(planningSrc).toContain('sk-focus-bar')
+    // Les totaux journaliers sont calculés sur le périmètre visible, pas sur tout le monde
+    expect(planningSrc).toContain('scopedEmployees.forEach((emp) => {')
+  })
+
+  it('12. affiche les horaires réellement effectués (table attendances)', () => {
+    expect(planningSrc).toContain("from(\"attendances\")")
+    expect(planningSrc).toContain('realAttendanceMap')
+    expect(planningSrc).toContain('getRealAttendance')
+    expect(planningSrc).toContain('sk-shift-real')
+    expect(planningSrc).toContain('sk-real-diff')
+    expect(planningSrc).toContain('non planifié')
+  })
+
+  it('13. distingue clairement le jour en cours (Aujourd\'hui) dans le calendrier', () => {
+    expect(planningSrc).toContain('sk-today-pill')
+    expect(planningSrc).toContain('isToday')
+    expect(planningCss).toContain('.sk-cal-cell.is-today')
+    expect(planningCss).toContain('.sk-cal-day.is-today-num')
+  })
+
+  it('14. explique les couleurs par une légende et permet de marquer un jour précis', () => {
+    // Légende
+    expect(planningSrc).toContain('sk-legend')
+    expect(planningSrc).toContain('sk-legend-swatch')
+    // Choix du jour (Lun, Mar, Mer...) en plus de Auj. / Sem.
+    expect(planningSrc).toMatch(/`day-\$\{j\.id\}`|`day-\$\{dayId\}`|\"day-\" \+/)
+    expect(planningSrc).toContain('openAvailabilityModal')
+    expect(planningSrc).toContain('sk-avail-day-row')
+    expect(planningSrc).toContain('sk-avail-days')
+  })
+
+  it('15. offre la même expérience en Mois et en Jour qu\'en Semaine', () => {
+    // Mois : cases dépôt + shifts + réel
+    expect(planningSrc).toContain('sk-cal-pills-list')
+    expect(planningSrc).toContain('sk-cal-pill-real')
+    expect(planningSrc).toContain('dayNumFromDateStr')
+    // Jour : timeline horaire avec blocs glissables
+    expect(planningSrc).toContain('sk-day-track')
+    expect(planningSrc).toContain('sk-day-block')
+    expect(planningSrc).toContain('sk-day-real-block')
+  })
+
+  it('16. propose une section Demandes enrichie (comparatif, filtres, statuts)', () => {
+    expect(planningSrc).toContain('sk-requests-view')
+    expect(planningSrc).toContain('sk-request-compare')
+    expect(planningSrc).toContain('sk-request-filter')
+    expect(planningSrc).toContain('visibleRequests')
+    expect(planningSrc).toContain('Remettre en attente')
+    expect(planningSrc).toContain('sk-request-status')
+  })
+
+  it('17. est responsive et utilisable au doigt (mobile)', () => {
+    expect(planningSrc).toContain('startTouchDrag')
+    expect(planningSrc).toContain('applyTouchDropOnCell')
+    expect(planningSrc).toContain('applyTouchDropOnDay')
+    expect(planningSrc).toContain('sk-touch-bar')
+    expect(planningCss).toContain('@media (max-width: 760px)')
+    expect(planningCss).toContain('@media (max-width: 420px)')
+    expect(planningCss).toContain('scroll-snap-type: x mandatory')
+  })
 })

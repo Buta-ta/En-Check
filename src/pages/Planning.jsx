@@ -4,7 +4,7 @@
 // + Disponibilités + Vues Semaine/Mois/Jour + Demandes
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
@@ -258,7 +258,12 @@ export default function Planning() {
   const [entreprises, setEntreprises] = useState([]);
   const [scheduleRequests, setScheduleRequests] = useState([]);
   const [absences, setAbsences] = useState([]);
+  // Pointages réellement effectués (table attendances) pour comparer prévu / réalisé
+  const [attendances, setAttendances] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Filtre de focus : totaux et grille liés au groupe ou au collaborateur sélectionné
+  const [focusFilter, setFocusFilter] = useState({ type: "all", value: null });
 
   // Vues En-Check : "semaine" (défaut) | "mois" | "jour" | "demandes"
   const [planningView, setPlanningView] = useState("semaine");
@@ -315,16 +320,23 @@ export default function Planning() {
   const [editingTeam, setEditingTeam] = useState(null);
   const [teamForm, setTeamForm] = useState({ name: "", memberIds: [] });
 
-  // ═══ DISPONIBILITÉS COLLABORATEURS (aujourd'hui / cette semaine) ═══
+  // ═══ DISPONIBILITÉS COLLABORATEURS (aujourd'hui / cette semaine / jour précis) ═══
   const [availability, setAvailability] = useState(() =>
     readStorage(AVAILABILITY_STORAGE_KEY, {})
   );
+  const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [availabilityTarget, setAvailabilityTarget] = useState(null);
+
+  // ═══ GLISSER-DÉPOSER TACTILE (mobile : appui long puis toucher la case cible) ═══
+  const [touchDragPayload, setTouchDragPayload] = useState(null);
+  const [requestFilter, setRequestFilter] = useState("all");
 
   // ═══ MODÈLES DÉPOSÉS SUR LE CALENDRIER MENSUEL (date -> [modèles]) ═══
   const [monthModels, setMonthModels] = useState(() =>
     readStorage(MONTH_MODELS_STORAGE_KEY, {})
   );
   const [monthDropDate, setMonthDropDate] = useState(null);
+  const [dayDropEmpId, setDayDropEmpId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [planningToDelete, setPlanningToDelete] = useState(null);
 
@@ -528,6 +540,32 @@ export default function Planning() {
       const { data: absData } = await absQuery;
       setAbsences(absData || []);
 
+      // Chargement des pointages réels (attendances) sur toute la période affichée
+      const weekStart = getStartOfWeekMonday(calendarDate);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      const periodeStart = new Date(
+        Math.min(weekStart.getTime(), new Date(year, month, 1).getTime())
+      );
+      const periodeEnd = new Date(
+        Math.max(weekEnd.getTime(), new Date(year, month, getDaysInMonth(year, month)).getTime())
+      );
+      const periodeStartISO = `${toIsoDateLocal(periodeStart)}T00:00:00`;
+      const periodeEndISO = `${toIsoDateLocal(periodeEnd)}T23:59:59`;
+
+      if (employeeIds.length > 0) {
+        const { data: attData } = await supabase
+          .from("attendances")
+          .select("id, employee_id, check_time, check_type, method, is_auto_closed")
+          .in("employee_id", employeeIds)
+          .gte("check_time", periodeStartISO)
+          .lte("check_time", periodeEndISO)
+          .order("check_time", { ascending: true });
+        setAttendances(attData || []);
+      } else {
+        setAttendances([]);
+      }
+
       const enterpriseIdsToLoad = isSuperAdmin
         ? selectedEntreprise !== "all"
           ? [selectedEntreprise]
@@ -587,8 +625,99 @@ export default function Planning() {
 
   const pendingRequestsCount = filteredRequests.filter((r) => r.status === "pending").length;
 
+  const visibleRequests = useMemo(() => {
+    if (requestFilter === "all") return filteredRequests;
+    return filteredRequests.filter((r) => (r.status || "pending") === requestFilter);
+  }, [filteredRequests, requestFilter]);
+
   const getHolidaySet = (id) => holidaysByEnterprise[id] || new Set();
   const getHolidayMap = (id) => holidayMapsByEnterprise[id] || new Map();
+
+  // Date locale (YYYY-MM-DD) d'un horodatage Supabase
+  const jourLocal = (iso) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return String(iso).split("T")[0];
+    return toIsoDateLocal(d);
+  };
+
+  const heureLocale = (iso) => {
+    if (!iso) return "--:--";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "--:--";
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+
+  // ═══ POINTAGES RÉELS (présence effectuée) PAR COLLABORATEUR ET PAR JOUR ═══
+  const realAttendanceMap = useMemo(() => {
+    const map = new Map();
+    attendances.forEach((a) => {
+      const date = jourLocal(a.check_time);
+      const key = `${a.employee_id}|${date}`;
+      if (!map.has(key)) {
+        map.set(key, { firstIn: null, lastOut: null, minutes: 0, autoClosed: false, count: 0 });
+      }
+      const entry = map.get(key);
+      entry.count += 1;
+      if (a.is_auto_closed) entry.autoClosed = true;
+      const type = String(a.check_type || "").toLowerCase();
+      if (type === "in" || type === "entree" || type === "entrée") {
+        if (!entry.firstIn) entry.firstIn = a.check_time;
+      } else if (!entry.lastOut) {
+        entry.lastOut = a.check_time;
+      }
+      if (entry.firstIn && entry.lastOut && entry.lastOut !== entry.firstIn) {
+        entry.minutes = Math.max(
+          0,
+          Math.round((new Date(entry.lastOut) - new Date(entry.firstIn)) / 60000)
+        );
+      }
+    });
+    return map;
+  }, [attendances]);
+
+  const getRealAttendance = (empId, dateStr) => realAttendanceMap.get(`${empId}|${dateStr}`) || null;
+
+  // ═══ GLISSER-DÉPOSER TACTILE (mobile) : appui long sur un modèle puis touche la case ═══
+  const touchTimerRef = useRef(null);
+
+  const startTouchDrag = (tpl) => {
+    clearTimeout(touchTimerRef.current);
+    touchTimerRef.current = setTimeout(() => {
+      setTouchDragPayload({ sourceType: "dock", template: tpl });
+      if (navigator.vibrate) navigator.vibrate(30);
+      toast.success(`« ${tpl.name || tpl.label} » prêt — touchez une case pour le déposer`);
+    }, 450);
+  };
+
+  const cancelTouchDrag = () => {
+    clearTimeout(touchTimerRef.current);
+  };
+
+  const clearTouchDrag = () => {
+    clearTimeout(touchTimerRef.current);
+    setTouchDragPayload(null);
+  };
+
+  // Application du modèle sélectionné au doigt sur une case (Semaine / Jour)
+  const applyTouchDropOnCell = (emp, dayItem) => {
+    if (!touchDragPayload) return false;
+    const payload = touchDragPayload;
+    setDraggedPayload(payload);
+    handleDropOnCell({ preventDefault: () => {}, altKey: false }, emp, dayItem);
+    clearTouchDrag();
+    return true;
+  };
+
+  // Application du modèle sélectionné au doigt sur une case du calendrier (Mois)
+  const applyTouchDropOnDay = (dateStr) => {
+    if (!touchDragPayload) return false;
+    const payload = touchDragPayload;
+    setDraggedPayload(payload);
+    handleDropOnCalendarDay({ preventDefault: () => {} }, dateStr);
+    clearTouchDrag();
+    return true;
+  };
 
   // ═══ JOURS DE LA SEMAINE EN-CHECK (Lun -> Dim) ═══
   const weekDays = useMemo(() => {
@@ -855,12 +984,22 @@ export default function Planning() {
     toast.success(`Équipe "${title}" supprimée`);
   };
 
+  // Numéro de jour En-Check (1 = Lundi .. 7 = Dimanche) à partir d'une date YYYY-MM-DD
+  const dayNumFromDateStr = (dateStr) => {
+    const d = new Date(`${dateStr}T12:00:00`);
+    const day = d.getDay();
+    return day === 0 ? 7 : day;
+  };
+
   // ═══ DÉPÔT D'UN MODÈLE SUR UNE CASE DU CALENDRIER MENSUEL ═══
+  // Si un collaborateur est ciblé par le focus, le modèle lui est réellement affecté
+  // (comme dans la vue Semaine). Sinon il est déposé au niveau de la journée.
   const handleDropOnCalendarDay = (e, dateStr) => {
     e.preventDefault();
     setMonthDropDate(null);
-    const payload = draggedPayload;
+    const payload = draggedPayload || touchDragPayload;
     setDraggedPayload(null);
+    setTouchDragPayload(null);
     if (!payload) return;
 
     const tpl =
@@ -868,13 +1007,73 @@ export default function Planning() {
         ? payload.template
         : payload.shift
         ? {
+            id: payload.shift.id,
             name: payload.shift.name || "Créneau",
             label: `${payload.shift.start_time} - ${payload.shift.end_time}`,
             color: payload.shift.color,
+            kind: "shift",
+            start_time: payload.shift.start_time,
+            end_time: payload.shift.end_time,
+            has_break: payload.shift.has_break,
+            break_start: payload.shift.break_start,
+            break_end: payload.shift.break_end,
+            variant: payload.shift.variant,
           }
         : null;
 
     if (!tpl) return;
+
+    // Affectation réelle au collaborateur ciblé par le focus
+    if (focusFilter.type === "employee") {
+      const targetEmp = filteredEmployees.find((emp) => emp.id === focusFilter.value);
+      if (targetEmp) {
+        const dayNum = dayNumFromDateStr(dateStr);
+        if (tpl.kind === "rest" || tpl.kind === "leave") {
+          setDayOverrides((prev) => ({
+            ...prev,
+            [targetEmp.id]: {
+              ...(prev[targetEmp.id] || {}),
+              [dateStr]: {
+                isRest: true,
+                label: tpl.name || (tpl.kind === "leave" ? "Congé" : "Repos"),
+                name: tpl.name,
+                reason: tpl.kind === "leave" ? "Congé" : "Repos",
+                variant: "conge",
+                color: tpl.color || "#2D5A43",
+                kind: tpl.kind,
+              },
+            },
+          }));
+          setPendingChangesCount((c) => c + 1);
+          persistEmployeeShiftToSupabase(targetEmp, null, dayNum, true);
+        } else {
+          const newShift = {
+            start_time: tpl.start_time,
+            end_time: tpl.end_time,
+            has_break: tpl.has_break ?? true,
+            break_start: tpl.break_start,
+            break_end: tpl.break_end,
+            variant: tpl.variant || "standard",
+            color: tpl.color,
+            schedule_id: tpl.schedule_id || null,
+            name: tpl.name,
+          };
+          setDayOverrides((prev) => ({
+            ...prev,
+            [targetEmp.id]: {
+              ...(prev[targetEmp.id] || {}),
+              [dateStr]: newShift,
+            },
+          }));
+          setPendingChangesCount((c) => c + 1);
+          persistEmployeeShiftToSupabase(targetEmp, newShift, dayNum, false);
+        }
+        toast.success(
+          `« ${tpl.name || "Modèle"} » affecté à ${targetEmp.first_name} le ${dateStr}`
+        );
+        return;
+      }
+    }
 
     const entry = {
       id: tpl.id || `shift-${Date.now()}`,
@@ -902,7 +1101,8 @@ export default function Planning() {
     }));
   };
 
-  // ═══ DISPONIBILITÉS COLLABORATEURS (Aujourd'hui / Cette semaine) ═══
+  // ═══ DISPONIBILITÉS COLLABORATEURS (Aujourd'hui / Cette semaine / jour précis) ═══
+  // scopes possibles : "today" | "week" | "day-1" .. "day-7" (Lun .. Dim)
   const setEmployeeAvailability = (empId, scope, value) => {
     setAvailability((prev) => {
       const current = prev[empId] || {};
@@ -913,6 +1113,35 @@ export default function Planning() {
       };
     });
   };
+
+  const getAvailabilityState = (empId, scope) => availability[empId]?.[scope] || null;
+
+  // Cycle : non renseigné -> disponible -> indisponible -> non renseigné
+  const cycleAvailability = (empId, scope) => {
+    const current = getAvailabilityState(empId, scope);
+    const next =
+      current === "available" ? "unavailable" : current === "unavailable" ? null : "available";
+    setEmployeeAvailability(empId, scope, next);
+  };
+
+  const setAvailabilityValue = (empId, scope, value) => {
+    const current = getAvailabilityState(empId, scope);
+    setEmployeeAvailability(empId, scope, current === value ? null : value);
+  };
+
+  const openAvailabilityModal = (emp) => {
+    setAvailabilityTarget(emp);
+    setShowAvailabilityModal(true);
+  };
+
+  const focusLabel = useMemo(() => {
+    if (focusFilter.type === "team") return focusFilter.value;
+    if (focusFilter.type === "employee") {
+      const emp = filteredEmployees.find((e) => e.id === focusFilter.value);
+      return emp ? `${emp.first_name} ${emp.last_name}` : "Collaborateur";
+    }
+    return "Toute l'équipe";
+  }, [focusFilter, filteredEmployees]);
 
   // L'option Planning est payante : aucune grille horaire n'est affichée pour les
   // entreprises qui n'y ont pas souscrit (module_planning === false).
@@ -930,7 +1159,18 @@ export default function Planning() {
     const override = empOverrides[dateStr] ?? empOverrides[`day-${dayNum}`];
 
     if (override) {
-      if (override.isRest) return null;
+      // Un repos / congé déposé doit rester VISIBLE dans la case (carte dédiée)
+      if (override.isRest) {
+        return {
+          isRest: true,
+          start_time: override.label || override.name || "Repos",
+          end_time: override.reason || "Repos",
+          has_break: false,
+          variant: override.variant || "conge",
+          color: override.color,
+          kind: override.kind || "rest",
+        };
+      }
       return override;
     }
 
@@ -1196,9 +1436,29 @@ export default function Planning() {
 
       if (tpl.kind === "break_only") {
         const currentShift = resolveCellShift(targetEmp, targetDay);
-        if (!currentShift || currentShift.isHoliday || currentShift.isAbsence) {
-          toast.error(
-            `Déposez d'abord un horaire sur ${targetDay.labelHeader} avant d'y ajouter une pause`
+        // Sans horaire sur la case : on affiche la pause comme une carte autonome
+        if (!currentShift || currentShift.isHoliday || currentShift.isAbsence || currentShift.isRest) {
+          const standalonePause = {
+            isPauseOnly: true,
+            start_time: tpl.break_start || "12:00",
+            end_time: tpl.break_end || "13:00",
+            has_break: true,
+            break_start: tpl.break_start || "12:00",
+            break_end: tpl.break_end || "13:00",
+            variant: "pause",
+            color: tpl.color || "#0E7490",
+            name: tpl.name || "Pause",
+          };
+          setDayOverrides((prev) => ({
+            ...prev,
+            [targetEmp.id]: {
+              ...(prev[targetEmp.id] || {}),
+              [targetDay.dateStr]: standalonePause,
+            },
+          }));
+          setPendingChangesCount((c) => c + 1);
+          toast.success(
+            `« ${tpl.name || "Pause"} » affiché sur ${targetDay.labelHeader} (${targetEmp.first_name})`
           );
           return;
         }
@@ -1302,7 +1562,15 @@ export default function Planning() {
     const weekMap = {};
     weekDays.forEach((d) => {
       if (tpl.kind === "rest") {
-        weekMap[d.dateStr] = { isRest: true };
+        weekMap[d.dateStr] = {
+          isRest: true,
+          label: tpl.name || "Repos",
+          name: tpl.name || "Repos",
+          reason: "Repos",
+          variant: "conge",
+          color: tpl.color || "#2D5A43",
+          kind: "rest",
+        };
       } else if (tpl.kind === "leave") {
         weekMap[d.dateStr] = {
           isLeave: true,
@@ -1468,12 +1736,37 @@ export default function Planning() {
     }));
   }, [filteredEmployees, teams, teamAssignments]);
 
+  // ═══ COLLABORATEURS VISIBLES (groupes dépliés) ET FOCUS (équipe / collaborateur) ═══
+  const visibleEmployees = useMemo(
+    () =>
+      employeeGroups
+        .filter((g) => !collapsedGroups[g.title])
+        .flatMap((g) => g.employees),
+    [employeeGroups, collapsedGroups]
+  );
+
+  const matchesFocus = (emp) => {
+    if (focusFilter.type === "team") {
+      return (getEmployeeTeamName(emp) || "SANS ÉQUIPE") === focusFilter.value;
+    }
+    if (focusFilter.type === "employee") {
+      return emp.id === focusFilter.value;
+    }
+    return true;
+  };
+
+  const scopedEmployees = useMemo(
+    () => visibleEmployees.filter(matchesFocus),
+    [visibleEmployees, focusFilter, teamAssignments]
+  );
+
   // ═══ TOTAUX JOURNALIERS POUR LE PIED DE PAGE EN-CHECK ═══
+  // Les compteurs (X pers. · XXh) suivent les équipes dépliées et le focus sélectionné.
   const dailyTotals = useMemo(() => {
     return weekDays.map((dayItem) => {
       let headcount = 0;
       let totalMinutes = 0;
-      filteredEmployees.forEach((emp) => {
+      scopedEmployees.forEach((emp) => {
         const shift = resolveCellShift(emp, dayItem);
         if (
           shift &&
@@ -1494,7 +1787,7 @@ export default function Planning() {
         hoursLabel: formatHoursCompact(totalMinutes),
       };
     });
-  }, [weekDays, filteredEmployees, dayOverrides, employeeSchedules, plannings, absences, holidayMapsByEnterprise]);
+  }, [weekDays, scopedEmployees, dayOverrides, employeeSchedules, plannings, absences, holidayMapsByEnterprise]);
 
   // ═══ CRUD MODÈLES D'HORAIRES & AFFECTATIONS ═══
   const handleAdd = () => {
@@ -2189,7 +2482,9 @@ export default function Planning() {
               {dockTemplates.map((tpl) => (
                 <div
                   key={tpl.id}
-                  className="sk-brick"
+                  className={`sk-brick ${
+                    touchDragPayload?.template?.id === tpl.id ? "is-armed" : ""
+                  }`}
                   style={{ "--brick-color": tpl.color || "#B56235" }}
                   draggable
                   onDragStart={(e) => handleDragStartTemplate(e, tpl)}
@@ -2197,7 +2492,10 @@ export default function Planning() {
                     setDraggedPayload(null);
                     setDropTargetCell(null);
                   }}
-                  title={`Glisser "${tpl.label}" vers la grille ou le calendrier`}
+                  onTouchStart={() => startTouchDrag(tpl)}
+                  onTouchEnd={cancelTouchDrag}
+                  onTouchMove={cancelTouchDrag}
+                  title={`Glisser "${tpl.label}" vers la grille ou le calendrier (appui long sur mobile)`}
                 >
                   <div className="sk-brick-left">
                     <div className="sk-drag-dots" aria-hidden="true">
@@ -2272,6 +2570,94 @@ export default function Planning() {
           )}
         </section>
 
+        {/* BARRE DE FOCUS + LÉGENDE DES COULEURS */}
+        <section className="sk-focus-bar" aria-label="Filtre d'affichage et légende">
+          <div className="sk-focus-left">
+            <span className="sk-focus-label">
+              <Users size={13} /> Afficher
+            </span>
+            <select
+              className="sk-ent-select"
+              value={
+                focusFilter.type === "all"
+                  ? "all"
+                  : focusFilter.type === "team"
+                  ? `team:${focusFilter.value}`
+                  : `emp:${focusFilter.value}`
+              }
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "all") setFocusFilter({ type: "all", value: null });
+                else if (v.startsWith("team:"))
+                  setFocusFilter({ type: "team", value: v.slice(5) });
+                else setFocusFilter({ type: "employee", value: v.slice(4) });
+              }}
+              aria-label="Filtrer l'affichage par équipe ou par collaborateur"
+            >
+              <option value="all">
+                Toute l&apos;équipe ({visibleEmployees.length})
+              </option>
+              <optgroup label="Équipes">
+                {employeeGroups.map((g) => (
+                  <option key={g.title} value={`team:${g.title}`}>
+                    {g.title} ({g.employees.length})
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Collaborateurs">
+                {filteredEmployees.map((emp) => (
+                  <option key={emp.id} value={`emp:${emp.id}`}>
+                    {emp.first_name} {emp.last_name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <span className="sk-focus-count">
+              {scopedEmployees.length} collaborateur(s) · {focusLabel}
+            </span>
+          </div>
+
+          <div className="sk-legend">
+            <span className="sk-legend-group">
+              <span className="sk-legend-title">Disponibilité</span>
+              <span className="sk-legend-item">
+                <span className="sk-avail-dot" style={{ color: "#10B981", background: "#10B981" }} />{" "}
+                Auj. / Sem. / jour = disponible
+              </span>
+              <span className="sk-legend-item">
+                <span className="sk-avail-dot" style={{ color: "#EF4444", background: "#EF4444" }} />{" "}
+                indisponible
+              </span>
+              <span className="sk-legend-item">
+                <span className="sk-avail-dot" style={{ color: "#8E7E6F", background: "#8E7E6F" }} />{" "}
+                non renseigné
+              </span>
+            </span>
+            <span className="sk-legend-group">
+              <span className="sk-legend-title">Types de cartes</span>
+              <span className="sk-legend-item">
+                <span className="sk-legend-swatch" style={{ background: "#B56235" }} /> Horaire
+              </span>
+              <span className="sk-legend-item">
+                <span className="sk-legend-swatch" style={{ background: "#9A5B25" }} /> Garde
+              </span>
+              <span className="sk-legend-item">
+                <span className="sk-legend-swatch" style={{ background: "#4B3869" }} /> Nuit
+              </span>
+              <span className="sk-legend-item">
+                <span className="sk-legend-swatch" style={{ background: "#0E7490" }} /> Pause
+              </span>
+              <span className="sk-legend-item">
+                <span className="sk-legend-swatch" style={{ background: "#2D5A43" }} /> Congé /
+                Repos
+              </span>
+              <span className="sk-legend-item">
+                <span className="sk-legend-swatch is-dashed" /> Réel effectué
+              </span>
+            </span>
+          </div>
+        </section>
+
         {/* 2. VUE SEMAINE (MATRICE EN-CHECK DRAG & DROP) */}
         {planningView === "semaine" && (
           <>
@@ -2294,7 +2680,12 @@ export default function Planning() {
                             key={dayItem.dateStr}
                             className={`sk-th-day ${dayItem.isToday ? "is-today" : ""}`}
                           >
-                            {dayItem.labelHeader}
+                            <span className="sk-th-day-name">
+                              {dayItem.labelHeader}
+                              {dayItem.isToday && (
+                                <span className="sk-today-pill">Aujourd&apos;hui</span>
+                              )}
+                            </span>
                             <span className="sk-th-day-sub">
                               {dt ? `${dt.headcount} pers. · ${dt.hoursLabel}` : ""}
                             </span>
@@ -2322,6 +2713,10 @@ export default function Planning() {
                         .filter((g) => !g.isBannerOnly)
                         .map((group) => {
                           const isCollapsed = Boolean(collapsedGroups[group.title]);
+                          const groupEmployees = group.employees.filter(matchesFocus);
+                          if (groupEmployees.length === 0 && focusFilter.type !== "all") {
+                            return null;
+                          }
                           return [
                             <tr
                               key={`grp-${group.title}`}
@@ -2374,7 +2769,7 @@ export default function Planning() {
                               </td>
                             </tr>,
                             !isCollapsed &&
-                              group.employees.map((emp) => {
+                              groupEmployees.map((emp) => {
                                 // Calcul du total d'heures planifiées sur la semaine pour ce collaborateur
                                 const weeklyMinutes = weekDays.reduce((acc, dayItem) => {
                                   const s = resolveCellShift(emp, dayItem);
@@ -2435,28 +2830,24 @@ export default function Planning() {
                                             />
                                           </div>
 
-                                          {/* Disponibilité du collaborateur : aujourd'hui / cette semaine */}
+                                          {/* Disponibilité du collaborateur : aujourd'hui / semaine / jour précis */}
                                           <div className="sk-avail-row">
                                             <button
                                               type="button"
                                               className={`sk-avail-pill ${
-                                                availability[emp.id]?.today === "available"
+                                                getAvailabilityState(emp.id, "today") ===
+                                                "available"
                                                   ? "is-on"
-                                                  : availability[emp.id]?.today === "unavailable"
+                                                  : getAvailabilityState(emp.id, "today") ===
+                                                    "unavailable"
                                                   ? "is-off"
                                                   : ""
                                               }`}
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                setEmployeeAvailability(
-                                                  emp.id,
-                                                  "today",
-                                                  availability[emp.id]?.today === "available"
-                                                    ? "unavailable"
-                                                    : "available"
-                                                );
+                                                cycleAvailability(emp.id, "today");
                                               }}
-                                              title="Marquer la disponibilité d'aujourd'hui"
+                                              title="Disponible aujourd'hui (clic : oui / non / non renseigné)"
                                             >
                                               <span className="sk-avail-dot" />
                                               Auj.
@@ -2464,27 +2855,66 @@ export default function Planning() {
                                             <button
                                               type="button"
                                               className={`sk-avail-pill ${
-                                                availability[emp.id]?.week === "available"
+                                                getAvailabilityState(emp.id, "week") ===
+                                                "available"
                                                   ? "is-on"
-                                                  : availability[emp.id]?.week === "unavailable"
+                                                  : getAvailabilityState(emp.id, "week") ===
+                                                    "unavailable"
                                                   ? "is-off"
                                                   : ""
                                               }`}
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                setEmployeeAvailability(
-                                                  emp.id,
-                                                  "week",
-                                                  availability[emp.id]?.week === "available"
-                                                    ? "unavailable"
-                                                    : "available"
-                                                );
+                                                cycleAvailability(emp.id, "week");
                                               }}
-                                              title="Marquer la disponibilité de la semaine"
+                                              title="Disponible cette semaine (clic : oui / non / non renseigné)"
                                             >
                                               <span className="sk-avail-dot" />
                                               Sem.
                                             </button>
+                                            <button
+                                              type="button"
+                                              className="sk-avail-pill is-daypicker"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openAvailabilityModal(emp);
+                                              }}
+                                              title="Choisir la disponibilité jour par jour (Lun, Mar, Mer...)"
+                                            >
+                                              <CalendarDays size={10} />
+                                              Jours
+                                            </button>
+                                          </div>
+
+                                          {/* Récapitulatif visuel des jours marqués */}
+                                          <div className="sk-avail-days">
+                                            {joursSemaine.map((j) => {
+                                              const st = getAvailabilityState(
+                                                emp.id,
+                                                `day-${j.id}`
+                                              );
+                                              return (
+                                                <span
+                                                  key={j.id}
+                                                  className={`sk-avail-day ${
+                                                    st === "available"
+                                                      ? "is-on"
+                                                      : st === "unavailable"
+                                                      ? "is-off"
+                                                      : ""
+                                                  }`}
+                                                  title={`${j.nom} : ${
+                                                    st === "available"
+                                                      ? "disponible"
+                                                      : st === "unavailable"
+                                                      ? "indisponible"
+                                                      : "non renseigné"
+                                                  }`}
+                                                >
+                                                  {j.court.charAt(0)}
+                                                </span>
+                                              );
+                                            })}
                                           </div>
                                         </div>
                                       </div>
@@ -2493,6 +2923,7 @@ export default function Planning() {
                                     {/* 7 Colonnes Jours (Lun -> Dim) */}
                                     {weekDays.map((dayItem) => {
                                       const shift = resolveCellShift(emp, dayItem);
+                                      const realAtt = getRealAttendance(emp.id, dayItem.dateStr);
                                       const isDropOver =
                                         dropTargetCell?.empId === emp.id &&
                                         dropTargetCell?.dateStr === dayItem.dateStr;
@@ -2505,10 +2936,19 @@ export default function Planning() {
                                       return (
                                         <td
                                           key={dayItem.dateStr}
-                                          className={`sk-td-cell ${isDropOver ? "is-drop-over" : ""}`}
+                                          className={`sk-td-cell ${
+                                            isDropOver ? "is-drop-over" : ""
+                                          } ${touchDragPayload ? "is-touch-armed" : ""}`}
                                           onDragOver={(e) => handleDragOverCell(e, emp, dayItem)}
                                           onDragLeave={() => setDropTargetCell(null)}
                                           onDrop={(e) => handleDropOnCell(e, emp, dayItem)}
+                                          onClickCapture={(e) => {
+                                            if (touchDragPayload) {
+                                              e.stopPropagation();
+                                              e.preventDefault();
+                                              applyTouchDropOnCell(emp, dayItem);
+                                            }
+                                          }}
                                         >
                                           {/* Infobulle flottante En-Check lors du survol en Drag & Drop */}
                                           {isDropOver && (
@@ -2610,6 +3050,47 @@ export default function Planning() {
                                                     </span>
                                                   )}
                                                 </div>
+
+                                                {/* Horaires réellement effectués (pointages) */}
+                                                {realAtt && realAtt.firstIn && (
+                                                  <div className="sk-shift-real">
+                                                    <span>
+                                                      Réel {heureLocale(realAtt.firstIn)}
+                                                      {realAtt.lastOut
+                                                        ? ` → ${heureLocale(realAtt.lastOut)}`
+                                                        : ""}
+                                                    </span>
+                                                    <span
+                                                      className={`sk-real-diff ${
+                                                        !netMins
+                                                          ? ""
+                                                          : realAtt.minutes < netMins
+                                                          ? "is-neg"
+                                                          : realAtt.minutes > netMins
+                                                          ? "is-pos"
+                                                          : ""
+                                                      }`}
+                                                    >
+                                                      {formatHoursCompact(realAtt.minutes)}
+                                                      {netMins
+                                                        ? ` · ${
+                                                            realAtt.minutes === netMins
+                                                              ? "à l'heure"
+                                                              : `${
+                                                                  realAtt.minutes > netMins
+                                                                    ? "+"
+                                                                    : "-"
+                                                                }${formatHoursCompact(
+                                                                  Math.abs(
+                                                                    realAtt.minutes - netMins
+                                                                  )
+                                                                )}`
+                                                          }`
+                                                        : " · non planifié"}
+                                                      {realAtt.autoClosed ? " · auto" : ""}
+                                                    </span>
+                                                  </div>
+                                                )}
                                               </div>
                                             ) : (
                                               <div
@@ -2617,7 +3098,23 @@ export default function Planning() {
                                                 onClick={() => openCellEditorModal(emp, dayItem)}
                                                 title="Cliquer pour ajouter un shift ou déposer un modèle ici"
                                               >
-                                                {isDropOver ? "Déposer ici" : "+ Shift"}
+                                                {isDropOver ? (
+                                                  "Déposer ici"
+                                                ) : realAtt && realAtt.firstIn ? (
+                                                  <span className="sk-empty-real">
+                                                    Pointé {heureLocale(realAtt.firstIn)}
+                                                    {realAtt.lastOut
+                                                      ? ` → ${heureLocale(realAtt.lastOut)}`
+                                                      : ""}
+                                                    <br />
+                                                    <strong>
+                                                      {formatHoursCompact(realAtt.minutes)} non
+                                                      planifié
+                                                    </strong>
+                                                  </span>
+                                                ) : (
+                                                  "+ Shift"
+                                                )}
                                               </div>
                                             )}
                                           </div>
@@ -2666,26 +3163,29 @@ export default function Planning() {
           </>
         )}
 
-        {/* 3. VUE JOUR (TIMELINE JOURNALIÈRE EN-CHECK) */}
+        {/* 3. VUE JOUR (TIMELINE HORAIRE AVEC GLISSER-DÉPOSER) */}
         {planningView === "jour" && (
-          <div className="sk-matrix-card" style={{ padding: 20 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <h2 style={{ margin: 0, fontSize: 17 }}>
-                Planning du jour —{" "}
-                {calendarDate.toLocaleDateString("fr-FR", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </h2>
+          <div className="sk-matrix-card sk-day-view">
+            <div className="sk-day-head">
+              <div>
+                <h2 className="sk-day-title">
+                  Planning du jour —{" "}
+                  {calendarDate.toLocaleDateString("fr-FR", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                  {toIsoDateLocal(calendarDate) === toIsoDateLocal(new Date()) && (
+                    <span className="sk-today-pill">Aujourd&apos;hui</span>
+                  )}
+                </h2>
+                <p className="sk-day-sub">
+                  Glissez un modèle depuis le Dock sur la ligne d&apos;un collaborateur pour
+                  l&apos;affecter à cette journée. Le contour pointillé indique le pointage
+                  réellement effectué.
+                </p>
+              </div>
               <button
                 type="button"
                 className="sk-btn-secondary"
@@ -2694,84 +3194,182 @@ export default function Planning() {
                 Retour à la grille Semaine
               </button>
             </div>
-            <div style={{ display: "grid", gap: 10 }}>
-              {filteredEmployees.map((emp) => {
-                const dayNum = getPlanningDay(
-                  calendarDate.getFullYear(),
-                  calendarDate.getMonth(),
-                  calendarDate.getDate()
-                );
-                const dateStr = toIsoDateLocal(calendarDate);
-                const shift = resolveCellShift(emp, {
-                  dateStr,
-                  dayNum,
-                  labelHeader: dateStr,
-                });
-                return (
-                  <div
-                    key={emp.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "12px 16px",
-                      background: "var(--sk-bg-panel)",
-                      border: "1px solid var(--sk-border-soft)",
-                      borderRadius: 12,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div className="sk-emp-avatar" style={{ width: 38, height: 38 }}>
-                        {(emp.first_name || "E")[0]}
-                        {(emp.last_name || "C")[0]}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 14 }}>
-                          {emp.first_name} {emp.last_name}
-                        </div>
-                        <div style={{ fontSize: 12, color: "var(--sk-text-muted)" }}>
-                          {emp.matricule} • {emp.department || "Équipe Officine & Garde"}
-                        </div>
-                      </div>
-                    </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      {shift ? (
-                        <span
-                          style={{
-                            padding: "6px 14px",
-                            borderRadius: 999,
-                            background: "var(--sk-terracotta)",
-                            color: "#FFF7ED",
-                            fontSize: 13,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {shift.start_time} – {shift.end_time}
-                          {shift.has_break ? " • ☕ 1h" : ""}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 13, color: "var(--sk-text-muted)" }}>
-                          Repos
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        className="sk-btn-secondary"
-                        onClick={() =>
-                          openCellEditorModal(
-                            emp,
-                            { dateStr, dayNum, labelHeader: dateStr },
-                            shift
-                          )
-                        }
-                      >
-                        <Edit size={13} /> Modifier
-                      </button>
-                    </div>
+            {/* Graduations horaires */}
+            <div className="sk-day-timeline">
+              <div className="sk-day-scale">
+                <span className="sk-day-scale-spacer" />
+                <div className="sk-day-hours">
+                  {Array.from({ length: 9 }, (_, i) => i * 3).map((h) => (
+                    <span key={h} className="sk-day-hour">
+                      {String(h).padStart(2, "0")}h
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="sk-day-rows">
+                {scopedEmployees.length === 0 ? (
+                  <div className="sk-day-empty">
+                    Aucun collaborateur visible (dépliez une équipe ou changez le filtre
+                    d&apos;affichage).
                   </div>
-                );
-              })}
+                ) : (
+                  scopedEmployees.map((emp) => {
+                    const dateStr = toIsoDateLocal(calendarDate);
+                    const dayNum = getPlanningDay(
+                      calendarDate.getFullYear(),
+                      calendarDate.getMonth(),
+                      calendarDate.getDate()
+                    );
+                    const dayItem = { dateStr, dayNum, labelHeader: dateStr };
+                    const shift = resolveCellShift(emp, dayItem);
+                    const real = getRealAttendance(emp.id, dateStr);
+                    const isDropOver = dayDropEmpId === emp.id;
+
+                    const pct = (hhmm) => {
+                      if (!hhmm || !/^\d{2}:\d{2}/.test(hhmm)) return null;
+                      const [h, m] = hhmm.slice(0, 5).split(":").map(Number);
+                      if (Number.isNaN(h)) return null;
+                      return ((h * 60 + (m || 0)) / (24 * 60)) * 100;
+                    };
+
+                    const startPct = pct(shift?.start_time);
+                    const endPct = pct(shift?.end_time);
+                    let widthPct = 0;
+                    if (startPct !== null && endPct !== null) {
+                      widthPct =
+                        endPct >= startPct ? endPct - startPct : 100 - startPct + endPct;
+                    }
+                    const realStartPct = real ? pct(heureLocale(real.firstIn)) : null;
+                    const realEndPct =
+                      real && real.lastOut ? pct(heureLocale(real.lastOut)) : null;
+                    const realWidthPct =
+                      realStartPct !== null && realEndPct !== null
+                        ? realEndPct >= realStartPct
+                          ? realEndPct - realStartPct
+                          : 100 - realStartPct + realEndPct
+                        : 2;
+
+                    return (
+                      <div
+                        key={emp.id}
+                        className={`sk-day-row ${isDropOver ? "is-drop-over" : ""}`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          if (dayDropEmpId !== emp.id) setDayDropEmpId(emp.id);
+                        }}
+                        onDragLeave={() => setDayDropEmpId(null)}
+                        onDrop={(e) => handleDropOnCell(e, emp, dayItem)}
+                        onClickCapture={(e) => {
+                          if (touchDragPayload) {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            applyTouchDropOnCell(emp, dayItem);
+                          }
+                        }}
+                      >
+                        <div className="sk-day-emp">
+                          <div className="sk-emp-avatar" style={{ width: 32, height: 32 }}>
+                            {(emp.first_name || "E")[0]}
+                            {(emp.last_name || "C")[0]}
+                          </div>
+                          <div className="sk-day-emp-meta">
+                            <strong>
+                              {emp.first_name} {emp.last_name}
+                            </strong>
+                            <span>{emp.matricule || emp.position || "—"}</span>
+                          </div>
+                        </div>
+
+                        <div className="sk-day-track">
+                          {Array.from({ length: 9 }, (_, i) => i * 3).map((h) => (
+                            <span
+                              key={h}
+                              className="sk-day-grid-line"
+                              style={{ left: `${(h / 24) * 100}%` }}
+                            />
+                          ))}
+
+                          {shift && startPct !== null && (
+                            <div
+                              className={`sk-day-block ${isDropOver ? "is-dimmed" : ""}`}
+                              style={{
+                                left: `${startPct}%`,
+                                width: `${Math.max(2, widthPct)}%`,
+                                background: buildShiftGradient(shift.color),
+                              }}
+                              draggable={!shift.isHoliday && !shift.isAbsence}
+                              onDragStart={(e) =>
+                                handleDragStartCellShift(e, emp, dayItem, shift)
+                              }
+                              onClick={() => openCellEditorModal(emp, dayItem, shift)}
+                              title={`${shift.start_time} - ${shift.end_time} (${
+                                formatHoursCompact(computeShiftNetMinutes(shift)) || "—"
+                              })`}
+                            >
+                              <span className="sk-day-block-label">
+                                {shift.isRest || shift.isLeave
+                                  ? shift.start_time
+                                  : `${shift.start_time} - ${shift.end_time}`}
+                              </span>
+                            </div>
+                          )}
+
+                          {real && realStartPct !== null && (
+                            <div
+                              className="sk-day-real-block"
+                              style={{
+                                left: `${realStartPct}%`,
+                                width: `${Math.max(1.5, realWidthPct)}%`,
+                              }}
+                              title={`Réel : ${heureLocale(real.firstIn)} → ${
+                                real.lastOut ? heureLocale(real.lastOut) : "..."
+                              } (${formatHoursCompact(real.minutes)})`}
+                            >
+                              <span className="sk-day-real-label">
+                                {heureLocale(real.firstIn)}
+                                {real.lastOut ? ` → ${heureLocale(real.lastOut)}` : ""}
+                              </span>
+                            </div>
+                          )}
+
+                          {!shift && (
+                            <button
+                              type="button"
+                              className="sk-day-add"
+                              onClick={() => openCellEditorModal(emp, dayItem)}
+                            >
+                              {isDropOver ? "Déposer ici" : "+ Ajouter (ou déposer un modèle)"}
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="sk-day-actions">
+                          {shift && !shift.isHoliday && !shift.isAbsence && (
+                            <button
+                              type="button"
+                              className="sk-shift-del-btn"
+                              onClick={(e) => handleClearCellShift(e, emp, dayItem)}
+                              title="Retirer ce créneau"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="sk-brick-edit"
+                            onClick={() => openCellEditorModal(emp, dayItem, shift)}
+                            title="Modifier / couleur"
+                          >
+                            <Edit size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -2819,55 +3417,137 @@ export default function Planning() {
                 const isSelected = selectedCalendarDay?.date === cell.date;
                 const dayModels = monthModels[cell.date] || [];
                 const isMonthDropOver = monthDropDate === cell.date;
+                const todayIso = toIsoDateLocal(new Date());
+                const isToday = cell.date === todayIso;
+                const cellDayNum = dayNumFromDateStr(cell.date);
+
+                // Shifts et pointages réels des collaborateurs du focus sur cette journée
+                const cellRows = scopedEmployees
+                  .map((emp) => ({
+                    emp,
+                    shift: resolveCellShift(emp, {
+                      dateStr: cell.date,
+                      dayNum: cellDayNum,
+                      labelHeader: `${emp.first_name} ${cell.day}`,
+                    }),
+                    real: getRealAttendance(emp.id, cell.date),
+                  }))
+                  .filter((r) => r.shift || r.real);
+                const cellMinutes = cellRows.reduce(
+                  (acc, r) => acc + computeShiftNetMinutes(r.shift),
+                  0
+                );
+
                 return (
                   <div
                     key={cell.id}
-                    className={`sk-cal-cell ${isMonthDropOver ? "is-drop-over" : ""}`}
+                    className={`sk-cal-cell ${isMonthDropOver ? "is-drop-over" : ""} ${
+                      isToday ? "is-today" : ""
+                    } ${isSelected ? "is-selected" : ""} ${
+                      touchDragPayload ? "is-touch-armed" : ""
+                    }`}
                     style={
                       cell.isHoliday
                         ? { background: "rgba(139, 92, 246, 0.14)" }
                         : undefined
                     }
                     onClick={() => {
+                      if (applyTouchDropOnDay(cell.date)) return;
                       setSelectedCalendarDay(cell);
                       setCalendarDate(new Date(cell.date + "T12:00:00"));
                     }}
+                    onDoubleClick={() => setPlanningView("jour")}
                     onDragOver={(e) => {
                       e.preventDefault();
                       if (monthDropDate !== cell.date) setMonthDropDate(cell.date);
                     }}
                     onDragLeave={() => setMonthDropDate(null)}
                     onDrop={(e) => handleDropOnCalendarDay(e, cell.date)}
-                    title="Déposez un modèle ici pour l'afficher sur cette journée"
+                    title={
+                      focusFilter.type === "employee"
+                        ? "Déposez un modèle : il sera affecté au collaborateur sélectionné"
+                        : "Déposez un modèle sur la journée (double-clic pour la vue Jour)"
+                    }
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        fontWeight: 700,
-                        fontSize: 13,
-                      }}
-                    >
-                      <span>{cell.day}</span>
-                      {cell.isHoliday && <span title={cell.holiday?.name}>🎌</span>}
+                    <div className="sk-cal-cell-head">
+                      <span className={isToday ? "sk-cal-day is-today-num" : "sk-cal-day"}>
+                        {cell.day}
+                      </span>
+                      <span className="sk-cal-cell-head-right">
+                        {cell.isHoliday && <span title={cell.holiday?.name}>🎌</span>}
+                        {isToday && <span className="sk-today-pill">Aujourd&apos;hui</span>}
+                      </span>
                     </div>
 
-                    <div style={{ fontSize: 11, color: "var(--sk-text-muted)" }}>
-                      {cell.isHoliday ? (
-                        cell.holiday?.name
-                      ) : (
-                        <>
-                          {cell.schPlannings.length} modèle(s) • {cell.actES.length} perso
-                        </>
+                    {cell.isHoliday ? (
+                      <div className="sk-cal-holiday">{cell.holiday?.name}</div>
+                    ) : (
+                      <div className="sk-cal-summary">
+                        {cellRows.length > 0
+                          ? `${cellRows.length} pers. · ${formatHoursCompact(cellMinutes)}`
+                          : `${cell.schPlannings.length} modèle(s) • ${cell.actES.length} perso`}
+                      </div>
+                    )}
+
+                    {/* Shifts par collaborateur (focus équipe ou collaborateur) */}
+                    <div className="sk-cal-pills-list">
+                      {cellRows.slice(0, 4).map(({ emp, shift, real }) => {
+                        const netM = computeShiftNetMinutes(shift);
+                        return (
+                          <span
+                            key={emp.id}
+                            className="sk-cal-pill"
+                            style={{ "--cal-pill-bg": buildShiftGradient(shift?.color) }}
+                            title={`${emp.first_name} ${emp.last_name} — ${
+                              shift
+                                ? `${shift.start_time} - ${shift.end_time}`
+                                : "non planifié"
+                            }`}
+                            draggable={Boolean(shift) && !shift.isHoliday && !shift.isAbsence}
+                            onDragStart={(e) =>
+                              handleDragStartCellShift(
+                                e,
+                                emp,
+                                {
+                                  dateStr: cell.date,
+                                  dayNum: cellDayNum,
+                                  labelHeader: `${emp.first_name} ${cell.day}`,
+                                },
+                                shift
+                              )
+                            }
+                          >
+                            <span className="sk-cal-pill-name">
+                              {emp.first_name?.charAt(0) || ""}
+                              {emp.last_name?.charAt(0) || ""}
+                            </span>
+                            <span>
+                              {shift
+                                ? shift.isRest || shift.isLeave || shift.isAbsence
+                                  ? shift.start_time
+                                  : `${shift.start_time}-${shift.end_time}`
+                                : "—"}
+                            </span>
+                            {netM > 0 && <span className="sk-cal-pill-net">{formatHoursCompact(netM)}</span>}
+                            {real && real.firstIn && (
+                              <span className="sk-cal-pill-real">
+                                ▸ {heureLocale(real.firstIn)}
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })}
+                      {cellRows.length > 4 && (
+                        <span className="sk-cal-more">+{cellRows.length - 4} autres</span>
                       )}
                     </div>
 
-                    {/* Modèles déposés sur cette journée */}
+                    {/* Modèles déposés au niveau de la journée */}
                     <div className="sk-cal-pills-list">
                       {dayModels.map((m, mIdx) => (
                         <span
                           key={`${m.id}-${mIdx}`}
-                          className="sk-cal-pill"
+                          className="sk-cal-pill is-daymodel"
                           style={{ "--cal-pill-bg": buildShiftGradient(m.color) }}
                           title={m.label || m.name}
                         >
@@ -2896,129 +3576,234 @@ export default function Planning() {
 
         {/* 5. VUE DEMANDES DES COLLABORATEURS (schedule_change_requests) */}
         {planningView === "demandes" && (
-          <div className="sk-matrix-card" style={{ padding: 20 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <div>
-                <h2 style={{ margin: 0, fontSize: 17 }}>
-                  Demandes de changement de planning ({filteredRequests.length})
-                </h2>
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--sk-text-muted)" }}>
-                  Validez ou refusez les demandes d'aménagement horaire soumises par les employés.
-                </p>
+          <div className="sk-requests-view">
+            <div className="sk-matrix-card" style={{ padding: 20 }}>
+              <div className="sk-requests-head">
+                <div>
+                  <h2 className="sk-modal-title" style={{ fontSize: 18 }}>
+                    Demandes de changement de planning
+                  </h2>
+                  <p className="sk-day-sub">
+                    Validez ou refusez les demandes d&apos;aménagement horaire soumises par
+                    les employés. Une demande approuvée met automatiquement à jour le planning
+                    du collaborateur.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="sk-btn-secondary"
+                  onClick={() => setPlanningView("semaine")}
+                >
+                  Retour à la grille En-Check
+                </button>
               </div>
-              <button
-                type="button"
-                className="sk-btn-secondary"
-                onClick={() => setPlanningView("semaine")}
-              >
-                Retour à la grille En-Check
-              </button>
+
+              {/* Compteurs / filtres */}
+              <div className="sk-requests-filters">
+                {[
+                  { id: "all", label: "Toutes", count: filteredRequests.length },
+                  {
+                    id: "pending",
+                    label: "En attente",
+                    count: filteredRequests.filter((r) => r.status === "pending").length,
+                  },
+                  {
+                    id: "approved",
+                    label: "Approuvées",
+                    count: filteredRequests.filter((r) => r.status === "approved").length,
+                  },
+                  {
+                    id: "rejected",
+                    label: "Refusées",
+                    count: filteredRequests.filter((r) => r.status === "rejected").length,
+                  },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    className={`sk-request-filter ${
+                      requestFilter === f.id ? "active" : ""
+                    } is-${f.id}`}
+                    onClick={() => setRequestFilter(f.id)}
+                  >
+                    {f.label}
+                    <span className="sk-request-filter-count">{f.count}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {filteredRequests.length === 0 ? (
-              <div
-                style={{
-                  padding: 36,
-                  textAlign: "center",
-                  color: "var(--sk-text-muted)",
-                }}
-              >
-                Aucune demande de modification de planning.
+            {visibleRequests.length === 0 ? (
+              <div className="sk-matrix-card sk-requests-empty">
+                <CalendarDays size={26} color="#C25E28" />
+                <p>
+                  {requestFilter === "pending"
+                    ? "Aucune demande en attente."
+                    : "Aucune demande pour ce filtre."}
+                </p>
               </div>
             ) : (
-              <div style={{ display: "grid", gap: 12 }}>
-                {filteredRequests.map((req) => (
-                  <div
-                    key={req.id}
-                    style={{
-                      padding: 16,
-                      borderRadius: 12,
-                      background: "var(--sk-bg-panel)",
-                      border: "1px solid var(--sk-border-soft)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 16,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>
-                        {req.employees?.first_name} {req.employees?.last_name}{" "}
-                        <span style={{ color: "var(--sk-text-muted)", fontWeight: 500 }}>
-                          ({req.employees?.matricule})
-                        </span>
+              <div className="sk-requests-list">
+                {visibleRequests.map((req) => {
+                  const emp = req.employees || {};
+                  const fullName =
+                    `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || "Collaborateur";
+                  const initials = `${emp.first_name?.[0] || ""}${
+                    emp.last_name?.[0] || ""
+                  }`.toUpperCase();
+                  const statut = req.status || "pending";
+                  const currentLabel = req.use_custom_hours
+                    ? `${formatTime(req.requested_start_time)} - ${formatTime(
+                        req.requested_end_time
+                      )}`
+                    : req.requested_schedule?.name || "Planning entreprise";
+                  const prevLabel = req.current_schedule?.name
+                    ? `${req.current_schedule.name} (${formatTime(
+                        req.current_schedule.start_time
+                      )} - ${formatTime(req.current_schedule.end_time)})`
+                    : "Aucun planning défini";
+                  const joursDemandes =
+                    req.use_custom_hours && req.requested_work_days
+                      ? formatWorkDays(req.requested_work_days)
+                      : req.requested_schedule?.work_days
+                      ? formatWorkDays(req.requested_schedule.work_days)
+                      : null;
+                  const ageDays = req.created_at
+                    ? Math.floor((Date.now() - new Date(req.created_at).getTime()) / 86400000)
+                    : null;
+
+                  return (
+                    <article key={req.id} className={`sk-request-card is-${statut}`}>
+                      <div className="sk-request-card-head">
+                        <div className="sk-request-emp">
+                          {emp.photo_url ? (
+                            <img src={emp.photo_url} alt="" className="sk-emp-avatar" />
+                          ) : (
+                            <div className="sk-emp-avatar">{initials || "EC"}</div>
+                          )}
+                          <div className="sk-request-emp-meta">
+                            <strong>{fullName}</strong>
+                            <span>
+                              {emp.matricule ? `#${emp.matricule}` : "—"} ·{" "}
+                              {emp.department || emp.position || "Sans équipe"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="sk-request-card-head-right">
+                          <span className={`sk-request-status is-${statut}`}>
+                            {statut === "pending"
+                              ? "⏳ En attente"
+                              : statut === "approved"
+                              ? "✓ Approuvée"
+                              : "✕ Refusée"}
+                          </span>
+                          {ageDays !== null && (
+                            <span className="sk-request-age">
+                              {ageDays === 0
+                                ? "déposée aujourd'hui"
+                                : `déposée il y a ${ageDays} j`}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 13, color: "var(--sk-text-soft)", marginTop: 4 }}>
-                        {req.use_custom_hours
-                          ? `Horaire personnalisé demandé : ${formatTime(
-                              req.requested_start_time
-                            )} - ${formatTime(req.requested_end_time)} (${formatWorkDays(
-                              req.requested_work_days
-                            )})`
-                          : `Modèle demandé : ${
-                              req.requested_schedule?.name || "Planning entreprise"
-                            }`}
+
+                      {/* Comparatif visuel : planning actuel -> planning demandé */}
+                      <div className="sk-request-compare">
+                        <div className="sk-request-compare-col is-from">
+                          <span className="sk-request-compare-label">Planning actuel</span>
+                          <strong>{prevLabel}</strong>
+                        </div>
+                        <span className="sk-request-compare-arrow">→</span>
+                        <div className="sk-request-compare-col is-to">
+                          <span className="sk-request-compare-label">Planning demandé</span>
+                          <strong>
+                            {currentLabel}
+                            {req.use_custom_hours ? " (horaires sur-mesure)" : ""}
+                          </strong>
+                          {joursDemandes && (
+                            <span className="sk-request-compare-days">{joursDemandes}</span>
+                          )}
+                        </div>
                       </div>
+
                       {req.reason && (
-                        <div style={{ fontSize: 12, color: "var(--sk-text-muted)", marginTop: 4 }}>
-                          Motif : « {req.reason} »
+                        <div className="sk-request-reason">
+                          <MessageSquare size={13} /> Motif de l&apos;employé : « {req.reason} »
                         </div>
                       )}
-                    </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {req.status === "pending" ? (
-                        <>
-                          <button
-                            type="button"
-                            className="sk-btn-publish"
-                            style={{ padding: "7px 14px", fontSize: 12.5 }}
-                            onClick={() => openReviewRequestModal(req, "approved")}
-                          >
-                            <CheckCircle2 size={14} /> Approuver
-                          </button>
+                      {req.admin_comment && (
+                        <div className="sk-request-comment">
+                          <Shield size={13} /> Réponse de l&apos;admin : « {req.admin_comment} »
+                          {req.reviewed_at
+                            ? ` — ${new Date(req.reviewed_at).toLocaleDateString("fr-FR")}`
+                            : ""}
+                        </div>
+                      )}
+
+                      <div className="sk-request-actions">
+                        {statut === "pending" ? (
+                          <>
+                            <button
+                              type="button"
+                              className="sk-btn-publish"
+                              style={{ padding: "8px 15px", fontSize: 12.5 }}
+                              onClick={() => openReviewRequestModal(req, "approved")}
+                            >
+                              <CheckCircle2 size={14} /> Approuver
+                            </button>
+                            <button
+                              type="button"
+                              className="sk-btn-secondary"
+                              style={{ padding: "8px 15px", fontSize: 12.5, color: "#EF4444" }}
+                              onClick={() => openReviewRequestModal(req, "rejected")}
+                            >
+                              <Ban size={14} /> Refuser
+                            </button>
+                          </>
+                        ) : (
                           <button
                             type="button"
                             className="sk-btn-secondary"
-                            style={{ padding: "7px 14px", fontSize: 12.5, color: "#EF4444" }}
-                            onClick={() => openReviewRequestModal(req, "rejected")}
+                            style={{ padding: "8px 15px", fontSize: 12.5 }}
+                            onClick={() => openReviewRequestModal(req, "pending")}
                           >
-                            <Ban size={14} /> Refuser
+                            <Clock size={14} /> Remettre en attente
                           </button>
-                        </>
-                      ) : (
-                        <span
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 700,
-                            color: req.status === "approved" ? "#10B981" : "#EF4444",
-                          }}
+                        )}
+                        <button
+                          type="button"
+                          className="sk-btn-secondary"
+                          style={{ padding: "8px 12px" }}
+                          onClick={() => confirmDeleteRequest(req)}
+                          title="Supprimer la demande"
                         >
-                          {req.status === "approved" ? "✓ Approuvée" : "✕ Refusée"}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        className="sk-btn-secondary"
-                        style={{ padding: "7px 10px" }}
-                        onClick={() => confirmDeleteRequest(req)}
-                        title="Supprimer la demande"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Barre flottante du mode tactile (mobile) : modèle prêt à déposer */}
+        {touchDragPayload && (
+          <div className="sk-touch-bar" role="status">
+            <span className="sk-touch-bar-text">
+              ✋ <strong>{touchDragPayload.template?.name || "Modèle"}</strong> sélectionné —
+              touchez une case du planning pour l&apos;y déposer
+            </span>
+            <button
+              type="button"
+              className="sk-btn-secondary"
+              style={{ padding: "6px 12px", fontSize: 12 }}
+              onClick={clearTouchDrag}
+            >
+              Annuler
+            </button>
           </div>
         )}
       </main>
@@ -3717,6 +4502,176 @@ export default function Planning() {
         </div>
       )}
 
+      {/* ═══ MODAL DISPONIBILITÉ D'UN COLLABORATEUR (jour par jour) ═══ */}
+      {showAvailabilityModal && availabilityTarget && (
+        <div
+          className="sk-modal-backdrop"
+          onClick={() => setShowAvailabilityModal(false)}
+        >
+          <div className="sk-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="sk-modal-head">
+              <div>
+                <h2 className="sk-modal-title">
+                  Disponibilité — {availabilityTarget.first_name}{" "}
+                  {availabilityTarget.last_name}
+                </h2>
+                <span className="sk-modal-sub">
+                  Marquez jour par jour (Lun, Mar, Mer...) si le collaborateur est
+                  disponible
+                </span>
+              </div>
+              <button
+                type="button"
+                className="sk-back-btn"
+                onClick={() => setShowAvailabilityModal(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="sk-modal-body">
+              <div className="sk-avail-legend">
+                <span className="sk-avail-legend-item">
+                  <span className="sk-avail-legend-dot is-on" /> Disponible
+                </span>
+                <span className="sk-avail-legend-item">
+                  <span className="sk-avail-legend-dot is-off" /> Indisponible
+                </span>
+                <span className="sk-avail-legend-item">
+                  <span className="sk-avail-legend-dot" /> Non renseigné
+                </span>
+              </div>
+
+              {joursSemaine.map((j) => {
+                const scope = `day-${j.id}`;
+                const st = getAvailabilityState(availabilityTarget.id, scope);
+                return (
+                  <div key={j.id} className="sk-avail-day-row">
+                    <span className="sk-avail-day-label">{j.nom}</span>
+                    <div className="sk-avail-day-actions">
+                      <button
+                        type="button"
+                        className={`sk-avail-choice is-yes ${st === "available" ? "active" : ""}`}
+                        onClick={() =>
+                          setAvailabilityValue(availabilityTarget.id, scope, "available")
+                        }
+                      >
+                        Disponible
+                      </button>
+                      <button
+                        type="button"
+                        className={`sk-avail-choice is-no ${st === "unavailable" ? "active" : ""}`}
+                        onClick={() =>
+                          setAvailabilityValue(availabilityTarget.id, scope, "unavailable")
+                        }
+                      >
+                        Indisponible
+                      </button>
+                      <button
+                        type="button"
+                        className={`sk-avail-choice ${!st ? "active" : ""}`}
+                        onClick={() =>
+                          setAvailabilityValue(availabilityTarget.id, scope, null)
+                        }
+                      >
+                        Non renseigné
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className="sk-avail-day-row">
+                <span className="sk-avail-day-label">Aujourd&apos;hui</span>
+                <div className="sk-avail-day-actions">
+                  <button
+                    type="button"
+                    className={`sk-avail-choice is-yes ${
+                      getAvailabilityState(availabilityTarget.id, "today") === "available"
+                        ? "active"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      setAvailabilityValue(availabilityTarget.id, "today", "available")
+                    }
+                  >
+                    Disponible
+                  </button>
+                  <button
+                    type="button"
+                    className={`sk-avail-choice is-no ${
+                      getAvailabilityState(availabilityTarget.id, "today") === "unavailable"
+                        ? "active"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      setAvailabilityValue(availabilityTarget.id, "today", "unavailable")
+                    }
+                  >
+                    Indisponible
+                  </button>
+                </div>
+              </div>
+
+              <div className="sk-avail-day-row">
+                <span className="sk-avail-day-label">Cette semaine</span>
+                <div className="sk-avail-day-actions">
+                  <button
+                    type="button"
+                    className={`sk-avail-choice is-yes ${
+                      getAvailabilityState(availabilityTarget.id, "week") === "available"
+                        ? "active"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      setAvailabilityValue(availabilityTarget.id, "week", "available")
+                    }
+                  >
+                    Disponible
+                  </button>
+                  <button
+                    type="button"
+                    className={`sk-avail-choice is-no ${
+                      getAvailabilityState(availabilityTarget.id, "week") === "unavailable"
+                        ? "active"
+                        : ""
+                    }`}
+                    onClick={() =>
+                      setAvailabilityValue(availabilityTarget.id, "week", "unavailable")
+                    }
+                  >
+                    Indisponible
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="sk-modal-foot">
+              <button
+                type="button"
+                className="sk-btn-secondary"
+                onClick={() => {
+                  setAvailability((prev) => ({
+                    ...prev,
+                    [availabilityTarget.id]: {},
+                  }));
+                  toast.success("Disponibilités réinitialisées");
+                }}
+              >
+                Réinitialiser
+              </button>
+              <button
+                type="button"
+                className="sk-btn-publish"
+                onClick={() => setShowAvailabilityModal(false)}
+              >
+                <CheckCircle2 size={14} /> Terminé
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══ MODAL CRÉATION / ÉDITION D'UNE ÉQUIPE ═══ */}
       {showTeamModal && (
         <div className="sk-modal-backdrop" onClick={() => setShowTeamModal(false)}>
@@ -3818,7 +4773,9 @@ export default function Planning() {
                 <h2 className="sk-modal-title">
                   {reviewAction === "approved"
                     ? "Approuver la demande"
-                    : "Refuser la demande"}
+                    : reviewAction === "rejected"
+                    ? "Refuser la demande"
+                    : "Remettre la demande en attente"}
                 </h2>
                 <span className="sk-modal-sub">
                   {selectedRequest.employees?.first_name}{" "}
@@ -3868,7 +4825,9 @@ export default function Planning() {
                   ? "Traitement..."
                   : reviewAction === "approved"
                   ? "Approuver"
-                  : "Refuser"}
+                  : reviewAction === "rejected"
+                  ? "Refuser"
+                  : "Remettre en attente"}
               </button>
             </div>
           </div>
