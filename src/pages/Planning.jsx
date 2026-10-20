@@ -1041,7 +1041,8 @@ export default function Planning() {
               [dateStr]: {
                 isRest: true,
                 label: tpl.name || (tpl.kind === "leave" ? "Congé" : "Repos"),
-                name: tpl.name,
+                name: tpl.name || (tpl.kind === "leave" ? "Congé" : "Repos"),
+                subtitle: tpl.kind === "leave" ? "Congé / Absence" : "Repos",
                 reason: tpl.kind === "leave" ? "Congé" : "Repos",
                 variant: "conge",
                 color: tpl.color || "#2D5A43",
@@ -1170,9 +1171,18 @@ export default function Planning() {
 
       // Un repos / congé déposé doit rester VISIBLE dans la case (carte dédiée)
       if (override.isRest) {
+        const nomModele = override.name || override.label || "Repos";
         return {
           isRest: true,
-          start_time: override.label || override.name || "Repos",
+          // Le nom du modele (ex. « maladie ») doit traverser la resolution,
+          // sinon l'interface retombait sur le libelle generique « Repos ».
+          name: nomModele,
+          label: override.label || nomModele,
+          subtitle:
+            override.subtitle ||
+            override.reason ||
+            (override.kind === "leave" ? "Congé / Absence" : "Repos"),
+          start_time: nomModele,
           end_time: override.reason || "Repos",
           has_break: false,
           variant: override.variant || "conge",
@@ -1416,17 +1426,31 @@ export default function Planning() {
     // 1. Dépôt depuis le Dock de modèles
     if (payload.sourceType === "dock") {
       const tpl = payload.template;
-      if (tpl.kind === "rest") {
+      if (tpl.kind === "rest" || tpl.kind === "leave") {
+        const estConge = tpl.kind === "leave";
         setDayOverrides((prev) => ({
           ...prev,
           [targetEmp.id]: {
             ...(prev[targetEmp.id] || {}),
-            [targetDay.dateStr]: { isRest: true },
+            [targetDay.dateStr]: {
+              isRest: true,
+              name: tpl.name || (estConge ? "Congé" : "Repos"),
+              label: tpl.name || (estConge ? "Congé" : "Repos"),
+              subtitle: estConge ? "Congé / Absence" : "Repos",
+              reason: estConge ? "Congé" : "Repos",
+              variant: "conge",
+              color: tpl.color || "#2D5A43",
+              kind: tpl.kind,
+            },
           },
         }));
         setPendingChangesCount((c) => c + 1);
         await persistEmployeeShiftToSupabase(targetEmp, null, targetDay.dayNum, true);
-        toast.success(`Jour de repos appliqué pour ${targetEmp.first_name} (${targetDay.labelHeader})`);
+        toast.success(
+          `« ${tpl.name || (estConge ? "Congé" : "Repos")} » placé sur ${
+            targetDay.labelHeader
+          } (${targetEmp.first_name})`
+        );
         return;
       }
 
@@ -1437,12 +1461,14 @@ export default function Planning() {
             ...(prev[targetEmp.id] || {}),
             [targetDay.dateStr]: {
               isLeave: true,
-              start_time: "Congé",
-              end_time: tpl.name || "Absence",
+              name: tpl.name || "Congé",
+              label: tpl.name || "Congé",
+              subtitle: "Congé / Absence",
+              start_time: tpl.name || "Congé",
+              end_time: "Congé / Absence",
               has_break: false,
               variant: "conge",
               color: tpl.color,
-              label: tpl.name,
             },
           },
         }));
@@ -1586,20 +1612,23 @@ export default function Planning() {
           isRest: true,
           label: tpl.name || "Repos",
           name: tpl.name || "Repos",
-          reason: "Repos",
+          subtitle: tpl.kind === "leave" ? "Congé / Absence" : "Repos",
+          reason: tpl.kind === "leave" ? "Congé" : "Repos",
           variant: "conge",
           color: tpl.color || "#2D5A43",
-          kind: "rest",
+          kind: tpl.kind === "leave" ? "leave" : "rest",
         };
       } else if (tpl.kind === "leave") {
         weekMap[d.dateStr] = {
           isLeave: true,
-          start_time: "Congé",
-          end_time: tpl.name || "Absence",
+          name: tpl.name || "Congé",
+          label: tpl.name || "Congé",
+          subtitle: "Congé / Absence",
+          start_time: tpl.name || "Congé",
+          end_time: "Congé / Absence",
           has_break: false,
           variant: "conge",
           color: tpl.color,
-          label: tpl.name,
         };
       } else if (d.dayNum <= 5) {
         weekMap[d.dateStr] = {
@@ -3175,6 +3204,8 @@ export default function Planning() {
                                                 <div className="sk-shift-time">
                                                   {shift.isHoliday || shift.isAbsence
                                                     ? `${shift.start_time} · ${shift.end_time}`
+                                                    : shift.isRest || shift.isLeave
+                                                    ? shift.subtitle || "Repos"
                                                     : `${shift.start_time} - ${shift.end_time}`}
                                                   {isDropOver && netLabel ? ` • ${netLabel}` : ""}
                                                 </div>
@@ -3392,22 +3423,34 @@ export default function Planning() {
 
                   const startPct = pct(shift?.start_time);
                   const endPct = pct(shift?.end_time);
-                  const widthPct =
+                  const rawWidthPct =
                     startPct !== null && endPct !== null
                       ? endPct >= startPct
                         ? endPct - startPct
                         : 100 - startPct + endPct
                       : 0;
+                  // Un bloc ne doit jamais depasser le bord droit de la piste :
+                  // sinon le nom du modele est coupe (bug remonte sur mobile).
+                  const widthPct = Math.min(rawWidthPct, 100 - (startPct || 0));
+                  const leftPct = Math.max(0, Math.min(startPct || 0, 100 - widthPct));
 
                   const realStartPct = real ? pct(heureLocale(real.firstIn)) : null;
                   const realEndPct =
                     real && real.lastOut ? pct(heureLocale(real.lastOut)) : null;
-                  const realWidthPct =
+                  const rawRealWidth =
                     realStartPct !== null && realEndPct !== null
                       ? realEndPct >= realStartPct
                         ? realEndPct - realStartPct
                         : 100 - realStartPct + realEndPct
                       : 1.5;
+                  const realWidthPct = Math.min(
+                    rawRealWidth,
+                    100 - (realStartPct || 0)
+                  );
+                  const realLeftPct = Math.max(
+                    0,
+                    Math.min(realStartPct || 0, 100 - realWidthPct)
+                  );
 
                   const netM = computeShiftNetMinutes(shift);
                   const diff = real ? real.minutes - netM : null;
@@ -3462,7 +3505,7 @@ export default function Planning() {
                               <div
                                 className="sk-day-block"
                                 style={{
-                                  left: `${startPct}%`,
+                                  left: `${leftPct}%`,
                                   width: `${Math.max(2.5, widthPct)}%`,
                                   background: buildShiftGradient(shift.color),
                                 }}
@@ -3476,16 +3519,9 @@ export default function Planning() {
                                 }`}
                               >
                                 <span className="sk-day-block-label">
-                                  <strong>
-                                    {shift.name ||
-                                      (shift.isRest
-                                        ? "Repos"
-                                        : shift.isLeave
-                                        ? "Congé"
-                                        : "Créneau")}
-                                  </strong>
+                                  <strong>{shift.name || "Créneau"}</strong>
                                   {shift.isRest || shift.isLeave
-                                    ? ""
+                                    ? ` · ${shift.subtitle || "Repos"}`
                                     : ` · ${shift.start_time} - ${shift.end_time}`}
                                 </span>
                               </div>
@@ -3521,7 +3557,7 @@ export default function Planning() {
                                   realIsOpen(real) ? "is-open" : ""
                                 }`}
                                 style={{
-                                  left: `${realStartPct}%`,
+                                  left: `${realLeftPct}%`,
                                   width: `${Math.max(1.5, realWidthPct)}%`,
                                 }}
                                 title={
@@ -3759,7 +3795,9 @@ export default function Planning() {
                             </span>
                             <span>
                               {shift
-                                ? shift.isRest || shift.isLeave || shift.isAbsence
+                                ? shift.isRest || shift.isLeave
+                                  ? shift.subtitle || "Repos"
+                                  : shift.isAbsence
                                   ? shift.start_time
                                   : `${shift.start_time}-${shift.end_time}`
                                 : ""}
