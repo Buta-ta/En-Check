@@ -9,6 +9,9 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
 import HolidayService from "../services/holidayService";
+import { resoudrePointagesJournee } from "../services/hoursCalculator";
+import { chargerSeuilsPointage } from "../services/seuilsPointage";
+import FeatureService from "../services/featureService";
 import {
   KenteWovenTapestrySvg,
   AdinkraWatermarkSvg,
@@ -260,6 +263,9 @@ export default function Planning() {
   const [absences, setAbsences] = useState([]);
   // Pointages réellement effectués (table attendances) pour comparer prévu / réalisé
   const [attendances, setAttendances] = useState([]);
+  // Seuils de pointage et grilles horaires par entreprise (même moteur que Pointages)
+  const [seuilsByEnterprise, setSeuilsByEnterprise] = useState({});
+  const [allSchedules, setAllSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filtre de focus : totaux et grille liés au groupe ou au collaborateur sélectionné
@@ -553,10 +559,14 @@ export default function Planning() {
       const periodeStartISO = `${toIsoDateLocal(periodeStart)}T00:00:00`;
       const periodeEndISO = `${toIsoDateLocal(periodeEnd)}T23:59:59`;
 
+      // Mêmes colonnes que la page Pointages : le moteur resoudrePointagesJournee
+      // a besoin des champs d'estimation / modification pour ne rien inventer.
       if (employeeIds.length > 0) {
         const { data: attData } = await supabase
           .from("attendances")
-          .select("id, employee_id, check_time, check_type, method, is_auto_closed")
+          .select(
+            "id, employee_id, enterprise_id, check_time, check_type, method, is_auto_closed, anomalie, estimation_source_id, estimation_validee_le, estimation_remplacee_le, estimation_niveau, estimation_confiance, notes, modifie_le, modifie_par, created_at, origine, decision_raison, modifie_par_employe, suspect, suspect_reason"
+          )
           .in("employee_id", employeeIds)
           .gte("check_time", periodeStartISO)
           .lte("check_time", periodeEndISO)
@@ -565,6 +575,23 @@ export default function Planning() {
       } else {
         setAttendances([]);
       }
+
+      // Grilles horaires entreprise + seuils de pointage (identiques à Pointages)
+      const entIdsForConfig = isSuperAdmin
+        ? selectedEntreprise !== "all"
+          ? [selectedEntreprise]
+          : (entreprisesData || []).map((e) => e.id)
+        : [enterpriseId];
+      const idsForConfig = entIdsForConfig.filter(Boolean);
+
+      const [schedulesData, seuilsEntries] = await Promise.all([
+        FeatureService.loadSchedules(idsForConfig),
+        Promise.all(
+          idsForConfig.map(async (entId) => [entId, await chargerSeuilsPointage(entId)])
+        ),
+      ]);
+      setAllSchedules(schedulesData || []);
+      setSeuilsByEnterprise(Object.fromEntries(seuilsEntries));
 
       const enterpriseIdsToLoad = isSuperAdmin
         ? selectedEntreprise !== "all"
@@ -647,36 +674,6 @@ export default function Planning() {
     if (Number.isNaN(d.getTime())) return "--:--";
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
-
-  // ═══ POINTAGES RÉELS (présence effectuée) PAR COLLABORATEUR ET PAR JOUR ═══
-  const realAttendanceMap = useMemo(() => {
-    const map = new Map();
-    attendances.forEach((a) => {
-      const date = jourLocal(a.check_time);
-      const key = `${a.employee_id}|${date}`;
-      if (!map.has(key)) {
-        map.set(key, { firstIn: null, lastOut: null, minutes: 0, autoClosed: false, count: 0 });
-      }
-      const entry = map.get(key);
-      entry.count += 1;
-      if (a.is_auto_closed) entry.autoClosed = true;
-      const type = String(a.check_type || "").toLowerCase();
-      if (type === "in" || type === "entree" || type === "entrée") {
-        if (!entry.firstIn) entry.firstIn = a.check_time;
-      } else if (!entry.lastOut) {
-        entry.lastOut = a.check_time;
-      }
-      if (entry.firstIn && entry.lastOut && entry.lastOut !== entry.firstIn) {
-        entry.minutes = Math.max(
-          0,
-          Math.round((new Date(entry.lastOut) - new Date(entry.firstIn)) / 60000)
-        );
-      }
-    });
-    return map;
-  }, [attendances]);
-
-  const getRealAttendance = (empId, dateStr) => realAttendanceMap.get(`${empId}|${dateStr}`) || null;
 
   // ═══ GLISSER-DÉPOSER TACTILE (mobile) : appui long sur un modèle puis touche la case ═══
   const touchTimerRef = useRef(null);
@@ -1099,6 +1096,7 @@ export default function Planning() {
       ...prev,
       [dateStr]: (prev[dateStr] || []).filter((_, i) => i !== index),
     }));
+    toast.success("Modèle retiré de la journée");
   };
 
   // ═══ DISPONIBILITÉS COLLABORATEURS (Aujourd'hui / Cette semaine / jour précis) ═══
@@ -1159,6 +1157,9 @@ export default function Planning() {
     const override = empOverrides[dateStr] ?? empOverrides[`day-${dayNum}`];
 
     if (override) {
+      // Case explicitement vidée par l'utilisateur : aucun créneau affiché
+      if (override.isEmpty) return null;
+
       // Un repos / congé déposé doit rester VISIBLE dans la case (carte dédiée)
       if (override.isRest) {
         return {
@@ -1283,6 +1284,14 @@ export default function Planning() {
   const persistEmployeeShiftToSupabase = async (emp, shiftData, targetDayNum, removeDay = false) => {
     try {
       const existingES = employeeSchedules.find((row) => row.employee_id === emp.id);
+
+      // Retirer un jour sur un collaborateur rattaché à une grille entreprise :
+      // on n'écrit surtout pas des horaires inventés en base. La surcharge locale
+      // (isEmpty) masque déjà le jour dans la grille, la grille entreprise reste intacte.
+      if (removeDay && !shiftData && existingES && !existingES.use_custom_hours && existingES.schedule_id) {
+        return;
+      }
+
       const currentDays = existingES
         ? existingES.use_custom_hours
           ? existingES.custom_work_days || [1, 2, 3, 4, 5]
@@ -1529,11 +1538,11 @@ export default function Planning() {
           ...(next[targetEmp.id] || {}),
           [targetDay.dateStr]: movedShift,
         };
-        // Si ce n'est pas une duplication (Alt), vider la case source
+        // Si ce n'est pas une duplication (Alt), vider réellement la case source
         if (!duplicateMode) {
           next[payload.fromEmpId] = {
             ...(next[payload.fromEmpId] || {}),
-            [payload.fromDateStr]: { isRest: true },
+            [payload.fromDateStr]: { isEmpty: true },
           };
         }
         return next;
@@ -1622,18 +1631,23 @@ export default function Planning() {
     toast.success(`Modèle "${tpl.label}" appliqué sur la semaine de ${targetEmp.first_name}`);
   };
 
-  const handleClearCellShift = async (e, emp, dayItem) => {
-    e.stopPropagation();
+  // Retire réellement un créneau (Semaine, Mois ou Jour) : la case redevient vide
+  const clearShiftForDate = async (emp, dateStr, dayNum) => {
     setDayOverrides((prev) => ({
       ...prev,
       [emp.id]: {
         ...(prev[emp.id] || {}),
-        [dayItem.dateStr]: { isRest: true },
+        [dateStr]: { isEmpty: true },
       },
     }));
     setPendingChangesCount((c) => c + 1);
-    await persistEmployeeShiftToSupabase(emp, null, dayItem.dayNum, true);
-    toast.success(`Shift retiré (${emp.first_name} · ${dayItem.labelHeader})`);
+    await persistEmployeeShiftToSupabase(emp, null, dayNum, true);
+  };
+
+  const handleClearCellShift = async (e, emp, dayItem) => {
+    e.stopPropagation();
+    await clearShiftForDate(emp, dayItem.dateStr, dayItem.dayNum);
+    toast.success(`Créneau retiré (${emp.first_name} · ${dayItem.labelHeader})`);
   };
 
   // Action "Dupliquer la semaine"
@@ -1759,6 +1773,107 @@ export default function Planning() {
     () => visibleEmployees.filter(matchesFocus),
     [visibleEmployees, focusFilter, teamAssignments]
   );
+
+  // Jours de la période affichée (Semaine = 7 jours, Mois = tout le mois, Jour = 1 jour)
+  const periodDates = useMemo(() => {
+    if (planningView === "jour") return [toIsoDateLocal(calendarDate)];
+    if (planningView === "mois") {
+      const y = calendarDate.getFullYear();
+      const m = calendarDate.getMonth();
+      const nb = getDaysInMonth(y, m);
+      return Array.from(
+        { length: nb },
+        (_, i) => `${y}-${String(m + 1).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`
+      );
+    }
+    return weekDays.map((d) => d.dateStr);
+  }, [planningView, calendarDate, weekDays]);
+
+  // ═══ POINTAGES RÉELS : MÊME MOTEUR QUE LA PAGE POINTAGES ═══
+  // Les entrées/sorties affichées dans le Planning sont calculées par
+  // `resoudrePointagesJournee` (appariement, garde de nuit, auto-close, seuils
+  // entreprise) — exactement comme la carte d'un collaborateur dans Pointages.
+  const employeeScheduleByEmp = useMemo(() => {
+    const map = {};
+    employeeSchedules.forEach((es) => {
+      if (es?.employee_id) map[es.employee_id] = es;
+    });
+    return map;
+  }, [employeeSchedules]);
+
+  const enterpriseCfgByEnt = useMemo(() => {
+    const map = {};
+    entreprises.forEach((ent) => {
+      map[ent.id] = {
+        autoCloseEnabled: ent.auto_close_enabled === true,
+        autoCloseTime: (ent.auto_close_time || "23:59:00").slice(0, 8),
+        autoCloseGraceMinutes: Number(ent.auto_close_grace_minutes || 0),
+      };
+    });
+    return map;
+  }, [entreprises]);
+
+  const attendancesByEmp = useMemo(() => {
+    const map = new Map();
+    attendances.forEach((a) => {
+      if (!a?.employee_id) return;
+      if (!map.has(a.employee_id)) map.set(a.employee_id, []);
+      map.get(a.employee_id).push(a);
+    });
+    return map;
+  }, [attendances]);
+
+  const realAttendanceMap = useMemo(() => {
+    const map = new Map();
+    if (attendances.length === 0 || scopedEmployees.length === 0) return map;
+
+    scopedEmployees.forEach((emp) => {
+      const raw = attendancesByEmp.get(emp.id) || [];
+      if (raw.length === 0) return;
+      periodDates.forEach((date) => {
+        let result;
+        try {
+          result = resoudrePointagesJournee(raw, date, {
+            enableAutoClose: true,
+            employeeSchedule: employeeScheduleByEmp[emp.id] || null,
+            defaultSchedule: FeatureService.getApplicableSchedule(
+              emp.enterprise_id,
+              date,
+              allSchedules
+            ),
+            enterpriseCfg: enterpriseCfgByEnt[emp.enterprise_id] || {},
+            seuils: seuilsByEnterprise[emp.enterprise_id] || null,
+          });
+        } catch (err) {
+          console.warn("Planning · calcul pointage réel", err);
+          return;
+        }
+        if (!result || !result.firstIn) return;
+        const minutes = Math.round((result.totalSecondes || 0) / 60);
+        map.set(`${emp.id}|${date}`, {
+          firstIn: result.firstIn.check_time,
+          lastOut: result.lastOut ? result.lastOut.check_time : null,
+          minutes,
+          autoClosed: Boolean((result.attendances || []).some((a) => a.is_auto_closed)),
+          count: (result.attendances || []).length,
+          pairs: result.validPairs?.length || 0,
+        });
+      });
+    });
+    return map;
+  }, [
+    attendances,
+    attendancesByEmp,
+    scopedEmployees,
+    periodDates,
+    employeeScheduleByEmp,
+    enterpriseCfgByEnt,
+    seuilsByEnterprise,
+    allSchedules,
+  ]);
+
+  const getRealAttendance = (empId, dateStr) => realAttendanceMap.get(`${empId}|${dateStr}`) || null;
+
 
   // ═══ TOTAUX JOURNALIERS POUR LE PIED DE PAGE EN-CHECK ═══
   // Les compteurs (X pers. · XXh) suivent les équipes dépliées et le focus sélectionné.
@@ -3163,7 +3278,7 @@ export default function Planning() {
           </>
         )}
 
-        {/* 3. VUE JOUR (TIMELINE HORAIRE AVEC GLISSER-DÉPOSER) */}
+        {/* 3. VUE JOUR (TIMELINE HORAIRE : PRÉVU / RÉEL SANS CHEVAUCHEMENT) */}
         {planningView === "jour" && (
           <div className="sk-matrix-card sk-day-view">
             <div className="sk-day-head">
@@ -3181,9 +3296,10 @@ export default function Planning() {
                   )}
                 </h2>
                 <p className="sk-day-sub">
-                  Glissez un modèle depuis le Dock sur la ligne d&apos;un collaborateur pour
-                  l&apos;affecter à cette journée. Le contour pointillé indique le pointage
-                  réellement effectué.
+                  Ligne <strong>Prévu</strong> : le créneau planifié (glissez un modèle depuis
+                  le Dock pour l&apos;affecter). Ligne <strong>Réel</strong> : les entrées et
+                  sorties réellement pointées, calculées comme dans la page{" "}
+                  <strong>Pointages</strong>.
                 </p>
               </div>
               <button
@@ -3195,181 +3311,234 @@ export default function Planning() {
               </button>
             </div>
 
-            {/* Graduations horaires */}
-            <div className="sk-day-timeline">
-              <div className="sk-day-scale">
-                <span className="sk-day-scale-spacer" />
-                <div className="sk-day-hours">
-                  {Array.from({ length: 9 }, (_, i) => i * 3).map((h) => (
-                    <span key={h} className="sk-day-hour">
-                      {String(h).padStart(2, "0")}h
-                    </span>
-                  ))}
-                </div>
+            {/* Règle horaire unique (alignée sur les deux pistes) */}
+            <div className="sk-day-ruler">
+              <span className="sk-day-ruler-spacer" />
+              <div className="sk-day-ruler-hours">
+                {Array.from({ length: 25 }, (_, i) => i).map((h) => (
+                  <span
+                    key={h}
+                    className={`sk-day-ruler-hour ${h % 3 === 0 ? "is-major" : ""}`}
+                    style={{ left: `${(h / 24) * 100}%` }}
+                  >
+                    {h % 3 === 0 ? `${String(h).padStart(2, "0")}h` : ""}
+                  </span>
+                ))}
               </div>
+            </div>
 
-              <div className="sk-day-rows">
-                {scopedEmployees.length === 0 ? (
-                  <div className="sk-day-empty">
-                    Aucun collaborateur visible (dépliez une équipe ou changez le filtre
-                    d&apos;affichage).
-                  </div>
-                ) : (
-                  scopedEmployees.map((emp) => {
-                    const dateStr = toIsoDateLocal(calendarDate);
-                    const dayNum = getPlanningDay(
-                      calendarDate.getFullYear(),
-                      calendarDate.getMonth(),
-                      calendarDate.getDate()
-                    );
-                    const dayItem = { dateStr, dayNum, labelHeader: dateStr };
-                    const shift = resolveCellShift(emp, dayItem);
-                    const real = getRealAttendance(emp.id, dateStr);
-                    const isDropOver = dayDropEmpId === emp.id;
+            <div className="sk-day-rows">
+              {scopedEmployees.length === 0 ? (
+                <div className="sk-day-empty">
+                  Aucun collaborateur visible (dépliez une équipe ou changez le filtre
+                  d&apos;affichage).
+                </div>
+              ) : (
+                scopedEmployees.map((emp) => {
+                  const dateStr = toIsoDateLocal(calendarDate);
+                  const dayNum = getPlanningDay(
+                    calendarDate.getFullYear(),
+                    calendarDate.getMonth(),
+                    calendarDate.getDate()
+                  );
+                  const dayItem = { dateStr, dayNum, labelHeader: dateStr };
+                  const shift = resolveCellShift(emp, dayItem);
+                  const real = getRealAttendance(emp.id, dateStr);
+                  const isDropOver = dayDropEmpId === emp.id;
 
-                    const pct = (hhmm) => {
-                      if (!hhmm || !/^\d{2}:\d{2}/.test(hhmm)) return null;
-                      const [h, m] = hhmm.slice(0, 5).split(":").map(Number);
-                      if (Number.isNaN(h)) return null;
-                      return ((h * 60 + (m || 0)) / (24 * 60)) * 100;
-                    };
+                  const pct = (hhmm) => {
+                    if (!hhmm || !/^\d{1,2}:\d{2}/.test(hhmm)) return null;
+                    const [h, m] = hhmm.slice(0, 5).split(":").map(Number);
+                    if (Number.isNaN(h)) return null;
+                    return ((h * 60 + (m || 0)) / (24 * 60)) * 100;
+                  };
 
-                    const startPct = pct(shift?.start_time);
-                    const endPct = pct(shift?.end_time);
-                    let widthPct = 0;
-                    if (startPct !== null && endPct !== null) {
-                      widthPct =
-                        endPct >= startPct ? endPct - startPct : 100 - startPct + endPct;
-                    }
-                    const realStartPct = real ? pct(heureLocale(real.firstIn)) : null;
-                    const realEndPct =
-                      real && real.lastOut ? pct(heureLocale(real.lastOut)) : null;
-                    const realWidthPct =
-                      realStartPct !== null && realEndPct !== null
-                        ? realEndPct >= realStartPct
-                          ? realEndPct - realStartPct
-                          : 100 - realStartPct + realEndPct
-                        : 2;
+                  const startPct = pct(shift?.start_time);
+                  const endPct = pct(shift?.end_time);
+                  const widthPct =
+                    startPct !== null && endPct !== null
+                      ? endPct >= startPct
+                        ? endPct - startPct
+                        : 100 - startPct + endPct
+                      : 0;
 
-                    return (
-                      <div
-                        key={emp.id}
-                        className={`sk-day-row ${isDropOver ? "is-drop-over" : ""}`}
-                        onDragOver={(e) => {
+                  const realStartPct = real ? pct(heureLocale(real.firstIn)) : null;
+                  const realEndPct =
+                    real && real.lastOut ? pct(heureLocale(real.lastOut)) : null;
+                  const realWidthPct =
+                    realStartPct !== null && realEndPct !== null
+                      ? realEndPct >= realStartPct
+                        ? realEndPct - realStartPct
+                        : 100 - realStartPct + realEndPct
+                      : 1.5;
+
+                  const netM = computeShiftNetMinutes(shift);
+                  const diff = real ? real.minutes - netM : null;
+
+                  return (
+                    <div
+                      key={emp.id}
+                      className={`sk-day-row ${isDropOver ? "is-drop-over" : ""} ${
+                        touchDragPayload ? "is-touch-armed" : ""
+                      }`}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (dayDropEmpId !== emp.id) setDayDropEmpId(emp.id);
+                      }}
+                      onDragLeave={() => setDayDropEmpId(null)}
+                      onDrop={(e) => handleDropOnCell(e, emp, dayItem)}
+                      onClickCapture={(e) => {
+                        if (touchDragPayload) {
+                          e.stopPropagation();
                           e.preventDefault();
-                          if (dayDropEmpId !== emp.id) setDayDropEmpId(emp.id);
-                        }}
-                        onDragLeave={() => setDayDropEmpId(null)}
-                        onDrop={(e) => handleDropOnCell(e, emp, dayItem)}
-                        onClickCapture={(e) => {
-                          if (touchDragPayload) {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            applyTouchDropOnCell(emp, dayItem);
-                          }
-                        }}
-                      >
-                        <div className="sk-day-emp">
-                          <div className="sk-emp-avatar" style={{ width: 32, height: 32 }}>
-                            {(emp.first_name || "E")[0]}
-                            {(emp.last_name || "C")[0]}
-                          </div>
-                          <div className="sk-day-emp-meta">
-                            <strong>
-                              {emp.first_name} {emp.last_name}
-                            </strong>
-                            <span>{emp.matricule || emp.position || "—"}</span>
-                          </div>
+                          applyTouchDropOnCell(emp, dayItem);
+                        }
+                      }}
+                    >
+                      <div className="sk-day-emp">
+                        <div className="sk-emp-avatar" style={{ width: 34, height: 34 }}>
+                          {(emp.first_name || "E")[0]}
+                          {(emp.last_name || "C")[0]}
                         </div>
-
-                        <div className="sk-day-track">
-                          {Array.from({ length: 9 }, (_, i) => i * 3).map((h) => (
-                            <span
-                              key={h}
-                              className="sk-day-grid-line"
-                              style={{ left: `${(h / 24) * 100}%` }}
-                            />
-                          ))}
-
-                          {shift && startPct !== null && (
-                            <div
-                              className={`sk-day-block ${isDropOver ? "is-dimmed" : ""}`}
-                              style={{
-                                left: `${startPct}%`,
-                                width: `${Math.max(2, widthPct)}%`,
-                                background: buildShiftGradient(shift.color),
-                              }}
-                              draggable={!shift.isHoliday && !shift.isAbsence}
-                              onDragStart={(e) =>
-                                handleDragStartCellShift(e, emp, dayItem, shift)
-                              }
-                              onClick={() => openCellEditorModal(emp, dayItem, shift)}
-                              title={`${shift.start_time} - ${shift.end_time} (${
-                                formatHoursCompact(computeShiftNetMinutes(shift)) || "—"
-                              })`}
-                            >
-                              <span className="sk-day-block-label">
-                                {shift.isRest || shift.isLeave
-                                  ? shift.start_time
-                                  : `${shift.start_time} - ${shift.end_time}`}
-                              </span>
-                            </div>
-                          )}
-
-                          {real && realStartPct !== null && (
-                            <div
-                              className="sk-day-real-block"
-                              style={{
-                                left: `${realStartPct}%`,
-                                width: `${Math.max(1.5, realWidthPct)}%`,
-                              }}
-                              title={`Réel : ${heureLocale(real.firstIn)} → ${
-                                real.lastOut ? heureLocale(real.lastOut) : "..."
-                              } (${formatHoursCompact(real.minutes)})`}
-                            >
-                              <span className="sk-day-real-label">
-                                {heureLocale(real.firstIn)}
-                                {real.lastOut ? ` → ${heureLocale(real.lastOut)}` : ""}
-                              </span>
-                            </div>
-                          )}
-
-                          {!shift && (
-                            <button
-                              type="button"
-                              className="sk-day-add"
-                              onClick={() => openCellEditorModal(emp, dayItem)}
-                            >
-                              {isDropOver ? "Déposer ici" : "+ Ajouter (ou déposer un modèle)"}
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="sk-day-actions">
-                          {shift && !shift.isHoliday && !shift.isAbsence && (
-                            <button
-                              type="button"
-                              className="sk-shift-del-btn"
-                              onClick={(e) => handleClearCellShift(e, emp, dayItem)}
-                              title="Retirer ce créneau"
-                            >
-                              <X size={12} />
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className="sk-brick-edit"
-                            onClick={() => openCellEditorModal(emp, dayItem, shift)}
-                            title="Modifier / couleur"
-                          >
-                            <Edit size={13} />
-                          </button>
+                        <div className="sk-day-emp-meta">
+                          <strong>
+                            {emp.first_name} {emp.last_name}
+                          </strong>
+                          <span>{emp.matricule || emp.position || "—"}</span>
                         </div>
                       </div>
-                    );
-                  })
-                )}
-              </div>
+
+                      <div className="sk-day-lanes">
+                        {/* PISTE 1 — PRÉVU */}
+                        <div className="sk-day-lane-row">
+                          <span className="sk-day-lane-label">Prévu</span>
+                          <div className="sk-day-track">
+                            {Array.from({ length: 9 }, (_, i) => i * 3).map((h) => (
+                              <span
+                                key={h}
+                                className="sk-day-grid-line"
+                                style={{ left: `${(h / 24) * 100}%` }}
+                              />
+                            ))}
+
+                            {shift && startPct !== null ? (
+                              <div
+                                className="sk-day-block"
+                                style={{
+                                  left: `${startPct}%`,
+                                  width: `${Math.max(2.5, widthPct)}%`,
+                                  background: buildShiftGradient(shift.color),
+                                }}
+                                draggable={!shift.isHoliday && !shift.isAbsence}
+                                onDragStart={(e) =>
+                                  handleDragStartCellShift(e, emp, dayItem, shift)
+                                }
+                                onClick={() => openCellEditorModal(emp, dayItem, shift)}
+                                title={`Prévu ${shift.start_time} - ${shift.end_time}${
+                                  netM ? ` · ${formatHoursCompact(netM)}` : ""
+                                }`}
+                              >
+                                <span className="sk-day-block-label">
+                                  {shift.isRest || shift.isLeave
+                                    ? shift.start_time
+                                    : `${shift.start_time} - ${shift.end_time}`}
+                                </span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="sk-day-add"
+                                onClick={() => openCellEditorModal(emp, dayItem)}
+                              >
+                                {isDropOver
+                                  ? "Déposer ici"
+                                  : "+ Ajouter (ou déposer un modèle)"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* PISTE 2 — RÉEL (entrées / sorties comme dans Pointages) */}
+                        <div className="sk-day-lane-row">
+                          <span className="sk-day-lane-label is-real">Réel</span>
+                          <div className="sk-day-track is-real">
+                            {Array.from({ length: 9 }, (_, i) => i * 3).map((h) => (
+                              <span
+                                key={h}
+                                className="sk-day-grid-line"
+                                style={{ left: `${(h / 24) * 100}%` }}
+                              />
+                            ))}
+
+                            {real && realStartPct !== null ? (
+                              <div
+                                className="sk-day-real-block"
+                                style={{
+                                  left: `${realStartPct}%`,
+                                  width: `${Math.max(1.5, realWidthPct)}%`,
+                                }}
+                                title={`Réel : ${heureLocale(real.firstIn)} → ${
+                                  real.lastOut ? heureLocale(real.lastOut) : "en cours"
+                                } · ${formatHoursCompact(real.minutes)}`}
+                              >
+                                <span className="sk-day-real-label">
+                                  {heureLocale(real.firstIn)}
+                                  {real.lastOut ? ` → ${heureLocale(real.lastOut)}` : " → …"}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="sk-day-none">Aucun pointage ce jour</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="sk-day-actions">
+                        <div className="sk-day-actions-hours">
+                          <span>
+                            {netM > 0 ? formatHoursCompact(netM) : "—"}
+                            <em>prévu</em>
+                          </span>
+                          <span className="is-real">
+                            {real ? formatHoursCompact(real.minutes) : "—"}
+                            <em>réel</em>
+                          </span>
+                          {diff !== null && netM > 0 && (
+                            <span
+                              className={`sk-day-ecart ${
+                                diff === 0 ? "" : diff > 0 ? "is-pos" : "is-neg"
+                              }`}
+                            >
+                              {diff === 0
+                                ? "à l'heure"
+                                : `${diff > 0 ? "+" : "-"}${formatHoursCompact(Math.abs(diff))}`}
+                            </span>
+                          )}
+                          {real?.autoClosed && <span className="sk-day-auto">auto</span>}
+                        </div>
+                        {shift && !shift.isHoliday && !shift.isAbsence && (
+                          <button
+                            type="button"
+                            className="sk-shift-del-btn"
+                            onClick={(e) => handleClearCellShift(e, emp, dayItem)}
+                            title="Retirer ce créneau"
+                          >
+                            <X size={12} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="sk-brick-edit"
+                          onClick={() => openCellEditorModal(emp, dayItem, shift)}
+                          title="Modifier / couleur"
+                        >
+                          <Edit size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         )}
@@ -3533,6 +3702,23 @@ export default function Planning() {
                               <span className="sk-cal-pill-real">
                                 ▸ {heureLocale(real.firstIn)}
                               </span>
+                            )}
+                            {shift && !shift.isHoliday && !shift.isAbsence && (
+                              <button
+                                type="button"
+                                className="sk-shift-del-btn"
+                                style={{ width: 16, height: 16 }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  clearShiftForDate(emp, cell.date, cellDayNum);
+                                  toast.success(
+                                    `Créneau retiré (${emp.first_name} · ${cell.date})`
+                                  );
+                                }}
+                                title={`Retirer le créneau de ${emp.first_name} le ${cell.date}`}
+                              >
+                                <X size={10} />
+                              </button>
                             )}
                           </span>
                         );

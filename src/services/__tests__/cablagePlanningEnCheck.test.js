@@ -129,6 +129,19 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningSrc).toContain('variant: "conge"')
   })
 
+  it("18. retire réellement un modèle d'une case (plus de faux repos résiduel)", () => {
+    // Marqueur de case vidée : resolveCellShift renvoie null (case réellement vide)
+    expect(planningSrc).toContain('isEmpty: true')
+    expect(planningSrc).toContain('if (override.isEmpty) return null;')
+    // Le retrait passe par une fonction dédiée utilisée en Semaine, Mois et Jour
+    expect(planningSrc).toContain('clearShiftForDate')
+    expect(planningSrc).toContain('handleClearCellShift')
+    // Le déplacement (sans Alt) vide la case source au lieu d'y laisser un repos
+    expect(planningSrc).toContain('[payload.fromDateStr]: { isEmpty: true }')
+    // Aucun horaire inventé en base lors d'un retrait sur grille entreprise
+    expect(planningSrc).toContain('removeDay && !shiftData && existingES')
+  })
+
   it('11. lie les compteurs du haut au groupe déplié et au focus sélectionné', () => {
     expect(planningSrc).toContain('visibleEmployees')
     expect(planningSrc).toContain('scopedEmployees')
@@ -137,6 +150,26 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningSrc).toContain('sk-focus-bar')
     // Les totaux journaliers sont calculés sur le périmètre visible, pas sur tout le monde
     expect(planningSrc).toContain('scopedEmployees.forEach((emp) => {')
+  })
+
+  it('12bis. calcule les entrées/sorties avec le moteur de la page Pointages', () => {
+    // Même fonction que la page Pointages (appariement, garde de nuit, auto-close, seuils)
+    expect(planningSrc).toContain("resoudrePointagesJournee")
+    expect(planningSrc).toContain("chargerSeuilsPointage")
+    expect(planningSrc).toContain("FeatureService.getApplicableSchedule")
+    expect(planningSrc).toContain("enableAutoClose: true")
+    // Plus aucun calcul maison premier-entrée / première-sortie
+    expect(planningSrc).not.toContain('else if (!entry.lastOut)')
+  })
+
+  it('12ter. sépare PRÉVU et RÉEL sur deux pistes (aucun chevauchement)', () => {
+    expect(planningSrc).toContain('sk-day-lanes')
+    expect(planningSrc).toContain('sk-day-lane-row')
+    expect(planningSrc).toContain('sk-day-lane-label')
+    expect(planningSrc).toContain('sk-day-ruler')
+    expect(planningCss).toContain('.sk-day-track.is-real')
+    expect(planningCss).toContain('.sk-day-none')
+    expect(planningCss).toContain('.sk-day-ecart')
   })
 
   it('12. affiche les horaires réellement effectués (table attendances)', () => {
