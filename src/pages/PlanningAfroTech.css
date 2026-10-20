@@ -2578,3 +2578,45 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ⏳ JOURNÉE EN COURS (entrée pointée, sortie pas encore badgée)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sk-open-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--sk-accent);
+  animation: skOpenPulse 1.6s infinite;
+  vertical-align: middle;
+}
+
+.sk-day-real-block.is-open {
+  min-width: 104px;
+  background: rgba(245, 158, 11, 0.18);
+  border-style: dashed;
+  border-color: var(--sk-accent);
+}
+
+.sk-cal-pill-real.is-open {
+  border-style: dashed;
+  border-color: var(--sk-accent);
+  background: rgba(245, 158, 11, 0.16);
+}
+
+/* Animation propre au Planning (ne pas réécrire pausesLivePulse utilisé
+   par les bandeaux de pauses de Pointages / Pauses) */
+@keyframes skOpenPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
