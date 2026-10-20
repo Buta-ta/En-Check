@@ -1236,6 +1236,7 @@ export default function Planning() {
           break_start: formatTime(es.custom_break_start || "12:00"),
           break_end: formatTime(es.custom_break_end || "13:00"),
           variant: isNight ? "nuit" : isGarde ? "garde" : "standard",
+          name: es.work_schedules?.name || "Horaire personnalisé",
           source: "custom",
           esRow: es,
         };
@@ -1255,6 +1256,7 @@ export default function Planning() {
           break_start: formatTime(ws.break_start || "12:00"),
           break_end: formatTime(ws.break_end || "13:00"),
           variant: isNight ? "nuit" : isGarde ? "garde" : "standard",
+          name: ws.name || "Modèle entreprise",
           source: "assigned_schedule",
           schedule_id: ws.id,
           esRow: es,
@@ -1279,6 +1281,7 @@ export default function Planning() {
         break_start: formatTime(defaultPlan.break_start || "12:00"),
         break_end: formatTime(defaultPlan.break_end || "13:00"),
         variant: "standard",
+        name: defaultPlan.name || "Modèle par défaut",
         source: "default",
         schedule_id: defaultPlan.id,
       };
@@ -3156,6 +3159,19 @@ export default function Planning() {
                                                   )}
                                                 </div>
 
+                                                {/* Nom du modèle déposé / appliqué */}
+                                                <div className="sk-shift-name">
+                                                  {shift.name ||
+                                                    (shift.isHoliday
+                                                      ? "Jour férié"
+                                                      : shift.isAbsence
+                                                      ? "Congé"
+                                                      : shift.isPauseOnly
+                                                      ? "Pause"
+                                                      : shift.isRest
+                                                      ? "Repos"
+                                                      : "Créneau")}
+                                                </div>
                                                 <div className="sk-shift-time">
                                                   {shift.isHoliday || shift.isAbsence
                                                     ? `${shift.start_time} · ${shift.end_time}`
@@ -3460,9 +3476,17 @@ export default function Planning() {
                                 }`}
                               >
                                 <span className="sk-day-block-label">
+                                  <strong>
+                                    {shift.name ||
+                                      (shift.isRest
+                                        ? "Repos"
+                                        : shift.isLeave
+                                        ? "Congé"
+                                        : "Créneau")}
+                                  </strong>
                                   {shift.isRest || shift.isLeave
-                                    ? shift.start_time
-                                    : `${shift.start_time} - ${shift.end_time}`}
+                                    ? ""
+                                    : ` · ${shift.start_time} - ${shift.end_time}`}
                                 </span>
                               </div>
                             ) : (
@@ -3725,12 +3749,20 @@ export default function Planning() {
                               {emp.first_name?.charAt(0) || ""}
                               {emp.last_name?.charAt(0) || ""}
                             </span>
+                            <span className="sk-cal-pill-model">
+                              {shift?.name ||
+                                (shift?.isRest
+                                  ? "Repos"
+                                  : shift?.isAbsence
+                                  ? "Congé"
+                                  : "—")}
+                            </span>
                             <span>
                               {shift
                                 ? shift.isRest || shift.isLeave || shift.isAbsence
                                   ? shift.start_time
                                   : `${shift.start_time}-${shift.end_time}`
-                                : "—"}
+                                : ""}
                             </span>
                             {netM > 0 && <span className="sk-cal-pill-net">{formatHoursCompact(netM)}</span>}
                             {real && real.firstIn && (
