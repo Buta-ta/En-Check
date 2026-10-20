@@ -206,6 +206,32 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningCss).toMatch(/\.sk-day-block-label\s*\{\s*display:\s*flex;/)
   })
 
+  it('25. possède un écran de chargement Planning rythmé en deux scènes, comme Pointages', () => {
+    const planningLoading = lire('src/components/PlanningLoadingScreen.jsx')
+    // Même recette que l'écran Pointages : frise Kente, coins culturels, barre de progression
+    expect(planningLoading).toContain('KenteFriezeSvg')
+    expect(planningLoading).toContain('CulturalCornerMotifSvg')
+    expect(planningLoading).toContain('pointages-loading-bar-fill')
+    expect(planningLoading).toContain('Passer l\u2019animation')
+    // Deux scènes Planning : planning projeté, puis grille de la semaine
+    expect(planningLoading).toContain('/images/planning-loading-ecran.jpg')
+    expect(planningLoading).toContain('/images/planning-loading-grid-femme.jpg')
+    expect(planningLoading).not.toMatch(/Skello|SKELLO|skello/i)
+    // L'écran est réellement branché sur la page Planning
+    expect(planningSrc).toMatch(/import PlanningLoadingScreen from ["']\.\.\/components\/PlanningLoadingScreen["']/)
+    expect(planningSrc).toContain('<PlanningLoadingScreen')
+  })
+
+  it('26. illustre le chargement Pauses par le dépointage de pause', () => {
+    const pausesLoading = lire('src/components/PausesLoadingScreen.jsx')
+    expect(pausesLoading).toContain('/images/pauses-loading-depointage.jpg')
+    expect(pausesLoading).toContain('/images/pauses-loading-start.jpg')
+    // Plus d'images empruntées aux autres pages
+    expect(pausesLoading).not.toContain('pointage-loading-qr.jpg')
+    expect(pausesLoading).not.toContain('employes-loading-team.jpg')
+    expect(pausesLoading).not.toMatch(/Skello|SKELLO|skello/i)
+  })
+
   it('11. lie les compteurs du haut au groupe déplié et au focus sélectionné', () => {
     expect(planningSrc).toContain('visibleEmployees')
     expect(planningSrc).toContain('scopedEmployees')

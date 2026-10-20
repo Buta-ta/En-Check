@@ -17,6 +17,7 @@ import {
   AdinkraWatermarkSvg,
   WovenKenteBadgeSvg,
 } from "../components/AfroCulturalSvg";
+import PlanningLoadingScreen from "../components/PlanningLoadingScreen";
 import {
   ArrowLeft,
   Plus,
@@ -2402,18 +2403,7 @@ export default function Planning() {
   ]);
 
   if (loading) {
-    return (
-      <div
-        className="sk-plan-page"
-        data-theme={darkMode ? "dark" : "light"}
-        style={{ alignItems: "center", justifyContent: "center", gap: 16 }}
-      >
-        <WovenKenteBadgeSvg size={48} />
-        <p style={{ fontSize: 13, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--sk-text-soft)" }}>
-          Chargement du planning En-Check...
-        </p>
-      </div>
-    );
+    return <PlanningLoadingScreen darkMode={darkMode} onSkip={() => setLoading(false)} />;
   }
 
   // Totaux globaux pour la barre de pied En-Check

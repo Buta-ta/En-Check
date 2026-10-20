@@ -52,15 +52,15 @@ export default function PausesLoadingScreen({ darkMode = true, onSkip }) {
             onClick={() => setActiveStep(0)}
           >
             <img
-              src="/images/pointage-loading-qr.jpg"
-              alt="Pointage des pauses réelles par les collaborateurs"
+              src="/images/pauses-loading-depointage.jpg"
+              alt="Un collaborateur dépointe sur la borne En-Check pour partir en pause"
               loading="eager"
               decoding="async"
             />
             <div className="pointages-loading-scene-caption">
               <span>
                 <Coffee size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                Étape 1 · Pauses réellement pointées (non présumées)
+                Étape 1 · Dépointage de la pause sur la borne
               </span>
               <CheckCircle2 size={15} color="#4ADE80" />
             </div>
@@ -71,7 +71,7 @@ export default function PausesLoadingScreen({ darkMode = true, onSkip }) {
             onClick={() => setActiveStep(1)}
           >
             <img
-              src="/images/employes-loading-team.jpg"
+              src="/images/pauses-loading-start.jpg"
               alt="Contrôle des pauses en direct et séparation des pauses présumées"
               loading="eager"
               decoding="async"
@@ -92,7 +92,7 @@ export default function PausesLoadingScreen({ darkMode = true, onSkip }) {
             className={`pointages-loading-step${activeStep === 0 ? ' is-active' : ''}`}
             onClick={() => setActiveStep(0)}
           >
-            <span>1. Historique des pauses réelles</span>
+            <span>1. Pauses réellement pointées</span>
             <CheckCircle2 size={15} />
           </button>
           <button
@@ -112,7 +112,7 @@ export default function PausesLoadingScreen({ darkMode = true, onSkip }) {
         <div className="pointages-loading-footer">
           <p className="pointages-loading-subtitle">
             {activeStep === 0
-              ? 'Étape 1/2 · Lecture de l’historique des pauses réellement effectuées…'
+              ? 'Étape 1/2 · Lecture des dépointages de pause réellement effectués…'
               : 'Étape 2/2 · Séparation des pauses présumées de la grille et calcul du chronomètre en direct…'}
           </p>
           {onSkip && (
