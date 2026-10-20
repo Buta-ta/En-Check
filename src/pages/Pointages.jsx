@@ -1523,7 +1523,13 @@ export default function Pointages() {
     dispatch({ type: 'SET_LOADING', payload: false })
   }
 
-  const handleEditClick = async (employeeId) => {
+  const handleEditClick = async (empOrPointage) => {
+    const employeeId =
+      typeof empOrPointage === 'object' && empOrPointage !== null
+        ? empOrPointage.employee?.id || empOrPointage.id
+        : empOrPointage
+
+    if (!employeeId) return
     if (!canEditPointages) {
       dispatch({ type: 'OPEN_UPGRADE_MODAL', payload: 'Modification des Pointages' })
       return
@@ -2054,18 +2060,20 @@ export default function Pointages() {
           onImported={() => { loadPointages(); }}
         />
 
-        {state.showModifierModal && (
-          <ModifierPointage
-            employeeId={state.pointageToModify}
-            selectedDate={selectedDate}
-            pointagesJournee={(() => {
-              const employeeData = state.pointages.find(p => p.employee.id === state.pointageToModify)
-              return employeeData?.attendances || []
-            })()}
-            onClose={() => dispatch({ type: 'CLOSE_MODIFIER_MODAL' })}
-            onSuccess={loadPointages}
-          />
-        )}
+        {state.showModifierModal && (() => {
+          const employeeData = state.pointages.find(p => p.employee.id === state.pointageToModify)
+          return (
+            <ModifierPointage
+              employeeId={state.pointageToModify}
+              employee={employeeData?.employee || null}
+              enterpriseId={employeeData?.employee?.enterprise_id || entreprisePourImport}
+              selectedDate={selectedDate}
+              pointagesJournee={employeeData?.attendances || []}
+              onClose={() => dispatch({ type: 'CLOSE_MODIFIER_MODAL' })}
+              onSuccess={loadPointages}
+            />
+          )
+        })()}
       </div>
     </>
   )

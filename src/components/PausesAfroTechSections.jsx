@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
+  ArrowLeft,
   BarChart3,
   Building2,
   Calendar,
@@ -25,7 +26,7 @@ import {
 } from 'lucide-react'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
-import { KenteWovenTapestrySvg } from './AfroCulturalSvg'
+import { AdinkraWatermarkSvg, KenteWovenTapestrySvg, WovenKenteBadgeSvg } from './AfroCulturalSvg'
 import {
   badgeAnomalie,
   estPausePresumee,
@@ -142,8 +143,19 @@ export function PausesCulturalHero({
   return (
     <header aria-label="En-tête Pauses En-Check">
       <div className="pauses-v2-topbar">
-        {/* Marque En-Check */}
+        {/* Flèche Retour + Marque En-Check · Pauses */}
         <div className="pauses-v2-brand">
+          {onBackDashboard && (
+            <button
+              type="button"
+              className="pauses-v2-back-btn"
+              onClick={onBackDashboard}
+              title="Retour au Dashboard"
+              aria-label="Retour au Dashboard"
+            >
+              <ArrowLeft size={18} />
+            </button>
+          )}
           <div
             onClick={onBackDashboard}
             role={onBackDashboard ? 'button' : undefined}
@@ -151,12 +163,13 @@ export function PausesCulturalHero({
             style={{ cursor: onBackDashboard ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 11 }}
             title="Retour au Dashboard"
           >
-            <EnCheckBrandMark size={42} />
+            <EnCheckBrandMark size={40} />
             <div className="pauses-v2-brand-copy">
-              <strong>En-Check</strong>
+              <strong>Pauses · En-Check</strong>
               <span>Humain · Temps · Performance</span>
             </div>
           </div>
+          <WovenKenteBadgeSvg variant={2} size={34} />
         </div>
 
         {/* Navigation principale (fidèle à la maquette) */}
@@ -404,6 +417,7 @@ export function PausesExecutiveKpis({
         <button
           type="button"
           className={`pauses-v2-kpi-card is-amber${subFilter === 'en_direct' ? ' is-selected' : ''}`}
+          style={{ position: 'relative', overflow: 'hidden' }}
           onClick={() => {
             if (subFilter === 'en_direct') {
               onSelectTab && onSelectTab('all')
@@ -414,6 +428,7 @@ export function PausesExecutiveKpis({
             }
           }}
         >
+          <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-kpi-top">
             <div className="pauses-v2-kpi-circle">
               <Coffee size={24} />
@@ -451,11 +466,13 @@ export function PausesExecutiveKpis({
         <button
           type="button"
           className={`pauses-v2-kpi-card is-emerald${activeTab === 'reelles' && subFilter !== 'en_direct' ? ' is-selected' : ''}`}
+          style={{ position: 'relative', overflow: 'hidden' }}
           onClick={() => {
             onSelectTab && onSelectTab(activeTab === 'reelles' && subFilter === 'all' ? 'all' : 'reelles')
             onSelectSubFilter && onSelectSubFilter('all')
           }}
         >
+          <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-kpi-top">
             <div className="pauses-v2-kpi-circle">
               <Users size={24} />
@@ -487,11 +504,13 @@ export function PausesExecutiveKpis({
         <button
           type="button"
           className={`pauses-v2-kpi-card is-copper${activeTab === 'presumees' ? ' is-selected' : ''}`}
+          style={{ position: 'relative', overflow: 'hidden' }}
           onClick={() => {
             onSelectTab && onSelectTab(activeTab === 'presumees' ? 'all' : 'presumees')
             onSelectSubFilter && onSelectSubFilter('presumees_a_statuer')
           }}
         >
+          <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-kpi-top">
             <div className="pauses-v2-kpi-circle">
               <Hourglass size={23} />
@@ -521,11 +540,13 @@ export function PausesExecutiveKpis({
         <button
           type="button"
           className={`pauses-v2-kpi-card is-coral${activeTab === 'anomalies' ? ' is-selected' : ''}`}
+          style={{ position: 'relative', overflow: 'hidden' }}
           onClick={() => {
             onSelectTab && onSelectTab(activeTab === 'anomalies' ? 'all' : 'anomalies')
             onSelectSubFilter && onSelectSubFilter('anomalies_toutes')
           }}
         >
+          <AdinkraWatermarkSvg className="pointages-kpi-watermark" />
           <div className="pauses-v2-kpi-top">
             <div className="pauses-v2-kpi-circle">
               <AlertTriangle size={23} />

@@ -75,5 +75,7 @@ describe('🔌 Câblage Pauses — app de pointage + migration 000004', () => {
     expect(pointagesPage).toContain("table: 'encheck_pauses'")
     expect(pointagesPage).toContain('formaterTempsPauseEnDirect')
     expect(pointagesSections).toContain('formaterTempsPauseEnDirect')
+    expect(pausesSections).toContain('pauses-v2-back-btn')
+    expect(pausesSections).toContain('ArrowLeft')
   })
 })
