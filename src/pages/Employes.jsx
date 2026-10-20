@@ -19,6 +19,7 @@ import toast from 'react-hot-toast'
 import BadgeEmploye from '../components/BadgeEmploye'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import EmployesLoadingScreen from '../components/EmployesLoadingScreen'
+import FicheEmployeModal from '../components/FicheEmployeModal'
 import {
   EmployesAnalyticsCharts,
   EmployesCulturalHero,
@@ -98,18 +99,13 @@ export default function Employes() {
   const [entreprises, setEntreprises] = useState([])
   const [plannings, setPlannings] = useState([])
   const [loading, setLoading] = useState(true)
-  const [minLoadingDone, setMinLoadingDone] = useState(false)
+  const [minLoadingDone, setMinLoadingDone] = useState(true)
   const [liveStatusByEmployee, setLiveStatusByEmployee] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [selectedEnterpriseFilter, setSelectedEnterpriseFilter] = useState('all')
   const [viewMode, setViewMode] = useState('grid')
   const { darkMode, toggleTheme } = useTheme()
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setMinLoadingDone(true), 4500)
-    return () => window.clearTimeout(timer)
-  }, [])
 
   const [weeklyStats, setWeeklyStats] = useState({})
 
@@ -1272,250 +1268,28 @@ export default function Employes() {
 
         {/* ─── ADD/EDIT EMPLOYEE (ENRICHI) ─── */}
         {showModal && (
-          <div className="afro-modal-overlay" style={styles.modalOverlay}>
-            <div className="afro-modal-content" style={{ ...styles.formModal, maxWidth: 640 }}>
-              <div style={styles.formModalHeader}>
-                <div style={styles.formModalTitleWrap}>
-                  <div style={{ ...styles.formModalIcon, background: editingEmployee ? 'rgba(99,102,241,0.12)' : 'rgba(245,158,11,0.12)' }}>
-                    {editingEmployee ? <Edit size={20} color="#6366F1" /> : <UserPlus size={20} color="#F59E0B" />}
-                  </div>
-                  <div>
-                    <h2 style={styles.formModalTitle}>{editingEmployee ? 'Modifier l\'employé' : 'Nouvel employé'}</h2>
-                    <span style={styles.formModalSub}>{editingEmployee ? `Modification de ${editingEmployee.first_name}` : 'Remplissez les informations'}</span>
-                  </div>
-                </div>
-                <button onClick={() => setShowModal(false)} style={styles.formCloseBtn}><X size={20} /></button>
-              </div>
-
-              <div style={styles.formModalBody}>
-                {/* Photo Upload */}
-                <div style={styles.photoUploadSection}>
-                  <div style={styles.photoUploadCircle} onClick={() => fileInputRef.current?.click()}>
-                    {photoPreview ? <img src={photoPreview} alt="Preview" style={styles.photoUploadImg} /> : <div style={styles.photoUploadPlaceholder}><Camera size={28} color="#F59E0B" /></div>}
-                    <div style={styles.photoUploadOverlay}><Upload size={16} color="#FFF" /></div>
-                  </div>
-                  {photoPreview && <button onClick={handleRemovePhoto} style={styles.photoRemoveBtn}><X size={14} /> Retirer</button>}
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoSelect} style={{ display: 'none' }} />
-                </div>
-
-                {/* Enterprise Select (Super Admin) */}
-                {admin?.role === 'super_admin' && !editingEmployee && (
-                  <div style={styles.formField}>
-                    <label style={styles.formLabel}><Building2 size={14} /> Entreprise</label>
-                    <select value={formData.enterprise_id} onChange={(e) => handleEnterpriseChange(e.target.value)} style={styles.formSelect}>
-                      {entreprises.map((ent) => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
-                    </select>
-                  </div>
-                )}
-
-                {/* ═══ SECTION 1 : IDENTITÉ (toujours ouverte) ═══ */}
-                <CollapsibleSection title="Identité & Contact" icon={User} iconColor="#F59E0B" defaultOpen={true} badge="Obligatoire">
-                  <div style={styles.formField}>
-                    <label style={styles.formLabel}><Hash size={14} /> Matricule</label>
-                    <input type="text" value={formData.matricule} disabled style={{ ...styles.formInput, opacity: 0.6, cursor: 'not-allowed' }} />
-                  </div>
-
-                  <div style={styles.formRow}>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}>Prénom *</label>
-                      <input type="text" value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} style={styles.formInput} placeholder="Prénom" />
-                    </div>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}>Nom *</label>
-                      <input type="text" value={formData.last_name} onChange={(e) => setFormData({ ...formData, last_name: e.target.value })} style={styles.formInput} placeholder="Nom" />
-                    </div>
-                  </div>
-
-                  <div style={styles.formField}>
-                    <label style={styles.formLabel}>
-                      <Shield size={14} /> Code PIN (4 chiffres)
-                      {editingEmployee && <span style={styles.formHint}> — laisser vide pour garder l'ancien</span>}
-                    </label>
-                    <div style={styles.pinFieldWrap}>
-                      <input type={showPin ? 'text' : 'password'} value={formData.pin} onChange={(e) => { const value = e.target.value.replace(/\D/g, '').slice(0, 4); setFormData({ ...formData, pin: value }) }} style={styles.formInput} placeholder="••••" maxLength={4} />
-                      <button type="button" onClick={() => setShowPin(!showPin)} style={styles.pinEyeBtn}>{showPin ? <EyeOff size={18} /> : <Eye size={18} />}</button>
-                    </div>
-                  </div>
-
-                  {/* Numéro porté sur la pointeuse (le badge du salarié, sur la machine) */}
-                  <div style={styles.formField}>
-                    <label style={styles.formLabel}>
-                      <Radio size={14} /> Numéro sur la pointeuse
-                      <span style={styles.formHint}> — le numéro saisi SUR la machine, et non le matricule</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.machine_pin}
-                      onChange={(e) => setFormData({ ...formData, machine_pin: e.target.value })}
-                      style={styles.formInput}
-                      placeholder="1"
-                    />
-                    <span style={{ fontSize: 11.5, color: '#9CA3AF', marginTop: 4, display: 'block' }}>
-                      Se lit sur la machine : Menu → Utilisateur. Laissez vide pour retirer le numéro.
-                    </span>
-                  </div>
-
-                  <div style={styles.formRow}>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Mail size={14} /> Email</label>
-                      <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} style={styles.formInput} placeholder="email@exemple.com" />
-                    </div>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Phone size={14} /> Téléphone</label>
-                      <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} style={styles.formInput} placeholder="+237 6XX XXX XXX" />
-                    </div>
-                  </div>
-                </CollapsibleSection>
-
-                {/* ═══ SECTION 2 : INFORMATIONS PERSONNELLES ═══ */}
-                <CollapsibleSection title="Informations personnelles" icon={Heart} iconColor="#EC4899" defaultOpen={false}>
-                  <div style={styles.formRow}>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Calendar size={14} /> Date de naissance</label>
-                      <input type="date" value={formData.date_of_birth} onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })} style={styles.formInput} />
-                    </div>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><MapPin size={14} /> Lieu de naissance</label>
-                      <input type="text" value={formData.place_of_birth} onChange={(e) => setFormData({ ...formData, place_of_birth: e.target.value })} style={styles.formInput} placeholder="Ex: Douala" />
-                    </div>
-                  </div>
-
-                  <div style={styles.formRow}>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Globe size={14} /> Nationalité</label>
-                      <input type="text" value={formData.nationality} onChange={(e) => setFormData({ ...formData, nationality: e.target.value })} style={styles.formInput} placeholder="Ex: Camerounaise" />
-                    </div>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><User size={14} /> Genre</label>
-                      <select value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })} style={styles.formSelect}>
-                        <option value="">Non précisé</option>
-                        <option value="M">Masculin</option>
-                        <option value="F">Féminin</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={styles.formRow}>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Heart size={14} /> Situation matrimoniale</label>
-                      <select value={formData.marital_status} onChange={(e) => setFormData({ ...formData, marital_status: e.target.value })} style={styles.formSelect}>
-                        <option value="">Non précisé</option>
-                        <option value="celibataire">Célibataire</option>
-                        <option value="marie">Marié(e)</option>
-                        <option value="divorce">Divorcé(e)</option>
-                        <option value="veuf">Veuf/Veuve</option>
-                        <option value="union_libre">Union libre</option>
-                      </select>
-                    </div>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Baby size={14} /> Personnes à charge</label>
-                      <input type="number" min="0" max="20" value={formData.dependents_count} onChange={(e) => setFormData({ ...formData, dependents_count: parseInt(e.target.value) || 0 })} style={styles.formInput} />
-                    </div>
-                  </div>
-
-                  <div style={styles.formField}>
-                    <label style={styles.formLabel}><CreditCard size={14} /> N° Carte d'identité / Passeport</label>
-                    <input type="text" value={formData.national_id_number} onChange={(e) => setFormData({ ...formData, national_id_number: e.target.value })} style={styles.formInput} placeholder="Ex: 123456789" />
-                  </div>
-                </CollapsibleSection>
-
-                {/* ═══ SECTION 3 : INFORMATIONS PROFESSIONNELLES ═══ */}
-                <CollapsibleSection title="Informations professionnelles" icon={Briefcase} iconColor="#6366F1" defaultOpen={true}>
-                  <div style={styles.formRow}>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Briefcase size={14} /> Poste</label>
-                      <input type="text" value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} style={styles.formInput} placeholder="Ex: Développeur" />
-                    </div>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Building2 size={14} /> Département</label>
-                      <input type="text" value={formData.department} onChange={(e) => setFormData({ ...formData, department: e.target.value })} style={styles.formInput} placeholder="Ex: Informatique" />
-                    </div>
-                  </div>
-
-                  <div style={styles.formRow}>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Calendar size={14} /> Date d'embauche</label>
-                      <input type="date" value={formData.hire_date} onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })} style={styles.formInput} />
-                    </div>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><FileText size={14} /> Type de contrat</label>
-                      <select value={formData.contract_type} onChange={(e) => setFormData({ ...formData, contract_type: e.target.value })} style={styles.formSelect}>
-                        <option value="">Non précisé</option>
-                        <option value="CDI">CDI</option>
-                        <option value="CDD">CDD</option>
-                        <option value="Stage">Stage</option>
-                        <option value="Interim">Intérim</option>
-                        <option value="Apprentissage">Apprentissage</option>
-                        <option value="Freelance">Freelance</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {(formData.contract_type === 'CDD' || formData.contract_type === 'Stage' || formData.contract_type === 'Interim') && (
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Calendar size={14} /> Date de fin de contrat</label>
-                      <input type="date" value={formData.contract_end_date} onChange={(e) => setFormData({ ...formData, contract_end_date: e.target.value })} style={styles.formInput} />
-                    </div>
-                  )}
-
-                  <div style={styles.formRow}>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Layers size={14} /> Classification</label>
-                      <select value={formData.classification} onChange={(e) => setFormData({ ...formData, classification: e.target.value })} style={styles.formSelect}>
-                        <option value="">Non précisé</option>
-                        <option value="cadre">Cadre</option>
-                        <option value="agent_maitrise">Agent de maîtrise</option>
-                        <option value="employe">Employé</option>
-                        <option value="ouvrier">Ouvrier</option>
-                        <option value="stagiaire">Stagiaire</option>
-                      </select>
-                    </div>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Award size={14} /> Catégorie professionnelle</label>
-                      <input type="text" value={formData.professional_category} onChange={(e) => setFormData({ ...formData, professional_category: e.target.value })} style={styles.formInput} placeholder="Ex: A1, B2, C3..." />
-                    </div>
-                  </div>
-
-                  <div style={styles.formField}>
-                    <label style={styles.formLabel}><Award size={14} /> Échelon</label>
-                    <input type="text" value={formData.echelon} onChange={(e) => setFormData({ ...formData, echelon: e.target.value })} style={styles.formInput} placeholder="Ex: 1, 2, 3 ou A, B, C..." />
-                  </div>
-                </CollapsibleSection>
-
-                {/* ═══ SECTION 4 : INFORMATIONS SOCIALES & FISCALES ═══ */}
-                <CollapsibleSection title="Informations sociales & fiscales" icon={Shield} iconColor="#10B981" defaultOpen={false} badge="Paie">
-                  <div style={{
-                    padding: '10px 14px', borderRadius: 10,
-                    background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)',
-                    display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 4,
-                  }}>
-                    <Shield size={16} color="#10B981" style={{ flexShrink: 0, marginTop: 2 }} />
-                    <span style={{ color: '#888', fontSize: 12, lineHeight: 1.5 }}>
-                      Ces informations sont utilisées pour les fiches de paie et les déclarations sociales.
-                    </span>
-                  </div>
-
-                  <div style={styles.formRow}>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><Shield size={14} /> N° CNPS / Sécurité sociale</label>
-                      <input type="text" value={formData.cnps_number} onChange={(e) => setFormData({ ...formData, cnps_number: e.target.value })} style={styles.formInput} placeholder="Ex: 123-456-789" />
-                    </div>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}><FileText size={14} /> N° Identifiant fiscal</label>
-                      <input type="text" value={formData.tax_id_number} onChange={(e) => setFormData({ ...formData, tax_id_number: e.target.value })} style={styles.formInput} placeholder="Optionnel" />
-                    </div>
-                  </div>
-                </CollapsibleSection>
-              </div>
-
-              <div style={styles.formModalFooter}>
-                <button onClick={() => setShowModal(false)} style={styles.modalCancelBtn}>Annuler</button>
-                <button onClick={handleSave} style={styles.modalSaveBtn} disabled={uploading}>
-                  {uploading ? <span>Upload en cours...</span> : <><Save size={16} />{editingEmployee ? 'Enregistrer' : 'Créer l\'employé'}</>}
-                </button>
-              </div>
-            </div>
-          </div>
+          <FicheEmployeModal
+            employee={editingEmployee}
+            mode={editingEmployee ? 'edit' : 'create'}
+            scheduleInfo={
+              editingEmployee
+                ? { label: getScheduleRegimeLabel(editingEmployee) }
+                : null
+            }
+            entreprises={entreprises}
+            defaultEnterpriseId={
+              selectedEnterpriseFilter !== 'all'
+                ? selectedEnterpriseFilter
+                : admin?.selectedEnterprise?.id || admin?.enterprise_id || entreprises?.[0]?.id || ''
+            }
+            isSuperAdmin={admin?.role === 'super_admin'}
+            canEdit={true}
+            onClose={() => {
+              setShowModal(false)
+              setEditingEmployee(null)
+            }}
+            onSaved={() => loadData(admin)}
+          />
         )}
 
         {/* ─── BADGE ─── */}

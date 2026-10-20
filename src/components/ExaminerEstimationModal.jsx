@@ -123,7 +123,7 @@ export default function ExaminerEstimationModal({
     if (!canEdit || !statuerEstimation) return
     if (action === 'ajuster' && !pointage.lastOut?.__contextuelle && onModify) {
       onClose()
-      onModify(pointage)
+      onModify(pointage?.employee?.id || pointage)
       return
     }
     await statuerEstimation(pointage.lastOut, action)

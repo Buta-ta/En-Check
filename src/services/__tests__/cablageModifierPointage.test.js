@@ -78,4 +78,25 @@ describe('« Modifier le pointage » — les lignes d’audit ne s’y éditent 
     expect(source).not.toMatch(/nbLignesMasquees/)
     expect(source).toMatch(/p_decision:\s*'rejeter'/)
   })
+
+  it('5) ouverture depuis le tiroir Slide-Over + thème En-Check & motifs africains', () => {
+    const sections = readFileSync(join(RACINE, 'components', 'PointagesAfroTechSections.jsx'), 'utf8')
+    const pagePointages = readFileSync(join(RACINE, 'pages', 'Pointages.jsx'), 'utf8')
+    const ficheEmploye = readFileSync(join(RACINE, 'components', 'FicheEmployeModal.jsx'), 'utf8')
+
+    // Le tiroir passe l'UUID employé (et handleEditClick accepte ID ou objet pointage)
+    expect(sections).toContain('onModify(pointage?.employee?.id || pointage)')
+    expect(pagePointages).toContain('empOrPointage.employee?.id || empOrPointage.id')
+
+    // Thème dynamique (sombre par défaut) + motifs africains sur ModifierPointage et FicheEmployeModal
+    expect(source).toContain('useTheme')
+    expect(source).toContain("data-theme={darkMode ? 'dark' : 'light'}")
+    expect(source).toContain('KenteWovenTapestrySvg')
+    expect(source).toContain('AdinkraWatermarkSvg')
+
+    expect(ficheEmploye).toContain('useTheme')
+    expect(ficheEmploye).toContain("data-theme={darkMode ? 'dark' : 'light'}")
+    expect(ficheEmploye).toContain('KenteWovenTapestrySvg')
+    expect(ficheEmploye).toContain('AdinkraWatermarkSvg')
+  })
 })

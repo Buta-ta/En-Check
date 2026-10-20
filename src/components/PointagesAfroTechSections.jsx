@@ -1482,12 +1482,12 @@ export function PointagesSlideOverDrawer({
                 type="button"
                 className="pointages-drawer-btn is-outline"
                 onClick={() => {
-                  onModify(pointage)
+                  onModify(pointage?.employee?.id || pointage)
                   onClose()
                 }}
               >
                 <Edit size={14} />
-                <span>Modifier</span>
+                <span>Modifier le pointage</span>
               </button>
             )}
 
