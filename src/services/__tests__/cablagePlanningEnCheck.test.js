@@ -178,11 +178,32 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // Règle horaire masquée, pistes pleine largeur et blocs agrandis pour le doigt
     expect(planningCss).toMatch(/\.sk-day-ruler\s*\{\s*display:\s*none;/)
     expect(planningCss).toMatch(/\.sk-day-lanes\s*\{\s*width:\s*100%;/)
-    expect(planningCss).toMatch(/\.sk-day-track\s*\{\s*min-width:\s*0;\s*height:\s*28px;/)
-    expect(planningCss).toContain('min-width: 92px;')
+    expect(planningCss).toMatch(/\.sk-day-track\s*\{\s*min-width:\s*0;\s*height:\s*38px;/)
+    expect(planningCss).toContain('min-width: 104px;')
     expect(planningCss).toMatch(/width:\s*30px;\s*height:\s*30px;/)
     // Le nom du modèle reste lisible même en petit écran
     expect(planningCss).toContain('.sk-day-block-label strong')
+  })
+
+  it("23. conserve le nom du modèle déposé (un modèle « maladie » ne s'affiche pas « Repos »)", () => {
+    // resolveCellShift propage le nom / libellé / sous-titre du modèle
+    expect(planningSrc).toContain('const nomModele = override.name || override.label || "Repos"')
+    expect(planningSrc).toContain('name: nomModele,')
+    expect(planningSrc).toContain('subtitle:')
+    // Chaque dépôt mémorise le nom du modèle
+    expect(planningSrc).toMatch(/name:\s*tpl\.name \|\| \(estConge \? "Congé" : "Repos"\)/)
+    // Les vues affichent le sous-titre du modèle pour un repos / congé
+    expect(planningSrc).toContain('shift.isRest || shift.isLeave')
+    expect(planningSrc).toContain('shift.subtitle || "Repos"')
+  })
+
+  it("24. aucun bloc du mode Jour ne dépasse le bord droit de la piste (info coupée)", () => {
+    expect(planningSrc).toContain('const widthPct = Math.min(rawWidthPct, 100 - (startPct || 0))')
+    expect(planningSrc).toContain('const leftPct = Math.max(0, Math.min(startPct || 0, 100 - widthPct))')
+    expect(planningSrc).toContain('left: `${leftPct}%`')
+    expect(planningSrc).toContain('left: `${realLeftPct}%`')
+    // Sur mobile le nom et les heures sont empilés pour rester lisibles
+    expect(planningCss).toMatch(/\.sk-day-block-label\s*\{\s*display:\s*flex;/)
   })
 
   it('11. lie les compteurs du haut au groupe déplié et au focus sélectionné', () => {

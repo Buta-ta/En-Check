@@ -2548,21 +2548,40 @@
 
   .sk-day-track {
     min-width: 0;
-    height: 28px;
+    height: 38px;
   }
 
   .sk-day-block,
   .sk-day-real-block {
     top: 3px;
     bottom: 3px;
-    min-width: 92px;
+    min-width: 104px;
+    max-width: 100%;
     padding: 0 6px;
+    align-items: center;
   }
 
-  .sk-day-block-label,
+  /* Le nom du modèle et les heures sont empilés : plus rien n'est coupé */
+  .sk-day-block-label {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1px;
+    line-height: 1.15;
+    font-size: 9.5px;
+  }
+
+  .sk-day-block-label strong {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .sk-day-real-label {
     font-size: 9px;
-    gap: 2px;
+    white-space: nowrap;
   }
 
   .sk-day-add {
@@ -2587,6 +2606,7 @@
   .sk-day-actions-hours {
     gap: 10px;
     font-size: 12px;
+    flex-wrap: wrap;
   }
 
   .sk-day-actions .sk-shift-del-btn,
