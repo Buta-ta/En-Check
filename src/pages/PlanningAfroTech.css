@@ -343,6 +343,62 @@
   flex: 1;
 }
 
+/* ═══ RACCOURCIS EN-CHECK (Pointages · Employés · Pauses · Fiches de paie) ═══ */
+.sk-quick-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--sk-border-soft);
+  border-radius: 12px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--sk-terracotta) 18%, var(--sk-bg-panel)), var(--sk-bg-panel));
+  box-shadow: var(--sk-shadow);
+}
+
+.sk-quick-nav-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 2px;
+  color: var(--sk-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sk-quick-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  color: var(--sk-text-soft);
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1px solid var(--sk-border);
+  border-radius: 999px;
+  background: var(--sk-bg-elevated);
+  cursor: pointer;
+  transition: color 180ms ease, border-color 180ms ease, transform 180ms ease, background-color 180ms ease;
+}
+
+.sk-quick-link:hover {
+  color: var(--sk-accent);
+  border-color: var(--sk-border-strong);
+  background: var(--sk-bg-hover);
+  transform: translateY(-1px);
+}
+
+.sk-quick-link:focus-visible {
+  outline: 2px solid var(--sk-accent);
+  outline-offset: 2px;
+}
+
+.sk-quick-link svg {
+  color: var(--sk-accent-warm);
+}
+
 /* Alerte entreprise sans option Planning souscrite */
 .sk-no-option-banner {
   background: rgba(245, 158, 11, 0.1);
@@ -2323,6 +2379,25 @@
 }
 
 @media (max-width: 760px) {
+  /* Raccourcis : bande défilable, libellé discret, boutons pleine largeur utile */
+  .sk-quick-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    padding: 8px 10px;
+  }
+
+  .sk-quick-nav-label {
+    display: none;
+  }
+
+  .sk-quick-link {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    padding: 9px 14px;
+    min-height: 36px;
+  }
+
   .sk-plan-page {
     padding-bottom: 12px;
   }

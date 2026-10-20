@@ -49,6 +49,7 @@ import {
   Moon,
   Palette,
   Layers,
+  FileText,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import "./PlanningAfroTech.css";
@@ -60,6 +61,14 @@ const TEAMS_STORAGE_KEY = "encheck_planning_teams_v1";
 const TEAM_ASSIGNMENTS_STORAGE_KEY = "encheck_planning_team_assignments_v1";
 const MONTH_MODELS_STORAGE_KEY = "encheck_planning_month_models_v1";
 const COLLAPSED_GROUPS_STORAGE_KEY = "encheck_planning_teams_collapsed_v1";
+
+// Raccourcis En-Check : rejoindre les autres modules sans repasser par le Dashboard
+const PLANNING_SHORTCUTS = [
+  { id: "pointages", label: "Pointages", path: "/pointages", icon: Clock, hint: "Entrées et sorties du jour, écarts et régularisations" },
+  { id: "employes", label: "Employés", path: "/employes", icon: Users, hint: "Fiches collaborateurs, affectations et horaires" },
+  { id: "pauses", label: "Pauses", path: "/pauses", icon: Coffee, hint: "Pauses pointées, chronomètre en direct et pauses présumées" },
+  { id: "fiches-paie", label: "Fiches de paie", path: "/fiches-paie", icon: FileText, hint: "Bulletins et récapitulatifs de paie" },
+];
 
 // Palette de couleurs personnalisables En-Check (modèles & cases)
 const ENCHECK_COLOR_PALETTE = [
@@ -2570,6 +2579,29 @@ export default function Planning() {
 
       {/* ═══ ESPACE DE TRAVAIL PRINCIPAL EN-CHECK ═══ */}
       <main className="sk-workspace">
+        {/* Raccourcis En-Check : Pointages · Employés · Pauses · Fiches de paie */}
+        <nav className="sk-quick-nav" aria-label="Raccourcis En-Check">
+          <span className="sk-quick-nav-label">
+            <Zap size={13} /> Aller à
+          </span>
+          {PLANNING_SHORTCUTS.map((raccourci) => {
+            const IconRaccourci = raccourci.icon;
+            return (
+              <button
+                key={raccourci.id}
+                type="button"
+                className="sk-quick-link"
+                onClick={() => navigate(raccourci.path)}
+                title={raccourci.hint}
+                aria-label={raccourci.hint}
+              >
+                <IconRaccourci size={14} />
+                <span>{raccourci.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
         {/* Bandeau : entreprises n'ayant pas souscrit à l'option Planning (aucun horaire inventé) */}
         {employeesWithoutPlanningOption.length > 0 && (
           <div className="sk-no-option-banner" role="status">

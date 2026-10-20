@@ -232,6 +232,37 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(pausesLoading).not.toMatch(/Skello|SKELLO|skello/i)
   })
 
+  it('27. respecte l’option payante Planning sur la page Pointages', () => {
+    const pointagesSrc = lire('src/pages/Pointages.jsx')
+    // Seul un `true` explicite ouvre le planning : « non renseigné » n'est pas « activé »
+    expect(pointagesSrc).toContain('employee.enterprises?.module_planning === true')
+    expect(pointagesSrc).not.toContain('module_planning !== false')
+    // Une affectation sans horaire n'est plus habillée en « Planning personnalisé »
+    expect(pointagesSrc).toContain('planningPersoValide')
+    expect(pointagesSrc).toContain('planningGeneralValide')
+    expect(pointagesSrc).toContain('Planning non disponible dans En-Check (option non activée)')
+    // Aucun horaire inventé en repli
+    expect(pointagesSrc).not.toMatch(/: '08:00',/)
+    expect(pointagesSrc).not.toMatch(/: '18:00',/)
+    // Le moteur ne reçoit plus de planning non souscrit (ni retard, ni écart calculé dessus)
+    expect(pointagesSrc).toContain('employeeSchedule: planningEnabledOnEnterprise ?')
+    expect(pointagesSrc).toContain('defaultSchedule: planningEnabledOnEnterprise ? defaultSchedule : null')
+    // Et on ne lit pas les affectations d'une autre entreprise
+    expect(pointagesSrc).toContain('empSchedulesQuery.in(\'employee_id\', employeeIdsAffiches)')
+  })
+
+  it('28. offre des raccourcis vers Pointages, Employés, Pauses et Fiches de paie', () => {
+    expect(planningSrc).toContain('PLANNING_SHORTCUTS')
+    expect(planningSrc).toContain('sk-quick-nav')
+    expect(planningSrc).toContain('sk-quick-link')
+    expect(planningSrc).toContain('"/pointages"')
+    expect(planningSrc).toContain('"/employes"')
+    expect(planningSrc).toContain('"/pauses"')
+    expect(planningSrc).toContain('"/fiches-paie"')
+    expect(planningCss).toContain('.sk-quick-link')
+    expect(planningCss).toContain('.sk-quick-nav-label')
+  })
+
   it('11. lie les compteurs du haut au groupe déplié et au focus sélectionné', () => {
     expect(planningSrc).toContain('visibleEmployees')
     expect(planningSrc).toContain('scopedEmployees')
