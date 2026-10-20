@@ -18,6 +18,7 @@ import {
   exportCsvPauses,
 } from '../services/pausesService'
 import PausesLoadingScreen from '../components/PausesLoadingScreen'
+import useLoadingMinimum from '../hooks/useLoadingMinimum'
 import {
   KenteWovenTapestrySvg,
   PausesAnalyticsCharts,
@@ -38,6 +39,7 @@ export default function Pauses () {
   const [admin, setAdmin] = useState(null)
   const [paies, setPaies] = useState([])
   const [loading, setLoading] = useState(true)
+  const { minLoadingDone, skipLoading } = useLoadingMinimum()
   const [entreprises, setEntreprises] = useState([])
   const [employes, setEmployes] = useState([])
   const [empSchedules, setEmpSchedules] = useState([])
@@ -284,11 +286,16 @@ export default function Pauses () {
     setSelectedDate(jourLocal(d) || d.toISOString().split('T')[0])
   }
 
-  if (loading && paies.length === 0) {
+  //  Même plancher que le Planning : les deux scènes de pause ont le temps
+  //  d'être vues, même quand la lecture est instantanée.
+  if ((loading && paies.length === 0) || !minLoadingDone) {
     return (
       <PausesLoadingScreen
         darkMode={darkMode}
-        onSkip={() => setLoading(false)}
+        onSkip={() => {
+          skipLoading()
+          setLoading(false)
+        }}
       />
     )
   }

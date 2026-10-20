@@ -580,10 +580,13 @@ export function PausesExecutiveKpis({
 
 export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
   const [chartScope, setChartScope] = useState('all')
+  //  Tranche horaire parcourue dans l'histogramme (null = aucune sélection).
+  const [activeHour, setActiveHour] = useState(null)
 
   // Histogramme horaire (08h -> 18h par défaut, étendu si pauses matinales/nocturnes)
   const { slots, maxCount } = useMemo(() => {
     const countsByHour = Array(24).fill(0)
+    const pausesByHour = Array.from({ length: 24 }, () => [])
 
     for (const p of paies) {
       if (p.statut === 'ecartee') continue
@@ -600,6 +603,7 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
       }
       if (Number.isFinite(hour) && hour >= 0 && hour <= 23) {
         countsByHour[hour] += 1
+        pausesByHour[hour].push(p)
       }
     }
 
@@ -618,6 +622,7 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
         hour: h,
         label: `${String(h).padStart(2, '0')}h`,
         count: countsByHour[h],
+        pauses: pausesByHour[h] || [],
       })
     }
 
@@ -670,6 +675,18 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
   }, [maxCount])
 
   const chartTopVal = yTicks[0].label || 4
+
+  //  La tranche sélectionnée est relue à chaque changement de `paies` :
+  //  le panneau ne peut jamais afficher une pause qui n'est plus là.
+  const activeSlot = useMemo(
+    () => (activeHour === null ? null : slots.find((sl) => sl.hour === activeHour) || null),
+    [activeHour, slots]
+  )
+
+  const dureeSlot = useMemo(
+    () => (activeSlot ? activeSlot.pauses.reduce((acc, p) => acc + (Number(p.dureeMinutes) || 0), 0) : 0),
+    [activeSlot]
+  )
 
   return (
     <section className="pauses-v2-charts-grid" aria-label="Graphiques analytiques des pauses">
@@ -731,15 +748,54 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
           {/* Barres horaires */}
           {slots.map((slot, idx) => {
             const slotWidth = 524 / Math.max(1, slots.length)
-            const xCenter = 38 + idx * slotWidth + slotWidth / 2
+            const slotX = 38 + idx * slotWidth
+            const xCenter = slotX + slotWidth / 2
             const barWidth = Math.min(28, Math.max(14, slotWidth * 0.56))
             const baseLine = 146
             const maxBarHeight = 116
             const rawHeight = (slot.count / chartTopVal) * maxBarHeight
             const barHeight = slot.count > 0 ? Math.max(8, rawHeight) : 2
+            const isActiveSlot = activeHour === slot.hour
 
             return (
-              <g key={slot.label}>
+              <g
+                key={slot.label}
+                className={`pauses-v2-hour-slot${isActiveSlot ? ' is-active' : ''}`}
+                role="button"
+                tabIndex={0}
+                aria-label={`${slot.label} : ${slot.count} pause(s) — voir le détail`}
+                onClick={() => setActiveHour(isActiveSlot ? null : slot.hour)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setActiveHour(isActiveSlot ? null : slot.hour)
+                  } else if (event.key === 'ArrowRight') {
+                    event.preventDefault()
+                    setActiveHour((prev) => {
+                      if (prev === null) return slots[0]?.hour ?? null
+                      const i = slots.findIndex((sl) => sl.hour === prev)
+                      return slots[(i + 1) % slots.length]?.hour ?? prev
+                    })
+                  } else if (event.key === 'ArrowLeft') {
+                    event.preventDefault()
+                    setActiveHour((prev) => {
+                      if (prev === null) return slots[slots.length - 1]?.hour ?? null
+                      const i = slots.findIndex((sl) => sl.hour === prev)
+                      return slots[(i - 1 + slots.length) % slots.length]?.hour ?? prev
+                    })
+                  } else if (event.key === 'Escape') {
+                    setActiveHour(null)
+                  }
+                }}
+              >
+                <rect
+                  className="pauses-v2-hour-hit"
+                  x={slotX}
+                  y={22}
+                  width={slotWidth}
+                  height={148}
+                  rx="6"
+                />
                 <rect
                   x={xCenter - barWidth / 2}
                   y={baseLine - barHeight}
@@ -779,6 +835,60 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
             )
           })}
         </svg>
+
+        {activeSlot ? (
+          <div className="pauses-v2-hour-detail" role="status" aria-live="polite">
+            <div className="pauses-v2-hour-detail-head">
+              <strong>{activeSlot.label}</strong>
+              <span>
+                {activeSlot.pauses.length} pause{activeSlot.pauses.length > 1 ? 's' : ''} ·{' '}
+                {dureeSlot} min au total
+              </span>
+              <button
+                type="button"
+                className="pauses-v2-hour-detail-close"
+                onClick={() => setActiveHour(null)}
+              >
+                Fermer
+              </button>
+            </div>
+
+            {activeSlot.pauses.length === 0 ? (
+              <p className="pauses-v2-hour-detail-empty">
+                Aucune pause démarrée entre {activeSlot.label} et{' '}
+                {`${String((activeSlot.hour + 1) % 24).padStart(2, '0')}h`}.
+              </p>
+            ) : (
+              <ul className="pauses-v2-hour-detail-list">
+                {activeSlot.pauses.map((p) => (
+                  <li key={p.id || `${p.employe_id}-${p.debutISO}`}>
+                    <span
+                      className={`pauses-v2-hour-detail-dot${estPauseReelleEffectuee(p) ? ' is-real' : ' is-presumed'}`}
+                      aria-hidden="true"
+                    />
+                    <strong>{p.employe || 'Employé'}</strong>
+                    {p.matricule ? <em>{p.matricule}</em> : null}
+                    <span className="pauses-v2-hour-detail-time">
+                      {p.debutHHMM || '--:--'} → {p.finHHMM || 'en cours'}
+                    </span>
+                    <span className="pauses-v2-hour-detail-nature">
+                      {p.natureLabel || (estPauseReelleEffectuee(p) ? 'Pause réelle' : 'Pause présumée')}
+                    </span>
+                    <span className="pauses-v2-hour-detail-duree">{formatDuree(p.dureeMinutes)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <p className="pauses-v2-hour-detail-hint">
+              Cliquez une tranche pour la lire · ← → pour parcourir · Échap pour quitter.
+            </p>
+          </div>
+        ) : (
+          <p className="pauses-v2-hour-detail-hint is-idle">
+            Cliquez sur une tranche du graphique (ou utilisez ← →) pour lire qui a pris une pause, sur quelle plage et de quelle nature.
+          </p>
+        )}
       </article>
 
       {/* GRAPHIQUE DROITE : RÉPARTITION DES PAUSES (DONUT + LÉGENDE ALIGNÉE) */}

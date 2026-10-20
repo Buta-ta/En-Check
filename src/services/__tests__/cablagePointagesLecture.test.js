@@ -17,6 +17,10 @@ const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
 const pointagesSrc = lire('src/pages/Pointages.jsx')
 const sectionsSrc = lire('src/components/PointagesAfroTechSections.jsx')
 const cssSrc = lire('src/pages/PointagesAfroTech.css')
+const planningSrc = lire('src/pages/Planning.jsx')
+const pausesSrc = lire('src/pages/Pauses.jsx')
+const pausesSectionsSrc = lire('src/components/PausesAfroTechSections.jsx')
+const hookSrc = lire('src/hooks/useLoadingMinimum.js')
 
 describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => {
   it('1. les heures supplémentaires sont affichées en mode Passeport', () => {
@@ -64,4 +68,46 @@ describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => 
     // La pause en direct, elle, ne peut venir que d'une pause réelle
     expect(pointagesSrc).toContain('const activePause = realPauses.find(pa => pa.ouverte)')
   })
+
+  it('4. les heures sup du passeport sont lisibles et jamais imbriquées', () => {
+    // Trois niveaux distincts : total, part normale, part majorée
+    expect(sectionsSrc).toContain('pointages-passport-overtime-total')
+    expect(sectionsSrc).toContain('pointages-passport-overtime-parts')
+    expect(sectionsSrc).toContain('pointages-passport-overtime-rate')
+    expect(sectionsSrc).toContain('is-major')
+    // La ligne du bas sait se réorganiser
+    expect(cssSrc).toMatch(/\.pointages-passport-timeline-bottom\s*\{[\s\S]*?flex-wrap:\s*wrap;/)
+    // Et sur mobile le bloc HS prend sa propre ligne
+    expect(cssSrc).toMatch(/@media \(max-width: 720px\)[\s\S]*?\.pointages-passport-overtime\s*\{[\s\S]*?flex: 1 0 100%;/)
+  })
+
+  it("5. les écrans de chargement Planning et Pauses durent comme celui de Pointages", () => {
+    // Un crochet partagé impose un plancher
+    expect(hookSrc).toContain('export const DUREE_MIN_CHARGEMENT_MS = 4500')
+    expect(hookSrc).toContain('setMinLoadingDone(true)')
+    expect(hookSrc).toContain('skipLoading')
+    // Les deux pages l'utilisent : l'écran reste tant que les données OU le délai ne sont pas prêts
+    expect(planningSrc).toContain('useLoadingMinimum')
+    expect(planningSrc).toContain('if (loading || !minLoadingDone)')
+    expect(pausesSrc).toContain('useLoadingMinimum')
+    expect(pausesSrc).toContain('|| !minLoadingDone')
+    // « Passer l'animation » lève le plancher sans afficher une page vide
+    expect(planningSrc).toMatch(/onSkip=\{\(\) => \{[\s\S]*?skipLoading\(\);[\s\S]*?\}/)
+    expect(pausesSrc).toMatch(/onSkip=\{\(\) => \{[\s\S]*?skipLoading\(\)[\s\S]*?\}/)
+  })
+
+  it("6. l'activité des pauses est parcourable tranche par tranche", () => {
+    expect(pausesSectionsSrc).toContain('const [activeHour, setActiveHour] = useState(null)')
+    expect(pausesSectionsSrc).toContain('pausesByHour[hour].push(p)')
+    expect(pausesSectionsSrc).toContain('pauses: pausesByHour[h] || []')
+    expect(pausesSectionsSrc).toContain('pauses-v2-hour-slot')
+    expect(pausesSectionsSrc).toContain('pauses-v2-hour-hit')
+    expect(pausesSectionsSrc).toContain('pauses-v2-hour-detail')
+    // Navigation clavier + lecture de la nature de chaque pause
+    expect(pausesSectionsSrc).toContain("event.key === 'ArrowRight'")
+    expect(pausesSectionsSrc).toContain("event.key === 'Escape'")
+    expect(pausesSectionsSrc).toContain('p.natureLabel')
+    expect(cssSrc).toContain('.pauses-v2-hour-detail-head')
+  })
+
 })

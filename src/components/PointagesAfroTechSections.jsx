@@ -1230,21 +1230,30 @@ export function PointagesPassportGrid({
                           className="pointages-passport-overtime"
                           title={
                             p.overtimeData.overtimeMajorSeconds > 0
-                              ? `Normal ${FeatureService.formatOvertimeDisplay(p.overtimeData.overtimeSeconds)} (${p.overtimeData.rateApplied}%) · Majoré ${FeatureService.formatOvertimeDisplay(p.overtimeData.overtimeMajorSeconds)} (${p.overtimeData.rateMajorApplied}%)`
-                              : `Heures supplémentaires au taux de ${p.overtimeData.rateApplied}%`
+                              ? `Total ${FeatureService.formatOvertimeDisplay(p.overtimeData.totalOvertimeSeconds)} · Normal ${FeatureService.formatOvertimeDisplay(p.overtimeData.overtimeSeconds)} (${p.overtimeData.rateApplied}%) · Majoré ${FeatureService.formatOvertimeDisplay(p.overtimeData.overtimeMajorSeconds)} (${p.overtimeData.rateMajorApplied}%)`
+                              : `Heures supplémentaires : ${FeatureService.formatOvertimeDisplay(p.overtimeData.totalOvertimeSeconds)} au taux de ${p.overtimeData.rateApplied}%`
                           }
                         >
-                          <Timer size={11} />
-                          <span>
-                            HS {FeatureService.formatOvertimeDisplay(p.overtimeData.totalOvertimeSeconds)}
+                          <span className="pointages-passport-overtime-total">
+                            <Timer size={11} />
+                            <span>
+                              HS {FeatureService.formatOvertimeDisplay(p.overtimeData.totalOvertimeSeconds)}
+                            </span>
                           </span>
-                          <em>({p.overtimeData.rateApplied}%)</em>
-                          {p.overtimeData.overtimeMajorSeconds > 0 && (
-                            <em className="is-major">
-                              + majoré {FeatureService.formatOvertimeDisplay(p.overtimeData.overtimeMajorSeconds)}
-                              {' '}({p.overtimeData.rateMajorApplied}%)
+                          <span className="pointages-passport-overtime-parts">
+                            <em className="pointages-passport-overtime-rate">
+                              Normal {FeatureService.formatOvertimeDisplay(p.overtimeData.overtimeSeconds)}
+                              {' · '}
+                              {p.overtimeData.rateApplied}%
                             </em>
-                          )}
+                            {p.overtimeData.overtimeMajorSeconds > 0 && (
+                              <em className="pointages-passport-overtime-rate is-major">
+                                Majoré {FeatureService.formatOvertimeDisplay(p.overtimeData.overtimeMajorSeconds)}
+                                {' · '}
+                                {p.overtimeData.rateMajorApplied}%
+                              </em>
+                            )}
+                          </span>
                         </span>
                       )}
                     </>
