@@ -51,7 +51,7 @@ import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
 import LandingAnalytics from '../pages/LandingAnalytics'
 import { formaterHeureLocale } from '../utils/timezoneUtils'
-import { formaterTempsPauseEnDirect } from '../services/pausesService'
+import { estPauseReelleEffectuee, formaterTempsPauseEnDirect } from '../services/pausesService'
 import {
   loadRemoteDashboardPreferences,
   saveRemoteDashboardPreferences,
@@ -207,8 +207,9 @@ export default function DashboardExperience({
   const forgottenExits = Number(stats?.oublisSortie) || 0
   const conflictCount = conflictsPending.length || Number(stats?.conflitsPending) || 0
   const nowMs = currentTime?.getTime ? currentTime.getTime() : 0
-  const activePauses = pausesToday.filter((pa) => pa?.ouverte)
-  const unplannedPauses = pausesToday.filter((pa) => pa?.estNonPlanifiee)
+  const realPausesToday = pausesToday.filter((pa) => estPauseReelleEffectuee(pa))
+  const activePauses = realPausesToday.filter((pa) => pa?.ouverte)
+  const unplannedPauses = realPausesToday.filter((pa) => pa?.estNonPlanifiee)
   const presenceRate = employeeCount > 0
     ? Math.max(0, Math.min(100, Math.round((presentCount / employeeCount) * 100)))
     : 0
@@ -381,7 +382,7 @@ export default function DashboardExperience({
     { id: 'checkouts', label: 'Sorties à confirmer', description: 'Arrivées qui n’ont pas encore de sortie.', icon: LogOut, value: metricValue(forgottenExits, true), caption: metricCaption('Sorties manquantes'), tone: 'review', progress: metricShare(forgottenExits), sourceLabel: 'Pointages', path: '/pointages?status=present' },
     { id: 'conflicts', label: 'Conflits à examiner', description: 'Pointages effectués pendant une absence.', icon: ShieldCheck, value: metricValue(conflictCount, true), caption: metricCaption('Pointage / absence'), tone: 'late', progress: metricShare(conflictCount), sourceLabel: 'Absences', path: '/pointages?status=conflit_absence_pointage' },
     { id: 'photos', label: 'Photos de pointage', description: 'Preuves photo enregistrées aujourd’hui.', icon: Camera, value: metricValue(Number(stats?.photosToday) || 0), caption: metricCaption('Photos aujourd’hui'), tone: 'photos', sourceLabel: 'Pointages', path: '/pointages?photos=with' },
-    { id: 'breaks', label: 'Pauses du jour', description: 'Pauses en cours, planifiées et hors planning.', icon: Coffee, value: metricValue(pausesToday.length, true), caption: metricCaption(activePauses.length > 0 ? `${activePauses.length} en cours (${formaterTempsPauseEnDirect(activePauses[0], nowMs)})` : `${unplannedPauses.length} hors planning`), tone: 'review', progress: metricShare(pausesToday.length), sourceLabel: 'Pauses', path: '/pauses' },
+    { id: 'breaks', label: 'Pauses du jour', description: 'Pauses réelles en cours, planifiées et hors planning.', icon: Coffee, value: metricValue(realPausesToday.length, true), caption: metricCaption(activePauses.length > 0 ? `${activePauses.length} en cours (${formaterTempsPauseEnDirect(activePauses[0], nowMs)})` : `${unplannedPauses.length} hors planning`), tone: 'review', progress: metricShare(realPausesToday.length), sourceLabel: 'Pauses', path: '/pauses' },
     { id: 'companies', label: 'Entreprises actives', description: 'Vue consolidée de votre portefeuille.', icon: Building2, value: metricValue(Number(stats?.entreprises) || entreprises.length), caption: metricCaption('Entreprises'), tone: 'team', sourceLabel: 'Administration', path: '/entreprises', available: Boolean(isSuperAdmin) },
   ]
   const availableWidgets = widgetCatalog.filter((widget) => widget.available !== false)
@@ -917,17 +918,17 @@ export default function DashboardExperience({
               </div>
             )}
 
-            {pausesToday.length > 0 && (
+            {realPausesToday.length > 0 && (
               <div className="dashboard-alert-banner is-breaks" role="region" aria-label="Pauses en direct et effectuées">
                 <Coffee size={18} />
                 <div className="dashboard-alert-banner-copy">
                   <strong>
                     {activePauses.length > 0
                       ? `⏱️ ${activePauses.length} pause${activePauses.length > 1 ? 's' : ''} en cours en direct`
-                      : `${pausesToday.length} pause${pausesToday.length > 1 ? 's' : ''} effectuée${pausesToday.length > 1 ? 's' : ''} aujourd’hui (${unplannedPauses.length} hors planning)`}
+                      : `${realPausesToday.length} pause${realPausesToday.length > 1 ? 's' : ''} réelle${realPausesToday.length > 1 ? 's' : ''} effectuée${realPausesToday.length > 1 ? 's' : ''} aujourd’hui (${unplannedPauses.length} hors planning)`}
                   </strong>
                   <span>
-                    {(activePauses.length > 0 ? activePauses : pausesToday).slice(0, 3).map((pa) => (
+                    {(activePauses.length > 0 ? activePauses : realPausesToday).slice(0, 3).map((pa) => (
                       `${pa.employe} : ${formaterTempsPauseEnDirect(pa, nowMs)}${pa.ouverte ? ` (depuis ${pa.debutHHMM})` : ` (${pa.debutHHMM}→${pa.finHHMM || ''})`}${pa.estNonPlanifiee ? ' [Hors planning]' : ''}`
                     )).join(' · ')}
                   </span>
@@ -944,7 +945,7 @@ export default function DashboardExperience({
                 <div className="dashboard-hero-meta">
                   <span className="dashboard-meta-chip"><Building2 size={13} />{selectedEnterpriseName}</span>
                   <span className="dashboard-meta-chip is-positive"><UserCheck size={13} />{presentCount} présent{presentCount > 1 ? 's' : ''}</span>
-                  {pausesToday.length > 0 && (
+                  {realPausesToday.length > 0 && (
                     <button
                       type="button"
                       className="dashboard-meta-chip dashboard-customize-fallback"
@@ -954,7 +955,7 @@ export default function DashboardExperience({
                       <span>
                         {activePauses.length > 0
                           ? `Pause en cours : ${formaterTempsPauseEnDirect(activePauses[0], nowMs)}`
-                          : `${pausesToday.length} pause${pausesToday.length > 1 ? 's' : ''} (${unplannedPauses.length} hors planning)`}
+                          : `${realPausesToday.length} pause${realPausesToday.length > 1 ? 's' : ''} réelle${realPausesToday.length > 1 ? 's' : ''} (${unplannedPauses.length} hors planning)`}
                       </span>
                     </button>
                   )}

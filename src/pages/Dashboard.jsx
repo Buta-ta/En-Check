@@ -67,7 +67,7 @@ import {
 } from 'lucide-react'
 import { formaterHeureLocale, minutesDepuisMinuit, jourLocal } from '../utils/timezoneUtils'
 import { compterRetardsDuJour } from '../services/hoursCalculator'
-import { construirePauses } from '../services/pausesService'
+import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
 
 export { compterRetardsDuJour }
 
@@ -886,12 +886,9 @@ export default function Dashboard() {
       const basePauses = construirePauses(rows).paies || []
 
       const empById = new Map()
-      const byEmployeeAtts = new Map()
       for (const a of attendancesToday || []) {
         if (!a?.employee_id) continue
         if (a.employees) empById.set(a.employee_id, a.employees)
-        if (!byEmployeeAtts.has(a.employee_id)) byEmployeeAtts.set(a.employee_id, [])
-        byEmployeeAtts.get(a.employee_id).push(a)
       }
 
       const empSchedMap = new Map()
@@ -912,8 +909,11 @@ export default function Dashboard() {
         return Boolean(def?.has_break)
       }
 
+      // L'historique des pauses du jour ne concerne QUE les pauses réellement effectuées (non présumées).
+      // Aucun intervalle entre deux pointages d'entrée/sortie (`attendances`) ni aucune pause présumée
+      // de la grille horaire n'est considéré comme une pause réellement effectuée.
       const enriched = basePauses
-        .filter((p) => p.statut !== 'ecartee')
+        .filter((p) => estPauseReelleEffectuee(p))
         .map((p) => {
           const emp = empById.get(p.employe_id)
           const planned = hasPlannedBreakForEmp(p.employe_id, p.enterprise_id || entArg)
@@ -923,50 +923,9 @@ export default function Dashboard() {
             matricule: p.matricule || emp?.matricule || '',
             debutHHMM: p.debutISO ? formaterHeureLocale(p.debutISO) : p.debutHHMM,
             finHHMM: p.finISO ? formaterHeureLocale(p.finISO) : p.finHHMM,
-            estNonPlanifiee: p.source !== 'presumee' && !planned,
+            estNonPlanifiee: !planned,
           }
         })
-
-      // Ajouter aussi les pauses effectuées entre deux sessions de pointage (Sortie -> Entrée)
-      for (const [empId, atts] of byEmployeeAtts.entries()) {
-        const sorted = [...atts]
-          .filter((x) => x?.check_time)
-          .sort((a, b) => new Date(a.check_time).getTime() - new Date(b.check_time).getTime())
-
-        for (let i = 0; i < sorted.length - 1; i++) {
-          const cur = sorted[i]
-          const nxt = sorted[i + 1]
-          if (String(cur.check_type || '').toLowerCase() !== 'out' || String(nxt.check_type || '').toLowerCase() !== 'in') continue
-          if (cur.is_auto_closed) continue
-          const startMs = new Date(cur.check_time).getTime()
-          const endMs = new Date(nxt.check_time).getTime()
-          const gapMin = Math.round((endMs - startMs) / 60000)
-          if (!Number.isFinite(gapMin) || gapMin < 2 || gapMin > 360) continue
-
-          const duplicate = enriched.some((ex) => ex.employe_id === empId && ex.debutISO && Math.abs(new Date(ex.debutISO).getTime() - startMs) < 10 * 60000)
-          if (!duplicate) {
-            const emp = empById.get(empId)
-            const planned = hasPlannedBreakForEmp(empId, cur.enterprise_id || entArg)
-            enriched.push({
-              id: `dash-intersession-${cur.id}-${nxt.id}`,
-              employe_id: empId,
-              employe: `${emp?.first_name || ''} ${emp?.last_name || ''}`.trim() || 'Employé',
-              matricule: emp?.matricule || '',
-              enterprise_id: cur.enterprise_id || entArg,
-              jour: today,
-              debutISO: cur.check_time,
-              finISO: nxt.check_time,
-              debutHHMM: formaterHeureLocale(cur.check_time),
-              finHHMM: formaterHeureLocale(nxt.check_time),
-              dureeMinutes: gapMin,
-              statut: 'reelle',
-              source: 'inter_sessions',
-              ouverte: false,
-              estNonPlanifiee: !planned,
-            })
-          }
-        }
-      }
 
       setPausesToday(enriched)
     } catch (err) {
