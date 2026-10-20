@@ -160,6 +160,31 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningCss).toContain('@keyframes skOpenPulse')
   })
 
+  it("21. affiche le nom du modèle dans le calendrier (Semaine, Mois, Jour)", () => {
+    // Les créneaux issus des grilles portent désormais leur nom
+    expect(planningSrc).toContain('name: ws.name || "Modèle entreprise"')
+    expect(planningSrc).toContain('name: defaultPlan.name || "Modèle par défaut"')
+    // Le nom est rendu dans les trois vues
+    expect(planningSrc).toContain('sk-shift-name')
+    expect(planningSrc).toContain('sk-cal-pill-model')
+    expect(planningSrc).toContain('sk-day-block-label')
+    expect(planningCss).toContain('.sk-shift-name')
+    expect(planningCss).toContain('.sk-cal-pill-model')
+  })
+
+  it('22. mode Jour réellement responsive sur mobile', () => {
+    // Empilement en carte : la ligne passe en colonne sur mobile
+    expect(planningCss).toMatch(/\.sk-day-row\s*\{\s*flex-direction:\s*column;/)
+    // Règle horaire masquée, pistes pleine largeur et blocs agrandis pour le doigt
+    expect(planningCss).toMatch(/\.sk-day-ruler\s*\{\s*display:\s*none;/)
+    expect(planningCss).toMatch(/\.sk-day-lanes\s*\{\s*width:\s*100%;/)
+    expect(planningCss).toMatch(/\.sk-day-track\s*\{\s*min-width:\s*0;\s*height:\s*28px;/)
+    expect(planningCss).toContain('min-width: 92px;')
+    expect(planningCss).toMatch(/width:\s*30px;\s*height:\s*30px;/)
+    // Le nom du modèle reste lisible même en petit écran
+    expect(planningCss).toContain('.sk-day-block-label strong')
+  })
+
   it('11. lie les compteurs du haut au groupe déplié et au focus sélectionné', () => {
     expect(planningSrc).toContain('visibleEmployees')
     expect(planningSrc).toContain('scopedEmployees')
