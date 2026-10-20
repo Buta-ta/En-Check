@@ -175,7 +175,7 @@ export async function answerNaturalCompanyQuestion({
       }
     }
 
-    // Cas 5 : Pauses
+    // Cas 5 : Pauses (distinguer pauses réelles non présumées vs pauses présumées)
     if (intent === 'pauses') {
       const { data: pausesData } = await client
         .rpc('encheck_pauses_lire', {
@@ -186,24 +186,26 @@ export async function answerNaturalCompanyQuestion({
         .then((r) => r)
         .catch(() => ({ data: [] }))
 
-      const activePauses = (pausesData || []).filter((p) => p.statut !== 'ecartee')
-      const openPauses = activePauses.filter((p) => !p.fin)
+      const nonEcartees = (pausesData || []).filter((p) => p.statut !== 'ecartee')
+      const realPauses = nonEcartees.filter((p) => p.statut !== 'presumee' && p.source !== 'presumee')
+      const presumedPauses = nonEcartees.filter((p) => p.statut === 'presumee' || p.source === 'presumee')
+      const openPauses = realPauses.filter((p) => !p.fin)
 
       return {
         ...common,
-        title: 'Pauses enregistrées',
+        title: 'Historique des pauses réellement effectuées',
         text:
-          activePauses.length > 0
-            ? `Je retrouve ${activePauses.length} pause${activePauses.length > 1 ? 's' : ''} ${periodLabel} chez ${company.name}${openPauses.length > 0 ? `, dont ${openPauses.length} actuellement en cours` : ''}.`
-            : `Aucune pause n’est enregistrée ${periodLabel} chez ${company.name}.`,
-        source: 'encheck_pauses_lire · lecture autorisée',
+          realPauses.length > 0
+            ? `Je retrouve ${realPauses.length} pause${realPauses.length > 1 ? 's' : ''} réellement effectuée${realPauses.length > 1 ? 's' : ''} (non présumée${realPauses.length > 1 ? 's' : ''}) ${periodLabel} chez ${company.name}${openPauses.length > 0 ? `, dont ${openPauses.length} actuellement en cours` : ''}${presumedPauses.length > 0 ? ` (${presumedPauses.length} pause${presumedPauses.length > 1 ? 's' : ''} présumée${presumedPauses.length > 1 ? 's' : ''} du planning hors historique réel)` : ''}.`
+            : `Aucune pause réelle n’a été effectuée ${periodLabel} chez ${company.name}${presumedPauses.length > 0 ? ` (${presumedPauses.length} pause${presumedPauses.length > 1 ? 's' : ''} présumée${presumedPauses.length > 1 ? 's' : ''} par la grille horaire, à statuer dans Pauses)` : ''}.`,
+        source: 'encheck_pauses_lire · pauses réelles (non présumées)',
         path: '/pauses',
         choices: ["Qui a pointé aujourd'hui ?", "Qui a dépointé aujourd'hui ?", "Qui est en retard aujourd'hui"],
-        rows: activePauses.slice(0, 20).map((p) => ({
+        rows: realPauses.slice(0, 20).map((p) => ({
           id: p.id,
           label: `${p.prenom || ''} ${p.nom || ''}`.trim() || 'Employé',
           detail: `${p.jour} · début ${formaterHeureLocaleShort(p.debut, company.timezone)}${p.fin ? ` → fin ${formaterHeureLocaleShort(p.fin, company.timezone)} (${p.duree_minutes || 0} min)` : ' (en cours)'}`,
-          badge: !p.fin ? 'En pause' : p.statut === 'presumee' ? 'Présumée' : 'Terminée',
+          badge: !p.fin ? 'En pause' : 'Pause réelle',
         })),
       }
     }

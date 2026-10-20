@@ -1,6 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // SERVICE PAUSES — présentation pure des lignes de `encheck_pauses_lire`
-// + détection des pauses effectuées non planifiées et chronomètre temps réel
+// Distinction stricte :
+//   · Pauses réellement effectuées (non présumées : pointées ou saisies admin)
+//   · Pauses présumées (créneaux de la grille horaire, non pointées)
+//   · Jamais d'invention de pause à partir des pointages Entrée/Sortie (`attendances`)
 // ═══════════════════════════════════════════════════════════════════════════
 import {
   formaterHeureLocale,
@@ -28,6 +31,58 @@ function hhmm (timestamptz) {
 }
 
 /**
+ * Retourne `true` si la pause est une pause présumée (issue de la grille horaire,
+ * non pointée par l'employé).
+ */
+export function estPausePresumee (p) {
+  if (!p) return false
+  return p.statut === 'presumee' || p.source === 'presumee'
+}
+
+/**
+ * Retourne `true` uniquement si la pause a été réellement effectuée (non présumée) :
+ * pointée par l'employé (`source === 'pointee'`) ou enregistrée par l'admin (`source === 'admin'`),
+ * et non écartée. Jamais une pause présumée ni un intervalle entre 2 pointages d'entrée/sortie.
+ */
+export function estPauseNonPresumee (p) {
+  if (!p) return false
+  if (p.statut === 'ecartee' || p.statut === 'presumee') return false
+  if (p.source === 'presumee' || p.source === 'inter_sessions') return false
+  return true
+}
+
+export const estPauseReelleEffectuee = estPauseNonPresumee
+
+/**
+ * Filtre une liste de pauses pour ne retenir que l'historique des pauses réellement effectuées
+ * (pauses non présumées).
+ */
+export function filtrerHistoriquePausesReelles (pauses = []) {
+  return (pauses || []).filter((p) => estPauseReelleEffectuee(p))
+}
+
+/**
+ * Filtre une liste de pauses pour ne retenir que les pauses présumées (hors écartées).
+ */
+export function filtrerPausesPresumees (pauses = []) {
+  return (pauses || []).filter((p) => estPausePresumee(p) && p.statut !== 'ecartee')
+}
+
+/**
+ * Libellé explicite distinguant la nature exacte d'une pause :
+ * pause réelle pointée (non présumée) vs pause présumée à statuer vs pause présumée validée.
+ */
+export function libelleNaturePause (p) {
+  if (!p) return 'Pause'
+  if (p.statut === 'ecartee') return '✕ Pause écartée'
+  if (p.statut === 'presumee') return '⏳ Pause présumée — à statuer'
+  if (p.source === 'presumee' && p.statut === 'validee') return '✓ Pause présumée validée'
+  if (p.source === 'admin') return '✓ Pause réelle (saisie admin)'
+  if (p.statut === 'validee') return '✓ Pause réelle validée'
+  return '✓ Pause réelle pointée'
+}
+
+/**
  * Construit la liste affichable + les statistiques de la page Pauses.
  * @param {Array} lignesSql  lignes de `encheck_pauses_lire` ou `encheck_pauses`
  * @returns {{ paies: Array, stats: Object }}
@@ -42,6 +97,13 @@ export function construirePauses (lignesSql) {
   let nbAnomalies = 0
   let dureeTotale = 0
 
+  let nbReellesEffectuees = 0
+  let dureeReelleMinutes = 0
+  let nbPresumeesTotal = 0
+  let nbPresumeesAStatuer = 0
+  let nbPresumeesValidees = 0
+  let dureePresumeeMinutes = 0
+
   for (const l of lignesSql || []) {
     const ouverte = !l.fin
     if (ouverte) nbOuvertes++
@@ -50,7 +112,6 @@ export function construirePauses (lignesSql) {
     else if (l.statut === 'presumee') nbPresumees++
     else if (l.statut === 'validee') nbValidees++
     else if (l.statut === 'ecartee') nbEcartees++
-    if (l.statut !== 'ecartee' && !ouverte) dureeTotale += Number(l.duree_minutes) || 0
 
     const empId = l.employe_id || l.employee_id || null
     const debutMs = l.debut ? new Date(l.debut).getTime() : NaN
@@ -58,6 +119,24 @@ export function construirePauses (lignesSql) {
     const computedMin = Number.isFinite(debutMs) && Number.isFinite(finMs) && finMs >= debutMs
       ? Math.round((finMs - debutMs) / 60000)
       : 0
+    const dureeMinutes = Number(l.duree_minutes ?? computedMin) || 0
+
+    if (l.statut !== 'ecartee' && !ouverte) {
+      dureeTotale += dureeMinutes
+    }
+
+    const estPresumee = estPausePresumee(l)
+    const estNonPresumee = estPauseNonPresumee(l)
+
+    if (estNonPresumee) {
+      nbReellesEffectuees++
+      if (!ouverte) dureeReelleMinutes += dureeMinutes
+    } else if (estPresumee && l.statut !== 'ecartee') {
+      nbPresumeesTotal++
+      if (l.statut === 'presumee') nbPresumeesAStatuer++
+      if (l.statut === 'validee') nbPresumeesValidees++
+      if (!ouverte) dureePresumeeMinutes += dureeMinutes
+    }
 
     paies.push({
       id: l.id,
@@ -71,13 +150,17 @@ export function construirePauses (lignesSql) {
       finISO: l.fin || null,
       debutHHMM: hhmm(l.debut),
       finHHMM: ouverte ? null : hhmm(l.fin),
-      dureeMinutes: Number(l.duree_minutes ?? computedMin) || 0,
+      dureeMinutes,
       statut: l.statut,
       source: l.source,
       motif: l.motif,
       anomalie: l.anomalie,
       ouverte,
       aStatuer: STATUTS_A_STATUER.includes(l.statut),
+      estPresumee,
+      estNonPresumee,
+      estReelleEffectuee: estNonPresumee,
+      natureLabel: libelleNaturePause(l),
     })
   }
 
@@ -97,21 +180,24 @@ export function construirePauses (lignesSql) {
       nbOuvertes,
       nbAnomalies,
       dureeTotale,
+      nbReellesEffectuees,
+      dureeReelleMinutes,
+      nbPresumeesTotal,
+      nbPresumeesAStatuer,
+      nbPresumeesValidees,
+      dureePresumeeMinutes,
     },
   }
 }
 
 /**
- * Fusionne les pauses enregistrées dans `encheck_pauses` ET les pauses effectuées
- * entre deux sessions de pointage (`validPairs`), même lorsqu'aucun planning
- * (ni personnel ni général) ne prévoit de pause.
+ * Prépare les pauses d'un employé enregistrées dans `encheck_pauses` en distinguant
+ * strictement les pauses non présumées (réellement effectuées) et les pauses présumées.
+ * N'invente JAMAIS de fausse pause à partir des sessions d'entrée/sortie (`attendances`).
  */
 export function fusionnerPausesEmploye ({
   pausesTable = [],
-  validPairs = [],
-  employee = null,
   scheduleInfo = null,
-  selectedDate = null,
 }) {
   const hasPlannedBreak = Boolean(
     scheduleInfo &&
@@ -119,65 +205,22 @@ export function fusionnerPausesEmploye ({
     scheduleInfo.hasBreak
   )
 
-  const result = (pausesTable || [])
-    .filter((p) => p.statut !== 'ecartee')
-    .map((p) => ({
-      ...p,
-      debutHHMM: p.debutISO ? formaterHeureLocale(p.debutISO) : p.debutHHMM,
-      finHHMM: p.finISO ? formaterHeureLocale(p.finISO) : p.finHHMM,
-      estNonPlanifiee: p.source !== 'presumee' && !hasPlannedBreak,
-    }))
-
-  // Détecter aussi les coupures (Sortie -> Nouvelle Entrée) effectuées dans la journée
-  if (Array.isArray(validPairs) && validPairs.length > 1) {
-    const sortedPairs = [...validPairs]
-      .filter((pair) => pair?.in?.check_time)
-      .sort((a, b) => new Date(a.in.check_time).getTime() - new Date(b.in.check_time).getTime())
-
-    for (let i = 0; i < sortedPairs.length - 1; i++) {
-      const prevOut = sortedPairs[i]?.out
-      const nextIn = sortedPairs[i + 1]?.in
-      if (!prevOut?.check_time || !nextIn?.check_time || prevOut.is_auto_closed) continue
-
-      const startMs = new Date(prevOut.check_time).getTime()
-      const endMs = new Date(nextIn.check_time).getTime()
-      if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) continue
-
-      const gapMinutes = Math.round((endMs - startMs) / 60000)
-      if (gapMinutes < 2 || gapMinutes > 360) continue
-
-      const alreadyCovered = result.some((existing) => {
-        if (!existing.debutISO) return false
-        const exStart = new Date(existing.debutISO).getTime()
-        return Math.abs(exStart - startMs) < 10 * 60000
-      })
-
-      if (!alreadyCovered) {
-        result.push({
-          id: `intersession-${prevOut.id || i}-${nextIn.id || i + 1}`,
-          employe_id: employee?.id || null,
-          employe: `${employee?.first_name || ''} ${employee?.last_name || ''}`.trim(),
-          matricule: employee?.matricule || '',
-          enterprise_id: employee?.enterprise_id || null,
-          jour: selectedDate,
-          debutISO: prevOut.check_time,
-          finISO: nextIn.check_time,
-          debutHHMM: formaterHeureLocale(prevOut.check_time),
-          finHHMM: formaterHeureLocale(nextIn.check_time),
-          dureeMinutes: gapMinutes,
-          statut: 'reelle',
-          source: 'inter_sessions',
-          motif: 'Coupure pointée entre 2 sessions',
-          anomalie: null,
-          ouverte: false,
-          aStatuer: false,
-          estNonPlanifiee: !hasPlannedBreak,
-        })
+  return (pausesTable || [])
+    .filter((p) => p.statut !== 'ecartee' && p.source !== 'inter_sessions')
+    .map((p) => {
+      const estPresumee = estPausePresumee(p)
+      const estNonPresumee = estPauseNonPresumee(p)
+      return {
+        ...p,
+        debutHHMM: p.debutISO ? formaterHeureLocale(p.debutISO) : p.debutHHMM,
+        finHHMM: p.finISO ? formaterHeureLocale(p.finISO) : p.finHHMM,
+        estPresumee,
+        estNonPresumee,
+        estReelleEffectuee: estNonPresumee,
+        natureLabel: libelleNaturePause(p),
+        estNonPlanifiee: estNonPresumee && !hasPlannedBreak,
       }
-    }
-  }
-
-  return result
+    })
 }
 
 /**
@@ -220,10 +263,11 @@ export function formatDuree (minutes) {
 /** Export CSV (séparateur point-virgule, Excel FR). */
 export function exportCsvPauses (paies) {
   const entetes = ['Jour', 'Employé', 'Matricule', 'Entreprise', 'Début', 'Fin',
-    'Durée (min)', 'Statut', 'Anomalie', 'Motif']
+    'Durée (min)', 'Statut', 'Nature', 'Anomalie', 'Motif']
   const lignes = (paies || []).map(p => [
     p.jour, p.employe, p.matricule, p.entreprise_nom, p.debutHHMM,
     p.finHHMM || '', p.dureeMinutes, badgeStatut(p.statut).label,
+    estPausePresumee(p) ? 'Présumée (grille)' : 'Réelle (non présumée)',
     (badgeAnomalie(p.anomalie) || {}).label || '', p.motif || '',
   ])
   return [entetes, ...lignes]

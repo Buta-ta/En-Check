@@ -27,7 +27,7 @@ import {
   EmployesPortraitCard,
 } from '../components/EmployesAfroTechSections'
 import { useTheme } from '../contexts/ThemeContext'
-import { construirePauses } from '../services/pausesService'
+import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
 import { formaterHeureLocale, jourLocal } from '../utils/timezoneUtils'
 
 // ═══════════════════════════════════════════════════════════
@@ -510,37 +510,13 @@ export default function Employes() {
         )
 
         const empPauses = parsedPauses
-          .filter((pa) => pa.employe_id === emp.id && pa.statut !== 'ecartee')
+          .filter((pa) => pa.employe_id === emp.id && estPauseReelleEffectuee(pa))
           .map((pa) => ({
             ...pa,
             debutHHMM: pa.debutISO ? formaterHeureLocale(pa.debutISO) : pa.debutHHMM,
             finHHMM: pa.finISO ? formaterHeureLocale(pa.finISO) : pa.finHHMM,
-            estNonPlanifiee: pa.source !== 'presumee' && !hasPlannedBreak,
+            estNonPlanifiee: !hasPlannedBreak,
           }))
-
-        // Détecter aussi les coupures (Sortie -> Entrée) hors planning dans la journée
-        for (let i = 0; i < empAtts.length - 1; i++) {
-          const cur = empAtts[i]
-          const nxt = empAtts[i + 1]
-          if (String(cur.check_type || '').toLowerCase() !== 'out' || String(nxt.check_type || '').toLowerCase() !== 'in') continue
-          if (cur.is_auto_closed) continue
-          const gapMin = Math.round((new Date(nxt.check_time).getTime() - new Date(cur.check_time).getTime()) / 60000)
-          if (gapMin >= 2 && gapMin <= 360) {
-            empPauses.push({
-              id: `emp-intersession-${cur.id}-${nxt.id}`,
-              employe_id: emp.id,
-              debutISO: cur.check_time,
-              finISO: nxt.check_time,
-              debutHHMM: formaterHeureLocale(cur.check_time),
-              finHHMM: formaterHeureLocale(nxt.check_time),
-              dureeMinutes: gapMin,
-              statut: 'reelle',
-              source: 'inter_sessions',
-              ouverte: false,
-              estNonPlanifiee: !hasPlannedBreak,
-            })
-          }
-        }
 
         const activePause = empPauses.find((pa) => pa.ouverte) || null
         const firstIn = empAtts.find((a) => String(a.check_type || '').toLowerCase() === 'in') || null

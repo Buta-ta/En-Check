@@ -36,6 +36,8 @@ import {
   KenteFriezeSvg,
 } from './AfroCulturalSvg'
 import {
+  estPausePresumee,
+  estPauseReelleEffectuee,
   estPointageEnRetard,
   estServiceDeNuit,
   formaterTempsPauseEnDirect,
@@ -340,6 +342,7 @@ export function PointagesExecutiveKpis({
     let unplannedCount = 0
     for (const p of pointages) {
       for (const pa of p.pauses || []) {
+        if (!estPauseReelleEffectuee(pa)) continue
         totalCount += 1
         if (pa.ouverte) activeCount += 1
         if (pa.estNonPlanifiee) unplannedCount += 1
@@ -596,9 +599,10 @@ export function PointagesAnalyticsCharts({ pointages = [], stats = {} }) {
     let unplannedPausesCount = 0
 
     for (const p of pointages) {
-      if (p.pauses?.length) {
-        pausesCount += p.pauses.length
-        unplannedPausesCount += p.pauses.filter((pa) => pa.estNonPlanifiee).length
+      const realPauses = (p.pauses || []).filter((pa) => estPauseReelleEffectuee(pa))
+      if (realPauses.length) {
+        pausesCount += realPauses.length
+        unplannedPausesCount += realPauses.filter((pa) => pa.estNonPlanifiee).length
       }
       if (p.status !== 'present' && p.status !== 'conflit_absence_pointage' && p.status !== 'nuit_rattachee') continue
       const m = String(p.firstIn?.method || '').toLowerCase()
@@ -893,7 +897,7 @@ export function PointagesPassportGrid({
               ? 100
               : 0
 
-          const pausesList = p.pauses || []
+          const pausesList = (p.pauses || []).filter((pa) => estPauseReelleEffectuee(pa))
           const activePause = pausesList.find((pa) => pa.ouverte)
           const hasUnplannedPause = pausesList.some((pa) => pa.estNonPlanifiee)
           const totalPauseMin = pausesList.reduce((acc, pa) => acc + (Number(pa.dureeMinutes) || 0), 0)
@@ -1133,6 +1137,8 @@ export function PointagesSlideOverDrawer({
   const gps = pointage.gpsDetails
   const face = pointage.faceDetails
   const pauses = pointage.pauses || []
+  const realPauses = pauses.filter((pa) => estPauseReelleEffectuee(pa))
+  const presumedPauses = pauses.filter((pa) => estPausePresumee(pa) && pa.statut !== 'ecartee')
   const fullName = `${pointage.employee?.first_name || ''} ${pointage.employee?.last_name || ''}`.trim() || 'Employé'
   const entryMethodLabel = pointage.firstIn ? formatMethodLabel(pointage.firstIn.method) : null
   const exitMethodLabel = isRealExit ? formatMethodLabel(pointage.lastOut.method || pointage.firstIn?.method) : null
@@ -1302,15 +1308,15 @@ export function PointagesSlideOverDrawer({
           </div>
         )}
 
-        {/* 4. PAUSES DE L'EMPLOYÉ (PLANIFIÉES + NON PLANIFIÉES + TEMPS RÉEL) */}
+        {/* 4. HISTORIQUE DES PAUSES RÉELLEMENT EFFECTUÉES (NON PRÉSUMÉES) */}
         <div className="pointages-drawer-section">
           <div className="pointages-drawer-section-title">
             <Clock size={14} color="var(--pt-copper)" />
-            <strong>Pauses effectuées ({pauses.length})</strong>
+            <strong>Pauses réellement effectuées ({realPauses.length})</strong>
           </div>
-          {pauses.length > 0 ? (
+          {realPauses.length > 0 ? (
             <div className="pointages-drawer-pauses-list">
-              {pauses.map((pa) => (
+              {realPauses.map((pa) => (
                 <div className="pointages-drawer-pause-item" key={pa.id}>
                   <div>
                     <strong>
@@ -1318,13 +1324,11 @@ export function PointagesSlideOverDrawer({
                       {pa.estNonPlanifiee && <em className="pointages-unplanned-pill">Hors planning</em>}
                     </strong>
                     <span>
-                      {pa.source === 'inter_sessions'
-                        ? 'Coupure pointée entre 2 sessions (non planifiée)'
-                        : pa.statut === 'presumee'
-                          ? 'Pause présumée du planning'
-                          : pa.estNonPlanifiee
-                            ? 'Pause réelle effectuée (hors planning)'
-                            : 'Pause réelle pointée'}
+                      {pa.estNonPlanifiee
+                        ? 'Pause réelle effectuée (non présumée · hors planning)'
+                        : pa.source === 'admin'
+                          ? 'Pause réelle enregistrée par l’administrateur'
+                          : 'Pause réelle pointée (non présumée)'}
                     </span>
                   </div>
                   <span className={`pointages-drawer-pause-duration${pa.ouverte ? ' is-live' : ''}`}>
@@ -1337,9 +1341,35 @@ export function PointagesSlideOverDrawer({
           ) : (
             <p className="pointages-drawer-muted">
               {sched.hasBreak && sched.breakStart
-                ? `Créneau de pause prévu (${sched.breakStart} – ${sched.breakEnd || ''}), aucune pause pointée.`
-                : 'Aucune pause enregistrée aujourd’hui (ni planifiée, ni hors planning).'}
+                ? `Créneau de pause prévu (${sched.breakStart} – ${sched.breakEnd || ''}), aucune pause réelle pointée.`
+                : 'Aucune pause réelle effectuée aujourd’hui.'}
             </p>
+          )}
+
+          {presumedPauses.length > 0 && (
+            <div className="pointages-drawer-pauses-list" style={{ marginTop: 8 }}>
+              {presumedPauses.map((pa) => (
+                <div
+                  className="pointages-drawer-pause-item"
+                  key={pa.id}
+                  style={{ borderStyle: 'dashed', opacity: 0.9 }}
+                >
+                  <div>
+                    <strong>
+                      ⏳ {pa.debutHHMM} → {pa.finHHMM || '--:--'}
+                    </strong>
+                    <span>
+                      {pa.statut === 'validee'
+                        ? '✓ Pause présumée validée (grille horaire)'
+                        : '⏳ Pause présumée du planning — non pointée (hors historique réel)'}
+                    </span>
+                  </div>
+                  <span className="pointages-drawer-pause-duration">
+                    {formaterTempsPauseEnDirect(pa, nowMs)}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

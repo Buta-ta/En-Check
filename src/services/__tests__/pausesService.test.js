@@ -7,6 +7,12 @@ import {
   formatDuree,
   exportCsvPauses,
   STATUTS_A_STATUER,
+  estPausePresumee,
+  estPauseNonPresumee,
+  estPauseReelleEffectuee,
+  filtrerHistoriquePausesReelles,
+  filtrerPausesPresumees,
+  fusionnerPausesEmploye,
 } from '../pausesService.js'
 
 beforeEach(() => {
@@ -63,6 +69,54 @@ describe('⏸ Service Pauses — présentation pure (16/10/2026)', () => {
     expect(stats.nbPresumees).toBe(1)
     // 55 + 60 minutes de pause
     expect(stats.dureeTotale).toBe(115)
+  })
+
+  it('distingue strictement pauses présumées et pauses non présumées (réellement effectuées)', () => {
+    const { paies, stats } = construirePauses([ligneReelle, lignePresumee])
+    expect(estPauseNonPresumee(paies[0])).toBe(true)
+    expect(estPauseReelleEffectuee(paies[0])).toBe(true)
+    expect(estPausePresumee(paies[0])).toBe(false)
+
+    expect(estPausePresumee(paies[1])).toBe(true)
+    expect(estPauseNonPresumee(paies[1])).toBe(false)
+    expect(estPauseReelleEffectuee(paies[1])).toBe(false)
+
+    const historiqueReel = filtrerHistoriquePausesReelles(paies)
+    expect(historiqueReel).toHaveLength(1)
+    expect(historiqueReel[0].id).toBe(ligneReelle.id)
+
+    const presumees = filtrerPausesPresumees(paies)
+    expect(presumees).toHaveLength(1)
+    expect(presumees[0].id).toBe(lignePresumee.id)
+
+    expect(stats.nbReellesEffectuees).toBe(1)
+    expect(stats.dureeReelleMinutes).toBe(55)
+    expect(stats.nbPresumeesTotal).toBe(1)
+    expect(stats.nbPresumeesAStatuer).toBe(1)
+  })
+
+  it('ne crée jamais de fausse pause réelle à partir d’un intervalle Sortie → Entrée dans attendances (cas Hippo BIYOKILA 10:00:36→10:07:22)', () => {
+    const validPairs = [
+      {
+        in: { id: 'in-1', check_time: '2026-10-20T08:00:00+01:00', check_type: 'in' },
+        out: { id: 'out-1', check_time: '2026-10-20T10:00:36+01:00', check_type: 'out' },
+      },
+      {
+        in: { id: 'in-2', check_time: '2026-10-20T10:07:22+01:00', check_type: 'in' },
+        out: null,
+      },
+    ]
+
+    const merged = fusionnerPausesEmploye({
+      pausesTable: [],
+      validPairs,
+      employee: { id: 'emp-hippo', first_name: 'Hippo', last_name: 'BIYOKILA', matricule: 'MAT-01' },
+      scheduleInfo: { mode: 'general', hasBreak: true },
+      selectedDate: '2026-10-20',
+    })
+
+    expect(merged).toHaveLength(0)
+    expect(filtrerHistoriquePausesReelles(merged)).toHaveLength(0)
   })
 
   it('pause ouverte (sans reprise) : finHHMM null, OUVERTE signalée', () => {
