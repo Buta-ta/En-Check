@@ -1077,12 +1077,22 @@ export default function Pointages() {
         .eq('jour', selectedDate)
       if (targetEid !== 'all') directPausesQuery = directPausesQuery.eq('enterprise_id', targetEid)
 
+      //  Option payante : on ne lit QUE les affectations des employés affichés.
+      //  Sans ce filtre, une affectation d'une autre entreprise (ou d'un
+      //  employé qui n'est plus suivi) faisait croire à un « planning
+      //  personnalisé » chez une entreprise qui n'a pas souscrit au module.
+      const employeeIdsAffiches = (employees || []).map((e) => e.id).filter(Boolean)
+      let empSchedulesQuery = supabase
+        .from('employee_schedules')
+        .select('*, work_schedules(*)')
+        .eq('is_active', true)
+      if (employeeIdsAffiches.length > 0) {
+        empSchedulesQuery = empSchedulesQuery.in('employee_id', employeeIdsAffiches)
+      }
+
       const [allSchedules, { data: empSchedulesData }, pausesRpcRes, directPausesRes] = await Promise.all([
         FeatureService.loadSchedules(enterpriseIds),
-        supabase
-          .from('employee_schedules')
-          .select('*, work_schedules(*)')
-          .eq('is_active', true),
+        empSchedulesQuery.then((res) => res).catch(() => ({ data: [] })),
         supabase
           .rpc('encheck_pauses_lire', {
             p_enterprise: targetEid === 'all' ? null : targetEid,
@@ -1139,6 +1149,10 @@ export default function Pointages() {
           selectedDate,
           allSchedules
         )
+        //  Option payante « Planning » : seul un `true` explicite l'active.
+        //  `null` / `undefined` ne vaut pas « activé », sinon la page affiche
+        //  un planning que l'entreprise n'a jamais acheté.
+        const planningEnabledOnEnterprise = employee.enterprises?.module_planning === true
         const enterpriseCfg = {
           autoCloseEnabled: employee.enterprises?.auto_close_enabled === true,
           autoCloseTime: (employee.enterprises?.auto_close_time || '23:59:00').slice(0, 8),
@@ -1156,8 +1170,11 @@ export default function Pointages() {
           lastOut,
         } = resoudrePointagesJournee(rawEmpAttendances, selectedDate, {
           enableAutoClose: true,
-          employeeSchedule: employeeSchedulesMap[employee.id] || null,
-          defaultSchedule,
+          //  Pas de planning transmis au moteur si l'option n'est pas payée :
+          //  ni retard, ni heure supplémentaire calculés sur un horaire
+          //  qui n'appartient pas à l'entreprise.
+          employeeSchedule: planningEnabledOnEnterprise ? employeeSchedulesMap[employee.id] || null : null,
+          defaultSchedule: planningEnabledOnEnterprise ? defaultSchedule : null,
           enterpriseCfg,
           //  Arbitrage n°2, faille 1 : les seuils de la base, enfin transmis.
           seuils: seuilsByEnterprise[employee.enterprise_id] || null,
@@ -1217,11 +1234,19 @@ export default function Pointages() {
           : null
 
         const empSched = employeeSchedulesMap[employee.id] || null
-        const planningEnabledOnEnterprise = employee.enterprises?.module_planning !== false
+        //  Une affectation SANS horaire n'est pas un planning : aucune heure
+        //  n'est inventée (jamais de repli « 08:00 – 17:00 »).
+        const persoStartRaw = empSched?.use_custom_hours ? empSched.custom_start_time : empSched?.work_schedules?.start_time
+        const persoEndRaw = empSched?.use_custom_hours ? empSched.custom_end_time : empSched?.work_schedules?.end_time
+        const planningPersoValide =
+          planningEnabledOnEnterprise &&
+          Boolean(empSched) &&
+          Boolean(empSched.use_custom_hours || empSched.work_schedules) &&
+          Boolean(persoStartRaw && persoEndRaw)
+        const planningGeneralValide =
+          planningEnabledOnEnterprise && Boolean(defaultSchedule?.start_time && defaultSchedule?.end_time)
         let scheduleInfo
-        if (empSched && (empSched.use_custom_hours || empSched.work_schedules)) {
-          const startRaw = empSched.use_custom_hours ? empSched.custom_start_time : empSched.work_schedules?.start_time
-          const endRaw = empSched.use_custom_hours ? empSched.custom_end_time : empSched.work_schedules?.end_time
+        if (planningPersoValide) {
           const hasBreak = empSched.use_custom_hours ? Boolean(empSched.custom_has_break) : Boolean(empSched.work_schedules?.has_break)
           const breakStart = empSched.use_custom_hours ? empSched.custom_break_start : empSched.work_schedules?.break_start
           const breakEnd = empSched.use_custom_hours ? empSched.custom_break_end : empSched.work_schedules?.break_end
@@ -1230,19 +1255,19 @@ export default function Pointages() {
             label: empSched.work_schedules?.name && !empSched.use_custom_hours
               ? `Planning perso · ${empSched.work_schedules.name}`
               : 'Planning personnalisé',
-            startTime: startRaw ? String(startRaw).slice(0, 5) : '08:00',
-            endTime: endRaw ? String(endRaw).slice(0, 5) : '18:00',
+            startTime: String(persoStartRaw).slice(0, 5),
+            endTime: String(persoEndRaw).slice(0, 5),
             hasBreak,
             breakStart: breakStart ? String(breakStart).slice(0, 5) : null,
             breakEnd: breakEnd ? String(breakEnd).slice(0, 5) : null,
             toleranceMinutes: Number(empSched.work_schedules?.late_tolerance_minutes || 0),
           }
-        } else if (planningEnabledOnEnterprise && defaultSchedule) {
+        } else if (planningGeneralValide) {
           scheduleInfo = {
             mode: 'enterprise',
             label: defaultSchedule.name ? `Planning général · ${defaultSchedule.name}` : 'Planning général entreprise',
-            startTime: defaultSchedule.start_time ? String(defaultSchedule.start_time).slice(0, 5) : '08:00',
-            endTime: defaultSchedule.end_time ? String(defaultSchedule.end_time).slice(0, 5) : '18:00',
+            startTime: String(defaultSchedule.start_time).slice(0, 5),
+            endTime: String(defaultSchedule.end_time).slice(0, 5),
             hasBreak: Boolean(defaultSchedule.has_break),
             breakStart: defaultSchedule.break_start ? String(defaultSchedule.break_start).slice(0, 5) : null,
             breakEnd: defaultSchedule.break_end ? String(defaultSchedule.break_end).slice(0, 5) : null,
@@ -1251,7 +1276,9 @@ export default function Pointages() {
         } else {
           scheduleInfo = {
             mode: 'none',
-            label: 'Planning non disponible dans En-Check',
+            label: planningEnabledOnEnterprise
+              ? 'Aucun créneau En-Check assigné'
+              : 'Planning non disponible dans En-Check (option non activée)',
             startTime: null,
             endTime: null,
             hasBreak: false,
