@@ -7,6 +7,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
+import { KenteAmberWeaveSvg } from '../components/AfroCulturalSvg'
 import HolidayService from '../services/holidayService'
 import LeaveBalanceService from '../services/leaveBalanceService'
 import {
@@ -1806,6 +1807,24 @@ export default function Absences() {
   }
   
   /* ═══════════════════════════════════════════════════════════
+     🎯 FRISE TEXTILE KENTE — HAUT DE PAGE (orange · jaune · noir)
+  ═══════════════════════════════════════════════════════════ */
+
+  .abs-kente-top-strip {
+    width: 100%;
+    height: 14px;
+    overflow: hidden;
+    line-height: 0;
+    border-bottom: 1px solid rgba(245, 158, 11, 0.18);
+  }
+
+  .abs-kente-top-strip svg {
+    width: 100%;
+    height: 14px;
+    display: block;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
      🎯 ACCESSIBILITÉ
   ═══════════════════════════════════════════════════════════ */
   
@@ -1819,6 +1838,11 @@ export default function Absences() {
 `}</style>
 
       <div style={S.container}>
+        {/* Frise supérieure textile Kente — palette ambre (orange · jaune · noir) */}
+        <div className="abs-kente-top-strip" aria-hidden="true">
+          <KenteAmberWeaveSvg />
+        </div>
+
         <PageHeader title="ABSENCES & CONGÉS" />
 
         <main style={S.main}>

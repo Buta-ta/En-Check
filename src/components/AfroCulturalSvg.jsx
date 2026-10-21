@@ -66,6 +66,125 @@ export function KenteWovenTapestrySvg({ className = '' }) {
   )
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// FRISE KENTE — PALETTE AMBRE (orange · jaune · noir)
+// Même trame tissée que KenteWovenTapestrySvg, mais restreinte aux trois
+// teintes du bandeau haut de page : aucune touche émeraude ni indigo.
+// Utilisée par la page Absences ; réutilisable par les autres pages.
+// ═══════════════════════════════════════════════════════════════════════
+export function KenteAmberWeaveSvg({ className = '' }) {
+  const NOIR = '#15110E'
+  const NOIR_TISSE = '#1A120C'
+  const OR = '#E8AE3E'
+  const OR_CLAIR = '#F4D078'
+  const OR_PALE = '#FFF3D1'
+  const AMBRE = '#F59E0B'
+  const CUIVRE = '#C25E28'
+  const SIENNE = '#8C3418'
+
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 960 28"
+      fill="none"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <defs>
+        <pattern
+          id="encheck-kente-amber"
+          x="0"
+          y="0"
+          width="240"
+          height="28"
+          patternUnits="userSpaceOnUse"
+        >
+          {/* Bloc 1 : rayures horizontales cuivre & or sur trame noire */}
+          <rect width="38" height="28" fill={CUIVRE} />
+          <rect x="0" y="4" width="38" height="4" fill={OR} />
+          <rect x="0" y="12" width="38" height="4" fill={NOIR} />
+          <rect x="0" y="20" width="38" height="4" fill={OR} />
+          <path
+            d="M5 0 V28 M19 0 V28 M33 0 V28"
+            stroke={OR_CLAIR}
+            strokeWidth="1.5"
+            strokeOpacity="0.65"
+          />
+
+          {/* Bloc 2 : damier Kente ambre / or / noir sur sienne brûlée */}
+          <rect x="38" y="0" width="34" height="28" fill={SIENNE} />
+          <rect x="40" y="2" width="9" height="7" fill={OR} />
+          <rect x="51" y="2" width="9" height="7" fill={NOIR} />
+          <rect x="62" y="2" width="8" height="7" fill={OR} />
+          <rect x="40" y="11" width="9" height="6" fill={AMBRE} />
+          <rect x="51" y="11" width="9" height="6" fill={OR} />
+          <rect x="62" y="11" width="8" height="6" fill={AMBRE} />
+          <rect x="40" y="19" width="9" height="7" fill={OR} />
+          <rect x="51" y="19" width="9" height="7" fill={NOIR} />
+          <rect x="62" y="19" width="8" height="7" fill={OR} />
+
+          {/* Bloc 3 : losange royal ambre sur fond noir */}
+          <rect x="72" y="0" width="44" height="28" fill={NOIR} />
+          <polygon points="94,2 112,14 94,26 76,14" fill={AMBRE} stroke={NOIR} strokeWidth="1.5" />
+          <polygon points="94,6 105,14 94,22 83,14" fill={CUIVRE} />
+          <circle cx="94" cy="14" r="2.8" fill={OR_PALE} />
+
+          {/* Bloc 4 : chevrons tissés sienne & or */}
+          <rect x="116" y="0" width="46" height="28" fill={SIENNE} />
+          <path
+            d="M120 3 L130 14 L120 25"
+            stroke={OR}
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M130 3 L140 14 L130 25"
+            stroke={AMBRE}
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M140 3 L150 14 L140 25"
+            stroke={OR}
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M150 3 L159 14 L150 25"
+            stroke={OR_CLAIR}
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Bloc 5 : tissage noir, fils or & cuivre */}
+          <rect x="162" y="0" width="38" height="28" fill={NOIR_TISSE} />
+          <rect x="162" y="5" width="38" height="4" fill={OR} />
+          <rect x="162" y="13" width="38" height="3" fill={CUIVRE} />
+          <rect x="162" y="20" width="38" height="4" fill={OR} />
+          <path d="M170 0 V28 M181 0 V28 M192 0 V28" stroke={NOIR} strokeWidth="2" />
+
+          {/* Bloc 6 : sabliers Adinkra ambre sur cuivre */}
+          <rect x="200" y="0" width="40" height="28" fill={CUIVRE} />
+          <polygon
+            points="206,3 234,3 220,14 234,25 206,25 220,14"
+            fill={AMBRE}
+            stroke={NOIR}
+            strokeWidth="1.4"
+          />
+          <line x1="200" y1="0" x2="200" y2="28" stroke={OR} strokeWidth="2" />
+          <line x1="239" y1="0" x2="239" y2="28" stroke={OR} strokeWidth="2" />
+        </pattern>
+      </defs>
+      <rect width="960" height="28" fill="url(#encheck-kente-amber)" />
+    </svg>
+  )
+}
+
 // Carré d'art textile africain tissé (4 variantes pour les 4 cartes KPI)
 export function WovenKenteBadgeSvg({ variant = 1, size = 46 }) {
   return (
