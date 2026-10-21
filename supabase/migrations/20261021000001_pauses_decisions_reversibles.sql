@@ -107,10 +107,14 @@ BEGIN
     v_n := v_n + 1;
 
     BEGIN
-      PERFORM public.encheck_alerte_journaliser('encheck_pauses', v_id, v_ent, v_emp,
+      -- ATTENTION : surtout PAS `encheck_alerte_journaliser`, qui SUPPRIME la
+      -- ligne après l'avoir copiée (piège découvert le 21/10/2026, voir
+      -- 20261021000002). On passe par le journal pur.
+      PERFORM public.encheck_journal_tracer('encheck_pauses', v_id, v_ent, v_emp,
         'décision annulée (' || COALESCE(v_old, '?') || ' → ' ||
         CASE WHEN COALESCE(v_src, 'pointee') = 'presumee' THEN 'presumee' ELSE 'reelle' END || ')' ||
-        COALESCE(' — ' || p_motif, ''));
+        COALESCE(' — ' || p_motif, ''),
+        'decision_annulee');
     EXCEPTION WHEN OTHERS THEN
       NULL; -- le journal ne doit jamais empêcher l'annulation
     END;
@@ -119,6 +123,36 @@ BEGIN
   RETURN v_n;
 END;
 $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 1 bis. ENCHECK_JOURNAL_TRACER — journal d'audit PUR (il ne supprime rien)
+-- ─────────────────────────────────────────────────────────────────────────────
+--  Piège du 21/10/2026 : `encheck_alerte_journaliser` copie la ligne au journal
+--  PUIS LA SUPPRIME (c'est une fonction de purge d'alertes). Tracer une
+--  décision doit donc passer par cette fonction-ci, jamais par celle-là.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.encheck_journal_tracer(
+  p_table      text,
+  p_id         uuid,
+  p_enterprise uuid,
+  p_employee   uuid,
+  p_motif      text DEFAULT NULL,
+  p_action     text DEFAULT 'decision'
+)
+RETURNS void
+LANGUAGE plpgsql VOLATILE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF p_id IS NULL OR p_table IS NULL THEN RETURN; END IF;
+  EXECUTE format('INSERT INTO public.encheck_pointages_journal (enterprise_id, employee_id, attendance_id, action, motif, snapshot, pipeline, auteur) SELECT $1, $2, NULL, %L, $3, to_jsonb(a), %L, public.encheck_auteur_actuel() FROM public.%I a WHERE a.id = $4', p_action, 'encheck_journal_tracer', p_table)
+    USING p_enterprise, p_employee, p_motif, p_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.encheck_journal_tracer(text, uuid, uuid, uuid, text, text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.encheck_journal_tracer(text, uuid, uuid, uuid, text, text) FROM PUBLIC, anon;
 
 COMMENT ON FUNCTION public.encheck_pauses_annuler_decision(uuid[], text) IS
   'Revenir sur une décision Valider/Écarter : la pause reprend son statut d''origine (presumee si source=presumee, sinon reelle). Aucune suppression, décision tracée dans le journal d''audit.';
