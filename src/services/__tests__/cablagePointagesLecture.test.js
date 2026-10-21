@@ -20,6 +20,7 @@ const cssSrc = lire('src/pages/PointagesAfroTech.css')
 const hoursCalcSrc = lire('src/services/hoursCalculator.js')
 const pausesServiceSrc = lire('src/services/pausesService.js')
 const planningSrc = lire('src/pages/Planning.jsx')
+const planningCssSrc = lire('src/pages/PlanningAfroTech.css')
 const pausesSrc = lire('src/pages/Pauses.jsx')
 const pausesSectionsSrc = lire('src/components/PausesAfroTechSections.jsx')
 const hookSrc = lire('src/hooks/useLoadingMinimum.js')
@@ -267,6 +268,25 @@ describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => 
     expect(pointagesSrc).toContain('pauseDeduitesSecondes,')
     // Et l'écran le dit : ce qui est déduit est visible
     expect(pointagesSrc).toContain('déduit')
+  })
+
+
+  it('17. une pause supprimée est signalée sur la case du jour', () => {
+    // Le planning lit la corbeille des pauses sur la période affichée
+    expect(planningSrc).toContain('encheck_pauses_archives_lire')
+    expect(planningSrc).toContain('setPausesSupprimees(')
+    // … et repère la case « employé | jour » concernée
+    expect(planningSrc).toContain('const supprimeesDuJour =')
+    expect(planningSrc).toContain('pausesSupprimees[`${emp.id}|${dayItem.dateStr}`]')
+    // Le signe « pause » de la case est barré en rouge…
+    expect(planningSrc).toContain('sk-shift-break' + '${')
+    expect(planningCssSrc).toContain('.sk-shift-break.is-supprimee')
+    expect(planningCssSrc).toContain('text-decoration: line-through')
+    // … et un signe explicite apparaît dans la case
+    expect(planningSrc).toContain('Pause supprimée')
+    expect(planningCssSrc).toContain('.sk-shift-pause-supprimee')
+    // Sans le script SQL, la map reste vide : le planning continue de tourner
+    expect(planningSrc).toContain('setPausesSupprimees({})')
   })
 
 })
