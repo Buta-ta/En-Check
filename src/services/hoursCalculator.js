@@ -1546,6 +1546,13 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
   const validPairs = []
   let totalSecondes = 0
 
+  //  Sessions ouvertes jamais fermées, rangées par jour : un badge d'entrée
+  //  postérieur ne les efface PLUS. Sans cette mémoire, une journée dont la
+  //  sortie manque restait « en cours » à vie — et la case du planning
+  //  clignotait sans fin — alors que la page Pointages, elle, applique la
+  //  règle d'auto-clôture (voir plus bas).
+  const sessionsOuvertesAbandonnees = new Map()
+
   for (const att of sorted) {
     const attTime = new Date(att.check_time)
     const attDateStr = jourLocal(att.check_time) || att.check_time.split('T')[0]
@@ -1608,6 +1615,13 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
           attendancesDuJour.push(att)
           continue
         }
+      }
+
+      //  Avant d'écraser une session restée ouverte, on la met de côté pour
+      //  SON jour : la règle d'auto-clôture pourra la fermer (sortie manquante)
+      //  au lieu de la laisser « en cours » indéfiniment.
+      if (openIn && openDay && openDay !== attDateStr && !sessionsOuvertesAbandonnees.has(openDay)) {
+        sessionsOuvertesAbandonnees.set(openDay, openIn)
       }
 
       openIn = att
@@ -1699,13 +1713,20 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
     }
   }
 
+  //  La session ouverte de `selectedDate` : soit celle qui l'est encore, soit
+  //  celle qu'un badge d'entrée d'un jour postérieur a écrasée (mise de côté
+  //  plus haut). Même règle que la page Pointages dans les deux cas.
+  const openInDuJour =
+    openIn && openDay === selectedDate ? openIn : sessionsOuvertesAbandonnees.get(selectedDate) || null
+  let openInDuJourFermee = false
+
   // Gestion des sessions restées ouvertes sur `selectedDate` (Oubli de dépointage vs Session en cours)
-  if (openIn && openDay === selectedDate && options?.enableAutoClose) {
+  if (openInDuJour && options?.enableAutoClose) {
     const now = options.referenceNow ? new Date(options.referenceNow) : new Date()
     const nowDayStr = jourLocal(now) || now.toISOString().split('T')[0]
-    const inDate = new Date(openIn.check_time)
+    const inDate = new Date(openInDuJour.check_time)
     const elapsedHours = (now - inDate) / (1000 * 60 * 60)
-    const inMinutes = minutesDepuisMinuit(openIn.check_time)
+    const inMinutes = minutesDepuisMinuit(openInDuJour.check_time)
 
     // Oubli de dépointage avéré :
     // - soit plus de `oubliSortieHeures` se sont écoulées sans sortie (jour ou nuit),
@@ -1719,7 +1740,7 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
     //  été ÉCARTÉE par un admin : il a dit « cette heure est fausse ». On montre
     //  la journée comme non fermée, on ne redevine pas à l'identique.
     const estimationDejaTraitee = horsCalcul.some(
-      (a) => (a.estimation_source_id && a.estimation_source_id === openIn.id) ||
+      (a) => (a.estimation_source_id && a.estimation_source_id === openInDuJour.id) ||
         (!a.estimation_source_id && estEstimationEcartee(a) && a.check_type === 'out')
     )
 
@@ -1728,7 +1749,7 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
         options.plan ||
         resolvePlanForExpected(options.employeeSchedule || null, options.defaultSchedule || null)
 
-      const virtualOutDate = calculerSortieAutoClose(openIn, {
+      const virtualOutDate = calculerSortieAutoClose(openInDuJour, {
         plan: resolvedPlan,
         enterpriseCfg: options.enterpriseCfg || null,
         referenceNow: now,
@@ -1736,10 +1757,10 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
 
       if (virtualOutDate > inDate) {
         const virtualOut = {
-          id: `virtual-out-${openIn.id}`,
+          id: `virtual-out-${openInDuJour.id}`,
           estimation_niveau: virtualOutDate.autoCloseNiveau,
-          employee_id: openIn.employee_id,
-          enterprise_id: openIn.enterprise_id,
+          employee_id: openInDuJour.employee_id,
+          enterprise_id: openInDuJour.enterprise_id,
           check_time: virtualOutDate.toISOString(),
           check_type: 'out',
           is_auto_closed: true,
@@ -1747,20 +1768,31 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
         }
         //  Durée INVENTÉE = jamais dans le total « travaillé » (décision §4.1) :
         //  comptée dans `totalSecondesPresumes`, affichée à part, non payée.
-        totalSecondesPresumes += calculerDureeSecondes(openIn.check_time, virtualOut.check_time)
-        validPairs.push({ in: openIn, out: virtualOut })
-        openIn = null
-        lastOpenIn = null
-        openDay = null
+        totalSecondesPresumes += calculerDureeSecondes(openInDuJour.check_time, virtualOut.check_time)
+        validPairs.push({ in: openInDuJour, out: virtualOut })
+        openInDuJourFermee = true
+        //  On ne vide l'état courant que s'il s'agit de la session en cours :
+        //  une session écrasée n'a jamais été dans `openIn` à ce stade.
+        if (openIn === openInDuJour) {
+          openIn = null
+          lastOpenIn = null
+          openDay = null
+        }
       }
     }
   }
+
+  //  La session du jour est encore ouverte si aucun badge et aucune
+  //  auto-clôture ne l'ont fermée — y compris une session écrasée pour
+  //  laquelle l'auto-clôture n'a pas (encore) pu s'appliquer.
+  const sessionDuJourOuverte =
+    (openIn && openDay === selectedDate) || Boolean(openInDuJour && !openInDuJourFermee)
 
   let firstIn = validPairs.length > 0 ? validPairs[0].in : null
   // Si une nouvelle session est actuellement ouverte sur selectedDate (openIn non clôturé),
   // l'employé est actuellement en service : lastOut reste null (--:--:--) au lieu d'afficher une sortie passée.
   let lastOut =
-    openIn && openDay === selectedDate
+    sessionDuJourOuverte
       ? null
       : validPairs.length > 0
         ? validPairs[validPairs.length - 1].out

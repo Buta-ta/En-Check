@@ -1138,6 +1138,37 @@
   background: var(--pt-copper-soft);
 }
 
+/* Pause SUPPRIMÉE : la ligne du jour le dit, rien ne disparaît en silence. */
+.pointages-pause-supprimee {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 9px;
+  color: #fca5a5;
+  font-size: 10px;
+  font-weight: 680;
+  line-height: 1.45;
+  border: 1px dashed rgba(239, 68, 68, 0.45);
+  border-radius: 9px;
+  background: rgba(239, 68, 68, 0.09);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-align: left;
+}
+
+.pointages-pause-supprimee svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #ef4444;
+}
+
+.pointages-pause-supprimee strong {
+  color: #fecaca;
+  font-weight: 800;
+}
+
 .pointages-passport-empty-status {
   padding: 7px 10px;
   color: var(--pt-muted);
