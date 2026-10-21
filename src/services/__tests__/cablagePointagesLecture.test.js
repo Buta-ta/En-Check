@@ -21,6 +21,7 @@ const planningSrc = lire('src/pages/Planning.jsx')
 const pausesSrc = lire('src/pages/Pauses.jsx')
 const pausesSectionsSrc = lire('src/components/PausesAfroTechSections.jsx')
 const hookSrc = lire('src/hooks/useLoadingMinimum.js')
+const diagnosticSql = lire('supabase/outils-sql/20261021_diagnostic_pause_disparue.sql')
 
 describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => {
   it('1. les heures supplémentaires sont affichées en mode Passeport', () => {
@@ -108,6 +109,38 @@ describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => 
     expect(pausesSectionsSrc).toContain("event.key === 'Escape'")
     expect(pausesSectionsSrc).toContain('p.natureLabel')
     expect(cssSrc).toContain('.pauses-v2-hour-detail-head')
+  })
+
+
+  it('7. le journal des décisions rend toute pause validée ou écartée retrouvable', () => {
+    // Composant dédié, alimenté par les statuts validee / ecartee
+    expect(pausesSectionsSrc).toContain('export function PausesJournalDecisions')
+    expect(pausesSectionsSrc).toContain("p.statut === 'validee' || p.statut === 'ecartee'")
+    expect(pausesSectionsSrc).toContain('pauses-v2-journal-panel')
+    expect(pausesSectionsSrc).toContain('Voir dans la liste')
+    // Câblé dans la page, avec un bouton qui ramène la ligne dans le tableau
+    expect(pausesSrc).toContain('PausesJournalDecisions')
+    expect(pausesSrc).toContain('onVoir={voirPause}')
+    expect(pausesSrc).toContain('const voirPause = useCallback(')
+    // … y compris pour une pause ÉCARTÉE, qui a désormais son filtre
+    expect(pausesSrc).toContain("setSubFilter('ecartees')")
+    expect(pausesSectionsSrc).toContain("subFilter === 'ecartees'")
+    expect(pausesSectionsSrc).toContain("value=\"ecartees\"")
+    // Un script SQL livré pour vérifier en base ce que contient vraiment la table
+    expect(diagnosticSql).toContain('encheck_pauses')
+    expect(diagnosticSql).toContain("p.source,   -- pointee | presumee | admin")
+  })
+
+  it('8. après Valider / Écarter, l’écran atterrit là où la pause se trouve', () => {
+    // Le toast annonce la destination au lieu de laisser croire à une disparition
+    expect(pausesSrc).toContain('classée dans « Présumées → Validées »')
+    expect(pausesSrc).toContain('retrouvable dans « Écartées » et dans le journal')
+    // Et le filtre suit : présumée validée → onglet Présumées → Validées
+    expect(pausesSrc).toContain("setActiveTab('presumees')")
+    expect(pausesSrc).toContain("setSubFilter('presumees_validees')")
+    // Une réelle validée reste dans l'onglet Réelles, recherche réinitialisée
+    expect(pausesSrc).toContain("setActiveTab('reelles')")
+    expect(pausesSrc).toContain("setSearchTerm('')")
   })
 
 })
