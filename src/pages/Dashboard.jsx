@@ -83,6 +83,10 @@ export default function Dashboard() {
 
   const [modulePlanning, setModulePlanning] = useState(false)
   const [moduleRetards, setModuleRetards] = useState(false)
+  //  Option payante « Retards », lue ENTREPRISE PAR ENTREPRISE : un super admin
+  //  qui voit toutes les entreprises ne doit pas voir les retards de celles qui
+  //  n'ont pas souscrit.
+  const [retardsOptionActive, setRetardsOptionActive] = useState(false)
   const [moduleConges, setModuleConges] = useState(false)
   const [moduleHeuresSup, setModuleHeuresSup] = useState(false)
   const [moduleGeofencing, setModuleGeofencing] = useState(false)
@@ -413,12 +417,11 @@ export default function Dashboard() {
     // Heure locale de l'entreprise + respect du planning personnalisé ou par défaut de chaque employé.
     const empSchedData = employeeSchedulesRes?.data || []
     const defSchedData = defaultSchedulesRes?.data || []
-    const retardsToday = compterRetardsDuJour(
-      retardEntries,
-      empSchedData,
-      defSchedData,
-      today
-    )
+    const retardsOptionActive = Boolean(entrepriseData?.module_retards)
+    setRetardsOptionActive(retardsOptionActive)
+    const retardsToday = retardsOptionActive
+      ? compterRetardsDuJour(retardEntries, empSchedData, defSchedData, today)
+      : 0
     const tauxPresence = employesData.length > 0 ? Math.round((presentsToday / employesData.length) * 100) : 0
 
     const conflictsData = await loadConflicts(enterpriseId)
@@ -432,7 +435,7 @@ export default function Dashboard() {
 
     setRecentActivity(recentData.map(item => {
       const isEntry = String(item.check_type || '').toLowerCase() === 'in'
-      const isLate = isEntry && compterRetardsDuJour(
+      const isLate = isEntry && retardsOptionActive && compterRetardsDuJour(
         [{ ...item, enterprise_id: item.enterprise_id || enterpriseId }],
         empSchedData,
         defSchedData,
@@ -531,8 +534,13 @@ export default function Dashboard() {
     // Heure locale de l'entreprise + respect du planning personnalisé ou par défaut de chaque employé.
     const empSchedData = employeeSchedulesRes?.data || []
     const defSchedData = defaultSchedulesRes?.data || []
+    const entreprisesAvecRetards = new Set(
+      (entreprisesData || []).filter((ent) => ent.module_retards).map((ent) => ent.id),
+    )
+    const retardsAutorises = (entId) => entreprisesAvecRetards.has(entId)
+    setRetardsOptionActive(entreprisesAvecRetards.size > 0)
     const retardsToday = compterRetardsDuJour(
-      retardEntries,
+      retardEntries.filter((a) => retardsAutorises(a.enterprise_id)),
       empSchedData,
       defSchedData,
       today
@@ -549,7 +557,7 @@ export default function Dashboard() {
 
     setRecentActivity(recentData.map(item => {
       const isEntry = String(item.check_type || '').toLowerCase() === 'in'
-      const isLate = isEntry && compterRetardsDuJour(
+      const isLate = isEntry && retardsAutorises(item.enterprise_id) && compterRetardsDuJour(
         [item],
         empSchedData,
         defSchedData,
@@ -972,6 +980,7 @@ export default function Dashboard() {
         isMultiEntreprise={isMultiEntreprise}
         modulePlanning={modulePlanning}
         moduleRetards={moduleRetards}
+        retardsOptionActive={retardsOptionActive}
         moduleConges={moduleConges}
         moduleHeuresSup={moduleHeuresSup}
         moduleGeofencing={moduleGeofencing}

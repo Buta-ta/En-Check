@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -144,6 +144,7 @@ export default function DashboardExperience({
   isMultiEntreprise,
   modulePlanning,
   moduleRetards,
+  retardsOptionActive = false,
   moduleConges,
   moduleHeuresSup,
   moduleGeofencing,
@@ -381,7 +382,7 @@ export default function DashboardExperience({
   const widgetCatalog = [
     { id: 'present', label: 'Ayant pointé aujourd’hui', description: 'Membres de l’équipe ayant pointé.', icon: UserCheck, value: loadError ? '—' : `${presentCount} / ${employeeCount}`, caption: metricCaption(`${presenceRate}% de l’équipe`), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Pointages', path: '/pointages?status=present' },
     { id: 'review', label: 'À traiter', description: 'Conflits, demandes et sorties à vérifier.', icon: ShieldCheck, value: metricValue(reviewCount, true), caption: metricCaption('Situations à examiner'), tone: 'review', progress: metricShare(reviewCount), sourceLabel: 'Activité', path: '/pointages' },
-    { id: 'late', label: 'Retards', description: 'Arrivées après l’horaire prévu.', icon: Timer, value: metricValue(lateCount, true), caption: metricCaption('Retards du jour'), tone: 'late', progress: metricShare(lateCount), sourceLabel: 'Retards', path: isSuperAdmin || moduleRetards ? '/retards' : '/pointages?status=present' },
+    { id: 'late', label: 'Retards', description: 'Arrivées après l’horaire prévu.', icon: Timer, value: metricValue(lateCount, true), caption: metricCaption('Retards du jour'), tone: 'late', progress: metricShare(lateCount), sourceLabel: 'Retards', path: isSuperAdmin || moduleRetards ? '/retards' : '/pointages?status=present', available: retardsOptionActive },
     { id: 'absence', label: 'Absents', description: 'Membres sans pointage ni congé déclaré.', icon: UserX, value: metricValue(absentCount, true), caption: metricCaption('Sans pointage déclaré'), tone: 'absent', progress: metricShare(absentCount), sourceLabel: 'Pointages', path: '/pointages?status=absent' },
     { id: 'leaves', label: 'Congés / maladie', description: 'Absences autorisées aujourd’hui.', icon: CalendarOff, value: metricValue(leaveCount, true), caption: metricCaption('Congés ou maladie'), tone: 'leave', progress: metricShare(leaveCount), sourceLabel: 'Absences', path: '/absences', available: isSuperAdmin || moduleConges },
     { id: 'presence-rate', label: 'Taux de pointage', description: 'Part de l’équipe ayant pointé aujourd’hui.', icon: TrendingUp, value: metricValue(`${presenceRate}%`), caption: metricCaption('Taux du jour'), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Rapports', path: '/rapports' },
@@ -417,6 +418,9 @@ export default function DashboardExperience({
   const [isTopbarCatalogOpen, setIsTopbarCatalogOpen] = useState(false)
   const [draggedTopbarItemId, setDraggedTopbarItemId] = useState(null)
   const [activityFilter, setActivityFilter] = useState('all')
+  useEffect(() => {
+    if (!retardsOptionActive && activityFilter === 'late') setActivityFilter('all')
+  }, [retardsOptionActive, activityFilter])
   const [selectedActivityItem, setSelectedActivityItem] = useState(null)
   const [isForgottenExitModalOpen, setIsForgottenExitModalOpen] = useState(false)
   const [exitTimesById, setExitTimesById] = useState({})
@@ -473,11 +477,25 @@ export default function DashboardExperience({
     }
   }, [quickActionStorageKey, quickActionIds])
 
+  //  Les tableaux `availableWidgetIds` / `defaultWidgetIds` / `availableQuickActionIds`
+  //  sont reconstruits à CHAQUE rendu. Les mettre tels quels dans les dépendances
+  //  de l'effet le relançait donc après chaque clic : il relisait les préférences
+  //  distantes — qui ne sont enregistrées qu'après 650 ms de temporisation — et
+  //  réappliquait l'ANCIENNE liste. Le widget qu'on venait de retirer réapparaissait
+  //  aussitôt. D'où : dépendances en signatures texte + chargement une seule fois
+  //  par périmètre, pour qu'une modification locale ne soit plus jamais écrasée.
+  const widgetCatalogSignature = availableWidgetIds.join('|')
+  const quickActionSignature = availableQuickActionIds.join('|')
+  const remotePrefsLoadedRef = useRef('')
+
   useEffect(() => {
     let cancelled = false
     if (!admin?.id) return undefined
+    const clePerimetre = `${admin.id}:${enterpriseScopeKey}:${widgetCatalogSignature}:${quickActionSignature}`
+    if (remotePrefsLoadedRef.current === clePerimetre) return undefined
     loadRemoteDashboardPreferences(admin.id, enterpriseScopeKey).then((remote) => {
       if (cancelled || !remote) return
+      remotePrefsLoadedRef.current = clePerimetre
       if (Array.isArray(remote.widgetIds)) {
         const nextWidgets = normalizeDashboardWidgetIds(remote.widgetIds, availableWidgetIds, defaultWidgetIds)
         if (nextWidgets.length) setWidgetIds(nextWidgets)
@@ -501,11 +519,10 @@ export default function DashboardExperience({
   }, [
     admin?.id,
     enterpriseScopeKey,
-    availableWidgetIds,
-    defaultWidgetIds,
+    widgetCatalogSignature,
+    quickActionSignature,
     topbarLeftAvailableIds,
     topbarRightAvailableIds,
-    availableQuickActionIds,
   ])
 
   useEffect(() => {
@@ -1143,7 +1160,9 @@ export default function DashboardExperience({
                         { id: 'all', label: 'Tous' },
                         { id: 'in', label: 'Entrées' },
                         { id: 'out', label: 'Sorties' },
-                        { id: 'late', label: 'Retards' },
+                        //  Sans l'option payante, aucun retard n'est détecté :
+                        //  l'onglet n'a rien à montrer, il ne s'affiche pas.
+                        ...(retardsOptionActive ? [{ id: 'late', label: 'Retards' }] : []),
                       ].map((filter) => (
                         <button
                           type="button"
