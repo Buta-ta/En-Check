@@ -37,3 +37,50 @@ describe('dashboard widgets layout helpers', () => {
       .toEqual(['present', 'late', 'review'])
   })
 })
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CÂBLAGE DU TABLEAU DE BORD
+//   · retirer un widget doit rester retiré (aucun rechargement distant ne
+//     doit réappliquer l'ancienne liste) ;
+//   · l'option payante « Retards » est respectée entreprise par entreprise.
+// ═══════════════════════════════════════════════════════════════════════════
+import fs from 'node:fs'
+import path from 'node:path'
+
+const ROOT = path.resolve(import.meta.dirname, '../../..')
+const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
+
+const dashboardSrc = lire('src/components/DashboardExperience.jsx')
+const pageSrc = lire('src/pages/Dashboard.jsx')
+
+describe('câblage du tableau de bord', () => {
+  it('retirer un widget ne peut pas être annulé par un rechargement distant', () => {
+    // Les tableaux du catalogue sont reconstruits à chaque rendu : l'effet qui
+    // recharge les préférences distantes doit donc dépendre de SIGNATURES et
+    // ne s'exécuter QU'UNE FOIS par périmètre.
+    expect(dashboardSrc).toContain('const widgetCatalogSignature = availableWidgetIds.join(')
+    expect(dashboardSrc).toContain('const quickActionSignature = availableQuickActionIds.join(')
+    expect(dashboardSrc).toContain("const remotePrefsLoadedRef = useRef('')")
+    expect(dashboardSrc).toContain('if (remotePrefsLoadedRef.current === clePerimetre) return undefined')
+    // Dépendances : plus aucun tableau reconstruit à chaque rendu
+    expect(dashboardSrc).toMatch(/\}, \[\s*admin\?\.id,\s*enterpriseScopeKey,\s*widgetCatalogSignature,\s*quickActionSignature,/s)
+  })
+
+  it('les retards ne sont jamais affichés sans l’option payante', () => {
+    // Page : lecture de l'option, entreprise par entreprise
+    expect(pageSrc).toContain('const retardsOptionActive = Boolean(entrepriseData?.module_retards)')
+    expect(pageSrc).toContain('ent.module_retards).map((ent) => ent.id)')
+    expect(pageSrc).toContain('setRetardsOptionActive(')
+    // Compteur global et badge du flux, tous deux conditionnés
+    expect(pageSrc).toContain('retardEntries.filter((a) => retardsAutorises(a.enterprise_id))')
+    expect(pageSrc).toContain('retardsAutorises(item.enterprise_id)')
+    expect(pageSrc).toContain('retardsOptionActive={retardsOptionActive}')
+    // Écran : widget et onglet « Retards » retirés sans l'option
+    expect(dashboardSrc).toContain('retardsOptionActive = false,')
+    expect(dashboardSrc).toContain("available: retardsOptionActive")
+    expect(dashboardSrc).toContain("...(retardsOptionActive ? [{ id: 'late', label: 'Retards' }] : []),")
+    // Et l'onglet actif revient sur « Tous » s'il disparaît
+    expect(dashboardSrc).toContain("if (!retardsOptionActive && activityFilter === 'late') setActivityFilter('all')")
+  })
+})
