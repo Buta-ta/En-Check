@@ -11,7 +11,7 @@
 
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, CalendarOff, Users } from 'lucide-react'
-import { MOTIFS, styleBarreAbsence, DATA_TRANSFER_MOTIF } from '../constants/motifsAbsence'
+import { styleBarreAbsence, DATA_TRANSFER_MOTIF } from '../constants/motifsAbsence'
 import {
   JOURS_SEMAINE,
   joursDuMois,
@@ -23,6 +23,7 @@ import {
   formaterDateCourt,
 } from '../services/absencesCalendrier'
 import AbsenceTiroir from './AbsenceTiroir'
+import { useMotifsAbsence } from '../hooks/useMotifsAbsence'
 
 const LARGEUR_EMPLOYE = 236
 const LARGEUR_JOUR = 36
@@ -51,7 +52,9 @@ export default function AbsencesCalendrier({
   onDeclarer,
   onDeposerMotif,
 }) {
-  const [motifsActifs, setMotifsActifs] = useState(() => new Set(MOTIFS.map((m) => m.id)))
+  const { motifs } = useMotifsAbsence()
+  // Filtre en creux : rien de masqué par défaut, un motif créé ensuite est visible aussitôt
+  const [motifsMasques, setMotifsMasques] = useState(() => new Set())
   const [masquerSansAbsence, setMasquerSansAbsence] = useState(false)
   const [absenceActive, setAbsenceActive] = useState(null)
   // Cellule survolée pendant un glisser-déposer : { employeeId, index }
@@ -81,7 +84,7 @@ export default function AbsencesCalendrier({
 
     absences.forEach((a) => {
       const motifId = a.reason || 'autre'
-      if (!motifsActifs.has(motifId)) return
+      if (motifsMasques.has(motifId)) return
       const seg = segmentDuMois(a.start_date, a.end_date, annee, mois)
       if (!seg) return
       const ligne = parEmploye.get(a.employee_id)
@@ -98,7 +101,7 @@ export default function AbsencesCalendrier({
           'fr'
         )
       )
-  }, [employes, absences, annee, mois, motifsActifs, masquerSansAbsence])
+  }, [employes, absences, annee, mois, motifsMasques, masquerSansAbsence])
 
   // ── Récapitulatif du mois affiché ───────────────────────────────────
   const stats = useMemo(() => {
@@ -126,7 +129,7 @@ export default function AbsencesCalendrier({
   }, [lignes, annee, mois, getHolidaySet])
 
   const basculerMotif = (id) => {
-    setMotifsActifs((prev) => {
+    setMotifsMasques((prev) => {
       const suivant = new Set(prev)
       if (suivant.has(id)) suivant.delete(id)
       else suivant.add(id)
@@ -165,7 +168,7 @@ export default function AbsencesCalendrier({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={() => setMotifsActifs(new Set(MOTIFS.map((m) => m.id)))} style={boutonDoux(theme)}>
+          <button onClick={() => setMotifsMasques(new Set())} style={boutonDoux(theme)}>
             Tous les motifs
           </button>
           <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: theme.texteDoux, cursor: 'pointer' }}>
@@ -182,8 +185,8 @@ export default function AbsencesCalendrier({
 
       {/* ═══ Filtres par motif ═══ */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-        {MOTIFS.map((m) => {
-          const actif = motifsActifs.has(m.id)
+        {motifs.map((m) => {
+          const actif = !motifsMasques.has(m.id)
           return (
             <button key={m.id} onClick={() => basculerMotif(m.id)} style={{
               padding: '6px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12, fontWeight: 600,
@@ -253,14 +256,25 @@ export default function AbsencesCalendrier({
                   padding: '8px 14px', minHeight: hauteur,
                   display: 'flex', alignItems: 'center', gap: 10,
                 }}>
-                  <div style={{
-                    width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                    background: theme.pastille, border: `1px solid ${theme.bordure}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: 700, color: theme.texte,
-                  }}>
-                    {initialesDe(ligne.employe.first_name, ligne.employe.last_name)}
-                  </div>
+                  {ligne.employe.photo_url ? (
+                    <img
+                      src={ligne.employe.photo_url}
+                      alt=""
+                      style={{
+                        width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                        objectFit: 'cover', border: `1px solid ${theme.bordure}`,
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                      background: theme.pastille, border: `1px solid ${theme.bordure}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, fontWeight: 700, color: theme.texte,
+                    }}>
+                      {initialesDe(ligne.employe.first_name, ligne.employe.last_name)}
+                    </div>
+                  )}
                   <div style={{ minWidth: 0 }}>
                     <p style={{
                       margin: 0, fontSize: 13, fontWeight: 600, color: theme.texte,
@@ -326,7 +340,7 @@ export default function AbsencesCalendrier({
 
                   {/* Barres d'absence */}
                   {ligne.segments.map((seg) => {
-                    const st = styleBarreAbsence(seg.absence)
+                    const st = styleBarreAbsence(seg.absence, motifs)
                     const a = seg.absence
                     const titre = [
                       st.motif.label,
@@ -402,7 +416,7 @@ export default function AbsencesCalendrier({
 
       {/* ═══ Légende ═══ */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 14, fontSize: 11, color: theme.texteDoux }}>
-        {MOTIFS.map((m) => (
+        {motifs.map((m) => (
           <span key={m.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <i style={{ width: 10, height: 10, borderRadius: 3, background: m.color, display: 'block' }} />
             {m.label}

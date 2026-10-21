@@ -11,6 +11,8 @@ import AbsencesCalendrier from '../components/AbsencesCalendrier'
 import { MOTIFS, STATUTS_ABSENCE, getMotifConfig } from '../constants/motifsAbsence'
 import { compterJoursOuvres } from '../services/absencesCalendrier'
 import AbsencesDock from '../components/AbsencesDock'
+import AbsencesMotifsManager from '../components/AbsencesMotifsManager'
+import { MotifsAbsenceProvider } from '../contexts/MotifsAbsenceContext'
 import './AbsencesAfroTech.css'
 import HolidayService from '../services/holidayService'
 import LeaveBalanceService from '../services/leaveBalanceService'
@@ -627,7 +629,7 @@ export default function Absences() {
 
       let empQuery = supabase
         .from('employees')
-        .select('id, first_name, last_name, matricule, enterprise_id')
+        .select('id, first_name, last_name, matricule, enterprise_id, photo_url')
         .eq('is_active', true)
         .order('first_name')
       if (targetId !== 'all') empQuery = empQuery.eq('enterprise_id', targetId)
@@ -1435,7 +1437,13 @@ export default function Absences() {
     )
   }
 
+  // L'entreprise active décide des motifs visibles (globaux + les siens)
+  const entrepriseActiveId = admin?.role === 'super_admin'
+    ? selectedEntrepriseId
+    : (admin?.selectedEnterprise?.id || admin?.enterprise_id)
+
   return (
+    <MotifsAbsenceProvider enterpriseId={entrepriseActiveId}>
     <>
       <style>{`
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -2477,6 +2485,7 @@ export default function Absences() {
 
                     {activeTab === 'config_conges' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <AbsencesMotifsManager absences={absences} />
               <div style={{
                 background: 'rgba(29,23,19,0.8)',
                 border: '1px solid rgba(255,255,255,0.06)',
@@ -3158,6 +3167,7 @@ export default function Absences() {
         )}
       </div>
     </>
+    </MotifsAbsenceProvider>
   )
 }
 

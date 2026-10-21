@@ -10,9 +10,11 @@
 
 import { useState } from 'react'
 import { GripVertical } from 'lucide-react'
-import { MOTIFS, DATA_TRANSFER_MOTIF } from '../constants/motifsAbsence'
+import { DATA_TRANSFER_MOTIF } from '../constants/motifsAbsence'
+import { useMotifsAbsence } from '../hooks/useMotifsAbsence'
 
 export default function AbsencesDock({ onDeclarer }) {
+  const { motifs } = useMotifsAbsence()
   const [motifGlisse, setMotifGlisse] = useState(null)
 
   return (
@@ -21,7 +23,7 @@ export default function AbsencesDock({ onDeclarer }) {
         <GripVertical size={13} /> Motifs à glisser-déposer
       </p>
 
-      {MOTIFS.map((m) => (
+      {motifs.map((m) => (
         <div
           key={m.id}
           className={`abs-dock-card${motifGlisse === m.id ? ' is-dragging' : ''}`}
