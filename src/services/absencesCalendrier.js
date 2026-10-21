@@ -39,24 +39,83 @@ export function dernierJourDuMois(annee, mois) {
 }
 
 /**
- * Les jours d'un mois, du 1er au dernier.
+ * Un jour décrit pour l'affichage.
  * weekday suit la convention française : 1 = lundi … 7 = dimanche.
+ */
+function decrireJour(annee, mois, jour) {
+  const date = new Date(annee, mois, jour)
+  const jsDay = date.getDay() // 0 = dimanche
+  return {
+    jour,
+    iso: isoLocal(date),
+    date,
+    weekday: jsDay === 0 ? 7 : jsDay,
+    weekend: jsDay === 0 || jsDay === 6,
+  }
+}
+
+/**
+ * Les jours d'un mois, du 1er au dernier.
  */
 export function joursDuMois(annee, mois) {
   const total = dernierJourDuMois(annee, mois)
-  const jours = []
-  for (let d = 1; d <= total; d += 1) {
-    const date = new Date(annee, mois, d)
-    const jsDay = date.getDay() // 0 = dimanche
-    jours.push({
-      jour: d,
-      iso: isoLocal(date),
-      date,
-      weekday: jsDay === 0 ? 7 : jsDay,
-      weekend: jsDay === 0 || jsDay === 6,
-    })
-  }
-  return jours
+  return Array.from({ length: total }, (_, i) => decrireJour(annee, mois, i + 1))
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🗓️ MODES JOUR · SEMAINE
+// ═══════════════════════════════════════════════════════════
+
+/** '2026-10-21' avancé de n jours (n peut être négatif) → '2026-10-28' */
+export function ajouterJours(iso, n) {
+  const p = parseIso(iso)
+  if (!p) return null
+  return isoLocal(new Date(p.y, p.m, p.d + n))
+}
+
+/** Lundi de la semaine contenant `iso` (ISO-8601 : la semaine commence un lundi) */
+export function debutDeSemaine(iso) {
+  const p = parseIso(iso)
+  if (!p) return null
+  const jsDay = new Date(p.y, p.m, p.d).getDay() // 0 = dimanche
+  const decalage = jsDay === 0 ? -6 : 1 - jsDay
+  return isoLocal(new Date(p.y, p.m, p.d + decalage))
+}
+
+/** Les 7 jours (lundi → dimanche) de la semaine contenant `iso` */
+export function joursDeLaSemaine(iso) {
+  const lundi = debutDeSemaine(iso)
+  const p = parseIso(lundi)
+  if (!p) return []
+  return Array.from({ length: 7 }, (_, i) => decrireJour(p.y, p.m, p.d + i))
+}
+
+/** Un seul jour : le mode « jour » du calendrier */
+export function jourUnique(iso) {
+  const p = parseIso(iso)
+  if (!p) return []
+  return [decrireJour(p.y, p.m, p.d)]
+}
+
+/** Période affichée selon le mode : 'mois' | 'semaine' | 'jour' */
+export function joursDeLaPeriode(mode, { annee, mois, jourIso }) {
+  if (mode === 'semaine') return joursDeLaSemaine(jourIso)
+  if (mode === 'jour') return jourUnique(jourIso)
+  return joursDuMois(annee, mois)
+}
+
+/** Déplace la période d'un cran : ±1 mois, ±1 semaine ou ±1 jour */
+export function deplacerPeriode(mode, { annee, mois, jourIso }, delta) {
+  if (mode === 'jour') return { annee, mois, jourIso: ajouterJours(jourIso, delta) }
+  if (mode === 'semaine') return { annee, mois, jourIso: ajouterJours(jourIso, 7 * delta) }
+  const date = new Date(annee, mois + delta, 1)
+  return { annee: date.getFullYear(), mois: date.getMonth(), jourIso }
+}
+
+/** '2026-10-21T00:00:00Z' → '2026-10-21' (les dates Supabase sont horodatées) */
+export function jourIso(valeur) {
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(valeur || ''))
+  return m ? m[1] : null
 }
 
 export function nomMois(annee, mois) {
@@ -141,7 +200,39 @@ export function segmentDuMois(startIso, endIso, annee, mois) {
 }
 
 /**
- * Empile les segments qui se chevauchent sur plusieurs rangées,
+ * Position d'une absence à l'intérieur d'une LISTE DE JOURS quelconque
+ * (un mois, une semaine, un seul jour). Mode mois, semaine et jour
+ * partagent donc exactement le même calcul.
+ *
+ * Renvoie null si l'absence ne croise pas la période.
+ * `debut` et `fin` sont des INDEX 0-based dans la liste.
+ */
+export function segmentSurJours(startIso, endIso, jours = []) {
+  if (!jours.length) return null
+  const debut = jourIso(startIso)
+  const fin = jourIso(endIso)
+  if (!debut || !fin || debut > fin) return null
+
+  const premier = jours[0].iso
+  const dernier = jours[jours.length - 1].iso
+  if (fin < premier || debut > dernier) return null
+
+  const coupeeAvant = debut < premier
+  const coupeeApres = fin > dernier
+
+  const iDebut = coupeeAvant ? 0 : Math.max(0, jours.findIndex((j) => j.iso >= debut))
+  let iFin = jours.length - 1
+  if (!coupeeApres) {
+    for (let i = jours.length - 1; i >= 0; i -= 1) {
+      if (jours[i].iso <= fin) { iFin = i; break }
+    }
+  }
+  if (iFin < iDebut) return null
+
+  return { debut: iDebut, fin: iFin, coupeeAvant, coupeeApres }
+}
+
+/** Empile les segments qui se chevauchent sur plusieurs rangées,
  * pour qu'aucune barre n'en recouvre une autre.
  * Chaque segment reçoit `rangee` (0-based) et `rangeesTotal`.
  */
@@ -162,4 +253,45 @@ export function empilerSegments(segments = []) {
 
   const rangeesTotal = finParRangee.length
   return empiles.map((seg) => ({ ...seg, rangeesTotal }))
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🏷️ LIBELLÉS DES PÉRIODES
+// ═══════════════════════════════════════════════════════════
+
+export const JOURS_LONG = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+export const MOIS_COURT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
+  'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+
+/** '2026-10-21' → 'mercredi 21 octobre 2026' */
+export function nomJourLong(iso) {
+  const p = parseIso(iso)
+  if (!p) return '—'
+  const jour = JOURS_LONG[new Date(p.y, p.m, p.d).getDay() === 0 ? 6 : new Date(p.y, p.m, p.d).getDay() - 1]
+  return `${jour} ${p.d} ${MOIS_COURT[p.m]} ${p.y}`
+}
+
+/** '2026-10-21' → 'mer. 21' */
+export function nomJourCourt(iso) {
+  const p = parseIso(iso)
+  if (!p) return '—'
+  const jour = JOURS_LONG[new Date(p.y, p.m, p.d).getDay() === 0 ? 6 : new Date(p.y, p.m, p.d).getDay() - 1]
+  return `${jour.slice(0, 3).toLowerCase()}. ${p.d}`
+}
+
+/** Titre de la période affichée selon le mode */
+export function titrePeriode(mode, jours, { annee, mois }) {
+  if (mode === 'mois') return nomMois(annee, mois)
+  if (!jours.length) return '—'
+  if (mode === 'jour') return nomJourLong(jours[0].iso)
+  if (mode === 'semaine') {
+    const p1 = parseIso(jours[0].iso)
+    const p2 = parseIso(jours[jours.length - 1].iso)
+    if (!p1 || !p2) return '—'
+    const memeMois = p1.m === p2.m && p1.y === p2.y
+    const debut = `${p1.d}${memeMois ? '' : ` ${MOIS_COURT[p1.m]}`}`
+    const fin = `${p2.d} ${MOIS_COURT[p2.m]} ${p2.y}`
+    return `Semaine du ${debut} au ${fin}`
+  }
+  return nomMois(annee, mois)
 }

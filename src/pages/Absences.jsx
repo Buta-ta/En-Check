@@ -12,6 +12,7 @@ import { MOTIFS, STATUTS_ABSENCE, getMotifConfig } from '../constants/motifsAbse
 import { compterJoursOuvres } from '../services/absencesCalendrier'
 import AbsencesDock from '../components/AbsencesDock'
 import AbsencesMotifsManager from '../components/AbsencesMotifsManager'
+import AbsencesKpiCards from '../components/AbsencesKpiCards'
 import { MotifsAbsenceProvider } from '../contexts/MotifsAbsenceContext'
 import './AbsencesAfroTech.css'
 import HolidayService from '../services/holidayService'
@@ -1937,26 +1938,15 @@ export default function Absences() {
 
           {activeTab === 'absences' && (
             <>
-              <div className="stats-grid" style={S.statsGrid}>
-                {[
-                  { icon: Timer, color: '#F59E0B', value: stats.enCours, label: 'En cours' },
-                  { icon: Calendar, color: '#3B82F6', value: stats.ceMois, label: 'Ce mois-ci' },
-                  { icon: TrendingUp, color: '#EF4444', value: stats.joursMois, label: 'Jours décomptés' },
-                  { icon: Hourglass, color: '#8B5CF6', value: stats.enAttente, label: 'En attente' },
-                  { icon: AlertTriangle, color: '#F97316', value: stats.conflitsPending, label: 'Conflits à traiter' },
-                  { icon: BarChart3, color: '#10B981', value: absences.length, label: 'Total absences' },
-                ].map((s, i) => (
-                  <div key={i} className="stat-card" style={S.statCard}>
-                    <div style={{ ...S.statIcon, background: `${s.color}15` }}>
-                      <s.icon size={22} color={s.color} />
-                    </div>
-                    <div>
-                      <p style={S.statNumber}>{s.value}</p>
-                      <p style={S.statLabel}>{s.label}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <AbsencesKpiCards
+                absences={absences}
+                employes={employes}
+                conflitsEnAttente={stats.conflitsPending}
+                joursPrisParEmploye={joursPrisParEmploye}
+                plafondConges={leaveConfig.annual_leave_cap || 30}
+                onVoirConflits={() => setFilterConflict('with_conflict')}
+                onVoirDemandes={() => setActiveTab('demandes')}
+              />
 
               {stats.conflitsPending > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', background: 'rgba(249,115,22,.08)', border: '1px solid rgba(249,115,22,.2)', borderRadius: 14, marginBottom: 20 }}>
