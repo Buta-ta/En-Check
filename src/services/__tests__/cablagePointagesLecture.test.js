@@ -22,6 +22,7 @@ const pausesSrc = lire('src/pages/Pauses.jsx')
 const pausesSectionsSrc = lire('src/components/PausesAfroTechSections.jsx')
 const hookSrc = lire('src/hooks/useLoadingMinimum.js')
 const diagnosticSql = lire('supabase/outils-sql/20261021_diagnostic_pause_disparue.sql')
+const migrationSql = lire('supabase/migrations/20261021000001_pauses_decisions_reversibles.sql')
 
 describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => {
   it('1. les heures supplémentaires sont affichées en mode Passeport', () => {
@@ -141,6 +142,46 @@ describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => 
     // Une réelle validée reste dans l'onglet Réelles, recherche réinitialisée
     expect(pausesSrc).toContain("setActiveTab('reelles')")
     expect(pausesSrc).toContain("setSearchTerm('')")
+  })
+
+
+  it('9. un filet de lecture directe récupère toute ligne que la RPC omettrait', () => {
+    // La page ne dépend plus d'une seule fonction : elle relit la table.
+    expect(pausesSrc).toContain(".from('encheck_pauses')")
+    expect(pausesSrc).toContain(".gte('jour', startDate)")
+    expect(pausesSrc).toContain(".lte('jour', endDate)")
+    // Les lignes absentes de la RPC sont fusionnées et MARQUÉES, pas inventées
+    expect(pausesSrc).toContain('const idsRpc = new Set(')
+    expect(pausesSrc).toContain('recupereeDirecte: true')
+    expect(pausesSrc).toContain('construirePauses([...(lignes || []), ...manquantes])')
+    // Le marqueur est visible dans le tableau et dans le journal
+    expect(pausesSectionsSrc).toContain('p.recupereeDirecte')
+    // La lecture directe ne doit jamais faire échouer le chargement
+    expect(pausesSrc).toContain('lecture directe indisponible')
+  })
+
+  it('10. une décision est réversible : « Annuler la décision »', () => {
+    expect(pausesSrc).toContain('const annulerDecision = useCallback(')
+    expect(pausesSrc).toContain('encheck_pauses_annuler_decision')
+    // Repli sans SQL : écriture directe sur la table
+    expect(pausesSrc).toContain(".update({ statut: p.source === 'presumee' ? 'presumee' : 'reelle' })")
+    // Accessible depuis le journal ET depuis le tableau
+    expect(pausesSectionsSrc).toContain('onAnnuler')
+    expect(pausesSectionsSrc).toContain('onAnnulerDecision')
+    expect(pausesSectionsSrc).toContain('Annuler la décision')
+    expect(pausesSrc).toContain('onAnnulerDecision={annulerDecision}')
+  })
+
+  it('11. le script SQL rend les décisions réversibles et ferme les trous du moteur', () => {
+    // 1. annuler une décision
+    expect(migrationSql).toContain('encheck_pauses_annuler_decision')
+    expect(migrationSql).toContain("THEN 'presumee' ELSE 'reelle' END")
+    // 2. une pause validée pendant qu'elle est ouverte reste FERmable
+    expect(migrationSql).toContain("statut IN ('reelle', 'presumee', 'validee')")
+    // 3. plus de pause fantôme : idempotence réelle à l'ouverture
+    expect(migrationSql).toContain('IF v_id IS NOT NULL AND v_jr = v_jour THEN')
+    // Rien de destructif : jamais de DELETE
+    expect(migrationSql).not.toMatch(/DELETE\s+FROM/i)
   })
 
 })

@@ -23,6 +23,7 @@ import {
   Timer,
   Users,
   X,
+  RotateCcw,
 } from 'lucide-react'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
@@ -1017,7 +1018,7 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
    C'est la réponse à « je ne retrouve plus ma pause nulle part » : chaque
    décision est tracée, avec un bouton qui ramène la ligne dans le tableau.
    ═══════════════════════════════════════════════════════════════════════════ */
-export function PausesJournalDecisions ({ paies = [], onVoir }) {
+export function PausesJournalDecisions ({ paies = [], onVoir, onAnnuler }) {
   const decisions = useMemo(
     () =>
       (paies || [])
@@ -1077,6 +1078,19 @@ export function PausesJournalDecisions ({ paies = [], onVoir }) {
                   {p.natureLabel || (estPresumee ? 'Pause présumée' : 'Pause réelle')}
                 </span>
                 <span className="pauses-v2-journal-duree">{formatDuree(p.dureeMinutes)}</span>
+                {p.ouverte ? (
+                  <span className="pauses-v2-journal-nature" title="Pause ouverte : l’employé n’a pas encore pointé sa reprise">
+                    ⏱️ En cours
+                  </span>
+                ) : null}
+                {p.recupereeDirecte ? (
+                  <span
+                    className="pauses-v2-journal-nature"
+                    title="Cette ligne existe bien en base, mais la fonction de lecture ne la renvoyait pas — elle a été récupérée en lecture directe de la table."
+                  >
+                    ⌁ Lecture directe
+                  </span>
+                ) : null}
                 {onVoir && (
                   <button
                     type="button"
@@ -1085,6 +1099,16 @@ export function PausesJournalDecisions ({ paies = [], onVoir }) {
                     title="Afficher cette pause dans le tableau"
                   >
                     Voir dans la liste
+                  </button>
+                )}
+                {onAnnuler && (
+                  <button
+                    type="button"
+                    className="pauses-v2-journal-btn is-undo"
+                    onClick={() => onAnnuler(p)}
+                    title="Revenir sur la décision : la pause reprend son statut d’origine"
+                  >
+                    ↩ Annuler la décision
                   </button>
                 )}
               </li>
@@ -1106,6 +1130,7 @@ export function PausesCollaborateursSection({
   onSelectTab,
   onSelectSubFilter,
   onStatuer,
+  onAnnulerDecision,
   onOpenEmployeeFiche,
   onOpenPointages,
   nowMs = Date.now(),
@@ -1493,6 +1518,15 @@ export function PausesCollaborateursSection({
                             {anomalie.label}
                           </span>
                         )}
+
+                        {p.recupereeDirecte && (
+                          <span
+                            className="pauses-v2-status-pill is-anomaly"
+                            title="Ligne existante en base mais non renvoyée par la fonction de lecture — récupérée en lecture directe."
+                          >
+                            ⌁ Lecture directe
+                          </span>
+                        )}
                       </div>
                     </td>
 
@@ -1516,6 +1550,28 @@ export function PausesCollaborateursSection({
                             >
                               <X size={13} />
                               <span>Écarter</span>
+                            </button>
+                          </>
+                        ) : (p.statut === 'validee' || p.statut === 'ecartee') && onAnnulerDecision ? (
+                          <>
+                            <span
+                              style={{
+                                fontSize: '0.75rem',
+                                color: p.statut === 'validee' ? 'var(--pv-emerald)' : 'var(--pv-bad)',
+                                fontWeight: 700,
+                                marginRight: 4,
+                              }}
+                            >
+                              {p.statut === 'validee' ? '✓ Validée' : '🚫 Écartée'}
+                            </span>
+                            <button
+                              type="button"
+                              className="pauses-v2-icon-btn"
+                              onClick={() => onAnnulerDecision(p)}
+                              title="Revenir sur la décision"
+                            >
+                              <RotateCcw size={13} />
+                              <span>Annuler</span>
                             </button>
                           </>
                         ) : p.statut === 'validee' ? (

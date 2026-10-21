@@ -3324,6 +3324,16 @@
   background: rgba(240, 178, 84, 0.14);
 }
 
+.pauses-v2-journal-btn.is-undo {
+  color: var(--pv-muted);
+  border-color: var(--pv-border);
+}
+
+.pauses-v2-journal-btn.is-undo:hover {
+  color: var(--pv-text);
+  background: var(--pv-surface-soft);
+}
+
 @media (max-width: 640px) {
   .pauses-v2-journal-btn {
     margin-left: 0;
