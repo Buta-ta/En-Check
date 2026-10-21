@@ -367,7 +367,10 @@ export default function Planning() {
   // Contexte de la case en cours d'édition (permet de personnaliser la couleur de la case)
   const [cellEditContext, setCellEditContext] = useState(null);
 
-  const [holidaysByEnterprise, setHolidaysByEnterprise] = useState({});
+  const [holidaysByEnterprise, setHolidaysByEnterprise] = useState({})
+  //  Pauses SUPPRIMÉES (corbeille) par case « employé | jour » : une pause
+  //  retirée doit rester visible sur le planning, sinon la case ment.
+  const [pausesSupprimees, setPausesSupprimees] = useState({});
   const [holidayMapsByEnterprise, setHolidayMapsByEnterprise] = useState({});
 
   const [showReviewRequestModal, setShowReviewRequestModal] = useState(false);
@@ -631,6 +634,29 @@ export default function Planning() {
       );
       setHolidaysByEnterprise(hSets);
       setHolidayMapsByEnterprise(hMaps);
+
+      //  Corbeille des pauses : ce qui a été SUPPRIMÉ reste signalé sur la case
+      //  du jour. Fonction optionnelle : sans le script SQL du 21/10, la map
+      //  reste vide et le planning fonctionne exactement comme avant.
+      try {
+        const entArgCorbeille = isSuperAdmin
+          ? (selectedEntreprise !== "all" ? selectedEntreprise : null)
+          : (enterpriseId || null);
+        const { data: archivesData, error: errArch } = await supabase.rpc(
+          "encheck_pauses_archives_lire",
+          { p_enterprise: entArgCorbeille, p_du: rangeStart, p_au: rangeEnd },
+        );
+        const parCase = {};
+        for (const ligne of errArch ? [] : archivesData || []) {
+          if (!ligne?.employe_id || !ligne?.jour) continue;
+          const cle = `${ligne.employe_id}|${ligne.jour}`;
+          if (!parCase[cle]) parCase[cle] = [];
+          parCase[cle].push(ligne);
+        }
+        setPausesSupprimees(parCase);
+      } catch (eCorbeille) {
+        setPausesSupprimees({});
+      }
     } catch (error) {
       console.error("Erreur chargement:", error);
       toast.error("Erreur lors du chargement");
@@ -3133,6 +3159,9 @@ export default function Planning() {
                                         ? formatHoursCompact(netMins)
                                         : null;
                                       const breakLabel = computeBreakLabel(shift);
+                                      //  Pauses supprimées (corbeille) sur CE jour pour CET employé
+                                      const supprimeesDuJour =
+                                        pausesSupprimees[`${emp.id}|${dayItem.dateStr}`] || [];
 
                                       return (
                                         <td
@@ -3247,12 +3276,29 @@ export default function Planning() {
 
                                                 <div className="sk-shift-meta">
                                                   {breakLabel ? (
-                                                    <span className="sk-shift-break">
+                                                    <span
+                                                      className={`sk-shift-break${
+                                                        supprimeesDuJour.length > 0
+                                                          ? " is-supprimee"
+                                                          : ""
+                                                      }`}
+                                                      title={
+                                                        supprimeesDuJour.length > 0
+                                                          ? "Une pause a été supprimée sur cette journée — elle reste archivée et remetable"
+                                                          : undefined
+                                                      }
+                                                    >
                                                       <Coffee size={11} />
                                                       {breakLabel}
                                                     </span>
                                                   ) : (
-                                                    <span>
+                                                    <span
+                                                      className={
+                                                        supprimeesDuJour.length > 0
+                                                          ? "is-supprimee"
+                                                          : undefined
+                                                      }
+                                                    >
                                                       {shift.isHoliday
                                                         ? "🎌 Officiel"
                                                         : shift.isAbsence
@@ -3266,6 +3312,38 @@ export default function Planning() {
                                                     </span>
                                                   )}
                                                 </div>
+
+                                                {/* Une pause supprimée ne disparaît pas en silence */}
+                                                {supprimeesDuJour.length > 0 && (
+                                                  <div
+                                                    className="sk-shift-pause-supprimee"
+                                                    title={supprimeesDuJour
+                                                      .map((l) =>
+                                                        [
+                                                          l.debut ? heureLocale(l.debut) : "--:--",
+                                                          l.fin ? heureLocale(l.fin) : "en cours",
+                                                          l.source === "presumee"
+                                                            ? "présumée"
+                                                            : "réelle",
+                                                        ].join(" · "),
+                                                      )
+                                                      .join(" | ")}
+                                                  >
+                                                    🗑️ Pause supprimée
+                                                    {supprimeesDuJour.length > 1
+                                                      ? ` (${supprimeesDuJour.length})`
+                                                      : ""}
+                                                    {supprimeesDuJour[0]?.debut
+                                                      ? ` · ${heureLocale(
+                                                          supprimeesDuJour[0].debut,
+                                                        )}→${
+                                                          supprimeesDuJour[0]?.fin
+                                                            ? heureLocale(supprimeesDuJour[0].fin)
+                                                            : "en cours"
+                                                        }`
+                                                      : ""}
+                                                  </div>
+                                                )}
 
                                                 {/* Horaires réellement effectués (pointages) */}
                                                 {realAtt && realAtt.firstIn && (
