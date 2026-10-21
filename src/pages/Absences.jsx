@@ -3,7 +3,7 @@
 // Avec jours fériés intégrés + affichage calendrier corrigé
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { KenteAmberWeaveSvg } from '../components/AfroCulturalSvg'
@@ -13,6 +13,7 @@ import { compterJoursOuvres } from '../services/absencesCalendrier'
 import AbsencesDock from '../components/AbsencesDock'
 import AbsencesMotifsManager from '../components/AbsencesMotifsManager'
 import AbsencesKpiCards from '../components/AbsencesKpiCards'
+import AbsenceFormulaire from '../components/AbsenceFormulaire'
 import { MotifsAbsenceProvider } from '../contexts/MotifsAbsenceContext'
 import './AbsencesAfroTech.css'
 import HolidayService from '../services/holidayService'
@@ -75,12 +76,6 @@ function getDaysInMonth(year, month) {
   return new Date(year, month + 1, 0).getDate()
 }
 
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' o'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' Mo'
-}
-
 function getFileType(url) {
   if (!url) return null
   const ext = url.split('.').pop().toLowerCase().split('?')[0]
@@ -131,107 +126,6 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf
 // ═══════════════════════════════════════════════════════════
 // COMPOSANT UPLOAD ZONE
 // ═══════════════════════════════════════════════════════════
-function UploadZone({ file, existingUrl, onFileSelect, onRemove, uploading }) {
-  const inputRef = useRef(null)
-  const [dragActive, setDragActive] = useState(false)
-
-  const handleDrag = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true)
-    else if (e.type === 'dragleave') setDragActive(false)
-  }
-
-  const handleDrop = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    if (e.dataTransfer.files?.[0]) validateAndSelect(e.dataTransfer.files[0])
-  }
-
-  const handleChange = (e) => {
-    if (e.target.files?.[0]) validateAndSelect(e.target.files[0])
-  }
-
-  const validateAndSelect = (f) => {
-    if (!ALLOWED_TYPES.includes(f.type)) { toast.error('Format non supporté. JPG, PNG, WebP ou PDF.'); return }
-    if (f.size > MAX_FILE_SIZE) { toast.error('Fichier trop volumineux (max 5 Mo)'); return }
-    onFileSelect(f)
-  }
-
-  const hasFile = file || existingUrl
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Paperclip size={14} /> Justificatif
-        <span style={{ color: '#666', fontWeight: 400, fontSize: 12 }}>(optionnel)</span>
-      </label>
-      {!hasFile ? (
-        <div
-          style={{
-            border: `2px dashed ${dragActive ? '#F59E0B' : 'rgba(255,255,255,.15)'}`,
-            borderRadius: 12,
-            padding: '24px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer',
-            background: dragActive ? 'rgba(245,158,11,.08)' : 'rgba(255,255,255,.02)',
-            transition: 'all .2s ease'
-          }}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-        >
-          <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={handleChange} style={{ display: 'none' }} />
-          <Upload size={28} color={dragActive ? '#F59E0B' : '#666'} />
-          <p style={{ color: '#ccc', fontSize: 13, margin: 0, textAlign: 'center' }}>
-            <span style={{ color: '#F59E0B', fontWeight: 600 }}>Cliquez</span> ou glissez un fichier
-          </p>
-          <p style={{ color: '#666', fontSize: 11, margin: 0 }}>PDF, JPG, PNG, WebP · Max 5 Mo</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 12 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(255,255,255,.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            {file
-              ? (file.type.startsWith('image/') ? <FileImage size={24} color="#10B981" /> : <File size={24} color="#3B82F6" />)
-              : (getFileType(existingUrl) === 'image' ? <FileImage size={24} color="#10B981" /> : <File size={24} color="#3B82F6" />)
-            }
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {file ? file.name : getFileName(existingUrl)}
-            </p>
-            <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 11, margin: '2px 0 0 0' }}>
-              {file ? formatFileSize(file.size) : 'Document existant'}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {existingUrl && !file && (
-              <button type="button" onClick={() => window.open(existingUrl, '_blank')}
-                style={{ background: 'rgba(59,130,246,.1)', border: '1px solid rgba(59,130,246,.2)', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3B82F6', cursor: 'pointer' }}>
-                <Eye size={16} />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onRemove}
-              style={{ background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444', cursor: 'pointer' }}
-              disabled={uploading}
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ═══════════════════════════════════════════════════════════
 // COMPOSANT VISUALISEUR DE DOCUMENT
 // ═══════════════════════════════════════════════════════════
@@ -2704,169 +2598,30 @@ export default function Absences() {
         </main>
 
         {/* ═══ MODAL AJOUT/MODIF ABSENCE ═══ */}
-        {showModal && (
-          <div style={S.overlay} onClick={() => !uploading && setShowModal(false)}>
-            <div style={S.modal} onClick={e => e.stopPropagation()}>
-              <div style={S.modalHeader}>
-                <h2 style={S.modalTitleText}>{editingAbsence ? '✏️ Modifier' : '📝 Nouvelle absence'}</h2>
-                <button onClick={() => !uploading && setShowModal(false)} style={S.closeBtnModal} disabled={uploading}><X size={20} /></button>
-              </div>
-
-              <form onSubmit={handleSave} style={S.form}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Employé *</label>
-                  <select value={formData.employee_id} onChange={e => setFormData({ ...formData, employee_id: e.target.value })} style={S.input} required>
-                    {employes.length === 0 && <option value="">Aucun employé</option>}
-                    {employes.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}
-                  </select>
-                  {formData.employee_id && (
-                    <button type="button" onClick={() => setShowEmployeeHistory(employes.find(e => e.id === formData.employee_id))} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#F59E0B', fontSize: 12, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit', opacity: .8 }}>
-                      <Clock size={12} /> Voir l'historique
-                    </button>
-                  )}
-                </div>
-
-                <div style={S.formRow}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                    <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Début *</label>
-                    <input type="date" value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} style={S.input} required />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                    <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Fin *</label>
-                    <input type="date" value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} style={S.input} min={formData.start_date} required />
-                  </div>
-                </div>
-
-                {formData.start_date && formData.end_date && new Date(formData.end_date) >= new Date(formData.start_date) && (
-                  <>
-                    <div style={S.daysCounter}>
-                      <Calendar size={16} color="#F59E0B" />
-                      <strong style={{ color: '#F59E0B', fontSize: 20 }}>{getModalLeaveCount()}</strong>
-                      <span style={{ color: '#ccc', fontSize: 14 }}>jour(s) décompté(s)</span>
-                      <span style={{ marginLeft: 'auto', color: 'rgba(245,242,235,0.55)', fontSize: 12 }}>
-                        {countCalendarDays(formData.start_date, formData.end_date)} jour(s) calendaires
-                      </span>
-                    </div>
-
-                    {getModalHolidaysInRange().length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 14 }}>🎌</span>
-                          <span style={{ color: '#A78BFA', fontSize: 13, fontWeight: 700 }}>
-                            {getModalHolidaysInRange().length} jour(s) férié(s) dans cette période
-                          </span>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {getModalHolidaysInRange().map(d => (
-                            <span key={d} style={{ color: '#C4B5FD', fontSize: 12 }}>
-                              • {getModalHolidayMap().get(d)?.name || d} ({formatDateFr(d)})
-                            </span>
-                          ))}
-                        </div>
-
-                        <label style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: 10,
-                          padding: '10px 12px',
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.06)',
-                          borderRadius: 10,
-                          cursor: 'pointer'
-                        }}>
-                          <input
-                            type="checkbox"
-                            checked={formData.count_holidays_as_leave}
-                            onChange={e => setFormData({ ...formData, count_holidays_as_leave: e.target.checked })}
-                            style={{ accentColor: '#8B5CF6', marginTop: 2 }}
-                          />
-                          <div>
-                            <span style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 600 }}>
-                              Décompter quand même les jours fériés comme congé
-                            </span>
-                            <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 11, margin: '4px 0 0 0', lineHeight: 1.4 }}>
-                              Active cette option si l’entreprise considère qu’un congé posé sur un jour férié doit tout de même être consommé.
-                            </p>
-                          </div>
-                        </label>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {overlapWarning && (
-                  <div style={S.overlapBox}>
-                    <AlertCircle size={18} color="#F59E0B" style={{ flexShrink: 0, marginTop: 2 }} />
-                    <div>
-                      <p style={S.overlapTitle}>⚠️ Chevauchement détecté</p>
-                      <p style={S.overlapText}>Absence existante du <strong>{formatDateFr(overlapWarning.start_date)}</strong> au <strong>{formatDateFr(overlapWarning.end_date)}</strong></p>
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Motif *</label>
-                  <div style={S.reasonGrid}>
-                    {MOTIFS.map(m => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, reason: m.id })}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '12px 8px',
-                          borderRadius: 12,
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                          textAlign: 'center',
-                          background: formData.reason === m.id ? m.bg : 'rgba(255,255,255,.02)',
-                          border: `1px solid ${formData.reason === m.id ? m.color + '60' : 'rgba(255,255,255,.06)'}`,
-                          color: formData.reason === m.id ? m.color : '#777'
-                        }}
-                      >
-                        <span style={{ fontSize: 18 }}>{m.emoji}</span>
-                        <span style={{ fontSize: 11, fontWeight: formData.reason === m.id ? 700 : 400 }}>{m.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Statut</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} style={S.input}>
-                    <option value="approuve">✅ Approuvé</option>
-                    <option value="en_attente">⏳ En attente</option>
-                    <option value="refuse">❌ Refusé</option>
-                  </select>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Notes</label>
-                  <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} style={{ ...S.input, minHeight: 80, resize: 'vertical' }} placeholder="Certificat médical, justificatif..." />
-                </div>
-
-                <UploadZone
-                  file={formData.document_file}
-                  existingUrl={formData.remove_document ? null : formData.existing_document_url}
-                  onFileSelect={(file) => setFormData({ ...formData, document_file: file, remove_document: false })}
-                  onRemove={() => setFormData({ ...formData, document_file: null, remove_document: true })}
-                  uploading={uploading}
-                />
-
-                <div style={S.modalFooter}>
-                  <button type="button" onClick={() => !uploading && setShowModal(false)} style={{ flex: 1, padding: 14, background: 'rgba(255,255,255,.05)', color: '#FFF', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }} disabled={uploading}>Annuler</button>
-                  <button type="submit" className="afro-btn" style={S.saveBtn} disabled={uploading}>
-                    {uploading ? <><RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> Enregistrement...</> : <><Save size={18} /> {editingAbsence ? 'Modifier' : 'Enregistrer'}</>}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        <AbsenceFormulaire
+          ouvert={showModal}
+          valeurs={formData}
+          onChanger={(patch) => setFormData((precedent) => ({ ...precedent, ...patch }))}
+          onFermer={() => !uploading && setShowModal(false)}
+          onEnregistrer={handleSave}
+          employes={employes}
+          edition={!!editingAbsence}
+          uploading={uploading}
+          joursDecomptes={getModalLeaveCount()}
+          joursCalendaires={
+            formData.start_date && formData.end_date && formData.end_date >= formData.start_date
+              ? countCalendarDays(formData.start_date, formData.end_date)
+              : 0
+          }
+          feries={getModalHolidaysInRange().map((d) => ({ date: d, nom: getModalHolidayMap().get(d)?.name || null }))}
+          chevauchement={overlapWarning}
+          solde={(() => {
+            const pris = joursPrisParEmploye[formData.employee_id] ?? 0
+            const plafond = leaveConfig.annual_leave_cap || 30
+            return { pris, plafond, restant: Math.max(0, plafond - pris) }
+          })()}
+          onVoirHistorique={(emp) => setShowEmployeeHistory(emp)}
+        />
 
         {/* ═══ MODAL REVIEW DEMANDE EMPLOYÉ ═══ */}
         {showReviewModal && selectedRequest && (
