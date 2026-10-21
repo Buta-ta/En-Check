@@ -24,6 +24,7 @@ const hookSrc = lire('src/hooks/useLoadingMinimum.js')
 const diagnosticSql = lire('supabase/outils-sql/20261021_diagnostic_pause_disparue.sql')
 const migrationSql = lire('supabase/migrations/20261021000001_pauses_decisions_reversibles.sql')
 const migrationRestaurSql = lire('supabase/migrations/20261021000002_pauses_jamais_supprimees_et_restaurees.sql')
+const migrationCorbeilleSql = lire('supabase/migrations/20261021000003_pauses_suppression_tracee_et_corbeille.sql')
 
 describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => {
   it('1. les heures supplémentaires sont affichées en mode Passeport', () => {
@@ -212,6 +213,38 @@ describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => 
     // Et la table redevient lisible (RLS active sans politique = lectures vides)
     expect(migrationRestaurSql).toContain('encheck_pauses_lecture_admin')
     expect(migrationRestaurSql).toContain('FOR SELECT')
+  })
+
+
+  it('14. supprimer une pause est possible, mais archivé et remetable', () => {
+    // Un bouton Supprimer, avec confirmation explicite
+    expect(pausesSectionsSrc).toContain('onSupprimer')
+    expect(pausesSectionsSrc).toContain('Supprimer cette pause (archivée et restaurable)')
+    expect(pausesSrc).toContain('onSupprimer={supprimerPause}')
+    expect(pausesSrc).toContain('window.confirm(')
+    expect(pausesSrc).toContain('encheck_pauses_supprimer')
+    // Corbeille : on ne perd rien, on peut remettre
+    expect(pausesSectionsSrc).toContain('export function PausesCorbeille')
+    expect(pausesSectionsSrc).toContain('Remettre')
+    expect(pausesSrc).toContain('encheck_pauses_archives_lire')
+    expect(pausesSrc).toContain('encheck_pauses_restaurer')
+    expect(pausesSrc).toContain('<PausesCorbeille lignes={corbeille} onRestaurer={restaurerPause} />')
+    // La corbeille est optionnelle : sans le script SQL, le chargement continue
+    expect(pausesSrc).toContain('setCorbeille([])')
+  })
+
+  it('15. le script SQL archive AVANT d’effacer', () => {
+    expect(migrationCorbeilleSql).toContain('encheck_pauses_supprimer')
+    expect(migrationCorbeilleSql).toContain("'pause_supprimee'")
+    expect(migrationCorbeilleSql).toContain('DELETE FROM public.encheck_pauses WHERE id = v_id')
+    // L'archivage précède l'effacement dans le corps de la fonction
+    const iArchive = migrationCorbeilleSql.indexOf('ARCHIVAGE OBLIGATOIRE')
+    const iDelete = migrationCorbeilleSql.indexOf('DELETE FROM public.encheck_pauses WHERE id = v_id')
+    expect(iArchive).toBeGreaterThan(0)
+    expect(iDelete).toBeGreaterThan(iArchive)
+    // La restauration n'écrase jamais une pause existante
+    expect(migrationCorbeilleSql).toContain('ON CONFLICT (id) DO NOTHING')
+    expect(migrationCorbeilleSql).toContain('restaurable')
   })
 
 })

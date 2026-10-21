@@ -24,6 +24,7 @@ import {
   KenteWovenTapestrySvg,
   PausesAnalyticsCharts,
   PausesCollaborateursSection,
+  PausesCorbeille,
   PausesJournalDecisions,
   PausesCulturalHero,
   PausesExecutiveKpis,
@@ -40,6 +41,7 @@ export default function Pauses () {
 
   const [admin, setAdmin] = useState(null)
   const [paies, setPaies] = useState([])
+  const [corbeille, setCorbeille] = useState([])
   const [loading, setLoading] = useState(true)
   const { minLoadingDone, skipLoading } = useLoadingMinimum()
   const [entreprises, setEntreprises] = useState([])
@@ -235,6 +237,20 @@ export default function Pauses () {
         }
       })
       setPaies(enriched)
+
+      // ── Corbeille : tout ce qui a été supprimé, pour tout remettre ─────────
+      //  Fonctionnalité optionnelle : si le script SQL du 21/10 n'est pas encore
+      //  exécuté, la corbeille reste simplement vide.
+      try {
+        const { data: archives, error: errArch } = await supabase.rpc('encheck_pauses_archives_lire', {
+          p_enterprise: entArg,
+          p_du: startDate,
+          p_au: endDate,
+        })
+        setCorbeille(errArch ? [] : (archives || []))
+      } catch {
+        setCorbeille([])
+      }
     } catch (e) {
       console.error('Erreur chargement pauses:', e)
       toast.error('Erreur lors du chargement')
@@ -345,6 +361,45 @@ export default function Pauses () {
         return
       }
       toast.success('Décision annulée — la pause est revenue dans la liste')
+      loadPauses()
+    },
+    [loadPauses]
+  )
+
+  //  Supprimer une pause : possible, mais JAMAIS en silence.
+  //  La ligne est archivée en base avant l'effacement, et redevient remetable
+  //  depuis la corbeille.
+  const supprimerPause = async (p) => {
+    if (!p || !p.id) return
+    const ouverte = p.ouverte ? ' (pause en cours)' : ''
+    const ok = window.confirm(
+      `Supprimer la pause de ${p.employe || 'cet employé'} du ${p.jour || ''} — ${p.debutHHMM || '--:--'} → ${p.finHHMM || 'en cours'}${ouverte} ?\n\n` +
+        'La ligne sera archivée : elle restera consultable et remetable depuis la corbeille.',
+    )
+    if (!ok) return
+    const { error } = await supabase.rpc('encheck_pauses_supprimer', {
+      p_ids: [p.id],
+      p_motif: 'supprimée depuis la page Pauses',
+    })
+    if (error) {
+      toast.error('Suppression impossible : exécutez le script SQL du 21/10 (encheck_pauses_supprimer)')
+      return
+    }
+    toast.success('Pause supprimée 🗑️ — archivée, remetable depuis la corbeille')
+    loadPauses()
+  }
+
+  const restaurerPause = useCallback(
+    async (ligne) => {
+      if (!ligne || !ligne.journal_id) return
+      const { error } = await supabase.rpc('encheck_pauses_restaurer', {
+        p_journal_ids: [ligne.journal_id],
+      })
+      if (error) {
+        toast.error('Restauration impossible : exécutez le script SQL du 21/10 (encheck_pauses_restaurer)')
+        return
+      }
+      toast.success('Pause remise dans la liste ♻️')
       loadPauses()
     },
     [loadPauses]
@@ -526,6 +581,9 @@ export default function Pauses () {
           }}
         />
 
+        {/* Corbeille : ce qui a été supprimé reste consultable et remetable */}
+        <PausesCorbeille lignes={corbeille} onRestaurer={restaurerPause} />
+
         {/* Journal des décisions : aucune pause validée ou écartée ne se perd */}
         <PausesJournalDecisions
           paies={paies}
@@ -545,6 +603,7 @@ export default function Pauses () {
           onSelectSubFilter={setSubFilter}
           onStatuer={statuer}
           onAnnulerDecision={annulerDecision}
+          onSupprimer={supprimerPause}
           onOpenEmployeeFiche={(emp) => setFicheEmployee(emp)}
           onOpenPointages={(p) => {
             const q = p.matricule || p.employe || ''

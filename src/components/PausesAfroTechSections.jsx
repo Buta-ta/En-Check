@@ -24,6 +24,7 @@ import {
   Users,
   X,
   RotateCcw,
+  Trash2,
 } from 'lucide-react'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
@@ -35,7 +36,7 @@ import {
   formatDuree,
   formaterTempsPauseEnDirect,
 } from '../services/pausesService'
-import { getHeuresMinutesLocales, jourLocal } from '../utils/timezoneUtils'
+import { formaterHeureLocale, getHeuresMinutesLocales, jourLocal } from '../utils/timezoneUtils'
 import '../pages/PointagesAfroTech.css'
 
 function formatPeriodRangeLabel(selectedDate, viewMode = 'semaine') {
@@ -1012,6 +1013,75 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   CORBEILLE — « supprimer une pause » existe enfin, mais rien ne se perd
+   ═══════════════════════════════════════════════════════════════════════════
+   Une pause supprimée est ARCHIVÉE (copie intégrale) avant l'effacement :
+   elle reste consultable ici, et peut être remise dans la liste d'un clic.
+   ═══════════════════════════════════════════════════════════════════════════ */
+export function PausesCorbeille ({ lignes = [], onRestaurer }) {
+  if (!lignes || lignes.length === 0) return null
+
+  return (
+    <section className="pauses-v2-panel pauses-v2-journal-panel" aria-label="Corbeille des pauses supprimées">
+      <div className="pauses-v2-panel-head">
+        <div className="pauses-v2-panel-title-wrap">
+          <div className="pauses-v2-panel-icon">
+            <Trash2 size={18} />
+          </div>
+          <div>
+            <h3 className="pauses-v2-panel-title">Corbeille des pauses</h3>
+            <p className="pauses-v2-panel-subtitle">
+              Rien ne se perd : chaque pause supprimée est archivée ici, avec son
+              contenu exact, et peut être remise dans la liste d’un seul clic.
+            </p>
+          </div>
+        </div>
+        <span className="pauses-v2-journal-count">
+          {lignes.length} supprimée{lignes.length > 1 ? 's' : ''}
+        </span>
+      </div>
+
+      <ul className="pauses-v2-journal-list">
+        {lignes.map((l) => {
+          const debut = l.debut ? formaterHeureLocale(l.debut).slice(0, 5) : '--:--'
+          const fin = l.fin ? formaterHeureLocale(l.fin).slice(0, 5) : 'en cours'
+          return (
+            <li key={l.journal_id} className="pauses-v2-journal-row is-ecartee">
+              <span className="pauses-v2-journal-pill">🗑️ Supprimée</span>
+              <strong className="pauses-v2-journal-emp">
+                {`${l.prenom || ''} ${l.nom || ''}`.trim() || 'Collaborateur'}
+              </strong>
+              {l.matricule ? <em className="pauses-v2-journal-mat">#{l.matricule}</em> : null}
+              <span className="pauses-v2-journal-when">
+                {formatTableRowDate(l.jour)} · {debut} → {fin}
+              </span>
+              <span className="pauses-v2-journal-nature">
+                {l.source === 'presumee' ? 'Pause présumée' : 'Pause réelle'}
+              </span>
+              <span className="pauses-v2-journal-duree">{formatDuree(Number(l.duree_minutes) || 0)}</span>
+              {l.restaurable && onRestaurer ? (
+                <button
+                  type="button"
+                  className="pauses-v2-journal-btn"
+                  onClick={() => onRestaurer(l)}
+                  title="Remettre cette pause dans la liste"
+                >
+                  ♻️ Remettre
+                </button>
+              ) : (
+                <span className="pauses-v2-journal-nature" title="Une pause existe déjà à cet instant pour cet employé">
+                  Déjà restaurée
+                </span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    JOURNAL DES DÉCISIONS — « aucune décision n'efface une ligne »
    ═══════════════════════════════════════════════════════════════════════════
    Une pause VALIDÉE ou ÉCARTÉE reste listée ici, quelle que soit la vue.
@@ -1131,6 +1201,7 @@ export function PausesCollaborateursSection({
   onSelectSubFilter,
   onStatuer,
   onAnnulerDecision,
+  onSupprimer,
   onOpenEmployeeFiche,
   onOpenPointages,
   nowMs = Date.now(),
@@ -1579,6 +1650,18 @@ export function PausesCollaborateursSection({
                             ✓ Validée
                           </span>
                         ) : null}
+
+                        {onSupprimer && (
+                          <button
+                            type="button"
+                            className="pauses-v2-icon-btn"
+                            onClick={() => onSupprimer(p)}
+                            title="Supprimer cette pause (archivée et restaurable)"
+                          >
+                            <Trash2 size={13} />
+                            <span>Supprimer</span>
+                          </button>
+                        )}
 
                         {onOpenEmployeeFiche && empObj && (
                           <button
