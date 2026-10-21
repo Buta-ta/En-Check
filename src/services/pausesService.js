@@ -110,6 +110,74 @@ export function libelleNaturePause (p) {
 }
 
 /**
+ * Minutes de pause à DÉDUIRE du temps travaillé d'une journée.
+ *
+ * C'est le chaînon manquant entre les pauses et la paie : sans cette
+ * déduction, une pause pointée depuis l'application (bouton Pause, sans
+ * badge de sortie) restait comptée comme du travail, et un employé qui
+ * prenait 90 min au lieu des 60 prévues était payé pour les 30 min de trop.
+ *
+ * Doctrine « on invente, on marque, on n'encaisse pas » :
+ *  · une pause RÉELLE (pointée ou saisie admin), validée ou non, est déduite :
+ *    ce temps n'est pas du travail ;
+ *  · une pause PRÉSUMÉE n'est déduite QU'APRÈS validation par un humain —
+ *    avant, elle est marquée, jamais encaissée ;
+ *  · une pause ÉCARTÉE n'est jamais déduite ;
+ *  · une pause déjà matérialisée par un badge Sortie → Entrée n'est PAS
+ *    redéduite : l'intervalle ne compte déjà pas comme travaillé.
+ *
+ * @param {Array} pauses       lignes de pause de la journée (déjà filtrées)
+ * @param {Array} attendances  pointages de la journée (pour éviter le double compte)
+ * @param {Object} options     { toleranceMinutes = 5 }
+ * @returns {{ minutes: number, retenues: Array }}
+ */
+export function minutesPausesDeductibles (pauses = [], attendances = [], options = {}) {
+  const toleranceMs = Number(options.toleranceMinutes ?? 5) * 60000
+
+  const badges = (attendances || [])
+    .filter(Boolean)
+    .map((a) => ({
+      type: String(a.check_type || '').toLowerCase(),
+      ms: new Date(a.check_time).getTime(),
+    }))
+    .filter((b) => Number.isFinite(b.ms))
+
+  let minutes = 0
+  const retenues = []
+
+  for (const p of pauses || []) {
+    if (!p) continue
+    // Une pause écartée n'est jamais déduite : l'admin a dit « elle ne compte pas ».
+    if (p.statut === 'ecartee') continue
+
+    const presume = estPausePresumee(p)
+    // Présomption non validée : on marque, on n'encaisse pas.
+    if (presume && p.statut !== 'validee') continue
+    if (!presume && !estPauseNonPresumee(p)) continue
+
+    const debutBrut = p.debutISO || p.debut
+    const finBrut = p.finISO || p.fin
+    const debut = debutBrut ? new Date(debutBrut).getTime() : NaN
+    const fin = finBrut ? new Date(finBrut).getTime() : NaN
+    // Une pause ouverte (pas encore de reprise) n'a rien à déduire.
+    if (!Number.isFinite(debut) || !Number.isFinite(fin) || fin <= debut) continue
+
+    // Déjà exclue du temps travaillé par un badge Sortie → Entrée ?
+    const dejaComptee =
+      badges.some((b) => b.type === 'out' && Math.abs(b.ms - debut) <= toleranceMs) &&
+      badges.some((b) => b.type === 'in' && Math.abs(b.ms - fin) <= toleranceMs)
+    if (dejaComptee) continue
+
+    const duree = Math.round((fin - debut) / 60000)
+    if (duree <= 0) continue
+    minutes += duree
+    retenues.push({ id: p.id || null, minutes: duree, source: p.source || null, statut: p.statut || null })
+  }
+
+  return { minutes, retenues }
+}
+
+/**
  * Construit la liste affichable + les statistiques de la page Pauses.
  * @param {Array} lignesSql  lignes de `encheck_pauses_lire` ou `encheck_pauses`
  * @returns {{ paies: Array, stats: Object }}

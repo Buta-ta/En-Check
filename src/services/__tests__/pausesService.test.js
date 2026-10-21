@@ -17,6 +17,7 @@ import {
   formaterChronoPauseDigital,
   pausesVisiblesDansPointages,
   estPresumeeValidee,
+  minutesPausesDeductibles,
 } from '../pausesService.js'
 
 beforeEach(() => {
@@ -217,4 +218,84 @@ describe('⏸ Service Pauses — présentation pure (16/10/2026)', () => {
     expect(estPauseReelleEffectuee({ source: 'presumee', statut: 'validee' })).toBe(false)
   })
 
+})
+
+describe('déduction des pauses du temps travaillé', () => {
+  // Même journée, fuseau Africa/Porto-Novo (UTC+1)
+  const jour = '2026-10-21'
+
+  it('déduit une pause réelle pointée depuis l’application (sans badge)', () => {
+    const pauses = [{
+      id: 'p1', statut: 'reelle', source: 'pointee',
+      debutISO: `${jour}T10:00:00+01:00`, finISO: `${jour}T11:30:00+01:00`,
+    }]
+    // Un seul badge d'entrée, un seul de sortie : la pause n'est PAS matérialisée
+    const attendances = [
+      { check_type: 'in', check_time: `${jour}T08:00:00+01:00` },
+      { check_type: 'out', check_time: `${jour}T17:00:00+01:00` },
+    ]
+    expect(minutesPausesDeductibles(pauses, attendances).minutes).toBe(90)
+  })
+
+  it('ne déduit PAS deux fois une pause déjà matérialisée par Sortie → Entrée', () => {
+    const pauses = [{
+      id: 'p1', statut: 'reelle', source: 'pointee',
+      debutISO: `${jour}T12:00:00+01:00`, finISO: `${jour}T13:30:00+01:00`,
+    }]
+    const attendances = [
+      { check_type: 'in', check_time: `${jour}T08:00:00+01:00` },
+      { check_type: 'out', check_time: `${jour}T12:00:00+01:00` },
+      { check_type: 'in', check_time: `${jour}T13:30:00+01:00` },
+      { check_type: 'out', check_time: `${jour}T17:00:00+01:00` },
+    ]
+    expect(minutesPausesDeductibles(pauses, attendances).minutes).toBe(0)
+  })
+
+  it('les 30 minutes de trop d’une pause de 90 min au lieu de 60 sont déduites', () => {
+    // La grille prévoit 60 min, l'employé en prend 90 : les 90 sont retirées du
+    // temps travaillé — l'excédent n'est donc jamais payé.
+    const pauses = [{
+      id: 'p1', statut: 'reelle', source: 'pointee',
+      debutISO: `${jour}T12:00:00+01:00`, finISO: `${jour}T13:30:00+01:00`,
+    }]
+    expect(minutesPausesDeductibles(pauses, []).minutes).toBe(90)
+  })
+
+  it('une présomption non validée n’est jamais encaissée', () => {
+    const enAttente = minutesPausesDeductibles(
+      [{ id: 'p1', statut: 'presumee', source: 'presumee', debutISO: `${jour}T12:00:00+01:00`, finISO: `${jour}T13:00:00+01:00` }],
+      [],
+    )
+    expect(enAttente.minutes).toBe(0)
+
+    const validee = minutesPausesDeductibles(
+      [{ id: 'p1', statut: 'validee', source: 'presumee', debutISO: `${jour}T12:00:00+01:00`, finISO: `${jour}T13:00:00+01:00` }],
+      [],
+    )
+    expect(validee.minutes).toBe(60)
+  })
+
+  it('une pause écartée ou encore ouverte n’est jamais déduite', () => {
+    expect(minutesPausesDeductibles(
+      [{ id: 'p1', statut: 'ecartee', source: 'pointee', debutISO: `${jour}T12:00:00+01:00`, finISO: `${jour}T13:00:00+01:00` }],
+      [],
+    ).minutes).toBe(0)
+
+    expect(minutesPausesDeductibles(
+      [{ id: 'p2', statut: 'reelle', source: 'pointee', debutISO: `${jour}T12:00:00+01:00`, finISO: null }],
+      [],
+    ).minutes).toBe(0)
+  })
+
+  it('détaille chaque retenue pour pouvoir l’afficher', () => {
+    const { retenues } = minutesPausesDeductibles(
+      [
+        { id: 'a', statut: 'reelle', source: 'pointee', debutISO: `${jour}T10:00:00+01:00`, finISO: `${jour}T10:20:00+01:00` },
+        { id: 'b', statut: 'validee', source: 'presumee', debutISO: `${jour}T12:00:00+01:00`, finISO: `${jour}T13:00:00+01:00` },
+      ],
+      [],
+    )
+    expect(retenues.map((r) => r.minutes)).toEqual([20, 60])
+    expect(retenues[1].statut).toBe('validee')
+  })
 })

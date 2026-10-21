@@ -1502,6 +1502,10 @@ function timeToMinutes(t) {
 // ═══════════════════════════════════════════════════════════════════════════
 // 🌙 RÉSOLUTION D'UNE JOURNÉE DE POINTAGE (JOUR LOCAL + GARDE DE NUIT + ANTI-REBOND QR + AUTO-CLOSE)
 // ═══════════════════════════════════════════════════════════════════════════
+//  Le temps de pause n'est pas du travail : la déduction est portée par le
+//  service des pauses (une seule règle, un seul endroit, testable).
+import { minutesPausesDeductibles } from './pausesService'
+
 export function resoudrePointagesJournee(rawAttendances, selectedDate, options = {}) {
   const sorted = [...(rawAttendances || [])].sort(
     (a, b) => new Date(a.check_time) - new Date(b.check_time)
@@ -1769,10 +1773,27 @@ export function resoudrePointagesJournee(rawAttendances, selectedDate, options =
     firstIn = attendancesDuJour.find(a => a.check_type === 'in') || null
   }
 
+  // ── PAUSES : ce qui a été pris n'est pas du travail ─────────────────────
+  //  Avant, le temps de pause pointé depuis l'application (bouton Pause, sans
+  //  badge de sortie) restait compté comme travaillé : un employé qui prenait
+  //  90 min au lieu des 60 prévues était payé pour les 30 min de trop. La
+  //  déduction se fait ICI, donc elle profite au temps travaillé affiché, aux
+  //  heures supplémentaires et aux exports.
+  //  Une pause déjà matérialisée par un badge Sortie → Entrée n'est pas
+  //  redéduite : l'intervalle ne compte déjà pas comme travaillé.
+  const deduction = minutesPausesDeductibles(options.pauses || [], sorted, {
+    toleranceMinutes: options.tolerancePauseMinutes ?? 5,
+  })
+  const pauseDeduitesSecondes = Math.max(0, deduction.minutes) * 60
+  const totalSecondesNet = Math.max(0, totalSecondes - pauseDeduitesSecondes)
+
   return {
     attendances: attendancesDuJour,
     validPairs,
-    totalSecondes,
+    totalSecondes: totalSecondesNet,
+    totalSecondesBrut: totalSecondes,
+    pauseDeduitesSecondes,
+    pausesDeductibles: deduction.retenues,
     totalSecondesPresumes,
     nuitRattachee,
     estimationEcartee,
