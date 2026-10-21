@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
 import {
   construirePauses,
+  estPausePresumee,
   estPauseReelleEffectuee,
   exportCsvPauses,
 } from '../services/pausesService'
@@ -23,6 +24,7 @@ import {
   KenteWovenTapestrySvg,
   PausesAnalyticsCharts,
   PausesCollaborateursSection,
+  PausesJournalDecisions,
   PausesCulturalHero,
   PausesExecutiveKpis,
 } from '../components/PausesAfroTechSections'
@@ -228,7 +230,10 @@ export default function Pauses () {
     }
   }, [admin, loadPauses])
 
+  //  Une décision ne doit JAMAIS donner l'impression d'effacer une pause :
+  //  on annonce où la ligne atterrit, et on y emmène l'utilisateur.
   const statuer = async (ids, decision) => {
+    const concernees = (paies || []).filter((p) => ids.includes(p.id))
     const { error } = await supabase.rpc('encheck_pauses_statuer', {
       p_ids: ids,
       p_decision: decision,
@@ -238,9 +243,46 @@ export default function Pauses () {
       toast.error('Erreur lors de la décision')
       return
     }
-    toast.success(decision === 'valider' ? 'Pause validée ✅' : 'Pause écartée 🚫')
+
+    if (decision === 'ecarter') {
+      setActiveTab('all')
+      setSubFilter('ecartees')
+      toast.success('Pause écartée 🚫 — retrouvable dans « Écartées » et dans le journal')
+    } else {
+      const presumee = concernees.some((p) => estPausePresumee(p))
+      if (presumee) {
+        setActiveTab('presumees')
+        setSubFilter('presumees_validees')
+        toast.success('Pause validée ✅ — classée dans « Présumées → Validées »')
+      } else {
+        setActiveTab('reelles')
+        setSubFilter('all')
+        toast.success('Pause validée ✅ — toujours listée dans « Pauses réelles »')
+      }
+    }
+    setSearchTerm('')
     loadPauses()
   }
+
+  //  Ramener une pause du journal dans le tableau, quel que soit le filtre actif.
+  const voirPause = useCallback((p) => {
+    if (!p) return
+    setSearchTerm('')
+    if (p.statut === 'ecartee') {
+      setActiveTab('all')
+      setSubFilter('ecartees')
+    } else if (estPausePresumee(p)) {
+      setActiveTab('presumees')
+      setSubFilter(p.statut === 'validee' ? 'presumees_validees' : 'all')
+    } else {
+      setActiveTab('reelles')
+      setSubFilter('all')
+    }
+    const cible = document.querySelector('.pauses-v2-table-wrap')
+    if (cible && typeof cible.scrollIntoView === 'function') {
+      cible.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [])
 
   const creerPause = async () => {
     if (!form.employee_id || !form.jour || !form.debut || !form.fin) {
@@ -417,6 +459,9 @@ export default function Pauses () {
             setSubFilter('all')
           }}
         />
+
+        {/* Journal des décisions : aucune pause validée ou écartée ne se perd */}
+        <PausesJournalDecisions paies={paies} onVoir={voirPause} />
 
         {/* Tableau des pauses des employés */}
         <PausesCollaborateursSection

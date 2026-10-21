@@ -1010,6 +1010,92 @@ export function PausesAnalyticsCharts({ paies = [], onSelectTab }) {
   )
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   JOURNAL DES DÉCISIONS — « aucune décision n'efface une ligne »
+   ═══════════════════════════════════════════════════════════════════════════
+   Une pause VALIDÉE ou ÉCARTÉE reste listée ici, quelle que soit la vue.
+   C'est la réponse à « je ne retrouve plus ma pause nulle part » : chaque
+   décision est tracée, avec un bouton qui ramène la ligne dans le tableau.
+   ═══════════════════════════════════════════════════════════════════════════ */
+export function PausesJournalDecisions ({ paies = [], onVoir }) {
+  const decisions = useMemo(
+    () =>
+      (paies || [])
+        .filter((p) => p.statut === 'validee' || p.statut === 'ecartee')
+        .sort(
+          (a, b) =>
+            String(b.jour || '').localeCompare(String(a.jour || '')) ||
+            String(b.debutHHMM || '').localeCompare(String(a.debutHHMM || ''))
+        ),
+    [paies]
+  )
+
+  return (
+    <section className="pauses-v2-panel pauses-v2-journal-panel" aria-label="Journal des décisions sur les pauses">
+      <div className="pauses-v2-panel-head">
+        <div className="pauses-v2-panel-title-wrap">
+          <div className="pauses-v2-panel-icon">
+            <CheckCircle2 size={18} />
+          </div>
+          <div>
+            <h3 className="pauses-v2-panel-title">Journal des décisions</h3>
+            <p className="pauses-v2-panel-subtitle">
+              Toute pause validée ou écartée reste listée ici — Valider et Écarter
+              changent le statut, jamais l’existence de la ligne.
+            </p>
+          </div>
+        </div>
+        <span className="pauses-v2-journal-count">
+          {decisions.length} décision{decisions.length > 1 ? 's' : ''} sur la période
+        </span>
+      </div>
+
+      {decisions.length === 0 ? (
+        <p className="pauses-v2-journal-empty">
+          Aucune décision enregistrée sur la période affichée. Dès qu’une pause est
+          validée ou écartée, elle apparaît ici et reste retrouvable.
+        </p>
+      ) : (
+        <ul className="pauses-v2-journal-list">
+          {decisions.map((p) => {
+            const validee = p.statut === 'validee'
+            const estPresumee = estPausePresumee(p)
+            return (
+              <li
+                key={p.id || `${p.employe_id}-${p.debutISO}`}
+                className={`pauses-v2-journal-row ${validee ? 'is-validee' : 'is-ecartee'}`}
+              >
+                <span className="pauses-v2-journal-pill">
+                  {validee ? '✓ Validée' : '🚫 Écartée'}
+                </span>
+                <strong className="pauses-v2-journal-emp">{p.employe || 'Collaborateur'}</strong>
+                {p.matricule ? <em className="pauses-v2-journal-mat">#{p.matricule}</em> : null}
+                <span className="pauses-v2-journal-when">
+                  {formatTableRowDate(p.jour)} · {p.debutHHMM || '--:--'} → {p.finHHMM || 'en cours'}
+                </span>
+                <span className="pauses-v2-journal-nature">
+                  {p.natureLabel || (estPresumee ? 'Pause présumée' : 'Pause réelle')}
+                </span>
+                <span className="pauses-v2-journal-duree">{formatDuree(p.dureeMinutes)}</span>
+                {onVoir && (
+                  <button
+                    type="button"
+                    className="pauses-v2-journal-btn"
+                    onClick={() => onVoir(p)}
+                    title="Afficher cette pause dans le tableau"
+                  >
+                    Voir dans la liste
+                  </button>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 export function PausesCollaborateursSection({
   paies = [],
   employesById = {},
@@ -1047,8 +1133,13 @@ export function PausesCollaborateursSection({
       if (subFilter === 'anomalie_sans_reprise') base = base.filter((p) => p.anomalie === 'sans_reprise')
       else if (subFilter === 'anomalie_trop_longue') base = base.filter((p) => p.anomalie === 'trop_longue')
     } else {
-      // Vue 'all' : pauses en direct en tête, puis réelles et présumées non écartées
-      base = paies.filter((p) => p.statut !== 'ecartee')
+      // Vue 'all' : pauses en direct en tête, puis réelles et présumées non
+      // écartées. Le sous-filtre 'ecartees' est la porte de secours : une
+      // pause écartée reste consultable, jamais volatilisée.
+      base =
+        subFilter === 'ecartees'
+          ? paies.filter((p) => p.statut === 'ecartee')
+          : paies.filter((p) => p.statut !== 'ecartee')
       if (subFilter === 'en_direct') base = base.filter((p) => p.ouverte)
       else if (subFilter === 'reelles_hors_planning') base = base.filter((p) => p.estNonPlanifiee)
     }
@@ -1091,6 +1182,9 @@ export function PausesCollaborateursSection({
     } else if (val === 'en_direct') {
       onSelectTab && onSelectTab('reelles')
       onSelectSubFilter && onSelectSubFilter('en_direct')
+    } else if (val === 'ecartees') {
+      onSelectTab && onSelectTab('all')
+      onSelectSubFilter && onSelectSubFilter('ecartees')
     } else if (val === 'reelles_all') {
       onSelectTab && onSelectTab('reelles')
       onSelectSubFilter && onSelectSubFilter('all')
@@ -1189,6 +1283,7 @@ export function PausesCollaborateursSection({
             <option value="all">Tous les statuts ({paies.filter((p) => p.statut !== 'ecartee').length})</option>
             <option value="en_direct">⏱️ En pause en direct ({openPauses.length})</option>
             <option value="reelles_all">✓ Pauses réelles ({realPauses.length})</option>
+            <option value="ecartees">🗑️ Écartées ({paies.filter((p) => p.statut === 'ecartee').length})</option>
             <option value="reelles_pointees">📱 Réelles pointées ({realPauses.filter((p) => p.source === 'pointee').length})</option>
             <option value="reelles_admin">🛡️ Saisies par l’admin ({realPauses.filter((p) => p.source === 'admin').length})</option>
             <option value="reelles_hors_planning">⚡ Hors planning ({realPauses.filter((p) => p.estNonPlanifiee).length})</option>
