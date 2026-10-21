@@ -189,11 +189,46 @@ export default function Pauses () {
       })
       if (error) throw error
 
-      const { paies: liste } = construirePauses(lignes || [])
+      // ── FILET DE LECTURE DIRECTE ──────────────────────────────────────────
+      // `encheck_pauses_lire` est une FONCTION : si elle omet une ligne — dérive
+      // de version entre le dépôt et la base de production, jointure cassée,
+      // filtre de période — la pause devient introuvable à l'écran alors
+      // qu'elle est bien dans la table. C'est exactement le symptôme
+      // « j'ai validé et je ne retrouve plus la pause nulle part ».
+      // On relit donc la table ELLE-MÊME, et toute ligne que la fonction n'a
+      // pas renvoyée est récupérée et marquée `recupereeDirecte`.
+      // Rien n'est inventé : on affiche ce qui existe réellement en base.
+      let lignesDirectes = []
+      try {
+        let direct = supabase
+          .from('encheck_pauses')
+          .select(
+            'id, enterprise_id, employee_id, jour, debut, fin, duree_minutes, statut, source, motif, anomalie, employees(id, first_name, last_name, matricule)'
+          )
+          .gte('jour', startDate)
+          .lte('jour', endDate)
+        if (entArg) direct = direct.eq('enterprise_id', entArg)
+        const { data: brut, error: errDirect } = await direct
+        if (errDirect) throw errDirect
+        lignesDirectes = brut || []
+      } catch (eDirect) {
+        console.warn('[pauses] lecture directe indisponible :', eDirect)
+      }
+
+      const idsRpc = new Set((lignes || []).map((l) => l.id))
+      const manquantes = lignesDirectes
+        .filter((l) => l && !idsRpc.has(l.id))
+        .map((l) => ({ ...l, recupereeDirecte: true }))
+
+      const { paies: liste } = construirePauses([...(lignes || []), ...manquantes])
       const enriched = liste.map((p) => {
         const planned = hasPlannedBreakForEmployee(p.employe_id, p.enterprise_id || entArg)
+        const nomEntreprise = p.entreprise_nom ||
+          (entreprises || []).find((x) => x.id === p.enterprise_id)?.name ||
+          ''
         return {
           ...p,
+          entreprise_nom: nomEntreprise,
           debutHHMM: p.debutISO ? formaterHeureLocale(p.debutISO).slice(0, 5) : p.debutHHMM,
           finHHMM: p.finISO ? formaterHeureLocale(p.finISO).slice(0, 5) : p.finHHMM,
           estNonPlanifiee: estPauseReelleEffectuee(p) && !planned,
@@ -283,6 +318,37 @@ export default function Pauses () {
       cible.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }, [])
+
+  //  Annuler une décision : la pause revient à son statut d'origine.
+  //  La voie propre passe par la fonction SQL (journal d'audit). Si elle n'est
+  //  pas encore déployée, repli par écriture directe sur la table.
+  const annulerDecision = useCallback(
+    async (p) => {
+      if (!p || !p.id) return
+      const { error } = await supabase.rpc('encheck_pauses_annuler_decision', {
+        p_ids: [p.id],
+        p_motif: 'annulé depuis le journal des décisions',
+      })
+      if (!error) {
+        toast.success('Décision annulée — la pause est revenue à son statut d’origine')
+        loadPauses()
+        return
+      }
+      const { error: errDirect } = await supabase
+        .from('encheck_pauses')
+        .update({ statut: p.source === 'presumee' ? 'presumee' : 'reelle' })
+        .eq('id', p.id)
+      if (errDirect) {
+        toast.error(
+          'Annulation impossible : exécutez le script SQL du 21/10 (encheck_pauses_annuler_decision)'
+        )
+        return
+      }
+      toast.success('Décision annulée — la pause est revenue dans la liste')
+      loadPauses()
+    },
+    [loadPauses]
+  )
 
   const creerPause = async () => {
     if (!form.employee_id || !form.jour || !form.debut || !form.fin) {
@@ -461,7 +527,11 @@ export default function Pauses () {
         />
 
         {/* Journal des décisions : aucune pause validée ou écartée ne se perd */}
-        <PausesJournalDecisions paies={paies} onVoir={voirPause} />
+        <PausesJournalDecisions
+          paies={paies}
+          onVoir={voirPause}
+          onAnnuler={annulerDecision}
+        />
 
         {/* Tableau des pauses des employés */}
         <PausesCollaborateursSection
@@ -474,6 +544,7 @@ export default function Pauses () {
           onSelectTab={setActiveTab}
           onSelectSubFilter={setSubFilter}
           onStatuer={statuer}
+          onAnnulerDecision={annulerDecision}
           onOpenEmployeeFiche={(emp) => setFicheEmployee(emp)}
           onOpenPointages={(p) => {
             const q = p.matricule || p.employe || ''
