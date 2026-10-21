@@ -1170,6 +1170,7 @@ export default function Pointages() {
           sortiesNonRetenues,
           firstIn,
           lastOut,
+          pauseDeduitesSecondes,
         } = resoudrePointagesJournee(rawEmpAttendances, selectedDate, {
           enableAutoClose: true,
           //  Pas de planning transmis au moteur si l'option n'est pas payée :
@@ -1180,6 +1181,9 @@ export default function Pointages() {
           enterpriseCfg,
           //  Arbitrage n°2, faille 1 : les seuils de la base, enfin transmis.
           seuils: seuilsByEnterprise[employee.enterprise_id] || null,
+          //  Le temps de pause n'est pas du travail : on le déduit du temps
+          //  travaillé, donc des heures supplémentaires et des exports.
+          pauses: pausesByEmployee[employee.id] || [],
         })
 
         const employeeAbsence = absencesData?.find(abs => abs.employee_id === employee.id)
@@ -1313,7 +1317,7 @@ export default function Pointages() {
         }
 
         return {
-          employee, firstIn, lastOut, totalSecondes, status,
+          employee, firstIn, lastOut, totalSecondes, status, pauseDeduitesSecondes,
           totalSecondesPresumes, nuitRattachee, estimationEcartee, sortiesNonRetenues,
           absenceReason, attendances: empAttendances, hasPhoto,
           hasGPS, gpsDetails, faceDetails, scheduleInfo, pauses: employeePauses,
@@ -2885,6 +2889,9 @@ function PointageCard({
                   ? ` (dont ${presumedValidees} présumée${presumedValidees > 1 ? 's' : ''} validée${presumedValidees > 1 ? 's' : ''})`
                   : ` réelle${pausesVisibles.length > 1 ? 's' : ''}`} :{' '}
                 {pausesVisibles.map(pa => `${pa.debutHHMM}→${pa.finHHMM || ''} (${pa.dureeMinutes} min)`).join(' · ')}
+                {p.pauseDeduitesSecondes > 0
+                  ? ` · ⏸ ${formaterDureeComplete(p.pauseDeduitesSecondes)} déduit${p.pauseDeduitesSecondes > 60 ? 'es' : 'e'} du temps travaillé`
+                  : ''}
               </>
             )}
           </span>

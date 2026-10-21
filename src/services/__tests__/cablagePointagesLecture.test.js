@@ -17,6 +17,8 @@ const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
 const pointagesSrc = lire('src/pages/Pointages.jsx')
 const sectionsSrc = lire('src/components/PointagesAfroTechSections.jsx')
 const cssSrc = lire('src/pages/PointagesAfroTech.css')
+const hoursCalcSrc = lire('src/services/hoursCalculator.js')
+const pausesServiceSrc = lire('src/services/pausesService.js')
 const planningSrc = lire('src/pages/Planning.jsx')
 const pausesSrc = lire('src/pages/Pauses.jsx')
 const pausesSectionsSrc = lire('src/components/PausesAfroTechSections.jsx')
@@ -245,6 +247,26 @@ describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => 
     // La restauration n'écrase jamais une pause existante
     expect(migrationCorbeilleSql).toContain('ON CONFLICT (id) DO NOTHING')
     expect(migrationCorbeilleSql).toContain('restaurable')
+  })
+
+
+  it('16. le temps de pause est déduit du temps travaillé (risque paie)', () => {
+    // Une règle, un seul endroit, testable
+    expect(pausesServiceSrc).toContain('export function minutesPausesDeductibles')
+    expect(hoursCalcSrc).toContain('minutesPausesDeductibles')
+    // Le moteur reçoit les pauses et applique la déduction au total payé
+    expect(hoursCalcSrc).toContain('minutesPausesDeductibles(options.pauses || [], sorted,')
+    expect(hoursCalcSrc).toContain('const totalSecondesNet = Math.max(0, totalSecondes - pauseDeduitesSecondes)')
+    expect(hoursCalcSrc).toContain('totalSecondes: totalSecondesNet,')
+    // … sans jamais déduire deux fois une pause déjà matérialisée par des badges
+    expect(pausesServiceSrc).toContain('const dejaComptee =')
+    // … ni encaisser une présomption non validée
+    expect(pausesServiceSrc).toContain("if (presume && p.statut !== 'validee') continue")
+    // La page Pointages transmet bien les pauses au moteur
+    expect(pointagesSrc).toContain('pauses: pausesByEmployee[employee.id] || [],')
+    expect(pointagesSrc).toContain('pauseDeduitesSecondes,')
+    // Et l'écran le dit : ce qui est déduit est visible
+    expect(pointagesSrc).toContain('déduit')
   })
 
 })
