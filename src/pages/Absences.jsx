@@ -6,14 +6,16 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import PageHeader from '../components/PageHeader'
 import { KenteAmberWeaveSvg } from '../components/AfroCulturalSvg'
 import AbsencesCalendrier from '../components/AbsencesCalendrier'
 import { MOTIFS, STATUTS_ABSENCE, getMotifConfig } from '../constants/motifsAbsence'
 import { compterJoursOuvres } from '../services/absencesCalendrier'
+import AbsencesDock from '../components/AbsencesDock'
+import './AbsencesAfroTech.css'
 import HolidayService from '../services/holidayService'
 import LeaveBalanceService from '../services/leaveBalanceService'
 import {
+  ArrowLeft,
   Footprints, Plus, Trash2, X, Save, CalendarOff, Building2, User,
   FileText, AlertTriangle, Clock, Search, Edit3, Check, XCircle,
   Download, ChevronLeft, ChevronRight, Calendar,CalendarDays, List, TrendingUp,
@@ -158,7 +160,7 @@ function UploadZone({ file, existingUrl, onFileSelect, onRemove, uploading }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
         <Paperclip size={14} /> Justificatif
         <span style={{ color: '#666', fontWeight: 400, fontSize: 12 }}>(optionnel)</span>
       </label>
@@ -198,10 +200,10 @@ function UploadZone({ file, existingUrl, onFileSelect, onRemove, uploading }) {
             }
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <p style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {file ? file.name : getFileName(existingUrl)}
             </p>
-            <p style={{ color: '#888', fontSize: 11, margin: '2px 0 0 0' }}>
+            <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 11, margin: '2px 0 0 0' }}>
               {file ? formatFileSize(file.size) : 'Document existant'}
             </p>
           </div>
@@ -238,20 +240,20 @@ function DocumentViewer({ url, onClose, employeeName, absenceInfo }) {
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.95)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }} onClick={onClose}>
-      <div style={{ background: '#141423', borderRadius: 20, width: '100%', maxWidth: 900, maxHeight: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid rgba(255,255,255,.1)', boxShadow: '0 25px 80px rgba(0,0,0,.5)' }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: '#1D1713', borderRadius: 20, width: '100%', maxWidth: 900, maxHeight: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid rgba(255,255,255,.1)', boxShadow: '0 25px 80px rgba(0,0,0,.5)' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Paperclip size={18} color="#F59E0B" />
             <div>
               <h3 style={{ color: '#FFF', fontSize: 16, fontWeight: 600, margin: 0 }}>Justificatif</h3>
-              {employeeName && <p style={{ color: '#888', fontSize: 12, margin: '2px 0 0 0' }}>{employeeName}</p>}
+              {employeeName && <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 12, margin: '2px 0 0 0' }}>{employeeName}</p>}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {fileType === 'image' && (
               <>
                 <button onClick={() => setZoom(z => Math.max(z - .25, .5))} style={viewerBtnStyle}><ZoomOut size={18} /></button>
-                <span style={{ color: '#888', fontSize: 12, minWidth: 45, textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
+                <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 12, minWidth: 45, textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
                 <button onClick={() => setZoom(z => Math.min(z + .25, 3))} style={viewerBtnStyle}><ZoomIn size={18} /></button>
               </>
             )}
@@ -261,15 +263,15 @@ function DocumentViewer({ url, onClose, employeeName, absenceInfo }) {
           </div>
         </div>
         <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'rgba(0,0,0,.2)', minHeight: 300 }}>
-          {loading && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: '#888' }}><RefreshCw size={32} color="#F59E0B" style={{ animation: 'spin 1s linear infinite' }} /><p>Chargement...</p></div>}
+          {loading && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'rgba(245,242,235,0.55)' }}><RefreshCw size={32} color="#F59E0B" style={{ animation: 'spin 1s linear infinite' }} /><p>Chargement...</p></div>}
           {fileType === 'image' && <img src={url} alt="Justificatif" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8, transform: `scale(${zoom})`, transition: 'transform .2s ease', display: loading ? 'none' : 'block' }} onLoad={() => setLoading(false)} />}
           {fileType === 'pdf' && <iframe src={url} style={{ width: '100%', height: '70vh', border: 'none', borderRadius: 8, display: loading ? 'none' : 'block' }} title="Document PDF" onLoad={() => setLoading(false)} />}
-          {fileType === 'other' && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, color: '#888', textAlign: 'center' }}><File size={48} color="#666" /><p>Aperçu non disponible</p><a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#F59E0B', textDecoration: 'none', padding: '10px 20px', background: 'rgba(245,158,11,.1)', borderRadius: 8, fontWeight: 500 }}><Download size={16} /> Télécharger</a></div>}
+          {fileType === 'other' && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, color: 'rgba(245,242,235,0.55)', textAlign: 'center' }}><File size={48} color="#666" /><p>Aperçu non disponible</p><a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#F59E0B', textDecoration: 'none', padding: '10px 20px', background: 'rgba(245,158,11,.1)', borderRadius: 8, fontWeight: 500 }}><Download size={16} /> Télécharger</a></div>}
         </div>
         <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,.06)', background: 'rgba(0,0,0,.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ color: '#E5E5E5', fontSize: 12, fontWeight: 500 }}>📄 {fileName}</span>
-            {absenceInfo && <span style={{ color: '#888', fontSize: 11 }}>{absenceInfo}</span>}
+            <span style={{ color: '#F5F2EB', fontSize: 12, fontWeight: 500 }}>📄 {fileName}</span>
+            {absenceInfo && <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 11 }}>{absenceInfo}</span>}
           </div>
         </div>
       </div>
@@ -286,7 +288,7 @@ const viewerBtnStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  color: '#E5E5E5',
+  color: '#F5F2EB',
   cursor: 'pointer',
   textDecoration: 'none',
   flexShrink: 0,
@@ -385,7 +387,7 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
         <div style={CS.daysBadge}>
           <span style={CS.daysNumber}>{nbJoursOuvres}</span>
           <span style={CS.daysLabel}>ouvré{nbJoursOuvres > 1 ? 's' : ''}</span>
-          <span style={{ fontSize: '9px', color: '#888', marginTop: '2px' }}>
+          <span style={{ fontSize: '9px', color: 'rgba(245,242,235,0.55)', marginTop: '2px' }}>
             ({nbJoursCalendaires} cal.)
           </span>
         </div>
@@ -571,7 +573,7 @@ export default function Absences() {
   })
 
   useEffect(() => {
-    document.body.style.backgroundColor = '#0A0A0F'
+    document.body.style.backgroundColor = '#15110E'
     const adminData = localStorage.getItem('admin')
     if (!adminData) { navigate('/login'); return }
     const parsed = JSON.parse(adminData)
@@ -1172,13 +1174,15 @@ export default function Absences() {
     return days
   }, [calendarDate, absences, admin, selectedEntrepriseId, getHolidaySet, getHolidayMap])
 
-  const handleAdd = () => {
+  // prefill vient du dock : { employee_id, start_date, end_date, reason }
+  const handleAdd = (prefill = null) => {
+    const aujourdhui = new Date().toISOString().split('T')[0]
     setEditingAbsence(null)
     setFormData({
-      employee_id: employes.length > 0 ? employes[0].id : '',
-      start_date: new Date().toISOString().split('T')[0],
-      end_date: new Date().toISOString().split('T')[0],
-      reason: 'conge',
+      employee_id: prefill?.employee_id ?? (employes.length > 0 ? employes[0].id : ''),
+      start_date: prefill?.start_date ?? aujourdhui,
+      end_date: prefill?.end_date ?? aujourdhui,
+      reason: prefill?.reason ?? 'conge',
       status: 'approuve',
       notes: '',
       document_file: null,
@@ -1453,7 +1457,7 @@ export default function Absences() {
   .doc-view-btn:hover{background:rgba(59,130,246,0.15)!important;border-color:rgba(59,130,246,0.4)!important}
   
   select:focus,input:focus,textarea:focus{border-color:#F59E0B!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.1)}
-  select option{background:#141423;color:#E5E5E5}
+  select option{background:#1D1713;color:#F5F2EB}
 
 
   /* Classes utilitaires responsive */
@@ -1859,13 +1863,39 @@ export default function Absences() {
   }
 `}</style>
 
-      <div style={S.container}>
+      <div className="abs-page" data-theme="dark" style={S.container}>
         {/* Frise supérieure textile Kente — palette ambre (orange · jaune · noir) */}
         <div className="abs-kente-top-strip" aria-hidden="true">
           <KenteAmberWeaveSvg />
         </div>
 
-        <PageHeader title="ABSENCES & CONGÉS" />
+        {/* Barre supérieure En-Check — même charte que la page Planning */}
+        <div className="abs-topbar">
+          <div className="abs-topbar-inner">
+            <div className="abs-topbar-left">
+              <button
+                type="button"
+                className="abs-back-btn"
+                onClick={() => navigate('/dashboard')}
+                aria-label="Retour au tableau de bord"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <div className="abs-brand">
+                <span className="abs-brand-title">En-Check · ABSENCES &amp; CONGÉS</span>
+                <span className="abs-brand-sub">Congés, maladies, formations et justificatifs</span>
+              </div>
+            </div>
+            <div className="abs-topbar-right">
+              <button type="button" className="abs-btn" onClick={handleExportCSV}>
+                <Download size={16} /> <span>Export</span>
+              </button>
+              <button type="button" className="abs-btn abs-btn-primary" onClick={() => handleAdd()}>
+                <Plus size={16} /> <span>Déclarer</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         <main style={S.main}>
                   <div style={TAB.container}>
@@ -1950,14 +1980,14 @@ export default function Absences() {
                   )}
                 </div>
                 <div style={S.toolbarRight}>
-                  <button onClick={() => setShowFilters(!showFilters)} style={{ ...S.iconBtn, background: showFilters ? 'rgba(245,158,11,.15)' : 'rgba(255,255,255,.05)', color: showFilters ? '#F59E0B' : '#888' }}><Filter size={18} /></button>
+                  <button onClick={() => setShowFilters(!showFilters)} style={{ ...S.iconBtn, background: showFilters ? 'rgba(245,158,11,.15)' : 'rgba(255,255,255,.05)', color: showFilters ? '#F59E0B' : 'rgba(245,242,235,0.55)' }}><Filter size={18} /></button>
                   <div style={S.viewToggle}>
                     <button onClick={() => setViewMode('planning')} title="Planning — calendrier par employé" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'planning' ? S.viewBtnActive : {}) }}><CalendarDays size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Planning</span></button>
                     <button onClick={() => setViewMode('calendar')} title="Mois — grille du mois" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'calendar' ? S.viewBtnActive : {}) }}><Calendar size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Mois</span></button>
                     <button onClick={() => setViewMode('list')} title="Liste — cartes détaillées" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'list' ? S.viewBtnActive : {}) }}><List size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Liste</span></button>
                   </div>
                   <button onClick={handleExportCSV} style={S.exportBtn}><Download size={16} /><span>Export</span></button>
-                  <button onClick={handleAdd} className="afro-btn" style={S.addBtn}><Plus size={18} /><span>Déclarer</span></button>
+                  <button onClick={() => handleAdd()} className="afro-btn" style={S.addBtn}><Plus size={18} /><span>Déclarer</span></button>
                 </div>
               </div>
 
@@ -2040,6 +2070,9 @@ export default function Absences() {
               </div>
 
               {viewMode === 'planning' && (
+                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <AbsencesDock onDeclarer={({ motifId }) => handleAdd({ reason: motifId })} />
+                <div style={{ flex: 1, minWidth: 0 }}>
                 <AbsencesCalendrier
                   absences={absences}
                   employes={employes}
@@ -2057,8 +2090,13 @@ export default function Absences() {
                   onModifier={handleEdit}
                   onChangerStatut={(a, statut) => handleStatusChange(a.id, statut)}
                   onVoirDocument={handleViewDocument}
-                  onDeclarer={handleAdd}
+                  onDeclarer={() => handleAdd()}
+                  onDeposerMotif={({ employeeId, dateIso, motifId }) =>
+                    handleAdd({ employee_id: employeeId, start_date: dateIso, end_date: dateIso, reason: motifId })
+                  }
                 />
+                </div>
+                </div>
               )}
 
               {viewMode === 'list' && (
@@ -2090,7 +2128,7 @@ export default function Absences() {
                   {totalPages > 1 && (
                     <div style={S.pagination}>
                       <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ ...S.pageBtn, opacity: currentPage === 1 ? .3 : 1 }}><ChevronLeft size={18} /></button>
-                      <span style={{ color: '#888', fontSize: 13 }}>{currentPage} / {totalPages}</span>
+                      <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13 }}>{currentPage} / {totalPages}</span>
                       <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ ...S.pageBtn, opacity: currentPage === totalPages ? .3 : 1 }}><ChevronRight size={18} /></button>
                     </div>
                   )}
@@ -2256,7 +2294,7 @@ export default function Absences() {
                       display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px',
                       background: requestFilter === f.key ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.03)',
                       border: `1px solid ${requestFilter === f.key ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.06)'}`,
-                      borderRadius: 10, color: requestFilter === f.key ? '#F59E0B' : '#888',
+                      borderRadius: 10, color: requestFilter === f.key ? '#F59E0B' : 'rgba(245,242,235,0.55)',
                       fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease',
                     }}>
                       {f.label}
@@ -2276,7 +2314,7 @@ export default function Absences() {
                   <p style={{ color: '#666', marginTop: 12, fontSize: 14 }}>Chargement...</p>
                 </div>
               ) : filteredRequests.length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', background: 'rgba(20,20,35,0.5)', borderRadius: 20, border: '1px dashed rgba(255,255,255,0.08)', textAlign: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', background: 'rgba(29,23,19,0.5)', borderRadius: 20, border: '1px dashed rgba(255,255,255,0.08)', textAlign: 'center' }}>
                   <Inbox size={48} color="#555" />
                   <h3 style={{ color: '#FFF', margin: '12px 0 4px 0', fontSize: 18 }}>Aucune demande</h3>
                   <p style={{ color: '#666', fontSize: 14, margin: 0 }}>
@@ -2302,7 +2340,7 @@ export default function Absences() {
                     const docType = hasDocument ? getFileType(request.document_url) : null
 
                     return (
-                      <div key={request.id} className="req-card" style={{ background: 'rgba(20,20,35,0.85)', border: `1px solid rgba(255,255,255,0.06)`, borderLeft: `4px solid ${sc.color}`, borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', gap: 14, animation: `slideUp 0.3s ease ${index * 0.04}s forwards`, opacity: 0 }}>
+                      <div key={request.id} className="req-card" style={{ background: 'rgba(29,23,19,0.85)', border: `1px solid rgba(255,255,255,0.06)`, borderLeft: `4px solid ${sc.color}`, borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', gap: 14, animation: `slideUp 0.3s ease ${index * 0.04}s forwards`, opacity: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
                             <div style={{ width: 46, height: 46, borderRadius: 12, background: 'rgba(245,158,11,0.1)', border: '2px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
@@ -2315,7 +2353,7 @@ export default function Absences() {
                               <p style={{ color: '#FFF', fontSize: 15, fontWeight: 600, margin: '0 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {request.employees?.first_name} {request.employees?.last_name}
                               </p>
-                              <p style={{ color: '#888', fontSize: 12, margin: 0 }}>
+                              <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 12, margin: 0 }}>
                                 {request.employees?.matricule}
                                 {request.employees?.position && ` · ${request.employees.position}`}
                               </p>
@@ -2348,18 +2386,18 @@ export default function Absences() {
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: 10, gap: 8 }}>
                             <div>
                               <span style={{ color: '#666', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>DU</span>
-                              <span style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500 }}>
+                              <span style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>
                                 {new Date(request.start_date + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
                               </span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, padding: '6px 14px' }}>
                               <span style={{ color: '#F59E0B', fontSize: 18, fontWeight: 800, lineHeight: 1 }}>{ouvrés}</span>
                               <span style={{ color: '#F59E0B', fontSize: 9, opacity: 0.8 }}>jour{ouvrés > 1 ? 's' : ''} ouvrés</span>
-                              <span style={{ color: '#888', fontSize: 9, marginTop: 2 }}>({calendaire} cal.)</span>
+                              <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 9, marginTop: 2 }}>({calendaire} cal.)</span>
                             </div>
                             <div style={{ textAlign: 'right' }}>
                               <span style={{ color: '#666', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>AU</span>
-                              <span style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500 }}>
+                              <span style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>
                                 {new Date(request.end_date + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
                               </span>
                             </div>
@@ -2440,7 +2478,7 @@ export default function Absences() {
                     {activeTab === 'config_conges' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{
-                background: 'rgba(20,20,35,0.8)',
+                background: 'rgba(29,23,19,0.8)',
                 border: '1px solid rgba(255,255,255,0.06)',
                 borderRadius: 18,
                 padding: 20,
@@ -2451,7 +2489,7 @@ export default function Absences() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <div>
                     <h3 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>Configuration des congés</h3>
-                    <p style={{ color: '#888', fontSize: 13, margin: '4px 0 0 0' }}>
+                    <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13, margin: '4px 0 0 0' }}>
                       Ces paramètres seront utilisés dans l’espace employé et les fiches de paie.
                     </p>
                   </div>
@@ -2481,7 +2519,7 @@ export default function Absences() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 600 }}>Jours acquis par mois</label>
+                    <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 600 }}>Jours acquis par mois</label>
                     <input
                       type="number"
                       step="0.25"
@@ -2493,7 +2531,7 @@ export default function Absences() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 600 }}>Plafond annuel</label>
+                    <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 600 }}>Plafond annuel</label>
                     <input
                       type="number"
                       value={leaveConfig.annual_leave_cap}
@@ -2504,7 +2542,7 @@ export default function Absences() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 600 }}>Référence de calcul</label>
+                    <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 600 }}>Référence de calcul</label>
                     <select
                       value={leaveConfig.leave_reference_date}
                       onChange={e => setLeaveConfig(prev => ({ ...prev, leave_reference_date: e.target.value }))}
@@ -2534,10 +2572,10 @@ export default function Absences() {
                     style={{ accentColor: '#F59E0B', marginTop: 2 }}
                   />
                   <div>
-                    <span style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 600 }}>
+                    <span style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 600 }}>
                       Autoriser le report des congés N-1
                     </span>
-                    <p style={{ color: '#888', fontSize: 11, margin: '4px 0 0 0', lineHeight: 1.4 }}>
+                    <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 11, margin: '4px 0 0 0', lineHeight: 1.4 }}>
                       Si activé, le solde positif de l’année précédente sera reporté automatiquement.
                     </p>
                   </div>
@@ -2545,7 +2583,7 @@ export default function Absences() {
               </div>
 
               <div style={{
-                background: 'rgba(20,20,35,0.8)',
+                background: 'rgba(29,23,19,0.8)',
                 border: '1px solid rgba(255,255,255,0.06)',
                 borderRadius: 18,
                 padding: 20,
@@ -2556,7 +2594,7 @@ export default function Absences() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <div>
                     <h3 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>Recalcul des soldes</h3>
-                    <p style={{ color: '#888', fontSize: 13, margin: '4px 0 0 0' }}>
+                    <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13, margin: '4px 0 0 0' }}>
                       Recalcule les soldes pour tous les employés actifs de l’entreprise.
                     </p>
                   </div>
@@ -2586,7 +2624,7 @@ export default function Absences() {
               </div>
 
               <div style={{
-                background: 'rgba(20,20,35,0.8)',
+                background: 'rgba(29,23,19,0.8)',
                 border: '1px solid rgba(255,255,255,0.06)',
                 borderRadius: 18,
                 padding: 20,
@@ -2596,7 +2634,7 @@ export default function Absences() {
               }}>
                 <div>
                   <h3 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>Aperçu des soldes employés</h3>
-                  <p style={{ color: '#888', fontSize: 13, margin: '4px 0 0 0' }}>
+                  <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13, margin: '4px 0 0 0' }}>
                     Année en cours — lecture depuis <code style={{ color: '#F59E0B' }}>employee_leave_balances</code>
                   </p>
                 </div>
@@ -2604,7 +2642,7 @@ export default function Absences() {
                 {loadingLeaveBalancesPreview ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 30 }}>
                     <RefreshCw size={20} color="#F59E0B" style={{ animation: 'spin 1s linear infinite' }} />
-                    <span style={{ color: '#888' }}>Chargement des soldes...</span>
+                    <span style={{ color: 'rgba(245,242,235,0.55)' }}>Chargement des soldes...</span>
                   </div>
                 ) : leaveBalancesPreview.length === 0 ? (
                   <div style={S.emptyMini}>
@@ -2677,7 +2715,7 @@ export default function Absences() {
 
               <form onSubmit={handleSave} style={S.form}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500 }}>Employé *</label>
+                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Employé *</label>
                   <select value={formData.employee_id} onChange={e => setFormData({ ...formData, employee_id: e.target.value })} style={S.input} required>
                     {employes.length === 0 && <option value="">Aucun employé</option>}
                     {employes.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}
@@ -2691,11 +2729,11 @@ export default function Absences() {
 
                 <div style={S.formRow}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                    <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500 }}>Début *</label>
+                    <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Début *</label>
                     <input type="date" value={formData.start_date} onChange={e => setFormData({ ...formData, start_date: e.target.value })} style={S.input} required />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                    <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500 }}>Fin *</label>
+                    <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Fin *</label>
                     <input type="date" value={formData.end_date} onChange={e => setFormData({ ...formData, end_date: e.target.value })} style={S.input} min={formData.start_date} required />
                   </div>
                 </div>
@@ -2706,7 +2744,7 @@ export default function Absences() {
                       <Calendar size={16} color="#F59E0B" />
                       <strong style={{ color: '#F59E0B', fontSize: 20 }}>{getModalLeaveCount()}</strong>
                       <span style={{ color: '#ccc', fontSize: 14 }}>jour(s) décompté(s)</span>
-                      <span style={{ marginLeft: 'auto', color: '#888', fontSize: 12 }}>
+                      <span style={{ marginLeft: 'auto', color: 'rgba(245,242,235,0.55)', fontSize: 12 }}>
                         {countCalendarDays(formData.start_date, formData.end_date)} jour(s) calendaires
                       </span>
                     </div>
@@ -2745,10 +2783,10 @@ export default function Absences() {
                             style={{ accentColor: '#8B5CF6', marginTop: 2 }}
                           />
                           <div>
-                            <span style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 600 }}>
+                            <span style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 600 }}>
                               Décompter quand même les jours fériés comme congé
                             </span>
-                            <p style={{ color: '#888', fontSize: 11, margin: '4px 0 0 0', lineHeight: 1.4 }}>
+                            <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 11, margin: '4px 0 0 0', lineHeight: 1.4 }}>
                               Active cette option si l’entreprise considère qu’un congé posé sur un jour férié doit tout de même être consommé.
                             </p>
                           </div>
@@ -2769,7 +2807,7 @@ export default function Absences() {
                 )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500 }}>Motif *</label>
+                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Motif *</label>
                   <div style={S.reasonGrid}>
                     {MOTIFS.map(m => (
                       <button
@@ -2799,7 +2837,7 @@ export default function Absences() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500 }}>Statut</label>
+                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Statut</label>
                   <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} style={S.input}>
                     <option value="approuve">✅ Approuvé</option>
                     <option value="en_attente">⏳ En attente</option>
@@ -2808,7 +2846,7 @@ export default function Absences() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500 }}>Notes</label>
+                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Notes</label>
                   <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} style={{ ...S.input, minHeight: 80, resize: 'vertical' }} placeholder="Certificat médical, justificatif..." />
                 </div>
 
@@ -2834,7 +2872,7 @@ export default function Absences() {
         {/* ═══ MODAL REVIEW DEMANDE EMPLOYÉ ═══ */}
         {showReviewModal && selectedRequest && (
           <div style={S.overlay} onClick={() => !submittingReview && setShowReviewModal(false)}>
-            <div style={{ background: '#141423', border: `1px solid ${reviewAction === 'approuve' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 24, width: '100%', maxWidth: 500, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s ease forwards', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: '#1D1713', border: `1px solid ${reviewAction === 'approuve' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 24, width: '100%', maxWidth: 500, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s ease forwards', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: reviewAction === 'approuve' ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ width: 44, height: 44, borderRadius: 12, background: reviewAction === 'approuve' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -2849,7 +2887,7 @@ export default function Absences() {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setShowReviewModal(false)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', cursor: 'pointer' }}><X size={18} /></button>
+                <button onClick={() => setShowReviewModal(false)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(245,242,235,0.55)', cursor: 'pointer' }}><X size={18} /></button>
               </div>
               <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 14, border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -2873,7 +2911,7 @@ export default function Absences() {
                     },
                   ].map((item, i, arr) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                      <span style={{ color: '#888', fontSize: 13 }}>{item.label}</span>
+                      <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13 }}>{item.label}</span>
                       <span style={{ color: '#FFF', fontSize: 13, fontWeight: 600 }}>{item.value}</span>
                     </div>
                   ))}
@@ -2901,7 +2939,7 @@ export default function Absences() {
                 )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500 }}>
+                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>
                     Message pour l'employé
                     <span style={{ color: '#666', fontWeight: 400 }}> (optionnel)</span>
                   </label>
@@ -2914,7 +2952,7 @@ export default function Absences() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 12, padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <button onClick={() => setShowReviewModal(false)} disabled={submittingReview} style={{ flex: 1, padding: 14, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#E5E5E5', borderRadius: 12, fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={() => setShowReviewModal(false)} disabled={submittingReview} style={{ flex: 1, padding: 14, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#F5F2EB', borderRadius: 12, fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Annuler
                 </button>
                 <button onClick={handleReviewRequest} disabled={submittingReview} style={{ flex: 2, padding: 14, background: reviewAction === 'approuve' ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #EF4444, #B91C1C)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: submittingReview ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: submittingReview ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -2928,12 +2966,12 @@ export default function Absences() {
         {/* ═══ MODAL SUPPRESSION ABSENCE ═══ */}
         {showDeleteModal && (
           <div style={S.overlay}>
-            <div style={{ background: '#141423', border: '1px solid rgba(255,255,255,.1)', borderRadius: 24, width: '100%', maxWidth: 420, padding: 36, textAlign: 'center', animation: 'slideUp .3s ease forwards' }}>
+            <div style={{ background: '#1D1713', border: '1px solid rgba(255,255,255,.1)', borderRadius: 24, width: '100%', maxWidth: 420, padding: 36, textAlign: 'center', animation: 'slideUp .3s ease forwards' }}>
               <div style={{ width: 68, height: 68, borderRadius: 18, background: 'rgba(239,68,68,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                 <AlertTriangle size={32} color="#EF4444" />
               </div>
               <h3 style={{ color: '#FFF', fontSize: 20, fontWeight: 600, margin: '0 0 12px 0' }}>Supprimer cette absence ?</h3>
-              <p style={{ color: '#888', fontSize: 14, marginBottom: 28, lineHeight: '1.5' }}>Cette action est irréversible.</p>
+              <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 14, marginBottom: 28, lineHeight: '1.5' }}>Cette action est irréversible.</p>
               <div style={{ display: 'flex', gap: 12 }}>
                 <button onClick={() => setShowDeleteModal(false)} style={{ flex: 1, padding: 14, background: 'rgba(255,255,255,.05)', color: '#FFF', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Annuler</button>
                 <button onClick={handleDelete} style={{ flex: 1, padding: 14, background: 'linear-gradient(135deg,#EF4444,#B91C1C)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }} disabled={uploading}>
@@ -2969,7 +3007,7 @@ export default function Absences() {
                       </div>
                     )
                   })}
-                  {employeeHistory.totalJours === 0 && <p style={{ color: '#888', fontSize: 13, margin: 0 }}>Aucune absence</p>}
+                  {employeeHistory.totalJours === 0 && <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13, margin: 0 }}>Aucune absence</p>}
                 </div>
               </div>
               <div style={S.histList}>
@@ -2984,10 +3022,10 @@ export default function Absences() {
                       <div style={{ ...S.histDot, background: mc.color }}></div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500 }}>{mc.emoji} {mc.label}</span>
+                          <span style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>{mc.emoji} {mc.label}</span>
                           <span style={{ color: '#F59E0B', fontSize: 12, fontWeight: 700 }}>{jours}j</span>
                         </div>
-                        <span style={{ color: '#888', fontSize: 12 }}>{formatDateFr(a.start_date)} → {formatDateFr(a.end_date)}</span>
+                        <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 12 }}>{formatDateFr(a.start_date)} → {formatDateFr(a.end_date)}</span>
                         {a.count_holidays_as_leave && <span style={{ display: 'block', color: '#8B5CF6', fontSize: 11, marginTop: 2 }}>🎌 Jours fériés inclus dans le décompte</span>}
                         {conflict && conflict.status === 'pending' && <span style={{ display: 'block', color: '#F97316', fontSize: 11, marginTop: 2 }}>⚠ Conflit en attente</span>}
                       </div>
@@ -3002,7 +3040,7 @@ export default function Absences() {
         {/* ═══ MODAL GESTION CONFLIT ═══ */}
         {showConflictModal && selectedConflictData && (
           <div style={S.overlay} onClick={() => setShowConflictModal(false)}>
-            <div style={{ background: '#141423', border: '1px solid rgba(249,115,22,.2)', borderRadius: 24, width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,.5)', animation: 'slideUp .3s ease forwards' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: '#1D1713', border: '1px solid rgba(249,115,22,.2)', borderRadius: 24, width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,.5)', animation: 'slideUp .3s ease forwards' }} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ width: 46, height: 46, borderRadius: 14, background: 'rgba(249,115,22,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -3015,7 +3053,7 @@ export default function Absences() {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setShowConflictModal(false)} style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><X size={20} /></button>
+                <button onClick={() => setShowConflictModal(false)} style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', color: 'rgba(245,242,235,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><X size={20} /></button>
               </div>
               <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12 }}>
@@ -3031,7 +3069,7 @@ export default function Absences() {
                   ))}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#E5E5E5', fontSize: 13, fontWeight: 500 }}>Note de résolution (optionnel)</label>
+                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Note de résolution (optionnel)</label>
                   <textarea value={conflictNote} onChange={e => setConflictNote(e.target.value)} style={{ minHeight: 90, resize: 'vertical', padding: '14px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: '#FFF', fontFamily: 'inherit', fontSize: 14, outline: 'none' }} placeholder="Ex: Retour anticipé validé par le responsable..." />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -3067,7 +3105,7 @@ export default function Absences() {
         {/* ═══ MODAL CONFIRMATION SUPPRESSION DEMANDE ═══ */}
         {showDeleteRequestModal && requestToDelete && (
           <div style={S.overlay} onClick={() => setShowDeleteRequestModal(false)}>
-            <div style={{ background: '#141423', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 24, width: '100%', maxWidth: 440, padding: 36, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s ease forwards' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: '#1D1713', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 24, width: '100%', maxWidth: 440, padding: 36, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s ease forwards' }} onClick={e => e.stopPropagation()}>
               <div style={{ width: 68, height: 68, borderRadius: 18, background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                 <Trash2 size={32} color="#EF4444" />
               </div>
@@ -3083,7 +3121,7 @@ export default function Absences() {
                   <p style={{ color: '#FFF', fontSize: 14, fontWeight: 600, margin: 0 }}>
                     {requestToDelete.employees?.first_name} {requestToDelete.employees?.last_name}
                   </p>
-                  <p style={{ color: '#888', fontSize: 12, margin: '2px 0 0 0' }}>
+                  <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 12, margin: '2px 0 0 0' }}>
                     {LEAVE_TYPES[requestToDelete.leave_type]?.emoji} {LEAVE_TYPES[requestToDelete.leave_type]?.label}
                     {' · '}
                     {new Date(requestToDelete.start_date + 'T12:00:00Z').toLocaleDateString('fr-FR', { timeZone: 'UTC' })}
@@ -3104,10 +3142,10 @@ export default function Absences() {
                 </div>
               )}
               {requestToDelete.status !== 'approuve' && (
-                <p style={{ color: '#888', fontSize: 14, marginBottom: 24, lineHeight: '1.5' }}>Cette action est irréversible.</p>
+                <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 14, marginBottom: 24, lineHeight: '1.5' }}>Cette action est irréversible.</p>
               )}
               <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={() => { setShowDeleteRequestModal(false); setRequestToDelete(null) }} style={{ flex: 1, padding: 14, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#E5E5E5', borderRadius: 12, fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={() => { setShowDeleteRequestModal(false); setRequestToDelete(null) }} style={{ flex: 1, padding: 14, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#F5F2EB', borderRadius: 12, fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Annuler
                 </button>
                 <button onClick={executeDeleteRequest} style={{ flex: 1, padding: 14, background: 'linear-gradient(135deg, #EF4444, #B91C1C)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -3131,7 +3169,7 @@ const TAB = {
     display: 'flex', 
     gap: '4px', 
     padding: '4px', 
-    background: 'rgba(20,20,35,0.8)', 
+    background: 'var(--abs-bg-panel)', 
     borderRadius: '14px', 
     border: '1px solid rgba(255,255,255,0.06)', 
     marginBottom: '20px', 
@@ -3140,7 +3178,7 @@ const TAB = {
     overflowX: 'auto', // ✅ Scroll horizontal si nécessaire
     scrollbarWidth: 'none', // Firefox
   },
-  tab: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'transparent', color: '#888', fontSize: '14px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
+  tab: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'transparent', color: 'var(--abs-text-soft)', fontSize: '14px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
   tabActive: { background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontWeight: '600' },
   badge: { padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '700', transition: 'all 0.2s ease' },
 }
@@ -3149,7 +3187,7 @@ const TAB = {
 // STYLES CARTE (CS)
 // ═══════════════════════════════════════════════════════════
 const CS = {
-  card: { background: 'rgba(20,20,35,.85)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, transition: 'all .3s ease' },
+  card: { background: 'rgba(29,23,19,.85)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, transition: 'all .3s ease' },
   topBadges: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   badge: { padding: '3px 8px', borderRadius: 16, fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 },
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' },
@@ -3158,14 +3196,14 @@ const CS = {
   avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
   empDetails: { minWidth: 0 },
   empName: { color: '#FFF', fontSize: 14, fontWeight: 600, margin: '0 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  empMatricule: { color: '#888', fontSize: 11 },
+  empMatricule: { color: 'rgba(245,242,235,0.55)', fontSize: 11 },
   reasonBadge: { padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
   reasonEmoji: { fontSize: 12 },
   reasonLabel: { textTransform: 'uppercase', letterSpacing: .3 },
   datesRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,.02)', padding: 12, borderRadius: 10, gap: 8 },
   dateBox: { display: 'flex', flexDirection: 'column', gap: 2 },
   dateLabel: { color: '#666', fontSize: 9, textTransform: 'uppercase', letterSpacing: .5 },
-  dateValue: { color: '#E5E5E5', fontSize: 12, fontWeight: 500 },
+  dateValue: { color: '#F5F2EB', fontSize: 12, fontWeight: 500 },
   daysBadge: { display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(245,158,11,.12)', border: '1px solid rgba(245,158,11,.25)', borderRadius: 10, padding: '6px 14px', minWidth: 50 },
   daysNumber: { color: '#F59E0B', fontSize: 18, fontWeight: 800, lineHeight: '1' },
   daysLabel: { color: '#F59E0B', fontSize: 9, opacity: .8 },
@@ -3187,9 +3225,9 @@ const CS = {
 // STYLES PRINCIPAUX (S)
 // ═══════════════════════════════════════════════════════════
 const S = {
-  container: { minHeight: '100vh', background: '#0A0A0F' },
-  loadingContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A0A0F', gap: 16 },
-  loadingText: { color: '#888', marginTop: 20 },
+  container: { minHeight: '100vh', background: '#15110E' },
+  loadingContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#15110E', gap: 16 },
+  loadingText: { color: 'rgba(245,242,235,0.55)', marginTop: 20 },
   main: { padding: 20, maxWidth: 1200, margin: '0 auto' },
   statsGrid: { 
     display: 'grid', 
@@ -3197,49 +3235,49 @@ const S = {
     gap: 14, 
     marginBottom: 24 
   },
-  statCard: { background: 'rgba(20,20,35,.8)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 20, display: 'flex', alignItems: 'center', gap: 16, transition: 'all .3s ease', minWidth: 0, },
+  statCard: { background: 'rgba(29,23,19,.8)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 20, display: 'flex', alignItems: 'center', gap: 16, transition: 'all .3s ease', minWidth: 0, },
   statIcon: { width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   statNumber: { color: '#FFF', fontSize: 26, fontWeight: 800, margin: '0 0 2px 0', lineHeight: '1' },
-  statLabel: { color: '#888', fontSize: 12, margin: 0, whiteSpace: 'nowrap',  textOverflow: 'ellipsis', // ✅ AJOUT : Coupe le texte avec ...
+  statLabel: { color: 'rgba(245,242,235,0.55)', fontSize: 12, margin: 0, whiteSpace: 'nowrap',  textOverflow: 'ellipsis', // ✅ AJOUT : Coupe le texte avec ...
     maxWidth: '100%',},
   toolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 },
   toolbarLeft: { display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 300px', flexWrap: 'wrap' },
   toolbarRight: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  searchBox: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(20,20,35,.8)', border: '1px solid rgba(255,255,255,.08)', padding: '10px 16px', borderRadius: 12, flex: '1 1 220px', minWidth: 200 },
-  searchInput: { background: 'transparent', border: 'none', color: '#E5E5E5', width: '100%', fontSize: 14, fontFamily: 'inherit', outline: 'none' },
+  searchBox: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(29,23,19,.8)', border: '1px solid rgba(255,255,255,.08)', padding: '10px 16px', borderRadius: 12, flex: '1 1 220px', minWidth: 200 },
+  searchInput: { background: 'transparent', border: 'none', color: '#F5F2EB', width: '100%', fontSize: 14, fontFamily: 'inherit', outline: 'none' },
   clearSearch: { background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: 2, display: 'flex' },
-  filterGroup: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(20,20,35,.8)', border: '1px solid rgba(255,255,255,.06)', padding: '10px 16px', borderRadius: 12, flex: '0 1 250px' },
-  filterSelect: { background: 'transparent', border: 'none', color: '#E5E5E5', width: '100%', fontSize: 14, fontFamily: 'inherit', outline: 'none' },
+  filterGroup: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(29,23,19,.8)', border: '1px solid rgba(255,255,255,.06)', padding: '10px 16px', borderRadius: 12, flex: '0 1 250px' },
+  filterSelect: { background: 'transparent', border: 'none', color: '#F5F2EB', width: '100%', fontSize: 14, fontFamily: 'inherit', outline: 'none' },
   iconBtn: { border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all .2s' },
-  viewToggle: { display: 'flex', background: 'rgba(20,20,35,.8)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, overflow: 'hidden' },
+  viewToggle: { display: 'flex', background: 'rgba(29,23,19,.8)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, overflow: 'hidden' },
   viewBtn: { background: 'transparent', border: 'none', color: '#666', padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all .2s' },
   viewBtnActive: { background: 'rgba(245,158,11,.15)', color: '#F59E0B' },
-  exportBtn: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', color: '#E5E5E5', padding: '10px 16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 500, fontSize: 13, fontFamily: 'inherit' },
+  exportBtn: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', color: '#F5F2EB', padding: '10px 16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 500, fontSize: 13, fontFamily: 'inherit' },
   addBtn: { background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#000', border: 'none', padding: '12px 20px', borderRadius: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', transition: 'all .3s ease' },
-  filtersPanel: { display: 'flex', flexWrap: 'wrap', gap: 14, background: 'rgba(20,20,35,.6)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 20, marginBottom: 20, alignItems: 'flex-end', animation: 'slideUp .3s ease forwards' },
+  filtersPanel: { display: 'flex', flexWrap: 'wrap', gap: 14, background: 'rgba(29,23,19,.6)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 20, marginBottom: 20, alignItems: 'flex-end', animation: 'slideUp .3s ease forwards' },
   filterItem: { display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 160px', minWidth: 140 },
-  filterLabel: { color: '#888', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 },
-  filterSelectSmall: { background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', color: '#E5E5E5', padding: '10px 12px', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' },
+  filterLabel: { color: 'rgba(245,242,235,0.55)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 },
+  filterSelectSmall: { background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', color: '#F5F2EB', padding: '10px 12px', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' },
   resetBtn: { display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', color: '#EF4444', padding: '10px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', alignSelf: 'flex-end' },
   resultCount: { marginBottom: 16, paddingLeft: 4 },
-  resultText: { color: '#E5E5E5', fontSize: 14, fontWeight: 500 },
+  resultText: { color: '#F5F2EB', fontSize: 14, fontWeight: 500 },
   list: { 
     display: 'grid', 
     gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', // ✅ Responsive
     gap: 16 
   },
 
-  empty: { gridColumn: '1/-1', textAlign: 'center', padding: '60px 20px', background: 'rgba(20,20,35,.5)', borderRadius: 20, border: '1px dashed rgba(255,255,255,.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
+  empty: { gridColumn: '1/-1', textAlign: 'center', padding: '60px 20px', background: 'rgba(29,23,19,.5)', borderRadius: 20, border: '1px dashed rgba(255,255,255,.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
   emptyTitle: { color: '#FFF', fontSize: 18, fontWeight: 600, margin: 0 },
-  emptySubtitle: { color: '#888', fontSize: 14, margin: 0 },
+  emptySubtitle: { color: 'rgba(245,242,235,0.55)', fontSize: 14, margin: 0 },
   pagination: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 32, paddingBottom: 20 },
-  pageBtn: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', color: '#E5E5E5', width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontFamily: 'inherit' },
-  calContainer: { background: 'rgba(20,20,35,.8)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 20, padding: 24, animation: 'slideUp .4s ease forwards' },
+  pageBtn: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', color: '#F5F2EB', width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontFamily: 'inherit' },
+  calContainer: { background: 'rgba(29,23,19,.8)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 20, padding: 24, animation: 'slideUp .4s ease forwards' },
   calHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
   calTitle: { color: '#FFF', fontSize: 22, fontWeight: 700, margin: 0, textTransform: 'capitalize' },
-  calNavBtn: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#E5E5E5', cursor: 'pointer' },
+  calNavBtn: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F5F2EB', cursor: 'pointer' },
   calGrid: { display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 },
-  calDayHeader: { textAlign: 'center', color: '#888', fontSize: 12, fontWeight: 600, padding: '10px 0' },
+  calDayHeader: { textAlign: 'center', color: 'rgba(245,242,235,0.55)', fontSize: 12, fontWeight: 600, padding: '10px 0' },
   calDay: { minHeight: 110, background: 'rgba(255,255,255,.02)', borderRadius: 10, padding: 8, border: '1px solid transparent', display: 'flex', flexDirection: 'column', gap: 4 },
   calDayEmpty: { minHeight: 110 },
   calDayWeekend: { background: 'rgba(255,255,255,.01)', opacity: .6 },
@@ -3247,32 +3285,32 @@ const S = {
   calDayHasAbs: { background: 'rgba(239,68,68,.04)', border: '1px solid rgba(239,68,68,.15)' },
   calDaySelected: { background: 'rgba(245,158,11,.1)', border: '1px solid rgba(245,158,11,.5)', boxShadow: '0 0 20px rgba(245,158,11,.15)' },
   calDayTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  calDayNum: { color: '#E5E5E5', fontSize: 13, fontWeight: 600 },
+  calDayNum: { color: '#F5F2EB', fontSize: 13, fontWeight: 600 },
   calAbsCount: { background: 'rgba(239,68,68,.2)', color: '#EF4444', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10, minWidth: 18, textAlign: 'center' },
   calEmpList: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, overflow: 'hidden' },
   calEmpItem: { display: 'flex', alignItems: 'center', gap: 4 },
   calEmpDot: { width: 6, height: 6, borderRadius: '50%', flexShrink: 0 },
   calEmpName: { color: '#ccc', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  calMore: { color: '#888', fontSize: 9, fontStyle: 'italic', paddingLeft: 10 },
+  calMore: { color: 'rgba(245,242,235,0.55)', fontSize: 9, fontStyle: 'italic', paddingLeft: 10 },
   calDetail: { marginTop: 20, background: 'rgba(255,255,255,.02)', border: '1px solid rgba(245,158,11,.15)', borderRadius: 16, padding: 20, animation: 'slideUp .3s ease forwards' },
   calDetailHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 10 },
   calDetailTitle: { color: '#FFF', fontSize: 16, fontWeight: 600, margin: 0, textTransform: 'capitalize' },
   calDetailCount: { background: 'rgba(239,68,68,.15)', color: '#EF4444', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 },
-  calDetailClose: { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', cursor: 'pointer' },
+  calDetailClose: { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(245,242,235,0.55)', cursor: 'pointer' },
   calDetailList: { display: 'flex', flexDirection: 'column', gap: 10 },
   calDetailItem: { display: 'flex', alignItems: 'center', gap: 14, padding: 14, background: 'rgba(255,255,255,.03)', borderRadius: 12, border: '1px solid rgba(255,255,255,.04)', flexWrap: 'wrap' },
   calDetailName: { color: '#FFF', fontSize: 15, fontWeight: 600, margin: '0 0 4px 0' },
-  calDetailMeta: { color: '#888', fontSize: 12, margin: 0 },
+  calDetailMeta: { color: 'rgba(245,242,235,0.55)', fontSize: 12, margin: 0 },
   calDetailBadge: { padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' },
   calLegend: { display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,.06)' },
   calLegendItem: { display: 'flex', alignItems: 'center', gap: 6 },
   calLegendDot: { width: 10, height: 10, borderRadius: '50%' },
-  calLegendLabel: { color: '#888', fontSize: 12 },
+  calLegendLabel: { color: 'rgba(245,242,235,0.55)', fontSize: 12 },
   overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16, animation: 'fadeIn .2s ease' },
-  modal: { background: '#141423', border: '1px solid rgba(255,255,255,.1)', borderRadius: 24, width: '100%', maxWidth: 540, padding: 28, boxShadow: '0 25px 70px rgba(0,0,0,.6)', maxHeight: '90vh', overflowY: 'auto', animation: 'slideUp .3s ease forwards' },
+  modal: { background: '#1D1713', border: '1px solid rgba(255,255,255,.1)', borderRadius: 24, width: '100%', maxWidth: 540, padding: 28, boxShadow: '0 25px 70px rgba(0,0,0,.6)', maxHeight: '90vh', overflowY: 'auto', animation: 'slideUp .3s ease forwards' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   modalTitleText: { color: '#FFF', fontSize: 20, fontWeight: 700, margin: 0 },
-  closeBtnModal: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', cursor: 'pointer' },
+  closeBtnModal: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(245,242,235,0.55)', cursor: 'pointer' },
   form: { display: 'flex', flexDirection: 'column', gap: 18 },
   formRow: { display: 'flex', gap: 14 },
   input: { background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', color: '#FFF', padding: '12px 16px', borderRadius: 12, fontSize: 14, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' },
@@ -3286,7 +3324,7 @@ const S = {
   histStats: { display: 'flex', gap: 20, marginBottom: 24, padding: 20, background: 'rgba(255,255,255,.02)', borderRadius: 16, border: '1px solid rgba(255,255,255,.06)' },
   histTotalBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: 90, borderRight: '1px solid rgba(255,255,255,.06)', paddingRight: 20 },
   histTotalNum: { color: '#F59E0B', fontSize: 36, fontWeight: 800, lineHeight: '1' },
-  histTotalLabel: { color: '#888', fontSize: 12, marginTop: 4 },
+  histTotalLabel: { color: 'rgba(245,242,235,0.55)', fontSize: 12, marginTop: 4 },
   histBreakdown: { display: 'flex', flexDirection: 'column', gap: 8, flex: 1 },
   histMotifRow: { display: 'flex', alignItems: 'center', gap: 8 },
   histList: { maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 },

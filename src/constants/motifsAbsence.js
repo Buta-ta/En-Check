@@ -27,6 +27,12 @@ export const STATUTS_ABSENCE = {
 
 export const MOTIF_PAR_DEFAUT = MOTIFS[MOTIFS.length - 1]
 
+/**
+ * Type MIME porté par le glisser-déposer d'un motif depuis le dock.
+ * `text/plain` sert de repli : tous les navigateurs le remplissent.
+ */
+export const DATA_TRANSFER_MOTIF = 'application/x-encheck-motif'
+
 export const getMotifConfig = (id) => MOTIFS.find((m) => m.id === id) || MOTIF_PAR_DEFAUT
 
 export const getStatutConfig = (id) => STATUTS_ABSENCE[id] || STATUTS_ABSENCE.en_attente

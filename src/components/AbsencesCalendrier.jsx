@@ -11,7 +11,7 @@
 
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, CalendarOff, Users } from 'lucide-react'
-import { MOTIFS, styleBarreAbsence } from '../constants/motifsAbsence'
+import { MOTIFS, styleBarreAbsence, DATA_TRANSFER_MOTIF } from '../constants/motifsAbsence'
 import {
   JOURS_SEMAINE,
   joursDuMois,
@@ -49,10 +49,13 @@ export default function AbsencesCalendrier({
   onChangerStatut,
   onVoirDocument,
   onDeclarer,
+  onDeposerMotif,
 }) {
   const [motifsActifs, setMotifsActifs] = useState(() => new Set(MOTIFS.map((m) => m.id)))
   const [masquerSansAbsence, setMasquerSansAbsence] = useState(false)
   const [absenceActive, setAbsenceActive] = useState(null)
+  // Cellule survolée pendant un glisser-déposer : { employeeId, index }
+  const [survol, setSurvol] = useState(null)
 
   const theme = {
     carte: darkMode ? '#1D1713' : '#FFFFFF',
@@ -276,8 +279,34 @@ export default function AbsencesCalendrier({
                   </div>
                 </div>
 
-                {/* Piste du mois */}
-                <div style={{ flex: 1, position: 'relative', display: 'flex', minHeight: hauteur }}>
+                {/* Piste du mois — zone de dépôt du glisser-déposer */}
+                <div
+                  style={{ flex: 1, position: 'relative', display: 'flex', minHeight: hauteur }}
+                  data-drop-lane={ligne.employe.id}
+                  onDragOver={(e) => {
+                    if (!onDeposerMotif) return
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'copy'
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    const index = jourDepuisX(e.clientX, rect, nbJours)
+                    if (!survol || survol.employeeId !== ligne.employe.id || survol.index !== index) {
+                      setSurvol({ employeeId: ligne.employe.id, index })
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget)) return
+                    if (survol && survol.employeeId === ligne.employe.id) setSurvol(null)
+                  }}
+                  onDrop={(e) => {
+                    if (!onDeposerMotif) return
+                    e.preventDefault()
+                    const motifId = e.dataTransfer.getData(DATA_TRANSFER_MOTIF) || e.dataTransfer.getData('text/plain')
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    const index = jourDepuisX(e.clientX, rect, nbJours)
+                    setSurvol(null)
+                    if (motifId) onDeposerMotif({ employeeId: ligne.employe.id, dateIso: jours[index].iso, motifId })
+                  }}
+                >
                   {jours.map((j) => (
                     <div key={j.iso} style={{
                       flex: 1, minWidth: 0,
@@ -345,6 +374,18 @@ export default function AbsencesCalendrier({
                       </button>
                     )
                   })}
+
+                  {survol && survol.employeeId === ligne.employe.id && (
+                    <div
+                      className="abs-drop-cell"
+                      data-testid="abs-drop-cell"
+                      aria-hidden="true"
+                      style={{
+                        left: `calc(${(survol.index / nbJours) * 100}% + 1px)`,
+                        width: `calc(${(1 / nbJours) * 100}% - 2px)`,
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             )
@@ -425,6 +466,13 @@ export default function AbsencesCalendrier({
       )}
     </div>
   )
+}
+
+/** Quel jour du mois se trouve sous le pointeur ? (0-based, borné) */
+function jourDepuisX(clientX, rect, nbJours) {
+  if (!rect || !rect.width) return 0
+  const ratio = (clientX - rect.left) / rect.width
+  return Math.max(0, Math.min(nbJours - 1, Math.floor(ratio * nbJours)))
 }
 
 // ── Petits helpers de style ───────────────────────────────────────────

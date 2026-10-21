@@ -31,9 +31,10 @@ describe('Bandeau haut de la page Absences — frise Kente ambre (orange · jaun
     expect(absencesSrc).toContain("from '../components/AfroCulturalSvg'")
     expect(absencesSrc).toContain('KenteAmberWeaveSvg')
 
+    // Tout ce qui précède la barre supérieure : la frise doit s'y trouver
     const entete = absencesSrc.slice(
-      absencesSrc.indexOf('<div style={S.container}>'),
-      absencesSrc.indexOf('<PageHeader title="ABSENCES & CONGÉS" />')
+      absencesSrc.indexOf('<div className="abs-page"'),
+      absencesSrc.indexOf('className="abs-topbar"')
     )
     expect(entete).toContain('abs-kente-top-strip')
     expect(entete).toContain('KenteAmberWeaveSvg')
