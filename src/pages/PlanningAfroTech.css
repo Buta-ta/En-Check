@@ -1149,6 +1149,23 @@
   overflow-wrap: anywhere;
 }
 
+/* Légende — les signaux de la case doivent être expliqués, sinon un symbole
+   dans une case est un mystère de plus. */
+.sk-legend-symbol {
+  font-size: 10px;
+  font-weight: 700;
+  margin-right: 2px;
+}
+
+.sk-legend-pause-barree {
+  color: #fca5a5;
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: line-through;
+  text-decoration-color: #ef4444;
+  text-decoration-thickness: 2px;
+}
+
 /* Sortie MANQUANTE : la case ne clignote plus, elle le dit. */
 .sk-real-diff.is-manquante {
   color: #fca5a5;

@@ -343,4 +343,23 @@ describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => 
     expect(pointagesSrc).toMatch(/catch \(eCorbeille\)/)
   })
 
+  it('21. la case n’affiche JAMAIS une heure inventée — symbole + légende', () => {
+    //  Un symbole défini UNE seule fois : la case et la légende ne peuvent pas diverger
+    expect(planningSrc).toContain('const SYMBOLE_OUBLI =')
+    expect(planningSrc).toContain('if (real.autoClosed) return `${entree} → ${SYMBOLE_OUBLI}`')
+    //  L'heure inventée par l'auto-clôture quitte la case et reste au survol
+    expect(planningSrc).toContain('const titreReelDuJour =')
+    expect(planningSrc).toContain('title={titreReelDuJour(realAtt)}')
+    expect(planningSrc).not.toContain('(auto)"')
+    //  Une sortie présumée VALIDÉE par un humain, elle, est montrée (elle compte)
+    expect(planningSrc).toContain('sortieValidee: Boolean(result.lastOut?.estimation_validee_le)')
+    expect(planningSrc).toContain('(validée)')
+    //  La légende explique les deux signaux de la case
+    expect(planningSrc).toMatch(/sk-legend-title">Signaux</)
+    expect(planningSrc).toContain('Oubli de pointage')
+    expect(planningSrc).toContain('Pause supprimée (')
+    expect(planningCssSrc).toContain('.sk-legend-pause-barree')
+    expect(planningCssSrc).toContain('.sk-legend-symbol')
+  })
+
 })

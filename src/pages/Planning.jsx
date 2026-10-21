@@ -1938,6 +1938,9 @@ export default function Planning() {
           autoClosed:
             Boolean((result.attendances || []).some((a) => a.is_auto_closed)) ||
             Boolean(result.lastOut?.is_auto_closed),
+          //  Une sortie présumée VALIDÉE par un humain n'est plus un oubli :
+          //  elle est comptée, et on l'affiche comme telle.
+          sortieValidee: Boolean(result.lastOut?.estimation_validee_le),
           count: (result.attendances || []).length,
           pairs: result.validPairs?.length || 0,
         });
@@ -1957,16 +1960,41 @@ export default function Planning() {
 
   const getRealAttendance = (empId, dateStr) => realAttendanceMap.get(`${empId}|${dateStr}`) || null;
 
+  //  Symbole d'un oubli de pointage : la sortie n'a jamais été badgée. Il est
+  //  défini UNE fois ici pour que la case et la légende ne puissent pas
+  //  diverger (un symbole dans la case qui n'est pas expliqué n'explique rien).
+  const SYMBOLE_OUBLI = "⚠️ oubli";
+
   // Libellé des entrées / sorties réelles.
-  // Quand la sortie n'est pas encore pointée, on affiche « en cours » (comme la page
-  // Pointages) au lieu d'un « → … » incomplet.
+  //  Cette ligne ne montre QUE des heures réellement badgées. Quand la sortie
+  //  manque, l'heure inventée par l'auto-clôture (la fin de la grille, souvent
+  //  17:00) ne s'affiche PAS dans la case : elle se lit comme une vraie sortie.
+  //  On affiche le symbole d'oubli, et l'heure présumée reste au survol.
   const formatRealLabel = (real) => {
     if (!real || !real.firstIn) return null;
     const entree = heureLocale(real.firstIn);
-    const suffixe = real.autoClosed ? " (auto)" : "";
-    return real.lastOut
-      ? `${entree} → ${heureLocale(real.lastOut)}${suffixe}`
-      : `${entree} → en cours`;
+    if (!real.lastOut) return `${entree} → en cours`;
+    //  Présumée MAIS validée par un humain : elle compte, on la montre marquée.
+    if (real.sortieValidee) return `${entree} → ${heureLocale(real.lastOut)} (validée)`;
+    //  Inventée et non validée : ce n'est pas une heure, c'est un oubli.
+    if (real.autoClosed) return `${entree} → ${SYMBOLE_OUBLI}`;
+    return `${entree} → ${heureLocale(real.lastOut)}`;
+  };
+
+  //  Infobulle de la ligne « Réel » : ce qu'on ne peut pas mettre dans la case.
+  const titreReelDuJour = (real) => {
+    if (!real || !real.firstIn) return undefined;
+    if (!real.lastOut) return `Entrée ${heureLocale(real.firstIn)} — sortie pas encore pointée`;
+    if (real.sortieValidee) {
+      return `Sortie présumée ${heureLocale(real.lastOut)}, validée par un humain — comptée`;
+    }
+    if (real.autoClosed) {
+      return (
+        `Aucune sortie pointée. Sortie présumée ${heureLocale(real.lastOut)} (auto-clôture) ` +
+        "— non comptée, à régulariser depuis la page Pointages."
+      );
+    }
+    return `Réel ${heureLocale(real.firstIn)} → ${heureLocale(real.lastOut)}`;
   };
 
   const realIsOpen = (real) => Boolean(real && real.firstIn && !real.lastOut);
@@ -2954,6 +2982,27 @@ export default function Planning() {
                 <span className="sk-legend-swatch is-dashed" /> Réel effectué
               </span>
             </span>
+            <span className="sk-legend-group">
+              <span className="sk-legend-title">Signaux</span>
+              <span
+                className="sk-legend-item"
+                title={
+                  "Entrée pointée, aucune sortie : la journée n'est pas fermée. " +
+                  "L'heure de fin n'est pas affichée dans la case — ce n'est pas une heure badgée."
+                }
+              >
+                <span className="sk-legend-symbol">{SYMBOLE_OUBLI}</span>
+                Oubli de pointage
+              </span>
+              <span
+                className="sk-legend-item"
+                title="Pause retirée : elle reste archivée et remetable depuis la page Pauses."
+              >
+                <span className="sk-legend-symbol">🗑️</span>
+                Pause supprimée (
+                <span className="sk-legend-pause-barree">☕ 1h</span>)
+              </span>
+            </span>
           </div>
         </section>
 
@@ -3431,7 +3480,10 @@ export default function Planning() {
 
                                                 {/* Horaires réellement effectués (pointages) */}
                                                 {realAtt && realAtt.firstIn && (
-                                                  <div className="sk-shift-real">
+                                                  <div
+                                                    className="sk-shift-real"
+                                                    title={titreReelDuJour(realAtt)}
+                                                  >
                                                     <span>
                                                       Réel {formatRealLabel(realAtt)}
                                                       {sessionEnCours && (
@@ -3768,9 +3820,7 @@ export default function Planning() {
                                 }}
                                 title={
                                   real.lastOut
-                                    ? `Réel : ${formatRealLabel(real)} · ${formatHoursCompact(
-                                        real.minutes
-                                      )}`
+                                    ? titreReelDuJour(real)
                                     : sortiesManquantes.has(`${emp.id}|${dateStr}`)
                                     ? `Entrée pointée à ${heureLocale(
                                         real.firstIn
@@ -4024,7 +4074,7 @@ export default function Planning() {
                                 }`}
                                 title={
                                   real.lastOut
-                                    ? `Pointé ${formatRealLabel(real)}`
+                                    ? titreReelDuJour(real)
                                     : sortiesManquantes.has(`${emp.id}|${cell.date}`)
                                     ? `Entrée ${heureLocale(
                                         real.firstIn
