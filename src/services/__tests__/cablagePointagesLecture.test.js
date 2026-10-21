@@ -23,6 +23,7 @@ const pausesSectionsSrc = lire('src/components/PausesAfroTechSections.jsx')
 const hookSrc = lire('src/hooks/useLoadingMinimum.js')
 const diagnosticSql = lire('supabase/outils-sql/20261021_diagnostic_pause_disparue.sql')
 const migrationSql = lire('supabase/migrations/20261021000001_pauses_decisions_reversibles.sql')
+const migrationRestaurSql = lire('supabase/migrations/20261021000002_pauses_jamais_supprimees_et_restaurees.sql')
 
 describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => {
   it('1. les heures supplémentaires sont affichées en mode Passeport', () => {
@@ -182,6 +183,35 @@ describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => 
     expect(migrationSql).toContain('IF v_id IS NOT NULL AND v_jr = v_jour THEN')
     // Rien de destructif : jamais de DELETE
     expect(migrationSql).not.toMatch(/DELETE\s+FROM/i)
+  })
+
+
+  it('12. plus aucune décision ne peut supprimer une pause (cause racine)', () => {
+    // Cause racine trouvée en base : encheck_alerte_journaliser est une PURGE
+    // (copie au journal PUIS DELETE). Valider/Écarter l'appelait sur les pauses.
+    expect(migrationRestaurSql).toContain('encheck_journal_tracer')
+    expect(migrationRestaurSql).toContain('NE SUPPRIME JAMAIS')
+    // Garde-fou : même un autre appelant ne peut plus effacer une donnée métier
+    expect(migrationRestaurSql).toContain("('encheck_pauses', 'attendances', 'employees', 'pointages', 'encheck_pointages')")
+    // Valider et Annuler passent par le journal PUR
+    expect(migrationRestaurSql).toContain("PERFORM public.encheck_journal_tracer('encheck_pauses', v_id, v_ent, v_emp,")
+    expect(migrationRestaurSql).toContain("'pause_validee'")
+    expect(migrationRestaurSql).toContain("'decision_annulee'")
+    // Le script 0001 ne doit plus appeler la fonction qui supprime
+    expect(migrationSql).toContain('PERFORM public.encheck_journal_tracer(')
+    expect(migrationSql).not.toContain("PERFORM public.encheck_alerte_journaliser('encheck_pauses'")
+  })
+
+  it('13. les pauses déjà supprimées sont restaurées depuis les snapshots', () => {
+    expect(migrationRestaurSql).toContain('INSERT INTO public.encheck_pauses')
+    expect(migrationRestaurSql).toContain('FROM public.encheck_pointages_journal')
+    expect(migrationRestaurSql).toContain("snapshot->>'source' IN ('pointee', 'presumee', 'admin')")
+    // Idempotent : jamais de doublon, jamais d'écrasement
+    expect(migrationRestaurSql).toContain('ON CONFLICT (id) DO NOTHING')
+    expect(migrationRestaurSql).toContain('DISTINCT ON (snapshot->>')
+    // Et la table redevient lisible (RLS active sans politique = lectures vides)
+    expect(migrationRestaurSql).toContain('encheck_pauses_lecture_admin')
+    expect(migrationRestaurSql).toContain('FOR SELECT')
   })
 
 })
