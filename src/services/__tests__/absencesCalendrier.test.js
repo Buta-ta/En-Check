@@ -156,7 +156,7 @@ describe('Calendrier mensuel des absences — câblage', () => {
     expect(calendrierSrc).toContain('data-statut={a.status}')
     expect(calendrierSrc).toContain('En attente (contour pointillé)')
     expect(calendrierSrc).toContain('Refusé (barré)')
-    expect(calendrierSrc).toContain('à cheval sur un autre mois')
+    expect(calendrierSrc).toContain('à cheval sur la période')
     expect(calendrierSrc).toContain('justificatif joint')
     expect(calendrierSrc).toContain('conflit de pointage')
   })

@@ -1,8 +1,9 @@
 // ═══════════════════════════════════════════════════════════
-// 🗓️ CALENDRIER MENSUEL DES ABSENCES — VUE « PLANNING »
+// 🗓️ CALENDRIER DES ABSENCES — VUE « PLANNING »
 //
-// Les employés sont en lignes, les jours du mois en colonnes, et
-// chaque absence devient une barre positionnée sur sa période.
+// Trois modes : JOUR · SEMAINE · MOIS.
+// Les employés sont en lignes, les jours en colonnes, et chaque
+// absence devient une barre positionnée sur sa période.
 // Un clic ouvre le tiroir de détail (AbsenceTiroir).
 //
 // Ce composant ne lit rien de Supabase et ne supprime rien : il
@@ -10,29 +11,45 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, CalendarOff, Users } from 'lucide-react'
-import { MOTIFS, styleBarreAbsence, DATA_TRANSFER_MOTIF } from '../constants/motifsAbsence'
+import { ChevronLeft, ChevronRight, Plus, CalendarOff, Users, CalendarDays } from 'lucide-react'
+import { styleBarreAbsence, DATA_TRANSFER_MOTIF } from '../constants/motifsAbsence'
 import {
   JOURS_SEMAINE,
-  joursDuMois,
+  joursDeLaPeriode,
+  deplacerPeriode,
+  parseIso,
+  isoLocal,
   nomMois,
-  segmentDuMois,
+  titrePeriode,
+  nomJourLong,
+  segmentSurJours,
   empilerSegments,
   compterJoursOuvres,
-  isoLocal,
   formaterDateCourt,
 } from '../services/absencesCalendrier'
 import AbsenceTiroir from './AbsenceTiroir'
+import { useMotifsAbsence } from '../hooks/useMotifsAbsence'
 
 const LARGEUR_EMPLOYE = 236
-const LARGEUR_JOUR = 36
+const LARGEUR_JOUR_MOIS = 36
+const LARGEUR_JOUR_SEMAINE = 108
+const LARGEUR_JOUR_UNIQUE = 460
 const HAUTEUR_BARRE = 24
 const ESPACEMENT_BARRE = 30
+
+const MODES = [
+  { id: 'jour', label: 'Jour' },
+  { id: 'semaine', label: 'Semaine' },
+  { id: 'mois', label: 'Mois' },
+]
 
 const pad2 = (n) => String(n).padStart(2, '0')
 
 const initialesDe = (prenom, nom) =>
   `${prenom || ''} ${nom || ''}`.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '?'
+
+const largeurJourDe = (mode) =>
+  (mode === 'jour' ? LARGEUR_JOUR_UNIQUE : mode === 'semaine' ? LARGEUR_JOUR_SEMAINE : LARGEUR_JOUR_MOIS)
 
 export default function AbsencesCalendrier({
   absences = [],
@@ -41,6 +58,9 @@ export default function AbsencesCalendrier({
   annee,
   mois,
   onChangerMois,
+  mode: modeControle,
+  onChangerMode,
+  jourInitial,
   getHolidaySet = () => new Set(),
   joursPrisParEmploye = {},
   plafondConges = 30,
@@ -51,11 +71,21 @@ export default function AbsencesCalendrier({
   onDeclarer,
   onDeposerMotif,
 }) {
-  const [motifsActifs, setMotifsActifs] = useState(() => new Set(MOTIFS.map((m) => m.id)))
+  const { motifs } = useMotifsAbsence()
+  // Filtre en creux : rien de masqué par défaut, un motif créé ensuite est visible aussitôt
+  const [motifsMasques, setMotifsMasques] = useState(() => new Set())
   const [masquerSansAbsence, setMasquerSansAbsence] = useState(false)
   const [absenceActive, setAbsenceActive] = useState(null)
   // Cellule survolée pendant un glisser-déposer : { employeeId, index }
   const [survol, setSurvol] = useState(null)
+  const [modeInterne, setModeInterne] = useState('mois')
+  const [jourVise, setJourVise] = useState(() => jourInitial || isoLocal(new Date()))
+
+  const mode = modeControle || modeInterne
+  const changerMode = (id) => {
+    if (!modeControle) setModeInterne(id)
+    onChangerMode?.(id)
+  }
 
   const theme = {
     carte: darkMode ? '#1D1713' : '#FFFFFF',
@@ -69,10 +99,31 @@ export default function AbsencesCalendrier({
     pastille: darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(29,23,19,0.04)',
   }
 
-  const jours = useMemo(() => joursDuMois(annee, mois), [annee, mois])
+  // ── Le jour visé reste toujours dans le mois affiché ────────────────
+  const jourSel = useMemo(() => {
+    const p = parseIso(jourVise)
+    if (p && p.y === annee && p.m === mois) return jourVise
+    const aujourdhui = isoLocal(new Date())
+    const pa = parseIso(aujourdhui)
+    if (pa && pa.y === annee && pa.m === mois) return aujourdhui
+    return `${annee}-${pad2(mois + 1)}-01`
+  }, [jourVise, annee, mois])
+
+  const jours = useMemo(
+    () => joursDeLaPeriode(mode, { annee, mois, jourIso: jourSel }),
+    [mode, annee, mois, jourSel]
+  )
   const nbJours = jours.length
+  const largeurJour = largeurJourDe(mode)
   const aujourdhuiIso = isoLocal(new Date())
   const indexAujourdhui = jours.findIndex((j) => j.iso === aujourdhuiIso)
+  const titre = mode === 'mois' ? nomMois(annee, mois) : titrePeriode(mode, jours, { annee, mois })
+
+  const deplacer = (delta) => {
+    const suivant = deplacerPeriode(mode, { annee, mois, jourIso: jourSel }, delta)
+    if (mode === 'mois') onChangerMois?.(delta)
+    else setJourVise(suivant.jourIso)
+  }
 
   // ── Construction des lignes : un employé = une ligne ────────────────
   const lignes = useMemo(() => {
@@ -81,8 +132,8 @@ export default function AbsencesCalendrier({
 
     absences.forEach((a) => {
       const motifId = a.reason || 'autre'
-      if (!motifsActifs.has(motifId)) return
-      const seg = segmentDuMois(a.start_date, a.end_date, annee, mois)
+      if (motifsMasques.has(motifId)) return
+      const seg = segmentSurJours(a.start_date, a.end_date, jours)
       if (!seg) return
       const ligne = parEmploye.get(a.employee_id)
       if (!ligne) return // employé inactif ou hors périmètre : ignoré
@@ -98,9 +149,9 @@ export default function AbsencesCalendrier({
           'fr'
         )
       )
-  }, [employes, absences, annee, mois, motifsActifs, masquerSansAbsence])
+  }, [employes, absences, jours, motifsMasques, masquerSansAbsence])
 
-  // ── Récapitulatif du mois affiché ───────────────────────────────────
+  // ── Récapitulatif de la période affichée ────────────────────────────
   const stats = useMemo(() => {
     const vus = new Map()
     let journees = 0
@@ -110,9 +161,7 @@ export default function AbsencesCalendrier({
       l.segments.forEach((seg) => {
         const a = seg.absence
         if (!vus.has(a.id)) vus.set(a.id, a)
-        const debutIso = `${annee}-${pad2(mois + 1)}-${pad2(seg.debut)}`
-        const finIso = `${annee}-${pad2(mois + 1)}-${pad2(seg.fin)}`
-        journees += compterJoursOuvres(debutIso, finIso, feriers, a.count_holidays_as_leave)
+        journees += compterJoursOuvres(jours[seg.debut].iso, jours[seg.fin].iso, feriers, a.count_holidays_as_leave)
       })
     })
 
@@ -123,10 +172,26 @@ export default function AbsencesCalendrier({
       refusees: liste.filter((a) => a.status === 'refuse').length,
       journees,
     }
-  }, [lignes, annee, mois, getHolidaySet])
+  }, [lignes, jours, getHolidaySet])
+
+  // ── Mode « jour » : qui est absent, qui est là ──────────────────────
+  const absentsDuJour = useMemo(() => {
+    if (mode !== 'jour') return []
+    return lignes
+      .filter((l) => l.segments.length > 0)
+      .map((l) => ({
+        employe: l.employe,
+        absences: l.segments.map((s) => s.absence),
+      }))
+  }, [mode, lignes])
+
+  const presentsDuJour = useMemo(
+    () => (mode === 'jour' ? lignes.filter((l) => l.segments.length === 0).map((l) => l.employe) : []),
+    [mode, lignes]
+  )
 
   const basculerMotif = (id) => {
-    setMotifsActifs((prev) => {
+    setMotifsMasques((prev) => {
       const suivant = new Set(prev)
       if (suivant.has(id)) suivant.delete(id)
       else suivant.add(id)
@@ -140,9 +205,12 @@ export default function AbsencesCalendrier({
     return { pris, plafond, restant: Math.max(0, plafond - pris) }
   }
 
+  const libellePeriode =
+    mode === 'jour' ? "cette journée" : mode === 'semaine' ? 'cette semaine' : 'ce mois'
+
   // ── Rendu ───────────────────────────────────────────────────────────
   return (
-    <div className="abs-cal" data-theme={darkMode ? 'dark' : 'light'}>
+    <div className="abs-cal" data-theme={darkMode ? 'dark' : 'light'} data-mode={mode}>
       <style>{`
         .abs-cal-scroll::-webkit-scrollbar { height: 10px; }
         .abs-cal-scroll::-webkit-scrollbar-thumb { background: rgba(245,158,11,.28); border-radius: 8px; }
@@ -153,19 +221,51 @@ export default function AbsencesCalendrier({
       {/* ═══ Barre d'outils ═══ */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => onChangerMois?.(-1)} aria-label="Mois précédent" style={boutonNav(theme)}>
+          <button onClick={() => deplacer(-1)} aria-label="Période précédente" style={boutonNav(theme)}>
             <ChevronLeft size={18} />
           </button>
           <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: theme.texte, minWidth: 168, textAlign: 'center' }}>
-            {nomMois(annee, mois)}
+            {titre}
           </h3>
-          <button onClick={() => onChangerMois?.(1)} aria-label="Mois suivant" style={boutonNav(theme)}>
+          <button onClick={() => deplacer(1)} aria-label="Période suivante" style={boutonNav(theme)}>
             <ChevronRight size={18} />
           </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={() => setMotifsActifs(new Set(MOTIFS.map((m) => m.id)))} style={boutonDoux(theme)}>
+          {/* Sélecteur de mode : Jour · Semaine · Mois */}
+          <div
+            role="group"
+            aria-label="Mode d'affichage du calendrier"
+            data-testid="abs-cal-modes"
+            style={{
+              display: 'inline-flex', padding: 3, gap: 3, borderRadius: 12,
+              border: `1px solid ${theme.bordure}`, background: theme.pastille,
+            }}
+          >
+            {MODES.map((m) => {
+              const actif = mode === m.id
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => changerMode(m.id)}
+                  aria-pressed={actif}
+                  data-testid={`abs-cal-mode-${m.id}`}
+                  style={{
+                    padding: '7px 13px', borderRadius: 9, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                    fontFamily: 'inherit', border: 'none',
+                    background: actif ? 'linear-gradient(135deg, #C25E28, #8C3418)' : 'transparent',
+                    color: actif ? '#FFF5E6' : theme.texteDoux,
+                  }}
+                >
+                  {m.label}
+                </button>
+              )
+            })}
+          </div>
+
+          <button onClick={() => setMotifsMasques(new Set())} style={boutonDoux(theme)}>
             Tous les motifs
           </button>
           <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: theme.texteDoux, cursor: 'pointer' }}>
@@ -182,8 +282,8 @@ export default function AbsencesCalendrier({
 
       {/* ═══ Filtres par motif ═══ */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-        {MOTIFS.map((m) => {
-          const actif = motifsActifs.has(m.id)
+        {motifs.map((m) => {
+          const actif = !motifsMasques.has(m.id)
           return (
             <button key={m.id} onClick={() => basculerMotif(m.id)} style={{
               padding: '6px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12, fontWeight: 600,
@@ -204,7 +304,7 @@ export default function AbsencesCalendrier({
         overflowX: 'auto', border: `1px solid ${theme.bordure}`,
         borderRadius: 16, background: theme.carte,
       }}>
-        <div style={{ minWidth: LARGEUR_EMPLOYE + nbJours * LARGEUR_JOUR }}>
+        <div style={{ minWidth: LARGEUR_EMPLOYE + nbJours * largeurJour }}>
 
           {/* Entête des jours */}
           <div style={{ display: 'flex', borderBottom: `1px solid ${theme.bordure}` }}>
@@ -220,15 +320,19 @@ export default function AbsencesCalendrier({
               {jours.map((j) => {
                 const estAujourdhui = j.iso === aujourdhuiIso
                 return (
-                  <div key={j.iso} style={{
+                  <div key={j.iso} data-jour={j.iso} style={{
                     flex: 1, minWidth: 0, textAlign: 'center', padding: '7px 0 6px',
                     background: estAujourdhui ? 'rgba(245,158,11,0.10)' : 'transparent',
                     borderLeft: `1px solid ${theme.grille}`,
                   }}>
                     <div style={{ fontSize: 10, color: theme.texteDoux, textTransform: 'uppercase' }}>
-                      {JOURS_SEMAINE[j.weekday - 1]}
+                      {mode === 'jour' ? nomJourLong(j.iso).split(' ')[0] : JOURS_SEMAINE[j.weekday - 1]}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: estAujourdhui ? 800 : 600, color: estAujourdhui ? '#F59E0B' : theme.texte }}>
+                    <div style={{
+                      fontSize: mode === 'mois' ? 13 : 15,
+                      fontWeight: estAujourdhui ? 800 : 600,
+                      color: estAujourdhui ? '#F59E0B' : theme.texte,
+                    }}>
                       {j.jour}
                     </div>
                   </div>
@@ -253,14 +357,25 @@ export default function AbsencesCalendrier({
                   padding: '8px 14px', minHeight: hauteur,
                   display: 'flex', alignItems: 'center', gap: 10,
                 }}>
-                  <div style={{
-                    width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                    background: theme.pastille, border: `1px solid ${theme.bordure}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: 700, color: theme.texte,
-                  }}>
-                    {initialesDe(ligne.employe.first_name, ligne.employe.last_name)}
-                  </div>
+                  {ligne.employe.photo_url ? (
+                    <img
+                      src={ligne.employe.photo_url}
+                      alt=""
+                      style={{
+                        width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                        objectFit: 'cover', border: `1px solid ${theme.bordure}`,
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                      background: theme.pastille, border: `1px solid ${theme.bordure}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, fontWeight: 700, color: theme.texte,
+                    }}>
+                      {initialesDe(ligne.employe.first_name, ligne.employe.last_name)}
+                    </div>
+                  )}
                   <div style={{ minWidth: 0 }}>
                     <p style={{
                       margin: 0, fontSize: 13, fontWeight: 600, color: theme.texte,
@@ -279,7 +394,7 @@ export default function AbsencesCalendrier({
                   </div>
                 </div>
 
-                {/* Piste du mois — zone de dépôt du glisser-déposer */}
+                {/* Piste de la période — zone de dépôt du glisser-déposer */}
                 <div
                   style={{ flex: 1, position: 'relative', display: 'flex', minHeight: hauteur }}
                   data-drop-lane={ligne.employe.id}
@@ -326,9 +441,9 @@ export default function AbsencesCalendrier({
 
                   {/* Barres d'absence */}
                   {ligne.segments.map((seg) => {
-                    const st = styleBarreAbsence(seg.absence)
+                    const st = styleBarreAbsence(seg.absence, motifs)
                     const a = seg.absence
-                    const titre = [
+                    const titreBarre = [
                       st.motif.label,
                       `${ligne.employe.first_name} ${ligne.employe.last_name}`,
                       `du ${formaterDateCourt(a.start_date)} au ${formaterDateCourt(a.end_date)}`,
@@ -341,13 +456,13 @@ export default function AbsencesCalendrier({
                         key={a.id}
                         className="abs-cal-barre"
                         onClick={() => setAbsenceActive(a)}
-                        title={titre}
-                        aria-label={titre}
+                        title={titreBarre}
+                        aria-label={titreBarre}
                         data-testid="abs-cal-barre"
                         data-statut={a.status}
                         style={{
                           position: 'absolute',
-                          left: `calc(${((seg.debut - 1) / nbJours) * 100}% + 2px)`,
+                          left: `calc(${(seg.debut / nbJours) * 100}% + 2px)`,
                           width: `calc(${((seg.fin - seg.debut + 1) / nbJours) * 100}% - 4px)`,
                           top: 5 + seg.rangee * ESPACEMENT_BARRE,
                           height: HAUTEUR_BARRE,
@@ -400,9 +515,115 @@ export default function AbsencesCalendrier({
         </div>
       </div>
 
+      {/* ═══ Mode « jour » : la feuille du jour ═══ */}
+      {mode === 'jour' && (
+        <div
+          data-testid="abs-cal-feuille-jour"
+          style={{
+            marginTop: 14, padding: 16, borderRadius: 16,
+            border: `1px solid ${theme.bordure}`, background: theme.carte,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <CalendarDays size={16} style={{ color: '#F59E0B' }} />
+            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: theme.texte, textTransform: 'capitalize' }}>
+              {nomJourLong(jours[0]?.iso)}
+            </h4>
+            <span style={{ fontSize: 12, color: theme.texteDoux }}>
+              · {absentsDuJour.length} absent{absentsDuJour.length > 1 ? 's' : ''} sur {lignes.length} employé{lignes.length > 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {absentsDuJour.length === 0 && (
+            <p style={{ margin: 0, fontSize: 13, color: theme.texteDoux }}>
+              Personne n'est absent : effectif complet.
+            </p>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {absentsDuJour.map(({ employe, absences: liste }) => (
+              <div key={employe.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                padding: '10px 12px', borderRadius: 12,
+                border: `1px solid ${theme.bordure}`, background: theme.pastille,
+              }}>
+                {employe.photo_url ? (
+                  <img src={employe.photo_url} alt="" style={{
+                    width: 38, height: 38, borderRadius: 11, objectFit: 'cover', flexShrink: 0,
+                    border: `1px solid ${theme.bordure}`,
+                  }} />
+                ) : (
+                  <div style={{
+                    width: 38, height: 38, borderRadius: 11, flexShrink: 0,
+                    background: theme.pastille, border: `1px solid ${theme.bordure}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, fontWeight: 700, color: theme.texte,
+                  }}>
+                    {initialesDe(employe.first_name, employe.last_name)}
+                  </div>
+                )}
+                <div style={{ minWidth: 150 }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: theme.texte }}>
+                    {employe.first_name} {employe.last_name}
+                  </p>
+                  <span style={{ fontSize: 11, color: theme.texteDoux }}>{employe.matricule || '—'}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+                  {liste.map((a) => {
+                    const st = styleBarreAbsence(a, motifs)
+                    return (
+                      <button
+                        key={a.id}
+                        onClick={() => setAbsenceActive(a)}
+                        style={{
+                          padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
+                          fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
+                          background: st.fond, color: st.texte,
+                          border: st.pointillee ? `1px dashed ${st.bordure}` : `1px solid ${st.bordure}`,
+                          textDecoration: st.barree ? 'line-through' : 'none',
+                        }}
+                      >
+                        {st.motif.emoji} {st.motif.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {presentsDuJour.length > 0 && (
+            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, color: theme.texteDoux }}>Présents ({presentsDuJour.length}) :</span>
+              {presentsDuJour.map((e) => (
+                <span key={e.id} title={`${e.first_name} ${e.last_name}`} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '4px 10px 4px 4px', borderRadius: 999,
+                  border: `1px solid ${theme.bordure}`, background: theme.pastille,
+                  fontSize: 11, color: theme.texte,
+                }}>
+                  {e.photo_url ? (
+                    <img src={e.photo_url} alt="" style={{ width: 22, height: 22, borderRadius: 7, objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{
+                      width: 22, height: 22, borderRadius: 7, background: 'rgba(16,185,129,0.15)',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 9, fontWeight: 800, color: '#10B981',
+                    }}>
+                      {initialesDe(e.first_name, e.last_name)}
+                    </span>
+                  )}
+                  {e.first_name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ═══ Légende ═══ */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 14, fontSize: 11, color: theme.texteDoux }}>
-        {MOTIFS.map((m) => (
+        {motifs.map((m) => (
           <span key={m.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <i style={{ width: 10, height: 10, borderRadius: 3, background: m.color, display: 'block' }} />
             {m.label}
@@ -422,7 +643,7 @@ export default function AbsencesCalendrier({
           }} />
           Refusé (barré)
         </span>
-        <span>‹ › à cheval sur un autre mois</span>
+        <span>‹ › à cheval sur la période</span>
         <span>📎 justificatif joint</span>
         <span>⚡ conflit de pointage</span>
       </div>
@@ -433,7 +654,7 @@ export default function AbsencesCalendrier({
         border: `1px solid ${theme.bordure}`, borderRadius: 12, background: theme.carte,
         fontSize: 12, color: theme.texteDoux,
       }}>
-        <span><b style={{ color: theme.texte }}>{stats.total}</b> absence{stats.total > 1 ? 's' : ''} ce mois</span>
+        <span><b style={{ color: theme.texte }}>{stats.total}</b> absence{stats.total > 1 ? 's' : ''} {libellePeriode}</span>
         <span style={{ color: stats.enAttente ? '#F59E0B' : theme.texteDoux }}>
           ⏳ <b>{stats.enAttente}</b> en attente
         </span>
@@ -441,7 +662,7 @@ export default function AbsencesCalendrier({
           ❌ <b>{stats.refusees}</b> refusée{stats.refusees > 1 ? 's' : ''}
         </span>
         <span>
-          📆 <b style={{ color: theme.texte }}>{stats.journees}</b> jour{stats.journees > 1 ? 's' : ''} compté{stats.journees > 1 ? 's' : ''} sur le mois
+          📆 <b style={{ color: theme.texte }}>{stats.journees}</b> jour{stats.journees > 1 ? 's' : ''} compté{stats.journees > 1 ? 's' : ''} {libellePeriode}
         </span>
       </div>
 
@@ -468,7 +689,7 @@ export default function AbsencesCalendrier({
   )
 }
 
-/** Quel jour du mois se trouve sous le pointeur ? (0-based, borné) */
+/** Quel jour de la période se trouve sous le pointeur ? (0-based, borné) */
 function jourDepuisX(clientX, rect, nbJours) {
   if (!rect || !rect.width) return 0
   const ratio = (clientX - rect.left) / rect.width

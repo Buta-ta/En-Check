@@ -84,7 +84,7 @@ it('6. le solde de congés est affiché par employé', () => {
 it('7. la légende explique chaque façon de dessiner une barre', () => {
   expect(grille).toContain('En attente (contour pointillé)')
   expect(grille).toContain('Refusé (barré)')
-  expect(grille).toContain('à cheval sur un autre mois')
+  expect(grille).toContain('à cheval sur la période')
 })
 
 it('8. le tiroir affiche une absence en attente avec les deux décisions', () => {

@@ -1,0 +1,32 @@
+// ═══════════════════════════════════════════════════════════
+// 🪝 LECTURE DES MOTIFS D'ABSENCE
+//
+// Séparé du fournisseur : un fichier ne doit exporter QUE des
+// composants pour que le rechargement à chaud fonctionne.
+//
+// Utilisable SANS fournisseur : renvoie alors les 7 motifs
+// d'origine. Aucun écran ne se vide si le contexte est absent.
+// ═══════════════════════════════════════════════════════════
+
+import { createContext, useContext } from 'react'
+import { MOTIFS_PAR_DEFAUT } from '../constants/motifsAbsence'
+
+export const MotifsAbsenceContext = createContext(null)
+
+export function useMotifsAbsence() {
+  const ctx = useContext(MotifsAbsenceContext)
+  if (ctx) return ctx
+  return {
+    motifs: MOTIFS_PAR_DEFAUT,
+    corbeille: [],
+    chargement: false,
+    recharger: async () => {},
+    creer: async () => {},
+    modifier: async () => {},
+    archiver: async () => {},
+    restaurer: async () => {},
+    usages: async () => 0,
+  }
+}
+
+export default useMotifsAbsence

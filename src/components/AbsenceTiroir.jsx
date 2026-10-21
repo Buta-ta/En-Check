@@ -12,6 +12,7 @@
 import { useEffect } from 'react'
 import { X, Paperclip, Pencil, Check, Ban, CalendarOff } from 'lucide-react'
 import { styleBarreAbsence } from '../constants/motifsAbsence'
+import { useMotifsAbsence } from '../hooks/useMotifsAbsence'
 import { formaterDateCourt, formaterHorodatage } from '../services/absencesCalendrier'
 
 export default function AbsenceTiroir({
@@ -31,6 +32,8 @@ export default function AbsenceTiroir({
     return () => window.removeEventListener('keydown', surTouche)
   }, [onClose])
 
+  const { motifs } = useMotifsAbsence()
+
   if (!absence) return null
 
   const theme = {
@@ -42,7 +45,7 @@ export default function AbsenceTiroir({
     ombre: '0 24px 60px rgba(0,0,0,0.45)',
   }
 
-  const style = styleBarreAbsence(absence)
+  const style = styleBarreAbsence(absence, motifs)
   const nom = `${absence.employees?.first_name || ''} ${absence.employees?.last_name || ''}`.trim() || 'Employé'
 
   const bloc = { background: theme.bloc, border: `1px solid ${theme.bordure}`, borderRadius: 14, padding: 14, marginBottom: 14 }
@@ -77,13 +80,24 @@ export default function AbsenceTiroir({
         {/* ─── En-tête ─── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <div style={{
-              width: 42, height: 42, borderRadius: 12, flexShrink: 0,
-              background: style.fond, border: `1px solid ${style.bordure}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
-            }}>
-              {style.motif.emoji}
-            </div>
+            {absence.employees?.photo_url ? (
+              <img
+                src={absence.employees.photo_url}
+                alt=""
+                style={{
+                  width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+                  objectFit: 'cover', border: `1px solid ${style.bordure}`,
+                }}
+              />
+            ) : (
+              <div style={{
+                width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+                background: style.fond, border: `1px solid ${style.bordure}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+              }}>
+                {style.motif.emoji}
+              </div>
+            )}
             <div style={{ minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: theme.texte }}>{style.motif.label}</p>
               <p style={{ margin: 0, fontSize: 12, color: theme.texteDoux, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
