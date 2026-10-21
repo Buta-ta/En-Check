@@ -49,6 +49,7 @@ import { estEstimationAStatuer } from '../services/seuilsPointage'
 import {
   formaterDureeComplete,
   formaterHeureLocale,
+  formaterHeureLocaleShort,
   getHeuresMinutesLocales,
 } from '../utils/timezoneUtils'
 import '../pages/PointagesAfroTech.css'
@@ -1287,6 +1288,37 @@ export function PointagesPassportGrid({
                         {presumedValidees > 1 ? 's' : ''}
                       </em>
                     )}
+                  </span>
+                </div>
+              )}
+
+              {/* Pause(s) SUPPRIMÉE(S) — ce qui a été retiré ne disparaît pas en silence */}
+              {(p.pausesSupprimees || []).length > 0 && (
+                <div
+                  className="pointages-pause-supprimee"
+                  title={`Pause supprimée — ${(p.pausesSupprimees || [])
+                    .map((l) =>
+                      [
+                        `de ${l.debut ? formaterHeureLocaleShort(l.debut) : '--:--'}`,
+                        `à ${l.fin ? formaterHeureLocaleShort(l.fin) : 'en cours'}`,
+                        l.source === 'presumee' ? 'présumée' : 'réelle',
+                      ].join(' · '),
+                    )
+                    .join(' | ')}`}
+                >
+                  <span>
+                    <strong>
+                      🗑️ Pause supprimée
+                      {p.pausesSupprimees.length > 1 ? ` (${p.pausesSupprimees.length})` : ''}
+                    </strong>
+                    {` · ${(p.pausesSupprimees || [])
+                      .map(
+                        (l) =>
+                          `de ${l.debut ? formaterHeureLocaleShort(l.debut) : '--:--'} à ${
+                            l.fin ? formaterHeureLocaleShort(l.fin) : 'en cours'
+                          } (${l.source === 'presumee' ? 'présumée' : 'réelle'})`
+                      )
+                      .join(' · ')}`}
                   </span>
                 </div>
               )}

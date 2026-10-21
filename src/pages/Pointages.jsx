@@ -28,6 +28,7 @@ import {
 } from '../services/seuilsPointage'
 import {
   formaterHeureLocale,
+  formaterHeureLocaleShort,
   calculerDureeSecondes,
   formaterDureeComplete,
   minutesDepuisMinuit,
@@ -1120,6 +1121,30 @@ export default function Pointages() {
         pausesByEmployee[pa.employe_id].push(pa)
       })
 
+      //  Corbeille des pauses : une pause SUPPRIMÉE reste signalée sur la ligne
+      //  du jour correspondant, comme sur la case du planning. Fonction
+      //  optionnelle : sans le script SQL du 21/10, la map reste vide et la
+      //  page fonctionne exactement comme avant.
+      const pausesSupprimeesByEmployee = {}
+      try {
+        const { data: archivesData, error: errArchives } = await supabase.rpc(
+          'encheck_pauses_archives_lire',
+          {
+            p_enterprise: targetEid === 'all' ? null : targetEid,
+            p_du: selectedDate,
+            p_au: selectedDate,
+          }
+        )
+        for (const ligne of errArchives ? [] : archivesData || []) {
+          if (!ligne?.employe_id) continue
+          if (ligne.jour && String(ligne.jour).slice(0, 10) !== selectedDate) continue
+          if (!pausesSupprimeesByEmployee[ligne.employe_id]) pausesSupprimeesByEmployee[ligne.employe_id] = []
+          pausesSupprimeesByEmployee[ligne.employe_id].push(ligne)
+        }
+      } catch (eCorbeille) {
+        //  Fonction absente : aucune trace affichée, aucun blocage.
+      }
+
       const holidaySets = {}
       const holidayMaps = {}
       const seuilsByEnterprise = {}
@@ -1318,6 +1343,7 @@ export default function Pointages() {
 
         return {
           employee, firstIn, lastOut, totalSecondes, status, pauseDeduitesSecondes,
+          pausesSupprimees: pausesSupprimeesByEmployee[employee.id] || [],
           totalSecondesPresumes, nuitRattachee, estimationEcartee, sortiesNonRetenues,
           absenceReason, attendances: empAttendances, hasPhoto,
           hasGPS, gpsDetails, faceDetails, scheduleInfo, pauses: employeePauses,
@@ -2894,6 +2920,39 @@ function PointageCard({
                   : ''}
               </>
             )}
+          </span>
+        </div>
+      )}
+
+      {/* PAUSE(S) SUPPRIMÉE(S) — ce qui a été retiré ne disparaît pas en silence */}
+      {(p.pausesSupprimees || []).length > 0 && (
+        <div
+          className="pointages-pause-supprimee"
+          title={`Pause supprimée — ${(p.pausesSupprimees || [])
+            .map((l) =>
+              [
+                `de ${l.debut ? formaterHeureLocaleShort(l.debut) : '--:--'}`,
+                `à ${l.fin ? formaterHeureLocaleShort(l.fin) : 'en cours'}`,
+                l.source === 'presumee' ? 'présumée' : 'réelle',
+                l.restaurable ? 'remetable' : 'non remetable',
+              ].join(' · '),
+            )
+            .join(' | ')}`}
+        >
+          <Trash2 size={13} />
+          <span>
+            <strong>
+              🗑️ Pause supprimée
+              {p.pausesSupprimees.length > 1 ? ` (${p.pausesSupprimees.length})` : ''}
+            </strong>
+            {` · ${(p.pausesSupprimees || [])
+              .map(
+                (l) =>
+                  `de ${l.debut ? formaterHeureLocaleShort(l.debut) : '--:--'} à ${
+                    l.fin ? formaterHeureLocaleShort(l.fin) : 'en cours'
+                  } (${l.source === 'presumee' ? 'présumée' : 'réelle'})`
+              )
+              .join(' · ')}`}
           </span>
         </div>
       )}

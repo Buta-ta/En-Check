@@ -289,4 +289,58 @@ describe('Lecture de la page Pointages — heures sup, flux 24h, pauses', () => 
     expect(planningSrc).toContain('setPausesSupprimees({})')
   })
 
+  it('18. le signe « pause supprimée » tient DANS la case du planning', () => {
+    //  Deux lignes souples : le `white-space: nowrap` d'avant faisait sortir
+    //  « Pause supprimée · 12 » hors du cadre de la case.
+    expect(planningSrc).toContain('sk-shift-pause-supprimee-titre')
+    expect(planningSrc).toContain('sk-shift-pause-supprimee-plage')
+    const blocSigne = (planningCssSrc.match(/\.sk-shift-pause-supprimee \{[^}]*\}/) || [''])[0]
+    expect(blocSigne).toContain('max-width: 100%')
+    expect(blocSigne).toContain('overflow-wrap: anywhere')
+    expect(blocSigne).not.toContain('white-space: nowrap')
+    //  Le nombre affiché est une PLAGE « de … à … » : un « 12 » tout seul ne
+    //  voulait rien dire pour l'utilisateur.
+    expect(planningSrc).toContain('de ${heureLocale(')
+    expect(planningSrc).toContain('sk-shift-pause-supprimee-plage')
+  })
+
+  it('19. une sortie manquante ne fait plus clignoter la case « en cours »', () => {
+    //  Le moteur retient la session ouverte de CHAQUE jour : une entrée écrasée
+    //  par un badge du lendemain n'est plus perdue, donc elle est rattrapée par
+    //  la règle d'auto-clôture (celle de la page Pointages).
+    expect(hoursCalcSrc).toContain('const sessionsOuvertesAbandonnees = new Map()')
+    expect(hoursCalcSrc).toContain('const openInDuJour =')
+    expect(hoursCalcSrc).toContain('totalSecondesPresumes += calculerDureeSecondes(openInDuJour.check_time')
+    //  Le planning ne clignote que si la session est RÉELLEMENT en cours
+    expect(planningSrc).toContain('const sortiesManquantes = useMemo(')
+    expect(planningSrc).toContain('const estEnCours = (emp, dateStr, real)')
+    expect(planningSrc).toContain('{sessionEnCours && (')
+    expect(planningSrc).not.toContain('{realIsOpen(realAtt) && (')
+    expect(planningSrc).not.toContain('realIsOpen(real) ? "is-open"')
+    //  … et il le DIT au lieu de clignoter sans fin
+    expect(planningSrc).toContain('"sortie manquante"')
+    expect(planningCssSrc).toContain('.sk-real-diff.is-manquante')
+    //  La règle est celle du moteur : jour révolu, délai d'oubli, ou heure
+  //  d'auto-clôture (+ grâce) dépassée.
+    expect(planningSrc).toContain("seuils.oubliSortieHeures")
+    expect(planningSrc).toContain('cfg.autoCloseEnabled !== true')
+    expect(planningSrc).toContain('const limiteAutoCloseMs =')
+  })
+
+  it('20. une pause supprimée est aussi signalée côté page Pointages', () => {
+    //  La page lit la corbeille des pauses pour le jour affiché…
+    expect(pointagesSrc).toContain('encheck_pauses_archives_lire')
+    expect(pointagesSrc).toContain('const pausesSupprimeesByEmployee = {}')
+    //  … transmet la trace à chaque ligne…
+    expect(pointagesSrc).toContain('pausesSupprimees: pausesSupprimeesByEmployee[employee.id] || [],')
+    //  … et l'affiche au jour correspondant, dans les vues Liste/Groupée…
+    expect(pointagesSrc).toContain('pointages-pause-supprimee')
+    expect(pointagesSrc).toContain('Pause supprim')
+    //  … comme dans la vue Passeport (sinon le signal disparaît selon la vue)
+    expect(sectionsSrc).toContain('pointages-pause-supprimee')
+    expect(cssSrc).toContain('.pointages-pause-supprimee')
+    //  Sans le script SQL, la page continue de tourner
+    expect(pointagesSrc).toMatch(/catch \(eCorbeille\)/)
+  })
+
 })

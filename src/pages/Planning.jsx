@@ -1932,7 +1932,12 @@ export default function Planning() {
           firstIn: result.firstIn.check_time,
           lastOut: result.lastOut ? result.lastOut.check_time : null,
           minutes,
-          autoClosed: Boolean((result.attendances || []).some((a) => a.is_auto_closed)),
+          //  Une sortie inventée par l'auto-clôture est MARQUÉE comme telle :
+          //  jamais présentée comme un vrai badge (« on invente, on marque,
+          //  on n'encaisse pas »).
+          autoClosed:
+            Boolean((result.attendances || []).some((a) => a.is_auto_closed)) ||
+            Boolean(result.lastOut?.is_auto_closed),
           count: (result.attendances || []).length,
           pairs: result.validPairs?.length || 0,
         });
@@ -1958,10 +1963,77 @@ export default function Planning() {
   const formatRealLabel = (real) => {
     if (!real || !real.firstIn) return null;
     const entree = heureLocale(real.firstIn);
-    return real.lastOut ? `${entree} → ${heureLocale(real.lastOut)}` : `${entree} → en cours`;
+    const suffixe = real.autoClosed ? " (auto)" : "";
+    return real.lastOut
+      ? `${entree} → ${heureLocale(real.lastOut)}${suffixe}`
+      : `${entree} → en cours`;
   };
 
   const realIsOpen = (real) => Boolean(real && real.firstIn && !real.lastOut);
+
+  //  Horloge : pour dire si une session ouverte est ENCORE « en cours » ou déjà
+  //  une « sortie manquante », il faut l'heure. Une minute suffit.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const entrepriseParEmploye = useMemo(() => {
+    const map = new Map();
+    scopedEmployees.forEach((e) => map.set(e.id, e.enterprise_id));
+    return map;
+  }, [scopedEmployees]);
+
+  //  Heure à partir de laquelle la journée ne peut plus recevoir de sortie
+  //  réelle : l'auto-clôture de l'entreprise (+ la grâce). `null` si non
+  //  configurée — le délai d'oubli prend alors seul le relais.
+  const limiteAutoCloseMs = (dateStr, cfg) => {
+    if (!cfg || cfg.autoCloseEnabled !== true || !cfg.autoCloseTime) return null;
+    const [h, m] = String(cfg.autoCloseTime).split(":").map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    const base = new Date(`${dateStr}T00:00:00`).getTime();
+    if (!Number.isFinite(base)) return null;
+    return base + (h * 60 + m + (Number(cfg.autoCloseGraceMinutes) || 0)) * 60000;
+  };
+
+  //  ⏳ LA RÈGLE DE LA PAGE POINTAGES — une session ouverte n'est « en cours »
+  //  que tant que la journée peut encore se fermer. Elle devient SORTIE
+  //  MANQUANTE dès que :
+  //     · le jour est révolu (hier et avant) → plus aucune sortie ne viendra ;
+  //     · le délai d'oubli de l'entreprise est dépassé ;
+  //     · l'heure d'auto-clôture (+ grâce) est passée.
+  //  Résultat : une sortie jamais pointée ne fait plus clignoter la case
+  //  « en cours · non planifié » sans fin — elle s'arrête et elle le dit.
+  const sortiesManquantes = useMemo(() => {
+    const set = new Set();
+    const aujourdhui = toIsoDateLocal(new Date(nowMs));
+    realAttendanceMap.forEach((real, cle) => {
+      if (real.lastOut) return;
+      const [empId, dateStr] = cle.split("|");
+      if (dateStr < aujourdhui) {
+        set.add(cle);
+        return;
+      }
+      const entId = entrepriseParEmploye.get(empId);
+      const seuils = seuilsByEnterprise[entId] || {};
+      const oubliH = Number(seuils.oubliSortieHeures) || 12;
+      const depuisH = (nowMs - Date.parse(real.firstIn)) / 3600000;
+      const limite = limiteAutoCloseMs(dateStr, enterpriseCfgByEnt[entId]);
+      if (depuisH >= oubliH || (limite && nowMs > limite)) set.add(cle);
+    });
+    return set;
+  }, [
+    realAttendanceMap,
+    nowMs,
+    seuilsByEnterprise,
+    enterpriseCfgByEnt,
+    entrepriseParEmploye,
+  ]);
+
+  //  Vrai seulement tant que la personne est réellement en train de travailler.
+  const estEnCours = (emp, dateStr, real) =>
+    realIsOpen(real) && !sortiesManquantes.has(`${emp.id}|${dateStr}`);
 
 
   // ═══ TOTAUX JOURNALIERS POUR LE PIED DE PAGE EN-CHECK ═══
@@ -3162,6 +3234,10 @@ export default function Planning() {
                                       //  Pauses supprimées (corbeille) sur CE jour pour CET employé
                                       const supprimeesDuJour =
                                         pausesSupprimees[`${emp.id}|${dayItem.dateStr}`] || [];
+                                      //  Session ouverte : EN COURS (ça clignote)
+                                      //  ou SORTIE MANQUANTE (ça ne clignote plus).
+                                      const sessionEnCours = estEnCours(emp, dayItem.dateStr, realAtt);
+                                      const sortieManquante = realIsOpen(realAtt) && !sessionEnCours;
 
                                       return (
                                         <td
@@ -3317,31 +3393,39 @@ export default function Planning() {
                                                 {supprimeesDuJour.length > 0 && (
                                                   <div
                                                     className="sk-shift-pause-supprimee"
-                                                    title={supprimeesDuJour
+                                                    title={`Pause supprimée${
+                                                      supprimeesDuJour.length > 1
+                                                        ? ` (${supprimeesDuJour.length})`
+                                                        : ""
+                                                    } — ${supprimeesDuJour
                                                       .map((l) =>
                                                         [
-                                                          l.debut ? heureLocale(l.debut) : "--:--",
-                                                          l.fin ? heureLocale(l.fin) : "en cours",
+                                                          `de ${l.debut ? heureLocale(l.debut) : "--:--"}`,
+                                                          `à ${l.fin ? heureLocale(l.fin) : "en cours"}`,
                                                           l.source === "presumee"
                                                             ? "présumée"
                                                             : "réelle",
                                                         ].join(" · "),
                                                       )
-                                                      .join(" | ")}
+                                                      .join(" | ")}`}
                                                   >
-                                                    🗑️ Pause supprimée
-                                                    {supprimeesDuJour.length > 1
-                                                      ? ` (${supprimeesDuJour.length})`
-                                                      : ""}
-                                                    {supprimeesDuJour[0]?.debut
-                                                      ? ` · ${heureLocale(
-                                                          supprimeesDuJour[0].debut,
-                                                        )}→${
+                                                    <span className="sk-shift-pause-supprimee-titre">
+                                                      🗑️ Pause supprimée
+                                                      {supprimeesDuJour.length > 1
+                                                        ? ` (${supprimeesDuJour.length})`
+                                                        : ""}
+                                                    </span>
+                                                    {supprimeesDuJour[0]?.debut && (
+                                                      <span className="sk-shift-pause-supprimee-plage">
+                                                        {`de ${heureLocale(
+                                                          supprimeesDuJour[0].debut
+                                                        )} à ${
                                                           supprimeesDuJour[0]?.fin
                                                             ? heureLocale(supprimeesDuJour[0].fin)
                                                             : "en cours"
-                                                        }`
-                                                      : ""}
+                                                        }`}
+                                                      </span>
+                                                    )}
                                                   </div>
                                                 )}
 
@@ -3350,7 +3434,7 @@ export default function Planning() {
                                                   <div className="sk-shift-real">
                                                     <span>
                                                       Réel {formatRealLabel(realAtt)}
-                                                      {realIsOpen(realAtt) && (
+                                                      {sessionEnCours && (
                                                         <span
                                                           className="sk-open-dot"
                                                           aria-hidden="true"
@@ -3359,6 +3443,8 @@ export default function Planning() {
                                                     </span>
                                                     <span
                                                       className={`sk-real-diff ${
+                                                        sortieManquante ? "is-manquante" : ""
+                                                      } ${
                                                         !netMins
                                                           ? ""
                                                           : realAtt.minutes < netMins
@@ -3367,9 +3453,16 @@ export default function Planning() {
                                                           ? "is-pos"
                                                           : ""
                                                       }`}
+                                                      title={
+                                                        sortieManquante
+                                                          ? "Entrée pointée, aucune sortie : la journée n’a pas été fermée — à régulariser depuis la page Pointages."
+                                                          : undefined
+                                                      }
                                                     >
                                                       {realAtt.lastOut
                                                         ? formatHoursCompact(realAtt.minutes)
+                                                        : sortieManquante
+                                                        ? "sortie manquante"
                                                         : "en cours"}
                                                       {netMins && realAtt.lastOut
                                                         ? ` · ${
@@ -3667,8 +3760,8 @@ export default function Planning() {
                             {real && realStartPct !== null ? (
                               <div
                                 className={`sk-day-real-block ${
-                                  realIsOpen(real) ? "is-open" : ""
-                                }`}
+                                  estEnCours(emp, dateStr, real) ? "is-open" : ""
+                                } ${sortiesManquantes.has(`${emp.id}|${dateStr}`) ? "is-manquante" : ""}`}
                                 style={{
                                   left: `${realLeftPct}%`,
                                   width: `${Math.max(1.5, realWidthPct)}%`,
@@ -3678,6 +3771,10 @@ export default function Planning() {
                                     ? `Réel : ${formatRealLabel(real)} · ${formatHoursCompact(
                                         real.minutes
                                       )}`
+                                    : sortiesManquantes.has(`${emp.id}|${dateStr}`)
+                                    ? `Entrée pointée à ${heureLocale(
+                                        real.firstIn
+                                      )} — aucune sortie : journée non fermée (sortie manquante)`
                                     : `Entrée pointée à ${heureLocale(
                                         real.firstIn
                                       )} — sortie pas encore pointée (journée en cours)`
@@ -3685,7 +3782,7 @@ export default function Planning() {
                               >
                                 <span className="sk-day-real-label">
                                   {formatRealLabel(real)}
-                                  {realIsOpen(real) && (
+                                  {estEnCours(emp, dateStr, real) && (
                                     <span className="sk-open-dot" aria-hidden="true" />
                                   )}
                                 </span>
@@ -3919,17 +4016,29 @@ export default function Planning() {
                             {real && real.firstIn && (
                               <span
                                 className={`sk-cal-pill-real ${
-                                  realIsOpen(real) ? "is-open" : ""
+                                  estEnCours(emp, cell.date, real) ? "is-open" : ""
+                                } ${
+                                  sortiesManquantes.has(`${emp.id}|${cell.date}`)
+                                    ? "is-manquante"
+                                    : ""
                                 }`}
                                 title={
                                   real.lastOut
                                     ? `Pointé ${formatRealLabel(real)}`
+                                    : sortiesManquantes.has(`${emp.id}|${cell.date}`)
+                                    ? `Entrée ${heureLocale(
+                                        real.firstIn
+                                      )} — aucune sortie : sortie manquante`
                                     : `Entrée ${heureLocale(
                                         real.firstIn
                                       )} — sortie pas encore pointée`
                                 }
                               >
-                                ▸ {real.lastOut ? formatRealLabel(real) : `${heureLocale(real.firstIn)} · en cours`}
+                                ▸ {real.lastOut
+                                  ? formatRealLabel(real)
+                                  : sortiesManquantes.has(`${emp.id}|${cell.date}`)
+                                  ? `${heureLocale(real.firstIn)} · sortie manquante`
+                                  : `${heureLocale(real.firstIn)} · en cours`}
                               </span>
                             )}
                             {shift && !shift.isHoliday && !shift.isAbsence && (
