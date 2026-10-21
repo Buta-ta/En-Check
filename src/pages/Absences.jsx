@@ -8,6 +8,9 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import { KenteAmberWeaveSvg } from '../components/AfroCulturalSvg'
+import AbsencesCalendrier from '../components/AbsencesCalendrier'
+import { MOTIFS, STATUTS_ABSENCE, getMotifConfig } from '../constants/motifsAbsence'
+import { compterJoursOuvres } from '../services/absencesCalendrier'
 import HolidayService from '../services/holidayService'
 import LeaveBalanceService from '../services/leaveBalanceService'
 import {
@@ -92,15 +95,8 @@ function getFileName(url) {
 // ═══════════════════════════════════════════════════════════
 // CONSTANTES
 // ═══════════════════════════════════════════════════════════
-const MOTIFS = [
-  { id: 'conge', label: 'Congé payé', color: '#10B981', bg: 'rgba(16,185,129,0.15)', emoji: '🌴' },
-  { id: 'maladie', label: 'Maladie', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)', emoji: '🏥' },
-  { id: 'maternite', label: 'Maternité/Paternité', color: '#8B5CF6', bg: 'rgba(139,92,246,0.15)', emoji: '👶' },
-  { id: 'injustifie', label: 'Absence injustifiée', color: '#EF4444', bg: 'rgba(239,68,68,0.15)', emoji: '⚠️' },
-  { id: 'formation', label: 'Formation', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)', emoji: '📚' },
-  { id: 'deces', label: 'Décès/Deuil', color: '#6B7280', bg: 'rgba(107,114,128,0.15)', emoji: '🕊️' },
-  { id: 'autre', label: 'Autre', color: '#9CA3AF', bg: 'rgba(156,163,175,0.15)', emoji: '📋' }
-]
+// Les motifs et leurs couleurs vivent dans src/constants/motifsAbsence.js :
+// la page, le calendrier mensuel et le tiroir partagent la même source.
 
 const LEAVE_TYPES = {
   conge_paye: { label: 'Congé payé', emoji: '🏖️', color: '#10B981', motifId: 'conge' },
@@ -118,12 +114,10 @@ const TEMPORAL_CONFIG = {
 }
 
 const STATUS_CONFIG = {
-  en_attente: { label: 'En attente', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', icon: Hourglass },
-  approuve: { label: 'Approuvé', color: '#10B981', bg: 'rgba(16,185,129,0.12)', icon: CheckCircle2 },
-  refuse: { label: 'Refusé', color: '#EF4444', bg: 'rgba(239,68,68,0.12)', icon: XCircle }
+  en_attente: { ...STATUTS_ABSENCE.en_attente, icon: Hourglass },
+  approuve: { ...STATUTS_ABSENCE.approuve, icon: CheckCircle2 },
+  refuse: { ...STATUTS_ABSENCE.refuse, icon: XCircle }
 }
-
-const getMotifConfig = (id) => MOTIFS.find(m => m.id === id) || MOTIFS[MOTIFS.length - 1]
 
 const ITEMS_PER_PAGE = 12
 const MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -536,7 +530,8 @@ export default function Absences() {
   const [showFilters, setShowFilters] = useState(false)
   const [sortBy, setSortBy] = useState('date_desc')
 
-  const [viewMode, setViewMode] = useState('list')
+  // 'planning' = calendrier mensuel par employé (vue par défaut)
+  const [viewMode, setViewMode] = useState('planning')
   const [calendarDate, setCalendarDate] = useState(new Date())
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null)
 
@@ -946,6 +941,33 @@ export default function Absences() {
   }
 
   const getConflictForAbsence = (absenceId) => conflicts.find(c => c.absence_id === absenceId) || null
+
+  // Conflits de pointage indexés par absence (pour le calendrier)
+  const conflitParAbsence = useMemo(() => {
+    const map = {}
+    conflicts.forEach(c => { if (c.absence_id) map[c.absence_id] = c })
+    return map
+  }, [conflicts])
+
+  // Jours de congé déjà pris dans l'année affichée, par employé.
+  // Un congé refusé ne consomme rien ; les fériés suivent la règle de l'absence.
+  const joursPrisParEmploye = useMemo(() => {
+    const annee = calendarDate.getFullYear()
+    const debutAnnee = `${annee}-01-01`
+    const finAnnee = `${annee}-12-31`
+    const map = {}
+    absences.forEach(a => {
+      if ((a.reason || 'autre') !== 'conge') return
+      if (a.status === 'refuse') return
+      if (!a.start_date || !a.end_date) return
+      if (a.end_date < debutAnnee || a.start_date > finAnnee) return
+      const debut = a.start_date < debutAnnee ? debutAnnee : a.start_date
+      const fin = a.end_date > finAnnee ? finAnnee : a.end_date
+      map[a.employee_id] = (map[a.employee_id] || 0)
+        + compterJoursOuvres(debut, fin, getHolidaySet(a.enterprise_id), a.count_holidays_as_leave)
+    })
+    return map
+  }, [absences, calendarDate, getHolidaySet])
 
   const openConflictModal = (absence, conflict) => {
     setSelectedConflictData({ absence, conflict })
@@ -1930,8 +1952,9 @@ export default function Absences() {
                 <div style={S.toolbarRight}>
                   <button onClick={() => setShowFilters(!showFilters)} style={{ ...S.iconBtn, background: showFilters ? 'rgba(245,158,11,.15)' : 'rgba(255,255,255,.05)', color: showFilters ? '#F59E0B' : '#888' }}><Filter size={18} /></button>
                   <div style={S.viewToggle}>
-                    <button onClick={() => setViewMode('list')} style={{ ...S.viewBtn, ...(viewMode === 'list' ? S.viewBtnActive : {}) }}><List size={16} /></button>
-                    <button onClick={() => setViewMode('calendar')} style={{ ...S.viewBtn, ...(viewMode === 'calendar' ? S.viewBtnActive : {}) }}><Calendar size={16} /></button>
+                    <button onClick={() => setViewMode('planning')} title="Planning — calendrier par employé" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'planning' ? S.viewBtnActive : {}) }}><CalendarDays size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Planning</span></button>
+                    <button onClick={() => setViewMode('calendar')} title="Mois — grille du mois" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'calendar' ? S.viewBtnActive : {}) }}><Calendar size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Mois</span></button>
+                    <button onClick={() => setViewMode('list')} title="Liste — cartes détaillées" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'list' ? S.viewBtnActive : {}) }}><List size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Liste</span></button>
                   </div>
                   <button onClick={handleExportCSV} style={S.exportBtn}><Download size={16} /><span>Export</span></button>
                   <button onClick={handleAdd} className="afro-btn" style={S.addBtn}><Plus size={18} /><span>Déclarer</span></button>
@@ -2015,6 +2038,28 @@ export default function Absences() {
                   {filteredAbsences.length !== absences.length && <span style={{ color: '#666' }}> / {absences.length}</span>}
                 </span>
               </div>
+
+              {viewMode === 'planning' && (
+                <AbsencesCalendrier
+                  absences={absences}
+                  employes={employes}
+                  darkMode
+                  annee={calendarDate.getFullYear()}
+                  mois={calendarDate.getMonth()}
+                  onChangerMois={(delta) => {
+                    setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + delta, 1))
+                    setSelectedCalendarDay(null)
+                  }}
+                  getHolidaySet={getHolidaySet}
+                  joursPrisParEmploye={joursPrisParEmploye}
+                  plafondConges={leaveConfig.annual_leave_cap || 30}
+                  conflitParAbsence={conflitParAbsence}
+                  onModifier={handleEdit}
+                  onChangerStatut={(a, statut) => handleStatusChange(a.id, statut)}
+                  onVoirDocument={handleViewDocument}
+                  onDeclarer={handleAdd}
+                />
+              )}
 
               {viewMode === 'list' && (
                 <>
