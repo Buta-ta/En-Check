@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import FeatureService, { FEATURES } from '../services/featureService'
 import PayrollService from '../services/payrollService'
+import CurrencyService from '../services/currencyService'
 import TaxationService from '../services/taxationService'
 import * as XLSX from 'xlsx'
 import LeaveBalanceService from '../services/leaveBalanceService'
@@ -25,12 +26,17 @@ import {
   Filter, Stamp, Award, MapPin, Phone, Mail, Globe, Hash
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTheme } from '../contexts/ThemeContext'
+import { palettePaie } from '../styles/paieTheme'
+import { stylesBulletins } from '../styles/paieThemeBulletins'
 
 // ═══════════════════════════════════════════════════════════
 // COMPOSANT SIGNATURE PAD
 // ═══════════════════════════════════════════════════════════
 
 function SignaturePad({ onSave, onCancel }) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
   const canvasRef = useRef(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasDrawn, setHasDrawn] = useState(false)
@@ -105,6 +111,8 @@ function SignaturePad({ onSave, onCancel }) {
 // ═══════════════════════════════════════════════════════════
 
 function SingleSignatureManager({ label, signature, onSignatureChange, sigName, onSigNameChange, sigTitle, onSigTitleChange, enterpriseId, color = '#F59E0B' }) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
   const [mode, setMode] = useState(null)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef(null)
@@ -200,6 +208,8 @@ function SingleSignatureManager({ label, signature, onSignatureChange, sigName, 
 // ═══════════════════════════════════════════════════════════
 
 function StampManager({ stamp, onStampChange, enterpriseId }) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef(null)
 
@@ -277,14 +287,17 @@ function StampManager({ stamp, onStampChange, enterpriseId }) {
 // ═══════════════════════════════════════════════════════════
 
 function FieldHelp({ text, example }) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
+  const P = palettePaie(darkMode)
   const [show, setShow] = useState(false)
   return (
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-      <HelpCircle size={14} color="#666" style={{ cursor: 'pointer', marginLeft: 6, flexShrink: 0 }} onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} />
+      <HelpCircle size={14} color={P.texteFaint} style={{ cursor: 'pointer', marginLeft: 6, flexShrink: 0 }} onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} />
       {show && (
         <div style={S.tooltip}>
-          <p style={{ color: '#DDD', fontSize: 12, margin: '0 0 6px 0', lineHeight: 1.5 }}>{text}</p>
-          {example && <div style={S.tooltipExample}><span style={{ color: '#888', fontSize: 10, display: 'block', marginBottom: 3, fontWeight: 700, textTransform: 'uppercase' }}>Exemple</span><span style={{ color: '#F59E0B', fontSize: 12, fontWeight: 600 }}>{example}</span></div>}
+          <p style={{ color: P.texteDoux, fontSize: 12, margin: '0 0 6px 0', lineHeight: 1.5 }}>{text}</p>
+          {example && <div style={S.tooltipExample}><span style={{ color: P.texteDoux2, fontSize: 10, display: 'block', marginBottom: 3, fontWeight: 700, textTransform: 'uppercase' }}>Exemple</span><span style={{ color: P.ambre, fontSize: 12, fontWeight: 600 }}>{example}</span></div>}
           <div style={S.tooltipArrow} />
         </div>
       )}
@@ -293,7 +306,10 @@ function FieldHelp({ text, example }) {
 }
 
 function FormLabel({ children, help, example, required }) {
-  return <label style={S.labelSmall}>{children}{required && <span style={{ color: '#EF4444', marginLeft: 2 }}>*</span>}{help && <FieldHelp text={help} example={example} />}</label>
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
+  const P = palettePaie(darkMode)
+  return <label style={S.labelSmall}>{children}{required && <span style={{ color: P.rouge, marginLeft: 2 }}>*</span>}{help && <FieldHelp text={help} example={example} />}</label>
 }
 
 function Badge({ children, color = '#F59E0B' }) {
@@ -307,9 +323,12 @@ function CategoryBadge({ category }) {
 }
 
 function SearchBar({ value, onChange, placeholder = 'Rechercher...' }) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
+  const P = palettePaie(darkMode)
   return (
     <div style={S.searchWrap}>
-      <Search size={16} color="#666" style={{ flexShrink: 0 }} />
+      <Search size={16} color={P.texteFaint} style={{ flexShrink: 0 }} />
       <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={S.searchInput} />
       {value && <button onClick={() => onChange('')} style={S.searchClear}><X size={14} /></button>}
     </div>
@@ -320,11 +339,21 @@ function SearchBar({ value, onChange, placeholder = 'Rechercher...' }) {
 // PAGE PRINCIPALE
 // ═══════════════════════════════════════════════════════════
 
-export default function FichesPaie() {
+export default function FichesPaie({ integre = false, ongletExterne = null, entrepriseIdForce = null, onOngletChange = null } = {}) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
+  const P = palettePaie(darkMode)
   const [admin, setAdmin] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState('settings')
+  const [ongletInterne, setOngletInterne] = useState('settings')
+  const activeTab = ongletExterne || ongletInterne
+  // Un clic interne (« Gérer » sur un employé, par exemple) doit aussi
+  // déplacer l'onglet de la coque : sinon les deux barres se contredisent.
+  const changerOnglet = (cle) => {
+    setOngletInterne(cle)
+    if (onOngletChange) onOngletChange(cle)
+  }
 
   const [enterpriseId, setEnterpriseId] = useState(null)
   const [enterpriseName, setEnterpriseName] = useState('')
@@ -418,8 +447,11 @@ export default function FichesPaie() {
     if (!adminData) { navigate('/login'); return }
     const parsedAdmin = JSON.parse(adminData)
     setAdmin(parsedAdmin)
-    initPage(parsedAdmin)
-  }, [navigate])
+    // En mode intégré, la coque a déjà choisi l'entreprise : on la suit.
+    initPage(entrepriseIdForce
+      ? { ...parsedAdmin, selectedEnterprise: { ...(parsedAdmin.selectedEnterprise || {}), id: entrepriseIdForce } }
+      : parsedAdmin)
+  }, [navigate, entrepriseIdForce])
 
   const loadEnterpriseContext = async (targetEnterpriseId, adminId, start, end) => {
     const { data: enterprise } = await supabase.from('enterprises').select('id, name, address, email, phone, logo_url, country_code, currency').eq('id', targetEnterpriseId).single()
@@ -515,7 +547,9 @@ export default function FichesPaie() {
 
       if (!targetEnterpriseId) { toast.error('Aucune entreprise sélectionnée'); navigate('/dashboard'); return }
 
-      if (!isSuperAdmin) {
+      // Dans la coque « Paie & fiscalité », c'est elle qui arbitre l'accès :
+      // un client qui n'a que la fiscalité doit pouvoir y entrer.
+      if (!isSuperAdmin && !integre) {
         const hasAccess = await FeatureService.hasFeature(targetEnterpriseId, FEATURES.FICHES_PAIE)
         if (!hasAccess) { toast.error('Module fiches de paie non activé'); navigate('/dashboard'); return }
       }
@@ -841,7 +875,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
       )
 
       setPreviewRows(rows)
-      setActiveTab('preview')
+      changerOnglet('preview')
       await loadSentSlips(enterpriseId, periodStart, periodEnd)
       toast.success(`${rows.length} fiche(s) générée(s)`)
     } catch (err) { console.error(err); toast.error('Erreur génération preview') }
@@ -914,12 +948,21 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   // ENVOI FICHES
   // ═══════════════════════════════════════════════════════════
 
+  // ⚠️ PAS de `|| 'XAF'` ici. XOF et XAF s'écrivent tous les deux
+  //   « FCFA » mais ne sont pas la même monnaie : deviner, c'est produire
+  //   un bulletin faux sans qu'aucun écran ne s'en aperçoive. Si la devise
+  //   n'est pas déterminable, on refuse d'enregistrer et on le dit.
+  const deviseDesBulletins = CurrencyService.resolveCurrency({
+    enterprise: enterpriseData,
+    settings,
+  })
+
   const buildPayslipData = (row) => ({
     enterprise_id: enterpriseId, employee_id: row.employee.id,
     period_start: periodStart, period_end: periodEnd,
     gross_salary: row.grossSalary || 0, net_salary: row.netSalary || 0,
     total_earnings: row.totalEarnings || 0, total_deductions: row.totalDeductions || 0,
-    currency: settings.currency || 'XAF',
+    currency: deviseDesBulletins,
     worked_days: row.sources?.encheck?.workedDays || 0,
     worked_hours: (row.sources?.encheck?.totalWorkedMinutes || 0) / 60,
     overtime_hours: (row.sources?.encheck?.totalOvertimeAllMinutes || 0) / 60,
@@ -989,6 +1032,13 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
     if (nonRemissables.length > 0) {
       const premierMotif = TaxationService.verifierAvantRemise(nonRemissables[0]).motif
       toast.error(premierMotif || `${nonRemissables.length} bulletin(s) ont un barème fiscal à vérifier avant remise officielle.`, { duration: 7000 })
+      return
+    }
+    if (!deviseDesBulletins) {
+      toast.error(
+        'Devise de l’entreprise introuvable : renseigne le pays et la devise dans les paramètres du moteur, puis relance. Un bulletin ne peut pas être produit sans devise.',
+        { duration: 8000 },
+      )
       return
     }
     setSendingSlips(true)
@@ -1193,7 +1243,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   const hasStamp = !!settings.company_stamp
 
   if (loading) {
-    return <div style={S.loadingWrap}><RefreshCw size={34} color="#F59E0B" style={{ animation: 'spin 0.9s linear infinite' }} /><p style={{ color: '#999', marginTop: 12 }}>Chargement du module fiches de paie...</p></div>
+    return <div style={S.loadingWrap}><RefreshCw size={34} color={P.ambre} style={{ animation: 'spin 0.9s linear infinite' }} /><p style={{ color: P.texteFaint, marginTop: 12 }}>Chargement du module fiches de paie...</p></div>
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1207,44 +1257,73 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
   return (
     <>
+      {/* ⚠️ Ces règles étaient GLOBALES : `html, body, #root` repeints en
+          noir, et tous les champs du SITE forcés en sombre. Elles
+          débordaient de la page et imposaient l'ancien décor partout,
+          y compris sur la coque « Paie & fiscalité » qui venait d'être
+          refaite. Elles sont cantonnées au volet (`.pay-volet`) et
+          teintées par le thème. */}
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         .pay-card { animation: fadeInUp 0.3s ease forwards; }
         .pay-btn:hover { transform: translateY(-1px); }
-        html, body, #root { background: #0A0A0F !important; }
-        select, input, textarea { background: rgba(255,255,255,0.04) !important; color: #FFF !important; }
-        select option { background: #141423 !important; color: #E5E5E5 !important; }
-        input::placeholder, textarea::placeholder { color: #666 !important; }
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+
+        .pay-volet select, .pay-volet input, .pay-volet textarea {
+          background: ${P.voile3} !important;
+          color: ${P.texte} !important;
+        }
+        .pay-volet select option {
+          background: ${P.surface2} !important;
+          color: ${P.texte} !important;
+        }
+        .pay-volet input::placeholder, .pay-volet textarea::placeholder {
+          color: ${P.texteFaint} !important;
+        }
+        /* le sélecteur de date est noir sur fond clair : ne l'inverser que la nuit */
+        .pay-volet input[type="date"]::-webkit-calendar-picker-indicator {
+          filter: ${darkMode ? 'invert(1)' : 'none'};
+        }
         @media (max-width: 768px) {
           .pay-grid-2 { grid-template-columns: 1fr !important; }
           .pay-form-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
-      <div style={{ minHeight: '100vh', background: '#0A0A0F', width: '100%' }}>
-        <div style={S.container}>
+      <div
+        className="pay-volet"
+        style={integre ? { width: '100%' } : { minHeight: '100vh', background: P.fond, width: '100%' }}
+      >
+        <div
+          style={
+            integre
+              // dans la coque : pas de hauteur d'écran ni de marge interne,
+              // elle a déjà les siennes
+              ? { display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }
+              : S.container
+          }
+        >
 
-          {/* HEADER */}
+          {/* HEADER — la coque « Paie & fiscalité » a le sien */}
+          {!integre && (
           <header style={S.header}>
             <div style={S.headerLeft}>
               <button onClick={() => navigate('/dashboard')} style={S.backBtn}><ArrowLeft size={18} /></button>
-              <div style={S.logoBox}><Wallet size={22} color="#F59E0B" /></div>
+              <div style={S.logoBox}><Wallet size={22} color={P.ambre} /></div>
               <div>
                 <h1 style={S.title}>FICHES DE PAIE</h1>
                 {enterprisesList.length > 0 ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <span style={{ color: '#9CA3AF', fontSize: 12 }}>Entreprise :</span>
+                    <span style={{ color: P.texteDoux2, fontSize: 12 }}>Entreprise :</span>
                     <select
                       value={enterpriseId || ''}
                       onChange={(e) => handleEnterpriseSelectChange(e.target.value)}
                       style={{
-                        background: 'rgba(245,158,11,0.12)',
-                        border: '1px solid rgba(245,158,11,0.4)',
+                        background: P.ambre4,
+                        border: `1px solid ${P.ambre10}`,
                         borderRadius: 8,
                         padding: '5px 10px',
-                        color: '#F59E0B',
+                        color: P.ambre,
                         fontSize: 13,
                         fontWeight: 700,
                         cursor: 'pointer',
@@ -1265,7 +1344,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
             </div>
             <div style={S.headerRight}>
               {overtimeSettings && (
-                <div style={S.otBadge}><Clock size={14} color="#F97316" /><span style={{ color: '#F97316', fontSize: 12, fontWeight: 700 }}>H.sup: +{overtimeSettings.rate_normal}% / +{overtimeSettings.rate_major}%</span></div>
+                <div style={S.otBadge}><Clock size={14} color={P.orange} /><span style={{ color: P.orange, fontSize: 12, fontWeight: 700 }}>H.sup: +{overtimeSettings.rate_normal}% / +{overtimeSettings.rate_major}%</span></div>
               )}
               <button onClick={() => { loadHistory(); setShowHistoryModal(true) }} style={S.historyBtn} className="pay-btn"><History size={16} /><span>Historique</span></button>
               <button onClick={handleTryGenerate} style={S.primaryBtn} className="pay-btn" disabled={loadingPreview}>
@@ -1274,10 +1353,11 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               </button>
             </div>
           </header>
+          )}
 
           {/* GUIDE */}
           <div style={S.guideBar}>
-            <Info size={16} color="#F59E0B" style={{ flexShrink: 0, marginTop: 2 }} />
+            <Info size={16} color={P.ambre} style={{ flexShrink: 0, marginTop: 2 }} />
             <div>
               <p style={S.guideTitle}>Comment utiliser ce module ?</p>
               <p style={S.guideText}>
@@ -1290,27 +1370,28 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
             </div>
           </div>
 
-          {/* PRÉ-VALIDATION */}
-          {(preCheckResults.blockers.length > 0 || preCheckResults.warnings.length > 0) && (
+          {/* PRÉ-VALIDATION — inutile sur les onglets de réglage */}
+          {(!integre || activeTab === 'preview') && (preCheckResults.blockers.length > 0 || preCheckResults.warnings.length > 0) && (
             <div style={S.preCheckBar}>
               {preCheckResults.blockers.length > 0 && (
                 <div style={S.preCheckSection}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}><AlertCircle size={14} color="#EF4444" /><span style={{ color: '#EF4444', fontSize: 12, fontWeight: 700 }}>{preCheckResults.blockers.length} problème(s) bloquant(s)</span></div>
-                  {preCheckResults.blockers.slice(0, 5).map((b, i) => <div key={i} style={S.preCheckItem}><span style={{ color: '#FCA5A5', fontSize: 11 }}>⚠ {b.employee} — {b.reason}</span></div>)}
-                  {preCheckResults.blockers.length > 5 && <div style={S.preCheckItem}><span style={{ color: '#FCA5A5', fontSize: 11 }}>...et {preCheckResults.blockers.length - 5} autre(s)</span></div>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}><AlertCircle size={14} color={P.rouge} /><span style={{ color: P.rouge, fontSize: 12, fontWeight: 700 }}>{preCheckResults.blockers.length} problème(s) bloquant(s)</span></div>
+                  {preCheckResults.blockers.slice(0, 5).map((b, i) => <div key={i} style={S.preCheckItem}><span style={{ color: P.rougeClair, fontSize: 11 }}>⚠ {b.employee} — {b.reason}</span></div>)}
+                  {preCheckResults.blockers.length > 5 && <div style={S.preCheckItem}><span style={{ color: P.rougeClair, fontSize: 11 }}>...et {preCheckResults.blockers.length - 5} autre(s)</span></div>}
                 </div>
               )}
               {preCheckResults.warnings.length > 0 && (
                 <div style={S.preCheckSection}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}><AlertTriangle size={14} color="#F59E0B" /><span style={{ color: '#F59E0B', fontSize: 12, fontWeight: 700 }}>{preCheckResults.warnings.length} avertissement(s)</span></div>
-                  {preCheckResults.warnings.slice(0, 3).map((w, i) => <div key={i} style={S.preCheckItem}><span style={{ color: '#FCD34D', fontSize: 11 }}>⚠ {w.employee} — {w.reason}</span></div>)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}><AlertTriangle size={14} color={P.ambre} /><span style={{ color: P.ambre, fontSize: 12, fontWeight: 700 }}>{preCheckResults.warnings.length} avertissement(s)</span></div>
+                  {preCheckResults.warnings.slice(0, 3).map((w, i) => <div key={i} style={S.preCheckItem}><span style={{ color: P.ambreClair, fontSize: 11 }}>⚠ {w.employee} — {w.reason}</span></div>)}
                 </div>
               )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><CheckCircle size={14} color="#10B981" /><span style={{ color: '#10B981', fontSize: 12, fontWeight: 700 }}>{preCheckResults.ready.length} employé(s) prêt(s)</span></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><CheckCircle size={14} color={P.vert} /><span style={{ color: P.vert, fontSize: 12, fontWeight: 700 }}>{preCheckResults.ready.length} employé(s) prêt(s)</span></div>
             </div>
           )}
 
-          {/* PÉRIODE */}
+          {/* PÉRIODE — les primes, les imports et les fiches sont rattachés à une période */}
+          {(!integre || ['allowances', 'imports', 'preview'].includes(activeTab)) && (
           <div style={S.periodBar}>
             <div style={S.periodGroup}>
               <FormLabel help="Date de début" example="01/06/2025">Début période</FormLabel>
@@ -1322,15 +1403,18 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end' }}>
               <div style={S.periodInfo}>
-                <Calendar size={14} color="#888" />
-                <span style={{ color: '#888', fontSize: 12 }}>
+                <Calendar size={14} color={P.texteDoux2} />
+                <span style={{ color: P.texteDoux2, fontSize: 12 }}>
                   {periodStart && periodEnd ? `${Math.ceil((new Date(periodEnd) - new Date(periodStart)) / 86400000) + 1} jours (${getWorkingDaysInMonth} ouvrables)` : '—'}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* ONGLETS */}
+          )}
+
+          {/* ONGLETS — la coque porte les siens */}
+          {!integre && (
           <div style={S.tabs}>
             {[
               { key: 'settings', icon: Settings, label: 'Paramètres' },
@@ -1339,12 +1423,14 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               { key: 'imports', icon: Upload, label: 'Import variables' },
               { key: 'preview', icon: Eye, label: 'Fiches générées', badge: previewRows.length || null },
             ].map(tab => (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{ ...S.tabBtn, ...(activeTab === tab.key ? S.tabBtnActive : {}) }}>
+              <button key={tab.key} onClick={() => changerOnglet(tab.key)} style={{ ...S.tabBtn, ...(activeTab === tab.key ? S.tabBtnActive : {}) }}>
                 <tab.icon size={15} /><span>{tab.label}</span>
                 {tab.badge && <span style={S.tabBadge}>{tab.badge}</span>}
               </button>
             ))}
           </div>
+
+          )}
 
           {/* ═══ ONGLET PARAMÈTRES ═══ */}
           {activeTab === 'settings' && (
@@ -1352,8 +1438,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               <div style={S.card} className="pay-card">
                 <div style={S.cardHeader}>
                   <div style={S.cardHeaderLeft}>
-                    <div style={S.cardIcon}><Settings size={18} color="#F59E0B" /></div>
-                    <div><h3 style={S.cardTitle}>Paramètres du moteur de paie</h3><p style={S.cardSub}>Configurez les règles de calcul</p></div>
+                    <div style={S.cardIcon}><Settings size={18} color={P.ambre} /></div>
+                    <div><h3 style={S.cardTitle}>Paramètres du moteur de paie</h3><p style={S.cardSub}>Pays, congés, heures sup : comment le moteur calcule</p></div>
                   </div>
                 </div>
 
@@ -1370,10 +1456,10 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
                 {overtimeSettings && (
                   <div style={S.otInfoBox}>
-                    <Clock size={16} color="#F97316" style={{ flexShrink: 0 }} />
+                    <Clock size={16} color={P.orange} style={{ flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
-                      <p style={{ color: '#F97316', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>Heures supplémentaires configurées</p>
-                      <p style={{ color: '#888', fontSize: 12, margin: 0 }}>Normal: +{overtimeSettings.rate_normal}% • Majoré: +{overtimeSettings.rate_major}% • Dimanche: +{overtimeSettings.rate_sunday}% • Férié: +{overtimeSettings.rate_holiday}%</p>
+                      <p style={{ color: P.orange, fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>Heures supplémentaires configurées</p>
+                      <p style={{ color: P.texteDoux2, fontSize: 12, margin: 0 }}>Normal: +{overtimeSettings.rate_normal}% • Majoré: +{overtimeSettings.rate_major}% • Dimanche: +{overtimeSettings.rate_sunday}% • Férié: +{overtimeSettings.rate_holiday}%</p>
                     </div>
                     <button onClick={() => navigate('/heures-supplementaires')} style={S.otEditBtn}><Edit size={14} /><span>Modifier</span></button>
                   </div>
@@ -1396,7 +1482,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 </div>
 
                 <div style={S.toggleSection}>
-                  <p style={S.toggleSectionTitle}>Règles de calcul</p>
+                  <p style={S.toggleSectionTitle}>Comportement du moteur</p>
                   <div style={S.toggleGrid}>
                     {[
                       ['deduct_absence', 'Déduire les absences', 'Retire automatiquement les absences'],
@@ -1471,10 +1557,10 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 {/* ═══ SIGNATURES (2 SIGNATAIRES) ═══ */}
                 <div style={S.signatureBlock}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                    <div style={{ ...S.cardIcon, background: 'rgba(245,158,11,0.12)' }}><PenTool size={18} color="#F59E0B" /></div>
+                    <div style={{ ...S.cardIcon, background: P.ambre4 }}><PenTool size={18} color={P.ambre} /></div>
                     <div>
-                      <p style={{ color: '#FFF', fontSize: 14, fontWeight: 700, margin: 0 }}>Signatures numériques</p>
-                      <p style={{ color: '#777', fontSize: 11, margin: '2px 0 0 0' }}>Configurez jusqu'à 2 signataires pour vos bulletins</p>
+                      <p style={{ color: P.texte, fontSize: 14, fontWeight: 700, margin: 0 }}>Signatures numériques</p>
+                      <p style={{ color: P.texteFaint, fontSize: 11, margin: '2px 0 0 0' }}>Configurez jusqu'à 2 signataires pour vos bulletins</p>
                     </div>
                   </div>
 
@@ -1488,7 +1574,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                       sigTitle={settings.signatory1_title || ''}
                       onSigTitleChange={title => setSettings(p => ({ ...p, signatory1_title: title }))}
                       enterpriseId={enterpriseId}
-                      color="#F59E0B"
+                      color={P.ambre}
                     />
 
                     <SingleSignatureManager
@@ -1500,7 +1586,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                       sigTitle={settings.signatory2_title || ''}
                       onSigTitleChange={title => setSettings(p => ({ ...p, signatory2_title: title }))}
                       enterpriseId={enterpriseId}
-                      color="#6366F1"
+                      color={P.indigo}
                     />
                   </div>
 
@@ -1513,19 +1599,19 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                   </div>
 
                   <div style={S.signatureInfo}>
-                    <Info size={13} color="#666" style={{ flexShrink: 0 }} />
-                    <span style={{ color: '#666', fontSize: 11, lineHeight: 1.5 }}>Les signatures et le cachet apparaîtront en bas de chaque bulletin PDF. Formats : PNG, JPG, WebP (max 2-3 Mo).</span>
+                    <Info size={13} color={P.texteFaint} style={{ flexShrink: 0 }} />
+                    <span style={{ color: P.texteFaint, fontSize: 11, lineHeight: 1.5 }}>Les signatures et le cachet apparaîtront en bas de chaque bulletin PDF. Formats : PNG, JPG, WebP (max 2-3 Mo).</span>
                   </div>
                 </div>
 
                 {/* LIEN CONFIG FISCALE */}
-                <div style={S.fiscalLinkBox} onClick={() => navigate('/configuration-fiscale')}>
-                  <div style={S.fiscalLinkIcon}><Shield size={22} color="#8B5CF6" /></div>
+                <div style={S.fiscalLinkBox} onClick={() => navigate(integre ? '/paie?onglet=apercu' : '/paie')}>
+                  <div style={S.fiscalLinkIcon}><Shield size={22} color={P.violet} /></div>
                   <div style={{ flex: 1 }}>
                     <p style={S.fiscalLinkTitle}>Configuration Fiscale Avancée</p>
                     <p style={S.fiscalLinkText}>Cotisations sociales, barème d'imposition, règles par pays</p>
                   </div>
-                  <ArrowRight size={18} color="#8B5CF6" />
+                  <ArrowRight size={18} color={P.violet} />
                 </div>
 
                 <div style={S.actionsRow}>
@@ -1540,7 +1626,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               <div style={S.card} className="pay-card">
                 <div style={S.cardHeader}>
                   <div style={S.cardHeaderLeft}>
-                    <div style={{ ...S.cardIcon, background: 'rgba(16,185,129,0.12)' }}><Building2 size={18} color="#10B981" /></div>
+                    <div style={{ ...S.cardIcon, background: P.vert1 }}><Building2 size={18} color={P.vert} /></div>
                     <div><h3 style={S.cardTitle}>Résumé</h3><p style={S.cardSub}>État de la configuration</p></div>
                   </div>
                 </div>
@@ -1555,33 +1641,33 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 <div style={S.summaryList}>
                   {[
                     { label: 'Entreprise', value: enterpriseName },
-                    { label: 'Adresse', value: enterpriseData?.address || 'Non renseignée', color: enterpriseData?.address ? undefined : '#666' },
+                    { label: 'Adresse', value: enterpriseData?.address || 'Non renseignée', color: enterpriseData?.address ? undefined : P.texteFaint },
                     { label: 'Devise', value: settings.currency },
-                    { label: 'RCCM', value: settings.company_rccm || 'Non renseigné', color: settings.company_rccm ? undefined : '#666' },
-                    { label: 'NIF', value: settings.company_nif || 'Non renseigné', color: settings.company_nif ? undefined : '#666' },
+                    { label: 'RCCM', value: settings.company_rccm || 'Non renseigné', color: settings.company_rccm ? undefined : P.texteFaint },
+                    { label: 'NIF', value: settings.company_nif || 'Non renseigné', color: settings.company_nif ? undefined : P.texteFaint },
                     {
                       label: socialOrgLabel ? `${socialOrgLabel} employeur` : 'Numéro organisme employeur',
                       value: settings.company_cnps_number || 'Non renseigné',
-                      color: settings.company_cnps_number ? undefined : '#666'
+                      color: settings.company_cnps_number ? undefined : P.texteFaint
                     },
                     {
                       label: 'Libellé organisme social',
                       value: settings.hide_social_label
                         ? 'Masqué'
                         : (settings.company_social_label || 'Organisme social'),
-                      color: settings.hide_social_label ? '#F59E0B' : undefined
+                      color: settings.hide_social_label ? P.ambre : undefined
                     },
-                    { label: 'Conv. collective', value: settings.company_collective_agreement || 'Non renseignée', color: settings.company_collective_agreement ? undefined : '#666' },
+                    { label: 'Conv. collective', value: settings.company_collective_agreement || 'Non renseignée', color: settings.company_collective_agreement ? undefined : P.texteFaint },
                     { label: 'Employés actifs', value: employees.length },
                     { label: 'Profils configurés', value: `${profiles.length} / ${employees.length}` },
-                    { label: 'Signataire 1', value: settings.signatory1_name ? `${settings.signatory1_name}${settings.signatory1_title ? ` (${settings.signatory1_title})` : ''}` : '✗ Non configuré', color: settings.signatory1_name ? '#10B981' : '#EF4444' },
-                    { label: 'Signataire 2', value: settings.signatory2_name ? `${settings.signatory2_name}${settings.signatory2_title ? ` (${settings.signatory2_title})` : ''}` : '— Optionnel', color: settings.signatory2_name ? '#10B981' : '#666' },
-                    { label: 'Signatures', value: `${[settings.signatory1_signature, settings.signatory2_signature].filter(Boolean).length}/2 configurée(s)`, color: settings.signatory1_signature ? '#10B981' : '#EF4444' },
-                    { label: 'Cachet', value: settings.company_stamp ? '✓ Configuré' : '✗ Non configuré', color: settings.company_stamp ? '#10B981' : '#666' },
+                    { label: 'Signataire 1', value: settings.signatory1_name ? `${settings.signatory1_name}${settings.signatory1_title ? ` (${settings.signatory1_title})` : ''}` : '✗ Non configuré', color: settings.signatory1_name ? P.vert : P.rouge },
+                    { label: 'Signataire 2', value: settings.signatory2_name ? `${settings.signatory2_name}${settings.signatory2_title ? ` (${settings.signatory2_title})` : ''}` : '— Optionnel', color: settings.signatory2_name ? P.vert : P.texteFaint },
+                    { label: 'Signatures', value: `${[settings.signatory1_signature, settings.signatory2_signature].filter(Boolean).length}/2 configurée(s)`, color: settings.signatory1_signature ? P.vert : P.rouge },
+                    { label: 'Cachet', value: settings.company_stamp ? '✓ Configuré' : '✗ Non configuré', color: settings.company_stamp ? P.vert : P.texteFaint },
                   ].map((item, i) => (
                     <div key={i} style={S.summaryItem}>
                       <span style={S.summaryLabel}>{item.label}</span>
-                      <span style={{ ...S.summaryValue, color: item.color || '#FFF' }}>{item.value}</span>
+                      <span style={{ ...S.summaryValue, color: item.color || P.texte }}>{item.value}</span>
                     </div>
                   ))}
                 </div>
@@ -1618,8 +1704,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                   </div>
                 )}
 
-                {preCheckResults.blockers.length > 0 && <div style={S.warningNote}><AlertTriangle size={14} color="#EF4444" /><span>{preCheckResults.blockers.length} problème(s) bloquant(s)</span></div>}
-                {preCheckResults.ready.length === employees.length && employees.length > 0 && <div style={S.successNote}><CheckCircle size={14} color="#10B981" /><span>Tous les employés sont prêts ✓</span></div>}
+                {preCheckResults.blockers.length > 0 && <div style={S.warningNote}><AlertTriangle size={14} color={P.rouge} /><span>{preCheckResults.blockers.length} problème(s) bloquant(s)</span></div>}
+                {preCheckResults.ready.length === employees.length && employees.length > 0 && <div style={S.successNote}><CheckCircle size={14} color={P.vert} /><span>Tous les employés sont prêts ✓</span></div>}
               </div>
             </div>
           )}
@@ -1630,7 +1716,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               <div style={S.card} className="pay-card">
                 <div style={S.cardHeader}>
                   <div style={S.cardHeaderLeft}>
-                    <div style={{ ...S.cardIcon, background: 'rgba(99,102,241,0.12)' }}><Users size={18} color="#6366F1" /></div>
+                    <div style={{ ...S.cardIcon, background: P.indigo3 }}><Users size={18} color={P.indigo} /></div>
                     <div><h3 style={S.cardTitle}>Profil salarial</h3><p style={S.cardSub}>Rémunération de base par employé</p></div>
                   </div>
                   <button onClick={() => { setCopySourceEmployeeId(''); setShowCopyProfileModal(true) }} style={S.copyBtn} title="Copier un profil existant"><Copy size={14} /><span>Copier un profil</span></button>
@@ -1653,8 +1739,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                   const emp = employees.find(e => e.id === selectedEmployeeId)
                   if (!emp) return null
                   return (
-                    <div style={{ padding: '10px 14px', borderRadius: 12, background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.12)', marginBottom: 12 }}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 11, color: '#888' }}>
+                    <div style={{ padding: '10px 14px', borderRadius: 12, background: P.indigo1, border: `1px solid ${P.indigo3}`, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 11, color: P.texteDoux2 }}>
                         {emp.hire_date && <span>📅 Embauche: {new Date(emp.hire_date).toLocaleDateString('fr-FR')}</span>}
                         {emp.classification && <span>🏷 {emp.classification}</span>}
                         {emp.professional_category && <span>📊 Cat. {emp.professional_category}</span>}
@@ -1675,8 +1761,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                   <div style={{ display: 'flex', gap: 8 }}>
                     {[{ value: 'monthly', label: '💼 Mensuel', desc: 'CDI, fonctionnaires' }, { value: 'hourly', label: '⏱ Horaire', desc: 'Vacataires' }, { value: 'daily', label: '📅 Journalier', desc: 'Saisonniers' }].map(mode => (
                       <button key={mode.value} onClick={() => setProfileForm(p => ({ ...p, salary_type: mode.value }))} style={{ ...S.modeBtn, ...(profileForm.salary_type === mode.value ? S.modeBtnActive : {}) }}>
-                        <div style={{ color: profileForm.salary_type === mode.value ? '#F59E0B' : '#DDD', fontSize: 13, fontWeight: 700 }}>{mode.label}</div>
-                        <div style={{ color: '#666', fontSize: 10, marginTop: 2 }}>{mode.desc}</div>
+                        <div style={{ color: profileForm.salary_type === mode.value ? P.ambre : P.texteDoux, fontSize: 13, fontWeight: 700 }}>{mode.label}</div>
+                        <div style={{ color: P.texteFaint, fontSize: 10, marginTop: 2 }}>{mode.desc}</div>
                       </button>
                     ))}
                   </div>
@@ -1745,17 +1831,17 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 {/* Primes récurrentes */}
                 <div style={{ marginTop: 24 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <p style={{ color: '#DDD', fontSize: 13, fontWeight: 700, margin: 0 }}>Primes récurrentes ({selectedEmployeeAllowances.length})</p>
+                    <p style={{ color: P.texteDoux, fontSize: 13, fontWeight: 700, margin: 0 }}>Primes récurrentes ({selectedEmployeeAllowances.length})</p>
                     <button onClick={() => { setEditingAllowance(null); setShowAllowanceModal(true) }} style={S.addBtnSmall}><Plus size={14} /><span>Ajouter</span></button>
                   </div>
-                  {selectedEmployeeAllowances.length === 0 ? <div style={S.emptyMini}><Gift size={16} color="#666" /><span>Aucune prime récurrente</span></div> : (
+                  {selectedEmployeeAllowances.length === 0 ? <div style={S.emptyMini}><Gift size={16} color={P.texteFaint} /><span>Aucune prime récurrente</span></div> : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {selectedEmployeeAllowances.map((a, i) => (
                         <div key={a.id || i} style={S.allowanceItem}>
-                          <div style={{ flex: 1 }}><div style={{ color: '#FFF', fontSize: 13, fontWeight: 600 }}>{a.allowance_types?.name || a.custom_name || 'Prime'}</div><div style={{ color: '#888', fontSize: 11, marginTop: 2 }}>{a.calculation_type === 'fixed' ? fmt(a.amount) : `${a.percentage}% du salaire de base`}{a.end_date && ` • jusqu'au ${PayrollService.formatDate(a.end_date)}`}</div></div>
+                          <div style={{ flex: 1 }}><div style={{ color: P.texte, fontSize: 13, fontWeight: 600 }}>{a.allowance_types?.name || a.custom_name || 'Prime'}</div><div style={{ color: P.texteDoux2, fontSize: 11, marginTop: 2 }}>{a.calculation_type === 'fixed' ? fmt(a.amount) : `${a.percentage}% du salaire de base`}{a.end_date && ` • jusqu'au ${PayrollService.formatDate(a.end_date)}`}</div></div>
                           <CategoryBadge category={a.allowance_types?.category || 'other'} />
                           <button onClick={() => { setEditingAllowance(a); setShowAllowanceModal(true) }} style={S.iconBtn}><Edit size={14} /></button>
-                          <button onClick={() => handleDeleteAllowance(a.id)} style={{ ...S.iconBtn, color: '#EF4444' }}><Trash2 size={14} /></button>
+                          <button onClick={() => handleDeleteAllowance(a.id)} style={{ ...S.iconBtn, color: P.rouge }}><Trash2 size={14} /></button>
                         </div>
                       ))}
                     </div>
@@ -1765,19 +1851,19 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 {/* Retenues récurrentes */}
                 <div style={{ marginTop: 20 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <p style={{ color: '#DDD', fontSize: 13, fontWeight: 700, margin: 0 }}>Retenues récurrentes ({selectedEmployeeDeductions.length})</p>
+                    <p style={{ color: P.texteDoux, fontSize: 13, fontWeight: 700, margin: 0 }}>Retenues récurrentes ({selectedEmployeeDeductions.length})</p>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => { setEditingDeduction(null); setShowLoanModal(true) }} style={{ ...S.addBtnSmall, background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.2)', color: '#EF4444' }}><CreditCard size={14} /><span>Prêt</span></button>
-                      <button onClick={() => { setEditingDeduction(null); setShowDeductionModal(true) }} style={{ ...S.addBtnSmall, background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.2)', color: '#EF4444' }}><Minus size={14} /><span>Retenue</span></button>
+                      <button onClick={() => { setEditingDeduction(null); setShowLoanModal(true) }} style={{ ...S.addBtnSmall, background: P.rouge2, borderColor: P.rouge3, color: P.rouge }}><CreditCard size={14} /><span>Prêt</span></button>
+                      <button onClick={() => { setEditingDeduction(null); setShowDeductionModal(true) }} style={{ ...S.addBtnSmall, background: P.rouge2, borderColor: P.rouge3, color: P.rouge }}><Minus size={14} /><span>Retenue</span></button>
                     </div>
                   </div>
-                  {selectedEmployeeDeductions.length === 0 ? <div style={S.emptyMini}><Minus size={16} color="#666" /><span>Aucune retenue récurrente</span></div> : (
+                  {selectedEmployeeDeductions.length === 0 ? <div style={S.emptyMini}><Minus size={16} color={P.texteFaint} /><span>Aucune retenue récurrente</span></div> : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {selectedEmployeeDeductions.map((d, i) => (
-                        <div key={d.id || i} style={{ ...S.allowanceItem, borderColor: 'rgba(239,68,68,0.15)' }}>
-                          <div style={{ flex: 1 }}><div style={{ color: '#FFF', fontSize: 13, fontWeight: 600 }}>{d.name}</div><div style={{ color: '#888', fontSize: 11, marginTop: 2 }}>{fmt(d.monthly_amount)}/mois {d.remaining_balance !== null && `• Solde: ${fmt(d.remaining_balance)}`}{d.status === 'paused' && ' • ⏸ Pause'}{d.status === 'completed' && ' • ✓ Soldé'}</div></div>
+                        <div key={d.id || i} style={{ ...S.allowanceItem, borderColor: P.rouge9 }}>
+                          <div style={{ flex: 1 }}><div style={{ color: P.texte, fontSize: 13, fontWeight: 600 }}>{d.name}</div><div style={{ color: P.texteDoux2, fontSize: 11, marginTop: 2 }}>{fmt(d.monthly_amount)}/mois {d.remaining_balance !== null && `• Solde: ${fmt(d.remaining_balance)}`}{d.status === 'paused' && ' • ⏸ Pause'}{d.status === 'completed' && ' • ✓ Soldé'}</div></div>
                           <CategoryBadge category={d.deduction_types?.category || 'other'} />
-                          <span style={{ ...S.statusBadge, background: d.status === 'active' ? 'rgba(16,185,129,0.12)' : d.status === 'paused' ? 'rgba(245,158,11,0.12)' : 'rgba(99,102,241,0.12)', color: d.status === 'active' ? '#10B981' : d.status === 'paused' ? '#F59E0B' : '#818CF8' }}>{d.status === 'active' ? 'Actif' : d.status === 'paused' ? 'Pause' : 'Soldé'}</span>
+                          <span style={{ ...S.statusBadge, background: d.status === 'active' ? P.vert1 : d.status === 'paused' ? P.ambre4 : P.indigo3, color: d.status === 'active' ? P.vert : d.status === 'paused' ? P.ambre : P.indigoClair }}>{d.status === 'active' ? 'Actif' : d.status === 'paused' ? 'Pause' : 'Soldé'}</span>
                           <button onClick={() => { setEditingDeduction(d); setShowDeductionModal(true) }} style={S.iconBtn}><Edit size={14} /></button>
                         </div>
                       ))}
@@ -1789,16 +1875,16 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               {/* Liste profils */}
               <div style={S.card} className="pay-card">
                 <div style={S.cardHeader}>
-                  <div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: 'rgba(139,92,246,0.12)' }}><Briefcase size={18} color="#8B5CF6" /></div><div><h3 style={S.cardTitle}>Profils enregistrés</h3><p style={S.cardSub}>{profiles.length} / {employees.length} configurés</p></div></div>
+                  <div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.violet5 }}><Briefcase size={18} color={P.violet} /></div><div><h3 style={S.cardTitle}>Profils enregistrés</h3><p style={S.cardSub}>{profiles.length} / {employees.length} configurés</p></div></div>
                 </div>
                 <div style={S.profileProgress}><div style={S.profileProgressTrack}><div style={{ ...S.profileProgressFill, width: `${employees.length > 0 ? (profiles.length / employees.length) * 100 : 0}%` }} /></div><span style={S.profileProgressText}>{employees.length > 0 ? `${Math.round((profiles.length / employees.length) * 100)}% complété` : 'Aucun employé'}</span></div>
                 <div style={S.listWrap}>
-                  {profiles.length === 0 ? <div style={S.emptyMini}><AlertTriangle size={18} color="#666" /><span>Aucun profil enregistré</span></div> : profiles.map((profile, i) => (
-                    <div key={profile.id || i} style={{ ...S.listItem, ...(profile.employee_id === selectedEmployeeId ? { borderColor: 'rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.05)' } : {}) }} onClick={() => setSelectedEmployeeId(profile.employee_id)}>
+                  {profiles.length === 0 ? <div style={S.emptyMini}><AlertTriangle size={18} color={P.texteFaint} /><span>Aucun profil enregistré</span></div> : profiles.map((profile, i) => (
+                    <div key={profile.id || i} style={{ ...S.listItem, ...(profile.employee_id === selectedEmployeeId ? { borderColor: P.indigo11, background: P.indigo7 } : {}) }} onClick={() => setSelectedEmployeeId(profile.employee_id)}>
                       <div><div style={S.listTitle}>{profile.employees?.first_name} {profile.employees?.last_name}</div><div style={S.listSub}>{profile.employees?.matricule} • {profile.salary_type === 'monthly' ? 'Mensuel' : profile.salary_type === 'hourly' ? 'Horaire' : 'Journalier'} • {profile.salary_type === 'monthly' ? fmt(profile.base_salary) : profile.salary_type === 'hourly' ? `${fmt(profile.hourly_rate)}/h` : `${fmt(profile.daily_rate)}/j`}</div></div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                        <CheckCircle size={16} color="#10B981" />
-                        <span style={{ ...S.typeBadge, background: profile.salary_type === 'monthly' ? 'rgba(99,102,241,0.12)' : profile.salary_type === 'hourly' ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)', color: profile.salary_type === 'monthly' ? '#818CF8' : profile.salary_type === 'hourly' ? '#F59E0B' : '#10B981' }}>{profile.salary_type === 'monthly' ? 'MENSUEL' : profile.salary_type === 'hourly' ? 'HORAIRE' : 'JOURNALIER'}</span>
+                        <CheckCircle size={16} color={P.vert} />
+                        <span style={{ ...S.typeBadge, background: profile.salary_type === 'monthly' ? P.indigo3 : profile.salary_type === 'hourly' ? P.ambre4 : P.vert1, color: profile.salary_type === 'monthly' ? P.indigoClair : profile.salary_type === 'hourly' ? P.ambre : P.vert }}>{profile.salary_type === 'monthly' ? 'MENSUEL' : profile.salary_type === 'hourly' ? 'HORAIRE' : 'JOURNALIER'}</span>
                       </div>
                     </div>
                   ))}
@@ -1811,35 +1897,35 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           {activeTab === 'allowances' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={S.card} className="pay-card">
-                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: 'rgba(16,185,129,0.12)' }}><Gift size={18} color="#10B981" /></div><div><h3 style={S.cardTitle}>Primes ponctuelles — {periodStart ? new Date(periodStart + 'T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : 'Période'}</h3><p style={S.cardSub}>13ème mois, performance, mariage...</p></div></div>
+                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.vert1 }}><Gift size={18} color={P.vert} /></div><div><h3 style={S.cardTitle}>Primes ponctuelles — {periodStart ? new Date(periodStart + 'T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : 'Période'}</h3><p style={S.cardSub}>13ème mois, performance, mariage...</p></div></div>
                   <button onClick={() => { setSelectedBonusEmployeeId(employees[0]?.id || ''); setShowBonusModal(true) }} style={S.addBtn}><Plus size={16} /><span>Ajouter une prime</span></button></div>
-                {periodBonuses.length === 0 ? <div style={S.emptyMini}><Gift size={18} color="#666" /><span>Aucune prime ponctuelle</span></div> : (
+                {periodBonuses.length === 0 ? <div style={S.emptyMini}><Gift size={18} color={P.texteFaint} /><span>Aucune prime ponctuelle</span></div> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {periodBonuses.map((bonus, i) => (<div key={bonus.id || i} style={S.bonusItem}><div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: '#FFF', fontSize: 13, fontWeight: 700 }}>{bonus.name}</span><CategoryBadge category={bonus.allowance_types?.category || 'other'} />{bonus.is_taxable && <Badge color="#F59E0B">Imposable</Badge>}</div><div style={{ color: '#888', fontSize: 11, marginTop: 3 }}>{bonus.employees?.first_name} {bonus.employees?.last_name} ({bonus.employees?.matricule}){bonus.reason && ` • ${bonus.reason}`}</div></div><span style={{ color: '#10B981', fontSize: 15, fontWeight: 800 }}>{fmt(bonus.amount)}</span><button onClick={() => handleDeleteBonus(bonus.id)} style={{ ...S.iconBtn, color: '#EF4444' }}><Trash2 size={14} /></button></div>))}
-                    <div style={S.totalRow}><span style={{ color: '#888' }}>Total</span><span style={{ color: '#10B981', fontWeight: 800 }}>{fmt(periodBonuses.reduce((s, b) => s + (b.amount || 0), 0))}</span></div>
+                    {periodBonuses.map((bonus, i) => (<div key={bonus.id || i} style={S.bonusItem}><div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: P.texte, fontSize: 13, fontWeight: 700 }}>{bonus.name}</span><CategoryBadge category={bonus.allowance_types?.category || 'other'} />{bonus.is_taxable && <Badge color={P.ambre}>Imposable</Badge>}</div><div style={{ color: P.texteDoux2, fontSize: 11, marginTop: 3 }}>{bonus.employees?.first_name} {bonus.employees?.last_name} ({bonus.employees?.matricule}){bonus.reason && ` • ${bonus.reason}`}</div></div><span style={{ color: P.vert, fontSize: 15, fontWeight: 800 }}>{fmt(bonus.amount)}</span><button onClick={() => handleDeleteBonus(bonus.id)} style={{ ...S.iconBtn, color: P.rouge }}><Trash2 size={14} /></button></div>))}
+                    <div style={S.totalRow}><span style={{ color: P.texteDoux2 }}>Total</span><span style={{ color: P.vert, fontWeight: 800 }}>{fmt(periodBonuses.reduce((s, b) => s + (b.amount || 0), 0))}</span></div>
                   </div>
                 )}
               </div>
 
               <div style={S.card} className="pay-card">
-                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: 'rgba(239,68,68,0.12)' }}><Minus size={18} color="#EF4444" /></div><div><h3 style={S.cardTitle}>Retenues ponctuelles — {periodStart ? new Date(periodStart + 'T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : 'Période'}</h3><p style={S.cardSub}>Avances, remboursements...</p></div></div>
-                  <button onClick={() => { setSelectedDeductionEmployeeId(employees[0]?.id || ''); setShowPeriodDeductionModal(true) }} style={{ ...S.addBtn, borderColor: 'rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.12)', color: '#EF4444' }}><Plus size={16} /><span>Ajouter une retenue</span></button></div>
-                {periodDeductions.length === 0 ? <div style={S.emptyMini}><Minus size={18} color="#666" /><span>Aucune retenue ponctuelle</span></div> : (
+                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.rouge7 }}><Minus size={18} color={P.rouge} /></div><div><h3 style={S.cardTitle}>Retenues ponctuelles — {periodStart ? new Date(periodStart + 'T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : 'Période'}</h3><p style={S.cardSub}>Avances, remboursements...</p></div></div>
+                  <button onClick={() => { setSelectedDeductionEmployeeId(employees[0]?.id || ''); setShowPeriodDeductionModal(true) }} style={{ ...S.addBtn, borderColor: P.rouge13, background: P.rouge7, color: P.rouge }}><Plus size={16} /><span>Ajouter une retenue</span></button></div>
+                {periodDeductions.length === 0 ? <div style={S.emptyMini}><Minus size={18} color={P.texteFaint} /><span>Aucune retenue ponctuelle</span></div> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {periodDeductions.map((ded, i) => (<div key={ded.id || i} style={{ ...S.bonusItem, borderColor: 'rgba(239,68,68,0.15)' }}><div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: '#FFF', fontSize: 13, fontWeight: 700 }}>{ded.name}</span><CategoryBadge category={ded.deduction_types?.category || 'other'} /></div><div style={{ color: '#888', fontSize: 11, marginTop: 3 }}>{ded.employees?.first_name} {ded.employees?.last_name}{ded.reason && ` • ${ded.reason}`}</div></div><span style={{ color: '#EF4444', fontSize: 15, fontWeight: 800 }}>- {fmt(ded.amount)}</span><button onClick={() => handleDeletePeriodDeduction(ded.id)} style={{ ...S.iconBtn, color: '#EF4444' }}><Trash2 size={14} /></button></div>))}
-                    <div style={S.totalRow}><span style={{ color: '#888' }}>Total</span><span style={{ color: '#EF4444', fontWeight: 800 }}>- {fmt(periodDeductions.reduce((s, d) => s + (d.amount || 0), 0))}</span></div>
+                    {periodDeductions.map((ded, i) => (<div key={ded.id || i} style={{ ...S.bonusItem, borderColor: P.rouge9 }}><div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: P.texte, fontSize: 13, fontWeight: 700 }}>{ded.name}</span><CategoryBadge category={ded.deduction_types?.category || 'other'} /></div><div style={{ color: P.texteDoux2, fontSize: 11, marginTop: 3 }}>{ded.employees?.first_name} {ded.employees?.last_name}{ded.reason && ` • ${ded.reason}`}</div></div><span style={{ color: P.rouge, fontSize: 15, fontWeight: 800 }}>- {fmt(ded.amount)}</span><button onClick={() => handleDeletePeriodDeduction(ded.id)} style={{ ...S.iconBtn, color: P.rouge }}><Trash2 size={14} /></button></div>))}
+                    <div style={S.totalRow}><span style={{ color: P.texteDoux2 }}>Total</span><span style={{ color: P.rouge, fontWeight: 800 }}>- {fmt(periodDeductions.reduce((s, d) => s + (d.amount || 0), 0))}</span></div>
                   </div>
                 )}
               </div>
 
               <div style={S.card} className="pay-card">
-                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: 'rgba(99,102,241,0.12)' }}><Layers size={18} color="#6366F1" /></div><div><h3 style={S.cardTitle}>Primes récurrentes par employé</h3><p style={S.cardSub}>Gérez depuis l'onglet Profils</p></div></div></div>
+                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.indigo3 }}><Layers size={18} color={P.indigo} /></div><div><h3 style={S.cardTitle}>Primes récurrentes par employé</h3><p style={S.cardSub}>Gérez depuis l'onglet Profils</p></div></div></div>
                 <SearchBar value={searchAllowance} onChange={setSearchAllowance} placeholder="Rechercher un employé..." />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
                   {(searchAllowance ? employees.filter(e => `${e.first_name} ${e.last_name} ${e.matricule}`.toLowerCase().includes(searchAllowance.toLowerCase())) : employees.slice(0, 10)).map(emp => (
-                    <div key={emp.id} style={S.listItem} onClick={() => { setSelectedEmployeeId(emp.id); setActiveTab('profiles') }}>
+                    <div key={emp.id} style={S.listItem} onClick={() => { setSelectedEmployeeId(emp.id); changerOnglet('profiles') }}>
                       <div><div style={S.listTitle}>{emp.first_name} {emp.last_name}</div><div style={S.listSub}>{emp.matricule}</div></div>
-                      <button style={S.addBtnSmall} onClick={(e) => { e.stopPropagation(); setSelectedEmployeeId(emp.id); setActiveTab('profiles') }}><Edit size={12} /><span>Gérer</span></button>
+                      <button style={S.addBtnSmall} onClick={(e) => { e.stopPropagation(); setSelectedEmployeeId(emp.id); changerOnglet('profiles') }}><Edit size={12} /><span>Gérer</span></button>
                     </div>
                   ))}
                 </div>
@@ -1850,25 +1936,25 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           {/* ═══ ONGLET IMPORT ═══ */}
           {activeTab === 'imports' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={S.guideBar}><FileSpreadsheet size={16} color="#F59E0B" style={{ flexShrink: 0, marginTop: 2 }} /><div><p style={S.guideTitle}>Format attendu</p><p style={S.guideText}>Le fichier doit contenir une colonne <strong>matricule</strong>. Les colonnes positives sont des gains, les négatives des retenues.</p></div></div>
+              <div style={S.guideBar}><FileSpreadsheet size={16} color={P.ambre} style={{ flexShrink: 0, marginTop: 2 }} /><div><p style={S.guideTitle}>Format attendu</p><p style={S.guideText}>Le fichier doit contenir une colonne <strong>matricule</strong>. Les colonnes positives sont des gains, les négatives des retenues.</p></div></div>
               <div style={S.card} className="pay-card">
-                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={S.cardIcon}><Upload size={18} color="#F59E0B" /></div><div><h3 style={S.cardTitle}>Importer les variables mensuelles</h3><p style={S.cardSub}>Primes, avances, commissions...</p></div></div></div>
+                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={S.cardIcon}><Upload size={18} color={P.ambre} /></div><div><h3 style={S.cardTitle}>Importer les variables mensuelles</h3><p style={S.cardSub}>Primes, avances, commissions...</p></div></div></div>
                 <div style={S.importZone}>
                   <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImportFile} style={S.fileInput} id="payroll-file-input" />
                   <label htmlFor="payroll-file-input" style={S.fileInputLabel}>{importingFile ? <><RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /><span>Lecture...</span></> : <><FileSpreadsheet size={16} /><span>Choisir un fichier Excel / CSV</span></>}</label>
-                  {importFileName && <div style={S.importFileInfo}><span style={{ color: '#FFF', fontWeight: 600 }}>{importFileName}</span><button onClick={() => { setImportFileName(''); setImportPreviewRows([]); setImportColumns([]) }} style={S.clearBtn}><Trash2 size={14} /><span>Effacer</span></button></div>}
+                  {importFileName && <div style={S.importFileInfo}><span style={{ color: P.texte, fontWeight: 600 }}>{importFileName}</span><button onClick={() => { setImportFileName(''); setImportPreviewRows([]); setImportColumns([]) }} style={S.clearBtn}><Trash2 size={14} /><span>Effacer</span></button></div>}
                 </div>
               </div>
               <div style={S.card} className="pay-card">
-                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: 'rgba(16,185,129,0.12)' }}><Eye size={18} color="#10B981" /></div><div><h3 style={S.cardTitle}>Aperçu de l'import</h3><p style={S.cardSub}>Validation par matricule</p></div></div>
+                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.vert1 }}><Eye size={18} color={P.vert} /></div><div><h3 style={S.cardTitle}>Aperçu de l'import</h3><p style={S.cardSub}>Validation par matricule</p></div></div>
                   {importPreviewRows.length > 0 && <button onClick={handleSaveImport} style={S.primaryBtn} disabled={savingImport}>{savingImport ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>{savingImport ? 'Enregistrement...' : 'Valider et enregistrer'}</span></button>}
                 </div>
-                {importPreviewRows.length === 0 ? <div style={S.emptyMini}><Upload size={18} color="#666" /><span>Importez un fichier pour voir l'aperçu</span></div> : (
+                {importPreviewRows.length === 0 ? <div style={S.emptyMini}><Upload size={18} color={P.texteFaint} /><span>Importez un fichier pour voir l'aperçu</span></div> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {importPreviewRows.map((row, i) => (
-                      <div key={i} style={{ ...S.importPreviewItem, borderColor: row.is_valid ? 'rgba(16,185,129,0.16)' : 'rgba(239,68,68,0.16)', background: row.is_valid ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)' }}>
-                        <div style={S.importPreviewHeader}><div><div style={S.importPreviewTitle}>Ligne {row.rowIndex} — {row.matricule || 'Sans matricule'}</div><div style={S.importPreviewSub}>{row.is_valid ? `✓ ${row.employee_name}` : `✗ ${row.error_message}`}</div></div><div style={{ ...S.importStatusBadge, background: row.is_valid ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)', color: row.is_valid ? '#10B981' : '#EF4444' }}>{row.is_valid ? '✓ Valide' : '✗ Erreur'}</div></div>
-                        <div style={S.importDataGrid}>{Object.entries(row.data || {}).map(([key, value]) => (<div key={key} style={S.importDataItem}><span style={S.importDataKey}>{key.replace(/_/g, ' ')}</span><span style={{ ...S.importDataValue, color: Number(value) < 0 ? '#EF4444' : '#FFF' }}>{String(value || 0)}</span></div>))}</div>
+                      <div key={i} style={{ ...S.importPreviewItem, borderColor: row.is_valid ? P.vert10 : P.rouge10, background: row.is_valid ? P.vert4 : P.rouge5 }}>
+                        <div style={S.importPreviewHeader}><div><div style={S.importPreviewTitle}>Ligne {row.rowIndex} — {row.matricule || 'Sans matricule'}</div><div style={S.importPreviewSub}>{row.is_valid ? `✓ ${row.employee_name}` : `✗ ${row.error_message}`}</div></div><div style={{ ...S.importStatusBadge, background: row.is_valid ? P.vert8 : P.rouge8, color: row.is_valid ? P.vert : P.rouge }}>{row.is_valid ? '✓ Valide' : '✗ Erreur'}</div></div>
+                        <div style={S.importDataGrid}>{Object.entries(row.data || {}).map(([key, value]) => (<div key={key} style={S.importDataItem}><span style={S.importDataKey}>{key.replace(/_/g, ' ')}</span><span style={{ ...S.importDataValue, color: Number(value) < 0 ? P.rouge : P.texte }}>{String(value || 0)}</span></div>))}</div>
                       </div>
                     ))}
                   </div>
@@ -1881,16 +1967,16 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           {activeTab === 'preview' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={S.summaryTopGrid}>
-                <div style={S.summaryTopCard}><DollarSign size={18} color="#10B981" /><div><div style={S.summaryTopValue}>{fmt(summary.totalGross)}</div><div style={S.summaryTopLabel}>Total brut</div></div></div>
-                <div style={S.summaryTopCard}><Wallet size={18} color="#F59E0B" /><div><div style={S.summaryTopValue}>{fmt(summary.totalNet)}</div><div style={S.summaryTopLabel}>Total net</div></div></div>
-                <div style={S.summaryTopCard}><TrendingUp size={18} color="#EF4444" /><div><div style={S.summaryTopValue}>{fmt(summary.totalCost)}</div><div style={S.summaryTopLabel}>Coût employeur</div></div></div>
-                <div style={S.summaryTopCard}><Users size={18} color="#6366F1" /><div><div style={S.summaryTopValue}>{summary.totalEmployees}</div><div style={S.summaryTopLabel}>Fiches calculées</div></div></div>
-                <div style={S.summaryTopCard}><Send size={18} color={summary.alreadySent > 0 ? '#10B981' : '#666'} /><div><div style={S.summaryTopValue}>{summary.alreadySent} / {summary.totalEmployees}</div><div style={S.summaryTopLabel}>Envoyées</div></div></div>
+                <div style={S.summaryTopCard}><DollarSign size={18} color={P.vert} /><div><div style={S.summaryTopValue}>{fmt(summary.totalGross)}</div><div style={S.summaryTopLabel}>Total brut</div></div></div>
+                <div style={S.summaryTopCard}><Wallet size={18} color={P.ambre} /><div><div style={S.summaryTopValue}>{fmt(summary.totalNet)}</div><div style={S.summaryTopLabel}>Total net</div></div></div>
+                <div style={S.summaryTopCard}><TrendingUp size={18} color={P.rouge} /><div><div style={S.summaryTopValue}>{fmt(summary.totalCost)}</div><div style={S.summaryTopLabel}>Coût employeur</div></div></div>
+                <div style={S.summaryTopCard}><Users size={18} color={P.indigo} /><div><div style={S.summaryTopValue}>{summary.totalEmployees}</div><div style={S.summaryTopLabel}>Fiches calculées</div></div></div>
+                <div style={S.summaryTopCard}><Send size={18} color={summary.alreadySent > 0 ? P.vert : P.texteFaint} /><div><div style={S.summaryTopValue}>{summary.alreadySent} / {summary.totalEmployees}</div><div style={S.summaryTopLabel}>Envoyées</div></div></div>
               </div>
 
               {previewRows.length > 0 && (
                 <div style={S.sendAllBar}>
-                  <div style={{ flex: 1 }}><p style={{ color: '#FFF', fontSize: 14, fontWeight: 700, margin: '0 0 4px 0' }}>Publier les fiches</p><p style={{ color: '#888', fontSize: 12, margin: 0 }}>Chaque employé pourra consulter sa fiche.{hasSignatures && ' Les signatures seront incluses.'}{hasStamp && ' Le cachet sera inclus.'}</p></div>
+                  <div style={{ flex: 1 }}><p style={{ color: P.texte, fontSize: 14, fontWeight: 700, margin: '0 0 4px 0' }}>Publier les fiches</p><p style={{ color: P.texteDoux2, fontSize: 12, margin: 0 }}>Chaque employé pourra consulter sa fiche.{hasSignatures && ' Les signatures seront incluses.'}{hasStamp && ' Le cachet sera inclus.'}</p></div>
                   <button onClick={handleExportExcel} style={S.exportBtn}><Table size={16} /><span>Export Excel</span></button>
                   <button onClick={handleSendAllToEmployees} style={S.sendAllBtn} disabled={sendingSlips}>
                     {sendingSlips ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Send size={16} />}
@@ -1900,11 +1986,11 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               )}
 
               <div style={S.card} className="pay-card">
-                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: 'rgba(16,185,129,0.12)' }}><FileText size={18} color="#10B981" /></div><div><h3 style={S.cardTitle}>Bulletins de paie</h3><p style={S.cardSub}>Période : {periodStart} → {periodEnd} • {getWorkingDaysInMonth} jours ouvrables</p></div></div></div>
+                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.vert1 }}><FileText size={18} color={P.vert} /></div><div><h3 style={S.cardTitle}>Bulletins de paie</h3><p style={S.cardSub}>Période : {periodStart} → {periodEnd} • {getWorkingDaysInMonth} jours ouvrables</p></div></div></div>
                 <SearchBar value={searchPreview} onChange={setSearchPreview} placeholder="Filtrer les fiches..." />
 
                 {filteredPreviewRows.length === 0 ? (
-                  <div style={{ ...S.emptyMini, marginTop: 12 }}><Calendar size={18} color="#666" /><span>{previewRows.length === 0 ? 'Cliquez sur "Générer les fiches"' : 'Aucun résultat'}</span></div>
+                  <div style={{ ...S.emptyMini, marginTop: 12 }}><Calendar size={18} color={P.texteFaint} /><span>{previewRows.length === 0 ? 'Cliquez sur "Générer les fiches"' : 'Aucun résultat'}</span></div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                     {filteredPreviewRows.map((row, i) => {
@@ -1919,8 +2005,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                             <div>
                               <div style={S.previewName}>
                                 {row.employee?.first_name} {row.employee?.last_name}
-                                <Badge color={row.profile?.salary_type === 'monthly' ? '#6366F1' : row.profile?.salary_type === 'hourly' ? '#F59E0B' : '#10B981'}>{salaryTypeLabel}</Badge>
-                                {row.employee?.classification && <Badge color="#8B5CF6">{row.employee.classification}</Badge>}
+                                <Badge color={row.profile?.salary_type === 'monthly' ? P.indigo : row.profile?.salary_type === 'hourly' ? P.ambre : P.vert}>{salaryTypeLabel}</Badge>
+                                {row.employee?.classification && <Badge color={P.violet}>{row.employee.classification}</Badge>}
                                 {isSent && <span style={S.sentBadge}><CheckCircle2 size={12} /> Envoyée</span>}
                               </div>
                               <div style={S.previewSub}>
@@ -1940,31 +2026,31 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
                           <div style={S.previewGrid}>
                             <div style={S.previewMini}><span style={S.previewMiniLabel}>Base / Taux</span><span style={S.previewMiniValue}>{row.profile?.salary_type === 'monthly' ? fmt(row.profile?.base_salary) : row.profile?.salary_type === 'hourly' ? `${fmt(row.profile?.hourly_rate)}/h` : `${fmt(row.profile?.daily_rate)}/j`}</span></div>
-                            <div style={S.previewMini}><span style={S.previewMiniLabel}>Total gains</span><span style={{ ...S.previewMiniValue, color: '#10B981' }}>{fmt(row.totalEarnings)}</span></div>
+                            <div style={S.previewMini}><span style={S.previewMiniLabel}>Total gains</span><span style={{ ...S.previewMiniValue, color: P.vert }}>{fmt(row.totalEarnings)}</span></div>
                             <div style={S.previewMini}><span style={S.previewMiniLabel}>Salaire brut</span><span style={S.previewMiniValue}>{fmt(row.grossSalary)}</span></div>
-                            <div style={S.previewMini}><span style={S.previewMiniLabel}>Total retenues</span><span style={{ ...S.previewMiniValue, color: '#EF4444' }}>- {fmt(row.totalDeductions)}</span></div>
+                            <div style={S.previewMini}><span style={S.previewMiniLabel}>Total retenues</span><span style={{ ...S.previewMiniValue, color: P.rouge }}>- {fmt(row.totalDeductions)}</span></div>
                             <div style={S.previewMini}><span style={S.previewMiniLabel}>Coût employeur</span><span style={S.previewMiniValue}>{fmt(row.employerCost)}</span></div>
-                            {row.sources?.encheck?.totalOvertimeAllMinutes > 0 && <div style={S.previewMini}><span style={S.previewMiniLabel}>Heures sup</span><span style={{ ...S.previewMiniValue, color: '#F97316' }}>{Math.floor(row.sources.encheck.totalOvertimeAllMinutes / 60)}h{(row.sources.encheck.totalOvertimeAllMinutes % 60).toString().padStart(2, '0')}</span></div>}
-                            {empLeave && <div style={S.previewMini}><span style={S.previewMiniLabel}>Congés restants</span><span style={{ ...S.previewMiniValue, color: '#6366F1' }}>{empLeave.remaining}j / {empLeave.acquired}j</span></div>}
+                            {row.sources?.encheck?.totalOvertimeAllMinutes > 0 && <div style={S.previewMini}><span style={S.previewMiniLabel}>Heures sup</span><span style={{ ...S.previewMiniValue, color: P.orange }}>{Math.floor(row.sources.encheck.totalOvertimeAllMinutes / 60)}h{(row.sources.encheck.totalOvertimeAllMinutes % 60).toString().padStart(2, '0')}</span></div>}
+                            {empLeave && <div style={S.previewMini}><span style={S.previewMiniLabel}>Congés restants</span><span style={{ ...S.previewMiniValue, color: P.indigo }}>{empLeave.remaining}j / {empLeave.acquired}j</span></div>}
                           </div>
 
                           {row.earnings?.length > 0 && (
-                            <div style={S.earningsDetail}><p style={S.detailTitle}>Gains ({row.earnings.length})</p><div style={S.detailGrid}>{row.earnings.map((e, ei) => (<div key={ei} style={S.detailLine}><span style={{ color: '#AAA', fontSize: 11 }}>{e.label}</span><span style={{ color: '#10B981', fontSize: 11, fontWeight: 700 }}>{fmt(e.amount)}</span></div>))}</div></div>
+                            <div style={S.earningsDetail}><p style={S.detailTitle}>Gains ({row.earnings.length})</p><div style={S.detailGrid}>{row.earnings.map((e, ei) => (<div key={ei} style={S.detailLine}><span style={{ color: P.texteDoux, fontSize: 11 }}>{e.label}</span><span style={{ color: P.vert, fontSize: 11, fontWeight: 700 }}>{fmt(e.amount)}</span></div>))}</div></div>
                           )}
 
                           {row.taxation && (
                             <div style={S.taxBlock}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                                <Shield size={15} color="#8B5CF6" />
-                                <span style={{ color: '#A78BFA', fontSize: 13, fontWeight: 700 }}>Fiscalité & Cotisations</span>
+                                <Shield size={15} color={P.violet} />
+                                <span style={{ color: P.violetClair, fontSize: 13, fontWeight: 700 }}>Fiscalité & Cotisations</span>
                                 {(row.impot_a_verifier || row.taxation?.impot_a_verifier) && (
                                   <span style={{
                                     marginLeft: 'auto',
                                     padding: '3px 8px',
                                     borderRadius: 6,
-                                    background: 'rgba(245,158,11,0.16)',
-                                    border: '1px solid rgba(245,158,11,0.35)',
-                                    color: '#F59E0B',
+                                    background: P.ambre12,
+                                    border: `1px solid ${P.ambre14}`,
+                                    color: P.ambre,
                                     fontSize: 11,
                                     fontWeight: 700,
                                   }}>
@@ -1980,20 +2066,20 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                                   padding: '10px 12px',
                                   marginBottom: 10,
                                   borderRadius: 10,
-                                  background: 'rgba(245,158,11,0.08)',
-                                  border: '1px solid rgba(245,158,11,0.28)',
-                                  color: '#FCD34D',
+                                  background: P.ambre2,
+                                  border: `1px solid ${P.ambre13}`,
+                                  color: P.ambreClair,
                                   fontSize: 12,
                                   lineHeight: 1.45,
                                 }}>
-                                  <AlertTriangle size={15} color="#F59E0B" style={{ flexShrink: 0, marginTop: 2 }} />
+                                  <AlertTriangle size={15} color={P.ambre} style={{ flexShrink: 0, marginTop: 2 }} />
                                   <span>{row.avertissement || row.taxation?.avertissement}</span>
                                 </div>
                               )}
                               <div style={S.taxGrid}>
                                 <div style={S.taxMini}><span style={S.taxMiniLabel}>Revenu imposable</span><span style={S.taxMiniValue}>{fmt(row.taxation.taxableIncome || 0)}</span></div>
                                 <div style={S.taxMini}><span style={S.taxMiniLabel}>Net imposable</span><span style={S.taxMiniValue}>{fmt((row.grossSalary || 0) - (row.taxation?.contributions?.totalEmployee || 0))}</span></div>
-                                <div style={S.taxMini}><span style={S.taxMiniLabel}>Impôt IRPP</span><span style={{ ...S.taxMiniValue, color: '#EF4444' }}>{fmt(row.taxation.tax?.totalTax || 0)}</span></div>
+                                <div style={S.taxMini}><span style={S.taxMiniLabel}>Impôt IRPP</span><span style={{ ...S.taxMiniValue, color: P.rouge }}>{fmt(row.taxation.tax?.totalTax || 0)}</span></div>
                                 <div style={S.taxMini}><span style={S.taxMiniLabel}>Taux effectif</span><span style={S.taxMiniValue}>{row.taxation.tax?.effectiveRate || 0}%</span></div>
                                 <div style={S.taxMini}><span style={S.taxMiniLabel}>Cotis. salariales</span><span style={S.taxMiniValue}>{fmt(row.taxation.contributions?.totalEmployee || 0)}</span></div>
                                 <div style={S.taxMini}><span style={S.taxMiniLabel}>Cotis. patronales</span><span style={S.taxMiniValue}>{fmt(row.taxation.contributions?.totalEmployer || 0)}</span></div>
@@ -2003,8 +2089,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
                           {/* Cumuls annuels */}
                           {empCumul && empCumul.slipCount > 0 && (
-                            <div style={{ marginTop: 10, padding: 12, borderRadius: 12, background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.1)' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><TrendingUp size={14} color="#F59E0B" /><span style={{ color: '#F59E0B', fontSize: 12, fontWeight: 700 }}>Cumuls annuels ({empCumul.slipCount} mois)</span></div>
+                            <div style={{ marginTop: 10, padding: 12, borderRadius: 12, background: P.ambre11, border: `1px solid ${P.ambre3}` }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><TrendingUp size={14} color={P.ambre} /><span style={{ color: P.ambre, fontSize: 12, fontWeight: 700 }}>Cumuls annuels ({empCumul.slipCount} mois)</span></div>
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
                                 <div style={S.taxMini}><span style={S.taxMiniLabel}>Brut cumulé</span><span style={S.taxMiniValue}>{fmt(empCumul.grossTotal)}</span></div>
                                 <div style={S.taxMini}><span style={S.taxMiniLabel}>Net cumulé</span><span style={S.taxMiniValue}>{fmt(empCumul.netTotal)}</span></div>
@@ -2021,8 +2107,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                                 {settings.signatory1_signature && (
                                   <div style={{ textAlign: 'center', flex: 1, minWidth: 100 }}>
                                     <img src={settings.signatory1_signature} alt="Sig1" style={{ maxWidth: 120, maxHeight: 50, objectFit: 'contain' }} />
-                                    {settings.signatory1_name && <p style={{ color: '#888', fontSize: 10, fontWeight: 600, margin: '4px 0 0 0', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 4 }}>{settings.signatory1_name}</p>}
-                                    {settings.signatory1_title && <p style={{ color: '#555', fontSize: 9, margin: '2px 0 0 0' }}>{settings.signatory1_title}</p>}
+                                    {settings.signatory1_name && <p style={{ color: P.texteDoux2, fontSize: 10, fontWeight: 600, margin: '4px 0 0 0', borderTop: `1px solid ${P.voile6}`, paddingTop: 4 }}>{settings.signatory1_name}</p>}
+                                    {settings.signatory1_title && <p style={{ color: P.texteFaint, fontSize: 9, margin: '2px 0 0 0' }}>{settings.signatory1_title}</p>}
                                   </div>
                                 )}
                                 {settings.company_stamp && (
@@ -2033,8 +2119,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                                 {settings.signatory2_signature && (
                                   <div style={{ textAlign: 'center', flex: 1, minWidth: 100 }}>
                                     <img src={settings.signatory2_signature} alt="Sig2" style={{ maxWidth: 120, maxHeight: 50, objectFit: 'contain' }} />
-                                    {settings.signatory2_name && <p style={{ color: '#888', fontSize: 10, fontWeight: 600, margin: '4px 0 0 0', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 4 }}>{settings.signatory2_name}</p>}
-                                    {settings.signatory2_title && <p style={{ color: '#555', fontSize: 9, margin: '2px 0 0 0' }}>{settings.signatory2_title}</p>}
+                                    {settings.signatory2_name && <p style={{ color: P.texteDoux2, fontSize: 10, fontWeight: 600, margin: '4px 0 0 0', borderTop: `1px solid ${P.voile6}`, paddingTop: 4 }}>{settings.signatory2_name}</p>}
+                                    {settings.signatory2_title && <p style={{ color: P.texteFaint, fontSize: 9, margin: '2px 0 0 0' }}>{settings.signatory2_title}</p>}
                                   </div>
                                 )}
                               </div>
@@ -2043,8 +2129,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
                           {/* Mention légale */}
                           {settings.legal_mention && (
-                            <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                              <p style={{ color: '#555', fontSize: 9, margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>{settings.legal_mention}</p>
+                            <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: P.voile1, border: `1px solid ${P.voile3}` }}>
+                              <p style={{ color: P.texteFaint, fontSize: 9, margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>{settings.legal_mention}</p>
                             </div>
                           )}
                         </div>
@@ -2067,9 +2153,9 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           {showDeleteModal && slipToDelete && (
             <div style={S.modalOverlay} onClick={() => { if (!deletingSlip) { setShowDeleteModal(false); setSlipToDelete(null) } }}>
               <div style={S.modalContent} onClick={e => e.stopPropagation()}>
-                <div style={S.modalHeader}><div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}><div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={22} color="#EF4444" /></div><div><h3 style={S.modalTitle}>Retirer cette fiche ?</h3><p style={S.modalSub}>Elle ne sera plus visible par l'employé.</p></div></div><button onClick={() => { if (!deletingSlip) { setShowDeleteModal(false); setSlipToDelete(null) } }} style={S.modalCloseBtn}><X size={18} /></button></div>
-                <div style={{ padding: 20 }}><div style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 8 }}><p style={{ margin: 0, color: '#DDD', fontSize: 13 }}><strong>Employé :</strong> {slipToDelete.employee?.first_name} {slipToDelete.employee?.last_name}</p><p style={{ margin: 0, color: '#DDD', fontSize: 13 }}><strong>Période :</strong> {periodStart} → {periodEnd}</p><p style={{ margin: 0, color: '#DDD', fontSize: 13 }}><strong>Net :</strong> {fmt(slipToDelete.netSalary)}</p></div></div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={S.modalHeader}><div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}><div style={{ width: 42, height: 42, borderRadius: 12, background: P.rouge7, border: `1px solid ${P.rouge11}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={22} color={P.rouge} /></div><div><h3 style={S.modalTitle}>Retirer cette fiche ?</h3><p style={S.modalSub}>Elle ne sera plus visible par l'employé.</p></div></div><button onClick={() => { if (!deletingSlip) { setShowDeleteModal(false); setSlipToDelete(null) } }} style={S.modalCloseBtn}><X size={18} /></button></div>
+                <div style={{ padding: 20 }}><div style={{ padding: '14px 16px', borderRadius: 14, background: P.voile2, border: `1px solid ${P.voile4}`, display: 'flex', flexDirection: 'column', gap: 8 }}><p style={{ margin: 0, color: P.texteDoux, fontSize: 13 }}><strong>Employé :</strong> {slipToDelete.employee?.first_name} {slipToDelete.employee?.last_name}</p><p style={{ margin: 0, color: P.texteDoux, fontSize: 13 }}><strong>Période :</strong> {periodStart} → {periodEnd}</p><p style={{ margin: 0, color: P.texteDoux, fontSize: 13 }}><strong>Net :</strong> {fmt(slipToDelete.netSalary)}</p></div></div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}>
                   <button onClick={() => { if (!deletingSlip) { setShowDeleteModal(false); setSlipToDelete(null) } }} style={S.modalCancelBtn} disabled={deletingSlip}>Annuler</button>
                   <button onClick={confirmDeleteSentSlip} style={S.modalDeleteBtn} disabled={deletingSlip}>{deletingSlip ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Trash2 size={16} />}<span>{deletingSlip ? 'Suppression...' : 'Retirer'}</span></button>
                 </div>
@@ -2081,9 +2167,9 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           {showGenerateConfirm && (
             <div style={S.modalOverlay} onClick={() => setShowGenerateConfirm(false)}>
               <div style={{ ...S.modalContent, maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-                <div style={S.modalHeader}><div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}><div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><AlertTriangle size={22} color="#F59E0B" /></div><div><h3 style={S.modalTitle}>Problèmes détectés</h3><p style={S.modalSub}>{preCheckResults.blockers.length} employé(s) sans profil valide</p></div></div><button onClick={() => setShowGenerateConfirm(false)} style={S.modalCloseBtn}><X size={18} /></button></div>
-                <div style={{ padding: 20 }}><p style={{ color: '#AAA', fontSize: 13, margin: '0 0 12px 0' }}>Les employés suivants auront une fiche à 0 :</p><div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>{preCheckResults.blockers.map((b, i) => (<div key={i} style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)', borderRadius: 10 }}><span style={{ color: '#FCA5A5', fontSize: 12 }}>{b.employee} — {b.reason}</span></div>))}</div></div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}><button onClick={() => setShowGenerateConfirm(false)} style={S.modalCancelBtn}>Annuler</button><button onClick={handleGeneratePreview} style={S.primaryBtn}><Eye size={16} /><span>Générer quand même</span></button></div>
+                <div style={S.modalHeader}><div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}><div style={{ width: 42, height: 42, borderRadius: 12, background: P.ambre4, border: `1px solid ${P.ambre6}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><AlertTriangle size={22} color={P.ambre} /></div><div><h3 style={S.modalTitle}>Problèmes détectés</h3><p style={S.modalSub}>{preCheckResults.blockers.length} employé(s) sans profil valide</p></div></div><button onClick={() => setShowGenerateConfirm(false)} style={S.modalCloseBtn}><X size={18} /></button></div>
+                <div style={{ padding: 20 }}><p style={{ color: P.texteDoux, fontSize: 13, margin: '0 0 12px 0' }}>Les employés suivants auront une fiche à 0 :</p><div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>{preCheckResults.blockers.map((b, i) => (<div key={i} style={{ padding: '8px 12px', background: P.rouge6, border: `1px solid ${P.rouge7}`, borderRadius: 10 }}><span style={{ color: P.rougeClair, fontSize: 12 }}>{b.employee} — {b.reason}</span></div>))}</div></div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={() => setShowGenerateConfirm(false)} style={S.modalCancelBtn}>Annuler</button><button onClick={handleGeneratePreview} style={S.primaryBtn}><Eye size={16} /><span>Générer quand même</span></button></div>
               </div>
             </div>
           )}
@@ -2092,22 +2178,22 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           {showHistoryModal && (
             <div style={S.modalOverlay} onClick={() => setShowHistoryModal(false)}>
               <div style={{ ...S.modalContent, maxWidth: 600 }} onClick={e => e.stopPropagation()}>
-                <div style={S.modalHeader}><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><History size={22} color="#818CF8" /></div><div><h3 style={S.modalTitle}>Historique des périodes</h3><p style={S.modalSub}>Cliquez sur une période pour la sélectionner</p></div></div><button onClick={() => setShowHistoryModal(false)} style={S.modalCloseBtn}><X size={18} /></button></div>
+                <div style={S.modalHeader}><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 42, height: 42, borderRadius: 12, background: P.indigo3, border: `1px solid ${P.indigo9}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><History size={22} color={P.indigoClair} /></div><div><h3 style={S.modalTitle}>Historique des périodes</h3><p style={S.modalSub}>Cliquez sur une période pour la sélectionner</p></div></div><button onClick={() => setShowHistoryModal(false)} style={S.modalCloseBtn}><X size={18} /></button></div>
                 <div style={{ padding: 20, maxHeight: '60vh', overflowY: 'auto' }}>
-                  {loadingHistory ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 40 }}><RefreshCw size={20} color="#F59E0B" style={{ animation: 'spin 0.9s linear infinite' }} /><span style={{ color: '#888' }}>Chargement...</span></div>
-                    : historyPeriods.length === 0 ? <div style={S.emptyMini}><History size={20} color="#666" /><span>Aucune fiche envoyée</span></div>
+                  {loadingHistory ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 40 }}><RefreshCw size={20} color={P.ambre} style={{ animation: 'spin 0.9s linear infinite' }} /><span style={{ color: P.texteDoux2 }}>Chargement...</span></div>
+                    : historyPeriods.length === 0 ? <div style={S.emptyMini}><History size={20} color={P.texteFaint} /><span>Aucune fiche envoyée</span></div>
                       : <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {historyPeriods.map((period, i) => {
                           const isCurrentPeriod = period.period_start === periodStart && period.period_end === periodEnd
                           const periodLabel = new Date(period.period_start + 'T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
-                          return (<div key={i} onClick={() => handleSelectHistoryPeriod(period)} style={{ padding: '14px 16px', borderRadius: 14, background: isCurrentPeriod ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.03)', border: isCurrentPeriod ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, transition: 'all 0.2s' }}>
-                            <div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}><span style={{ color: '#FFF', fontSize: 14, fontWeight: 700, textTransform: 'capitalize' }}>{periodLabel}</span>{isCurrentPeriod && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'rgba(99,102,241,0.2)', color: '#818CF8' }}>Période actuelle</span>}</div><div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}><span style={{ color: '#888', fontSize: 12 }}><span style={{ color: '#10B981', fontWeight: 700 }}>{period.count}</span> fiche(s)</span><span style={{ color: '#888', fontSize: 12 }}>Net: <span style={{ color: '#F59E0B', fontWeight: 700 }}>{fmt(period.totalNet)}</span></span></div></div>
-                            <ArrowRight size={16} color="#666" />
+                          return (<div key={i} onClick={() => handleSelectHistoryPeriod(period)} style={{ padding: '14px 16px', borderRadius: 14, background: isCurrentPeriod ? P.indigo2 : P.voile2, border: isCurrentPeriod ? `1px solid ${P.indigo11}` : `1px solid ${P.voile5}`, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, transition: 'all 0.2s' }}>
+                            <div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}><span style={{ color: P.texte, fontSize: 14, fontWeight: 700, textTransform: 'capitalize' }}>{periodLabel}</span>{isCurrentPeriod && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: P.indigo5, color: P.indigoClair }}>Période actuelle</span>}</div><div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}><span style={{ color: P.texteDoux2, fontSize: 12 }}><span style={{ color: P.vert, fontWeight: 700 }}>{period.count}</span> fiche(s)</span><span style={{ color: P.texteDoux2, fontSize: 12 }}>Net: <span style={{ color: P.ambre, fontWeight: 700 }}>{fmt(period.totalNet)}</span></span></div></div>
+                            <ArrowRight size={16} color={P.texteFaint} />
                           </div>)
                         })}
                       </div>}
                 </div>
-                <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'flex-end' }}><button onClick={() => setShowHistoryModal(false)} style={S.modalCancelBtn}>Fermer</button></div>
+                <div style={{ padding: '14px 20px', borderTop: `1px solid ${P.voile5}`, display: 'flex', justifyContent: 'flex-end' }}><button onClick={() => setShowHistoryModal(false)} style={S.modalCancelBtn}>Fermer</button></div>
               </div>
             </div>
           )}
@@ -2116,13 +2202,13 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           {showCopyProfileModal && (
             <div style={S.modalOverlay} onClick={() => setShowCopyProfileModal(false)}>
               <div style={{ ...S.modalContent, maxWidth: 480 }} onClick={e => e.stopPropagation()}>
-                <div style={S.modalHeader}><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Copy size={22} color="#F59E0B" /></div><div><h3 style={S.modalTitle}>Copier un profil</h3><p style={S.modalSub}>Vers : {employees.find(e => e.id === selectedEmployeeId)?.first_name} {employees.find(e => e.id === selectedEmployeeId)?.last_name}</p></div></div><button onClick={() => setShowCopyProfileModal(false)} style={S.modalCloseBtn}><X size={18} /></button></div>
+                <div style={S.modalHeader}><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><div style={{ width: 42, height: 42, borderRadius: 12, background: P.ambre4, border: `1px solid ${P.ambre6}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Copy size={22} color={P.ambre} /></div><div><h3 style={S.modalTitle}>Copier un profil</h3><p style={S.modalSub}>Vers : {employees.find(e => e.id === selectedEmployeeId)?.first_name} {employees.find(e => e.id === selectedEmployeeId)?.last_name}</p></div></div><button onClick={() => setShowCopyProfileModal(false)} style={S.modalCloseBtn}><X size={18} /></button></div>
                 <div style={{ padding: 20 }}>
                   <div style={S.formGroup}><label style={S.labelSmall}>Copier le profil de</label>
                     <select value={copySourceEmployeeId} onChange={e => setCopySourceEmployeeId(e.target.value)} style={S.select}><option value="">Sélectionner un employé source</option>{profiles.filter(p => p.employee_id !== selectedEmployeeId).map(p => (<option key={p.employee_id} value={p.employee_id}>{p.employees?.first_name} {p.employees?.last_name} ({p.employees?.matricule}) — {p.salary_type === 'monthly' ? fmt(p.base_salary) : p.salary_type === 'hourly' ? `${fmt(p.hourly_rate)}/h` : `${fmt(p.daily_rate)}/j`}</option>))}</select>
                   </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}><button onClick={() => setShowCopyProfileModal(false)} style={S.modalCancelBtn}>Annuler</button><button onClick={handleCopyProfile} style={S.primaryBtn} disabled={!copySourceEmployeeId}><Copy size={16} /><span>Copier ce profil</span></button></div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={() => setShowCopyProfileModal(false)} style={S.modalCancelBtn}>Annuler</button><button onClick={handleCopyProfile} style={S.primaryBtn} disabled={!copySourceEmployeeId}><Copy size={16} /><span>Copier ce profil</span></button></div>
               </div>
             </div>
           )}
@@ -2138,6 +2224,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 // ═══════════════════════════════════════════════════════════
 
 function AllowanceModal({ allowance, employeeId, employees, allowanceTypes, currency, onSave, onClose, saving }) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
   const [form, setForm] = useState(allowance || { employee_id: employeeId || '', allowance_type_id: '', custom_name: '', calculation_type: 'fixed', amount: '', percentage: '', is_taxable: true, is_subject_to_contributions: true, start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '' })
   const selectedType = allowanceTypes.find(t => t.id === form.allowance_type_id)
   useEffect(() => { if (selectedType) setForm(prev => ({ ...prev, custom_name: selectedType.name, calculation_type: selectedType.calculation_type || 'fixed', is_taxable: selectedType.is_taxable, is_subject_to_contributions: selectedType.is_subject_to_contributions })) }, [form.allowance_type_id])
@@ -2145,173 +2233,38 @@ function AllowanceModal({ allowance, employeeId, employees, allowanceTypes, curr
 }
 
 function DeductionModal({ deduction, employeeId, employees, deductionTypes, currency, onSave, onClose, saving }) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
+  const P = palettePaie(darkMode)
   const [form, setForm] = useState(deduction || { employee_id: employeeId || '', deduction_type_id: '', code: '', name: '', calculation_type: 'fixed', monthly_amount: '', max_percentage_of_net: '', start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '', status: 'active' })
-  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>{deduction ? 'Modifier la retenue' : 'Nouvelle retenue récurrente'}</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '65vh', overflowY: 'auto' }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Type</label><select value={form.deduction_type_id} onChange={e => { const type = deductionTypes.find(t => t.id === e.target.value); setForm(p => ({ ...p, deduction_type_id: e.target.value, name: type?.name || p.name, code: type?.code || p.code })) }} style={S.select}><option value="">Personnalisée</option>{deductionTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Nom *</label><input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Montant mensuel ({currency}) *</label><input type="number" value={form.monthly_amount} onChange={e => setForm(p => ({ ...p, monthly_amount: e.target.value }))} style={S.input} /></div><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}><div style={S.formGroup}><label style={S.labelSmall}>Date début *</label><input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Date fin</label><input type="date" value={form.end_date} onChange={e => setForm(p => ({ ...p, end_date: e.target.value }))} style={S.input} /></div></div></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave({ ...form, code: form.code || `deduction_${Date.now()}` })} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.name}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Enregistrer</span></button></div></div></div>)
+  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>{deduction ? 'Modifier la retenue' : 'Nouvelle retenue récurrente'}</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '65vh', overflowY: 'auto' }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Type</label><select value={form.deduction_type_id} onChange={e => { const type = deductionTypes.find(t => t.id === e.target.value); setForm(p => ({ ...p, deduction_type_id: e.target.value, name: type?.name || p.name, code: type?.code || p.code })) }} style={S.select}><option value="">Personnalisée</option>{deductionTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Nom *</label><input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Montant mensuel ({currency}) *</label><input type="number" value={form.monthly_amount} onChange={e => setForm(p => ({ ...p, monthly_amount: e.target.value }))} style={S.input} /></div><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}><div style={S.formGroup}><label style={S.labelSmall}>Date début *</label><input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Date fin</label><input type="date" value={form.end_date} onChange={e => setForm(p => ({ ...p, end_date: e.target.value }))} style={S.input} /></div></div></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave({ ...form, code: form.code || `deduction_${Date.now()}` })} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.name}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Enregistrer</span></button></div></div></div>)
 }
 
 function LoanModal({ employeeId, employees, currency, onSave, onClose, saving }) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
+  const P = palettePaie(darkMode)
   const [form, setForm] = useState({ employee_id: employeeId || '', code: `loan_${Date.now()}`, name: 'Prêt entreprise', calculation_type: 'remaining', monthly_amount: '', total_amount: '', remaining_balance: '', interest_rate: '', start_date: new Date().toISOString().split('T')[0], status: 'active', notes: '' })
   const monthsToRepay = form.monthly_amount && form.total_amount ? Math.ceil(parseFloat(form.total_amount) / parseFloat(form.monthly_amount)) : null
-  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>Nouveau prêt / Avance</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '65vh', overflowY: 'auto' }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Libellé *</label><select value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.select}><option value="Prêt entreprise">Prêt entreprise</option><option value="Avance sur salaire">Avance sur salaire</option><option value="Prêt équipement">Prêt équipement</option></select></div><div style={S.formGroup}><label style={S.labelSmall}>Montant total ({currency}) *</label><input type="number" value={form.total_amount} onChange={e => setForm(p => ({ ...p, total_amount: e.target.value, remaining_balance: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Remboursement mensuel ({currency}) *</label><input type="number" value={form.monthly_amount} onChange={e => setForm(p => ({ ...p, monthly_amount: e.target.value }))} style={S.input} /></div>{monthsToRepay && <div style={{ padding: '12px 14px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 12 }}><p style={{ color: '#818CF8', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>Simulation</p><p style={{ color: '#888', fontSize: 12, margin: 0 }}>{monthsToRepay} mois</p></div>}<div style={S.formGroup}><label style={S.labelSmall}>Date début *</label><input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} style={S.input} /></div></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave(form)} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.total_amount || !form.monthly_amount}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Créer le prêt</span></button></div></div></div>)
+  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>Nouveau prêt / Avance</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '65vh', overflowY: 'auto' }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Libellé *</label><select value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.select}><option value="Prêt entreprise">Prêt entreprise</option><option value="Avance sur salaire">Avance sur salaire</option><option value="Prêt équipement">Prêt équipement</option></select></div><div style={S.formGroup}><label style={S.labelSmall}>Montant total ({currency}) *</label><input type="number" value={form.total_amount} onChange={e => setForm(p => ({ ...p, total_amount: e.target.value, remaining_balance: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Remboursement mensuel ({currency}) *</label><input type="number" value={form.monthly_amount} onChange={e => setForm(p => ({ ...p, monthly_amount: e.target.value }))} style={S.input} /></div>{monthsToRepay && <div style={{ padding: '12px 14px', background: P.indigo1, border: `1px solid ${P.indigo4}`, borderRadius: 12 }}><p style={{ color: P.indigoClair, fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>Simulation</p><p style={{ color: P.texteDoux2, fontSize: 12, margin: 0 }}>{monthsToRepay} mois</p></div>}<div style={S.formGroup}><label style={S.labelSmall}>Date début *</label><input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} style={S.input} /></div></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave(form)} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.total_amount || !form.monthly_amount}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Créer le prêt</span></button></div></div></div>)
 }
 
 function BonusModal({ employees, allowanceTypes, defaultEmployeeId, currency, onSave, onClose, saving }) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
+  const P = palettePaie(darkMode)
   const [form, setForm] = useState({ employee_id: defaultEmployeeId || '', allowance_type_id: '', code: `bonus_${Date.now()}`, name: '', amount: '', is_taxable: true, is_subject_to_contributions: true, reason: '' })
-  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>Nouvelle prime ponctuelle</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Type</label><select value={form.allowance_type_id} onChange={e => { const type = allowanceTypes.find(t => t.id === e.target.value); setForm(p => ({ ...p, allowance_type_id: e.target.value, name: type?.name || p.name, code: type?.code || `bonus_${Date.now()}`, is_taxable: type?.is_taxable ?? p.is_taxable })) }} style={S.select}><option value="">Personnalisée</option>{allowanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Libellé *</label><input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Montant ({currency}) *</label><input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Motif</label><input value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} style={S.input} /></div><label style={S.toggleItem}><input type="checkbox" checked={form.is_taxable} onChange={e => setForm(p => ({ ...p, is_taxable: e.target.checked }))} style={S.checkbox} /><div><span style={S.toggleLabel}>Imposable</span></div></label></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave(form)} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.name || !form.amount}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Ajouter</span></button></div></div></div>)
+  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>Nouvelle prime ponctuelle</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Type</label><select value={form.allowance_type_id} onChange={e => { const type = allowanceTypes.find(t => t.id === e.target.value); setForm(p => ({ ...p, allowance_type_id: e.target.value, name: type?.name || p.name, code: type?.code || `bonus_${Date.now()}`, is_taxable: type?.is_taxable ?? p.is_taxable })) }} style={S.select}><option value="">Personnalisée</option>{allowanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Libellé *</label><input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Montant ({currency}) *</label><input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Motif</label><input value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} style={S.input} /></div><label style={S.toggleItem}><input type="checkbox" checked={form.is_taxable} onChange={e => setForm(p => ({ ...p, is_taxable: e.target.checked }))} style={S.checkbox} /><div><span style={S.toggleLabel}>Imposable</span></div></label></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave(form)} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.name || !form.amount}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Ajouter</span></button></div></div></div>)
 }
 
 function PeriodDeductionModal({ employees, deductionTypes, defaultEmployeeId, currency, onSave, onClose, saving }) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
+  const P = palettePaie(darkMode)
   const [form, setForm] = useState({ employee_id: defaultEmployeeId || '', deduction_type_id: '', code: `ded_${Date.now()}`, name: '', amount: '', reason: '' })
-  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>Nouvelle retenue ponctuelle</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Type</label><select value={form.deduction_type_id} onChange={e => { const type = deductionTypes.find(t => t.id === e.target.value); setForm(p => ({ ...p, deduction_type_id: e.target.value, name: type?.name || p.name, code: type?.code || `ded_${Date.now()}` })) }} style={S.select}><option value="">Personnalisée</option>{deductionTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Libellé *</label><input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Montant ({currency}) *</label><input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Motif</label><input value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} style={S.input} /></div></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave(form)} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.name || !form.amount}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Ajouter</span></button></div></div></div>)
+  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>Nouvelle retenue ponctuelle</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Type</label><select value={form.deduction_type_id} onChange={e => { const type = deductionTypes.find(t => t.id === e.target.value); setForm(p => ({ ...p, deduction_type_id: e.target.value, name: type?.name || p.name, code: type?.code || `ded_${Date.now()}` })) }} style={S.select}><option value="">Personnalisée</option>{deductionTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Libellé *</label><input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Montant ({currency}) *</label><input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Motif</label><input value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} style={S.input} /></div></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave(form)} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.name || !form.amount}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Ajouter</span></button></div></div></div>)
 }
 
 // ═══════════════════════════════════════════════════════════
 // STYLES COMPLETS
 // ═══════════════════════════════════════════════════════════
-
-const S = {
-  container: { maxWidth: 1200, margin: '0 auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px', minHeight: '100vh' },
-  loadingWrap: { minHeight: '100vh', background: '#0A0A0F', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
-  headerRight: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
-  backBtn: { width: 40, height: 40, borderRadius: 10, border: '1px solid rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.1)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
-  logoBox: { width: 42, height: 42, borderRadius: 12, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  title: { color: '#FFF', fontSize: '20px', fontWeight: 800, margin: 0, letterSpacing: '2px' },
-  subtitle: { color: '#888', fontSize: '12px', margin: '4px 0 0 0' },
-  otBadge: { display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.18)', borderRadius: 20 },
-  historyBtn: { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(99,102,241,0.25)', background: 'rgba(99,102,241,0.1)', color: '#818CF8', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 },
-  guideBar: { display: 'flex', gap: 12, padding: '16px 18px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 16 },
-  guideTitle: { color: '#F59E0B', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' },
-  guideText: { color: '#AAA', fontSize: 12, margin: 0, lineHeight: 1.6 },
-  preCheckBar: { padding: '14px 16px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 16, display: 'flex', flexDirection: 'column', gap: 10 },
-  preCheckSection: { display: 'flex', flexDirection: 'column', gap: 4 },
-  preCheckItem: { paddingLeft: 20 },
-  periodBar: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, background: 'rgba(20,20,35,0.75)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 16, padding: 16 },
-  periodGroup: { display: 'flex', flexDirection: 'column', gap: 6 },
-  periodInfo: { display: 'flex', alignItems: 'center', gap: 6, padding: '12px 0' },
-  tabs: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  tabBtn: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(20,20,35,0.75)', color: '#888', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', fontSize: 13 },
-  tabBtnActive: { background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', color: '#F59E0B' },
-  tabBadge: { background: 'rgba(245,158,11,0.2)', color: '#F59E0B', borderRadius: 999, padding: '2px 8px', fontSize: 11, fontWeight: 700 },
-  grid2: { display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 16 },
-  formGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 },
-  card: { background: 'rgba(20,20,35,0.75)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 18, padding: 18 },
-  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' },
-  cardHeaderLeft: { display: 'flex', alignItems: 'center', gap: 10 },
-  cardIcon: { width: 34, height: 34, borderRadius: 10, background: 'rgba(245,158,11,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { color: '#FFF', fontSize: 16, fontWeight: 700, margin: 0 },
-  cardSub: { color: '#777', fontSize: 12, margin: '3px 0 0 0' },
-  formGroup: { display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 },
-  labelSmall: { color: '#AAA', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 2 },
-  input: { width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#FFF', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', fontSize: 14 },
-  select: { width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#FFF', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', fontSize: 14 },
-  textarea: { width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#FFF', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', fontSize: 14 },
-  toggleSection: { marginBottom: 20 },
-  toggleSectionTitle: { color: '#DDD', fontSize: 13, fontWeight: 700, margin: '0 0 8px 0' },
-  toggleGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 },
-  toggleItem: { display: 'flex', alignItems: 'flex-start', gap: 10, color: '#DDD', fontSize: 13, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' },
-  checkbox: { marginTop: 2, flexShrink: 0, accentColor: '#F59E0B' },
-  toggleLabel: { display: 'block', fontWeight: 600, fontSize: 13, color: '#DDD' },
-  toggleDesc: { display: 'block', fontSize: 11, color: '#777', marginTop: 2, lineHeight: 1.4 },
-  otInfoBox: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.15)', borderRadius: 14, marginBottom: 16 },
-  otEditBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.2)', color: '#F97316', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, flexShrink: 0 },
-  actionsRow: { display: 'flex', gap: 10, marginTop: 8 },
-  primaryBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#000', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 },
-  addBtn: { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(16,185,129,0.25)', background: 'rgba(16,185,129,0.12)', color: '#10B981', fontWeight: 700, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' },
-  addBtnSmall: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontWeight: 700, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
-  copyBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 10, border: '1px solid rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.08)', color: '#F59E0B', fontWeight: 700, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' },
-  iconBtn: { width: 30, height: 30, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 },
-  exportBtn: { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(16,185,129,0.25)', background: 'rgba(16,185,129,0.1)', color: '#10B981', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 },
-  sendAllBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 20px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #10B981, #059669)', color: '#FFF', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 },
-  downloadBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 12px', borderRadius: 10, border: '1px solid rgba(99,102,241,0.22)', background: 'rgba(99,102,241,0.12)', color: '#818CF8', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' },
-  sendBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 12px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.22)', background: 'rgba(16,185,129,0.12)', color: '#10B981', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' },
-  deleteSentBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 12px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.22)', background: 'rgba(239,68,68,0.12)', color: '#EF4444', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' },
-  modeBtn: { flex: 1, padding: '10px 8px', borderRadius: 12, cursor: 'pointer', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', textAlign: 'center' },
-  modeBtnActive: { border: '2px solid #F59E0B', background: 'rgba(245,158,11,0.1)' },
-  searchWrap: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, marginBottom: 4 },
-  searchInput: { flex: 1, background: 'transparent !important', border: 'none', color: '#FFF', outline: 'none', fontFamily: 'inherit', fontSize: 13, padding: '0 !important' },
-  searchClear: { width: 20, height: 20, borderRadius: 4, background: 'rgba(255,255,255,0.08)', border: 'none', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, flexShrink: 0 },
-  signatureBlock: { marginTop: 16, padding: '18px', borderRadius: 16, background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.12)' },
-  signaturePreview: { padding: 16, borderRadius: 14, background: '#FFF', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 },
-  signaturePreviewBlock: { marginTop: 12, padding: '12px 16px', borderRadius: 12, background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.1)' },
-  signatureInfo: { marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' },
-  sigActionBtn: { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.1)', color: '#F59E0B', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 },
-  sigClearBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#AAA', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 },
-  sigCancelBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#DDD', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 },
-  sigSaveBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#000', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 },
-  summaryList: { display: 'flex', flexDirection: 'column', gap: 8 },
-  summaryItem: { display: 'flex', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' },
-  summaryLabel: { color: '#888', fontSize: 12 },
-  summaryValue: { color: '#FFF', fontSize: 13, fontWeight: 700 },
-  warningNote: { marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, color: '#EF4444', fontSize: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 12, padding: '12px 14px' },
-  successNote: { marginTop: 16, display: 'flex', alignItems: 'center', gap: 8, color: '#10B981', fontSize: 12, background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 12, padding: '12px 14px' },
-  profileProgress: { marginBottom: 16 },
-  profileProgressTrack: { width: '100%', height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: 6 },
-  profileProgressFill: { height: '100%', borderRadius: 999, background: 'linear-gradient(90deg, #F59E0B, #10B981)' },
-  profileProgressText: { color: '#888', fontSize: 11, fontWeight: 600 },
-  listWrap: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 520, overflowY: 'auto' },
-  listItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' },
-  listTitle: { color: '#FFF', fontSize: 13, fontWeight: 700 },
-  listSub: { color: '#777', fontSize: 11, marginTop: 3 },
-  typeBadge: { fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 999 },
-  statusBadge: { fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 999 },
-  allowanceItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.1)' },
-  bonusItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' },
-  totalRow: { display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 4 },
-  importZone: { display: 'flex', flexDirection: 'column', gap: 12, padding: 18, borderRadius: 16, border: '1px dashed rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.02)' },
-  fileInput: { display: 'none' },
-  fileInputLabel: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.2)', color: '#F59E0B', fontWeight: 700, cursor: 'pointer', width: 'fit-content' },
-  importFileInfo: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' },
-  clearBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 10px', borderRadius: 10, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' },
-  importPreviewItem: { padding: 14, borderRadius: 14, border: '1px solid rgba(255,255,255,0.06)' },
-  importPreviewHeader: { display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 10, flexWrap: 'wrap' },
-  importPreviewTitle: { color: '#FFF', fontSize: 13, fontWeight: 700 },
-  importPreviewSub: { color: '#888', fontSize: 11, marginTop: 3 },
-  importStatusBadge: { padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700 },
-  importDataGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 },
-  importDataItem: { padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 4 },
-  importDataKey: { color: '#777', fontSize: 11, textTransform: 'capitalize', letterSpacing: 0.4 },
-  importDataValue: { fontSize: 13, fontWeight: 700 },
-  summaryTopGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 },
-  summaryTopCard: { display: 'flex', alignItems: 'center', gap: 12, padding: 16, borderRadius: 16, background: 'rgba(20,20,35,0.75)', border: '1px solid rgba(255,255,255,0.06)' },
-  summaryTopValue: { color: '#FFF', fontSize: 18, fontWeight: 800 },
-  summaryTopLabel: { color: '#777', fontSize: 12, marginTop: 3 },
-  sendAllBar: { display: 'flex', alignItems: 'center', gap: 16, padding: '18px 20px', borderRadius: 16, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', flexWrap: 'wrap' },
-  previewCard: { padding: 16, borderRadius: 14, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' },
-  previewHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12, flexWrap: 'wrap' },
-  previewName: { color: '#FFF', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  previewSub: { color: '#777', fontSize: 12, marginTop: 4 },
-  previewActions: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  previewNet: { color: '#10B981', fontSize: 16, fontWeight: 800 },
-  previewGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 12 },
-  previewMini: { background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 },
-  previewMiniLabel: { color: '#777', fontSize: 11 },
-  previewMiniValue: { color: '#FFF', fontSize: 13, fontWeight: 700 },
-  sentBadge: { display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)', color: '#10B981', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999 },
-  earningsDetail: { marginTop: 10, padding: 12, borderRadius: 12, background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.08)' },
-  detailTitle: { color: '#10B981', fontSize: 12, fontWeight: 700, margin: '0 0 8px 0' },
-  detailGrid: { display: 'flex', flexDirection: 'column', gap: 4 },
-  detailLine: { display: 'flex', justifyContent: 'space-between', gap: 8, padding: '4px 0' },
-  taxBlock: { marginTop: 12, padding: 14, borderRadius: 14, background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.12)' },
-  taxGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 },
-  taxMini: { padding: '10px 12px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 4 },
-  taxMiniLabel: { color: '#777', fontSize: 11 },
-  taxMiniValue: { color: '#FFF', fontSize: 13, fontWeight: 700 },
-  fiscalLinkBox: { marginTop: 20, padding: '16px 18px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: 16, display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' },
-  fiscalLinkIcon: { width: 44, height: 44, borderRadius: 12, background: 'rgba(139,92,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  fiscalLinkTitle: { color: '#A78BFA', fontSize: 14, fontWeight: 700, margin: '0 0 3px 0' },
-  fiscalLinkText: { color: '#888', fontSize: 12, margin: 0 },
-  emptyMini: { minHeight: 80, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#777', fontSize: 13, background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 14, marginTop: 8 },
-  tooltip: { position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 8, background: '#1E1E2E', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '12px 14px', minWidth: 240, maxWidth: 320, zIndex: 999, boxShadow: '0 12px 40px rgba(0,0,0,0.5)' },
-  tooltipExample: { background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)', borderRadius: 8, padding: '8px 10px', marginTop: 6 },
-  tooltipArrow: { position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: 12, height: 12, background: '#1E1E2E', borderRight: '1px solid rgba(245,158,11,0.2)', borderBottom: '1px solid rgba(245,158,11,0.2)' },
-  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
-  modalContent: { width: '100%', maxWidth: 520, background: '#141423', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 22, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.5)', maxHeight: '90vh', overflowY: 'auto' },
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '20px 20px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' },
-  modalTitle: { color: '#FFF', fontSize: 16, fontWeight: 700, margin: 0 },
-  modalSub: { color: '#888', fontSize: 12, margin: '4px 0 0 0' },
-  modalCloseBtn: { width: 34, height: 34, borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#999', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 },
-  modalCancelBtn: { padding: '11px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#DDD', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' },
-  modalDeleteBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 16px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #EF4444, #DC2626)', color: '#FFF', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' },
-}

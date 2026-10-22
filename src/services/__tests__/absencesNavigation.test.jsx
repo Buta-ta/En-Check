@@ -27,10 +27,15 @@ const rendre = (page) => renderToStaticMarkup(
 it('1. six raccourcis, dont ceux demandés : Pointages, Planning, Absences, Fiches de paie', () => {
   const html = rendre('/absences')
   expect(html).toContain('data-testid="raccourcis-pages"')
-  for (const page of ['/pointages', '/planning', '/absences', '/fiches-paie', '/employes', '/rapports']) {
+  for (const page of ['/pointages', '/planning', '/absences', '/employes', '/rapports']) {
     expect(html).toContain(`data-page="${page}"`)
     expect(html).toContain(`href="${page}"`)
   }
+  // les fiches de paie vivent désormais dans la coque : le raccourci
+  // ouvre directement le bon onglet
+  expect(html).toContain('data-page="/paie?onglet=fiches"')
+  expect(html).toContain('href="/paie?onglet=fiches"')
+  expect(html).not.toContain('href="/fiches-paie"')
 })
 
 it('2. la page affichée est marquée, les autres restent des liens', () => {

@@ -257,10 +257,9 @@ export default function DashboardExperience({
       label: 'Gestion RH',
       items: [
         { label: 'Heures supplémentaires', icon: Timer, path: '/heures-supplementaires', show: isSuperAdmin || moduleHeuresSup, tabKey: 'HEURES_SUP' },
-        { label: 'Fiches de paie', icon: Wallet, path: '/fiches-paie', show: isSuperAdmin || moduleFichesPaie, tabKey: 'FICHES_PAIE' },
         { label: 'Rémunérations', icon: Wallet, path: '/remunerations', show: isSuperAdmin || moduleRemunerations },
         { label: 'Coût salarial', icon: TrendingUp, path: '/cout-salarial', show: isSuperAdmin || moduleCoutSalarial },
-        { label: 'Paie & fiscalité', icon: Shield, path: '/paie', show: isSuperAdmin || moduleConfigFiscale },
+        { label: 'Paie & fiscalité', icon: Shield, path: '/paie', show: isSuperAdmin || moduleFichesPaie || moduleConfigFiscale },
       ],
     },
     {
@@ -371,7 +370,7 @@ export default function DashboardExperience({
     { id: 'lateness', label: 'Voir les retards', description: 'Arrivées à vérifier', icon: Timer, path: '/retards', category: 'Retards', show: isSuperAdmin || moduleRetards },
     { id: 'breaks', label: 'Gérer les pauses', description: 'Suivre les pauses en cours', icon: Coffee, path: '/pauses', category: 'Présence', show: true },
     { id: 'overtime', label: 'Heures supplémentaires', description: 'Consulter les heures déclarées', icon: Timer, path: '/heures-supplementaires', category: 'Paie', show: isSuperAdmin || moduleHeuresSup },
-    { id: 'payslips', label: 'Ouvrir les fiches de paie', description: 'Accéder aux bulletins', icon: Wallet, path: '/fiches-paie', category: 'Paie', show: isSuperAdmin || moduleFichesPaie },
+    { id: 'payslips', label: 'Ouvrir les fiches de paie', description: 'Accéder aux bulletins', icon: Wallet, path: '/paie?onglet=fiches', category: 'Paie', show: isSuperAdmin || moduleFichesPaie || moduleConfigFiscale },
     { id: 'remuneration', label: 'Gérer les rémunérations', description: 'Consulter les rémunérations', icon: Wallet, path: '/remunerations', category: 'Paie', show: isSuperAdmin || moduleRemunerations },
     { id: 'salary-cost', label: 'Voir le coût salarial', description: 'Accéder aux indicateurs de coût', icon: TrendingUp, path: '/cout-salarial', category: 'Paie', show: isSuperAdmin || moduleCoutSalarial },
     { id: 'teams', label: 'Gérer les équipes', description: 'Consulter les équipes et tâches', icon: Users, path: '/equipes', category: 'Outils', show: isSuperAdmin || moduleTaches },

@@ -372,7 +372,7 @@ export default function AssistantDock() {
   function go(path) { close(); navigate(path) }
   function select(result) {
     if (result.type === 'action' && result.action === 'openScanner') { setScanning(true); return }
-    const paths = { employee: '/employes', attendance: '/pointages', retard: '/retards', task: '/taches', payslip: '/fiches-paie', absence: '/absences', leave_request: '/absences', team: '/equipes', geofence: '/geofencing', schedule_request: '/planning', face_enrollment: '/enrollements-faciaux' }
+    const paths = { employee: '/employes', attendance: '/pointages', retard: '/retards', task: '/taches', payslip: '/paie?onglet=fiches', absence: '/absences', leave_request: '/absences', team: '/equipes', geofence: '/geofencing', schedule_request: '/planning', face_enrollment: '/enrollements-faciaux' }
     const actions = { goDashboard: '/dashboard', goReports: '/rapports', goMap: '/carte-temps-reel', goPredictions: '/predictions' }
     if (result.type === 'download_app' || result.type === 'hours_detail') return
     if (result.type === 'employee') return go(`/employes?id=${encodeURIComponent(result.id)}`)

@@ -45,10 +45,11 @@ const ADRESSES = {
   '/retards': 'module_retards',
   '/heures-supplementaires': 'module_heures_supplementaires',
   '/absences': 'module_conges',
-  '/fiches-paie': 'module_fiches_paie',
+  // La coque paie abrite deux modules vendus séparément : elle ne se
+  // verrouille que si les deux sont éteints.
+  '/paie': ['module_fiches_paie', 'module_config_fiscale'],
   '/remunerations': 'module_remunerations',
   '/cout-salarial': 'module_cout_salarial',
-  '/configuration-fiscale': 'module_config_fiscale',
   '/geofencing': 'module_geolocalisation',
   '/carte-temps-reel': 'module_carte_temps_reel',
   '/enrollements-faciaux': 'module_reconnaissance_faciale',
@@ -61,6 +62,11 @@ const ADRESSES = {
 }
 
 // ─── Ce qu'on appelle chaque option, pour pouvoir en parler ─────────────────
+// Une adresse peut ne porter le nom d'aucun module
+const LIBELLES_ADRESSE = {
+  '/paie': 'Paie et fiscalité',
+}
+
 const LIBELLES = {
   module_planning: 'Planning',
   module_retards: 'Retards',
@@ -169,7 +175,8 @@ export default function VerrouOptions({ children }) {
   const [resultat, setResultat] = useState({ adresse: null, bloque: null })
 
   const adresse = (location.pathname || '').replace(/\/+$/, '') || '/'
-  const code = Object.prototype.hasOwnProperty.call(ADRESSES, adresse) ? ADRESSES[adresse] : null
+  const brut = Object.prototype.hasOwnProperty.call(ADRESSES, adresse) ? ADRESSES[adresse] : null
+  const code = brut ? [].concat(brut) : null
 
   //  ① le super administrateur passe partout : c'est lui qui vend les options.
   const admin = lire('admin')
@@ -186,11 +193,13 @@ export default function VerrouOptions({ children }) {
       }
 
       const entreprise = entrepriseCourante(adresse)
-      const allume = await interrupteurAllume(entreprise, code)
+      //  Plusieurs modules pour une même adresse : un seul suffit pour entrer.
+      const etats = await Promise.all(code.map((c) => interrupteurAllume(entreprise, c)))
+      const tousEteints = etats.length > 0 && etats.every((e) => e === false)
 
       if (annule) return
       //  ② on ne bloque que ce qu'on a réellement lu éteint.
-      setResultat({ adresse, bloque: allume === false ? code : null })
+      setResultat({ adresse, bloque: tousEteints ? code[0] : null })
     }
 
     verifier()
@@ -198,7 +207,7 @@ export default function VerrouOptions({ children }) {
     return () => {
       annule = true
     }
-  }, [adresse, code, besoin])
+  }, [adresse, besoin, code && code.join('|')])
 
   //  Calculé pendant l'affichage, pas après : l'écran ne s'ouvre jamais une
   //  demi-seconde avant de se refermer.
@@ -228,7 +237,7 @@ export default function VerrouOptions({ children }) {
           <Lock size={26} color="#F59E0B" />
         </div>
 
-        <h1 style={styles.titre}>{LIBELLES[bloque] || 'Cette option'}</h1>
+        <h1 style={styles.titre}>{LIBELLES_ADRESSE[adresse] || LIBELLES[bloque] || 'Cette option'}</h1>
 
         <p style={styles.texte}>
           Cette option n'est pas activée sur votre entreprise. Elle fait partie des modules

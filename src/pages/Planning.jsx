@@ -72,7 +72,7 @@ const PLANNING_SHORTCUTS = [
   { id: "pointages", label: "Pointages", path: "/pointages", icon: Clock, hint: "Entrées et sorties du jour, écarts et régularisations" },
   { id: "employes", label: "Employés", path: "/employes", icon: Users, hint: "Fiches collaborateurs, affectations et horaires" },
   { id: "pauses", label: "Pauses", path: "/pauses", icon: Coffee, hint: "Pauses pointées, chronomètre en direct et pauses présumées" },
-  { id: "fiches-paie", label: "Fiches de paie", path: "/fiches-paie", icon: FileText, hint: "Bulletins et récapitulatifs de paie" },
+  { id: "fiches-paie", label: "Fiches de paie", path: "/paie?onglet=fiches", icon: FileText, hint: "Bulletins et récapitulatifs de paie" },
 ];
 
 // Palette de couleurs personnalisables En-Check (modèles & cases)
