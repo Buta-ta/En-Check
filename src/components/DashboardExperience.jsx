@@ -260,7 +260,7 @@ export default function DashboardExperience({
         { label: 'Fiches de paie', icon: Wallet, path: '/fiches-paie', show: isSuperAdmin || moduleFichesPaie, tabKey: 'FICHES_PAIE' },
         { label: 'Rémunérations', icon: Wallet, path: '/remunerations', show: isSuperAdmin || moduleRemunerations },
         { label: 'Coût salarial', icon: TrendingUp, path: '/cout-salarial', show: isSuperAdmin || moduleCoutSalarial },
-        { label: 'Configuration fiscale', icon: Shield, path: '/configuration-fiscale', show: isSuperAdmin || moduleConfigFiscale },
+        { label: 'Paie & fiscalité', icon: Shield, path: '/paie', show: isSuperAdmin || moduleConfigFiscale },
       ],
     },
     {

@@ -73,7 +73,7 @@ export default function PaieFiscalite() {
       if (superAdmin) {
         const { data } = await supabase
           .from('enterprises')
-          .select('id, name, code, country_code, currency, fiscal_country_label')
+          .select('id, name, code, country_code, currency, fiscal_country_label, module_config_fiscale')
           .eq('is_active', true)
           .order('name')
         const liste = data || []
@@ -132,7 +132,7 @@ export default function PaieFiscalite() {
       const [ent, equipe, config] = await Promise.all([
         supabase
           .from('enterprises')
-          .select('id, name, currency, country_code, fiscal_country_label')
+          .select('id, name, currency, country_code, fiscal_country_label, module_config_fiscale')
           .eq('id', entrepriseId)
           .single()
           .catch(() => ({ data: null })),
@@ -195,6 +195,13 @@ export default function PaieFiscalite() {
       })
       .catch(() => toast.error('Configuration rechargée partiellement'))
   }
+
+  // Le module « configuration fiscale » reste vendu et verrouillable à
+  // part : la page fusionne, pas l'offre commerciale. On ne verrouille
+  // que si l'entreprise l'a explicitement désactivé — une colonne jamais
+  // renseignée ne doit pas fermer une page qui marchait hier.
+  const moduleFiscalVerrouille =
+    admin?.role !== 'super_admin' && entreprise?.module_config_fiscale === false
 
   const devise = CurrencyService.resolveCurrency({
     enterprise: entreprise,
@@ -306,6 +313,31 @@ export default function PaieFiscalite() {
       </div>
 
       {/* ═══ ONGLETS ═══ */}
+      {moduleFiscalVerrouille ? (
+        <section
+          className="paie-groupes"
+          style={{ marginLeft: 14, marginRight: 14, textAlign: 'center', padding: '26px 18px' }}
+          data-testid="paie-module-verrouille"
+        >
+          <span style={{ color: 'var(--paie-amber)' }}><Shield size={26} /></span>
+          <h2 style={{ margin: '10px 0 6px', fontSize: 15, fontWeight: 800 }}>
+            Module «&nbsp;Configuration fiscale&nbsp;» non activé
+          </h2>
+          <p style={{ margin: '0 auto', maxWidth: 520, fontSize: 12.5, color: 'var(--paie-text-soft)' }}>
+            Cette entreprise n’a pas souscrit au module de fiscalité. Les cotisations, le barème et
+            les règles de calcul restent gérés ailleurs ; les fiches de paie, elles, demeurent
+            accessibles.
+          </p>
+          <button
+            type="button"
+            className="paie-btn paie-btn-principal"
+            style={{ marginTop: 14 }}
+            onClick={() => navigate('/fiches-paie')}
+          >
+            Aller aux fiches de paie
+          </button>
+        </section>
+      ) : (
       <nav className="paie-groupes" style={{ marginLeft: 14, marginRight: 14 }} aria-label="Sections de la paie">
         <p className="paie-groupe-titre">Fiscalité — module «&nbsp;Configuration fiscale&nbsp;»</p>
         <div className="paie-onglets" data-testid="paie-onglets">
@@ -338,6 +370,7 @@ export default function PaieFiscalite() {
           <BogolanFriseSvg hauteur={8} couleur={darkMode ? '#C25E28' : '#B86B35'} />
         </div>
       </nav>
+      )}
 
       {/* ═══ CONTENU ═══ */}
       <main className="paie-contenu" style={{ paddingLeft: 14, paddingRight: 14 }}>
@@ -427,11 +460,13 @@ export default function PaieFiscalite() {
         )}
 
         {/* Le volet fiscal, rendu sans son propre bandeau ni ses onglets */}
-        <ConfigurationFiscale
-          integre
-          ongletExterne={ONGLETS.find((o) => o.cle === onglet)?.volet || 'pays'}
-          entrepriseIdForce={entrepriseId}
-        />
+        {!moduleFiscalVerrouille && (
+          <ConfigurationFiscale
+            integre
+            ongletExterne={ONGLETS.find((o) => o.cle === onglet)?.volet || 'pays'}
+            entrepriseIdForce={entrepriseId}
+          />
+        )}
       </main>
 
       <div className="paie-fond-motif" aria-hidden="true" data-testid="paie-motif-fond">

@@ -249,8 +249,8 @@ it('13. charger un pays montre le récapitulatif AVANT de confirmer', () => {
   expect(fiscale).toContain('await TaxationService.getCountryConfig(pendingCountryCode)')
   expect(fiscale).toContain('details: <RecapChargement')
   expect(fiscale).toContain('details={confirmModal.details}')
-  // et la modale sait afficher ce détail
-  expect(fiscale).toContain('{details && <div style={{ width:')
+  // …et la modale sait afficher ce détail
+  expect(lire('src/components/PaieFiscalModales.jsx')).toContain('{details &&')
 })
 
 it('14. la vue d’ensemble des entreprises est réservée au super-admin', () => {
@@ -278,5 +278,45 @@ it('16. les deux gammes existent et diffèrent', async () => {
   // chaque jeton est défini dans les deux gammes
   Object.keys(sombre).forEach((cle) => {
     expect(clair[cle], `jeton ${cle} manquant en clair`).toBeDefined()
+  })
+})
+
+// ── 5. L'étape 2 : les blocs fiscaux ont leur propre fichier ─────────
+
+it('17. les blocs fiscaux ne sont plus empilés dans la page', () => {
+  const page = lire('src/pages/ConfigurationFiscale.jsx')
+  const champs = lire('src/components/PaieFiscalChamps.jsx')
+  const cartes = lire('src/components/PaieFiscalCartes.jsx')
+  const modales = lire('src/components/PaieFiscalModales.jsx')
+
+  // la page ne les définit plus, elle les importe
+  expect(page).not.toContain('function ConfirmModal(')
+  expect(page).not.toContain('function ContributionCard(')
+  expect(page).toContain("from '../components/PaieFiscalModales'")
+  expect(page).toContain("from '../components/PaieFiscalCartes'")
+  expect(page).toContain("from '../components/PaieFiscalChamps'")
+
+  // et ils sont bien exportés là où ils habitent
+  expect(champs).toContain('export function FieldHelp(')
+  expect(champs).toContain('export function FormLabel(')
+  expect(cartes).toContain('export function ContributionCard(')
+  expect(cartes).toContain('export function BracketCard(')
+  expect(modales).toContain('export function ConfirmModal(')
+  expect(modales).toContain('export function RulesModal(')
+})
+
+it('18. chaque bloc extrait reste branché sur le thème', () => {
+  ;['src/components/PaieFiscalChamps.jsx', 'src/components/PaieFiscalCartes.jsx', 'src/components/PaieFiscalModales.jsx'].forEach((f) => {
+    const source = lire(f)
+    expect(source, f).toContain("from '../styles/paieTheme'")
+    expect(source, f).toContain("from '../contexts/ThemeContext'")
+  })
+})
+
+it('19. aucune couleur en dur n’est revenue dans les blocs extraits', () => {
+  ;['src/components/PaieFiscalChamps.jsx', 'src/components/PaieFiscalCartes.jsx', 'src/components/PaieFiscalModales.jsx'].forEach((f) => {
+    const source = lire(f)
+    const litteraux = source.match(/#[0-9A-Fa-f]{6}\b|rgba\([^)]*\)/g) || []
+    expect(litteraux, `${f} → ${litteraux.join(', ')}`).toEqual([])
   })
 })
