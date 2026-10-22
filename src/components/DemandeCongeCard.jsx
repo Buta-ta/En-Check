@@ -34,9 +34,10 @@ export function DemandeCongeCard({
   cleJour,
 }) {
   const [survole, setSurvole] = useState(false)
-  const { motifs } = useMotifsAbsence()
+  const { motifPour } = useMotifsAbsence()
 
-  const motif = motifs.find((m) => m.id === d.reason)
+  // le motif de l'entreprise de la demande, pas celui de la liste affichée
+  const motif = motifPour(d)
   const couleur = motif?.color || '#94A3B8'
   const emoji = motif?.emoji || '📋'
   const titreMotif = motif?.label || d.reason

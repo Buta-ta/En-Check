@@ -25,6 +25,11 @@ export function useMotifsAbsence() {
     modifier: async () => {},
     supprimer: async () => {},
     usages: async () => 0,
+    // sans fournisseur : les 7 motifs d'origine, résolus par code
+    motifPour: (absence) => {
+      const code = typeof absence === 'string' ? absence : absence?.reason
+      return MOTIFS_PAR_DEFAUT.find((m) => (m.code || m.id) === code) || null
+    },
   }
 }
 

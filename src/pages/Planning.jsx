@@ -53,7 +53,7 @@ import {
   FileText,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import MotifsAbsenceService from "../services/motifsAbsenceService";
+import MotifsAbsenceService, { resoudreMotif } from "../services/motifsAbsenceService";
 import { MOTIFS_PAR_DEFAUT, getMotifConfig } from "../constants/motifsAbsence";
 import "./PlanningAfroTech.css";
 
@@ -573,12 +573,10 @@ export default function Planning() {
       const { data: absData } = await absQuery;
       setAbsences(absData || []);
 
-      // Les motifs personnalisés de l'entreprise (une absence s'affiche avec SON emoji)
-      const idMotifs = isSuperAdmin
-        ? (selectedEntreprise === "all" ? null : selectedEntreprise)
-        : enterpriseId;
+      // Les motifs de CHAQUE entreprise visible : en vue « Toutes entreprises »
+      // une absence doit garder l'emoji choisi par sa propre maison
       try {
-        const motifsMaison = await MotifsAbsenceService.lister(idMotifs);
+        const motifsMaison = await MotifsAbsenceService.listerTout();
         if (motifsMaison && motifsMaison.length > 0) setMotifs(motifsMaison);
       } catch (err) {
         // La base ne répond pas : on garde les 7 motifs d'origine
@@ -1213,8 +1211,15 @@ export default function Planning() {
     [filteredEmployees]
   );
 
-  // Un code d'absence (« conge ») devient le motif de l'entreprise : emoji + libellé
-  const motifDe = (code) => motifs.find((m) => m.id === code) || getMotifConfig(code);
+  /**
+   * Un code d'absence (« conge ») devient le motif de l'ENTREPRISE de
+   * l'absence : on prend sa copie personnalisée, sinon le motif d'origine.
+   * Sans ça, la vue « Toutes entreprises » affichait les emojis d'origine
+   * et les réglages du client semblaient sans effet au planning.
+   */
+  const motifDe = (absence) =>
+    resoudreMotif(motifs, absence) ||
+    getMotifConfig(typeof absence === "string" ? absence : absence?.reason);
 
   // ═══ RÉSOLUTION DU SHIFT D'UN EMPLOYÉ SUR UN JOUR DONNÉ ═══
   const resolveCellShift = (emp, dayItem) => {
@@ -1273,7 +1278,7 @@ export default function Planning() {
         a.end_date >= dateStr
     );
     if (empAbs) {
-      const motifAbs = motifDe(empAbs.reason);
+      const motifAbs = motifDe(empAbs);
       return {
         // La ligne forte de la case : l'emoji du motif, comme dans le calendrier des absences
         name: `${motifAbs.emoji} ${motifAbs.label}`,
@@ -3401,7 +3406,10 @@ export default function Planning() {
                                                 </div>
 
                                                 {/* Nom du modèle déposé / appliqué */}
-                                                <div className="sk-shift-name">
+                                                <div
+                                                  className="sk-shift-name"
+                                                  title={shift.label || shift.name || shift.end_time || ""}
+                                                >
                                                   {shift.name ||
                                                     (shift.isHoliday
                                                       ? "Jour férié"

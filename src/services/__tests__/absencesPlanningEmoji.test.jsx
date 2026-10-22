@@ -20,13 +20,15 @@ it('1. la case d’absence du planning affiche l’emoji du motif, pas le code b
   // le code brut (« conge ») n'est plus recopié tel quel dans la case
   expect(planningSrc).not.toContain('label: empAbs.reason')
   expect(planningSrc).toContain('name: `${motifAbs.emoji} ${motifAbs.label}`')
-  expect(planningSrc).toContain('const motifDe = (code)')
+  expect(planningSrc).toContain('const motifDe = (absence)')
 })
 
 it('2. le planning lit les motifs de l’entreprise, avec repli sur les 7 d’origine', () => {
-  expect(planningSrc).toContain('MotifsAbsenceService.lister(')
+  expect(planningSrc).toContain('MotifsAbsenceService.listerTout(')
   expect(planningSrc).toContain('MOTIFS_PAR_DEFAUT')
-  expect(planningSrc).toContain('getMotifConfig(code)')
+  expect(planningSrc).toContain('getMotifConfig(')
+  // et la résolution se fait par entreprise, pas sur le code seul
+  expect(planningSrc).toContain('resoudreMotif(motifs, absence)')
 })
 
 it('3. les deux écrans s’appuient sur les mêmes motifs, servis par le même fournisseur', () => {

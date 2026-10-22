@@ -71,7 +71,13 @@ export default function AbsencesCalendrier({
   onDeclarer,
   onDeposerMotif,
 }) {
-  const { motifs } = useMotifsAbsence()
+  const { motifs, motifPour } = useMotifsAbsence()
+  // Chaque barre prend le motif de SON absence : en vue « toutes entreprises »
+  // deux sociétés peuvent avoir personnalisé le même code différemment
+  const listePour = (a) => {
+    const m = motifPour(a)
+    return m ? [m] : motifs
+  }
   // Filtre en creux : rien de masqué par défaut, un motif créé ensuite est visible aussitôt
   const [motifsMasques, setMotifsMasques] = useState(() => new Set())
   const [masquerSansAbsence, setMasquerSansAbsence] = useState(false)
@@ -492,7 +498,7 @@ export default function AbsencesCalendrier({
 
                   {/* Barres d'absence */}
                   {ligne.segments.map((seg) => {
-                    const st = styleBarreAbsence(seg.absence, motifs)
+                    const st = styleBarreAbsence(seg.absence, listePour(seg.absence))
                     const a = seg.absence
                     const titreBarre = [
                       st.motif.label,
@@ -621,7 +627,7 @@ export default function AbsencesCalendrier({
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1 }}>
                   {liste.map((a) => {
-                    const st = styleBarreAbsence(a, motifs)
+                    const st = styleBarreAbsence(a, listePour(a))
                     return (
                       <button
                         key={a.id}
