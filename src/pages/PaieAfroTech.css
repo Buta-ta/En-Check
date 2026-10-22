@@ -1,0 +1,350 @@
+/* ═══════════════════════════════════════════════════════════
+   🎨 CHARTE EN-CHECK — PAGE PAIE & FISCALITÉ
+
+   Les mêmes repères que les pages Absences, Planning et
+   Pointages (ivoire, espresso, cuivre, ambre) pour que la
+   navigation ne change pas de décor. La signature visuelle,
+   elle, est propre à cette page : le bogolan malien, et non
+   le kente ou l'adinkra des autres écrans.
+   ═══════════════════════════════════════════════════════════ */
+
+.paie-page {
+  /* Fonds */
+  --paie-bg: #FAF6F0;
+  --paie-bg-elevated: #FFFFFF;
+  --paie-bg-panel: #FFFFFF;
+  --paie-bg-soft: #F4EDE2;
+
+  /* Textes */
+  --paie-text: #231911;
+  --paie-text-soft: #4E3D2E;
+  --paie-text-faint: #7D6A58;
+
+  /* Accents */
+  --paie-copper: #B86B35;
+  --paie-amber: #9C5321;
+  --paie-emerald: #26734D;
+  --paie-coral: #C23B2B;
+  --paie-violet: #6D28D9;
+
+  /* Lignes */
+  --paie-border: rgba(93, 66, 39, 0.18);
+  --paie-border-strong: rgba(156, 83, 33, 0.45);
+
+  --paie-radius: 14px;
+  --paie-shadow: 0 14px 36px rgba(93, 66, 39, 0.14);
+
+  min-height: 100vh;
+  background: var(--paie-bg);
+  color: var(--paie-text);
+}
+
+.paie-page[data-theme='dark'] {
+  --paie-bg: #15110E;
+  --paie-bg-elevated: #1D1713;
+  --paie-bg-panel: #241C15;
+  --paie-bg-soft: rgba(255, 255, 255, 0.03);
+  --paie-text: #F5F2EB;
+  --paie-text-soft: rgba(245, 242, 235, 0.62);
+  --paie-text-faint: rgba(245, 242, 235, 0.40);
+  --paie-copper: #C25E28;
+  --paie-amber: #F59E0B;
+  --paie-emerald: #10B981;
+  --paie-coral: #EF4444;
+  --paie-violet: #A78BFA;
+  --paie-border: rgba(245, 158, 11, 0.16);
+  --paie-border-strong: rgba(245, 158, 11, 0.34);
+  --paie-shadow: 0 18px 46px rgba(0, 0, 0, 0.42);
+}
+
+/* ═══ BARRE SUPÉRIEURE — flottante, arrondie, collante ═══ */
+.paie-topbar {
+  position: sticky;
+  top: 8px;
+  z-index: 60;
+  margin: 8px 14px 0;
+  border-radius: 18px;
+  background: var(--paie-bg-elevated);
+  border: 1px solid var(--paie-border);
+  box-shadow: var(--paie-shadow);
+  backdrop-filter: blur(14px);
+  padding: 12px 18px;
+}
+
+.paie-topbar-inner {
+  max-width: 1560px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.paie-gauche,
+.paie-droite {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.paie-retour {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  border: 1px solid var(--paie-border);
+  background: var(--paie-bg-soft);
+  color: var(--paie-amber);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.paie-retour:hover {
+  border-color: var(--paie-border-strong);
+  transform: translateX(-2px);
+}
+
+.paie-marque {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.paie-marque-titre {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--paie-text);
+}
+
+.paie-marque-sous {
+  font-size: 11px;
+  color: var(--paie-text-faint);
+  letter-spacing: 0.04em;
+}
+
+.paie-select {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 11px;
+  border: 1px solid var(--paie-border);
+  background: var(--paie-bg-soft);
+  color: var(--paie-text);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.paie-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 11px;
+  border: 1px solid var(--paie-border);
+  background: var(--paie-bg-soft);
+  color: var(--paie-text);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.paie-btn:hover {
+  border-color: var(--paie-border-strong);
+  color: var(--paie-amber);
+}
+
+.paie-btn-principal {
+  background: linear-gradient(135deg, var(--paie-copper), #8C3418);
+  border: none;
+  color: #FFF5E6;
+}
+
+.paie-btn-principal:hover {
+  filter: brightness(1.07);
+  color: #FFF5E6;
+}
+
+.paie-theme-btn {
+  width: 38px;
+  min-height: 38px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--paie-amber);
+}
+
+/* ═══ ONGLETS ═══ */
+.paie-groupes {
+  max-width: 1560px;
+  margin: 14px auto 0;
+  padding: 12px 16px;
+  background: var(--paie-bg-elevated);
+  border: 1px solid var(--paie-border);
+  border-radius: var(--paie-radius);
+  box-shadow: var(--paie-shadow);
+}
+
+.paie-groupe-titre {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paie-text-faint);
+  margin: 0 0 8px;
+}
+
+.paie-groupe-titre + .paie-onglets {
+  margin-bottom: 14px;
+}
+
+.paie-onglets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.paie-onglet {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid var(--paie-border);
+  background: transparent;
+  color: var(--paie-text);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 740;
+  transition: background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+
+.paie-onglet:hover {
+  border-color: var(--paie-border-strong);
+}
+
+.paie-onglet:focus-visible {
+  outline: 2px solid var(--paie-amber);
+  outline-offset: 2px;
+}
+
+.paie-onglet[data-actif='oui'] {
+  color: #1C130C;
+  background: linear-gradient(135deg, #F0A86E, #D9884A);
+  border-color: transparent;
+}
+
+.paie-pastille {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  background: var(--paie-bg-soft);
+  color: var(--paie-text-faint);
+}
+
+.paie-onglet[data-actif='oui'] .paie-pastille {
+  background: rgba(28, 19, 12, 0.18);
+  color: #1C130C;
+}
+
+.paie-contenu {
+  max-width: 1560px;
+  margin: 14px auto 0;
+  padding: 0 0 32px;
+  display: grid;
+  gap: 14px;
+}
+
+.paie-tableau {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+/* ═══ BANDEAU DE RACCourcis (partagé avec la page Absences) ═══ */
+/* Les règles sont redonnées ici pour que cette page ne dépende pas de la
+   feuille de style d'une autre page. */
+.paie-page .abs-raccourcis {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--paie-border);
+  border-radius: 999px;
+  background: var(--paie-bg-soft);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.paie-page .abs-raccourcis::-webkit-scrollbar {
+  display: none;
+}
+
+.paie-page .abs-raccourci {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--paie-text-soft);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 740;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.paie-page .abs-raccourci:hover {
+  color: var(--paie-text);
+}
+
+.paie-page .abs-raccourci:focus-visible {
+  outline: 2px solid var(--paie-amber);
+  outline-offset: 2px;
+}
+
+.paie-page .abs-raccourci[data-actif='oui'],
+.paie-page .abs-raccourci[data-actif='oui']:hover {
+  color: #1C130C;
+  background: linear-gradient(135deg, #F0A86E, #D9884A);
+  cursor: default;
+}
+
+/* ═══ AVATARS ═══ */
+.paie-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #FFF7ED;
+  background: linear-gradient(135deg, #9E552E, #5C3018);
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .paie-topbar {
+    padding: 10px 12px;
+  }
+
+  .paie-gauche,
+  .paie-droite {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

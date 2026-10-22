@@ -53,6 +53,7 @@ import ConfigRecoFaciale from './pages/ConfigRecoFaciale'
 import FichesPaie from './pages/FichesPaie'
 import EmployeeFichesPaie from './pages/employee/EmployeeFichesPaie'
 import ConfigurationFiscale from './pages/ConfigurationFiscale'
+import PaieFiscalite from './pages/PaieFiscalite'
 import ConnectionLogs from './pages/ConnectionLogs'
 import ConnectionsMap from './pages/ConnectionsMap'
 import Teams from './pages/Teams'
@@ -332,11 +333,14 @@ function App() {
               <FichesPaie />
             </AdminRoute>
           } />
-          <Route path="/configuration-fiscale" element={
+          {/* La paie et la fiscalité ne font plus qu'une page.
+              L'ancienne route reste vivante pour les liens déjà partagés. */}
+          <Route path="/paie" element={
             <AdminRoute>
-              <ConfigurationFiscale />
+              <PaieFiscalite />
             </AdminRoute>
           } />
+          <Route path="/configuration-fiscale" element={<Navigate to="/paie" replace />} />
           <Route path="/geofencing" element={
             <AdminRoute>
               <ConfigGeofencing />

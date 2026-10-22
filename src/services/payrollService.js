@@ -141,7 +141,14 @@ class PayrollService {
         company_social_label: settings.company_social_label || '',
         hide_social_label: settings.hide_social_label ?? false,
 
-        custom_tax_rules: settings.custom_tax_rules || {},
+        // ⚠️ PAS de `custom_tax_rules` ici — volontairement.
+        //   Cette colonne appartient au module fiscalité : la page « Règles
+        //   fiscales » la réécrit EN ENTIER depuis son propre état. La
+        //   recopier depuis `settings` reviendrait à écraser les règles d'un
+        //   pays chargées dans un autre onglet avec un état lu avant — les
+        //   4 entreprises de production ont toutes des règles non vides,
+        //   l'écrasement est donc une perte de données réelle.
+        //   → un seul rédacteur : PayrollService.saveCustomTaxRules()
         updated_at: new Date().toISOString(),
       }
 
@@ -165,6 +172,53 @@ class PayrollService {
     }
   }
 
+
+  /**
+   * Le SEUL chemin d'écriture de `payroll_settings.custom_tax_rules`.
+   *
+   * Avant, trois endroits écrivaient cette colonne : cette page-ci (57
+   * colonnes d'un coup, depuis un état parfois périmé), la page
+   * Configuration fiscale (3 colonnes) et TaxationService. Trois
+   * rédacteurs sur la même colonne, c'est une perte de données qui
+   * attend son tour. Il n'en reste qu'un, et il n'écrit que sa colonne.
+   */
+  static async saveCustomTaxRules(enterpriseId, rules) {
+    if (!enterpriseId) return false
+    try {
+      const { data: existing } = await db()
+        .from('payroll_settings')
+        .select('id')
+        .eq('enterprise_id', enterpriseId)
+        .single()
+
+      const payload = {
+        custom_tax_rules: rules || {},
+        updated_at: new Date().toISOString(),
+      }
+
+      if (existing) {
+        const { error } = await db()
+          .from('payroll_settings')
+          .update(payload)
+          .eq('enterprise_id', enterpriseId)
+        if (error) throw error
+      } else {
+        const { error } = await db()
+          .from('payroll_settings')
+          .insert({
+            enterprise_id: enterpriseId,
+            ...payload,
+            created_at: new Date().toISOString(),
+          })
+        if (error) throw error
+      }
+
+      return true
+    } catch (err) {
+      console.error('Erreur sauvegarde règles fiscales:', err)
+      return false
+    }
+  }
 
   static getSocialLabel(settings) {
   if (settings?.hide_social_label) return ''
