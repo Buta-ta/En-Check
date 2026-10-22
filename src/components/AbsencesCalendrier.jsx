@@ -68,6 +68,7 @@ export default function AbsencesCalendrier({
   onModifier,
   onChangerStatut,
   onVoirDocument,
+  onSupprimer,
   onDeclarer,
   onDeposerMotif,
 }) {
