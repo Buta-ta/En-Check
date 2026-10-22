@@ -18,6 +18,7 @@ import { AbsencesSelectMotifs, AbsencesLegendeMotifs, AbsencesStatsMotifs } from
 import { DemandeCongeCard } from '../components/DemandeCongeCard'
 import { supprimerDemandeEtSesAbsences } from '../services/lienDemandeAbsence'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
+import RaccourcisPages from '../components/RaccourcisPages'
 import { MotifsAbsenceProvider } from '../contexts/MotifsAbsenceContext'
 import './AbsencesAfroTech.css'
 import HolidayService from '../services/holidayService'
@@ -1813,6 +1814,11 @@ export default function Absences() {
                 <Plus size={16} /> <span>Déclarer</span>
               </button>
             </div>
+          </div>
+
+          {/* Bandeau de raccourcis : Pointages · Planning · Fiches de paie… */}
+          <div className="abs-topbar-nav">
+            <RaccourcisPages />
           </div>
         </div>
 
