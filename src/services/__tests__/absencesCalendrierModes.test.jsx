@@ -188,6 +188,25 @@ const grilleMois = rendre('mois')
 const grilleSemaine = rendre('semaine')
 const grilleJour = rendre('jour')
 
+it('11 bis. sans réglage, le calendrier s’ouvre sur la SEMAINE', () => {
+  const parDefaut = renderToStaticMarkup(
+    <AbsencesCalendrier
+      absences={absences}
+      employes={employes}
+      annee={2026}
+      mois={9}
+      jourInitial="2026-10-21"
+      darkMode
+    />
+  )
+  expect(parDefaut).toContain('data-mode="semaine"')
+  expect((parDefaut.match(/data-jour="/g) || [])).toHaveLength(7)
+  // un seul bouton est actif, et c'est celui de la semaine
+  expect((parDefaut.match(/aria-pressed="true"/g) || [])).toHaveLength(1)
+  const i = parDefaut.indexOf('abs-cal-mode-semaine')
+  expect(parDefaut.slice(Math.max(0, i - 260), i)).toContain('aria-pressed="true"')
+})
+
 it('12. le sélecteur jour · semaine · mois est toujours là', () => {
   for (const grille of [grilleMois, grilleSemaine, grilleJour]) {
     expect(grille).toContain('data-testid="abs-cal-modes"')

@@ -18,13 +18,12 @@ export function useMotifsAbsence() {
   if (ctx) return ctx
   return {
     motifs: MOTIFS_PAR_DEFAUT,
-    corbeille: [],
     chargement: false,
+    toutesEntreprises: false,
     recharger: async () => {},
     creer: async () => {},
     modifier: async () => {},
-    archiver: async () => {},
-    restaurer: async () => {},
+    supprimer: async () => {},
     usages: async () => 0,
   }
 }

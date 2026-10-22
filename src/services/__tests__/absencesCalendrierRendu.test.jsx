@@ -38,6 +38,7 @@ const grille = renderToStaticMarkup(
     employes={employes}
     annee={2025}
     mois={3}
+    mode="mois"
     darkMode
     joursPrisParEmploye={{ e1: 4 }}
     plafondConges={30}

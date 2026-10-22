@@ -8,12 +8,15 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { KenteAmberWeaveSvg } from '../components/AfroCulturalSvg'
 import AbsencesCalendrier from '../components/AbsencesCalendrier'
-import { MOTIFS, STATUTS_ABSENCE, getMotifConfig } from '../constants/motifsAbsence'
+import { STATUTS_ABSENCE, getMotifConfig } from '../constants/motifsAbsence'
 import { compterJoursOuvres } from '../services/absencesCalendrier'
 import AbsencesDock from '../components/AbsencesDock'
 import AbsencesMotifsManager from '../components/AbsencesMotifsManager'
 import AbsencesKpiCards from '../components/AbsencesKpiCards'
 import AbsenceFormulaire from '../components/AbsenceFormulaire'
+import { AbsencesSelectMotifs, AbsencesLegendeMotifs, AbsencesStatsMotifs } from '../components/AbsencesFiltres'
+import { DemandeCongeCard } from '../components/DemandeCongeCard'
+import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import { MotifsAbsenceProvider } from '../contexts/MotifsAbsenceContext'
 import './AbsencesAfroTech.css'
 import HolidayService from '../services/holidayService'
@@ -383,6 +386,8 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
 // ═══════════════════════════════════════════════════════════
 // COMPOSANT PRINCIPAL
 // ═══════════════════════════════════════════════════════════
+const SOLDE_GRILLE = 'minmax(180px, 2fr) repeat(4, minmax(80px, 1fr))'
+
 export default function Absences() {
   const [admin, setAdmin] = useState(null)
   const [accessChecked, setAccessChecked] = useState(false)
@@ -645,7 +650,8 @@ export default function Absences() {
 
       const year = new Date().getFullYear()
       const balances = await LeaveBalanceService.getEnterpriseBalances(targetId, year)
-      setLeaveBalancesPreview(balances || [])
+      // les employés désactivés restent invisibles partout ailleurs, donc ici aussi
+      setLeaveBalancesPreview((balances || []).filter((b) => b.employees?.is_active !== false))
     } catch (err) {
       console.error('Erreur chargement aperçu soldes congés:', err)
       toast.error('Erreur lors du chargement des soldes de congés')
@@ -983,6 +989,21 @@ export default function Absences() {
     return result
   }, [absences, searchQuery, filterMotif, filterStatus, filterTemporal, filterPeriod, filterConflict, customDateFrom, customDateTo, sortBy, conflicts, getHolidaySet])
 
+  const anneeSoldes = new Date().getFullYear()
+
+  /** « 2026-10-22 » — sert à repérer les demandes qui commencent aujourd'hui */
+  const cleJourLocal = (d) => {
+    const dt = d instanceof Date ? d : new Date(typeof d === 'string' && d.length <= 10 ? `${d}T12:00:00Z` : d)
+    return dt.toISOString().slice(0, 10)
+  }
+  const formaterDateCourte = (d) => new Date(`${String(d).slice(0, 10)}T12:00:00Z`)
+    .toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+  /** Au clic sur une carte : décider si c'est en attente, voir la pièce jointe sinon */
+  const ouvrirDemande = (d) => {
+    if (d.status === 'en_attente') openReviewModal(d, 'approuve')
+    else if (d.document_url) handleViewRequestDocument(d)
+  }
+
   const filteredRequests = useMemo(() => {
     if (requestFilter === 'all') return leaveRequests
     return leaveRequests.filter(r => r.status === requestFilter)
@@ -1295,7 +1316,6 @@ export default function Absences() {
     if (!showEmployeeHistory) return { absences: [], stats: {}, totalJours: 0 }
     const empAbs = absences.filter(a => a.employee_id === showEmployeeHistory.id).sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
     const statsByReason = {}
-    MOTIFS.forEach(m => { statsByReason[m.id] = 0 })
     empAbs.forEach(a => {
       const jours = a.count_holidays_as_leave
         ? countCalendarDays(a.start_date, a.end_date)
@@ -1785,8 +1805,11 @@ export default function Absences() {
                 <ArrowLeft size={18} />
               </button>
               <div className="abs-brand">
-                <span className="abs-brand-title">En-Check · ABSENCES &amp; CONGÉS</span>
-                <span className="abs-brand-sub">Congés, maladies, formations et justificatifs</span>
+                <span className="abs-brand-mark" aria-hidden="true"><EnCheckBrandMark size={34} /></span>
+                <span className="abs-brand-texte">
+                  <span className="abs-brand-title">En-Check · ABSENCES &amp; CONGÉS</span>
+                  <span className="abs-brand-sub">Congés, maladies, formations et justificatifs</span>
+                </span>
               </div>
             </div>
             <div className="abs-topbar-right">
@@ -1887,10 +1910,7 @@ export default function Absences() {
                 <div className="filters-panel" style={S.filtersPanel}>
                   <div style={S.filterItem}>
                     <label style={S.filterLabel}>Motif</label>
-                    <select value={filterMotif} onChange={e => setFilterMotif(e.target.value)} style={S.filterSelectSmall}>
-                      <option value="all">Tous</option>
-                      {MOTIFS.map(m => <option key={m.id} value={m.id}>{m.emoji} {m.label}</option>)}
-                    </select>
+                    <AbsencesSelectMotifs value={filterMotif} onChange={setFilterMotif} style={S.filterSelectSmall} />
                   </div>
                   <div style={S.filterItem}>
                     <label style={S.filterLabel}>Statut</label>
@@ -2137,20 +2157,15 @@ export default function Absences() {
                   )}
 
                   <div style={S.calLegend}>
-                    {MOTIFS.map(m => (
-                      <div key={m.id} style={S.calLegendItem}>
-                        <div style={{ ...S.calLegendDot, background: m.color }} />
-                        <span style={S.calLegendLabel}>{m.label}</span>
-                      </div>
-                    ))}
-                    <div style={S.calLegendItem}>
-                      <div style={{ ...S.calLegendDot, background: '#F97316' }} />
-                      <span style={S.calLegendLabel}>Conflit RH</span>
-                    </div>
-                    <div style={S.calLegendItem}>
-                      <span style={{ fontSize: 12 }}>🎌</span>
-                      <span style={S.calLegendLabel}>Jour férié</span>
-                    </div>
+                    <AbsencesLegendeMotifs
+                      styleItem={S.calLegendItem}
+                      styleDot={S.calLegendDot}
+                      styleLabel={S.calLegendLabel}
+                      extra={[
+                        { id: 'conflit', couleur: '#F97316', texte: 'Conflit RH' },
+                        { id: 'ferie', texte: 'Jour férié', emoji: '🎌' },
+                      ]}
+                    />
                   </div>
                 </div>
               )}
@@ -2173,28 +2188,38 @@ export default function Absences() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} data-testid="abs-demandes-filtres">
                 {[
-                  { key: 'all', label: 'Toutes' },
-                  { key: 'en_attente', label: '⏳ En attente' },
-                  { key: 'approuve', label: '✅ Approuvées' },
-                  { key: 'refuse', label: '❌ Refusées' },
+                  { key: 'all', label: '📨 Toutes', couleur: '#F59E0B' },
+                  { key: 'en_attente', label: '⏳ En attente', couleur: '#F59E0B' },
+                  { key: 'approuve', label: '✅ Approuvées', couleur: '#10B981' },
+                  { key: 'refuse', label: '❌ Refusées', couleur: '#EF4444' },
                 ].map(f => {
                   const count = f.key === 'all' ? leaveRequests.length : leaveRequests.filter(r => r.status === f.key).length
+                  const actif = requestFilter === f.key
                   return (
-                    <button key={f.key} onClick={() => setRequestFilter(f.key)} style={{
-                      display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px',
-                      background: requestFilter === f.key ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${requestFilter === f.key ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.06)'}`,
-                      borderRadius: 10, color: requestFilter === f.key ? '#F59E0B' : 'rgba(245,242,235,0.55)',
-                      fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease',
-                    }}>
-                      {f.label}
-                      {count > 0 && (
-                        <span style={{ padding: '1px 7px', borderRadius: 8, fontSize: 11, fontWeight: 700, background: requestFilter === f.key ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)', color: requestFilter === f.key ? '#F59E0B' : '#666' }}>
-                          {count}
-                        </span>
-                      )}
+                    <button
+                      key={f.key}
+                      data-testid={`abs-demande-filtre-${f.key}`}
+                      onClick={() => setRequestFilter(f.key)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px',
+                        background: actif ? `${f.couleur}1F` : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${actif ? `${f.couleur}66` : 'rgba(255,255,255,0.07)'}`,
+                        borderRadius: 999, color: actif ? f.couleur : 'rgba(245,242,235,0.6)',
+                        fontSize: 13, fontWeight: actif ? 600 : 500, cursor: 'pointer', fontFamily: 'inherit',
+                        boxShadow: actif ? `0 0 0 3px ${f.couleur}14` : 'none',
+                        transition: 'all .18s ease',
+                      }}
+                    >
+                      <span>{f.label}</span>
+                      <span style={{
+                        padding: '1px 7px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+                        background: actif ? `${f.couleur}2E` : 'rgba(255,255,255,0.06)',
+                        color: actif ? f.couleur : 'rgba(245,242,235,0.45)',
+                      }}>
+                        {count}
+                      </span>
                     </button>
                   )
                 })}
@@ -2214,153 +2239,20 @@ export default function Absences() {
                   </p>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {filteredRequests.map((request, index) => {
-                    const leaveType = LEAVE_TYPES[request.leave_type] || LEAVE_TYPES.autre
-                    const isPending = request.status === 'en_attente'
-                    const hSet = getHolidaySet(request.enterprise_id)
-                    const ouvrés = HolidayService.countWorkingDays(request.start_date, request.end_date, hSet, true)
-                    const calendaire = countCalendarDays(request.start_date, request.end_date)
-                    const feriesCount = [...hSet].filter(d => d >= request.start_date && d <= request.end_date).length
-                    const statusCfg = {
-                      en_attente: { label: 'En attente', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
-                      approuve: { label: 'Approuvée', color: '#10B981', bg: 'rgba(16,185,129,0.12)' },
-                      refuse: { label: 'Refusée', color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
-                    }
-                    const sc = statusCfg[request.status] || statusCfg.en_attente
-                    const hasDocument = !!request.document_url
-                    const docType = hasDocument ? getFileType(request.document_url) : null
-
-                    return (
-                      <div key={request.id} className="req-card" style={{ background: 'rgba(29,23,19,0.85)', border: `1px solid rgba(255,255,255,0.06)`, borderLeft: `4px solid ${sc.color}`, borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', gap: 14, animation: `slideUp 0.3s ease ${index * 0.04}s forwards`, opacity: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-                            <div style={{ width: 46, height: 46, borderRadius: 12, background: 'rgba(245,158,11,0.1)', border: '2px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-                              {request.employees?.photo_url
-                                ? <img src={request.employees.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                : <span style={{ color: '#F59E0B', fontWeight: 700, fontSize: 14 }}>{request.employees?.first_name?.[0]}{request.employees?.last_name?.[0]}</span>
-                              }
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <p style={{ color: '#FFF', fontSize: 15, fontWeight: 600, margin: '0 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {request.employees?.first_name} {request.employees?.last_name}
-                              </p>
-                              <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 12, margin: 0 }}>
-                                {request.employees?.matricule}
-                                {request.employees?.position && ` · ${request.employees.position}`}
-                              </p>
-                              {admin?.role === 'super_admin' && request.enterprises?.name && (
-                                <p style={{ color: '#F59E0B', fontSize: 11, margin: '2px 0 0 0' }}>🏢 {request.enterprises.name}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            {hasDocument && (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'rgba(59,130,246,0.12)', color: '#3B82F6', border: '1px solid rgba(59,130,246,0.25)' }}>
-                                <Paperclip size={10} /> Justificatif
-                              </span>
-                            )}
-                            {feriesCount > 0 && (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 9px', borderRadius: 7, fontSize: 11, fontWeight: 600, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,0.25)' }}>
-                                🎌 {feriesCount} férié{feriesCount > 1 ? 's' : ''}
-                              </span>
-                            )}
-                            <span style={{ padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', background: sc.bg, color: sc.color, flexShrink: 0 }}>
-                              {sc.label}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: `${leaveType.color}15`, color: leaveType.color, border: `1px solid ${leaveType.color}30`, width: 'fit-content' }}>
-                            {leaveType.emoji} {leaveType.label}
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: 10, gap: 8 }}>
-                            <div>
-                              <span style={{ color: '#666', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>DU</span>
-                              <span style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>
-                                {new Date(request.start_date + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
-                              </span>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, padding: '6px 14px' }}>
-                              <span style={{ color: '#F59E0B', fontSize: 18, fontWeight: 800, lineHeight: 1 }}>{ouvrés}</span>
-                              <span style={{ color: '#F59E0B', fontSize: 9, opacity: 0.8 }}>jour{ouvrés > 1 ? 's' : ''} ouvrés</span>
-                              <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 9, marginTop: 2 }}>({calendaire} cal.)</span>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                              <span style={{ color: '#666', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>AU</span>
-                              <span style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>
-                                {new Date(request.end_date + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {request.reason && (
-                          <div style={{ display: 'flex', gap: 8, padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, borderLeft: '2px solid rgba(245,158,11,0.3)' }}>
-                            <MessageSquare size={13} color="#888" style={{ flexShrink: 0, marginTop: 1 }} />
-                            <span style={{ color: '#AAA', fontSize: 12, lineHeight: '1.5', fontStyle: 'italic' }}>{request.reason}</span>
-                          </div>
-                        )}
-
-                        {hasDocument && (
-                          <button
-                            className="doc-view-btn"
-                            onClick={() => handleViewRequestDocument(request)}
-                            style={{
-                              display: 'flex', alignItems: 'center', gap: 8,
-                              padding: '10px 14px',
-                              background: 'rgba(59,130,246,0.08)',
-                              border: '1px solid rgba(59,130,246,0.2)',
-                              borderRadius: 10, color: '#3B82F6',
-                              fontSize: 13, fontWeight: 500,
-                              cursor: 'pointer', fontFamily: 'inherit',
-                              transition: 'all 0.2s ease',
-                              width: '100%', textAlign: 'left',
-                            }}
-                          >
-                            {docType === 'image' ? <FileImage size={15} /> : <File size={15} />}
-                            <span>Voir le justificatif</span>
-                            <Eye size={14} style={{ marginLeft: 'auto' }} />
-                          </button>
-                        )}
-
-                        {request.review_comment && !isPending && (
-                          <div style={{ padding: '10px 12px', borderRadius: 10, border: `1px solid ${sc.color}30`, background: sc.bg }}>
-                            <span style={{ color: sc.color, fontSize: 11, fontWeight: 700 }}>Réponse admin :</span>
-                            <p style={{ color: '#CCC', fontSize: 12, margin: '4px 0 0 0', lineHeight: '1.5' }}>{request.review_comment}</p>
-                          </div>
-                        )}
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.04)', flexWrap: 'wrap', gap: 10 }}>
-                          <span style={{ color: '#555', fontSize: 11 }}>
-                            Soumise le {new Date(request.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                          </span>
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            {!isPending && (
-                              <button
-                                onClick={() => confirmDeleteRequest(request)}
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' }}
-                              >
-                                <Trash2 size={13} />
-                                {request.status === 'approuve' ? 'Supprimer (+ absence)' : 'Supprimer'}
-                              </button>
-                            )}
-                            {isPending && (
-                              <>
-                                <button onClick={() => openReviewModal(request, 'refuse')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10, color: '#EF4444', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                                  <X size={14} /> Refuser
-                                </button>
-                                <button onClick={() => openReviewModal(request, 'approuve')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 10, color: '#10B981', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                                  <Check size={14} /> Approuver
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="abs-demandes-liste">
+                  {filteredRequests.map((request) => (
+                    <DemandeCongeCard
+                      key={request.id}
+                      demande={request}
+                      cleJour={cleJourLocal}
+                      fmtDate={formaterDateCourte}
+                      busy={submittingReview && selectedRequest?.id === request.id}
+                      onVoir={ouvrirDemande}
+                      onApprouver={(d) => openReviewModal(d, 'approuve')}
+                      onRefuser={(d) => openReviewModal(d, 'refuse')}
+                      onSupprimer={confirmDeleteRequest}
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -2525,11 +2417,21 @@ export default function Absences() {
                 flexDirection: 'column',
                 gap: 16,
               }}>
-                <div>
-                  <h3 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>Aperçu des soldes employés</h3>
-                  <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13, margin: '4px 0 0 0' }}>
-                    Année en cours — lecture depuis <code style={{ color: '#F59E0B' }}>employee_leave_balances</code>
-                  </p>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <div>
+                    <h3 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>Soldes de congés {anneeSoldes}</h3>
+                    <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13, margin: '4px 0 0 0' }}>
+                      Calculés à partir des absences validées de l’année — employés actifs uniquement.
+                    </p>
+                  </div>
+                  {!loadingLeaveBalancesPreview && leaveBalancesPreview.length > 0 && (
+                    <span style={{
+                      padding: '5px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+                      background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)', color: '#F59E0B',
+                    }}>
+                      {leaveBalancesPreview.length} employé{leaveBalancesPreview.length > 1 ? 's' : ''}
+                    </span>
+                  )}
                 </div>
 
                 {loadingLeaveBalancesPreview ? (
@@ -2543,53 +2445,77 @@ export default function Absences() {
                     <span>Aucun solde disponible. Lancez un recalcul.</span>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {leaveBalancesPreview.map((item, index) => (
-                      <div
-                        key={item.id || `${item.employee_id}-${index}`}
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'minmax(180px, 2fr) repeat(4, minmax(90px, 1fr))',
-                          gap: 12,
-                          alignItems: 'center',
-                          padding: '12px 14px',
-                          borderRadius: 12,
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.06)',
-                        }}
-                      >
-                        <div>
-                          <div style={{ color: '#FFF', fontSize: 13, fontWeight: 700 }}>
-                            {item.employees?.first_name} {item.employees?.last_name}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="abs-soldes-liste">
+                    <div style={{
+                      display: 'grid', gridTemplateColumns: SOLDE_GRILLE, gap: 12,
+                      padding: '0 14px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.4px',
+                      color: 'rgba(245,242,235,0.4)',
+                    }}>
+                      <span>Employé</span>
+                      <span style={{ textAlign: 'right' }}>Acquis</span>
+                      <span style={{ textAlign: 'right' }}>Pris</span>
+                      <span style={{ textAlign: 'right' }}>Attente</span>
+                      <span style={{ textAlign: 'right' }}>Solde</span>
+                    </div>
+
+                    {leaveBalancesPreview.map((item, index) => {
+                      const acquis = item.total_acquired || 0
+                      const pris = item.total_taken || 0
+                      const pct = acquis > 0 ? Math.min(100, Math.round((pris / acquis) * 100)) : 0
+                      const solde = item.balance || 0
+                      const initiales = `${item.employees?.first_name?.[0] || ''}${item.employees?.last_name?.[0] || ''}`.toUpperCase()
+                      return (
+                        <div
+                          key={item.id || `${item.employee_id}-${index}`}
+                          data-testid="abs-solde-ligne"
+                          data-employe={item.employee_id}
+                          style={{
+                            display: 'grid', gridTemplateColumns: SOLDE_GRILLE, gap: 12, alignItems: 'center',
+                            padding: '12px 14px', borderRadius: 12,
+                            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                            <span style={{
+                              width: 32, height: 32, flexShrink: 0, borderRadius: '50%',
+                              background: 'linear-gradient(135deg, rgba(245,158,11,0.85), rgba(16,185,129,0.7))',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: '#1D1713', fontSize: 12, fontWeight: 800,
+                            }}>
+                              {initiales}
+                            </span>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ color: '#FFF', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {item.employees?.first_name} {item.employees?.last_name}
+                              </div>
+                              <div style={{ color: '#777', fontSize: 11 }}>
+                                {item.employees?.matricule || '—'}
+                                {item.employees?.department ? ` • ${item.employees.department}` : ''}
+                              </div>
+                            </div>
                           </div>
-                          <div style={{ color: '#777', fontSize: 11 }}>
-                            {item.employees?.matricule || '—'} {item.employees?.department ? `• ${item.employees.department}` : ''}
+
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: '#10B981', fontSize: 13, fontWeight: 700 }}>{acquis}j</div>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: '#F59E0B', fontSize: 13, fontWeight: 700 }}>{pris}j</div>
+                            <div style={{ height: 3, marginTop: 4, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '100%', background: pct >= 100 ? '#EF4444' : '#F59E0B' }} />
+                            </div>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: '#818CF8', fontSize: 13, fontWeight: 700 }}>{item.total_pending || 0}j</div>
+                          </div>
+
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: solde < 0 ? '#EF4444' : '#FFF', fontSize: 14, fontWeight: 800 }}>{solde}j</div>
                           </div>
                         </div>
-
-                        <div>
-                          <div style={{ color: '#666', fontSize: 10, textTransform: 'uppercase' }}>Acquis</div>
-                          <div style={{ color: '#10B981', fontSize: 13, fontWeight: 700 }}>{item.total_acquired || 0}j</div>
-                        </div>
-
-                        <div>
-                          <div style={{ color: '#666', fontSize: 10, textTransform: 'uppercase' }}>Pris</div>
-                          <div style={{ color: '#F59E0B', fontSize: 13, fontWeight: 700 }}>{item.total_taken || 0}j</div>
-                        </div>
-
-                        <div>
-                          <div style={{ color: '#666', fontSize: 10, textTransform: 'uppercase' }}>Attente</div>
-                          <div style={{ color: '#818CF8', fontSize: 13, fontWeight: 700 }}>{item.total_pending || 0}j</div>
-                        </div>
-
-                        <div>
-                          <div style={{ color: '#666', fontSize: 10, textTransform: 'uppercase' }}>Solde</div>
-                          <div style={{ color: (item.balance || 0) < 0 ? '#EF4444' : '#FFF', fontSize: 14, fontWeight: 800 }}>
-                            {item.balance || 0}j
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -2750,17 +2676,7 @@ export default function Absences() {
                   <span style={S.histTotalLabel}>jours décomptés</span>
                 </div>
                 <div style={S.histBreakdown}>
-                  {MOTIFS.map(m => {
-                    const j = employeeHistory.stats[m.id] || 0
-                    if (j === 0) return null
-                    return (
-                      <div key={m.id} style={S.histMotifRow}>
-                        <span>{m.emoji}</span>
-                        <span style={{ color: '#ccc', flex: 1, fontSize: 13 }}>{m.label}</span>
-                        <span style={{ color: m.color, fontWeight: 700 }}>{j}j</span>
-                      </div>
-                    )
-                  })}
+                  <AbsencesStatsMotifs stats={employeeHistory.stats} styleRow={S.histMotifRow} />
                   {employeeHistory.totalJours === 0 && <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13, margin: 0 }}>Aucune absence</p>}
                 </div>
               </div>

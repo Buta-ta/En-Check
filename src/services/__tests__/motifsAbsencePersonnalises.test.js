@@ -76,13 +76,31 @@ describe('Motifs d’absence personnalisables', () => {
   })
 })
 
-describe('Doctrine : on archive, on n’efface jamais', () => {
-  it('6. le service ne contient aucun effacement physique', () => {
+describe('Doctrine : suppression réelle, transfert des absences', () => {
+  it('6. la suppression est bien un effacement définitif de la ligne', () => {
     expect(serviceSrc).toContain("from('absence_motifs')")
-    expect(serviceSrc).not.toMatch(/\.delete\s*\(/)
-    // archiver / restaurer passent par archive_le
-    expect(serviceSrc).toContain('archive_le: new Date().toISOString()')
-    expect(serviceSrc).toContain('archive_le: null')
+    expect(serviceSrc).toMatch(/\.delete\s*\(\s*\)\s*\n?\s*\.eq\('id', id\)/)
+    // plus aucune trace de la corbeille : on ne archive plus
+    expect(serviceSrc).not.toContain('archive_le:')
+    expect(serviceSrc).not.toContain('async archiver')
+    expect(serviceSrc).not.toContain('async restaurer')
+    // l'uuid de la ligne survit à la normalisation (sinon UPDATE/DELETE visent le code)
+    expect(serviceSrc).toContain('rowId: ligne.id')
+  })
+
+  it('6 bis. avant de supprimer, on peut transférer les absences vers un autre motif', () => {
+    expect(serviceSrc).toContain('async reassigner')
+    expect(serviceSrc).toContain("update({ reason: codeCible })")
+    expect(serviceSrc).toContain(".eq('reason', codeSource)")
+    // et on ne touche pas aux absences des autres entreprises
+    expect(serviceSrc).toContain(".eq('enterprise_id', enterpriseId)")
+  })
+
+  it('6 ter. chaque entreprise reçoit sa copie des motifs d’origine', () => {
+    expect(serviceSrc).toContain('assurerMotifsEntreprise')
+    // la copie garde le CODE (les absences restent valides) mais devient modifiable
+    expect(serviceSrc).toContain('enterprise_id: enterpriseId')
+    expect(serviceSrc).toContain('is_system: false')
   })
 
   it('7. la migration crée la table, les politiques RLS et les 7 motifs', () => {
@@ -92,18 +110,22 @@ describe('Doctrine : on archive, on n’efface jamais', () => {
     expect(migration).toContain("'conge'")
     expect(migration).toContain("'autre'")
     expect(migration).toContain('encheck_absence_motifs_usages')
-    expect(migration).toContain('archive_le')
+    // unicité du code par portée : la copie d'entreprise peut exister
+    expect(migration).toContain('absence_motifs_code_entreprise_uniq')
   })
 
-  it('8. le gestionnaire prévient avant d’archiver et garde une corbeille', () => {
-    expect(managerSrc).toContain('Archiver')
-    expect(managerSrc).toContain('Corbeille')
-    expect(managerSrc).toContain('Restaurer')
-    expect(managerSrc).toContain('restaurer(m.id)')
+  it('8. le gestionnaire annonce le nombre d’absences et propose un transfert', () => {
+    expect(managerSrc).toContain('Supprimer définitivement')
+    expect(managerSrc).toContain('abs-motifs-transfert')
+    expect(managerSrc).toContain('abs-motifs-confirmer-suppression')
     // garde-fous : dernier motif protégé + nombre d'absences annoncé
     expect(managerSrc).toContain('motifs.length <= 1')
     expect(managerSrc).toMatch(/absence\{/)
-    expect(managerSrc).not.toMatch(/\.delete\s*\(/)
+    // la suppression passe par le fournisseur, jamais par un delete direct
+    expect(managerSrc).not.toMatch(/supabase\.delete/)
+    expect(managerSrc).not.toContain('Corbeille')
+    // emoji libre : on peut coller celui de son téléphone
+    expect(managerSrc).toContain('abs-motifs-emoji-libre')
   })
 
   it('9. si la base ne répond pas, l’écran garde les motifs d’origine', () => {
@@ -156,6 +178,17 @@ describe('Rendu du gestionnaire de motifs', () => {
     expect(html).toContain('Congé payé')
     expect(html).toContain('Nouveau motif')
     expect(html).toContain('2 absences') // les usages sont comptés
-    expect(html).not.toContain('Corbeille') // rien d'archivé au départ
+    expect(html).not.toContain('Corbeille') // plus de corbeille : on supprime pour de vrai
+    expect(html).toContain('abs-motifs-supprimer')
+    expect(html).toContain('abs-motifs-modifier')
+  })
+
+  it('15. un motif utilisé ne se supprime pas sans transfert', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(MotifsManager, { absences: [{ reason: 'conge' }] })
+    )
+    // pas de dialogue ouvert au montage : la suppression se décide motif par motif
+    expect(html).not.toContain('abs-motifs-suppression')
+    expect(html).toContain('abs-motifs-manager')
   })
 })
