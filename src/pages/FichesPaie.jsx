@@ -745,6 +745,29 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   // SAUVEGARDE
   // ═══════════════════════════════════════════════════════════
 
+  // ⚠️ LA DEVISE N'A QU'UNE SEULE MAISON : L'ENTREPRISE.
+  //   Elle était écrite ici dans `payroll_settings.currency`, mais
+  //   `resolveCurrency` lit d'abord `enterprises.currency` : le réglage
+  //   saisi sur cette page était donc ignoré en silence. On l'écrit où
+  //   il est lu, et on garde la copie de `payroll_settings` alignée
+  //   (elle sert de repli si l'entreprise n'en a pas).
+  const changerDevise = async (valeur) => {
+    const devise = String(valeur || '').toUpperCase().slice(0, 3)
+    setSettings(p => ({ ...p, currency: devise }))
+    if (!enterpriseId || devise.length < 3) return
+    try {
+      const { error } = await supabase
+        .from('enterprises')
+        .update({ currency: devise })
+        .eq('id', enterpriseId)
+      if (error) throw error
+      toast.success(`Devise de l’entreprise : ${devise}`)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erreur enregistrement devise')
+    }
+  }
+
   const handleSaveSettings = async () => {
     if (!enterpriseId) return
     setSaving(true)
@@ -1335,7 +1358,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 </div>
 
                 <div className="pay-form-grid" style={S.formGrid}>
-                  <div style={S.formGroup}><FormLabel help="Devise" example="XAF, EUR" required>Devise</FormLabel><input value={settings.currency || 'XAF'} onChange={e => setSettings(p => ({ ...p, currency: e.target.value }))} style={S.input} /></div>
+                  <div style={S.formGroup}><FormLabel help="Devise de l’entreprise — elle est enregistrée sur l’entreprise, et sert à tous les bulletins" example="XAF, EUR" required>Devise</FormLabel><input value={settings.currency || ''} onChange={e => changerDevise(e.target.value)} style={S.input} placeholder="XAF, XOF, EUR" /></div>
                   <div style={S.formGroup}><FormLabel help="Fréquence de paie">Périodicité</FormLabel>
                     <select value={settings.salary_period || 'monthly'} onChange={e => setSettings(p => ({ ...p, salary_period: e.target.value }))} style={S.select}>
                       <option value="monthly">Mensuelle</option><option value="biweekly">Bimensuelle</option><option value="weekly">Hebdomadaire</option>

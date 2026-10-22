@@ -32,6 +32,7 @@ import { supabase } from '../lib/supabase'
 import TaxationService from '../services/taxationService'
 import FeatureService, { FEATURES } from '../services/featureService'
 import CurrencyService from '../services/currencyService'
+import PayrollService from '../services/payrollService'
 import toast from 'react-hot-toast'
 
 function FieldHelp({ text, example }) {
@@ -83,7 +84,12 @@ function FormLabel({ children, help, example, required }) {
   )
 }
 
-export default function ConfigurationFiscale() {
+/**
+ * `integre` : la page est rendue à l'intérieur de la coque « Paie & fiscalité »,
+ * qui fournit alors le bandeau, les KPI et la barre d'onglets. `ongletExterne`
+ * indique quel volet afficher (pays | contributions | taxes | rules | preview).
+ */
+export default function ConfigurationFiscale({ integre = false, ongletExterne = null, entrepriseIdForce = null } = {}) {
   const [admin, setAdmin] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -107,7 +113,10 @@ export default function ConfigurationFiscale() {
   const [taxBrackets, setTaxBrackets] = useState([])
   const [calculationRules, setCalculationRules] = useState({})
 
-  const [activeTab, setActiveTab] = useState('contributions')
+  const [ongletInterne, setOngletInterne] = useState('contributions')
+  // En mode intégré, c'est la coque qui tient la barre d'onglets
+  const activeTab = ongletExterne || ongletInterne
+  const setActiveTab = setOngletInterne
 
   const [editingContribution, setEditingContribution] = useState(null)
   const [editingBracket, setEditingBracket] = useState(null)
@@ -143,8 +152,27 @@ export default function ConfigurationFiscale() {
 
     const parsedAdmin = JSON.parse(adminData)
     setAdmin(parsedAdmin)
+
+    // En mode intégré, la coque a déjà choisi l'entreprise (c'est son
+    // sélecteur que voit l'utilisateur) : on la suit au lieu de décider.
+    if (entrepriseIdForce) {
+      setLoading(true)
+      Promise.resolve()
+        .then(async () => {
+          const countries = await TaxationService.getAvailableCountries()
+          setAvailableCountries(countries)
+          await loadEnterpriseData(entrepriseIdForce)
+        })
+        .catch((err) => {
+          console.error(err)
+          toast.error('Erreur chargement configuration')
+        })
+        .finally(() => setLoading(false))
+      return
+    }
+
     initPage(parsedAdmin)
-  }, [navigate])
+  }, [navigate, entrepriseIdForce])
 
   const loadEnterpriseData = async (targetEnterpriseId) => {
     const { data: enterprise } = await supabase
@@ -601,36 +629,12 @@ export default function ConfigurationFiscale() {
   }
 
   const saveCalculationRules = async (rules, showToast = true) => {
+    // Un seul rédacteur pour `payroll_settings.custom_tax_rules` : le
+    // service. Écrire la colonne depuis la page, c'est risquer d'écraser
+    // ce que « Fiches de paie » a sauvegardé une seconde plus tôt.
     try {
-      const { data: existing } = await supabase
-        .from('payroll_settings')
-        .select('id')
-        .eq('enterprise_id', enterpriseId)
-        .single()
-
-      const payload = {
-        enterprise_id: enterpriseId,
-        custom_tax_rules: rules,
-        updated_at: new Date().toISOString(),
-      }
-
-      if (existing) {
-        const { error } = await supabase
-          .from('payroll_settings')
-          .update(payload)
-          .eq('enterprise_id', enterpriseId)
-
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from('payroll_settings')
-          .insert({
-            ...payload,
-            created_at: new Date().toISOString(),
-          })
-
-        if (error) throw error
-      }
+      const ok = await PayrollService.saveCustomTaxRules(enterpriseId, rules)
+      if (!ok) throw new Error('saveCustomTaxRules a échoué')
 
       setCalculationRules(rules)
       if (showToast) toast.success('Règles de calcul enregistrées')
@@ -736,8 +740,9 @@ export default function ConfigurationFiscale() {
         ::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.3); border-radius: 4px; }
       `}</style>
 
-      <div style={{ minHeight: '100vh', background: '#0A0A0F', width: '100%' }}>
-        <div style={S.container}>
+      <div style={integre ? { width: '100%' } : { minHeight: '100vh', background: '#0A0A0F', width: '100%' }}>
+        <div style={integre ? S.conteneurIntegre : S.container}>
+          {!integre && (
           <header style={S.header}>
             <div style={S.headerLeft}>
               <button onClick={() => navigate('/dashboard')} style={S.backBtn} title="Retour au tableau de bord">
@@ -790,7 +795,9 @@ export default function ConfigurationFiscale() {
               </button>
             </div>
           </header>
+          )}
 
+          {(!integre || activeTab === 'pays') && (<>
           <div style={S.infoBar}>
             <Info size={16} color="#F59E0B" style={{ flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
@@ -936,6 +943,9 @@ export default function ConfigurationFiscale() {
             </button>
           </div>
 
+          </>)}
+
+          {!integre && (
           <div style={S.tabs}>
             {[
               { key: 'contributions', icon: Shield, label: 'Cotisations Sociales', count: contributions.length },
@@ -954,6 +964,7 @@ export default function ConfigurationFiscale() {
               </button>
             ))}
           </div>
+          )}
 
           {activeTab === 'contributions' && (
             <div style={S.card} className="fiscal-card">
@@ -2238,6 +2249,12 @@ function ConfirmModal({ title, message, confirmText, type, onCancel, onConfirm }
 }
 
 const S = {
+  conteneurIntegre: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '18px',
+  },
   container: {
     maxWidth: 1200,
     margin: '0 auto',
