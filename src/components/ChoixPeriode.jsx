@@ -136,7 +136,7 @@ export default function ChoixPeriode({
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
             background: 'rgba(245,158,11,0.12)',
             border: '1px solid rgba(245,158,11,0.35)',
-            color: '#F59E0B',
+            color: darkMode ? '#F59E0B' : '#9C5321',
           }}
         >
           <CalendarSearch size={14} /> Revenir à aujourd’hui

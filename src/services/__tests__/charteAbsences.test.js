@@ -42,9 +42,17 @@ describe('Charte En-Check de la page Absences', () => {
     expect(absencesSrc).toContain('En-Check · ABSENCES &amp; CONGÉS')
   })
 
-  it('4. une variante claire existe, même charpente', () => {
+  it('4. une variante claire existe, même charpente — et reste lisible', () => {
     expect(charteCss).toContain('.abs-page[data-theme=\'light\']')
-    expect(charteCss).toContain('--abs-bg: #FAF6EE')
+    expect(charteCss).toContain('--abs-bg: #FAF6F0') // pt-canvas
+    const clair = charteCss.slice(charteCss.indexOf(".abs-page[data-theme='light']"))
+    // les accents foncent : un ambre clair devient illisible sur ivoire (1,9:1)
+    expect(clair).toContain('--abs-amber: #9C5321') // pt-copper-strong
+    expect(clair).toContain('--abs-text: #231911') // pt-ink
+    expect(clair).toContain('--abs-text-soft: #4E3D2E') // pt-ink-soft
+    // les aplats deviennent solides : un rgba à 3 % ne se voit pas sur crème
+    expect(clair).toContain('--abs-bg-soft: #F4EDE2')
+    expect(clair).not.toMatch(/--abs-bg-soft:\s*rgba/)
   })
 })
 

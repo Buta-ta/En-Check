@@ -27,6 +27,9 @@
   --abs-amber-dark: #D97706;
   --abs-emerald: #10B981;
   --abs-coral: #EF4444;
+  --abs-orange: #F97316;
+  --abs-indigo: #818CF8;
+  --abs-violet: #A78BFA;
 
   /* Lignes */
   --abs-border: rgba(245, 158, 11, 0.16);
@@ -48,26 +51,45 @@
   color: var(--abs-text);
 }
 
-/* Variante claire — même charpente, teintes ivoire */
+/* Variante claire — les repères de la page Pointages : ivoire, espresso,
+   cuivre. Les accents sont foncés (un ambre clair devient illisible sur
+   fond crème : 1,9:1) et les remplissages deviennent solides, sinon les
+   boutons se confondent avec la page. */
 .abs-page[data-theme='light'] {
-  --abs-bg: #FAF6EE;
+  /* Fonds — pt-canvas / pt-surface / pt-surface-soft */
+  --abs-bg: #FAF6F0;
   --abs-bg-elevated: #FFFFFF;
   --abs-bg-panel: #FFFFFF;
-  --abs-bg-soft: rgba(29, 23, 19, 0.03);
-  --abs-weekend: rgba(29, 23, 19, 0.045);
-  --abs-ferie: rgba(139, 92, 246, 0.10);
-  --abs-text: #1D1713;
-  --abs-text-soft: rgba(29, 23, 19, 0.62);
-  --abs-text-faint: rgba(29, 23, 19, 0.40);
-  --abs-border: rgba(29, 23, 19, 0.12);
-  --abs-border-strong: rgba(194, 94, 40, 0.34);
-  --abs-grid: rgba(29, 23, 19, 0.06);
+  --abs-bg-soft: #F4EDE2;
+  --abs-weekend: rgba(93, 66, 39, 0.045);
+  --abs-ferie: rgba(124, 92, 252, 0.10);
 
-  --abs-fill-soft: rgba(29, 23, 19, 0.03);
-  --abs-fill: rgba(29, 23, 19, 0.05);
-  --abs-line-soft: rgba(29, 23, 19, 0.12);
-  --abs-line: rgba(29, 23, 19, 0.20);
-  --abs-shadow: 0 18px 46px rgba(29, 23, 19, 0.12);
+  /* Textes — pt-ink / pt-ink-soft / pt-muted */
+  --abs-text: #231911;
+  --abs-text-soft: #4E3D2E;
+  --abs-text-faint: #7D6A58;
+
+  /* Accents — pt-copper / pt-copper-strong / pt-good / pt-danger */
+  --abs-copper: #B86B35;
+  --abs-amber: #9C5321;
+  --abs-amber-dark: #7F4318;
+  --abs-emerald: #26734D;
+  --abs-coral: #C23B2B;
+  --abs-orange: #C2410C;
+  --abs-indigo: #4338CA;
+  --abs-violet: #6D28D9;
+
+  /* Lignes et remplissages — pt-line, et des aplats visibles */
+  --abs-border: rgba(93, 66, 39, 0.18);
+  --abs-border-strong: rgba(156, 83, 33, 0.45);
+  --abs-grid: rgba(93, 66, 39, 0.10);
+
+  --abs-fill-soft: #F4EDE2;
+  --abs-fill: #EFE6D6;
+  --abs-line-soft: rgba(93, 66, 39, 0.16);
+  --abs-line: rgba(93, 66, 39, 0.26);
+
+  --abs-shadow: 0 14px 36px rgba(93, 66, 39, 0.14);
 }
 
 /* ═══ BARRE SUPÉRIEURE ═══ */
@@ -104,12 +126,12 @@
 }
 
 .abs-back-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
   border: 1px solid var(--abs-border);
-  background: var(--abs-bg-panel);
-  color: var(--abs-text-soft);
+  background: var(--abs-bg-soft);
+  color: var(--abs-amber);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -130,7 +152,20 @@
   padding: 0 24px 12px;
 }
 
+/* Même gabarit que la barre de raccourcis de la page Pointages :
+   un contenant en pilule, des pastilles de 11 px / graisse 740, et la
+   page courante en dégradé cuivre (texte sombre, lisible dans les deux
+   thèmes). Les couleurs viennent des variables : le bandeau suit le thème. */
 .abs-raccourcis {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border: 1px solid var(--abs-border);
+  border-radius: 999px;
+  background: var(--abs-bg-soft);
+  max-width: 100%;
+  overflow-x: auto;
   scrollbar-width: none;
 }
 
@@ -139,18 +174,41 @@
 }
 
 .abs-raccourci {
-  transition: background .18s ease, border-color .18s ease, color .18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--abs-text-soft);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 740;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.abs-raccourci[data-compact="oui"] {
+  padding: 4px 9px;
 }
 
 .abs-raccourci:hover {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.32);
-  color: #F59E0B;
+  color: var(--abs-text);
 }
 
 .abs-raccourci:focus-visible {
-  outline: 2px solid #F59E0B;
+  outline: 2px solid var(--abs-amber);
   outline-offset: 2px;
+}
+
+.abs-raccourci[data-actif="oui"],
+.abs-raccourci[data-actif="oui"]:hover {
+  color: #1C130C;
+  background: linear-gradient(135deg, #F0A86E, #D9884A);
+  cursor: default;
 }
 
 .abs-brand {
@@ -180,9 +238,9 @@
 }
 
 .abs-brand-title {
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   color: var(--abs-text);
 }
 
@@ -197,13 +255,13 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 9px 15px;
+  padding: 9px 14px;
   border-radius: 11px;
   border: 1px solid var(--abs-border);
   background: transparent;
-  color: var(--abs-text-soft);
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--abs-text);
+  font-size: 12.5px;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -218,6 +276,7 @@
   background: rgba(245, 158, 11, 0.14);
   border-color: var(--abs-border-strong);
   color: var(--abs-amber);
+  font-weight: 700;
 }
 
 .abs-tab-badge {
@@ -238,14 +297,16 @@
 .abs-btn {
   display: inline-flex;
   align-items: center;
+  min-height: 40px;
   gap: 8px;
-  padding: 10px 16px;
-  border-radius: 12px;
+  padding: 0 14px;
+  border-radius: 11px;
   border: 1px solid var(--abs-border);
   background: var(--abs-bg-soft);
-  color: var(--abs-text-soft);
-  font-size: 13px;
-  font-weight: 600;
+  /* Plein contraste : en mode clair, un gris clair sur crème disparaît */
+  color: var(--abs-text);
+  font-size: 12.5px;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.18s ease;
@@ -257,8 +318,12 @@
 }
 
 .abs-theme-btn {
-  padding: 10px;
-  border-radius: 12px;
+  width: 38px;
+  min-height: 38px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--abs-amber);
 }
 
 .abs-btn-primary {
