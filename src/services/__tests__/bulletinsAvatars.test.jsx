@@ -18,7 +18,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { ThemeProvider } from '../../contexts/ThemeContext'
-import { AvatarSalarie, initialesDe } from '../../pages/FichesPaie'
+import { AvatarSalarie } from '../../components/BulletinChamps'
+import { initialesDe } from '../../utils/initiales'
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')
 const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
@@ -96,11 +97,40 @@ it('8. les quatre endroits où l’on parle d’un salarié portent son visage',
 })
 
 it('9. l’avatar suit le thème au lieu d’être peint en dur', () => {
-  const page = lire('src/pages/FichesPaie.jsx')
-  const debut = page.indexOf('export function AvatarSalarie')
+  const champs = lire('src/components/BulletinChamps.jsx')
+  const debut = champs.indexOf('export function AvatarSalarie')
   // jusqu'au composant suivant, pas au-delà
-  const bloc = page.slice(debut, page.indexOf('function Badge(', debut))
+  const bloc = champs.slice(debut, champs.indexOf('export function FieldHelp', debut))
   expect(bloc).toContain('useTheme()')
   expect(bloc).toContain('palettePaie(darkMode)')
   expect(bloc).not.toMatch(/#[0-9A-Fa-f]{6}/)
+})
+
+it('10. les briques du bulletin ont quitté la page', () => {
+  const page = lire('src/pages/FichesPaie.jsx')
+  const champs = lire('src/components/BulletinChamps.jsx')
+  const signatures = lire('src/components/BulletinSignatures.jsx')
+  const modales = lire('src/components/BulletinModales.jsx')
+
+  // la page ne les définit plus, elle les importe
+  expect(page).not.toContain('function AvatarSalarie(')
+  expect(page).not.toContain('function SignaturePad(')
+  expect(page).not.toContain('function AllowanceModal(')
+  expect(page).toContain("from '../components/BulletinChamps'")
+  expect(page).toContain("from '../components/BulletinSignatures'")
+  expect(page).toContain("from '../components/BulletinModales'")
+
+  // et ils sont bien exportés là où ils habitent
+  expect(champs).toContain('export function AvatarSalarie(')
+  expect(champs).toContain('export function SearchBar(')
+  expect(signatures).toContain('export function SignaturePad(')
+  expect(signatures).toContain('export function StampManager(')
+  for (const m of ['AllowanceModal', 'DeductionModal', 'LoanModal', 'BonusModal', 'PeriodDeductionModal']) {
+    expect(modales, m).toContain(`export function ${m}(`)
+  }
+})
+
+it('11. la page a perdu un tiers de son poids sans changer de rendu', () => {
+  const page = lire('src/pages/FichesPaie.jsx')
+  expect(page.split('\n').length).toBeLessThan(2000)
 })
