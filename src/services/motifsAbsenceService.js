@@ -45,6 +45,26 @@ export function codeDisponible(code, motifsExistants = []) {
   return candidat
 }
 
+/**
+ * Le motif d'UNE absence précise, parmi une liste qui peut mélanger
+ * plusieurs entreprises (vue « Toutes entreprises »).
+ *
+ * On prend d'abord la copie personnalisée par l'entreprise de l'absence,
+ * puis le motif d'origine (enterprise_id null). Renvoie null si le code
+ * est inconnu : l'appelant décide alors de son repli.
+ */
+export function resoudreMotif(motifs, absence) {
+  const liste = motifs || []
+  const code = typeof absence === 'string' ? absence : absence?.reason
+  if (!code) return null
+  const entreprise = typeof absence === 'string' ? null : absence?.enterprise_id
+  if (entreprise) {
+    const maison = liste.find((m) => m.entrepriseId === entreprise && m.id === code)
+    if (maison) return maison
+  }
+  return liste.find((m) => m.entrepriseId === null && m.id === code) || null
+}
+
 const global = (id) => !id || id === 'all'
 
 class MotifsAbsenceService {
@@ -94,6 +114,24 @@ class MotifsAbsenceService {
     else query.eq('enterprise_id', enterpriseId)
 
     const { data, error } = await query.order('ordre', { ascending: true })
+    if (error) throw error
+    return (data || []).map(normaliser)
+  }
+
+  /**
+   * Tous les motifs, globaux compris, sans filtre d'entreprise.
+   * Sert aux écrans qui affichent PLUSIEURS entreprises à la fois
+   * (vue « Toutes entreprises ») : chaque absence peut alors être
+   * habillée avec le motif de SA propre entreprise.
+   * La RLS continue de masquer ce que l'admin n'a pas le droit de lire.
+   */
+  async listerTout() {
+    const { data, error } = await supabase
+      .from('absence_motifs')
+      .select('*')
+      .is('archive_le', null)
+      .order('ordre', { ascending: true })
+
     if (error) throw error
     return (data || []).map(normaliser)
   }
@@ -197,6 +235,7 @@ function normaliser(ligne) {
     ...ligne,
     id: ligne.code,        // code métier : 'conge', 'musique'…
     rowId: ligne.id,       // uuid de la ligne : sert aux UPDATE et DELETE
+    entrepriseId: ligne.enterprise_id || null, // null = motif d'origine, commun à tous
 
     color: ligne.color || '#9CA3AF',
     bg: ligne.bg || fondDepuisCouleur(ligne.color),

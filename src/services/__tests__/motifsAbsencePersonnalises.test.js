@@ -144,7 +144,7 @@ describe('Diffusion des motifs personnalisés', () => {
 
   it('11. le calendrier colore ses barres avec les motifs du contexte', () => {
     expect(calendrierSrc).toContain('useMotifsAbsence')
-    expect(calendrierSrc).toContain('styleBarreAbsence(seg.absence, motifs)')
+    expect(calendrierSrc).toContain('styleBarreAbsence(seg.absence, listePour(seg.absence))')
     // le filtre est « en creux » : un motif créé plus tard est visible aussitôt
     expect(calendrierSrc).toContain('motifsMasques')
     expect(calendrierSrc).toContain('{motifs.map((m) => (')

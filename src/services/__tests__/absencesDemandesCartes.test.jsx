@@ -18,7 +18,10 @@ const absencesSrc = fs.readFileSync(path.join(ROOT, 'src/pages/Absences.jsx'), '
 /** Les motifs renvoyés par le contexte — modifiables par chaque test */
 const { etat } = vi.hoisted(() => ({ etat: { motifs: [] } }))
 vi.mock('../../hooks/useMotifsAbsence', () => ({
-  useMotifsAbsence: () => ({ motifs: etat.motifs }),
+  useMotifsAbsence: () => ({
+    motifs: etat.motifs,
+    motifPour: (d) => etat.motifs.find((m) => m.id === (typeof d === 'string' ? d : d?.reason)) || null,
+  }),
 }))
 
 const MOTIFS_MAISON = [
