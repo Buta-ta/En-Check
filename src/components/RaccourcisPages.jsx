@@ -22,14 +22,20 @@ const PAGES_RAPIDES = [
   { chemin: '/pointages', libelle: 'Pointages', icone: Fingerprint },
   { chemin: '/planning', libelle: 'Planning', icone: CalendarDays },
   { chemin: '/absences', libelle: 'Absences', icone: CalendarOff },
-  { chemin: '/fiches-paie', libelle: 'Fiches de paie', icone: FileText },
+  { chemin: '/paie?onglet=fiches', libelle: 'Fiches de paie', icone: FileText },
   { chemin: '/employes', libelle: 'Employés', icone: Users },
   { chemin: '/rapports', libelle: 'Rapports', icone: BarChart3 },
 ]
 
 export default function RaccourcisPages({ pages = PAGES_RAPIDES, compact = false }) {
-  const { pathname } = useLocation()
-  const ici = (chemin) => pathname === chemin || pathname.startsWith(`${chemin}/`)
+  const { pathname, search } = useLocation()
+  // « /paie?onglet=fiches » n'est actif que sur cet onglet précis
+  const ici = (chemin) => {
+    const [cible, query] = chemin.split('?')
+    if (pathname !== cible && !pathname.startsWith(`${cible}/`)) return false
+    if (!query) return true
+    return search.replace(/^\?/, '') === query
+  }
 
   return (
     <nav

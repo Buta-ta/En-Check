@@ -328,11 +328,9 @@ function App() {
               <JoursFeries />
             </AdminRoute>
           } />
-          <Route path="/fiches-paie" element={
-            <AdminRoute>
-              <FichesPaie />
-            </AdminRoute>
-          } />
+          {/* Les fiches de paie vivent dans la coque « Paie & fiscalité » :
+              l’ancienne adresse reste utilisable, elle ouvre le bon onglet. */}
+          <Route path="/fiches-paie" element={<Navigate to="/paie?onglet=fiches" replace />} />
           {/* La paie et la fiscalité ne font plus qu'une page.
               L'ancienne route reste vivante pour les liens déjà partagés. */}
           <Route path="/paie" element={

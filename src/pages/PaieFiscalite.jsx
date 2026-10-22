@@ -12,8 +12,11 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileText, Globe, Shield, Percent, SlidersHorizontal, Eye, Sun, Moon, RefreshCw } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  ArrowLeft, FileText, Globe, Shield, Percent, SlidersHorizontal, Eye, Sun, Moon,
+  RefreshCw, Settings, Users, Gift, Upload,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import TaxationService from '../services/taxationService'
 import FeatureService, { FEATURES } from '../services/featureService'
@@ -25,17 +28,45 @@ import PaieKpiCards, { totauxCotisations } from '../components/PaieKpiCards'
 import { BarresTranches, DonutParts, CarteGraphique } from '../components/PaieGraphiques'
 import { BogolanFriseSvg, BogolanFiligraneSvg } from '../components/BogolanMudclothSvg'
 import ConfigurationFiscale from './ConfigurationFiscale'
+import FichesPaie from './FichesPaie'
 import PaieEntreprises from '../components/PaieEntreprises'
 import toast from 'react-hot-toast'
 import './PaieAfroTech.css'
 
-const ONGLETS = [
-  { cle: 'apercu', libelle: 'Vue d’ensemble', icone: Globe, volet: 'pays' },
-  { cle: 'contributions', libelle: 'Cotisations', icone: Shield, volet: 'contributions' },
-  { cle: 'taxes', libelle: 'Barème', icone: Percent, volet: 'taxes' },
-  { cle: 'rules', libelle: 'Règles fiscales', icone: SlidersHorizontal, volet: 'rules' },
-  { cle: 'preview', libelle: 'Simulation', icone: Eye, volet: 'preview' },
+// Les trois groupes annoncés : on règle le moteur, on déclare la
+// fiscalité, puis on exploite. Chaque onglet sait quel volet rendre et
+// quel sous-onglet lui demander.
+const GROUPES = [
+  {
+    titre: 'Paramètres',
+    onglets: [
+      { cle: 'moteur', libelle: 'Moteur & bulletin', icone: Settings, volet: 'bulletins', cible: 'settings' },
+    ],
+  },
+  {
+    titre: 'Fiscalité',
+    fiscal: true,
+    onglets: [
+      { cle: 'apercu', libelle: 'Vue d’ensemble', icone: Globe, volet: 'fiscal', cible: 'pays' },
+      { cle: 'contributions', libelle: 'Cotisations', icone: Shield, volet: 'fiscal', cible: 'contributions' },
+      { cle: 'taxes', libelle: 'Barème', icone: Percent, volet: 'fiscal', cible: 'taxes' },
+      { cle: 'rules', libelle: 'Règles fiscales', icone: SlidersHorizontal, volet: 'fiscal', cible: 'rules' },
+      { cle: 'simulation', libelle: 'Simulation', icone: Eye, volet: 'fiscal', cible: 'preview' },
+    ],
+  },
+  {
+    titre: 'Exploitation',
+    onglets: [
+      { cle: 'profils', libelle: 'Profils salariés', icone: Users, volet: 'bulletins', cible: 'profiles' },
+      { cle: 'primes', libelle: 'Primes & retenues', icone: Gift, volet: 'bulletins', cible: 'allowances' },
+      { cle: 'imports', libelle: 'Import variables', icone: Upload, volet: 'bulletins', cible: 'imports' },
+      { cle: 'fiches', libelle: 'Fiches générées', icone: FileText, volet: 'bulletins', cible: 'preview' },
+    ],
+  },
 ]
+
+const TOUS_LES_ONGLETS = GROUPES.flatMap((g) => g.onglets)
+const cleConnue = (cle) => TOUS_LES_ONGLETS.some((o) => o.cle === cle)
 
 const initialesDe = (prenom, nom) =>
   `${(prenom || '?')[0]}${(nom || '?')[0]}`.toUpperCase()
@@ -51,7 +82,18 @@ export default function PaieFiscalite() {
   const [employes, setEmployes] = useState([])
   const [contributions, setContributions] = useState([])
   const [tranches, setTranches] = useState([])
-  const [onglet, setOnglet] = useState('apercu')
+  const [params, setParams] = useSearchParams()
+  const [onglet, setOnglet] = useState(() => {
+    const demande = params.get('onglet')
+    return demande && TOUS_LES_ONGLETS.some((o) => o.cle === demande) ? demande : 'apercu'
+  })
+
+  // Un lien « /paie?onglet=primes » ouvre la bonne section : les
+  // anciennes URL ne sont pas perdues, elles sont traduites.
+  const allerOnglet = (cle) => {
+    setOnglet(cle)
+    if (params.get('onglet') !== cle) setParams({ onglet: cle }, { replace: true })
+  }
   const [admin, setAdmin] = useState(null)
 
   // ── Qui est connecté, et sur quelle entreprise ──────────────────────
@@ -73,7 +115,7 @@ export default function PaieFiscalite() {
       if (superAdmin) {
         const { data } = await supabase
           .from('enterprises')
-          .select('id, name, code, country_code, currency, fiscal_country_label, module_config_fiscale')
+          .select('id, name, code, country_code, currency, fiscal_country_label, module_config_fiscale, module_fiches_paie')
           .eq('is_active', true)
           .order('name')
         const liste = data || []
@@ -132,7 +174,7 @@ export default function PaieFiscalite() {
       const [ent, equipe, config] = await Promise.all([
         supabase
           .from('enterprises')
-          .select('id, name, currency, country_code, fiscal_country_label, module_config_fiscale')
+          .select('id, name, currency, country_code, fiscal_country_label, module_config_fiscale, module_fiches_paie')
           .eq('id', entrepriseId)
           .single()
           .catch(() => ({ data: null })),
@@ -202,6 +244,20 @@ export default function PaieFiscalite() {
   // renseignée ne doit pas fermer une page qui marchait hier.
   const moduleFiscalVerrouille =
     admin?.role !== 'super_admin' && entreprise?.module_config_fiscale === false
+
+  // Même règle pour les bulletins : le module reste vendu à part.
+  const moduleBulletinsVerrouille =
+    admin?.role !== 'super_admin' && entreprise?.module_fiches_paie === false
+
+  // Le module fiscal verrouillé retire simplement son groupe d'onglets :
+  // le reste de la paie reste ouvert.
+  const groupesVisibles = GROUPES.filter((g) => {
+    if (moduleFiscalVerrouille && g.fiscal) return false
+    if (moduleBulletinsVerrouille && g.titre === 'Exploitation') return false
+    return true
+  })
+  const ongletsVisibles = groupesVisibles.flatMap((g) => g.onglets)
+  const ongletActif = ongletsVisibles.find((o) => o.cle === onglet) || ongletsVisibles[0]
 
   const devise = CurrencyService.resolveCurrency({
     enterprise: entreprise,
@@ -282,14 +338,10 @@ export default function PaieFiscalite() {
               {darkMode ? <Sun size={16} /> : <Moon size={16} />}
             </button>
 
-            <button type="button" className="paie-btn" onClick={() => navigate('/fiches-paie')}>
-              <FileText size={16} /> Fiches de paie
-            </button>
-
             <button
               type="button"
               className="paie-btn paie-btn-principal"
-              onClick={() => navigate('/fiches-paie')}
+              onClick={() => allerOnglet('fiches')}
             >
               Générer les bulletins
             </button>
@@ -312,11 +364,11 @@ export default function PaieFiscalite() {
         <PaieKpiCards contributions={contributions} tranches={tranches} darkMode={darkMode} />
       </div>
 
-      {/* ═══ ONGLETS ═══ */}
-      {moduleFiscalVerrouille ? (
+      {/* ═══ UN MODULE MANQUE : on le dit, sans fermer le reste ═══ */}
+      {moduleFiscalVerrouille && (
         <section
           className="paie-groupes"
-          style={{ marginLeft: 14, marginRight: 14, textAlign: 'center', padding: '26px 18px' }}
+          style={{ marginLeft: 14, marginRight: 14, textAlign: 'center', padding: '16px 18px' }}
           data-testid="paie-module-verrouille"
         >
           <span style={{ color: 'var(--paie-amber)' }}><Shield size={26} /></span>
@@ -328,53 +380,64 @@ export default function PaieFiscalite() {
             les règles de calcul restent gérés ailleurs ; les fiches de paie, elles, demeurent
             accessibles.
           </p>
-          <button
-            type="button"
-            className="paie-btn paie-btn-principal"
-            style={{ marginTop: 14 }}
-            onClick={() => navigate('/fiches-paie')}
-          >
-            Aller aux fiches de paie
-          </button>
+          {!moduleBulletinsVerrouille && (
+            <button
+              type="button"
+              className="paie-btn"
+              style={{ marginTop: 10 }}
+              onClick={() => allerOnglet('fiches')}
+            >
+              Aller aux fiches générées
+            </button>
+          )}
         </section>
-      ) : (
-      <nav className="paie-groupes" style={{ marginLeft: 14, marginRight: 14 }} aria-label="Sections de la paie">
-        <p className="paie-groupe-titre">Fiscalité — module «&nbsp;Configuration fiscale&nbsp;»</p>
-        <div className="paie-onglets" data-testid="paie-onglets">
-          {ONGLETS.map((item) => {
-            const Icone = item.icone
-            const cle = item.cle
-            const actif = onglet === cle
-            const compte = cle === 'contributions' ? contributions.length
-              : cle === 'taxes' ? tranches.length
-              : null
-            return (
-              <button
-                key={cle}
-                type="button"
-                className="paie-onglet"
-                data-actif={actif ? 'oui' : 'non'}
-                data-testid={`paie-onglet-${cle}`}
-                onClick={() => setOnglet(cle)}
-              >
-                <Icone size={14} />
-                {item.libelle}
-                {compte !== null && <span className="paie-pastille">{compte}</span>}
-              </button>
-            )
-          })}
-        </div>
+      )}
+      <div style={{ marginLeft: 14, marginRight: 14 }}>
+        {groupesVisibles.map((groupe) => (
+          <nav
+            key={groupe.titre}
+            className="paie-groupes"
+            data-testid={`paie-groupe-${groupe.titre.toLowerCase()}`}
+            aria-label={`Section ${groupe.titre}`}
+          >
+            <p className="paie-groupe-titre">{groupe.titre}</p>
+            <div className="paie-onglets" data-testid="paie-onglets">
+              {groupe.onglets.map((item) => {
+                const Icone = item.icone
+                const cle = item.cle
+                const actif = ongletActif?.cle === cle
+                const compte = cle === 'contributions' ? contributions.length
+                  : cle === 'taxes' ? tranches.length
+                  : null
+                return (
+                  <button
+                    key={cle}
+                    type="button"
+                    className="paie-onglet"
+                    data-actif={actif ? 'oui' : 'non'}
+                    data-testid={`paie-onglet-${cle}`}
+                    onClick={() => allerOnglet(cle)}
+                  >
+                    <Icone size={14} />
+                    {item.libelle}
+                    {compte !== null && <span className="paie-pastille">{compte}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
+        ))}
 
         {/* Bande bogolan : le motif choisi se lit aussi sous les onglets */}
-        <div className="paie-frise paie-frise-basse">
+        <div className="paie-frise paie-frise-basse" style={{ marginTop: 10 }}>
           <BogolanFriseSvg hauteur={8} couleur={darkMode ? '#C25E28' : '#B86B35'} />
         </div>
-      </nav>
-      )}
+      </div>
+
 
       {/* ═══ CONTENU ═══ */}
       <main className="paie-contenu" style={{ paddingLeft: 14, paddingRight: 14 }}>
-        {onglet === 'apercu' && (
+        {ongletActif?.cle === 'apercu' && (
           <div className="paie-tableau">
             <CarteGraphique
               titre="Barème d’imposition"
@@ -409,7 +472,7 @@ export default function PaieFiscalite() {
                   type="button"
                   className="paie-btn"
                   style={{ minHeight: 32, fontSize: 11 }}
-                  onClick={() => navigate('/fiches-paie')}
+                  onClick={() => allerOnglet('profils')}
                 >
                   Profils
                 </button>
@@ -459,12 +522,26 @@ export default function PaieFiscalite() {
           </div>
         )}
 
-        {/* Le volet fiscal, rendu sans son propre bandeau ni ses onglets */}
-        {!moduleFiscalVerrouille && (
+        {/* Le volet correspondant, rendu sans son propre bandeau ni ses onglets */}
+        {ongletActif?.volet === 'fiscal' && !moduleFiscalVerrouille && (
           <ConfigurationFiscale
             integre
-            ongletExterne={ONGLETS.find((o) => o.cle === onglet)?.volet || 'pays'}
+            ongletExterne={ongletActif.cible}
             entrepriseIdForce={entrepriseId}
+          />
+        )}
+
+        {ongletActif?.volet === 'bulletins' && (
+          <FichesPaie
+            integre
+            ongletExterne={ongletActif.cible}
+            entrepriseIdForce={entrepriseId}
+            onOngletChange={(cible) => {
+              const cibleConnue = ongletsVisibles.find(
+                (o) => o.volet === 'bulletins' && o.cible === cible
+              )
+              if (cibleConnue) allerOnglet(cibleConnue.cle)
+            }}
           />
         )}
       </main>

@@ -190,8 +190,10 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
         return
       }
 
-      // Le Super Admin a toujours accès à la Configuration Fiscale de toute entreprise
-      if (!isSuperAdmin) {
+      // Le Super Admin a toujours accès à la Configuration Fiscale de toute entreprise.
+      // Dans la coque, c'est elle qui décide : verrouiller ici aussi ferait
+      // sortir un client « fiscalité seule » de sa propre page.
+      if (!isSuperAdmin && !integre) {
         const hasAccess = await FeatureService.hasFeature(targetEnterpriseId, FEATURES.FICHES_PAIE)
         if (!hasAccess) {
           toast.error('Module fiches de paie non activé')
