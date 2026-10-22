@@ -312,6 +312,63 @@ function FormLabel({ children, help, example, required }) {
   return <label style={S.labelSmall}>{children}{required && <span style={{ color: P.rouge, marginLeft: 2 }}>*</span>}{help && <FieldHelp text={help} example={example} />}</label>
 }
 
+// ═══════════════════════════════════════════════════════════
+// L'AVATAR DU SALARIÉ
+//
+// Une photo si elle existe, sinon ses initiales — jamais un carré
+// vide. ⚠️ La photo est FACULTATIVE en base : à la date d'écriture,
+// une seule des douze personnes actives en a une. Le repli n'est
+// donc pas un cas rare, c'est le cas normal.
+// ═══════════════════════════════════════════════════════════
+export function initialesDe(prenom, nom) {
+  const a = String(prenom || '').trim()
+  const b = String(nom || '').trim()
+  if (!a && !b) return '?'
+  return `${a.charAt(0)}${b.charAt(0)}`.toUpperCase()
+}
+
+export function AvatarSalarie({ employe, taille = 34 }) {
+  const { darkMode } = useTheme()
+  const P = palettePaie(darkMode)
+  const nom = `${employe?.first_name || ''} ${employe?.last_name || ''}`.trim()
+  const style = { width: taille, height: taille, fontSize: Math.round(taille * 0.36) }
+
+  if (employe?.photo_url) {
+    return (
+      <img
+        src={employe.photo_url}
+        alt={nom || 'Salarié'}
+        className="pay-avatar"
+        style={{ ...style, objectFit: 'cover', borderRadius: '50%', border: `1px solid ${P.ambre4}` }}
+        loading="lazy"
+      />
+    )
+  }
+
+  return (
+    <span
+      className="pay-avatar"
+      title={nom || 'Salarié'}
+      aria-hidden={nom ? undefined : 'true'}
+      data-testid="avatar-initiales"
+      style={{
+        ...style,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: '50%',
+        fontWeight: 800,
+        color: P.ambreClair,
+        background: P.ambre4,
+        border: `1px solid ${P.ambre7}`,
+        flexShrink: 0,
+      }}
+    >
+      {initialesDe(employe?.first_name, employe?.last_name)}
+    </span>
+  )
+}
+
 function Badge({ children, color = '#F59E0B' }) {
   return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: `${color}20`, border: `1px solid ${color}30`, color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999 }}>{children}</span>
 }
@@ -461,7 +518,7 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
     setPreviewRows([])
 
     const [employeesRes, loadedSettings, loadedProfiles, loadedOvertimeSettings, loadedAllowanceTypes, loadedDeductionTypes] = await Promise.all([
-      supabase.from('employees').select('id, first_name, last_name, matricule, department, position, is_active, hire_date, cnps_number, professional_category, echelon, classification, contract_type, marital_status, dependents_count').eq('enterprise_id', targetEnterpriseId).eq('is_active', true).order('last_name'),
+      supabase.from('employees').select('id, first_name, last_name, matricule, department, position, is_active, hire_date, cnps_number, professional_category, echelon, classification, contract_type, marital_status, dependents_count, photo_url').eq('enterprise_id', targetEnterpriseId).eq('is_active', true).order('last_name'),
       PayrollService.getPayrollSettings(targetEnterpriseId),
       PayrollService.getEmployeePayrollProfiles(targetEnterpriseId),
       FeatureService.getOvertimeSettings(targetEnterpriseId),
@@ -1284,6 +1341,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
         .pay-volet input[type="date"]::-webkit-calendar-picker-indicator {
           filter: ${darkMode ? 'invert(1)' : 'none'};
         }
+        .pay-avatar { flex-shrink: 0; }
+        .pay-volet .pay-liste-avatar { align-items: center; }
         @media (max-width: 768px) {
           .pay-grid-2 { grid-template-columns: 1fr !important; }
           .pay-form-grid { grid-template-columns: 1fr !important; }
@@ -1740,6 +1799,17 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                   if (!emp) return null
                   return (
                     <div style={{ padding: '10px 14px', borderRadius: 12, background: P.indigo1, border: `1px solid ${P.indigo3}`, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <AvatarSalarie employe={emp} taille={40} />
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ margin: 0, color: P.texte, fontSize: 13.5, fontWeight: 800 }}>
+                            {emp.first_name} {emp.last_name}
+                          </p>
+                          <p style={{ margin: '2px 0 0 0', color: P.texteDoux2, fontSize: 11 }}>
+                            {[emp.matricule, emp.position || emp.department].filter(Boolean).join(' • ') || 'Sans matricule'}
+                          </p>
+                        </div>
+                      </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 11, color: P.texteDoux2 }}>
                         {emp.hire_date && <span>📅 Embauche: {new Date(emp.hire_date).toLocaleDateString('fr-FR')}</span>}
                         {emp.classification && <span>🏷 {emp.classification}</span>}
@@ -1881,7 +1951,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 <div style={S.listWrap}>
                   {profiles.length === 0 ? <div style={S.emptyMini}><AlertTriangle size={18} color={P.texteFaint} /><span>Aucun profil enregistré</span></div> : profiles.map((profile, i) => (
                     <div key={profile.id || i} style={{ ...S.listItem, ...(profile.employee_id === selectedEmployeeId ? { borderColor: P.indigo11, background: P.indigo7 } : {}) }} onClick={() => setSelectedEmployeeId(profile.employee_id)}>
-                      <div><div style={S.listTitle}>{profile.employees?.first_name} {profile.employees?.last_name}</div><div style={S.listSub}>{profile.employees?.matricule} • {profile.salary_type === 'monthly' ? 'Mensuel' : profile.salary_type === 'hourly' ? 'Horaire' : 'Journalier'} • {profile.salary_type === 'monthly' ? fmt(profile.base_salary) : profile.salary_type === 'hourly' ? `${fmt(profile.hourly_rate)}/h` : `${fmt(profile.daily_rate)}/j`}</div></div>
+                      <AvatarSalarie employe={profile.employees} taille={34} />
+                      <div style={{ flex: 1, minWidth: 0 }}><div style={S.listTitle}>{profile.employees?.first_name} {profile.employees?.last_name}</div><div style={S.listSub}>{profile.employees?.matricule} • {profile.salary_type === 'monthly' ? 'Mensuel' : profile.salary_type === 'hourly' ? 'Horaire' : 'Journalier'} • {profile.salary_type === 'monthly' ? fmt(profile.base_salary) : profile.salary_type === 'hourly' ? `${fmt(profile.hourly_rate)}/h` : `${fmt(profile.daily_rate)}/j`}</div></div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                         <CheckCircle size={16} color={P.vert} />
                         <span style={{ ...S.typeBadge, background: profile.salary_type === 'monthly' ? P.indigo3 : profile.salary_type === 'hourly' ? P.ambre4 : P.vert1, color: profile.salary_type === 'monthly' ? P.indigoClair : profile.salary_type === 'hourly' ? P.ambre : P.vert }}>{profile.salary_type === 'monthly' ? 'MENSUEL' : profile.salary_type === 'hourly' ? 'HORAIRE' : 'JOURNALIER'}</span>
@@ -1924,7 +1995,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
                   {(searchAllowance ? employees.filter(e => `${e.first_name} ${e.last_name} ${e.matricule}`.toLowerCase().includes(searchAllowance.toLowerCase())) : employees.slice(0, 10)).map(emp => (
                     <div key={emp.id} style={S.listItem} onClick={() => { setSelectedEmployeeId(emp.id); changerOnglet('profiles') }}>
-                      <div><div style={S.listTitle}>{emp.first_name} {emp.last_name}</div><div style={S.listSub}>{emp.matricule}</div></div>
+                      <AvatarSalarie employe={emp} taille={32} />
+                      <div style={{ flex: 1, minWidth: 0 }}><div style={S.listTitle}>{emp.first_name} {emp.last_name}</div><div style={S.listSub}>{emp.matricule}</div></div>
                       <button style={S.addBtnSmall} onClick={(e) => { e.stopPropagation(); setSelectedEmployeeId(emp.id); changerOnglet('profiles') }}><Edit size={12} /><span>Gérer</span></button>
                     </div>
                   ))}

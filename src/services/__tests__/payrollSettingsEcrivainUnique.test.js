@@ -31,6 +31,7 @@ vi.mock('../../lib/db', () => ({
           return chaine
         },
         single: async () => ({ data: etat.ligneExistante, error: null }),
+        maybeSingle: async () => ({ data: etat.ligneExistante, error: null }),
         update: (payload) => {
           etat.appels.push({ table, type: 'update', payload })
           return chaine

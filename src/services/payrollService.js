@@ -4,6 +4,7 @@ import FeatureService from './featureService'
 import HolidayService from './holidayService'
 import TaxationService from './taxationService'
 import CurrencyService from './currencyService'
+import { ecrireReglesFiscales } from './reglesFiscalesEcriture'
 import { minutesDepuisMinuit } from '../utils/timezoneUtils'
 import { SEUILS_PAR_DEFAUT, filtrerPointagesPayables } from './seuilsPointage'
 import jsPDF from 'jspdf'
@@ -185,35 +186,7 @@ class PayrollService {
   static async saveCustomTaxRules(enterpriseId, rules) {
     if (!enterpriseId) return false
     try {
-      const { data: existing } = await db()
-        .from('payroll_settings')
-        .select('id')
-        .eq('enterprise_id', enterpriseId)
-        .single()
-
-      const payload = {
-        custom_tax_rules: rules || {},
-        updated_at: new Date().toISOString(),
-      }
-
-      if (existing) {
-        const { error } = await db()
-          .from('payroll_settings')
-          .update(payload)
-          .eq('enterprise_id', enterpriseId)
-        if (error) throw error
-      } else {
-        const { error } = await db()
-          .from('payroll_settings')
-          .insert({
-            enterprise_id: enterpriseId,
-            ...payload,
-            created_at: new Date().toISOString(),
-          })
-        if (error) throw error
-      }
-
-      return true
+      return await ecrireReglesFiscales(enterpriseId, rules)
     } catch (err) {
       console.error('Erreur sauvegarde règles fiscales:', err)
       return false
@@ -233,7 +206,7 @@ class PayrollService {
           *,
           employees (
             id, first_name, last_name, matricule,
-            department, position, is_active
+            department, position, is_active, photo_url
           )
         `)
         .eq('enterprise_id', enterpriseId)

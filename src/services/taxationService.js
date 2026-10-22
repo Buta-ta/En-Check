@@ -6,6 +6,7 @@
 
 import { supabase } from '../lib/supabase'
 import CurrencyService from './currencyService'
+import { ecrireReglesFiscales } from './reglesFiscalesEcriture'
 
 class TaxationService {
   // ═══════════════════════════════════════════════════════════
@@ -928,38 +929,17 @@ class TaxationService {
 
       if (updateError) throw updateError
 
-      // 4. Sauver règles pays dans payroll_settings.custom_tax_rules
+      // 4. Sauver les règles du pays — par le rédacteur unique.
+      //    ⚠️ Ne PAS écrire `payroll_settings.custom_tax_rules` ici.
+      //    C'était le troisième rédacteur de cette colonne : la page
+      //    « Règles fiscales » la réécrit en entier depuis son propre
+      //    état, et deux écrivains en tout-ou-rien, c'est une perte de
+      //    données qui attend son tour. `ecrireReglesFiscales` n'écrit
+      //    que cette colonne, et la devise reste chez l'entreprise
+      //    (elle vient d'être posée juste au-dessus) : pas de seconde
+      //    maison pour elle.
       const rulesPayload = countryConfig.calculation_rules || this.getDefaultCalculationRules()
-
-      const { data: existingSettings } = await supabase
-        .from('payroll_settings')
-        .select('id')
-        .eq('enterprise_id', enterpriseId)
-        .single()
-
-      if (existingSettings) {
-        const { error: settingsError } = await supabase
-          .from('payroll_settings')
-          .update({
-            custom_tax_rules: rulesPayload,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('enterprise_id', enterpriseId)
-
-        if (settingsError) throw settingsError
-      } else {
-        const { error: settingsError } = await supabase
-          .from('payroll_settings')
-          .insert({
-            enterprise_id: enterpriseId,
-            currency: countryConfig.currency || null,
-            custom_tax_rules: rulesPayload,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-
-        if (settingsError) throw settingsError
-      }
+      await ecrireReglesFiscales(enterpriseId, rulesPayload)
 
       return { success: true }
     } catch (error) {
