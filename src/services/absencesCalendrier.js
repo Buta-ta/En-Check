@@ -104,6 +104,25 @@ export function joursDeLaPeriode(mode, { annee, mois, jourIso }) {
   return joursDuMois(annee, mois)
 }
 
+/**
+ * De combien de mois faut-il déplacer le calendrier pour atteindre `isoCible`
+ * depuis le mois affiché ? Sert à « aller à une date » : le calendrier ne sait
+ * avancer que par crans de mois, on traduit donc la date choisie en écart.
+ */
+export function ecartEnMois(annee, mois, isoCible) {
+  const cible = parseIso(isoCible)
+  if (!cible) return 0
+  return (cible.y - annee) * 12 + (cible.m - mois)
+}
+
+/** La même date, une autre année (le 29 février retombe au 1er mars si besoin) */
+export function memeJourAutreAnnee(iso, deltaAnnees) {
+  const p = parseIso(iso)
+  if (!p) return null
+  const d = new Date(p.y + deltaAnnees, p.m, p.d)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 /** Déplace la période d'un cran : ±1 mois, ±1 semaine ou ±1 jour */
 export function deplacerPeriode(mode, { annee, mois, jourIso }, delta) {
   if (mode === 'jour') return { annee, mois, jourIso: ajouterJours(jourIso, delta) }

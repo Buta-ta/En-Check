@@ -107,6 +107,36 @@
   transform: translateX(-2px);
 }
 
+/* Bandeau de raccourcis sous la barre du haut */
+.abs-topbar-nav {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 24px 12px;
+}
+
+.abs-raccourcis {
+  scrollbar-width: none;
+}
+
+.abs-raccourcis::-webkit-scrollbar {
+  display: none;
+}
+
+.abs-raccourci {
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+
+.abs-raccourci:hover {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.32);
+  color: #F59E0B;
+}
+
+.abs-raccourci:focus-visible {
+  outline: 2px solid #F59E0B;
+  outline-offset: 2px;
+}
+
 .abs-brand {
   display: flex;
   flex-direction: row;
