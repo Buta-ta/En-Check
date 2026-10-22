@@ -189,3 +189,39 @@ it('9. la migration pose bien la colonne de liaison', () => {
   expect(sql).toContain('ADD COLUMN IF NOT EXISTS leave_request_id')
   expect(sql).toContain('REFERENCES public.leave_requests')
 })
+
+// ═══════════════════════════════════════════════════════════
+// 🛡️ GARDE-FOU : un rappel utilisé doit être déclaré
+//
+// Sans DOM dans les tests, un `onSupprimer?.(a)` dont le prop
+// n'est pas dans la signature ne plante qu'AU CLIC, en
+// production. On vérifie donc la signature à la source.
+// ═══════════════════════════════════════════════════════════
+const rappelsDeclare = (src, composant) => {
+  const debut = src.indexOf(`function ${composant}({`)
+  expect(debut).toBeGreaterThan(-1)
+  const signature = src.slice(debut, src.indexOf('}) {', debut))
+  const utilises = [...new Set([...src.matchAll(/\bon([A-Z]\w*)\?\.\(/g)].map((m) => `on${m[1]}`))]
+  return { signature, utilises }
+}
+
+it('10. le calendrier déclare bien tous les rappels qu’il appelle', () => {
+  const { signature, utilises } = rappelsDeclare(lire('src/components/AbsencesCalendrier.jsx'), 'AbsencesCalendrier')
+  expect(utilises.length).toBeGreaterThan(3)
+  utilises.forEach((nom) => expect(signature).toContain(nom))
+  // celui qui a cassé en production :
+  expect(utilises).toContain('onSupprimer')
+  expect(signature).toContain('onSupprimer')
+})
+
+it('11. le tiroir et la carte de demande déclarent eux aussi leurs rappels', () => {
+  const tiroir = rappelsDeclare(lire('src/components/AbsenceTiroir.jsx'), 'AbsenceTiroir')
+  tiroir.utilises.forEach((nom) => expect(tiroir.signature).toContain(nom))
+
+  // la carte passe ses rappels par une fabrique (`stop(...)`) : on vérifie
+  // donc la signature directement
+  const carte = rappelsDeclare(lire('src/components/DemandeCongeCard.jsx'), 'DemandeCongeCard')
+  for (const nom of ['onVoir', 'onApprouver', 'onRefuser', 'onSupprimer']) {
+    expect(carte.signature).toContain(nom)
+  }
+})
