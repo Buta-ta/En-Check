@@ -740,6 +740,7 @@ export default function AbsencesCalendrier({
           onChangerStatut={(a, statut) => { onChangerStatut?.(a, statut); setAbsenceActive(null) }}
           onModifier={(a) => { onModifier?.(a); setAbsenceActive(null) }}
           onVoirDocument={onVoirDocument}
+          onSupprimer={(a) => { onSupprimer?.(a); setAbsenceActive(null) }}
         />
       )}
     </div>

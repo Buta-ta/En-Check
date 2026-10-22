@@ -99,7 +99,8 @@ it('8. le tiroir affiche une absence en attente avec les deux décisions', () =>
   expect(html).toContain('data-testid="tiroir-refuser"')
   expect(html).toContain('4 jours')
   expect(html).toContain('26 j restants')
-  expect(html).toContain('Rien n’est supprimé')
+  // la doctrine a changé : supprimer est possible, et confirmé en deux temps
+  expect(html).toContain('La suppression l’efface partout, planning compris')
 })
 
 it('9. le tiroir d’une absence déjà approuvée ne propose pas de l’approuver deux fois', () => {
