@@ -236,3 +236,44 @@ it('23. la coque garde le sélecteur d’entreprise du super-admin', () => {
   expect(coque).toContain("localStorage.setItem('last_enterprise_id'")
   expect(coque).toContain('changerEntreprise')
 })
+
+// ── 7. Les deux arbitrages laissés ouverts ───────────────────────────
+
+it('24. le menu mène à /paie, et non plus à /configuration-fiscale', () => {
+  const menu = lire('src/components/DashboardExperience.jsx')
+  expect(menu).toContain("label: 'Paie & fiscalité'")
+  expect(menu).toContain("path: '/paie'")
+  expect(menu).not.toContain("path: '/configuration-fiscale'")
+  // le module reste vendu à part : la page fusionne, pas l'offre
+  expect(menu).toContain('show: isSuperAdmin || moduleConfigFiscale')
+})
+
+it('25. le module fiscal ne verrouille que s’il est explicitement coupé', () => {
+  expect(coque).toContain('moduleFiscalVerrouille')
+  // une colonne jamais renseignée ne doit pas fermer une page ouverte hier
+  expect(coque).toContain("entreprise?.module_config_fiscale === false")
+  expect(coque).toContain("admin?.role !== 'super_admin'")
+  expect(coque).toContain('data-testid="paie-module-verrouille"')
+  // et l'accès aux fiches de paie reste offert depuis le panneau
+  expect(coque).toContain('Aller aux fiches de paie')
+})
+
+// ── 8. Le motif se répète, il ne s'étire pas ─────────────────────────
+
+it('26. la frise se répète au lieu de s’étirer sur toute la largeur', () => {
+  const html = renderToStaticMarkup(<BogolanFriseSvg hauteur={14} />)
+  // un viewBox de 40 unités étiré donnait deux chevrons géants
+  expect(html).not.toContain('viewBox')
+  expect(html).not.toContain('preserveAspectRatio')
+  // le motif remplit toute la bande, en pixels
+  expect(html).toContain('width="100%"')
+  expect(html).toContain('height="100%"')
+  expect(html).toMatch(/fill="url\(#bogolan-frise-[^)]+\)"/)
+})
+
+it('27. la coque porte le motif à trois endroits au moins', () => {
+  const frises = (coque.match(/<BogolanFriseSvg/g) || []).length
+  expect(frises).toBeGreaterThanOrEqual(2)
+  expect(coque).toContain('<BogolanFiligraneSvg')
+  expect(coque).toContain('paie-fond-motif')
+})

@@ -20,10 +20,12 @@ import FeatureService, { FEATURES } from '../services/featureService'
 import CurrencyService from '../services/currencyService'
 import { useTheme } from '../contexts/ThemeContext'
 import RaccourcisPages from '../components/RaccourcisPages'
+import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import PaieKpiCards, { totauxCotisations } from '../components/PaieKpiCards'
 import { BarresTranches, DonutParts, CarteGraphique } from '../components/PaieGraphiques'
 import { BogolanFriseSvg, BogolanFiligraneSvg } from '../components/BogolanMudclothSvg'
 import ConfigurationFiscale from './ConfigurationFiscale'
+import PaieEntreprises from '../components/PaieEntreprises'
 import toast from 'react-hot-toast'
 import './PaieAfroTech.css'
 
@@ -50,6 +52,7 @@ export default function PaieFiscalite() {
   const [contributions, setContributions] = useState([])
   const [tranches, setTranches] = useState([])
   const [onglet, setOnglet] = useState('apercu')
+  const [admin, setAdmin] = useState(null)
 
   // ── Qui est connecté, et sur quelle entreprise ──────────────────────
   useEffect(() => {
@@ -61,6 +64,7 @@ export default function PaieFiscalite() {
 
     let annule = false
     const adminData = JSON.parse(brut)
+    setAdmin(adminData)
 
     const demarrer = async () => {
       const superAdmin = adminData.role === 'super_admin'
@@ -69,7 +73,7 @@ export default function PaieFiscalite() {
       if (superAdmin) {
         const { data } = await supabase
           .from('enterprises')
-          .select('id, name, code, country_code, currency, fiscal_country_label')
+          .select('id, name, code, country_code, currency, fiscal_country_label, module_config_fiscale')
           .eq('is_active', true)
           .order('name')
         const liste = data || []
@@ -128,7 +132,7 @@ export default function PaieFiscalite() {
       const [ent, equipe, config] = await Promise.all([
         supabase
           .from('enterprises')
-          .select('id, name, currency, country_code, fiscal_country_label')
+          .select('id, name, currency, country_code, fiscal_country_label, module_config_fiscale')
           .eq('id', entrepriseId)
           .single()
           .catch(() => ({ data: null })),
@@ -182,6 +186,23 @@ export default function PaieFiscalite() {
     setEntrepriseId(id)
   }
 
+  const rechargerApresCopie = () => {
+    if (!entrepriseId) return
+    TaxationService.getEnterprisePayrollConfig(entrepriseId)
+      .then((config) => {
+        setContributions(config?.contributions || [])
+        setTranches(config?.taxBrackets || [])
+      })
+      .catch(() => toast.error('Configuration rechargée partiellement'))
+  }
+
+  // Le module « configuration fiscale » reste vendu et verrouillable à
+  // part : la page fusionne, pas l'offre commerciale. On ne verrouille
+  // que si l'entreprise l'a explicitement désactivé — une colonne jamais
+  // renseignée ne doit pas fermer une page qui marchait hier.
+  const moduleFiscalVerrouille =
+    admin?.role !== 'super_admin' && entreprise?.module_config_fiscale === false
+
   const devise = CurrencyService.resolveCurrency({
     enterprise: entreprise,
     settings: { currency: entreprise?.currency },
@@ -220,6 +241,10 @@ export default function PaieFiscalite() {
             >
               <ArrowLeft size={18} />
             </button>
+
+            <span className="paie-marque-logo" aria-hidden="true">
+              <EnCheckBrandMark size={34} />
+            </span>
 
             <div className="paie-marque">
               <span className="paie-marque-titre">En-Check · PAIE &amp; FISCALITÉ</span>
@@ -272,8 +297,8 @@ export default function PaieFiscalite() {
         </div>
 
         {/* Frise bogolan : la signature de cette page */}
-        <div style={{ marginTop: 10, borderRadius: 999, overflow: 'hidden' }}>
-          <BogolanFriseSvg hauteur={10} couleur={darkMode ? '#C25E28' : '#B86B35'} />
+        <div className="paie-frise">
+          <BogolanFriseSvg hauteur={14} couleur={darkMode ? '#C25E28' : '#B86B35'} />
         </div>
 
         {/* Raccourcis vers les autres pages */}
@@ -288,9 +313,34 @@ export default function PaieFiscalite() {
       </div>
 
       {/* ═══ ONGLETS ═══ */}
+      {moduleFiscalVerrouille ? (
+        <section
+          className="paie-groupes"
+          style={{ marginLeft: 14, marginRight: 14, textAlign: 'center', padding: '26px 18px' }}
+          data-testid="paie-module-verrouille"
+        >
+          <span style={{ color: 'var(--paie-amber)' }}><Shield size={26} /></span>
+          <h2 style={{ margin: '10px 0 6px', fontSize: 15, fontWeight: 800 }}>
+            Module «&nbsp;Configuration fiscale&nbsp;» non activé
+          </h2>
+          <p style={{ margin: '0 auto', maxWidth: 520, fontSize: 12.5, color: 'var(--paie-text-soft)' }}>
+            Cette entreprise n’a pas souscrit au module de fiscalité. Les cotisations, le barème et
+            les règles de calcul restent gérés ailleurs ; les fiches de paie, elles, demeurent
+            accessibles.
+          </p>
+          <button
+            type="button"
+            className="paie-btn paie-btn-principal"
+            style={{ marginTop: 14 }}
+            onClick={() => navigate('/fiches-paie')}
+          >
+            Aller aux fiches de paie
+          </button>
+        </section>
+      ) : (
       <nav className="paie-groupes" style={{ marginLeft: 14, marginRight: 14 }} aria-label="Sections de la paie">
         <p className="paie-groupe-titre">Fiscalité — module «&nbsp;Configuration fiscale&nbsp;»</p>
-        <div className="paie-onglets">
+        <div className="paie-onglets" data-testid="paie-onglets">
           {ONGLETS.map((item) => {
             const Icone = item.icone
             const cle = item.cle
@@ -314,7 +364,13 @@ export default function PaieFiscalite() {
             )
           })}
         </div>
+
+        {/* Bande bogolan : le motif choisi se lit aussi sous les onglets */}
+        <div className="paie-frise paie-frise-basse">
+          <BogolanFriseSvg hauteur={8} couleur={darkMode ? '#C25E28' : '#B86B35'} />
+        </div>
       </nav>
+      )}
 
       {/* ═══ CONTENU ═══ */}
       <main className="paie-contenu" style={{ paddingLeft: 14, paddingRight: 14 }}>
@@ -389,19 +445,32 @@ export default function PaieFiscalite() {
                 )}
               </div>
             </CarteGraphique>
+
+            {admin?.role === 'super_admin' && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <PaieEntreprises
+                entreprises={entreprises}
+                entrepriseCouranteId={entrepriseId}
+                darkMode={darkMode}
+                  onCopieEffectuee={rechargerApresCopie}
+                />
+              </div>
+            )}
           </div>
         )}
 
         {/* Le volet fiscal, rendu sans son propre bandeau ni ses onglets */}
-        <ConfigurationFiscale
-          integre
-          ongletExterne={ONGLETS.find((o) => o.cle === onglet)?.volet || 'pays'}
-          entrepriseIdForce={entrepriseId}
-        />
+        {!moduleFiscalVerrouille && (
+          <ConfigurationFiscale
+            integre
+            ongletExterne={ONGLETS.find((o) => o.cle === onglet)?.volet || 'pays'}
+            entrepriseIdForce={entrepriseId}
+          />
+        )}
       </main>
 
-      <div style={{ position: 'fixed', right: 8, bottom: 8, pointerEvents: 'none', zIndex: 0 }}>
-        <BogolanFiligraneSvg size={190} opacite={darkMode ? 0.06 : 0.09} couleur={darkMode ? '#C25E28' : '#B86B35'} />
+      <div className="paie-fond-motif" aria-hidden="true" data-testid="paie-motif-fond">
+        <BogolanFiligraneSvg size={280} opacite={darkMode ? 0.10 : 0.14} couleur={darkMode ? '#C25E28' : '#B86B35'} />
       </div>
     </div>
   )
