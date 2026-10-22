@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import FeatureService, { FEATURES } from '../services/featureService'
 import PayrollService from '../services/payrollService'
+import CurrencyService from '../services/currencyService'
 import TaxationService from '../services/taxationService'
 import * as XLSX from 'xlsx'
 import LeaveBalanceService from '../services/leaveBalanceService'
@@ -947,12 +948,21 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   // ENVOI FICHES
   // ═══════════════════════════════════════════════════════════
 
+  // ⚠️ PAS de `|| 'XAF'` ici. XOF et XAF s'écrivent tous les deux
+  //   « FCFA » mais ne sont pas la même monnaie : deviner, c'est produire
+  //   un bulletin faux sans qu'aucun écran ne s'en aperçoive. Si la devise
+  //   n'est pas déterminable, on refuse d'enregistrer et on le dit.
+  const deviseDesBulletins = CurrencyService.resolveCurrency({
+    enterprise: enterpriseData,
+    settings,
+  })
+
   const buildPayslipData = (row) => ({
     enterprise_id: enterpriseId, employee_id: row.employee.id,
     period_start: periodStart, period_end: periodEnd,
     gross_salary: row.grossSalary || 0, net_salary: row.netSalary || 0,
     total_earnings: row.totalEarnings || 0, total_deductions: row.totalDeductions || 0,
-    currency: settings.currency || 'XAF',
+    currency: deviseDesBulletins,
     worked_days: row.sources?.encheck?.workedDays || 0,
     worked_hours: (row.sources?.encheck?.totalWorkedMinutes || 0) / 60,
     overtime_hours: (row.sources?.encheck?.totalOvertimeAllMinutes || 0) / 60,
@@ -1022,6 +1032,13 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
     if (nonRemissables.length > 0) {
       const premierMotif = TaxationService.verifierAvantRemise(nonRemissables[0]).motif
       toast.error(premierMotif || `${nonRemissables.length} bulletin(s) ont un barème fiscal à vérifier avant remise officielle.`, { duration: 7000 })
+      return
+    }
+    if (!deviseDesBulletins) {
+      toast.error(
+        'Devise de l’entreprise introuvable : renseigne le pays et la devise dans les paramètres du moteur, puis relance. Un bulletin ne peut pas être produit sans devise.',
+        { duration: 8000 },
+      )
       return
     }
     setSendingSlips(true)
@@ -1422,7 +1439,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 <div style={S.cardHeader}>
                   <div style={S.cardHeaderLeft}>
                     <div style={S.cardIcon}><Settings size={18} color={P.ambre} /></div>
-                    <div><h3 style={S.cardTitle}>Paramètres du moteur de paie</h3><p style={S.cardSub}>Configurez les règles de calcul</p></div>
+                    <div><h3 style={S.cardTitle}>Paramètres du moteur de paie</h3><p style={S.cardSub}>Pays, congés, heures sup : comment le moteur calcule</p></div>
                   </div>
                 </div>
 
@@ -1465,7 +1482,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 </div>
 
                 <div style={S.toggleSection}>
-                  <p style={S.toggleSectionTitle}>Règles de calcul</p>
+                  <p style={S.toggleSectionTitle}>Comportement du moteur</p>
                   <div style={S.toggleGrid}>
                     {[
                       ['deduct_absence', 'Déduire les absences', 'Retire automatiquement les absences'],

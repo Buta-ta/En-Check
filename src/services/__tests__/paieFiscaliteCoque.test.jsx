@@ -367,3 +367,25 @@ it('34. les couleurs du volet bulletins sont des jetons, pas des littéraux', ()
   const litteraux = sansPapier.match(/#[0-9A-Fa-f]{6}\b|rgba\(\d/g) || []
   expect(litteraux, litteraux.join(', ')).toEqual([])
 })
+
+// ── 10. Étape 1 : plus de faux-semblants ─────────────────────────────
+
+it('35. la devise d’un bulletin ne s’invente jamais', () => {
+  const fiches = lire('src/pages/FichesPaie.jsx')
+  // « || 'XAF' » faisait de toute entreprise une entreprise camerounaise
+  expect(fiches).not.toContain("currency: settings.currency || 'XAF'")
+  expect(fiches).toContain('CurrencyService.resolveCurrency({')
+  expect(fiches).toContain('const deviseDesBulletins')
+  // et l'envoi groupé s'arrête net plutôt que de produire un bulletin faux
+  expect(fiches).toContain('if (!deviseDesBulletins)')
+})
+
+it('36. deux réglages différents ne portent plus le même nom', () => {
+  const fiches = lire('src/pages/FichesPaie.jsx')
+  // le moteur parle de son comportement…
+  expect(fiches).not.toContain('>Règles de calcul</p>')
+  expect(fiches).toContain('>Comportement du moteur</p>')
+  // …la fiscalité de ses règles fiscales
+  expect(lire('src/pages/PaieFiscalite.jsx')).toContain("libelle: 'Règles fiscales'")
+  expect(fiches).not.toContain('>Règles de calcul<')
+})
