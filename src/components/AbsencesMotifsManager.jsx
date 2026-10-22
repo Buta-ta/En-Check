@@ -18,7 +18,7 @@ import { Plus, Pencil, Check, X, Trash2, Building2, Smile } from 'lucide-react'
 import { useMotifsAbsence } from '../hooks/useMotifsAbsence'
 import { EMOJIS_MOTIFS, PALETTE_MOTIFS, fondDepuisCouleur } from '../constants/motifsAbsence'
 
-const champsVides = { label: '', emoji: '📋', color: '#10B981' }
+const champsVides = { label: '', emoji: '📋', color: 'var(--abs-emerald)' }
 
 /** Les motifs d'origine portent `id`, ceux de la base portent `code` */
 const codeDe = (m) => m.code || m.id
@@ -199,7 +199,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
                   aria-label={`Supprimer ${m.label}`}
                   data-testid="abs-motifs-supprimer"
                   title={dernierMotif ? 'Gardez au moins un motif' : 'Supprimer définitivement'}
-                  style={{ ...boutonIcone('#EF4444'), opacity: dernierMotif || toutesEntreprises ? 0.4 : 1, cursor: dernierMotif || toutesEntreprises ? 'not-allowed' : 'pointer' }}
+                  style={{ ...boutonIcone('var(--abs-coral)'), opacity: dernierMotif || toutesEntreprises ? 0.4 : 1, cursor: dernierMotif || toutesEntreprises ? 'not-allowed' : 'pointer' }}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -383,7 +383,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
               style={{
                 padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700,
                 fontFamily: 'inherit', border: 'none', background: 'linear-gradient(135deg, #EF4444, #B91C1C)',
-                color: '#FFF', display: 'inline-flex', alignItems: 'center', gap: 7,
+                color: 'var(--abs-text)', display: 'inline-flex', alignItems: 'center', gap: 7,
                 opacity: enCours || (nbUsagesCible > 0 && !codeCible) ? 0.5 : 1,
               }}
             >

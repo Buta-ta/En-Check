@@ -8,6 +8,10 @@
 //
 // La page affichée est marquée (`aria-current`) et son raccourci
 // devient inerte : pas de rechargement pour rien.
+//
+// L'apparence vit dans la feuille de style de la page (classes
+// .abs-raccourcis / .abs-raccourci), aux couleurs de la charte :
+// le bandeau suit donc le thème clair ou sombre sans rien coder ici.
 // ═══════════════════════════════════════════════════════════
 
 import { Link, useLocation } from 'react-router-dom'
@@ -32,10 +36,6 @@ export default function RaccourcisPages({ pages = PAGES_RAPIDES, compact = false
       className="abs-raccourcis"
       aria-label="Aller à une autre page"
       data-testid="raccourcis-pages"
-      style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        overflowX: 'auto', paddingBottom: 2,
-      }}
     >
       {pages.map(({ chemin, libelle, icone: Icone }) => {
         const actif = ici(chemin)
@@ -50,18 +50,9 @@ export default function RaccourcisPages({ pages = PAGES_RAPIDES, compact = false
             data-actif={actif ? 'oui' : 'non'}
             aria-current={actif ? 'page' : undefined}
             title={actif ? `Vous êtes sur ${libelle}` : `Aller à ${libelle}`}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap',
-              padding: compact ? '6px 12px' : '8px 14px', borderRadius: 999,
-              fontSize: compact ? 12 : 12.5, fontWeight: actif ? 700 : 600,
-              textDecoration: 'none', fontFamily: 'inherit',
-              background: actif ? 'rgba(245,158,11,0.14)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${actif ? 'rgba(245,158,11,0.45)' : 'rgba(255,255,255,0.08)'}`,
-              color: actif ? '#F59E0B' : 'rgba(245,242,235,0.7)',
-              cursor: actif ? 'default' : 'pointer',
-            }}
+            data-compact={compact ? 'oui' : 'non'}
           >
-            <Picto size={14} />
+            <Picto size={13} />
             {libelle}
           </Link>
         )

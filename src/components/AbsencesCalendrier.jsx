@@ -106,6 +106,7 @@ export default function AbsencesCalendrier({
     weekend: darkMode ? 'rgba(255,255,255,0.035)' : 'rgba(29,23,19,0.045)',
     ferie: darkMode ? 'rgba(139,92,246,0.13)' : 'rgba(139,92,246,0.10)',
     pastille: darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(29,23,19,0.04)',
+    ambre: darkMode ? '#F59E0B' : '#9C5321',
   }
 
   // ── Le jour visé reste toujours dans le mois affiché ────────────────
@@ -294,7 +295,7 @@ export default function AbsencesCalendrier({
               fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
               background: 'rgba(245,158,11,0.12)',
               border: '1px solid rgba(245,158,11,0.35)',
-              color: '#F59E0B',
+              color: theme.ambre,
             }}
           >
             Aujourd’hui

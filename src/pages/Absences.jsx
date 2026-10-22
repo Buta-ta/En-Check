@@ -111,7 +111,7 @@ const LEAVE_TYPES = {
   conge_familial: { label: 'Congé familial', emoji: '👨‍👩‍👧', color: '#8B5CF6', motifId: 'autre' },
   conge_sans_solde: { label: 'Congé sans solde', emoji: '📋', color: '#6B7280', motifId: 'autre' },
   permission: { label: 'Permission', emoji: '🎫', color: '#3B82F6', motifId: 'autre' },
-  autre: { label: 'Autre', emoji: '📝', color: '#9CA3AF', motifId: 'autre' },
+  autre: { label: 'Autre', emoji: '📝', color: 'var(--abs-text-faint)', motifId: 'autre' },
 }
 
 const TEMPORAL_CONFIG = {
@@ -147,9 +147,9 @@ function DocumentViewer({ url, onClose, employeeName, absenceInfo }) {
       <div style={{ background: 'var(--abs-bg-elevated)', borderRadius: 20, width: '100%', maxWidth: 900, maxHeight: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--abs-line)', boxShadow: '0 25px 80px rgba(0,0,0,.5)' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--abs-line-soft)', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Paperclip size={18} color="#F59E0B" />
+            <Paperclip size={18} color="var(--abs-amber)" />
             <div>
-              <h3 style={{ color: '#FFF', fontSize: 16, fontWeight: 600, margin: 0 }}>Justificatif</h3>
+              <h3 style={{ color: 'var(--abs-text)', fontSize: 16, fontWeight: 600, margin: 0 }}>Justificatif</h3>
               {employeeName && <p style={{ color: 'var(--abs-text-soft)', fontSize: 12, margin: '2px 0 0 0' }}>{employeeName}</p>}
             </div>
           </div>
@@ -163,14 +163,14 @@ function DocumentViewer({ url, onClose, employeeName, absenceInfo }) {
             )}
             <a href={url} target="_blank" rel="noopener noreferrer" style={viewerBtnStyle}><ExternalLink size={18} /></a>
             <a href={url} download style={viewerBtnStyle}><Download size={18} /></a>
-            <button onClick={onClose} style={{ ...viewerBtnStyle, color: '#EF4444', borderColor: 'rgba(239,68,68,.25)', background: 'rgba(239,68,68,.1)' }}><X size={20} /></button>
+            <button onClick={onClose} style={{ ...viewerBtnStyle, color: 'var(--abs-coral)', borderColor: 'rgba(239,68,68,.25)', background: 'rgba(239,68,68,.1)' }}><X size={20} /></button>
           </div>
         </div>
         <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'rgba(0,0,0,.2)', minHeight: 300 }}>
-          {loading && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'var(--abs-text-soft)' }}><RefreshCw size={32} color="#F59E0B" style={{ animation: 'spin 1s linear infinite' }} /><p>Chargement...</p></div>}
+          {loading && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'var(--abs-text-soft)' }}><RefreshCw size={32} color="var(--abs-amber)" style={{ animation: 'spin 1s linear infinite' }} /><p>Chargement...</p></div>}
           {fileType === 'image' && <img src={url} alt="Justificatif" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8, transform: `scale(${zoom})`, transition: 'transform .2s ease', display: loading ? 'none' : 'block' }} onLoad={() => setLoading(false)} />}
           {fileType === 'pdf' && <iframe src={url} style={{ width: '100%', height: '70vh', border: 'none', borderRadius: 8, display: loading ? 'none' : 'block' }} title="Document PDF" onLoad={() => setLoading(false)} />}
-          {fileType === 'other' && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, color: 'var(--abs-text-soft)', textAlign: 'center' }}><File size={48} color='var(--abs-text-faint)' /><p>Aperçu non disponible</p><a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#F59E0B', textDecoration: 'none', padding: '10px 20px', background: 'rgba(245,158,11,.1)', borderRadius: 8, fontWeight: 500 }}><Download size={16} /> Télécharger</a></div>}
+          {fileType === 'other' && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, color: 'var(--abs-text-soft)', textAlign: 'center' }}><File size={48} color='var(--abs-text-faint)' /><p>Aperçu non disponible</p><a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--abs-amber)', textDecoration: 'none', padding: '10px 20px', background: 'rgba(245,158,11,.1)', borderRadius: 8, fontWeight: 500 }}><Download size={16} /> Télécharger</a></div>}
         </div>
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--abs-line-soft)', background: 'rgba(0,0,0,.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
@@ -254,12 +254,12 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
           </div>
         )}
         {hasConflict && conflictPending && (
-          <div style={{ ...CS.badge, background: 'rgba(249,115,22,.12)', color: '#F97316', border: '1px solid rgba(249,115,22,.3)' }}>
+          <div style={{ ...CS.badge, background: 'rgba(249,115,22,.12)', color: 'var(--abs-orange)', border: '1px solid rgba(249,115,22,.3)' }}>
             <AlertTriangle size={11} /> Conflit
           </div>
         )}
         {hasConflict && !conflictPending && (
-          <div style={{ ...CS.badge, background: 'rgba(107,114,128,.12)', color: '#9CA3AF', border: '1px solid rgba(107,114,128,.2)' }}>
+          <div style={{ ...CS.badge, background: 'rgba(107,114,128,.12)', color: 'var(--abs-text-faint)', border: '1px solid rgba(107,114,128,.2)' }}>
             <CheckCircle2 size={11} /> Conflit traité
           </div>
         )}
@@ -270,7 +270,7 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
           <div style={CS.avatar}>
             {absence.employees?.photo_url
               ? <img src={absence.employees.photo_url} alt="" style={CS.avatarImg} />
-              : <User size={18} color="#F59E0B" />}
+              : <User size={18} color="var(--abs-amber)" />}
           </div>
           <div style={CS.empDetails}>
             <h4 style={CS.empName}>{absence.employees?.first_name} {absence.employees?.last_name}</h4>
@@ -311,9 +311,9 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
           border: '1px solid rgba(139,92,246,0.15)',
           borderRadius: 10,
         }}>
-          <span style={{ color: '#A78BFA', fontSize: 11, fontWeight: 700 }}>Jours fériés inclus</span>
+          <span style={{ color: 'var(--abs-violet)', fontSize: 11, fontWeight: 700 }}>Jours fériés inclus</span>
           {holidayNamesInRange.slice(0, 3).map((name, idx) => (
-            <span key={idx} style={{ color: '#C4B5FD', fontSize: 11 }}>• {name}</span>
+            <span key={idx} style={{ color: 'var(--abs-violet)', fontSize: 11 }}>• {name}</span>
           ))}
           {holidayNamesInRange.length > 3 && (
             <span style={{ color: '#8B5CF6', fontSize: 11 }}>+{holidayNamesInRange.length - 3} autres</span>
@@ -323,10 +323,10 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
 
       {hasConflict && conflictPending && (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', background: 'rgba(249,115,22,.08)', border: '1px solid rgba(249,115,22,.18)', borderRadius: 12 }}>
-          <AlertTriangle size={16} color="#F97316" style={{ flexShrink: 0, marginTop: 2 }} />
+          <AlertTriangle size={16} color="var(--abs-orange)" style={{ flexShrink: 0, marginTop: 2 }} />
           <div>
-            <p style={{ color: '#F97316', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>Conflit RH détecté</p>
-            <p style={{ color: '#BFA48A', fontSize: 12, margin: 0, lineHeight: '1.4' }}>
+            <p style={{ color: 'var(--abs-orange)', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>Conflit RH détecté</p>
+            <p style={{ color: 'var(--abs-text-soft)', fontSize: 12, margin: 0, lineHeight: '1.4' }}>
               Un pointage a été enregistré pendant cette absence. Action requise.
             </p>
           </div>
@@ -335,8 +335,8 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
 
       {hasConflict && !conflictPending && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(107,114,128,.06)', border: '1px solid rgba(107,114,128,.15)', borderRadius: 12 }}>
-          <CheckCircle2 size={16} color="#9CA3AF" />
-          <p style={{ color: '#9CA3AF', fontSize: 12, margin: 0 }}>
+          <CheckCircle2 size={16} color="var(--abs-text-faint)" />
+          <p style={{ color: 'var(--abs-text-faint)', fontSize: 12, margin: 0 }}>
             Conflit traité ({conflict.status === 'resolved'
               ? conflict.resolution_action === 'kept_absence' ? 'absence maintenue'
                 : conflict.resolution_action === 'cancelled_absence' ? 'absence annulée'
@@ -1342,7 +1342,7 @@ export default function Absences() {
   if (!accessChecked || loading) {
     return (
       <div style={S.loadingContainer}>
-        <div className="loading-pulse"><Footprints size={50} color="#F59E0B" /></div>
+        <div className="loading-pulse"><Footprints size={50} color="var(--abs-amber)" /></div>
         <p style={S.loadingText}>{!accessChecked ? 'Vérification des accès...' : 'Chargement des absences...'}</p>
       </div>
     )
@@ -1375,7 +1375,7 @@ export default function Absences() {
   .tab-btn:hover{background:rgba(245,158,11,0.08)!important}
   .doc-view-btn:hover{background:rgba(59,130,246,0.15)!important;border-color:rgba(59,130,246,0.4)!important}
   
-  select:focus,input:focus,textarea:focus{border-color:#F59E0B!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.1)}
+  select:focus,input:focus,textarea:focus{border-color:var(--abs-amber)!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.12)}
   select option{background:var(--abs-bg-elevated);color:var(--abs-text)}
 
 
@@ -1839,7 +1839,7 @@ export default function Absences() {
             <button className="tab-btn" onClick={() => setActiveTab('absences')} style={{ ...TAB.tab, ...(activeTab === 'absences' ? TAB.tabActive : {}) }}>
               <CalendarOff size={16} />
               <span>Absences</span>
-              <span style={{ ...TAB.badge, background: activeTab === 'absences' ? 'rgba(245,158,11,0.2)' : 'var(--abs-line-soft)', color: activeTab === 'absences' ? '#F59E0B' : 'var(--abs-text-faint)' }}>
+              <span style={{ ...TAB.badge, background: activeTab === 'absences' ? 'rgba(245,158,11,0.2)' : 'var(--abs-line-soft)', color: activeTab === 'absences' ? 'var(--abs-amber)' : 'var(--abs-text-faint)' }}>
                 {absences.length}
               </span>
             </button>
@@ -1848,11 +1848,11 @@ export default function Absences() {
               <Inbox size={16} />
               <span>Demandes employés</span>
               {pendingRequestsCount > 0 ? (
-                <span style={{ ...TAB.badge, background: 'rgba(239,68,68,0.15)', color: '#EF4444', animation: 'pulse 2s ease infinite' }}>
+                <span style={{ ...TAB.badge, background: 'rgba(239,68,68,0.15)', color: 'var(--abs-coral)', animation: 'pulse 2s ease infinite' }}>
                   {pendingRequestsCount}
                 </span>
               ) : leaveRequests.length > 0 ? (
-                <span style={{ ...TAB.badge, background: activeTab === 'demandes' ? 'rgba(245,158,11,0.2)' : 'var(--abs-line-soft)', color: activeTab === 'demandes' ? '#F59E0B' : 'var(--abs-text-faint)' }}>
+                <span style={{ ...TAB.badge, background: activeTab === 'demandes' ? 'rgba(245,158,11,0.2)' : 'var(--abs-line-soft)', color: activeTab === 'demandes' ? 'var(--abs-amber)' : 'var(--abs-text-faint)' }}>
                   {leaveRequests.length}
                 </span>
               ) : null}
@@ -1879,11 +1879,11 @@ export default function Absences() {
 
               {stats.conflitsPending > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', background: 'rgba(249,115,22,.08)', border: '1px solid rgba(249,115,22,.2)', borderRadius: 14, marginBottom: 20 }}>
-                  <AlertTriangle size={20} color="#F97316" />
-                  <p style={{ color: '#F97316', fontSize: 14, fontWeight: 600, margin: 0 }}>
+                  <AlertTriangle size={20} color="var(--abs-orange)" />
+                  <p style={{ color: 'var(--abs-orange)', fontSize: 14, fontWeight: 600, margin: 0 }}>
                     {stats.conflitsPending} conflit{stats.conflitsPending > 1 ? 's' : ''} absence/pointage nécessite{stats.conflitsPending > 1 ? 'nt' : ''} votre attention.
                   </p>
-                  <button onClick={() => setFilterConflict('with_conflict')} style={{ background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.3)', color: '#F97316', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginLeft: 'auto', fontFamily: 'inherit' }}>
+                  <button onClick={() => setFilterConflict('with_conflict')} style={{ background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.3)', color: 'var(--abs-orange)', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginLeft: 'auto', fontFamily: 'inherit' }}>
                     Voir les conflits
                   </button>
                 </div>
@@ -1898,7 +1898,7 @@ export default function Absences() {
                   </div>
                   {admin?.role === 'super_admin' && (
                     <div style={S.filterGroup}>
-                      <Building2 size={16} color="#F59E0B" />
+                      <Building2 size={16} color="var(--abs-amber)" />
                       <select value={selectedEntrepriseId} onChange={e => setSelectedEntrepriseId(e.target.value)} style={S.filterSelect}>
                         <option value="all">Toutes entreprises</option>
                         {entreprises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
@@ -1907,7 +1907,7 @@ export default function Absences() {
                   )}
                 </div>
                 <div style={S.toolbarRight}>
-                  <button onClick={() => setShowFilters(!showFilters)} style={{ ...S.iconBtn, background: showFilters ? 'rgba(245,158,11,.15)' : 'var(--abs-line-soft)', color: showFilters ? '#F59E0B' : 'var(--abs-text-soft)' }}><Filter size={18} /></button>
+                  <button onClick={() => setShowFilters(!showFilters)} style={{ ...S.iconBtn, background: showFilters ? 'rgba(245,158,11,.15)' : 'var(--abs-line-soft)', color: showFilters ? 'var(--abs-amber)' : 'var(--abs-text-soft)' }}><Filter size={18} /></button>
                   <div style={S.viewToggle}>
                     <button onClick={() => setViewMode('planning')} title="Planning — calendrier par employé" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'planning' ? S.viewBtnActive : {}) }}><CalendarDays size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Planning</span></button>
                     <button onClick={() => setViewMode('calendar')} title="Mois — grille du mois" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'calendar' ? S.viewBtnActive : {}) }}><Calendar size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Mois</span></button>
@@ -2094,7 +2094,7 @@ export default function Absences() {
                           }}
                         >
                           <div style={S.calDayTop}>
-                            <span style={{ ...S.calDayNum, ...(isToday ? { color: '#F59E0B' } : {}) }}>{cell.day}</span>
+                            <span style={{ ...S.calDayNum, ...(isToday ? { color: 'var(--abs-amber)' } : {}) }}>{cell.day}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               {cell.isHoliday && <span style={{ fontSize: 10 }}>🎌</span>}
                               {hasAbs && <span style={S.calAbsCount}>{cell.absences.length}</span>}
@@ -2102,7 +2102,7 @@ export default function Absences() {
                           </div>
 
                           {cell.isHoliday && (
-                            <div style={{ fontSize: 9, color: '#A78BFA', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div style={{ fontSize: 9, color: 'var(--abs-violet)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {cell.holiday?.name}
                             </div>
                           )}
@@ -2150,7 +2150,7 @@ export default function Absences() {
                               <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(245,158,11,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
                                 {a.employees?.photo_url
                                   ? <img src={a.employees.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} />
-                                  : <User size={18} color="#F59E0B" />}
+                                  : <User size={18} color="var(--abs-amber)" />}
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <p style={S.calDetailName}>{a.employees?.first_name} {a.employees?.last_name}</p>
@@ -2159,7 +2159,7 @@ export default function Absences() {
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                                 <div style={{ ...S.calDetailBadge, background: mc.bg, color: mc.color, border: `1px solid ${mc.color}40` }}>{mc.emoji} {mc.label}</div>
                                 {conflict && conflict.status === 'pending' && (
-                                  <div style={{ ...S.calDetailBadge, background: 'rgba(249,115,22,.12)', color: '#F97316', border: '1px solid rgba(249,115,22,.3)', fontSize: 9 }}>⚠ Conflit</div>
+                                  <div style={{ ...S.calDetailBadge, background: 'rgba(249,115,22,.12)', color: 'var(--abs-orange)', border: '1px solid rgba(249,115,22,.3)', fontSize: 9 }}>⚠ Conflit</div>
                                 )}
                               </div>
                             </div>
@@ -2190,10 +2190,10 @@ export default function Absences() {
               {pendingRequestsCount > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 14 }}>
                   <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Inbox size={20} color="#EF4444" />
+                    <Inbox size={20} color="var(--abs-coral)" />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <p style={{ color: '#EF4444', fontSize: 14, fontWeight: 700, margin: '0 0 2px 0' }}>
+                    <p style={{ color: 'var(--abs-coral)', fontSize: 14, fontWeight: 700, margin: '0 0 2px 0' }}>
                       {pendingRequestsCount} demande{pendingRequestsCount > 1 ? 's' : ''} en attente de validation
                     </p>
                     <p style={{ color: '#999', fontSize: 12, margin: 0 }}>Les employés attendent votre réponse</p>
@@ -2240,13 +2240,13 @@ export default function Absences() {
 
               {loadingRequests ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px' }}>
-                  <div style={{ width: 40, height: 40, border: '3px solid var(--abs-line-soft)', borderTopColor: '#F59E0B', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <div style={{ width: 40, height: 40, border: '3px solid var(--abs-line-soft)', borderTopColor: 'var(--abs-amber)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                   <p style={{ color: 'var(--abs-text-faint)', marginTop: 12, fontSize: 14 }}>Chargement...</p>
                 </div>
               ) : filteredRequests.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', background: 'rgba(29,23,19,0.5)', borderRadius: 20, border: '1px dashed var(--abs-line-soft)', textAlign: 'center' }}>
                   <Inbox size={48} color="#555" />
-                  <h3 style={{ color: '#FFF', margin: '12px 0 4px 0', fontSize: 18 }}>Aucune demande</h3>
+                  <h3 style={{ color: 'var(--abs-text)', margin: '12px 0 4px 0', fontSize: 18 }}>Aucune demande</h3>
                   <p style={{ color: 'var(--abs-text-faint)', fontSize: 14, margin: 0 }}>
                     {requestFilter !== 'all' ? 'Aucune demande avec ce statut' : 'Les employés n\'ont pas encore soumis de demandes de congé'}
                   </p>
@@ -2286,7 +2286,7 @@ export default function Absences() {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <div>
-                    <h3 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>Configuration des congés</h3>
+                    <h3 style={{ color: 'var(--abs-text)', fontSize: 18, fontWeight: 700, margin: 0 }}>Configuration des congés</h3>
                     <p style={{ color: 'var(--abs-text-soft)', fontSize: 13, margin: '4px 0 0 0' }}>
                       Ces paramètres seront utilisés dans l’espace employé et les fiches de paie.
                     </p>
@@ -2367,7 +2367,7 @@ export default function Absences() {
                     type="checkbox"
                     checked={leaveConfig.leave_carry_over}
                     onChange={e => setLeaveConfig(prev => ({ ...prev, leave_carry_over: e.target.checked }))}
-                    style={{ accentColor: '#F59E0B', marginTop: 2 }}
+                    style={{ accentColor: 'var(--abs-amber)', marginTop: 2 }}
                   />
                   <div>
                     <span style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 }}>
@@ -2391,7 +2391,7 @@ export default function Absences() {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <div>
-                    <h3 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>Recalcul des soldes</h3>
+                    <h3 style={{ color: 'var(--abs-text)', fontSize: 18, fontWeight: 700, margin: 0 }}>Recalcul des soldes</h3>
                     <p style={{ color: 'var(--abs-text-soft)', fontSize: 13, margin: '4px 0 0 0' }}>
                       Recalcule les soldes pour tous les employés actifs de l’entreprise.
                     </p>
@@ -2408,7 +2408,7 @@ export default function Absences() {
                       borderRadius: 12,
                       border: '1px solid rgba(16,185,129,0.25)',
                       background: 'rgba(16,185,129,0.12)',
-                      color: '#10B981',
+                      color: 'var(--abs-emerald)',
                       fontWeight: 700,
                       cursor: 'pointer',
                       fontFamily: 'inherit',
@@ -2432,7 +2432,7 @@ export default function Absences() {
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <div>
-                    <h3 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>Soldes de congés {anneeSoldes}</h3>
+                    <h3 style={{ color: 'var(--abs-text)', fontSize: 18, fontWeight: 700, margin: 0 }}>Soldes de congés {anneeSoldes}</h3>
                     <p style={{ color: 'var(--abs-text-soft)', fontSize: 13, margin: '4px 0 0 0' }}>
                       Calculés à partir des absences validées de l’année — employés actifs uniquement.
                     </p>
@@ -2440,7 +2440,7 @@ export default function Absences() {
                   {!loadingLeaveBalancesPreview && leaveBalancesPreview.length > 0 && (
                     <span style={{
                       padding: '5px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                      background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)', color: '#F59E0B',
+                      background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)', color: 'var(--abs-amber)',
                     }}>
                       {leaveBalancesPreview.length} employé{leaveBalancesPreview.length > 1 ? 's' : ''}
                     </span>
@@ -2449,7 +2449,7 @@ export default function Absences() {
 
                 {loadingLeaveBalancesPreview ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 30 }}>
-                    <RefreshCw size={20} color="#F59E0B" style={{ animation: 'spin 1s linear infinite' }} />
+                    <RefreshCw size={20} color="var(--abs-amber)" style={{ animation: 'spin 1s linear infinite' }} />
                     <span style={{ color: 'var(--abs-text-soft)' }}>Chargement des soldes...</span>
                   </div>
                 ) : leaveBalancesPreview.length === 0 ? (
@@ -2498,7 +2498,7 @@ export default function Absences() {
                               {initiales}
                             </span>
                             <div style={{ minWidth: 0 }}>
-                              <div style={{ color: '#FFF', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <div style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {item.employees?.first_name} {item.employees?.last_name}
                               </div>
                               <div style={{ color: '#777', fontSize: 11 }}>
@@ -2509,22 +2509,22 @@ export default function Absences() {
                           </div>
 
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ color: '#10B981', fontSize: 13, fontWeight: 700 }}>{acquis}j</div>
+                            <div style={{ color: 'var(--abs-emerald)', fontSize: 13, fontWeight: 700 }}>{acquis}j</div>
                           </div>
 
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ color: '#F59E0B', fontSize: 13, fontWeight: 700 }}>{pris}j</div>
+                            <div style={{ color: 'var(--abs-amber)', fontSize: 13, fontWeight: 700 }}>{pris}j</div>
                             <div style={{ height: 3, marginTop: 4, borderRadius: 999, background: 'var(--abs-line-soft)', overflow: 'hidden' }}>
                               <div style={{ width: `${pct}%`, height: '100%', background: pct >= 100 ? '#EF4444' : '#F59E0B' }} />
                             </div>
                           </div>
 
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ color: '#818CF8', fontSize: 13, fontWeight: 700 }}>{item.total_pending || 0}j</div>
+                            <div style={{ color: 'var(--abs-indigo)', fontSize: 13, fontWeight: 700 }}>{item.total_pending || 0}j</div>
                           </div>
 
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ color: solde < 0 ? '#EF4444' : '#FFF', fontSize: 14, fontWeight: 800 }}>{solde}j</div>
+                            <div style={{ color: solde < 0 ? 'var(--abs-coral)' : 'var(--abs-text)', fontSize: 14, fontWeight: 800 }}>{solde}j</div>
                           </div>
                         </div>
                       )
@@ -2570,13 +2570,13 @@ export default function Absences() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--abs-line-soft)', background: reviewAction === 'approuve' ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ width: 44, height: 44, borderRadius: 12, background: reviewAction === 'approuve' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {reviewAction === 'approuve' ? <Check size={22} color="#10B981" /> : <X size={22} color="#EF4444" />}
+                    {reviewAction === 'approuve' ? <Check size={22} color="var(--abs-emerald)" /> : <X size={22} color="var(--abs-coral)" />}
                   </div>
                   <div>
-                    <h2 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>
+                    <h2 style={{ color: 'var(--abs-text)', fontSize: 18, fontWeight: 700, margin: 0 }}>
                       {reviewAction === 'approuve' ? 'Approuver la demande' : 'Refuser la demande'}
                     </h2>
-                    <p style={{ color: reviewAction === 'approuve' ? '#10B981' : '#EF4444', fontSize: 13, margin: '4px 0 0 0' }}>
+                    <p style={{ color: reviewAction === 'approuve' ? 'var(--abs-emerald)' : 'var(--abs-coral)', fontSize: 13, margin: '4px 0 0 0' }}>
                       {selectedRequest.employees?.first_name} {selectedRequest.employees?.last_name}
                     </p>
                   </div>
@@ -2606,7 +2606,7 @@ export default function Absences() {
                   ].map((item, i, arr) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--abs-fill)' : 'none' }}>
                       <span style={{ color: 'var(--abs-text-soft)', fontSize: 13 }}>{item.label}</span>
-                      <span style={{ color: '#FFF', fontSize: 13, fontWeight: 600 }}>{item.value}</span>
+                      <span style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 }}>{item.value}</span>
                     </div>
                   ))}
                 </div>
@@ -2625,8 +2625,8 @@ export default function Absences() {
 
                 {reviewAction === 'approuve' && (
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 12 }}>
-                    <CheckCircle2 size={18} color="#10B981" style={{ flexShrink: 0, marginTop: 1 }} />
-                    <p style={{ color: '#10B981', fontSize: 13, margin: 0, lineHeight: '1.5' }}>
+                    <CheckCircle2 size={18} color="var(--abs-emerald)" style={{ flexShrink: 0, marginTop: 1 }} />
+                    <p style={{ color: 'var(--abs-emerald)', fontSize: 13, margin: 0, lineHeight: '1.5' }}>
                       Une absence sera automatiquement créée dans le registre des absences. Les jours fériés seront exclus du décompte.
                     </p>
                   </div>
@@ -2641,7 +2641,7 @@ export default function Absences() {
                     value={reviewComment}
                     onChange={e => setReviewComment(e.target.value)}
                     placeholder={reviewAction === 'approuve' ? 'Ex: Bonne vacances ! Votre demande est acceptée.' : 'Ex: Effectif insuffisant pour cette période...'}
-                    style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--abs-line)', background: 'var(--abs-fill-soft)', color: '#FFF', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', minHeight: 90, outline: 'none' }}
+                    style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--abs-line)', background: 'var(--abs-fill-soft)', color: 'var(--abs-text)', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', minHeight: 90, outline: 'none' }}
                   />
                 </div>
               </div>
@@ -2662,14 +2662,14 @@ export default function Absences() {
           <div style={S.overlay}>
             <div style={{ background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line)', borderRadius: 24, width: '100%', maxWidth: 420, padding: 36, textAlign: 'center', animation: 'slideUp .3s ease forwards' }}>
               <div style={{ width: 68, height: 68, borderRadius: 18, background: 'rgba(239,68,68,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                <AlertTriangle size={32} color="#EF4444" />
+                <AlertTriangle size={32} color="var(--abs-coral)" />
               </div>
-              <h3 style={{ color: '#FFF', fontSize: 20, fontWeight: 600, margin: '0 0 12px 0' }}>Supprimer cette absence ?</h3>
+              <h3 style={{ color: 'var(--abs-text)', fontSize: 20, fontWeight: 600, margin: '0 0 12px 0' }}>Supprimer cette absence ?</h3>
               <p style={{ color: 'var(--abs-text-soft)', fontSize: 14, marginBottom: 28, lineHeight: '1.5' }}>
                 Cette action est irréversible : l’absence disparaîtra aussi du planning.
               </p>
               <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={() => setShowDeleteModal(false)} style={{ flex: 1, padding: 14, background: 'var(--abs-line-soft)', color: '#FFF', border: '1px solid var(--abs-line-soft)', borderRadius: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Annuler</button>
+                <button onClick={() => setShowDeleteModal(false)} style={{ flex: 1, padding: 14, background: 'var(--abs-line-soft)', color: 'var(--abs-text)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Annuler</button>
                 <button onClick={handleDelete} style={{ flex: 1, padding: 14, background: 'linear-gradient(135deg,#EF4444,#B91C1C)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }} disabled={uploading}>
                   {uploading ? 'Suppression...' : 'Supprimer'}
                 </button>
@@ -2709,11 +2709,11 @@ export default function Absences() {
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 500 }}>{mc.emoji} {mc.label}</span>
-                          <span style={{ color: '#F59E0B', fontSize: 12, fontWeight: 700 }}>{jours}j</span>
+                          <span style={{ color: 'var(--abs-amber)', fontSize: 12, fontWeight: 700 }}>{jours}j</span>
                         </div>
                         <span style={{ color: 'var(--abs-text-soft)', fontSize: 12 }}>{formatDateFr(a.start_date)} → {formatDateFr(a.end_date)}</span>
                         {a.count_holidays_as_leave && <span style={{ display: 'block', color: '#8B5CF6', fontSize: 11, marginTop: 2 }}>🎌 Jours fériés inclus dans le décompte</span>}
-                        {conflict && conflict.status === 'pending' && <span style={{ display: 'block', color: '#F97316', fontSize: 11, marginTop: 2 }}>⚠ Conflit en attente</span>}
+                        {conflict && conflict.status === 'pending' && <span style={{ display: 'block', color: 'var(--abs-orange)', fontSize: 11, marginTop: 2 }}>⚠ Conflit en attente</span>}
                       </div>
                     </div>
                   )
@@ -2730,11 +2730,11 @@ export default function Absences() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottom: '1px solid var(--abs-line-soft)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ width: 46, height: 46, borderRadius: 14, background: 'rgba(249,115,22,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <AlertTriangle size={24} color="#F97316" />
+                    <AlertTriangle size={24} color="var(--abs-orange)" />
                   </div>
                   <div>
-                    <h2 style={{ color: '#FFF', fontSize: 20, fontWeight: 700, margin: 0 }}>Gérer le conflit</h2>
-                    <p style={{ color: '#F97316', fontSize: 13, margin: '4px 0 0 0' }}>
+                    <h2 style={{ color: 'var(--abs-text)', fontSize: 20, fontWeight: 700, margin: 0 }}>Gérer le conflit</h2>
+                    <p style={{ color: 'var(--abs-orange)', fontSize: 13, margin: '4px 0 0 0' }}>
                       {selectedConflictData.absence.employees?.first_name} {selectedConflictData.absence.employees?.last_name}
                     </p>
                   </div>
@@ -2750,19 +2750,19 @@ export default function Absences() {
                   ].map((item, i) => (
                     <div key={i} style={{ background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, padding: 14 }}>
                       <span style={{ display: 'block', color: 'var(--abs-text-faint)', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: .5 }}>{item.label}</span>
-                      <span style={{ display: 'block', color: '#FFF', fontSize: 13, fontWeight: 600 }}>{item.value}</span>
+                      <span style={{ display: 'block', color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 }}>{item.value}</span>
                     </div>
                   ))}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <label style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 500 }}>Note de résolution (optionnel)</label>
-                  <textarea value={conflictNote} onChange={e => setConflictNote(e.target.value)} style={{ minHeight: 90, resize: 'vertical', padding: '14px 16px', borderRadius: 12, border: '1px solid var(--abs-line)', background: 'var(--abs-fill)', color: '#FFF', fontFamily: 'inherit', fontSize: 14, outline: 'none' }} placeholder="Ex: Retour anticipé validé par le responsable..." />
+                  <textarea value={conflictNote} onChange={e => setConflictNote(e.target.value)} style={{ minHeight: 90, resize: 'vertical', padding: '14px 16px', borderRadius: 12, border: '1px solid var(--abs-line)', background: 'var(--abs-fill)', color: 'var(--abs-text)', fontFamily: 'inherit', fontSize: 14, outline: 'none' }} placeholder="Ex: Retour anticipé validé par le responsable..." />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {[
                     { action: 'kept_absence', icon: CheckCircle2, color: '#10B981', borderColor: 'rgba(16,185,129,.2)', bg: 'rgba(16,185,129,.08)', title: 'Maintenir l\'absence', subtitle: 'Le pointage reste, l\'absence est conservée' },
                     { action: 'cancelled_absence', icon: ShieldCheck, color: '#6366F1', borderColor: 'rgba(99,102,241,.2)', bg: 'rgba(99,102,241,.08)', title: 'Annuler l\'absence', subtitle: 'Le pointage reste, l\'absence est supprimée' },
-                    { action: 'ignored_conflict', icon: Ban, color: '#9CA3AF', borderColor: 'rgba(107,114,128,.2)', bg: 'rgba(107,114,128,.08)', title: 'Ignorer le conflit', subtitle: 'Marquer comme vu sans modifier les données' },
+                    { action: 'ignored_conflict', icon: Ban, color: 'var(--abs-text-faint)', borderColor: 'rgba(107,114,128,.2)', bg: 'rgba(107,114,128,.08)', title: 'Ignorer le conflit', subtitle: 'Marquer comme vu sans modifier les données' },
                   ].map((item, i) => (
                     <button key={i} onClick={() => resolveConflict(item.action)} disabled={resolvingConflict} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, borderRadius: 14, border: `1px solid ${item.borderColor}`, background: item.bg, color: item.color, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
                       <item.icon size={20} />
@@ -2793,18 +2793,18 @@ export default function Absences() {
           <div style={S.overlay} onClick={() => setShowDeleteRequestModal(false)}>
             <div style={{ background: 'var(--abs-bg-elevated)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 24, width: '100%', maxWidth: 440, padding: 36, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s ease forwards' }} onClick={e => e.stopPropagation()}>
               <div style={{ width: 68, height: 68, borderRadius: 18, background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                <Trash2 size={32} color="#EF4444" />
+                <Trash2 size={32} color="var(--abs-coral)" />
               </div>
-              <h3 style={{ color: '#FFF', fontSize: 20, fontWeight: 700, margin: '0 0 12px 0' }}>Supprimer cette demande ?</h3>
+              <h3 style={{ color: 'var(--abs-text)', fontSize: 20, fontWeight: 700, margin: '0 0 12px 0' }}>Supprimer cette demande ?</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, marginBottom: 16, textAlign: 'left' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(245,158,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
                   {requestToDelete.employees?.photo_url
                     ? <img src={requestToDelete.employees.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <span style={{ color: '#F59E0B', fontWeight: 700, fontSize: 13 }}>{requestToDelete.employees?.first_name?.[0]}{requestToDelete.employees?.last_name?.[0]}</span>
+                    : <span style={{ color: 'var(--abs-amber)', fontWeight: 700, fontSize: 13 }}>{requestToDelete.employees?.first_name?.[0]}{requestToDelete.employees?.last_name?.[0]}</span>
                   }
                 </div>
                 <div>
-                  <p style={{ color: '#FFF', fontSize: 14, fontWeight: 600, margin: 0 }}>
+                  <p style={{ color: 'var(--abs-text)', fontSize: 14, fontWeight: 600, margin: 0 }}>
                     {requestToDelete.employees?.first_name} {requestToDelete.employees?.last_name}
                   </p>
                   <p style={{ color: 'var(--abs-text-soft)', fontSize: 12, margin: '2px 0 0 0' }}>
@@ -2818,9 +2818,9 @@ export default function Absences() {
               </div>
               {requestToDelete.status === 'approuve' && (
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, marginBottom: 20, textAlign: 'left' }}>
-                  <AlertTriangle size={18} color="#F59E0B" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <AlertTriangle size={18} color="var(--abs-amber)" style={{ flexShrink: 0, marginTop: 1 }} />
                   <div>
-                    <p style={{ color: '#F59E0B', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>Suppression en cascade</p>
+                    <p style={{ color: 'var(--abs-amber)', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>Suppression en cascade</p>
                     <p style={{ color: '#AAA', fontSize: 12, margin: 0, lineHeight: '1.5' }}>
                       Cette demande a été approuvée. L'absence correspondante dans le registre sera également supprimée.
                     </p>
@@ -2856,18 +2856,18 @@ const TAB = {
     display: 'flex', 
     gap: '4px', 
     padding: '4px', 
-    background: 'var(--abs-bg-panel)', 
-    borderRadius: '14px', 
-    border: '1px solid var(--abs-line-soft)', 
+    background: 'var(--abs-bg-soft)', 
+    borderRadius: '12px', 
+    border: '1px solid var(--abs-border)', 
     marginBottom: '20px', 
     width: '100%', // ✅ Au lieu de 'fit-content'
     maxWidth: 'fit-content',
     overflowX: 'auto', // ✅ Scroll horizontal si nécessaire
     scrollbarWidth: 'none', // Firefox
   },
-  tab: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'transparent', color: 'var(--abs-text-soft)', fontSize: '14px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
-  tabActive: { background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontWeight: '600' },
-  badge: { padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '700', transition: 'all 0.2s ease' },
+  tab: { display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', borderRadius: '11px', border: 'none', background: 'transparent', color: 'var(--abs-text)', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
+  tabActive: { background: 'rgba(245,158,11,0.14)', color: 'var(--abs-amber)', fontWeight: '760' },
+  badge: { padding: '2px 8px', borderRadius: '999px', fontSize: '10.5px', fontWeight: '760', transition: 'all 0.2s ease' },
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2882,7 +2882,7 @@ const CS = {
   avatar: { width: 38, height: 38, borderRadius: 10, background: 'rgba(245,158,11,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 },
   avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
   empDetails: { minWidth: 0 },
-  empName: { color: '#FFF', fontSize: 14, fontWeight: 600, margin: '0 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  empName: { color: 'var(--abs-text)', fontSize: 14, fontWeight: 600, margin: '0 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   empMatricule: { color: 'var(--abs-text-soft)', fontSize: 11 },
   reasonBadge: { padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
   reasonEmoji: { fontSize: 12 },
@@ -2892,20 +2892,20 @@ const CS = {
   dateLabel: { color: 'var(--abs-text-faint)', fontSize: 9, textTransform: 'uppercase', letterSpacing: .5 },
   dateValue: { color: 'var(--abs-text)', fontSize: 12, fontWeight: 500 },
   daysBadge: { display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(245,158,11,.12)', border: '1px solid rgba(245,158,11,.25)', borderRadius: 10, padding: '6px 14px', minWidth: 50 },
-  daysNumber: { color: '#F59E0B', fontSize: 18, fontWeight: 800, lineHeight: '1' },
-  daysLabel: { color: '#F59E0B', fontSize: 9, opacity: .8 },
+  daysNumber: { color: 'var(--abs-amber)', fontSize: 18, fontWeight: 800, lineHeight: '1' },
+  daysLabel: { color: 'var(--abs-amber)', fontSize: 9, opacity: .8 },
   notesBox: { display: 'flex', gap: 8, padding: 10, background: 'var(--abs-fill-soft)', borderRadius: 8, borderLeft: '2px solid rgba(245,158,11,.3)' },
   notesText: { color: '#aaa', fontSize: 12, lineHeight: 1.4, fontStyle: 'italic', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' },
   docButton: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'rgba(59,130,246,.08)', border: '1px solid rgba(59,130,246,.2)', borderRadius: 10, color: '#3B82F6', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
   cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid var(--abs-fill)', gap: 8 },
   footerLeft: { display: 'flex', alignItems: 'center', gap: 8 },
-  enterpriseTag: { color: '#F59E0B', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  enterpriseTag: { color: 'var(--abs-amber)', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   footerActions: { display: 'flex', gap: 5, flexShrink: 0 },
-  approveBtn: { background: 'rgba(16,185,129,.1)', border: '1px solid rgba(16,185,129,.2)', padding: 6, borderRadius: 7, color: '#10B981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  refuseBtn: { background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', padding: 6, borderRadius: 7, color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  approveBtn: { background: 'rgba(16,185,129,.1)', border: '1px solid rgba(16,185,129,.2)', padding: 6, borderRadius: 7, color: 'var(--abs-emerald)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  refuseBtn: { background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', padding: 6, borderRadius: 7, color: 'var(--abs-coral)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   editBtn: { background: 'rgba(59,130,246,.1)', border: '1px solid rgba(59,130,246,.2)', padding: 6, borderRadius: 7, color: '#3B82F6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  deleteBtn: { background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', padding: 6, borderRadius: 7, color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  conflictBtn: { background: 'rgba(249,115,22,.1)', border: '1px solid rgba(249,115,22,.25)', padding: 7, borderRadius: 8, color: '#F97316', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  deleteBtn: { background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', padding: 6, borderRadius: 7, color: 'var(--abs-coral)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  conflictBtn: { background: 'rgba(249,115,22,.1)', border: '1px solid rgba(249,115,22,.25)', padding: 7, borderRadius: 8, color: 'var(--abs-orange)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2924,7 +2924,7 @@ const S = {
   },
   statCard: { background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 20, display: 'flex', alignItems: 'center', gap: 16, transition: 'all .3s ease', minWidth: 0, },
   statIcon: { width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  statNumber: { color: '#FFF', fontSize: 26, fontWeight: 800, margin: '0 0 2px 0', lineHeight: '1' },
+  statNumber: { color: 'var(--abs-text)', fontSize: 26, fontWeight: 800, margin: '0 0 2px 0', lineHeight: '1' },
   statLabel: { color: 'var(--abs-text-soft)', fontSize: 12, margin: 0, whiteSpace: 'nowrap',  textOverflow: 'ellipsis', // ✅ AJOUT : Coupe le texte avec ...
     maxWidth: '100%',},
   toolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 },
@@ -2938,14 +2938,14 @@ const S = {
   iconBtn: { border: '1px solid var(--abs-line-soft)', borderRadius: 12, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all .2s' },
   viewToggle: { display: 'flex', background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, overflow: 'hidden' },
   viewBtn: { background: 'transparent', border: 'none', color: 'var(--abs-text-faint)', padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all .2s' },
-  viewBtnActive: { background: 'rgba(245,158,11,.15)', color: '#F59E0B' },
+  viewBtnActive: { background: 'rgba(245,158,11,.15)', color: 'var(--abs-amber)' },
   exportBtn: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', color: 'var(--abs-text)', padding: '10px 16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 500, fontSize: 13, fontFamily: 'inherit' },
   addBtn: { background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#000', border: 'none', padding: '12px 20px', borderRadius: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', transition: 'all .3s ease' },
   filtersPanel: { display: 'flex', flexWrap: 'wrap', gap: 14, background: 'rgba(29,23,19,.6)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 20, marginBottom: 20, alignItems: 'flex-end', animation: 'slideUp .3s ease forwards' },
   filterItem: { display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 160px', minWidth: 140 },
   filterLabel: { color: 'var(--abs-text-soft)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 },
   filterSelectSmall: { background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line)', color: 'var(--abs-text)', padding: '10px 12px', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' },
-  resetBtn: { display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', color: '#EF4444', padding: '10px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', alignSelf: 'flex-end' },
+  resetBtn: { display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', color: 'var(--abs-coral)', padding: '10px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', alignSelf: 'flex-end' },
   resultCount: { marginBottom: 16, paddingLeft: 4 },
   resultText: { color: 'var(--abs-text)', fontSize: 14, fontWeight: 500 },
   list: { 
@@ -2955,13 +2955,13 @@ const S = {
   },
 
   empty: { gridColumn: '1/-1', textAlign: 'center', padding: '60px 20px', background: 'rgba(29,23,19,.5)', borderRadius: 20, border: '1px dashed var(--abs-line)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
-  emptyTitle: { color: '#FFF', fontSize: 18, fontWeight: 600, margin: 0 },
+  emptyTitle: { color: 'var(--abs-text)', fontSize: 18, fontWeight: 600, margin: 0 },
   emptySubtitle: { color: 'var(--abs-text-soft)', fontSize: 14, margin: 0 },
   pagination: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 32, paddingBottom: 20 },
   pageBtn: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', color: 'var(--abs-text)', width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontFamily: 'inherit' },
   calContainer: { background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', borderRadius: 20, padding: 24, animation: 'slideUp .4s ease forwards' },
   calHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
-  calTitle: { color: '#FFF', fontSize: 22, fontWeight: 700, margin: 0, textTransform: 'capitalize' },
+  calTitle: { color: 'var(--abs-text)', fontSize: 22, fontWeight: 700, margin: 0, textTransform: 'capitalize' },
   calNavBtn: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--abs-text)', cursor: 'pointer' },
   calGrid: { display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 },
   calDayHeader: { textAlign: 'center', color: 'var(--abs-text-soft)', fontSize: 12, fontWeight: 600, padding: '10px 0' },
@@ -2973,7 +2973,7 @@ const S = {
   calDaySelected: { background: 'rgba(245,158,11,.1)', border: '1px solid rgba(245,158,11,.5)', boxShadow: '0 0 20px rgba(245,158,11,.15)' },
   calDayTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   calDayNum: { color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 },
-  calAbsCount: { background: 'rgba(239,68,68,.2)', color: '#EF4444', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10, minWidth: 18, textAlign: 'center' },
+  calAbsCount: { background: 'rgba(239,68,68,.2)', color: 'var(--abs-coral)', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10, minWidth: 18, textAlign: 'center' },
   calEmpList: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, overflow: 'hidden' },
   calEmpItem: { display: 'flex', alignItems: 'center', gap: 4 },
   calEmpDot: { width: 6, height: 6, borderRadius: '50%', flexShrink: 0 },
@@ -2981,12 +2981,12 @@ const S = {
   calMore: { color: 'var(--abs-text-soft)', fontSize: 9, fontStyle: 'italic', paddingLeft: 10 },
   calDetail: { marginTop: 20, background: 'var(--abs-fill-soft)', border: '1px solid rgba(245,158,11,.15)', borderRadius: 16, padding: 20, animation: 'slideUp .3s ease forwards' },
   calDetailHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--abs-line-soft)', flexWrap: 'wrap', gap: 10 },
-  calDetailTitle: { color: '#FFF', fontSize: 16, fontWeight: 600, margin: 0, textTransform: 'capitalize' },
-  calDetailCount: { background: 'rgba(239,68,68,.15)', color: '#EF4444', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 },
+  calDetailTitle: { color: 'var(--abs-text)', fontSize: 16, fontWeight: 600, margin: 0, textTransform: 'capitalize' },
+  calDetailCount: { background: 'rgba(239,68,68,.15)', color: 'var(--abs-coral)', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 },
   calDetailClose: { background: 'var(--abs-line-soft)', border: 'none', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--abs-text-soft)', cursor: 'pointer' },
   calDetailList: { display: 'flex', flexDirection: 'column', gap: 10 },
   calDetailItem: { display: 'flex', alignItems: 'center', gap: 14, padding: 14, background: 'var(--abs-fill-soft)', borderRadius: 12, border: '1px solid var(--abs-fill)', flexWrap: 'wrap' },
-  calDetailName: { color: '#FFF', fontSize: 15, fontWeight: 600, margin: '0 0 4px 0' },
+  calDetailName: { color: 'var(--abs-text)', fontSize: 15, fontWeight: 600, margin: '0 0 4px 0' },
   calDetailMeta: { color: 'var(--abs-text-soft)', fontSize: 12, margin: 0 },
   calDetailBadge: { padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' },
   calLegend: { display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--abs-line-soft)' },
@@ -2996,21 +2996,21 @@ const S = {
   overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16, animation: 'fadeIn .2s ease' },
   modal: { background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line)', borderRadius: 24, width: '100%', maxWidth: 540, padding: 28, boxShadow: '0 25px 70px rgba(0,0,0,.6)', maxHeight: '90vh', overflowY: 'auto', animation: 'slideUp .3s ease forwards' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitleText: { color: '#FFF', fontSize: 20, fontWeight: 700, margin: 0 },
+  modalTitleText: { color: 'var(--abs-text)', fontSize: 20, fontWeight: 700, margin: 0 },
   closeBtnModal: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--abs-text-soft)', cursor: 'pointer' },
   form: { display: 'flex', flexDirection: 'column', gap: 18 },
   formRow: { display: 'flex', gap: 14 },
-  input: { background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line)', color: '#FFF', padding: '12px 16px', borderRadius: 12, fontSize: 14, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' },
+  input: { background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line)', color: 'var(--abs-text)', padding: '12px 16px', borderRadius: 12, fontSize: 14, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' },
   daysCounter: { display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.15)', borderRadius: 12, flexWrap: 'wrap' },
   overlapBox: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.25)', borderRadius: 12 },
-  overlapTitle: { color: '#F59E0B', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' },
+  overlapTitle: { color: 'var(--abs-amber)', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' },
   overlapText: { color: '#ccc', fontSize: 12, margin: 0, lineHeight: '1.4' },
   reasonGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(120px,1fr))', gap: 8 },
   modalFooter: { display: 'flex', gap: 12, marginTop: 8 },
   saveBtn: { flex: 2, padding: 14, background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#000', border: 'none', borderRadius: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 },
   histStats: { display: 'flex', gap: 20, marginBottom: 24, padding: 20, background: 'var(--abs-fill-soft)', borderRadius: 16, border: '1px solid var(--abs-line-soft)' },
   histTotalBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: 90, borderRight: '1px solid var(--abs-line-soft)', paddingRight: 20 },
-  histTotalNum: { color: '#F59E0B', fontSize: 36, fontWeight: 800, lineHeight: '1' },
+  histTotalNum: { color: 'var(--abs-amber)', fontSize: 36, fontWeight: 800, lineHeight: '1' },
   histTotalLabel: { color: 'var(--abs-text-soft)', fontSize: 12, marginTop: 4 },
   histBreakdown: { display: 'flex', flexDirection: 'column', gap: 8, flex: 1 },
   histMotifRow: { display: 'flex', alignItems: 'center', gap: 8 },

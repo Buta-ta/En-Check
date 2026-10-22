@@ -54,7 +54,7 @@ export function Avatar({ prenom, nom, photo, taille = 26, bordure = 'rgba(245,15
         width: taille, height: taille, borderRadius: '50%', flexShrink: 0,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         border: `1.5px solid ${bordure}`, background: 'rgba(245,158,11,0.14)',
-        color: '#F59E0B', fontSize: Math.max(9, Math.round(taille * 0.36)), fontWeight: 800,
+        color: 'var(--abs-amber)', fontSize: Math.max(9, Math.round(taille * 0.36)), fontWeight: 800,
       }}
     >
       {initialesDe(prenom, nom)}
@@ -288,7 +288,7 @@ export default function AbsencesKpiCards({
       <Carte
         testId="abs-kpi-absents"
         icone={UserRoundX}
-        couleur="#F59E0B"
+        couleur="var(--abs-amber)"
         valeur={mesures.absents.length}
         label="Absents aujourd'hui"
         precision={`sur ${mesures.effectif} employé${mesures.effectif > 1 ? 's' : ''} · ${mesures.taux} % de l'effectif`}
@@ -306,7 +306,7 @@ export default function AbsencesKpiCards({
                 marginLeft: -7, width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 background: 'rgba(245,158,11,0.18)', border: '1.5px solid rgba(245,158,11,0.35)',
-                color: '#F59E0B', fontSize: 9, fontWeight: 800,
+                color: 'var(--abs-amber)', fontSize: 9, fontWeight: 800,
               }}>
                 +{enPlus}
               </span>
@@ -343,7 +343,7 @@ export default function AbsencesKpiCards({
       <Carte
         testId="abs-kpi-conges"
         icone={Palmtree}
-        couleur="#10B981"
+        couleur="var(--abs-emerald)"
         valeur={mesures.soldeMoyen}
         suffixe="j"
         label="Congés restants (moyenne)"
@@ -356,7 +356,7 @@ export default function AbsencesKpiCards({
       <Carte
         testId="abs-kpi-attente"
         icone={Hourglass}
-        couleur="#F59E0B"
+        couleur="var(--abs-amber)"
         valeur={mesures.enAttente}
         label="Demandes en attente"
         precision={mesures.enAttente ? 'à valider ou à refuser' : 'aucune demande en souffrance'}
@@ -369,7 +369,7 @@ export default function AbsencesKpiCards({
       <Carte
         testId="abs-kpi-conflits"
         icone={AlertTriangle}
-        couleur={conflitsEnAttente ? '#EF4444' : '#9CA3AF'}
+        couleur={conflitsEnAttente ? 'var(--abs-coral)' : 'var(--abs-text-faint)'}
         valeur={conflitsEnAttente}
         label="Conflits absence / pointage"
         precision={conflitsEnAttente ? 'un pointage sur une absence déclarée' : 'aucun conflit à arbitrer'}

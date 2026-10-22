@@ -126,3 +126,85 @@ it('9. les bandeaux des deux pages sont arrondis et restent collés', () => {
     expect(regles).toContain('box-shadow')
   }
 })
+
+// ── 6. Lisibilité du mode clair ──────────────────────────────────────
+
+/** Luminance relative WCAG d'un #RRGGBB */
+const luminance = (hex) => {
+  const [r, g, b] = [0, 2, 4]
+    .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+/** Rapport de contraste WCAG entre deux #RRGGBB (1 → 21) */
+const contraste = (a, b) => {
+  const claires = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (claires[0] + 0.05) / (claires[1] + 0.05)
+}
+
+it('10. le mode clair garde un contraste lisible partout (WCAG ≥ 4.5)', () => {
+  const css = lire('src/pages/AbsencesAfroTech.css')
+  const clair = css.slice(css.indexOf(".abs-page[data-theme='light']"))
+  const valeur = (nom) => {
+    const trouve = new RegExp(`${nom}:\\s*#([0-9A-Fa-f]{6})`).exec(clair)
+    expect(trouve, `${nom} doit être une couleur solide`).toBeTruthy()
+    return trouve[1]
+  }
+  const fond = valeur('--abs-bg')
+
+  expect(contraste(valeur('--abs-text'), fond)).toBeGreaterThanOrEqual(7)
+  expect(contraste(valeur('--abs-text-soft'), fond)).toBeGreaterThanOrEqual(4.5)
+  expect(contraste(valeur('--abs-text-faint'), fond)).toBeGreaterThanOrEqual(4.5)
+  // les accents servent de texte et d'icônes : ils doivent rester lisibles
+  for (const accent of ['--abs-amber', '--abs-emerald', '--abs-coral', '--abs-orange', '--abs-indigo']) {
+    expect(contraste(valeur(accent), fond)).toBeGreaterThanOrEqual(4.5)
+  }
+  // le cuivre, lui, est un aplat (bouton principal) : il porte du texte crème,
+  // on vérifie seulement qu'il se détache franchement de la page
+  expect(contraste(valeur('--abs-copper'), fond)).toBeGreaterThanOrEqual(3)
+})
+
+it('11. aucun texte blanc ne subsiste en dehors des boutons en dégradé', () => {
+  // du blanc sur une carte claire, c'est invisible : seuls les boutons
+  // pleins (rouge/vert) gardent du blanc, et ils sont sur un dégradé.
+  const coupables = pageAbsences
+    .split('\n')
+    .filter((ligne) => ligne.includes("'#FFF'") && !ligne.includes('linear-gradient'))
+  expect(coupables).toEqual([])
+})
+
+it('12. les teintes d’accent passent par les variables de la charte', () => {
+  // les seules qui restent figées sont les couleurs « données »
+  // (motifs, statuts, filtres) et les dégradés des boutons pleins
+  expect((pageAbsences.match(/var\(--abs-amber\)/g) || []).length).toBeGreaterThan(20)
+  expect((pageAbsences.match(/var\(--abs-coral\)/g) || []).length).toBeGreaterThan(5)
+  expect((pageAbsences.match(/var\(--abs-emerald\)/g) || []).length).toBeGreaterThan(3)
+  expect((pageAbsences.match(/var\(--abs-orange\)/g) || []).length).toBeGreaterThan(3)
+})
+
+it('13. les boutons et pastilles suivent les gabarits des autres pages', () => {
+  const css = lire('src/pages/AbsencesAfroTech.css')
+  const bloc = (classe) => {
+    const debut = css.indexOf(`${classe} {`)
+    return css.slice(debut, css.indexOf('}', debut))
+  }
+  // boutons : hauteur 40, rayon 11, 12,5 px / 700 — comme la page Pointages
+  const bouton = bloc('.abs-btn')
+  expect(bouton).toContain('min-height: 40px')
+  expect(bouton).toContain('border-radius: 11px')
+  expect(bouton).toContain('font-size: 12.5px')
+  expect(bouton).toContain('font-weight: 700')
+  // pastilles de raccourcis : 11 px / 740, dégradé cuivre pour la page courante
+  const pastille = bloc('.abs-raccourci')
+  expect(pastille).toContain('font-size: 11px')
+  expect(pastille).toContain('font-weight: 740')
+})
+
+it('14. la bande de raccourcis n’a plus de couleurs figées au sombre', () => {
+  const source = lire('src/components/RaccourcisPages.jsx')
+  // l'apparence vit dans la feuille de style, donc plus rien de codé ici
+  expect(source).not.toContain('rgba(255,255,255')
+  expect(source).not.toContain('#F59E0B')
+  expect(source).toContain('className="abs-raccourci"')
+})
