@@ -1,29 +1,40 @@
 // ═══════════════════════════════════════════════════════════
 // 🎨 GESTIONNAIRE DE MOTIFS
 //
-// Créer, modifier, archiver et restaurer les motifs d'absence :
-// libellé, emoji et couleur sont libres.
+// Créer, modifier et SUPPRIMER les motifs d'absence : libellé,
+// emoji (le sien, celui du téléphone ou du clavier) et couleur.
 //
-// Règles maison :
-//   • on ARCHIVE, on n'efface jamais → tout est restaurable
-//   • archiver prévient du nombre d'absences concernées
-//   • le dernier motif actif ne peut pas être archivé
-//   • une absence qui référence un motif archivé continue de
-//     s'afficher avec ses couleurs d'origine (repli automatique)
+// Règles validées :
+//   • suppression RÉELLE, pas d'archivage
+//   • si le motif est utilisé, on transfère d'abord ses absences
+//     vers un autre motif — aucune absence ne perd ses couleurs
+//   • le dernier motif ne peut pas être supprimé
+//   • en vue « toutes entreprises », on consulte : la
+//     personnalisation se fait entreprise par entreprise
 // ═══════════════════════════════════════════════════════════
 
 import { useMemo, useState } from 'react'
-import { Plus, Pencil, Archive, ArchiveRestore, Check, X, Palette, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Check, X, Trash2, Building2, Smile } from 'lucide-react'
 import { useMotifsAbsence } from '../hooks/useMotifsAbsence'
 import { EMOJIS_MOTIFS, PALETTE_MOTIFS, fondDepuisCouleur } from '../constants/motifsAbsence'
-import { formaterDateCourt } from '../services/absencesCalendrier'
 
 const champsVides = { label: '', emoji: '📋', color: '#10B981' }
 
+/** Les motifs d'origine portent `id`, ceux de la base portent `code` */
+const codeDe = (m) => m.code || m.id
+
+/** Un emoji, pas un roman : on garde au plus 2 caractères utiles */
+const nettoyerEmoji = (valeur) => {
+  const net = (valeur || '').trim()
+  if (!net) return '📋'
+  return [...net].slice(0, 2).join('')
+}
+
 export default function AbsencesMotifsManager({ absences = [] }) {
-  const { motifs, corbeille, creer, modifier, archiver, restaurer } = useMotifsAbsence()
-  const [brouillon, setBrouillon] = useState(null) // null | { id?, label, emoji, color }
-  const [confirmation, setConfirmation] = useState(null) // motif à archiver
+  const { motifs, toutesEntreprises, creer, modifier, supprimer } = useMotifsAbsence()
+  const [brouillon, setBrouillon] = useState(null) // null | { rowId?, label, emoji, color }
+  const [aSupprimer, setASupprimer] = useState(null) // motif dont on prépare la suppression
+  const [codeCible, setCodeCible] = useState('') // motif qui récupère les absences
   const [enCours, setEnCours] = useState(false)
 
   const usages = useMemo(() => {
@@ -35,250 +46,377 @@ export default function AbsencesMotifsManager({ absences = [] }) {
     return map
   }, [absences])
 
-  const ouvrirCreation = () => setBrouillon({ ...champsVides })
-  const ouvrirEdition = (m) => setBrouillon({ id: m.id, label: m.label, emoji: m.emoji, color: m.color })
+  const ouvrirCreation = () => {
+    setBrouillon({ ...champsVides })
+    setASupprimer(null)
+  }
+  const ouvrirEdition = (m) => {
+    setBrouillon({ rowId: m.rowId, code: m.code, label: m.label, emoji: m.emoji, color: m.color })
+    setASupprimer(null)
+  }
 
   const enregistrer = async () => {
-    const label = (brouillon.label || '').trim()
-    if (!label) return
+    if (!brouillon || !brouillon.label.trim()) return
     setEnCours(true)
     try {
-      if (brouillon.id) await modifier(brouillon.id, brouillon)
-      else await creer(brouillon)
+      if (brouillon.rowId) await modifier(brouillon.rowId, {
+        label: brouillon.label,
+        emoji: brouillon.emoji,
+        color: brouillon.color,
+      })
+      else await creer({ label: brouillon.label, emoji: brouillon.emoji, color: brouillon.color })
       setBrouillon(null)
-    } catch (err) {
-      console.error(err)
     } finally {
       setEnCours(false)
     }
   }
 
-  const confirmerArchivage = async () => {
-    if (!confirmation) return
+  const demanderSuppression = (m) => {
+    setBrouillon(null)
+    setASupprimer(m)
+    // par défaut on propose le premier autre motif
+    const autre = motifs.find((x) => codeDe(x) !== codeDe(m))
+    setCodeCible(autre ? autre.code : '')
+  }
+
+  const confirmerSuppression = async () => {
+    if (!aSupprimer) return
+    const nbUsages = usages[aSupprimer.code] || 0
     setEnCours(true)
     try {
-      await archiver(confirmation.id)
-      setConfirmation(null)
+      await supprimer({
+        rowId: aSupprimer.rowId,
+        codeSource: codeDe(aSupprimer),
+        codeCible: nbUsages > 0 ? codeCible : null,
+      })
+      setASupprimer(null)
+      setCodeCible('')
     } finally {
       setEnCours(false)
     }
   }
+
+  const dernierMotif = motifs.length <= 1
+  const nbUsagesCible = aSupprimer ? (usages[aSupprimer.code] || 0) : 0
 
   return (
-    <div className="abs-panel" style={{ padding: 18, marginBottom: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: 15, color: 'var(--abs-text)' }}>Motifs d’absence</h3>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--abs-text-soft)' }}>
-            {motifs.length} motif{motifs.length > 1 ? 's' : ''} actif{motifs.length > 1 ? 's' : ''} · glissez-les dans le calendrier depuis le dock
+    <div
+      data-testid="abs-motifs-manager"
+      style={{
+        border: '1px solid var(--abs-border, rgba(245,158,11,0.16))',
+        background: 'var(--abs-bg-panel, rgba(29,23,19,0.82))',
+        borderRadius: 16,
+        padding: 18,
+      }}
+    >
+      {/* ══ En-tête ══ */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0 }}>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--abs-text, #F5F2EB)' }}>
+            Motifs d’absence
+          </h3>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))' }}>
+            {motifs.length} motif{motifs.length > 1 ? 's' : ''} · ces motifs alimentent le calendrier, le dock et les filtres
           </p>
         </div>
-        <button className="abs-btn abs-btn-primary" onClick={ouvrirCreation} disabled={enCours}>
-          <Plus size={15} /> Nouveau motif
+        <button
+          type="button"
+          onClick={ouvrirCreation}
+          disabled={toutesEntreprises || enCours}
+          data-testid="abs-motifs-nouveau"
+          title={toutesEntreprises ? 'Sélectionnez une entreprise pour personnaliser' : 'Créer un motif'}
+          style={{
+            marginLeft: 'auto', padding: '9px 14px', borderRadius: 11, cursor: toutesEntreprises ? 'not-allowed' : 'pointer',
+            border: 'none', background: 'linear-gradient(135deg, #C25E28, #8C3418)', color: '#FFF5E6',
+            fontWeight: 700, fontSize: 13, fontFamily: 'inherit',
+            display: 'inline-flex', alignItems: 'center', gap: 7, opacity: toutesEntreprises ? 0.5 : 1,
+          }}
+        >
+          <Plus size={16} /> Nouveau motif
         </button>
       </div>
 
-      {/* ─── Formulaire création / édition ─── */}
-      {brouillon && (
+      {toutesEntreprises && (
         <div style={{
-          border: '1px solid var(--abs-border-strong)', borderRadius: 12, padding: 14,
-          background: 'var(--abs-bg-soft)', marginBottom: 14,
+          display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14, padding: '11px 13px',
+          borderRadius: 12, background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.24)',
+          fontSize: 12, color: '#93C5FD',
         }}>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-            <input
-              value={brouillon.label}
-              onChange={(e) => setBrouillon({ ...brouillon, label: e.target.value })}
-              placeholder="Libellé du motif"
-              aria-label="Libellé du motif"
-              style={{
-                flex: '1 1 220px', padding: '10px 12px', borderRadius: 10, fontSize: 13,
-                background: 'var(--abs-bg-panel)', border: '1px solid var(--abs-border)',
-                color: 'var(--abs-text)', fontFamily: 'inherit',
-              }}
-            />
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', borderRadius: 10,
-              background: fondDepuisCouleur(brouillon.color),
-              border: `1px solid ${brouillon.color}`, color: brouillon.color, fontSize: 13, fontWeight: 700,
-            }}>
-              <span style={{ fontSize: 17 }}>{brouillon.emoji}</span>
-              {brouillon.label || 'Aperçu'}
-            </div>
-          </div>
-
-          <p style={{ margin: '0 0 6px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--abs-text-faint)' }}>
-            Emoji
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-            {EMOJIS_MOTIFS.map((e) => (
-              <button
-                key={e}
-                type="button"
-                onClick={() => setBrouillon({ ...brouillon, emoji: e })}
-                aria-label={`Emoji ${e}`}
-                style={{
-                  width: 34, height: 34, borderRadius: 9, fontSize: 17, cursor: 'pointer',
-                  background: brouillon.emoji === e ? 'rgba(245,158,11,0.16)' : 'var(--abs-bg-panel)',
-                  border: `1px solid ${brouillon.emoji === e ? 'var(--abs-border-strong)' : 'var(--abs-border)'}`,
-                }}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-
-          <p style={{ margin: '0 0 6px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--abs-text-faint)' }}>
-            <Palette size={11} style={{ marginRight: 5, verticalAlign: -1 }} /> Couleur
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 14 }}>
-            {PALETTE_MOTIFS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setBrouillon({ ...brouillon, color: c })}
-                aria-label={`Couleur ${c}`}
-                style={{
-                  width: 28, height: 28, borderRadius: 8, background: c, cursor: 'pointer',
-                  border: brouillon.color === c ? '2px solid var(--abs-text)' : '1px solid var(--abs-border)',
-                }}
-              />
-            ))}
-            <input
-              type="color"
-              value={brouillon.color}
-              onChange={(e) => setBrouillon({ ...brouillon, color: e.target.value })}
-              aria-label="Couleur personnalisée"
-              style={{ width: 40, height: 30, border: '1px solid var(--abs-border)', borderRadius: 8, background: 'transparent', cursor: 'pointer' }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="abs-btn abs-btn-primary" onClick={enregistrer} disabled={enCours || !brouillon.label.trim()}>
-              <Check size={15} /> {brouillon.id ? 'Enregistrer' : 'Créer le motif'}
-            </button>
-            <button className="abs-btn" onClick={() => setBrouillon(null)}>
-              <X size={15} /> Annuler
-            </button>
-          </div>
+          <Building2 size={15} />
+          <span>Vue « toutes entreprises » : les motifs affichés sont les motifs communs. Sélectionnez une entreprise pour les personnaliser et les supprimer.</span>
         </div>
       )}
 
-      {/* ─── Liste des motifs actifs ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 10 }}>
+      {/* ══ Liste ══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
         {motifs.map((m) => {
-          const nb = usages[m.id] || 0
+          const nb = usages[codeDe(m)] || 0
           return (
             <div
-              key={m.id}
+              key={m.code}
+              data-testid="abs-motifs-carte"
+              data-motif={codeDe(m)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                borderRadius: 12, border: '1px solid var(--abs-border)',
-                borderLeft: `3px solid ${m.color}`, background: 'var(--abs-bg-panel)',
+                border: `1px solid ${m.color}55`,
+                background: fondDepuisCouleur(m.color),
+                borderRadius: 13, padding: '12px 13px',
+                display: 'flex', alignItems: 'center', gap: 11,
               }}
             >
-              <span style={{ fontSize: 18 }}>{m.emoji}</span>
+              <span style={{
+                width: 38, height: 38, borderRadius: 11, flexShrink: 0, fontSize: 19,
+                background: `${m.color}22`, border: `1px solid ${m.color}55`,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {m.emoji}
+              </span>
               <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--abs-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <p style={{
+                  margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--abs-text, #F5F2EB)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
                   {m.label}
                 </p>
-                <p style={{ margin: 0, fontSize: 11, color: 'var(--abs-text-faint)' }}>
-                  {nb} absence{nb > 1 ? 's' : ''}{m.is_system ? ' · motif d’origine' : ''}
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))' }}>
+                  {m.color} · {nb} absence{nb > 1 ? 's' : ''}
                 </p>
               </div>
-              <button
-                className="abs-back-btn"
-                style={{ width: 30, height: 30 }}
-                onClick={() => ouvrirEdition(m)}
-                aria-label={`Modifier ${m.label}`}
-                title="Modifier"
-              >
-                <Pencil size={13} />
-              </button>
-              <button
-                className="abs-back-btn"
-                style={{ width: 30, height: 30 }}
-                onClick={() => setConfirmation(m)}
-                disabled={motifs.length <= 1}
-                aria-label={`Archiver ${m.label}`}
-                title={motifs.length <= 1 ? 'Impossible : il faut au moins un motif' : 'Archiver'}
-              >
-                <Archive size={13} />
-              </button>
+              <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => ouvrirEdition(m)}
+                  disabled={toutesEntreprises}
+                  aria-label={`Modifier ${m.label}`}
+                  data-testid="abs-motifs-modifier"
+                  style={boutonIcone(m.color)}
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => demanderSuppression(m)}
+                  disabled={toutesEntreprises || dernierMotif || enCours}
+                  aria-label={`Supprimer ${m.label}`}
+                  data-testid="abs-motifs-supprimer"
+                  title={dernierMotif ? 'Gardez au moins un motif' : 'Supprimer définitivement'}
+                  style={{ ...boutonIcone('#EF4444'), opacity: dernierMotif || toutesEntreprises ? 0.4 : 1, cursor: dernierMotif || toutesEntreprises ? 'not-allowed' : 'pointer' }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           )
         })}
       </div>
 
-      {/* ─── Corbeille ─── */}
-      {corbeille.length > 0 && (
-        <details style={{ marginTop: 16, borderTop: '1px solid var(--abs-border)', paddingTop: 12 }}>
-          <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--abs-text-soft)' }}>
-            <Trash2 size={12} style={{ marginRight: 6, verticalAlign: -1 }} />
-            Corbeille — {corbeille.length} motif{corbeille.length > 1 ? 's' : ''} archivé{corbeille.length > 1 ? 's' : ''}
-          </summary>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 10, marginTop: 10 }}>
-            {corbeille.map((m) => (
-              <div key={m.id} style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12,
-                border: '1px dashed var(--abs-border)', background: 'var(--abs-bg-soft)', opacity: 0.85,
-              }}>
-                <span style={{ fontSize: 18, filter: 'grayscale(0.4)' }}>{m.emoji}</span>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ margin: 0, fontSize: 13, color: 'var(--abs-text)', textDecoration: 'line-through' }}>{m.label}</p>
-                  <p style={{ margin: 0, fontSize: 11, color: 'var(--abs-text-faint)' }}>
-                    Archivé le {formaterDateCourt(m.archive_le)}
-                  </p>
-                </div>
-                <button
-                  className="abs-back-btn"
-                  style={{ width: 30, height: 30 }}
-                  onClick={() => restaurer(m.id)}
-                  aria-label={`Restaurer ${m.label}`}
-                  title="Restaurer"
-                >
-                  <ArchiveRestore size={13} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
+      {/* ══ Formulaire création / édition ══ */}
+      {brouillon && (
+        <div
+          data-testid="abs-motifs-formulaire"
+          style={{
+            marginTop: 16, padding: 16, borderRadius: 14,
+            border: '1px solid var(--abs-border-strong, rgba(245,158,11,0.35))',
+            background: 'var(--abs-bg-subtle, rgba(255,255,255,0.02))',
+          }}
+        >
+          <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--abs-text, #F5F2EB)' }}>
+            {brouillon.rowId ? 'Modifier le motif' : 'Nouveau motif'}
+          </p>
 
-      {/* ─── Confirmation d'archivage ─── */}
-      {confirmation && (
-        <>
-          <div onClick={() => setConfirmation(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000 }} aria-hidden="true" />
-          <div role="dialog" aria-modal="true" className="abs-panel" style={{
-            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-            zIndex: 1001, width: 'min(420px, 92vw)', padding: 22,
-          }}>
-            <p style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 700, color: 'var(--abs-text)' }}>
-              Archiver « {confirmation.label} » ?
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <label style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))', fontWeight: 600 }}>
+                Libellé
+              </span>
+              <input
+                value={brouillon.label}
+                onChange={(e) => setBrouillon({ ...brouillon, label: e.target.value })}
+                placeholder="Congé payé, Télétravail…"
+                data-testid="abs-motifs-libelle"
+                style={champ}
+              />
+            </label>
+
+            <label style={{ flex: '0 0 96px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))', fontWeight: 600 }}>
+                Emoji
+              </span>
+              <input
+                value={brouillon.emoji}
+                onChange={(e) => setBrouillon({ ...brouillon, emoji: nettoyerEmoji(e.target.value) })}
+                placeholder="🎙️"
+                title="Collez l'emoji de votre choix (clavier emoji du téléphone ou de l'ordinateur)"
+                data-testid="abs-motifs-emoji-libre"
+                style={{ ...champ, fontSize: 20, textAlign: 'center', padding: '8px 6px' }}
+              />
+            </label>
+          </div>
+
+          {/* Palette d'emojis : un raccourci, la saisie libre reste au-dessus */}
+          <div style={{ marginTop: 12 }}>
+            <p style={{ margin: '0 0 7px', fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Smile size={13} /> Suggestions (vous pouvez coller n'importe quel emoji)
             </p>
-            <p style={{ margin: '0 0 16px', fontSize: 13, lineHeight: 1.6, color: 'var(--abs-text-soft)' }}>
-              Le motif ne sera plus proposé dans le dock ni dans le formulaire.
-              {(usages[confirmation.id] || 0) > 0 && (
-                <>
-                  {' '}
-                  <b style={{ color: '#F59E0B' }}>
-                    {usages[confirmation.id]} absence{usages[confirmation.id] > 1 ? 's' : ''} l’utilisent
-                  </b>{' '}
-                  : elles resteront affichées avec leurs couleurs d’origine.
-                </>
-              )}{' '}
-              Rien n’est supprimé : vous pourrez le restaurer depuis la corbeille.
-            </p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="abs-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={confirmerArchivage} disabled={enCours}>
-                <Archive size={15} /> Archiver
-              </button>
-              <button className="abs-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setConfirmation(null)}>
-                Annuler
-              </button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {EMOJIS_MOTIFS.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => setBrouillon({ ...brouillon, emoji: e })}
+                  style={{
+                    width: 32, height: 32, borderRadius: 9, cursor: 'pointer', fontSize: 16,
+                    background: brouillon.emoji === e ? 'rgba(245,158,11,0.16)' : 'var(--abs-bg-panel, rgba(29,23,19,0.82))',
+                    border: `1px solid ${brouillon.emoji === e ? 'rgba(245,158,11,0.45)' : 'var(--abs-border, rgba(245,158,11,0.16))'}`,
+                  }}
+                >
+                  {e}
+                </button>
+              ))}
             </div>
           </div>
-        </>
+
+          <div style={{ marginTop: 12 }}>
+            <p style={{ margin: '0 0 7px', fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))', fontWeight: 600 }}>
+              Couleur
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              {PALETTE_MOTIFS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setBrouillon({ ...brouillon, color: c })}
+                  aria-label={`Couleur ${c}`}
+                  style={{
+                    width: 26, height: 26, borderRadius: 8, cursor: 'pointer', background: c,
+                    border: brouillon.color === c ? '2px solid #FFF5E6' : '1px solid rgba(255,255,255,0.15)',
+                  }}
+                />
+              ))}
+              <input
+                type="color"
+                value={brouillon.color}
+                onChange={(e) => setBrouillon({ ...brouillon, color: e.target.value.toUpperCase() })}
+                aria-label="Couleur personnalisée"
+                style={{ width: 34, height: 28, borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', cursor: 'pointer' }}
+              />
+            </div>
+          </div>
+
+          {/* Aperçu en direct */}
+          <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))' }}>Aperçu</span>
+            <span style={{
+              padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+              background: fondDepuisCouleur(brouillon.color),
+              border: `1px solid ${brouillon.color}`, color: brouillon.color,
+            }}>
+              {brouillon.emoji} {brouillon.label || 'Mon motif'}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <button type="button" onClick={() => setBrouillon(null)} style={boutonSecondaire}>
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={enregistrer}
+              disabled={!brouillon.label.trim() || enCours}
+              data-testid="abs-motifs-enregistrer"
+              style={{
+                ...boutonPrimaire,
+                opacity: !brouillon.label.trim() || enCours ? 0.5 : 1,
+                cursor: !brouillon.label.trim() || enCours ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <Check size={15} /> {brouillon.rowId ? 'Enregistrer' : 'Créer le motif'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ══ Suppression : transfert des absences si besoin ══ */}
+      {aSupprimer && (
+        <div
+          data-testid="abs-motifs-suppression"
+          style={{
+            marginTop: 16, padding: 16, borderRadius: 14,
+            border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.06)',
+          }}
+        >
+          <p style={{ margin: '0 0 4px', fontSize: 13.5, fontWeight: 700, color: '#FCA5A5' }}>
+            Supprimer « {aSupprimer.emoji} {aSupprimer.label} » ?
+          </p>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--abs-text-muted, rgba(245,242,235,0.65))' }}>
+            {nbUsagesCible === 0
+              ? 'Ce motif n’est utilisé par aucune absence. La suppression est définitive.'
+              : `${nbUsagesCible} absence${nbUsagesCible > 1 ? 's' : ''} utilisent ce motif. Choisissez où les transférer : elles garderont leurs dates, seul le motif change.`}
+          </p>
+
+          {nbUsagesCible > 0 && (
+            <label style={{ display: 'block', marginTop: 12 }}>
+              <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))', fontWeight: 600 }}>
+                Transférer vers
+              </span>
+              <select
+                value={codeCible}
+                onChange={(e) => setCodeCible(e.target.value)}
+                data-testid="abs-motifs-transfert"
+                style={{ ...champ, marginTop: 6 }}
+              >
+                {motifs.filter((m) => codeDe(m) !== codeDe(aSupprimer)).map((m) => (
+                  <option key={codeDe(m)} value={codeDe(m)}>{m.emoji} {m.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 15 }}>
+            <button type="button" onClick={() => { setASupprimer(null); setCodeCible('') }} style={boutonSecondaire}>
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={confirmerSuppression}
+              disabled={enCours || (nbUsagesCible > 0 && !codeCible)}
+              data-testid="abs-motifs-confirmer-suppression"
+              style={{
+                padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                fontFamily: 'inherit', border: 'none', background: 'linear-gradient(135deg, #EF4444, #B91C1C)',
+                color: '#FFF', display: 'inline-flex', alignItems: 'center', gap: 7,
+                opacity: enCours || (nbUsagesCible > 0 && !codeCible) ? 0.5 : 1,
+              }}
+            >
+              <Trash2 size={15} /> Supprimer définitivement
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
+}
+
+const champ = {
+  width: '100%', padding: '10px 12px', borderRadius: 10, fontFamily: 'inherit', fontSize: 13.5,
+  background: 'rgba(0,0,0,0.25)', border: '1px solid var(--abs-border, rgba(245,158,11,0.16))',
+  color: 'var(--abs-text, #F5F2EB)', outline: 'none', boxSizing: 'border-box',
+}
+
+const boutonIcone = (couleur) => ({
+  width: 30, height: 30, borderRadius: 9, cursor: 'pointer',
+  background: `${couleur}1A`, border: `1px solid ${couleur}44`, color: couleur,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+})
+
+const boutonSecondaire = {
+  padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+  fontFamily: 'inherit', background: 'transparent',
+  border: '1px solid var(--abs-border, rgba(245,158,11,0.16))',
+  color: 'var(--abs-text-muted, rgba(245,242,235,0.65))',
+}
+
+const boutonPrimaire = {
+  padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+  border: 'none', background: 'linear-gradient(135deg, #C25E28, #8C3418)', color: '#FFF5E6',
+  display: 'inline-flex', alignItems: 'center', gap: 7,
 }

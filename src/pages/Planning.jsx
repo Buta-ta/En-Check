@@ -53,6 +53,8 @@ import {
   FileText,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import MotifsAbsenceService from "../services/motifsAbsenceService";
+import { MOTIFS_PAR_DEFAUT, getMotifConfig } from "../constants/motifsAbsence";
 import "./PlanningAfroTech.css";
 
 const OVERRIDES_STORAGE_KEY = "encheck_planning_day_overrides_v1";
@@ -273,6 +275,8 @@ export default function Planning() {
   const [entreprises, setEntreprises] = useState([]);
   const [scheduleRequests, setScheduleRequests] = useState([]);
   const [absences, setAbsences] = useState([]);
+  // Motifs d'absence de l'entreprise : mêmes couleurs et emojis que la page Absences
+  const [motifs, setMotifs] = useState(MOTIFS_PAR_DEFAUT);
   // Pointages réellement effectués (table attendances) pour comparer prévu / réalisé
   const [attendances, setAttendances] = useState([]);
   // Seuils de pointage et grilles horaires par entreprise (même moteur que Pointages)
@@ -568,6 +572,18 @@ export default function Planning() {
       }
       const { data: absData } = await absQuery;
       setAbsences(absData || []);
+
+      // Les motifs personnalisés de l'entreprise (une absence s'affiche avec SON emoji)
+      const idMotifs = isSuperAdmin
+        ? (selectedEntreprise === "all" ? null : selectedEntreprise)
+        : enterpriseId;
+      try {
+        const motifsMaison = await MotifsAbsenceService.lister(idMotifs);
+        if (motifsMaison && motifsMaison.length > 0) setMotifs(motifsMaison);
+      } catch (err) {
+        // La base ne répond pas : on garde les 7 motifs d'origine
+        console.error("[planning] motifs indisponibles", err);
+      }
 
       // Chargement des pointages réels (attendances) sur toute la période affichée
       const weekStart = getStartOfWeekMonday(calendarDate);
@@ -1197,6 +1213,9 @@ export default function Planning() {
     [filteredEmployees]
   );
 
+  // Un code d'absence (« conge ») devient le motif de l'entreprise : emoji + libellé
+  const motifDe = (code) => motifs.find((m) => m.id === code) || getMotifConfig(code);
+
   // ═══ RÉSOLUTION DU SHIFT D'UN EMPLOYÉ SUR UN JOUR DONNÉ ═══
   const resolveCellShift = (emp, dayItem) => {
     const { dateStr, dayNum } = dayItem;
@@ -1254,13 +1273,17 @@ export default function Planning() {
         a.end_date >= dateStr
     );
     if (empAbs) {
+      const motifAbs = motifDe(empAbs.reason);
       return {
+        // La ligne forte de la case : l'emoji du motif, comme dans le calendrier des absences
+        name: `${motifAbs.emoji} ${motifAbs.label}`,
         start_time: "Congé",
-        end_time: empAbs.reason || "Absence",
+        end_time: motifAbs.label || "Absence",
         has_break: false,
         variant: "conge",
         isAbsence: true,
-        label: empAbs.reason || "Congé",
+        motifColor: motifAbs.color,
+        label: `${motifAbs.emoji} ${motifAbs.label}`,
       };
     }
 

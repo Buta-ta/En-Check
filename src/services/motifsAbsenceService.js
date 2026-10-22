@@ -2,10 +2,17 @@
 // 🎨 MOTIFS D'ABSENCE — ACCÈS AUX DONNÉES
 //
 // Les motifs ne sont plus une constante : ce sont des lignes de
-// `absence_motifs`, modifiables par l'admin (libellé, emoji, couleur).
+// `absence_motifs`, créées, modifiées et SUPPRIMÉES par l'admin.
 //
-// Doctrine : on ARCHIVE, on n'efface jamais. Un motif archivé reste
-// lisible par les absences qui l'utilisent, et se restaure en un clic.
+// Doctrine (validée le 22/10) : une VRAIE suppression, pas un
+// archivage. Mais une absence ne peut pas se retrouver sans
+// couleur : si le motif est utilisé, on transfère d'abord ses
+// absences vers un autre motif, puis on supprime.
+//
+// Portée : chaque entreprise reçoit sa propre COPIE des 7 motifs
+// d'origine (mêmes codes). L'admin travaille donc toujours sur
+// des lignes qui lui appartiennent — il peut les recolorer et les
+// supprimer, et les absences gardent leur code.
 // ═══════════════════════════════════════════════════════════
 
 import { supabase } from '../lib/supabase'
@@ -23,9 +30,9 @@ export function codeDepuisLabel(label, index = 0) {
   return index > 0 ? `${propre}-${index}` : propre
 }
 
-/** Un code ne peut pas écraser un motif d'origine (is_system) */
-const CODES_RESERVES = new Set(MOTIFS_PAR_DEFAUT.map((m) => m.id))
+const CODES_RESERVES = new Set(MOTIFS_PAR_DEFAUT.map((m) => m.code || m.id))
 
+/** Un nouveau motif ne peut pas voler le code d'un motif d'origine */
 export function codeDisponible(code, motifsExistants = []) {
   if (!CODES_RESERVES.has(code)) return code
   const pris = new Set(motifsExistants.map((m) => m.code))
@@ -38,33 +45,55 @@ export function codeDisponible(code, motifsExistants = []) {
   return candidat
 }
 
+const global = (id) => !id || id === 'all'
+
 class MotifsAbsenceService {
-  /** Motifs actifs : les globaux + ceux de l'entreprise */
+  /**
+   * Chaque entreprise possède sa copie des motifs d'origine.
+   * On la crée au premier passage : après ça, tout est modifiable
+   * et supprimable par l'admin de cette entreprise.
+   */
+  async assurerMotifsEntreprise(enterpriseId) {
+    if (global(enterpriseId)) return []
+
+    const [{ data: globaux }, { data: miens }] = await Promise.all([
+      supabase.from('absence_motifs').select('*').is('enterprise_id', null).is('archive_le', null).order('ordre'),
+      supabase.from('absence_motifs').select('code').eq('enterprise_id', enterpriseId),
+    ])
+
+    const presents = new Set((miens || []).map((m) => m.code))
+    const aCreer = (globaux || []).filter((g) => !presents.has(g.code))
+
+    if (aCreer.length > 0) {
+      await supabase.from('absence_motifs').insert(
+        aCreer.map((g) => ({
+          enterprise_id: enterpriseId,
+          code: g.code,
+          label: g.label,
+          emoji: g.emoji,
+          color: g.color,
+          bg: g.bg || fondDepuisCouleur(g.color),
+          ordre: g.ordre,
+          is_system: false,
+        }))
+      )
+    }
+    return aCreer
+  }
+
+  /** Motifs actifs : la copie de l'entreprise, ou les globaux en vue « toutes entreprises » */
   async lister(enterpriseId) {
-    let query = supabase
+    await this.assurerMotifsEntreprise(enterpriseId)
+
+    const query = supabase
       .from('absence_motifs')
       .select('*')
       .is('archive_le', null)
 
-    query = enterpriseId && enterpriseId !== 'all'
-      ? query.or(`enterprise_id.is.null,enterprise_id.eq.${enterpriseId}`)
-      : query.is('enterprise_id', null)
+    if (global(enterpriseId)) query.is('enterprise_id', null)
+    else query.eq('enterprise_id', enterpriseId)
 
     const { data, error } = await query.order('ordre', { ascending: true })
-    if (error) throw error
-    return (data || []).map(normaliser)
-  }
-
-  /** Corbeille : les motifs archivés de l'entreprise */
-  async corbeille(enterpriseId) {
-    let query = supabase
-      .from('absence_motifs')
-      .select('*')
-      .not('archive_le', 'is', null)
-
-    if (enterpriseId && enterpriseId !== 'all') query = query.eq('enterprise_id', enterpriseId)
-
-    const { data, error } = await query.order('archive_le', { ascending: false })
     if (error) throw error
     return (data || []).map(normaliser)
   }
@@ -79,7 +108,7 @@ class MotifsAbsenceService {
     const { data, error } = await supabase
       .from('absence_motifs')
       .insert({
-        enterprise_id: enterpriseId && enterpriseId !== 'all' ? enterpriseId : null,
+        enterprise_id: global(enterpriseId) ? null : enterpriseId,
         code: codeFinal,
         label: (label || '').trim(),
         emoji: emoji || '📋',
@@ -111,31 +140,54 @@ class MotifsAbsenceService {
     return normaliser(data)
   }
 
-  /** Archiver : jamais d'effacement physique */
-  async archiver(id) {
+  /**
+   * SUPPRESSION RÉELLE.
+   * Le garde-fou est dans l'interface : on ne supprime qu'après
+   * avoir transféré les absences qui utilisaient ce motif, et
+   * jamais le dernier motif de l'entreprise.
+   */
+  async supprimer(id) {
     const { error } = await supabase
       .from('absence_motifs')
-      .update({ archive_le: new Date().toISOString() })
+      .delete()
       .eq('id', id)
     if (error) throw error
     return true
   }
 
-  async restaurer(id) {
-    const { error } = await supabase
-      .from('absence_motifs')
-      .update({ archive_le: null })
-      .eq('id', id)
+  /**
+   * Bascule les absences d'un motif vers un autre, avant suppression.
+   * Portée entreprise : on ne touche jamais aux absences des autres.
+   */
+  async reassigner({ codeSource, codeCible, enterpriseId }) {
+    if (!codeSource || !codeCible || codeSource === codeCible) return 0
+
+    let query = supabase
+      .from('absences')
+      .update({ reason: codeCible })
+      .eq('reason', codeSource)
+      .select('id')
+
+    if (!global(enterpriseId)) query = query.eq('enterprise_id', enterpriseId)
+
+    const { data, error } = await query
     if (error) throw error
-    return true
+    return (data || []).length
   }
 
-  /** Combien d'absences utilisent ce motif ? (avertissement avant archivage) */
-  async usages(code) {
+  /** Combien d'absences de cette entreprise utilisent ce motif ? */
+  async usages(code, enterpriseId) {
     if (!code) return 0
-    const { data, error } = await supabase.rpc('encheck_absence_motifs_usages', { p_code: code })
+    let query = supabase
+      .from('absences')
+      .select('id', { count: 'exact', head: true })
+      .eq('reason', code)
+
+    if (!global(enterpriseId)) query = query.eq('enterprise_id', enterpriseId)
+
+    const { count, error } = await query
     if (error) return 0
-    return Number(data) || 0
+    return Number(count) || 0
   }
 }
 
@@ -143,7 +195,9 @@ class MotifsAbsenceService {
 function normaliser(ligne) {
   return {
     ...ligne,
-    id: ligne.code,
+    id: ligne.code,        // code métier : 'conge', 'musique'…
+    rowId: ligne.id,       // uuid de la ligne : sert aux UPDATE et DELETE
+
     color: ligne.color || '#9CA3AF',
     bg: ligne.bg || fondDepuisCouleur(ligne.color),
     emoji: ligne.emoji || '📋',

@@ -253,7 +253,8 @@ class LeaveBalanceService {
           matricule,
           department,
           position,
-          hire_date
+          hire_date,
+          is_active
         )
       `)
       .eq('enterprise_id', enterpriseId)

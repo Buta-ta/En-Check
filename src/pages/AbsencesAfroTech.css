@@ -109,8 +109,28 @@
 
 .abs-brand {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
   line-height: 1.25;
+}
+
+.abs-brand-mark {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(16, 185, 129, 0.1));
+  border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.abs-brand-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .abs-brand-title {

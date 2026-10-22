@@ -78,7 +78,7 @@ export default function AbsencesCalendrier({
   const [absenceActive, setAbsenceActive] = useState(null)
   // Cellule survolée pendant un glisser-déposer : { employeeId, index }
   const [survol, setSurvol] = useState(null)
-  const [modeInterne, setModeInterne] = useState('mois')
+  const [modeInterne, setModeInterne] = useState('semaine') // la semaine est la vue par défaut
   const [jourVise, setJourVise] = useState(() => jourInitial || isoLocal(new Date()))
 
   const mode = modeControle || modeInterne
@@ -265,13 +265,64 @@ export default function AbsencesCalendrier({
             })}
           </div>
 
-          <button onClick={() => setMotifsMasques(new Set())} style={boutonDoux(theme)}>
+          <button
+            type="button"
+            onClick={() => setMotifsMasques(new Set())}
+            disabled={motifsMasques.size === 0}
+            data-testid="abs-cal-tous-motifs"
+            title={motifsMasques.size === 0 ? 'Tous les motifs sont affichés' : `Réafficher les ${motifsMasques.size} motifs masqués`}
+            style={{
+              ...boutonDoux(theme),
+              opacity: motifsMasques.size === 0 ? 0.45 : 1,
+              cursor: motifsMasques.size === 0 ? 'default' : 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+            }}
+          >
+            <span aria-hidden="true" style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: motifsMasques.size === 0 ? '#10B981' : '#F59E0B',
+              display: 'inline-block',
+            }} />
             Tous les motifs
+            {motifsMasques.size > 0 && (
+              <span style={{
+                fontSize: 10, fontWeight: 800, color: '#F59E0B',
+                background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.35)',
+                padding: '1px 6px', borderRadius: 999,
+              }}>
+                {motifsMasques.size}
+              </span>
+            )}
           </button>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: theme.texteDoux, cursor: 'pointer' }}>
-            <input type="checkbox" checked={masquerSansAbsence} onChange={(e) => setMasquerSansAbsence(e.target.checked)} />
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={masquerSansAbsence}
+            onClick={() => setMasquerSansAbsence((v) => !v)}
+            data-testid="abs-cal-masquer-sans-absence"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 9,
+              padding: '7px 12px', borderRadius: 999, cursor: 'pointer',
+              fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+              background: masquerSansAbsence ? 'rgba(245,158,11,0.12)' : 'transparent',
+              border: `1px solid ${masquerSansAbsence ? 'rgba(245,158,11,0.45)' : theme.bordure}`,
+              color: masquerSansAbsence ? '#F59E0B' : theme.texteDoux,
+            }}
+          >
+            <span aria-hidden="true" style={{
+              width: 26, height: 15, borderRadius: 999, flexShrink: 0, position: 'relative',
+              background: masquerSansAbsence ? '#F59E0B' : (darkMode ? 'rgba(255,255,255,0.14)' : 'rgba(29,23,19,0.18)'),
+              transition: 'background .2s ease',
+            }}>
+              <span style={{
+                position: 'absolute', top: 2, left: masquerSansAbsence ? 13 : 2,
+                width: 11, height: 11, borderRadius: '50%', background: '#FFF5E6',
+                transition: 'left .2s ease',
+              }} />
+            </span>
             Masquer les employés sans absence
-          </label>
+          </button>
           {onDeclarer && (
             <button onClick={onDeclarer} style={boutonPrimaire}>
               <Plus size={16} /> Déclarer une absence
