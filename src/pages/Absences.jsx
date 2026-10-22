@@ -20,6 +20,7 @@ import { supprimerDemandeEtSesAbsences } from '../services/lienDemandeAbsence'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import RaccourcisPages from '../components/RaccourcisPages'
 import { MotifsAbsenceProvider } from '../contexts/MotifsAbsenceContext'
+import { useTheme } from '../contexts/ThemeContext'
 import './AbsencesAfroTech.css'
 import HolidayService from '../services/holidayService'
 import LeaveBalanceService from '../services/leaveBalanceService'
@@ -30,6 +31,7 @@ import {
   Download, ChevronLeft, ChevronRight, Calendar,CalendarDays, List, TrendingUp,
   Timer, BarChart3, Filter, Hourglass, RefreshCw, CheckCircle2,
   AlertCircle, Upload, Paperclip, Eye, FileImage, File, ZoomIn,
+  Sun, Moon,
   ZoomOut, ExternalLink, ShieldCheck, Ban, Inbox, MessageSquare
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -142,20 +144,20 @@ function DocumentViewer({ url, onClose, employeeName, absenceInfo }) {
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.95)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 16 }} onClick={onClose}>
-      <div style={{ background: '#1D1713', borderRadius: 20, width: '100%', maxWidth: 900, maxHeight: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid rgba(255,255,255,.1)', boxShadow: '0 25px 80px rgba(0,0,0,.5)' }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ background: 'var(--abs-bg-elevated)', borderRadius: 20, width: '100%', maxWidth: 900, maxHeight: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--abs-line)', boxShadow: '0 25px 80px rgba(0,0,0,.5)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--abs-line-soft)', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Paperclip size={18} color="#F59E0B" />
             <div>
               <h3 style={{ color: '#FFF', fontSize: 16, fontWeight: 600, margin: 0 }}>Justificatif</h3>
-              {employeeName && <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 12, margin: '2px 0 0 0' }}>{employeeName}</p>}
+              {employeeName && <p style={{ color: 'var(--abs-text-soft)', fontSize: 12, margin: '2px 0 0 0' }}>{employeeName}</p>}
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {fileType === 'image' && (
               <>
                 <button onClick={() => setZoom(z => Math.max(z - .25, .5))} style={viewerBtnStyle}><ZoomOut size={18} /></button>
-                <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 12, minWidth: 45, textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
+                <span style={{ color: 'var(--abs-text-soft)', fontSize: 12, minWidth: 45, textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
                 <button onClick={() => setZoom(z => Math.min(z + .25, 3))} style={viewerBtnStyle}><ZoomIn size={18} /></button>
               </>
             )}
@@ -165,15 +167,15 @@ function DocumentViewer({ url, onClose, employeeName, absenceInfo }) {
           </div>
         </div>
         <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: 'rgba(0,0,0,.2)', minHeight: 300 }}>
-          {loading && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'rgba(245,242,235,0.55)' }}><RefreshCw size={32} color="#F59E0B" style={{ animation: 'spin 1s linear infinite' }} /><p>Chargement...</p></div>}
+          {loading && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'var(--abs-text-soft)' }}><RefreshCw size={32} color="#F59E0B" style={{ animation: 'spin 1s linear infinite' }} /><p>Chargement...</p></div>}
           {fileType === 'image' && <img src={url} alt="Justificatif" style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8, transform: `scale(${zoom})`, transition: 'transform .2s ease', display: loading ? 'none' : 'block' }} onLoad={() => setLoading(false)} />}
           {fileType === 'pdf' && <iframe src={url} style={{ width: '100%', height: '70vh', border: 'none', borderRadius: 8, display: loading ? 'none' : 'block' }} title="Document PDF" onLoad={() => setLoading(false)} />}
-          {fileType === 'other' && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, color: 'rgba(245,242,235,0.55)', textAlign: 'center' }}><File size={48} color="#666" /><p>Aperçu non disponible</p><a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#F59E0B', textDecoration: 'none', padding: '10px 20px', background: 'rgba(245,158,11,.1)', borderRadius: 8, fontWeight: 500 }}><Download size={16} /> Télécharger</a></div>}
+          {fileType === 'other' && <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, color: 'var(--abs-text-soft)', textAlign: 'center' }}><File size={48} color='var(--abs-text-faint)' /><p>Aperçu non disponible</p><a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#F59E0B', textDecoration: 'none', padding: '10px 20px', background: 'rgba(245,158,11,.1)', borderRadius: 8, fontWeight: 500 }}><Download size={16} /> Télécharger</a></div>}
         </div>
-        <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,.06)', background: 'rgba(0,0,0,.1)' }}>
+        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--abs-line-soft)', background: 'rgba(0,0,0,.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <span style={{ color: '#F5F2EB', fontSize: 12, fontWeight: 500 }}>📄 {fileName}</span>
-            {absenceInfo && <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 11 }}>{absenceInfo}</span>}
+            <span style={{ color: 'var(--abs-text)', fontSize: 12, fontWeight: 500 }}>📄 {fileName}</span>
+            {absenceInfo && <span style={{ color: 'var(--abs-text-soft)', fontSize: 11 }}>{absenceInfo}</span>}
           </div>
         </div>
       </div>
@@ -182,15 +184,15 @@ function DocumentViewer({ url, onClose, employeeName, absenceInfo }) {
 }
 
 const viewerBtnStyle = {
-  background: 'rgba(255,255,255,.05)',
-  border: '1px solid rgba(255,255,255,.1)',
+  background: 'var(--abs-line-soft)',
+  border: '1px solid var(--abs-line)',
   borderRadius: 8,
   width: 36,
   height: 36,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  color: '#F5F2EB',
+  color: 'var(--abs-text)',
   cursor: 'pointer',
   textDecoration: 'none',
   flexShrink: 0,
@@ -289,7 +291,7 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
         <div style={CS.daysBadge}>
           <span style={CS.daysNumber}>{nbJoursOuvres}</span>
           <span style={CS.daysLabel}>ouvré{nbJoursOuvres > 1 ? 's' : ''}</span>
-          <span style={{ fontSize: '9px', color: 'rgba(245,242,235,0.55)', marginTop: '2px' }}>
+          <span style={{ fontSize: '9px', color: 'var(--abs-text-soft)', marginTop: '2px' }}>
             ({nbJoursCalendaires} cal.)
           </span>
         </div>
@@ -461,6 +463,7 @@ export default function Absences() {
   const [requestToDelete, setRequestToDelete] = useState(null)
 
   const navigate = useNavigate()
+  const { darkMode, toggleTheme } = useTheme()
   const today = new Date().toISOString().split('T')[0]
 
   const [formData, setFormData] = useState({
@@ -477,7 +480,6 @@ export default function Absences() {
   })
 
   useEffect(() => {
-    document.body.style.backgroundColor = '#15110E'
     const adminData = localStorage.getItem('admin')
     if (!adminData) { navigate('/login'); return }
     const parsed = JSON.parse(adminData)
@@ -1368,13 +1370,13 @@ export default function Absences() {
   .loading-pulse{animation:pulse 1.5s ease infinite}
   .cal-day-click{cursor:pointer;transition:all .2s ease}
   .cal-day-click:hover{transform:scale(1.02);border-color:rgba(245,158,11,.4)!important}
-  .req-card:hover{border-color:rgba(255,255,255,0.1)!important;transform:translateY(-2px)}
+  .req-card:hover{border-color:var(--abs-line)!important;transform:translateY(-2px)}
   .req-card{transition:all .3s ease}
   .tab-btn:hover{background:rgba(245,158,11,0.08)!important}
   .doc-view-btn:hover{background:rgba(59,130,246,0.15)!important;border-color:rgba(59,130,246,0.4)!important}
   
   select:focus,input:focus,textarea:focus{border-color:#F59E0B!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.1)}
-  select option{background:#1D1713;color:#F5F2EB}
+  select option{background:var(--abs-bg-elevated);color:var(--abs-text)}
 
 
   /* Classes utilitaires responsive */
@@ -1680,7 +1682,7 @@ export default function Absences() {
     
     .hist-total-box {
       border-right: none !important;
-      border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+      border-bottom: 1px solid var(--abs-line-soft) !important;
       padding-right: 0 !important;
       padding-bottom: 12px !important;
       margin-bottom: 12px !important;
@@ -1780,7 +1782,7 @@ export default function Absences() {
   }
 `}</style>
 
-      <div className="abs-page" data-theme="dark" style={S.container}>
+      <div className="abs-page" data-theme={darkMode ? 'dark' : 'light'} style={S.container}>
         {/* Frise supérieure textile Kente — palette ambre (orange · jaune · noir) */}
         <div className="abs-kente-top-strip" aria-hidden="true">
           <KenteAmberWeaveSvg />
@@ -1807,6 +1809,16 @@ export default function Absences() {
               </div>
             </div>
             <div className="abs-topbar-right">
+              <button
+                type="button"
+                className="abs-btn abs-theme-btn"
+                onClick={toggleTheme}
+                title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+                aria-label={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+                data-testid="abs-theme-toggle"
+              >
+                {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
               <button type="button" className="abs-btn" onClick={handleExportCSV}>
                 <Download size={16} /> <span>Export</span>
               </button>
@@ -1827,7 +1839,7 @@ export default function Absences() {
             <button className="tab-btn" onClick={() => setActiveTab('absences')} style={{ ...TAB.tab, ...(activeTab === 'absences' ? TAB.tabActive : {}) }}>
               <CalendarOff size={16} />
               <span>Absences</span>
-              <span style={{ ...TAB.badge, background: activeTab === 'absences' ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)', color: activeTab === 'absences' ? '#F59E0B' : '#666' }}>
+              <span style={{ ...TAB.badge, background: activeTab === 'absences' ? 'rgba(245,158,11,0.2)' : 'var(--abs-line-soft)', color: activeTab === 'absences' ? '#F59E0B' : 'var(--abs-text-faint)' }}>
                 {absences.length}
               </span>
             </button>
@@ -1840,7 +1852,7 @@ export default function Absences() {
                   {pendingRequestsCount}
                 </span>
               ) : leaveRequests.length > 0 ? (
-                <span style={{ ...TAB.badge, background: activeTab === 'demandes' ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)', color: activeTab === 'demandes' ? '#F59E0B' : '#666' }}>
+                <span style={{ ...TAB.badge, background: activeTab === 'demandes' ? 'rgba(245,158,11,0.2)' : 'var(--abs-line-soft)', color: activeTab === 'demandes' ? '#F59E0B' : 'var(--abs-text-faint)' }}>
                   {leaveRequests.length}
                 </span>
               ) : null}
@@ -1855,6 +1867,7 @@ export default function Absences() {
           {activeTab === 'absences' && (
             <>
               <AbsencesKpiCards
+                darkMode={darkMode}
                 absences={absences}
                 employes={employes}
                 conflitsEnAttente={stats.conflitsPending}
@@ -1894,7 +1907,7 @@ export default function Absences() {
                   )}
                 </div>
                 <div style={S.toolbarRight}>
-                  <button onClick={() => setShowFilters(!showFilters)} style={{ ...S.iconBtn, background: showFilters ? 'rgba(245,158,11,.15)' : 'rgba(255,255,255,.05)', color: showFilters ? '#F59E0B' : 'rgba(245,242,235,0.55)' }}><Filter size={18} /></button>
+                  <button onClick={() => setShowFilters(!showFilters)} style={{ ...S.iconBtn, background: showFilters ? 'rgba(245,158,11,.15)' : 'var(--abs-line-soft)', color: showFilters ? '#F59E0B' : 'var(--abs-text-soft)' }}><Filter size={18} /></button>
                   <div style={S.viewToggle}>
                     <button onClick={() => setViewMode('planning')} title="Planning — calendrier par employé" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'planning' ? S.viewBtnActive : {}) }}><CalendarDays size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Planning</span></button>
                     <button onClick={() => setViewMode('calendar')} title="Mois — grille du mois" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'calendar' ? S.viewBtnActive : {}) }}><Calendar size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Mois</span></button>
@@ -1976,7 +1989,7 @@ export default function Absences() {
               <div style={S.resultCount}>
                 <span style={S.resultText}>
                   {filteredAbsences.length} absence{filteredAbsences.length > 1 ? 's' : ''}
-                  {filteredAbsences.length !== absences.length && <span style={{ color: '#666' }}> / {absences.length}</span>}
+                  {filteredAbsences.length !== absences.length && <span style={{ color: 'var(--abs-text-faint)' }}> / {absences.length}</span>}
                 </span>
               </div>
 
@@ -1987,7 +2000,7 @@ export default function Absences() {
                 <AbsencesCalendrier
                   absences={absences}
                   employes={employes}
-                  darkMode
+                  darkMode={darkMode}
                   annee={calendarDate.getFullYear()}
                   mois={calendarDate.getMonth()}
                   onChangerMois={(delta) => {
@@ -2040,7 +2053,7 @@ export default function Absences() {
                   {totalPages > 1 && (
                     <div style={S.pagination}>
                       <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} style={{ ...S.pageBtn, opacity: currentPage === 1 ? .3 : 1 }}><ChevronLeft size={18} /></button>
-                      <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13 }}>{currentPage} / {totalPages}</span>
+                      <span style={{ color: 'var(--abs-text-soft)', fontSize: 13 }}>{currentPage} / {totalPages}</span>
                       <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} style={{ ...S.pageBtn, opacity: currentPage === totalPages ? .3 : 1 }}><ChevronRight size={18} /></button>
                     </div>
                   )}
@@ -2204,9 +2217,9 @@ export default function Absences() {
                       onClick={() => setRequestFilter(f.key)}
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px',
-                        background: actif ? `${f.couleur}1F` : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${actif ? `${f.couleur}66` : 'rgba(255,255,255,0.07)'}`,
-                        borderRadius: 999, color: actif ? f.couleur : 'rgba(245,242,235,0.6)',
+                        background: actif ? `${f.couleur}1F` : 'var(--abs-fill-soft)',
+                        border: `1px solid ${actif ? `${f.couleur}66` : 'var(--abs-line-soft)'}`,
+                        borderRadius: 999, color: actif ? f.couleur : 'var(--abs-text-soft)',
                         fontSize: 13, fontWeight: actif ? 600 : 500, cursor: 'pointer', fontFamily: 'inherit',
                         boxShadow: actif ? `0 0 0 3px ${f.couleur}14` : 'none',
                         transition: 'all .18s ease',
@@ -2215,8 +2228,8 @@ export default function Absences() {
                       <span>{f.label}</span>
                       <span style={{
                         padding: '1px 7px', borderRadius: 999, fontSize: 11, fontWeight: 700,
-                        background: actif ? `${f.couleur}2E` : 'rgba(255,255,255,0.06)',
-                        color: actif ? f.couleur : 'rgba(245,242,235,0.45)',
+                        background: actif ? `${f.couleur}2E` : 'var(--abs-line-soft)',
+                        color: actif ? f.couleur : 'var(--abs-text-faint)',
                       }}>
                         {count}
                       </span>
@@ -2227,14 +2240,14 @@ export default function Absences() {
 
               {loadingRequests ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px' }}>
-                  <div style={{ width: 40, height: 40, border: '3px solid rgba(255,255,255,0.06)', borderTopColor: '#F59E0B', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                  <p style={{ color: '#666', marginTop: 12, fontSize: 14 }}>Chargement...</p>
+                  <div style={{ width: 40, height: 40, border: '3px solid var(--abs-line-soft)', borderTopColor: '#F59E0B', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <p style={{ color: 'var(--abs-text-faint)', marginTop: 12, fontSize: 14 }}>Chargement...</p>
                 </div>
               ) : filteredRequests.length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', background: 'rgba(29,23,19,0.5)', borderRadius: 20, border: '1px dashed rgba(255,255,255,0.08)', textAlign: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', background: 'rgba(29,23,19,0.5)', borderRadius: 20, border: '1px dashed var(--abs-line-soft)', textAlign: 'center' }}>
                   <Inbox size={48} color="#555" />
                   <h3 style={{ color: '#FFF', margin: '12px 0 4px 0', fontSize: 18 }}>Aucune demande</h3>
-                  <p style={{ color: '#666', fontSize: 14, margin: 0 }}>
+                  <p style={{ color: 'var(--abs-text-faint)', fontSize: 14, margin: 0 }}>
                     {requestFilter !== 'all' ? 'Aucune demande avec ce statut' : 'Les employés n\'ont pas encore soumis de demandes de congé'}
                   </p>
                 </div>
@@ -2264,7 +2277,7 @@ export default function Absences() {
               <AbsencesMotifsManager absences={absences} />
               <div style={{
                 background: 'rgba(29,23,19,0.8)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                border: '1px solid var(--abs-line-soft)',
                 borderRadius: 18,
                 padding: 20,
                 display: 'flex',
@@ -2274,7 +2287,7 @@ export default function Absences() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <div>
                     <h3 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>Configuration des congés</h3>
-                    <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13, margin: '4px 0 0 0' }}>
+                    <p style={{ color: 'var(--abs-text-soft)', fontSize: 13, margin: '4px 0 0 0' }}>
                       Ces paramètres seront utilisés dans l’espace employé et les fiches de paie.
                     </p>
                   </div>
@@ -2304,7 +2317,7 @@ export default function Absences() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 600 }}>Jours acquis par mois</label>
+                    <label style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 }}>Jours acquis par mois</label>
                     <input
                       type="number"
                       step="0.25"
@@ -2312,22 +2325,22 @@ export default function Absences() {
                       onChange={e => setLeaveConfig(prev => ({ ...prev, leave_days_per_month: e.target.value }))}
                       style={S.input}
                     />
-                    <span style={{ color: '#666', fontSize: 11 }}>Ex: 1.75 jours/mois</span>
+                    <span style={{ color: 'var(--abs-text-faint)', fontSize: 11 }}>Ex: 1.75 jours/mois</span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 600 }}>Plafond annuel</label>
+                    <label style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 }}>Plafond annuel</label>
                     <input
                       type="number"
                       value={leaveConfig.annual_leave_cap}
                       onChange={e => setLeaveConfig(prev => ({ ...prev, annual_leave_cap: e.target.value }))}
                       style={S.input}
                     />
-                    <span style={{ color: '#666', fontSize: 11 }}>Ex: 30 jours maximum</span>
+                    <span style={{ color: 'var(--abs-text-faint)', fontSize: 11 }}>Ex: 30 jours maximum</span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 600 }}>Référence de calcul</label>
+                    <label style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 }}>Référence de calcul</label>
                     <select
                       value={leaveConfig.leave_reference_date}
                       onChange={e => setLeaveConfig(prev => ({ ...prev, leave_reference_date: e.target.value }))}
@@ -2336,7 +2349,7 @@ export default function Absences() {
                       <option value="hire_date">Depuis la date d’embauche</option>
                       <option value="calendar_year">Année civile</option>
                     </select>
-                    <span style={{ color: '#666', fontSize: 11 }}>Méthode d’acquisition des congés</span>
+                    <span style={{ color: 'var(--abs-text-faint)', fontSize: 11 }}>Méthode d’acquisition des congés</span>
                   </div>
                 </div>
 
@@ -2345,8 +2358,8 @@ export default function Absences() {
                   alignItems: 'flex-start',
                   gap: 10,
                   padding: '12px 14px',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'var(--abs-fill-soft)',
+                  border: '1px solid var(--abs-line-soft)',
                   borderRadius: 12,
                   cursor: 'pointer'
                 }}>
@@ -2357,10 +2370,10 @@ export default function Absences() {
                     style={{ accentColor: '#F59E0B', marginTop: 2 }}
                   />
                   <div>
-                    <span style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 600 }}>
+                    <span style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 }}>
                       Autoriser le report des congés N-1
                     </span>
-                    <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 11, margin: '4px 0 0 0', lineHeight: 1.4 }}>
+                    <p style={{ color: 'var(--abs-text-soft)', fontSize: 11, margin: '4px 0 0 0', lineHeight: 1.4 }}>
                       Si activé, le solde positif de l’année précédente sera reporté automatiquement.
                     </p>
                   </div>
@@ -2369,7 +2382,7 @@ export default function Absences() {
 
               <div style={{
                 background: 'rgba(29,23,19,0.8)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                border: '1px solid var(--abs-line-soft)',
                 borderRadius: 18,
                 padding: 20,
                 display: 'flex',
@@ -2379,7 +2392,7 @@ export default function Absences() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <div>
                     <h3 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>Recalcul des soldes</h3>
-                    <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13, margin: '4px 0 0 0' }}>
+                    <p style={{ color: 'var(--abs-text-soft)', fontSize: 13, margin: '4px 0 0 0' }}>
                       Recalcule les soldes pour tous les employés actifs de l’entreprise.
                     </p>
                   </div>
@@ -2410,7 +2423,7 @@ export default function Absences() {
 
               <div style={{
                 background: 'rgba(29,23,19,0.8)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                border: '1px solid var(--abs-line-soft)',
                 borderRadius: 18,
                 padding: 20,
                 display: 'flex',
@@ -2420,7 +2433,7 @@ export default function Absences() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   <div>
                     <h3 style={{ color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 }}>Soldes de congés {anneeSoldes}</h3>
-                    <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13, margin: '4px 0 0 0' }}>
+                    <p style={{ color: 'var(--abs-text-soft)', fontSize: 13, margin: '4px 0 0 0' }}>
                       Calculés à partir des absences validées de l’année — employés actifs uniquement.
                     </p>
                   </div>
@@ -2437,11 +2450,11 @@ export default function Absences() {
                 {loadingLeaveBalancesPreview ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 30 }}>
                     <RefreshCw size={20} color="#F59E0B" style={{ animation: 'spin 1s linear infinite' }} />
-                    <span style={{ color: 'rgba(245,242,235,0.55)' }}>Chargement des soldes...</span>
+                    <span style={{ color: 'var(--abs-text-soft)' }}>Chargement des soldes...</span>
                   </div>
                 ) : leaveBalancesPreview.length === 0 ? (
                   <div style={S.emptyMini}>
-                    <CalendarDays size={20} color="#666" />
+                    <CalendarDays size={20} color='var(--abs-text-faint)' />
                     <span>Aucun solde disponible. Lancez un recalcul.</span>
                   </div>
                 ) : (
@@ -2449,7 +2462,7 @@ export default function Absences() {
                     <div style={{
                       display: 'grid', gridTemplateColumns: SOLDE_GRILLE, gap: 12,
                       padding: '0 14px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.4px',
-                      color: 'rgba(245,242,235,0.4)',
+                      color: 'var(--abs-text-faint)',
                     }}>
                       <span>Employé</span>
                       <span style={{ textAlign: 'right' }}>Acquis</span>
@@ -2472,7 +2485,7 @@ export default function Absences() {
                           style={{
                             display: 'grid', gridTemplateColumns: SOLDE_GRILLE, gap: 12, alignItems: 'center',
                             padding: '12px 14px', borderRadius: 12,
-                            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                            background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line-soft)',
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -2480,7 +2493,7 @@ export default function Absences() {
                               width: 32, height: 32, flexShrink: 0, borderRadius: '50%',
                               background: 'linear-gradient(135deg, rgba(245,158,11,0.85), rgba(16,185,129,0.7))',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: '#1D1713', fontSize: 12, fontWeight: 800,
+                              color: 'var(--abs-bg-elevated)', fontSize: 12, fontWeight: 800,
                             }}>
                               {initiales}
                             </span>
@@ -2501,7 +2514,7 @@ export default function Absences() {
 
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ color: '#F59E0B', fontSize: 13, fontWeight: 700 }}>{pris}j</div>
-                            <div style={{ height: 3, marginTop: 4, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                            <div style={{ height: 3, marginTop: 4, borderRadius: 999, background: 'var(--abs-line-soft)', overflow: 'hidden' }}>
                               <div style={{ width: `${pct}%`, height: '100%', background: pct >= 100 ? '#EF4444' : '#F59E0B' }} />
                             </div>
                           </div>
@@ -2525,6 +2538,7 @@ export default function Absences() {
 
         {/* ═══ MODAL AJOUT/MODIF ABSENCE ═══ */}
         <AbsenceFormulaire
+          darkMode={darkMode}
           ouvert={showModal}
           valeurs={formData}
           onChanger={(patch) => setFormData((precedent) => ({ ...precedent, ...patch }))}
@@ -2552,8 +2566,8 @@ export default function Absences() {
         {/* ═══ MODAL REVIEW DEMANDE EMPLOYÉ ═══ */}
         {showReviewModal && selectedRequest && (
           <div style={S.overlay} onClick={() => !submittingReview && setShowReviewModal(false)}>
-            <div style={{ background: '#1D1713', border: `1px solid ${reviewAction === 'approuve' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 24, width: '100%', maxWidth: 500, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s ease forwards', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: reviewAction === 'approuve' ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)' }}>
+            <div style={{ background: 'var(--abs-bg-elevated)', border: `1px solid ${reviewAction === 'approuve' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, borderRadius: 24, width: '100%', maxWidth: 500, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s ease forwards', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--abs-line-soft)', background: reviewAction === 'approuve' ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ width: 44, height: 44, borderRadius: 12, background: reviewAction === 'approuve' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {reviewAction === 'approuve' ? <Check size={22} color="#10B981" /> : <X size={22} color="#EF4444" />}
@@ -2567,10 +2581,10 @@ export default function Absences() {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setShowReviewModal(false)} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(245,242,235,0.55)', cursor: 'pointer' }}><X size={18} /></button>
+                <button onClick={() => setShowReviewModal(false)} style={{ background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--abs-text-soft)', cursor: 'pointer' }}><X size={18} /></button>
               </div>
               <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 14, border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ padding: 16, background: 'var(--abs-fill-soft)', borderRadius: 14, border: '1px solid var(--abs-line-soft)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {[
                     { label: 'Type', value: `${LEAVE_TYPES[selectedRequest.leave_type]?.emoji || ''} ${LEAVE_TYPES[selectedRequest.leave_type]?.label || selectedRequest.leave_type}` },
                     {
@@ -2590,8 +2604,8 @@ export default function Absences() {
                       })()
                     },
                   ].map((item, i, arr) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                      <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13 }}>{item.label}</span>
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--abs-fill)' : 'none' }}>
+                      <span style={{ color: 'var(--abs-text-soft)', fontSize: 13 }}>{item.label}</span>
                       <span style={{ color: '#FFF', fontSize: 13, fontWeight: 600 }}>{item.value}</span>
                     </div>
                   ))}
@@ -2619,20 +2633,20 @@ export default function Absences() {
                 )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>
+                  <label style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 500 }}>
                     Message pour l'employé
-                    <span style={{ color: '#666', fontWeight: 400 }}> (optionnel)</span>
+                    <span style={{ color: 'var(--abs-text-faint)', fontWeight: 400 }}> (optionnel)</span>
                   </label>
                   <textarea
                     value={reviewComment}
                     onChange={e => setReviewComment(e.target.value)}
                     placeholder={reviewAction === 'approuve' ? 'Ex: Bonne vacances ! Votre demande est acceptée.' : 'Ex: Effectif insuffisant pour cette période...'}
-                    style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', color: '#FFF', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', minHeight: 90, outline: 'none' }}
+                    style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--abs-line)', background: 'var(--abs-fill-soft)', color: '#FFF', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', minHeight: 90, outline: 'none' }}
                   />
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 12, padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <button onClick={() => setShowReviewModal(false)} disabled={submittingReview} style={{ flex: 1, padding: 14, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#F5F2EB', borderRadius: 12, fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <div style={{ display: 'flex', gap: 12, padding: '16px 24px', borderTop: '1px solid var(--abs-line-soft)' }}>
+                <button onClick={() => setShowReviewModal(false)} disabled={submittingReview} style={{ flex: 1, padding: 14, background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', color: 'var(--abs-text)', borderRadius: 12, fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Annuler
                 </button>
                 <button onClick={handleReviewRequest} disabled={submittingReview} style={{ flex: 2, padding: 14, background: reviewAction === 'approuve' ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #EF4444, #B91C1C)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: submittingReview ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: submittingReview ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -2646,16 +2660,16 @@ export default function Absences() {
         {/* ═══ MODAL SUPPRESSION ABSENCE ═══ */}
         {showDeleteModal && (
           <div style={S.overlay}>
-            <div style={{ background: '#1D1713', border: '1px solid rgba(255,255,255,.1)', borderRadius: 24, width: '100%', maxWidth: 420, padding: 36, textAlign: 'center', animation: 'slideUp .3s ease forwards' }}>
+            <div style={{ background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line)', borderRadius: 24, width: '100%', maxWidth: 420, padding: 36, textAlign: 'center', animation: 'slideUp .3s ease forwards' }}>
               <div style={{ width: 68, height: 68, borderRadius: 18, background: 'rgba(239,68,68,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                 <AlertTriangle size={32} color="#EF4444" />
               </div>
               <h3 style={{ color: '#FFF', fontSize: 20, fontWeight: 600, margin: '0 0 12px 0' }}>Supprimer cette absence ?</h3>
-              <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 14, marginBottom: 28, lineHeight: '1.5' }}>
+              <p style={{ color: 'var(--abs-text-soft)', fontSize: 14, marginBottom: 28, lineHeight: '1.5' }}>
                 Cette action est irréversible : l’absence disparaîtra aussi du planning.
               </p>
               <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={() => setShowDeleteModal(false)} style={{ flex: 1, padding: 14, background: 'rgba(255,255,255,.05)', color: '#FFF', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Annuler</button>
+                <button onClick={() => setShowDeleteModal(false)} style={{ flex: 1, padding: 14, background: 'var(--abs-line-soft)', color: '#FFF', border: '1px solid var(--abs-line-soft)', borderRadius: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Annuler</button>
                 <button onClick={handleDelete} style={{ flex: 1, padding: 14, background: 'linear-gradient(135deg,#EF4444,#B91C1C)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }} disabled={uploading}>
                   {uploading ? 'Suppression...' : 'Supprimer'}
                 </button>
@@ -2679,7 +2693,7 @@ export default function Absences() {
                 </div>
                 <div style={S.histBreakdown}>
                   <AbsencesStatsMotifs stats={employeeHistory.stats} styleRow={S.histMotifRow} />
-                  {employeeHistory.totalJours === 0 && <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 13, margin: 0 }}>Aucune absence</p>}
+                  {employeeHistory.totalJours === 0 && <p style={{ color: 'var(--abs-text-soft)', fontSize: 13, margin: 0 }}>Aucune absence</p>}
                 </div>
               </div>
               <div style={S.histList}>
@@ -2694,10 +2708,10 @@ export default function Absences() {
                       <div style={{ ...S.histDot, background: mc.color }}></div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>{mc.emoji} {mc.label}</span>
+                          <span style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 500 }}>{mc.emoji} {mc.label}</span>
                           <span style={{ color: '#F59E0B', fontSize: 12, fontWeight: 700 }}>{jours}j</span>
                         </div>
-                        <span style={{ color: 'rgba(245,242,235,0.55)', fontSize: 12 }}>{formatDateFr(a.start_date)} → {formatDateFr(a.end_date)}</span>
+                        <span style={{ color: 'var(--abs-text-soft)', fontSize: 12 }}>{formatDateFr(a.start_date)} → {formatDateFr(a.end_date)}</span>
                         {a.count_holidays_as_leave && <span style={{ display: 'block', color: '#8B5CF6', fontSize: 11, marginTop: 2 }}>🎌 Jours fériés inclus dans le décompte</span>}
                         {conflict && conflict.status === 'pending' && <span style={{ display: 'block', color: '#F97316', fontSize: 11, marginTop: 2 }}>⚠ Conflit en attente</span>}
                       </div>
@@ -2712,8 +2726,8 @@ export default function Absences() {
         {/* ═══ MODAL GESTION CONFLIT ═══ */}
         {showConflictModal && selectedConflictData && (
           <div style={S.overlay} onClick={() => setShowConflictModal(false)}>
-            <div style={{ background: '#1D1713', border: '1px solid rgba(249,115,22,.2)', borderRadius: 24, width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,.5)', animation: 'slideUp .3s ease forwards' }} onClick={e => e.stopPropagation()}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+            <div style={{ background: 'var(--abs-bg-elevated)', border: '1px solid rgba(249,115,22,.2)', borderRadius: 24, width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,.5)', animation: 'slideUp .3s ease forwards' }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottom: '1px solid var(--abs-line-soft)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{ width: 46, height: 46, borderRadius: 14, background: 'rgba(249,115,22,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <AlertTriangle size={24} color="#F97316" />
@@ -2725,7 +2739,7 @@ export default function Absences() {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setShowConflictModal(false)} style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', color: 'rgba(245,242,235,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><X size={20} /></button>
+                <button onClick={() => setShowConflictModal(false)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line)', color: 'var(--abs-text-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><X size={20} /></button>
               </div>
               <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12 }}>
@@ -2734,15 +2748,15 @@ export default function Absences() {
                     { label: 'Motif absence', value: getMotifConfig(selectedConflictData.absence.reason).label },
                     { label: 'Période', value: `${formatDateFr(selectedConflictData.absence.start_date)} → ${formatDateFr(selectedConflictData.absence.end_date)}` }
                   ].map((item, i) => (
-                    <div key={i} style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.05)', borderRadius: 12, padding: 14 }}>
-                      <span style={{ display: 'block', color: '#666', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: .5 }}>{item.label}</span>
+                    <div key={i} style={{ background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, padding: 14 }}>
+                      <span style={{ display: 'block', color: 'var(--abs-text-faint)', fontSize: 11, marginBottom: 6, textTransform: 'uppercase', letterSpacing: .5 }}>{item.label}</span>
                       <span style={{ display: 'block', color: '#FFF', fontSize: 13, fontWeight: 600 }}>{item.value}</span>
                     </div>
                   ))}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label style={{ color: '#F5F2EB', fontSize: 13, fontWeight: 500 }}>Note de résolution (optionnel)</label>
-                  <textarea value={conflictNote} onChange={e => setConflictNote(e.target.value)} style={{ minHeight: 90, resize: 'vertical', padding: '14px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: '#FFF', fontFamily: 'inherit', fontSize: 14, outline: 'none' }} placeholder="Ex: Retour anticipé validé par le responsable..." />
+                  <label style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 500 }}>Note de résolution (optionnel)</label>
+                  <textarea value={conflictNote} onChange={e => setConflictNote(e.target.value)} style={{ minHeight: 90, resize: 'vertical', padding: '14px 16px', borderRadius: 12, border: '1px solid var(--abs-line)', background: 'var(--abs-fill)', color: '#FFF', fontFamily: 'inherit', fontSize: 14, outline: 'none' }} placeholder="Ex: Retour anticipé validé par le responsable..." />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {[
@@ -2777,12 +2791,12 @@ export default function Absences() {
         {/* ═══ MODAL CONFIRMATION SUPPRESSION DEMANDE ═══ */}
         {showDeleteRequestModal && requestToDelete && (
           <div style={S.overlay} onClick={() => setShowDeleteRequestModal(false)}>
-            <div style={{ background: '#1D1713', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 24, width: '100%', maxWidth: 440, padding: 36, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s ease forwards' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: 'var(--abs-bg-elevated)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 24, width: '100%', maxWidth: 440, padding: 36, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', animation: 'slideUp 0.3s ease forwards' }} onClick={e => e.stopPropagation()}>
               <div style={{ width: 68, height: 68, borderRadius: 18, background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                 <Trash2 size={32} color="#EF4444" />
               </div>
               <h3 style={{ color: '#FFF', fontSize: 20, fontWeight: 700, margin: '0 0 12px 0' }}>Supprimer cette demande ?</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, marginBottom: 16, textAlign: 'left' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, marginBottom: 16, textAlign: 'left' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(245,158,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
                   {requestToDelete.employees?.photo_url
                     ? <img src={requestToDelete.employees.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -2793,7 +2807,7 @@ export default function Absences() {
                   <p style={{ color: '#FFF', fontSize: 14, fontWeight: 600, margin: 0 }}>
                     {requestToDelete.employees?.first_name} {requestToDelete.employees?.last_name}
                   </p>
-                  <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 12, margin: '2px 0 0 0' }}>
+                  <p style={{ color: 'var(--abs-text-soft)', fontSize: 12, margin: '2px 0 0 0' }}>
                     {LEAVE_TYPES[requestToDelete.leave_type]?.emoji} {LEAVE_TYPES[requestToDelete.leave_type]?.label}
                     {' · '}
                     {new Date(requestToDelete.start_date + 'T12:00:00Z').toLocaleDateString('fr-FR', { timeZone: 'UTC' })}
@@ -2814,10 +2828,10 @@ export default function Absences() {
                 </div>
               )}
               {requestToDelete.status !== 'approuve' && (
-                <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 14, marginBottom: 24, lineHeight: '1.5' }}>Cette action est irréversible.</p>
+                <p style={{ color: 'var(--abs-text-soft)', fontSize: 14, marginBottom: 24, lineHeight: '1.5' }}>Cette action est irréversible.</p>
               )}
               <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={() => { setShowDeleteRequestModal(false); setRequestToDelete(null) }} style={{ flex: 1, padding: 14, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#F5F2EB', borderRadius: 12, fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={() => { setShowDeleteRequestModal(false); setRequestToDelete(null) }} style={{ flex: 1, padding: 14, background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', color: 'var(--abs-text)', borderRadius: 12, fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Annuler
                 </button>
                 <button onClick={executeDeleteRequest} style={{ flex: 1, padding: 14, background: 'linear-gradient(135deg, #EF4444, #B91C1C)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -2844,7 +2858,7 @@ const TAB = {
     padding: '4px', 
     background: 'var(--abs-bg-panel)', 
     borderRadius: '14px', 
-    border: '1px solid rgba(255,255,255,0.06)', 
+    border: '1px solid var(--abs-line-soft)', 
     marginBottom: '20px', 
     width: '100%', // ✅ Au lieu de 'fit-content'
     maxWidth: 'fit-content',
@@ -2860,7 +2874,7 @@ const TAB = {
 // STYLES CARTE (CS)
 // ═══════════════════════════════════════════════════════════
 const CS = {
-  card: { background: 'rgba(29,23,19,.85)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, transition: 'all .3s ease' },
+  card: { background: 'rgba(29,23,19,.85)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, transition: 'all .3s ease' },
   topBadges: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   badge: { padding: '3px 8px', borderRadius: 16, fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 },
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' },
@@ -2869,21 +2883,21 @@ const CS = {
   avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
   empDetails: { minWidth: 0 },
   empName: { color: '#FFF', fontSize: 14, fontWeight: 600, margin: '0 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  empMatricule: { color: 'rgba(245,242,235,0.55)', fontSize: 11 },
+  empMatricule: { color: 'var(--abs-text-soft)', fontSize: 11 },
   reasonBadge: { padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
   reasonEmoji: { fontSize: 12 },
   reasonLabel: { textTransform: 'uppercase', letterSpacing: .3 },
-  datesRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,.02)', padding: 12, borderRadius: 10, gap: 8 },
+  datesRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--abs-fill-soft)', padding: 12, borderRadius: 10, gap: 8 },
   dateBox: { display: 'flex', flexDirection: 'column', gap: 2 },
-  dateLabel: { color: '#666', fontSize: 9, textTransform: 'uppercase', letterSpacing: .5 },
-  dateValue: { color: '#F5F2EB', fontSize: 12, fontWeight: 500 },
+  dateLabel: { color: 'var(--abs-text-faint)', fontSize: 9, textTransform: 'uppercase', letterSpacing: .5 },
+  dateValue: { color: 'var(--abs-text)', fontSize: 12, fontWeight: 500 },
   daysBadge: { display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(245,158,11,.12)', border: '1px solid rgba(245,158,11,.25)', borderRadius: 10, padding: '6px 14px', minWidth: 50 },
   daysNumber: { color: '#F59E0B', fontSize: 18, fontWeight: 800, lineHeight: '1' },
   daysLabel: { color: '#F59E0B', fontSize: 9, opacity: .8 },
-  notesBox: { display: 'flex', gap: 8, padding: 10, background: 'rgba(255,255,255,.02)', borderRadius: 8, borderLeft: '2px solid rgba(245,158,11,.3)' },
+  notesBox: { display: 'flex', gap: 8, padding: 10, background: 'var(--abs-fill-soft)', borderRadius: 8, borderLeft: '2px solid rgba(245,158,11,.3)' },
   notesText: { color: '#aaa', fontSize: 12, lineHeight: 1.4, fontStyle: 'italic', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' },
   docButton: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'rgba(59,130,246,.08)', border: '1px solid rgba(59,130,246,.2)', borderRadius: 10, color: '#3B82F6', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
-  cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(255,255,255,.04)', gap: 8 },
+  cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid var(--abs-fill)', gap: 8 },
   footerLeft: { display: 'flex', alignItems: 'center', gap: 8 },
   enterpriseTag: { color: '#F59E0B', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   footerActions: { display: 'flex', gap: 5, flexShrink: 0 },
@@ -2898,9 +2912,9 @@ const CS = {
 // STYLES PRINCIPAUX (S)
 // ═══════════════════════════════════════════════════════════
 const S = {
-  container: { minHeight: '100vh', background: '#15110E' },
-  loadingContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#15110E', gap: 16 },
-  loadingText: { color: 'rgba(245,242,235,0.55)', marginTop: 20 },
+  container: { minHeight: '100vh', background: 'var(--abs-bg)' },
+  loadingContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--abs-bg)', gap: 16 },
+  loadingText: { color: 'var(--abs-text-soft)', marginTop: 20 },
   main: { padding: 20, maxWidth: 1200, margin: '0 auto' },
   statsGrid: { 
     display: 'grid', 
@@ -2908,85 +2922,85 @@ const S = {
     gap: 14, 
     marginBottom: 24 
   },
-  statCard: { background: 'rgba(29,23,19,.8)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 20, display: 'flex', alignItems: 'center', gap: 16, transition: 'all .3s ease', minWidth: 0, },
+  statCard: { background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 20, display: 'flex', alignItems: 'center', gap: 16, transition: 'all .3s ease', minWidth: 0, },
   statIcon: { width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   statNumber: { color: '#FFF', fontSize: 26, fontWeight: 800, margin: '0 0 2px 0', lineHeight: '1' },
-  statLabel: { color: 'rgba(245,242,235,0.55)', fontSize: 12, margin: 0, whiteSpace: 'nowrap',  textOverflow: 'ellipsis', // ✅ AJOUT : Coupe le texte avec ...
+  statLabel: { color: 'var(--abs-text-soft)', fontSize: 12, margin: 0, whiteSpace: 'nowrap',  textOverflow: 'ellipsis', // ✅ AJOUT : Coupe le texte avec ...
     maxWidth: '100%',},
   toolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 },
   toolbarLeft: { display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 300px', flexWrap: 'wrap' },
   toolbarRight: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  searchBox: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(29,23,19,.8)', border: '1px solid rgba(255,255,255,.08)', padding: '10px 16px', borderRadius: 12, flex: '1 1 220px', minWidth: 200 },
-  searchInput: { background: 'transparent', border: 'none', color: '#F5F2EB', width: '100%', fontSize: 14, fontFamily: 'inherit', outline: 'none' },
-  clearSearch: { background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: 2, display: 'flex' },
-  filterGroup: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(29,23,19,.8)', border: '1px solid rgba(255,255,255,.06)', padding: '10px 16px', borderRadius: 12, flex: '0 1 250px' },
-  filterSelect: { background: 'transparent', border: 'none', color: '#F5F2EB', width: '100%', fontSize: 14, fontFamily: 'inherit', outline: 'none' },
-  iconBtn: { border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all .2s' },
-  viewToggle: { display: 'flex', background: 'rgba(29,23,19,.8)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, overflow: 'hidden' },
-  viewBtn: { background: 'transparent', border: 'none', color: '#666', padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all .2s' },
+  searchBox: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', padding: '10px 16px', borderRadius: 12, flex: '1 1 220px', minWidth: 200 },
+  searchInput: { background: 'transparent', border: 'none', color: 'var(--abs-text)', width: '100%', fontSize: 14, fontFamily: 'inherit', outline: 'none' },
+  clearSearch: { background: 'none', border: 'none', color: 'var(--abs-text-faint)', cursor: 'pointer', padding: 2, display: 'flex' },
+  filterGroup: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', padding: '10px 16px', borderRadius: 12, flex: '0 1 250px' },
+  filterSelect: { background: 'transparent', border: 'none', color: 'var(--abs-text)', width: '100%', fontSize: 14, fontFamily: 'inherit', outline: 'none' },
+  iconBtn: { border: '1px solid var(--abs-line-soft)', borderRadius: 12, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all .2s' },
+  viewToggle: { display: 'flex', background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, overflow: 'hidden' },
+  viewBtn: { background: 'transparent', border: 'none', color: 'var(--abs-text-faint)', padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all .2s' },
   viewBtnActive: { background: 'rgba(245,158,11,.15)', color: '#F59E0B' },
-  exportBtn: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', color: '#F5F2EB', padding: '10px 16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 500, fontSize: 13, fontFamily: 'inherit' },
+  exportBtn: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', color: 'var(--abs-text)', padding: '10px 16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 500, fontSize: 13, fontFamily: 'inherit' },
   addBtn: { background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#000', border: 'none', padding: '12px 20px', borderRadius: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', transition: 'all .3s ease' },
-  filtersPanel: { display: 'flex', flexWrap: 'wrap', gap: 14, background: 'rgba(29,23,19,.6)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 16, padding: 20, marginBottom: 20, alignItems: 'flex-end', animation: 'slideUp .3s ease forwards' },
+  filtersPanel: { display: 'flex', flexWrap: 'wrap', gap: 14, background: 'rgba(29,23,19,.6)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 20, marginBottom: 20, alignItems: 'flex-end', animation: 'slideUp .3s ease forwards' },
   filterItem: { display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 160px', minWidth: 140 },
-  filterLabel: { color: 'rgba(245,242,235,0.55)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 },
-  filterSelectSmall: { background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', color: '#F5F2EB', padding: '10px 12px', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' },
+  filterLabel: { color: 'var(--abs-text-soft)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 },
+  filterSelectSmall: { background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line)', color: 'var(--abs-text)', padding: '10px 12px', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' },
   resetBtn: { display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', color: '#EF4444', padding: '10px 16px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', alignSelf: 'flex-end' },
   resultCount: { marginBottom: 16, paddingLeft: 4 },
-  resultText: { color: '#F5F2EB', fontSize: 14, fontWeight: 500 },
+  resultText: { color: 'var(--abs-text)', fontSize: 14, fontWeight: 500 },
   list: { 
     display: 'grid', 
     gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', // ✅ Responsive
     gap: 16 
   },
 
-  empty: { gridColumn: '1/-1', textAlign: 'center', padding: '60px 20px', background: 'rgba(29,23,19,.5)', borderRadius: 20, border: '1px dashed rgba(255,255,255,.1)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
+  empty: { gridColumn: '1/-1', textAlign: 'center', padding: '60px 20px', background: 'rgba(29,23,19,.5)', borderRadius: 20, border: '1px dashed var(--abs-line)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
   emptyTitle: { color: '#FFF', fontSize: 18, fontWeight: 600, margin: 0 },
-  emptySubtitle: { color: 'rgba(245,242,235,0.55)', fontSize: 14, margin: 0 },
+  emptySubtitle: { color: 'var(--abs-text-soft)', fontSize: 14, margin: 0 },
   pagination: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 32, paddingBottom: 20 },
-  pageBtn: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', color: '#F5F2EB', width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontFamily: 'inherit' },
-  calContainer: { background: 'rgba(29,23,19,.8)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 20, padding: 24, animation: 'slideUp .4s ease forwards' },
+  pageBtn: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', color: 'var(--abs-text)', width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontFamily: 'inherit' },
+  calContainer: { background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', borderRadius: 20, padding: 24, animation: 'slideUp .4s ease forwards' },
   calHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
   calTitle: { color: '#FFF', fontSize: 22, fontWeight: 700, margin: 0, textTransform: 'capitalize' },
-  calNavBtn: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F5F2EB', cursor: 'pointer' },
+  calNavBtn: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--abs-text)', cursor: 'pointer' },
   calGrid: { display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 },
-  calDayHeader: { textAlign: 'center', color: 'rgba(245,242,235,0.55)', fontSize: 12, fontWeight: 600, padding: '10px 0' },
-  calDay: { minHeight: 110, background: 'rgba(255,255,255,.02)', borderRadius: 10, padding: 8, border: '1px solid transparent', display: 'flex', flexDirection: 'column', gap: 4 },
+  calDayHeader: { textAlign: 'center', color: 'var(--abs-text-soft)', fontSize: 12, fontWeight: 600, padding: '10px 0' },
+  calDay: { minHeight: 110, background: 'var(--abs-fill-soft)', borderRadius: 10, padding: 8, border: '1px solid transparent', display: 'flex', flexDirection: 'column', gap: 4 },
   calDayEmpty: { minHeight: 110 },
-  calDayWeekend: { background: 'rgba(255,255,255,.01)', opacity: .6 },
+  calDayWeekend: { background: 'var(--abs-fill-soft)', opacity: .6 },
   calDayToday: { border: '1px solid rgba(245,158,11,.4)', background: 'rgba(245,158,11,.05)' },
   calDayHasAbs: { background: 'rgba(239,68,68,.04)', border: '1px solid rgba(239,68,68,.15)' },
   calDaySelected: { background: 'rgba(245,158,11,.1)', border: '1px solid rgba(245,158,11,.5)', boxShadow: '0 0 20px rgba(245,158,11,.15)' },
   calDayTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  calDayNum: { color: '#F5F2EB', fontSize: 13, fontWeight: 600 },
+  calDayNum: { color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 },
   calAbsCount: { background: 'rgba(239,68,68,.2)', color: '#EF4444', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10, minWidth: 18, textAlign: 'center' },
   calEmpList: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, overflow: 'hidden' },
   calEmpItem: { display: 'flex', alignItems: 'center', gap: 4 },
   calEmpDot: { width: 6, height: 6, borderRadius: '50%', flexShrink: 0 },
   calEmpName: { color: '#ccc', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  calMore: { color: 'rgba(245,242,235,0.55)', fontSize: 9, fontStyle: 'italic', paddingLeft: 10 },
-  calDetail: { marginTop: 20, background: 'rgba(255,255,255,.02)', border: '1px solid rgba(245,158,11,.15)', borderRadius: 16, padding: 20, animation: 'slideUp .3s ease forwards' },
-  calDetailHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,.06)', flexWrap: 'wrap', gap: 10 },
+  calMore: { color: 'var(--abs-text-soft)', fontSize: 9, fontStyle: 'italic', paddingLeft: 10 },
+  calDetail: { marginTop: 20, background: 'var(--abs-fill-soft)', border: '1px solid rgba(245,158,11,.15)', borderRadius: 16, padding: 20, animation: 'slideUp .3s ease forwards' },
+  calDetailHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--abs-line-soft)', flexWrap: 'wrap', gap: 10 },
   calDetailTitle: { color: '#FFF', fontSize: 16, fontWeight: 600, margin: 0, textTransform: 'capitalize' },
   calDetailCount: { background: 'rgba(239,68,68,.15)', color: '#EF4444', padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 },
-  calDetailClose: { background: 'rgba(255,255,255,.05)', border: 'none', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(245,242,235,0.55)', cursor: 'pointer' },
+  calDetailClose: { background: 'var(--abs-line-soft)', border: 'none', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--abs-text-soft)', cursor: 'pointer' },
   calDetailList: { display: 'flex', flexDirection: 'column', gap: 10 },
-  calDetailItem: { display: 'flex', alignItems: 'center', gap: 14, padding: 14, background: 'rgba(255,255,255,.03)', borderRadius: 12, border: '1px solid rgba(255,255,255,.04)', flexWrap: 'wrap' },
+  calDetailItem: { display: 'flex', alignItems: 'center', gap: 14, padding: 14, background: 'var(--abs-fill-soft)', borderRadius: 12, border: '1px solid var(--abs-fill)', flexWrap: 'wrap' },
   calDetailName: { color: '#FFF', fontSize: 15, fontWeight: 600, margin: '0 0 4px 0' },
-  calDetailMeta: { color: 'rgba(245,242,235,0.55)', fontSize: 12, margin: 0 },
+  calDetailMeta: { color: 'var(--abs-text-soft)', fontSize: 12, margin: 0 },
   calDetailBadge: { padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' },
-  calLegend: { display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,.06)' },
+  calLegend: { display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--abs-line-soft)' },
   calLegendItem: { display: 'flex', alignItems: 'center', gap: 6 },
   calLegendDot: { width: 10, height: 10, borderRadius: '50%' },
-  calLegendLabel: { color: 'rgba(245,242,235,0.55)', fontSize: 12 },
+  calLegendLabel: { color: 'var(--abs-text-soft)', fontSize: 12 },
   overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16, animation: 'fadeIn .2s ease' },
-  modal: { background: '#1D1713', border: '1px solid rgba(255,255,255,.1)', borderRadius: 24, width: '100%', maxWidth: 540, padding: 28, boxShadow: '0 25px 70px rgba(0,0,0,.6)', maxHeight: '90vh', overflowY: 'auto', animation: 'slideUp .3s ease forwards' },
+  modal: { background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line)', borderRadius: 24, width: '100%', maxWidth: 540, padding: 28, boxShadow: '0 25px 70px rgba(0,0,0,.6)', maxHeight: '90vh', overflowY: 'auto', animation: 'slideUp .3s ease forwards' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   modalTitleText: { color: '#FFF', fontSize: 20, fontWeight: 700, margin: 0 },
-  closeBtnModal: { background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(245,242,235,0.55)', cursor: 'pointer' },
+  closeBtnModal: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', borderRadius: 10, width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--abs-text-soft)', cursor: 'pointer' },
   form: { display: 'flex', flexDirection: 'column', gap: 18 },
   formRow: { display: 'flex', gap: 14 },
-  input: { background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.1)', color: '#FFF', padding: '12px 16px', borderRadius: 12, fontSize: 14, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' },
+  input: { background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line)', color: '#FFF', padding: '12px 16px', borderRadius: 12, fontSize: 14, fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' },
   daysCounter: { display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.15)', borderRadius: 12, flexWrap: 'wrap' },
   overlapBox: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.25)', borderRadius: 12 },
   overlapTitle: { color: '#F59E0B', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' },
@@ -2994,14 +3008,14 @@ const S = {
   reasonGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(120px,1fr))', gap: 8 },
   modalFooter: { display: 'flex', gap: 12, marginTop: 8 },
   saveBtn: { flex: 2, padding: 14, background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#000', border: 'none', borderRadius: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 },
-  histStats: { display: 'flex', gap: 20, marginBottom: 24, padding: 20, background: 'rgba(255,255,255,.02)', borderRadius: 16, border: '1px solid rgba(255,255,255,.06)' },
-  histTotalBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: 90, borderRight: '1px solid rgba(255,255,255,.06)', paddingRight: 20 },
+  histStats: { display: 'flex', gap: 20, marginBottom: 24, padding: 20, background: 'var(--abs-fill-soft)', borderRadius: 16, border: '1px solid var(--abs-line-soft)' },
+  histTotalBox: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: 90, borderRight: '1px solid var(--abs-line-soft)', paddingRight: 20 },
   histTotalNum: { color: '#F59E0B', fontSize: 36, fontWeight: 800, lineHeight: '1' },
-  histTotalLabel: { color: 'rgba(245,242,235,0.55)', fontSize: 12, marginTop: 4 },
+  histTotalLabel: { color: 'var(--abs-text-soft)', fontSize: 12, marginTop: 4 },
   histBreakdown: { display: 'flex', flexDirection: 'column', gap: 8, flex: 1 },
   histMotifRow: { display: 'flex', alignItems: 'center', gap: 8 },
   histList: { maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 },
-  histItem: { display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: 'rgba(255,255,255,.02)', borderRadius: 10 },
+  histItem: { display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: 'var(--abs-fill-soft)', borderRadius: 10 },
     histDot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
   emptyMini: {
     minHeight: 90,
@@ -3012,8 +3026,8 @@ const S = {
     gap: 8,
     color: '#777',
     fontSize: 13,
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px dashed rgba(255,255,255,0.08)',
+    background: 'var(--abs-fill-soft)',
+    border: '1px dashed var(--abs-line-soft)',
     borderRadius: 14,
     marginTop: 8,
     padding: 16,

@@ -126,17 +126,17 @@ it('10. les dates horodatées de Supabase sont découpées au jour', () => {
 
 it('11. les titres parlent français', () => {
   const contexte = { annee: 2026, mois: 9, jourIso: '2026-10-21' }
-  expect(titrePeriode('jour', jourUnique('2026-10-21'), contexte)).toBe('Mercredi 21 oct. 2026')
+  expect(titrePeriode('jour', jourUnique('2026-10-21'), contexte)).toBe('Mer 21 Oct. 2026')
   expect(titrePeriode('mois', [], contexte)).toBe('Octobre 2026')
 
   const semaine = joursDeLaSemaine('2026-10-21')
+  // Même libellé compact que la page Planning : « Lun 19 – Dim 25 Oct. 2026 »
   const titreSemaine = titrePeriode('semaine', semaine, contexte)
-  expect(titreSemaine).toContain('Semaine du 19')
-  expect(titreSemaine).toContain('25 oct. 2026')
+  expect(titreSemaine).toBe('Lun 19 – Dim 25 Oct. 2026')
 
+  // Une semaine à cheval sur deux mois garde le mois du dernier jour
   const aCheval = titrePeriode('semaine', joursDeLaSemaine('2026-11-01'), contexte)
-  expect(aCheval).toContain('26 oct.')
-  expect(aCheval).toContain('1 nov. 2026')
+  expect(aCheval).toBe('Lun 26 – Dim 1 Nov. 2026')
   expect(nomJourLong('2026-10-21')).toBe('Mercredi 21 oct. 2026')
 })
 
@@ -225,7 +225,7 @@ it('13. le mode mois affiche les 31 jours d’octobre', () => {
 
 it('14. le mode semaine n’affiche que les 7 jours de la semaine visée', () => {
   expect(grilleSemaine).toContain('data-mode="semaine"')
-  expect(grilleSemaine).toContain('Semaine du 19')
+  expect(grilleSemaine).toContain('Lun 19 – Dim 25 Oct. 2026')
   const jours = [...grilleSemaine.matchAll(/data-jour="([\d-]+)"/g)].map((m) => m[1])
   expect(jours).toEqual([
     '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22',

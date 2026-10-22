@@ -70,7 +70,7 @@ export function AbsencesStatsMotifs({ stats = {}, styleRow }) {
           <div key={code} data-testid="abs-stats-motif" data-motif={code} style={styleRow}>
             <span>{m ? m.emoji : '📋'}</span>
             <span style={{ color: '#ccc', flex: 1, fontSize: 13 }}>{m ? m.label : code}</span>
-            <span style={{ color: m ? m.color : '#F5F2EB', fontWeight: 700 }}>{j}j</span>
+            <span style={{ color: m ? m.color : 'var(--abs-text)', fontWeight: 700 }}>{j}j</span>
           </div>
         )
       })}
