@@ -20,12 +20,14 @@ export function BogolanFriseSvg({ hauteur = 10, couleur = '#B86B35', fond = 'tra
   const id = useId().replace(/:/g, '')
 
   return (
+    // ⚠️ PAS de viewBox : avec un viewBox de 40 unités étiré sur 1 500 px,
+    //    le motif ne s'affichait que deux fois, en chevrons géants — on ne
+    //    reconnaissait plus le bogolan. Sans viewBox, l'unité vaut un pixel
+    //    et le motif se répète tous les 20 px sur toute la largeur.
     <svg
       className={className}
       width="100%"
       height={hauteur}
-      viewBox={`0 0 40 ${hauteur}`}
-      preserveAspectRatio="none"
       aria-hidden="true"
       data-testid="bogolan-frise"
       style={{ display: 'block', background: fond }}
@@ -37,14 +39,14 @@ export function BogolanFriseSvg({ hauteur = 10, couleur = '#B86B35', fond = 'tra
             points={`0,${hauteur - 1} 5,1 10,${hauteur - 1}`}
             fill="none"
             stroke={couleur}
-            strokeWidth="1.4"
+            strokeWidth="1.6"
             strokeLinecap="round"
           />
           <polyline
             points={`10,${hauteur - 1} 15,1 20,${hauteur - 1}`}
             fill="none"
             stroke={couleur}
-            strokeWidth="1.4"
+            strokeWidth="1.6"
             strokeLinecap="round"
             opacity="0.55"
           />
@@ -53,7 +55,7 @@ export function BogolanFriseSvg({ hauteur = 10, couleur = '#B86B35', fond = 'tra
           <circle cx="18" cy={hauteur / 2} r="1" fill={couleur} opacity="0.5" />
         </pattern>
       </defs>
-      <rect width="40" height={hauteur} fill={`url(#bogolan-frise-${id})`} />
+      <rect width="100%" height="100%" fill={`url(#bogolan-frise-${id})`} />
     </svg>
   )
 }

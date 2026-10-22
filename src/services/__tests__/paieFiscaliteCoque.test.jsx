@@ -257,3 +257,23 @@ it('25. le module fiscal ne verrouille que s’il est explicitement coupé', () 
   // et l'accès aux fiches de paie reste offert depuis le panneau
   expect(coque).toContain('Aller aux fiches de paie')
 })
+
+// ── 8. Le motif se répète, il ne s'étire pas ─────────────────────────
+
+it('26. la frise se répète au lieu de s’étirer sur toute la largeur', () => {
+  const html = renderToStaticMarkup(<BogolanFriseSvg hauteur={14} />)
+  // un viewBox de 40 unités étiré donnait deux chevrons géants
+  expect(html).not.toContain('viewBox')
+  expect(html).not.toContain('preserveAspectRatio')
+  // le motif remplit toute la bande, en pixels
+  expect(html).toContain('width="100%"')
+  expect(html).toContain('height="100%"')
+  expect(html).toMatch(/fill="url\(#bogolan-frise-[^)]+\)"/)
+})
+
+it('27. la coque porte le motif à trois endroits au moins', () => {
+  const frises = (coque.match(/<BogolanFriseSvg/g) || []).length
+  expect(frises).toBeGreaterThanOrEqual(2)
+  expect(coque).toContain('<BogolanFiligraneSvg')
+  expect(coque).toContain('paie-fond-motif')
+})
