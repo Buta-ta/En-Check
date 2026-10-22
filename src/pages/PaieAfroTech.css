@@ -37,6 +37,52 @@
   min-height: 100vh;
   background: var(--paie-bg);
   color: var(--paie-text);
+
+  /* Le motif de fond reste DERRIÈRE le contenu : sans cette isolation,
+     il se peindrait par-dessus les cartes. */
+  position: relative;
+  isolation: isolate;
+}
+
+/* Filigrane bogolan, en fond de page */
+.paie-fond-motif {
+  position: fixed;
+  right: -30px;
+  bottom: -30px;
+  z-index: 0;
+  pointer-events: none;
+  line-height: 0;
+}
+
+.paie-topbar,
+.paie-groupes,
+.paie-contenu,
+.paie-kpi-rangee {
+  position: relative;
+  z-index: 1;
+}
+
+.paie-frise {
+  margin-top: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.paie-frise-basse {
+  margin-top: 12px;
+}
+
+.paie-marque-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: var(--paie-bg-soft);
+  border: 1px solid var(--paie-border);
+  flex-shrink: 0;
 }
 
 .paie-page[data-theme='dark'] {

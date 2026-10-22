@@ -34,27 +34,33 @@ import FeatureService, { FEATURES } from '../services/featureService'
 import CurrencyService from '../services/currencyService'
 import PayrollService from '../services/payrollService'
 import toast from 'react-hot-toast'
+import { useTheme } from '../contexts/ThemeContext'
+import { palettePaie, stylesPaie } from '../styles/paieTheme'
+import RecapChargement from '../components/PaieRecapChargement'
 
 function FieldHelp({ text, example }) {
+  const { darkMode } = useTheme()
+  const S = stylesPaie(darkMode)
+  const P = palettePaie(darkMode)
   const [show, setShow] = useState(false)
 
   return (
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
       <HelpCircle
         size={14}
-        color="#666"
+        color={P.texteFaint}
         style={{ cursor: 'pointer', marginLeft: 6, flexShrink: 0 }}
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
       />
       {show && (
         <div style={S.tooltip}>
-          <p style={{ color: '#DDD', fontSize: 12, margin: '0 0 6px 0', lineHeight: 1.5 }}>{text}</p>
+          <p style={{ color: P.contour, fontSize: 12, margin: '0 0 6px 0', lineHeight: 1.5 }}>{text}</p>
           {example && (
             <div style={S.tooltipExample}>
               <span
                 style={{
-                  color: '#888',
+                  color: P.texteDoux2,
                   fontSize: 10,
                   display: 'block',
                   marginBottom: 3,
@@ -64,7 +70,7 @@ function FieldHelp({ text, example }) {
               >
                 Exemple
               </span>
-              <span style={{ color: '#F59E0B', fontSize: 12, fontWeight: 600 }}>{example}</span>
+              <span style={{ color: P.ambre, fontSize: 12, fontWeight: 600 }}>{example}</span>
             </div>
           )}
           <div style={S.tooltipArrow} />
@@ -75,10 +81,13 @@ function FieldHelp({ text, example }) {
 }
 
 function FormLabel({ children, help, example, required }) {
+  const { darkMode } = useTheme()
+  const S = stylesPaie(darkMode)
+  const P = palettePaie(darkMode)
   return (
     <label style={S.label}>
       {children}
-      {required && <span style={{ color: '#EF4444', marginLeft: 3 }}>*</span>}
+      {required && <span style={{ color: P.rouge, marginLeft: 3 }}>*</span>}
       {help && <FieldHelp text={help} example={example} />}
     </label>
   )
@@ -90,6 +99,9 @@ function FormLabel({ children, help, example, required }) {
  * indique quel volet afficher (pays | contributions | taxes | rules | preview).
  */
 export default function ConfigurationFiscale({ integre = false, ongletExterne = null, entrepriseIdForce = null } = {}) {
+  const { darkMode } = useTheme()
+  const S = stylesPaie(darkMode)
+  const P = palettePaie(darkMode)
   const [admin, setAdmin] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -131,6 +143,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
     confirmText: 'Confirmer',
     type: 'warning',
     onConfirm: null,
+    details: null,
   })
 
   const [simulationGross, setSimulationGross] = useState(250000)
@@ -290,7 +303,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
     }
   }
 
-  const openConfirm = ({ title, message, confirmText = 'Confirmer', type = 'warning', onConfirm }) => {
+  const openConfirm = ({ title, message, confirmText = 'Confirmer', type = 'warning', onConfirm, details = null }) => {
     setConfirmModal({
       open: true,
       title,
@@ -298,6 +311,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
       confirmText,
       type,
       onConfirm,
+      details,
     })
   }
 
@@ -362,11 +376,31 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
     const countryName =
       availableCountries.find(c => c.country_code === pendingCountryCode)?.country_name || 'pays sélectionné'
 
+    // On va chercher le modèle du pays AVANT de demander confirmation :
+    // le récapitulatif doit montrer des chiffres réels, pas une promesse.
+    const configPays = await TaxationService.getCountryConfig(pendingCountryCode)
+    if (!configPays) {
+      toast.error(`Aucune configuration disponible pour ${countryName}`)
+      return
+    }
+
+    const avant = {
+      cotisations: contributions.length,
+      tranches: taxBrackets.length,
+      regles: calculationRules || {},
+    }
+    const apres = {
+      cotisations: (configPays.default_contributions || []).length,
+      tranches: (configPays.default_tax_brackets || []).length,
+      regles: configPays.calculation_rules || TaxationService.getDefaultCalculationRules(),
+    }
+
     openConfirm({
       title: 'Charger la configuration du pays',
-      message: `Vous allez charger la configuration officielle de ${countryName}. Cette action remplacera les cotisations, tranches fiscales et règles actuelles de l’entreprise.`,
+      message: `Vous allez charger la configuration officielle de ${countryName}. Les cotisations, tranches fiscales et règles actuelles de l’entreprise seront remplacées.`,
       confirmText: 'Oui, charger',
       type: 'info',
+      details: <RecapChargement avant={avant} apres={apres} nomApres={countryName} />,
       onConfirm: async () => {
         closeConfirm()
         setSaving(true)
@@ -697,36 +731,37 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
   if (loading) {
     return (
       <div style={S.loadingWrap}>
-        <RefreshCw size={34} color="#F59E0B" style={{ animation: 'spin 0.9s linear infinite' }} />
-        <p style={{ color: '#999', marginTop: 12 }}>Chargement configuration fiscale...</p>
+        <RefreshCw size={34} color={P.ambre} style={{ animation: 'spin 0.9s linear infinite' }} />
+        <p style={{ color: P.texteFaint, marginTop: 12 }}>Chargement configuration fiscale...</p>
       </div>
     )
   }
 
   return (
     <>
+      {/* ⚠️ Ces règles étaient GLOBALES : `html, body, #root` repeints en
+          noir, et tous les champs du site forcés en sombre. Elles
+          débordaient donc de la page et imposaient l'ancien décor à
+          toute l'application. Elles sont désormais cantonnées au volet
+          (classe `.fiscal-volet`) et teintées par le thème. */}
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         .fiscal-card { animation: fadeInUp 0.3s ease forwards; }
         .fiscal-btn:hover { transform: translateY(-1px); }
 
-        html, body, #root {
-          background: #0A0A0F !important;
+        .fiscal-volet select, .fiscal-volet input, .fiscal-volet textarea {
+          background: ${P.voile3} !important;
+          color: ${P.texte} !important;
         }
 
-        select, input, textarea {
-          background: rgba(255,255,255,0.04) !important;
-          color: #FFF !important;
+        .fiscal-volet select option, .fiscal-volet datalist option {
+          background: ${P.surface2} !important;
+          color: ${P.texte} !important;
         }
 
-        select option {
-          background: #141423 !important;
-          color: #E5E5E5 !important;
-        }
-
-        input::placeholder, textarea::placeholder {
-          color: #666 !important;
+        .fiscal-volet input::placeholder, .fiscal-volet textarea::placeholder {
+          color: ${P.texteFaint} !important;
         }
 
         @media (max-width: 768px) {
@@ -735,12 +770,15 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
           .fiscal-sim-grid { grid-template-columns: 1fr !important; }
         }
 
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0A0A0F; }
-        ::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.3); border-radius: 4px; }
+        .fiscal-volet ::-webkit-scrollbar { width: 8px; }
+        .fiscal-volet ::-webkit-scrollbar-track { background: transparent; }
+        .fiscal-volet ::-webkit-scrollbar-thumb { background: ${P.ambre9}; border-radius: 4px; }
       `}</style>
 
-      <div style={integre ? { width: '100%' } : { minHeight: '100vh', background: '#0A0A0F', width: '100%' }}>
+      <div
+        className="fiscal-volet"
+        style={integre ? { width: '100%' } : { minHeight: '100vh', background: P.fond, width: '100%' }}
+      >
         <div style={integre ? S.conteneurIntegre : S.container}>
           {!integre && (
           <header style={S.header}>
@@ -749,22 +787,22 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
                 <ArrowLeft size={18} />
               </button>
               <div style={S.logoBox}>
-                <Settings size={22} color="#F59E0B" />
+                <Settings size={22} color={P.ambre} />
               </div>
               <div>
                 <h1 style={S.title}>CONFIGURATION FISCALE</h1>
                 {enterprisesList.length > 0 ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <span style={{ color: '#9CA3AF', fontSize: 12 }}>Entreprise :</span>
+                    <span style={{ color: P.texteDoux2, fontSize: 12 }}>Entreprise :</span>
                     <select
                       value={enterpriseId || ''}
                       onChange={(e) => handleEnterpriseSelectChange(e.target.value)}
                       style={{
-                        background: 'rgba(245,158,11,0.12)',
-                        border: '1px solid rgba(245,158,11,0.4)',
+                        background: P.ambre4,
+                        border: `1px solid ${P.ambre10}`,
                         borderRadius: 8,
                         padding: '5px 10px',
-                        color: '#F59E0B',
+                        color: P.ambre,
                         fontSize: 13,
                         fontWeight: 700,
                         cursor: 'pointer',
@@ -799,7 +837,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
 
           {(!integre || activeTab === 'pays') && (<>
           <div style={S.infoBar}>
-            <Info size={16} color="#F59E0B" style={{ flexShrink: 0 }} />
+            <Info size={16} color={P.ambre} style={{ flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <p style={S.infoTitle}>À quoi sert cette page ?</p>
               <p style={S.infoText}>
@@ -814,7 +852,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
           <div style={S.explainGrid} className="fiscal-grid-2">
             <div style={S.explainCard}>
               <div style={S.explainHeader}>
-                <Shield size={16} color="#10B981" />
+                <Shield size={16} color={P.vert} />
                 <span style={S.explainTitle}>Cotisations sociales</span>
               </div>
               <p style={S.explainText}>
@@ -830,7 +868,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
 
             <div style={S.explainCard}>
               <div style={S.explainHeader}>
-                <Percent size={16} color="#6366F1" />
+                <Percent size={16} color={P.indigo} />
                 <span style={S.explainTitle}>Barème fiscal</span>
               </div>
               <p style={S.explainText}>
@@ -847,7 +885,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
 
           <div style={S.explainWide}>
             <div style={S.explainHeader}>
-              <BadgeHelp size={16} color="#F59E0B" />
+              <BadgeHelp size={16} color={P.ambre} />
               <span style={S.explainTitle}>Comment se fait le calcul ?</span>
             </div>
             <p style={S.explainText}>
@@ -923,8 +961,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
           </div>
 
           <div style={S.noteBox}>
-            <Info size={14} color="#6366F1" />
-            <span style={{ color: '#888', fontSize: 12 }}>
+            <Info size={14} color={P.indigo} />
+            <span style={{ color: P.texteDoux2, fontSize: 12 }}>
               Le <strong>code pays</strong> est utilisé pour la logique fiscale et les modèles par défaut.
               Le <strong>libellé affiché</strong> sert uniquement à personnaliser le texte visible dans l’interface.
               Libellé actuel : <strong>{displayedFiscalCountryLabel}</strong>
@@ -970,8 +1008,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
             <div style={S.card} className="fiscal-card">
               <div style={S.cardHeader}>
                 <div style={S.cardHeaderLeft}>
-                  <div style={{ ...S.cardIcon, background: 'rgba(16,185,129,0.12)' }}>
-                    <Shield size={18} color="#10B981" />
+                  <div style={{ ...S.cardIcon, background: P.vert1 }}>
+                    <Shield size={18} color={P.vert} />
                   </div>
                   <div>
                     <h3 style={S.cardTitle}>Cotisations Sociales</h3>
@@ -988,8 +1026,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
               </div>
 
               <div style={S.noteBox}>
-                <Info size={14} color="#10B981" />
-                <span style={{ color: '#888', fontSize: 12 }}>
+                <Info size={14} color={P.vert} />
+                <span style={{ color: P.texteDoux2, fontSize: 12 }}>
                   Une cotisation peut être calculée en pourcentage du brut ou en montant fixe.  
                   La part salariale est déduite du bulletin. La part patronale impacte le coût employeur.
                 </span>
@@ -997,9 +1035,9 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
 
               {contributions.length === 0 ? (
                 <div style={S.emptyState}>
-                  <AlertTriangle size={24} color="#666" />
-                  <p style={{ color: '#888', margin: '8px 0 0 0' }}>Aucune cotisation configurée</p>
-                  <p style={{ color: '#555', fontSize: 12, margin: '4px 0 0 0' }}>
+                  <AlertTriangle size={24} color={P.texteFaint} />
+                  <p style={{ color: P.texteDoux2, margin: '8px 0 0 0' }}>Aucune cotisation configurée</p>
+                  <p style={{ color: P.texteFaint, fontSize: 12, margin: '4px 0 0 0' }}>
                     Chargez un modèle pays ou ajoutez vos propres cotisations
                   </p>
                 </div>
@@ -1023,8 +1061,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
             <div style={S.card} className="fiscal-card">
               <div style={S.cardHeader}>
                 <div style={S.cardHeaderLeft}>
-                  <div style={{ ...S.cardIcon, background: 'rgba(99,102,241,0.12)' }}>
-                    <Percent size={18} color="#6366F1" />
+                  <div style={{ ...S.cardIcon, background: P.indigo3 }}>
+                    <Percent size={18} color={P.indigo} />
                   </div>
                   <div>
                     <h3 style={S.cardTitle}>Barème d’Imposition</h3>
@@ -1039,8 +1077,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
               </div>
 
               <div style={S.noteBox}>
-                <Info size={14} color="#6366F1" />
-                <span style={{ color: '#888', fontSize: 12 }}>
+                <Info size={14} color={P.indigo} />
+                <span style={{ color: P.texteDoux2, fontSize: 12 }}>
                   Les tranches doivent être cohérentes : pas de chevauchement, pas de vide logique, et un ordre correct.
                   Le calcul fiscal actuel du moteur est <strong>progressif</strong>.
                 </span>
@@ -1048,8 +1086,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
 
               {taxBrackets.length === 0 ? (
                 <div style={S.emptyState}>
-                  <AlertTriangle size={24} color="#666" />
-                  <p style={{ color: '#888', margin: '8px 0 0 0' }}>Aucune tranche fiscale configurée</p>
+                  <AlertTriangle size={24} color={P.texteFaint} />
+                  <p style={{ color: P.texteDoux2, margin: '8px 0 0 0' }}>Aucune tranche fiscale configurée</p>
                 </div>
               ) : (
                 <div style={S.bracketList}>
@@ -1071,8 +1109,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
             <div style={S.card} className="fiscal-card">
               <div style={S.cardHeader}>
                 <div style={S.cardHeaderLeft}>
-                  <div style={{ ...S.cardIcon, background: 'rgba(245,158,11,0.12)' }}>
-                    <SlidersHorizontal size={18} color="#F59E0B" />
+                  <div style={{ ...S.cardIcon, background: P.ambre4 }}>
+                    <SlidersHorizontal size={18} color={P.ambre} />
                   </div>
                   <div>
                     <h3 style={S.cardTitle}>Règles de Calcul</h3>
@@ -1087,8 +1125,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
               </div>
 
               <div style={S.noteBox}>
-                <Info size={14} color="#F59E0B" />
-                <span style={{ color: '#888', fontSize: 12 }}>
+                <Info size={14} color={P.ambre} />
+                <span style={{ color: P.texteDoux2, fontSize: 12 }}>
                   Les règles de calcul permettent de définir comment on passe du <strong>brut</strong> au
                   <strong> revenu imposable</strong> avant application de l’impôt.
                 </span>
@@ -1135,8 +1173,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
               <div style={{ marginTop: 18 }}>
                 <p style={S.customRuleTitle}>Charges déductibles</p>
                 <div style={S.noteBox}>
-                  <Info size={14} color="#6366F1" />
-                  <span style={{ color: '#888', fontSize: 12 }}>
+                  <Info size={14} color={P.indigo} />
+                  <span style={{ color: P.texteDoux2, fontSize: 12 }}>
                     Les charges déductibles sont retirées du brut avant le calcul de l’impôt.
                   </span>
                 </div>
@@ -1155,8 +1193,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
 
                 {!calculationRules.custom_rules || calculationRules.custom_rules.length === 0 ? (
                   <div style={S.noteBox}>
-                    <Info size={14} color="#6366F1" />
-                    <span style={{ color: '#888', fontSize: 12 }}>
+                    <Info size={14} color={P.indigo} />
+                    <span style={{ color: P.texteDoux2, fontSize: 12 }}>
                       Aucune règle personnalisée définie. Les clés réellement exploitées par le moteur doivent être documentées et cohérentes.
                     </span>
                   </div>
@@ -1181,8 +1219,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
             <div style={S.card} className="fiscal-card">
               <div style={S.cardHeader}>
                 <div style={S.cardHeaderLeft}>
-                  <div style={{ ...S.cardIcon, background: 'rgba(245,158,11,0.12)' }}>
-                    <Calculator size={18} color="#F59E0B" />
+                  <div style={{ ...S.cardIcon, background: P.ambre4 }}>
+                    <Calculator size={18} color={P.ambre} />
                   </div>
                   <div>
                     <h3 style={S.cardTitle}>Aperçu de simulation</h3>
@@ -1265,14 +1303,14 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
                     <div
                       style={{
                         ...S.noteBox,
-                        background: 'rgba(239,68,68,0.10)',
-                        border: '1px solid rgba(239,68,68,0.35)',
+                        background: P.rouge2,
+                        border: `1px solid ${P.rouge4}`,
                         marginBottom: 14,
                         alignItems: 'flex-start',
                       }}
                     >
-                      <AlertTriangle size={16} color="#EF4444" style={{ flexShrink: 0, marginTop: 1 }} />
-                      <span style={{ color: '#FCA5A5', fontSize: 12, lineHeight: 1.5 }}>
+                      <AlertTriangle size={16} color={P.rouge} style={{ flexShrink: 0, marginTop: 1 }} />
+                      <span style={{ color: P.rougeClair, fontSize: 12, lineHeight: 1.5 }}>
                         {simulationExplanation.avertissement}
                       </span>
                     </div>
@@ -1286,7 +1324,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
 
                     <div style={S.simCard}>
                       <span style={S.simLabel}>Cotisations salariales</span>
-                      <span style={{ ...S.simValue, color: '#EF4444' }}>
+                      <span style={{ ...S.simValue, color: P.rouge }}>
                         - {fmt(simulationExplanation.social.totalEmployee || 0)}
                       </span>
                     </div>
@@ -1298,7 +1336,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
 
                     <div style={S.simCard}>
                       <span style={S.simLabel}>Impôt total</span>
-                      <span style={{ ...S.simValue, color: '#EF4444' }}>
+                      <span style={{ ...S.simValue, color: P.rouge }}>
                         - {fmt(simulationExplanation.tax.totalTax || 0)}
                       </span>
                     </div>
@@ -1310,7 +1348,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
                       <span
                         style={{
                           ...S.simValue,
-                          color: simulationExplanation.impot_a_verifier ? '#F59E0B' : '#10B981',
+                          color: simulationExplanation.impot_a_verifier ? P.ambre : P.vert,
                         }}
                       >
                         {fmt(simulationExplanation.net || 0)}
@@ -1341,8 +1379,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
                       </div>
                     ) : (
                       <div style={S.noteBox}>
-                        <Info size={14} color="#6366F1" />
-                        <span style={{ color: '#888', fontSize: 12 }}>Aucune cotisation salariale appliquée sur ce test.</span>
+                        <Info size={14} color={P.indigo} />
+                        <span style={{ color: P.texteDoux2, fontSize: 12 }}>Aucune cotisation salariale appliquée sur ce test.</span>
                       </div>
                     )}
                   </div>
@@ -1365,8 +1403,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
                       </div>
                     ) : (
                       <div style={S.noteBox}>
-                        <Info size={14} color="#6366F1" />
-                        <span style={{ color: '#888', fontSize: 12 }}>Aucune tranche fiscale appliquée sur ce test.</span>
+                        <Info size={14} color={P.indigo} />
+                        <span style={{ color: P.texteDoux2, fontSize: 12 }}>Aucune tranche fiscale appliquée sur ce test.</span>
                       </div>
                     )}
                   </div>
@@ -1424,6 +1462,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
               type={confirmModal.type}
               onCancel={closeConfirm}
               onConfirm={confirmModal.onConfirm}
+              details={confirmModal.details}
             />
           )}
         </div>
@@ -1433,6 +1472,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
 }
 
 function ContributionCard({ contrib, currency, onEdit, onDelete }) {
+  const { darkMode } = useTheme()
+  const S = stylesPaie(darkMode)
   const isPaidByEmployee = contrib.paid_by === 'employee' || contrib.paid_by === 'both'
   const isPaidByEmployer = contrib.paid_by === 'employer' || contrib.paid_by === 'both'
 
@@ -1504,6 +1545,9 @@ function ContributionCard({ contrib, currency, onEdit, onDelete }) {
 }
 
 function BracketCard({ bracket, currency, onEdit, onDelete }) {
+  const { darkMode } = useTheme()
+  const S = stylesPaie(darkMode)
+  const P = palettePaie(darkMode)
   return (
     <div style={S.bracketCard}>
       <div style={S.bracketHeader}>
@@ -1523,7 +1567,7 @@ function BracketCard({ bracket, currency, onEdit, onDelete }) {
 
         <div style={S.bracketRow}>
           <span style={S.bracketLabel}>Taux</span>
-          <span style={{ ...S.bracketValue, color: '#F59E0B' }}>{bracket.tax_rate}%</span>
+          <span style={{ ...S.bracketValue, color: P.ambre }}>{bracket.tax_rate}%</span>
         </div>
 
         {bracket.fixed_deduction > 0 && (
@@ -1549,6 +1593,9 @@ function BracketCard({ bracket, currency, onEdit, onDelete }) {
 }
 
 function ContributionModal({ contribution, currency, onSave, onClose, saving }) {
+  const { darkMode } = useTheme()
+  const S = stylesPaie(darkMode)
+  const P = palettePaie(darkMode)
   const [form, setForm] = useState(contribution || {
     contribution_code: '',
     contribution_name: '',
@@ -1580,8 +1627,8 @@ function ContributionModal({ contribution, currency, onSave, onClose, saving }) 
 
         <div style={S.modalBody}>
           <div style={S.noteBox}>
-            <Info size={14} color="#10B981" />
-            <span style={{ color: '#888', fontSize: 12 }}>
+            <Info size={14} color={P.vert} />
+            <span style={{ color: P.texteDoux2, fontSize: 12 }}>
               Le code doit être unique. La méthode peut être un pourcentage du brut ou un montant fixe.
             </span>
           </div>
@@ -1792,6 +1839,9 @@ function ContributionModal({ contribution, currency, onSave, onClose, saving }) 
 }
 
 function BracketModal({ bracket, currency, nextOrder, onSave, onClose, saving }) {
+  const { darkMode } = useTheme()
+  const S = stylesPaie(darkMode)
+  const P = palettePaie(darkMode)
   const [form, setForm] = useState(bracket || {
     bracket_name: '',
     min_amount: '',
@@ -1815,8 +1865,8 @@ function BracketModal({ bracket, currency, nextOrder, onSave, onClose, saving })
 
         <div style={S.modalBody}>
           <div style={S.noteBox}>
-            <Info size={14} color="#6366F1" />
-            <span style={{ color: '#888', fontSize: 12 }}>
+            <Info size={14} color={P.indigo} />
+            <span style={{ color: P.texteDoux2, fontSize: 12 }}>
               Une tranche définit une plage de revenu imposable et le taux appliqué sur cette plage.
             </span>
           </div>
@@ -1943,6 +1993,9 @@ function BracketModal({ bracket, currency, nextOrder, onSave, onClose, saving })
 }
 
 function RulesModal({ rules, contributions, currency, onClose, onSave, saving }) {
+  const { darkMode } = useTheme()
+  const S = stylesPaie(darkMode)
+  const P = palettePaie(darkMode)
   const [form, setForm] = useState({
     min_taxable_income: rules.min_taxable_income || 0,
     abattement_type: rules.abattement_type || 'none',
@@ -1997,8 +2050,8 @@ function RulesModal({ rules, contributions, currency, onClose, onSave, saving })
 
         <div style={S.modalBody}>
           <div style={S.noteBox}>
-            <Info size={14} color="#F59E0B" />
-            <span style={{ color: '#888', fontSize: 12 }}>
+            <Info size={14} color={P.ambre} />
+            <span style={{ color: P.texteDoux2, fontSize: 12 }}>
               Les charges déductibles sont retranchées avant calcul de l’impôt.  
               L’abattement réduit la base imposable selon la règle choisie.
             </span>
@@ -2116,8 +2169,8 @@ function RulesModal({ rules, contributions, currency, onClose, onSave, saving })
             <div style={S.chargeList}>
               {contributions.length === 0 ? (
                 <div style={S.noteBox}>
-                  <Info size={14} color="#6366F1" />
-                  <span style={{ color: '#888', fontSize: 12 }}>
+                  <Info size={14} color={P.indigo} />
+                  <span style={{ color: P.texteDoux2, fontSize: 12 }}>
                     Ajoutez d’abord des cotisations pour pouvoir les marquer comme charges déductibles.
                   </span>
                 </div>
@@ -2169,8 +2222,8 @@ function RulesModal({ rules, contributions, currency, onClose, onSave, saving })
             </div>
 
             <div style={S.noteBox}>
-              <Info size={14} color="#6366F1" />
-              <span style={{ color: '#888', fontSize: 12 }}>
+              <Info size={14} color={P.indigo} />
+              <span style={{ color: P.texteDoux2, fontSize: 12 }}>
                 Attention : seules les règles réellement prises en charge par le moteur seront appliquées.
               </span>
             </div>
@@ -2221,11 +2274,14 @@ function RulesModal({ rules, contributions, currency, onClose, onSave, saving })
   )
 }
 
-function ConfirmModal({ title, message, confirmText, type, onCancel, onConfirm }) {
+function ConfirmModal({ title, message, confirmText, type, onCancel, onConfirm, details }) {
+  const { darkMode } = useTheme()
+  const S = stylesPaie(darkMode)
+  const P = palettePaie(darkMode)
   const color =
-    type === 'danger' ? '#EF4444' :
-    type === 'info' ? '#6366F1' :
-    '#F59E0B'
+    type === 'danger' ? P.rouge :
+    type === 'info' ? P.indigo :
+    P.ambre
 
   return (
     <div style={S.modalOverlay} onClick={onCancel}>
@@ -2236,6 +2292,7 @@ function ConfirmModal({ title, message, confirmText, type, onCancel, onConfirm }
           </div>
           <h3 style={S.confirmTitle}>{title}</h3>
           <p style={S.confirmText}>{message}</p>
+          {details && <div style={{ width: '100%' }}>{details}</div>}
           <div style={S.confirmActions}>
             <button onClick={onCancel} style={S.cancelBtn}>Annuler</button>
             <button onClick={onConfirm} style={{ ...S.confirmBtn, background: color }}>
@@ -2246,718 +2303,4 @@ function ConfirmModal({ title, message, confirmText, type, onCancel, onConfirm }
       </div>
     </div>
   )
-}
-
-const S = {
-  conteneurIntegre: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '18px',
-  },
-  container: {
-    maxWidth: 1200,
-    margin: '0 auto',
-    padding: '24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '18px',
-    minHeight: '100vh',
-  },
-
-  loadingWrap: {
-    minHeight: '100vh',
-    background: '#0A0A0F',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '12px',
-    flexWrap: 'wrap',
-  },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
-  headerRight: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
-
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    border: '1px solid rgba(245,158,11,0.2)',
-    background: 'rgba(245,158,11,0.1)',
-    color: '#F59E0B',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-  },
-
-  logoBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    background: 'rgba(245,158,11,0.12)',
-    border: '1px solid rgba(245,158,11,0.18)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  title: { color: '#FFF', fontSize: '20px', fontWeight: 800, margin: 0, letterSpacing: '2px' },
-  subtitle: { color: '#888', fontSize: '12px', margin: '4px 0 0 0' },
-
-  secondaryBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '10px 16px',
-    borderRadius: 12,
-    border: '1px solid rgba(236,72,153,0.25)',
-    background: 'rgba(236,72,153,0.12)',
-    color: '#EC4899',
-    fontWeight: 700,
-    cursor: 'pointer',
-    fontSize: 13,
-    fontFamily: 'inherit',
-  },
-
-  loadCountryBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '10px 16px',
-    borderRadius: 12,
-    border: '1px solid rgba(99,102,241,0.25)',
-    background: 'rgba(99,102,241,0.12)',
-    color: '#818CF8',
-    fontWeight: 700,
-    cursor: 'pointer',
-    fontSize: 13,
-    fontFamily: 'inherit',
-  },
-
-  infoBar: {
-    display: 'flex',
-    gap: 12,
-    padding: '16px 18px',
-    background: 'rgba(245,158,11,0.06)',
-    border: '1px solid rgba(245,158,11,0.15)',
-    borderRadius: 16,
-  },
-  infoTitle: { color: '#F59E0B', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' },
-  infoText: { color: '#AAA', fontSize: 12, margin: 0, lineHeight: 1.6 },
-
-  explainGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 12,
-  },
-
-  explainCard: {
-    padding: '16px 18px',
-    background: 'rgba(20,20,35,0.75)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: 16,
-  },
-
-  explainWide: {
-    padding: '16px 18px',
-    background: 'rgba(20,20,35,0.75)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: 16,
-  },
-
-  explainHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 },
-  explainTitle: { color: '#FFF', fontSize: 13, fontWeight: 700 },
-  explainText: { color: '#AAA', fontSize: 12, lineHeight: 1.6, margin: 0 },
-  explainList: { color: '#888', fontSize: 12, margin: '10px 0 0 18px', padding: 0, lineHeight: 1.8 },
-
-  countryBar: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr 1fr',
-    gap: 12,
-    background: 'rgba(20,20,35,0.75)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: 16,
-    padding: 16,
-  },
-  countryGroup: { display: 'flex', flexDirection: 'column', gap: 6 },
-
-  topActionRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 12,
-    flexWrap: 'wrap',
-  },
-
-  tabs: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  tabBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '10px 14px',
-    borderRadius: 12,
-    border: '1px solid rgba(255,255,255,0.08)',
-    background: 'rgba(20,20,35,0.75)',
-    color: '#888',
-    cursor: 'pointer',
-    fontWeight: 600,
-    fontFamily: 'inherit',
-    fontSize: 13,
-  },
-  tabBtnActive: {
-    background: 'rgba(245,158,11,0.12)',
-    border: '1px solid rgba(245,158,11,0.25)',
-    color: '#F59E0B',
-  },
-  tabBadge: {
-    background: 'rgba(245,158,11,0.2)',
-    color: '#F59E0B',
-    borderRadius: 999,
-    padding: '2px 8px',
-    fontSize: 11,
-    fontWeight: 700,
-  },
-
-  card: {
-    background: 'rgba(20,20,35,0.75)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: 18,
-    padding: 18,
-  },
-
-  cardHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
-    flexWrap: 'wrap',
-  },
-  cardHeaderLeft: { display: 'flex', alignItems: 'center', gap: 10 },
-  cardIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardTitle: { color: '#FFF', fontSize: 16, fontWeight: 700, margin: 0 },
-  cardSub: { color: '#777', fontSize: 12, margin: '3px 0 0 0' },
-
-  addBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '10px 14px',
-    borderRadius: 12,
-    border: '1px solid rgba(16,185,129,0.25)',
-    background: 'rgba(16,185,129,0.12)',
-    color: '#10B981',
-    fontWeight: 700,
-    cursor: 'pointer',
-    fontSize: 13,
-    fontFamily: 'inherit',
-  },
-
-  emptyState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '60px 20px',
-    borderRadius: 14,
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px dashed rgba(255,255,255,0.08)',
-  },
-
-  contribList: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-    gap: 12,
-  },
-
-  contribCard: {
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: 14,
-    padding: 14,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-  },
-
-  contribHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-
-  contribName: { color: '#FFF', fontSize: 14, fontWeight: 700, margin: 0 },
-  contribCode: { color: '#666', fontSize: 11, margin: '3px 0 0 0', fontFamily: 'monospace' },
-
-  mandatoryBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 4,
-    padding: '3px 8px',
-    borderRadius: 999,
-    background: 'rgba(16,185,129,0.12)',
-    border: '1px solid rgba(16,185,129,0.2)',
-    color: '#10B981',
-    fontSize: 10,
-    fontWeight: 700,
-    flexShrink: 0,
-  },
-
-  contribBody: { display: 'flex', flexDirection: 'column', gap: 8 },
-
-  contribRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '8px 10px',
-    background: 'rgba(255,255,255,0.02)',
-    borderRadius: 10,
-  },
-
-  contribLabel: { color: '#888', fontSize: 12 },
-  contribAmount: { color: '#FFF', fontSize: 13, fontWeight: 700 },
-
-  contribActions: { display: 'flex', gap: 8, paddingTop: 4, borderTop: '1px solid rgba(255,255,255,0.05)' },
-
-  editBtn: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    padding: '8px 12px',
-    borderRadius: 10,
-    border: '1px solid rgba(99,102,241,0.2)',
-    background: 'rgba(99,102,241,0.08)',
-    color: '#818CF8',
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  },
-
-  deleteBtn: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    padding: '8px 12px',
-    borderRadius: 10,
-    border: '1px solid rgba(239,68,68,0.2)',
-    background: 'rgba(239,68,68,0.08)',
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  },
-
-  bracketList: { display: 'flex', flexDirection: 'column', gap: 10 },
-
-  bracketCard: {
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: 14,
-    padding: 14,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-  },
-
-  bracketHeader: { display: 'flex', alignItems: 'center', gap: 10 },
-
-  bracketOrder: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    background: 'rgba(99,102,241,0.12)',
-    border: '1px solid rgba(99,102,241,0.2)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#818CF8',
-    fontWeight: 700,
-    fontSize: 14,
-    flexShrink: 0,
-  },
-
-  bracketName: { color: '#FFF', fontSize: 14, fontWeight: 700, margin: 0 },
-
-  bracketBody: { display: 'flex', flexDirection: 'column', gap: 8 },
-
-  bracketRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '8px 10px',
-    background: 'rgba(255,255,255,0.02)',
-    borderRadius: 10,
-  },
-
-  bracketLabel: { color: '#888', fontSize: 12 },
-  bracketValue: { color: '#FFF', fontSize: 13, fontWeight: 700 },
-
-  rulesGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: 12,
-  },
-
-  ruleItem: {
-    padding: '12px 14px',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: 12,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
-
-  ruleLabel: { color: '#888', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
-  ruleValue: { color: '#FFF', fontSize: 13, fontWeight: 700 },
-
-  noteBox: {
-    marginTop: 8,
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: 10,
-    padding: '12px 14px',
-    background: 'rgba(99,102,241,0.06)',
-    border: '1px solid rgba(99,102,241,0.15)',
-    borderRadius: 12,
-  },
-
-  customRuleTitle: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: 700,
-    margin: '0 0 10px 0',
-  },
-
-  customRuleForm: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr 1.3fr auto',
-    gap: 10,
-    marginBottom: 12,
-  },
-
-  customRuleList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-  },
-
-  customRuleItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-    padding: '12px 14px',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: 12,
-  },
-
-  customRuleName: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: 700,
-  },
-
-  customRuleDesc: {
-    color: '#666',
-    fontSize: 11,
-    marginTop: 3,
-  },
-
-  customRuleValue: {
-    color: '#F59E0B',
-    fontSize: 12,
-    fontWeight: 700,
-    background: 'rgba(245,158,11,0.08)',
-    border: '1px solid rgba(245,158,11,0.15)',
-    borderRadius: 999,
-    padding: '4px 10px',
-  },
-
-  iconDeleteBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    border: '1px solid rgba(239,68,68,0.2)',
-    background: 'rgba(239,68,68,0.08)',
-    color: '#EF4444',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-  },
-
-  chargeList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-  },
-
-  simGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: 12,
-    marginTop: 8,
-  },
-
-  simCard: {
-    padding: '14px 16px',
-    borderRadius: 14,
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 5,
-  },
-
-  simLabel: { color: '#888', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
-  simValue: { color: '#FFF', fontSize: 15, fontWeight: 800 },
-
-  label: {
-    color: '#AAA',
-    fontSize: 12,
-    fontWeight: 600,
-    display: 'flex',
-    alignItems: 'center',
-    gap: 4,
-  },
-
-  input: {
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: 12,
-    border: '1px solid rgba(255,255,255,0.08)',
-    background: 'rgba(255,255,255,0.04)',
-    color: '#FFF',
-    outline: 'none',
-    fontFamily: 'inherit',
-    boxSizing: 'border-box',
-    fontSize: 14,
-  },
-
-  select: {
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: 12,
-    border: '1px solid rgba(255,255,255,0.08)',
-    background: 'rgba(255,255,255,0.04)',
-    color: '#FFF',
-    outline: 'none',
-    fontFamily: 'inherit',
-    boxSizing: 'border-box',
-    fontSize: 14,
-    cursor: 'pointer',
-  },
-
-  modalOverlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.85)',
-    backdropFilter: 'blur(8px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    padding: 16,
-  },
-
-  modalContent: {
-    background: '#141423',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: 24,
-    width: '100%',
-    maxWidth: 560,
-    maxHeight: '90vh',
-    overflow: 'auto',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-  },
-
-  modalHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 24,
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
-  },
-
-  modalTitle: { color: '#FFF', fontSize: 18, fontWeight: 700, margin: 0 },
-
-  modalCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    background: 'rgba(255,255,255,0.05)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: '#888',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-  },
-
-  modalBody: {
-    padding: 24,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-  },
-
-  modalFooter: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: 12,
-    padding: '16px 24px',
-    borderTop: '1px solid rgba(255,255,255,0.06)',
-  },
-
-  cancelBtn: {
-    padding: '12px 20px',
-    borderRadius: 12,
-    border: '1px solid rgba(255,255,255,0.1)',
-    background: 'rgba(255,255,255,0.04)',
-    color: '#E5E5E5',
-    fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    fontSize: 14,
-  },
-
-  saveBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '12px 20px',
-    borderRadius: 12,
-    border: 'none',
-    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-    color: '#000',
-    fontWeight: 700,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    fontSize: 14,
-  },
-
-  confirmBox: {
-    padding: 28,
-    textAlign: 'center',
-  },
-
-  confirmIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: '0 auto 18px auto',
-  },
-
-  confirmTitle: {
-    color: '#FFF',
-    fontSize: 18,
-    fontWeight: 700,
-    margin: '0 0 10px 0',
-  },
-
-  confirmText: {
-    color: '#AAA',
-    fontSize: 14,
-    lineHeight: 1.6,
-    margin: '0 0 22px 0',
-  },
-
-  confirmActions: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: 12,
-  },
-
-  confirmBtn: {
-    padding: '12px 18px',
-    borderRadius: 12,
-    border: 'none',
-    color: '#FFF',
-    fontWeight: 700,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    fontSize: 14,
-  },
-
-  formGroup: { display: 'flex', flexDirection: 'column', gap: 6 },
-
-  formRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: 12,
-  },
-
-  checkboxLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    color: '#DDD',
-    fontSize: 13,
-    cursor: 'pointer',
-    padding: '10px 12px',
-    background: 'rgba(255,255,255,0.03)',
-    borderRadius: 12,
-    border: '1px solid rgba(255,255,255,0.05)',
-  },
-
-  tooltip: {
-    position: 'absolute',
-    bottom: '100%',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    marginBottom: 8,
-    background: '#1E1E2E',
-    border: '1px solid rgba(245,158,11,0.2)',
-    borderRadius: 12,
-    padding: '12px 14px',
-    minWidth: 240,
-    maxWidth: 320,
-    zIndex: 999,
-    boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
-  },
-
-  tooltipExample: {
-    background: 'rgba(245,158,11,0.08)',
-    border: '1px solid rgba(245,158,11,0.15)',
-    borderRadius: 8,
-    padding: '8px 10px',
-    marginTop: 6,
-  },
-
-  tooltipArrow: {
-    position: 'absolute',
-    bottom: -6,
-    left: '50%',
-    transform: 'translateX(-50%) rotate(45deg)',
-    width: 12,
-    height: 12,
-    background: '#1E1E2E',
-    borderRight: '1px solid rgba(245,158,11,0.2)',
-    borderBottom: '1px solid rgba(245,158,11,0.2)',
-  },
 }
