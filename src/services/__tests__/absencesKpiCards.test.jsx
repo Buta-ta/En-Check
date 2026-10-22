@@ -148,3 +148,33 @@ it('12. les dates de fin manquantes sont traitées comme un seul jour', () => {
   })
   expect(ponctuelle).toContain('sur 3 employés · 33 %')
 })
+
+// ═══════════════════════════════════════════════════════════
+// 📏 FORMAT COMPACTE — la bande ne doit plus manger la page
+// ═══════════════════════════════════════════════════════════
+
+it('13. la bande tient sur une seule ligne : des tuiles étroites, sans bandeau de bas', () => {
+  // 148 px de largeur minimale → 6 tuiles tiennent sur un écran de bureau
+  expect(grille).toContain('minmax(148px, 1fr)')
+  // le paragraphe « chiffres calculés… » ne prend plus une ligne entière :
+  // il passe en infobulle de la bande
+  expect(grille).not.toContain('1 / -1')
+  expect(grille).toContain('title="Chiffres calculés sur les absences chargées')
+})
+
+it('14. le détail reste disponible, mais en infobulle', () => {
+  expect(grille).toContain('title="sur 3 employés · 67 %')
+  expect(grille).toContain('title="plafond 30 jours')
+  // quand il n'y a rien à traiter, le détail le dit toujours
+  const propre = rendre({ conflitsEnAttente: 0, absences: [] })
+  expect(propre).toContain('title="aucun conflit à arbitrer"')
+  expect(propre).toContain('title="aucune demande en souffrance"')
+})
+
+it('15. une tuile compacte : petit chiffre, libellé sur une ligne', () => {
+  // chiffre ramené de 28 à 20 px, libellé coupé proprement s'il déborde
+  expect(grille).toContain('font-size:20px')
+  expect(grille).toContain('text-overflow:ellipsis')
+  // et l'icône ne fait plus 42 px de côté
+  expect(grille).not.toContain('width:42px')
+})

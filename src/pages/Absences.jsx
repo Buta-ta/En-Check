@@ -16,6 +16,7 @@ import AbsencesKpiCards from '../components/AbsencesKpiCards'
 import AbsenceFormulaire from '../components/AbsenceFormulaire'
 import { AbsencesSelectMotifs, AbsencesLegendeMotifs, AbsencesStatsMotifs } from '../components/AbsencesFiltres'
 import { DemandeCongeCard } from '../components/DemandeCongeCard'
+import { supprimerDemandeEtSesAbsences } from '../services/lienDemandeAbsence'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import { MotifsAbsenceProvider } from '../contexts/MotifsAbsenceContext'
 import './AbsencesAfroTech.css'
@@ -779,6 +780,7 @@ export default function Absences() {
         const { error: absError } = await supabase.from('absences').insert({
           employee_id: selectedRequest.employee_id,
           enterprise_id: selectedRequest.enterprise_id,
+          leave_request_id: selectedRequest.id,
           start_date: selectedRequest.start_date,
           end_date: selectedRequest.end_date,
           reason: leaveTypeConfig.motifId,
@@ -808,23 +810,14 @@ export default function Absences() {
 
   const handleDeleteRequest = async (request) => {
     try {
-      if (request.status === 'approuve') {
-        const { data: linkedAbsence } = await supabase
-          .from('absences')
-          .select('id, document_url')
-          .eq('employee_id', request.employee_id)
-          .eq('start_date', request.start_date)
-          .eq('end_date', request.end_date)
-          .maybeSingle()
-        if (linkedAbsence) {
-          if (linkedAbsence.document_url) await deleteDocument(linkedAbsence.document_url)
-          await supabase.from('absences').delete().eq('id', linkedAbsence.id)
-        }
-      }
-      if (request.document_url) await deleteDocument(request.document_url)
-      const { error } = await supabase.from('leave_requests').delete().eq('id', request.id)
-      if (error) throw error
-      toast.success('Demande supprimée')
+      // la demande et les absences qu'elle avait créées partent ensemble :
+      // sans ça, le congé restait affiché dans le planning
+      const retirees = await supprimerDemandeEtSesAbsences(request, { supprimerFichier: deleteDocument })
+      toast.success(
+        retirees > 0
+          ? `Demande supprimée — ${retirees} absence${retirees > 1 ? 's' : ''} retirée${retirees > 1 ? 's' : ''} du planning`
+          : 'Demande supprimée'
+      )
       loadLeaveRequests()
       loadData()
     } catch (err) {
@@ -2002,6 +1995,7 @@ export default function Absences() {
                   onModifier={handleEdit}
                   onChangerStatut={(a, statut) => handleStatusChange(a.id, statut)}
                   onVoirDocument={handleViewDocument}
+                  onSupprimer={(a) => confirmDelete(a.id)}
                   onDeclarer={() => handleAdd()}
                   onDeposerMotif={({ employeeId, dateIso, motifId }) =>
                     handleAdd({ employee_id: employeeId, start_date: dateIso, end_date: dateIso, reason: motifId })
@@ -2651,7 +2645,9 @@ export default function Absences() {
                 <AlertTriangle size={32} color="#EF4444" />
               </div>
               <h3 style={{ color: '#FFF', fontSize: 20, fontWeight: 600, margin: '0 0 12px 0' }}>Supprimer cette absence ?</h3>
-              <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 14, marginBottom: 28, lineHeight: '1.5' }}>Cette action est irréversible.</p>
+              <p style={{ color: 'rgba(245,242,235,0.55)', fontSize: 14, marginBottom: 28, lineHeight: '1.5' }}>
+                Cette action est irréversible : l’absence disparaîtra aussi du planning.
+              </p>
               <div style={{ display: 'flex', gap: 12 }}>
                 <button onClick={() => setShowDeleteModal(false)} style={{ flex: 1, padding: 14, background: 'rgba(255,255,255,.05)', color: '#FFF', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }}>Annuler</button>
                 <button onClick={handleDelete} style={{ flex: 1, padding: 14, background: 'linear-gradient(135deg,#EF4444,#B91C1C)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 }} disabled={uploading}>

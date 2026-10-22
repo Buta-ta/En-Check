@@ -4,13 +4,13 @@
 // Panneau latéral ouvert depuis le calendrier mensuel : on y LIT
 // l'absence et on y PREND une décision (approuver / refuser / modifier).
 //
-// Doctrine En-Check : une décision change un statut, elle ne supprime
-// jamais la ligne. Il n'y a donc volontairement AUCUN bouton de
-// suppression ici — la corbeille reste un acte tracé, ailleurs.
+// Doctrine En-Check : approuver ou refuser change un STATUT. Supprimer
+// est un autre geste, volontaire et confirmé en deux temps — il retire
+// la ligne partout, calendrier des absences et planning compris.
 // ═══════════════════════════════════════════════════════════
 
-import { useEffect } from 'react'
-import { X, Paperclip, Pencil, Check, Ban, CalendarOff } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { X, Paperclip, Pencil, Check, Ban, CalendarOff, Trash2 } from 'lucide-react'
 import { styleBarreAbsence } from '../constants/motifsAbsence'
 import { useMotifsAbsence } from '../hooks/useMotifsAbsence'
 import { formaterDateCourt, formaterHorodatage } from '../services/absencesCalendrier'
@@ -25,7 +25,11 @@ export default function AbsenceTiroir({
   onChangerStatut,
   onModifier,
   onVoirDocument,
+  onSupprimer,
 }) {
+  // La suppression se confirme en deux clics : pas de geste définitif
+  // sur un simple clic dans le tiroir
+  const [confirmation, setConfirmation] = useState(false)
   useEffect(() => {
     const surTouche = (e) => { if (e.key === 'Escape') onClose?.() }
     window.addEventListener('keydown', surTouche)
@@ -238,9 +242,49 @@ export default function AbsenceTiroir({
           <Pencil size={14} /> Modifier l’absence
         </button>
 
-        <p style={{ margin: '18px 0 0', fontSize: 11, color: theme.texteDoux, display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.6 }}>
+        {onSupprimer && (confirmation ? (
+          <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+            <button
+              data-testid="tiroir-confirmer-suppression"
+              onClick={() => onSupprimer?.(absence)}
+              style={{
+                flex: 2, padding: 12, borderRadius: 12, cursor: 'pointer',
+                background: 'linear-gradient(135deg,#EF4444,#B91C1C)', border: 'none', color: '#FFF',
+                fontWeight: 700, fontSize: 13, fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <Trash2 size={14} /> Confirmer la suppression
+            </button>
+            <button
+              onClick={() => setConfirmation(false)}
+              style={{
+                flex: 1, padding: 12, borderRadius: 12, cursor: 'pointer',
+                background: 'transparent', border: `1px solid ${theme.bordure}`, color: theme.texteDoux,
+                fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
+              }}
+            >
+              Annuler
+            </button>
+          </div>
+        ) : (
+          <button
+            data-testid="tiroir-supprimer"
+            onClick={() => setConfirmation(true)}
+            style={{
+              width: '100%', marginTop: 10, padding: 12, borderRadius: 12, cursor: 'pointer',
+              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', color: '#EF4444',
+              fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <Trash2 size={14} /> Supprimer l’absence
+          </button>
+        ))}
+
+        <p style={{ margin: '14px 0 0', fontSize: 11, color: theme.texteDoux, display: 'flex', alignItems: 'center', gap: 6, lineHeight: 1.6 }}>
           <CalendarOff size={12} />
-          Approuver ou refuser change le statut de l’absence. Rien n’est supprimé.
+          Approuver ou refuser change le statut de l’absence. La suppression l’efface partout, planning compris.
         </p>
       </aside>
     </>

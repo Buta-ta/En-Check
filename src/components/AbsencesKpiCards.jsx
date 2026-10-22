@@ -62,7 +62,10 @@ export function Avatar({ prenom, nom, photo, taille = 26, bordure = 'rgba(245,15
   )
 }
 
-// ── Une carte ─────────────────────────────────────────────────────────
+// ── Une tuile compacte ───────────────────────────────────────────────
+// Format bandeau : icône + chiffre sur une ligne, libellé dessous,
+// jauge en bas. Le détail (« sur 3 employés · 67 % ») part dans une
+// infobulle : l'information reste disponible sans manger de hauteur.
 function Carte({ testId, icone: Icone, couleur, valeur, suffixe, label, precision, jauge, action, onClick, children, darkMode = true }) {
   // Composant icône reçu en prop : on le garde dans une variable locale
   // (convention du projet : une capitale = jamais signalée comme inutilisée)
@@ -74,33 +77,40 @@ function Carte({ testId, icone: Icone, couleur, valeur, suffixe, label, precisio
 
   const contenu = (
     <>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-        <div style={{
-          width: 42, height: 42, borderRadius: 13, flexShrink: 0,
-          background: `${couleur}1F`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <span style={{
+          width: 26, height: 26, borderRadius: 9, flexShrink: 0,
+          background: `${couleur}1F`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <IconeKpi size={20} color={couleur} />
-        </div>
+          <IconeKpi size={14} color={couleur} />
+        </span>
+
+        <span style={{ fontSize: 20, fontWeight: 800, color: texte, lineHeight: 1, flexShrink: 0 }}>
+          {valeur}
+          {suffixe && <span style={{ fontSize: 12, fontWeight: 700, color: doux, marginLeft: 1 }}>{suffixe}</span>}
+        </span>
+
+        {/* Les avatars (absents du jour) seglissent à droite de la ligne */}
+        {children && <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}>{children}</span>}
+
         {action && (
           <span style={{
-            fontSize: 10, fontWeight: 700, color: couleur,
+            marginLeft: children ? 6 : 'auto', flexShrink: 0,
+            fontSize: 9.5, fontWeight: 700, color: couleur,
             background: `${couleur}18`, border: `1px solid ${couleur}33`,
-            padding: '3px 8px', borderRadius: 999, whiteSpace: 'nowrap',
+            padding: '2px 7px', borderRadius: 999, whiteSpace: 'nowrap',
           }}>
             {action}
           </span>
         )}
       </div>
 
-      <p style={{ margin: '12px 0 2px', fontSize: 28, fontWeight: 800, color: texte, lineHeight: 1 }}>
-        {valeur}
-        {suffixe && <span style={{ fontSize: 15, fontWeight: 700, color: doux, marginLeft: 2 }}>{suffixe}</span>}
+      <p style={{
+        margin: '5px 0 0', fontSize: 10.5, fontWeight: 600, color: doux,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>
+        {label}
       </p>
-      <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: doux }}>{label}</p>
-
-      {precision && (
-        <p style={{ margin: '6px 0 0', fontSize: 11, color: doux, opacity: 0.85 }}>{precision}</p>
-      )}
 
       {jauge !== undefined && jauge !== null && (
         <div
@@ -110,7 +120,7 @@ function Carte({ testId, icone: Icone, couleur, valeur, suffixe, label, precisio
           aria-valuemin={0}
           aria-valuemax={100}
           style={{
-            marginTop: 10, height: 6, borderRadius: 999, overflow: 'hidden',
+            marginTop: 7, height: 3, borderRadius: 999, overflow: 'hidden',
             background: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(29,23,19,0.07)',
           }}
         >
@@ -120,23 +130,27 @@ function Carte({ testId, icone: Icone, couleur, valeur, suffixe, label, precisio
           }} />
         </div>
       )}
-
-      {children}
     </>
   )
+
+  const commun = {
+    'data-testid': testId,
+    title: precision || undefined,
+    style: {
+      background: carte, border: `1px solid ${bord}`, borderRadius: 12, padding: '10px 12px',
+      display: 'flex', flexDirection: 'column', minWidth: 0,
+    },
+  }
 
   if (onClick) {
     return (
       <button
         type="button"
-        data-testid={testId}
         onClick={onClick}
         className="abs-kpi abs-kpi-cliquable"
-        style={{
-          textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer',
-          background: carte, border: `1px solid ${bord}`, borderRadius: 16, padding: 18,
-          display: 'flex', flexDirection: 'column', minWidth: 0,
-        }}
+        style={{ ...commun.style, textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer' }}
+        data-testid={testId}
+        title={precision || undefined}
       >
         {contenu}
       </button>
@@ -144,14 +158,7 @@ function Carte({ testId, icone: Icone, couleur, valeur, suffixe, label, precisio
   }
 
   return (
-    <div
-      data-testid={testId}
-      className="abs-kpi"
-      style={{
-        background: carte, border: `1px solid ${bord}`, borderRadius: 16, padding: 18,
-        display: 'flex', flexDirection: 'column', minWidth: 0,
-      }}
-    >
+    <div className="abs-kpi" data-testid={testId} title={precision || undefined} style={commun.style}>
       {contenu}
     </div>
   )
@@ -247,7 +254,6 @@ export default function AbsencesKpiCards({
     }
   }, [absences, employes, joursPrisParEmploye, plafondConges])
 
-  const doux = darkMode ? 'rgba(245,242,235,0.55)' : 'rgba(29,23,19,0.55)'
   const apercu = mesures.absents.slice(0, 4)
   const enPlus = mesures.absents.length - apercu.length
 
@@ -255,17 +261,27 @@ export default function AbsencesKpiCards({
     <div
       data-testid="abs-kpi-grille"
       className="abs-kpi-grille"
+      title={`Chiffres calculés sur les absences chargées · aujourd'hui = ${mesures.aujourdhui}`}
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(212px, 1fr))',
-        gap: 14,
-        marginBottom: 22,
+        // assez étroite pour tenir sur UNE seule ligne : le calendrier
+        // reste visible sans descendre la page
+        gridTemplateColumns: 'repeat(auto-fit, minmax(148px, 1fr))',
+        gap: 10,
+        marginBottom: 14,
       }}
     >
       <style>{`
         .abs-kpi { transition: transform .25s ease, border-color .25s ease; }
-        .abs-kpi-cliquable:hover { transform: translateY(-3px); border-color: rgba(245,158,11,0.42) !important; }
+        .abs-kpi-cliquable:hover { transform: translateY(-2px); border-color: rgba(245,158,11,0.42) !important; }
         .abs-kpi-cliquable:focus-visible { outline: 2px solid #F59E0B; outline-offset: 2px; }
+        /* Écran étroit : trois tuiles par ligne, jamais plus de deux rangs */
+        @media (max-width: 900px) {
+          .abs-kpi-grille { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+        }
+        @media (max-width: 560px) {
+          .abs-kpi-grille { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        }
       `}</style>
 
       {/* 1. Qui manque aujourd'hui — avec les photos */}
@@ -279,23 +295,23 @@ export default function AbsencesKpiCards({
         darkMode={darkMode}
       >
         {apercu.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', marginTop: 12, gap: 0 }}>
+          <>
             {apercu.map((e, i) => (
-              <span key={e.id} style={{ marginLeft: i === 0 ? 0 : -8, display: 'inline-flex' }}>
-                <Avatar prenom={e.first_name} nom={e.last_name} photo={e.photo_url} taille={28} />
+              <span key={e.id} style={{ marginLeft: i === 0 ? 0 : -7, display: 'inline-flex' }}>
+                <Avatar prenom={e.first_name} nom={e.last_name} photo={e.photo_url} taille={22} />
               </span>
             ))}
             {enPlus > 0 && (
               <span style={{
-                marginLeft: -8, width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                marginLeft: -7, width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 background: 'rgba(245,158,11,0.18)', border: '1.5px solid rgba(245,158,11,0.35)',
-                color: '#F59E0B', fontSize: 10, fontWeight: 800,
+                color: '#F59E0B', fontSize: 9, fontWeight: 800,
               }}>
                 +{enPlus}
               </span>
             )}
-          </div>
+          </>
         )}
       </Carte>
 
@@ -362,9 +378,6 @@ export default function AbsencesKpiCards({
         darkMode={darkMode}
       />
 
-      <p style={{ gridColumn: '1 / -1', margin: 0, fontSize: 11, color: doux, opacity: 0.7 }}>
-        Chiffres calculés sur les absences chargées · aujourd'hui = {mesures.aujourdhui}
-      </p>
     </div>
   )
 }
