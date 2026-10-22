@@ -35,6 +35,7 @@ import {
   Zap,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Users,
   User,
   Briefcase,
@@ -55,6 +56,7 @@ import {
 import toast from "react-hot-toast";
 import MotifsAbsenceService, { resoudreMotif } from "../services/motifsAbsenceService";
 import { MOTIFS_PAR_DEFAUT, getMotifConfig } from "../constants/motifsAbsence";
+import ChoixPeriode from "../components/ChoixPeriode";
 import "./PlanningAfroTech.css";
 
 const OVERRIDES_STORAGE_KEY = "encheck_planning_day_overrides_v1";
@@ -524,7 +526,7 @@ export default function Planning() {
         const { data: esData } = await supabase
           .from("employee_schedules")
           .select(
-            "*, employees(id, first_name, last_name, matricule, enterprise_id, department, position), work_schedules(id, name, start_time, end_time, break_start, break_end, has_break, work_days, late_tolerance_minutes)"
+            "*, employees(id, first_name, last_name, matricule, enterprise_id, department, position, photo_url), work_schedules(id, name, start_time, end_time, break_start, break_end, has_break, work_days, late_tolerance_minutes)"
           )
           .in("employee_id", employeeIds)
           .eq("is_active", true);
@@ -537,7 +539,7 @@ export default function Planning() {
         .from("schedule_change_requests")
         .select(`
           *,
-          employees(id, first_name, last_name, matricule, enterprise_id, department, position),
+          employees(id, first_name, last_name, matricule, enterprise_id, department, position, photo_url),
           current_schedule:current_schedule_id(id, name, start_time, end_time, break_start, break_end, has_break, work_days),
           requested_schedule:requested_schedule_id(id, name, start_time, end_time, break_start, break_end, has_break, work_days)
         `)
@@ -822,6 +824,16 @@ export default function Planning() {
     const capMonth = monthShort.charAt(0).toUpperCase() + monthShort.slice(1);
     return `${first.court} ${first.dayOfMonth} – ${last.court} ${last.dayOfMonth} ${capMonth} ${last.dateObj.getFullYear()}`;
   }, [weekDays, calendarDate, planningView]);
+
+  // Le libellé de période s'ouvre, comme sur la page Absences
+  const [periodeOuverte, setPeriodeOuverte] = useState(false)
+  const jourSelPlanning = toIsoDateLocal(calendarDate)
+
+  const allerADate = (iso) => {
+    const [y, m, d] = String(iso).split("-").map(Number);
+    if (y && m && d) setCalendarDate(new Date(y, m - 1, d));
+    setPeriodeOuverte(false);
+  };
 
   const navigatePeriod = (direction) => {
     const next = new Date(calendarDate);
@@ -2648,7 +2660,29 @@ export default function Planning() {
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="sk-period-label">{periodLabel}</span>
+              <div className="sk-period-label-wrap">
+                <button
+                  type="button"
+                  className="sk-period-label"
+                  onClick={() => setPeriodeOuverte((v) => !v)}
+                  aria-expanded={periodeOuverte}
+                  aria-haspopup="dialog"
+                  title="Choisir une date, un mois ou une année"
+                  data-testid="sk-period-label"
+                >
+                  {periodLabel}
+                  <ChevronDown size={14} className="sk-period-caret" data-ouvert={periodeOuverte ? "oui" : "non"} />
+                </button>
+
+                <ChoixPeriode
+                  ouvert={periodeOuverte}
+                  onFermer={() => setPeriodeOuverte(false)}
+                  jourSel={jourSelPlanning}
+                  annee={calendarDate.getFullYear()}
+                  onAllerA={allerADate}
+                  darkMode={darkMode}
+                />
+              </div>
               <button
                 type="button"
                 className="sk-period-arrow"
@@ -3765,10 +3799,18 @@ export default function Planning() {
                       }}
                     >
                       <div className="sk-day-emp">
-                        <div className="sk-emp-avatar" style={{ width: 34, height: 34 }}>
-                          {(emp.first_name || "E")[0]}
-                          {(emp.last_name || "C")[0]}
-                        </div>
+                        {emp.photo_url ? (
+                          <img
+                            src={emp.photo_url}
+                            alt={`${emp.first_name || ""} ${emp.last_name || ""}`.trim()}
+                            className="sk-emp-avatar"
+                            style={{ width: 34, height: 34 }}
+                          />
+                        ) : (
+                          <div className="sk-emp-avatar" style={{ width: 34, height: 34 }}>
+                            {`${(emp.first_name || "E")[0]}${(emp.last_name || "C")[0]}`.toUpperCase()}
+                          </div>
+                        )}
                         <div className="sk-day-emp-meta">
                           <strong>
                             {emp.first_name} {emp.last_name}

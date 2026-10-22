@@ -112,10 +112,10 @@ export default function AbsencesMotifsManager({ absences = [] }) {
       {/* ══ En-tête ══ */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--abs-text, #F5F2EB)' }}>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--abs-text, var(--abs-text))' }}>
             Motifs d’absence
           </h3>
-          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))' }}>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--abs-text-muted, var(--abs-text-soft))' }}>
             {motifs.length} motif{motifs.length > 1 ? 's' : ''} · ces motifs alimentent le calendrier, le dock et les filtres
           </p>
         </div>
@@ -172,12 +172,12 @@ export default function AbsencesMotifsManager({ absences = [] }) {
               </span>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <p style={{
-                  margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--abs-text, #F5F2EB)',
+                  margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--abs-text, var(--abs-text))',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
                   {m.label}
                 </p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))' }}>
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--abs-text-muted, var(--abs-text-soft))' }}>
                   {m.color} · {nb} absence{nb > 1 ? 's' : ''}
                 </p>
               </div>
@@ -216,16 +216,16 @@ export default function AbsencesMotifsManager({ absences = [] }) {
           style={{
             marginTop: 16, padding: 16, borderRadius: 14,
             border: '1px solid var(--abs-border-strong, rgba(245,158,11,0.35))',
-            background: 'var(--abs-bg-subtle, rgba(255,255,255,0.02))',
+            background: 'var(--abs-bg-subtle, var(--abs-fill-soft))',
           }}
         >
-          <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--abs-text, #F5F2EB)' }}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--abs-text, var(--abs-text))' }}>
             {brouillon.rowId ? 'Modifier le motif' : 'Nouveau motif'}
           </p>
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <label style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))', fontWeight: 600 }}>
+              <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, var(--abs-text-soft))', fontWeight: 600 }}>
                 Libellé
               </span>
               <input
@@ -238,7 +238,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
             </label>
 
             <label style={{ flex: '0 0 96px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))', fontWeight: 600 }}>
+              <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, var(--abs-text-soft))', fontWeight: 600 }}>
                 Emoji
               </span>
               <input
@@ -254,7 +254,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
 
           {/* Palette d'emojis : un raccourci, la saisie libre reste au-dessus */}
           <div style={{ marginTop: 12 }}>
-            <p style={{ margin: '0 0 7px', fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <p style={{ margin: '0 0 7px', fontSize: 11.5, color: 'var(--abs-text-muted, var(--abs-text-soft))', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Smile size={13} /> Suggestions (vous pouvez coller n'importe quel emoji)
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -276,7 +276,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
           </div>
 
           <div style={{ marginTop: 12 }}>
-            <p style={{ margin: '0 0 7px', fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))', fontWeight: 600 }}>
+            <p style={{ margin: '0 0 7px', fontSize: 11.5, color: 'var(--abs-text-muted, var(--abs-text-soft))', fontWeight: 600 }}>
               Couleur
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
@@ -288,7 +288,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
                   aria-label={`Couleur ${c}`}
                   style={{
                     width: 26, height: 26, borderRadius: 8, cursor: 'pointer', background: c,
-                    border: brouillon.color === c ? '2px solid #FFF5E6' : '1px solid rgba(255,255,255,0.15)',
+                    border: brouillon.color === c ? '2px solid #FFF5E6' : '1px solid var(--abs-line)',
                   }}
                 />
               ))}
@@ -297,14 +297,14 @@ export default function AbsencesMotifsManager({ absences = [] }) {
                 value={brouillon.color}
                 onChange={(e) => setBrouillon({ ...brouillon, color: e.target.value.toUpperCase() })}
                 aria-label="Couleur personnalisée"
-                style={{ width: 34, height: 28, borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', cursor: 'pointer' }}
+                style={{ width: 34, height: 28, borderRadius: 8, border: '1px solid var(--abs-line)', background: 'transparent', cursor: 'pointer' }}
               />
             </div>
           </div>
 
           {/* Aperçu en direct */}
           <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))' }}>Aperçu</span>
+            <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, var(--abs-text-soft))' }}>Aperçu</span>
             <span style={{
               padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700,
               background: fondDepuisCouleur(brouillon.color),
@@ -347,7 +347,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
           <p style={{ margin: '0 0 4px', fontSize: 13.5, fontWeight: 700, color: '#FCA5A5' }}>
             Supprimer « {aSupprimer.emoji} {aSupprimer.label} » ?
           </p>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--abs-text-muted, rgba(245,242,235,0.65))' }}>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--abs-text-muted, var(--abs-text-soft))' }}>
             {nbUsagesCible === 0
               ? 'Ce motif n’est utilisé par aucune absence. La suppression est définitive.'
               : `${nbUsagesCible} absence${nbUsagesCible > 1 ? 's' : ''} utilisent ce motif. Choisissez où les transférer : elles garderont leurs dates, seul le motif change.`}
@@ -355,7 +355,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
 
           {nbUsagesCible > 0 && (
             <label style={{ display: 'block', marginTop: 12 }}>
-              <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, rgba(245,242,235,0.55))', fontWeight: 600 }}>
+              <span style={{ fontSize: 11.5, color: 'var(--abs-text-muted, var(--abs-text-soft))', fontWeight: 600 }}>
                 Transférer vers
               </span>
               <select
@@ -399,7 +399,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
 const champ = {
   width: '100%', padding: '10px 12px', borderRadius: 10, fontFamily: 'inherit', fontSize: 13.5,
   background: 'rgba(0,0,0,0.25)', border: '1px solid var(--abs-border, rgba(245,158,11,0.16))',
-  color: 'var(--abs-text, #F5F2EB)', outline: 'none', boxSizing: 'border-box',
+  color: 'var(--abs-text, var(--abs-text))', outline: 'none', boxSizing: 'border-box',
 }
 
 const boutonIcone = (couleur) => ({
@@ -412,7 +412,7 @@ const boutonSecondaire = {
   padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600,
   fontFamily: 'inherit', background: 'transparent',
   border: '1px solid var(--abs-border, rgba(245,158,11,0.16))',
-  color: 'var(--abs-text-muted, rgba(245,242,235,0.65))',
+  color: 'var(--abs-text-muted, var(--abs-text-soft))',
 }
 
 const boutonPrimaire = {

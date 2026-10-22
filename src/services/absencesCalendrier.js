@@ -298,19 +298,44 @@ export function nomJourCourt(iso) {
   return `${jour.slice(0, 3).toLowerCase()}. ${p.d}`
 }
 
-/** Titre de la période affichée selon le mode */
+/** 'Lundi' → 'Lun' ; 'Dimanche' → 'Dim' */
+function jourCourt(weekday) {
+  const nom = JOURS_LONG[weekday - 1] || ''
+  return nom.charAt(0).toUpperCase() + nom.slice(1, 3)
+}
+
+/** 'oct.' → 'Oct.' */
+function moisCourtMaj(m) {
+  const court = MOIS_COURT[m] || ''
+  return court.charAt(0).toUpperCase() + court.slice(1)
+}
+
+/**
+ * Titre de la période affichée — mêmes repères que la page Planning :
+ * « Lun 19 – Dim 25 Oct. 2026 », « Mer 21 Oct. 2026 », « Octobre 2026 ».
+ */
 export function titrePeriode(mode, jours, { annee, mois }) {
   if (mode === 'mois') return nomMois(annee, mois)
   if (!jours.length) return '—'
-  if (mode === 'jour') return nomJourLong(jours[0].iso)
-  if (mode === 'semaine') {
-    const p1 = parseIso(jours[0].iso)
-    const p2 = parseIso(jours[jours.length - 1].iso)
-    if (!p1 || !p2) return '—'
-    const memeMois = p1.m === p2.m && p1.y === p2.y
-    const debut = `${p1.d}${memeMois ? '' : ` ${MOIS_COURT[p1.m]}`}`
-    const fin = `${p2.d} ${MOIS_COURT[p2.m]} ${p2.y}`
-    return `Semaine du ${debut} au ${fin}`
+
+  const etiquette = (j) => {
+    const p = parseIso(j.iso)
+    if (!p) return '—'
+    return `${jourCourt(j.weekday)} ${p.d}`
   }
+
+  if (mode === 'jour') {
+    const p = parseIso(jours[0].iso)
+    if (!p) return '—'
+    return `${etiquette(jours[0])} ${moisCourtMaj(p.m)} ${p.y}`
+  }
+
+  if (mode === 'semaine') {
+    const dernier = jours[jours.length - 1]
+    const p = parseIso(dernier.iso)
+    if (!p) return '—'
+    return `${etiquette(jours[0])} – ${etiquette(dernier)} ${moisCourtMaj(p.m)} ${p.y}`
+  }
+
   return nomMois(annee, mois)
 }

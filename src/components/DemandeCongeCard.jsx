@@ -94,7 +94,7 @@ export function DemandeCongeCard({
       style={{
         display: 'flex', alignItems: 'center', gap: 14,
         padding: '14px 16px', borderRadius: 14, cursor: 'pointer',
-        background: survole ? 'rgba(255,255,255,0.055)' : 'rgba(255,255,255,0.03)',
+        background: survole ? 'var(--abs-line-soft)' : 'var(--abs-fill-soft)',
         border: '1px solid rgba(245,158,11,0.14)',
         borderLeft: `3px solid ${couleur}`,
         boxShadow: survole ? '0 6px 20px rgba(0,0,0,0.22)' : 'none',
@@ -109,7 +109,7 @@ export function DemandeCongeCard({
           background: teinte(nomComplet),
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: 0.5,
-          border: '2px solid rgba(255,255,255,0.12)',
+          border: '2px solid var(--abs-line)',
         }}
         aria-hidden="true"
       >
@@ -119,7 +119,7 @@ export function DemandeCongeCard({
       {/* Identité + période */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ color: '#F5F2EB', fontSize: 14.5, fontWeight: 600 }}>{nomComplet}</span>
+          <span style={{ color: 'var(--abs-text)', fontSize: 14.5, fontWeight: 600 }}>{nomComplet}</span>
           <span
             style={{
               padding: '3px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 600,
@@ -147,7 +147,7 @@ export function DemandeCongeCard({
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, flexWrap: 'wrap', fontSize: 12, color: 'rgba(245,242,235,0.62)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, flexWrap: 'wrap', fontSize: 12, color: 'var(--abs-text-soft)' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <CalendarDays size={12} />
             {fmtDate ? `${fmtDate(d.start_date)} → ${fmtDate(d.end_date)}` : `${d.start_date} → ${d.end_date}`}
@@ -168,7 +168,7 @@ export function DemandeCongeCard({
         </div>
 
         {d.comment && (
-          <p style={{ margin: '6px 0 0', fontSize: 12, color: 'rgba(245,242,235,0.5)', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--abs-text-soft)', display: 'flex', alignItems: 'center', gap: 5 }}>
             <FileText size={11} /> {d.comment}
           </p>
         )}

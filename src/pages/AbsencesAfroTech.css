@@ -33,6 +33,13 @@
   --abs-border-strong: rgba(245, 158, 11, 0.34);
   --abs-grid: rgba(255, 255, 255, 0.05);
 
+  /* Remplissages et filets des styles en ligne (remplacent les
+     rgba(255,255,255,x) codés en dur, illisibles en mode clair) */
+  --abs-fill-soft: rgba(255, 255, 255, 0.03);
+  --abs-fill: rgba(255, 255, 255, 0.05);
+  --abs-line-soft: rgba(255, 255, 255, 0.06);
+  --abs-line: rgba(255, 255, 255, 0.10);
+
   --abs-radius: 14px;
   --abs-shadow: 0 18px 46px rgba(0, 0, 0, 0.42);
 
@@ -55,17 +62,26 @@
   --abs-border: rgba(29, 23, 19, 0.12);
   --abs-border-strong: rgba(194, 94, 40, 0.34);
   --abs-grid: rgba(29, 23, 19, 0.06);
+
+  --abs-fill-soft: rgba(29, 23, 19, 0.03);
+  --abs-fill: rgba(29, 23, 19, 0.05);
+  --abs-line-soft: rgba(29, 23, 19, 0.12);
+  --abs-line: rgba(29, 23, 19, 0.20);
   --abs-shadow: 0 18px 46px rgba(29, 23, 19, 0.12);
 }
 
 /* ═══ BARRE SUPÉRIEURE ═══ */
+/* Barre flottante : arrondie, et elle reste collée en haut au défilement */
 .abs-topbar {
   position: sticky;
-  top: 0;
+  top: 8px;
   z-index: 60;
-  background: color-mix(in srgb, var(--abs-bg-elevated) 92%, transparent);
+  margin: 8px 14px 0;
+  border-radius: 18px;
+  background: var(--abs-bg-elevated);
+  border: 1px solid var(--abs-border);
+  box-shadow: var(--abs-shadow);
   backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--abs-border);
   padding: 12px 22px;
 }
 
@@ -238,6 +254,11 @@
 .abs-btn:hover {
   color: var(--abs-text);
   border-color: var(--abs-border-strong);
+}
+
+.abs-theme-btn {
+  padding: 10px;
+  border-radius: 12px;
 }
 
 .abs-btn-primary {

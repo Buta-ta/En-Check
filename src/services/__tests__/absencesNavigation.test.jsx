@@ -73,9 +73,11 @@ it('4. le titre de la période est un bouton, fermé par défaut', () => {
   expect(CALENDRIER).toContain('data-testid="abs-cal-titre"')
   expect(CALENDRIER).toContain('aria-expanded="false"')
   // le panneau de date n'existe que lorsqu'on l'ouvre
-  expect(CALENDRIER).not.toContain('data-testid="abs-cal-choix-date"')
-  // et il annonce bien la semaine affichée
-  expect(CALENDRIER).toContain('Semaine du')
+  expect(CALENDRIER).not.toContain('data-testid="choix-periode"')
+  // et il annonce la semaine comme la page Planning
+  expect(CALENDRIER).toContain('Lun 19 – Dim 25 Oct. 2026')
+  // avec un raccourci « Aujourd'hui » toujours visible
+  expect(CALENDRIER).toContain('data-testid="abs-cal-aujourdhui"')
 })
 
 it('5. viser une date se traduit en écart de mois (le calendrier avance par crans)', () => {
