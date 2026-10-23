@@ -6,53 +6,24 @@
 // rendu — ils changent seulement de fichier.
 // ═══════════════════════════════════════════════════════════
 
-import { useState } from 'react'
-import {
-  HelpCircle,
-} from 'lucide-react'
+import { useId, useState } from 'react'
+import { HelpCircle } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
 import { palettePaie, stylesPaie } from '../styles/paieTheme'
+import './PaieInteriors.css'
 
 export function FieldHelp({ text, example }) {
   const { darkMode } = useTheme()
-  const S = stylesPaie(darkMode)
-  const P = palettePaie(darkMode)
   const [show, setShow] = useState(false)
-
-  return (
-    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-      <HelpCircle
-        size={14}
-        color={P.texteFaint}
-        style={{ cursor: 'pointer', marginLeft: 6, flexShrink: 0 }}
-        onMouseEnter={() => setShow(true)}
-        onMouseLeave={() => setShow(false)}
-      />
-      {show && (
-        <div style={S.tooltip}>
-          <p style={{ color: P.contour, fontSize: 12, margin: '0 0 6px 0', lineHeight: 1.5 }}>{text}</p>
-          {example && (
-            <div style={S.tooltipExample}>
-              <span
-                style={{
-                  color: P.texteDoux2,
-                  fontSize: 10,
-                  display: 'block',
-                  marginBottom: 3,
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                }}
-              >
-                Exemple
-              </span>
-              <span style={{ color: P.ambre, fontSize: 12, fontWeight: 600 }}>{example}</span>
-            </div>
-          )}
-          <div style={S.tooltipArrow} />
-        </div>
-      )}
-    </span>
-  )
+  const id = useId()
+  return <span className="pw-field-help" data-theme={darkMode ? 'dark' : 'light'}>
+    <button type="button" aria-label={`Aide : ${text}`} aria-expanded={show} aria-controls={id}
+      onClick={event => { event.preventDefault(); setShow(value => !value) }}
+      onKeyDown={event => { if (event.key === 'Escape' && show) { event.stopPropagation(); setShow(false) } }}>
+      <HelpCircle size={16} aria-hidden="true"/>
+    </button>
+    {show && <span id={id} className="pw-field-explanation"><span>{text}</span>{example && <span className="pw-field-example"><strong>Exemple</strong> {example}</span>}</span>}
+  </span>
 }
 
 export function FormLabel({ children, help, example, required }) {

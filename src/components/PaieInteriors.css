@@ -109,3 +109,47 @@ fieldset.pw-drawer-content { padding: 0; margin: 0; border: 0; min-width: 0; }
 
 .pw-settings-editor .pw-signature-card button { min-height: 40px; border-radius: 10px !important; color: var(--paie-text) !important; border-color: var(--paie-border-strong) !important; }
 .pw-settings-editor #paie-signatures { scroll-margin-top: 24px; }
+
+/* Inline, opaque help: no hover-only popup or content clipped by a card. */
+.pw-field-help { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.pw-field-help > button { display: inline-grid; place-items: center; width: 28px; height: 28px; min-height: 28px; padding: 4px; margin: 0 3px; border: 1px solid #806c58; border-radius: 50%; color: #493323; background: #fffaf1; cursor: pointer; flex-shrink: 0; }
+.pw-field-explanation { display: flex; flex-direction: column; flex-basis: 100%; gap: 10px; width: 100%; box-sizing: border-box; padding: 14px 16px; border: 1px solid #b39a7d; border-radius: 10px; background: #fffaf1; color: #35281d; font-size: 13px; line-height: 1.65; font-weight: 400; white-space: normal; overflow-wrap: anywhere; text-transform: none; letter-spacing: normal; }
+.pw-field-example { padding-top: 9px; border-top: 1px solid #c8bba9; color: #654023; }
+.pw-field-example strong { display: block; }
+.pw-field-help[data-theme="dark"] > button { color: #ffe1a9; background: #2b2119; border-color: #bca084; }
+.pw-field-help[data-theme="dark"] .pw-field-explanation { color: #faf3e8; background: #2b2119; border-color: #bca084; }
+.pw-field-help[data-theme="dark"] .pw-field-example { color: #ffe1a9; border-color: #927b66; }
+label:has(> .pw-field-help) { flex-wrap: wrap; }
+.pw-field-help:has([aria-expanded="true"]) { flex-basis: 100%; }
+.pw-field-help > button:focus-visible { outline: 3px solid #b86b35; outline-offset: 3px; }
+.pw-profile-layout { grid-template-columns: minmax(0,1.7fr) minmax(270px,1fr) !important; align-items: start; }
+.pw-profile-panel { min-width: 0; }
+.pw-profile-panel .pw-settings-guide { margin-bottom: 18px; }
+.pw-salary-modes { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+.pw-salary-mode { border: 1px solid var(--paie-border) !important; background: var(--paie-bg-elevated) !important; min-width: 0; padding: 16px 8px !important; border-radius: 12px !important; }
+.pw-salary-mode[aria-pressed="true"] { border: 2px solid var(--paie-amber) !important; background: var(--paie-bg-soft) !important; }
+.pw-salary-mode > div { color: var(--paie-text) !important; }.pw-salary-mode > div + div { color: var(--paie-text-soft) !important; line-height: 1.5; font-size: 11px !important; }
+.pw-profile-pick { width: 100%; text-align: left; font: inherit; color: var(--paie-text); cursor: pointer; min-width: 0; }
+.pw-profile-pick[aria-pressed="true"] { border-color: var(--paie-amber) !important; background: var(--paie-bg-soft) !important; }
+.pw-profile-pick:focus-visible, .pw-salary-mode:focus-visible { outline: 3px solid var(--paie-amber); outline-offset: 3px; }
+.pw-adjustments { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+.pw-adjustment-guide { grid-column: 1/-1; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); border: 1px solid var(--paie-border); border-radius: 16px; overflow: hidden; }
+.pw-adjustment-guide > div { padding: 20px; background: var(--paie-bg-soft); }.pw-adjustment-guide > div + div { border-left: 1px solid var(--paie-border); }
+.pw-adjustment-guide h3 { font-size: 18px; margin: 5px 0; }.pw-adjustment-guide p, .pw-slip-guide p { font-size: 13px; line-height: 1.7; color: var(--paie-text-soft); }
+.pw-adjustments > .pay-card:last-child { grid-column: 1/-1; }
+.pw-adjustments .pay-card { min-width: 0; }
+.pw-calculated-slips { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.pw-slip-guide { padding: 20px; background: var(--paie-bg-elevated); border: 1px solid var(--paie-border); border-radius: 16px; }
+.pw-slip-guide h3 { margin: 0 0 16px; font-size: 19px; }.pw-slip-guide ol { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; padding-left: 22px; }
+.pw-slip-guide li { padding: 4px; color: var(--paie-amber); }.pw-slip-guide li strong { display: block; font-size: 14px; }.pw-slip-guide li span { display: block; margin-top: 6px; font-size: 12px; line-height: 1.65; color: var(--paie-text-soft); }
+.pw-slip-guide summary, .pw-chart-explanation summary, .pw-payroll-history summary { cursor: pointer; font-size: 12px; font-weight: 650; color: var(--paie-amber); }
+.pw-calculated-card { border-radius: 16px !important; background: var(--paie-bg-elevated) !important; border-color: var(--paie-border) !important; box-shadow: 0 3px 12px #35281d08; }
+.pw-net-caption { display: block; font-size: 10px; font-weight: 500; color: var(--paie-text-soft); margin-bottom: 4px; }
+.pw-chart-explanation { margin: 14px 0; padding: 12px; border: 1px solid var(--paie-border); border-radius: 10px; }.pw-chart-explanation p { font-size: 12px; line-height: 1.7; color: var(--paie-text-soft); }
+.pw-payroll-history { margin-bottom: 24px; }.pw-payroll-history header { display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 16px; }.pw-payroll-history h3 { margin: 0; font-size: 21px; }.pw-payroll-history p { font-size: 12px; line-height: 1.7; color: var(--paie-text-soft); }
+.pw-payroll-history label { display: grid; gap: 6px; font-size: 11px; color: var(--paie-text-soft); max-width: 100%; }.pw-payroll-history select { padding: 10px; border-radius: 10px; border: 1px solid var(--paie-border); background: var(--paie-bg-elevated); color: var(--paie-text); font: inherit; max-width: 100%; }
+.pw-payroll-total { display: block; font-size: 23px; margin: 16px 0; }.pw-payroll-total small { font-size: 11px; font-weight: 400; color: var(--paie-text-soft); }
+.pw-payroll-bars { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 12px; margin: 18px 0; }.pw-payroll-bars > div { text-align: center; min-width: 0; display: flex; flex-direction: column; gap: 6px; font-size: 11px; }.pw-payroll-bars span { overflow-wrap: anywhere; font-size: 11px; min-height: 30px; }.pw-payroll-bars small { color: var(--paie-text-soft); font-size: 10px; }
+.pw-payroll-column { height: 75px; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--paie-border); }.pw-payroll-column i { display: block; width: min(36px,70%); background: var(--paie-amber); border-radius: 5px 5px 0 0; }
+@media(max-width:1050px) { .pw-profile-layout { grid-template-columns: minmax(0,1fr) !important; } }
+@media(max-width:700px) { .pw-adjustments, .pw-adjustment-guide, .pw-slip-guide ol { grid-template-columns: minmax(0,1fr); }.pw-adjustment-guide > div + div { border-left: 0; border-top: 1px solid var(--paie-border); }.pw-profile-panel .pay-form-grid { grid-template-columns: minmax(0,1fr) !important; }.pw-payroll-bars { grid-template-columns: repeat(3,minmax(0,1fr)); }.pw-salary-modes { gap: 6px; }.pw-profile-panel button { max-width: 100%; } }
