@@ -12,3 +12,5 @@
 .ec-cultural-band[data-cultural-motif='adinkra'] { background-image: url('/images/pointages-adinkra.webp'); }
 .ec-cultural-band[data-cultural-motif='lesotho'] { background-image: url('/images/pauses-lesotho.webp'); }
 .ec-cultural-band[data-cultural-motif='zoulou'] { background-image: url('/images/employes-zoulou.webp'); }
+
+.ec-cultural-band[data-cultural-motif='aso-oke'] { background-image: url('/images/heures-aso-oke.webp'); }
