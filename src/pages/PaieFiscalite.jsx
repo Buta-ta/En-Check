@@ -1,3 +1,4 @@
+import PaieWalletLoader from '../components/PaieWalletLoader'
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Sun, Moon, FileText, Landmark, Settings, Building2, ChevronDown, Globe2, Users, Gift, Upload, ClipboardCheck, SlidersHorizontal, Percent, Eye } from 'lucide-react'
@@ -99,7 +100,7 @@ export default function PaieFiscalite() {
     </header>
     <div className="pw-bogolan pw-bogolan-top" aria-hidden="true" />
     {error ? <div className="pw-error" role="alert">{error}<button className="paie-btn" onClick={() => setRetry(n => n + 1)}>Réessayer</button></div>
-      : !context ? <p className="pw-loading" role="status">Chargement des entreprises…</p>
+      : !context ? <PaieWalletLoader label="Chargement de votre espace Paie & Fiscalité…"/>
       : !section ? <p className="pw-loading">Les modules Paie et Fiscalité ne sont pas activés pour cette entreprise.</p>
       : <>
         <nav className="pw-tabs" aria-label="Paie et fiscalité">{visible.map(s => { const Icon = s.icon; return <button key={s.id} aria-current={section.id === s.id ? 'page' : undefined} onClick={() => go(s.tabs[0][0])}><Icon size={20}/>{s.label}</button> })}</nav>

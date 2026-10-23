@@ -74,3 +74,38 @@ fieldset.pw-drawer-content { padding: 0; margin: 0; border: 0; min-width: 0; }
 .pay-volet.paie-page, .fiscal-volet.paie-page { min-height: 0; background: transparent; }
 /* Small text uses the darker accent; copper remains decorative. */
 .pi-guide summary, .pi-example summary, .pi-kicker, .pi-open, .pi-country-edit { color: var(--paie-amber, #914b2d); }
+
+/* Higher specificity than .paie-page, regardless of stylesheet loading order.
+   The page theme sets position:relative; a drawer must remain viewport-fixed. */
+.paie-page.pw-drawer-layer { position: fixed; inset: 0; height: 100dvh; width: 100%; margin: 0; padding: 0; display: flex; align-items: stretch; justify-content: flex-end; }
+.pw-drawer-layer > .pw-drawer { margin: 0; padding: 0; min-height: 0; height: 100%; display: block; }
+.pw-drawer .pw-action-help { padding: 12px 20px; }
+.pw-action-help p { margin: 0; font-size: 13px; }
+.pw-action-help details { margin-top: 7px; font-size: 12px; }
+.pw-action-help summary { cursor: pointer; color: var(--paie-amber); }
+.pw-action-help small { margin-top: 8px; }
+.pw-settings-layout { grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr) !important; align-items: start; }
+.pw-settings-editor, .pw-settings-summary { min-width: 0; }
+.pw-settings-guide { padding: 18px; border-radius: 14px; background: var(--paie-bg-soft); border-left: 3px solid var(--paie-amber); }
+.pw-settings-guide p, .pw-settings-help, .pw-settings-example p, .pw-settings-save p { font-size: 13px; line-height: 1.7; color: var(--paie-text-soft); margin: 8px 0; }
+.pw-settings-nav { display: flex; flex-wrap: wrap; gap: 8px; padding: 18px 0; }
+.pw-settings-nav a { padding: 9px 12px; border: 1px solid var(--paie-border); border-radius: 25px; color: var(--paie-text); text-decoration: none; font-size: 12px; background: var(--paie-bg-soft); }
+.pw-settings-heading { display: flex; align-items: center; gap: 10px; font-size: 17px; margin: 20px 0 10px; scroll-margin-top: 24px; }
+.pw-settings-heading > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--paie-bg-soft); border: 1px solid var(--paie-border); color: var(--paie-amber); font-size: 11px; flex-shrink: 0; }
+.pw-settings-example { padding: 14px 18px; margin-top: 14px; border: 1px dashed var(--paie-border-strong); border-radius: 12px; }
+.pw-settings-example strong { font-size: 12px; color: var(--paie-amber); }
+.pw-setting-choice { padding: 14px !important; align-items: flex-start !important; border: 1px solid var(--paie-border) !important; background: var(--paie-bg-elevated) !important; border-radius: 12px !important; }
+.pw-setting-choice:has(input:checked) { background: var(--paie-bg-soft) !important; border-color: var(--paie-border-strong) !important; }
+.pw-setting-choice input { flex-shrink: 0; margin-top: 3px; accent-color: var(--paie-amber); }
+.pw-settings-button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 12px 16px; min-height: 44px; border-radius: 12px; border: 1px solid var(--paie-border-strong); background: var(--paie-bg-soft); color: var(--paie-text); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.pw-settings-button-primary { background: var(--paie-amber); color: var(--paie-bg-elevated); box-shadow: 0 3px 0 #23191128; }
+.pw-settings-button:disabled { opacity: .6; cursor: wait; }
+.pw-settings-save { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--paie-border); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.pw-settings-save p { flex: 1 1 200px; }
+.pw-settings-fiscal { display: flex; width: 100%; align-items: center; gap: 12px; padding: 18px; text-align: left; margin-top: 20px; background: var(--paie-bg-soft); border: 1px solid var(--paie-border); border-radius: 14px; cursor: pointer; font: inherit; }
+.pw-settings-nav a:focus-visible, .pw-settings-button:focus-visible, .pw-settings-fiscal:focus-visible { outline: 3px solid var(--paie-amber); outline-offset: 3px; }
+@media(max-width:1000px) { .pw-settings-layout { grid-template-columns: minmax(0,1fr) !important; } }
+@media(max-width:600px) { .pw-settings-save .pw-settings-button { width: 100%; }.pw-settings-editor .pay-form-grid { grid-template-columns: minmax(0,1fr) !important; } }
+
+.pw-settings-editor .pw-signature-card button { min-height: 40px; border-radius: 10px !important; color: var(--paie-text) !important; border-color: var(--paie-border-strong) !important; }
+.pw-settings-editor #paie-signatures { scroll-margin-top: 24px; }

@@ -1,3 +1,4 @@
+import PaieWalletLoader from '../components/PaieWalletLoader'
 import { PaieSectionIntro } from '../components/PaieInteriorSections'
 // src/pages/FichesPaie.jsx
 // ═══════════════════════════════════════════════════════════
@@ -978,7 +979,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   const hasStamp = !!settings.company_stamp
 
   if (loading) {
-    return <div style={S.loadingWrap}><RefreshCw size={34} color={P.ambre} style={{ animation: 'spin 0.9s linear infinite' }} /><p style={{ color: P.texteFaint, marginTop: 12 }}>Chargement du module fiches de paie...</p></div>
+    return <PaieWalletLoader label="Chargement des paramètres de paie…"/>
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1174,26 +1175,31 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
           {/* ═══ ONGLET PARAMÈTRES ═══ */}
           {activeTab === 'settings' && (
-            <div className="pay-grid-2" style={S.grid2}>
-              <div style={S.card} className="pay-card">
+            <div className="pay-grid-2 pw-settings-layout" style={S.grid2}>
+              <div style={S.card} className="pay-card pw-settings-editor">
                 <div style={S.cardHeader}>
                   <div style={S.cardHeaderLeft}>
                     <div style={S.cardIcon}><Settings size={18} color={P.ambre} /></div>
-                    <div><h3 style={S.cardTitle}>Paramètres du moteur de paie</h3><p style={S.cardSub}>Pays, congés, heures sup : comment le moteur calcule</p></div>
+                    <div><h3 style={S.cardTitle}>Paramètres du moteur de paie</h3><p style={S.cardSub}>Choisissez les données utilisées et les règles appliquées au salaire.</p></div>
                   </div>
                 </div>
 
+                <div className="pw-settings-guide"><span className="pw-eyebrow">PAS BESOIN D’ÊTRE COMPTABLE</span><p><strong>Trois choses à distinguer :</strong> les données reçues, les sommes ajoutées ou retirées, et la présentation du bulletin.</p><p>Vos choix restent en cours de modification jusqu’à leur enregistrement. Ils ne recalculent pas les bulletins déjà enregistrés.</p></div>
+                <nav className="pw-settings-nav" aria-label="Aller à un groupe de paramètres"><a href="#paie-bases">Base de calcul</a><a href="#paie-sources">Données utilisées</a><a href="#paie-regles">Ajouts & déductions</a><a href="#paie-entreprise">Entreprise</a><a href="#paie-presentation">Présentation</a><a href="#paie-signatures">Signatures</a></nav>
+                <h4 className="pw-settings-heading" id="paie-bases"><span>01</span> La base du calcul</h4>
+                <p className="pw-settings-help">Le pays et ses règles fiscales se règlent dans Fiscalité. Ici, définissez la devise et les valeurs servant à convertir un salaire en montant par jour ou par heure.</p>
                 <div className="pay-form-grid" style={S.formGrid}>
                   <div style={S.formGroup}><FormLabel help="Devise de l’entreprise — elle est enregistrée sur l’entreprise, et sert à tous les bulletins" example="XAF, EUR" required>Devise</FormLabel><input value={settings.currency || ''} onChange={e => changerDevise(e.target.value)} style={S.input} placeholder="XAF, XOF, EUR" /></div>
-                  <div style={S.formGroup}><FormLabel help="Fréquence de paie">Périodicité</FormLabel>
+                  <div style={S.formGroup}><FormLabel help="Rythme de paie enregistré pour l’entreprise. Vérifiez aussi les dates sélectionnées avant de calculer.">Rythme de paie</FormLabel>
                     <select value={settings.salary_period || 'monthly'} onChange={e => setSettings(p => ({ ...p, salary_period: e.target.value }))} style={S.select}>
                       <option value="monthly">Mensuelle</option><option value="biweekly">Bimensuelle</option><option value="weekly">Hebdomadaire</option>
                     </select>
                   </div>
-                  <div style={S.formGroup}><FormLabel help="Diviseur journalier" example="22">Diviseur jours</FormLabel><input type="number" value={settings.working_days_divisor} onChange={e => setSettings(p => ({ ...p, working_days_divisor: e.target.value }))} style={S.input} /></div>
-                  <div style={S.formGroup}><FormLabel help="Diviseur horaire" example="173.33">Diviseur heures</FormLabel><input type="number" step="0.01" value={settings.hourly_divisor} onChange={e => setSettings(p => ({ ...p, hourly_divisor: e.target.value }))} style={S.input} /></div>
+                  <div style={S.formGroup}><FormLabel help="Nombre de jours utilisé pour obtenir un montant journalier à partir du salaire de base" example="220 000 ÷ 22 = 10 000 par jour">Jours de référence</FormLabel><input type="number" value={settings.working_days_divisor} onChange={e => setSettings(p => ({ ...p, working_days_divisor: e.target.value }))} style={S.input} /></div>
+                  <div style={S.formGroup}><FormLabel help="Nombre d’heures utilisé pour obtenir un montant horaire" example="173 330 ÷ 173,33 = 1 000 par heure">Heures de référence</FormLabel><input type="number" step="0.01" value={settings.hourly_divisor} onChange={e => setSettings(p => ({ ...p, hourly_divisor: e.target.value }))} style={S.input} /></div>
                 </div>
 
+                <div className="pw-settings-example"><strong>Un exemple simple</strong><p>Un salaire de base de 220 000 divisé par 22 donne 10 000 par jour. Avec 173 330 et 173,33 heures de référence, on obtient 1 000 par heure. Ces exemples ne sont pas des valeurs imposées.</p></div>
                 {overtimeSettings && (
                   <div style={S.otInfoBox}>
                     <Clock size={16} color={P.orange} style={{ flexShrink: 0 }} />
@@ -1201,42 +1207,42 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                       <p style={{ color: P.orange, fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>Heures supplémentaires configurées</p>
                       <p style={{ color: P.texteDoux2, fontSize: 12, margin: 0 }}>Normal: +{overtimeSettings.rate_normal}% • Majoré: +{overtimeSettings.rate_major}% • Dimanche: +{overtimeSettings.rate_sunday}% • Férié: +{overtimeSettings.rate_holiday}%</p>
                     </div>
-                    <button onClick={() => navigate('/heures-supplementaires')} style={S.otEditBtn}><Edit size={14} /><span>Modifier</span></button>
+                    <button onClick={() => navigate('/heures-supplementaires')} className="pw-settings-button"><Edit size={14} /><span>Voir les taux des heures sup</span></button>
                   </div>
                 )}
 
                 <div style={S.toggleSection}>
-                  <p style={S.toggleSectionTitle}>Sources de données</p>
+                  <h4 className="pw-settings-heading" id="paie-sources"><span>02</span>Quelles données utiliser ?</h4><p className="pw-settings-help">Cocher une source permet de la prendre en compte. Cela ne signifie pas forcément qu’une somme sera retirée : les déductions se choisissent juste après.</p>
                   <div style={S.toggleGrid}>
                     {[
-                      ['use_attendance_data', 'Présences En-Check', 'Utilise les pointages réels'],
-                      ['use_overtime_data', 'Heures supplémentaires', 'Intègre les heures sup calculées'],
-                      ['use_absence_data', 'Absences & congés', 'Prend en compte les absences'],
-                      ['use_late_data', 'Retards', 'Comptabilise les retards'],
-                      ['use_holiday_work_data', 'Jours fériés travaillés', 'Détecte les fériés travaillés'],
-                      ['use_imported_variables', 'Variables importées', 'Prend en compte les variables Excel'],
+                      ['use_attendance_data', 'Présences En-Check', 'Reprend les heures issues des pointages retenus pour la paie.'],
+                      ['use_overtime_data', 'Heures supplémentaires', 'Lit les heures supplémentaires calculées. Leur paiement se choisit ci-dessous.'],
+                      ['use_absence_data', 'Absences & congés', 'Lit les absences et congés, dont le traitement dépend de leur type.'],
+                      ['use_late_data', 'Retards', 'Lit les retards ; leur déduction se choisit ci-dessous.'],
+                      ['use_holiday_work_data', 'Jours fériés travaillés', 'Repère le travail effectué un jour férié.'],
+                      ['use_imported_variables', 'Variables importées', 'Utilise les variables enregistrées après import, par exemple une prime.'],
                     ].map(([key, label, desc]) => (
-                      <label key={key} style={S.toggleItem}><input type="checkbox" checked={!!settings[key]} onChange={e => setSettings(p => ({ ...p, [key]: e.target.checked }))} style={S.checkbox} /><div><span style={S.toggleLabel}>{label}</span><span style={S.toggleDesc}>{desc}</span></div></label>
+                      <label key={key} className="pw-setting-choice" style={S.toggleItem}><input type="checkbox" checked={!!settings[key]} onChange={e => setSettings(p => ({ ...p, [key]: e.target.checked }))} style={S.checkbox} /><div><span style={S.toggleLabel}>{label}</span><span style={S.toggleDesc}>{desc}</span></div></label>
                     ))}
                   </div>
                 </div>
 
                 <div style={S.toggleSection}>
-                  <p style={S.toggleSectionTitle}>Comportement du moteur</p>
+                  <h4 className="pw-settings-heading" id="paie-regles"><span>03</span>Que faut-il ajouter ou retirer ?</h4><p className="pw-settings-help">Ces choix ont un effet sur le montant calculé. Vérifiez les absences, congés et retards avant de calculer ; les règles applicables restent celles de votre entreprise.</p>
                   <div style={S.toggleGrid}>
                     {[
-                      ['deduct_absence', 'Déduire les absences', 'Retire automatiquement les absences'],
-                      ['deduct_late', 'Déduire les retards', 'Retire automatiquement les retards'],
-                      ['include_overtime_in_payroll', 'Payer les heures sup', 'Ajoute les heures sup au brut'],
+                      ['deduct_absence', 'Déduire les absences', 'Applique les déductions prévues pour les absences concernées, pas automatiquement pour tous les congés.'],
+                      ['deduct_late', 'Déduire les retards', 'Déduit la durée de retard selon le montant horaire calculé.'],
+                      ['include_overtime_in_payroll', 'Payer les heures sup', 'Ajoute au salaire les heures supplémentaires selon les taux configurés.'],
                     ].map(([key, label, desc]) => (
-                      <label key={key} style={S.toggleItem}><input type="checkbox" checked={!!settings[key]} onChange={e => setSettings(p => ({ ...p, [key]: e.target.checked }))} style={S.checkbox} /><div><span style={S.toggleLabel}>{label}</span><span style={S.toggleDesc}>{desc}</span></div></label>
+                      <label key={key} className="pw-setting-choice" style={S.toggleItem}><input type="checkbox" checked={!!settings[key]} onChange={e => setSettings(p => ({ ...p, [key]: e.target.checked }))} style={S.checkbox} /><div><span style={S.toggleLabel}>{label}</span><span style={S.toggleDesc}>{desc}</span></div></label>
                     ))}
                   </div>
                 </div>
 
                 {/* INFOS ENTREPRISE ENRICHIES */}
                 <div style={S.toggleSection}>
-                  <p style={S.toggleSectionTitle}>Informations entreprise (bulletin)</p>
+                  <h4 className="pw-settings-heading" id="paie-entreprise"><span>04</span>Identifier votre entreprise</h4><p className="pw-settings-help">Ces informations servent à identifier l’employeur sur le bulletin. Reprenez les numéros figurant sur ses documents officiels.</p>
                   <div className="pay-form-grid" style={S.formGrid}>
                     <div style={S.formGroup}><FormLabel help="Registre de Commerce">N° RCCM</FormLabel><input value={settings.company_rccm || ''} onChange={e => setSettings(p => ({ ...p, company_rccm: e.target.value }))} style={S.input} placeholder="Ex: RC/DLA/2024/B/1234" /></div>
                     <div style={S.formGroup}><FormLabel help="Numéro Identifiant Fiscal">N° Contribuable / NIF</FormLabel><input value={settings.company_nif || ''} onChange={e => setSettings(p => ({ ...p, company_nif: e.target.value }))} style={S.input} placeholder="Ex: M012345678901A" /></div>
@@ -1264,7 +1270,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                       />
                     </div>
 
-                    <label style={S.toggleItem}>
+                    <label className="pw-setting-choice" style={S.toggleItem}>
                       <input
                         type="checkbox"
                         checked={!!settings.hide_social_label}
@@ -1285,7 +1291,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
                 {/* PERSONNALISATION BULLETIN */}
                 <div style={S.toggleSection}>
-                  <p style={S.toggleSectionTitle}>Personnalisation du bulletin</p>
+                  <h4 className="pw-settings-heading" id="paie-presentation"><span>05</span>Les textes du bulletin</h4><p className="pw-settings-help">Personnalisez la présentation sans changer le calcul. Exemple : un contact RH en pied de page. Faites vérifier les mentions obligatoires selon le pays.</p>
                   <div style={S.formGroup}><FormLabel help="Texte en haut du bulletin">En-tête</FormLabel><textarea rows={3} value={settings.company_header || ''} onChange={e => setSettings(p => ({ ...p, company_header: e.target.value }))} style={S.textarea} /></div>
                   <div style={S.formGroup}><FormLabel help="Texte en bas du bulletin">Pied de page</FormLabel><textarea rows={3} value={settings.company_footer || ''} onChange={e => setSettings(p => ({ ...p, company_footer: e.target.value }))} style={S.textarea} /></div>
                   <div style={S.formGroup}><FormLabel help="Mention légale obligatoire en bas du bulletin">Mention légale</FormLabel><textarea rows={2} value={settings.legal_mention || ''} onChange={e => setSettings(p => ({ ...p, legal_mention: e.target.value }))} style={S.textarea} placeholder="Ce bulletin de paie doit être conservé sans limitation de durée..." /></div>
@@ -1295,7 +1301,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
 
                 {/* ═══ SIGNATURES (2 SIGNATAIRES) ═══ */}
-                <div style={S.signatureBlock}>
+                <div style={S.signatureBlock} id="paie-signatures">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                     <div style={{ ...S.cardIcon, background: P.ambre4 }}><PenTool size={18} color={P.ambre} /></div>
                     <div>
@@ -1345,29 +1351,30 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 </div>
 
                 {/* LIEN CONFIG FISCALE */}
-                <div style={S.fiscalLinkBox} onClick={() => navigate(integre ? '/paie?onglet=apercu' : '/paie')}>
+                <button type="button" className="pw-settings-fiscal" onClick={() => navigate(integre ? '/paie?onglet=apercu' : '/paie')}>
                   <div style={S.fiscalLinkIcon}><Shield size={22} color={P.violet} /></div>
                   <div style={{ flex: 1 }}>
-                    <p style={S.fiscalLinkTitle}>Configuration Fiscale Avancée</p>
-                    <p style={S.fiscalLinkText}>Cotisations sociales, barème d'imposition, règles par pays</p>
+                    <p style={S.fiscalLinkTitle}>Ouvrir les règles fiscales</p>
+                    <p style={S.fiscalLinkText}>Pays, cotisations et impôt : les règles qui complètent ce calcul</p>
                   </div>
                   <ArrowRight size={18} color={P.violet} />
-                </div>
+                </button>
 
-                <div style={S.actionsRow}>
-                  <button onClick={handleSaveSettings} style={S.primaryBtn} disabled={saving}>
+                <div className="pw-settings-save">
+                  <p>Prêt ? Enregistrez vos choix avant de calculer de nouvelles fiches.</p>
+                  <button onClick={handleSaveSettings} className="pw-settings-button pw-settings-button-primary" disabled={saving}>
                     {saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}
-                    <span>Enregistrer les paramètres</span>
+                    <span>{saving ? 'Enregistrement…' : 'Enregistrer mes réglages'}</span>
                   </button>
                 </div>
               </div>
 
               {/* RÉSUMÉ */}
-              <div style={S.card} className="pay-card">
+              <div style={S.card} className="pay-card pw-settings-summary">
                 <div style={S.cardHeader}>
                   <div style={S.cardHeaderLeft}>
                     <div style={{ ...S.cardIcon, background: P.vert1 }}><Building2 size={18} color={P.vert} /></div>
-                    <div><h3 style={S.cardTitle}>Résumé</h3><p style={S.cardSub}>État de la configuration</p></div>
+                    <div><h3 style={S.cardTitle}>Vos repères</h3><p style={S.cardSub}>Aperçu des valeurs actuellement saisies</p></div>
                   </div>
                 </div>
 

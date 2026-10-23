@@ -21,7 +21,8 @@ export default function PaieDrawer({ title, help, example, onClose, busy = false
     const siblings = [...document.body.children].filter(el => el !== layer.current && !el.contains(layer.current))
     const inert = siblings.map(el => [el, el.inert])
     siblings.forEach(el => { el.inert = true })
-    panel.current?.focus()
+    panel.current?.focus({ preventScroll: true })
+    if (panel.current) panel.current.scrollTop = 0
     const keydown = event => {
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (!pending.current) close.current?.(); return }
       if (event.key !== 'Tab') return
@@ -36,14 +37,14 @@ export default function PaieDrawer({ title, help, example, onClose, busy = false
       document.removeEventListener('keydown', keydown, true)
       document.body.style.overflow = overflow
       inert.forEach(([el, value]) => { el.inert = value })
-      if (previous?.isConnected) previous.focus()
+      if (previous?.isConnected) previous.focus({ preventScroll: true })
     }
   }, [])
   if (typeof document === 'undefined') return null
   return createPortal(<div ref={layer} className="paie-page pw-drawer-layer" data-theme={darkMode ? 'dark' : 'light'} onClick={event => { if (event.target === event.currentTarget && !busy) onClose?.() }}>
     <section ref={panel} className="pw-drawer" role="dialog" aria-modal="true" aria-label={title} aria-busy={busy} tabIndex={-1}>
       <div className="pw-drawer-frise" aria-hidden="true"/>
-      {(help || example) && <div className="pw-action-help"><span className="pw-eyebrow">REPÈRE POUR CETTE ACTION</span>{help && <p>{help}</p>}{example && <small><strong>Exemple illustratif.</strong> {example}</small>}</div>}
+      {(help || example) && <div className="pw-action-help">{help && <p>{help}</p>}{example && <details><summary>Voir un exemple</summary><small>{example}</small></details>}</div>}
       <fieldset className="pw-drawer-content" disabled={busy}>{children}</fieldset>
     </section>
   </div>, document.body)
