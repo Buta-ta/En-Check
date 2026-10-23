@@ -13,5 +13,8 @@
 .sk-payslip-count { display: none; }
 .sk-cal-cell .sk-payslip-caption { display: none; }
 .sk-cal-cell .sk-payslip-count { display: inline; }
-.sk-plan-page[data-theme="dark"] .sk-payslip-badge summary { background: #382b18; color: #ffe4b0; }
-.sk-plan-page[data-theme="dark"] .sk-payslip-info { background: #261e19; color: #fff4e1; }
+[data-theme="dark"] .sk-payslip-badge summary { background: #382b18; color: #ffe4b0; }
+[data-theme="dark"] .sk-payslip-info { background: #261e19; color: #fff4e1; }
+
+.pointages-afrotech-shell .sk-payslip-status { color: var(--pt-text-muted, #756757); }
+.pointages-afrotech-shell .sk-payslip-badge { min-width: 0; }

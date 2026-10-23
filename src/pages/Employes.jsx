@@ -1,3 +1,6 @@
+import PlanningPayslipBadge from '../components/PlanningPayslipBadge'
+import PayslipIndicatorStatus from '../components/PayslipIndicatorStatus'
+import useEmployeePayslipIndicators from '../hooks/useEmployeePayslipIndicators'
 // ═══════════════════════════════════════════════════════════
 // 👥 PAGE GESTION DES EMPLOYÉS - V2 ENRICHIE
 // Ajouts : Infos personnelles, professionnelles, sociales
@@ -96,6 +99,7 @@ function CollapsibleSection({ title, icon: Icon, iconColor = '#F59E0B', defaultO
 export default function Employes() {
   const [admin, setAdmin] = useState(null)
   const [employes, setEmployes] = useState([])
+  const payslipIndicators = useEmployeePayslipIndicators(employes)
   const [entreprises, setEntreprises] = useState([])
   const [plannings, setPlannings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1109,6 +1113,7 @@ export default function Employes() {
             />
           </div>
 
+          <PayslipIndicatorStatus status={payslipIndicators}/>
           {/* ═══ EMPLOYEE LIST ═══ */}
           {employesFiltres.length === 0 ? (
             <div style={styles.empty}>
@@ -1127,6 +1132,8 @@ export default function Employes() {
                   <EmployesPortraitCard
                     key={employee.id}
                     employee={employee}
+                    payslipEntries={payslipIndicators.entriesFor(employee)}
+                    payslipDate={payslipIndicators.date}
                     liveStatus={liveStatusByEmployee[employee.id]}
                     weeklyStats={stats}
                     scheduleRegimeLabel={getScheduleRegimeLabel(employee)}
@@ -1162,6 +1169,7 @@ export default function Employes() {
                       </div>
 
                       <div style={styles.listInfo}>
+                        <PlanningPayslipBadge entries={payslipIndicators.entriesFor(employee)} referenceDate={payslipIndicators.date}/>
                         <div style={styles.listNameRow}>
                           <span style={styles.listName}>{employee.first_name} {employee.last_name}</span>
                           <span style={styles.listMatricule}>{employee.matricule}</span>
