@@ -9,6 +9,7 @@
 }
 
 :root {
+  --encheck-font-ui: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   /* Couleurs Sable & Or */
   --sable-clair: #E5D4C0;
   --sable-dore: #C4A574;
@@ -30,7 +31,7 @@
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--encheck-font-ui);
   background-color: var(--sable-clair);
   color: var(--brun-profond);
   min-height: 100vh;

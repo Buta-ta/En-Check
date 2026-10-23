@@ -921,25 +921,25 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
     // Vérifier si le profil existe
     if (!profile) {
-      blockers.push({ employee: name, reason: 'Aucun profil salarial' })
+      blockers.push({ employeeId: emp.id, employee: name, reason: 'Aucun profil salarial' })
       return
     }
 
     // Vérifier selon le type de salaire
     if (profile.salary_type === 'monthly' && (!profile.base_salary || profile.base_salary <= 0)) {
-      warnings.push({ employee: name, reason: 'Salaire de base = 0' })
+      warnings.push({ employeeId: emp.id, employee: name, reason: 'Salaire de base = 0' })
     } else if (profile.salary_type === 'hourly' && (!profile.hourly_rate || profile.hourly_rate <= 0)) {
-      blockers.push({ employee: name, reason: 'Taux horaire non défini' })
+      blockers.push({ employeeId: emp.id, employee: name, reason: 'Taux horaire non défini' })
       return
     } else if (profile.salary_type === 'daily' && (!profile.daily_rate || profile.daily_rate <= 0)) {
-      blockers.push({ employee: name, reason: 'Taux journalier non défini' })
+      blockers.push({ employeeId: emp.id, employee: name, reason: 'Taux journalier non défini' })
       return
     }
 
     // ✅ CORRECTION : Vérifier le numéro organisme social avec libellé dynamique
     if (!emp.cnps_number) {
       warnings.push({
-        employee: name,
+        employeeId: emp.id, employee: name,
         reason: socialOrgLabel
           ? `N° ${socialOrgLabel} manquant`
           : 'Numéro organisme social manquant'
@@ -948,11 +948,11 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
     // Vérifier la date d'embauche
     if (!emp.hire_date) {
-      warnings.push({ employee: name, reason: 'Date d\'embauche manquante' })
+      warnings.push({ employeeId: emp.id, employee: name, reason: 'Date d\'embauche manquante' })
     }
 
     // Si toutes les vérifications passent, l'employé est prêt
-    ready.push({ employee: name })
+    ready.push({ employeeId: emp.id, employee: name })
   })
 
   return { ready, warnings, blockers }

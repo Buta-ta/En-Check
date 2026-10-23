@@ -12,7 +12,7 @@ vi.mock('../../components/PaieEntreprises', () => ({ default: () => <div>Copies 
 vi.mock('../../pages/FichesPaie', () => ({ default: function Draft({ entrepriseIdForce }) { const [value, setValue] = useState(''); return <input aria-label={`Brouillon ${entrepriseIdForce}`} value={value} onChange={e => setValue(e.target.value)}/> } }))
 vi.mock('../../pages/ConfigurationFiscale', () => ({ default: () => <div>Éditeur fiscal</div> }))
 import PaieFiscalite, { paieAccess } from '../../pages/PaieFiscalite'
-import PaiePreparation, { resumePreparation } from '../../components/PaiePreparation'
+import PaiePreparation, { resumePreparation, grouperControles } from '../../components/PaiePreparation'
 let host, root
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -23,7 +23,7 @@ beforeEach(() => {
 })
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.restoreAllMocks() })
 const render = async element => { await act(async () => { root.render(element) }) }
-const click = async label => { const button = [...host.querySelectorAll('button')].find(b => b.textContent === label); expect(button).toBeTruthy(); await act(async () => button.click()) }
+const click = async label => { const button = [...host.querySelectorAll('button')].find(b => b.textContent.trim() === label.trim()); expect(button).toBeTruthy(); await act(async () => button.click()) }
 const input = async (el, value) => { await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })) }) }
 it('matrice des deux modules : fiscalité seule, paie seule, aucun, super-admin', () => {
   expect(paieAccess({ module_config_fiscale: true }, false)).toEqual({ fiscal: true, bulletins: false })
@@ -79,4 +79,32 @@ it('les actions intégrées sont branchées au vrai moteur et à l’historique'
   expect(source).toContain('onHistory={() => { loadHistory(); setShowHistoryModal(true) }}')
   expect(source).toContain("integre && activeTab === 'preview'")
   expect(source).toContain('settings: persistedSettings')
+})
+
+it('les contrôles sont regroupés par identifiant sans perdre les remarques', () => {
+  expect(grouperControles([
+    { employeeId: 'A', employee: 'Emma B.', reason: 'N° CNSS manquant' },
+    { employeeId: 'A', employee: 'Emma B.', reason: 'Date d’embauche manquante' },
+    { employeeId: 'B', employee: 'Emma B.', reason: 'Aucun profil' },
+  ])).toEqual([
+    { key: 'A', name: 'Emma B.', reasons: ['N° CNSS manquant', 'Date d’embauche manquante'] },
+    { key: 'B', name: 'Emma B.', reasons: ['Aucun profil'] },
+  ])
+})
+it('médaillons de navigation accessibles et contexte entreprise explicite', async () => {
+  await render(<MemoryRouter><PaieFiscalite/></MemoryRouter>)
+  expect(host.querySelectorAll('.pw-coin-tab')).toHaveLength(5)
+  expect(host.querySelectorAll('.pw-coin-tab[aria-current="page"]')).toHaveLength(1)
+  expect(host.querySelector('[aria-label="Entreprise"]')).toBeTruthy()
+  expect(host.querySelector('[aria-label="Pays fiscal et devise"]').textContent).toContain('COG')
+  await click('Profils salariés')
+  expect(host.querySelector('.pw-coin-tab[aria-current="page"]').textContent).toBe('Profils salariés')
+})
+it('affiche toutes les anomalies, y compris après la quatrième, dans une liste regroupée', async () => {
+  const issues = Array.from({ length: 6 }, (_, i) => ({ employeeId: 'A', employee: 'Emma B.', reason: `Contrôle ${i + 1}` }))
+  await render(<PaiePreparation employees={employees} profiles={profiles} previewRows={[]} issues={issues} start="2026-10-01" end="2026-10-31"/>)
+  expect(host.querySelectorAll('.pw-issue-person')).toHaveLength(1)
+  expect(host.querySelectorAll('.pw-issue-person li')).toHaveLength(6)
+  expect(host.querySelector('.pw-review-summary').textContent).toContain('1 salarié concerné')
+  expect(host.querySelector('.pw-table-footer').textContent).toContain('2 sur 2 salariés')
 })

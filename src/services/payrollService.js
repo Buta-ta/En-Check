@@ -71,27 +71,27 @@ class PayrollService {
         .from('payroll_settings')
         .select('*')
         .eq('enterprise_id', enterpriseId)
-        .single()
+        .maybeSingle()
 
-      if (error && error.code === 'PGRST116') {
-        return this.getDefaultPayrollSettings()
-      }
+      if (!data && !error) return this.getDefaultPayrollSettings()
 
       if (error) throw error
       return { ...this.getDefaultPayrollSettings(), ...data }
     } catch (err) {
       console.error('Erreur récupération paramètres paie:', err)
-      return this.getDefaultPayrollSettings()
+      throw err
     }
   }
 
   static async savePayrollSettings(enterpriseId, settings) {
     try {
-      const { data: existing } = await db()
+      const { data: existing, error: lookupError } = await db()
         .from('payroll_settings')
         .select('id')
         .eq('enterprise_id', enterpriseId)
-        .single()
+        .maybeSingle()
+
+      if (lookupError) throw lookupError
 
       const payload = {
         enterprise_id: enterpriseId,
@@ -834,7 +834,7 @@ class PayrollService {
     const APPARIEMENT_H =
       Number(options?.seuils?.appariementHeures) || SEUILS_PAR_DEFAUT.appariementHeures
 
-    const empAttendances = (allAttendances || [])
+    const empAttendances = filtrerPointagesPayables(allAttendances || [])
       .filter(a => a.employee_id === employeeId)
       // ═══ doctrine arbitrage n°1 §4.1 : « on invente, on marque, on n'encaisse pas »
       // Une sortie ESTIMÉE (`is_auto_closed`) n'est pas un badge : elle ne doit
@@ -843,7 +843,6 @@ class PayrollService {
       // comme double scan QR, sortent aussi du calcul.
       // AVANT : la clôture automatique payait jusqu'à 14 h par nuit oubliée, sans
       // qu'aucun humain ait jamais regardé la ligne.
-      .filter(filtrerPointagesPayables)
       .sort((a, b) => new Date(a.check_time) - new Date(b.check_time))
 
     const dateSet = new Set(empAttendances.map(a => a.check_time.split('T')[0]))
