@@ -8,3 +8,7 @@
 .ec-cultural-loading { height: 56px; border-radius: 8px; margin: 12px 0; }
 .ec-cultural-compact { height: 100%; }
 @media(max-width:650px) { .ec-cultural-top { height: 60px; }.ec-cultural-loading { height: 40px; } }
+
+.ec-cultural-band[data-cultural-motif='adinkra'] { background-image: url('/images/pointages-adinkra.webp'); }
+.ec-cultural-band[data-cultural-motif='lesotho'] { background-image: url('/images/pauses-lesotho.webp'); }
+.ec-cultural-band[data-cultural-motif='zoulou'] { background-image: url('/images/employes-zoulou.webp'); }

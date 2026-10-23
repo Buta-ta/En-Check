@@ -1,0 +1,21 @@
+.abs-loading { min-height: 100dvh; display: flex; flex-direction: column; background: #faf6f0; color: #231911; font-family: var(--encheck-font-ui, 'Segoe UI', sans-serif); }
+.abs-loading[data-theme='dark'] { background: #15110e; color: #f5f2eb; }
+.abs-loading-content { flex: 1; width: min(900px, 100%); margin: auto; box-sizing: border-box; padding: clamp(16px, 3vw, 36px); text-align: center; }
+.abs-loading-content > svg { display: block; margin: 0 auto 12px; }
+.abs-loading h1 { font-size: clamp(19px, 2.5vw, 28px); line-height: 1.35; margin: 10px 0; }
+.abs-loading p { font-size: 14px; line-height: 1.6; margin: 10px 0 20px; }
+.abs-loading .abs-loading-note { font-size: 12px; margin: 16px 0 0; }
+.abs-loading-scene { position: relative; width: 100%; aspect-ratio: 1376 / 768; border-radius: 18px; overflow: hidden; background: #f4ecd6; box-shadow: 0 10px 35px #0002; }
+.abs-loading-scene img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.abs-loading-static { display: none !important; }
+.abs-loading-layers { position: absolute; inset: 0; }
+.abs-loading-layers img { position: absolute; inset: 0; }
+.abs-loading-paper { animation: abs-paper-arrival 5s ease-in-out infinite; }
+.abs-loading-lid { transform-origin: 62% 60%; animation: abs-suitcase-close 5s ease-in-out infinite; }
+.abs-loading-days { position: absolute; left: 39.4%; top: 51.8%; width: 8.3%; height: 4.9%; border-radius: 5px; background: #5d8152; mix-blend-mode: multiply; animation: abs-days-highlight 5s ease-in-out infinite; }
+@keyframes abs-paper-arrival { 0%,12%,100% { transform: translate(0,0); opacity: 1; } 40%,76% { transform: translate(-6%,12%); opacity: 0; } 88% { transform: translate(0,-2%); opacity: 0; } }
+@keyframes abs-days-highlight { 0%,25%,92%,100% { opacity: 0; } 45%,70% { opacity: .55; } }
+@keyframes abs-suitcase-close { 0%,45%,100% { transform: translateY(0); } 62%,78% { transform: translateY(2.5%); } }
+@media(prefers-reduced-motion:reduce) { .abs-loading-layers { display: none; }.abs-loading-static { display: block !important; } }
+
+.abs-loading-note summary { cursor: pointer; font-size: 12px; }.abs-loading-note p { font-size: 12px; }

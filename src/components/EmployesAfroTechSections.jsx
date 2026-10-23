@@ -1,3 +1,4 @@
+import PageCulturalBand from './PageCulturalBand'
 import PlanningPayslipBadge from './PlanningPayslipBadge'
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -13,7 +14,6 @@ import {
 } from 'lucide-react'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import {
-  KenteWovenTapestrySvg,
   WovenKenteBadgeSvg,
 } from './AfroCulturalSvg'
 import { formaterTempsPauseEnDirect } from '../services/pausesService'
@@ -63,7 +63,7 @@ export function EmployesCulturalHero({
 }) {
   return (
     <header className="employes-concept-header" aria-label="En-tête Employés En-Check">
-      <KenteWovenTapestrySvg className="employes-kente-top-banner" />
+      <PageCulturalBand pathname="/employes"/>
       <div className="employes-concept-topbar">
         <div className="employes-concept-brand">
           {onBackDashboard && (

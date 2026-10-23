@@ -1,3 +1,4 @@
+import PageCulturalBand from '../components/PageCulturalBand'
 // ═══════════════════════════════════════════════════════════════════════════
 // ⏸ PAGE PAUSES — Design Afro-Tech Kente & Adinkra + Chronomètre Dynamique
 // ═══════════════════════════════════════════════════════════════════════════
@@ -21,7 +22,6 @@ import {
 import PausesLoadingScreen from '../components/PausesLoadingScreen'
 import useLoadingMinimum from '../hooks/useLoadingMinimum'
 import {
-  KenteWovenTapestrySvg,
   PausesAnalyticsCharts,
   PausesCollaborateursSection,
   PausesCorbeille,
@@ -468,7 +468,7 @@ export default function Pauses () {
       className="pauses-v2-shell"
       data-theme={darkMode ? 'dark' : 'light'}
     >
-      <KenteWovenTapestrySvg className="pauses-v2-kente-strip" />
+      <PageCulturalBand pathname="/pauses"/>
 
       <div className="pauses-v2-container">
         <PausesCulturalHero
@@ -629,6 +629,7 @@ export default function Pauses () {
           }}
         />
       )}
+      <PageCulturalBand pathname="/pauses" placement="bottom"/>
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import PageCulturalBand from '../components/PageCulturalBand'
 import PlanningPayslipBadge from '../components/PlanningPayslipBadge'
 import PayslipIndicatorStatus from '../components/PayslipIndicatorStatus'
 import useEmployeePayslipIndicators from '../hooks/useEmployeePayslipIndicators'
@@ -1786,6 +1787,7 @@ export default function Pointages() {
             </button>
           </div>
         </main>
+        <PageCulturalBand pathname="/pointages" placement="bottom"/>
       </div>
     )
   }
@@ -2013,6 +2015,7 @@ export default function Pointages() {
             />
           )}
         </main>
+        <PageCulturalBand pathname="/pointages" placement="bottom"/>
 
           {/* ═══ TIROIR D'INSPECTION RAPIDE (SLIDE-OVER) ═══ */}
           <PointagesSlideOverDrawer

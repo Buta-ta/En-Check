@@ -1,3 +1,4 @@
+import PageCulturalBand from '../components/PageCulturalBand'
 import PlanningPayslipBadge from '../components/PlanningPayslipBadge'
 import PayslipIndicatorStatus from '../components/PayslipIndicatorStatus'
 import useEmployeePayslipIndicators from '../hooks/useEmployeePayslipIndicators'
@@ -1256,6 +1257,7 @@ export default function Employes() {
             <p style={styles.footerText}><EnCheckBrandMark size={18} />EN-CHECK • On gère ! • Gestion du Personnel</p>
           </div>
         </main>
+        <PageCulturalBand pathname="/employes" placement="bottom"/>
 
         {/* ═══════════ MODALS ═══════════ */}
 

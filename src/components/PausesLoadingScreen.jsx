@@ -1,7 +1,8 @@
+import PageCulturalBand from './PageCulturalBand'
 import { useEffect, useState } from 'react'
 import { ArrowRight, CheckCircle2, Coffee, Timer } from 'lucide-react'
 import EnCheckBrandMark from './EnCheckBrandMark'
-import { CulturalCornerMotifSvg, KenteFriezeSvg } from './AfroCulturalSvg'
+import { CulturalCornerMotifSvg } from './AfroCulturalSvg'
 import '../pages/PointagesAfroTech.css'
 
 export default function PausesLoadingScreen({ darkMode = true, onSkip }) {
@@ -42,7 +43,7 @@ export default function PausesLoadingScreen({ darkMode = true, onSkip }) {
           </div>
         </div>
 
-        <KenteFriezeSvg className="pointages-loading-frieze" />
+        <PageCulturalBand pathname="/pauses" placement="loading"/>
 
         <h1 className="pointages-loading-title">Chargement de l’espace Pauses…</h1>
 
