@@ -1066,7 +1066,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
                   <>
                     <div style={S.formGroup}>
                       <FormLabel
-                        help="Le barème de ce pays s'applique au revenu divisé par un nombre de parts, puis l'impôt est remultiplié par ce nombre. Plus il y a de parts, plus l'impôt baisse."
+                        help="Le barème de ce pays s'applique au revenu divisé par un nombre de parts, puis l'impôt est remultiplié par ce nombre. L’effet dépend du barème et des plafonds configurés."
                       >
                         Situation (test)
                       </FormLabel>
@@ -1084,7 +1084,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
                       </select>
                     </div>
                     <div style={S.formGroup}>
-                      <FormLabel help="Enfants à charge — chaque enfant ajoute des parts">
+                      <FormLabel help="Nombre d’enfants pris en compte par les règles familiales configurées, dans les limites prévues.">
                         Enfants à charge (test)
                       </FormLabel>
                       <input

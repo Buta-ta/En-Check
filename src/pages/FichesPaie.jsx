@@ -1,3 +1,4 @@
+import PaiePayrollChart from '../components/PaiePayrollChart'
 import PaieWalletLoader from '../components/PaieWalletLoader'
 import { PaieSectionIntro } from '../components/PaieInteriorSections'
 // src/pages/FichesPaie.jsx
@@ -39,16 +40,6 @@ import { SignaturePad, SingleSignatureManager, StampManager } from '../component
 import {
   AllowanceModal, DeductionModal, LoanModal, BonusModal, PeriodDeductionModal,
 } from '../components/BulletinModales'
-
-
-
-
-
-
-
-
-
-
 
 // ═══════════════════════════════════════════════════════════
 // PAGE PRINCIPALE
@@ -150,6 +141,11 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
 
   const navigate = useNavigate()
 
+  // Only active employees loaded for this enterprise belong in the progress denominator.
+  const activeProfiles = employees.map(employee => {
+    const profile = profiles.find(item => item.employee_id === employee.id)
+    return profile ? { ...profile, employees: employee } : null
+  }).filter(Boolean)
 
   const socialOrgLabel = settings.hide_social_label
     ? ''
@@ -373,7 +369,6 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
     console.error('Erreur congés:', err)
   }
 }
-
 
   const loadEmployeeAllowancesAndDeductions = useCallback(async (empId) => {
     if (!enterpriseId || !empId) return
@@ -960,7 +955,6 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   return { ready, warnings, blockers }
 }, [employees, profiles, settings.company_social_label, settings.hide_social_label])
 
-
   useEffect(() => {
     onBusyChange?.(saving || loadingPreview || sendingSlips || savingImport)
   }, [saving, loadingPreview, sendingSlips, savingImport, onBusyChange])
@@ -1095,6 +1089,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           )}
 
           <PaieSectionIntro section={activeTab}/>
+          {integre && activeTab === 'preparation' && <PaiePayrollChart key={`${enterpriseId}:${settings.currency}:${periodEnd}`} enterpriseId={enterpriseId} currency={settings.currency} end={periodEnd} revision={sentSlips.size}/>}
           {integre && activeTab === 'preparation' && <PaiePreparation
             employees={employees} profiles={profiles} previewRows={previewRows}
             currency={settings.currency} start={periodStart} end={periodEnd}
@@ -1286,9 +1281,6 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                   </div>
                 </div>
 
-
-                
-
                 {/* PERSONNALISATION BULLETIN */}
                 <div style={S.toggleSection}>
                   <h4 className="pw-settings-heading" id="paie-presentation"><span>05</span>Les textes du bulletin</h4><p className="pw-settings-help">Personnalisez la présentation sans changer le calcul. Exemple : un contact RH en pied de page. Faites vérifier les mentions obligatoires selon le pays.</p>
@@ -1296,9 +1288,6 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                   <div style={S.formGroup}><FormLabel help="Texte en bas du bulletin">Pied de page</FormLabel><textarea rows={3} value={settings.company_footer || ''} onChange={e => setSettings(p => ({ ...p, company_footer: e.target.value }))} style={S.textarea} /></div>
                   <div style={S.formGroup}><FormLabel help="Mention légale obligatoire en bas du bulletin">Mention légale</FormLabel><textarea rows={2} value={settings.legal_mention || ''} onChange={e => setSettings(p => ({ ...p, legal_mention: e.target.value }))} style={S.textarea} placeholder="Ce bulletin de paie doit être conservé sans limitation de durée..." /></div>
                 </div>
-
-
-
 
                 {/* ═══ SIGNATURES (2 SIGNATAIRES) ═══ */}
                 <div style={S.signatureBlock} id="paie-signatures">
@@ -1406,7 +1395,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                     },
                     { label: 'Conv. collective', value: settings.company_collective_agreement || 'Non renseignée', color: settings.company_collective_agreement ? undefined : P.texteFaint },
                     { label: 'Employés actifs', value: employees.length },
-                    { label: 'Profils configurés', value: `${profiles.length} / ${employees.length}` },
+                    { label: 'Profils configurés', value: `${activeProfiles.length} / ${employees.length}` },
                     { label: 'Signataire 1', value: settings.signatory1_name ? `${settings.signatory1_name}${settings.signatory1_title ? ` (${settings.signatory1_title})` : ''}` : '✗ Non configuré', color: settings.signatory1_name ? P.vert : P.rouge },
                     { label: 'Signataire 2', value: settings.signatory2_name ? `${settings.signatory2_name}${settings.signatory2_title ? ` (${settings.signatory2_title})` : ''}` : '— Optionnel', color: settings.signatory2_name ? P.vert : P.texteFaint },
                     { label: 'Signatures', value: `${[settings.signatory1_signature, settings.signatory2_signature].filter(Boolean).length}/2 configurée(s)`, color: settings.signatory1_signature ? P.vert : P.rouge },
@@ -1459,16 +1448,17 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
           {/* ═══ ONGLET PROFILS ═══ */}
           {activeTab === 'profiles' && (
-            <div className="pay-grid-2" style={S.grid2}>
-              <div style={S.card} className="pay-card">
+            <div className="pay-grid-2 pw-profile-layout" style={S.grid2}>
+              <div style={S.card} className="pay-card pw-profile-panel">
                 <div style={S.cardHeader}>
                   <div style={S.cardHeaderLeft}>
                     <div style={{ ...S.cardIcon, background: P.indigo3 }}><Users size={18} color={P.indigo} /></div>
-                    <div><h3 style={S.cardTitle}>Profil salarial</h3><p style={S.cardSub}>Rémunération de base par employé</p></div>
+                    <div><h3 style={S.cardTitle}>Profil salarial</h3><p style={S.cardSub}>1. Choisir le salarié · 2. Définir sa rémunération · 3. Préparer son paiement</p></div>
                   </div>
-                  <button onClick={() => { setCopySourceEmployeeId(''); setShowCopyProfileModal(true) }} style={S.copyBtn} title="Copier un profil existant"><Copy size={14} /><span>Copier un profil</span></button>
+                  <button onClick={() => { setCopySourceEmployeeId(''); setShowCopyProfileModal(true) }} className="pw-settings-button" title="Copier un profil existant"><Copy size={14} /><span>Copier un profil</span></button>
                 </div>
 
+                <div className="pw-settings-guide"><p><strong>Un profil décrit une rémunération, pas un versement.</strong> Le salaire net sera calculé ensuite avec les présences, les primes, les retenues et la fiscalité.</p><p>Copier un profil reprend des réglages : vérifiez les montants et les coordonnées de paiement avant d’enregistrer.</p></div>
                 <SearchBar value={searchProfile} onChange={setSearchProfile} placeholder="Rechercher un employé..." />
 
                 <div style={{ ...S.formGroup, marginTop: 12 }}>
@@ -1516,9 +1506,9 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 {/* Mode de rémunération */}
                 <div style={S.formGroup}>
                   <FormLabel help="Mensuel, Horaire ou Journalier">Mode de rémunération</FormLabel>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {[{ value: 'monthly', label: '💼 Mensuel', desc: 'CDI, fonctionnaires' }, { value: 'hourly', label: '⏱ Horaire', desc: 'Vacataires' }, { value: 'daily', label: '📅 Journalier', desc: 'Saisonniers' }].map(mode => (
-                      <button key={mode.value} onClick={() => setProfileForm(p => ({ ...p, salary_type: mode.value }))} style={{ ...S.modeBtn, ...(profileForm.salary_type === mode.value ? S.modeBtnActive : {}) }}>
+                  <div className="pw-salary-modes" role="group" aria-label="Mode de rémunération">
+                    {[{ value: 'monthly', label: 'Mensuel', desc: 'Une base par mois' }, { value: 'hourly', label: 'Horaire', desc: 'Un montant par heure' }, { value: 'daily', label: 'Journalier', desc: 'Un montant par jour' }].map(mode => (
+                      <button className="pw-salary-mode" aria-pressed={profileForm.salary_type === mode.value} key={mode.value} onClick={() => setProfileForm(p => ({ ...p, salary_type: mode.value }))} style={{ ...S.modeBtn, ...(profileForm.salary_type === mode.value ? S.modeBtnActive : {}) }}>
                         <div style={{ color: profileForm.salary_type === mode.value ? P.ambre : P.texteDoux, fontSize: 13, fontWeight: 700 }}>{mode.label}</div>
                         <div style={{ color: P.texteFaint, fontSize: 10, marginTop: 2 }}>{mode.desc}</div>
                       </button>
@@ -1536,8 +1526,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                   </>)}
                   {profileForm.salary_type === 'hourly' && (<>
                     <div style={S.formGroup}><FormLabel required>Taux horaire ({settings.currency})</FormLabel><input type="number" value={profileForm.hourly_rate} onChange={e => setProfileForm(p => ({ ...p, hourly_rate: e.target.value }))} style={S.input} /></div>
-                    <div style={S.formGroup}><FormLabel>Heures contractuelles/mois</FormLabel><input type="number" value={profileForm.contract_hours_per_month} onChange={e => setProfileForm(p => ({ ...p, contract_hours_per_month: e.target.value }))} style={S.input} /></div>
-                    <div style={S.formGroup}><FormLabel>Minimum garanti ({settings.currency})</FormLabel><input type="number" value={profileForm.min_guaranteed_hours} onChange={e => setProfileForm(p => ({ ...p, min_guaranteed_hours: e.target.value }))} style={S.input} /></div>
+                    <div style={S.formGroup}><FormLabel help="Volume mensuel prévu au contrat, distinct du taux payé pour une heure." example="160 heures prévues dans le mois.">Heures contractuelles/mois</FormLabel><input type="number" value={profileForm.contract_hours_per_month} onChange={e => setProfileForm(p => ({ ...p, contract_hours_per_month: e.target.value }))} style={S.input} /></div>
+                    <div style={S.formGroup}><FormLabel help="Nombre minimum d’heures rémunérées. Le moteur multiplie ces heures par le taux horaire." example="20 heures garanties × 1 000 = 20 000 de rémunération minimale.">Minimum garanti (heures)</FormLabel><input type="number" value={profileForm.min_guaranteed_hours} onChange={e => setProfileForm(p => ({ ...p, min_guaranteed_hours: e.target.value }))} style={S.input} /></div>
                   </>)}
                   {profileForm.salary_type === 'daily' && (<>
                     <div style={S.formGroup}><FormLabel required>Taux journalier ({settings.currency})</FormLabel><input type="number" value={profileForm.daily_rate} onChange={e => setProfileForm(p => ({ ...p, daily_rate: e.target.value }))} style={S.input} /></div>
@@ -1545,11 +1535,11 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                   </>)}
                 </div>
 
-                <label style={S.toggleItem}><input type="checkbox" checked={profileForm.overtime_eligible} onChange={e => setProfileForm(p => ({ ...p, overtime_eligible: e.target.checked }))} style={S.checkbox} /><div><span style={S.toggleLabel}>Éligible aux heures supplémentaires</span><span style={S.toggleDesc}>Les heures sup seront valorisées</span></div></label>
+                <label style={S.toggleItem}><input type="checkbox" checked={profileForm.overtime_eligible} onChange={e => setProfileForm(p => ({ ...p, overtime_eligible: e.target.checked }))} style={S.checkbox} /><div><span style={S.toggleLabel}>Éligible aux heures supplémentaires</span><span style={S.toggleDesc}>Autorise leur prise en compte si leur paiement est activé dans les paramètres.</span></div></label>
 
                 {/* Mode paiement */}
                 <div style={{ ...S.toggleSection, marginTop: 16 }}>
-                  <p style={S.toggleSectionTitle}>Mode de paiement</p>
+                  <h4 className="pw-settings-heading"><span>03</span>Comment régler ce salarié ?</h4><p className="pw-settings-help">Ces coordonnées préparent le paiement. Enregistrer ou envoyer une fiche ne fait pas de virement ni de transfert Mobile Money.</p>
                   <div className="pay-form-grid" style={S.formGrid}>
                     <div style={S.formGroup}><FormLabel>Mode principal</FormLabel>
                       <select value={profileForm.payment_method} onChange={e => setProfileForm(p => ({ ...p, payment_method: e.target.value }))} style={S.select}>
@@ -1561,7 +1551,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                         <option value="monthly">Mensuelle</option><option value="biweekly">Bimensuelle</option><option value="weekly">Hebdomadaire</option>
                       </select>
                     </div>
-                    <div style={S.formGroup}><FormLabel>Jour de paiement</FormLabel><input type="number" min="1" max="31" value={profileForm.preferred_payment_day} onChange={e => setProfileForm(p => ({ ...p, preferred_payment_day: e.target.value }))} style={S.input} /></div>
+                    <div style={S.formGroup}><FormLabel help="Jour souhaité du mois, de 1 à 31. Enregistrer le profil ne déclenche aucun transfert d’argent.">Jour de paiement</FormLabel><input type="number" min="1" max="31" value={profileForm.preferred_payment_day} onChange={e => setProfileForm(p => ({ ...p, preferred_payment_day: e.target.value }))} style={S.input} /></div>
                   </div>
 
                   {profileForm.payment_method === 'mobile_money' && (
@@ -1584,7 +1574,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                   )}
                 </div>
 
-                <div style={S.actionsRow}><button onClick={handleSaveProfile} style={S.primaryBtn} disabled={saving}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Enregistrer ce profil</span></button></div>
+                <div style={S.actionsRow}><button onClick={handleSaveProfile} className="pw-settings-button pw-settings-button-primary" disabled={saving}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Enregistrer ce profil</span></button></div>
 
                 {/* Primes récurrentes */}
                 <div style={{ marginTop: 24 }}>
@@ -1598,7 +1588,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                         <div key={a.id || i} style={S.allowanceItem}>
                           <div style={{ flex: 1 }}><div style={{ color: P.texte, fontSize: 13, fontWeight: 600 }}>{a.allowance_types?.name || a.custom_name || 'Prime'}</div><div style={{ color: P.texteDoux2, fontSize: 11, marginTop: 2 }}>{a.calculation_type === 'fixed' ? fmt(a.amount) : `${a.percentage}% du salaire de base`}{a.end_date && ` • jusqu'au ${PayrollService.formatDate(a.end_date)}`}</div></div>
                           <CategoryBadge category={a.allowance_types?.category || 'other'} />
-                          <button onClick={() => { setEditingAllowance(a); setShowAllowanceModal(true) }} style={S.iconBtn}><Edit size={14} /></button>
+                          <button onClick={() => { setEditingAllowance(a); setShowAllowanceModal(true) }} aria-label="Modifier cette règle récurrente" style={S.iconBtn}><Edit size={14} /></button>
                           <button onClick={() => handleDeleteAllowance(a.id)} style={{ ...S.iconBtn, color: P.rouge }}><Trash2 size={14} /></button>
                         </div>
                       ))}
@@ -1622,7 +1612,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                           <div style={{ flex: 1 }}><div style={{ color: P.texte, fontSize: 13, fontWeight: 600 }}>{d.name}</div><div style={{ color: P.texteDoux2, fontSize: 11, marginTop: 2 }}>{fmt(d.monthly_amount)}/mois {d.remaining_balance !== null && `• Solde: ${fmt(d.remaining_balance)}`}{d.status === 'paused' && ' • ⏸ Pause'}{d.status === 'completed' && ' • ✓ Soldé'}</div></div>
                           <CategoryBadge category={d.deduction_types?.category || 'other'} />
                           <span style={{ ...S.statusBadge, background: d.status === 'active' ? P.vert1 : d.status === 'paused' ? P.ambre4 : P.indigo3, color: d.status === 'active' ? P.vert : d.status === 'paused' ? P.ambre : P.indigoClair }}>{d.status === 'active' ? 'Actif' : d.status === 'paused' ? 'Pause' : 'Soldé'}</span>
-                          <button onClick={() => { setEditingDeduction(d); setShowDeductionModal(true) }} style={S.iconBtn}><Edit size={14} /></button>
+                          <button onClick={() => { setEditingDeduction(d); setShowDeductionModal(true) }} aria-label="Modifier cette règle récurrente" style={S.iconBtn}><Edit size={14} /></button>
                         </div>
                       ))}
                     </div>
@@ -1631,21 +1621,21 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               </div>
 
               {/* Liste profils */}
-              <div style={S.card} className="pay-card">
+              <div style={S.card} className="pay-card pw-profile-panel">
                 <div style={S.cardHeader}>
-                  <div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.violet5 }}><Briefcase size={18} color={P.violet} /></div><div><h3 style={S.cardTitle}>Profils enregistrés</h3><p style={S.cardSub}>{profiles.length} / {employees.length} configurés</p></div></div>
+                  <div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.violet5 }}><Briefcase size={18} color={P.violet} /></div><div><h3 style={S.cardTitle}>Profils enregistrés</h3><p style={S.cardSub}>{activeProfiles.length} / {employees.length} salariés actifs avec un profil enregistré</p></div></div>
                 </div>
-                <div style={S.profileProgress}><div style={S.profileProgressTrack}><div style={{ ...S.profileProgressFill, width: `${employees.length > 0 ? (profiles.length / employees.length) * 100 : 0}%` }} /></div><span style={S.profileProgressText}>{employees.length > 0 ? `${Math.round((profiles.length / employees.length) * 100)}% complété` : 'Aucun employé'}</span></div>
+                <div style={S.profileProgress}><div style={S.profileProgressTrack}><div style={{ ...S.profileProgressFill, width: `${employees.length > 0 ? (activeProfiles.length / employees.length) * 100 : 0}%` }} /></div><span style={S.profileProgressText}>{employees.length > 0 ? `${Math.round((activeProfiles.length / employees.length) * 100)}% enregistrés` : 'Aucun employé'}</span></div>
                 <div style={S.listWrap}>
-                  {profiles.length === 0 ? <div style={S.emptyMini}><AlertTriangle size={18} color={P.texteFaint} /><span>Aucun profil enregistré</span></div> : profiles.map((profile, i) => (
-                    <div key={profile.id || i} style={{ ...S.listItem, ...(profile.employee_id === selectedEmployeeId ? { borderColor: P.indigo11, background: P.indigo7 } : {}) }} onClick={() => setSelectedEmployeeId(profile.employee_id)}>
+                  {activeProfiles.length === 0 ? <div style={S.emptyMini}><AlertTriangle size={18} color={P.texteFaint} /><span>Aucun profil enregistré</span></div> : activeProfiles.map((profile, i) => (
+                    <button type="button" className="pw-profile-pick" aria-pressed={profile.employee_id === selectedEmployeeId} key={profile.id || i} style={{ ...S.listItem, ...(profile.employee_id === selectedEmployeeId ? { borderColor: P.indigo11, background: P.indigo7 } : {}) }} onClick={() => setSelectedEmployeeId(profile.employee_id)}>
                       <AvatarSalarie employe={profile.employees} taille={34} />
                       <div style={{ flex: 1, minWidth: 0 }}><div style={S.listTitle}>{profile.employees?.first_name} {profile.employees?.last_name}</div><div style={S.listSub}>{profile.employees?.matricule} • {profile.salary_type === 'monthly' ? 'Mensuel' : profile.salary_type === 'hourly' ? 'Horaire' : 'Journalier'} • {profile.salary_type === 'monthly' ? fmt(profile.base_salary) : profile.salary_type === 'hourly' ? `${fmt(profile.hourly_rate)}/h` : `${fmt(profile.daily_rate)}/j`}</div></div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                         <CheckCircle size={16} color={P.vert} />
                         <span style={{ ...S.typeBadge, background: profile.salary_type === 'monthly' ? P.indigo3 : profile.salary_type === 'hourly' ? P.ambre4 : P.vert1, color: profile.salary_type === 'monthly' ? P.indigoClair : profile.salary_type === 'hourly' ? P.ambre : P.vert }}>{profile.salary_type === 'monthly' ? 'MENSUEL' : profile.salary_type === 'hourly' ? 'HORAIRE' : 'JOURNALIER'}</span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1654,31 +1644,32 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
           {/* ═══ ONGLET PRIMES & RETENUES ═══ */}
           {activeTab === 'allowances' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="pw-adjustments">
+              <div className="pw-adjustment-guide"><div><span className="pw-eyebrow">AJOUTER AU SALAIRE</span><h3>Une prime</h3><p>Une somme ajoutée pour cette période. Exemple : 25 000 de prime exceptionnelle. Si elle est imposable, elle peut aussi augmenter l’impôt : le net ne monte pas forcément du même montant.</p></div><div><span className="pw-eyebrow">DÉDUIRE DU MONTANT À VERSER</span><h3>Une retenue</h3><p>Une somme à retrancher pour cette période. Exemple : une avance de 10 000 déjà versée. Vérifiez qu’elle n’est pas déjà enregistrée ailleurs.</p></div></div>
               <div style={S.card} className="pay-card">
-                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.vert1 }}><Gift size={18} color={P.vert} /></div><div><h3 style={S.cardTitle}>Primes ponctuelles — {periodStart ? new Date(periodStart + 'T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : 'Période'}</h3><p style={S.cardSub}>13ème mois, performance, mariage...</p></div></div>
-                  <button onClick={() => { setSelectedBonusEmployeeId(employees[0]?.id || ''); setShowBonusModal(true) }} style={S.addBtn}><Plus size={16} /><span>Ajouter une prime</span></button></div>
+                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.vert1 }}><Gift size={18} color={P.vert} /></div><div><h3 style={S.cardTitle}>Primes ponctuelles — {periodStart ? new Date(periodStart + 'T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : 'Période'}</h3><p style={S.cardSub}>Uniquement pour la période sélectionnée ci-dessus.</p></div></div>
+                  <button onClick={() => { setSelectedBonusEmployeeId(employees[0]?.id || ''); setShowBonusModal(true) }} className="pw-settings-button pw-settings-button-primary"><Plus size={16} /><span>Ajouter une prime</span></button></div>
                 {periodBonuses.length === 0 ? <div style={S.emptyMini}><Gift size={18} color={P.texteFaint} /><span>Aucune prime ponctuelle</span></div> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {periodBonuses.map((bonus, i) => (<div key={bonus.id || i} style={S.bonusItem}><div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: P.texte, fontSize: 13, fontWeight: 700 }}>{bonus.name}</span><CategoryBadge category={bonus.allowance_types?.category || 'other'} />{bonus.is_taxable && <Badge color={P.ambre}>Imposable</Badge>}</div><div style={{ color: P.texteDoux2, fontSize: 11, marginTop: 3 }}>{bonus.employees?.first_name} {bonus.employees?.last_name} ({bonus.employees?.matricule}){bonus.reason && ` • ${bonus.reason}`}</div></div><span style={{ color: P.vert, fontSize: 15, fontWeight: 800 }}>{fmt(bonus.amount)}</span><button onClick={() => handleDeleteBonus(bonus.id)} style={{ ...S.iconBtn, color: P.rouge }}><Trash2 size={14} /></button></div>))}
-                    <div style={S.totalRow}><span style={{ color: P.texteDoux2 }}>Total</span><span style={{ color: P.vert, fontWeight: 800 }}>{fmt(periodBonuses.reduce((s, b) => s + (b.amount || 0), 0))}</span></div>
+                    {periodBonuses.map((bonus, i) => (<div key={bonus.id || i} style={S.bonusItem}><div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: P.texte, fontSize: 13, fontWeight: 700 }}>{bonus.name}</span><CategoryBadge category={bonus.allowance_types?.category || 'other'} />{bonus.is_taxable && <Badge color={P.ambre}>Imposable</Badge>}</div><div style={{ color: P.texteDoux2, fontSize: 11, marginTop: 3 }}>{bonus.employees?.first_name} {bonus.employees?.last_name} ({bonus.employees?.matricule}){bonus.reason && ` • ${bonus.reason}`}</div></div><span style={{ color: P.vert, fontSize: 15, fontWeight: 800 }}>{fmt(bonus.amount)}</span><button aria-label="Supprimer cette prime ponctuelle" onClick={() => handleDeleteBonus(bonus.id)} style={{ ...S.iconBtn, color: P.rouge }}><Trash2 size={14} /></button></div>))}
+                    <div style={S.totalRow}><span style={{ color: P.texteDoux2 }}>Total</span><span style={{ color: P.vert, fontWeight: 800 }}>{fmt(periodBonuses.reduce((s, b) => s + (Number(b.amount) || 0), 0))}</span></div>
                   </div>
                 )}
               </div>
 
               <div style={S.card} className="pay-card">
-                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.rouge7 }}><Minus size={18} color={P.rouge} /></div><div><h3 style={S.cardTitle}>Retenues ponctuelles — {periodStart ? new Date(periodStart + 'T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : 'Période'}</h3><p style={S.cardSub}>Avances, remboursements...</p></div></div>
-                  <button onClick={() => { setSelectedDeductionEmployeeId(employees[0]?.id || ''); setShowPeriodDeductionModal(true) }} style={{ ...S.addBtn, borderColor: P.rouge13, background: P.rouge7, color: P.rouge }}><Plus size={16} /><span>Ajouter une retenue</span></button></div>
+                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.rouge7 }}><Minus size={18} color={P.rouge} /></div><div><h3 style={S.cardTitle}>Retenues ponctuelles — {periodStart ? new Date(periodStart + 'T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : 'Période'}</h3><p style={S.cardSub}>Une déduction ponctuelle, à vérifier avant le calcul.</p></div></div>
+                  <button onClick={() => { setSelectedDeductionEmployeeId(employees[0]?.id || ''); setShowPeriodDeductionModal(true) }} className="pw-settings-button"><Plus size={16} /><span>Ajouter une retenue</span></button></div>
                 {periodDeductions.length === 0 ? <div style={S.emptyMini}><Minus size={18} color={P.texteFaint} /><span>Aucune retenue ponctuelle</span></div> : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {periodDeductions.map((ded, i) => (<div key={ded.id || i} style={{ ...S.bonusItem, borderColor: P.rouge9 }}><div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: P.texte, fontSize: 13, fontWeight: 700 }}>{ded.name}</span><CategoryBadge category={ded.deduction_types?.category || 'other'} /></div><div style={{ color: P.texteDoux2, fontSize: 11, marginTop: 3 }}>{ded.employees?.first_name} {ded.employees?.last_name}{ded.reason && ` • ${ded.reason}`}</div></div><span style={{ color: P.rouge, fontSize: 15, fontWeight: 800 }}>- {fmt(ded.amount)}</span><button onClick={() => handleDeletePeriodDeduction(ded.id)} style={{ ...S.iconBtn, color: P.rouge }}><Trash2 size={14} /></button></div>))}
-                    <div style={S.totalRow}><span style={{ color: P.texteDoux2 }}>Total</span><span style={{ color: P.rouge, fontWeight: 800 }}>- {fmt(periodDeductions.reduce((s, d) => s + (d.amount || 0), 0))}</span></div>
+                    {periodDeductions.map((ded, i) => (<div key={ded.id || i} style={{ ...S.bonusItem, borderColor: P.rouge9 }}><div style={{ flex: 1 }}><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ color: P.texte, fontSize: 13, fontWeight: 700 }}>{ded.name}</span><CategoryBadge category={ded.deduction_types?.category || 'other'} /></div><div style={{ color: P.texteDoux2, fontSize: 11, marginTop: 3 }}>{ded.employees?.first_name} {ded.employees?.last_name}{ded.reason && ` • ${ded.reason}`}</div></div><span style={{ color: P.rouge, fontSize: 15, fontWeight: 800 }}>- {fmt(ded.amount)}</span><button aria-label="Supprimer cette retenue ponctuelle" onClick={() => handleDeletePeriodDeduction(ded.id)} style={{ ...S.iconBtn, color: P.rouge }}><Trash2 size={14} /></button></div>))}
+                    <div style={S.totalRow}><span style={{ color: P.texteDoux2 }}>Total</span><span style={{ color: P.rouge, fontWeight: 800 }}>- {fmt(periodDeductions.reduce((s, d) => s + (Number(d.amount) || 0), 0))}</span></div>
                   </div>
                 )}
               </div>
 
               <div style={S.card} className="pay-card">
-                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.indigo3 }}><Layers size={18} color={P.indigo} /></div><div><h3 style={S.cardTitle}>Primes récurrentes par employé</h3><p style={S.cardSub}>Gérez depuis l'onglet Profils</p></div></div></div>
+                <div style={S.cardHeader}><div style={S.cardHeaderLeft}><div style={{ ...S.cardIcon, background: P.indigo3 }}><Layers size={18} color={P.indigo} /></div><div><h3 style={S.cardTitle}>Primes récurrentes par employé</h3><p style={S.cardSub}>Les règles répétées chaque mois se gèrent dans le profil du salarié, avec leurs dates de validité.</p></div></div></div>
                 <SearchBar value={searchAllowance} onChange={setSearchAllowance} placeholder="Rechercher un employé..." />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
                   {(searchAllowance ? employees.filter(e => `${e.first_name} ${e.last_name} ${e.matricule}`.toLowerCase().includes(searchAllowance.toLowerCase())) : employees.slice(0, 10)).map(emp => (
@@ -1725,11 +1716,12 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
           {/* ═══ ONGLET PREVIEW ═══ */}
           {activeTab === 'preview' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="pw-calculated-slips">
+              <div className="pw-slip-guide"><h3>Calculer n’est pas encore publier</h3><ol><li><strong>Contrôler</strong><span>Relisez chaque montant et les éléments utilisés.</span></li><li><strong>Télécharger</strong><span>Le PDF ou Excel reste un document de contrôle.</span></li><li><strong>Publier</strong><span>Envoyer rend la fiche consultable par le salarié, sans transférer d’argent.</span></li></ol><details><summary>Brut, net et coût employeur : quelle différence ?</summary><p>Le brut est la rémunération avant les déductions salariales. Le net est le montant à verser après les retenues, cotisations salariales et impôt calculés. Le coût employeur ajoute au brut les charges patronales calculées. Les totaux ci-dessous additionnent uniquement les fiches de ce calcul, pas l’historique.</p></details></div>
               <div style={S.summaryTopGrid}>
-                <div style={S.summaryTopCard}><DollarSign size={18} color={P.vert} /><div><div style={S.summaryTopValue}>{fmt(summary.totalGross)}</div><div style={S.summaryTopLabel}>Total brut</div></div></div>
-                <div style={S.summaryTopCard}><Wallet size={18} color={P.ambre} /><div><div style={S.summaryTopValue}>{fmt(summary.totalNet)}</div><div style={S.summaryTopLabel}>Total net</div></div></div>
-                <div style={S.summaryTopCard}><TrendingUp size={18} color={P.rouge} /><div><div style={S.summaryTopValue}>{fmt(summary.totalCost)}</div><div style={S.summaryTopLabel}>Coût employeur</div></div></div>
+                <div style={S.summaryTopCard}><DollarSign size={18} color={P.vert} /><div><div style={S.summaryTopValue}>{previewRows.length ? fmt(summary.totalGross) : '—'}</div><div style={S.summaryTopLabel}>Total brut</div></div></div>
+                <div style={S.summaryTopCard}><Wallet size={18} color={P.ambre} /><div><div style={S.summaryTopValue}>{previewRows.length ? fmt(summary.totalNet) : '—'}</div><div style={S.summaryTopLabel}>Total net</div></div></div>
+                <div style={S.summaryTopCard}><TrendingUp size={18} color={P.rouge} /><div><div style={S.summaryTopValue}>{previewRows.length ? fmt(summary.totalCost) : '—'}</div><div style={S.summaryTopLabel}>Coût employeur</div></div></div>
                 <div style={S.summaryTopCard}><Users size={18} color={P.indigo} /><div><div style={S.summaryTopValue}>{summary.totalEmployees}</div><div style={S.summaryTopLabel}>Fiches calculées</div></div></div>
                 <div style={S.summaryTopCard}><Send size={18} color={summary.alreadySent > 0 ? P.vert : P.texteFaint} /><div><div style={S.summaryTopValue}>{summary.alreadySent} / {summary.totalEmployees}</div><div style={S.summaryTopLabel}>Envoyées</div></div></div>
               </div>
@@ -1737,8 +1729,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               {previewRows.length > 0 && (
                 <div style={S.sendAllBar}>
                   <div style={{ flex: 1 }}><p style={{ color: P.texte, fontSize: 14, fontWeight: 700, margin: '0 0 4px 0' }}>Publier les fiches</p><p style={{ color: P.texteDoux2, fontSize: 12, margin: 0 }}>Chaque employé pourra consulter sa fiche.{hasSignatures && ' Les signatures seront incluses.'}{hasStamp && ' Le cachet sera inclus.'}</p></div>
-                  <button onClick={handleExportExcel} style={S.exportBtn}><Table size={16} /><span>Export Excel</span></button>
-                  <button onClick={handleSendAllToEmployees} style={S.sendAllBtn} disabled={sendingSlips}>
+                  <button onClick={handleExportExcel} className="pw-settings-button"><Table size={16} /><span>Export Excel</span></button>
+                  <button onClick={handleSendAllToEmployees} className="pw-settings-button pw-settings-button-primary" disabled={sendingSlips}>
                     {sendingSlips ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Send size={16} />}
                     <span>{sendingSlips ? 'Envoi...' : `Envoyer ${previewRows.length} fiche(s)`}</span>
                   </button>
@@ -1750,7 +1742,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 <SearchBar value={searchPreview} onChange={setSearchPreview} placeholder="Filtrer les fiches..." />
 
                 {filteredPreviewRows.length === 0 ? (
-                  <div style={{ ...S.emptyMini, marginTop: 12 }}><Calendar size={18} color={P.texteFaint} /><span>{previewRows.length === 0 ? 'Cliquez sur "Générer les fiches"' : 'Aucun résultat'}</span></div>
+                  <div style={{ ...S.emptyMini, marginTop: 12 }}><Calendar size={18} color={P.texteFaint} /><span>{previewRows.length === 0 ? 'Aucun calcul pour cette période. Utilisez « Vérifier et calculer les bulletins ».' : 'Aucun résultat'}</span></div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                     {filteredPreviewRows.map((row, i) => {
@@ -1760,7 +1752,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                       const empLeave = leaveBalances[row.employee?.id]
 
                       return (
-                        <div key={row.employee?.id || i} style={S.previewCard}>
+                        <div className="pw-calculated-card" key={row.employee?.id || i} style={S.previewCard}>
                           <div style={S.previewHeader}>
                             <div>
                               <div style={S.previewName}>
@@ -1777,7 +1769,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                               </div>
                             </div>
                             <div style={S.previewActions}>
-                              <div style={S.previewNet}>{fmt(row.netSalary)}</div>
+                              <div style={S.previewNet}><small className="pw-net-caption">Net à verser</small>{fmt(row.netSalary)}</div>
                               <button onClick={() => handleDownloadSlip(row)} style={S.downloadBtn}><Download size={14} /><span>PDF</span></button>
                               <button onClick={() => handleSendToEmployee(row)} style={{ ...S.sendBtn, ...(isSent ? { opacity: 0.6 } : {}) }}><Send size={14} /><span>{isSent ? 'Renvoyer' : 'Envoyer'}</span></button>
                               {isSent && <button onClick={() => handleDeleteSentSlip(row)} style={S.deleteSentBtn} title="Retirer"><Trash2 size={14} /><span>Retirer</span></button>}
@@ -1978,11 +1970,6 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
     </>
   )
 }
-
-
-
-
-
 
 // ═══════════════════════════════════════════════════════════
 // STYLES COMPLETS
