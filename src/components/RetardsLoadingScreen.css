@@ -1,10 +1,12 @@
-.rt-run-loader{max-width:440px;margin:24px auto;background:var(--rt-paper,var(--rt-surface));border:1px solid var(--rt-border);border-radius:16px;overflow:hidden;text-align:center;box-shadow:var(--rt-shadow)}
-.rt-arrival-art{position:relative;isolation:isolate;width:100%;aspect-ratio:1;background:#fcfbf8;overflow:hidden}
+.rt-run-loader{width:100%;max-width:600px;box-sizing:border-box;margin:16px auto;background:var(--rt-paper,var(--rt-surface));border:1px solid var(--rt-border);border-radius:16px;overflow:hidden;text-align:center;box-shadow:var(--rt-shadow)}
+.rt-arrival-viewport{width:100%;aspect-ratio:2/1;background:#fcfbf8;overflow:hidden}
+/* Keep the original square coordinate system: every texture and rotation stays aligned. */
+.rt-arrival-art{position:relative;isolation:isolate;width:50%;margin-inline:auto;aspect-ratio:1;background:#fcfbf8;overflow:hidden}
 .rt-arrival-art img{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}
 .rt-arrival-motion,.rt-arrival-travel,.rt-arrival-bounce{position:absolute;inset:0}
 .rt-arrival-motion{visibility:hidden}
 .rt-arrival-approved{z-index:2}
-.rt-arrival-caption{padding:18px 16px 22px}
+.rt-arrival-caption{padding:14px 16px 16px}
 .rt-run-loader h2{font-size:16px;margin:0 0 8px;color:var(--rt-text)}
 .rt-run-loader p{font-size:12px;line-height:1.6;color:var(--rt-muted);margin:0}
 /* The backdrop and terminal remain stationary. Only original image layers move.
@@ -25,4 +27,16 @@
 @media(prefers-reduced-motion:reduce){.rt-arrival-art *{animation:none!important;transition:none!important}.rt-arrival-art .rt-arrival-motion{display:none}.rt-arrival-art .rt-arrival-approved{opacity:1}}
 @media(max-width:400px){.rt-run-loader{margin:16px auto;border-radius:12px}.rt-arrival-caption{padding:14px 12px 18px}.rt-run-loader h2{font-size:15px}}
 
-.rt-run-loader .rt-arrival-skip{margin-top:12px;font-size:12px;border-radius:20px;padding:8px 16px;min-height:38px}
+.rt-run-loader .rt-arrival-skip{margin-top:12px;font-size:12px;border-radius:20px;padding:8px 16px;min-height:44px}
+
+/* A slightly taller landscape scene on phones keeps the person legible, never cropped. */
+@media(max-width:480px){
+  .rt-arrival-viewport{aspect-ratio:16/10}
+  .rt-arrival-art{width:62.5%}
+  .rt-arrival-caption{padding:12px}
+  .rt-run-loader .rt-arrival-skip{max-width:100%;white-space:normal}
+}
+/* Extend only the existing bottom ornament across the landscape paper. The
+   cached approved image supplies the pattern; no character is repeated. */
+.rt-arrival-viewport{position:relative}
+.rt-arrival-viewport::after{content:"";position:absolute;inset:auto 0 0;height:3.3%;background-image:url('/images/retards-arrival-approved.webp');background-position:center bottom;background-size:auto 3030.303%;background-repeat:repeat-x;pointer-events:none}

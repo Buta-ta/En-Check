@@ -48,7 +48,9 @@
 .pointages-loading-screen {
   position: relative;
   display: flex;
-  min-height: 100vh;
+  min-height: 0;
+  box-sizing: border-box;
+  width: 100%;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -72,7 +74,7 @@
   position: relative;
   z-index: 1;
   display: flex;
-  width: min(100%, 780px);
+  width: min(100%, 680px);
   flex-direction: column;
   align-items: center;
   text-align: center;
@@ -4580,3 +4582,26 @@
 }
 
 
+
+/* Compact landscape loading. On phones the two methods share one stage rather
+   than stacking two large pictures. Existing step buttons select either scene. */
+.pointages-loading-screen .pointages-loading-stage{box-sizing:border-box}
+.pointages-loading-screen .pointages-loading-scene{aspect-ratio:16/9;display:flex;flex-direction:column}
+.pointages-loading-screen .pointages-loading-scene img{min-height:0;flex:1;object-fit:contain}
+.pointages-loading-screen .pointages-loading-scene-caption{position:static;flex-shrink:0;border-radius:0;padding:6px 8px;font-size:10px;text-align:left}
+.pointages-loading-screen .pointages-loading-title{font-size:clamp(17px,2.5vw,23px);margin-bottom:12px}
+.pointages-loading-screen .pointages-loading-step,
+.pointages-loading-screen .pointages-loading-skip{min-height:44px;max-width:100%;white-space:normal}
+@media(max-width:640px){
+  .pointages-loading-screen{padding:16px 12px}
+  .pointages-loading-screen .pointages-loading-stage{grid-template-columns:minmax(0,1fr);padding:8px;gap:0}
+  .pointages-loading-screen .pointages-loading-scene{grid-area:1/1;aspect-ratio:16/10;min-width:0;transform:none}
+  .pointages-loading-screen .pointages-loading-scene:not(.is-active){visibility:hidden;pointer-events:none}
+  .pointages-loading-screen .pointages-loading-scene.is-active{z-index:1}
+  .pointages-loading-screen .pointages-loading-mark{width:42px;height:42px;flex-basis:42px}
+  .pointages-loading-screen .pointages-loading-brand-copy strong{font-size:20px}
+  .pointages-loading-screen .pointages-corner-svg{width:56px;height:56px}
+}
+@media(prefers-reduced-motion:reduce){
+  .pointages-loading-screen .pointages-loading-scene{transition:none}
+}

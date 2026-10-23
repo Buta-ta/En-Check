@@ -55,44 +55,46 @@ export default function RetardsLoadingScreen({
       aria-live="polite"
     >
       {!stillFailed && (
-        <div
-          className={`rt-arrival-art ${ready ? 'is-ready' : ''}`}
-          aria-hidden="true"
-          data-artwork="approved-illustration"
-        >
-          {/* Exact approved illustration is the initial, failure and reduced-motion view.
+        <div className="rt-arrival-viewport">
+          <div
+            className={`rt-arrival-art ${ready ? 'is-ready' : ''}`}
+            aria-hidden="true"
+            data-artwork="approved-illustration"
+          >
+            {/* Exact approved illustration is the initial, failure and reduced-motion view.
           The animated textures below are cut from this same image, not redrawn. */}
-          <div className="rt-arrival-motion">
-            <img
-              {...layerProps('background')}
-              className="rt-arrival-background"
-            />
-            <div className="rt-arrival-travel">
-              <div className="rt-arrival-bounce">
-                <img
-                  {...layerProps('back-leg')}
-                  className="rt-arrival-leg rt-arrival-leg-back"
-                />
-                <img
-                  {...layerProps('front-leg')}
-                  className="rt-arrival-leg rt-arrival-leg-front"
-                />
-                <img {...layerProps('upper')} className="rt-arrival-upper" />
+            <div className="rt-arrival-motion">
+              <img
+                {...layerProps('background')}
+                className="rt-arrival-background"
+              />
+              <div className="rt-arrival-travel">
+                <div className="rt-arrival-bounce">
+                  <img
+                    {...layerProps('back-leg')}
+                    className="rt-arrival-leg rt-arrival-leg-back"
+                  />
+                  <img
+                    {...layerProps('front-leg')}
+                    className="rt-arrival-leg rt-arrival-leg-front"
+                  />
+                  <img {...layerProps('upper')} className="rt-arrival-upper" />
+                </div>
               </div>
             </div>
+            <img
+              src={`${artwork}approved.webp`}
+              fetchPriority="high"
+              alt=""
+              width="1536"
+              height="1536"
+              decoding="async"
+              draggable={false}
+              className="rt-arrival-approved"
+              onLoad={() => markLoaded('approved')}
+              onError={() => setStillFailed(true)}
+            />
           </div>
-          <img
-            src={`${artwork}approved.webp`}
-            fetchPriority="high"
-            alt=""
-            width="1536"
-            height="1536"
-            decoding="async"
-            draggable={false}
-            className="rt-arrival-approved"
-            onLoad={() => markLoaded('approved')}
-            onError={() => setStillFailed(true)}
-          />
         </div>
       )}
       <div className="rt-arrival-caption">
