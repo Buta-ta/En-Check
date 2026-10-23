@@ -15,8 +15,9 @@ import { supabase } from '../lib/supabase'
 import FeatureService, { FEATURES } from '../services/featureService'
 import PayrollService from '../services/payrollService'
 import CurrencyService from '../services/currencyService'
-import { publishPayrollBatch, PayrollDeliveryBlocked } from '../services/payrollDelivery'
+import { publishPayrollBatch, PayrollDeliveryBlocked, PayrollTaxReviewRequired } from '../services/payrollDelivery'
 import PaieDeliveryControl from '../components/PaieDeliveryControl'
+import PaieTaxOverrideDialog from '../components/PaieTaxOverrideDialog'
 import * as XLSX from 'xlsx'
 import LeaveBalanceService from '../services/leaveBalanceService'
 import {
@@ -117,6 +118,7 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
   const deliveryLock = useRef(false)
   const [autoSendAfterCalculation, setAutoSendAfterCalculation] = useState(false)
   const [deliveryNotice, setDeliveryNotice] = useState(null)
+  const [taxConfirmation, setTaxConfirmation] = useState(null)
   const [previewRows, setPreviewRows] = useState([])
   const [loadingPreview, setLoadingPreview] = useState(false)
 
@@ -741,10 +743,11 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
     deliveryLock.current = true
     setSendingSlips(true)
     setDeliveryNotice(null)
+    const request = options.request ?? generationRequest.current
     try {
       const ids = await publishPayrollBatch(rows, row => buildPayslipData(row, options), {
-        automatic: options.automatic,
-        isCurrent: () => options.request == null || options.request === generationRequest.current,
+        automatic: options.automatic, taxOverride: options.taxOverride,
+        isCurrent: () => request === generationRequest.current,
       })
       setSentSlips(prev => new Set([...prev, ...ids]))
       const text = `${ids.length} fiche(s) ${options.automatic ? 'envoyée(s) automatiquement' : 'envoyée(s)'} dans les espaces salariés.`
@@ -754,13 +757,14 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
       try {
         await PayrollService.logAuditAction({ enterpriseId, action: 'payslip_sent', entityType: 'payslip',
           employeeId: rows.length === 1 ? rows[0].employee.id : undefined, periodStart, periodEnd,
-          metadata: { employee_ids: ids, automatic: !!options.automatic, ...(rows.length === 1 ? { net_salary: rows[0].netSalary, gross_salary: rows[0].grossSalary } : {}) }, performedBy: admin?.id })
+          metadata: { employee_ids: ids, automatic: !!options.automatic, tax_override: !!options.taxOverride, ...(rows.length === 1 ? { net_salary: rows[0].netSalary, gross_salary: rows[0].grossSalary } : {}) }, performedBy: admin?.id })
       } catch (error) { console.error('Audit de remise indisponible:', error) }
       return true
     } catch (error) {
       const text = error instanceof PayrollDeliveryBlocked ? error.message : 'Envoi non confirmé. Vérifiez la connexion et les droits, puis consultez l’historique avant de réessayer. Les fiches calculées restent disponibles.'
-      setDeliveryNotice({ error: true, text })
-      toast.error(text, { duration: 8000 })
+      setDeliveryNotice({ error: true, text, taxReview: error instanceof PayrollTaxReviewRequired })
+      if (error instanceof PayrollTaxReviewRequired && !options.automatic && !options.taxOverride) setTaxConfirmation({ rows, options: { ...options, request } })
+      if (!(error instanceof PayrollTaxReviewRequired)) toast.error(text, { duration: 8000 })
       return false
     } finally { deliveryLock.current = false; setSendingSlips(false) }
   }
@@ -963,8 +967,9 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 
   useEffect(() => { setAutoSendAfterCalculation(false); setDeliveryNotice(null) }, [enterpriseId, periodStart, periodEnd])
 
+  useEffect(() => { if (activeTab !== 'preview') setTaxConfirmation(null) }, [activeTab])
   // Calculs invalidés dès qu'une entrée change : jamais de graphique d'une autre période.
-  useEffect(() => { generationRequest.current += 1; setPreviewRows([]) }, [periodStart, periodEnd, profiles, settings, periodBonuses, periodDeductions])
+  useEffect(() => { generationRequest.current += 1; setPreviewRows([]); setTaxConfirmation(null) }, [enterpriseId, periodStart, periodEnd, profiles, settings, periodBonuses, periodDeductions])
   useEffect(() => {
     const prevent = event => { event.preventDefault(); event.returnValue = '' }
     window.addEventListener('beforeunload', prevent)
@@ -1095,7 +1100,10 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           <PaieSectionIntro section={activeTab}/>
           {['preparation', 'preview'].includes(activeTab) && <PaieDeliveryControl
             enabled={autoSendAfterCalculation} onChange={setAutoSendAfterCalculation}
-            busy={loadingPreview || sendingSlips} notice={deliveryNotice}/>}
+            busy={loadingPreview || sendingSlips} notice={deliveryNotice} onOverride={activeTab === 'preview' ? handleSendAllToEmployees : undefined}/>
+          }
+          {taxConfirmation && activeTab === 'preview' && <PaieTaxOverrideDialog rows={taxConfirmation.rows} periodStart={periodStart} periodEnd={periodEnd}
+            onCancel={() => setTaxConfirmation(null)} onConfirm={() => { const pending = taxConfirmation; setTaxConfirmation(null); return deliverRows(pending.rows, { ...pending.options, taxOverride: { acknowledged: true, confirmedBy: admin?.id } }) }}/>}
           {integre && activeTab === 'preparation' && <PaiePayrollChart key={`${enterpriseId}:${settings.currency}:${periodEnd}`} enterpriseId={enterpriseId} currency={settings.currency} end={periodEnd} revision={sentSlips.size}/>}
           {integre && activeTab === 'preparation' && <PaiePreparation
             employees={employees} profiles={profiles} previewRows={previewRows}
@@ -1724,7 +1732,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           {/* ═══ ONGLET PREVIEW ═══ */}
           {activeTab === 'preview' && (
             <div className="pw-calculated-slips">
-              <div className="pw-slip-guide"><h3>{autoSendAfterCalculation ? 'Ce calcul déclenchera l’envoi des fiches vérifiées' : 'Calculer n’est pas encore publier'}</h3><ol><li><strong>Contrôler</strong><span>{autoSendAfterCalculation ? 'Vérifiez les profils, variables et règles avant de lancer le calcul.' : 'Relisez chaque montant et les éléments utilisés.'}</span></li><li><strong>Télécharger</strong><span>Le PDF ou Excel reste un document de contrôle.</span></li><li><strong>{autoSendAfterCalculation ? 'Envoi automatique' : 'Publier'}</strong><span>{autoSendAfterCalculation ? 'Après le calcul et les contrôles, toutes les fiches du lot deviennent consultables, sans paiement.' : 'Envoyer rend la fiche consultable par le salarié, sans transférer d’argent.'}</span></li></ol><details><summary>Brut, net et coût employeur : quelle différence ?</summary><p>Le brut est la rémunération avant les déductions salariales. Le net est le montant à verser après les retenues, cotisations salariales et impôt calculés. Le coût employeur ajoute au brut les charges patronales calculées. Les totaux ci-dessous additionnent uniquement les fiches de ce calcul, pas l’historique.</p></details></div>
+              <details className="pw-slip-guide"><summary>Comprendre les fiches calculées et leur envoi</summary><h3>{autoSendAfterCalculation ? 'Ce calcul déclenchera l’envoi des fiches vérifiées' : 'Calculer n’est pas encore publier'}</h3><ol><li><strong>Contrôler</strong><span>{autoSendAfterCalculation ? 'Vérifiez les profils, variables et règles avant de lancer le calcul.' : 'Relisez chaque montant et les éléments utilisés.'}</span></li><li><strong>Télécharger</strong><span>Le PDF ou Excel reste un document de contrôle.</span></li><li><strong>{autoSendAfterCalculation ? 'Envoi automatique' : 'Publier'}</strong><span>{autoSendAfterCalculation ? 'Après le calcul et les contrôles, toutes les fiches du lot deviennent consultables, sans paiement.' : 'Envoyer rend la fiche consultable par le salarié, sans transférer d’argent.'}</span></li></ol><details><summary>Brut, net et coût employeur : quelle différence ?</summary><p>Le brut est la rémunération avant les déductions salariales. Le net est le montant à verser après les retenues, cotisations salariales et impôt calculés. Le coût employeur ajoute au brut les charges patronales calculées. Les totaux ci-dessous additionnent uniquement les fiches de ce calcul, pas l’historique.</p></details></details>
               <div style={S.summaryTopGrid}>
                 <div style={S.summaryTopCard}><DollarSign size={18} color={P.vert} /><div><div style={S.summaryTopValue}>{previewRows.length ? fmt(summary.totalGross) : '—'}</div><div style={S.summaryTopLabel}>Total brut</div></div></div>
                 <div style={S.summaryTopCard}><Wallet size={18} color={P.ambre} /><div><div style={S.summaryTopValue}>{previewRows.length ? fmt(summary.totalNet) : '—'}</div><div style={S.summaryTopLabel}>Total net</div></div></div>
