@@ -6,7 +6,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import { KenteAmberWeaveSvg } from '../components/AfroCulturalSvg'
+import AbsencesCulturalBand from '../components/AbsencesCulturalBand'
 import AbsencesCalendrier from '../components/AbsencesCalendrier'
 import { STATUTS_ABSENCE, getMotifConfig } from '../constants/motifsAbsence'
 import { compterJoursOuvres } from '../services/absencesCalendrier'
@@ -106,18 +106,18 @@ function getFileName(url) {
 // la page, le calendrier mensuel et le tiroir partagent la même source.
 
 const LEAVE_TYPES = {
-  conge_paye: { label: 'Congé payé', emoji: '🏖️', color: '#10B981', motifId: 'conge' },
-  conge_maladie: { label: 'Congé maladie', emoji: '🏥', color: '#F59E0B', motifId: 'maladie' },
-  conge_familial: { label: 'Congé familial', emoji: '👨‍👩‍👧', color: '#8B5CF6', motifId: 'autre' },
+  conge_paye: { label: 'Congé payé', emoji: '🏖️', color: 'var(--abs-emerald)', motifId: 'conge' },
+  conge_maladie: { label: 'Congé maladie', emoji: '🏥', color: 'var(--abs-amber)', motifId: 'maladie' },
+  conge_familial: { label: 'Congé familial', emoji: '👨‍👩‍👧', color: 'var(--abs-violet)', motifId: 'autre' },
   conge_sans_solde: { label: 'Congé sans solde', emoji: '📋', color: '#6B7280', motifId: 'autre' },
-  permission: { label: 'Permission', emoji: '🎫', color: '#3B82F6', motifId: 'autre' },
+  permission: { label: 'Permission', emoji: '🎫', color: 'var(--abs-indigo)', motifId: 'autre' },
   autre: { label: 'Autre', emoji: '📝', color: 'var(--abs-text-faint)', motifId: 'autre' },
 }
 
 const TEMPORAL_CONFIG = {
-  en_cours: { label: 'En cours', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', icon: Timer },
-  a_venir: { label: 'À venir', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)', icon: Clock },
-  passee: { label: 'Terminée', color: '#6B7280', bg: 'rgba(107,114,128,0.12)', icon: CheckCircle2 }
+  en_cours: { label: 'En cours', color: 'var(--abs-amber)', bg: 'rgba(245,158,11,0.12)', icon: Timer },
+  a_venir: { label: 'À venir', color: 'var(--abs-indigo)', bg: 'rgba(59,130,246,0.12)', icon: Clock },
+  passee: { label: 'Terminée', color: 'var(--abs-text-soft)', bg: 'rgba(107,114,128,0.12)', icon: CheckCircle2 }
 }
 
 const STATUS_CONFIG = {
@@ -237,19 +237,19 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
   return (
     <div className="afro-card absence-card-hover" style={{ ...CS.card, animationDelay: `${index * 0.03}s`, ...(hasConflict && conflictPending ? { borderColor: 'rgba(249,115,22,.25)' } : {}) }}>
       <div style={CS.topBadges}>
-        <div style={{ ...CS.badge, background: tc.bg, color: tc.color, border: `1px solid ${tc.color}30` }}>
+        <div style={{ ...CS.badge, background: tc.bg, color: tc.color, border: `1px solid color-mix(in srgb, ${tc.color} 25%, transparent)` }}>
           <TemporalIcon size={11} /> {tc.label}
         </div>
-        <div style={{ ...CS.badge, background: sc.bg, color: sc.color, border: `1px solid ${sc.color}30` }}>
+        <div style={{ ...CS.badge, background: sc.bg, color: 'var(--abs-text)', border: `1px solid color-mix(in srgb, ${sc.color} 25%, transparent)` }}>
           <StatusIcon size={11} /> {sc.label}
         </div>
         {hasDocument && (
-          <div style={{ ...CS.badge, background: 'rgba(59,130,246,0.12)', color: '#3B82F6', border: '1px solid rgba(59,130,246,0.3)' }}>
+          <div style={{ ...CS.badge, background: 'rgba(59,130,246,0.12)', color: 'var(--abs-indigo)', border: '1px solid rgba(59,130,246,0.3)' }}>
             <Paperclip size={11} /> Doc
           </div>
         )}
         {feriesInPeriod > 0 && (
-          <div style={{ ...CS.badge, background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,0.25)' }}>
+          <div style={{ ...CS.badge, background: 'rgba(139,92,246,0.12)', color: 'var(--abs-violet)', border: '1px solid rgba(139,92,246,0.25)' }}>
             🎌 {feriesInPeriod} férié{feriesInPeriod > 1 ? 's' : ''}
           </div>
         )}
@@ -277,7 +277,7 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
             <span style={CS.empMatricule}>{absence.employees?.matricule}</span>
           </div>
         </div>
-        <div style={{ ...CS.reasonBadge, background: config.bg, color: config.color, border: `1px solid ${config.color}40` }}>
+        <div style={{ ...CS.reasonBadge, background: config.bg, color: 'var(--abs-text)', border: `1px solid color-mix(in srgb, ${config.color} 25%, transparent)` }}>
           <span style={CS.reasonEmoji}>{config.emoji}</span>
           <span style={CS.reasonLabel}>{config.label}</span>
         </div>
@@ -316,7 +316,7 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
             <span key={idx} style={{ color: 'var(--abs-violet)', fontSize: 11 }}>• {name}</span>
           ))}
           {holidayNamesInRange.length > 3 && (
-            <span style={{ color: '#8B5CF6', fontSize: 11 }}>+{holidayNamesInRange.length - 3} autres</span>
+            <span style={{ color: 'var(--abs-violet)', fontSize: 11 }}>+{holidayNamesInRange.length - 3} autres</span>
           )}
         </div>
       )}
@@ -348,7 +348,7 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
 
       {absence.notes && (
         <div style={CS.notesBox}>
-          <FileText size={13} color="#888" style={{ flexShrink: 0, marginTop: 1 }} />
+          <FileText size={13} color="var(--abs-text-soft)" style={{ flexShrink: 0, marginTop: 1 }} />
           <span style={CS.notesText}>{absence.notes}</span>
         </div>
       )}
@@ -1751,23 +1751,7 @@ export default function Absences() {
     }
   }
   
-  /* ═══════════════════════════════════════════════════════════
-     🎯 FRISE TEXTILE KENTE — HAUT DE PAGE (orange · jaune · noir)
-  ═══════════════════════════════════════════════════════════ */
 
-  .abs-kente-top-strip {
-    width: 100%;
-    height: 14px;
-    overflow: hidden;
-    line-height: 0;
-    border-bottom: 1px solid rgba(245, 158, 11, 0.18);
-  }
-
-  .abs-kente-top-strip svg {
-    width: 100%;
-    height: 14px;
-    display: block;
-  }
 
   /* ═══════════════════════════════════════════════════════════
      🎯 ACCESSIBILITÉ
@@ -1783,10 +1767,7 @@ export default function Absences() {
 `}</style>
 
       <div className="abs-page" data-theme={darkMode ? 'dark' : 'light'} style={S.container}>
-        {/* Frise supérieure textile Kente — palette ambre (orange · jaune · noir) */}
-        <div className="abs-kente-top-strip" aria-hidden="true">
-          <KenteAmberWeaveSvg />
-        </div>
+        <AbsencesCulturalBand/>
 
         {/* Barre supérieure En-Check — même charte que la page Planning */}
         <div className="abs-topbar">
@@ -1835,8 +1816,8 @@ export default function Absences() {
         </div>
 
         <main style={S.main}>
-                  <div style={TAB.container}>
-            <button className="tab-btn" onClick={() => setActiveTab('absences')} style={{ ...TAB.tab, ...(activeTab === 'absences' ? TAB.tabActive : {}) }}>
+                  <div className="abs-section-tabs" style={TAB.container}>
+            <button className="tab-btn" aria-pressed={activeTab === 'absences'} onClick={() => setActiveTab('absences')} style={{ ...TAB.tab, ...(activeTab === 'absences' ? TAB.tabActive : {}) }}>
               <CalendarOff size={16} />
               <span>Absences</span>
               <span style={{ ...TAB.badge, background: activeTab === 'absences' ? 'rgba(245,158,11,0.2)' : 'var(--abs-line-soft)', color: activeTab === 'absences' ? 'var(--abs-amber)' : 'var(--abs-text-faint)' }}>
@@ -1844,7 +1825,7 @@ export default function Absences() {
               </span>
             </button>
 
-            <button className="tab-btn" onClick={() => setActiveTab('demandes')} style={{ ...TAB.tab, ...(activeTab === 'demandes' ? TAB.tabActive : {}) }}>
+            <button className="tab-btn" aria-pressed={activeTab === 'demandes'} onClick={() => setActiveTab('demandes')} style={{ ...TAB.tab, ...(activeTab === 'demandes' ? TAB.tabActive : {}) }}>
               <Inbox size={16} />
               <span>Demandes employés</span>
               {pendingRequestsCount > 0 ? (
@@ -1858,7 +1839,7 @@ export default function Absences() {
               ) : null}
             </button>
 
-            <button className="tab-btn" onClick={() => setActiveTab('config_conges')} style={{ ...TAB.tab, ...(activeTab === 'config_conges' ? TAB.tabActive : {}) }}>
+            <button className="tab-btn" aria-pressed={activeTab === 'config_conges'} onClick={() => setActiveTab('config_conges')} style={{ ...TAB.tab, ...(activeTab === 'config_conges' ? TAB.tabActive : {}) }}>
               <CalendarDays size={16} />
               <span>Configuration congés</span>
             </button>
@@ -1890,28 +1871,28 @@ export default function Absences() {
               )}
 
               <div className="toolbar-top" style={S.toolbar}>
-                <div style={S.toolbarLeft}>
+                <div className="abs-toolbar-left" style={S.toolbarLeft}>
                   <div style={S.searchBox}>
-                    <Search size={16} color="#888" />
-                    <input type="text" placeholder="Rechercher un employé..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={S.searchInput} />
+                    <Search size={16} color="var(--abs-text-soft)" />
+                    <input type="text" aria-label="Rechercher un employé" placeholder="Rechercher un employé..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={S.searchInput} />
                     {searchQuery && <button onClick={() => setSearchQuery('')} style={S.clearSearch}><X size={14} /></button>}
                   </div>
                   {admin?.role === 'super_admin' && (
                     <div style={S.filterGroup}>
                       <Building2 size={16} color="var(--abs-amber)" />
-                      <select value={selectedEntrepriseId} onChange={e => setSelectedEntrepriseId(e.target.value)} style={S.filterSelect}>
+                      <select aria-label="Entreprise" value={selectedEntrepriseId} onChange={e => setSelectedEntrepriseId(e.target.value)} style={S.filterSelect}>
                         <option value="all">Toutes entreprises</option>
                         {entreprises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                       </select>
                     </div>
                   )}
                 </div>
-                <div style={S.toolbarRight}>
-                  <button onClick={() => setShowFilters(!showFilters)} style={{ ...S.iconBtn, background: showFilters ? 'rgba(245,158,11,.15)' : 'var(--abs-line-soft)', color: showFilters ? 'var(--abs-amber)' : 'var(--abs-text-soft)' }}><Filter size={18} /></button>
+                <div className="abs-toolbar-right" style={S.toolbarRight}>
+                  <button aria-label="Afficher les filtres" aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)} style={{ ...S.iconBtn, background: showFilters ? 'rgba(245,158,11,.15)' : 'var(--abs-line-soft)', color: showFilters ? 'var(--abs-amber)' : 'var(--abs-text-soft)' }}><Filter size={18} /></button>
                   <div style={S.viewToggle}>
-                    <button onClick={() => setViewMode('planning')} title="Planning — calendrier par employé" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'planning' ? S.viewBtnActive : {}) }}><CalendarDays size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Planning</span></button>
-                    <button onClick={() => setViewMode('calendar')} title="Mois — grille du mois" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'calendar' ? S.viewBtnActive : {}) }}><Calendar size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Mois</span></button>
-                    <button onClick={() => setViewMode('list')} title="Liste — cartes détaillées" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'list' ? S.viewBtnActive : {}) }}><List size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Liste</span></button>
+                    <button aria-pressed={viewMode === 'planning'} onClick={() => setViewMode('planning')} title="Planning — calendrier par employé" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'planning' ? S.viewBtnActive : {}) }}><CalendarDays size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Planning</span></button>
+                    <button aria-pressed={viewMode === 'calendar'} onClick={() => setViewMode('calendar')} title="Mois — grille du mois" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'calendar' ? S.viewBtnActive : {}) }}><Calendar size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Mois</span></button>
+                    <button aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')} title="Liste — cartes détaillées" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'list' ? S.viewBtnActive : {}) }}><List size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Liste</span></button>
                   </div>
                   <button onClick={handleExportCSV} style={S.exportBtn}><Download size={16} /><span>Export</span></button>
                   <button onClick={() => handleAdd()} className="afro-btn" style={S.addBtn}><Plus size={18} /><span>Déclarer</span></button>
@@ -2029,7 +2010,7 @@ export default function Absences() {
                   <div className="abs-list" style={S.list}>
                     {paginatedAbsences.length === 0 ? (
                       <div style={S.empty}>
-                        <CalendarOff size={48} color="#555" style={{ marginBottom: 16 }} />
+                        <CalendarOff size={48} color="var(--abs-text-soft)" style={{ marginBottom: 16 }} />
                         <p style={S.emptyTitle}>Aucune absence trouvée</p>
                         <p style={S.emptySubtitle}>{searchQuery || filterMotif !== 'all' ? 'Modifiez vos filtres' : 'Aucune absence enregistrée'}</p>
                       </div>
@@ -2061,13 +2042,13 @@ export default function Absences() {
               )}
 
               {viewMode === 'calendar' && (
-                <div style={S.calContainer}>
+                <div className="abs-month-panel" style={S.calContainer}>
                   <div style={S.calHeader}>
                     <button onClick={() => { setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1)); setSelectedCalendarDay(null) }} style={S.calNavBtn}><ChevronLeft size={20} /></button>
                     <h3 style={S.calTitle}>{calendarDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</h3>
                     <button onClick={() => { setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1)); setSelectedCalendarDay(null) }} style={S.calNavBtn}><ChevronRight size={20} /></button>
                   </div>
-                  <div style={S.calGrid}>
+                  <div className="abs-month-grid" style={S.calGrid}>
                     {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <div key={i} style={S.calDayHeader}>{d}</div>)}
                     {calendarData.map((cell, idx) => {
                       if (!cell) return <div key={`e${idx}`} style={S.calDayEmpty} />
@@ -2081,7 +2062,7 @@ export default function Absences() {
                       return (
                         <div
                           key={cell.date}
-                          className={hasAbs ? 'cal-day-click' : ''}
+                          className={`abs-month-day ${hasAbs ? 'cal-day-click' : ''}`}
                           onClick={() => hasAbs && setSelectedCalendarDay(isSelected ? null : cell)}
                           style={{
                             ...S.calDay,
@@ -2133,7 +2114,7 @@ export default function Absences() {
                         <span style={S.calDetailTitle}>📅 {formatDateLong(selectedCalendarDay.date)}</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           {selectedCalendarDay.isHoliday && (
-                            <span style={{ background: 'rgba(139,92,246,0.12)', color: '#8B5CF6', padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+                            <span style={{ background: 'rgba(139,92,246,0.12)', color: 'var(--abs-violet)', padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
                               🎌 {selectedCalendarDay.holiday?.name}
                             </span>
                           )}
@@ -2157,7 +2138,7 @@ export default function Absences() {
                                 <p style={S.calDetailMeta}>{a.employees?.matricule} · {formatDateFr(a.start_date)} → {formatDateFr(a.end_date)}</p>
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                                <div style={{ ...S.calDetailBadge, background: mc.bg, color: mc.color, border: `1px solid ${mc.color}40` }}>{mc.emoji} {mc.label}</div>
+                                <div style={{ ...S.calDetailBadge, background: mc.bg, color: 'var(--abs-text)', border: `1px solid color-mix(in srgb, ${mc.color} 25%, transparent)` }}>{mc.emoji} {mc.label}</div>
                                 {conflict && conflict.status === 'pending' && (
                                   <div style={{ ...S.calDetailBadge, background: 'rgba(249,115,22,.12)', color: 'var(--abs-orange)', border: '1px solid rgba(249,115,22,.3)', fontSize: 9 }}>⚠ Conflit</div>
                                 )}
@@ -2196,7 +2177,7 @@ export default function Absences() {
                     <p style={{ color: 'var(--abs-coral)', fontSize: 14, fontWeight: 700, margin: '0 0 2px 0' }}>
                       {pendingRequestsCount} demande{pendingRequestsCount > 1 ? 's' : ''} en attente de validation
                     </p>
-                    <p style={{ color: '#999', fontSize: 12, margin: 0 }}>Les employés attendent votre réponse</p>
+                    <p style={{ color: 'var(--abs-text-soft)', fontSize: 12, margin: 0 }}>Les employés attendent votre réponse</p>
                   </div>
                 </div>
               )}
@@ -2219,7 +2200,7 @@ export default function Absences() {
                         display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px',
                         background: actif ? `${f.couleur}1F` : 'var(--abs-fill-soft)',
                         border: `1px solid ${actif ? `${f.couleur}66` : 'var(--abs-line-soft)'}`,
-                        borderRadius: 999, color: actif ? f.couleur : 'var(--abs-text-soft)',
+                        borderRadius: 999, color: actif ? 'var(--abs-text)' : 'var(--abs-text-soft)',
                         fontSize: 13, fontWeight: actif ? 600 : 500, cursor: 'pointer', fontFamily: 'inherit',
                         boxShadow: actif ? `0 0 0 3px ${f.couleur}14` : 'none',
                         transition: 'all .18s ease',
@@ -2229,7 +2210,7 @@ export default function Absences() {
                       <span style={{
                         padding: '1px 7px', borderRadius: 999, fontSize: 11, fontWeight: 700,
                         background: actif ? `${f.couleur}2E` : 'var(--abs-line-soft)',
-                        color: actif ? f.couleur : 'var(--abs-text-faint)',
+                        color: actif ? 'var(--abs-text)' : 'var(--abs-text-faint)',
                       }}>
                         {count}
                       </span>
@@ -2244,8 +2225,8 @@ export default function Absences() {
                   <p style={{ color: 'var(--abs-text-faint)', marginTop: 12, fontSize: 14 }}>Chargement...</p>
                 </div>
               ) : filteredRequests.length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', background: 'rgba(29,23,19,0.5)', borderRadius: 20, border: '1px dashed var(--abs-line-soft)', textAlign: 'center' }}>
-                  <Inbox size={48} color="#555" />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', background: 'var(--abs-bg-elevated)', borderRadius: 20, border: '1px dashed var(--abs-line-soft)', textAlign: 'center' }}>
+                  <Inbox size={48} color="var(--abs-text-soft)" />
                   <h3 style={{ color: 'var(--abs-text)', margin: '12px 0 4px 0', fontSize: 18 }}>Aucune demande</h3>
                   <p style={{ color: 'var(--abs-text-faint)', fontSize: 14, margin: 0 }}>
                     {requestFilter !== 'all' ? 'Aucune demande avec ce statut' : 'Les employés n\'ont pas encore soumis de demandes de congé'}
@@ -2276,7 +2257,7 @@ export default function Absences() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <AbsencesMotifsManager absences={absences} />
               <div style={{
-                background: 'rgba(29,23,19,0.8)',
+                background: 'var(--abs-bg-elevated)',
                 border: '1px solid var(--abs-line-soft)',
                 borderRadius: 18,
                 padding: 20,
@@ -2381,7 +2362,7 @@ export default function Absences() {
               </div>
 
               <div style={{
-                background: 'rgba(29,23,19,0.8)',
+                background: 'var(--abs-bg-elevated)',
                 border: '1px solid var(--abs-line-soft)',
                 borderRadius: 18,
                 padding: 20,
@@ -2422,7 +2403,7 @@ export default function Absences() {
               </div>
 
               <div style={{
-                background: 'rgba(29,23,19,0.8)',
+                background: 'var(--abs-bg-elevated)',
                 border: '1px solid var(--abs-line-soft)',
                 borderRadius: 18,
                 padding: 20,
@@ -2458,7 +2439,7 @@ export default function Absences() {
                     <span>Aucun solde disponible. Lancez un recalcul.</span>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="abs-soldes-liste">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="abs-soldes-liste" role="region" aria-label="Soldes de congés, tableau défilant" tabIndex={0}>
                     <div style={{
                       display: 'grid', gridTemplateColumns: SOLDE_GRILLE, gap: 12,
                       padding: '0 14px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.4px',
@@ -2501,7 +2482,7 @@ export default function Absences() {
                               <div style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {item.employees?.first_name} {item.employees?.last_name}
                               </div>
-                              <div style={{ color: '#777', fontSize: 11 }}>
+                              <div style={{ color: 'var(--abs-text-soft)', fontSize: 11 }}>
                                 {item.employees?.matricule || '—'}
                                 {item.employees?.department ? ` • ${item.employees.department}` : ''}
                               </div>
@@ -2535,6 +2516,7 @@ export default function Absences() {
             </div>
           )}
         </main>
+        <AbsencesCulturalBand position="bottom"/>
 
         {/* ═══ MODAL AJOUT/MODIF ABSENCE ═══ */}
         <AbsenceFormulaire
@@ -2615,7 +2597,7 @@ export default function Absences() {
                   <button
                     className="doc-view-btn"
                     onClick={() => handleViewRequestDocument(selectedRequest)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 10, color: '#3B82F6', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease', textAlign: 'left' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 10, color: 'var(--abs-indigo)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease', textAlign: 'left' }}
                   >
                     {getFileType(selectedRequest.document_url) === 'image' ? <FileImage size={15} /> : <File size={15} />}
                     <span>Voir le justificatif joint</span>
@@ -2649,7 +2631,7 @@ export default function Absences() {
                 <button onClick={() => setShowReviewModal(false)} disabled={submittingReview} style={{ flex: 1, padding: 14, background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', color: 'var(--abs-text)', borderRadius: 12, fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Annuler
                 </button>
-                <button onClick={handleReviewRequest} disabled={submittingReview} style={{ flex: 2, padding: 14, background: reviewAction === 'approuve' ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #EF4444, #B91C1C)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: submittingReview ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: submittingReview ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <button onClick={handleReviewRequest} disabled={submittingReview} style={{ flex: 2, padding: 14, background: reviewAction === 'approuve' ? 'linear-gradient(135deg, #166534, #14532d)' : 'linear-gradient(135deg, #EF4444, #B91C1C)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: submittingReview ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: submittingReview ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   {submittingReview ? 'Traitement...' : reviewAction === 'approuve' ? <><Check size={16} /> Approuver</> : <><X size={16} /> Refuser</>}
                 </button>
               </div>
@@ -2712,7 +2694,7 @@ export default function Absences() {
                           <span style={{ color: 'var(--abs-amber)', fontSize: 12, fontWeight: 700 }}>{jours}j</span>
                         </div>
                         <span style={{ color: 'var(--abs-text-soft)', fontSize: 12 }}>{formatDateFr(a.start_date)} → {formatDateFr(a.end_date)}</span>
-                        {a.count_holidays_as_leave && <span style={{ display: 'block', color: '#8B5CF6', fontSize: 11, marginTop: 2 }}>🎌 Jours fériés inclus dans le décompte</span>}
+                        {a.count_holidays_as_leave && <span style={{ display: 'block', color: 'var(--abs-violet)', fontSize: 11, marginTop: 2 }}>🎌 Jours fériés inclus dans le décompte</span>}
                         {conflict && conflict.status === 'pending' && <span style={{ display: 'block', color: 'var(--abs-orange)', fontSize: 11, marginTop: 2 }}>⚠ Conflit en attente</span>}
                       </div>
                     </div>
@@ -2760,7 +2742,7 @@ export default function Absences() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {[
-                    { action: 'kept_absence', icon: CheckCircle2, color: '#10B981', borderColor: 'rgba(16,185,129,.2)', bg: 'rgba(16,185,129,.08)', title: 'Maintenir l\'absence', subtitle: 'Le pointage reste, l\'absence est conservée' },
+                    { action: 'kept_absence', icon: CheckCircle2, color: 'var(--abs-emerald)', borderColor: 'rgba(16,185,129,.2)', bg: 'rgba(16,185,129,.08)', title: 'Maintenir l\'absence', subtitle: 'Le pointage reste, l\'absence est conservée' },
                     { action: 'cancelled_absence', icon: ShieldCheck, color: '#6366F1', borderColor: 'rgba(99,102,241,.2)', bg: 'rgba(99,102,241,.08)', title: 'Annuler l\'absence', subtitle: 'Le pointage reste, l\'absence est supprimée' },
                     { action: 'ignored_conflict', icon: Ban, color: 'var(--abs-text-faint)', borderColor: 'rgba(107,114,128,.2)', bg: 'rgba(107,114,128,.08)', title: 'Ignorer le conflit', subtitle: 'Marquer comme vu sans modifier les données' },
                   ].map((item, i) => (
@@ -2821,7 +2803,7 @@ export default function Absences() {
                   <AlertTriangle size={18} color="var(--abs-amber)" style={{ flexShrink: 0, marginTop: 1 }} />
                   <div>
                     <p style={{ color: 'var(--abs-amber)', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>Suppression en cascade</p>
-                    <p style={{ color: '#AAA', fontSize: 12, margin: 0, lineHeight: '1.5' }}>
+                    <p style={{ color: 'var(--abs-text-soft)', fontSize: 12, margin: 0, lineHeight: '1.5' }}>
                       Cette demande a été approuvée. L'absence correspondante dans le registre sera également supprimée.
                     </p>
                   </div>
@@ -2874,7 +2856,7 @@ const TAB = {
 // STYLES CARTE (CS)
 // ═══════════════════════════════════════════════════════════
 const CS = {
-  card: { background: 'rgba(29,23,19,.85)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, transition: 'all .3s ease' },
+  card: { background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, transition: 'all .3s ease' },
   topBadges: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   badge: { padding: '3px 8px', borderRadius: 16, fontSize: 10, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 },
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' },
@@ -2895,15 +2877,15 @@ const CS = {
   daysNumber: { color: 'var(--abs-amber)', fontSize: 18, fontWeight: 800, lineHeight: '1' },
   daysLabel: { color: 'var(--abs-amber)', fontSize: 9, opacity: .8 },
   notesBox: { display: 'flex', gap: 8, padding: 10, background: 'var(--abs-fill-soft)', borderRadius: 8, borderLeft: '2px solid rgba(245,158,11,.3)' },
-  notesText: { color: '#aaa', fontSize: 12, lineHeight: 1.4, fontStyle: 'italic', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' },
-  docButton: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'rgba(59,130,246,.08)', border: '1px solid rgba(59,130,246,.2)', borderRadius: 10, color: '#3B82F6', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
+  notesText: { color: 'var(--abs-text-soft)', fontSize: 12, lineHeight: 1.4, fontStyle: 'italic', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' },
+  docButton: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'rgba(59,130,246,.08)', border: '1px solid rgba(59,130,246,.2)', borderRadius: 10, color: 'var(--abs-indigo)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
   cardFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid var(--abs-fill)', gap: 8 },
   footerLeft: { display: 'flex', alignItems: 'center', gap: 8 },
   enterpriseTag: { color: 'var(--abs-amber)', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   footerActions: { display: 'flex', gap: 5, flexShrink: 0 },
   approveBtn: { background: 'rgba(16,185,129,.1)', border: '1px solid rgba(16,185,129,.2)', padding: 6, borderRadius: 7, color: 'var(--abs-emerald)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   refuseBtn: { background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', padding: 6, borderRadius: 7, color: 'var(--abs-coral)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  editBtn: { background: 'rgba(59,130,246,.1)', border: '1px solid rgba(59,130,246,.2)', padding: 6, borderRadius: 7, color: '#3B82F6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  editBtn: { background: 'rgba(59,130,246,.1)', border: '1px solid rgba(59,130,246,.2)', padding: 6, borderRadius: 7, color: 'var(--abs-indigo)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   deleteBtn: { background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.2)', padding: 6, borderRadius: 7, color: 'var(--abs-coral)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   conflictBtn: { background: 'rgba(249,115,22,.1)', border: '1px solid rgba(249,115,22,.25)', padding: 7, borderRadius: 8, color: 'var(--abs-orange)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
 }
@@ -2922,7 +2904,7 @@ const S = {
     gap: 14, 
     marginBottom: 24 
   },
-  statCard: { background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 20, display: 'flex', alignItems: 'center', gap: 16, transition: 'all .3s ease', minWidth: 0, },
+  statCard: { background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 20, display: 'flex', alignItems: 'center', gap: 16, transition: 'all .3s ease', minWidth: 0, },
   statIcon: { width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   statNumber: { color: 'var(--abs-text)', fontSize: 26, fontWeight: 800, margin: '0 0 2px 0', lineHeight: '1' },
   statLabel: { color: 'var(--abs-text-soft)', fontSize: 12, margin: 0, whiteSpace: 'nowrap',  textOverflow: 'ellipsis', // ✅ AJOUT : Coupe le texte avec ...
@@ -2930,18 +2912,18 @@ const S = {
   toolbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 },
   toolbarLeft: { display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 300px', flexWrap: 'wrap' },
   toolbarRight: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  searchBox: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', padding: '10px 16px', borderRadius: 12, flex: '1 1 220px', minWidth: 200 },
+  searchBox: { display: 'flex', alignItems: 'center', gap: 10, background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line-soft)', padding: '10px 16px', borderRadius: 12, flex: '1 1 220px', minWidth: 200 },
   searchInput: { background: 'transparent', border: 'none', color: 'var(--abs-text)', width: '100%', fontSize: 14, fontFamily: 'inherit', outline: 'none' },
   clearSearch: { background: 'none', border: 'none', color: 'var(--abs-text-faint)', cursor: 'pointer', padding: 2, display: 'flex' },
-  filterGroup: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', padding: '10px 16px', borderRadius: 12, flex: '0 1 250px' },
+  filterGroup: { display: 'flex', alignItems: 'center', gap: 10, background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line-soft)', padding: '10px 16px', borderRadius: 12, flex: '0 1 250px' },
   filterSelect: { background: 'transparent', border: 'none', color: 'var(--abs-text)', width: '100%', fontSize: 14, fontFamily: 'inherit', outline: 'none' },
   iconBtn: { border: '1px solid var(--abs-line-soft)', borderRadius: 12, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all .2s' },
-  viewToggle: { display: 'flex', background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, overflow: 'hidden' },
+  viewToggle: { display: 'flex', background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, overflow: 'hidden' },
   viewBtn: { background: 'transparent', border: 'none', color: 'var(--abs-text-faint)', padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all .2s' },
   viewBtnActive: { background: 'rgba(245,158,11,.15)', color: 'var(--abs-amber)' },
   exportBtn: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', color: 'var(--abs-text)', padding: '10px 16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 500, fontSize: 13, fontFamily: 'inherit' },
   addBtn: { background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#000', border: 'none', padding: '12px 20px', borderRadius: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', transition: 'all .3s ease' },
-  filtersPanel: { display: 'flex', flexWrap: 'wrap', gap: 14, background: 'rgba(29,23,19,.6)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 20, marginBottom: 20, alignItems: 'flex-end', animation: 'slideUp .3s ease forwards' },
+  filtersPanel: { display: 'flex', flexWrap: 'wrap', gap: 14, background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 20, marginBottom: 20, alignItems: 'flex-end', animation: 'slideUp .3s ease forwards' },
   filterItem: { display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 160px', minWidth: 140 },
   filterLabel: { color: 'var(--abs-text-soft)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 },
   filterSelectSmall: { background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line)', color: 'var(--abs-text)', padding: '10px 12px', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' },
@@ -2954,16 +2936,16 @@ const S = {
     gap: 16 
   },
 
-  empty: { gridColumn: '1/-1', textAlign: 'center', padding: '60px 20px', background: 'rgba(29,23,19,.5)', borderRadius: 20, border: '1px dashed var(--abs-line)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
+  empty: { gridColumn: '1/-1', textAlign: 'center', padding: '60px 20px', background: 'var(--abs-bg-elevated)', borderRadius: 20, border: '1px dashed var(--abs-line)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
   emptyTitle: { color: 'var(--abs-text)', fontSize: 18, fontWeight: 600, margin: 0 },
   emptySubtitle: { color: 'var(--abs-text-soft)', fontSize: 14, margin: 0 },
   pagination: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 32, paddingBottom: 20 },
   pageBtn: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', color: 'var(--abs-text)', width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontFamily: 'inherit' },
-  calContainer: { background: 'rgba(29,23,19,.8)', border: '1px solid var(--abs-line-soft)', borderRadius: 20, padding: 24, animation: 'slideUp .4s ease forwards' },
+  calContainer: { background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line-soft)', borderRadius: 20, padding: 24, animation: 'slideUp .4s ease forwards' },
   calHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
   calTitle: { color: 'var(--abs-text)', fontSize: 22, fontWeight: 700, margin: 0, textTransform: 'capitalize' },
   calNavBtn: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, width: 42, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--abs-text)', cursor: 'pointer' },
-  calGrid: { display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 },
+  calGrid: { display: 'grid', gridTemplateColumns: 'repeat(7,minmax(0,1fr))', gap: 4 },
   calDayHeader: { textAlign: 'center', color: 'var(--abs-text-soft)', fontSize: 12, fontWeight: 600, padding: '10px 0' },
   calDay: { minHeight: 110, background: 'var(--abs-fill-soft)', borderRadius: 10, padding: 8, border: '1px solid transparent', display: 'flex', flexDirection: 'column', gap: 4 },
   calDayEmpty: { minHeight: 110 },
@@ -2977,7 +2959,7 @@ const S = {
   calEmpList: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2, overflow: 'hidden' },
   calEmpItem: { display: 'flex', alignItems: 'center', gap: 4 },
   calEmpDot: { width: 6, height: 6, borderRadius: '50%', flexShrink: 0 },
-  calEmpName: { color: '#ccc', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  calEmpName: { color: 'var(--abs-text-soft)', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   calMore: { color: 'var(--abs-text-soft)', fontSize: 9, fontStyle: 'italic', paddingLeft: 10 },
   calDetail: { marginTop: 20, background: 'var(--abs-fill-soft)', border: '1px solid rgba(245,158,11,.15)', borderRadius: 16, padding: 20, animation: 'slideUp .3s ease forwards' },
   calDetailHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--abs-line-soft)', flexWrap: 'wrap', gap: 10 },
@@ -3004,7 +2986,7 @@ const S = {
   daysCounter: { display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.15)', borderRadius: 12, flexWrap: 'wrap' },
   overlapBox: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.25)', borderRadius: 12 },
   overlapTitle: { color: 'var(--abs-amber)', fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' },
-  overlapText: { color: '#ccc', fontSize: 12, margin: 0, lineHeight: '1.4' },
+  overlapText: { color: 'var(--abs-text-soft)', fontSize: 12, margin: 0, lineHeight: '1.4' },
   reasonGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(120px,1fr))', gap: 8 },
   modalFooter: { display: 'flex', gap: 12, marginTop: 8 },
   saveBtn: { flex: 2, padding: 14, background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#000', border: 'none', borderRadius: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14 },
@@ -3024,7 +3006,7 @@ const S = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    color: '#777',
+    color: 'var(--abs-text-soft)',
     fontSize: 13,
     background: 'var(--abs-fill-soft)',
     border: '1px dashed var(--abs-line-soft)',

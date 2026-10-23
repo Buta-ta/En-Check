@@ -73,7 +73,7 @@ function Carte({ testId, icone: Icone, couleur, valeur, suffixe, label, precisio
   const carte = darkMode ? 'rgba(29,23,19,0.82)' : '#FFFFFF'
   const bord = darkMode ? 'rgba(245,158,11,0.16)' : 'rgba(29,23,19,0.10)'
   const texte = darkMode ? '#F5F2EB' : '#1D1713'
-  const doux = darkMode ? 'rgba(245,242,235,0.55)' : 'rgba(29,23,19,0.55)'
+  const doux = darkMode ? '#d6c7b7' : '#4E3D2E'
 
   const contenu = (
     <>

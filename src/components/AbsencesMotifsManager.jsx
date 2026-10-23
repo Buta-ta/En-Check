@@ -104,7 +104,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
       data-testid="abs-motifs-manager"
       style={{
         border: '1px solid var(--abs-border, rgba(245,158,11,0.16))',
-        background: 'var(--abs-bg-panel, rgba(29,23,19,0.82))',
+        background: 'var(--abs-bg-panel, var(--abs-bg-elevated))',
         borderRadius: 16,
         padding: 18,
       }}
@@ -140,7 +140,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14, padding: '11px 13px',
           borderRadius: 12, background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.24)',
-          fontSize: 12, color: '#93C5FD',
+          fontSize: 12, color: 'var(--abs-indigo)',
         }}>
           <Building2 size={15} />
           <span>Vue « toutes entreprises » : les motifs affichés sont les motifs communs. Sélectionnez une entreprise pour les personnaliser et les supprimer.</span>
@@ -265,7 +265,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
                   onClick={() => setBrouillon({ ...brouillon, emoji: e })}
                   style={{
                     width: 32, height: 32, borderRadius: 9, cursor: 'pointer', fontSize: 16,
-                    background: brouillon.emoji === e ? 'rgba(245,158,11,0.16)' : 'var(--abs-bg-panel, rgba(29,23,19,0.82))',
+                    background: brouillon.emoji === e ? 'rgba(245,158,11,0.16)' : 'var(--abs-bg-panel, var(--abs-bg-elevated))',
                     border: `1px solid ${brouillon.emoji === e ? 'rgba(245,158,11,0.45)' : 'var(--abs-border, rgba(245,158,11,0.16))'}`,
                   }}
                 >
@@ -344,7 +344,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
             border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.06)',
           }}
         >
-          <p style={{ margin: '0 0 4px', fontSize: 13.5, fontWeight: 700, color: '#FCA5A5' }}>
+          <p style={{ margin: '0 0 4px', fontSize: 13.5, fontWeight: 700, color: 'var(--abs-coral)' }}>
             Supprimer « {aSupprimer.emoji} {aSupprimer.label} » ?
           </p>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--abs-text-muted, var(--abs-text-soft))' }}>
@@ -382,8 +382,8 @@ export default function AbsencesMotifsManager({ absences = [] }) {
               data-testid="abs-motifs-confirmer-suppression"
               style={{
                 padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                fontFamily: 'inherit', border: 'none', background: 'linear-gradient(135deg, #EF4444, #B91C1C)',
-                color: 'var(--abs-text)', display: 'inline-flex', alignItems: 'center', gap: 7,
+                fontFamily: 'inherit', border: 'none', background: '#B91C1C',
+                color: '#FFFFFF', display: 'inline-flex', alignItems: 'center', gap: 7,
                 opacity: enCours || (nbUsagesCible > 0 && !codeCible) ? 0.5 : 1,
               }}
             >
@@ -398,7 +398,7 @@ export default function AbsencesMotifsManager({ absences = [] }) {
 
 const champ = {
   width: '100%', padding: '10px 12px', borderRadius: 10, fontFamily: 'inherit', fontSize: 13.5,
-  background: 'rgba(0,0,0,0.25)', border: '1px solid var(--abs-border, rgba(245,158,11,0.16))',
+  background: 'var(--abs-bg-soft)', border: '1px solid var(--abs-border, rgba(245,158,11,0.16))',
   color: 'var(--abs-text, var(--abs-text))', outline: 'none', boxSizing: 'border-box',
 }
 

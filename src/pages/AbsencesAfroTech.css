@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
    🎨 CHARTE EN-CHECK — PAGE ABSENCES & CONGÉS
+   Bandeau dédié : interprétation contemporaine ndebele validée par l’utilisateur.
 
    Les mêmes repères que la page Planning : obsidienne, espresso,
    ivoire, cuivre et ambre. Le bleu ardoise (#141423), le gris
@@ -7,7 +8,7 @@
    l'ancienne charte et sont proscrits ici.
    ═══════════════════════════════════════════════════════════ */
 
-.abs-page {
+.abs-page, .abs-drawer-theme {
   /* Fonds */
   --abs-bg: #15110E;
   --abs-bg-elevated: #1D1713;
@@ -18,8 +19,8 @@
 
   /* Textes */
   --abs-text: #F5F2EB;
-  --abs-text-soft: rgba(245, 242, 235, 0.62);
-  --abs-text-faint: rgba(245, 242, 235, 0.40);
+  --abs-text-soft: #d6c7b7;
+  --abs-text-faint: #b9a48f;
 
   /* Accents */
   --abs-copper: #C25E28;
@@ -55,7 +56,7 @@
    cuivre. Les accents sont foncés (un ambre clair devient illisible sur
    fond crème : 1,9:1) et les remplissages deviennent solides, sinon les
    boutons se confondent avec la page. */
-.abs-page[data-theme='light'] {
+.abs-page[data-theme='light'], .abs-drawer-theme[data-theme='light'] {
   /* Fonds — pt-canvas / pt-surface / pt-surface-soft */
   --abs-bg: #FAF6F0;
   --abs-bg-elevated: #FFFFFF;
@@ -435,3 +436,55 @@
     width: 100%;
   }
 }
+
+/* Ndebele-inspired artwork approved for Absences; full artwork, no distortion. */
+.abs-ndebele-band { width: 100%; height: 76px; flex-shrink: 0; background: #efe1c5 url('/images/absences-ndebele.webp') repeat-x center; background-size: auto 100%; }
+.abs-ndebele-bottom { height: 32px; }
+.abs-ndebele-drawer { height: 46px; }
+.abs-ndebele-drawer.abs-ndebele-bottom { height: 24px; }
+.abs-page { display: flex; flex-direction: column; }
+.abs-page > main { flex: 1; width: 100%; box-sizing: border-box; min-width: 0; }
+.abs-drawer-theme { min-height: 0; box-sizing: border-box; }
+.abs-drawer-theme > header, .abs-drawer-theme > footer { flex-shrink: 0; }
+.abs-drawer-theme form { min-height: 0; }
+.abs-drawer-theme[data-testid='absence-tiroir'] > .abs-ndebele-band { width: calc(100% + 44px); margin: -22px -22px 20px; }
+.abs-drawer-theme[data-testid='absence-tiroir'] > .abs-ndebele-bottom { margin: 20px -22px -22px; }
+.abs-page, .abs-drawer-theme { color-scheme: dark; }
+.abs-page[data-theme='light'], .abs-drawer-theme[data-theme='light'] { color-scheme: light; }
+.abs-page input::placeholder, .abs-page textarea::placeholder, .abs-drawer-theme input::placeholder, .abs-drawer-theme textarea::placeholder { color: var(--abs-text-faint); opacity: 1; }
+.abs-page select option, .abs-drawer-theme select option { background: var(--abs-bg-elevated); color: var(--abs-text); }
+.abs-page :is(button, input, select, textarea, summary):focus-visible, .abs-drawer-theme :is(button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--abs-amber) !important; outline-offset: 3px; }
+.abs-page .abs-section-tabs { max-width: 100% !important; flex-wrap: wrap; gap: 8px !important; background: var(--abs-bg-elevated) !important; padding: 8px !important; }
+.abs-section-tabs .tab-btn { flex: 1 1 180px; justify-content: center; min-height: 44px; border: 1px solid var(--abs-border) !important; }
+.abs-page .tab-btn[aria-pressed='true'], .abs-page .toolbar-top button[aria-pressed='true'] { background: var(--abs-amber) !important; color: var(--abs-bg-elevated) !important; }
+.abs-page .tab-btn[aria-pressed='true'] > span { color: inherit !important; }
+.abs-page .tab-btn[aria-pressed='true'] > span:last-child { background: transparent !important; }
+.abs-page [data-testid='demande-card'] { flex-wrap: wrap; background: var(--abs-bg-elevated) !important; border-color: var(--abs-border-strong) !important; }
+.abs-drawer-theme button, .abs-drawer-theme input, .abs-drawer-theme select, .abs-drawer-theme textarea { font-family: inherit; max-width: 100%; }
+@media(max-width:650px) {
+  .abs-ndebele-top { height: 60px; }
+  .abs-ndebele-drawer { height: 36px; }
+  .abs-ndebele-drawer.abs-ndebele-bottom { height: 20px; }
+  .abs-drawer-theme > footer { padding: 12px !important; flex-wrap: wrap; }
+  .abs-drawer-theme > footer button { min-width: 110px; }
+  .abs-page .toolbar-top > div { min-width: 0; max-width: 100%; }
+}
+@media(max-width:768px) {
+  .abs-toolbar-left, .abs-toolbar-right { flex: 0 1 auto !important; width: 100%; }
+  .abs-toolbar-left > div { flex: 1 1 100% !important; min-width: 0 !important; }
+  .abs-calendar-navigation { width: 100%; }
+}
+.abs-month-grid > div { min-width: 0; overflow: hidden; }
+@media(max-width:650px) {
+  .abs-month-panel { padding: 10px !important; }
+  .abs-month-day { padding: 5px 3px !important; }
+  .abs-month-day > div { min-width: 0; }
+}
+.abs-dock-hint summary { cursor: pointer; font-weight: 600; }
+.abs-request-actions { flex-wrap: wrap; }
+@media(max-width:650px) {
+  .abs-request-actions { flex-basis: 100%; justify-content: flex-end; }
+  .abs-request-identity { flex-basis: 170px !important; }
+}
+.abs-page [data-testid='abs-soldes-liste'] { overflow-x: auto; max-width: 100%; padding-bottom: 8px; }
+.abs-page [data-testid='abs-soldes-liste'] > div { min-width: 580px; box-sizing: border-box; }

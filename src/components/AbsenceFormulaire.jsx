@@ -1,3 +1,4 @@
+import AbsencesCulturalBand from './AbsencesCulturalBand'
 // ═══════════════════════════════════════════════════════════
 // 📝 FORMULAIRE D'ABSENCE — TIROIR DE SAISIE
 //
@@ -49,7 +50,7 @@ function Etape({ numero, titre, aide, children, theme }) {
         <span style={{
           width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
           background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.35)',
-          color: '#F59E0B', fontSize: 12, fontWeight: 800,
+          color: 'var(--abs-amber)', fontSize: 12, fontWeight: 800,
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {numero}
@@ -92,11 +93,11 @@ export default function AbsenceFormulaire({
   }, [ouvert, uploading, onFermer])
 
   const theme = {
-    fond: darkMode ? '#1D1713' : '#FFFFFF',
-    texte: darkMode ? '#F5F2EB' : '#1D1713',
-    texteDoux: darkMode ? 'rgba(245,242,235,0.58)' : 'rgba(29,23,19,0.58)',
-    bordure: darkMode ? 'rgba(245,158,11,0.16)' : 'rgba(29,23,19,0.12)',
-    bloc: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(29,23,19,0.03)',
+    fond: 'var(--abs-bg-elevated)',
+    texte: 'var(--abs-text)',
+    texteDoux: 'var(--abs-text-soft)',
+    bordure: 'var(--abs-border-strong)',
+    bloc: 'var(--abs-bg-soft)',
   }
 
   const champ = {
@@ -140,7 +141,7 @@ export default function AbsenceFormulaire({
         aria-hidden="true"
       />
 
-      <aside
+      <aside className="abs-drawer-theme" data-theme={darkMode ? 'dark' : 'light'}
         role="dialog"
         aria-modal="true"
         aria-label={edition ? "Modifier l'absence" : 'Déclarer une absence'}
@@ -156,6 +157,7 @@ export default function AbsenceFormulaire({
           fontFamily: 'inherit',
         }}
       >
+        <AbsencesCulturalBand drawer/>
         {/* ══ En-tête ══ */}
         <header style={{
           padding: '18px 22px 16px', borderBottom: `1px solid ${theme.bordure}`,
@@ -243,7 +245,7 @@ export default function AbsenceFormulaire({
                     ) : (
                       <span style={{
                         width: 30, height: 30, borderRadius: 9, flexShrink: 0, fontSize: 11, fontWeight: 800,
-                        background: actif ? 'rgba(245,158,11,0.18)' : 'rgba(245,158,11,0.10)', color: '#F59E0B',
+                        background: actif ? 'rgba(245,158,11,0.18)' : 'rgba(245,158,11,0.10)', color: 'var(--abs-amber)',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       }}>
                         {initialesDe(e.first_name, e.last_name)}
@@ -274,7 +276,7 @@ export default function AbsenceFormulaire({
                 onClick={() => onVoirHistorique(employe)}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '6px 0',
-                  background: 'none', border: 'none', color: '#F59E0B',
+                  background: 'none', border: 'none', color: 'var(--abs-amber)',
                   fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
@@ -301,7 +303,7 @@ export default function AbsenceFormulaire({
                       padding: '12px 8px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
                       background: actif ? m.bg : theme.bloc,
                       border: `1px solid ${actif ? m.color : theme.bordure}`,
-                      color: actif ? m.color : theme.texteDoux,
+                      color: actif ? theme.texte : theme.texteDoux,
                     }}
                   >
                     <span style={{ fontSize: 19 }}>{m.emoji}</span>
@@ -354,7 +356,7 @@ export default function AbsenceFormulaire({
                       fontFamily: 'inherit',
                       background: actif ? 'rgba(245,158,11,0.14)' : 'transparent',
                       border: `1px solid ${actif ? 'rgba(245,158,11,0.45)' : theme.bordure}`,
-                      color: actif ? '#F59E0B' : theme.texteDoux,
+                      color: actif ? 'var(--abs-amber)' : theme.texteDoux,
                     }}
                   >
                     {r.label}
@@ -369,8 +371,8 @@ export default function AbsenceFormulaire({
                 padding: '12px 14px', borderRadius: 13,
                 background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.22)',
               }}>
-                <CalendarDays size={17} color="#F59E0B" />
-                <span style={{ fontSize: 22, fontWeight: 800, color: '#F59E0B' }} data-testid="abs-form-jours">
+                <CalendarDays size={17} color="var(--abs-amber)" />
+                <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--abs-amber)' }} data-testid="abs-form-jours">
                   {joursDecomptes}
                 </span>
                 <span style={{ fontSize: 13, color: theme.texte, fontWeight: 600 }}>
@@ -387,12 +389,12 @@ export default function AbsenceFormulaire({
                 marginTop: 10, padding: '12px 14px', borderRadius: 13,
                 background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.24)',
               }}>
-                <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: '#A78BFA' }}>
+                <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--abs-violet)' }}>
                   🎌 {feries.length} jour{feries.length > 1 ? 's' : ''} férié{feries.length > 1 ? 's' : ''} dans cette période
                 </p>
                 <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {feries.map((f) => (
-                    <span key={f.date} style={{ fontSize: 11.5, color: '#C4B5FD' }}>
+                    <span key={f.date} style={{ fontSize: 11.5, color: 'var(--abs-violet)' }}>
                       • {f.nom || 'Férié'} ({formaterDateCourt(f.date)})
                     </span>
                   ))}
@@ -430,9 +432,9 @@ export default function AbsenceFormulaire({
               }}
                 data-testid="abs-form-chevauchement"
               >
-                <AlertCircle size={17} color="#F97316" style={{ flexShrink: 0, marginTop: 1 }} />
+                <AlertCircle size={17} color="var(--abs-orange)" style={{ flexShrink: 0, marginTop: 1 }} />
                 <div>
-                  <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: '#F97316' }}>
+                  <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--abs-orange)' }}>
                     ⚠️ Chevauchement détecté
                   </p>
                   <p style={{ margin: '3px 0 0', fontSize: 11.5, color: theme.texteDoux }}>
@@ -483,7 +485,7 @@ export default function AbsenceFormulaire({
                       padding: '9px 6px', borderRadius: 9, cursor: 'pointer', fontSize: 11.5, fontWeight: 700,
                       fontFamily: 'inherit', border: 'none',
                       background: actif ? `${s.couleur}22` : 'transparent',
-                      color: actif ? s.couleur : theme.texteDoux,
+                      color: actif ? ({ approuve: 'var(--abs-emerald)', en_attente: 'var(--abs-amber)', refuse: 'var(--abs-coral)' }[s.id]) : theme.texteDoux,
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                     }}
                   >
@@ -525,7 +527,7 @@ export default function AbsenceFormulaire({
                 <div style={{ padding: '12px 14px', borderTop: `1px solid ${theme.bordure}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                     <span style={{ fontSize: 12, color: theme.texteDoux }}>Solde de congés</span>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: depassement ? '#EF4444' : '#10B981' }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: depassement ? 'var(--abs-coral)' : 'var(--abs-emerald)' }}>
                       {`${solde.restant} j → ${soldeApres} j`}
                     </span>
                   </div>
@@ -554,8 +556,8 @@ export default function AbsenceFormulaire({
                 padding: '11px 13px', borderRadius: 12,
                 background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.24)',
               }}>
-                <CheckCircle2 size={16} color="#10B981" />
-                <span style={{ fontSize: 11.5, color: '#10B981', fontWeight: 600 }}>
+                <CheckCircle2 size={16} color="var(--abs-emerald)" />
+                <span style={{ fontSize: 11.5, color: 'var(--abs-emerald)', fontWeight: 600 }}>
                   Rien à signaler : pas de chevauchement, solde suffisant.
                 </span>
               </div>
@@ -600,6 +602,7 @@ export default function AbsenceFormulaire({
               : <><Save size={17} /> {edition ? 'Enregistrer les modifications' : 'Déclarer l’absence'}</>}
           </button>
         </footer>
+        <AbsencesCulturalBand position="bottom" drawer/>
       </aside>
     </>
   )

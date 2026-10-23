@@ -19,7 +19,7 @@ export default function AbsenceUploadZone({ file, existingUrl, onFileSelect, onR
   const [dragActive, setDragActive] = useState(false)
 
   const texte = darkMode ? '#F5F2EB' : '#1D1713'
-  const doux = darkMode ? 'rgba(245,242,235,0.55)' : 'rgba(29,23,19,0.55)'
+  const doux = darkMode ? '#d6c7b7' : '#4E3D2E'
   const bordure = darkMode ? 'rgba(245,158,11,0.16)' : 'rgba(29,23,19,0.12)'
 
   const gererGlisser = (e) => {
@@ -89,7 +89,7 @@ export default function AbsenceUploadZone({ file, existingUrl, onFileSelect, onR
           />
           <Upload size={26} color={dragActive ? '#F59E0B' : doux} />
           <p style={{ color: texte, fontSize: 13, margin: 0, textAlign: 'center' }}>
-            <span style={{ color: '#F59E0B', fontWeight: 700 }}>Cliquez</span> ou glissez un fichier
+            <span style={{ color: 'var(--abs-amber)', fontWeight: 700 }}>Cliquez</span> ou glissez un fichier
           </p>
           <p style={{ color: doux, fontSize: 11, margin: 0 }}>PDF, JPG, PNG, WebP · 5 Mo maximum</p>
         </div>
@@ -107,7 +107,7 @@ export default function AbsenceUploadZone({ file, existingUrl, onFileSelect, onR
             background: estImage ? 'rgba(16,185,129,0.12)' : 'rgba(59,130,246,0.12)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            {estImage ? <FileImage size={22} color="#10B981" /> : <File size={22} color="#3B82F6" />}
+            {estImage ? <FileImage size={22} color="var(--abs-emerald)" /> : <File size={22} color="var(--abs-indigo)" />}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{
@@ -129,7 +129,7 @@ export default function AbsenceUploadZone({ file, existingUrl, onFileSelect, onR
                 style={{
                   background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.22)',
                   borderRadius: 9, width: 34, height: 34, display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', color: '#3B82F6', cursor: 'pointer',
+                  alignItems: 'center', justifyContent: 'center', color: 'var(--abs-indigo)', cursor: 'pointer',
                 }}
               >
                 <Eye size={16} />
@@ -143,7 +143,7 @@ export default function AbsenceUploadZone({ file, existingUrl, onFileSelect, onR
               style={{
                 background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)',
                 borderRadius: 9, width: 34, height: 34, display: 'flex',
-                alignItems: 'center', justifyContent: 'center', color: '#EF4444', cursor: 'pointer',
+                alignItems: 'center', justifyContent: 'center', color: 'var(--abs-coral)', cursor: 'pointer',
               }}
             >
               <Trash2 size={16} />
