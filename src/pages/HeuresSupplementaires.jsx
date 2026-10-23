@@ -405,7 +405,7 @@ export default function HeuresSupplementaires() {
 
   return (
     <div className={`ot-page ${darkMode ? 'ot-dark' : ''}`}>
-      <PageHeader title="HEURES SUPPLÉMENTAIRES" />
+      <PageHeader title="Heures supplémentaires" />
       <PageCulturalBand pathname="/heures-supplementaires" />
       <main className="ot-main">
         {!accessChecked || !hasAccess ? (
