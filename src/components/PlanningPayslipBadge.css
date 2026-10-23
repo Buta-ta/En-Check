@@ -1,0 +1,17 @@
+.sk-payslip-badge { margin: 5px 0; font-size: 10px; max-width: 100%; color: var(--sk-text, #30251b); }
+.sk-payslip-badge summary { display: flex; align-items: center; gap: 5px; width: fit-content; max-width: 100%; cursor: pointer; padding: 3px 7px; border: 1px solid #b2894d; border-radius: 8px; background: #fff0cc; color: #654018; line-height: 1.4; list-style: none; }
+.sk-payslip-badge summary::-webkit-details-marker { display: none; }
+.sk-payslip-badge summary:focus-visible { outline: 3px solid #bd7336; outline-offset: 2px; }
+.sk-payslip-badge svg { flex-shrink: 0; fill: #eac57c; stroke: #654018; stroke-width: 1.2; animation: sk-banknote 3s ease-in-out infinite; }
+.sk-payslip-badge svg path, .sk-payslip-badge svg circle { fill: none; }
+.sk-payslip-info { padding: 9px; margin-top: 5px; background: #fffaf0; border: 1px solid #b2894d; border-radius: 8px; color: #3d2c1d; overflow-wrap: anywhere; white-space: normal; line-height: 1.6; max-height: 200px; overflow-y: auto; }
+.sk-payslip-info > div { padding-top: 7px; }.sk-payslip-info b,.sk-payslip-info span { display: block; }.sk-payslip-info p { margin: 8px 0 0; }
+.sk-payslip-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; font-size: 12px; color: var(--sk-text-soft); }.sk-payslip-status button { color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 6px; padding: 5px 9px; cursor: pointer; }
+.sk-cal-cell .sk-payslip-badge summary { padding: 2px; }.sk-cal-cell .sk-payslip-badge summary span { font-size: 9px; }
+@keyframes sk-banknote { 0%,65%,100% { transform: translateY(0) rotate(0deg); } 75% { transform: translateY(-2px) rotate(-6deg); } 85% { transform: translateY(0) rotate(4deg); } }
+@media(prefers-reduced-motion:reduce) { .sk-payslip-badge svg { animation: none; } }
+.sk-payslip-count { display: none; }
+.sk-cal-cell .sk-payslip-caption { display: none; }
+.sk-cal-cell .sk-payslip-count { display: inline; }
+.sk-plan-page[data-theme="dark"] .sk-payslip-badge summary { background: #382b18; color: #ffe4b0; }
+.sk-plan-page[data-theme="dark"] .sk-payslip-info { background: #261e19; color: #fff4e1; }

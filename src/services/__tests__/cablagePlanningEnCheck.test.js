@@ -259,7 +259,7 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningSrc).toContain('"/employes"')
     expect(planningSrc).toContain('"/pauses"')
     // les fiches de paie vivent dans la coque : le raccourci ouvre l'onglet
-    expect(planningSrc).toContain('"/paie?onglet=fiches"')
+    expect(planningSrc).toContain('path: "/paie"')
     expect(planningCss).toContain('.sk-quick-link')
     expect(planningCss).toContain('.sk-quick-nav-label')
   })

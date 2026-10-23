@@ -1,3 +1,5 @@
+import PlanningPayslipBadge from "../components/PlanningPayslipBadge";
+import usePlanningPayslips, { payslipsForDay } from "../hooks/usePlanningPayslips";
 // ═══════════════════════════════════════════════════════════════════════════
 // 📅 EN-CHECK · PLANNING — SYSTÈME DRAG & DROP × IDENTITÉ AFRO-TECH
 // Matrice hebdomadaire glisser-déposer + Modèles personnalisables + Équipes
@@ -72,7 +74,7 @@ const PLANNING_SHORTCUTS = [
   { id: "pointages", label: "Pointages", path: "/pointages", icon: Clock, hint: "Entrées et sorties du jour, écarts et régularisations" },
   { id: "employes", label: "Employés", path: "/employes", icon: Users, hint: "Fiches collaborateurs, affectations et horaires" },
   { id: "pauses", label: "Pauses", path: "/pauses", icon: Coffee, hint: "Pauses pointées, chronomètre en direct et pauses présumées" },
-  { id: "fiches-paie", label: "Fiches de paie", path: "/paie?onglet=fiches", icon: FileText, hint: "Bulletins et récapitulatifs de paie" },
+  { id: "fiches-paie", label: "Fiches de paie", path: "/paie", icon: FileText, hint: "Bulletins et récapitulatifs de paie" },
 ];
 
 // Palette de couleurs personnalisables En-Check (modèles & cases)
@@ -1907,6 +1909,11 @@ export default function Planning() {
     return weekDays.map((d) => d.dateStr);
   }, [planningView, calendarDate, weekDays]);
 
+  const publishedPayslips = usePlanningPayslips(employees, periodDates);
+  const payslipEntries = (people, date) => people.map(employee => ({
+    employee, slips: payslipsForDay(publishedPayslips.index, employee, date),
+  })).filter(entry => entry.slips.length > 0);
+
   // ═══ POINTAGES RÉELS : MÊME MOTEUR QUE LA PAGE POINTAGES ═══
   // Les entrées/sorties affichées dans le Planning sont calculées par
   // `resoudrePointagesJournee` (appariement, garde de nuit, auto-close, seuils
@@ -2803,6 +2810,11 @@ export default function Planning() {
           })}
         </nav>
 
+        <div className="sk-payslip-status" role="status">
+          <span>{publishedPayslips.loading ? 'Vérification des fiches envoyées…' : publishedPayslips.error || 'Billet animé : jour couvert par une fiche envoyée au salarié (pas une preuve de paiement).'}</span>
+          <button type="button" onClick={publishedPayslips.refresh} disabled={publishedPayslips.loading}>Actualiser les fiches</button>
+        </div>
+
         {/* Bandeau : entreprises n'ayant pas souscrit à l'option Planning (aucun horaire inventé) */}
         {employeesWithoutPlanningOption.length > 0 && (
           <div className="sk-no-option-banner" role="status">
@@ -3367,6 +3379,7 @@ export default function Planning() {
                                             }
                                           }}
                                         >
+                                          <PlanningPayslipBadge entries={payslipEntries([emp], dayItem.dateStr)} />
                                           {/* Infobulle flottante En-Check lors du survol en Drag & Drop */}
                                           {isDropOver && (
                                             <div className="sk-drag-tooltip">
@@ -3918,6 +3931,7 @@ export default function Planning() {
                       </div>
 
                       <div className="sk-day-actions">
+                        <PlanningPayslipBadge entries={payslipEntries([emp], dayItem.dateStr)} />
                         <div className="sk-day-actions-hours">
                           <span>
                             {netM > 0 ? formatHoursCompact(netM) : "—"}
@@ -4075,6 +4089,8 @@ export default function Planning() {
                         {isToday && <span className="sk-today-pill">Aujourd&apos;hui</span>}
                       </span>
                     </div>
+
+                    <PlanningPayslipBadge entries={payslipEntries(scopedEmployees, cell.date)} />
 
                     {cell.isHoliday ? (
                       <div className="sk-cal-holiday">{cell.holiday?.name}</div>

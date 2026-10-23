@@ -27,7 +27,7 @@ const PAGES_RAPIDES = [
   { chemin: '/rapports', libelle: 'Rapports', icone: BarChart3 },
 ]
 
-export default function RaccourcisPages({ pages = PAGES_RAPIDES, compact = false }) {
+export default function RaccourcisPages({ pages = PAGES_RAPIDES, compact = false, excludePaths = [] }) {
   const { pathname, search } = useLocation()
   // « /paie?onglet=fiches » n'est actif que sur cet onglet précis
   const ici = (chemin) => {
@@ -43,7 +43,7 @@ export default function RaccourcisPages({ pages = PAGES_RAPIDES, compact = false
       aria-label="Aller à une autre page"
       data-testid="raccourcis-pages"
     >
-      {pages.map(({ chemin, libelle, icone: Icone }) => {
+      {pages.filter(page => !excludePaths.includes(page.chemin.split('?')[0])).map(({ chemin, libelle, icone: Icone }) => {
         const actif = ici(chemin)
         const Picto = Icone
         return (
