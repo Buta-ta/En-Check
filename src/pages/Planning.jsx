@@ -1,3 +1,4 @@
+import PageCulturalBand from "../components/PageCulturalBand";
 import PlanningPayslipBadge from "../components/PlanningPayslipBadge";
 import usePlanningPayslips, { payslipsForDay } from "../hooks/usePlanningPayslips";
 // ═══════════════════════════════════════════════════════════════════════════
@@ -15,7 +16,6 @@ import { resoudrePointagesJournee } from "../services/hoursCalculator";
 import { chargerSeuilsPointage } from "../services/seuilsPointage";
 import FeatureService from "../services/featureService";
 import {
-  KenteWovenTapestrySvg,
   AdinkraWatermarkSvg,
   WovenKenteBadgeSvg,
 } from "../components/AfroCulturalSvg";
@@ -2611,10 +2611,7 @@ export default function Planning() {
 
   return (
     <div className="sk-plan-page" data-theme={darkMode ? "dark" : "light"}>
-      {/* Frise supérieure textile Kente */}
-      <div className="sk-kente-top-strip" aria-hidden="true">
-        <KenteWovenTapestrySvg />
-      </div>
+      <PageCulturalBand pathname="/planning"/>
 
       {/* ═══ BARRE DE COMMANDE SUPÉRIEURE FAÇON EN-CHECK ═══ */}
       <header className="sk-topbar">
@@ -4470,6 +4467,7 @@ export default function Planning() {
           </div>
         )}
       </main>
+      <PageCulturalBand pathname="/planning" placement="bottom"/>
 
       {/* ═══ MODAL CRÉATION / ÉDITION DE MODÈLE (work_schedules) ═══ */}
       {showModal && (

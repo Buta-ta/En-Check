@@ -8,7 +8,6 @@ const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
 const svgSrc = lire('src/components/AfroCulturalSvg.jsx')
 const absencesSrc = lire('src/pages/Absences.jsx')
 const planningSrc = lire('src/pages/Planning.jsx')
-const planningCss = lire('src/pages/PlanningAfroTech.css')
 
 // Bloc source du seul composant concerné, pour ne pas tester les autres frises
 const debut = svgSrc.indexOf('export function KenteAmberWeaveSvg')
@@ -59,14 +58,10 @@ describe('Patrimoine Kente conservé et bandeau Ndebele propre aux Absences', ()
     expect(bandeAmbre).toMatch(/polygon\s+points="206,3 234,3 220,14 234,25 206,25 220,14"/)
   })
 
-  it('6. la page Planning n’est pas modifiée : elle garde sa frise d’origine à 10 px', () => {
-    expect(planningSrc).toContain('KenteWovenTapestrySvg')
-    expect(planningSrc).not.toContain('KenteAmberWeaveSvg')
-
-    const strip = planningCss.slice(
-      planningCss.indexOf('.sk-kente-top-strip {'),
-      planningCss.indexOf('.sk-kente-top-strip {') + 200
-    )
-    expect(strip).toContain('height: 10px')
+  it('6. Planning utilise le nouveau motif kuba sans changer le SVG Kente partagé', () => {
+    expect(planningSrc).toContain('<PageCulturalBand pathname="/planning"/>')
+    expect(planningSrc).toContain('<PageCulturalBand pathname="/planning" placement="bottom"/>')
+    expect(planningSrc).not.toContain('KenteWovenTapestrySvg')
+    expect(svgSrc).toContain('export function KenteWovenTapestrySvg')
   })
 })

@@ -102,7 +102,7 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
   it('conserve l’identité Afro-Tech et le thème actif (useTheme + motifs culturels)', () => {
     expect(planningSrc).toContain('useTheme')
     expect(planningSrc).toContain('data-theme={darkMode ? "dark" : "light"}')
-    expect(planningSrc).toContain('KenteWovenTapestrySvg')
+    expect(planningSrc).toContain('<PageCulturalBand pathname="/planning"/>')
     expect(planningSrc).toContain('AdinkraWatermarkSvg')
     expect(planningCss).toContain('.sk-plan-page[data-theme="light"]')
   })
@@ -209,7 +209,7 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
   it('25. possède un écran de chargement Planning rythmé en deux scènes, comme Pointages', () => {
     const planningLoading = lire('src/components/PlanningLoadingScreen.jsx')
     // Même recette que l'écran Pointages : frise Kente, coins culturels, barre de progression
-    expect(planningLoading).toContain('KenteFriezeSvg')
+    expect(planningLoading).toContain('<PageCulturalBand pathname="/planning" placement="loading"/>')
     expect(planningLoading).toContain('CulturalCornerMotifSvg')
     expect(planningLoading).toContain('pointages-loading-bar-fill')
     expect(planningLoading).toContain('Passer l\u2019animation')
