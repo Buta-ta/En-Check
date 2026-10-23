@@ -8,6 +8,7 @@ vi.mock('../../lib/supabase', () => ({ supabase: { from: (...args) => { mock.fro
 import { publishPayrollBatch, PayrollDeliveryBlocked } from '../payrollDelivery'
 import TaxationService from '../taxationService'
 import PaieDeliveryControl from '../../components/PaieDeliveryControl'
+import PaieTaxOverrideDialog from '../../components/PaieTaxOverrideDialog'
 const row = (id, patch = {}) => ({ employee: { id }, grossSalary: 100000, netSalary: 90000, impot_a_verifier: false, profile: { salary_type: 'monthly', base_salary: 100000 }, ...patch })
 const payload = row => ({ enterprise_id: 'a', employee_id: row.employee.id, period_start: '2026-10-01', period_end: '2026-10-31', currency: 'XOF', status: 'sent' })
 let host, root
@@ -75,4 +76,76 @@ it('câblage : désactivé par défaut, périmètre limité, snapshots et verrou
   expect(source).toContain('if (calculationLock.current || deliveryLock.current) return')
   expect(source).toContain('<fieldset disabled={loadingPreview || sendingSlips}')
   expect(source).not.toContain('.remissable')
+})
+
+const override = { acknowledged: true, confirmedBy: 'admin-1' }
+it('autorisation explicite : lot unique, fiscalité inchangée, trace uniquement sur les fiches concernées', async () => {
+  const unverified = row('e', { impot_a_verifier: true, taxation: { impot_a_verifier: true } })
+  const snapshot = structuredClone(unverified)
+  await publishPayrollBatch([unverified, row('f')], r => ({ ...payload(r), details: { taxation: r.taxation, keep: 'snapshot' } }), { taxOverride: override })
+  expect(mock.upsert).toHaveBeenCalledOnce()
+  const [first, second] = mock.upsert.mock.calls[0][0]
+  expect(first.details).toMatchObject({ impot_a_verifier: true, keep: 'snapshot', taxation: { impot_a_verifier: true }, tax_delivery_override: { acknowledged: true, confirmed_by: 'admin-1' } })
+  expect(Number.isFinite(Date.parse(first.details.tax_delivery_override.confirmed_at))).toBe(true)
+  expect(second.details.tax_delivery_override).toBeUndefined()
+  expect(unverified).toEqual(snapshot)
+})
+it('refuse toute autorisation incomplète et interdit son emploi en automatique', async () => {
+  for (const taxOverride of [null, {}, { acknowledged: true }, { confirmedBy: 'a' }, { ...override, acknowledged: false }, { ...override, confirmedBy: ' ' }, { ...override, confirmedBy: 123 }]) {
+    await expect(publishPayrollBatch([row('e', { impot_a_verifier: true })], payload, { taxOverride })).rejects.toThrow('règles d’impôt')
+  }
+  await expect(publishPayrollBatch([row('e', { impot_a_verifier: true })], payload, { automatic: true, taxOverride: override })).rejects.toThrow('règles d’impôt')
+  expect(mock.upsert).not.toHaveBeenCalled()
+})
+it('une dérogation fiscale ne contourne ni montants, ni devise, ni doublons, ni contexte', async () => {
+  const r = row('e', { impot_a_verifier: true })
+  const options = { taxOverride: override }
+  await expect(publishPayrollBatch([{ ...r, grossSalary: NaN }], payload, options)).rejects.toThrow('brut ou un net')
+  await expect(publishPayrollBatch([r], r => ({ ...payload(r), currency: '' }), options)).rejects.toThrow('devise')
+  await expect(publishPayrollBatch([r, r], payload, options)).rejects.toThrow('deux fiches')
+  await expect(publishPayrollBatch([r], payload, { ...options, isCurrent: () => false })).rejects.toThrow('contexte')
+  expect(mock.upsert).not.toHaveBeenCalled()
+})
+it('la confirmation ne persiste pas pour les prochains envois', async () => {
+  const rows = [row('e', { taxation: { impot_a_verifier: true } })]
+  await publishPayrollBatch(rows, payload, { taxOverride: override })
+  await expect(publishPayrollBatch(rows, payload)).rejects.toThrow('règles d’impôt')
+  expect(mock.upsert).toHaveBeenCalledOnce()
+})
+it('la dérogation ne masque pas un refus RLS', async () => {
+  mock.upsert.mockResolvedValueOnce({ error: new Error('RLS') })
+  await expect(publishPayrollBatch([row('e', { impot_a_verifier: true })], payload, { taxOverride: override })).rejects.toThrow('RLS')
+})
+it('aide fermée par défaut et action exceptionnelle disponible sans masquer le statut', async () => {
+  const onOverride = vi.fn()
+  await act(async () => root.render(<PaieDeliveryControl enabled onChange={() => {}} onOverride={onOverride} notice={{ error: true, taxReview: true, text: 'Fiscalité à vérifier' }}/>))
+  expect(host.querySelector('details').open).toBe(false)
+  expect(host.querySelector('[role="switch"]').checked).toBe(true)
+  expect(host.querySelector('.pw-delivery-switch').textContent).toContain('Activé')
+  await act(async () => host.querySelector('button').click())
+  expect(onOverride).toHaveBeenCalledOnce()
+})
+it('dialogue : aucune confirmation sans reconnaissance explicite, fermeture par Échap', async () => {
+  HTMLDialogElement.prototype.showModal = function () { this.open = true }
+  HTMLDialogElement.prototype.close = function () { this.open = false }
+  const onConfirm = vi.fn(), onCancel = vi.fn()
+  await act(async () => root.render(<PaieTaxOverrideDialog rows={[row('e')]} periodStart="2026-10-01" periodEnd="2026-10-31" onConfirm={onConfirm} onCancel={onCancel}/>))
+  const buttons = host.querySelectorAll('button')
+  expect(buttons[1].disabled).toBe(true)
+  await act(async () => buttons[1].click())
+  expect(onConfirm).not.toHaveBeenCalled()
+  await act(async () => host.querySelector('input').click())
+  expect(buttons[1].disabled).toBe(false)
+  await act(async () => buttons[1].click())
+  expect(onConfirm).toHaveBeenCalledOnce()
+  await act(async () => host.querySelector('dialog').dispatchEvent(new Event('cancel', { bubbles: true, cancelable: true })))
+  expect(onCancel).toHaveBeenCalledOnce()
+})
+it('le contexte annule la confirmation et seul le clic confirmé fournit la dérogation', () => {
+  const source = readFileSync('src/pages/FichesPaie.jsx', 'utf8')
+  expect(source).toContain('setPreviewRows([]); setTaxConfirmation(null)')
+  expect(source).toContain("if (activeTab !== 'preview') setTaxConfirmation(null)")
+  expect(source).toContain('request === generationRequest.current')
+  expect(source).toContain('taxOverride: { acknowledged: true, confirmedBy: admin?.id }')
+  expect(source).toContain('!options.automatic && !options.taxOverride')
 })

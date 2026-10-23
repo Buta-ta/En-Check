@@ -1,5 +1,7 @@
 # Paie — envoi automatique au calcul et traitement des refus fiscaux
 
+> Évolution ultérieure : un envoi manuel exceptionnel après confirmation est désormais possible. Voir [Envoi exceptionnel et aides pliables](PAIE-ENVOI-EXCEPTIONNEL-ET-AIDES-PLIABLES.md). Le présent rapport décrit la livraison initiale.
+
 23 octobre 2026 — branche `arena/08e2f879-en-check`
 
 ## Demande
