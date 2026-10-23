@@ -672,11 +672,10 @@ export default function Rapports() {
   //  séparément — hors périmètre de cette PR, pour ne pas mélanger un nettoyage
   //  de 600 lignes avec un correctif de paie.
   const calculateWorkedMinutesByDay = (employeeId, allAttendances) => {
-    const empAttendances = (allAttendances || [])
+    const empAttendances = filtrerPointagesPayables(allAttendances || [])
       .filter(a => a.employee_id === employeeId)
       //  Même doctrine que la paie (§4.1) : une sortie estimée et non validée par
       //  un humain ne doit pas gonfler un rapport, un graphique, ni un cumul.
-      .filter(filtrerPointagesPayables)
       .sort((a, b) => new Date(a.check_time) - new Date(b.check_time))
 
     const dateSet = new Set(empAttendances.map(a => a.check_time.split('T')[0]))

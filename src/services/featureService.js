@@ -399,9 +399,9 @@ class FeatureService {
         .from('overtime_settings')
         .select('*')
         .eq('enterprise_id', enterpriseId)
-        .single()
+        .maybeSingle()
 
-      if (error && error.code === 'PGRST116') {
+      if (!data && !error) {
         return this.getDefaultOvertimeSettings()
       }
 

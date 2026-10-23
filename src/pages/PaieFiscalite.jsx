@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Sun, Moon, FileText, Landmark, Settings } from 'lucide-react'
+import { ArrowLeft, Sun, Moon, FileText, Landmark, Settings, Building2, ChevronDown, Globe2, Users, Gift, Upload, ClipboardCheck, SlidersHorizontal, Percent, Eye } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
+import PaieCoin from '../components/PaieCoin'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import RaccourcisPages from '../components/RaccourcisPages'
 import PaieEntreprises from '../components/PaieEntreprises'
@@ -16,6 +17,8 @@ export const PAIE_SECTIONS = [
   { id: 'fiscal', label: 'Fiscalité', icon: Landmark, tabs: [['pays', 'Vue d’ensemble'], ['contributions', 'Cotisations'], ['taxes', 'Barème'], ['rules', 'Règles fiscales'], ['simulation', 'Simulation']] },
   { id: 'settings', label: 'Paramètres', icon: Settings, tabs: [['settings', 'Moteur & bulletin']] },
 ]
+const TAB_ICONS = { preparation: ClipboardCheck, profiles: Users, allowances: Gift, imports: Upload, preview: FileText, pays: Globe2, contributions: Landmark, taxes: Percent, rules: SlidersHorizontal, simulation: Eye, settings: Settings }
+
 const LEGACY = { moteur: 'settings', apercu: 'pays', profils: 'profiles', primes: 'allowances', fiches: 'preview' }
 export function paieAccess(enterprise, superAdmin) {
   return { fiscal: superAdmin || enterprise?.module_config_fiscale === true, bulletins: superAdmin || enterprise?.module_fiches_paie === true }
@@ -87,11 +90,12 @@ export default function PaieFiscalite() {
     <header className="pw-header">
       <div className="pw-brand"><button className="paie-btn" aria-label="Retour au tableau de bord" onClick={() => { if (window.confirm('Quitter la paie ? Les saisies non enregistrées seront abandonnées.')) navigate('/dashboard') }}><ArrowLeft size={20}/></button><EnCheckBrandMark size={38}/><h1>En-Check · Paie & Fiscalité</h1></div>
       {context && <div className="pw-context">
-        <select aria-label="Entreprise" value={enterpriseId || ''} disabled={busy} onChange={e => changeEnterprise(e.target.value)}>{context.enterprises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select>
-        <span>{enterprise?.country_code || 'Pays non défini'} · {enterprise?.currency || 'Devise non définie'}</span>
+        <label className="pw-enterprise-control"><span className="pw-context-icon"><Building2 size={20}/></span><span className="pw-enterprise-value"><span className="pw-control-label">ENTREPRISE</span><select aria-label="Entreprise" value={enterpriseId || ''} disabled={busy} onChange={e => changeEnterprise(e.target.value)}>{context.enterprises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></span><ChevronDown size={15} aria-hidden="true"/></label>
+        <div className="pw-country-control" aria-label="Pays fiscal et devise"><PaieCoin variant={2}><Globe2 size={18}/></PaieCoin><div><span className="pw-control-label">PAYS · DEVISE</span><strong>{enterprise?.country_code || 'Non défini'}<span aria-hidden="true"> / </span>{enterprise?.currency || 'Non définie'}</strong></div></div>
       </div>}
       <button className="paie-btn" aria-label={darkMode ? 'Mode clair' : 'Mode sombre'} onClick={toggleTheme}>{darkMode ? <Sun size={20}/> : <Moon size={20}/>}</button>
-      <div className="pw-shortcuts" onClickCapture={event => { if (event.target.closest('a,button') && !window.confirm('Quitter la paie ? Les saisies non enregistrées seront abandonnées.')) { event.preventDefault(); event.stopPropagation() } }}><RaccourcisPages /></div>
+      <div className="pw-header-lower"><div className="pw-workspace-caption"><span className="pw-caption-diamond" aria-hidden="true">◆</span><div><strong>Vos équipes. Votre rythme.</strong><span>Préparer, vérifier, calculer.</span></div></div>
+      <div className="pw-shortcuts" onClickCapture={event => { if (event.target.closest('a,button') && !window.confirm('Quitter la paie ? Les saisies non enregistrées seront abandonnées.')) { event.preventDefault(); event.stopPropagation() } }}><RaccourcisPages /></div></div>
     </header>
     <div className="pw-bogolan pw-bogolan-top" aria-hidden="true" />
     {error ? <div className="pw-error" role="alert">{error}<button className="paie-btn" onClick={() => setRetry(n => n + 1)}>Réessayer</button></div>
@@ -99,7 +103,7 @@ export default function PaieFiscalite() {
       : !section ? <p className="pw-loading">Les modules Paie et Fiscalité ne sont pas activés pour cette entreprise.</p>
       : <>
         <nav className="pw-tabs" aria-label="Paie et fiscalité">{visible.map(s => { const Icon = s.icon; return <button key={s.id} aria-current={section.id === s.id ? 'page' : undefined} onClick={() => go(s.tabs[0][0])}><Icon size={20}/>{s.label}</button> })}</nav>
-        <nav className="pw-subtabs" aria-label={`Rubriques ${section.label}`}>{section.tabs.map(([id, label]) => <button key={id} aria-current={tab === id ? 'page' : undefined} onClick={() => go(id)}>{label}</button>)}</nav>
+        <nav className="pw-subtabs" aria-label={`Rubriques ${section.label}`}>{section.tabs.map(([id, label], index) => { const Icon = TAB_ICONS[id] || FileText; return <button key={id} className="pw-coin-tab" aria-current={tab === id ? 'page' : undefined} onClick={() => go(id)}><PaieCoin variant={index}><Icon size={21}/></PaieCoin><span className="pw-coin-label">{label}</span><span className="pw-tab-active-mark" aria-hidden="true"/></button> })}</nav>
         <main className="pw-main" key={enterpriseId}>
           {/* Keep both editors mounted across tabs: drafts and the chosen period survive navigation.
               A new enterprise gets a fresh keyed subtree; stale responses cannot paint into it. */}

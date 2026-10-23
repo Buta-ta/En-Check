@@ -14,11 +14,9 @@ class LeaveBalanceService {
       .from('payroll_settings')
       .select('leave_days_per_month, annual_leave_cap, leave_carry_over, leave_reference_date')
       .eq('enterprise_id', enterpriseId)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Erreur config congés:', error)
-    }
+    if (error) throw error
 
     return {
       leave_days_per_month: parseFloat(data?.leave_days_per_month) || 1.75,
