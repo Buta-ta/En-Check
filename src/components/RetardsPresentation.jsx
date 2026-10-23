@@ -1,3 +1,4 @@
+import EmployeeProfilePhoto from './EmployeeProfilePhoto'
 import RetardsEngraving from './RetardsEngraving'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -294,10 +295,10 @@ export function RetardsContent({
             >
               <summary>
                 <div className="rt-person">
-                  <span className="rt-avatar">
-                    {r.employee.first_name?.[0]}
-                    {r.employee.last_name?.[0]}
-                  </span>
+                  <EmployeeProfilePhoto
+                    employee={r.employee}
+                    className="rt-avatar"
+                  />
                   <span>
                     <strong>
                       {r.employee.first_name} {r.employee.last_name}

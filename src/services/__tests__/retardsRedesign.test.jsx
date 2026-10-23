@@ -18,6 +18,7 @@ const mock = vi.hoisted(() => ({
   rpc: vi.fn(),
   deletion: vi.fn(),
   allowed: true,
+  profiles: [],
 }))
 const line = (id = 'a', minutes = 12) => ({
   pointage_id: id,
@@ -53,6 +54,7 @@ vi.mock('../../lib/supabase', () => ({
       const query = {
         select: () => query,
         eq: () => query,
+        in: () => query,
         order: () => query,
         delete: () => {
           deleting = true
@@ -65,7 +67,9 @@ vi.mock('../../lib/supabase', () => ({
         then: (resolve, reject) =>
           deleting
             ? mock.deletion().then(resolve, reject)
-            : Promise.resolve({ data: [] }).then(resolve, reject),
+            : Promise.resolve({
+                data: table === 'employees' ? mock.profiles : [],
+              }).then(resolve, reject),
       }
       return query
     },
@@ -80,6 +84,7 @@ beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date('2026-10-23T12:00:00Z'))
+  mock.profiles = []
   mock.allowed = true
   mock.rpc.mockReset().mockImplementation(() => rpcResponse({ data: [line()] }))
   mock.deletion.mockReset().mockResolvedValue({ data: [{ id: 'a' }] })
@@ -250,4 +255,15 @@ it('loads past server caps, rejecting partial results on any page error', async 
 it('shares the selected Retards motif with its contextual assistant only', () => {
   expect(culturalMotifForPath('/retards?date=2026')).toBe('retards-tissage')
   expect(culturalMotifForPath('/retards-other')).toBe('kente')
+})
+
+it('loads the real employee photo after the SQL result without changing lateness', async () => {
+  mock.profiles = [
+    { id: 'a', enterprise_id: 'ent', photo_url: '/profile-a.jpg' },
+  ]
+  await mount()
+  expect(host.querySelector('.rt-avatar img').getAttribute('src')).toBe(
+    '/profile-a.jpg',
+  )
+  expect(host.querySelector('.rt-summary').textContent).toContain('12 min')
 })

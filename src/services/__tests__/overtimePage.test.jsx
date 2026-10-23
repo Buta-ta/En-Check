@@ -50,6 +50,7 @@ vi.mock('../../lib/supabase', () => ({
                     id: 'a',
                     enterprise_id: 'ent',
                     first_name: 'Amina',
+                    photo_url: '/profile-amina.jpg',
                     last_name: 'D.',
                   },
                 ]
@@ -184,4 +185,11 @@ it('does not turn query errors into a zero-hours result and supports retry', asy
   await click('Réessayer')
   expect(host.querySelector('[role="alert"]')).toBeNull()
   expect(host.querySelector('.ot-stats')).toBeTruthy()
+})
+
+it('shows the existing employee photo in overtime results', async () => {
+  await mount()
+  expect(host.querySelector('.ot-avatar img').getAttribute('src')).toBe(
+    '/profile-amina.jpg',
+  )
 })
