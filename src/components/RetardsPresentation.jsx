@@ -1,3 +1,4 @@
+import RetardsEngraving from './RetardsEngraving'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -91,8 +92,15 @@ export function RetardsNavigation({ darkMode, onToggleTheme }) {
           [FileText, 'Rapports', '/rapports'],
         ].map(([Icon, label, path]) => (
           <Link key={path} to={path}>
-            <Icon size={16} aria-hidden="true" />
-            {label}
+            <span className="rt-nav-coin">
+              <Icon size={19} aria-hidden="true" />
+            </span>
+            <span>{label}</span>
+            <ChevronRight
+              className="rt-nav-arrow"
+              size={14}
+              aria-hidden="true"
+            />
           </Link>
         ))}
       </nav>
@@ -111,15 +119,25 @@ export function RetardsHelp() {
   return (
     <section className="rt-panel rt-help">
       <div className="rt-help-heading">
-        <h2>Lire un retard</h2>
-        <span className="rt-clock">
-          <Clock size={35} />
-        </span>
+        <div>
+          <span className="rt-eyebrow">LES REPÈRES</span>
+          <h2>Le temps, expliqué.</h2>
+        </div>
+        <RetardsEngraving />
       </div>
       <ol>
-        <li>Heure prévue par le planning</li>
-        <li>Heure d’arrivée enregistrée</li>
-        <li>Écart comparé à la tolérance</li>
+        <li>
+          <strong>Le rendez-vous</strong>
+          <span>L’heure attendue par le planning.</span>
+        </li>
+        <li>
+          <strong>L’arrivée</strong>
+          <span>Le pointage réellement enregistré.</span>
+        </li>
+        <li>
+          <strong>La différence</strong>
+          <span>L’écart comparé à la tolérance.</span>
+        </li>
       </ol>
       <details>
         <summary>Voir un exemple</summary>
@@ -169,12 +187,17 @@ export function RetardsContent({
   const visible = filtered.slice(currentPage * 8, currentPage * 8 + 8)
   const chart = retardChart(retards, dates)
   const maxCount = Math.max(1, ...chart.map((r) => r.count))
-  const maxMinutes = Math.max(1, ...retards.map((r) => r.retardMinutes))
   return (
     <>
       <div className="rt-title-row">
         <div>
-          <h1>Retards</h1>
+          <span className="rt-eyebrow">LE CARNET DE PONCTUALITÉ</span>
+          <h1>
+            Retards
+            <span className="rt-title-dot" aria-hidden="true">
+              .
+            </span>
+          </h1>
           <p>Chaque arrivée, replacée dans son contexte.</p>
         </div>
         <div className="rt-actions">
@@ -194,16 +217,31 @@ export function RetardsContent({
       {filters}
       <section className="rt-summary" aria-label="Résumé de la période">
         {[
-          [Timer, stats.totalRetards, 'retards'],
-          [Users, stats.employesEnRetard, 'employés concernés'],
-          [Clock, retardDuration(stats.totalMinutesRetard), 'cumulées'],
-        ].map(([Icon, value, label]) => (
-          <div key={label}>
+          [
+            Timer,
+            stats.totalRetards,
+            stats.totalRetards === 1 ? 'Retard constaté' : 'Retards constatés',
+          ],
+          [
+            Users,
+            stats.employesEnRetard,
+            stats.employesEnRetard === 1
+              ? 'Employé concerné'
+              : 'Employés concernés',
+          ],
+          [Clock, retardDuration(stats.totalMinutesRetard), 'Écart cumulé'],
+        ].map(([Icon, value, label], index) => (
+          <div key={label} className="rt-metric">
+            <span className="rt-metric-index" aria-hidden="true">
+              0{index + 1}
+            </span>
             <span className="rt-summary-icon">
               <Icon size={19} />
             </span>
-            <strong>{value}</strong>
-            <span>{label}</span>
+            <div className="rt-metric-copy">
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </div>
           </div>
         ))}
       </section>
@@ -224,8 +262,9 @@ export function RetardsContent({
         <section className="rt-panel rt-arrivals">
           <div className="rt-list-heading">
             <div>
-              <h2>Les arrivées en détail</h2>
-              <p>Heure prévue, arrivée réelle et écart constaté.</p>
+              <span className="rt-eyebrow">LES FICHES HORAIRES</span>
+              <h2>Chaque arrivée raconte un horaire.</h2>
+              <p>Les faits d’abord. Le contexte, au clic.</p>
             </div>
             <label className="rt-search">
               <Search size={16} />
@@ -240,9 +279,7 @@ export function RetardsContent({
               />
             </label>
           </div>
-          <p className="rt-scale-note">
-            Lignes indicatives · comparaison des écarts sur la période.
-          </p>
+
           {!visible.length && (
             <p className="rt-empty">
               {retards.length
@@ -266,31 +303,42 @@ export function RetardsContent({
                       {r.employee.first_name} {r.employee.last_name}
                     </strong>
                     <small>
-                      {retardDateLabel(r.date)} ·{' '}
-                      {retardSource(r.sourceHoraire)}
+                      {retardDateLabel(r.date)}
+                      <span className="rt-source-tag">
+                        {retardSource(r.sourceHoraire)}
+                      </span>
                     </small>
                   </span>
                   <ChevronRight className="rt-expand" size={18} />
                 </div>
-                <div className="rt-timeline">
-                  <div className="rt-track" aria-hidden="true">
-                    <span
-                      style={{
-                        width: `${Math.max(3, (r.retardMinutes / maxMinutes) * 100)}%`,
-                      }}
-                    />
+                <div className="rt-time-ticket">
+                  <div className="rt-time-stop">
+                    <span>Heure prévue</span>
+                    <strong>{r.heureArrivee || '—'}</strong>
+                    <small>Le rendez-vous</small>
                   </div>
-                  <div className="rt-time-labels">
-                    <span>
-                      <b>{r.heureArrivee || '—'}</b> prévue
-                    </span>
-                    <span>
-                      <b>{r.heurePointage || '—'}</b> arrivée
-                    </span>
+                  <div className="rt-ticket-bridge">
+                    <span className="rt-ticket-line" aria-hidden="true" />
                     <strong className="rt-delay">
                       +{retardDuration(r.retardMinutes)}
                     </strong>
+                    <small>Écart constaté</small>
                   </div>
+                  <div className="rt-time-stop rt-time-actual">
+                    <span>Arrivée réelle</span>
+                    <strong>{r.heurePointage || '—'}</strong>
+                    <small>Le pointage</small>
+                  </div>
+                </div>
+                <div className="rt-ticket-footer">
+                  <span>
+                    <Clock size={12} aria-hidden="true" /> Tolérance :{' '}
+                    {r.tolerance} min
+                  </span>
+                  <span className="rt-ticket-open">
+                    Voir le contexte{' '}
+                    <ChevronRight size={13} aria-hidden="true" />
+                  </span>
                 </div>
               </summary>
               <div className="rt-arrival-detail">
@@ -331,65 +379,98 @@ export function RetardsContent({
           ))}
           <footer className="rt-pagination">
             <span>
-              {visible.length} retard(s) affiché(s) sur {filtered.length}
+              {filtered.length === 1
+                ? '1 fiche horaire'
+                : `${visible.length} fiches sur ${filtered.length}`}
               {search && ` · ${retards.length} sur la période`}
             </span>
-            <div>
-              <button
-                aria-label="Page précédente"
-                disabled={currentPage === 0}
-                onClick={() => setPage(currentPage - 1)}
-              >
-                <ChevronLeft size={17} />
-              </button>
-              <span>
-                {currentPage + 1} / {pageCount}
-              </span>
-              <button
-                aria-label="Page suivante"
-                disabled={currentPage + 1 >= pageCount}
-                onClick={() => setPage(currentPage + 1)}
-              >
-                <ChevronRight size={17} />
-              </button>
-            </div>
+            {pageCount > 1 && (
+              <div>
+                <button
+                  aria-label="Page précédente"
+                  disabled={currentPage === 0}
+                  onClick={() => setPage(currentPage - 1)}
+                >
+                  <ChevronLeft size={17} />
+                </button>
+                <span>
+                  {currentPage + 1} / {pageCount}
+                </span>
+                <button
+                  aria-label="Page suivante"
+                  disabled={currentPage + 1 >= pageCount}
+                  onClick={() => setPage(currentPage + 1)}
+                >
+                  <ChevronRight size={17} />
+                </button>
+              </div>
+            )}
           </footer>
         </section>
         <aside>
           <RetardsHelp />
-          <section className="rt-panel rt-chart">
+          <section
+            className={`rt-panel rt-chart ${mode === 'jour' ? 'rt-day-chart' : ''}`}
+          >
             <h2>
               {mode === 'semaine'
                 ? 'La semaine en un regard'
                 : mode === 'mois'
                   ? 'Le mois en un regard'
-                  : 'La journée en un regard'}
+                  : 'L’empreinte du jour'}
             </h2>
-            <p>Nombre de retards par jour · période entière</p>
-            <div
-              className="rt-chart-scroll"
-              tabIndex={0}
-              aria-label="Graphique des retards par jour"
-            >
-              <div
-                className="rt-bars"
-                style={{
-                  minWidth: dates.length > 7 ? dates.length * 38 : undefined,
-                }}
-              >
-                {chart.map((day) => (
-                  <div className="rt-bar-column" key={day.date}>
-                    <b>{day.count}</b>
-                    <div className="rt-bar-track">
-                      <span
-                        style={{ height: `${(day.count / maxCount) * 100}%` }}
-                      />
-                    </div>
-                    <span>{day.label}</span>
-                  </div>
-                ))}
+            {mode === 'jour' ? (
+              <div className="rt-day-summary">
+                <div className="rt-day-seal">
+                  <span className="rt-day-seal-ring" aria-hidden="true" />
+                  <strong>{stats.totalRetards}</strong>
+                  <span>
+                    {stats.totalRetards === 1
+                      ? 'retard constaté'
+                      : 'retards constatés'}
+                  </span>
+                </div>
+                <div className="rt-day-caption">
+                  <span>{retardDateLabel(dates[0])}</span>
+                  <p>
+                    <strong>{retardDuration(stats.totalMinutesRetard)}</strong>{' '}
+                    d’écart cumulé
+                  </p>
+                  <small>Sur les journées évaluées, sans estimation.</small>
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <p>Nombre de retards par jour · période entière</p>
+                <div
+                  className="rt-chart-scroll"
+                  tabIndex={0}
+                  aria-label="Graphique des retards par jour"
+                >
+                  <div
+                    className="rt-bars"
+                    style={{
+                      minWidth:
+                        dates.length > 7 ? dates.length * 38 : undefined,
+                    }}
+                  >
+                    {chart.map((day) => (
+                      <div className="rt-bar-column" key={day.date}>
+                        <b>{day.count}</b>
+                        <div className="rt-bar-track">
+                          <span
+                            style={{
+                              height: `${(day.count / maxCount) * 100}%`,
+                            }}
+                          />
+                        </div>
+                        <span>{day.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </section>
         </aside>
       </div>
