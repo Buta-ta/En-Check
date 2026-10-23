@@ -6,7 +6,7 @@
 // mention légale, jours ouvrables
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import FeatureService, { FEATURES } from '../services/featureService'
@@ -26,6 +26,7 @@ import {
   Filter, Stamp, Award, MapPin, Phone, Mail, Globe, Hash
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import PaiePreparation from '../components/PaiePreparation'
 import { useTheme } from '../contexts/ThemeContext'
 import { palettePaie } from '../styles/paieTheme'
 import { stylesBulletins } from '../styles/paieThemeBulletins'
@@ -51,12 +52,13 @@ import {
 // PAGE PRINCIPALE
 // ═══════════════════════════════════════════════════════════
 
-export default function FichesPaie({ integre = false, ongletExterne = null, entrepriseIdForce = null, onOngletChange = null } = {}) {
+export default function FichesPaie({ integre = false, ongletExterne = null, entrepriseIdForce = null, onOngletChange = null, onBusyChange = null } = {}) {
   const { darkMode } = useTheme()
   const S = stylesBulletins(darkMode)
   const P = palettePaie(darkMode)
   const [admin, setAdmin] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [saving, setSaving] = useState(false)
   const [ongletInterne, setOngletInterne] = useState('settings')
   const activeTab = ongletExterne || ongletInterne
@@ -116,6 +118,7 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
 
   const [showGenerateConfirm, setShowGenerateConfirm] = useState(false)
 
+  const generationRequest = useRef(0)
   const [previewRows, setPreviewRows] = useState([])
   const [loadingPreview, setLoadingPreview] = useState(false)
 
@@ -167,6 +170,7 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
 
   const loadEnterpriseContext = async (targetEnterpriseId, adminId, start, end) => {
     const { data: enterprise } = await supabase.from('enterprises').select('id, name, address, email, phone, logo_url, country_code, currency').eq('id', targetEnterpriseId).single()
+    if (!enterprise) throw new Error('Entreprise inaccessible')
     setEnterpriseId(targetEnterpriseId)
     setEnterpriseName(enterprise?.name || 'Entreprise')
     setEnterpriseData(enterprise)
@@ -181,6 +185,7 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
       PayrollService.getDeductionTypes(targetEnterpriseId),
     ])
 
+    if (employeesRes.error) throw employeesRes.error
     const employeesData = employeesRes.data || []
     setEmployees(employeesData)
     setProfiles(loadedProfiles || [])
@@ -275,7 +280,7 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
       setPeriodEnd(end)
 
       await loadEnterpriseContext(targetEnterpriseId, adminData.id, start, end)
-    } catch (err) { console.error(err); toast.error('Erreur chargement module paie'); navigate('/dashboard') }
+    } catch (err) { console.error(err); setLoadError('Chargement de la paie impossible. Réessayez avant toute opération.') }
     setLoading(false)
   }
 
@@ -548,20 +553,23 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   // ═══════════════════════════════════════════════════════════
 
   const handleTryGenerate = () => {
-    if (!enterpriseId || !periodStart || !periodEnd) { toast.error('Choisissez une période'); return }
+    if (!enterpriseId || !periodStart || !periodEnd || periodStart > periodEnd) { toast.error('Choisissez une période valide'); return }
     if (preCheckResults.blockers.length > 0) setShowGenerateConfirm(true)
     else handleGeneratePreview()
   }
 
   const handleGeneratePreview = async () => {
     setShowGenerateConfirm(false)
-    if (!enterpriseId || !periodStart || !periodEnd) { toast.error('Choisissez une période'); return }
+    if (!enterpriseId || !periodStart || !periodEnd || periodStart > periodEnd) { toast.error('Choisissez une période valide'); return }
     setLoadingPreview(true)
+    const request = ++generationRequest.current
     try {
       // Charger cumuls annuels
       const year = new Date(periodStart + 'T12:00:00Z').getFullYear()
       await loadAnnualCumuls(enterpriseId, year)
 
+      // Always calculate from persisted settings, not a hidden editor's stale snapshot.
+      const persistedSettings = await PayrollService.getPayrollSettings(enterpriseId)
       const sourceData = await PayrollService.loadPayrollSourceData(enterpriseId, periodStart, periodEnd)
       const importedMap = await PayrollService.getImportedVariablesMap(enterpriseId, periodStart, periodEnd)
 
@@ -576,7 +584,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
             PayrollService.getPayrollDeductions(enterpriseId, periodStart, periodEnd, emp.id),
           ])
           return await PayrollService.buildPayrollSlip({
-            employee: emp, profile, settings, enCheckData,
+            employee: emp, profile, settings: persistedSettings, enCheckData,
             importedData: importedMap.get(emp.id) || {},
             periodStart, periodEnd,
             overtimeSettings: sourceData.overtimeSettings,
@@ -586,6 +594,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
         })
       )
 
+      if (request !== generationRequest.current) { setLoadingPreview(false); return }
       setPreviewRows(rows)
       changerOnglet('preview')
       await loadSentSlips(enterpriseId, periodStart, periodEnd)
@@ -950,6 +959,19 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 }, [employees, profiles, settings.company_social_label, settings.hide_social_label])
 
 
+  useEffect(() => {
+    onBusyChange?.(saving || loadingPreview || sendingSlips || savingImport)
+  }, [saving, loadingPreview, sendingSlips, savingImport, onBusyChange])
+
+  // Calculs invalidés dès qu'une entrée change : jamais de graphique d'une autre période.
+  useEffect(() => { generationRequest.current += 1; setPreviewRows([]) }, [periodStart, periodEnd, profiles, settings, periodBonuses, periodDeductions])
+  useEffect(() => {
+    const prevent = event => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', prevent)
+    return () => { generationRequest.current += 1; window.removeEventListener('beforeunload', prevent) }
+  }, [])
+  if (loadError) return <div role="alert" className="pw-error">{loadError}<button className="paie-btn" onClick={() => { setLoadError(''); initPage({ ...admin, selectedEnterprise: { id: entrepriseIdForce || enterpriseId } }) }}>Réessayer</button></div>
+
   // Vérifier si signatures/cachet configurés
   const hasSignatures = settings.signatory1_signature || settings.signatory2_signature
   const hasStamp = !!settings.company_stamp
@@ -1069,20 +1091,21 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           </header>
           )}
 
-          {/* GUIDE */}
-          <div style={S.guideBar}>
-            <Info size={16} color={P.ambre} style={{ flexShrink: 0, marginTop: 2 }} />
-            <div>
-              <p style={S.guideTitle}>Comment utiliser ce module ?</p>
-              <p style={S.guideText}>
-                <strong>1.</strong> Configurez les <strong>paramètres</strong>, <strong>signatures</strong> et <strong>cachet</strong>.{' '}
-                <strong>2.</strong> Créez les <strong>profils salariaux</strong>.{' '}
-                <strong>3.</strong> Gérez les <strong>primes & retenues</strong>.{' '}
-                <strong>4.</strong> Importez les <strong>variables</strong>.{' '}
-                <strong>5.</strong> Générez et envoyez les bulletins.
-              </p>
-            </div>
-          </div>
+          {integre && activeTab === 'preparation' && <PaiePreparation
+            employees={employees} profiles={profiles} previewRows={previewRows}
+            currency={settings.currency} start={periodStart} end={periodEnd}
+            setStart={setPeriodStart} setEnd={setPeriodEnd}
+            onHistory={() => { loadHistory(); setShowHistoryModal(true) }}
+            onGenerate={handleTryGenerate} generating={loadingPreview}
+            onNavigate={changerOnglet}
+            onEmployee={id => { setSelectedEmployeeId(id); changerOnglet('profiles') }}
+            issues={[...preCheckResults.blockers, ...preCheckResults.warnings]}
+          />}
+          {integre && activeTab === 'preview' && <div className="pw-toolbar">
+            <button className="paie-btn" onClick={() => { loadHistory(); setShowHistoryModal(true) }}><History size={17}/>Historique</button>
+            <button className="paie-btn paie-btn-principal" onClick={handleTryGenerate} disabled={loadingPreview || !employees.length}><Eye size={17}/>{loadingPreview ? 'Calcul en cours…' : 'Vérifier et calculer les bulletins'}</button>
+          </div>}
+          {activeTab !== 'preparation' && <details className="pw-help"><summary>Comment préparer la paie ?</summary><p>Configurez les paramètres et les profils, vérifiez les primes et les variables, puis calculez et contrôlez les bulletins avant envoi.</p></details>}
 
           {/* PRÉ-VALIDATION — inutile sur les onglets de réglage */}
           {(!integre || activeTab === 'preview') && (preCheckResults.blockers.length > 0 || preCheckResults.warnings.length > 0) && (

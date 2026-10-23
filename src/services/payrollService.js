@@ -183,13 +183,13 @@ class PayrollService {
    * rédacteurs sur la même colonne, c'est une perte de données qui
    * attend son tour. Il n'en reste qu'un, et il n'écrit que sa colonne.
    */
-  static async saveCustomTaxRules(enterpriseId, rules) {
+  static async saveCustomTaxRules(enterpriseId, rules, expectedRules) {
     if (!enterpriseId) return false
     try {
-      return await ecrireReglesFiscales(enterpriseId, rules)
+      return await ecrireReglesFiscales(enterpriseId, rules, expectedRules)
     } catch (err) {
       console.error('Erreur sauvegarde règles fiscales:', err)
-      return false
+      throw err
     }
   }
 

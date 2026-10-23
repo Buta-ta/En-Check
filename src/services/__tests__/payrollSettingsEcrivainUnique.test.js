@@ -23,6 +23,7 @@ const etat = vi.hoisted(() => ({
 
 vi.mock('../../lib/db', () => ({
   db: () => ({
+    rpc: async (name, payload) => { etat.appels.push({ type: "rpc", name, payload }); return { data: true, error: null } },
     from(table) {
       const chaine = {
         select: () => chaine,
@@ -62,29 +63,10 @@ beforeEach(() => {
 
 // ── 1. Le rédacteur unique ───────────────────────────────────────────
 
-it('1. les règles fiscales s’écrivent par le service, colonne par colonne', async () => {
-  const ok = await PayrollService.saveCustomTaxRules('ent-1', { abattement: 0.3 })
-  expect(ok).toBe(true)
-
-  const maj = ecriture('update')
-  expect(maj.table).toBe('payroll_settings')
-  expect(Object.keys(maj.payload).sort()).toEqual(['custom_tax_rules', 'updated_at'])
-  expect(maj.payload.custom_tax_rules).toEqual({ abattement: 0.3 })
-})
-
-it('2. sans ligne existante, le service insère sans inventer les autres réglages', async () => {
-  etat.ligneExistante = null
-  const ok = await PayrollService.saveCustomTaxRules('ent-2', { abattement: 0.1 })
-  expect(ok).toBe(true)
-
-  const ajout = ecriture('insert')
-  expect(ajout.table).toBe('payroll_settings')
-  expect(Object.keys(ajout.payload).sort()).toEqual([
-    'created_at', 'custom_tax_rules', 'enterprise_id', 'updated_at',
-  ])
-  // surtout pas de `working_days_divisor: 22` ou autre valeur par défaut
-  expect(ajout.payload).not.toHaveProperty('working_days_divisor')
-  expect(ajout.payload).not.toHaveProperty('annual_leave_cap')
+it('le service transmet les règles et leur snapshot sans toucher aux autres colonnes', async () => {
+  expect(await PayrollService.saveCustomTaxRules('ent-1', { a: 1 }, { a: 0 })).toBe(true)
+  expect(ecriture('rpc')).toEqual({ type: 'rpc', name: 'paie_enregistrer_regles', payload: { p_enterprise_id: 'ent-1', p_rules: { a: 1 }, p_expected_rules: { a: 0 } } })
+  expect(ecriture('update')).toBeUndefined()
 })
 
 // ── 2. La sauvegarde générale ne touche plus à la colonne fiscale ────

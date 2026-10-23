@@ -17,7 +17,10 @@ export function totauxCotisations(contributions = []) {
     (c) => c && c.is_active !== false && c.calculation_method !== 'fixed'
   )
   const somme = (cle) =>
-    enPourcentage.reduce((total, c) => total + (Number(c[cle]) || 0), 0)
+    enPourcentage.reduce((total, c) => {
+      const side = cle === 'rate_employee' ? 'employee' : 'employer'
+      return total + (!c.paid_by || c.paid_by === side || c.paid_by === 'both' ? Number(c[cle]) || 0 : 0)
+    }, 0)
 
   return {
     salarial: somme('rate_employee'),
@@ -64,7 +67,7 @@ function Carte({ testId, icone, couleur, libelle, valeur, suffixe, precision, da
       <BogolanPastilleSvg size={32} couleur={couleur} />
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{
-          fontSize: 9.5, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
+          fontSize: 12, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase',
           color: texteDoux, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
           {libelle}
@@ -73,7 +76,7 @@ function Carte({ testId, icone, couleur, libelle, valeur, suffixe, precision, da
           <strong style={{ fontSize: 19, fontWeight: 800, color: texte, lineHeight: 1.05 }}>{valeur}</strong>
           {suffixe && <span style={{ fontSize: 10.5, fontWeight: 700, color: texteDoux }}>{suffixe}</span>}
         </div>
-        <div style={{ fontSize: 10, color: texteDoux, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontSize: 12, color: texteDoux, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {precision}
         </div>
         {children}
@@ -108,7 +111,7 @@ export default function PaieKpiCards({ contributions = [], tranches = [], darkMo
         couleur="#26734D"
         libelle="Cotisations"
         valeur={totaux.nbTotal}
-        precision={`${totaux.nbActives} en pourcentage du brut`}
+        precision={`${totaux.nbActives} à taux nominal`}
         darkMode={darkMode}
       />
 
@@ -136,7 +139,7 @@ export default function PaieKpiCards({ contributions = [], tranches = [], darkMo
         libelle="Part salariale"
         valeur={totaux.salarial.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}
         suffixe="%"
-        precision="prélevée sur le bulletin"
+        precision="taux nominaux, hors plafonds"
         darkMode={darkMode}
       >
         <Jauge valeur={totaux.salarial} max={maxJauge} couleur="#B86B35" piste={piste} />
@@ -149,7 +152,7 @@ export default function PaieKpiCards({ contributions = [], tranches = [], darkMo
         libelle="Part patronale"
         valeur={totaux.patronal.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}
         suffixe="%"
-        precision="dans le coût employeur"
+        precision="taux nominaux, hors forfaits"
         darkMode={darkMode}
       >
         <Jauge valeur={totaux.patronal} max={maxJauge} couleur="#6D28D9" piste={piste} />

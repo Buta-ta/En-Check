@@ -23,6 +23,10 @@ const etat = vi.hoisted(() => ({
 
 vi.mock('../../lib/db', () => ({
   db: () => ({
+    rpc: async (name, payload) => {
+      etat.appels.push({ type: 'rpc', name, payload })
+      return etat.panne ? { data: null, error: { message: 'panne simulée' } } : { data: true, error: null }
+    },
     from(table) {
       const filtres = []
       let action = 'select'
@@ -185,45 +189,22 @@ it('6. copier refuse une entreprise source vide', async () => {
   expect(r.error).toContain('rien à copier')
 })
 
-it('7. la copie écrit bien au nom de l’entreprise cible', async () => {
-  const r = await copierConfigurationFiscale('source', 'cible')
-  expect(r.success).toBe(true)
-  expect(r.resume).toEqual({ cotisations: 2, tranches: 1, reglesCopiees: true })
-
-  const ecrites = etat.appels.filter((a) => a.type === 'insert' && a.table === 'enterprise_payroll_contributions')
-  const lignes = ecrites[ecrites.length - 1].lignes
-  expect(lignes).toHaveLength(2)
-  expect(lignes.every((l) => l.enterprise_id === 'cible')).toBe(true)
-  // ni l'identifiant ni les horodatages de la source ne voyagent
-  expect(lignes.every((l) => l.id === undefined && l.created_at === undefined)).toBe(true)
+it('la copie transmet la cible et toutes les données dans un seul appel atomique', async () => {
+  const result = await copierConfigurationFiscale('source', 'cible')
+  expect(result.success).toBe(true)
+  const writes = etat.appels.filter(a => a.type === 'rpc')
+  expect(writes).toHaveLength(1)
+  expect(writes[0].name).toBe('paie_remplacer_configuration')
+  expect(writes[0].payload.p_enterprise_id).toBe('cible')
+  expect(writes[0].payload.p_contributions).toHaveLength(2)
+  expect(writes[0].payload.p_rules).toEqual({ abattement_percent: 20 })
+  expect(etat.appels.some(a => ['delete', 'insert'].includes(a.type))).toBe(false)
 })
-
-it('8. la cible est vidée avant d’être remplie', async () => {
-  await copierConfigurationFiscale('source', 'cible')
-  const ordre = etat.appels.map((a) => `${a.table}:${a.type}`)
-  expect(ordre).toContain('enterprise_payroll_contributions:insert')
-  // une seule insertion par table : pas de doublon
-  expect(ordre.filter((o) => o === 'enterprise_payroll_contributions:insert')).toHaveLength(1)
-})
-
-it('9. les règles fiscales passent par le rédacteur unique', async () => {
-  await copierConfigurationFiscale('source', 'cible')
-  expect(etat.reglesEcrites).toEqual([{ id: 'cible', regles: { abattement_percent: 20 } }])
-})
-
-it('10. si l’insertion échoue, l’entreprise cible est remise en état', async () => {
-  etat.panne = { table: 'enterprise_payroll_contributions', type: 'insert' }
-  const r = await copierConfigurationFiscale('source', 'cible')
-  expect(r.success).toBe(false)
-
-  const retablies = etat.appels.filter(
-    (a) => a.type === 'insert' && a.table === 'enterprise_payroll_contributions',
-  )
-  // la panne, puis la remise en état
-  expect(retablies.length).toBeGreaterThanOrEqual(2)
-  expect(retablies[retablies.length - 1].lignes).toEqual([
-    { enterprise_id: 'cible', contribution_name: 'Ancienne' },
-  ])
+it('un refus serveur ne déclenche aucun rollback destructif côté client', async () => {
+  etat.panne = { type: 'rpc' }
+  const before = JSON.stringify(etat.tables)
+  expect((await copierConfigurationFiscale('source', 'cible')).success).toBe(false)
+  expect(JSON.stringify(etat.tables)).toBe(before)
 })
 
 // ── 3. L'état de chaque entreprise ───────────────────────────────────
@@ -256,7 +237,7 @@ it('13. charger un pays montre le récapitulatif AVANT de confirmer', () => {
 it('14. la vue d’ensemble des entreprises est réservée au super-admin', () => {
   const page = lire('src/pages/PaieFiscalite.jsx')
   expect(page).toContain("<PaieEntreprises")
-  expect(page).toContain("admin?.role === 'super_admin'")
+  expect(page).toContain("context.admin.role === 'super_admin'")
 })
 
 it('15. la palette fiscale n’a plus une seule couleur en dur', () => {

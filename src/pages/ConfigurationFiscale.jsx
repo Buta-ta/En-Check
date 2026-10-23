@@ -36,18 +36,24 @@ import PayrollService from '../services/payrollService'
 import toast from 'react-hot-toast'
 import { useTheme } from '../contexts/ThemeContext'
 import { palettePaie, stylesPaie } from '../styles/paieTheme'
+import { remplacerConfigurationFiscale } from '../services/fiscalTransactions'
+import PaieKpiCards from '../components/PaieKpiCards'
+import { BarresTranches, CarteGraphique } from '../components/PaieGraphiques'
 import RecapChargement from '../components/PaieRecapChargement'
 import { FieldHelp, FormLabel } from '../components/PaieFiscalChamps'
 import { ContributionCard, BracketCard } from '../components/PaieFiscalCartes'
 import { ContributionModal, BracketModal, RulesModal, ConfirmModal } from '../components/PaieFiscalModales'
 
-export default function ConfigurationFiscale({ integre = false, ongletExterne = null, entrepriseIdForce = null } = {}) {
+export default function ConfigurationFiscale({ integre = false, ongletExterne = null, entrepriseIdForce = null, onContextChange = null, onBusyChange = null, refreshVersion = 0 } = {}) {
   const { darkMode } = useTheme()
   const S = stylesPaie(darkMode)
   const P = palettePaie(darkMode)
   const [admin, setAdmin] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [rulesSnapshot, setRulesSnapshot] = useState(undefined)
+  useEffect(() => { onBusyChange?.(saving) }, [saving, onBusyChange])
 
   const [enterpriseId, setEnterpriseId] = useState(null)
   const [enterpriseName, setEnterpriseName] = useState('')
@@ -121,14 +127,14 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
         })
         .catch((err) => {
           console.error(err)
-          toast.error('Erreur chargement configuration')
+          setLoadError(err.message || 'Erreur chargement configuration')
         })
         .finally(() => setLoading(false))
       return
     }
 
     initPage(parsedAdmin)
-  }, [navigate, entrepriseIdForce])
+  }, [navigate, entrepriseIdForce, refreshVersion])
 
   const loadEnterpriseData = async (targetEnterpriseId) => {
     const { data: enterprise } = await supabase
@@ -243,8 +249,12 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
       setContributions(config.contributions || [])
       setTaxBrackets(config.taxBrackets || [])
       setCalculationRules(config.calculationRules || {})
+      setRulesSnapshot(config.customRulesSnapshot)
+      setLoadError('')
     } catch (err) {
       console.error('Erreur chargement config:', err)
+      setLoadError(err.message || 'Configuration indisponible')
+      setRulesSnapshot(undefined)
     }
   }
 
@@ -301,6 +311,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
       setCurrentCurrency(pendingCurrency)
       setCurrentFiscalCountryLabel(pendingFiscalCountryLabel)
 
+      onContextChange?.()
+      await loadCurrentConfig(enterpriseId)
       toast.success('Pays fiscal, libellé et devise enregistrés')
     } catch (err) {
       console.error(err)
@@ -350,18 +362,10 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
         closeConfirm()
         setSaving(true)
         try {
-          const result = await TaxationService.initializeEnterpriseFromCountry(enterpriseId, pendingCountryCode)
+          const result = await TaxationService.initializeEnterpriseFromCountry(enterpriseId, pendingCountryCode, { currency: pendingCurrency, fiscalLabel: pendingFiscalCountryLabel })
 
           if (result.success) {
-            await supabase
-              .from('enterprises')
-              .update({
-                country_code: pendingCountryCode,
-                currency: pendingCurrency,
-                fiscal_country_label: pendingFiscalCountryLabel || null,
-              })
-              .eq('id', enterpriseId)
-
+            onContextChange?.()
             setCurrentCountryCode(pendingCountryCode)
             setCurrentCurrency(pendingCurrency)
             setCurrentFiscalCountryLabel(pendingFiscalCountryLabel)
@@ -373,7 +377,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
           }
         } catch (err) {
           console.error(err)
-          toast.error('Erreur chargement configuration pays')
+          toast.error(err.message || 'Erreur chargement configuration pays')
         }
         setSaving(false)
       },
@@ -393,8 +397,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
         closeConfirm()
         setSaving(true)
         try {
-          await supabase.from('enterprise_payroll_contributions').delete().eq('enterprise_id', enterpriseId)
-          await supabase.from('enterprise_tax_brackets').delete().eq('enterprise_id', enterpriseId)
+
 
           // ⭐ Des VIDES, pas des zéros. Un zéro ÉCRASE le pays (un abattement
           //    de 0 % à la place des 30 % du Cameroun) ; un vide le laisse
@@ -411,15 +414,15 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
             custom_rules: null,
           }
 
-          await saveCalculationRules(emptyRules, false)
+          await remplacerConfigurationFiscale(enterpriseId, { contributions: [], taxBrackets: [], rules: emptyRules })
 
           setContributions([])
           setTaxBrackets([])
-          setCalculationRules(emptyRules)
+          await loadCurrentConfig(enterpriseId)
           toast.success('Configuration vide créée')
         } catch (err) {
           console.error(err)
-          toast.error('Erreur création config vide')
+          toast.error(err.message || 'Erreur création config vide')
         }
         setSaving(false)
       },
@@ -439,7 +442,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
           const { error } = await supabase
             .from('enterprise_payroll_contributions')
             .delete()
-            .eq('id', contrib.id)
+            .eq('id', contrib.id).eq('enterprise_id', enterpriseId)
 
           if (error) throw error
 
@@ -467,7 +470,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
           const { error } = await supabase
             .from('enterprise_tax_brackets')
             .delete()
-            .eq('id', bracket.id)
+            .eq('id', bracket.id).eq('enterprise_id', enterpriseId)
 
           if (error) throw error
 
@@ -612,15 +615,16 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
     // service. Écrire la colonne depuis la page, c'est risquer d'écraser
     // ce que « Fiches de paie » a sauvegardé une seconde plus tôt.
     try {
-      const ok = await PayrollService.saveCustomTaxRules(enterpriseId, rules)
+      const ok = await PayrollService.saveCustomTaxRules(enterpriseId, rules, rulesSnapshot)
       if (!ok) throw new Error('saveCustomTaxRules a échoué')
 
       setCalculationRules(rules)
+      setRulesSnapshot(rules)
       if (showToast) toast.success('Règles de calcul enregistrées')
       return true
     } catch (err) {
       console.error(err)
-      if (showToast) toast.error('Erreur sauvegarde règles')
+      if (showToast) toast.error(err.message || 'Erreur sauvegarde règles')
       return false
     }
   }
@@ -672,6 +676,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
       return null
     }
   }, [simulationGross, contributions, taxBrackets, calculationRules, simulationSituation, simulationEnfants])
+
+  if (loadError) return <div role="alert" className="pw-error">{loadError}<button className="paie-btn" onClick={() => loadCurrentConfig(enterpriseId)}>Réessayer</button></div>
 
   if (loading) {
     return (
@@ -780,6 +786,12 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
           </header>
           )}
 
+          {integre && activeTab === 'pays' && <>
+            <h2>Configuration fiscale</h2>
+            <PaieKpiCards contributions={contributions} tranches={taxBrackets} darkMode={darkMode}/>
+            <p className="pw-graph-note">Taux nominaux : hors plafonds, assiettes particulières et cotisations forfaitaires. Les charges patronales s’ajoutent au brut.</p>
+            <div className="pw-graphs"><CarteGraphique titre="Taux par tranche" sousTitre="Barème configuré — ce n’est pas un taux effectif sur le brut" darkMode={darkMode}><BarresTranches tranches={taxBrackets} darkMode={darkMode}/></CarteGraphique></div>
+          </>}
           {(!integre || activeTab === 'pays') && (<>
           <div style={S.infoBar}>
             <Info size={16} color={P.ambre} style={{ flexShrink: 0 }} />

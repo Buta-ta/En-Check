@@ -1,554 +1,117 @@
-// ═══════════════════════════════════════════════════════════
-// 💼 PAIE & FISCALITÉ
-//
-// Une seule page pour régler la paie : le moteur, la fiscalité et
-// l'exploitation. Avant, « Configuration fiscale » et « Fiches de
-// paie » étaient deux écrans séparés qui écrivaient pourtant le
-// même enregistrement `payroll_settings`.
-//
-// Étape 1 : la coque et le volet fiscal. Les volets du moteur et de
-// l'exploitation (profils, primes, imports, fiches générées) restent
-// sur /fiches-paie le temps de la migration, et la page y renvoie.
-// ═══════════════════════════════════════════════════════════
-
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import {
-  ArrowLeft, FileText, Globe, Shield, Percent, SlidersHorizontal, Eye, Sun, Moon,
-  RefreshCw, Settings, Users, Gift, Upload,
-} from 'lucide-react'
+import { ArrowLeft, Sun, Moon, FileText, Landmark, Settings } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import TaxationService from '../services/taxationService'
-import FeatureService, { FEATURES } from '../services/featureService'
-import CurrencyService from '../services/currencyService'
 import { useTheme } from '../contexts/ThemeContext'
-import RaccourcisPages from '../components/RaccourcisPages'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
-import PaieKpiCards, { totauxCotisations } from '../components/PaieKpiCards'
-import { BarresTranches, DonutParts, CarteGraphique } from '../components/PaieGraphiques'
-import { BogolanFriseSvg, BogolanFiligraneSvg } from '../components/BogolanMudclothSvg'
+import RaccourcisPages from '../components/RaccourcisPages'
+import PaieEntreprises from '../components/PaieEntreprises'
 import ConfigurationFiscale from './ConfigurationFiscale'
 import FichesPaie from './FichesPaie'
-import PaieEntreprises from '../components/PaieEntreprises'
-import toast from 'react-hot-toast'
 import './PaieAfroTech.css'
+import './PaieWorkspace.css'
 
-// Les trois groupes annoncés : on règle le moteur, on déclare la
-// fiscalité, puis on exploite. Chaque onglet sait quel volet rendre et
-// quel sous-onglet lui demander.
-const GROUPES = [
-  {
-    titre: 'Paramètres',
-    onglets: [
-      { cle: 'moteur', libelle: 'Moteur & bulletin', icone: Settings, volet: 'bulletins', cible: 'settings' },
-    ],
-  },
-  {
-    titre: 'Fiscalité',
-    fiscal: true,
-    onglets: [
-      { cle: 'apercu', libelle: 'Vue d’ensemble', icone: Globe, volet: 'fiscal', cible: 'pays' },
-      { cle: 'contributions', libelle: 'Cotisations', icone: Shield, volet: 'fiscal', cible: 'contributions' },
-      { cle: 'taxes', libelle: 'Barème', icone: Percent, volet: 'fiscal', cible: 'taxes' },
-      { cle: 'rules', libelle: 'Règles fiscales', icone: SlidersHorizontal, volet: 'fiscal', cible: 'rules' },
-      { cle: 'simulation', libelle: 'Simulation', icone: Eye, volet: 'fiscal', cible: 'preview' },
-    ],
-  },
-  {
-    titre: 'Exploitation',
-    onglets: [
-      { cle: 'profils', libelle: 'Profils salariés', icone: Users, volet: 'bulletins', cible: 'profiles' },
-      { cle: 'primes', libelle: 'Primes & retenues', icone: Gift, volet: 'bulletins', cible: 'allowances' },
-      { cle: 'imports', libelle: 'Import variables', icone: Upload, volet: 'bulletins', cible: 'imports' },
-      { cle: 'fiches', libelle: 'Fiches générées', icone: FileText, volet: 'bulletins', cible: 'preview' },
-    ],
-  },
+export const PAIE_SECTIONS = [
+  { id: 'bulletins', label: 'Bulletins', icon: FileText, tabs: [['preparation', 'Préparation'], ['profiles', 'Profils salariés'], ['allowances', 'Primes & retenues'], ['imports', 'Import variables'], ['preview', 'Fiches calculées']] },
+  { id: 'fiscal', label: 'Fiscalité', icon: Landmark, tabs: [['pays', 'Vue d’ensemble'], ['contributions', 'Cotisations'], ['taxes', 'Barème'], ['rules', 'Règles fiscales'], ['simulation', 'Simulation']] },
+  { id: 'settings', label: 'Paramètres', icon: Settings, tabs: [['settings', 'Moteur & bulletin']] },
 ]
-
-const TOUS_LES_ONGLETS = GROUPES.flatMap((g) => g.onglets)
-const cleConnue = (cle) => TOUS_LES_ONGLETS.some((o) => o.cle === cle)
-
-const initialesDe = (prenom, nom) =>
-  `${(prenom || '?')[0]}${(nom || '?')[0]}`.toUpperCase()
+const LEGACY = { moteur: 'settings', apercu: 'pays', profils: 'profiles', primes: 'allowances', fiches: 'preview' }
+export function paieAccess(enterprise, superAdmin) {
+  return { fiscal: superAdmin || enterprise?.module_config_fiscale === true, bulletins: superAdmin || enterprise?.module_fiches_paie === true }
+}
 
 export default function PaieFiscalite() {
   const navigate = useNavigate()
   const { darkMode, toggleTheme } = useTheme()
-
-  const [chargement, setChargement] = useState(true)
-  const [entreprises, setEntreprises] = useState([])
-  const [entrepriseId, setEntrepriseId] = useState(null)
-  const [entreprise, setEntreprise] = useState(null)
-  const [employes, setEmployes] = useState([])
-  const [contributions, setContributions] = useState([])
-  const [tranches, setTranches] = useState([])
   const [params, setParams] = useSearchParams()
-  const [onglet, setOnglet] = useState(() => {
-    const demande = params.get('onglet')
-    return demande && TOUS_LES_ONGLETS.some((o) => o.cle === demande) ? demande : 'apercu'
-  })
+  const [context, setContext] = useState(null)
+  const [enterpriseId, setEnterpriseId] = useState(null)
+  const [error, setError] = useState('')
+  const [retry, setRetry] = useState(0)
+  const [bulletinsBusy, setBulletinsBusy] = useState(false)
+  const [fiscalBusy, setFiscalBusy] = useState(false)
+  const busy = bulletinsBusy || fiscalBusy
+  const [fiscalRevision, setFiscalRevision] = useState(0)
+  const [visited, setVisited] = useState({})
+  const requested = LEGACY[params.get('onglet')] || params.get('onglet') || 'preparation'
+  const enterprise = context?.enterprises.find(e => e.id === enterpriseId)
+  const access = paieAccess(enterprise, context?.admin.role === 'super_admin')
+  const visible = PAIE_SECTIONS.filter(s => access[s.id === 'settings' ? 'bulletins' : s.id])
+  const section = visible.find(s => s.tabs.some(([id]) => id === requested)) || visible[0]
+  const tab = section?.tabs.some(([id]) => id === requested) ? requested : section?.tabs[0][0]
+  const fiscal = section?.id === 'fiscal'
 
-  // Un lien « /paie?onglet=primes » ouvre la bonne section : les
-  // anciennes URL ne sont pas perdues, elles sont traduites.
-  const allerOnglet = (cle) => {
-    setOnglet(cle)
-    if (params.get('onglet') !== cle) setParams({ onglet: cle }, { replace: true })
-  }
-  const [admin, setAdmin] = useState(null)
-
-  // ── Qui est connecté, et sur quelle entreprise ──────────────────────
   useEffect(() => {
-    const brut = localStorage.getItem('admin')
-    if (!brut) {
-      navigate('/login')
-      return undefined
-    }
-
-    let annule = false
-    const adminData = JSON.parse(brut)
-    setAdmin(adminData)
-
-    const demarrer = async () => {
-      const superAdmin = adminData.role === 'super_admin'
-      let cible = adminData.selectedEnterprise?.id || adminData.enterprise_id
-
-      if (superAdmin) {
-        const { data } = await supabase
-          .from('enterprises')
-          .select('id, name, code, country_code, currency, fiscal_country_label, module_config_fiscale, module_fiches_paie')
-          .eq('is_active', true)
-          .order('name')
-        const liste = data || []
-        if (annule) return
-        setEntreprises(liste)
-        if (!cible && liste.length > 0) {
-          const dernier =
-            (adminData.id && localStorage.getItem(`last_enterprise_id_${adminData.id}`)) ||
-            localStorage.getItem('last_enterprise_id')
-          const choisi = (dernier && liste.find((e) => e.id === dernier)) || liste[0]
-          cible = choisi?.id || null
-        }
-      } else {
-        const liste = Array.isArray(adminData.entreprises) ? adminData.entreprises : []
-        if (annule) return
-        setEntreprises(liste)
-        if (!cible && liste.length > 0) cible = liste[0].id
-      }
-
-      if (!cible) {
-        toast.error('Aucune entreprise sélectionnée')
-        navigate('/dashboard')
-        return
-      }
-
-      if (!superAdmin) {
-        const acces = await FeatureService.hasFeature(cible, FEATURES.FICHES_PAIE)
-        if (annule) return
-        if (!acces) {
-          toast.error('Module fiches de paie non activé')
-          navigate('/dashboard')
-          return
-        }
-      }
-
-      setEntrepriseId(cible)
-    }
-
-    demarrer().catch(() => {
-      if (!annule) toast.error('Erreur chargement des entreprises')
-    })
-
-    return () => {
-      annule = true
-    }
-  }, [navigate])
-
-  // ── Les données de l'entreprise retenue ────────────────────────────
-  useEffect(() => {
-    if (!entrepriseId) return undefined
-
-    let annule = false
-
-    const charger = async () => {
-      setChargement(true)
-      const [ent, equipe, config] = await Promise.all([
-        supabase
-          .from('enterprises')
-          .select('id, name, currency, country_code, fiscal_country_label, module_config_fiscale, module_fiches_paie')
-          .eq('id', entrepriseId)
-          .single()
-          .catch(() => ({ data: null })),
-        supabase
-          .from('employees')
-          .select('id, first_name, last_name, photo_url, position, is_active')
-          .eq('enterprise_id', entrepriseId)
-          .eq('is_active', true)
-          .order('last_name')
-          .catch(() => ({ data: [] })),
-        TaxationService.getEnterprisePayrollConfig(entrepriseId).catch(() => null),
-      ])
-
-      if (annule) return
-      setEntreprise(ent?.data || null)
-      setEmployes(equipe?.data || [])
-      setContributions(config?.contributions || [])
-      setTranches(config?.taxBrackets || [])
-      setChargement(false)
-    }
-
-    charger().catch(() => {
-      if (!annule) {
-        toast.error('Erreur chargement de la configuration')
-        setChargement(false)
-      }
-    })
-
-    return () => {
-      annule = true
-    }
-  }, [entrepriseId])
-
-  const changerEntreprise = (id) => {
-    if (!id || id === entrepriseId) return
-    const brut = localStorage.getItem('admin')
-    if (brut) {
+    let cancelled = false
+    async function load() {
+      setError('')
       try {
-        const adminData = JSON.parse(brut)
-        const choisie = entreprises.find((e) => e.id === id)
-        if (choisie) {
-          const maj = { ...adminData, selectedEnterprise: choisie }
-          localStorage.setItem('admin', JSON.stringify(maj))
-          localStorage.setItem('last_enterprise_id', id)
-          if (adminData.id) localStorage.setItem(`last_enterprise_id_${adminData.id}`, id)
-        }
-      } catch {
-        // le réglage reste en mémoire le temps de la session
-      }
+        const admin = JSON.parse(localStorage.getItem('admin') || 'null')
+        if (!admin) { navigate('/login'); return }
+        const { data, error: failure } = await supabase.from('enterprises')
+          .select('id, name, country_code, currency, module_config_fiscale, module_fiches_paie')
+          .eq('is_active', true).order('name')
+        if (failure) throw failure
+        // Server RLS remains the authority; the local membership list only narrows the selector.
+        const allowed = new Set([admin.enterprise_id, ...(admin.entreprises || []).map(e => e.id)])
+        const enterprises = admin.role === 'super_admin' ? data : data.filter(e => allowed.has(e.id))
+        if (!enterprises.length) throw new Error('Aucune entreprise accessible.')
+        if (cancelled) return
+        const preferred = admin.selectedEnterprise?.id || admin.enterprise_id
+        setContext({ admin, enterprises })
+        setEnterpriseId(current => enterprises.some(e => e.id === current) ? current : enterprises.find(e => e.id === preferred)?.id || enterprises[0].id)
+      } catch (err) { if (!cancelled) setError(err.message || 'Chargement impossible.') }
     }
-    setEntrepriseId(id)
+    load()
+    return () => { cancelled = true }
+  }, [navigate, retry])
+
+  useEffect(() => {
+    if (!section || !enterpriseId) return
+    setVisited(v => ({ ...v, [`${enterpriseId}:${fiscal ? 'fiscal' : 'bulletins'}`]: true }))
+  }, [section, fiscal, enterpriseId])
+
+  function go(next) { setParams({ onglet: next }) }
+  function changeEnterprise(id) {
+    if (id === enterpriseId || busy) return
+    if (!window.confirm('Changer d’entreprise ? Les saisies non enregistrées et les résultats de cette session seront abandonnés.')) return
+    setVisited({})
+    setEnterpriseId(id)
+    const updated = { ...context.admin, selectedEnterprise: context.enterprises.find(e => e.id === id) }
+    localStorage.setItem('admin', JSON.stringify(updated))
+    localStorage.setItem(`last_enterprise_id_${context.admin.id}`, id)
   }
 
-  const rechargerApresCopie = () => {
-    if (!entrepriseId) return
-    TaxationService.getEnterprisePayrollConfig(entrepriseId)
-      .then((config) => {
-        setContributions(config?.contributions || [])
-        setTranches(config?.taxBrackets || [])
-      })
-      .catch(() => toast.error('Configuration rechargée partiellement'))
-  }
-
-  // Le module « configuration fiscale » reste vendu et verrouillable à
-  // part : la page fusionne, pas l'offre commerciale. On ne verrouille
-  // que si l'entreprise l'a explicitement désactivé — une colonne jamais
-  // renseignée ne doit pas fermer une page qui marchait hier.
-  const moduleFiscalVerrouille =
-    admin?.role !== 'super_admin' && entreprise?.module_config_fiscale === false
-
-  // Même règle pour les bulletins : le module reste vendu à part.
-  const moduleBulletinsVerrouille =
-    admin?.role !== 'super_admin' && entreprise?.module_fiches_paie === false
-
-  // Le module fiscal verrouillé retire simplement son groupe d'onglets :
-  // le reste de la paie reste ouvert.
-  const groupesVisibles = GROUPES.filter((g) => {
-    if (moduleFiscalVerrouille && g.fiscal) return false
-    if (moduleBulletinsVerrouille && g.titre === 'Exploitation') return false
-    return true
-  })
-  const ongletsVisibles = groupesVisibles.flatMap((g) => g.onglets)
-  const ongletActif = ongletsVisibles.find((o) => o.cle === onglet) || ongletsVisibles[0]
-
-  const devise = CurrencyService.resolveCurrency({
-    enterprise: entreprise,
-    settings: { currency: entreprise?.currency },
-  })
-
-  const totaux = totauxCotisations(contributions)
-  const parts = [
-    { libelle: 'Part salariale', valeur: totaux.salarial, couleur: darkMode ? '#10B981' : '#26734D' },
-    { libelle: 'Part patronale', valeur: totaux.patronal, couleur: darkMode ? '#A78BFA' : '#6D28D9' },
-  ]
-  const totalCotisations = totaux.salarial + totaux.patronal
-
-  if (chargement && !entrepriseId) {
-    return (
-      <div className="paie-page" data-theme={darkMode ? 'dark' : 'light'}>
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--paie-text-soft)' }}>
-          <RefreshCw size={22} style={{ animation: 'spin 0.9s linear infinite' }} />
-          Chargement de la paie…
-          <style>{'@keyframes spin { to { transform: rotate(360deg) } }'}</style>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="paie-page" data-theme={darkMode ? 'dark' : 'light'}>
-      {/* ═══ BANDEAU ═══ */}
-      <header className="paie-topbar">
-        <div className="paie-topbar-inner">
-          <div className="paie-gauche">
-            <button
-              type="button"
-              className="paie-retour"
-              onClick={() => navigate('/dashboard')}
-              aria-label="Retour au tableau de bord"
-            >
-              <ArrowLeft size={18} />
-            </button>
-
-            <span className="paie-marque-logo" aria-hidden="true">
-              <EnCheckBrandMark size={34} />
-            </span>
-
-            <div className="paie-marque">
-              <span className="paie-marque-titre">En-Check · PAIE &amp; FISCALITÉ</span>
-              <span className="paie-marque-sous">
-                {devise ? `Devise ${devise} · ` : ''}Moteur de paie, fiscalité et bulletins
-              </span>
-            </div>
-
-            {entreprises.length > 1 && (
-              <select
-                className="paie-select"
-                value={entrepriseId || ''}
-                onChange={(e) => changerEntreprise(e.target.value)}
-                aria-label="Entreprise"
-              >
-                {entreprises.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}
-                    {e.currency ? ` — ${e.currency}` : ''}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div className="paie-droite">
-            <button
-              type="button"
-              className="paie-btn paie-theme-btn"
-              onClick={toggleTheme}
-              title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-              aria-label={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-              data-testid="paie-theme-toggle"
-            >
-              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-
-            <button
-              type="button"
-              className="paie-btn paie-btn-principal"
-              onClick={() => allerOnglet('fiches')}
-            >
-              Générer les bulletins
-            </button>
-          </div>
-        </div>
-
-        {/* Frise bogolan : la signature de cette page */}
-        <div className="paie-frise">
-          <BogolanFriseSvg hauteur={14} couleur={darkMode ? '#C25E28' : '#B86B35'} />
-        </div>
-
-        {/* Raccourcis vers les autres pages */}
-        <div style={{ maxWidth: 1560, margin: '10px auto 0' }}>
-          <RaccourcisPages />
-        </div>
-      </header>
-
-      {/* ═══ KPI ═══ */}
-      <div style={{ maxWidth: 1560, margin: '14px auto 0', padding: '0 14px' }}>
-        <PaieKpiCards contributions={contributions} tranches={tranches} darkMode={darkMode} />
-      </div>
-
-      {/* ═══ UN MODULE MANQUE : on le dit, sans fermer le reste ═══ */}
-      {moduleFiscalVerrouille && (
-        <section
-          className="paie-groupes"
-          style={{ marginLeft: 14, marginRight: 14, textAlign: 'center', padding: '16px 18px' }}
-          data-testid="paie-module-verrouille"
-        >
-          <span style={{ color: 'var(--paie-amber)' }}><Shield size={26} /></span>
-          <h2 style={{ margin: '10px 0 6px', fontSize: 15, fontWeight: 800 }}>
-            Module «&nbsp;Configuration fiscale&nbsp;» non activé
-          </h2>
-          <p style={{ margin: '0 auto', maxWidth: 520, fontSize: 12.5, color: 'var(--paie-text-soft)' }}>
-            Cette entreprise n’a pas souscrit au module de fiscalité. Les cotisations, le barème et
-            les règles de calcul restent gérés ailleurs ; les fiches de paie, elles, demeurent
-            accessibles.
-          </p>
-          {!moduleBulletinsVerrouille && (
-            <button
-              type="button"
-              className="paie-btn"
-              style={{ marginTop: 10 }}
-              onClick={() => allerOnglet('fiches')}
-            >
-              Aller aux fiches générées
-            </button>
-          )}
-        </section>
-      )}
-      <div style={{ marginLeft: 14, marginRight: 14 }}>
-        {groupesVisibles.map((groupe) => (
-          <nav
-            key={groupe.titre}
-            className="paie-groupes"
-            data-testid={`paie-groupe-${groupe.titre.toLowerCase()}`}
-            aria-label={`Section ${groupe.titre}`}
-          >
-            <p className="paie-groupe-titre">{groupe.titre}</p>
-            <div className="paie-onglets" data-testid="paie-onglets">
-              {groupe.onglets.map((item) => {
-                const Icone = item.icone
-                const cle = item.cle
-                const actif = ongletActif?.cle === cle
-                const compte = cle === 'contributions' ? contributions.length
-                  : cle === 'taxes' ? tranches.length
-                  : null
-                return (
-                  <button
-                    key={cle}
-                    type="button"
-                    className="paie-onglet"
-                    data-actif={actif ? 'oui' : 'non'}
-                    data-testid={`paie-onglet-${cle}`}
-                    onClick={() => allerOnglet(cle)}
-                  >
-                    <Icone size={14} />
-                    {item.libelle}
-                    {compte !== null && <span className="paie-pastille">{compte}</span>}
-                  </button>
-                )
-              })}
-            </div>
-          </nav>
-        ))}
-
-        {/* Bande bogolan : le motif choisi se lit aussi sous les onglets */}
-        <div className="paie-frise paie-frise-basse" style={{ marginTop: 10 }}>
-          <BogolanFriseSvg hauteur={8} couleur={darkMode ? '#C25E28' : '#B86B35'} />
-        </div>
-      </div>
-
-
-      {/* ═══ CONTENU ═══ */}
-      <main className="paie-contenu" style={{ paddingLeft: 14, paddingRight: 14 }}>
-        {ongletActif?.cle === 'apercu' && (
-          <div className="paie-tableau">
-            <CarteGraphique
-              titre="Barème d’imposition"
-              sousTitre={`${tranches.length} tranche${tranches.length > 1 ? 's' : ''} configurée${tranches.length > 1 ? 's' : ''}`}
-              icone={{ couleur: '#9C5321' }}
-              darkMode={darkMode}
-            >
-              <BarresTranches tranches={tranches} darkMode={darkMode} />
-            </CarteGraphique>
-
-            <CarteGraphique
-              titre="Répartition des cotisations"
-              sousTitre="ce que le brut finance"
-              icone={{ couleur: '#26734D' }}
-              darkMode={darkMode}
-            >
-              <DonutParts
-                parts={parts}
-                darkMode={darkMode}
-                centre={`${totalCotisations.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`}
-                sousCentre="du salaire brut"
-              />
-            </CarteGraphique>
-
-            <CarteGraphique
-              titre="Salariés concernés"
-              sousTitre={`${employes.length} salarié${employes.length > 1 ? 's' : ''} actif${employes.length > 1 ? 's' : ''}`}
-              icone={{ couleur: '#B86B35' }}
-              darkMode={darkMode}
-              action={
-                <button
-                  type="button"
-                  className="paie-btn"
-                  style={{ minHeight: 32, fontSize: 11 }}
-                  onClick={() => allerOnglet('profils')}
-                >
-                  Profils
-                </button>
-              }
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }} data-testid="paie-equipe">
-                {employes.slice(0, 6).map((e) => (
-                  <span key={e.id} title={`${e.first_name || ''} ${e.last_name || ''}`.trim()}>
-                    {e.photo_url ? (
-                      <img
-                        src={e.photo_url}
-                        alt={`${e.first_name || ''} ${e.last_name || ''}`.trim()}
-                        className="paie-avatar"
-                        width={38}
-                        height={38}
-                      />
-                    ) : (
-                      <span className="paie-avatar" style={{ width: 38, height: 38, fontSize: 12 }}>
-                        {initialesDe(e.first_name, e.last_name)}
-                      </span>
-                    )}
-                  </span>
-                ))}
-                {employes.length > 6 && (
-                  <span className="paie-avatar" style={{ width: 38, height: 38, fontSize: 11, background: 'rgba(184,107,53,0.18)', color: 'var(--paie-text-soft)' }}>
-                    +{employes.length - 6}
-                  </span>
-                )}
-                {employes.length === 0 && (
-                  <span style={{ fontSize: 11.5, color: 'var(--paie-text-faint)' }}>
-                    Aucun salarié actif dans cette entreprise.
-                  </span>
-                )}
-              </div>
-            </CarteGraphique>
-
-            {admin?.role === 'super_admin' && (
-              <div style={{ gridColumn: '1 / -1' }}>
-                <PaieEntreprises
-                entreprises={entreprises}
-                entrepriseCouranteId={entrepriseId}
-                darkMode={darkMode}
-                  onCopieEffectuee={rechargerApresCopie}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Le volet correspondant, rendu sans son propre bandeau ni ses onglets */}
-        {ongletActif?.volet === 'fiscal' && !moduleFiscalVerrouille && (
-          <ConfigurationFiscale
-            integre
-            ongletExterne={ongletActif.cible}
-            entrepriseIdForce={entrepriseId}
-          />
-        )}
-
-        {ongletActif?.volet === 'bulletins' && (
-          <FichesPaie
-            integre
-            ongletExterne={ongletActif.cible}
-            entrepriseIdForce={entrepriseId}
-            onOngletChange={(cible) => {
-              const cibleConnue = ongletsVisibles.find(
-                (o) => o.volet === 'bulletins' && o.cible === cible
-              )
-              if (cibleConnue) allerOnglet(cibleConnue.cle)
-            }}
-          />
-        )}
-      </main>
-
-      <div className="paie-fond-motif" aria-hidden="true" data-testid="paie-motif-fond">
-        <BogolanFiligraneSvg size={280} opacite={darkMode ? 0.10 : 0.14} couleur={darkMode ? '#C25E28' : '#B86B35'} />
-      </div>
-    </div>
-  )
+  return <div className="paie-page paie-workspace" data-theme={darkMode ? 'dark' : 'light'}>
+    <header className="pw-header">
+      <div className="pw-brand"><button className="paie-btn" aria-label="Retour au tableau de bord" onClick={() => { if (window.confirm('Quitter la paie ? Les saisies non enregistrées seront abandonnées.')) navigate('/dashboard') }}><ArrowLeft size={20}/></button><EnCheckBrandMark size={38}/><h1>En-Check · Paie & Fiscalité</h1></div>
+      {context && <div className="pw-context">
+        <select aria-label="Entreprise" value={enterpriseId || ''} disabled={busy} onChange={e => changeEnterprise(e.target.value)}>{context.enterprises.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select>
+        <span>{enterprise?.country_code || 'Pays non défini'} · {enterprise?.currency || 'Devise non définie'}</span>
+      </div>}
+      <button className="paie-btn" aria-label={darkMode ? 'Mode clair' : 'Mode sombre'} onClick={toggleTheme}>{darkMode ? <Sun size={20}/> : <Moon size={20}/>}</button>
+      <div className="pw-shortcuts" onClickCapture={event => { if (event.target.closest('a,button') && !window.confirm('Quitter la paie ? Les saisies non enregistrées seront abandonnées.')) { event.preventDefault(); event.stopPropagation() } }}><RaccourcisPages /></div>
+    </header>
+    <div className="pw-bogolan pw-bogolan-top" aria-hidden="true" />
+    {error ? <div className="pw-error" role="alert">{error}<button className="paie-btn" onClick={() => setRetry(n => n + 1)}>Réessayer</button></div>
+      : !context ? <p className="pw-loading" role="status">Chargement des entreprises…</p>
+      : !section ? <p className="pw-loading">Les modules Paie et Fiscalité ne sont pas activés pour cette entreprise.</p>
+      : <>
+        <nav className="pw-tabs" aria-label="Paie et fiscalité">{visible.map(s => { const Icon = s.icon; return <button key={s.id} aria-current={section.id === s.id ? 'page' : undefined} onClick={() => go(s.tabs[0][0])}><Icon size={20}/>{s.label}</button> })}</nav>
+        <nav className="pw-subtabs" aria-label={`Rubriques ${section.label}`}>{section.tabs.map(([id, label]) => <button key={id} aria-current={tab === id ? 'page' : undefined} onClick={() => go(id)}>{label}</button>)}</nav>
+        <main className="pw-main" key={enterpriseId}>
+          {/* Keep both editors mounted across tabs: drafts and the chosen period survive navigation.
+              A new enterprise gets a fresh keyed subtree; stale responses cannot paint into it. */}
+          {access.bulletins && (visited[`${enterpriseId}:bulletins`] || !fiscal) && <div hidden={fiscal}>
+            <FichesPaie integre entrepriseIdForce={enterpriseId} ongletExterne={fiscal ? 'preparation' : tab} onOngletChange={go} onBusyChange={setBulletinsBusy}/>
+          </div>}
+          {access.fiscal && (visited[`${enterpriseId}:fiscal`] || fiscal) && <div hidden={!fiscal}>
+            {context.admin.role === 'super_admin' && fiscal && tab === 'pays' && <PaieEntreprises entreprises={context.enterprises} entrepriseCouranteId={enterpriseId} darkMode={darkMode} onCopieEffectuee={() => setFiscalRevision(n => n + 1)}/>}
+            <ConfigurationFiscale refreshVersion={fiscalRevision} integre entrepriseIdForce={enterpriseId} ongletExterne={tab === 'simulation' ? 'preview' : fiscal ? tab : 'pays'} onContextChange={() => setRetry(n => n + 1)} onBusyChange={setFiscalBusy}/>
+          </div>}
+        </main>
+      </>}
+    <footer className="pw-footer"><div className="pw-bogolan pw-bogolan-bottom" aria-hidden="true"/><p>En-Check · Gestion des équipes</p></footer>
+  </div>
 }

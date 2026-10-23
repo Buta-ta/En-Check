@@ -6,7 +6,7 @@
 
 import { supabase } from '../lib/supabase'
 import CurrencyService from './currencyService'
-import { ecrireReglesFiscales } from './reglesFiscalesEcriture'
+import { remplacerConfigurationFiscale } from './fiscalTransactions'
 
 class TaxationService {
   // ═══════════════════════════════════════════════════════════
@@ -38,7 +38,7 @@ class TaxationService {
       }
 
       // 2. Config pays
-      const { data: countryConfig } = await supabase
+      const { data: countryConfig, error: countryError } = await supabase
         .from('countries_payroll_config')
         .select('*')
         .eq('country_code', countryCode)
@@ -46,7 +46,7 @@ class TaxationService {
         .single()
 
       // 3. Cotisations entreprise
-      const { data: customContributions } = await supabase
+      const { data: customContributions, error: contributionsError } = await supabase
         .from('enterprise_payroll_contributions')
         .select('*')
         .eq('enterprise_id', enterpriseId)
@@ -54,7 +54,7 @@ class TaxationService {
         .order('display_order')
 
       // 4. Tranches fiscales entreprise
-      const { data: customTaxBrackets } = await supabase
+      const { data: customTaxBrackets, error: bracketsError } = await supabase
         .from('enterprise_tax_brackets')
         .select('*')
         .eq('enterprise_id', enterpriseId)
@@ -62,11 +62,16 @@ class TaxationService {
         .order('bracket_order')
 
       // 5. Règles custom stockées dans payroll_settings
-      const { data: payrollSettings } = await supabase
+      const { data: payrollSettings, error: rulesError } = await supabase
         .from('payroll_settings')
         .select('custom_tax_rules')
         .eq('enterprise_id', enterpriseId)
-        .single()
+        .maybeSingle()
+
+      if (countryError) throw countryError
+      if (contributionsError) throw contributionsError
+      if (bracketsError) throw bracketsError
+      if (rulesError) throw rulesError
 
       const defaultRules = countryConfig?.calculation_rules || {}
       const customRules = payrollSettings?.custom_tax_rules || null
@@ -93,6 +98,7 @@ class TaxationService {
         contributions,
         taxBrackets,
         calculationRules,
+        customRulesSnapshot: customRules,
       }
     } catch (error) {
       console.error('Erreur chargement config paie:', error)
@@ -799,39 +805,11 @@ class TaxationService {
   // 🛠️ 6. INITIALISATION ENTREPRISE DEPUIS UN PAYS
   // ═══════════════════════════════════════════════════════════
 
-  static async initializeEnterpriseFromCountry(enterpriseId, countryCode) {
+  static async initializeEnterpriseFromCountry(enterpriseId, countryCode, options = {}) {
     try {
       const countryConfig = await this.getCountryConfig(countryCode)
       if (!countryConfig) {
         throw new Error('Configuration pays introuvable')
-      }
-
-      // ⭐ 0. ON GARDE L'ANCIEN DE CÔTÉ AVANT DE DÉMONTER
-      //    ⚠️ La version précédente supprimait d'abord et insérait ensuite.
-      //       Quand l'insertion échouait, l'entreprise se retrouvait VIDE —
-      //       cotisations et tranches effacées — et le seul indice était une
-      //       ligne dans la console. On sauvegarde donc, pour pouvoir remettre.
-      const { data: anciennesCotisations } = await supabase
-        .from('enterprise_payroll_contributions')
-        .select('*')
-        .eq('enterprise_id', enterpriseId)
-
-      const { data: anciennesTranches } = await supabase
-        .from('enterprise_tax_brackets')
-        .select('*')
-        .eq('enterprise_id', enterpriseId)
-
-      const remettreLEtatDavant = async () => {
-        const cotisations = (anciennesCotisations || [])
-          .map(({ id, created_at, updated_at, ...reste }) => reste)
-        const tranches = (anciennesTranches || [])
-          .map(({ id, created_at, updated_at, ...reste }) => reste)
-        if (cotisations.length > 0) {
-          await supabase.from('enterprise_payroll_contributions').insert(cotisations)
-        }
-        if (tranches.length > 0) {
-          await supabase.from('enterprise_tax_brackets').insert(tranches)
-        }
       }
 
       // 1. Cotisations
@@ -885,61 +863,12 @@ class TaxationService {
         )
       }
 
-      // 4. Nettoyage, puis import. En cas d'échec, on remet l'état d'avant.
-      await supabase
-        .from('enterprise_payroll_contributions')
-        .delete()
-        .eq('enterprise_id', enterpriseId)
-
-      await supabase
-        .from('enterprise_tax_brackets')
-        .delete()
-        .eq('enterprise_id', enterpriseId)
-
-      if (contribsToInsert.length > 0) {
-        const { error: contribError } = await supabase
-          .from('enterprise_payroll_contributions')
-          .insert(contribsToInsert)
-
-        if (contribError) {
-          await remettreLEtatDavant()
-          throw contribError
-        }
-      }
-
-      if (bracketsToInsert.length > 0) {
-        const { error: bracketError } = await supabase
-          .from('enterprise_tax_brackets')
-          .insert(bracketsToInsert)
-
-        if (bracketError) {
-          await remettreLEtatDavant()
-          throw bracketError
-        }
-      }
-
-      // 3. Mettre à jour entreprise
-      const { error: updateError } = await supabase
-        .from('enterprises')
-        .update({
-          country_code: countryCode,
-          currency: countryConfig.currency || null,
-        })
-        .eq('id', enterpriseId)
-
-      if (updateError) throw updateError
-
-      // 4. Sauver les règles du pays — par le rédacteur unique.
-      //    ⚠️ Ne PAS écrire `payroll_settings.custom_tax_rules` ici.
-      //    C'était le troisième rédacteur de cette colonne : la page
-      //    « Règles fiscales » la réécrit en entier depuis son propre
-      //    état, et deux écrivains en tout-ou-rien, c'est une perte de
-      //    données qui attend son tour. `ecrireReglesFiscales` n'écrit
-      //    que cette colonne, et la devise reste chez l'entreprise
-      //    (elle vient d'être posée juste au-dessus) : pas de seconde
-      //    maison pour elle.
-      const rulesPayload = countryConfig.calculation_rules || this.getDefaultCalculationRules()
-      await ecrireReglesFiscales(enterpriseId, rulesPayload)
+      await remplacerConfigurationFiscale(enterpriseId, {
+        contributions: contribsToInsert, taxBrackets: bracketsToInsert,
+        rules: countryConfig.calculation_rules || this.getDefaultCalculationRules(),
+        countryCode, currency: options.currency || countryConfig.currency || null,
+        fiscalLabel: options.fiscalLabel || null,
+      })
 
       return { success: true }
     } catch (error) {
