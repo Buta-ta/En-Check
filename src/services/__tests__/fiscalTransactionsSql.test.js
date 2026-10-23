@@ -11,6 +11,7 @@ beforeAll(async () => {
   db = new PGlite()
   await db.exec(`
     CREATE ROLE authenticated;
+    CREATE ROLE anon;
     CREATE TABLE enterprises(id uuid primary key, country_code text, currency text, fiscal_country_label text);
     CREATE TABLE payroll_settings(id uuid primary key default gen_random_uuid(), enterprise_id uuid unique, custom_tax_rules jsonb, created_at timestamptz, updated_at timestamptz);
     CREATE TABLE enterprise_payroll_contributions(id uuid primary key default gen_random_uuid(), enterprise_id uuid, contribution_type text, contribution_code text, contribution_name text, paid_by text, calculation_method text, rate_employee numeric, rate_employer numeric, fixed_amount numeric, calculation_base text, min_base numeric, max_base numeric, is_mandatory boolean, is_active boolean, display_order integer, notes text);

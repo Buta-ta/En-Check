@@ -1,5 +1,14 @@
 # Paie & Fiscalité — maquette validée et sécurisation
 
+## Mise à jour — SQL installé après autorisation explicite
+
+Le 23 octobre 2026, à la demande « exécute les sql toi-même », installation transactionnelle sur le projet En-Check `cxggndvhwdolbtyezjde` réussie, préflight inclus. Les deux fonctions étaient absentes avant installation. Vérification finale : les deux signatures sont présentes, SECURITY INVOKER, EXECUTE autorisé à authenticated et refusé à anon. Les privilèges par défaut Supabase avaient donné EXECUTE à anon malgré le retrait de PUBLIC : une révocation explicite a été appliquée et ajoutée au fichier SQL reproductible.
+
+Aucun appel aux fonctions métier, aucun remplacement de configuration, aucun recalcul/envoi de bulletin. Seules les fonctions et leurs permissions ont été installées. Le prérequis d'installation SQL ci-dessous est donc levé ; les mentions « non exécuté » dans le rapport initial décrivent la livraison précédente. Le test authentifié de bout en bout et la validation visuelle restent à faire. PR non fusionnée par cette intervention.
+
+---
+## Rapport initial de livraison
+
 23 octobre 2026. Travail sur `arena/afa764c5-en-check` à partir de main `a62c6ab` et du travail IA Dev 1 PR #98 (`8f9a241`). La branche de Dev 1 n'a pas été modifiée. Pas de fusion de PR, pas de déploiement de production, pas d'écriture Supabase.
 
 ## Interface livrée

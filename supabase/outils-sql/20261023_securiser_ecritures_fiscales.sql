@@ -128,6 +128,9 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.paie_enregistrer_regles(uuid,jsonb,jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.paie_remplacer_configuration(uuid,jsonb,jsonb,jsonb,text,text,text) FROM PUBLIC;
+-- Supabase peut accorder EXECUTE à anon via les privilèges par défaut.
+REVOKE ALL ON FUNCTION public.paie_enregistrer_regles(uuid,jsonb,jsonb) FROM anon;
+REVOKE ALL ON FUNCTION public.paie_remplacer_configuration(uuid,jsonb,jsonb,jsonb,text,text,text) FROM anon;
 GRANT EXECUTE ON FUNCTION public.paie_enregistrer_regles(uuid,jsonb,jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.paie_remplacer_configuration(uuid,jsonb,jsonb,jsonb,text,text,text) TO authenticated;
 COMMIT;
