@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="40" viewBox="0 0 240 40">
+  <!-- Original vector interpretation of the approved indigo/copper woven stripes.
+       No embedded bitmap: stays sharp at any screen density. -->
+  <defs>
+    <pattern id="weft" width="4" height="4" patternUnits="userSpaceOnUse">
+      <path d="M0 1h4M1 0v4" fill="none" stroke="#f4e5cc" stroke-opacity=".12" stroke-width=".5"/>
+    </pattern>
+    <pattern id="stripes" width="120" height="40" patternUnits="userSpaceOnUse">
+      <path fill="#263756" d="M0 0h120v40H0z"/>
+      <path fill="#ae6b3d" d="M8 0h24v40H8zM66 0h26v40H66z"/>
+      <path fill="#e8d4ae" d="M3 0h2v40H3zM35 0h2v40h-2zM44 0h3v40h-3zM54 0h2v40h-2zM62 0h1v40h-1zM95 0h2v40h-2zM105 0h3v40h-3zM115 0h1v40h-1z"/>
+      <g fill="none" stroke="#263756" stroke-width="1.3">
+        <path d="m20-4 10 12-10 12L10 8Zm0 24 10 12-10 12-10-12Z"/>
+        <path d="m20 3 4 5-4 5-4-5Zm0 24 4 5-4 5-4-5Z"/>
+        <path d="m68 0 11 8 11-8M68 8l11 8 11-8M68 16l11 8 11-8M68 24l11 8 11-8M68 32l11 8 11-8"/>
+      </g>
+      <g fill="none" stroke="#f4e5cc" stroke-width=".65">
+        <path d="m20-1 7 9-7 9-7-9Zm0 24 7 9-7 9-7-9Z"/>
+        <path d="m68 3 11 8 11-8M68 19l11 8 11-8M68 35l11 8 11-8"/>
+        <path d="M40 0v40M51 0v40M101 0v40M112 0v40" stroke-dasharray="1 2"/>
+      </g>
+    </pattern>
+  </defs>
+  <path fill="url(#stripes)" d="M0 0h240v40H0z"/>
+  <path fill="url(#weft)" d="M0 0h240v40H0z"/>
+  <path d="M0 .5h240M0 39.5h240" stroke="#d7b783" stroke-width="1"/>
+</svg>

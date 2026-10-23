@@ -13,4 +13,12 @@
 .ec-cultural-band[data-cultural-motif='lesotho'] { background-image: url('/images/pauses-lesotho.webp'); }
 .ec-cultural-band[data-cultural-motif='zoulou'] { background-image: url('/images/employes-zoulou.webp'); }
 
-.ec-cultural-band[data-cultural-motif='aso-oke'] { background-image: url('/images/heures-aso-oke.webp'); }
+.ec-cultural-band[data-cultural-motif='aso-oke'] { background-image: url('/images/heures-aso-oke.svg'); }
+
+/* Overtime: a finer vector band; other page identities keep their own sizes. */
+.ec-cultural-top[data-cultural-motif='aso-oke'] { height: 40px; }
+.ec-cultural-bottom[data-cultural-motif='aso-oke'] { height: 24px; }
+@media (max-width: 650px) {
+  .ec-cultural-top[data-cultural-motif='aso-oke'] { height: 32px; }
+  .ec-cultural-bottom[data-cultural-motif='aso-oke'] { height: 20px; }
+}
