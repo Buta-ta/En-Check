@@ -1,8 +1,26 @@
-.rt-run-loader{max-width:520px;margin:24px auto;background:var(--rt-paper,var(--rt-surface));border:1px solid var(--rt-border);border-radius:16px;overflow:hidden;text-align:center;box-shadow:var(--rt-shadow)}.rt-run-loader>.ec-cultural-loading{height:18px;margin:0;border-radius:0}.rt-run-loader>.ec-cultural-bottom{height:12px}.rt-run-loader h2{font-size:16px;margin:0 16px 8px;color:var(--rt-text)}.rt-run-loader p{font-size:12px;color:var(--rt-muted);margin:0 16px 22px}.rt-run-scene{display:block;width:100%;height:auto;max-height:240px;color:var(--rt-copper);margin:10px 0}.rt-run-ground{stroke:var(--rt-border);stroke-width:2}.rt-run-terminal{fill:var(--rt-soft,#f2e8db);stroke:var(--rt-copper);stroke-width:2}.rt-run-terminal .rt-run-screen{fill:var(--rt-surface);stroke:var(--rt-border)}.rt-run-terminal .rt-run-qr{fill:var(--rt-indigo);stroke:none}.rt-run-person{animation:rt-run-approach 4.8s linear infinite}.rt-run-shadow{fill:currentColor;opacity:.1}.rt-run-body{animation:rt-run-bounce .4s ease-in-out infinite alternate}.rt-run-shirt{fill:#31436b;stroke:#273453;stroke-width:2}.rt-run-shirt-trim{stroke:#d5a36a;stroke-width:3;stroke-dasharray:3 3}.rt-run-leg{fill:none;stroke:#2c3045;stroke-width:12;stroke-linecap:round;stroke-linejoin:round;transform-origin:103px 124px}.rt-run-leg-back{animation:rt-run-stride 4.8s linear infinite}.rt-run-leg-front{animation:rt-run-stride-front 4.8s linear infinite}.rt-run-leg .rt-run-shoe{stroke:#b16d3d;stroke-width:8}.rt-run-arm-back,.rt-run-arm-front{fill:none;stroke:#805035;stroke-width:10;stroke-linecap:round;stroke-linejoin:round}.rt-run-arm-back{transform-origin:100px 85px;animation:rt-run-stride-front 4.8s linear infinite}.rt-run-arm-front{transform-origin:111px 85px;animation:rt-run-present 4.8s linear infinite}.rt-run-badge{fill:#f5e7d1;stroke:#9e6039;stroke-width:1.5}.rt-run-badge circle{fill:#31436b;stroke:none}.rt-run-motion{animation:rt-run-lines 4.8s linear infinite}
-@keyframes rt-run-approach{0%{transform:translateX(0);opacity:0}5%{opacity:1}62%,88%{transform:translateX(182px);opacity:1}100%{transform:translateX(182px);opacity:0}}
-@keyframes rt-run-bounce{from{transform:translateY(-1px)}to{transform:translateY(1px)}}
-@keyframes rt-run-stride{0%,16%,32%,48%{transform:rotate(-24deg)}8%,24%,40%,56%{transform:rotate(24deg)}62%,100%{transform:rotate(0)}}
-@keyframes rt-run-stride-front{0%,16%,32%,48%{transform:rotate(24deg)}8%,24%,40%,56%{transform:rotate(-24deg)}62%,100%{transform:rotate(0)}}
-@keyframes rt-run-present{0%,16%,32%,48%{transform:rotate(-12deg)}8%,24%,40%,56%{transform:rotate(12deg)}64%,88%{transform:rotate(-8deg)}100%{transform:rotate(-8deg)}}
-@keyframes rt-run-lines{0%,55%{opacity:.3}62%,100%{opacity:0}}
-@media(prefers-reduced-motion:reduce){.rt-run-loader *{animation:none!important;transition:none!important}.rt-run-person{transform:translateX(182px);opacity:1}.rt-run-body,.rt-run-leg,.rt-run-arm-back{transform:none}.rt-run-arm-front{transform:rotate(-8deg)}.rt-run-motion{display:none}}
+.rt-run-loader{max-width:440px;margin:24px auto;background:var(--rt-paper,var(--rt-surface));border:1px solid var(--rt-border);border-radius:16px;overflow:hidden;text-align:center;box-shadow:var(--rt-shadow)}
+.rt-arrival-art{position:relative;isolation:isolate;width:100%;aspect-ratio:1;background:#fcfbf8;overflow:hidden}
+.rt-arrival-art img{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}
+.rt-arrival-motion,.rt-arrival-travel,.rt-arrival-bounce{position:absolute;inset:0}
+.rt-arrival-motion{visibility:hidden}
+.rt-arrival-approved{z-index:2}
+.rt-arrival-caption{padding:18px 16px 22px}
+.rt-run-loader h2{font-size:16px;margin:0 0 8px;color:var(--rt-text)}
+.rt-run-loader p{font-size:12px;line-height:1.6;color:var(--rt-muted);margin:0}
+/* The backdrop and terminal remain stationary. Only original image layers move.
+   A quiet hold returns to the approved, unmodified composition on each loop. */
+.rt-arrival-art.is-ready .rt-arrival-motion{visibility:visible}
+.rt-arrival-art.is-ready .rt-arrival-travel{animation:rt-art-approach 5.6s linear infinite}
+.rt-arrival-art.is-ready .rt-arrival-bounce{animation:rt-art-steps 5.6s ease-in-out infinite}
+.rt-arrival-art.is-ready .rt-arrival-leg-back{transform-origin:45.5% 42.3%;animation:rt-art-back-leg 5.6s ease-in-out infinite}
+.rt-arrival-art.is-ready .rt-arrival-leg-front{transform-origin:45.5% 42.3%;animation:rt-art-front-leg 5.6s ease-in-out infinite}
+.rt-arrival-art.is-ready .rt-arrival-approved{animation:rt-art-still 5.6s linear infinite}
+@keyframes rt-art-approach{0%{transform:translateX(-12%);opacity:0}7%{transform:translateX(-11%);opacity:1}55%{transform:translateX(-1.5%);opacity:1}68%,92%{transform:translateX(0);opacity:1}100%{transform:translateX(0);opacity:0}}
+@keyframes rt-art-steps{0%,16%,32%,48%,64%,100%{transform:translateY(0)}8%,24%,40%{transform:translateY(-.65%)}56%{transform:translateY(-.25%)}}
+@keyframes rt-art-back-leg{0%,16%,32%,48%{transform:rotate(-2.5deg)}8%,24%,40%{transform:rotate(2.5deg)}60%,100%{transform:rotate(0)}}
+@keyframes rt-art-front-leg{0%,16%,32%,48%{transform:rotate(1.5deg)}8%,24%,40%{transform:rotate(-1.5deg)}60%,100%{transform:rotate(0)}}
+@keyframes rt-art-still{0%,65%{opacity:0}73%,92%{opacity:1}100%{opacity:0}}
+/* Keep the chosen artwork and its colours in both themes, with no dark filter.
+   No partial cutout is shown if an image fails or has not finished loading. */
+@media(prefers-reduced-motion:reduce){.rt-arrival-art *{animation:none!important;transition:none!important}.rt-arrival-art .rt-arrival-motion{display:none}.rt-arrival-art .rt-arrival-approved{opacity:1}}
+@media(max-width:400px){.rt-run-loader{margin:16px auto;border-radius:12px}.rt-arrival-caption{padding:14px 12px 18px}.rt-run-loader h2{font-size:15px}}

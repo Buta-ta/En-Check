@@ -109,15 +109,15 @@ it('does not query for an empty result and splits large employee sets into bound
     100, 100, 1,
   ])
 })
-it('renders a generic runner and terminal, not a fictitious lateness or success result', () => {
+it('uses the approved artwork, not a schematic runner or fictitious result', () => {
   const html = renderToStaticMarkup(<RetardsLoadingScreen />)
   expect(html).toContain('role="status"')
   expect(html).toContain('Chargement des arrivées')
-  for (const cls of ['rt-run-person', 'rt-run-badge', 'rt-run-terminal'])
-    expect(html).toContain(cls)
+  expect(html).toContain('retards-arrival-approved.webp')
+  expect(html).toContain('data-artwork="approved-illustration"')
   expect(html).toContain('aria-hidden="true"')
   expect(html).not.toContain('progressbar')
-  expect(html).not.toContain('<img')
+  expect(html).not.toContain('<svg')
   const css = readFileSync('src/components/RetardsLoadingScreen.css', 'utf8')
   expect(css).toContain('prefers-reduced-motion:reduce')
   expect(css).toContain('animation:none!important')
