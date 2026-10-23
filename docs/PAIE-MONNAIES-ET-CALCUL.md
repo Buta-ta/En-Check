@@ -40,7 +40,7 @@ L'URL de la requête 406 de l'utilisateur n'a pas été fournie. Ces cas de zér
 - 609 tests Vitest / 59 fichiers réussis ; 55 tests Edge réussis.
 - Lint : 0 erreur, 1 warning préexistant dans EnterpriseSelectorModal.
 - Build Vite/PWA réussi, avertissement préexistant de taille des bundles ; diff-check réussi.
-- Vérification réelle dans Chromium avec Playwright : écran Paie monté dans un harnais isolé, réponses Supabase interceptées et données simulées ; pas de connexion ni d'écriture en production. Captures desktop 1440px, sombre, mobile 390px. Aucun pageerror ; largeur document 1440/1440 et 390/390. Tableau et raccourcis défilent dans leurs propres conteneurs.
+- Vérification réelle dans Chromium avec Playwright : écran Paie monté dans un harnais isolé, réponses Supabase interceptées et données simulées ; pas de connexion ni d'écriture en production. Captures desktop 1440px, sombre, mobile 390px. Aucun pageerror ; largeur document égale à la largeur de la fenêtre à 320, 360, 390, 768, 1024 et 1440 px. Les cinq rubriques ont aussi été parcourues à 390 et 1440 px, sans débordement ni pageerror. Le parcours à quatre étapes passe sur deux colonnes sous 380 px. Tableau et raccourcis défilent dans leurs propres conteneurs.
 - La police calculée dans le navigateur est bien la pile globale attendue.
 - Captures de travail hors dépôt : `/home/user/paie-coins-desktop.png`, `/home/user/paie-coins-dark.png`, `/home/user/paie-coins-mobile.png`. Dépendances navigateur et harnais hors livraison, pas d'ajout au package de l'application.
 
