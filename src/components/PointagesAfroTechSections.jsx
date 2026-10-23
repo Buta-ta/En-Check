@@ -1,3 +1,4 @@
+import PlanningPayslipBadge from './PlanningPayslipBadge'
 import IgnoredExitNotice from './IgnoredExitNotice'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
@@ -1140,6 +1141,7 @@ export function PointagesPassportGrid({
                 )}
               </div>
 
+              <PlanningPayslipBadge entries={p.payslipEntries || []}/>
               <div className="pointages-schedule-tag-row">
                 <span className={`pointages-schedule-tag is-${sched.mode}`}>
                   <Calendar size={11} />

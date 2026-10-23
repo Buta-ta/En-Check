@@ -11,6 +11,7 @@ vi.mock('../../lib/supabase', () => ({ supabase: { from(table) {
 } } }))
 import usePlanningPayslips, { indexPublishedPayslips, payslipsForDay } from '../../hooks/usePlanningPayslips'
 import PlanningPayslipBadge from '../../components/PlanningPayslipBadge'
+import useEmployeePayslipIndicators from '../../hooks/useEmployeePayslipIndicators'
 import RaccourcisPages from '../../components/RaccourcisPages'
 const employee = { id: 'e', enterprise_id: 'a', first_name: 'Awa', last_name: 'Test' }
 const slip = changes => ({ id: 's', enterprise_id: 'a', employee_id: 'e', period_start: '2026-10-01', period_end: '2026-10-31', sent_at: '2026-11-01T12:00:00Z', status: 'sent', is_deleted: false, ...changes })
@@ -72,4 +73,45 @@ it('câblage : accueil paie depuis Planning et billet dans les trois vues', () =
   expect(source.match(/<PlanningPayslipBadge entries=/g)).toHaveLength(3)
   expect(readFileSync('src/pages/PaieFiscalite.jsx','utf8')).toContain("excludePaths={['/paie']}")
   expect(readFileSync('src/components/PlanningPayslipBadge.css','utf8')).toContain('prefers-reduced-motion:reduce')
+})
+
+function EmployeeIndicatorsProbe({ date }) {
+  const people = [employee, { ...employee, id: 'other' }]
+  const status = useEmployeePayslipIndicators(people, date)
+  return <div>{people.map(person => <section key={person.id} data-employee={person.id}><PlanningPayslipBadge entries={status.entriesFor(person)} referenceDate={status.date}/></section>)}</div>
+}
+it('Pointages/Employés : un seul chargement pour plusieurs salariés, billet seulement pour le destinataire', async () => {
+  mock.pages = [{ data: [slip({})] }]
+  await render(<EmployeeIndicatorsProbe date="2026-10-23"/> )
+  expect(mock.calls).toHaveLength(1)
+  expect(host.querySelector('[data-employee="e"] summary')).not.toBeNull()
+  expect(host.querySelector('[data-employee="other"] summary')).toBeNull()
+  expect(host.textContent).toContain('Situation au 23/10/2026')
+  expect(host.querySelector('details').open).toBe(false)
+})
+it('changer le jour consulté retire le billet hors période sans garder une ancienne fiche', async () => {
+  mock.pages = [{ data: [slip({})] }]
+  await render(<EmployeeIndicatorsProbe date="2026-10-23"/> )
+  mock.pages = [{ data: [slip({})] }]
+  await render(<EmployeeIndicatorsProbe date="2026-11-01"/> )
+  expect(host.querySelector('summary')).toBeNull()
+  expect(mock.calls.at(-1).lte).toEqual(['period_start', '2026-11-01'])
+})
+it('ouvrir le billet au clic ou au clavier ne déclenche pas la carte parente', async () => {
+  const click = vi.fn(), key = vi.fn()
+  await render(<div onClick={click} onKeyDown={key}><PlanningPayslipBadge entries={[{employee, slips:[slip({})]}]}/></div>)
+  await act(async () => { host.querySelector('summary').click(); host.querySelector('summary').dispatchEvent(new KeyboardEvent('keydown', { key:'Enter', bubbles:true })) })
+  expect(click).not.toHaveBeenCalled(); expect(key).not.toHaveBeenCalled()
+})
+it('les billets sont câblés aux vues passeport/groupée/liste et aux deux vues Employés', () => {
+  const pointages = readFileSync('src/pages/Pointages.jsx','utf8')
+  expect(pointages).toContain('useEmployeePayslipIndicators(payslipEmployees, selectedDate)')
+  expect(pointages).toContain('payslipEntries: payslipIndicators.entriesFor(p.employee)')
+  expect(pointages).toContain('<PlanningPayslipBadge entries={p.payslipEntries || []}')
+  expect(readFileSync('src/components/PointagesAfroTechSections.jsx','utf8')).toContain('<PlanningPayslipBadge entries={p.payslipEntries || []}')
+  const employes = readFileSync('src/pages/Employes.jsx','utf8')
+  expect(employes).toContain('useEmployeePayslipIndicators(employes)')
+  expect(employes).toContain('payslipEntries={payslipIndicators.entriesFor(employee)}')
+  expect(employes).toContain('<PlanningPayslipBadge entries={payslipIndicators.entriesFor(employee)}')
+  expect(readFileSync('src/components/EmployesAfroTechSections.jsx','utf8')).toContain('<PlanningPayslipBadge entries={payslipEntries}')
 })

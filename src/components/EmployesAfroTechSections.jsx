@@ -1,3 +1,4 @@
+import PlanningPayslipBadge from './PlanningPayslipBadge'
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
@@ -708,6 +709,8 @@ export function EmployesAnalyticsCharts({
 
 export function EmployesPortraitCard({
   employee,
+  payslipEntries = [],
+  payslipDate,
   liveStatus,
   weeklyStats,
   scheduleRegimeLabel,
@@ -795,6 +798,7 @@ export function EmployesPortraitCard({
           <strong className="employes-portrait-name">
             {employee.first_name} {employee.last_name}
           </strong>
+          <PlanningPayslipBadge entries={payslipEntries} referenceDate={payslipDate}/>
           <span className="employes-portrait-state-title">{statusHeadline}</span>
           <button
             type="button"

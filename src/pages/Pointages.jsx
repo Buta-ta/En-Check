@@ -1,3 +1,6 @@
+import PlanningPayslipBadge from '../components/PlanningPayslipBadge'
+import PayslipIndicatorStatus from '../components/PayslipIndicatorStatus'
+import useEmployeePayslipIndicators from '../hooks/useEmployeePayslipIndicators'
 // ═══════════════════════════════════════════════════════════
 // 📊 PAGE POINTAGES AFROFUTURISTE V3
 // + ALERTES INTELLIGENTES + STATS ENRICHIES + RECHERCHE
@@ -1396,6 +1399,8 @@ export default function Pointages() {
   // ═══════════════════════════════════════════════════════════
   // 🔍 FILTRAGE + TRI + RECHERCHE (MÉMORISÉ)
   // ═══════════════════════════════════════════════════════════
+  const payslipEmployees = useMemo(() => state.pointages.map(p => p.employee), [state.pointages])
+  const payslipIndicators = useEmployeePayslipIndicators(payslipEmployees, selectedDate)
   const filteredAndSortedPointages = useMemo(() => {
     let result = [...state.pointages]
 
@@ -1460,8 +1465,8 @@ export default function Pointages() {
       }
     })
 
-    return result
-  }, [state.pointages, searchQuery, filterStatus, filterPhotos, filterGPS, filterMethode, sortBy])
+    return result.map(p => ({ ...p, payslipEntries: payslipIndicators.entriesFor(p.employee) }))
+  }, [state.pointages, searchQuery, filterStatus, filterPhotos, filterGPS, filterMethode, sortBy, payslipIndicators.entriesFor])
 
   // Groupement par statut
   const groupedPointages = useMemo(() => {
@@ -1939,6 +1944,7 @@ export default function Pointages() {
             </div>
           </div>
 
+          <PayslipIndicatorStatus status={payslipIndicators}/>
           {/* ═══ LISTE DES POINTAGES (1 SEULE VUE ACTIVE : PASSEPORT, GROUPÉE OU LISTE) ═══ */}
           {filteredAndSortedPointages.length === 0 ? (
             <EmptyState
@@ -2841,6 +2847,7 @@ function PointageCard({
           </div>
 
           <div style={styles.employeeInfo}>
+            <PlanningPayslipBadge entries={p.payslipEntries || []}/>
             <div style={styles.employeeNameRow}>
               <span style={styles.employeeName}>
                 {p.employee.first_name} {p.employee.last_name}
