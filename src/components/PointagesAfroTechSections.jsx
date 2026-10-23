@@ -1,3 +1,4 @@
+import PageCulturalBand from './PageCulturalBand'
 import PlanningPayslipBadge from './PlanningPayslipBadge'
 import IgnoredExitNotice from './IgnoredExitNotice'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -34,7 +35,6 @@ import {
   CulturalProofSvg,
   CulturalShieldSvg,
   CulturalTimeDrumSvg,
-  KenteFriezeSvg,
 } from './AfroCulturalSvg'
 import {
   estPausePresumee,
@@ -216,7 +216,7 @@ export function PointagesCulturalHero({
 }) {
   return (
     <header className="pointages-cultural-hero" aria-label="En-tête Pointages En-Check">
-      <KenteFriezeSvg className="pointages-hero-frieze" />
+      <PageCulturalBand pathname="/pointages"/>
       <div className="pointages-cultural-hero-row">
         <div className="pointages-cultural-brand">
           {onBackDashboard && (

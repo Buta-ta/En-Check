@@ -5,6 +5,9 @@ import './PageCulturalBand.css'
 // Pages without a dedicated artwork retain the existing Kente identity.
 export function culturalMotifForPath(pathname = '') {
   const page = pathname.split(/[?#]/)[0].split('/').filter(Boolean)[0]
+  if (page === 'pointages') return 'adinkra'
+  if (page === 'pauses') return 'lesotho'
+  if (page === 'employes') return 'zoulou'
   if (page === 'planning') return 'kuba'
   if (page === 'absences') return 'ndebele'
   if (['paie', 'fiches-paie', 'configuration-fiscale'].includes(page)) return 'bogolan'

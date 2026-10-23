@@ -1,3 +1,4 @@
+import AbsencesLoadingScreen from '../components/AbsencesLoadingScreen'
 // ═══════════════════════════════════════════════════════════
 // 🌴 PAGE GESTION DES ABSENCES & CONGÉS - V7
 // Avec jours fériés intégrés + affichage calendrier corrigé
@@ -1340,12 +1341,7 @@ export default function Absences() {
   }
 
   if (!accessChecked || loading) {
-    return (
-      <div style={S.loadingContainer}>
-        <div className="loading-pulse"><Footprints size={50} color="var(--abs-amber)" /></div>
-        <p style={S.loadingText}>{!accessChecked ? 'Vérification des accès...' : 'Chargement des absences...'}</p>
-      </div>
-    )
+    return <AbsencesLoadingScreen darkMode={darkMode} checkingAccess={!accessChecked}/>
   }
 
   // L'entreprise active décide des motifs visibles (globaux + les siens)
