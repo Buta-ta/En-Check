@@ -15,6 +15,8 @@ import {
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
+import { palettePaie } from '../styles/paieTheme'
+import './PaieInteriors.css'
 import { stylesBulletins } from '../styles/paieThemeBulletins'
 
 // ═══════════════════════════════════════════════════════════
@@ -100,6 +102,7 @@ export function SignaturePad({ onSave, onCancel }) {
 export function SingleSignatureManager({ label, signature, onSignatureChange, sigName, onSigNameChange, sigTitle, onSigTitleChange, enterpriseId, color = '#F59E0B' }) {
   const { darkMode } = useTheme()
   const S = stylesBulletins(darkMode)
+  const P = palettePaie(darkMode)
   const [mode, setMode] = useState(null)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef(null)
@@ -143,10 +146,10 @@ export function SingleSignatureManager({ label, signature, onSignatureChange, si
   }
 
   return (
-    <div style={{ padding: 14, borderRadius: 14, background: `${color}08`, border: `1px solid ${color}18` }}>
-      <p style={{ color: '#DDD', fontSize: 13, fontWeight: 700, margin: '0 0 10px 0' }}>{label}</p>
+    <div className="pw-signature-card" style={{ padding: 14, borderRadius: 14, background: `${color}08`, border: `1px solid ${color}18` }}>
+      <p style={{ color: P.texte, fontSize: 13, fontWeight: 700, margin: '0 0 10px 0' }}>{label}</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(180px, 100%), 1fr))', gap: 10, marginBottom: 12 }}>
         <div>
           <label style={S.labelSmall}>Nom</label>
           <input value={sigName || ''} onChange={e => onSigNameChange(e.target.value)} style={S.input} placeholder="Ex: Jean Dupont" />
@@ -172,7 +175,7 @@ export function SingleSignatureManager({ label, signature, onSignatureChange, si
           <button onClick={() => setMode('draw')} style={{ ...S.sigActionBtn, borderColor: `${color}30`, background: `${color}15`, color }} disabled={uploading}>
             <PenTool size={14} /><span>{signature ? 'Redessiner' : 'Dessiner'}</span>
           </button>
-          <button onClick={() => fileInputRef.current?.click()} style={{ ...S.sigActionBtn, borderColor: 'rgba(99,102,241,0.25)', background: 'rgba(99,102,241,0.1)', color: '#818CF8' }} disabled={uploading}>
+          <button onClick={() => fileInputRef.current?.click()} style={{ ...S.sigActionBtn, borderColor: 'rgba(99,102,241,0.25)', background: 'rgba(99,102,241,0.1)', color: P.indigoClair }} disabled={uploading}>
             <Image size={14} /><span>{signature ? 'Remplacer' : 'Importer'}</span>
           </button>
           {signature && (
@@ -197,6 +200,7 @@ export function SingleSignatureManager({ label, signature, onSignatureChange, si
 export function StampManager({ stamp, onStampChange, enterpriseId }) {
   const { darkMode } = useTheme()
   const S = stylesBulletins(darkMode)
+  const P = palettePaie(darkMode)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef(null)
 
@@ -230,12 +234,12 @@ export function StampManager({ stamp, onStampChange, enterpriseId }) {
   const handleRemove = () => { onStampChange(''); toast.success('Cachet supprimé') }
 
   return (
-    <div style={{ padding: 14, borderRadius: 14, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
+    <div className="pw-signature-card" style={{ padding: 14, borderRadius: 14, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
         <div style={{ ...S.cardIcon, background: 'rgba(139,92,246,0.12)' }}><Stamp size={18} color="#8B5CF6" /></div>
         <div>
-          <p style={{ color: '#FFF', fontSize: 13, fontWeight: 700, margin: 0 }}>Cachet / Tampon de l'entreprise</p>
-          <p style={{ color: '#777', fontSize: 11, margin: '2px 0 0 0' }}>Image PNG avec fond transparent recommandé</p>
+          <p style={{ color: P.texte, fontSize: 13, fontWeight: 700, margin: 0 }}>Cachet / Tampon de l'entreprise</p>
+          <p style={{ color: P.texteDoux2, fontSize: 11, margin: '2px 0 0 0' }}>Image PNG avec fond transparent recommandé</p>
         </div>
       </div>
 
@@ -248,7 +252,7 @@ export function StampManager({ stamp, onStampChange, enterpriseId }) {
       )}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button onClick={() => fileInputRef.current?.click()} style={{ ...S.sigActionBtn, borderColor: 'rgba(139,92,246,0.25)', background: 'rgba(139,92,246,0.1)', color: '#A78BFA' }} disabled={uploading}>
+        <button onClick={() => fileInputRef.current?.click()} style={{ ...S.sigActionBtn, borderColor: 'rgba(139,92,246,0.25)', background: 'rgba(139,92,246,0.1)', color: P.violetClair }} disabled={uploading}>
           <Image size={14} /><span>{stamp ? 'Remplacer le cachet' : 'Importer un cachet'}</span>
         </button>
         {stamp && (
@@ -262,8 +266,8 @@ export function StampManager({ stamp, onStampChange, enterpriseId }) {
       {uploading && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}><RefreshCw size={14} color="#8B5CF6" style={{ animation: 'spin 0.9s linear infinite' }} /><span style={{ color: '#8B5CF6', fontSize: 12 }}>Upload en cours...</span></div>}
 
       <div style={S.signatureInfo}>
-        <Info size={13} color="#666" style={{ flexShrink: 0 }} />
-        <span style={{ color: '#666', fontSize: 11, lineHeight: 1.5 }}>Formats : PNG, JPG, WebP (max 3 Mo). Le cachet apparaîtra entre les signatures sur le bulletin.</span>
+        <Info size={13} color={P.texteDoux2} style={{ flexShrink: 0 }} />
+        <span style={{ color: P.texteDoux2, fontSize: 11, lineHeight: 1.5 }}>Formats : PNG, JPG, WebP (max 3 Mo). Le cachet apparaîtra entre les signatures sur le bulletin.</span>
       </div>
     </div>
   )

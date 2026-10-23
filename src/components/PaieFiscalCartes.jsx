@@ -11,6 +11,7 @@ import {
   CheckCircle,
   Edit,
 } from 'lucide-react'
+import './PaieInteriors.css'
 import { useTheme } from '../contexts/ThemeContext'
 import { palettePaie, stylesPaie } from '../styles/paieTheme'
 import TaxationService from '../services/taxationService'
@@ -89,49 +90,15 @@ export function ContributionCard({ contrib, currency, onEdit, onDelete }) {
 }
 
 export function BracketCard({ bracket, currency, onEdit, onDelete }) {
-  const { darkMode } = useTheme()
-  const S = stylesPaie(darkMode)
-  const P = palettePaie(darkMode)
   return (
-    <div style={S.bracketCard}>
-      <div style={S.bracketHeader}>
-        <span style={S.bracketOrder}>{bracket.bracket_order}</span>
-        <h4 style={S.bracketName}>{bracket.bracket_name}</h4>
-      </div>
-
-      <div style={S.bracketBody}>
-        <div style={S.bracketRow}>
-          <span style={S.bracketLabel}>Tranche</span>
-          <span style={S.bracketValue}>
-            {TaxationService.formatMoney(bracket.min_amount, currency)}
-            {' → '}
-            {bracket.max_amount ? TaxationService.formatMoney(bracket.max_amount, currency) : '∞'}
-          </span>
-        </div>
-
-        <div style={S.bracketRow}>
-          <span style={S.bracketLabel}>Taux</span>
-          <span style={{ ...S.bracketValue, color: P.ambre }}>{bracket.tax_rate}%</span>
-        </div>
-
-        {bracket.fixed_deduction > 0 && (
-          <div style={S.bracketRow}>
-            <span style={S.bracketLabel}>Déduction fixe</span>
-            <span style={S.bracketValue}>
-              {TaxationService.formatMoney(bracket.fixed_deduction, currency)}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <div style={S.contribActions}>
-        <button onClick={onEdit} style={S.editBtn}>
-          <Edit size={14} /> Modifier
-        </button>
-        <button onClick={onDelete} style={S.deleteBtn}>
-          <Trash2 size={14} /> Supprimer
-        </button>
-      </div>
-    </div>
+    <article className="pi-bracket">
+      <button className="pi-bracket-edit" onClick={onEdit} aria-label={`Modifier la tranche ${bracket.bracket_name || bracket.bracket_order}`}>
+        <span className="pi-bracket-order">{bracket.bracket_order}</span>
+        <span className="pi-bracket-range"><strong>{bracket.bracket_name}</strong><span>{TaxationService.formatMoney(bracket.min_amount, currency)} → {bracket.max_amount != null ? TaxationService.formatMoney(bracket.max_amount, currency) : 'Sans limite supérieure'}</span>{bracket.fixed_deduction > 0 && <small>Déduction fixe : {TaxationService.formatMoney(bracket.fixed_deduction, currency)}</small>}</span>
+        <span className="pi-bracket-rate">{bracket.tax_rate}<small>%</small></span>
+        <Edit size={16} aria-hidden="true"/>
+      </button>
+      <button onClick={onDelete} className="pi-bracket-delete" aria-label={`Supprimer la tranche ${bracket.bracket_name || bracket.bracket_order}`}><Trash2 size={16}/>Supprimer</button>
+    </article>
   )
 }

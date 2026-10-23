@@ -250,7 +250,7 @@ it('33 ter. le volet des bulletins est intégré sans son propre bandeau', () =>
   expect(fiches).toContain('export default function FichesPaie({ integre = false')
   expect(fiches).toContain('{!integre && (')
   expect(fiches).toContain('toggle') // deux appels : bandeau et onglets
-  expect(fiches).toContain('className="pay-volet"')
+  expect(fiches).toContain('className="pay-volet paie-page"')
   // et le décor de la page ne déborde plus sur le site
   expect(fiches).not.toContain('html, body, #root { background: #0A0A0F')
 })
