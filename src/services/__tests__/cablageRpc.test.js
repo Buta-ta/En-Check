@@ -166,8 +166,9 @@ function parseSignature(txt, debutParen) {
 }
 
 const SIGNATURES = new Map()
-for (const f of readdirSync(MIGRATIONS).filter((n) => n.endsWith('.sql'))) {
-  const txt = readFileSync(join(MIGRATIONS, f), 'utf8')
+const sqlFiles = [...readdirSync(MIGRATIONS).filter(n => n.endsWith('.sql')).map(f => join(MIGRATIONS, f)), join(DEPOT, 'supabase/outils-sql/20261023_securiser_ecritures_fiscales.sql')]
+for (const f of sqlFiles) {
+  const txt = readFileSync(f, 'utf8')
   const re = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+(?:public\.)?([a-zA-Z_][\w]*)\s*\(/gi
   let m
   while ((m = re.exec(txt))) {

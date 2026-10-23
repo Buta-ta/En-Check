@@ -18,7 +18,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { db } from '../lib/db'
-import PayrollService from './payrollService'
+import { remplacerConfigurationFiscale } from './fiscalTransactions'
 
 /** Ce qu'une entreprise a déjà de configuré, en un seul appel */
 export async function resumerConfiguration(enterpriseId) {
@@ -101,6 +101,9 @@ export async function copierConfigurationFiscale(sourceId, cibleId) {
         db().from('enterprise_tax_brackets').select('*').eq('enterprise_id', cibleId),
       ])
 
+    for (const result of [sourceCotisations, sourceTranches, sourceReglages, cibleCotisations, cibleTranches]) {
+      if (result.error) throw result.error
+    }
     const cotisations = sourceCotisations.data || []
     const tranches = sourceTranches.data || []
 
@@ -108,55 +111,10 @@ export async function copierConfigurationFiscale(sourceId, cibleId) {
       return { success: false, error: 'L’entreprise source n’a rien à copier' }
     }
 
-    // ⭐ ON GARDE LA CIBLE DE CÔTÉ AVANT DE LA VIDER
-    const nettoyer = ({ id, created_at, updated_at, ...reste }) => reste
-    const sauvegardeCotisations = (cibleCotisations.data || []).map(nettoyer)
-    const sauvegardeTranches = (cibleTranches.data || []).map(nettoyer)
-
-    const remettreLEtatDavant = async () => {
-      if (sauvegardeCotisations.length > 0) {
-        await db().from('enterprise_payroll_contributions').insert(sauvegardeCotisations)
-      }
-      if (sauvegardeTranches.length > 0) {
-        await db().from('enterprise_tax_brackets').insert(sauvegardeTranches)
-      }
-    }
-
-    const { error: erreurVidageCotisations } = await db()
-      .from('enterprise_payroll_contributions')
-      .delete()
-      .eq('enterprise_id', cibleId)
-    if (erreurVidageCotisations) throw erreurVidageCotisations
-
-    const { error: erreurVidageTranches } = await db()
-      .from('enterprise_tax_brackets')
-      .delete()
-      .eq('enterprise_id', cibleId)
-    if (erreurVidageTranches) {
-      await remettreLEtatDavant()
-      throw erreurVidageTranches
-    }
-
-    const aCopier = (lignes) => lignes.map((l) => ({ ...nettoyer(l), enterprise_id: cibleId }))
-
-    if (cotisations.length > 0) {
-      const { error } = await db().from('enterprise_payroll_contributions').insert(aCopier(cotisations))
-      if (error) {
-        await remettreLEtatDavant()
-        throw error
-      }
-    }
-
-    if (tranches.length > 0) {
-      const { error } = await db().from('enterprise_tax_brackets').insert(aCopier(tranches))
-      if (error) {
-        await remettreLEtatDavant()
-        throw error
-      }
-    }
-
-    // Les règles passent par le rédacteur unique de la colonne.
-    await PayrollService.saveCustomTaxRules(cibleId, sourceReglages.data?.custom_tax_rules || {})
+    await remplacerConfigurationFiscale(cibleId, {
+      contributions: cotisations, taxBrackets: tranches,
+      rules: sourceReglages.data?.custom_tax_rules || {},
+    })
 
     return {
       success: true,

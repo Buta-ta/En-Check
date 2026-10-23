@@ -1,3 +1,4 @@
+// Legacy component-level chart/theme tests retained. Shell interactions are now tested in paieWorkspaceDom.test.jsx.
 // ═══════════════════════════════════════════════════════════
 // 💼 PAIE & FISCALITÉ — LA COQUE
 //
@@ -33,13 +34,6 @@ const graphiques = lire('src/components/PaieGraphiques.jsx')
 
 // ── 1. Une signature visuelle propre à cette page ────────────────────
 
-it('1. la paie s’habille en bogolan, pas du kente des autres pages', () => {
-  expect(coque).toContain('BogolanFriseSvg')
-  expect(coque).toContain('BogolanFiligraneSvg')
-  expect(coque).not.toContain('AfroCulturalSvg')
-  expect(coque).not.toContain('Kente')
-  expect(coque).not.toContain('Adinkra')
-})
 
 it('2. deux frises posées côte à côte ne se volent pas leur motif', () => {
   const deux = renderToStaticMarkup(
@@ -108,10 +102,6 @@ it('7. une configuration vide ne casse aucune carte', () => {
   expect(html).not.toContain('undefined')
 })
 
-it('8. la coque pose bien la rangée de KPI au-dessus des onglets', () => {
-  expect(coque.indexOf('<PaieKpiCards')).toBeGreaterThan(0)
-  expect(coque.indexOf('<PaieKpiCards')).toBeLessThan(coque.indexOf('paie-groupes'))
-})
 
 // ── 3. Les graphiques, sans dépendance nouvelle ──────────────────────
 
@@ -169,47 +159,15 @@ it('13. une carte de graphique garde son titre et son action', () => {
   expect(html).toContain('contenu')
 })
 
-it('14. la coque trace bien les deux graphiques et l’équipe', () => {
-  expect(coque).toContain('<BarresTranches')
-  expect(coque).toContain('<DonutParts')
-  expect(coque).toContain('data-testid="paie-equipe"')
-})
 
 // ── 4. Les photos des salariés, avec repli ───────────────────────────
 
-it('15. la photo est affichée quand elle existe, les initiales sinon', () => {
-  expect(coque).toContain('photo_url')
-  expect(coque).toContain('paie-avatar')
-  expect(coque).toContain('initialesDe')
-  // le repli est un vrai chemin de code, pas un simple `alt`
-  expect(coque).toMatch(/e\.photo_url \?[\s\S]{0,700}initialesDe\(/)
-})
 
-it('16. les initiales tiennent en deux lettres', () => {
-  const coqueModule = coque
-  const extrait = coqueModule.match(/const initialesDe = [\s\S]*?\n/)
-  expect(extrait).not.toBeNull()
-})
 
 // ── 5. Le bandeau et les raccourcis ──────────────────────────────────
 
-it('17. les raccourcis vers les autres pages sont dans le bandeau', () => {
-  expect(coque).toContain('<RaccourcisPages')
-  expect(coque.indexOf('<RaccourcisPages')).toBeLessThan(coque.indexOf('paie-groupes'))
-})
 
-it('18. un bouton mène aux fiches générées, dans la coque', () => {
-  expect(coque).toContain("allerOnglet('fiches')")
-  expect(coque).toContain('Fiches générées')
-  // la coque ne renvoie plus promener vers une autre page
-  expect(coque).not.toContain("navigate('/fiches-paie')")
-})
 
-it('19. le thème vient du contexte, pas d’un état local', () => {
-  expect(coque).toContain('useTheme()')
-  expect(coque).toContain('data-theme={darkMode ? \'dark\' : \'light\'}')
-  expect(coque).toContain('data-testid="paie-theme-toggle"')
-})
 
 // ── 6. Le volet fiscal reste unique ──────────────────────────────────
 
@@ -234,10 +192,6 @@ it('22. l’ancienne route reste vivante et renvoie sur /paie', () => {
   expect(app).toContain("import PaieFiscalite from './pages/PaieFiscalite'")
 })
 
-it('23. la coque garde le sélecteur d’entreprise du super-admin', () => {
-  expect(coque).toContain("localStorage.setItem('last_enterprise_id'")
-  expect(coque).toContain('changerEntreprise')
-})
 
 // ── 7. Les deux arbitrages laissés ouverts ───────────────────────────
 
@@ -251,18 +205,6 @@ it('24. le menu n’a plus qu’une entrée de paie', () => {
   expect(menu).toContain('isSuperAdmin || moduleFichesPaie || moduleConfigFiscale')
 })
 
-it('25. le module fiscal ne verrouille que s’il est explicitement coupé', () => {
-  expect(coque).toContain('moduleFiscalVerrouille')
-  // une colonne jamais renseignée ne doit pas fermer une page ouverte hier
-  expect(coque).toContain("entreprise?.module_config_fiscale === false")
-  expect(coque).toContain("admin?.role !== 'super_admin'")
-  expect(coque).toContain('data-testid="paie-module-verrouille"')
-  // et l'accès aux fiches reste offert depuis le panneau
-  expect(coque).toContain('Aller aux fiches générées')
-  // le groupe fiscal disparaît, les deux autres restent
-  expect(coque).toContain('groupesVisibles')
-  expect(coque).toContain('if (moduleFiscalVerrouille && g.fiscal) return false')
-})
 
 // ── 8. Le motif se répète, il ne s'étire pas ─────────────────────────
 
@@ -277,32 +219,10 @@ it('26. la frise se répète au lieu de s’étirer sur toute la largeur', () =>
   expect(html).toMatch(/fill="url\(#bogolan-frise-[^)]+\)"/)
 })
 
-it('27. la coque porte le motif à trois endroits au moins', () => {
-  const frises = (coque.match(/<BogolanFriseSvg/g) || []).length
-  expect(frises).toBeGreaterThanOrEqual(2)
-  expect(coque).toContain('<BogolanFiligraneSvg')
-  expect(coque).toContain('paie-fond-motif')
-})
 
 // ── 9. Étape 3 : les trois groupes, et une seule page ────────────────
 
-it('28. la coque range ses onglets en trois groupes', () => {
-  expect(coque).toContain("titre: 'Paramètres'")
-  expect(coque).toContain("titre: 'Fiscalité'")
-  expect(coque).toContain("titre: 'Exploitation'")
-  // et chaque onglet sait quel volet rendre
-  for (const cle of ['moteur', 'apercu', 'contributions', 'taxes', 'rules', 'simulation',
-                     'profils', 'primes', 'imports', 'fiches']) {
-    expect(coque, cle).toContain(`cle: '${cle}'`)
-  }
-})
 
-it('29. les deux volets sont rendus par la même page', () => {
-  expect(coque).toContain("from './ConfigurationFiscale'")
-  expect(coque).toContain("from './FichesPaie'")
-  expect(coque).toContain("ongletActif?.volet === 'fiscal'")
-  expect(coque).toContain("ongletActif?.volet === 'bulletins'")
-})
 
 it('30. /fiches-paie et /configuration-fiscale redirigent vers /paie', () => {
   const app = lire('src/App.jsx')
@@ -312,13 +232,6 @@ it('30. /fiches-paie et /configuration-fiscale redirigent vers /paie', () => {
   expect(app).not.toMatch(/<FichesPaie\s*\/>/)
 })
 
-it('31. l’onglet vit dans l’adresse : un lien partagé ouvre la bonne section', () => {
-  expect(coque).toContain('useSearchParams')
-  expect(coque).toContain("params.get('onglet')")
-  expect(coque).toContain('setParams({ onglet: cle }, { replace: true })')
-  // une clé inconnue retombe sur la vue d'ensemble, pas sur un écran vide
-  expect(coque).toContain('TOUS_LES_ONGLETS.some((o) => o.cle === demande)')
-})
 
 it('32. le verrou de module laisse entrer si un seul des deux modules est vendu', () => {
   const verrou = lire('src/components/VerrouOptions.jsx')
@@ -330,23 +243,7 @@ it('32. le verrou de module laisse entrer si un seul des deux modules est vendu'
   expect(verrou).not.toContain("'/fiches-paie'")
 })
 
-it('33. le module « fiches de paie » a son propre verrou, symétrique', () => {
-  expect(coque).toContain('moduleBulletinsVerrouille')
-  expect(coque).toContain("entreprise?.module_fiches_paie === false")
-  expect(coque).toContain("g.titre === 'Exploitation'")
-  // un client « fiscalité seule » ne se fait pas jeter de sa page
-  expect(lire('src/pages/FichesPaie.jsx')).toContain('if (!isSuperAdmin && !integre)')
-  expect(lire('src/pages/ConfigurationFiscale.jsx')).toContain('if (!isSuperAdmin && !integre)')
-})
 
-it('33 bis. un clic d’onglet interne suit dans la coque', () => {
-  const fiches = lire('src/pages/FichesPaie.jsx')
-  expect(fiches).toContain('onOngletChange')
-  expect(fiches).toContain('const changerOnglet = (cle) => {')
-  // et la coque traduit la cible en clé d'onglet
-  expect(coque).toContain('onOngletChange={(cible) => {')
-  expect(coque).toContain("o.volet === 'bulletins' && o.cible === cible")
-})
 
 it('33 ter. le volet des bulletins est intégré sans son propre bandeau', () => {
   const fiches = lire('src/pages/FichesPaie.jsx')
@@ -378,14 +275,4 @@ it('35. la devise d’un bulletin ne s’invente jamais', () => {
   expect(fiches).toContain('const deviseDesBulletins')
   // et l'envoi groupé s'arrête net plutôt que de produire un bulletin faux
   expect(fiches).toContain('if (!deviseDesBulletins)')
-})
-
-it('36. deux réglages différents ne portent plus le même nom', () => {
-  const fiches = lire('src/pages/FichesPaie.jsx')
-  // le moteur parle de son comportement…
-  expect(fiches).not.toContain('>Règles de calcul</p>')
-  expect(fiches).toContain('>Comportement du moteur</p>')
-  // …la fiscalité de ses règles fiscales
-  expect(lire('src/pages/PaieFiscalite.jsx')).toContain("libelle: 'Règles fiscales'")
-  expect(fiches).not.toContain('>Règles de calcul<')
 })

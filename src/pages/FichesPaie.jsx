@@ -26,325 +26,39 @@ import {
   Filter, Stamp, Award, MapPin, Phone, Mail, Globe, Hash
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import PaiePreparation from '../components/PaiePreparation'
 import { useTheme } from '../contexts/ThemeContext'
 import { palettePaie } from '../styles/paieTheme'
 import { stylesBulletins } from '../styles/paieThemeBulletins'
+import {
+  AvatarSalarie, FieldHelp, FormLabel, Badge, CategoryBadge, SearchBar,
+} from '../components/BulletinChamps'
+import { SignaturePad, SingleSignatureManager, StampManager } from '../components/BulletinSignatures'
+import {
+  AllowanceModal, DeductionModal, LoanModal, BonusModal, PeriodDeductionModal,
+} from '../components/BulletinModales'
 
-// ═══════════════════════════════════════════════════════════
-// COMPOSANT SIGNATURE PAD
-// ═══════════════════════════════════════════════════════════
 
-function SignaturePad({ onSave, onCancel }) {
-  const { darkMode } = useTheme()
-  const S = stylesBulletins(darkMode)
-  const canvasRef = useRef(null)
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [hasDrawn, setHasDrawn] = useState(false)
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    const rect = canvas.getBoundingClientRect()
-    canvas.width = rect.width * 2
-    canvas.height = rect.height * 2
-    ctx.scale(2, 2)
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.strokeStyle = '#1a1a2e'
-    ctx.lineWidth = 2.5
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fillRect(0, 0, rect.width, rect.height)
-    ctx.beginPath()
-    ctx.strokeStyle = '#E5E7EB'
-    ctx.lineWidth = 1
-    ctx.setLineDash([4, 4])
-    ctx.moveTo(30, rect.height - 40)
-    ctx.lineTo(rect.width - 30, rect.height - 40)
-    ctx.stroke()
-    ctx.setLineDash([])
-    ctx.strokeStyle = '#1a1a2e'
-    ctx.lineWidth = 2.5
-  }, [])
 
-  const getPos = (e) => {
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY
-    return { x: clientX - rect.left, y: clientY - rect.top }
-  }
 
-  const startDrawing = (e) => { e.preventDefault(); const ctx = canvasRef.current.getContext('2d'); const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); setIsDrawing(true); setHasDrawn(true) }
-  const draw = (e) => { e.preventDefault(); if (!isDrawing) return; const ctx = canvasRef.current.getContext('2d'); const pos = getPos(e); ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = 2.5; ctx.lineTo(pos.x, pos.y); ctx.stroke() }
-  const stopDrawing = (e) => { if (e) e.preventDefault(); setIsDrawing(false) }
 
-  const clearCanvas = () => {
-    const canvas = canvasRef.current; const ctx = canvas.getContext('2d'); const rect = canvas.getBoundingClientRect()
-    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, rect.width, rect.height)
-    ctx.beginPath(); ctx.strokeStyle = '#E5E7EB'; ctx.lineWidth = 1; ctx.setLineDash([4, 4])
-    ctx.moveTo(30, rect.height - 40); ctx.lineTo(rect.width - 30, rect.height - 40); ctx.stroke()
-    ctx.setLineDash([]); ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = 2.5; setHasDrawn(false)
-  }
 
-  const handleSave = () => { if (!hasDrawn) { toast.error('Veuillez dessiner votre signature'); return }; onSave(canvasRef.current.toDataURL('image/png')) }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', border: '2px solid rgba(245,158,11,0.25)', background: '#FFF' }}>
-        <canvas ref={canvasRef} style={{ width: '100%', height: 200, cursor: 'crosshair', touchAction: 'none', display: 'block' }}
-          onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} />
-        <div style={{ position: 'absolute', bottom: 8, left: 12, color: '#BBB', fontSize: 10, fontStyle: 'italic', pointerEvents: 'none' }}>Dessinez votre signature ici</div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <button onClick={clearCanvas} style={S.sigClearBtn}><RotateCcw size={14} /><span>Effacer</span></button>
-        {onCancel && <button onClick={onCancel} style={S.sigCancelBtn}><X size={14} /><span>Annuler</span></button>}
-        <button onClick={handleSave} style={S.sigSaveBtn}><CheckCircle size={14} /><span>Valider</span></button>
-      </div>
-    </div>
-  )
-}
 
-// ═══════════════════════════════════════════════════════════
-// GESTIONNAIRE DE SIGNATURE UNIQUE (pour 1 signataire)
-// ═══════════════════════════════════════════════════════════
 
-function SingleSignatureManager({ label, signature, onSignatureChange, sigName, onSigNameChange, sigTitle, onSigTitleChange, enterpriseId, color = '#F59E0B' }) {
-  const { darkMode } = useTheme()
-  const S = stylesBulletins(darkMode)
-  const [mode, setMode] = useState(null)
-  const [uploading, setUploading] = useState(false)
-  const fileInputRef = useRef(null)
-
-  const uploadToStorage = async (base64Data) => {
-    if (!enterpriseId) return base64Data
-    setUploading(true)
-    try {
-      const response = await fetch(base64Data)
-      const blob = await response.blob()
-      const fileName = `signatures/${enterpriseId}/sig_${Date.now()}.png`
-      if (signature && signature.startsWith('http')) {
-        try { const oldPath = signature.split('/storage/v1/object/public/payroll-assets/')[1]; if (oldPath) await supabase.storage.from('payroll-assets').remove([oldPath]) } catch (e) { console.warn(e) }
-      }
-      const { data, error } = await supabase.storage.from('payroll-assets').upload(fileName, blob, { contentType: 'image/png', upsert: true })
-      if (error) { console.warn('Storage non disponible, utilisation base64:', error); setUploading(false); return base64Data }
-      const { data: publicData } = supabase.storage.from('payroll-assets').getPublicUrl(fileName)
-      setUploading(false)
-      return publicData?.publicUrl || base64Data
-    } catch (err) { console.warn('Erreur upload storage, fallback base64:', err); setUploading(false); return base64Data }
-  }
-
-  const handleImport = async (event) => {
-    const file = event.target.files?.[0]; if (!file) return
-    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) { toast.error('Format non supporté. Utilisez PNG, JPG ou WebP.'); return }
-    if (file.size > 2 * 1024 * 1024) { toast.error('Fichier trop volumineux (max 2 Mo)'); return }
-    const reader = new FileReader()
-    reader.onload = async (e) => { const url = await uploadToStorage(e.target.result); onSignatureChange(url); setMode(null); toast.success('Signature importée') }
-    reader.onerror = () => toast.error('Erreur de lecture du fichier')
-    reader.readAsDataURL(file)
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const handleDrawSave = async (dataURL) => { const url = await uploadToStorage(dataURL); onSignatureChange(url); setMode(null); toast.success('Signature enregistrée') }
-
-  const handleRemove = async () => {
-    if (signature && signature.startsWith('http')) {
-      try { const path = signature.split('/storage/v1/object/public/payroll-assets/')[1]; if (path) await supabase.storage.from('payroll-assets').remove([path]) } catch (e) { console.warn(e) }
-    }
-    onSignatureChange(''); toast.success('Signature supprimée')
-  }
-
-  return (
-    <div style={{ padding: 14, borderRadius: 14, background: `${color}08`, border: `1px solid ${color}18` }}>
-      <p style={{ color: '#DDD', fontSize: 13, fontWeight: 700, margin: '0 0 10px 0' }}>{label}</p>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-        <div>
-          <label style={S.labelSmall}>Nom</label>
-          <input value={sigName || ''} onChange={e => onSigNameChange(e.target.value)} style={S.input} placeholder="Ex: Jean Dupont" />
-        </div>
-        <div>
-          <label style={S.labelSmall}>Titre / Fonction</label>
-          <input value={sigTitle || ''} onChange={e => onSigTitleChange(e.target.value)} style={S.input} placeholder="Ex: Directeur RH" />
-        </div>
-      </div>
-
-      {signature && !mode && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={S.signaturePreview}>
-            <img src={signature} alt="Signature" style={{ maxWidth: '100%', maxHeight: 100, objectFit: 'contain' }} />
-            {sigName && <p style={{ color: '#374151', fontSize: 11, fontWeight: 600, margin: '6px 0 0 0', borderTop: '1px solid #E5E7EB', paddingTop: 6 }}>{sigName}</p>}
-            {sigTitle && <p style={{ color: '#6B7280', fontSize: 10, margin: '2px 0 0 0' }}>{sigTitle}</p>}
-          </div>
-        </div>
-      )}
-
-      {!mode && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={() => setMode('draw')} style={{ ...S.sigActionBtn, borderColor: `${color}30`, background: `${color}15`, color }} disabled={uploading}>
-            <PenTool size={14} /><span>{signature ? 'Redessiner' : 'Dessiner'}</span>
-          </button>
-          <button onClick={() => fileInputRef.current?.click()} style={{ ...S.sigActionBtn, borderColor: 'rgba(99,102,241,0.25)', background: 'rgba(99,102,241,0.1)', color: '#818CF8' }} disabled={uploading}>
-            <Image size={14} /><span>{signature ? 'Remplacer' : 'Importer'}</span>
-          </button>
-          {signature && (
-            <button onClick={handleRemove} style={{ ...S.sigActionBtn, borderColor: 'rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.1)', color: '#EF4444' }} disabled={uploading}>
-              <Trash2 size={14} /><span>Supprimer</span>
-            </button>
-          )}
-          <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={handleImport} style={{ display: 'none' }} />
-        </div>
-      )}
-
-      {uploading && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}><RefreshCw size={14} color={color} style={{ animation: 'spin 0.9s linear infinite' }} /><span style={{ color, fontSize: 12 }}>Upload en cours...</span></div>}
-      {mode === 'draw' && <div style={{ marginTop: 8 }}><SignaturePad onSave={handleDrawSave} onCancel={() => setMode(null)} /></div>}
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════
-// GESTIONNAIRE CACHET / TAMPON
-// ═══════════════════════════════════════════════════════════
-
-function StampManager({ stamp, onStampChange, enterpriseId }) {
-  const { darkMode } = useTheme()
-  const S = stylesBulletins(darkMode)
-  const [uploading, setUploading] = useState(false)
-  const fileInputRef = useRef(null)
-
-  const handleImport = async (event) => {
-    const file = event.target.files?.[0]; if (!file) return
-    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) { toast.error('Format non supporté.'); return }
-    if (file.size > 3 * 1024 * 1024) { toast.error('Fichier trop volumineux (max 3 Mo)'); return }
-    setUploading(true)
-    try {
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const base64 = e.target.result
-        if (enterpriseId) {
-          try {
-            const response = await fetch(base64); const blob = await response.blob()
-            const fileName = `stamps/${enterpriseId}/stamp_${Date.now()}.png`
-            const { error } = await supabase.storage.from('payroll-assets').upload(fileName, blob, { contentType: 'image/png', upsert: true })
-            if (!error) {
-              const { data: publicData } = supabase.storage.from('payroll-assets').getPublicUrl(fileName)
-              onStampChange(publicData?.publicUrl || base64); setUploading(false); toast.success('Cachet importé'); return
-            }
-          } catch (err) { console.warn('Storage non disponible:', err) }
-        }
-        onStampChange(base64); setUploading(false); toast.success('Cachet importé')
-      }
-      reader.readAsDataURL(file)
-    } catch { toast.error('Erreur import'); setUploading(false) }
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const handleRemove = () => { onStampChange(''); toast.success('Cachet supprimé') }
-
-  return (
-    <div style={{ padding: 14, borderRadius: 14, background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-        <div style={{ ...S.cardIcon, background: 'rgba(139,92,246,0.12)' }}><Stamp size={18} color="#8B5CF6" /></div>
-        <div>
-          <p style={{ color: '#FFF', fontSize: 13, fontWeight: 700, margin: 0 }}>Cachet / Tampon de l'entreprise</p>
-          <p style={{ color: '#777', fontSize: 11, margin: '2px 0 0 0' }}>Image PNG avec fond transparent recommandé</p>
-        </div>
-      </div>
-
-      {stamp && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ ...S.signaturePreview, padding: 20 }}>
-            <img src={stamp} alt="Cachet" style={{ maxWidth: '100%', maxHeight: 120, objectFit: 'contain' }} />
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button onClick={() => fileInputRef.current?.click()} style={{ ...S.sigActionBtn, borderColor: 'rgba(139,92,246,0.25)', background: 'rgba(139,92,246,0.1)', color: '#A78BFA' }} disabled={uploading}>
-          <Image size={14} /><span>{stamp ? 'Remplacer le cachet' : 'Importer un cachet'}</span>
-        </button>
-        {stamp && (
-          <button onClick={handleRemove} style={{ ...S.sigActionBtn, borderColor: 'rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
-            <Trash2 size={14} /><span>Supprimer</span>
-          </button>
-        )}
-        <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={handleImport} style={{ display: 'none' }} />
-      </div>
-
-      {uploading && <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}><RefreshCw size={14} color="#8B5CF6" style={{ animation: 'spin 0.9s linear infinite' }} /><span style={{ color: '#8B5CF6', fontSize: 12 }}>Upload en cours...</span></div>}
-
-      <div style={S.signatureInfo}>
-        <Info size={13} color="#666" style={{ flexShrink: 0 }} />
-        <span style={{ color: '#666', fontSize: 11, lineHeight: 1.5 }}>Formats : PNG, JPG, WebP (max 3 Mo). Le cachet apparaîtra entre les signatures sur le bulletin.</span>
-      </div>
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════
-// COMPOSANTS UTILITAIRES
-// ═══════════════════════════════════════════════════════════
-
-function FieldHelp({ text, example }) {
-  const { darkMode } = useTheme()
-  const S = stylesBulletins(darkMode)
-  const P = palettePaie(darkMode)
-  const [show, setShow] = useState(false)
-  return (
-    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-      <HelpCircle size={14} color={P.texteFaint} style={{ cursor: 'pointer', marginLeft: 6, flexShrink: 0 }} onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)} />
-      {show && (
-        <div style={S.tooltip}>
-          <p style={{ color: P.texteDoux, fontSize: 12, margin: '0 0 6px 0', lineHeight: 1.5 }}>{text}</p>
-          {example && <div style={S.tooltipExample}><span style={{ color: P.texteDoux2, fontSize: 10, display: 'block', marginBottom: 3, fontWeight: 700, textTransform: 'uppercase' }}>Exemple</span><span style={{ color: P.ambre, fontSize: 12, fontWeight: 600 }}>{example}</span></div>}
-          <div style={S.tooltipArrow} />
-        </div>
-      )}
-    </span>
-  )
-}
-
-function FormLabel({ children, help, example, required }) {
-  const { darkMode } = useTheme()
-  const S = stylesBulletins(darkMode)
-  const P = palettePaie(darkMode)
-  return <label style={S.labelSmall}>{children}{required && <span style={{ color: P.rouge, marginLeft: 2 }}>*</span>}{help && <FieldHelp text={help} example={example} />}</label>
-}
-
-function Badge({ children, color = '#F59E0B' }) {
-  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: `${color}20`, border: `1px solid ${color}30`, color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 999 }}>{children}</span>
-}
-
-function CategoryBadge({ category }) {
-  const config = { transport: { label: 'Transport', color: '#3B82F6' }, housing: { label: 'Logement', color: '#8B5CF6' }, food: { label: 'Repas', color: '#F59E0B' }, seniority: { label: 'Ancienneté', color: '#10B981' }, responsibility: { label: 'Responsabilité', color: '#6366F1' }, performance: { label: 'Performance', color: '#EC4899' }, exceptional: { label: 'Exceptionnel', color: '#EF4444' }, representation: { label: 'Représentation', color: '#14B8A6' }, advance: { label: 'Avance', color: '#F97316' }, loan: { label: 'Prêt', color: '#EF4444' }, discipline: { label: 'Discipline', color: '#DC2626' }, garnishment: { label: 'Saisie', color: '#991B1B' }, voluntary: { label: 'Volontaire', color: '#059669' }, reimbursement: { label: 'Remboursement', color: '#D97706' }, other: { label: 'Autre', color: '#6B7280' } }
-  const c = config[category] || config.other
-  return <Badge color={c.color}>{c.label}</Badge>
-}
-
-function SearchBar({ value, onChange, placeholder = 'Rechercher...' }) {
-  const { darkMode } = useTheme()
-  const S = stylesBulletins(darkMode)
-  const P = palettePaie(darkMode)
-  return (
-    <div style={S.searchWrap}>
-      <Search size={16} color={P.texteFaint} style={{ flexShrink: 0 }} />
-      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={S.searchInput} />
-      {value && <button onClick={() => onChange('')} style={S.searchClear}><X size={14} /></button>}
-    </div>
-  )
-}
 
 // ═══════════════════════════════════════════════════════════
 // PAGE PRINCIPALE
 // ═══════════════════════════════════════════════════════════
 
-export default function FichesPaie({ integre = false, ongletExterne = null, entrepriseIdForce = null, onOngletChange = null } = {}) {
+export default function FichesPaie({ integre = false, ongletExterne = null, entrepriseIdForce = null, onOngletChange = null, onBusyChange = null } = {}) {
   const { darkMode } = useTheme()
   const S = stylesBulletins(darkMode)
   const P = palettePaie(darkMode)
   const [admin, setAdmin] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [saving, setSaving] = useState(false)
   const [ongletInterne, setOngletInterne] = useState('settings')
   const activeTab = ongletExterne || ongletInterne
@@ -404,6 +118,7 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
 
   const [showGenerateConfirm, setShowGenerateConfirm] = useState(false)
 
+  const generationRequest = useRef(0)
   const [previewRows, setPreviewRows] = useState([])
   const [loadingPreview, setLoadingPreview] = useState(false)
 
@@ -455,13 +170,14 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
 
   const loadEnterpriseContext = async (targetEnterpriseId, adminId, start, end) => {
     const { data: enterprise } = await supabase.from('enterprises').select('id, name, address, email, phone, logo_url, country_code, currency').eq('id', targetEnterpriseId).single()
+    if (!enterprise) throw new Error('Entreprise inaccessible')
     setEnterpriseId(targetEnterpriseId)
     setEnterpriseName(enterprise?.name || 'Entreprise')
     setEnterpriseData(enterprise)
     setPreviewRows([])
 
     const [employeesRes, loadedSettings, loadedProfiles, loadedOvertimeSettings, loadedAllowanceTypes, loadedDeductionTypes] = await Promise.all([
-      supabase.from('employees').select('id, first_name, last_name, matricule, department, position, is_active, hire_date, cnps_number, professional_category, echelon, classification, contract_type, marital_status, dependents_count').eq('enterprise_id', targetEnterpriseId).eq('is_active', true).order('last_name'),
+      supabase.from('employees').select('id, first_name, last_name, matricule, department, position, is_active, hire_date, cnps_number, professional_category, echelon, classification, contract_type, marital_status, dependents_count, photo_url').eq('enterprise_id', targetEnterpriseId).eq('is_active', true).order('last_name'),
       PayrollService.getPayrollSettings(targetEnterpriseId),
       PayrollService.getEmployeePayrollProfiles(targetEnterpriseId),
       FeatureService.getOvertimeSettings(targetEnterpriseId),
@@ -469,6 +185,7 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
       PayrollService.getDeductionTypes(targetEnterpriseId),
     ])
 
+    if (employeesRes.error) throw employeesRes.error
     const employeesData = employeesRes.data || []
     setEmployees(employeesData)
     setProfiles(loadedProfiles || [])
@@ -563,7 +280,7 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
       setPeriodEnd(end)
 
       await loadEnterpriseContext(targetEnterpriseId, adminData.id, start, end)
-    } catch (err) { console.error(err); toast.error('Erreur chargement module paie'); navigate('/dashboard') }
+    } catch (err) { console.error(err); setLoadError('Chargement de la paie impossible. Réessayez avant toute opération.') }
     setLoading(false)
   }
 
@@ -836,20 +553,23 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   // ═══════════════════════════════════════════════════════════
 
   const handleTryGenerate = () => {
-    if (!enterpriseId || !periodStart || !periodEnd) { toast.error('Choisissez une période'); return }
+    if (!enterpriseId || !periodStart || !periodEnd || periodStart > periodEnd) { toast.error('Choisissez une période valide'); return }
     if (preCheckResults.blockers.length > 0) setShowGenerateConfirm(true)
     else handleGeneratePreview()
   }
 
   const handleGeneratePreview = async () => {
     setShowGenerateConfirm(false)
-    if (!enterpriseId || !periodStart || !periodEnd) { toast.error('Choisissez une période'); return }
+    if (!enterpriseId || !periodStart || !periodEnd || periodStart > periodEnd) { toast.error('Choisissez une période valide'); return }
     setLoadingPreview(true)
+    const request = ++generationRequest.current
     try {
       // Charger cumuls annuels
       const year = new Date(periodStart + 'T12:00:00Z').getFullYear()
       await loadAnnualCumuls(enterpriseId, year)
 
+      // Always calculate from persisted settings, not a hidden editor's stale snapshot.
+      const persistedSettings = await PayrollService.getPayrollSettings(enterpriseId)
       const sourceData = await PayrollService.loadPayrollSourceData(enterpriseId, periodStart, periodEnd)
       const importedMap = await PayrollService.getImportedVariablesMap(enterpriseId, periodStart, periodEnd)
 
@@ -864,7 +584,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
             PayrollService.getPayrollDeductions(enterpriseId, periodStart, periodEnd, emp.id),
           ])
           return await PayrollService.buildPayrollSlip({
-            employee: emp, profile, settings, enCheckData,
+            employee: emp, profile, settings: persistedSettings, enCheckData,
             importedData: importedMap.get(emp.id) || {},
             periodStart, periodEnd,
             overtimeSettings: sourceData.overtimeSettings,
@@ -874,6 +594,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
         })
       )
 
+      if (request !== generationRequest.current) { setLoadingPreview(false); return }
       setPreviewRows(rows)
       changerOnglet('preview')
       await loadSentSlips(enterpriseId, periodStart, periodEnd)
@@ -1238,6 +959,19 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
 }, [employees, profiles, settings.company_social_label, settings.hide_social_label])
 
 
+  useEffect(() => {
+    onBusyChange?.(saving || loadingPreview || sendingSlips || savingImport)
+  }, [saving, loadingPreview, sendingSlips, savingImport, onBusyChange])
+
+  // Calculs invalidés dès qu'une entrée change : jamais de graphique d'une autre période.
+  useEffect(() => { generationRequest.current += 1; setPreviewRows([]) }, [periodStart, periodEnd, profiles, settings, periodBonuses, periodDeductions])
+  useEffect(() => {
+    const prevent = event => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', prevent)
+    return () => { generationRequest.current += 1; window.removeEventListener('beforeunload', prevent) }
+  }, [])
+  if (loadError) return <div role="alert" className="pw-error">{loadError}<button className="paie-btn" onClick={() => { setLoadError(''); initPage({ ...admin, selectedEnterprise: { id: entrepriseIdForce || enterpriseId } }) }}>Réessayer</button></div>
+
   // Vérifier si signatures/cachet configurés
   const hasSignatures = settings.signatory1_signature || settings.signatory2_signature
   const hasStamp = !!settings.company_stamp
@@ -1284,6 +1018,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
         .pay-volet input[type="date"]::-webkit-calendar-picker-indicator {
           filter: ${darkMode ? 'invert(1)' : 'none'};
         }
+        .pay-avatar { flex-shrink: 0; }
+        .pay-volet .pay-liste-avatar { align-items: center; }
         @media (max-width: 768px) {
           .pay-grid-2 { grid-template-columns: 1fr !important; }
           .pay-form-grid { grid-template-columns: 1fr !important; }
@@ -1355,20 +1091,21 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           </header>
           )}
 
-          {/* GUIDE */}
-          <div style={S.guideBar}>
-            <Info size={16} color={P.ambre} style={{ flexShrink: 0, marginTop: 2 }} />
-            <div>
-              <p style={S.guideTitle}>Comment utiliser ce module ?</p>
-              <p style={S.guideText}>
-                <strong>1.</strong> Configurez les <strong>paramètres</strong>, <strong>signatures</strong> et <strong>cachet</strong>.{' '}
-                <strong>2.</strong> Créez les <strong>profils salariaux</strong>.{' '}
-                <strong>3.</strong> Gérez les <strong>primes & retenues</strong>.{' '}
-                <strong>4.</strong> Importez les <strong>variables</strong>.{' '}
-                <strong>5.</strong> Générez et envoyez les bulletins.
-              </p>
-            </div>
-          </div>
+          {integre && activeTab === 'preparation' && <PaiePreparation
+            employees={employees} profiles={profiles} previewRows={previewRows}
+            currency={settings.currency} start={periodStart} end={periodEnd}
+            setStart={setPeriodStart} setEnd={setPeriodEnd}
+            onHistory={() => { loadHistory(); setShowHistoryModal(true) }}
+            onGenerate={handleTryGenerate} generating={loadingPreview}
+            onNavigate={changerOnglet}
+            onEmployee={id => { setSelectedEmployeeId(id); changerOnglet('profiles') }}
+            issues={[...preCheckResults.blockers, ...preCheckResults.warnings]}
+          />}
+          {integre && activeTab === 'preview' && <div className="pw-toolbar">
+            <button className="paie-btn" onClick={() => { loadHistory(); setShowHistoryModal(true) }}><History size={17}/>Historique</button>
+            <button className="paie-btn paie-btn-principal" onClick={handleTryGenerate} disabled={loadingPreview || !employees.length}><Eye size={17}/>{loadingPreview ? 'Calcul en cours…' : 'Vérifier et calculer les bulletins'}</button>
+          </div>}
+          {activeTab !== 'preparation' && <details className="pw-help"><summary>Comment préparer la paie ?</summary><p>Configurez les paramètres et les profils, vérifiez les primes et les variables, puis calculez et contrôlez les bulletins avant envoi.</p></details>}
 
           {/* PRÉ-VALIDATION — inutile sur les onglets de réglage */}
           {(!integre || activeTab === 'preview') && (preCheckResults.blockers.length > 0 || preCheckResults.warnings.length > 0) && (
@@ -1740,6 +1477,17 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                   if (!emp) return null
                   return (
                     <div style={{ padding: '10px 14px', borderRadius: 12, background: P.indigo1, border: `1px solid ${P.indigo3}`, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <AvatarSalarie employe={emp} taille={40} />
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ margin: 0, color: P.texte, fontSize: 13.5, fontWeight: 800 }}>
+                            {emp.first_name} {emp.last_name}
+                          </p>
+                          <p style={{ margin: '2px 0 0 0', color: P.texteDoux2, fontSize: 11 }}>
+                            {[emp.matricule, emp.position || emp.department].filter(Boolean).join(' • ') || 'Sans matricule'}
+                          </p>
+                        </div>
+                      </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 11, color: P.texteDoux2 }}>
                         {emp.hire_date && <span>📅 Embauche: {new Date(emp.hire_date).toLocaleDateString('fr-FR')}</span>}
                         {emp.classification && <span>🏷 {emp.classification}</span>}
@@ -1881,7 +1629,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 <div style={S.listWrap}>
                   {profiles.length === 0 ? <div style={S.emptyMini}><AlertTriangle size={18} color={P.texteFaint} /><span>Aucun profil enregistré</span></div> : profiles.map((profile, i) => (
                     <div key={profile.id || i} style={{ ...S.listItem, ...(profile.employee_id === selectedEmployeeId ? { borderColor: P.indigo11, background: P.indigo7 } : {}) }} onClick={() => setSelectedEmployeeId(profile.employee_id)}>
-                      <div><div style={S.listTitle}>{profile.employees?.first_name} {profile.employees?.last_name}</div><div style={S.listSub}>{profile.employees?.matricule} • {profile.salary_type === 'monthly' ? 'Mensuel' : profile.salary_type === 'hourly' ? 'Horaire' : 'Journalier'} • {profile.salary_type === 'monthly' ? fmt(profile.base_salary) : profile.salary_type === 'hourly' ? `${fmt(profile.hourly_rate)}/h` : `${fmt(profile.daily_rate)}/j`}</div></div>
+                      <AvatarSalarie employe={profile.employees} taille={34} />
+                      <div style={{ flex: 1, minWidth: 0 }}><div style={S.listTitle}>{profile.employees?.first_name} {profile.employees?.last_name}</div><div style={S.listSub}>{profile.employees?.matricule} • {profile.salary_type === 'monthly' ? 'Mensuel' : profile.salary_type === 'hourly' ? 'Horaire' : 'Journalier'} • {profile.salary_type === 'monthly' ? fmt(profile.base_salary) : profile.salary_type === 'hourly' ? `${fmt(profile.hourly_rate)}/h` : `${fmt(profile.daily_rate)}/j`}</div></div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                         <CheckCircle size={16} color={P.vert} />
                         <span style={{ ...S.typeBadge, background: profile.salary_type === 'monthly' ? P.indigo3 : profile.salary_type === 'hourly' ? P.ambre4 : P.vert1, color: profile.salary_type === 'monthly' ? P.indigoClair : profile.salary_type === 'hourly' ? P.ambre : P.vert }}>{profile.salary_type === 'monthly' ? 'MENSUEL' : profile.salary_type === 'hourly' ? 'HORAIRE' : 'JOURNALIER'}</span>
@@ -1924,7 +1673,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
                   {(searchAllowance ? employees.filter(e => `${e.first_name} ${e.last_name} ${e.matricule}`.toLowerCase().includes(searchAllowance.toLowerCase())) : employees.slice(0, 10)).map(emp => (
                     <div key={emp.id} style={S.listItem} onClick={() => { setSelectedEmployeeId(emp.id); changerOnglet('profiles') }}>
-                      <div><div style={S.listTitle}>{emp.first_name} {emp.last_name}</div><div style={S.listSub}>{emp.matricule}</div></div>
+                      <AvatarSalarie employe={emp} taille={32} />
+                      <div style={{ flex: 1, minWidth: 0 }}><div style={S.listTitle}>{emp.first_name} {emp.last_name}</div><div style={S.listSub}>{emp.matricule}</div></div>
                       <button style={S.addBtnSmall} onClick={(e) => { e.stopPropagation(); setSelectedEmployeeId(emp.id); changerOnglet('profiles') }}><Edit size={12} /><span>Gérer</span></button>
                     </div>
                   ))}
@@ -2219,51 +1969,10 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   )
 }
 
-// ═══════════════════════════════════════════════════════════
-// MODALES PRIMES & RETENUES (identiques à l'original)
-// ═══════════════════════════════════════════════════════════
 
-function AllowanceModal({ allowance, employeeId, employees, allowanceTypes, currency, onSave, onClose, saving }) {
-  const { darkMode } = useTheme()
-  const S = stylesBulletins(darkMode)
-  const [form, setForm] = useState(allowance || { employee_id: employeeId || '', allowance_type_id: '', custom_name: '', calculation_type: 'fixed', amount: '', percentage: '', is_taxable: true, is_subject_to_contributions: true, start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '' })
-  const selectedType = allowanceTypes.find(t => t.id === form.allowance_type_id)
-  useEffect(() => { if (selectedType) setForm(prev => ({ ...prev, custom_name: selectedType.name, calculation_type: selectedType.calculation_type || 'fixed', is_taxable: selectedType.is_taxable, is_subject_to_contributions: selectedType.is_subject_to_contributions })) }, [form.allowance_type_id])
-  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>{allowance ? 'Modifier la prime' : 'Nouvelle prime récurrente'}</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '65vh', overflowY: 'auto' }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Type de prime</label><select value={form.allowance_type_id} onChange={e => setForm(p => ({ ...p, allowance_type_id: e.target.value }))} style={S.select}><option value="">Personnalisée</option>{allowanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Nom *</label><input value={form.custom_name} onChange={e => setForm(p => ({ ...p, custom_name: e.target.value }))} style={S.input} placeholder="Ex: Prime d'ancienneté" /></div><div style={S.formGroup}><label style={S.labelSmall}>Mode de calcul</label><select value={form.calculation_type} onChange={e => setForm(p => ({ ...p, calculation_type: e.target.value }))} style={S.select}><option value="fixed">Montant fixe</option><option value="percentage">% du salaire de base</option></select></div>{form.calculation_type === 'fixed' && <div style={S.formGroup}><label style={S.labelSmall}>Montant ({currency}) *</label><input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} style={S.input} /></div>}{form.calculation_type === 'percentage' && <div style={S.formGroup}><label style={S.labelSmall}>Pourcentage (%) *</label><input type="number" step="0.1" value={form.percentage} onChange={e => setForm(p => ({ ...p, percentage: e.target.value }))} style={S.input} /></div>}<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}><div style={S.formGroup}><label style={S.labelSmall}>Date début *</label><input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Date fin</label><input type="date" value={form.end_date} onChange={e => setForm(p => ({ ...p, end_date: e.target.value }))} style={S.input} /></div></div><label style={S.toggleItem}><input type="checkbox" checked={form.is_taxable} onChange={e => setForm(p => ({ ...p, is_taxable: e.target.checked }))} style={S.checkbox} /><div><span style={S.toggleLabel}>Imposable</span></div></label><label style={S.toggleItem}><input type="checkbox" checked={form.is_subject_to_contributions} onChange={e => setForm(p => ({ ...p, is_subject_to_contributions: e.target.checked }))} style={S.checkbox} /><div><span style={S.toggleLabel}>Soumise aux cotisations</span></div></label></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave(form)} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.custom_name}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Enregistrer</span></button></div></div></div>)
-}
 
-function DeductionModal({ deduction, employeeId, employees, deductionTypes, currency, onSave, onClose, saving }) {
-  const { darkMode } = useTheme()
-  const S = stylesBulletins(darkMode)
-  const P = palettePaie(darkMode)
-  const [form, setForm] = useState(deduction || { employee_id: employeeId || '', deduction_type_id: '', code: '', name: '', calculation_type: 'fixed', monthly_amount: '', max_percentage_of_net: '', start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '', status: 'active' })
-  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>{deduction ? 'Modifier la retenue' : 'Nouvelle retenue récurrente'}</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '65vh', overflowY: 'auto' }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Type</label><select value={form.deduction_type_id} onChange={e => { const type = deductionTypes.find(t => t.id === e.target.value); setForm(p => ({ ...p, deduction_type_id: e.target.value, name: type?.name || p.name, code: type?.code || p.code })) }} style={S.select}><option value="">Personnalisée</option>{deductionTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Nom *</label><input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Montant mensuel ({currency}) *</label><input type="number" value={form.monthly_amount} onChange={e => setForm(p => ({ ...p, monthly_amount: e.target.value }))} style={S.input} /></div><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}><div style={S.formGroup}><label style={S.labelSmall}>Date début *</label><input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Date fin</label><input type="date" value={form.end_date} onChange={e => setForm(p => ({ ...p, end_date: e.target.value }))} style={S.input} /></div></div></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave({ ...form, code: form.code || `deduction_${Date.now()}` })} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.name}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Enregistrer</span></button></div></div></div>)
-}
 
-function LoanModal({ employeeId, employees, currency, onSave, onClose, saving }) {
-  const { darkMode } = useTheme()
-  const S = stylesBulletins(darkMode)
-  const P = palettePaie(darkMode)
-  const [form, setForm] = useState({ employee_id: employeeId || '', code: `loan_${Date.now()}`, name: 'Prêt entreprise', calculation_type: 'remaining', monthly_amount: '', total_amount: '', remaining_balance: '', interest_rate: '', start_date: new Date().toISOString().split('T')[0], status: 'active', notes: '' })
-  const monthsToRepay = form.monthly_amount && form.total_amount ? Math.ceil(parseFloat(form.total_amount) / parseFloat(form.monthly_amount)) : null
-  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>Nouveau prêt / Avance</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '65vh', overflowY: 'auto' }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Libellé *</label><select value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.select}><option value="Prêt entreprise">Prêt entreprise</option><option value="Avance sur salaire">Avance sur salaire</option><option value="Prêt équipement">Prêt équipement</option></select></div><div style={S.formGroup}><label style={S.labelSmall}>Montant total ({currency}) *</label><input type="number" value={form.total_amount} onChange={e => setForm(p => ({ ...p, total_amount: e.target.value, remaining_balance: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Remboursement mensuel ({currency}) *</label><input type="number" value={form.monthly_amount} onChange={e => setForm(p => ({ ...p, monthly_amount: e.target.value }))} style={S.input} /></div>{monthsToRepay && <div style={{ padding: '12px 14px', background: P.indigo1, border: `1px solid ${P.indigo4}`, borderRadius: 12 }}><p style={{ color: P.indigoClair, fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>Simulation</p><p style={{ color: P.texteDoux2, fontSize: 12, margin: 0 }}>{monthsToRepay} mois</p></div>}<div style={S.formGroup}><label style={S.labelSmall}>Date début *</label><input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} style={S.input} /></div></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave(form)} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.total_amount || !form.monthly_amount}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Créer le prêt</span></button></div></div></div>)
-}
 
-function BonusModal({ employees, allowanceTypes, defaultEmployeeId, currency, onSave, onClose, saving }) {
-  const { darkMode } = useTheme()
-  const S = stylesBulletins(darkMode)
-  const P = palettePaie(darkMode)
-  const [form, setForm] = useState({ employee_id: defaultEmployeeId || '', allowance_type_id: '', code: `bonus_${Date.now()}`, name: '', amount: '', is_taxable: true, is_subject_to_contributions: true, reason: '' })
-  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>Nouvelle prime ponctuelle</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Type</label><select value={form.allowance_type_id} onChange={e => { const type = allowanceTypes.find(t => t.id === e.target.value); setForm(p => ({ ...p, allowance_type_id: e.target.value, name: type?.name || p.name, code: type?.code || `bonus_${Date.now()}`, is_taxable: type?.is_taxable ?? p.is_taxable })) }} style={S.select}><option value="">Personnalisée</option>{allowanceTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Libellé *</label><input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Montant ({currency}) *</label><input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Motif</label><input value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} style={S.input} /></div><label style={S.toggleItem}><input type="checkbox" checked={form.is_taxable} onChange={e => setForm(p => ({ ...p, is_taxable: e.target.checked }))} style={S.checkbox} /><div><span style={S.toggleLabel}>Imposable</span></div></label></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave(form)} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.name || !form.amount}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Ajouter</span></button></div></div></div>)
-}
-
-function PeriodDeductionModal({ employees, deductionTypes, defaultEmployeeId, currency, onSave, onClose, saving }) {
-  const { darkMode } = useTheme()
-  const S = stylesBulletins(darkMode)
-  const P = palettePaie(darkMode)
-  const [form, setForm] = useState({ employee_id: defaultEmployeeId || '', deduction_type_id: '', code: `ded_${Date.now()}`, name: '', amount: '', reason: '' })
-  return (<div style={S.modalOverlay} onClick={onClose}><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>Nouvelle retenue ponctuelle</h3><button onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Type</label><select value={form.deduction_type_id} onChange={e => { const type = deductionTypes.find(t => t.id === e.target.value); setForm(p => ({ ...p, deduction_type_id: e.target.value, name: type?.name || p.name, code: type?.code || `ded_${Date.now()}` })) }} style={S.select}><option value="">Personnalisée</option>{deductionTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Libellé *</label><input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Montant ({currency}) *</label><input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Motif</label><input value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} style={S.input} /></div></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave(form)} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.name || !form.amount}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Ajouter</span></button></div></div></div>)
-}
 
 // ═══════════════════════════════════════════════════════════
 // STYLES COMPLETS
