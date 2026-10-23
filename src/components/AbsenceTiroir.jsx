@@ -1,3 +1,4 @@
+import AbsencesCulturalBand from './AbsencesCulturalBand'
 // ═══════════════════════════════════════════════════════════
 // 🗂️ TIROIR DE DÉTAIL D'UNE ABSENCE
 //
@@ -41,11 +42,11 @@ export default function AbsenceTiroir({
   if (!absence) return null
 
   const theme = {
-    fond: darkMode ? '#1D1713' : '#FFFFFF',
-    texte: darkMode ? '#F5F2EB' : '#1D1713',
-    texteDoux: darkMode ? 'rgba(245,242,235,0.62)' : 'rgba(29,23,19,0.62)',
-    bordure: darkMode ? 'rgba(245,158,11,0.16)' : 'rgba(29,23,19,0.12)',
-    bloc: darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(29,23,19,0.03)',
+    fond: 'var(--abs-bg-elevated)',
+    texte: 'var(--abs-text)',
+    texteDoux: 'var(--abs-text-soft)',
+    bordure: 'var(--abs-border-strong)',
+    bloc: 'var(--abs-bg-soft)',
     ombre: '0 24px 60px rgba(0,0,0,0.45)',
   }
 
@@ -64,7 +65,7 @@ export default function AbsenceTiroir({
         aria-hidden="true"
       />
 
-      <aside
+      <aside className="abs-drawer-theme" data-theme={darkMode ? 'dark' : 'light'}
         role="dialog"
         aria-modal="true"
         aria-label={`Absence de ${nom}`}
@@ -81,6 +82,7 @@ export default function AbsenceTiroir({
           fontFamily: 'inherit',
         }}
       >
+        <AbsencesCulturalBand drawer/>
         {/* ─── En-tête ─── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
@@ -137,7 +139,7 @@ export default function AbsenceTiroir({
           )}
           {conflit && conflit.status === 'pending' && (
             <span style={{
-              background: 'rgba(249,115,22,0.12)', color: '#F97316', border: '1px solid rgba(249,115,22,0.3)',
+              background: 'rgba(249,115,22,0.12)', color: 'var(--abs-orange)', border: '1px solid rgba(249,115,22,0.3)',
               borderRadius: 999, padding: '5px 12px', fontSize: 12, fontWeight: 700,
             }}>
               ⚡ Conflit de pointage
@@ -180,7 +182,7 @@ export default function AbsenceTiroir({
             ...bloc, width: '100%', display: 'flex', alignItems: 'center', gap: 10,
             cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', color: theme.texte,
           }}>
-            <Paperclip size={16} color="#F59E0B" />
+            <Paperclip size={16} color="var(--abs-amber)" />
             <span style={{ fontSize: 14, fontWeight: 600 }}>Voir le justificatif</span>
           </button>
         ) : (
@@ -214,7 +216,7 @@ export default function AbsenceTiroir({
           {absence.status !== 'approuve' && (
             <button data-testid="tiroir-approuver" onClick={() => onChangerStatut?.(absence, 'approuve')} style={{
               flex: 1, padding: 13, borderRadius: 12, border: 'none', cursor: 'pointer',
-              background: 'linear-gradient(135deg, #10B981, #059669)', color: '#FFF',
+              background: 'linear-gradient(135deg, #166534, #14532d)', color: '#FFF',
               fontWeight: 700, fontSize: 14, fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
@@ -224,7 +226,7 @@ export default function AbsenceTiroir({
           {absence.status !== 'refuse' && (
             <button data-testid="tiroir-refuser" onClick={() => onChangerStatut?.(absence, 'refuse')} style={{
               flex: 1, padding: 13, borderRadius: 12, cursor: 'pointer',
-              background: 'transparent', border: '1px solid rgba(239,68,68,0.5)', color: '#EF4444',
+              background: 'transparent', border: '1px solid rgba(239,68,68,0.5)', color: 'var(--abs-coral)',
               fontWeight: 700, fontSize: 14, fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
@@ -273,7 +275,7 @@ export default function AbsenceTiroir({
             onClick={() => setConfirmation(true)}
             style={{
               width: '100%', marginTop: 10, padding: 12, borderRadius: 12, cursor: 'pointer',
-              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', color: '#EF4444',
+              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', color: 'var(--abs-coral)',
               fontWeight: 600, fontSize: 13, fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}
@@ -286,6 +288,7 @@ export default function AbsenceTiroir({
           <CalendarOff size={12} />
           Approuver ou refuser change le statut de l’absence. La suppression l’efface partout, planning compris.
         </p>
+        <AbsencesCulturalBand position="bottom" drawer/>
       </aside>
     </>
   )

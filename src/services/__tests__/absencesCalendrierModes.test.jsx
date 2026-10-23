@@ -201,8 +201,10 @@ it('11 bis. sans réglage, le calendrier s’ouvre sur la SEMAINE', () => {
   )
   expect(parDefaut).toContain('data-mode="semaine"')
   expect((parDefaut.match(/data-jour="/g) || [])).toHaveLength(7)
-  // un seul bouton est actif, et c'est celui de la semaine
-  expect((parDefaut.match(/aria-pressed="true"/g) || [])).toHaveLength(1)
+  // Un seul MODE est actif ; les filtres de motifs exposent aussi aria-pressed.
+  const modes = parDefaut.match(/<button\b[^>]*data-testid="abs-cal-mode-[^"]+"[^>]*>/g) || []
+  expect(modes).toHaveLength(3)
+  expect(modes.filter(button => button.includes('aria-pressed="true"'))).toHaveLength(1)
   const i = parDefaut.indexOf('abs-cal-mode-semaine')
   expect(parDefaut.slice(Math.max(0, i - 260), i)).toContain('aria-pressed="true"')
 })

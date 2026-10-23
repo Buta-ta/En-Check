@@ -15,42 +15,35 @@ const debut = svgSrc.indexOf('export function KenteAmberWeaveSvg')
 const fin = svgSrc.indexOf('export function WovenKenteBadgeSvg')
 const bandeAmbre = svgSrc.slice(debut, fin)
 
-const blocCss = absencesSrc.slice(
-  absencesSrc.indexOf('.abs-kente-top-strip {'),
-  absencesSrc.indexOf('.abs-kente-top-strip {') + 320
-)
+const blocCss = lire('src/pages/AbsencesAfroTech.css')
 
-describe('Bandeau haut de la page Absences — frise Kente ambre (orange · jaune · noir)', () => {
+describe('Patrimoine Kente conservé et bandeau Ndebele propre aux Absences', () => {
   it('1. la frise ambre existe et est exportée', () => {
     expect(debut).toBeGreaterThan(-1)
     expect(svgSrc).toContain('export function KenteAmberWeaveSvg')
     expect(bandeAmbre).toContain('id="encheck-kente-amber"')
   })
 
-  it('2. la page Absences porte la frise ambre, tout en haut, juste avant l’en-tête', () => {
-    expect(absencesSrc).toContain("from '../components/AfroCulturalSvg'")
-    expect(absencesSrc).toContain('KenteAmberWeaveSvg')
-
-    // Tout ce qui précède la barre supérieure : la frise doit s'y trouver
-    const entete = absencesSrc.slice(
-      absencesSrc.indexOf('<div className="abs-page"'),
-      absencesSrc.indexOf('className="abs-topbar"')
-    )
-    expect(entete).toContain('abs-kente-top-strip')
-    expect(entete).toContain('KenteAmberWeaveSvg')
-    expect(entete).toContain('aria-hidden="true"')
+  it('2. Absences utilise maintenant le bandeau ndebele validé en haut et en bas', () => {
+    expect(absencesSrc).toContain("from '../components/AbsencesCulturalBand'")
+    expect(absencesSrc).not.toContain('KenteAmberWeaveSvg')
+    const entete = absencesSrc.slice(absencesSrc.indexOf('<div className="abs-page"'), absencesSrc.indexOf('className="abs-topbar"'))
+    expect(entete).toContain('<AbsencesCulturalBand/>')
+    expect(absencesSrc).toContain('<AbsencesCulturalBand position="bottom"/>')
+    expect(lire('src/components/AbsencesCulturalBand.jsx')).toContain('aria-hidden="true"')
+    expect(fs.existsSync(path.join(ROOT, 'public/images/absences-ndebele.webp'))).toBe(true)
   })
 
   it('3. la frise est strictement orange · jaune · noir : ni émeraude, ni indigo, ni bleu', () => {
     expect(bandeAmbre).not.toMatch(/#1E5E3E|#1F6A45|#288256|#10B981|#26734D|#24384A/i)
   })
 
-  it('4. elle couvre toute la largeur de la page et reste lisible (14 px)', () => {
+  it('4. le bandeau couvre toute la largeur et garde les proportions du motif', () => {
     expect(blocCss).toMatch(/width:\s*100%/)
 
-    const hauteurs = [...blocCss.matchAll(/height:\s*(\d+)px/g)].map((m) => Number(m[1]))
-    expect(hauteurs.length).toBeGreaterThan(0)
-    hauteurs.forEach((h) => expect(h).toBeGreaterThanOrEqual(12))
+    expect(blocCss).toContain('background-size: auto 100%')
+    expect(blocCss).toContain('height: 76px')
+    expect(blocCss).toContain('height: 32px')
   })
 
   it('5. elle conserve la trame Kente à 6 blocs : rayures, damier, losange, chevrons, tissage, sabliers', () => {

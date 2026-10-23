@@ -100,7 +100,7 @@ export default function AbsencesCalendrier({
     carte: darkMode ? '#1D1713' : '#FFFFFF',
     fond: darkMode ? '#15110E' : '#FAF6EE',
     texte: darkMode ? '#F5F2EB' : '#1D1713',
-    texteDoux: darkMode ? 'rgba(245,242,235,0.60)' : 'rgba(29,23,19,0.60)',
+    texteDoux: darkMode ? '#d6c7b7' : '#4E3D2E',
     bordure: darkMode ? 'rgba(245,158,11,0.16)' : 'rgba(29,23,19,0.12)',
     grille: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(29,23,19,0.06)',
     weekend: darkMode ? 'rgba(255,255,255,0.035)' : 'rgba(29,23,19,0.045)',
@@ -244,7 +244,7 @@ export default function AbsencesCalendrier({
 
       {/* ═══ Barre d'outils ═══ */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="abs-calendar-navigation" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => deplacer(-1)} aria-label="Période précédente" style={boutonNav(theme)}>
             <ChevronLeft size={18} />
           </button>
@@ -343,7 +343,7 @@ export default function AbsencesCalendrier({
             title={motifsMasques.size === 0 ? 'Tous les motifs sont affichés' : `Réafficher les ${motifsMasques.size} motifs masqués`}
             style={{
               ...boutonDoux(theme),
-              opacity: motifsMasques.size === 0 ? 0.45 : 1,
+              opacity: 1,
               cursor: motifsMasques.size === 0 ? 'default' : 'pointer',
               display: 'inline-flex', alignItems: 'center', gap: 7,
             }}
@@ -356,7 +356,7 @@ export default function AbsencesCalendrier({
             Tous les motifs
             {motifsMasques.size > 0 && (
               <span style={{
-                fontSize: 10, fontWeight: 800, color: '#F59E0B',
+                fontSize: 10, fontWeight: 800, color: 'var(--abs-amber)',
                 background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.35)',
                 padding: '1px 6px', borderRadius: 999,
               }}>
@@ -377,7 +377,7 @@ export default function AbsencesCalendrier({
               fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
               background: masquerSansAbsence ? 'rgba(245,158,11,0.12)' : 'transparent',
               border: `1px solid ${masquerSansAbsence ? 'rgba(245,158,11,0.45)' : theme.bordure}`,
-              color: masquerSansAbsence ? '#F59E0B' : theme.texteDoux,
+              color: masquerSansAbsence ? 'var(--abs-amber)' : theme.texteDoux,
             }}
           >
             <span aria-hidden="true" style={{
@@ -406,13 +406,13 @@ export default function AbsencesCalendrier({
         {motifs.map((m) => {
           const actif = !motifsMasques.has(m.id)
           return (
-            <button key={m.id} onClick={() => basculerMotif(m.id)} style={{
+            <button key={m.id} aria-pressed={actif} onClick={() => basculerMotif(m.id)} style={{
               padding: '6px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12, fontWeight: 600,
               fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6,
               background: actif ? m.bg : 'transparent',
               border: `1px solid ${actif ? m.color : theme.bordure}`,
-              color: actif ? m.color : theme.texteDoux,
-              opacity: actif ? 1 : 0.55,
+              color: actif ? theme.texte : theme.texteDoux,
+              opacity: 1,
             }}>
               <span>{m.emoji}</span> {m.label}
             </button>
@@ -452,7 +452,7 @@ export default function AbsencesCalendrier({
                     <div style={{
                       fontSize: mode === 'mois' ? 13 : 15,
                       fontWeight: estAujourdhui ? 800 : 600,
-                      color: estAujourdhui ? '#F59E0B' : theme.texte,
+                      color: estAujourdhui ? 'var(--abs-amber)' : theme.texte,
                     }}>
                       {j.jour}
                     </div>
@@ -506,7 +506,7 @@ export default function AbsencesCalendrier({
                     </p>
                     <span style={{
                       display: 'inline-block', marginTop: 3, padding: '2px 8px', borderRadius: 999,
-                      background: 'rgba(16,185,129,0.12)', color: '#10B981', fontSize: 10, fontWeight: 700,
+                      background: 'rgba(16,185,129,0.12)', color: 'var(--abs-emerald)', fontSize: 10, fontWeight: 700,
                     }}
                       title={`${solde.pris} jour(s) pris · plafond ${solde.plafond} jours`}
                     >
@@ -590,7 +590,7 @@ export default function AbsencesCalendrier({
                           background: st.fond,
                           border: st.pointillee ? `1px dashed ${st.bordure}` : `1px solid ${st.bordure}`,
                           borderRadius: 8,
-                          color: st.texte,
+                          color: theme.texte,
                           fontSize: 11,
                           fontWeight: 700,
                           fontFamily: 'inherit',
@@ -646,7 +646,7 @@ export default function AbsencesCalendrier({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <CalendarDays size={16} style={{ color: '#F59E0B' }} />
+            <CalendarDays size={16} style={{ color: 'var(--abs-amber)' }} />
             <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: theme.texte, textTransform: 'capitalize' }}>
               {nomJourLong(jours[0]?.iso)}
             </h4>
@@ -699,7 +699,7 @@ export default function AbsencesCalendrier({
                         style={{
                           padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
                           fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
-                          background: st.fond, color: st.texte,
+                          background: st.fond, color: theme.texte,
                           border: st.pointillee ? `1px dashed ${st.bordure}` : `1px solid ${st.bordure}`,
                           textDecoration: st.barree ? 'line-through' : 'none',
                         }}
@@ -729,7 +729,7 @@ export default function AbsencesCalendrier({
                     <span style={{
                       width: 22, height: 22, borderRadius: 7, background: 'rgba(16,185,129,0.15)',
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 9, fontWeight: 800, color: '#10B981',
+                      fontSize: 9, fontWeight: 800, color: 'var(--abs-emerald)',
                     }}>
                       {initialesDe(e.first_name, e.last_name)}
                     </span>
@@ -776,10 +776,10 @@ export default function AbsencesCalendrier({
         fontSize: 12, color: theme.texteDoux,
       }}>
         <span><b style={{ color: theme.texte }}>{stats.total}</b> absence{stats.total > 1 ? 's' : ''} {libellePeriode}</span>
-        <span style={{ color: stats.enAttente ? '#F59E0B' : theme.texteDoux }}>
+        <span style={{ color: stats.enAttente ? 'var(--abs-amber)' : theme.texteDoux }}>
           ⏳ <b>{stats.enAttente}</b> en attente
         </span>
-        <span style={{ color: stats.refusees ? '#EF4444' : theme.texteDoux }}>
+        <span style={{ color: stats.refusees ? 'var(--abs-coral)' : theme.texteDoux }}>
           ❌ <b>{stats.refusees}</b> refusée{stats.refusees > 1 ? 's' : ''}
         </span>
         <span>

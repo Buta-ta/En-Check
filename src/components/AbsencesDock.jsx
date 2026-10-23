@@ -60,10 +60,10 @@ export default function AbsencesDock({ onDeclarer }) {
         </div>
       ))}
 
-      <p className="abs-dock-hint">
+      <details className="abs-dock-hint"><summary>Comment déclarer une absence ?</summary><p>
         Glissez un motif sur la ligne d’un employé pour déclarer une absence au jour choisi.
         Un clic ouvre simplement le formulaire.
-      </p>
+      </p></details>
     </aside>
   )
 }

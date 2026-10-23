@@ -56,9 +56,9 @@ export function DemandeCongeCard({
       : 'attente'
 
   const pastille = {
-    attente: { texte: '⏳ En attente', fond: 'rgba(245,158,11,0.14)', bord: 'rgba(245,158,11,0.35)', texte2: '#FCD34D' },
-    approuve: { texte: '✅ Approuvée', fond: 'rgba(16,185,129,0.13)', bord: 'rgba(16,185,129,0.32)', texte2: '#6EE7B7' },
-    refuse: { texte: '❌ Refusée', fond: 'rgba(239,68,68,0.13)', bord: 'rgba(239,68,68,0.32)', texte2: '#FCA5A5' },
+    attente: { texte: '⏳ En attente', fond: 'rgba(245,158,11,0.14)', bord: 'rgba(245,158,11,0.35)', texte2: 'var(--abs-amber)' },
+    approuve: { texte: '✅ Approuvée', fond: 'rgba(16,185,129,0.13)', bord: 'rgba(16,185,129,0.32)', texte2: 'var(--abs-emerald)' },
+    refuse: { texte: '❌ Refusée', fond: 'rgba(239,68,68,0.13)', bord: 'rgba(239,68,68,0.32)', texte2: 'var(--abs-coral)' },
   }[statut]
 
   const nomComplet = `${d.employees?.first_name || ''} ${d.employees?.last_name || ''}`.trim() || 'Employé'
@@ -75,7 +75,7 @@ export function DemandeCongeCard({
     fontFamily: 'inherit', cursor: busy ? 'wait' : 'pointer', whiteSpace: 'nowrap',
     background: actif ? 'rgba(16,185,129,0.16)' : 'transparent',
     border: `1px solid ${actif ? 'rgba(16,185,129,0.42)' : 'rgba(239,68,68,0.38)'}`,
-    color: actif ? '#6EE7B7' : '#FCA5A5',
+    color: actif ? 'var(--abs-emerald)' : 'var(--abs-coral)',
     opacity: busy ? 0.6 : 1,
   })
 
@@ -117,13 +117,13 @@ export function DemandeCongeCard({
       </div>
 
       {/* Identité + période */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="abs-request-identity" style={{ flex: '1 1 190px', minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ color: 'var(--abs-text)', fontSize: 14.5, fontWeight: 600 }}>{nomComplet}</span>
           <span
             style={{
               padding: '3px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 600,
-              background: `${couleur}22`, border: `1px solid ${couleur}55`, color: couleur,
+              background: `${couleur}22`, border: `1px solid ${couleur}55`, color: 'var(--abs-text)',
               display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
             }}
             data-motif={d.reason}
@@ -141,7 +141,7 @@ export function DemandeCongeCard({
             {pastille.texte}
           </span>
           {commenceAujourdhui && (
-            <span style={{ fontSize: 10, color: '#FCD34D', background: 'rgba(245,158,11,0.12)', padding: '2px 8px', borderRadius: 999 }}>
+            <span style={{ fontSize: 10, color: 'var(--abs-amber)', background: 'rgba(245,158,11,0.12)', padding: '2px 8px', borderRadius: 999 }}>
               commence aujourd’hui
             </span>
           )}
@@ -158,7 +158,7 @@ export function DemandeCongeCard({
             </span>
           )}
           {pieces.length > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#93C5FD' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--abs-indigo)' }}>
               <Paperclip size={12} /> {pieces.length} pièce{pieces.length > 1 ? 's' : ''} jointe{pieces.length > 1 ? 's' : ''}
             </span>
           )}
@@ -174,7 +174,7 @@ export function DemandeCongeCard({
         )}
 
         {error && (
-          <p style={{ margin: '8px 0 0', fontSize: 12, color: '#FCA5A5' }}>{error}</p>
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--abs-coral)' }}>{error}</p>
         )}
       </div>
 
@@ -188,7 +188,7 @@ export function DemandeCongeCard({
           style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             width: 32, height: 32, flexShrink: 0, borderRadius: 9, cursor: 'pointer',
-            background: 'transparent', border: '1px solid rgba(239,68,68,0.28)', color: '#FCA5A5',
+            background: 'transparent', border: '1px solid rgba(239,68,68,0.28)', color: 'var(--abs-coral)',
             opacity: 0.75,
           }}
         >
@@ -198,7 +198,7 @@ export function DemandeCongeCard({
 
       {/* Actions */}
       {statut === 'attente' && (
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+        <div className="abs-request-actions" style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <button
             type="button"
             onClick={stop(onApprouver)}
