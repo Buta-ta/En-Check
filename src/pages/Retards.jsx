@@ -1,683 +1,446 @@
-// ═══════════════════════════════════════════════════════════
-// ⏰ PAGE GESTION DES RETARDS - STYLE DASHBOARD
-// ═══════════════════════════════════════════════════════════
-
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { useTheme } from '../contexts/ThemeContext'
+import PageHeader from '../components/PageHeader'
+import PageCulturalBand from '../components/PageCulturalBand'
+import {
+  RetardsContent,
+  RetardsDialog,
+  RetardsNavigation,
+  RetardsHelp,
+} from '../components/RetardsPresentation'
 import HolidayService from '../services/holidayService'
 import { construireRetards } from '../services/retardsService'
-import { 
-  Footprints, 
-  ArrowLeft,
-  Clock,
-  AlertTriangle,
-  Users,
-  Building2,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  Trash2,
-  Timer,
-  TrendingUp,
-  UserCheck,
-  UserX
-} from 'lucide-react'
-import toast from 'react-hot-toast'
+import {
+  retardDates,
+  shiftRetardDate,
+  retardDateLabel,
+  retardsCSV,
+  allRetardRows,
+} from '../utils/retardsPresentation'
+import './Retards.css'
 
 export default function Retards() {
-  const [admin, setAdmin] = useState(null)
-  const [retards, setRetards] = useState([])
-  const [entreprises, setEntreprises] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [selectedEntrepriseId, setSelectedEntrepriseId] = useState('all')
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
-  const [viewMode, setViewMode] = useState('jour')
-  
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [retardToDelete, setRetardToDelete] = useState(null)
-
-  const [stats, setStats] = useState({
-    totalRetards: 0,
-    totalMinutesRetard: 0,
-    employesPonctuels: 0,
-    employesEnRetard: 0,
-    employesSansPlanningIgnores: 0,
-  })
-  
+  const { darkMode, toggleTheme } = useTheme()
   const navigate = useNavigate()
+  const [admin, setAdmin] = useState(null)
+  const [access, setAccess] = useState(null)
+  const [accessError, setAccessError] = useState('')
+  const [accessAttempt, setAccessAttempt] = useState(0)
+  const [entreprises, setEntreprises] = useState([])
+  const [selectedEntrepriseId, setSelectedEntrepriseId] = useState('all')
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().slice(0, 10),
+  )
+  const [viewMode, setViewMode] = useState('jour')
+  const [retards, setRetards] = useState([])
+  const [stats, setStats] = useState(construireRetards([]).stats)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
+  const [rulesOpen, setRulesOpen] = useState(false)
+  const [retardToDelete, setRetardToDelete] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+  const deletionLock = useRef(false)
+  const requestId = useRef(0)
+  const dates = retardDates(selectedDate, viewMode)
 
   useEffect(() => {
-    const adminData = localStorage.getItem('admin')
-    if (!adminData) {
+    try {
+      const stored = JSON.parse(localStorage.getItem('admin') || 'null')
+      if (!stored) {
+        navigate('/login')
+        return
+      }
+      setAdmin(stored)
+      if (stored.role !== 'super_admin')
+        setSelectedEntrepriseId(
+          stored.selectedEnterprise?.id || stored.enterprise_id,
+        )
+    } catch {
       navigate('/login')
-      return
-    }
-    
-    const parsedAdmin = JSON.parse(adminData)
-    setAdmin(parsedAdmin)
-    
-    if (parsedAdmin.role === 'super_admin') {
-      loadEntreprises()
-    } else {
-      checkModuleAccess(parsedAdmin)
-      const activeId = parsedAdmin.selectedEnterprise?.id || parsedAdmin.enterprise_id
-      setSelectedEntrepriseId(activeId)
     }
   }, [navigate])
 
   useEffect(() => {
-    if (admin) {
-      loadRetards()
-    }
-  }, [admin, selectedDate, selectedEntrepriseId, viewMode])
-
-  const checkModuleAccess = async (adminData) => {
-    const enterpriseId = adminData.selectedEnterprise?.id || adminData.enterprise_id
-    
-    const { data } = await supabase
-      .from('enterprises')
-      .select('module_retards')
-      .eq('id', enterpriseId)
-      .single()
-
-    if (!data?.module_retards) {
-      toast.error('Module Retards non activé pour cette entreprise')
-      navigate('/dashboard')
-    }
-  }
-
-  const loadEntreprises = async () => {
-    const { data } = await supabase
-      .from('enterprises')
-      .select('*')
-      .eq('is_active', true)
-      .order('name')
-    setEntreprises(data || [])
-  }
-
-// ═══ REMPLACER loadRetards() ENTIÈREMENT ═══
-const loadRetards = async () => {
-  setLoading(true)
-  try {
-    let startDate, endDate
-    const date = new Date(selectedDate)
-
-    if (viewMode === 'jour') {
-      startDate = selectedDate
-      endDate   = selectedDate
-    } else if (viewMode === 'semaine') {
-      const dayOfWeek = date.getDay()
-      const monday = new Date(date)
-      monday.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
-      const sunday = new Date(monday)
-      sunday.setDate(monday.getDate() + 6)
-      startDate = monday.toISOString().split('T')[0]
-      endDate   = sunday.toISOString().split('T')[0]
-    } else {
-      startDate = new Date(date.getFullYear(), date.getMonth(), 1)
-        .toISOString().split('T')[0]
-      endDate   = new Date(date.getFullYear(), date.getMonth() + 1, 0)
-        .toISOString().split('T')[0]
-    }
-
-    let targetEnterpriseId = selectedEntrepriseId
-    if (admin.role !== 'super_admin') {
-      targetEnterpriseId = admin.selectedEnterprise?.id || admin.enterprise_id
-    }
-
-    // ═══ 1. JOURS FÉRIÉS (filtre d'affichage inchangé) ═══
-    // On charge par enterprise (chacune a ses propres fériés).
-    const { data: entList } = await supabase
-      .from('enterprises')
-      .select('id')
-      .eq('is_active', true)
-
-    const holidaysByEnterprise = {}
-    const enterpriseIdsToLoad = targetEnterpriseId === 'all'
-      ? (entList || []).map(e => e.id)
-      : [targetEnterpriseId]
-
-    await Promise.all(
-      enterpriseIdsToLoad.map(async (entId) => {
-        const holidays = await HolidayService.getHolidaysForRange(
-          entId, startDate, endDate
-        )
-        // Set pour lookup O(1) — uniquement les non-travaillés
-        holidaysByEnterprise[entId] = HolidayService.buildHolidaySet(
-          holidays.filter(h => !h.is_worked)
-        )
-      })
-    )
-
-    // ═══ 2. CALCUL DES RETARDS — source unique SQL ═══
-    //  `encheck_retards_plage` juge chaque (employé, jour) via
-    //  `encheck_journee_recalculee` → `encheck_grille_au_jour` : affectations
-    //  actives, dates d'effet, horaires personnalisés, option Planning.
-    //  Jamais de lecture directe de employee_schedules / work_schedules ici.
-    const { data: lignesRetards, error: errorRetards } = await supabase.rpc(
-      'encheck_retards_plage',
-      {
-        p_enterprise: targetEnterpriseId === 'all' ? null : targetEnterpriseId,
-        p_du: startDate,
-        p_au: endDate,
+    if (!admin) return
+    let active = true
+    setAccess(null)
+    setAccessError('')
+    const check = async () => {
+      try {
+        if (admin.role === 'super_admin') {
+          const companies = await allRetardRows(
+            supabase
+              .from('enterprises')
+              .select('id,name')
+              .eq('is_active', true)
+              .order('name')
+              .order('id'),
+          )
+          if (active) {
+            setEntreprises(companies)
+            setAccess(true)
+          }
+        } else {
+          const enterpriseId =
+            admin.selectedEnterprise?.id || admin.enterprise_id
+          if (!enterpriseId) throw new Error('Missing enterprise')
+          const { data, error: accessFailure } = await supabase
+            .from('enterprises')
+            .select('module_retards')
+            .eq('id', enterpriseId)
+            .single()
+          if (accessFailure) throw accessFailure
+          if (active) setAccess(!!data?.module_retards)
+        }
+      } catch {
+        if (active)
+          setAccessError('Impossible de vérifier l’accès au module Retards.')
       }
-    )
-    if (errorRetards) throw errorRetards
+    }
+    check()
+    return () => {
+      active = false
+    }
+  }, [admin, accessAttempt])
 
-    const { retards: retardsCalcules, stats: statsCalcules } = construireRetards(
-      lignesRetards || [], holidaysByEnterprise
-    )
-
-    setRetards(retardsCalcules)
-    setStats(statsCalcules)
-
-  } catch (error) {
-    console.error('Erreur chargement retards:', error)
-    toast.error('Erreur lors du chargement')
-  }
-  setLoading(false)
-}
-
-  const initiateDelete = (retard) => {
-    setRetardToDelete(retard)
-    setShowDeleteModal(true)
-  }
-
-  const confirmDelete = async () => {
-    if (!retardToDelete) return
-
+  const loadRetards = useCallback(async () => {
+    if (!admin || access !== true) return
+    const request = ++requestId.current
+    setLoading(true)
+    setError('')
+    setRetards([])
     try {
-      const { error } = await supabase
+      const period = retardDates(selectedDate, viewMode)
+      const startDate = period[0],
+        endDate = period.at(-1)
+      const targetEnterpriseId =
+        admin.role === 'super_admin'
+          ? selectedEntrepriseId
+          : admin.selectedEnterprise?.id || admin.enterprise_id
+      if (!targetEnterpriseId || !startDate || !endDate)
+        throw new Error('Missing scope')
+      const ids =
+        targetEnterpriseId === 'all'
+          ? entreprises.map((e) => e.id)
+          : [targetEnterpriseId]
+      const holidaysByEnterprise = {}
+      await Promise.all(
+        ids.map(async (id) => {
+          const holidays = await HolidayService.getHolidaysForRange(
+            id,
+            startDate,
+            endDate,
+            { strict: true },
+          )
+          holidaysByEnterprise[id] = HolidayService.buildHolidaySet(
+            holidays.filter((h) => !h.is_worked),
+          )
+        }),
+      )
+      // One authoritative calculation: SQL resolves active schedules and tolerance.
+      // Stable pagination avoids silently truncating long periods at the API row limit.
+      const lignesRetards = await allRetardRows(
+        supabase
+          .rpc('encheck_retards_plage', {
+            p_enterprise:
+              targetEnterpriseId === 'all' ? null : targetEnterpriseId,
+            p_du: startDate,
+            p_au: endDate,
+          })
+          .order('jour')
+          .order('enterprise_id')
+          .order('employe_id'),
+      )
+      const result = construireRetards(lignesRetards, holidaysByEnterprise)
+      if (request !== requestId.current) return
+      setRetards(result.retards)
+      setStats(result.stats)
+    } catch (failure) {
+      console.error('Erreur chargement retards:', failure)
+      if (request === requestId.current)
+        setError(
+          'Impossible de charger les retards. Aucun résultat partiel n’est affiché.',
+        )
+    } finally {
+      if (request === requestId.current) setLoading(false)
+    }
+  }, [admin, access, selectedDate, selectedEntrepriseId, viewMode, entreprises])
+
+  useEffect(() => {
+    loadRetards()
+    return () => {
+      requestId.current++
+    }
+  }, [loadRetards])
+
+  const changeContext = (action) => {
+    requestId.current++
+    setLoading(true)
+    setSearch('')
+    setRetardToDelete(null)
+    action()
+  }
+  const confirmDelete = async () => {
+    if (!retardToDelete?.id || deletionLock.current) return
+    deletionLock.current = true
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      const { data, error: failure } = await supabase
         .from('attendances')
         .delete()
         .eq('id', retardToDelete.id)
-
-      if (error) throw error
-
-      toast.success('Retard (pointage) supprimé')
-      loadRetards()
-    } catch (e) {
-      console.error(e)
-      toast.error('Erreur suppression')
-    } finally {
-      setShowDeleteModal(false)
+        .select('id')
+      if (failure) throw failure
+      if (!data?.length)
+        throw new Error('Pointage absent ou suppression non autorisée')
+      toast.success('Pointage source supprimé')
       setRetardToDelete(null)
+      await loadRetards()
+    } catch {
+      setDeleteError(
+        'La suppression n’a pas pu être confirmée. Vérifiez vos droits puis réessayez.',
+      )
+    } finally {
+      deletionLock.current = false
+      setDeleting(false)
     }
   }
-
-  const changeDate = (delta) => {
-    const date = new Date(selectedDate)
-    if (viewMode === 'jour') {
-      date.setDate(date.getDate() + delta)
-    } else if (viewMode === 'semaine') {
-      date.setDate(date.getDate() + (delta * 7))
-    } else {
-      date.setMonth(date.getMonth() + delta)
-    }
-    setSelectedDate(date.toISOString().split('T')[0])
+  const exportCSV = (rows) => {
+    const url = URL.createObjectURL(
+      new Blob([retardsCSV(rows)], { type: 'text/csv;charset=utf-8' }),
+    )
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `retards_${dates[0]}_${dates.at(-1)}.csv`
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
-
-  const formatRetard = (minutes) => {
-    if (minutes < 60) return `${minutes} min`
-    const h = Math.floor(minutes / 60)
-    const m = minutes % 60
-    return `${h}h${m.toString().padStart(2, '0')}`
-  }
-
-  const formatDateDisplay = () => {
-    const date = new Date(selectedDate)
-    if (viewMode === 'jour') {
-      return date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
-    } else if (viewMode === 'semaine') {
-      return `Sem. ${Math.ceil(date.getDate() / 7)}`
-    } else {
-      return date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-    }
-  }
-
-  const getSourceBadge = (source) => {
-    if (source === 'personnalisé') return { label: 'Horaire perso', color: '#8B5CF6' }
-    if (source === 'planning') return { label: 'Planning', color: '#6366F1' }
-    return { label: 'Défaut entreprise', color: '#F59E0B' }
-  }
-
-  if (loading && !retards.length) {
-    return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.loadingPulse}>
-          <Footprints size={50} color="#F59E0B" />
-        </div>
-        <p style={styles.loadingText}>Chargement des retards...</p>
-        <div style={styles.loadingBar}>
-          <div style={styles.loadingBarFill}></div>
+  const filters = (
+    <section className="rt-filters" aria-label="Filtres des retards">
+      {admin?.role === 'super_admin' && (
+        <label>
+          Entreprise
+          <select
+            value={selectedEntrepriseId}
+            onChange={(e) =>
+              changeContext(() => setSelectedEntrepriseId(e.target.value))
+            }
+          >
+            <option value="all">Toutes les entreprises</option>
+            {entreprises.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <div>
+        <span className="rt-label">Période</span>
+        <div className="rt-date">
+          <button
+            aria-label="Période précédente"
+            onClick={() =>
+              changeContext(() =>
+                setSelectedDate(shiftRetardDate(selectedDate, viewMode, -1)),
+              )
+            }
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <input
+            type="date"
+            aria-label="Date de référence"
+            value={selectedDate}
+            onChange={(e) => {
+              if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value))
+                changeContext(() => setSelectedDate(e.target.value))
+            }}
+          />
+          <button
+            aria-label="Période suivante"
+            onClick={() =>
+              changeContext(() =>
+                setSelectedDate(shiftRetardDate(selectedDate, viewMode, 1)),
+              )
+            }
+          >
+            <ChevronRight size={18} />
+          </button>
         </div>
       </div>
-    )
-  }
+      <div>
+        <span className="rt-label">Vue</span>
+        <div
+          className="rt-segments"
+          role="group"
+          aria-label="Durée de la période"
+        >
+          {[
+            ['jour', 'Jour'],
+            ['semaine', 'Semaine'],
+            ['mois', 'Mois'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              aria-pressed={viewMode === value}
+              onClick={() => {
+                if (value !== viewMode) changeContext(() => setViewMode(value))
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="rt-period-caption">
+        {dates.length > 1
+          ? `Du ${retardDateLabel(dates[0])} au ${retardDateLabel(dates.at(-1))}`
+          : retardDateLabel(selectedDate)}{' '}
+        · {selectedDate.slice(0, 4)}
+      </p>
+    </section>
+  )
 
   return (
-    <>
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
-        .afro-retard-card:hover {
-          background: rgba(239, 68, 68, 0.08) !important;
-          border-color: rgba(239, 68, 68, 0.3) !important;
-          transform: translateY(-2px);
-        }
-        .afro-action-btn:hover {
-          transform: scale(1.1) !important;
-        }
-        .afro-view-btn:hover {
-          background: rgba(245, 158, 11, 0.15) !important;
-        }
-        .afro-modal-overlay {
-          animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0A0A0F; }
-        ::-webkit-scrollbar-thumb { background: #F59E0B; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #D97706; }
-        select option { background: #141423; color: #E5E5E5; }
-      `}</style>
-
-      <div style={styles.container}>
-        <div style={styles.bgPattern}></div>
-        <div style={styles.bgOrb1}></div>
-        <div style={styles.bgOrb2}></div>
-
-        {/* ═══ HEADER ═══ */}
-        <header style={styles.header}>
-          <div style={styles.headerInner}>
-            <div style={styles.headerLeft}>
-              <button onClick={() => navigate('/dashboard')} style={styles.backBtn}>
-                <ArrowLeft size={20} />
-              </button>
-              <div style={styles.logoContainer}>
-                <AlertTriangle size={24} color="#EF4444" />
-              </div>
-              <div style={styles.headerTitleWrap}>
-                <h1 style={styles.headerTitle}>RETARDS</h1>
-                <span style={styles.headerSubtitle}>Suivi & alertes</span>
-              </div>
-            </div>
-            <div style={styles.headerRight}>
-              <div style={styles.statBadge}>
-                <Clock size={16} color="#EF4444" />
-                <span>{stats.totalRetards}</span>
-              </div>
-            </div>
+    <div className={`rt-page ${darkMode ? 'rt-dark' : ''}`}>
+      <PageCulturalBand pathname="/retards" />
+      <PageHeader title="Retards" />
+      <RetardsNavigation darkMode={darkMode} onToggleTheme={toggleTheme} />
+      <main className="rt-main">
+        {accessError ? (
+          <div className="rt-state" role="alert">
+            <p>{accessError}</p>
+            <button onClick={() => setAccessAttempt((n) => n + 1)}>
+              Réessayer
+            </button>
           </div>
-        </header>
-
-        {/* ═══ MAIN CONTENT ═══ */}
-        <main style={styles.main}>
-
-          {/* ═══ BANNIÈRE EMPLOYÉS SANS PLANNING ═══ */}
-          {stats.employesSansPlanningIgnores > 0 && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '14px 18px',
-              background: 'rgba(107,114,128,0.08)',
-              border: '1px solid rgba(107,114,128,0.2)',
-              borderRadius: '14px',
-              marginBottom: '20px',
-            }}>
-              <div style={{
-                width: '36px', height: '36px', borderRadius: '10px',
-                background: 'rgba(107,114,128,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <Users size={18} color="#9CA3AF" />
-              </div>
+        ) : access === false ? (
+          <div className="rt-state">
+            <h1>Module Retards non activé</h1>
+            <Link to="/dashboard">Retour au tableau de bord</Link>
+          </div>
+        ) : access === null ? (
+          <div className="rt-state" role="status">
+            Vérification de l’accès…
+          </div>
+        ) : loading || error ? (
+          <>
+            <div className="rt-title-row">
               <div>
-                <p style={{ color: '#9CA3AF', fontSize: '13px', fontWeight: '600', margin: '0 0 2px 0' }}>
-                  {stats.employesSansPlanningIgnores} employé{stats.employesSansPlanningIgnores > 1 ? 's' : ''} sans planning — non évalué{stats.employesSansPlanningIgnores > 1 ? 's' : ''}
-                </p>
-                <p style={{ color: '#6B7280', fontSize: '11px', margin: 0 }}>
-                  Aucun horaire de référence défini (ni planning individuel, ni planning entreprise par défaut)
-                </p>
+                <h1>Retards</h1>
+                <p>Chaque arrivée, replacée dans son contexte.</p>
               </div>
             </div>
-          )}
-
-          {/* Stats Cards */}
-          <div style={styles.statsGrid}>
-            <div style={styles.statCard}>
-              <div style={{...styles.statIconWrap, background: 'rgba(239, 68, 68, 0.15)'}}>
-                <AlertTriangle size={22} color="#EF4444" />
-              </div>
-              <div style={styles.statContent}>
-                <span style={styles.statNumber}>{stats.totalRetards}</span>
-                <span style={styles.statLabel}>Retards</span>
-              </div>
+            {filters}
+            <div className="rt-state" role={error ? 'alert' : 'status'}>
+              {error ? (
+                <>
+                  <p>{error}</p>
+                  <button onClick={loadRetards}>Réessayer</button>
+                </>
+              ) : (
+                <>
+                  <Clock className="rt-loading-icon" size={36} />
+                  <p>Lecture des pointages et du planning applicable…</p>
+                </>
+              )}
             </div>
-
-            <div style={styles.statCard}>
-              <div style={{...styles.statIconWrap, background: 'rgba(245, 158, 11, 0.15)'}}>
-                <Timer size={22} color="#F59E0B" />
-              </div>
-              <div style={styles.statContent}>
-                <span style={styles.statNumber}>{formatRetard(stats.totalMinutesRetard)}</span>
-                <span style={styles.statLabel}>Temps perdu</span>
-              </div>
-            </div>
-
-            <div style={styles.statCard}>
-              <div style={{...styles.statIconWrap, background: 'rgba(16, 185, 129, 0.15)'}}>
-                <UserCheck size={22} color="#10B981" />
-              </div>
-              <div style={styles.statContent}>
-                <span style={styles.statNumber}>{stats.employesPonctuels}</span>
-                <span style={styles.statLabel}>Ponctuels</span>
-              </div>
-            </div>
-
-            <div style={styles.statCard}>
-              <div style={{...styles.statIconWrap, background: 'rgba(239, 68, 68, 0.15)'}}>
-                <UserX size={22} color="#EF4444" />
-              </div>
-              <div style={styles.statContent}>
-                <span style={styles.statNumber}>{stats.employesEnRetard}</span>
-                <span style={styles.statLabel}>En retard</span>
-              </div>
-            </div>
-
-            {stats.employesSansPlanningIgnores > 0 && (
-              <div style={styles.statCard}>
-                <div style={{...styles.statIconWrap, background: 'rgba(107,114,128,0.15)'}}>
-                  <Users size={22} color="#9CA3AF" />
-                </div>
-                <div style={styles.statContent}>
-                  <span style={{...styles.statNumber, color: '#9CA3AF'}}>{stats.employesSansPlanningIgnores}</span>
-                  <span style={styles.statLabel}>Sans planning</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Filters */}
-          <div style={styles.filtersSection}>
-            <div style={styles.viewModeContainer}>
-              {['jour', 'semaine', 'mois'].map(mode => (
-                <button
-                  key={mode}
-                  className="afro-view-btn"
-                  onClick={() => setViewMode(mode)}
-                  style={{
-                    ...styles.viewModeBtn,
-                    ...(viewMode === mode ? styles.viewModeBtnActive : {})
-                  }}
-                >
-                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                </button>
-              ))}
-            </div>
-
-            <div style={styles.dateNav}>
-              <button onClick={() => changeDate(-1)} style={styles.navBtn}>
-                <ChevronLeft size={20} />
-              </button>
-              <div style={styles.dateDisplayWrap}>
-                <Calendar size={14} color="#F59E0B" />
-                <span style={styles.dateDisplay}>{formatDateDisplay()}</span>
-              </div>
-              <button onClick={() => changeDate(1)} style={styles.navBtn}>
-                <ChevronRight size={20} />
-              </button>
-            </div>
-
-            {admin?.role === 'super_admin' && (
-              <div style={styles.filterBox}>
-                <Building2 size={18} color="#F59E0B" />
-                <select
-                  value={selectedEntrepriseId}
-                  onChange={(e) => setSelectedEntrepriseId(e.target.value)}
-                  style={styles.filterSelect}
-                >
-                  <option value="all">Toutes les entreprises</option>
-                  {entreprises.map(ent => (
-                    <option key={ent.id} value={ent.id}>{ent.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-
-          {/* Retards List */}
-          <div style={styles.listContainer}>
-            {retards.length === 0 ? (
-              <div style={styles.emptyState}>
-                <div style={styles.emptyIcon}>
-                  <UserCheck size={48} color="#10B981" />
-                </div>
-                <h3 style={styles.emptyTitle}>Aucun retard ! 🎉</h3>
-                <p style={styles.emptyText}>
-                  {stats.employesSansPlanningIgnores > 0
-                    ? `Tous les employés avec un planning sont ponctuels. ${stats.employesSansPlanningIgnores} sans planning non évalué${stats.employesSansPlanningIgnores > 1 ? 's' : ''}.`
-                    : 'Tous les employés sont ponctuels sur cette période'
-                  }
-                </p>
-              </div>
-            ) : (
-              retards.map((retard, index) => {
-                const sourceBadge = getSourceBadge(retard.sourceHoraire)
-                return (
-                  <div
-                    key={index}
-                    className="afro-retard-card"
-                    style={{
-                      ...styles.retardCard,
-                      animationDelay: `${index * 0.05}s`
-                    }}
-                  >
-                    {/* Avatar */}
-                    <div style={styles.avatarSection}>
-                      <div style={styles.avatarPlaceholder}>
-                        <span>{retard.employee.first_name?.[0]}{retard.employee.last_name?.[0]}</span>
-                      </div>
-                    </div>
-
-                    {/* Info */}
-                    <div style={styles.retardInfo}>
-                      <div style={styles.retardNameRow}>
-                        <span style={styles.retardName}>
-                          {retard.employee.first_name} {retard.employee.last_name}
-                        </span>
-                        <span style={styles.retardDate}>{retard.date}</span>
-                      </div>
-                      <span style={styles.retardMatricule}>
-                        {retard.employee.matricule}
-                      </span>
-                      {admin?.role === 'super_admin' && (
-                        <span style={styles.retardEntreprise}>
-                          <Building2 size={12} />
-                          {retard.employee.enterprises?.name}
-                        </span>
-                      )}
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        marginTop: '4px',
-                        padding: '2px 8px',
-                        borderRadius: '6px',
-                        fontSize: '10px',
-                        fontWeight: '600',
-                        background: `${sourceBadge.color}15`,
-                        color: sourceBadge.color,
-                        border: `1px solid ${sourceBadge.color}30`,
-                        alignSelf: 'flex-start',
-                      }}>
-                        {sourceBadge.label}
-                      </span>
-                    </div>
-
-                    {/* Hours */}
-                    <div style={styles.hoursSection}>
-                      <div style={styles.hourItem}>
-                        <span style={styles.hourLabel}>Prévu</span>
-                        <span style={styles.hourValue}>{retard.heureArrivee}</span>
-                        <span style={{ fontSize: '10px', color: '#555', marginTop: '2px' }}>
-                          ±{retard.tolerance}min
-                        </span>
-                      </div>
-                      <div style={styles.hourArrow}>→</div>
-                      <div style={styles.hourItem}>
-                        <span style={styles.hourLabel}>Arrivée</span>
-                        <span style={styles.hourValueLate}>{retard.heurePointage}</span>
-                      </div>
-                    </div>
-
-                    {/* Badge */}
-                    <div style={styles.retardBadge}>
-                      <AlertTriangle size={14} />
-                      <span>+{formatRetard(retard.retardMinutes)}</span>
-                    </div>
-
-                    {/* Delete */}
-                    <button
-                      className="afro-action-btn"
-                      onClick={() => initiateDelete(retard)}
-                      style={styles.deleteBtn}
-                      title="Supprimer ce pointage"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                )
-              })
-            )}
-          </div>
-
-          {/* Footer */}
-          <div style={styles.footer}>
-            <div style={styles.footerLine}></div>
-            <p style={styles.footerText}>
-              <Footprints size={14} color="#F59E0B" />
-              EN-CHECK • Suivi des Retards
-            </p>
-          </div>
-        </main>
-
-        {/* ═══ MODAL SUPPRESSION ═══ */}
-        {showDeleteModal && retardToDelete && (
-          <div className="afro-modal-overlay" style={styles.modalOverlay} onClick={() => setShowDeleteModal(false)}>
-            <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
-              <div style={styles.confirmIconWrap}>
-                <AlertTriangle size={32} color="#EF4444" />
-              </div>
-              <h3 style={styles.confirmTitle}>Supprimer ce retard ?</h3>
-              <p style={styles.confirmText}>
-                Attention, cela supprimera le <strong>pointage d'entrée</strong> de {retardToDelete.employee.first_name}.
-                <br />L'employé sera considéré comme absent ou devra repointer.
-              </p>
-              <div style={styles.confirmActions}>
-                <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtn}>
-                  Annuler
-                </button>
-                <button onClick={confirmDelete} style={styles.deleteConfirmBtn}>
-                  Supprimer
-                </button>
-              </div>
-            </div>
-          </div>
+          </>
+        ) : (
+          <RetardsContent
+            key={`${selectedEntrepriseId}-${selectedDate}-${viewMode}`}
+            retards={retards}
+            stats={stats}
+            dates={dates}
+            mode={viewMode}
+            filters={filters}
+            onExport={exportCSV}
+            onRules={() => setRulesOpen(true)}
+            onDelete={(r) => {
+              setDeleteError('')
+              setRetardToDelete(r)
+            }}
+            busy={deleting}
+            search={search}
+            setSearch={setSearch}
+          />
         )}
-      </div>
-    </>
+      </main>
+      <PageCulturalBand pathname="/retards" placement="bottom" />
+      {rulesOpen && (
+        <RetardsDialog
+          title="Règles & tolérance"
+          darkMode={darkMode}
+          onClose={() => setRulesOpen(false)}
+        >
+          <RetardsHelp />
+          <section className="rt-rule-context">
+            <h3>Les règles de cette période</h3>
+            <p>
+              Les heures et tolérances affichées dans chaque détail proviennent
+              du planning applicable à l’employé pour la date concernée.
+              Plusieurs règles peuvent coexister : aucun seuil unique n’est
+              supposé pour toute l’entreprise.
+            </p>
+            <p>
+              Ce panneau explique les règles ; il ne modifie pas les paramètres
+              de calcul.
+            </p>
+            <Link to="/planning">
+              Consulter le Planning <ChevronRight size={15} />
+            </Link>
+          </section>
+        </RetardsDialog>
+      )}
+      {retardToDelete && (
+        <RetardsDialog
+          title="Supprimer le pointage source ?"
+          darkMode={darkMode}
+          busy={deleting}
+          onClose={() => setRetardToDelete(null)}
+        >
+          <p>
+            <strong>
+              {retardToDelete.employee.first_name}{' '}
+              {retardToDelete.employee.last_name}
+            </strong>{' '}
+            · {retardDateLabel(retardToDelete.date)} ·{' '}
+            {retardToDelete.heurePointage}
+          </p>
+          <p>
+            Cette action supprime le pointage d’arrivée, pas seulement l’alerte
+            de retard. Elle peut modifier les heures travaillées et les calculs
+            associés. Elle est irréversible depuis cette page.
+          </p>
+          {deleteError && (
+            <p role="alert" className="rt-delete-error">
+              {deleteError}
+            </p>
+          )}
+          <div className="rt-confirm-actions">
+            <button disabled={deleting} onClick={() => setRetardToDelete(null)}>
+              Annuler
+            </button>
+            <button
+              className="rt-danger"
+              disabled={deleting}
+              onClick={confirmDelete}
+            >
+              {deleting
+                ? 'Suppression…'
+                : 'Supprimer définitivement le pointage'}
+            </button>
+          </div>
+        </RetardsDialog>
+      )}
+    </div>
   )
-}
-
-const styles = {
-  container: { minHeight: '100vh', background: '#0A0A0F', position: 'relative', overflow: 'hidden' },
-  bgPattern: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(circle at 20% 50%, rgba(239, 68, 68, 0.03) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.03) 0%, transparent 50%), radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.03) 0%, transparent 50%)`, pointerEvents: 'none', zIndex: 0 },
-  bgOrb1: { position: 'fixed', top: '-20%', right: '-10%', width: '600px', height: '600px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239, 68, 68, 0.04) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 },
-  bgOrb2: { position: 'fixed', bottom: '-30%', left: '-15%', width: '800px', height: '800px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(245, 158, 11, 0.03) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 },
-  loadingContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '24px', background: '#0A0A0F' },
-  loadingPulse: { animation: 'float 2s ease-in-out infinite' },
-  loadingText: { color: '#888', fontSize: '16px', letterSpacing: '2px' },
-  loadingBar: { width: '200px', height: '2px', background: 'rgba(245,158,11,0.1)', borderRadius: '2px', overflow: 'hidden' },
-  loadingBarFill: { width: '40%', height: '100%', background: 'linear-gradient(90deg, #F59E0B, #D97706)', borderRadius: '2px', animation: 'shimmer 1.5s infinite', backgroundSize: '200% 100%' },
-  header: { background: 'rgba(15, 15, 25, 0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(239, 68, 68, 0.15)', position: 'sticky', top: 0, zIndex: 100 },
-  headerInner: { maxWidth: '1200px', margin: '0 auto', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
-  backBtn: { width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s ease' },
-  logoContainer: { width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  headerTitleWrap: { display: 'flex', flexDirection: 'column' },
-  headerTitle: { color: '#FFFFFF', fontSize: 'clamp(16px, 3vw, 20px)', fontWeight: '700', letterSpacing: '2px', margin: 0, lineHeight: '1.2' },
-  headerSubtitle: { color: '#EF4444', fontSize: '10px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: '500' },
-  headerRight: { display: 'flex', alignItems: 'center', gap: '12px' },
-  statBadge: { display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '8px 16px', borderRadius: '10px', color: '#EF4444', fontSize: '14px', fontWeight: '600' },
-  main: { padding: '24px 20px', maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '24px' },
-  statCard: { background: 'rgba(20, 20, 35, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' },
-  statIconWrap: { width: '44px', height: '44px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  statContent: { display: 'flex', flexDirection: 'column' },
-  statNumber: { fontSize: '20px', fontWeight: '700', color: '#FFFFFF', lineHeight: '1' },
-  statLabel: { fontSize: '11px', color: '#888', marginTop: '4px' },
-  filtersSection: { display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' },
-  viewModeContainer: { display: 'flex', background: 'rgba(20, 20, 35, 0.8)', borderRadius: '12px', padding: '4px', border: '1px solid rgba(255,255,255,0.06)' },
-  viewModeBtn: { padding: '8px 16px', border: 'none', background: 'transparent', borderRadius: '8px', cursor: 'pointer', fontWeight: '500', fontSize: '13px', color: '#888', transition: 'all 0.2s ease' },
-  viewModeBtnActive: { background: 'linear-gradient(135deg, #F59E0B, #D97706)', color: '#000' },
-  dateNav: { display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(20, 20, 35, 0.8)', padding: '8px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' },
-  navBtn: { width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
-  dateDisplayWrap: { display: 'flex', alignItems: 'center', gap: '8px', minWidth: '120px', justifyContent: 'center' },
-  dateDisplay: { fontWeight: '600', color: '#FFFFFF', fontSize: '14px' },
-  filterBox: { display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(20, 20, 35, 0.8)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '10px 16px', flex: 1, maxWidth: '300px' },
-  filterSelect: { flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#FFFFFF', fontSize: '14px', cursor: 'pointer' },
-  listContainer: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  emptyState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', textAlign: 'center' },
-  emptyIcon: { width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '24px', animation: 'float 3s ease-in-out infinite' },
-  emptyTitle: { color: '#FFFFFF', fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0' },
-  emptyText: { color: '#666', fontSize: '14px' },
-  retardCard: { display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(20, 20, 35, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(239, 68, 68, 0.1)', borderRadius: '16px', padding: '16px 20px', animation: 'fadeInUp 0.5s ease forwards', transition: 'all 0.3s ease', flexWrap: 'wrap' },
-  avatarSection: { flexShrink: 0 },
-  avatarPlaceholder: { width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #EF4444, #DC2626)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF', fontWeight: '700', fontSize: '14px' },
-  retardInfo: { flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '4px' },
-  retardNameRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' },
-  retardName: { color: '#FFFFFF', fontSize: '15px', fontWeight: '600' },
-  retardDate: { color: '#888', fontSize: '12px' },
-  retardMatricule: { color: '#666', fontSize: '12px' },
-  retardEntreprise: { display: 'flex', alignItems: 'center', gap: '6px', color: '#F59E0B', fontSize: '12px' },
-  hoursSection: { display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 },
-  hourItem: { display: 'flex', flexDirection: 'column', alignItems: 'center' },
-  hourLabel: { fontSize: '10px', color: '#666', marginBottom: '2px' },
-  hourValue: { fontWeight: '600', color: '#FFFFFF', fontSize: '14px' },
-  hourValueLate: { fontWeight: '600', color: '#EF4444', fontSize: '14px' },
-  hourArrow: { color: '#555', fontSize: '14px' },
-  retardBadge: { display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', flexShrink: 0 },
-  deleteBtn: { width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s ease', flexShrink: 0 },
-  footer: { marginTop: '48px', paddingBottom: '24px' },
-  footerLine: { height: '1px', background: 'linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.2), transparent)', marginBottom: '20px' },
-  footerText: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#555', fontSize: '12px', letterSpacing: '2px' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', zIndex: 200 },
-  confirmModal: { background: '#0F0F19', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '20px', width: '100%', maxWidth: '400px', padding: '30px', textAlign: 'center' },
-  confirmIconWrap: { width: '70px', height: '70px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' },
-  confirmTitle: { color: '#FFFFFF', fontSize: '20px', fontWeight: '600', margin: '0 0 12px 0' },
-  confirmText: { color: '#888', fontSize: '14px', lineHeight: '1.6', marginBottom: '24px' },
-  confirmActions: { display: 'flex', gap: '12px' },
-  cancelBtn: { flex: 1, padding: '14px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', color: '#FFFFFF', fontSize: '15px', fontWeight: '500', cursor: 'pointer' },
-  deleteConfirmBtn: { flex: 1, padding: '14px', background: '#EF4444', border: 'none', borderRadius: '12px', color: '#FFFFFF', fontSize: '15px', fontWeight: '700', cursor: 'pointer' },
 }
