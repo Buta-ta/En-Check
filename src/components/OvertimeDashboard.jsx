@@ -1,3 +1,8 @@
+import PageCulturalBand from './PageCulturalBand'
+import {
+  OvertimeCalculationGuide,
+  OvertimeLoadingScreen,
+} from './OvertimeExperience'
 import { useState, useRef, useEffect } from 'react'
 import {
   Clock,
@@ -59,7 +64,9 @@ export function OvertimeRulesDrawer({ children, onClose, darkMode, busy }) {
         if (!busy) onClose()
       }}
     >
+      <PageCulturalBand pathname="/heures-supplementaires" placement="top" />
       {children}
+      <PageCulturalBand pathname="/heures-supplementaires" placement="bottom" />
     </dialog>
   )
 }
@@ -200,10 +207,7 @@ export default function OvertimeDashboard({
         · seuls les temps de pointage clôturés sont comptés.
       </p>
       {loading ? (
-        <div className="ot-state" role="status">
-          <Timer size={32} />
-          <p>Chargement des pointages et calcul des heures…</p>
-        </div>
+        <OvertimeLoadingScreen />
       ) : error ? (
         <div className="ot-state" role="alert">
           <p>{error}</p>
@@ -268,31 +272,7 @@ export default function OvertimeDashboard({
                 </div>
               )}
             </section>
-            <section className="ot-panel ot-help">
-              <h2>Comprendre le calcul</h2>
-              <div>
-                <span className="ot-coin ot-clock">
-                  <Clock size={48} />
-                </span>
-                <p>
-                  Les dépassements dépendent du planning et des seuils
-                  configurés.
-                </p>
-              </div>
-              <details>
-                <summary>Voir un exemple</summary>
-                <p>
-                  Pour un seuil applicable de 8 h, une journée de 9 h donne 1 h
-                  supplémentaire. Le taux dépend des règles de l’entreprise, du
-                  jour et des paliers.
-                </p>
-                <p>
-                  Les jours fériés et weekends peuvent avoir des règles
-                  spécifiques. Ces durées ne constituent pas une confirmation de
-                  paiement.
-                </p>
-              </details>
-            </section>
+            <OvertimeCalculationGuide />
           </div>
           <section className="ot-panel ot-list">
             <div className="ot-list-heading">

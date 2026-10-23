@@ -1,3 +1,7 @@
+import {
+  OvertimeNavigation,
+  OvertimeLoadingScreen,
+} from '../components/OvertimeExperience'
 // ═══════════════════════════════════════════════════════════
 // ⏱️ PAGE HEURES SUPPLÉMENTAIRES - AFROFUTURISTE
 // ═══════════════════════════════════════════════════════════
@@ -24,7 +28,7 @@ import toast from 'react-hot-toast'
 import { formaterDureeComplete } from '../utils/timezoneUtils'
 
 export default function HeuresSupplementaires() {
-  const { darkMode } = useTheme()
+  const { darkMode, toggleTheme } = useTheme()
   const requestId = useRef(0)
   const [loadError, setLoadError] = useState('')
   const [admin, setAdmin] = useState(null)
@@ -407,8 +411,11 @@ export default function HeuresSupplementaires() {
     <div className={`ot-page ${darkMode ? 'ot-dark' : ''}`}>
       <PageHeader title="Heures supplémentaires" />
       <PageCulturalBand pathname="/heures-supplementaires" />
+      <OvertimeNavigation darkMode={darkMode} onToggleTheme={toggleTheme} />
       <main className="ot-main">
-        {!accessChecked || !hasAccess ? (
+        {!accessChecked ? (
+          <OvertimeLoadingScreen checkingAccess />
+        ) : !hasAccess ? (
           <section className="ot-state">
             <Lock size={36} />
             <h1>
@@ -456,7 +463,7 @@ export default function HeuresSupplementaires() {
           busy={savingSettings}
           onClose={() => setShowSettingsModal(false)}
         >
-          <div style={pageStyles.settingsHeader}>
+          <div className="ot-rules-header" style={pageStyles.settingsHeader}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div
                 style={{
@@ -497,7 +504,7 @@ export default function HeuresSupplementaires() {
             </button>
           </div>
 
-          <div style={pageStyles.settingsBody}>
+          <div className="ot-rules-body" style={pageStyles.settingsBody}>
             <details>
               <summary>Comment les seuils sont-ils définis ?</summary>
               <div
@@ -551,10 +558,11 @@ export default function HeuresSupplementaires() {
                 </div>
               </div>
             </details>
-            <div style={pageStyles.settingsSection}>
-              <h3 style={pageStyles.settingsSectionTitle}>
-                ⏱️ Déclenchement du taux majoré
-              </h3>
+            <div
+              className="ot-rules-section"
+              style={pageStyles.settingsSection}
+            >
+              <h3 style={pageStyles.settingsSectionTitle}>Déclenchement</h3>
               <div style={pageStyles.settingsField}>
                 <label
                   htmlFor="ot-overtime_major_after_hours"
@@ -631,10 +639,11 @@ export default function HeuresSupplementaires() {
               </details>
             </div>
 
-            <div style={pageStyles.settingsSection}>
-              <h3 style={pageStyles.settingsSectionTitle}>
-                💰 Taux de majoration
-              </h3>
+            <div
+              className="ot-rules-section"
+              style={pageStyles.settingsSection}
+            >
+              <h3 style={pageStyles.settingsSectionTitle}>Majorations</h3>
               <div style={pageStyles.settingsRow}>
                 <div style={pageStyles.settingsField}>
                   <label
@@ -691,6 +700,15 @@ export default function HeuresSupplementaires() {
                   </span>
                 </div>
               </div>
+            </div>
+
+            <div
+              className="ot-rules-section"
+              style={pageStyles.settingsSection}
+            >
+              <h3 style={pageStyles.settingsSectionTitle}>
+                Jours particuliers
+              </h3>
               <div style={pageStyles.settingsRow}>
                 <div style={pageStyles.settingsField}>
                   <label
@@ -741,10 +759,6 @@ export default function HeuresSupplementaires() {
                   />
                 </div>
               </div>
-            </div>
-
-            <div style={pageStyles.settingsSection}>
-              <h3 style={pageStyles.settingsSectionTitle}>⚙️ Options</h3>
               <label style={pageStyles.settingsToggle}>
                 <input
                   disabled={savingSettings}
@@ -762,7 +776,7 @@ export default function HeuresSupplementaires() {
             </div>
           </div>
 
-          <div style={pageStyles.settingsFooter}>
+          <div className="ot-rules-footer" style={pageStyles.settingsFooter}>
             <button
               disabled={savingSettings}
               onClick={() => setShowSettingsModal(false)}

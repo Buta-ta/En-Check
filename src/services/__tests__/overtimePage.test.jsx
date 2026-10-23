@@ -89,14 +89,12 @@ beforeEach(() => {
   vi.setSystemTime(new Date('2026-10-23T12:00:00Z'))
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   mocks.fail = false
-  mocks.calculate
-    .mockReset()
-    .mockImplementation(({ totalWorkedSeconds }) => ({
-      contractualSeconds: 28800,
-      totalOvertimeSeconds: Math.max(0, totalWorkedSeconds - 28800),
-      overtimeSeconds: Math.max(0, totalWorkedSeconds - 28800),
-      rateApplied: 25,
-    }))
+  mocks.calculate.mockReset().mockImplementation(({ totalWorkedSeconds }) => ({
+    contractualSeconds: 28800,
+    totalOvertimeSeconds: Math.max(0, totalWorkedSeconds - 28800),
+    overtimeSeconds: Math.max(0, totalWorkedSeconds - 28800),
+    rateApplied: 25,
+  }))
   mocks.save.mockReset().mockResolvedValue(true)
   localStorage.setItem(
     'admin',
@@ -154,6 +152,13 @@ it('preserves draft on save failure and makes the rules explanations collapsible
   await mount()
   await click('Règles de calcul')
   expect(host.querySelector('dialog[open]')).toBeTruthy()
+  expect(host.querySelectorAll('dialog .ec-cultural-band')).toHaveLength(2)
+  expect(host.querySelectorAll('dialog .ot-rules-section')).toHaveLength(3)
+  expect(
+    host
+      .querySelectorAll('.ot-rules-section')[2]
+      .querySelector('#ot-rate_sunday'),
+  ).toBeTruthy()
   expect(host.querySelector('dialog details[open]')).toBeNull()
   expect(host.querySelector('label[for="ot-rate_normal"]')).toBeTruthy()
   mocks.save.mockRejectedValueOnce(new Error('offline'))
