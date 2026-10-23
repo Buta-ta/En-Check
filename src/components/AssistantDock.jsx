@@ -1,3 +1,4 @@
+import PageCulturalBand from './PageCulturalBand'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -7,7 +8,7 @@ import { supabase } from '../lib/supabase'
 import AssistantAnswer from './AssistantAnswer'
 import AssistantStatus from './AssistantStatus'
 import EnCheckBrandMark from './EnCheckBrandMark'
-import { KenteWovenTapestrySvg, WovenKenteBadgeSvg } from './AfroCulturalSvg'
+import { WovenKenteBadgeSvg } from './AfroCulturalSvg'
 import { answerPublicChat, publicMessages, CHAT_ERRORS } from '../services/assistantChat'
 import {
   conversationalRequest,
@@ -405,7 +406,7 @@ export default function AssistantDock() {
     <div className="ec-assistant-space" aria-hidden="true" />
     {createPortal(<>
       <aside className="ec-assistant-dock" data-theme={theme} aria-label="Assistant En-Check" hidden={opened} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false) }}>
-        <div className="ec-assistant-weave" aria-hidden="true"><KenteWovenTapestrySvg className="ec-assistant-kente-svg" /></div>
+        <div className="ec-assistant-weave" aria-hidden="true"><PageCulturalBand pathname={location.pathname} placement="compact"/></div>
         <div className="ec-assistant-label"><span><EnCheckBrandMark size={18} /> ASSISTANT EN-CHECK · ON GÈRE !</span><span>Converser · Vérifier · Comprendre</span></div>
         <form className="ec-assistant-form" onSubmit={search}>
           <button ref={launcher} type="button" className="ec-assistant-open" onClick={open} aria-label="Ouvrir l’assistant En-Check" aria-haspopup="dialog"><Sparkles size={20} /></button>
@@ -419,7 +420,7 @@ export default function AssistantDock() {
         </details>
       </aside>
       <dialog ref={dialog} className="ec-assistant-panel" data-theme={theme} aria-labelledby="ec-assistant-title" onCancel={event => { event.preventDefault(); if (scanning) stopScanning(); else close() }} onClick={event => { if (event.target === dialog.current) close() }}>
-        <div className="ec-assistant-weave" aria-hidden="true"><KenteWovenTapestrySvg className="ec-assistant-kente-svg" /></div>
+        <div className="ec-assistant-weave" aria-hidden="true"><PageCulturalBand pathname={location.pathname} placement="compact"/></div>
         <header className="ec-assistant-panel-header">
           <div className="ec-assistant-panel-brand">
             <WovenKenteBadgeSvg variant={1} size={40} />

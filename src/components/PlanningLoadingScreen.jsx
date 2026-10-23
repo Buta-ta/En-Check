@@ -1,3 +1,4 @@
+import PageCulturalBand from './PageCulturalBand'
 // ═══════════════════════════════════════════════════════════════════════════
 // 📅 ÉCRAN DE CHARGEMENT PLANNING — identique à l'écran Pointages
 // Deux scènes rythmées (Étape 1 / Étape 2) : le planning En-Check projeté,
@@ -7,7 +8,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, CalendarDays, CheckCircle2, LayoutGrid, Users } from 'lucide-react'
 import EnCheckBrandMark from './EnCheckBrandMark'
-import { CulturalCornerMotifSvg, KenteFriezeSvg } from './AfroCulturalSvg'
+import { CulturalCornerMotifSvg } from './AfroCulturalSvg'
 import '../pages/PointagesAfroTech.css'
 
 export default function PlanningLoadingScreen({ darkMode = true, onSkip }) {
@@ -48,7 +49,7 @@ export default function PlanningLoadingScreen({ darkMode = true, onSkip }) {
           </div>
         </div>
 
-        <KenteFriezeSvg className="pointages-loading-frieze" />
+        <PageCulturalBand pathname="/planning" placement="loading"/>
 
         <h1 className="pointages-loading-title">Chargement du planning En-Check…</h1>
 

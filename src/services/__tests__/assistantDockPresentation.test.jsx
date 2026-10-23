@@ -59,3 +59,12 @@ describe('Barre assistant — interface, sans modèle externe', () => {
     expect(source).toContain('onCancel=')
   })
 })
+
+it('la barre ET son dialogue suivent le motif de chaque route', () => {
+  vi.stubGlobal('document', { body: {} })
+  for (const [route, motif] of [['/planning','kuba'], ['/absences','ndebele'], ['/paie?onglet=fiches','bogolan'], ['/pointages','kente'], ['/employes','kente'], ['/pauses','kente']]) {
+    const html = renderToStaticMarkup(<MemoryRouter initialEntries={[route]}><AssistantDock/></MemoryRouter>)
+    expect(html.match(new RegExp(`data-cultural-motif="${motif}"`, 'g'))).toHaveLength(2)
+  }
+  expect(search).not.toHaveBeenCalled()
+})
