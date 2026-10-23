@@ -3,7 +3,7 @@ import PaieCoin from './PaieCoin'
 import './PaieInteriors.css'
 
 const GUIDES = {
-  settings: ['Votre bulletin, votre signature', 'Réglez le moteur de paie et les mentions de votre entreprise.', 'Exemple : ajouter un signataire et un cachet avant de publier les bulletins.'],
+  settings: ['Votre paie, expliquée simplement', 'Réglez le calcul, puis personnalisez le bulletin : chaque choix a son explication.', 'Exemple : utiliser les pointages pour connaître le temps travaillé, puis choisir séparément de payer les heures supplémentaires.'],
   profiles: ['Un profil juste pour chaque salarié', 'Définissez la base salariale et le mode de paiement, salarié par salarié.', 'Exemple : 200 000 par mois ou un taux de 1 500 par heure, dans la devise de l’entreprise.'],
   allowances: ['Primes & retenues', 'Séparez les montants récurrents des ajustements de la période.', 'Exemple : transport mensuel de 15 000, puis prime exceptionnelle de 25 000 ce mois-ci.'],
   imports: ['Vos variables, sans ressaisie', 'Importez le fichier, vérifiez les correspondances, puis enregistrez.', 'Exemple : une ligne par matricule avec les primes du mois. Un fichier choisi n’est pas encore enregistré.'],

@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { beforeEach, afterEach, it, expect, vi } from 'vitest'
 vi.mock('../../contexts/ThemeContext', () => ({ useTheme: () => ({ darkMode: false }) }))
 vi.mock('../../lib/supabase', () => ({ supabase: {} }))
+import PaieWalletLoader from '../../components/PaieWalletLoader'
 import PaieDrawer from '../../components/PaieDrawer'
 import { BracketModal, RulesModal, ConfirmModal } from '../../components/PaieFiscalModales'
 import { BracketCard } from '../../components/PaieFiscalCartes'
@@ -40,7 +41,7 @@ it('boucle au clavier entre le premier et le dernier contrôle', async () => {
 it('conserve le payload de la tranche et fournit un exemple', async () => {
   const save = vi.fn()
   await render(<BracketModal bracket={{ bracket_name: 'Tranche 1', bracket_order: 1, min_amount: 0, max_amount: 50000, tax_rate: 10, fixed_deduction: 0 }} currency="XOF" onSave={save} onClose={() => {}}/>)
-  expect(document.querySelector('[role="dialog"]').textContent).toContain('Exemple illustratif')
+  expect(document.querySelector('[role="dialog"]').textContent).toContain('Voir un exemple')
   const button = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Enregistrer'))
   await act(async () => button.click())
   expect(save.mock.calls[0][0]).toMatchObject({ min_amount: 0, max_amount: 50000, tax_rate: 10 })
@@ -67,4 +68,11 @@ it('chaque intérieur de bulletin possède un exemple repliable', async () => {
   for (const section of ['settings', 'profiles', 'allowances', 'imports', 'preview']) {
     await render(<PaieSectionIntro section={section}/>); expect(host.querySelector('details').textContent).toContain('Exemple'); expect(host.querySelector('h2')).not.toBeNull()
   }
+})
+
+it('annonce le chargement avec une illustration décorative et sans dialogue bloquant', async () => {
+  await render(<PaieWalletLoader label="Chargement fiscal…"/>);
+  expect(host.querySelector('[role="status"]').textContent).toContain('Chargement fiscal');
+  expect(host.querySelector('svg').getAttribute('aria-hidden')).toBe('true');
+  expect(host.querySelector('[role="dialog"]')).toBeNull();
 })

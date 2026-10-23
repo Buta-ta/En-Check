@@ -1,3 +1,4 @@
+import PaieWalletLoader from '../components/PaieWalletLoader'
 import PaieDrawer from '../components/PaieDrawer'
 import { PaieFiscalGuide, PaieCountrySummary, PaieRulesSummary, PaieSectionIntro } from '../components/PaieInteriorSections'
 // src/pages/ConfigurationFiscale.jsx
@@ -683,12 +684,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
   if (loadError) return <div role="alert" className="pw-error">{loadError}<button className="paie-btn" onClick={() => loadCurrentConfig(enterpriseId)}>Réessayer</button></div>
 
   if (loading) {
-    return (
-      <div style={S.loadingWrap}>
-        <RefreshCw size={34} color={P.ambre} style={{ animation: 'spin 0.9s linear infinite' }} />
-        <p style={{ color: P.texteFaint, marginTop: 12 }}>Chargement configuration fiscale...</p>
-      </div>
-    )
+    return <PaieWalletLoader label="Chargement de la configuration fiscale…"/>
   }
 
   return (
