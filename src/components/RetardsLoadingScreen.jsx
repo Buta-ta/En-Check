@@ -1,10 +1,33 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './RetardsLoadingScreen.css'
 
 const artwork = '/images/retards-arrival-'
 const movingLayers = ['background', 'back-leg', 'front-leg', 'upper']
 
-export default function RetardsLoadingScreen() {
+export const RETARDS_INTRO_DURATION_MS = 6000
+
+export default function RetardsLoadingScreen({
+  onMinimumDone,
+  onSkip,
+  dataReady = false,
+}) {
+  useEffect(() => {
+    if (!onMinimumDone) return
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (reduced?.matches) {
+      onMinimumDone()
+      return
+    }
+    const timer = window.setTimeout(onMinimumDone, RETARDS_INTRO_DURATION_MS)
+    const onMotionChange = (event) => {
+      if (event.matches) onMinimumDone()
+    }
+    reduced?.addEventListener?.('change', onMotionChange)
+    return () => {
+      window.clearTimeout(timer)
+      reduced?.removeEventListener?.('change', onMotionChange)
+    }
+  }, [onMinimumDone])
   const [loaded, setLoaded] = useState([])
   const [layerFailed, setLayerFailed] = useState(false)
   const [stillFailed, setStillFailed] = useState(false)
@@ -73,8 +96,23 @@ export default function RetardsLoadingScreen() {
         </div>
       )}
       <div className="rt-arrival-caption">
-        <h2>Chargement des arrivées…</h2>
-        <p>Lecture des pointages et du planning applicable.</p>
+        <h2>
+          {dataReady ? 'Les arrivées sont prêtes' : 'Chargement des arrivées…'}
+        </h2>
+        <p>
+          {dataReady
+            ? 'Vous pouvez passer l’animation pour consulter les résultats.'
+            : 'Lecture des pointages et du planning applicable.'}
+        </p>
+        {onSkip && (
+          <button
+            className="rt-arrival-skip"
+            onClick={onSkip}
+            disabled={!dataReady}
+          >
+            Passer l’animation
+          </button>
+        )}
       </div>
     </section>
   )
