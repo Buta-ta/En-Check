@@ -22,6 +22,7 @@ import {
   allRetardRows,
 } from '../utils/retardsPresentation'
 import './Retards.css'
+import './RetardsSignature.css'
 
 export default function Retards() {
   const { darkMode, toggleTheme } = useTheme()
@@ -225,7 +226,7 @@ export default function Retards() {
   const filters = (
     <section className="rt-filters" aria-label="Filtres des retards">
       {admin?.role === 'super_admin' && (
-        <label>
+        <label className="rt-filter-field" data-step="01">
           Entreprise
           <select
             value={selectedEntrepriseId}
@@ -242,7 +243,7 @@ export default function Retards() {
           </select>
         </label>
       )}
-      <div>
+      <div className="rt-filter-field" data-step="02">
         <span className="rt-label">Période</span>
         <div className="rt-date">
           <button
@@ -276,7 +277,7 @@ export default function Retards() {
           </button>
         </div>
       </div>
-      <div>
+      <div className="rt-filter-field" data-step="03">
         <span className="rt-label">Vue</span>
         <div
           className="rt-segments"
@@ -335,7 +336,13 @@ export default function Retards() {
           <>
             <div className="rt-title-row">
               <div>
-                <h1>Retards</h1>
+                <span className="rt-eyebrow">LE CARNET DE PONCTUALITÉ</span>
+                <h1>
+                  Retards
+                  <span className="rt-title-dot" aria-hidden="true">
+                    .
+                  </span>
+                </h1>
                 <p>Chaque arrivée, replacée dans son contexte.</p>
               </div>
             </div>
