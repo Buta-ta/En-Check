@@ -15,7 +15,8 @@ import { supabase } from '../lib/supabase'
 import FeatureService, { FEATURES } from '../services/featureService'
 import PayrollService from '../services/payrollService'
 import CurrencyService from '../services/currencyService'
-import TaxationService from '../services/taxationService'
+import { publishPayrollBatch, PayrollDeliveryBlocked } from '../services/payrollDelivery'
+import PaieDeliveryControl from '../components/PaieDeliveryControl'
 import * as XLSX from 'xlsx'
 import LeaveBalanceService from '../services/leaveBalanceService'
 import {
@@ -112,6 +113,10 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
   const [showGenerateConfirm, setShowGenerateConfirm] = useState(false)
 
   const generationRequest = useRef(0)
+  const calculationLock = useRef(false)
+  const deliveryLock = useRef(false)
+  const [autoSendAfterCalculation, setAutoSendAfterCalculation] = useState(false)
+  const [deliveryNotice, setDeliveryNotice] = useState(null)
   const [previewRows, setPreviewRows] = useState([])
   const [loadingPreview, setLoadingPreview] = useState(false)
 
@@ -343,8 +348,9 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
           c.slipCount++
         })
       setAnnualCumuls(cumuls)
-    } catch (err) { console.error('Erreur cumuls:', err) }
-    setLoadingCumuls(false)
+      return cumuls
+    } catch (err) { console.error('Erreur cumuls:', err); return null }
+    finally { setLoadingCumuls(false) }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -550,20 +556,25 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   // ═══════════════════════════════════════════════════════════
 
   const handleTryGenerate = () => {
+    if (calculationLock.current || deliveryLock.current) return
     if (!enterpriseId || !periodStart || !periodEnd || periodStart > periodEnd) { toast.error('Choisissez une période valide'); return }
     if (preCheckResults.blockers.length > 0) setShowGenerateConfirm(true)
     else handleGeneratePreview()
   }
 
   const handleGeneratePreview = async () => {
+    if (calculationLock.current || deliveryLock.current) return
     setShowGenerateConfirm(false)
     if (!enterpriseId || !periodStart || !periodEnd || periodStart > periodEnd) { toast.error('Choisissez une période valide'); return }
+    calculationLock.current = true
+    setDeliveryNotice(null)
     setLoadingPreview(true)
+    const sendAutomatically = autoSendAfterCalculation
     const request = ++generationRequest.current
     try {
       // Charger cumuls annuels
       const year = new Date(periodStart + 'T12:00:00Z').getFullYear()
-      await loadAnnualCumuls(enterpriseId, year)
+      const calculatedCumuls = await loadAnnualCumuls(enterpriseId, year)
 
       // Always calculate from persisted settings, not a hidden editor's stale snapshot.
       const persistedSettings = await PayrollService.getPayrollSettings(enterpriseId)
@@ -596,8 +607,11 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
       changerOnglet('preview')
       await loadSentSlips(enterpriseId, periodStart, periodEnd)
       toast.success(`${rows.length} fiche(s) générée(s)`)
+      if (sendAutomatically && request === generationRequest.current) {
+        await deliverRows(rows, { automatic: true, request, payrollSettings: persistedSettings, cumuls: calculatedCumuls || {}, overtime: sourceData.overtimeSettings })
+      }
     } catch (err) { console.error(err); toast.error('Erreur génération preview') }
-    setLoadingPreview(false)
+    finally { calculationLock.current = false; setLoadingPreview(false) }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -670,17 +684,12 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
   //   « FCFA » mais ne sont pas la même monnaie : deviner, c'est produire
   //   un bulletin faux sans qu'aucun écran ne s'en aperçoive. Si la devise
   //   n'est pas déterminable, on refuse d'enregistrer et on le dit.
-  const deviseDesBulletins = CurrencyService.resolveCurrency({
-    enterprise: enterpriseData,
-    settings,
-  })
-
-  const buildPayslipData = (row) => ({
+  const buildPayslipData = (row, { payrollSettings = settings, cumuls = annualCumuls, overtime = overtimeSettings } = {}) => ({
     enterprise_id: enterpriseId, employee_id: row.employee.id,
     period_start: periodStart, period_end: periodEnd,
     gross_salary: row.grossSalary || 0, net_salary: row.netSalary || 0,
     total_earnings: row.totalEarnings || 0, total_deductions: row.totalDeductions || 0,
-    currency: deviseDesBulletins,
+    currency: CurrencyService.resolveCurrency({ enterprise: enterpriseData, settings: payrollSettings }),
     worked_days: row.sources?.encheck?.workedDays || 0,
     worked_hours: (row.sources?.encheck?.totalWorkedMinutes || 0) / 60,
     overtime_hours: (row.sources?.encheck?.totalOvertimeAllMinutes || 0) / 60,
@@ -696,18 +705,18 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
       profile: row.profile, earnings: row.earnings, deductions: row.deductions,
       taxation: row.taxation || null, sources: row.sources,
       settings_snapshot: {
-        salary_period: settings.salary_period,
-        company_header: settings.company_header, company_footer: settings.company_footer,
-        signatory1_name: settings.signatory1_name, signatory1_title: settings.signatory1_title,
-        signatory1_signature: settings.signatory1_signature,
-        signatory2_name: settings.signatory2_name, signatory2_title: settings.signatory2_title,
-        signatory2_signature: settings.signatory2_signature,
-        company_stamp: settings.company_stamp,
-        company_rccm: settings.company_rccm, company_nif: settings.company_nif,
-        company_cnps_number: settings.company_cnps_number,
-        company_collective_agreement: settings.company_collective_agreement,
-        legal_mention: settings.legal_mention,
-        overtime_settings: overtimeSettings,
+        salary_period: payrollSettings.salary_period,
+        company_header: payrollSettings.company_header, company_footer: payrollSettings.company_footer,
+        signatory1_name: payrollSettings.signatory1_name, signatory1_title: payrollSettings.signatory1_title,
+        signatory1_signature: payrollSettings.signatory1_signature,
+        signatory2_name: payrollSettings.signatory2_name, signatory2_title: payrollSettings.signatory2_title,
+        signatory2_signature: payrollSettings.signatory2_signature,
+        company_stamp: payrollSettings.company_stamp,
+        company_rccm: payrollSettings.company_rccm, company_nif: payrollSettings.company_nif,
+        company_cnps_number: payrollSettings.company_cnps_number,
+        company_collective_agreement: payrollSettings.company_collective_agreement,
+        legal_mention: payrollSettings.legal_mention,
+        overtime_settings: overtime,
       },
       enterprise_name: enterpriseName,
       enterprise_data: enterpriseData,
@@ -719,56 +728,49 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
         classification: row.employee?.classification,
         contract_type: row.employee?.contract_type,
       },
-      annual_cumuls: annualCumuls[row.employee.id] || null,
+      annual_cumuls: cumuls[row.employee.id] || null,
       leave_balance: leaveBalances[row.employee.id] || null,
       working_days_in_month: getWorkingDaysInMonth,
     },
+    is_deleted: false, deleted_at: null, deleted_by: null,
     sent_by: admin?.id || null, status: 'sent', sent_at: new Date().toISOString(),
   })
 
-  const handleSendToEmployee = async (row) => {
-    if (!enterpriseId || !row?.employee?.id) return
-    // 🛡️ CF-2 : Bloquer l'envoi officiel au salarié si le barème fiscal n'est pas validé
-    const controle = TaxationService.verifierAvantRemise(row)
-    if (!controle.remissable) {
-      toast.error(controle.motif || 'Ce bulletin est provisoire et son barème fiscal doit être validé avant envoi au salarié.', { duration: 6000 })
-      return
-    }
-    try {
-      const { error } = await supabase.from('employee_payslips').upsert(buildPayslipData(row), { onConflict: 'enterprise_id,employee_id,period_start,period_end' })
-      if (error) throw error
-      setSentSlips(prev => new Set([...prev, row.employee.id]))
-      toast.success(`Fiche envoyée à ${row.employee.first_name} ${row.employee.last_name}`)
-      await PayrollService.logAuditAction({ enterpriseId, action: 'payslip_sent', entityType: 'payslip', employeeId: row.employee.id, periodStart, periodEnd, metadata: { net_salary: row.netSalary, gross_salary: row.grossSalary }, performedBy: admin?.id })
-    } catch (err) { console.error(err); toast.error('Erreur envoi fiche') }
-  }
-
-  const handleSendAllToEmployees = async () => {
-    if (!previewRows.length) return
-    // 🛡️ CF-2 : Vérifier qu'aucun bulletin n'a un barème fiscal non validé avant envoi groupé
-    const nonRemissables = previewRows.filter(r => !TaxationService.verifierAvantRemise(r).remissable)
-    if (nonRemissables.length > 0) {
-      const premierMotif = TaxationService.verifierAvantRemise(nonRemissables[0]).motif
-      toast.error(premierMotif || `${nonRemissables.length} bulletin(s) ont un barème fiscal à vérifier avant remise officielle.`, { duration: 7000 })
-      return
-    }
-    if (!deviseDesBulletins) {
-      toast.error(
-        'Devise de l’entreprise introuvable : renseigne le pays et la devise dans les paramètres du moteur, puis relance. Un bulletin ne peut pas être produit sans devise.',
-        { duration: 8000 },
-      )
-      return
-    }
+  const deliverRows = async (rows, options = {}) => {
+    if (deliveryLock.current || !enterpriseId) return false
+    deliveryLock.current = true
     setSendingSlips(true)
-    let ok = 0, ko = 0
-    for (const row of previewRows) {
+    setDeliveryNotice(null)
+    try {
+      const ids = await publishPayrollBatch(rows, row => buildPayslipData(row, options), {
+        automatic: options.automatic,
+        isCurrent: () => options.request == null || options.request === generationRequest.current,
+      })
+      setSentSlips(prev => new Set([...prev, ...ids]))
+      const text = `${ids.length} fiche(s) ${options.automatic ? 'envoyée(s) automatiquement' : 'envoyée(s)'} dans les espaces salariés.`
+      setDeliveryNotice({ error: false, text })
+      toast.success(text)
+      // Audit is separate from publication: an audit failure must not claim the delivery failed.
       try {
-        const { error } = await supabase.from('employee_payslips').upsert(buildPayslipData(row), { onConflict: 'enterprise_id,employee_id,period_start,period_end' })
-        if (error) throw error; ok++; setSentSlips(prev => new Set([...prev, row.employee.id]))
-      } catch { ko++ }
-    }
-    if (ko === 0) toast.success(`${ok} fiche(s) envoyée(s)`); else toast.error(`${ok} envoyée(s), ${ko} erreur(s)`)
-    setSendingSlips(false)
+        await PayrollService.logAuditAction({ enterpriseId, action: 'payslip_sent', entityType: 'payslip',
+          employeeId: rows.length === 1 ? rows[0].employee.id : undefined, periodStart, periodEnd,
+          metadata: { employee_ids: ids, automatic: !!options.automatic, ...(rows.length === 1 ? { net_salary: rows[0].netSalary, gross_salary: rows[0].grossSalary } : {}) }, performedBy: admin?.id })
+      } catch (error) { console.error('Audit de remise indisponible:', error) }
+      return true
+    } catch (error) {
+      const text = error instanceof PayrollDeliveryBlocked ? error.message : 'Envoi non confirmé. Vérifiez la connexion et les droits, puis consultez l’historique avant de réessayer. Les fiches calculées restent disponibles.'
+      setDeliveryNotice({ error: true, text })
+      toast.error(text, { duration: 8000 })
+      return false
+    } finally { deliveryLock.current = false; setSendingSlips(false) }
+  }
+  const handleSendToEmployee = row => {
+    if (calculationLock.current || deliveryLock.current) return
+    return deliverRows([row])
+  }
+  const handleSendAllToEmployees = () => {
+    if (calculationLock.current || deliveryLock.current) return
+    return deliverRows(previewRows)
   }
 
   const handleDeleteSentSlip = (row) => { setSlipToDelete(row); setShowDeleteModal(true) }
@@ -959,6 +961,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
     onBusyChange?.(saving || loadingPreview || sendingSlips || savingImport)
   }, [saving, loadingPreview, sendingSlips, savingImport, onBusyChange])
 
+  useEffect(() => { setAutoSendAfterCalculation(false); setDeliveryNotice(null) }, [enterpriseId, periodStart, periodEnd])
+
   // Calculs invalidés dès qu'une entrée change : jamais de graphique d'une autre période.
   useEffect(() => { generationRequest.current += 1; setPreviewRows([]) }, [periodStart, periodEnd, profiles, settings, periodBonuses, periodDeductions])
   useEffect(() => {
@@ -1022,7 +1026,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
         }
       `}</style>
 
-      <div
+      <fieldset disabled={loadingPreview || sendingSlips}
         className="pay-volet paie-page"
         data-theme={darkMode ? 'dark' : 'light'}
         style={integre ? { width: '100%' } : { minHeight: '100vh', background: P.fond, width: '100%' }}
@@ -1082,27 +1086,30 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
               <button onClick={() => { loadHistory(); setShowHistoryModal(true) }} style={S.historyBtn} className="pay-btn"><History size={16} /><span>Historique</span></button>
               <button onClick={handleTryGenerate} style={S.primaryBtn} className="pay-btn" disabled={loadingPreview}>
                 {loadingPreview ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Eye size={16} />}
-                <span>{loadingPreview ? 'Calcul...' : 'Générer les fiches'}</span>
+                <span>{loadingPreview ? 'Calcul...' : autoSendAfterCalculation ? 'Calculer et envoyer' : 'Générer les fiches'}</span>
               </button>
             </div>
           </header>
           )}
 
           <PaieSectionIntro section={activeTab}/>
+          {['preparation', 'preview'].includes(activeTab) && <PaieDeliveryControl
+            enabled={autoSendAfterCalculation} onChange={setAutoSendAfterCalculation}
+            busy={loadingPreview || sendingSlips} notice={deliveryNotice}/>}
           {integre && activeTab === 'preparation' && <PaiePayrollChart key={`${enterpriseId}:${settings.currency}:${periodEnd}`} enterpriseId={enterpriseId} currency={settings.currency} end={periodEnd} revision={sentSlips.size}/>}
           {integre && activeTab === 'preparation' && <PaiePreparation
             employees={employees} profiles={profiles} previewRows={previewRows}
             currency={settings.currency} start={periodStart} end={periodEnd}
             setStart={setPeriodStart} setEnd={setPeriodEnd}
             onHistory={() => { loadHistory(); setShowHistoryModal(true) }}
-            onGenerate={handleTryGenerate} generating={loadingPreview}
+            onGenerate={handleTryGenerate} generating={loadingPreview || sendingSlips} automaticDelivery={autoSendAfterCalculation}
             onNavigate={changerOnglet}
             onEmployee={id => { setSelectedEmployeeId(id); changerOnglet('profiles') }}
             issues={[...preCheckResults.blockers, ...preCheckResults.warnings]}
           />}
           {integre && activeTab === 'preview' && <div className="pw-toolbar">
             <button className="paie-btn" onClick={() => { loadHistory(); setShowHistoryModal(true) }}><History size={17}/>Historique</button>
-            <button className="paie-btn paie-btn-principal" onClick={handleTryGenerate} disabled={loadingPreview || !employees.length}><Eye size={17}/>{loadingPreview ? 'Calcul en cours…' : 'Vérifier et calculer les bulletins'}</button>
+            <button className="paie-btn paie-btn-principal" onClick={handleTryGenerate} disabled={loadingPreview || !employees.length}><Eye size={17}/>{loadingPreview ? 'Calcul en cours…' : autoSendAfterCalculation ? 'Calculer et envoyer les bulletins' : 'Vérifier et calculer les bulletins'}</button>
           </div>}
           {activeTab !== 'preparation' && <details className="pw-help"><summary>Comment préparer la paie ?</summary><p>Configurez les paramètres et les profils, vérifiez les primes et les variables, puis calculez et contrôlez les bulletins avant envoi.</p></details>}
 
@@ -1717,7 +1724,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           {/* ═══ ONGLET PREVIEW ═══ */}
           {activeTab === 'preview' && (
             <div className="pw-calculated-slips">
-              <div className="pw-slip-guide"><h3>Calculer n’est pas encore publier</h3><ol><li><strong>Contrôler</strong><span>Relisez chaque montant et les éléments utilisés.</span></li><li><strong>Télécharger</strong><span>Le PDF ou Excel reste un document de contrôle.</span></li><li><strong>Publier</strong><span>Envoyer rend la fiche consultable par le salarié, sans transférer d’argent.</span></li></ol><details><summary>Brut, net et coût employeur : quelle différence ?</summary><p>Le brut est la rémunération avant les déductions salariales. Le net est le montant à verser après les retenues, cotisations salariales et impôt calculés. Le coût employeur ajoute au brut les charges patronales calculées. Les totaux ci-dessous additionnent uniquement les fiches de ce calcul, pas l’historique.</p></details></div>
+              <div className="pw-slip-guide"><h3>{autoSendAfterCalculation ? 'Ce calcul déclenchera l’envoi des fiches vérifiées' : 'Calculer n’est pas encore publier'}</h3><ol><li><strong>Contrôler</strong><span>{autoSendAfterCalculation ? 'Vérifiez les profils, variables et règles avant de lancer le calcul.' : 'Relisez chaque montant et les éléments utilisés.'}</span></li><li><strong>Télécharger</strong><span>Le PDF ou Excel reste un document de contrôle.</span></li><li><strong>{autoSendAfterCalculation ? 'Envoi automatique' : 'Publier'}</strong><span>{autoSendAfterCalculation ? 'Après le calcul et les contrôles, toutes les fiches du lot deviennent consultables, sans paiement.' : 'Envoyer rend la fiche consultable par le salarié, sans transférer d’argent.'}</span></li></ol><details><summary>Brut, net et coût employeur : quelle différence ?</summary><p>Le brut est la rémunération avant les déductions salariales. Le net est le montant à verser après les retenues, cotisations salariales et impôt calculés. Le coût employeur ajoute au brut les charges patronales calculées. Les totaux ci-dessous additionnent uniquement les fiches de ce calcul, pas l’historique.</p></details></div>
               <div style={S.summaryTopGrid}>
                 <div style={S.summaryTopCard}><DollarSign size={18} color={P.vert} /><div><div style={S.summaryTopValue}>{previewRows.length ? fmt(summary.totalGross) : '—'}</div><div style={S.summaryTopLabel}>Total brut</div></div></div>
                 <div style={S.summaryTopCard}><Wallet size={18} color={P.ambre} /><div><div style={S.summaryTopValue}>{previewRows.length ? fmt(summary.totalNet) : '—'}</div><div style={S.summaryTopLabel}>Total net</div></div></div>
@@ -1966,7 +1973,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           )}
 
         </div>
-      </div>
+      </fieldset>
     </>
   )
 }

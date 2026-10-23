@@ -272,7 +272,7 @@ it('35. la devise d’un bulletin ne s’invente jamais', () => {
   // « || 'XAF' » faisait de toute entreprise une entreprise camerounaise
   expect(fiches).not.toContain("currency: settings.currency || 'XAF'")
   expect(fiches).toContain('CurrencyService.resolveCurrency({')
-  expect(fiches).toContain('const deviseDesBulletins')
+  expect(fiches).toContain('currency: CurrencyService.resolveCurrency({ enterprise: enterpriseData, settings: payrollSettings })')
   // et l'envoi groupé s'arrête net plutôt que de produire un bulletin faux
-  expect(fiches).toContain('if (!deviseDesBulletins)')
+  expect(lire('src/services/payrollDelivery.js')).toContain('if (!payload.currency')
 })

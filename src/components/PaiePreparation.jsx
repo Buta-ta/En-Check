@@ -35,7 +35,7 @@ function formatPeriod(start, end) {
   const format = date => /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${date}T12:00:00Z`)) : '—'
   return `${format(start)} — ${format(end)}`
 }
-export default function PaiePreparation({ employees, profiles, previewRows, currency, start, end, setStart, setEnd, onHistory, onGenerate, onNavigate, onEmployee, generating, issues = [] }) {
+export default function PaiePreparation({ employees, profiles, previewRows, currency, start, end, setStart, setEnd, onHistory, onGenerate, onNavigate, onEmployee, generating, automaticDelivery = false, issues = [] }) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const { rows, ready, total } = useMemo(() => resumePreparation(employees, profiles), [employees, profiles])
@@ -75,7 +75,7 @@ export default function PaiePreparation({ employees, profiles, previewRows, curr
         <div className="pw-issues">{groups.map(group => <div className="pw-issue-person" key={group.key}><span className="pw-issue-dot" aria-hidden="true"/><div><h4>{group.name}</h4><ul>{group.reasons.map((reason, i) => <li key={i}>{reason}</li>)}</ul></div></div>)}</div>
         {issues.length > 0 && <button className="pw-text-action" onClick={() => onNavigate('profiles')}>Vérifier les profils <ArrowRight size={15}/></button>}
         <details className="pw-review-help"><summary><CircleHelp size={15}/>Comprendre ces contrôles</summary><p>Un profil prêt concerne sa base salariale. Vérifiez aussi les variables et les règles fiscales. Le numéro social et la date d’embauche se complètent dans la fiche Employé.</p></details>
-        <div className="pw-review-actions"><button className="paie-btn paie-btn-principal" onClick={onGenerate} disabled={generating || !total}><FileText size={17}/><span>{generating ? 'Calcul en cours…' : 'Vérifier et calculer'}</span><ArrowRight size={17}/></button><button className="paie-btn pw-import-btn" onClick={() => onNavigate('imports')}><Upload size={17}/><span>Importer les variables</span></button></div>
+        <div className="pw-review-actions"><button className="paie-btn paie-btn-principal" onClick={onGenerate} disabled={generating || !total}><FileText size={17}/><span>{generating ? 'Calcul en cours…' : automaticDelivery ? 'Calculer et envoyer' : 'Vérifier et calculer'}</span><ArrowRight size={17}/></button><button className="paie-btn pw-import-btn" onClick={() => onNavigate('imports')}><Upload size={17}/><span>Importer les variables</span></button></div>
       </aside>
     </div>
     <div className="pw-graphs">
