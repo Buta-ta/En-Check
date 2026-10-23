@@ -720,8 +720,8 @@ class TaxationService {
 
   /**
    * 🔒 À appeler là où un bulletin devient OFFICIEL : impression, envoi,
-   *    clôture de paie. Aujourd'hui cet endroit n'existe pas encore (l'écran
-   *    salarié reste à construire) — le filet est donc prêt, et il attend.
+   *    clôture de paie. Contrat : ne renvoie rien en cas de succès ; lève
+   *    une erreur en cas de refus. L'appelant doit intercepter cette erreur.
    */
   static verifierAvantRemise(bulletin) {
     if (bulletin?.impot_a_verifier) {
