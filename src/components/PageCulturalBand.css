@@ -22,3 +22,8 @@
   .ec-cultural-top[data-cultural-motif='aso-oke'] { height: 32px; }
   .ec-cultural-bottom[data-cultural-motif='aso-oke'] { height: 20px; }
 }
+
+.ec-cultural-band[data-cultural-motif='retards-tissage'] { background-image: url('/images/retards-tissage.webp'); }
+.ec-cultural-top[data-cultural-motif='retards-tissage'] { height: 40px; }
+.ec-cultural-bottom[data-cultural-motif='retards-tissage'] { height: 24px; }
+@media(max-width:650px) { .ec-cultural-top[data-cultural-motif='retards-tissage'] { height:32px; } .ec-cultural-bottom[data-cultural-motif='retards-tissage'] { height:20px; } }

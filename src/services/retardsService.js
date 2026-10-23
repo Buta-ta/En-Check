@@ -67,7 +67,7 @@ export function construireRetards (lignesSql, holidaysByEnterprise = {}) {
         heureArrivee: ligne.heure_prevue,
         heurePointage: ligne.heure_arrivee,
         retardMinutes: Number(ligne.retard_minutes) || 0,
-        tolerance: Number(ligne.tolerance_minutes) || 15,
+        tolerance: Number(ligne.tolerance_minutes ?? 15),
         sourceHoraire: SOURCES_SQL_VERS_BADGE[ligne.grille_source] || 'entreprise',
       })
     } else {

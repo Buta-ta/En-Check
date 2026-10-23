@@ -6,6 +6,7 @@ import './PageCulturalBand.css'
 export function culturalMotifForPath(pathname = '') {
   const page = pathname.split(/[?#]/)[0].split('/').filter(Boolean)[0]
   if (page === 'heures-supplementaires') return 'aso-oke'
+  if (page === 'retards') return 'retards-tissage'
   if (page === 'pointages') return 'adinkra'
   if (page === 'pauses') return 'lesotho'
   if (page === 'employes') return 'zoulou'
