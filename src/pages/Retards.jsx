@@ -42,6 +42,8 @@ export default function Retards() {
   const [retards, setRetards] = useState([])
   const [stats, setStats] = useState(construireRetards([]).stats)
   const [loading, setLoading] = useState(true)
+  const [introPending, setIntroPending] = useState(true)
+  const finishIntro = useCallback(() => setIntroPending(false), [])
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [rulesOpen, setRulesOpen] = useState(false)
@@ -348,7 +350,7 @@ export default function Retards() {
           <div className="rt-state" role="status">
             Vérification de l’accès…
           </div>
-        ) : loading || error ? (
+        ) : loading || error || introPending ? (
           <>
             <div className="rt-title-row">
               <div>
@@ -374,7 +376,11 @@ export default function Retards() {
                 </>
               ) : (
                 <>
-                  <RetardsLoadingScreen />
+                  <RetardsLoadingScreen
+                    onMinimumDone={introPending ? finishIntro : undefined}
+                    onSkip={introPending ? finishIntro : undefined}
+                    dataReady={!loading}
+                  />
                 </>
               )}
             </div>

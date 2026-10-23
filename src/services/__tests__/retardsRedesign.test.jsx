@@ -82,7 +82,7 @@ function rpcResponse(result) {
 let host, root
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
-  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] })
   vi.setSystemTime(new Date('2026-10-23T12:00:00Z'))
   mock.profiles = []
   mock.allowed = true
@@ -108,7 +108,11 @@ afterEach(async () => {
   vi.useRealTimers()
   vi.restoreAllMocks()
 })
-async function mount() {
+async function skipIntroIfReady() {
+  const button = host.querySelector('.rt-arrival-skip')
+  if (button && !button.disabled) await act(async () => button.click())
+}
+async function mount(skipIntro = true) {
   await act(async () =>
     root.render(
       <MemoryRouter>
@@ -116,6 +120,7 @@ async function mount() {
       </MemoryRouter>,
     ),
   )
+  if (skipIntro) await skipIntroIfReady()
 }
 async function click(label) {
   const el = [...host.querySelectorAll('button')].find(
@@ -123,6 +128,7 @@ async function click(label) {
   )
   expect(el).toBeTruthy()
   await act(async () => el.click())
+  await skipIntroIfReady()
 }
 
 it('renders SQL times and a zero tolerance faithfully, without another schedule calculation', async () => {
@@ -266,4 +272,38 @@ it('loads the real employee photo after the SQL result without changing lateness
     '/profile-a.jpg',
   )
   expect(host.querySelector('.rt-summary').textContent).toContain('12 min')
+})
+
+it('keeps the first ready result behind the intro, but does not repeat it on period changes', async () => {
+  await mount(false)
+  expect(host.querySelector('.rt-summary')).toBeNull()
+  expect(host.querySelector('.rt-arrival-skip').disabled).toBe(false)
+  expect(host.textContent).toContain('Les arrivées sont prêtes')
+  await click('Passer l’animation')
+  expect(host.querySelector('.rt-summary')).not.toBeNull()
+  await act(async () =>
+    [...host.querySelectorAll('button')]
+      .find((button) => button.textContent === 'Semaine')
+      .click(),
+  )
+  expect(host.querySelector('.rt-summary')).not.toBeNull()
+  expect(host.querySelector('.rt-arrival-skip')).toBeNull()
+})
+
+it('never reveals results merely because the six-second intro has expired', async () => {
+  let release
+  const pending = new Promise((resolve) => {
+    release = resolve
+  })
+  mock.rpc.mockImplementationOnce(() => {
+    const q = { order: () => q, range: () => pending }
+    return q
+  })
+  await mount(false)
+  expect(host.querySelector('.rt-arrival-skip').disabled).toBe(true)
+  await act(async () => vi.advanceTimersByTime(6000))
+  expect(host.querySelector('.rt-summary')).toBeNull()
+  expect(host.querySelector('.rt-run-loader')).not.toBeNull()
+  await act(async () => release({ data: [line()] }))
+  expect(host.querySelector('.rt-summary')).not.toBeNull()
 })

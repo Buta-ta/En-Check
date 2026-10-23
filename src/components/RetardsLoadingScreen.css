@@ -24,3 +24,5 @@
    No partial cutout is shown if an image fails or has not finished loading. */
 @media(prefers-reduced-motion:reduce){.rt-arrival-art *{animation:none!important;transition:none!important}.rt-arrival-art .rt-arrival-motion{display:none}.rt-arrival-art .rt-arrival-approved{opacity:1}}
 @media(max-width:400px){.rt-run-loader{margin:16px auto;border-radius:12px}.rt-arrival-caption{padding:14px 12px 18px}.rt-run-loader h2{font-size:15px}}
+
+.rt-run-loader .rt-arrival-skip{margin-top:12px;font-size:12px;border-radius:20px;padding:8px 16px;min-height:38px}
