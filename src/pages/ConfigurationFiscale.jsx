@@ -1,3 +1,5 @@
+import PaieDrawer from '../components/PaieDrawer'
+import { PaieFiscalGuide, PaieCountrySummary, PaieRulesSummary, PaieSectionIntro } from '../components/PaieInteriorSections'
 // src/pages/ConfigurationFiscale.jsx
 
 import { useState, useEffect, useMemo } from 'react'
@@ -48,6 +50,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
   const { darkMode } = useTheme()
   const S = stylesPaie(darkMode)
   const P = palettePaie(darkMode)
+  const [showCountryDrawer, setShowCountryDrawer] = useState(false)
   const [admin, setAdmin] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -727,7 +730,8 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
       `}</style>
 
       <div
-        className="fiscal-volet"
+        className="fiscal-volet paie-page"
+        data-theme={darkMode ? 'dark' : 'light'}
         style={integre ? { width: '100%' } : { minHeight: '100vh', background: P.fond, width: '100%' }}
       >
         <div style={integre ? S.conteneurIntegre : S.container}>
@@ -793,67 +797,10 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
             <div className="pw-graphs"><CarteGraphique titre="Taux par tranche" sousTitre="Barème configuré — ce n’est pas un taux effectif sur le brut" darkMode={darkMode}><BarresTranches tranches={taxBrackets} darkMode={darkMode}/></CarteGraphique></div>
           </>}
           {(!integre || activeTab === 'pays') && (<>
-          <div style={S.infoBar}>
-            <Info size={16} color={P.ambre} style={{ flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <p style={S.infoTitle}>À quoi sert cette page ?</p>
-              <p style={S.infoText}>
-                Cette page permet de définir les <strong>cotisations sociales</strong>, le <strong>barème fiscal</strong> et les
-                <strong> règles de calcul</strong> utilisées dans les fiches de paie.  
-                Les montants saisis ici seront exploités dans le calcul du <strong>revenu imposable</strong>, de l’
-                <strong>impôt</strong>, des <strong>retenues sociales</strong> et du <strong>net à payer</strong>.
-              </p>
-            </div>
-          </div>
-
-          <div style={S.explainGrid} className="fiscal-grid-2">
-            <div style={S.explainCard}>
-              <div style={S.explainHeader}>
-                <Shield size={16} color={P.vert} />
-                <span style={S.explainTitle}>Cotisations sociales</span>
-              </div>
-              <p style={S.explainText}>
-                Ce sont les retenues ou charges calculées sur le salaire brut.  
-                Elles peuvent être payées par le salarié, l’employeur, ou les deux.
-              </p>
-              <ul style={S.explainList}>
-                <li>Part salariale = retenue sur le bulletin</li>
-                <li>Part patronale = charge entreprise</li>
-                <li>Base de calcul = généralement le salaire brut</li>
-              </ul>
-            </div>
-
-            <div style={S.explainCard}>
-              <div style={S.explainHeader}>
-                <Percent size={16} color={P.indigo} />
-                <span style={S.explainTitle}>Barème fiscal</span>
-              </div>
-              <p style={S.explainText}>
-                Il s’agit des tranches d’imposition appliquées au revenu imposable.  
-                Chaque tranche définit un seuil et un taux.
-              </p>
-              <ul style={S.explainList}>
-                <li>Tranche 1 : revenu de X à Y</li>
-                <li>Tranche 2 : revenu de Y à Z</li>
-                <li>Le calcul est progressif</li>
-              </ul>
-            </div>
-          </div>
-
-          <div style={S.explainWide}>
-            <div style={S.explainHeader}>
-              <BadgeHelp size={16} color={P.ambre} />
-              <span style={S.explainTitle}>Comment se fait le calcul ?</span>
-            </div>
-            <p style={S.explainText}>
-              <strong>1.</strong> On part du salaire brut.  
-              <strong> 2.</strong> On calcule les cotisations sociales.  
-              <strong> 3.</strong> On applique les charges déductibles et abattements pour obtenir le revenu imposable.  
-              <strong> 4.</strong> On applique le barème fiscal.  
-              <strong> 5.</strong> On obtient le net à payer.
-            </p>
-          </div>
-
+          <PaieFiscalGuide />
+          <PaieCountrySummary country={pendingCountryCode} label={pendingFiscalCountryLabel || selectedCountryName} currency={pendingCurrency} onEdit={() => setShowCountryDrawer(true)} />
+          {showCountryDrawer && <PaieDrawer title="Pays, libellé et devise" onClose={() => setShowCountryDrawer(false)} busy={saving} help="Le pays propose une devise. Le libellé change seulement le texte affiché. Enregistrez pour appliquer vos choix." example="Pour le Bénin, la devise suggérée est XOF. Réinitialiser la devise restaure cette suggestion sans convertir les montants.">
+          <div className="pi-country-form"><header><h3>Pays, libellé & devise</h3><button onClick={() => setShowCountryDrawer(false)} disabled={saving}>Fermer</button></header>
           <div className="fiscal-grid-2" style={S.countryBar}>
             <div style={S.countryGroup}>
               <FormLabel
@@ -938,6 +885,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
             </button>
           </div>
 
+          </div></PaieDrawer>}
           </>)}
 
           {!integre && (
@@ -961,6 +909,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
           </div>
           )}
 
+          <PaieSectionIntro section={activeTab === 'preview' ? 'simulation' : activeTab}/>
           {activeTab === 'contributions' && (
             <div style={S.card} className="fiscal-card">
               <div style={S.cardHeader}>
@@ -1081,94 +1030,7 @@ export default function ConfigurationFiscale({ integre = false, ongletExterne = 
                 </button>
               </div>
 
-              <div style={S.noteBox}>
-                <Info size={14} color={P.ambre} />
-                <span style={{ color: P.texteDoux2, fontSize: 12 }}>
-                  Les règles de calcul permettent de définir comment on passe du <strong>brut</strong> au
-                  <strong> revenu imposable</strong> avant application de l’impôt.
-                </span>
-              </div>
-
-              <div className="fiscal-grid-2" style={S.rulesGrid}>
-                <div style={S.ruleItem}>
-                  <span style={S.ruleLabel}>Type d’abattement</span>
-                  <span style={S.ruleValue}>{calculationRules.abattement_type || 'none'}</span>
-                </div>
-
-                <div style={S.ruleItem}>
-                  <span style={S.ruleLabel}>Abattement (%)</span>
-                  <span style={S.ruleValue}>{calculationRules.abattement_percent || 0}%</span>
-                </div>
-
-                <div style={S.ruleItem}>
-                  <span style={S.ruleLabel}>Abattement fixe</span>
-                  <span style={S.ruleValue}>
-                    {calculationRules.abattement_fixed ? fmt(calculationRules.abattement_fixed) : '0'}
-                  </span>
-                </div>
-
-                <div style={S.ruleItem}>
-                  <span style={S.ruleLabel}>Plafond abattement</span>
-                  <span style={S.ruleValue}>
-                    {calculationRules.max_abattement ? fmt(calculationRules.max_abattement) : 'Aucun'}
-                  </span>
-                </div>
-
-                <div style={S.ruleItem}>
-                  <span style={S.ruleLabel}>Seuil minimum imposable</span>
-                  <span style={S.ruleValue}>
-                    {calculationRules.min_taxable_income ? fmt(calculationRules.min_taxable_income) : '0'}
-                  </span>
-                </div>
-
-                <div style={S.ruleItem}>
-                  <span style={S.ruleLabel}>Méthode de calcul</span>
-                  <span style={S.ruleValue}>{calculationRules.tax_calculation_method || 'progressive'}</span>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 18 }}>
-                <p style={S.customRuleTitle}>Charges déductibles</p>
-                <div style={S.noteBox}>
-                  <Info size={14} color={P.indigo} />
-                  <span style={{ color: P.texteDoux2, fontSize: 12 }}>
-                    Les charges déductibles sont retirées du brut avant le calcul de l’impôt.
-                  </span>
-                </div>
-
-                <div style={{ marginTop: 12 }}>
-                  <span style={S.ruleValue}>
-                    {calculationRules.charges_deductibles?.length
-                      ? calculationRules.charges_deductibles.join(', ')
-                      : 'Aucune'}
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 18 }}>
-                <p style={S.customRuleTitle}>Règles personnalisées</p>
-
-                {!calculationRules.custom_rules || calculationRules.custom_rules.length === 0 ? (
-                  <div style={S.noteBox}>
-                    <Info size={14} color={P.indigo} />
-                    <span style={{ color: P.texteDoux2, fontSize: 12 }}>
-                      Aucune règle personnalisée définie. Les clés réellement exploitées par le moteur doivent être documentées et cohérentes.
-                    </span>
-                  </div>
-                ) : (
-                  <div style={S.customRuleList}>
-                    {calculationRules.custom_rules.map((rule, idx) => (
-                      <div key={idx} style={S.customRuleItem}>
-                        <div>
-                          <div style={S.customRuleName}>{rule.key}</div>
-                          <div style={S.customRuleDesc}>{rule.description || 'Sans description'}</div>
-                        </div>
-                        <div style={S.customRuleValue}>{String(rule.value)}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <PaieRulesSummary rules={calculationRules} contributions={contributions} formatMoney={fmt} onEdit={() => setShowRulesModal(true)}/>
             </div>
           )}
 

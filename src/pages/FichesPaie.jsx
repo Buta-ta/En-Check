@@ -1,3 +1,4 @@
+import { PaieSectionIntro } from '../components/PaieInteriorSections'
 // src/pages/FichesPaie.jsx
 // ═══════════════════════════════════════════════════════════
 // 💰 PAGE FICHES DE PAIE V5
@@ -1027,7 +1028,8 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
       `}</style>
 
       <div
-        className="pay-volet"
+        className="pay-volet paie-page"
+        data-theme={darkMode ? 'dark' : 'light'}
         style={integre ? { width: '100%' } : { minHeight: '100vh', background: P.fond, width: '100%' }}
       >
         <div
@@ -1091,6 +1093,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
           </header>
           )}
 
+          <PaieSectionIntro section={activeTab}/>
           {integre && activeTab === 'preparation' && <PaiePreparation
             employees={employees} profiles={profiles} previewRows={previewRows}
             currency={settings.currency} start={periodStart} end={periodEnd}

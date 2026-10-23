@@ -7,6 +7,7 @@
 // qu'on n'ouvrait qu'en retenant son souffle.
 // ═══════════════════════════════════════════════════════════
 
+import PaieDrawer from './PaieDrawer'
 import { useState } from 'react'
 import {
   Save,
@@ -43,13 +44,13 @@ export function ContributionModal({ contribution, currency, onSave, onClose, sav
   })
 
   return (
-    <div style={S.modalOverlay} onClick={onClose}>
+    <PaieDrawer title="Cotisation" onClose={onClose} busy={saving} help="Définissez qui cotise, sur quelle base et à quel taux." example="À 5 % sur une base de 100 000, la cotisation vaut 5 000 avant application des plafonds.">
       <div style={S.modalContent} onClick={e => e.stopPropagation()}>
         <div style={S.modalHeader}>
           <h2 style={S.modalTitle}>
             {contribution ? 'Modifier la cotisation' : 'Nouvelle cotisation'}
           </h2>
-          <button onClick={onClose} style={S.modalCloseBtn}>
+          <button aria-label="Fermer le tiroir" disabled={saving} onClick={onClose} style={S.modalCloseBtn}>
             <X size={20} />
           </button>
         </div>
@@ -263,7 +264,7 @@ export function ContributionModal({ contribution, currency, onSave, onClose, sav
           </button>
         </div>
       </div>
-    </div>
+    </PaieDrawer>
   )
 }
 
@@ -281,13 +282,13 @@ export function BracketModal({ bracket, currency, nextOrder, onSave, onClose, sa
   })
 
   return (
-    <div style={S.modalOverlay} onClick={onClose}>
+    <PaieDrawer title="Tranche fiscale" onClose={onClose} busy={saving} help="Le taux porte sur la part du revenu comprise dans cette tranche, en mode progressif." example="Une tranche de 50 000 à 100 000 à 10 % taxe au maximum 50 000 × 10 % = 5 000.">
       <div style={S.modalContent} onClick={e => e.stopPropagation()}>
         <div style={S.modalHeader}>
           <h2 style={S.modalTitle}>
             {bracket ? 'Modifier la tranche' : 'Nouvelle tranche fiscale'}
           </h2>
-          <button onClick={onClose} style={S.modalCloseBtn}>
+          <button aria-label="Fermer le tiroir" disabled={saving} onClick={onClose} style={S.modalCloseBtn}>
             <X size={20} />
           </button>
         </div>
@@ -417,7 +418,7 @@ export function BracketModal({ bracket, currency, nextOrder, onSave, onClose, sa
           </button>
         </div>
       </div>
-    </div>
+    </PaieDrawer>
   )
 }
 
@@ -468,11 +469,11 @@ export function RulesModal({ rules, contributions, currency, onClose, onSave, sa
   }
 
   return (
-    <div style={S.modalOverlay} onClick={onClose}>
+    <PaieDrawer title="Règles de calcul" onClose={onClose} busy={saving} help="Ces réglages déterminent le revenu imposable. Vérifiez le régime applicable avant de modifier." example="Un abattement de 20 % sur 100 000 retire 20 000 de la base, sous réserve du plafond configuré.">
       <div style={{ ...S.modalContent, maxWidth: 760 }} onClick={e => e.stopPropagation()}>
         <div style={S.modalHeader}>
           <h2 style={S.modalTitle}>Modifier les règles de calcul</h2>
-          <button onClick={onClose} style={S.modalCloseBtn}>
+          <button aria-label="Fermer le tiroir" disabled={saving} onClick={onClose} style={S.modalCloseBtn}>
             <X size={20} />
           </button>
         </div>
@@ -699,7 +700,7 @@ export function RulesModal({ rules, contributions, currency, onClose, onSave, sa
           </button>
         </div>
       </div>
-    </div>
+    </PaieDrawer>
   )
 }
 
@@ -713,7 +714,7 @@ export function ConfirmModal({ title, message, confirmText, type, onCancel, onCo
     P.ambre
 
   return (
-    <div style={S.modalOverlay} onClick={onCancel}>
+    <PaieDrawer title={title} onClose={onCancel} help="Vérifiez cette action avant de confirmer. Les changements ne sont appliqués qu’après confirmation.">
       <div style={{ ...S.modalContent, maxWidth: 460 }} onClick={e => e.stopPropagation()}>
         <div style={S.confirmBox}>
           <div style={{ ...S.confirmIcon, background: `${color}20`, color }}>
@@ -730,6 +731,6 @@ export function ConfirmModal({ title, message, confirmText, type, onCancel, onCo
           </div>
         </div>
       </div>
-    </div>
+    </PaieDrawer>
   )
 }

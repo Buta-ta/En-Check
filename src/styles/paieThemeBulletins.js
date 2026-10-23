@@ -59,7 +59,7 @@ export function stylesBulletins(darkMode = true) {
   textarea: { width: '100%', padding: '12px 14px', borderRadius: 12, border: `1px solid ${p.voile6}`, background: p.voile3, color: p.texte, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', fontSize: 14 },
   toggleSection: { marginBottom: 20 },
   toggleSectionTitle: { color: p.texteDoux, fontSize: 13, fontWeight: 700, margin: '0 0 8px 0' },
-  toggleGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 8 },
+  toggleGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 8 },
   toggleItem: { display: 'flex', alignItems: 'flex-start', gap: 10, color: p.texteDoux, fontSize: 13, padding: '12px 14px', background: p.voile2, borderRadius: 12, border: `1px solid ${p.voile4}`, cursor: 'pointer' },
   checkbox: { marginTop: 2, flexShrink: 0, accentColor: p.ambre },
   toggleLabel: { display: 'block', fontWeight: 600, fontSize: 13, color: p.texteDoux },
