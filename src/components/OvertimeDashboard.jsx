@@ -1,3 +1,4 @@
+import EmployeeProfilePhoto from './EmployeeProfilePhoto'
 import PageCulturalBand from './PageCulturalBand'
 import {
   OvertimeCalculationGuide,
@@ -306,10 +307,10 @@ export default function OvertimeDashboard({
               <details key={r.employee.id} className="ot-employee">
                 <summary>
                   <span className="ot-person">
-                    <span className="ot-avatar">
-                      {r.employee.first_name?.[0]}
-                      {r.employee.last_name?.[0]}
-                    </span>
+                    <EmployeeProfilePhoto
+                      employee={r.employee}
+                      className="ot-avatar"
+                    />
                     <span>
                       {r.employee.first_name} {r.employee.last_name}
                       <small>

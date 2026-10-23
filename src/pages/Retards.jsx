@@ -1,7 +1,9 @@
+import RetardsLoadingScreen from '../components/RetardsLoadingScreen'
+import { enrichRetardPhotos } from '../services/retardsPhotos'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useTheme } from '../contexts/ThemeContext'
 import PageHeader from '../components/PageHeader'
@@ -162,6 +164,20 @@ export default function Retards() {
       if (request !== requestId.current) return
       setRetards(result.retards)
       setStats(result.stats)
+      setLoading(false)
+      // Photos are optional: do not delay result display or completion of refresh.
+      void enrichRetardPhotos(
+        result.retards,
+        lignesRetards,
+        supabase,
+        targetEnterpriseId,
+      )
+        .then((withPhotos) => {
+          if (request === requestId.current) setRetards(withPhotos)
+        })
+        .catch(() => {
+          /* Keep initials if optional enrichment fails. */
+        })
     } catch (failure) {
       console.error('Erreur chargement retards:', failure)
       if (request === requestId.current)
@@ -347,7 +363,10 @@ export default function Retards() {
               </div>
             </div>
             {filters}
-            <div className="rt-state" role={error ? 'alert' : 'status'}>
+            <div
+              className={error ? 'rt-state' : 'rt-loading-slot'}
+              role={error ? 'alert' : undefined}
+            >
               {error ? (
                 <>
                   <p>{error}</p>
@@ -355,8 +374,7 @@ export default function Retards() {
                 </>
               ) : (
                 <>
-                  <Clock className="rt-loading-icon" size={36} />
-                  <p>Lecture des pointages et du planning applicable…</p>
+                  <RetardsLoadingScreen />
                 </>
               )}
             </div>
