@@ -96,7 +96,7 @@ export default function PaieFiscalite() {
       </div>}
       <button className="paie-btn" aria-label={darkMode ? 'Mode clair' : 'Mode sombre'} onClick={toggleTheme}>{darkMode ? <Sun size={20}/> : <Moon size={20}/>}</button>
       <div className="pw-header-lower"><div className="pw-workspace-caption"><span className="pw-caption-diamond" aria-hidden="true">◆</span><div><strong>Vos équipes. Votre rythme.</strong><span>Préparer, vérifier, calculer.</span></div></div>
-      <div className="pw-shortcuts" onClickCapture={event => { if (event.target.closest('a,button') && !window.confirm('Quitter la paie ? Les saisies non enregistrées seront abandonnées.')) { event.preventDefault(); event.stopPropagation() } }}><RaccourcisPages /></div></div>
+      <div className="pw-shortcuts" onClickCapture={event => { if (event.target.closest('a,button') && !window.confirm('Quitter la paie ? Les saisies non enregistrées seront abandonnées.')) { event.preventDefault(); event.stopPropagation() } }}><RaccourcisPages excludePaths={['/paie']} /></div></div>
     </header>
     <div className="pw-bogolan pw-bogolan-top" aria-hidden="true" />
     {error ? <div className="pw-error" role="alert">{error}<button className="paie-btn" onClick={() => setRetry(n => n + 1)}>Réessayer</button></div>
