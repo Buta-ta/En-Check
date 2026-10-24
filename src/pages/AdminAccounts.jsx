@@ -12,7 +12,7 @@ import {
   filterAdminAccounts,
 } from '../services/adminAccounts'
 import './AdminAccounts.css'
-import AdminAccountRail from '../components/AdminAccountRail'
+import AdminAccountJournal from '../components/AdminAccountJournal'
 
 const roleLabel = (role) =>
   ({
@@ -218,8 +218,7 @@ export default function AdminAccounts() {
     }
   }
   return (
-    <main className={`aa-page aa-with-rail ${darkMode ? 'aa-dark' : ''}`}>
-      <AdminAccountRail />
+    <main className={`aa-page aa-register ${darkMode ? 'aa-dark' : ''}`}>
       <nav className="aa-top">
         <Link to="/dashboard">
           <ArrowLeft size={16} /> Tableau de bord
@@ -235,11 +234,11 @@ export default function AdminAccounts() {
         <PageCulturalBand pathname="/admins" />
         <header className="aa-heading">
           <div>
-            <span className="aa-eyebrow">LES ACCÈS EN CONFIANCE</span>
+            <span className="aa-eyebrow">ADMINISTRATION</span>
             <h1>
-              Administration des accès<span>.</span>
+              Comptes &amp; accès<span>.</span>
             </h1>
-            <p>Les bonnes permissions, pour les bonnes personnes.</p>
+            <p>Le registre des administrateurs.</p>
           </div>
           <Link className="aa-primary" to="/admins/gestion-existante">
             Gérer / créer un compte
@@ -250,13 +249,19 @@ export default function AdminAccounts() {
             aria-pressed={view === 'accounts'}
             onClick={() => setView('accounts')}
           >
-            Comptes administrateurs
+            Comptes
           </button>
           <button
             aria-pressed={view === 'roles'}
             onClick={() => setView('roles')}
           >
-            Rôles et permissions
+            Rôles
+          </button>
+          <button
+            aria-pressed={view === 'journal'}
+            onClick={() => setView('journal')}
+          >
+            Journal
           </button>
         </div>
         {error ? (
@@ -292,7 +297,9 @@ export default function AdminAccounts() {
                 <span>Superadmins actifs</span>
               </article>
             </div>
-            {view === 'roles' ? (
+            {view === 'journal' ? (
+              <AdminAccountJournal accounts={rows} />
+            ) : view === 'roles' ? (
               <section className="aa-panel">
                 <h2>Les rôles actuellement attribués</h2>
                 <div className="aa-role-grid">
@@ -429,6 +436,7 @@ export default function AdminAccounts() {
       >
         {selected && (
           <>
+            <PageCulturalBand pathname="/admins" placement="compact" />
             <header>
               <span className="aa-eyebrow">FICHE ADMINISTRATEUR</span>
               <button
@@ -444,7 +452,14 @@ export default function AdminAccounts() {
               <h2 id="aa-account-title">
                 {selected.first_name} {selected.last_name}
               </h2>
-              <p>{roleLabel(selected.role)}</p>
+              <p>
+                {roleLabel(selected.role)} ·{' '}
+                {enterprises.find((ent) => ent.id === selected.enterprise_id)
+                  ?.name ||
+                  (selected.role === 'super_admin'
+                    ? 'Toutes les entreprises'
+                    : 'Entreprise non renseignée')}
+              </p>
               <span
                 className={`aa-state ${selected.is_active ? 'is-active' : ''}`}
               >
@@ -602,42 +617,63 @@ export default function AdminAccounts() {
                     </form>
                   </details>
                 )}
-                <p className="aa-footnote">
-                  La révocation distante des sessions, les invitations et le
-                  dépannage délégué ne sont pas encore disponibles. Aucun état
-                  de double authentification ou de session n’est inventé.
-                </p>
-                <form onSubmit={changeStatus} className="aa-sensitive">
-                  <h3>État du compte</h3>
+                <div className="aa-security-availability">
+                  <div>
+                    <strong>Sessions</strong>
+                    <span>Gestion distante à venir</span>
+                  </div>
+                  <div>
+                    <strong>Double authentification</strong>
+                    <span>État à consulter dans Mon compte</span>
+                  </div>
+                </div>
+                <details className="aa-help">
+                  <summary>Comprendre les limites de ces actions</summary>
                   <p>
-                    Une désactivation conserve l’historique. Ce n’est pas une
-                    suppression définitive ni une garantie de révocation
-                    immédiate des jetons déjà émis.
+                    La révocation distante des sessions, les invitations et le
+                    dépannage délégué ne sont pas encore disponibles. Aucun état
+                    de double authentification ou de session n’est inventé.
                   </p>
-                  <label>
-                    Motif de l’intervention
-                    <textarea
-                      required
-                      minLength={5}
-                      maxLength={500}
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                    />
-                  </label>
-                  <button
-                    disabled={busy || selected.id === me?.id}
-                    type="submit"
-                  >
-                    {busy
-                      ? 'Enregistrement…'
-                      : selected.is_active
-                        ? 'Désactiver ce compte'
-                        : 'Réactiver ce compte'}
-                  </button>
-                  {selected.id === me?.id && (
-                    <p>Votre propre compte est protégé.</p>
-                  )}
-                </form>
+                </details>
+                <details className="aa-danger-section">
+                  <summary>
+                    État du compte{' '}
+                    <span>
+                      {selected.is_active ? 'Désactiver' : 'Réactiver'}
+                    </span>
+                  </summary>
+                  <form onSubmit={changeStatus} className="aa-sensitive">
+                    <h3>État du compte</h3>
+                    <p>
+                      Une désactivation conserve l’historique. Ce n’est pas une
+                      suppression définitive ni une garantie de révocation
+                      immédiate des jetons déjà émis.
+                    </p>
+                    <label>
+                      Motif de l’intervention
+                      <textarea
+                        required
+                        minLength={5}
+                        maxLength={500}
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                      />
+                    </label>
+                    <button
+                      disabled={busy || selected.id === me?.id}
+                      type="submit"
+                    >
+                      {busy
+                        ? 'Enregistrement…'
+                        : selected.is_active
+                          ? 'Désactiver ce compte'
+                          : 'Réactiver ce compte'}
+                    </button>
+                    {selected.id === me?.id && (
+                      <p>Votre propre compte est protégé.</p>
+                    )}
+                  </form>
+                </details>
               </section>
             )}
             {tab === 'Historique' && (
