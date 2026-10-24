@@ -17,6 +17,7 @@ import {
   uploadAdminAvatar,
 } from '../services/adminAccounts'
 import './AdminAccounts.css'
+import AdminAvatarCrop from '../components/AdminAvatarCrop'
 
 export default function MyAdminAccount() {
   const { darkMode, toggleTheme } = useTheme()
@@ -26,6 +27,7 @@ export default function MyAdminAccount() {
   const [first, setFirst] = useState(''),
     [last, setLast] = useState(''),
     [file, setFile] = useState(null)
+  const [cropSource, setCropSource] = useState(null)
   const [preview, setPreview] = useState(''),
     [tab, setTab] = useState('profile'),
     [busy, setBusy] = useState(false)
@@ -246,6 +248,7 @@ export default function MyAdminAccount() {
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
+                      disabled={busy}
                       onChange={(e) => {
                         const chosen = e.target.files?.[0]
                         if (
@@ -259,21 +262,36 @@ export default function MyAdminAccount() {
                           e.target.value = ''
                           return
                         }
-                        setFile(chosen || null)
+                        if (chosen) setCropSource(chosen)
+                        e.target.value = ''
                       }}
                     />
                   </label>
                   <small>
-                    JPG, PNG ou WebP, 2 Mo maximum. Photo publique, affichée au
-                    centre du médaillon.
+                    JPG, PNG ou WebP, 2 Mo maximum. Recadrez avant de valider.
+                    La photo sera publique après enregistrement du profil.
                   </small>
+                  {file && (
+                    <div className="aa-photo-pending">
+                      <p role="status">
+                        Nouvelle photo recadrée, pas encore enregistrée.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setFile(null)}
+                      >
+                        Annuler le changement de photo
+                      </button>
+                    </div>
+                  )}
                   <label>
                     Adresse de connexion
                     <input value={me.email || ''} readOnly />
                   </label>
                   <p className="aa-footnote">
-                    Le changement d’adresse avec double vérification et le
-                    recadrage manuel seront ajoutés dans un prochain lot.
+                    Le changement d’adresse avec double vérification sera ajouté
+                    dans un prochain lot.
                   </p>
                   <button className="aa-primary" disabled={busy}>
                     {busy ? 'Enregistrement…' : 'Enregistrer mon profil'}
@@ -399,6 +417,18 @@ export default function MyAdminAccount() {
         )}
         <PageCulturalBand pathname="/admins" placement="bottom" />
       </div>
+      {cropSource && (
+        <AdminAvatarCrop
+          file={cropSource}
+          darkMode={darkMode}
+          onCancel={() => setCropSource(null)}
+          onConfirm={(cropped) => {
+            setFile(cropped)
+            setCropSource(null)
+            setNotice('Photo prête. Enregistrez votre profil pour la publier.')
+          }}
+        />
+      )}
     </main>
   )
 }

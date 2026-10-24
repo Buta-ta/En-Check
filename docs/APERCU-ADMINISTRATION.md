@@ -27,3 +27,7 @@ Le robot de déploiement publie aussi une [prévisualisation de cette branche](h
 - [Lot 1 : interfaces, profil et état des comptes](ADMIN-COMPTES-LOT-1.md).
 - [Suite : changement de mot de passe dans la fiche](ADMIN-COMPTES-MOT-DE-PASSE.md).
 - Les migrations SQL sont versionnées mais **non appliquées au serveur**. Les fonctions restantes ne sont pas présentées comme terminées.
+
+## Nouveau : recadrage de la photo personnelle
+
+[Voir les captures et le fonctionnement du recadrage](ADMIN-PHOTO-RECADRAGE.md).
