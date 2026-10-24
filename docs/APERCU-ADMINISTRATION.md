@@ -1,6 +1,6 @@
 # Aperçu du redesign — directement sur GitHub
 
-Ces captures proviennent du **code de la PR #123**, avec des **données fictives**. Ce ne sont ni les images générées de proposition ni des comptes réels. Les champs non visibles sur mobile sont accessibles en faisant défiler la page.
+Ces captures proviennent du **code de la nouvelle version sans sidebar**, avec des **données fictives**. Ce ne sont ni les images générées de proposition ni des comptes réels. Les champs non visibles sur mobile sont accessibles en faisant défiler la page.
 
 ## Administration des accès — ordinateur
 
@@ -18,9 +18,11 @@ Ces captures proviennent du **code de la PR #123**, avec des **données fictives
 
 ## Prévisualisation interactive
 
-Le robot de déploiement publie aussi une [prévisualisation de cette branche](https://en-check-git-arena-5a6988c0-en-check-butas-projects.vercel.app). Elle nécessite les autorisations de déploiement et une connexion En-Check ; le simple accès au dépôt ne connecte pas automatiquement au compte administrateur.
+Le robot de déploiement publie le lien **Preview** dans la PR de cette version. Cette prévisualisation nécessite les autorisations de déploiement et une connexion En-Check. Les captures ci-dessus restent consultables sans connexion à l’application.
 
 **Attention : une prévisualisation peut partager le backend du site. Ne pas tester une opération sensible sur un compte réel.** Les captures ci-dessus permettent de consulter le résultat sans connexion et sans intervention sur les données.
+
+[Détails de la refonte sans sidebar](ADMIN-REGISTRE-SANS-SIDEBAR.md).
 
 ## Périmètre et activation
 

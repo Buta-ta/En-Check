@@ -323,3 +323,59 @@ it('does not echo service errors containing credentials and clears secrets on fa
     ),
   ).toBe(true)
 })
+it('renders the register without a duplicate sidebar and exposes the real journal', async () => {
+  await mount()
+  expect(host.querySelector('.aa-rail')).toBeNull()
+  expect(host.querySelector('h1').textContent).toContain('Comptes & accès')
+  await act(async () =>
+    [...host.querySelectorAll('button')]
+      .find((b) => b.textContent === 'Journal')
+      .click(),
+  )
+  expect(host.textContent).toContain('Le journal des interventions')
+  expect(host.textContent).toContain('Aucune intervention enregistrée')
+  expect(mock.from).toHaveBeenCalledWith('admin_account_events')
+})
+it('keeps sensitive actions collapsed until requested and uses the selected band in the drawer', async () => {
+  await openPasswordForm()
+  expect(host.querySelector('.aa-danger-section').open).toBe(false)
+  expect(host.querySelector('.aa-password-section').open).toBe(false)
+  expect(
+    host.querySelector('dialog [data-cultural-motif="admin-access"]'),
+  ).not.toBeNull()
+  const css = readFileSync('src/components/PageCulturalBand.css', 'utf8')
+  expect(css).toContain("url('/images/admin-bogolan-selected.webp')")
+})
+it('reports an unavailable journal without pretending it is empty and allows retry', async () => {
+  await mount()
+  const original = mock.from.getMockImplementation()
+  mock.from.mockImplementation((table) => {
+    if (table !== 'admin_account_events') return original(table)
+    const q = {
+      select: () => q,
+      order: () => q,
+      limit: async () => ({ error: { message: 'missing migration' } }),
+    }
+    return q
+  })
+  await act(async () =>
+    [...host.querySelectorAll('button')]
+      .find((b) => b.textContent === 'Journal')
+      .click(),
+  )
+  expect(
+    host.querySelector('.aa-journal [role="alert"]').textContent,
+  ).toContain('Journal indisponible')
+  expect(host.querySelector('.aa-journal').textContent).not.toContain(
+    'Aucune intervention enregistrée',
+  )
+  mock.from.mockImplementation(original)
+  await act(async () =>
+    [...host.querySelectorAll('.aa-journal button')]
+      .find((b) => b.textContent === 'Réessayer')
+      .click(),
+  )
+  expect(host.querySelector('.aa-journal').textContent).toContain(
+    'Aucune intervention enregistrée',
+  )
+})

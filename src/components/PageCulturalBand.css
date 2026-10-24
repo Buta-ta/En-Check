@@ -27,3 +27,9 @@
 .ec-cultural-top[data-cultural-motif='retards-tissage'] { height: 40px; }
 .ec-cultural-bottom[data-cultural-motif='retards-tissage'] { height: 24px; }
 @media(max-width:650px) { .ec-cultural-top[data-cultural-motif='retards-tissage'] { height:32px; } .ec-cultural-bottom[data-cultural-motif='retards-tissage'] { height:20px; } }
+
+/* Approved administration artwork. Preserve its pixels and colours in both themes. */
+.ec-cultural-band[data-cultural-motif='admin-access']{height:46px;background-color:#f3efe5;background-image:url('/images/admin-bogolan-selected.webp');background-size:auto 100%;border-radius:8px}
+.ec-cultural-bottom[data-cultural-motif='admin-access']{height:22px;margin-top:24px}
+.ec-cultural-compact[data-cultural-motif='admin-access']{height:24px;border-radius:5px;margin-bottom:16px}
+@media(max-width:650px){.ec-cultural-top[data-cultural-motif='admin-access']{height:36px}}
