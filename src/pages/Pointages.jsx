@@ -42,6 +42,10 @@ import {
 } from '../utils/timezoneUtils'
 
 import ModifierPointage from '../components/ModifierPointage'
+import useDirectPointages from '../hooks/useDirectPointages'
+import {
+  PERIODE_SONDAGE_MS, aChange, doitSonder, presenterEtat,
+} from '../utils/directPointages'
 import AnalysePointage from '../components/AnalysePointage'
 import { enrichirPropositions } from '../services/propositionsPointage'
 // import des pointages depuis une clé USB (fichier de pointeuse)
@@ -677,6 +681,7 @@ export default function Pointages() {
   const navigate = useNavigate()
   const { darkMode, toggleTheme } = useTheme()
   const loadingRef = useRef(false)
+  const rechargementEnAttente = useRef(false)
   const loadPointagesRef = useRef(null)
 
   // Filtres persistés dans l'URL
@@ -925,35 +930,82 @@ export default function Pointages() {
     loadPointagesRef.current = loadPointages
   })
 
-  // Temps réel : mise à jour immédiate quand une pause réelle ou un pointage est déclenché
+  const recharger = useCallback(() => {
+    if (loadPointagesRef.current) loadPointagesRef.current()
+  }, [])
+
+  // ── LE DIRECT ───────────────────────────────────────────────
+  // ⚠️ Un canal PAR TABLE (voir useDirectPointages). L'ancien code
+  //    n'en ouvrait qu'un pour les deux : une table non publiée
+  //    faisait refuser le canal entier, en silence. Les pointages
+  //    eux-mêmes n'arrivaient plus.
+  const { etat: etatDirect } = useDirectPointages({
+    enterpriseId: selectedEntrepriseId,
+    onChangement: recharger,
+    actif: !!admin,
+  })
+
+  // ── RETOUR SUR L'ONGLET ─────────────────────────────────────
+  // Le cas le plus fréquent : l'écran est resté ouvert, l'ordinateur
+  // s'est mis en veille, la connexion est tombée. On recharge dès
+  // qu'on revient dessus — sans attendre le filet de sécurité.
   useEffect(() => {
     if (!admin) return undefined
-    let debounceTimer = null
-    const scheduleReload = () => {
-      if (debounceTimer) window.clearTimeout(debounceTimer)
-      debounceTimer = window.setTimeout(() => {
-        if (loadPointagesRef.current) loadPointagesRef.current()
-      }, 350)
+    const surVisibilite = () => {
+      if (document.visibilityState === 'visible') recharger()
     }
-    const channel = supabase
-      .channel(`pointages_live_${selectedDate}_${selectedEntrepriseId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'encheck_pauses' },
-        scheduleReload
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'attendances' },
-        scheduleReload
-      )
-      .subscribe()
+    document.addEventListener('visibilitychange', surVisibilite)
+    return () => document.removeEventListener('visibilitychange', surVisibilite)
+  }, [admin, recharger])
 
-    return () => {
-      if (debounceTimer) window.clearTimeout(debounceTimer)
-      supabase.removeChannel(channel)
+  // ── LE FILET DE SÉCURITÉ ────────────────────────────────────
+  // Toutes les 30 s, une requête minuscule (deux horodatages, ~200
+  // octets) : « est-ce que quelque chose a bougé ? ». Le
+  // rechargement complet n'a lieu que si la réponse est oui.
+  //
+  // C'est ce qui couvre ce que le temps réel ne couvrira jamais :
+  // le rejeu des pointages faits hors-ligne, qui arrivent en base
+  // avec une heure passée, parfois plusieurs heures plus tard.
+  const empreinteRef = useRef(null)
+  useEffect(() => {
+    if (!admin) return undefined
+    let vivant = true
+
+    const sonde = async () => {
+      if (!doitSonder(document.visibilityState)) return
+      try {
+        const filtre = selectedEntrepriseId !== 'all' ? selectedEntrepriseId : null
+        const dernierPointage = supabase
+          .from('attendances').select('created_at')
+          .order('created_at', { ascending: false }).limit(1)
+        const dernierePause = supabase
+          .from('encheck_pauses').select('updated_at')
+          .order('updated_at', { ascending: false }).limit(1)
+        const [a, b] = await Promise.all([
+          filtre ? dernierPointage.eq('enterprise_id', filtre) : dernierPointage,
+          filtre ? dernierePause.eq('enterprise_id', filtre) : dernierePause,
+        ])
+        if (!vivant) return
+        const maintenant = {
+          attendances: a.data?.[0]?.created_at || null,
+          pauses: b.data?.[0]?.updated_at || null,
+        }
+        if (aChange(empreinteRef.current, maintenant)) {
+          empreinteRef.current = maintenant
+          recharger()
+        }
+      } catch {
+        /* réseau absent : la prochaine sonde réessaiera, sans rien casser */
+      }
     }
-  }, [admin, selectedDate, selectedEntrepriseId])
+
+    sonde()
+    const minuteur = window.setInterval(sonde, PERIODE_SONDAGE_MS)
+    return () => {
+      vivant = false
+      window.clearInterval(minuteur)
+    }
+  }, [admin, selectedEntrepriseId, recharger])
 
   const loadEntreprises = async (adminData) => {
     if (adminData.role === 'super_admin') {
@@ -964,7 +1016,13 @@ export default function Pointages() {
   }
 
   const loadPointages = async () => {
-    if (loadingRef.current) return
+    // ⚠️ Un événement temps réel qui tombe PENDANT un chargement ne doit
+    //    pas être jeté : deux badges rapprochés sur un réseau lent, et le
+    //    second n'apparaissait jamais. On le met en attente, on le rejoue.
+    if (loadingRef.current) {
+      rechargementEnAttente.current = true
+      return
+    }
     if (!state.isOnline) {
       toast.error('Impossible de charger — vous êtes hors-ligne')
       return
@@ -1365,6 +1423,12 @@ export default function Pointages() {
       toast.error('Erreur lors du chargement')
     }
     loadingRef.current = false
+    if (rechargementEnAttente.current) {
+      rechargementEnAttente.current = false
+      // une seule reprise : si des événements arrivent encore pendant
+      // celle-ci, le cycle suivant s'en chargera
+      window.setTimeout(() => loadPointagesRef.current?.(), 0)
+    }
   }
 
   const createMissingConflicts = async (attendances, absences, existingConflicts) => {
@@ -1828,6 +1892,45 @@ export default function Pointages() {
             onToggleAlerts={() => dispatch({ type: 'TOGGLE_ALERTS_PANEL' })}
             onShareWhatsApp={handleShareDailyReport}
           />
+
+          {/* ═══ TÉMOIN DU DIRECT ═══
+              Il ne dit pas « ça devrait marcher », il dit CE QUI SE PASSE.
+              Un écran qui se croit en direct et ne l'est pas, c'est le
+              défaut qui nous a coûté plusieurs jours de doute. */}
+          <div
+            data-testid="pointages-etat-direct"
+            data-etat={etatDirect}
+            title={presenterEtat(etatDirect).aide}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              alignSelf: 'flex-start',
+              margin: '0 0 10px 2px',
+              padding: '5px 11px 5px 9px',
+              borderRadius: 999,
+              fontSize: 11, fontWeight: 700, letterSpacing: 0.2,
+              background: etatDirect === 'direct'
+                ? 'var(--pt-good-soft)'
+                : etatDirect === 'fige'
+                  ? 'var(--pt-danger-soft)'
+                  : 'var(--pt-copper-soft)',
+              color: etatDirect === 'direct'
+                ? 'var(--pt-good)'
+                : etatDirect === 'fige'
+                  ? 'var(--pt-danger)'
+                  : 'var(--pt-copper-strong)',
+              border: '1px solid var(--pt-line)',
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: 7, height: 7, borderRadius: 999,
+                background: 'currentColor',
+                opacity: etatDirect === 'direct' ? 1 : 0.55,
+              }}
+            />
+            {presenterEtat(etatDirect).libelle}
+          </div>
 
           {/* ═══ 4 VRAIES CARTES KPI AVEC ICÔNES SVG CULTURELLES & SPARKLINES ═══ */}
           <PointagesExecutiveKpis
