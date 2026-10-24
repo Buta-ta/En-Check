@@ -202,3 +202,124 @@ it('preserves the form and shows a server refusal instead of claiming a profile 
   expect(host.textContent).toContain('migration sécurisée')
   expect(host.textContent).not.toContain('Votre profil a été enregistré')
 })
+async function openPasswordForm() {
+  await mount()
+  await act(async () => host.querySelectorAll('.aa-row')[1].click())
+  await act(async () =>
+    [...host.querySelectorAll('dialog button')]
+      .find((button) => button.textContent === 'Sécurité')
+      .click(),
+  )
+}
+async function fillPasswordForm(
+  password = 'Secure-Example-123!',
+  confirmation = password,
+) {
+  const details = host.querySelector('.aa-password-section')
+  if (!details.open)
+    await act(async () => details.querySelector('summary').click())
+  const form = host.querySelector('.aa-password-form')
+  const fields = form.querySelectorAll('input[type="password"]')
+  await act(async () => {
+    for (const [field, value] of [
+      [fields[0], password],
+      [fields[1], confirmation],
+    ]) {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        'value',
+      ).set.call(field, value)
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    const reason = form.querySelector('textarea')
+    Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      'value',
+    ).set.call(reason, 'Support demandé par le titulaire')
+    reason.dispatchEvent(new Event('input', { bubbles: true }))
+    form.querySelector('[type="checkbox"]').click()
+  })
+  return form
+}
+it('rejects mismatched credentials before any reset request', async () => {
+  await openPasswordForm()
+  const form = await fillPasswordForm(
+    'Secure-Example-123!',
+    'Different-Example-123!',
+  )
+  await act(async () =>
+    form.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    ),
+  )
+  expect(mock.rpc).not.toHaveBeenCalled()
+  expect(host.querySelector('.aa-notice').textContent).toContain('identiques')
+})
+it('targets only the selected account, locks duplicate requests and clears secrets after success', async () => {
+  await openPasswordForm()
+  let release
+  mock.rpc.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        release = resolve
+      }),
+  )
+  const form = await fillPasswordForm()
+  await act(async () => {
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  })
+  expect(mock.rpc).toHaveBeenCalledTimes(1)
+  expect(mock.rpc).toHaveBeenCalledWith('encheck_account_password', {
+    p_admin_id: 'member',
+    p_password: 'Secure-Example-123!',
+    p_reason: 'Support demandé par le titulaire',
+  })
+  await act(async () => release({ error: null }))
+  expect(
+    [...form.querySelectorAll('input[type="password"]')].every(
+      (input) => input.value === '',
+    ),
+  ).toBe(true)
+  expect(host.querySelector('.aa-notice').textContent).toContain(
+    'intervention enregistrée',
+  )
+})
+it('does not echo service errors containing credentials and clears secrets on failure and navigation', async () => {
+  await openPasswordForm()
+  mock.rpc.mockResolvedValue({
+    error: { message: 'Server detail Secure-Example-123!' },
+  })
+  let form = await fillPasswordForm()
+  await act(async () =>
+    form.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    ),
+  )
+  expect(host.querySelector('.aa-notice').textContent).toContain(
+    'Modification non confirmée',
+  )
+  expect(host.textContent).not.toContain('Server detail')
+  expect(
+    [...form.querySelectorAll('input[type="password"]')].every(
+      (input) => input.value === '',
+    ),
+  ).toBe(true)
+  await fillPasswordForm()
+  await act(async () =>
+    [...host.querySelectorAll('dialog button')]
+      .find((button) => button.textContent === 'Profil')
+      .click(),
+  )
+  await act(async () =>
+    [...host.querySelectorAll('dialog button')]
+      .find((button) => button.textContent === 'Sécurité')
+      .click(),
+  )
+  form = host.querySelector('.aa-password-form')
+  expect(
+    [...form.querySelectorAll('input[type="password"]')].every(
+      (input) => input.value === '',
+    ),
+  ).toBe(true)
+})

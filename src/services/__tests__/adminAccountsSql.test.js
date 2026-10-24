@@ -126,3 +126,159 @@ it('blocks self deactivation and protects the last superadmin through direct leg
     db.query('delete from admins where id=$1', [superId]),
   ).rejects.toThrow('dernier superadmin')
 })
+
+it('installs the password wrapper without anonymous access', async () => {
+  await db.exec('reset role')
+  await db.exec(`create table password_service_calls(target uuid primary key, revisions int not null default 0);
+ create function public.encheck_admin_definir_mot_de_passe(p_admin_id uuid,p_mot_de_passe text) returns void language plpgsql as $$
+ begin
+   if p_mot_de_passe='FailService-12345!' then raise exception 'Sensitive service detail: %',p_mot_de_passe; end if;
+   insert into password_service_calls values(p_admin_id,1) on conflict(target) do update set revisions=password_service_calls.revisions+1;
+ end $$;`)
+  const migration = readFileSync(
+    'supabase/migrations/20261024000002_admin_account_password.sql',
+    'utf8',
+  )
+  await db.exec(migration)
+  await db.exec(migration)
+  expect(
+    (
+      await db.query(
+        "select has_function_privilege('anon','encheck_account_password(uuid,text,text)','execute') as allowed",
+      )
+    ).rows[0].allowed,
+  ).toBe(false)
+})
+it('denies ordinary users, self reset, missing target, weak or oversized passwords and secrets in the reason', async () => {
+  await actor(memberId)
+  await expect(
+    db.query('select encheck_account_password($1,$2,$3)', [
+      otherId,
+      'Secure-Example-123!',
+      'Support requested',
+    ]),
+  ).rejects.toThrow()
+  await actor(superId)
+  await expect(
+    db.query('select encheck_account_password($1,$2,$3)', [
+      superId,
+      'Secure-Example-123!',
+      'Support requested',
+    ]),
+  ).rejects.toThrow('Mon compte')
+  await expect(
+    db.query('select encheck_account_password($1,$2,$3)', [
+      otherId,
+      'short',
+      'Support requested',
+    ]),
+  ).rejects.toThrow('12 à 72')
+  await expect(
+    db.query('select encheck_account_password($1,$2,$3)', [
+      otherId,
+      'é'.repeat(40),
+      'Support requested',
+    ]),
+  ).rejects.toThrow('72 octets')
+  await expect(
+    db.query('select encheck_account_password($1,$2,$3)', [
+      otherId,
+      'Secure-Example-123!',
+      'Here is Secure-Example-123!',
+    ]),
+  ).rejects.toThrow('motif')
+  await expect(
+    db.query('select encheck_account_password($1,$2,$3)', [
+      '99999999-9999-4999-8999-999999999999',
+      'Secure-Example-123!',
+      'Support requested',
+    ]),
+  ).rejects.toThrow()
+})
+it('records the target and reason but never the supplied password in the new audit journal', async () => {
+  await actor(superId)
+  await db.query('select encheck_account_password($1,$2,$3)', [
+    memberId,
+    'Secure-Example-123!',
+    'Support requested',
+  ])
+  const events = (
+    await db.query(
+      "select * from admin_account_events where action='password_changed'",
+    )
+  ).rows
+  expect(events).toHaveLength(1)
+  expect(events[0]).toMatchObject({
+    actor_id: superId,
+    target_id: memberId,
+    reason: 'Support requested',
+  })
+  expect(JSON.stringify(events)).not.toContain('Secure-Example-123!')
+})
+it('rolls back the underlying change when audit insertion fails and hides legacy secret-bearing errors', async () => {
+  await db.exec('reset role')
+  const before = (await db.query('select * from password_service_calls')).rows
+  await db.exec(
+    "alter table admin_account_events add constraint test_audit_failure check(action<>'password_changed') not valid",
+  )
+  await actor(superId)
+  await expect(
+    db.query('select encheck_account_password($1,$2,$3)', [
+      memberId,
+      'Secure-Example-456!',
+      'Support requested',
+    ]),
+  ).rejects.toThrow()
+  await db.exec('reset role')
+  expect((await db.query('select * from password_service_calls')).rows).toEqual(
+    before,
+  )
+  await db.exec(
+    'alter table admin_account_events drop constraint test_audit_failure',
+  )
+  await actor(superId)
+  let message = ''
+  try {
+    await db.query('select encheck_account_password($1,$2,$3)', [
+      memberId,
+      'FailService-12345!',
+      'Support requested',
+    ])
+  } catch (error) {
+    message = error.message
+  }
+  expect(message).toContain('refusé')
+  expect(message).not.toContain('FailService-12345!')
+})
+it('does not record success if a legacy service returns a failure or ambiguous result instead of throwing', async () => {
+  await db.exec(
+    'reset role; drop function public.encheck_admin_definir_mot_de_passe(uuid,text)',
+  )
+  const before = (
+    await db.query('select * from password_service_calls order by target')
+  ).rows
+  for (const response of [
+    'null',
+    'false',
+    '{"ok":false}',
+    '{"message":"unknown"}',
+    '{"ok":true,"success":false}',
+    '{"success":true,"error":"failed"}',
+  ]) {
+    await db.exec(`create or replace function public.encheck_admin_definir_mot_de_passe(p_admin_id uuid,p_mot_de_passe text) returns jsonb language plpgsql as $$
+   begin update password_service_calls set revisions=revisions+1 where target=p_admin_id;return '${response}'::jsonb;end $$;`)
+    await actor(superId)
+    await expect(
+      db.query('select encheck_account_password($1,$2,$3)', [
+        memberId,
+        'Secure-Example-123!',
+        'Support requested',
+      ]),
+    ).rejects.toThrow('refusé')
+    await db.exec('reset role')
+    expect(
+      (await db.query('select * from password_service_calls order by target'))
+        .rows,
+    ).toEqual(before)
+  }
+})

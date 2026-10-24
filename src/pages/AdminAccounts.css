@@ -690,12 +690,95 @@
   background: var(--aa-soft);
   box-shadow: inset 3px 0 var(--aa-copper);
 }
-@media(max-width:760px){
- .aa-identity{text-align:left}
- .aa-identity .ec-profile-photo{float:left;width:52px;height:52px;margin:0 12px 8px 0;font-size:18px}
- .aa-identity h2{font-size:18px;margin:4px 0}
- .aa-identity p{font-size:12px}
- .aa-account-nav{clear:both;display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
- .aa-account-nav button{flex:1;justify-content:center;padding:8px;font-size:11px;gap:6px}
- .aa-account-nav button svg{flex-shrink:0;width:16px}
+@media (max-width: 760px) {
+  .aa-identity {
+    text-align: left;
+  }
+  .aa-identity .ec-profile-photo {
+    float: left;
+    width: 52px;
+    height: 52px;
+    margin: 0 12px 8px 0;
+    font-size: 18px;
+  }
+  .aa-identity h2 {
+    font-size: 18px;
+    margin: 4px 0;
+  }
+  .aa-identity p {
+    font-size: 12px;
+  }
+  .aa-account-nav {
+    clear: both;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 16px;
+  }
+  .aa-account-nav button {
+    flex: 1;
+    justify-content: center;
+    padding: 8px;
+    font-size: 11px;
+    gap: 6px;
+  }
+  .aa-account-nav button svg {
+    flex-shrink: 0;
+    width: 16px;
+  }
+}
+.aa-password-form {
+  padding: 16px;
+  margin-top: 16px;
+  border: 1px solid var(--aa-line);
+  border-radius: 12px;
+  background: var(--aa-bg);
+}
+.aa-password-form label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  margin: 14px 0;
+}
+.aa-password-form input:not([type='checkbox']) {
+  width: 100%;
+  min-width: 0;
+  background: var(--aa-paper);
+  color: var(--aa-ink);
+  border: 1px solid var(--aa-line);
+  padding: 12px;
+  border-radius: 10px;
+  font: inherit;
+}
+.aa-password-form textarea {
+  width: 100%;
+  min-height: 70px;
+  resize: vertical;
+}
+.aa-password-form small {
+  color: var(--aa-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.aa-password-form .aa-password-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.6;
+}
+.aa-password-confirm input {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--aa-copper);
+}
+.aa-password-section > summary {
+  padding: 12px 14px;
+  border: 1px solid var(--aa-line);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--aa-copper);
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 44px;
 }

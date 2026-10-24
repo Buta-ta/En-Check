@@ -43,6 +43,10 @@ export default function AdminAccounts() {
   const [reason, setReason] = useState(''),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [passwordConfirmation, setPasswordConfirmation] = useState('')
+  const [passwordReason, setPasswordReason] = useState('')
+  const [passwordAcknowledged, setPasswordAcknowledged] = useState(false)
   const dialog = useRef(null),
     opener = useRef(null),
     actionLock = useRef(false),
@@ -117,8 +121,72 @@ export default function AdminAccounts() {
     () => filterAdminAccounts(rows, search, enterprise, status),
     [rows, search, enterprise, status],
   )
+  function clearPasswordForm() {
+    setNewPassword('')
+    setPasswordConfirmation('')
+    setPasswordReason('')
+    setPasswordAcknowledged(false)
+  }
+  async function changeAccountPassword(event) {
+    event.preventDefault()
+    if (actionLock.current) return
+    setNotice('')
+    if (!selected || selected.id === me?.id) {
+      setNotice('Utilisez Mon compte pour votre propre mot de passe.')
+      return
+    }
+    if (
+      newPassword.length < 12 ||
+      new TextEncoder().encode(newPassword).length > 72 ||
+      newPassword !== passwordConfirmation
+    ) {
+      setNotice(
+        'Saisissez deux mots de passe identiques, de 12 à 72 caractères (72 octets UTF-8 maximum).',
+      )
+      return
+    }
+    if (
+      !passwordAcknowledged ||
+      passwordReason.trim().length < 5 ||
+      passwordReason.length > 500
+    ) {
+      setNotice(
+        'Renseignez un motif et confirmez le remplacement pour ce compte.',
+      )
+      return
+    }
+    if (passwordReason.includes(newPassword)) {
+      setNotice('Ne mettez jamais le mot de passe dans le motif.')
+      return
+    }
+    actionLock.current = true
+    setBusy(true)
+    try {
+      await accountRpc('encheck_account_password', {
+        p_admin_id: selected.id,
+        p_password: newPassword,
+        p_reason: passwordReason.trim(),
+      })
+      clearPasswordForm()
+      setNotice(
+        'Mot de passe remplacé et intervention enregistrée. Aucun e-mail n’a été envoyé ; transmettez-le par un canal sécurisé. Les sessions existantes ne sont pas révoquées par cette action.',
+      )
+    } catch {
+      // Do not display raw service errors that could inadvertently echo secrets.
+      setNewPassword('')
+      setPasswordConfirmation('')
+      setPasswordAcknowledged(false)
+      setNotice(
+        'Modification non confirmée. Vérifiez le journal avant de réessayer. Le service sécurisé doit être installé et vos droits vérifiés. Aucun succès n’est présumé.',
+      )
+    } finally {
+      actionLock.current = false
+      setBusy(false)
+    }
+  }
   function close() {
     if (actionLock.current) return
+    clearPasswordForm()
     dialog.current?.close()
     setSelected(null)
     opener.current?.focus()
@@ -298,6 +366,7 @@ export default function AdminAccounts() {
                       key={admin.id}
                       onClick={(e) => {
                         opener.current = e.currentTarget
+                        clearPasswordForm()
                         setSelected(admin)
                         setTab('Profil')
                         setNotice('')
@@ -388,6 +457,8 @@ export default function AdminAccounts() {
                   key={name}
                   aria-pressed={tab === name}
                   onClick={() => {
+                    if (busy) return
+                    clearPasswordForm()
                     setTab(name)
                     setNotice('')
                   }}
@@ -430,9 +501,107 @@ export default function AdminAccounts() {
               <section>
                 <h3>Intervenir sur ce compte</h3>
                 <p>Les mots de passe existants ne sont jamais affichés.</p>
-                <Link className="aa-secondary" to="/admins/gestion-existante">
-                  Ouvrir la gestion du mot de passe
-                </Link>
+                {selected.id === me?.id ? (
+                  <Link className="aa-secondary" to="/mon-compte">
+                    Modifier mon propre mot de passe
+                  </Link>
+                ) : (
+                  <details
+                    className="aa-password-section"
+                    onToggle={(event) => {
+                      if (!event.currentTarget.open) clearPasswordForm()
+                    }}
+                  >
+                    <summary
+                      onClick={(event) => {
+                        if (busy) event.preventDefault()
+                      }}
+                    >
+                      Définir un nouveau mot de passe
+                    </summary>
+                    <form
+                      onSubmit={changeAccountPassword}
+                      className="aa-password-form"
+                    >
+                      <h3>Remplacer le mot de passe</h3>
+                      <p>
+                        Compte concerné :{' '}
+                        <strong>
+                          {selected.email ||
+                            selected.username ||
+                            `${selected.first_name} ${selected.last_name}`}
+                        </strong>
+                      </p>
+                      <label>
+                        Nouveau mot de passe
+                        <input
+                          type="password"
+                          required
+                          minLength={12}
+                          maxLength={72}
+                          autoComplete="new-password"
+                          value={newPassword}
+                          onChange={(event) =>
+                            setNewPassword(event.target.value)
+                          }
+                          disabled={busy}
+                        />
+                      </label>
+                      <label>
+                        Confirmer le nouveau mot de passe
+                        <input
+                          type="password"
+                          required
+                          minLength={12}
+                          maxLength={72}
+                          autoComplete="new-password"
+                          value={passwordConfirmation}
+                          onChange={(event) =>
+                            setPasswordConfirmation(event.target.value)
+                          }
+                          disabled={busy}
+                        />
+                      </label>
+                      <label>
+                        Motif du changement
+                        <textarea
+                          required
+                          minLength={5}
+                          maxLength={500}
+                          value={passwordReason}
+                          onChange={(event) =>
+                            setPasswordReason(event.target.value)
+                          }
+                          disabled={busy}
+                        />
+                      </label>
+                      <small>
+                        Le motif est conservé dans le journal. N’y inscrivez
+                        aucun mot de passe.
+                      </small>
+                      <label className="aa-password-confirm">
+                        <input
+                          type="checkbox"
+                          required
+                          checked={passwordAcknowledged}
+                          onChange={(event) =>
+                            setPasswordAcknowledged(event.target.checked)
+                          }
+                          disabled={busy}
+                        />
+                        Je confirme le remplacement pour ce compte.
+                      </label>
+                      <button disabled={busy} type="submit">
+                        {busy ? 'Enregistrement…' : 'Remplacer le mot de passe'}
+                      </button>
+                      <p className="aa-footnote">
+                        Cette action n’envoie pas de lien de récupération,
+                        n’impose pas de changement à la prochaine connexion et
+                        ne ferme pas les sessions déjà ouvertes.
+                      </p>
+                    </form>
+                  </details>
+                )}
                 <p className="aa-footnote">
                   La révocation distante des sessions, les invitations et le
                   dépannage délégué ne sont pas encore disponibles. Aucun état
@@ -485,6 +654,7 @@ export default function AdminAccounts() {
                         <strong>
                           {{
                             profile_updated: 'Profil modifié',
+                            password_changed: 'Mot de passe remplacé',
                             suspended: 'Compte désactivé',
                             reactivated: 'Compte réactivé',
                           }[item.action] || item.action}
@@ -502,8 +672,8 @@ export default function AdminAccounts() {
                   </p>
                 )}
                 <p className="aa-footnote">
-                  Ce journal couvre les nouvelles actions de profil et d’état de
-                  cette page, pas les anciennes opérations.
+                  Ce journal couvre les nouvelles actions de profil, d’état et
+                  de mot de passe de cette page, pas les anciennes opérations.
                 </p>
               </section>
             )}

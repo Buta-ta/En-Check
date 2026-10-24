@@ -1,6 +1,8 @@
-# Administration des accès et Mon compte — premier lot, PR en brouillon
+# Administration des accès et Mon compte — premier lot
 
-## État de livraison
+Suite disponible : [mot de passe dans la fiche](ADMIN-COMPTES-MOT-DE-PASSE.md). [Captures du code sur GitHub](APERCU-ADMINISTRATION.md). La PR a été passée en revue après ce premier lot ; cela ne déploie pas les migrations.
+
+## État de livraison initial
 Ce lot **ne constitue pas l’ensemble du programme validé**. Il pose les deux interfaces, une première couche d’actions et une migration de sécurité testée en local. **Migration non appliquée, aucun déploiement production, aucun compte réel modifié.** Ne pas fusionner/déployer comme si les rôles personnalisés, invitations et interventions avancées étaient terminés.
 
 Référence visuelle choisie conservée dans `docs/design/admin-accounts-approved-reference.png`. Ivoire/indigo/cuivre, motifs géométriques discrets, navigation locale à pièces gravées, compteurs compacts, liste et fiche latérale. La navigation globale du dashboard n’est pas redessinée.
