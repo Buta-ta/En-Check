@@ -670,7 +670,8 @@ export default function Pointages() {
   const [inspectedPointage, setInspectedPointage] = useState(null)
   const [estimationModalTarget, setEstimationModalTarget] = useState(null)
   const [ficheEmployeeTarget, setFicheEmployeeTarget] = useState(null)
-  const [minLoadingDone, setMinLoadingDone] = useState(true)
+  const [minLoadingDone, setMinLoadingDone] = useState(false)
+  const finishLoadingIntro = useCallback(() => setMinLoadingDone(true), [])
   const [state, dispatch] = useReducer(reducer, initialState)
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -1767,9 +1768,9 @@ export default function Pointages() {
   // 🎨 RENDER
   // ═══════════════════════════════════════════════════════════
 
-  // Loading PIN -> QR Code (durée minimale confortable de 4,5s pour voir les 2 scènes)
-  if ((state.loading && !state.pointages.length) || !minLoadingDone) {
-    return <PointagesLoadingScreen darkMode={darkMode} onSkip={() => setMinLoadingDone(true)} />
+  // First-visit illustration only; real requests and errors never wait for the artwork.
+  if (!state.error && ((state.loading && !state.pointages.length) || !minLoadingDone)) {
+    return <PointagesLoadingScreen darkMode={darkMode} dataReady={!state.loading} onIntroDone={minLoadingDone ? undefined : finishLoadingIntro} onSkip={minLoadingDone ? undefined : finishLoadingIntro} />
   }
 
   // État d'erreur

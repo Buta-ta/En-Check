@@ -1,129 +1,91 @@
-import PageCulturalBand from './PageCulturalBand'
 import { useEffect, useState } from 'react'
-import { ArrowRight, CheckCircle2, QrCode, Smartphone } from 'lucide-react'
-import EnCheckBrandMark from './EnCheckBrandMark'
-import { CulturalCornerMotifSvg } from './AfroCulturalSvg'
 import '../pages/PointagesAfroTech.css'
+import './PointagesLoadingScreen.css'
 
-export default function PointagesLoadingScreen({ darkMode = true, onSkip }) {
-  const [activeStep, setActiveStep] = useState(0)
-  const [progress, setProgress] = useState(14)
+export const POINTAGES_INTRO_MS = 6000
+
+export default function PointagesLoadingScreen({
+  darkMode = true,
+  onSkip,
+  onIntroDone,
+  dataReady = false,
+}) {
+  const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    const stepTimer = window.setInterval(() => {
-      setActiveStep((prev) => (prev === 0 ? 1 : 0))
-    }, 2300)
-    const progressTimer = window.setInterval(() => {
-      setProgress((prev) => (prev >= 96 ? 24 : prev + 6))
-    }, 240)
-    return () => {
-      window.clearInterval(stepTimer)
-      window.clearInterval(progressTimer)
+    if (!onIntroDone) return
+    const motion = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (motion?.matches) {
+      onIntroDone()
+      return
     }
-  }, [])
+    const timer = window.setTimeout(onIntroDone, POINTAGES_INTRO_MS)
+    const change = (event) => {
+      if (event.matches) onIntroDone()
+    }
+    motion?.addEventListener?.('change', change)
+    return () => {
+      window.clearTimeout(timer)
+      motion?.removeEventListener?.('change', change)
+    }
+  }, [onIntroDone])
 
   return (
-    <div
-      className="pointages-afrotech-shell pointages-loading-screen"
+    <section
+      className="pointages-afrotech-shell pt-art-loading"
       data-theme={darkMode ? 'dark' : 'light'}
-      role="status"
-      aria-live="polite"
+      aria-label="Chargement des pointages"
+      aria-busy={!dataReady}
     >
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-right" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-right" />
-
-      <div className="pointages-loading-inner">
-        <div className="pointages-loading-brand">
-          <EnCheckBrandMark className="pointages-loading-mark" size={58} loading />
-          <div className="pointages-loading-brand-copy">
-            <strong>En-Check</strong>
-            <span>On gère !</span>
-          </div>
-        </div>
-
-        <PageCulturalBand pathname="/pointages" placement="loading"/>
-
-        <h1 className="pointages-loading-title">Chargement de la page Pointages…</h1>
-
-        <div className="pointages-loading-stage">
+      <div className="pt-art-card">
+        {!failed && (
           <div
-            className={`pointages-loading-scene${activeStep === 0 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(0)}
+            className={`pt-art-scene${loaded ? ' is-loaded' : ''}`}
+            aria-hidden="true"
           >
             <img
-              src="/images/pointage-loading-pin.jpg"
-              alt="Collaboratrice composant son code PIN sur une borne En-Check"
-              loading="eager"
+              src="/images/pointages-loading-approved.webp"
+              alt=""
+              width="1824"
+              height="1026"
               decoding="async"
+              fetchPriority="high"
+              draggable={false}
+              onLoad={() => setLoaded(true)}
+              onError={() => setFailed(true)}
             />
-            <div className="pointages-loading-scene-caption">
-              <span>
-                <Smartphone size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                Étape 1 · Pointage par Code PIN
-              </span>
-              <CheckCircle2 size={15} color="#4ADE80" />
+            {/* Light only: the approved person, hand, phone and terminal are not redrawn. */}
+            <div className="pt-art-terminal">
+              <span />
             </div>
+            <span className="pt-art-phone" />
           </div>
-
-          <div
-            className={`pointages-loading-scene${activeStep === 1 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(1)}
-          >
-            <img
-              src="/images/pointage-loading-qr.jpg"
-              alt="Validation d'un pointage par badge QR Code sur un terminal En-Check"
-              loading="eager"
-              decoding="async"
-            />
-            <div className="pointages-loading-scene-caption">
-              <span>
-                <QrCode size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                Étape 2 · Pointage par QR Code & Photo
-              </span>
-              <CheckCircle2 size={15} color="#4ADE80" />
-            </div>
-          </div>
-        </div>
-
-        <div className="pointages-loading-steps">
-          <button
-            type="button"
-            className={`pointages-loading-step${activeStep === 0 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(0)}
-          >
-            <span>1. Vérification Code PIN</span>
-            <CheckCircle2 size={15} />
-          </button>
-          <button
-            type="button"
-            className={`pointages-loading-step${activeStep === 1 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(1)}
-          >
-            <span>2. Synchronisation QR & Photos</span>
-            <CheckCircle2 size={15} />
-          </button>
-        </div>
-
-        <div className="pointages-loading-bar-track" aria-hidden="true">
-          <div className="pointages-loading-bar-fill" style={{ width: `${progress}%` }} />
-        </div>
-
-        <div className="pointages-loading-footer">
-          <p className="pointages-loading-subtitle">
-            {activeStep === 0
-              ? 'Étape 1/2 · Vérification des codes PIN et horaires du jour…'
-              : 'Étape 2/2 · Synchronisation des scans QR, photos signées et positions…'}
+        )}
+        <div className="pt-art-caption">
+          <span className="pt-art-eyebrow">EN-CHECK · POINTAGES</span>
+          <h1>
+            {dataReady
+              ? 'Les pointages sont prêts'
+              : 'Chargement des pointages…'}
+          </h1>
+          <p role="status" aria-live="polite">
+            {dataReady
+              ? 'Vous pouvez passer l’animation pour consulter la liste.'
+              : 'Lecture des pointages et préparation de la liste.'}
           </p>
           {onSkip && (
-            <button type="button" className="pointages-loading-skip" onClick={onSkip}>
-              <span>Passer l’animation</span>
-              <ArrowRight size={13} />
+            <button
+              type="button"
+              className="pt-art-skip"
+              onClick={onSkip}
+              disabled={!dataReady}
+            >
+              Passer l’animation
             </button>
           )}
         </div>
       </div>
-    </div>
+    </section>
   )
 }
