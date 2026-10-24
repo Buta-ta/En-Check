@@ -72,7 +72,14 @@ describe('🔌 Câblage Pauses — app de pointage + migration 000004', () => {
     expect(pausesSections).toContain('formaterTempsPauseEnDirect')
     expect(dashboardPage).toContain("table: 'encheck_pauses'")
     expect(dashboardExp).toContain('formaterTempsPauseEnDirect')
-    expect(pointagesPage).toContain("table: 'encheck_pauses'")
+    // Pointages ne déclare plus ses tables en direct dans la page : le
+    // canal est construit par useDirectPointages (un canal PAR table), qui
+    // publie `encheck_pauses` avec `attendances`.
+    const directPointages = readFileSync(ROOT + '/src/hooks/useDirectPointages.js', 'utf8')
+    const tablesSuivies = readFileSync(ROOT + '/src/utils/directPointages.js', 'utf8')
+    expect(pointagesPage).toContain('useDirectPointages')
+    expect(directPointages).toContain('TABLES_SUIVIES.forEach(abonner)')
+    expect(tablesSuivies).toContain("['attendances', 'encheck_pauses']")
     expect(pointagesPage).toContain('formaterTempsPauseEnDirect')
     expect(pointagesSections).toContain('formaterTempsPauseEnDirect')
     expect(pausesSections).toContain('pauses-v2-back-btn')
