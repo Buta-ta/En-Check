@@ -1,0 +1,21 @@
+.pointages-afrotech-shell.pt-art-loading{min-height:0;width:100%;box-sizing:border-box;padding:20px 16px;color:var(--pt-ink)}
+.pt-art-card{max-width:600px;margin:0 auto;overflow:hidden;border:1px solid var(--pt-line);border-radius:16px;background:var(--pt-surface);box-shadow:0 12px 32px #2319110a;text-align:center}
+.pt-art-scene{position:relative;isolation:isolate;aspect-ratio:16/9;background:#f4eedf;overflow:hidden}
+.pt-art-scene img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;pointer-events:none}
+/* Coordinates follow the approved source at x=400, y=1 in its 1824×1026 paper canvas. */
+.pt-art-terminal{position:absolute;inset:0;clip-path:polygon(59.38% 28.75%,63.05% 28.36%,60.91% 46.69%,56.41% 46.49%);pointer-events:none}
+.pt-art-terminal span{position:absolute;left:55%;width:10%;top:28%;height:2.5%;background:linear-gradient(transparent,#f3c99d88,transparent);opacity:0}
+.pt-art-phone{position:absolute;left:54.3%;top:34.2%;width:1%;aspect-ratio:1;border-radius:50%;background:#fff3dc;box-shadow:0 0 9px 3px #eed2aa66;opacity:0;pointer-events:none}
+.pt-art-scene.is-loaded .pt-art-terminal span{animation:pt-art-reading 5.6s ease-in-out infinite}
+.pt-art-scene.is-loaded .pt-art-phone{animation:pt-art-phone-light 5.6s ease-in-out infinite}
+@keyframes pt-art-reading{0%,12%{transform:translateY(0);opacity:0}23%{opacity:.65}58%{transform:translateY(650%);opacity:.65}70%,100%{transform:translateY(650%);opacity:0}}
+@keyframes pt-art-phone-light{0%,12%,40%,100%{opacity:0}24%{opacity:.55}}
+.pt-art-caption{padding:16px 20px 18px}
+.pt-art-eyebrow{font-size:9px;font-weight:700;letter-spacing:.14em;color:var(--pt-copper-strong)}
+.pt-art-caption h1{font-size:18px;line-height:1.35;margin:7px 0;color:var(--pt-ink)}
+.pt-art-caption p{font-size:12px;line-height:1.6;margin:0;color:var(--pt-muted)}
+.pt-art-skip{margin-top:12px;min-height:44px;max-width:100%;padding:9px 18px;border:1px solid var(--pt-line);border-radius:24px;background:var(--pt-surface-soft);color:var(--pt-ink);font:inherit;font-size:12px;cursor:pointer;white-space:normal}
+.pt-art-skip:disabled{opacity:.5;cursor:wait}
+.pt-art-skip:focus-visible{outline:2px solid var(--pt-copper);outline-offset:3px}
+@media(max-width:480px){.pointages-afrotech-shell.pt-art-loading{padding:12px}.pt-art-card{border-radius:12px}.pt-art-caption{padding:12px}.pt-art-caption h1{font-size:16px}}
+@media(prefers-reduced-motion:reduce){.pt-art-scene .pt-art-terminal,.pt-art-scene .pt-art-phone{display:none}.pt-art-scene *{animation:none!important}}

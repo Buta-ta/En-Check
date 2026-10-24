@@ -2,12 +2,11 @@ import { it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { readFileSync, existsSync } from 'node:fs'
 import AbsencesLoadingScreen from '../../components/AbsencesLoadingScreen'
-import PointagesLoadingScreen from '../../components/PointagesLoadingScreen'
 import PausesLoadingScreen from '../../components/PausesLoadingScreen'
 import EmployesLoadingScreen from '../../components/EmployesLoadingScreen'
 
-it('les trois chargements utilisent les motifs validés, avec leurs étapes et bouton passer', () => {
-  for (const [Screen,motif] of [[PointagesLoadingScreen,'adinkra'],[PausesLoadingScreen,'lesotho'],[EmployesLoadingScreen,'zoulou']]) {
+it('Pauses et Employés utilisent les motifs validés, avec leurs étapes et bouton passer', () => {
+  for (const [Screen,motif] of [[PausesLoadingScreen,'lesotho'],[EmployesLoadingScreen,'zoulou']]) {
     const html=renderToStaticMarkup(<Screen onSkip={()=>{}}/>)
     expect(html).toContain(`data-cultural-motif="${motif}"`)
     expect(html).toContain('Passer l’animation')
