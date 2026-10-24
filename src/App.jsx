@@ -17,6 +17,8 @@ import Pointages from './pages/Pointages'
 import Entreprises from './pages/Entreprises'
 import Rapports from './pages/Rapports'
 import Admins from './pages/Admins'
+import AdminAccounts from './pages/AdminAccounts'
+import MyAdminAccount from './pages/MyAdminAccount'
 import Planning from './pages/Planning'
 import Retards from './pages/Retards'
 import Pauses from './pages/Pauses'
@@ -145,6 +147,7 @@ function AdminRoute({ children, requireSuperAdmin = false }) {
             .from('admins')
             .select('id, role, is_active')
             .eq('id', admin.id)
+            .eq('user_id', session.user.id)
             .maybeSingle()
 
           if (roleError || !serverAdmin || serverAdmin.is_active === false || serverAdmin.role !== 'super_admin') {
@@ -276,11 +279,9 @@ function App() {
               <Rapports />
             </AdminRoute>
           } />
-          <Route path="/admins" element={
-            <AdminRoute>
-              <Admins />
-            </AdminRoute>
-          } />
+          <Route path="/admins" element={<AdminRoute requireSuperAdmin><AdminAccounts /></AdminRoute>} />
+          <Route path="/admins/gestion-existante" element={<AdminRoute requireSuperAdmin><Admins /></AdminRoute>} />
+          <Route path="/mon-compte" element={<AdminRoute><MyAdminAccount /></AdminRoute>} />
           <Route path="/planning" element={
             <AdminRoute>
               <Planning />

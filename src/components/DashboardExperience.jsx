@@ -280,6 +280,7 @@ export default function DashboardExperience({
       label: 'Administration',
       items: [
         { label: 'Entreprises', icon: Building2, path: '/entreprises', show: isSuperAdmin },
+        { label: 'Mon compte', icon: ShieldCheck, path: '/mon-compte', show: true },
         { label: 'Administrateurs', icon: ShieldCheck, path: '/admins', show: isSuperAdmin },
         { label: 'Messages système', icon: Bell, path: '/system-messages', show: isSuperAdmin },
         { label: 'Prospection', icon: TrendingUp, path: '/prospection', show: isSuperAdmin },
