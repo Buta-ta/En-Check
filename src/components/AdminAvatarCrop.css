@@ -1,0 +1,103 @@
+.aa-photo-dialog {
+  box-sizing: border-box;
+  width: min(460px, calc(100% - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 22px;
+  border: 1px solid var(--aa-line);
+  border-radius: 18px;
+  background: var(--aa-paper);
+  color: var(--aa-ink);
+  overflow: auto;
+  box-shadow: 0 20px 70px #0004;
+}
+.aa-photo-dialog::backdrop {
+  background: #18152199;
+}
+.aa-photo-dialog h2 {
+  font-size: 21px;
+  margin: 0 0 10px;
+}
+.aa-photo-dialog p {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--aa-muted);
+}
+.aa-photo-preview {
+  position: relative;
+  width: min(100%, 260px);
+  aspect-ratio: 1;
+  margin: 18px auto;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--aa-soft);
+}
+.aa-photo-preview canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.aa-photo-preview > span {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 80px #18152166;
+  outline: 1px solid #fff9;
+  pointer-events: none;
+}
+.aa-photo-dialog fieldset {
+  border: 0;
+  padding: 0;
+  margin: 16px 0;
+  min-width: 0;
+}
+.aa-photo-dialog legend {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.aa-photo-dialog label {
+  display: block;
+  font-size: 12px;
+  margin: 6px 0;
+}
+.aa-photo-dialog output {
+  float: right;
+  color: var(--aa-copper);
+}
+.aa-photo-dialog input[type='range'] {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  accent-color: var(--aa-copper);
+  cursor: pointer;
+}
+.aa-photo-dialog footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.aa-photo-dialog footer button {
+  flex: 1;
+  min-height: 44px;
+}
+.aa-photo-dialog footer button:last-child {
+  background: var(--aa-copper);
+  color: var(--aa-paper);
+}
+.aa-photo-dialog.aa-dark footer button:last-child {
+  color: #241b13;
+}
+.aa-photo-dialog .aa-photo-help {
+  font-size: 11px;
+}
+@media (max-width: 400px) {
+  .aa-photo-dialog {
+    padding: 16px;
+  }
+  .aa-photo-preview {
+    width: 200px;
+  }
+}
