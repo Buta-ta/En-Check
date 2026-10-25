@@ -31,12 +31,13 @@
 /* Approved administration artwork. Preserve its pixels and colours in both themes. */
 
 /* ═══ APPLIQUÉ D'ABOMEY — comptes & accès ═══
-   vide de 76 px, et la page n'avait pas de bande basse. Le motif est
-   maintenant un SVG maison, dans la tuile 248 × 96. */
-.ec-cultural-top[data-cultural-motif='abomey'] { height: 88px; background-color: #1b2440; }
-.ec-cultural-bottom[data-cultural-motif='abomey'] { height: 60px; background-color: #1b2440; }
+   Le motif est un SVG maison (tuile 2700 × 120, tranche de 300).
+   Comme Planning, Absences ou la Paie, il prend la hauteur commune :
+   76 px en haut, 32 px en bas, 60 px sur téléphone. Aucune page
+   d'administration n'a donc de bande plus épaisse que les autres. */
+.ec-cultural-top[data-cultural-motif='abomey'] { height: 76px; background-color: #1b2440; }
+.ec-cultural-bottom[data-cultural-motif='abomey'] { height: 32px; background-color: #1b2440; }
 .ec-cultural-compact[data-cultural-motif='abomey'] { height: 26px; border-radius: 6px; margin-bottom: 16px; }
 @media (max-width: 650px) {
-  .ec-cultural-top[data-cultural-motif='abomey'] { height: 64px; }
-  .ec-cultural-bottom[data-cultural-motif='abomey'] { height: 44px; }
+  .ec-cultural-top[data-cultural-motif='abomey'] { height: 60px; }
 }
