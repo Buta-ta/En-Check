@@ -15,6 +15,7 @@ import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import AdminsLoadingScreen from '../../components/AdminsLoadingScreen'
 import AdminAccounts from '../../pages/AdminAccounts'
+import MyAdminAccount from '../../pages/MyAdminAccount'
 
 vi.mock('../../lib/supabase', () => ({
   supabase: {
@@ -124,6 +125,39 @@ describe('2. dans la page', () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 380))
     })
+    expect(host.querySelector('.aa-loading')).toBeNull()
+  })
+})
+
+describe('3. sur Mon compte', () => {
+  it('garde la même case, avec ses propres légendes', async () => {
+    await act(async () => {
+      root.render(<AdminsLoadingScreen darkMode variante="compte" onSkip={() => {}} />)
+    })
+    const image = host.querySelector('.aa-loading img')
+    expect(image.getAttribute('src')).toBe('/images/admins-loading-fa.jpg')
+    expect(host.textContent).toContain('Chargement de votre compte…')
+    expect(host.textContent).toContain('Lecture de votre identité')
+    expect(host.textContent).not.toContain('des entreprises et des accès')
+  })
+
+  it('remplace l’attente de la page, puis se laisse passer', async () => {
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <MyAdminAccount />
+        </MemoryRouter>,
+      )
+    })
+    expect(host.querySelector('.aa-loading')).toBeNull()
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 380))
+    })
+    expect(host.querySelector('.aa-loading')).not.toBeNull()
+    expect(host.textContent).toContain('Chargement de votre compte…')
+
+    await act(async () => host.querySelector('.aa-loading-passer').click())
     expect(host.querySelector('.aa-loading')).toBeNull()
   })
 })

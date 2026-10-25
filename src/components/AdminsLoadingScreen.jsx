@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, ShieldCheck, Users } from 'lucide-react'
+import { ArrowRight, ShieldCheck, User, Users } from 'lucide-react'
 import PageCulturalBand from './PageCulturalBand'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import { CulturalCornerMotifSvg } from './AfroCulturalSvg'
@@ -17,22 +17,40 @@ import './AdminsLoadingScreen.css'
 // n'affirme aucun résultat.
 // ═══════════════════════════════════════════════════════════
 
-const LECTURES = [
-  {
-    cle: 'jet',
-    cartouche: 'Étape 1 · Les cauris sont jetés',
-    legende: 'Lecture des comptes, des entreprises et des accès de connexion…',
-    Icone: Users,
-  },
-  {
-    cle: 'signe',
-    cartouche: 'Étape 2 · Le signe se lit',
-    legende: 'Composition des rôles, des permissions et des entreprises couvertes…',
-    Icone: ShieldCheck,
-  },
-]
+const LECTURES = {
+  // le registre des comptes
+  admins: [
+    {
+      cle: 'jet',
+      cartouche: 'Étape 1 · Les cauris sont jetés',
+      legende: 'Lecture des comptes, des entreprises et des accès de connexion…',
+      Icone: Users,
+    },
+    {
+      cle: 'signe',
+      cartouche: 'Étape 2 · Le signe se lit',
+      legende: 'Composition des rôles, des permissions et des entreprises couvertes…',
+      Icone: ShieldCheck,
+    },
+  ],
+  // une seule fiche : la sienne
+  compte: [
+    {
+      cle: 'jet',
+      cartouche: 'Étape 1 · Les cauris sont jetés',
+      legende: 'Lecture de votre identité, de votre rôle et de vos accès…',
+      Icone: User,
+    },
+    {
+      cle: 'signe',
+      cartouche: 'Étape 2 · Le signe se lit',
+      legende: 'Chargement de votre sécurité, de vos sessions et de vos préférences…',
+      Icone: ShieldCheck,
+    },
+  ],
+}
 
-export default function AdminsLoadingScreen({ darkMode = true, onSkip }) {
+export default function AdminsLoadingScreen({ darkMode = true, onSkip, variante = 'admins' }) {
   const [lecture, setLecture] = useState(0)
   const [progression, setProgression] = useState(12)
 
@@ -49,7 +67,8 @@ export default function AdminsLoadingScreen({ darkMode = true, onSkip }) {
     }
   }, [])
 
-  const courante = LECTURES[lecture]
+  const lectures = LECTURES[variante] || LECTURES.admins
+  const courante = lectures[lecture]
   const IconeCourante = courante.Icone
 
   return (
@@ -59,7 +78,11 @@ export default function AdminsLoadingScreen({ darkMode = true, onSkip }) {
       role="status"
       aria-live="polite"
       aria-busy="true"
-      aria-label="Chargement des comptes et des accès"
+      aria-label={
+        variante === 'compte'
+          ? 'Chargement de votre compte'
+          : 'Chargement des comptes et des accès'
+      }
     >
       <CulturalCornerMotifSvg className="aa-loading-corner is-top-left" />
       <CulturalCornerMotifSvg className="aa-loading-corner is-top-right" />
@@ -79,7 +102,11 @@ export default function AdminsLoadingScreen({ darkMode = true, onSkip }) {
           <PageCulturalBand pathname="/admins" placement="loading" />
         </div>
 
-        <h1 className="aa-loading-titre">Chargement des comptes et des accès…</h1>
+        <h1 className="aa-loading-titre">
+          {variante === 'compte'
+            ? 'Chargement de votre compte…'
+            : 'Chargement des comptes et des accès…'}
+        </h1>
 
         {/* La case : un montage ivoire, un trait d'encre, la caméra qui bouge */}
         <figure className="aa-loading-case" data-lecture={courante.cle}>
@@ -101,7 +128,7 @@ export default function AdminsLoadingScreen({ darkMode = true, onSkip }) {
         </figure>
 
         <div className="aa-loading-etapes">
-          {LECTURES.map((temps, index) => {
+          {lectures.map((temps, index) => {
             const Icone = temps.Icone
             return (
               <button

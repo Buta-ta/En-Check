@@ -370,10 +370,22 @@ describe('7. la page Mon compte', () => {
     expect(compte).not.toContain('Rôle serveur')
   })
 
-  it('garde le tableau de bord et l’administration accessibles', () => {
+  it('renvoie vers l’administration, pas vers l’accueil', () => {
     expect(compte).toContain('className="aa-compte-retour"')
+    // le superadministrateur revient d'où il vient
+    expect(compte).toMatch(
+      /me\?\.role === 'super_admin'[\s\S]*to="\/admins"[\s\S]*Administration des accès/,
+    )
+    // les autres gardent leur tableau de bord
     expect(compte).toContain('to="/dashboard"')
-    expect(compte).toContain('className="aa-compte-lien"')
-    expect(compte).toContain('to="/admins"')
+  })
+
+  it('pose les raccourcis sur les deux pages', () => {
+    expect(page).toContain('RaccourcisPages')
+    expect(compte).toContain('RaccourcisPages')
+    expect(page).toContain('className="aa-raccourcis"')
+    expect(compte).toContain('className="aa-raccourcis"')
+    // et chacun sait où il est : la page courante est marquée par le composant
+    expect(css).toMatch(/\.aa-raccourcis \.abs-raccourci\[data-actif='oui'\]/)
   })
 })
