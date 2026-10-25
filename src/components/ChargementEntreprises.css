@@ -1,0 +1,113 @@
+/* ═══════════════════════════════════════════════════════════
+   🎬 LE CHARGEMENT D'ENTREPRISES — la scène en deux temps
+
+   Deux images dans un seul SVG. Le fondu est une animation
+   CSS : pas de minuteur JavaScript, donc rien à nettoyer au
+   démontage, et `prefers-reduced-motion` peut figer la scène
+   sur le sourire sans toucher au composant.
+   ═══════════════════════════════════════════════════════════ */
+
+.ch-scene {
+  display: block;
+  width: min(560px, 92vw);
+  height: auto;
+  filter: drop-shadow(4px 4px 0 rgba(36, 28, 22, 0.18));
+}
+
+.en-page.en-dark .ch-scene {
+  filter: drop-shadow(4px 4px 0 rgba(0, 0, 0, 0.55));
+}
+
+/* le cycle : 4,6 s — le premier temps tient un peu moins de
+   la moitié, puis on fond vers le sourire et on y reste. */
+.ch-t1,
+.ch-t2 {
+  animation-duration: 4.6s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.ch-t1 {
+  animation-name: ch-premier-temps;
+}
+
+.ch-t2 {
+  animation-name: ch-second-temps;
+}
+
+@keyframes ch-premier-temps {
+  0%,
+  44% {
+    opacity: 1;
+  }
+  54%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes ch-second-temps {
+  0%,
+  44% {
+    opacity: 0;
+  }
+  54%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* — les deux légendes d'étape, l'une après l'autre — */
+
+.ch-etapes {
+  position: relative;
+  display: block;
+  min-height: 15px;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--en-encre-faible);
+}
+
+.ch-etape {
+  position: absolute;
+  inset-inline: 0;
+  animation-duration: 4.6s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.ch-etape--1 {
+  animation-name: ch-premier-temps;
+}
+
+.ch-etape--2 {
+  animation-name: ch-second-temps;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-t1,
+  .ch-t2,
+  .ch-etape {
+    animation: none !important;
+  }
+
+  /* on garde le sourire et le carton allumé : l'image finale */
+  .ch-t1 {
+    opacity: 0;
+  }
+
+  .ch-t2 {
+    opacity: 1;
+  }
+
+  .ch-etape--1 {
+    display: none;
+  }
+
+  .ch-etape--2 {
+    position: static;
+    opacity: 1;
+  }
+}

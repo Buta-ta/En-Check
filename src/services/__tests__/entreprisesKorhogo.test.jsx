@@ -138,12 +138,23 @@ async function monter(liste) {
     ),
   )
   await act(async () => {
-    await new Promise((r) => setTimeout(r, 40))
+    await new Promise((r) => setTimeout(r, 720))
   })
 }
 
 const cliquer = async (el) => {
   await act(async () => el.click())
+}
+
+// rend la page et s'arrête sur l'écran de chargement (avant les 650 ms)
+async function monterSurLeChargement() {
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/entreprises']}>
+        <Entreprises />
+      </MemoryRouter>,
+    ),
+  )
 }
 
 // ── 1. Le motif ────────────────────────────────────────────
@@ -259,6 +270,80 @@ describe('2. le registre', () => {
     expect(source).not.toMatch(/[^.]\balert\(/)
     expect(source).not.toMatch(/\bconfirm\(/)
     expect(css).toContain('.en-avis')
+  })
+})
+
+// ── 2 bis. Le chargement ───────────────────────────────────
+
+describe('2 bis. la scène de chargement', () => {
+  it('montre la scène avant le registre, jamais une page blanche', async () => {
+    await monterSurLeChargement()
+    expect(host.querySelector('.ch-scene')).not.toBeNull()
+    expect(host.querySelector('.en-corps')).toBeNull()
+    expect(host.textContent).toContain('Chargement des entreprises…')
+    // la toile de la page est déjà tendue : bandeau haut + bordure tissée
+    expect(host.querySelector('.ec-cultural-band')).not.toBeNull()
+    expect(host.querySelector('.en-bordure')).not.toBeNull()
+
+    // puis le registre prend la place de la scène
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 720))
+    })
+    expect(host.querySelector('.ch-scene')).toBeNull()
+    expect(host.querySelector('.en-corps')).not.toBeNull()
+  })
+
+  it('se joue en deux temps : la paperasse, puis le carton allumé', async () => {
+    await monterSurLeChargement()
+    const temps1 = host.querySelector('.ch-t1')
+    const temps2 = host.querySelector('.ch-t2')
+    expect(temps1).not.toBeNull()
+    expect(temps2).not.toBeNull()
+    // le premier temps : la pile est haute, l'écran est éteint
+    expect(temps1.querySelector('[data-allume="non"]')).not.toBeNull()
+    expect(temps1.querySelector('[data-sourire="oui"]')).toBeNull()
+    // le second : la pile a fondu, le carton s'allume, le sourire arrive
+    expect(temps2.querySelector('[data-allume="oui"]')).not.toBeNull()
+    expect(temps2.querySelector('[data-sourire="oui"]')).not.toBeNull()
+    expect(temps1.querySelectorAll('rect').length).toBeGreaterThan(
+      temps2.querySelectorAll('rect').length,
+    )
+    // la bulle de pensée n'existe qu'au second temps
+    expect(temps2.querySelectorAll('g').length).toBeGreaterThan(0)
+    expect(host.querySelectorAll('.ch-etape').length).toBe(2)
+    expect(host.querySelector('.ch-etape--1').textContent).toBe('Étape 1 · La paperasse')
+    expect(host.querySelector('.ch-etape--2').textContent).toBe('Étape 2 · Le carton s’allume')
+  })
+
+  it('est un dessin en SVG, pas une photo', () => {
+    const composant = lire('src/components/ChargementEntreprises.jsx')
+    const feuille = lire('src/components/ChargementEntreprises.css')
+    expect(composant).toContain('<svg')
+    expect(composant).not.toContain('<img')
+    expect(composant).not.toMatch(/\.(png|jpg|jpeg|webp)['"]/)
+    // la scène est décorative : le texte porte l'information
+    expect(composant).toContain('aria-hidden="true"')
+    // les deux temps sont pilotés en CSS, sans minuteur JavaScript
+    expect(feuille).toContain('@keyframes ch-premier-temps')
+    expect(feuille).toContain('@keyframes ch-second-temps')
+    expect(composant).not.toContain('setInterval')
+    expect(composant).not.toContain('setTimeout')
+  })
+
+  it('se fige sur le sourire quand on réduit les animations', () => {
+    const feuille = lire('src/components/ChargementEntreprises.css')
+    const bloc = feuille.slice(feuille.indexOf('@media (prefers-reduced-motion: reduce)'))
+    expect(bloc).toContain('.ch-t1')
+    expect(bloc).toMatch(/\.ch-t1\s*\{\s*opacity:\s*0/)
+    expect(bloc).toMatch(/\.ch-t2\s*\{\s*opacity:\s*1/)
+  })
+
+  it('tient l’écran 650 ms, et recharge sans y revenir', () => {
+    expect(source).toContain('loadData({ dureeMin: 650 })')
+    expect(source).toContain('dureeMin = 0')
+    // après un enregistrement ou une sortie, pas de retour au chargement
+    expect(source).toContain('loadData({ silencieux: true })')
+    expect(source).not.toMatch(/\n\s+loadData\(\)\n/)
   })
 })
 

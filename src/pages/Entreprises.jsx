@@ -64,6 +64,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import PageCulturalBand from '../components/PageCulturalBand'
 import RaccourcisPages from '../components/RaccourcisPages'
 import { KorhogoBlasonSvg } from '../components/KorhogoSvg'
+import ChargementEntreprises from '../components/ChargementEntreprises'
 import './Entreprises.css'
 
 // ── Les modules qu'une entreprise peut allumer ──────────────
@@ -208,7 +209,7 @@ export default function Entreprises() {
       return
     }
     setAdmin(parsedAdmin)
-    loadData()
+    loadData({ dureeMin: 650 })
     loadPays()
   }, [navigate])
 
@@ -227,8 +228,15 @@ export default function Entreprises() {
     }
   }
 
-  const loadData = async () => {
-    setLoading(true)
+  // ⚠️ `dureeMin` : la scène de chargement se joue en deux temps.
+  //    Si les données arrivent plus vite que le premier temps, on
+  //    verrait une image clignoter — on tient donc l'écran le temps
+  //    qu'une personne puisse lire la scène.
+  //    `silencieux` : après un enregistrement, on recharge en
+  //    arrière-plan sans renvoyer la page entière au chargement.
+  const loadData = async ({ silencieux = false, dureeMin = 0 } = {}) => {
+    const debut = Date.now()
+    if (!silencieux) setLoading(true)
     try {
       const { data } = await supabase
         .from('enterprises')
@@ -240,7 +248,11 @@ export default function Entreprises() {
     } catch (error) {
       console.error('Erreur chargement:', error)
     }
-    setLoading(false)
+    if (!silencieux) {
+      const reste = dureeMin - (Date.now() - debut)
+      if (reste > 0) await new Promise((r) => setTimeout(r, reste))
+      setLoading(false)
+    }
   }
 
   const genererCode = (name) => {
@@ -403,7 +415,7 @@ export default function Entreprises() {
       setShowModal(false)
       setLogoFile(null)
       setLogoPreview(null)
-      loadData()
+      loadData({ silencieux: true })
     } catch (error) {
       console.error('Erreur sauvegarde:', error)
       setAvis({ ton: 'erreur', texte: 'L’enregistrement a échoué. Réessayez.' })
@@ -426,7 +438,7 @@ export default function Entreprises() {
       await supabase.from('enterprises').update({ is_active: false }).eq('id', entreprise.id)
       setShowDeleteConfirm(null)
       setAvis({ ton: 'succes', texte: `${entreprise.name} a été retirée du registre.` })
-      loadData()
+      loadData({ silencieux: true })
     } catch (error) {
       console.error('Erreur suppression:', error)
       setAvis({ ton: 'erreur', texte: 'La suppression a échoué. Réessayez.' })
@@ -468,13 +480,16 @@ export default function Entreprises() {
 
   if (loading) {
     return (
-      <div className={`en-page en-chargement ${darkMode ? 'en-dark' : ''}`}>
-        <div className="en-chargement-cadre">
-          <KorhogoBlasonSvg size={52} />
-        </div>
-        <p>On déroule la toile…</p>
-        <div className="en-chargement-points" aria-hidden="true">
-          <i /><i /><i />
+      <div className={`en-page ${darkMode ? 'en-dark' : ''}`}>
+        <PageCulturalBand pathname="/entreprises" />
+        <div className="en-bordure" aria-hidden="true" />
+        <div className="en-chargement" role="status">
+          <ChargementEntreprises />
+          <span className="ch-etapes" aria-hidden="true">
+            <span className="ch-etape ch-etape--1">Étape 1 · La paperasse</span>
+            <span className="ch-etape ch-etape--2">Étape 2 · Le carton s’allume</span>
+          </span>
+          <p className="en-chargement-texte">Chargement des entreprises…</p>
         </div>
       </div>
     )
