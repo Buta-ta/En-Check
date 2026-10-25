@@ -285,3 +285,41 @@ describe('4. la bascule et le téléphone', () => {
     expect(css).toMatch(/@media \(max-width: 460px\)[\s\S]*?\.ct-outils\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/)
   })
 })
+
+// ── 5. Le titre, la carte vide et les calques ──────────────
+
+describe('5. le titre, la carte vide et les calques', () => {
+  it('donne à la carte un titre de travail', () => {
+    expect(page).toContain('Localisation des pointages')
+    expect(page).not.toContain("Le plateau vu d'en haut")
+  })
+
+  it('habille la carte vide comme une plaque gravée', () => {
+    for (const classe of [
+      'ct-voile--vide',
+      'ct-vide',
+      'ct-vide-sceau',
+      'ct-vide-titre',
+      'ct-vide-note',
+      'ct-vide-chevrons',
+    ]) {
+      expect(css).toContain(`.${classe}`)
+    }
+    expect(page).toContain('className="ct-voile ct-voile--vide"')
+    expect(page).toContain('Aucun pointage GPS pour cette date.')
+    expect(page).toContain('Les pointages apparaîtront ici en temps réel.')
+    // le chargement garde ses propres styles
+    expect(page).toContain('className="ct-voile ct-voile--charge"')
+    expect(css).toContain('.ct-voile--charge p')
+  })
+
+  it('garde la carte et ses voiles sous la barre de recherche', () => {
+    // la barre de l'assistant est fixe à z-index 80 : rien de la carte ne la couvre
+    expect(css).toMatch(/\.ct-carte-niche\s*\{[^}]*z-index:\s*0/)
+    expect(css).toMatch(/\.ct-carte-niche\s*\{[^}]*isolation:\s*isolate/)
+    expect(css).toMatch(/\.ct-carte\s*\{[^}]*z-index:\s*0/)
+    const zIndex = [...css.matchAll(/z-index:\s*(\d+)/g)].map((m) => Number(m[1]))
+    const horsModale = zIndex.filter((z) => z < 1000)
+    expect(Math.max(...horsModale)).toBeLessThan(80)
+  })
+})
