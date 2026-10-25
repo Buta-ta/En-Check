@@ -1,5 +1,6 @@
 import { KenteWovenTapestrySvg } from './AfroCulturalSvg'
 import { AbomeyFriseSvg } from './AbomeySvg'
+import { KorhogoFriseSvg } from './KorhogoSvg'
 import './PageCulturalBand.css'
 
 // Central route map: page, loading screen and assistant share the same artwork.
@@ -10,6 +11,7 @@ export function culturalMotifForPath(pathname = '') {
   if (page === 'retards') return 'retards-tissage'
   if (page === 'pointages') return 'adinkra'
   if (page === 'admins' || page === 'mon-compte') return 'abomey'
+  if (page === 'entreprises') return 'korhogo'
   if (page === 'pauses') return 'lesotho'
   if (page === 'employes') return 'zoulou'
   if (page === 'planning') return 'kuba'
@@ -23,5 +25,6 @@ export default function PageCulturalBand({ pathname, placement = 'top' }) {
   return <div className={`ec-cultural-band ec-cultural-${placement}`} data-cultural-motif={motif} aria-hidden="true">
     {motif === 'kente' && <KenteWovenTapestrySvg/>}
     {motif === 'abomey' && <AbomeyFriseSvg/>}
+    {motif === 'korhogo' && <KorhogoFriseSvg/>}
   </div>
 }
