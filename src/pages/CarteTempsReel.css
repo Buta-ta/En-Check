@@ -790,10 +790,16 @@
 /* la carte elle-même */
 .ct-carte-niche {
   position: relative;
+  z-index: 0;
+  /* tout ce qui vit dans la carte reste dans la carte : la légende,
+     les voiles et les calques de Leaflet ne peuvent plus passer
+     au-dessus de la barre de recherche de l'application */
+  isolation: isolate;
 }
 
 .ct-carte {
   position: relative;
+  z-index: 0;
   isolation: isolate;
   width: 100%;
   height: clamp(420px, 58vh, 640px);
@@ -809,7 +815,7 @@
   position: absolute;
   left: 12px;
   bottom: 12px;
-  z-index: 500;
+  z-index: 4;
   width: 186px;
   padding: 11px 12px;
   background: rgba(24, 15, 11, 0.94);
@@ -922,7 +928,7 @@
 .ct-voile {
   position: absolute;
   inset: 0;
-  z-index: 400;
+  z-index: 3;
   display: grid;
   place-items: center;
   align-content: center;
@@ -933,7 +939,7 @@
   backdrop-filter: blur(2px);
 }
 
-.ct-voile p {
+.ct-voile--charge p {
   margin: 0;
   font-size: 11.5px;
   color: var(--ct-patine-douce);
@@ -942,6 +948,84 @@
 .ct-voile-note {
   font-size: 10.5px;
   color: var(--ct-patine-faible);
+}
+
+/* la carte vide : une plaque gravée, pas un simple message perdu */
+.ct-voile--vide {
+  background: rgba(13, 10, 8, 0.52);
+  backdrop-filter: blur(1.5px);
+}
+
+.ct-vide {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: min(330px, 100%);
+  padding: 22px 22px 16px;
+  background: var(--ct-panneau);
+  border: 1px solid var(--ct-ligne-forte);
+  border-top: 3px solid var(--ct-bois);
+  box-shadow: var(--ct-ombre);
+}
+
+/* deux clous d'angle, comme sur le cadre */
+.ct-vide::before,
+.ct-vide::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ct-bois-clair);
+  box-shadow: inset 0 0 0 1px var(--ct-creux);
+}
+
+.ct-vide::before {
+  left: 6px;
+}
+
+.ct-vide::after {
+  right: 6px;
+}
+
+.ct-vide-sceau {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 4px;
+  color: var(--ct-accent-texte);
+  background: var(--ct-creux);
+  border: 1.5px dashed var(--ct-separateur);
+  border-radius: 50%;
+}
+
+.ct-voile--vide .ct-vide-titre {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--ct-patine);
+}
+
+.ct-voile--vide .ct-vide-note {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--ct-patine-faible);
+}
+
+.ct-vide-chevrons {
+  width: 92px;
+  height: 7px;
+  margin-top: 6px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='7' viewBox='0 0 16 7'%3E%3Cpath d='M0 5.5 L4 1.5 L8 5.5 L12 1.5 L16 5.5' fill='none' stroke='%23b4622a' stroke-width='1.4'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: center;
+  opacity: 0.8;
 }
 
 /* le balayage : un trait de pinceau qui traverse la niche */
@@ -2042,6 +2126,10 @@
 /* les voiles s'éclaircissent, sinon la carte disparaît sous du noir */
 .ct-page.ct-clair .ct-voile {
   background: rgba(250, 243, 229, 0.88);
+}
+
+.ct-page.ct-clair .ct-voile--vide {
+  background: rgba(250, 243, 229, 0.64);
 }
 
 .ct-page.ct-clair .ct-legende {

@@ -804,7 +804,7 @@ export default function CarteTempsReel() {
               <div className="ct-cadre-tete">
                 <h2 className="ct-cadre-titre">
                   <Activity size={12} aria-hidden="true" />
-                  Le plateau vu d'en haut
+                  Localisation des pointages
                 </h2>
                 <span className="ct-cadre-note">
                   {pointagesGps} pointage{pointagesGps > 1 ? 's' : ''} GPS
@@ -819,7 +819,7 @@ export default function CarteTempsReel() {
                 <div ref={mapRef} className="ct-carte" />
 
                 {loading && (
-                  <div className="ct-voile">
+                  <div className="ct-voile ct-voile--charge">
                     <span className="ct-balayage" aria-hidden="true" />
                     <p>On relève les traces…</p>
                     <span className="ct-voile-note">La carte se recompose.</span>
@@ -827,12 +827,17 @@ export default function CarteTempsReel() {
                 )}
 
                 {!loading && pointages.length === 0 && (
-                  <div className="ct-voile">
-                    <MapPin size={26} aria-hidden="true" />
-                    <p>Aucun pointage GPS pour cette date.</p>
-                    <span className="ct-voile-note">
-                      Les pointages apparaîtront ici en temps réel.
-                    </span>
+                  <div className="ct-voile ct-voile--vide">
+                    <div className="ct-vide" role="status">
+                      <span className="ct-vide-sceau" aria-hidden="true">
+                        <MapPin size={20} />
+                      </span>
+                      <p className="ct-vide-titre">Aucun pointage GPS pour cette date.</p>
+                      <p className="ct-vide-note">
+                        Les pointages apparaîtront ici en temps réel.
+                      </p>
+                      <span className="ct-vide-chevrons" aria-hidden="true" />
+                    </div>
                   </div>
                 )}
 
