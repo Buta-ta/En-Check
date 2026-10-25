@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowLeft,
-  ArrowUpRight,
   Moon,
   ShieldCheck,
   SlidersHorizontal,
@@ -17,6 +16,8 @@ import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
 import PageCulturalBand from '../components/PageCulturalBand'
 import { AbomeyBlasonSvg } from '../components/AbomeySvg'
+import AdminsLoadingScreen from '../components/AdminsLoadingScreen'
+import RaccourcisPages from '../components/RaccourcisPages'
 import EmployeeProfilePhoto from '../components/EmployeeProfilePhoto'
 import {
   currentAdminAccount,
@@ -41,6 +42,8 @@ export default function MyAdminAccount() {
     [last, setLast] = useState(''),
     [file, setFile] = useState(null)
   const [cropSource, setCropSource] = useState(null)
+  const [chargeur, setChargeur] = useState(false)
+  const [chargeurSaute, setChargeurSaute] = useState(false)
   const [preview, setPreview] = useState(''),
     [tab, setTab] = useState('profile'),
     [busy, setBusy] = useState(false)
@@ -65,6 +68,14 @@ export default function MyAdminAccount() {
       alive = false
     }
   }, [])
+  useEffect(() => {
+    if (me || error) {
+      setChargeur(false)
+      return undefined
+    }
+    const minuterie = window.setTimeout(() => setChargeur(true), 300)
+    return () => window.clearTimeout(minuterie)
+  }, [me, error])
   useEffect(() => {
     if (!file) {
       setPreview('')
@@ -167,6 +178,18 @@ export default function MyAdminAccount() {
     event.target.value = ''
   }
   if (challenge) return challenge
+  if (chargeur && !chargeurSaute) {
+    return (
+      <AdminsLoadingScreen
+        darkMode={darkMode}
+        variante="compte"
+        onSkip={() => {
+          setChargeurSaute(true)
+          setChargeur(false)
+        }}
+      />
+    )
+  }
   const nomComplet =
     [me?.first_name, me?.last_name].filter(Boolean).join(' ') || 'Compte administrateur'
   const rubriques = [
@@ -184,17 +207,20 @@ export default function MyAdminAccount() {
 
       <div className="aa-compte-shell">
         <nav className="aa-compte-barre" aria-label="Navigation du compte">
-          <Link className="aa-compte-retour" to="/dashboard">
-            <ArrowLeft size={14} />
-            Tableau de bord
-          </Link>
+          {/* Superadmin : on revient d'où l'on vient, dans l'administration.
+              Les autres gardent leur tableau de bord. */}
+          {me?.role === 'super_admin' ? (
+            <Link className="aa-compte-retour" to="/admins">
+              <ArrowLeft size={14} />
+              Administration des accès
+            </Link>
+          ) : (
+            <Link className="aa-compte-retour" to="/dashboard">
+              <ArrowLeft size={14} />
+              Tableau de bord
+            </Link>
+          )}
           <div className="aa-compte-barre-actions">
-            {me?.role === 'super_admin' && (
-              <Link className="aa-compte-lien" to="/admins">
-                Administration des accès
-                <ArrowUpRight size={13} />
-              </Link>
-            )}
             <button
               type="button"
               className="aa-bascule"
@@ -221,6 +247,12 @@ export default function MyAdminAccount() {
             <p>Votre identité, votre sécurité, vos préférences.</p>
           </div>
         </header>
+
+        {/* Les raccourcis : les mêmes que sur l'accueil de l'administration */}
+        <div className="aa-raccourcis">
+          <span className="aa-raccourcis-libelle">Aller à</span>
+          <RaccourcisPages compact excludePaths={['/admins', '/mon-compte']} />
+        </div>
 
         {error ? (
           <div role="alert" className="aa-compte-vide">

@@ -17,6 +17,7 @@ import {
 } from '../components/AbomeySvg'
 import EmployeeProfilePhoto from '../components/EmployeeProfilePhoto'
 import AdminsLoadingScreen from '../components/AdminsLoadingScreen'
+import RaccourcisPages from '../components/RaccourcisPages'
 import {
   ADMIN_FIELDS,
   currentAdminAccount,
@@ -399,6 +400,12 @@ export default function AdminAccounts() {
               </button>
             </div>
           </header>
+
+          {/* ── Les raccourcis : sortir de la page sans repasser par l'accueil ── */}
+          <div className="aa-raccourcis">
+            <span className="aa-raccourcis-libelle">Aller à</span>
+            <RaccourcisPages compact excludePaths={['/admins', '/mon-compte']} />
+          </div>
 
           {/* ── Les trois chiffres ── */}
           {error ? (

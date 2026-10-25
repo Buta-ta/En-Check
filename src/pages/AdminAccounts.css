@@ -2276,32 +2276,7 @@
   flex-wrap: wrap;
 }
 
-.aa-compte-lien {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 13px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--aa-encre);
-  text-decoration: none;
-  background: var(--aa-carte);
-  border: 1px dashed var(--aa-couture);
-  border-radius: 999px;
-  transition:
-    color 0.16s ease,
-    border-color 0.16s ease,
-    background-color 0.16s ease;
-}
 
-.aa-compte-lien:hover {
-  border-color: var(--aa-fil);
-  background: rgba(201, 169, 97, 0.1);
-}
-
-.aa-compte-lien svg {
-  color: var(--aa-fil);
-}
 
 /* l'en-tête */
 .aa-compte-entete {
@@ -2796,6 +2771,97 @@
 .aa-compte-vide p {
   margin: 0;
   font-size: 12px;
+}
+
+/* ── 17. Les raccourcis de pages ──────────────────────────── */
+/* Le composant RaccourcisPages porte les classes `.abs-*` : chaque
+   page lui donne son apparence. Ici, une pastille de fil doré, aux
+   couleurs du registre — elle suit donc le thème clair ou sombre. */
+
+.aa-raccourcis {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.aa-raccourcis-libelle {
+  flex: none;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--aa-encre-faible);
+}
+
+.aa-raccourcis .abs-raccourcis {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--aa-ligne);
+  border-radius: 999px;
+  background: rgba(201, 169, 97, 0.05);
+  scrollbar-width: none;
+}
+
+.aa-raccourcis .abs-raccourcis::-webkit-scrollbar {
+  display: none;
+}
+
+.aa-raccourcis .abs-raccourci {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--aa-encre-douce);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+.aa-raccourcis .abs-raccourci[data-compact='oui'] {
+  padding: 4px 9px;
+}
+
+.aa-raccourcis .abs-raccourci svg {
+  flex: none;
+  opacity: 0.85;
+}
+
+.aa-raccourcis .abs-raccourci:hover {
+  color: var(--aa-encre);
+  background: rgba(201, 169, 97, 0.12);
+}
+
+.aa-raccourcis .abs-raccourci:focus-visible {
+  outline: 2px solid var(--aa-fil);
+  outline-offset: 1px;
+}
+
+.aa-raccourcis .abs-raccourci[data-actif='oui'],
+.aa-raccourcis .abs-raccourci[data-actif='oui']:hover {
+  color: var(--aa-ivoire);
+  background: var(--aa-terre);
+  cursor: default;
+}
+
+/* sur la page du compte, la bande respire sous l'en-tête */
+.aa-compte .aa-raccourcis {
+  margin: 0 0 clamp(12px, 1.6vw, 18px);
 }
 
 /* ── 15. Adaptations ───────────────────────────────────────── */
