@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { accountRpc } from '../services/adminAccounts'
+import AdminExplication from './AdminExplication'
 export default function AdminSecurityAlerts() {
   const [alerts, setAlerts] = useState([]),
     [error, setError] = useState(''),
@@ -35,21 +36,23 @@ export default function AdminSecurityAlerts() {
   return (
     <section className="aa-workflow">
       <h3>Connexions à vérifier</h3>
-      <p>
-        Signal limité au navigateur déclaré par Auth, comparé aux connexions
-        observées depuis l’activation. Ce n’est ni une géolocalisation ni une
-        preuve d’intrusion. Aucun e-mail d’alerte n’est envoyé par ce contrôle.
-      </p>
-      <button disabled={busy} onClick={() => load()}>
+      <AdminExplication titre="Ce que ce signal mesure">
+        <p>
+          Signal limité au navigateur déclaré par Auth, comparé aux connexions
+          observées depuis l’activation. Ce n’est ni une géolocalisation ni une
+          preuve d’intrusion. Aucun e-mail d’alerte n’est envoyé par ce contrôle.
+        </p>
+      </AdminExplication>
+      <button className="aa-bouton-creux" disabled={busy} onClick={() => load()}>
         Actualiser les alertes
       </button>
       {error && <p role="alert">{error}</p>}
       {!error && !alerts.length && (
         <p>Aucune alerte en attente dans le registre chargé.</p>
       )}
-      <ul>
+      <ul className="aa-regles-liste">
         {alerts.map((a) => (
-          <li key={a.session_id}>
+          <li className="aa-regle aa-regle--version" key={a.session_id}>
             <strong>{new Date(a.created_at).toLocaleString('fr-FR')}</strong>
             <p>{a.user_agent}</p>
             <p>

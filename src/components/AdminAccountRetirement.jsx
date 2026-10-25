@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { accountRpc } from '../services/adminAccounts'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
+import AdminExplication from './AdminExplication'
 
 const stateLabel = {
   requested: 'Approbation distincte requise',
@@ -68,12 +69,6 @@ export default function AdminAccountRetirement({
     <section className="aa-workflow">
       <details>
         <summary>Transférer les responsabilités métier</summary>
-        <p>
-          Transfère les prospects encore ouverts. Les prospects signés ou
-          perdus, les auteurs des tâches et les validations passées restent
-          inchangés. Les tâches sont affectées à des employés, pas à ce compte
-          administrateur.
-        </p>
         <button
           disabled={busy}
           onClick={() =>
@@ -118,6 +113,7 @@ export default function AdminAccountRetirement({
             value={reason}
             minLength={5}
             maxLength={500}
+            placeholder="Ex. : départ du superadministrateur, passation de la paie…"
             onChange={(e) => setReason(e.target.value)}
           />
         </label>
@@ -140,26 +136,24 @@ export default function AdminAccountRetirement({
         >
           Transférer les prospects ouverts
         </button>
+        <AdminExplication titre="Ce qui est transféré, et ce qui ne l’est pas">
+          <p>
+            Transfère les prospects encore ouverts. Les prospects signés ou
+            perdus, les auteurs des tâches et les validations passées restent
+            inchangés. Les tâches sont affectées à des employés, pas à ce compte
+            administrateur.
+          </p>
+        </AdminExplication>
       </details>
       <details>
         <summary>Clôture définitive du profil</summary>
-        <p>
-          Compte inactif, archivé depuis sept jours, puis validation par deux
-          superadministrateurs distincts avec MFA. La fiche est pseudonymisée et
-          devient non réactivable. Son identifiant et l’historique métier sont
-          conservés.
-        </p>
-        <p>
-          Les photos du dossier admin sont nettoyées. L’identité Auth n’est
-          supprimée que si elle n’est pas partagée avec un employé ou un autre
-          compte. Les textes libres de l’historique ne sont pas effacés.
-        </p>
         <label>
           Motif de clôture
           <textarea
             value={reason}
             minLength={5}
             maxLength={500}
+            placeholder="Ex. : compte de test devenu inutile, demande de la direction…"
             onChange={(e) => setReason(e.target.value)}
           />
         </label>
@@ -184,9 +178,22 @@ export default function AdminAccountRetirement({
         >
           Demander la clôture définitive
         </button>
-        <button disabled={busy} onClick={() => run(async () => {})}>
+        <button className="aa-bouton-creux" disabled={busy} onClick={() => run(async () => {})}>
           Actualiser les demandes
         </button>
+        <AdminExplication titre="Les conditions d’une clôture définitive">
+          <p>
+            Compte inactif, archivé depuis sept jours, puis validation par deux
+            superadministrateurs distincts avec MFA. La fiche est pseudonymisée et
+            devient non réactivable. Son identifiant et l’historique métier sont
+            conservés.
+          </p>
+          <p>
+            Les photos du dossier admin sont nettoyées. L’identité Auth n’est
+            supprimée que si elle n’est pas partagée avec un employé ou un autre
+            compte. Les textes libres de l’historique ne sont pas effacés.
+          </p>
+        </AdminExplication>
         <ul>
           {requests.map((job) => (
             <li key={job.id}>

@@ -18,6 +18,7 @@ import PageCulturalBand from '../components/PageCulturalBand'
 import { AbomeyBlasonSvg } from '../components/AbomeySvg'
 import AdminsLoadingScreen from '../components/AdminsLoadingScreen'
 import RaccourcisPages from '../components/RaccourcisPages'
+import AdminExplication from '../components/AdminExplication'
 import EmployeeProfilePhoto from '../components/EmployeeProfilePhoto'
 import {
   currentAdminAccount,
@@ -325,6 +326,8 @@ export default function MyAdminAccount() {
                         <input
                           required
                           maxLength={80}
+                          autoComplete="given-name"
+                          placeholder="Ex. : Awa"
                           value={first}
                           onChange={(e) => setFirst(e.target.value)}
                         />
@@ -334,6 +337,8 @@ export default function MyAdminAccount() {
                         <input
                           required
                           maxLength={80}
+                          autoComplete="family-name"
+                          placeholder="Ex. : Dossou"
                           value={last}
                           onChange={(e) => setLast(e.target.value)}
                         />
@@ -346,11 +351,7 @@ export default function MyAdminAccount() {
                       />
                       <div className="aa-compte-photo-texte">
                         <strong>Photo de profil</strong>
-                        <small>
-                          JPG, PNG ou WebP, 2 Mo maximum. Recadrez avant de
-                          valider. La photo sera publique après enregistrement
-                          du profil.
-                        </small>
+                        <small>JPG, PNG ou WebP, 2 Mo maximum.</small>
                         <div className="aa-compte-photo-actions">
                           <label>
                             {file ? 'Changer la photo' : 'Choisir une image'}
@@ -374,6 +375,13 @@ export default function MyAdminAccount() {
                         </div>
                       </div>
                     </div>
+                    <AdminExplication titre="Comment la photo est publiée">
+                      <p>
+                        Recadrez avant de valider. La photo sera publique après
+                        enregistrement du profil ; tant que vous n’enregistrez
+                        pas, rien n’est publié.
+                      </p>
+                    </AdminExplication>
                     {file && (
                       <p role="status" className="aa-compte-note">
                         Nouvelle photo recadrée, pas encore enregistrée.
@@ -382,7 +390,7 @@ export default function MyAdminAccount() {
 
                     <label>
                       Adresse de connexion
-                      <input value={me.email || ''} readOnly />
+                      <input value={me.email || ''} readOnly placeholder="Adresse donnée par l’invitation" />
                     </label>
                     <p className="aa-compte-note">
                       Le changement d’adresse avec double vérification sera
@@ -406,17 +414,21 @@ export default function MyAdminAccount() {
                     <form onSubmit={changePassword}>
                       <div className="aa-compte-section-tete">
                         <h2>Changer mon mot de passe</h2>
+                      </div>
+                      <AdminExplication titre="Ce que ce changement ne ferme pas" ouvert>
                         <p>
                           Douze caractères minimum. Les sessions déjà ouvertes ne
-                          sont pas fermées par ce changement.
+                          sont pas fermées par ce changement : révoquez-les
+                          ci-dessous si nécessaire.
                         </p>
-                      </div>
+                      </AdminExplication>
                       <label>
                         Mot de passe actuel
                         <input
                           type="password"
                           required
                           autoComplete="current-password"
+                          placeholder="Votre mot de passe actuel"
                           value={oldPassword}
                           onChange={(e) => setOldPassword(e.target.value)}
                         />
@@ -428,6 +440,7 @@ export default function MyAdminAccount() {
                           minLength={12}
                           required
                           autoComplete="new-password"
+                          placeholder="Au moins 12 caractères"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                         />
@@ -439,6 +452,7 @@ export default function MyAdminAccount() {
                           minLength={12}
                           required
                           autoComplete="new-password"
+                          placeholder="Répétez le nouveau mot de passe"
                           value={confirm}
                           onChange={(e) => setConfirm(e.target.value)}
                         />

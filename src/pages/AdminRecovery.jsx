@@ -101,6 +101,7 @@ export default function AdminRecovery({ mode = 'request' }) {
                   required
                   autoComplete="email"
                   maxLength={254}
+                  placeholder="Ex. : awa.dossou@entreprise.bj"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -118,6 +119,7 @@ export default function AdminRecovery({ mode = 'request' }) {
                     autoComplete="new-password"
                     required
                     minLength={12}
+                    placeholder="Au moins 12 caractères"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
@@ -129,6 +131,7 @@ export default function AdminRecovery({ mode = 'request' }) {
                     autoComplete="new-password"
                     required
                     minLength={12}
+                    placeholder="Répétez le mot de passe"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                   />

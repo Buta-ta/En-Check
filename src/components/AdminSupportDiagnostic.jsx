@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { accountRpc } from '../services/adminAccounts'
+import AdminExplication from './AdminExplication'
 export default function AdminSupportDiagnostic() {
   const [params] = useSearchParams(),
     id = params.get('diagnostic')
@@ -11,10 +12,12 @@ export default function AdminSupportDiagnostic() {
   return (
     <section className="aa-panel">
       <h2>Diagnostic délégué</h2>
-      <p>
-        Consultation technique seulement. Le serveur vérifie l’autorisation, son
-        expiration et sa révocation.
-      </p>
+      <AdminExplication titre="Ce que montre le diagnostic">
+        <p>
+          Consultation technique seulement. Le serveur vérifie l’autorisation, son
+          expiration et sa révocation.
+        </p>
+      </AdminExplication>
       <button
         disabled={busy}
         onClick={async () => {
