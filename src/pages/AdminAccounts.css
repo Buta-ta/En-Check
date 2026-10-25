@@ -959,3 +959,29 @@
 .aa-workflow li { padding: 14px 0; border-top: 1px solid var(--aa-line); }
 .aa-workflow ul { list-style: none; padding: 0; }
 .aa-security-check { box-sizing: border-box; width: 100%; }
+
+.aa-permission-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--aa-line);
+  border-radius: 12px;
+  padding: 14px;
+}
+.aa-permission-actions legend {
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.aa-workflow .aa-permission-actions label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+@media (max-width: 600px) {
+  .aa-permission-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

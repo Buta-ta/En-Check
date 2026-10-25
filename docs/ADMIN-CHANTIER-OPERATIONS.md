@@ -73,3 +73,7 @@ L’inventaire des dépendances révèle notamment des références bloquantes v
 - Recette fournisseur, application des migrations, déploiement Edge et activation en production.
 
 Ces éléments ne sont ni présentés comme terminés ni remplacés par des boutons factices.
+
+## Suite : rôles personnalisés
+
+Le moteur serveur et son interface sont désormais codés : voir [rôles personnalisés, contrôles et état réel du déploiement](ADMIN-ROLES-PERSONNALISES.md). Attribution non activée en production. La correction ciblée de la vue `employees_public`, en revanche, a été exécutée et vérifiée.

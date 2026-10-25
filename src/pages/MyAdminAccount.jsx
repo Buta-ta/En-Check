@@ -1,3 +1,4 @@
+import AdminMyPermissions from '../components/AdminMyPermissions'
 import AdminSecurityAlerts from '../components/AdminSecurityAlerts'
 import AdminSupportDiagnostic from '../components/AdminSupportDiagnostic'
 import AdminVerifiedEmail from '../components/AdminVerifiedEmail'
@@ -362,6 +363,7 @@ export default function MyAdminAccount() {
                     superadministrateur.
                   </p>
                   <AdminAccountPreferences />
+                  <AdminMyPermissions />
                   <AdminSupportDiagnostic />
                 </>
               )}

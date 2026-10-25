@@ -66,3 +66,19 @@ it('wires all five legacy JWT-driven Edge handlers to the session guard', () => 
     expect(code).toContain('if (!await adminSessionAllowed(')
   }
 })
+
+it('denies custom roles on the legacy privileged Edge paths', async () => {
+  expect(
+    await adminSessionAllowed(
+      () => ({
+        rpc: async () => ({
+          data: { rest_guard_active: true, custom_role_restricted: true },
+          error: null,
+        }),
+      }),
+      'url',
+      'anon',
+      'token',
+    ),
+  ).toBe(false)
+})

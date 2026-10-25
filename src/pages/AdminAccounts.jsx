@@ -1,3 +1,4 @@
+import AdminPermissionRoles from '../components/AdminPermissionRoles'
 import AdminMfaRecovery from '../components/AdminMfaRecovery'
 import AdminAccountOperations from '../components/AdminAccountOperations'
 import AdminInvitations from '../components/AdminInvitations'
@@ -307,26 +308,7 @@ export default function AdminAccounts() {
             {view === 'journal' ? (
               <AdminAccountJournal accounts={rows} />
             ) : view === 'roles' ? (
-              <section className="aa-panel">
-                <h2>Les rôles actuellement attribués</h2>
-                <div className="aa-role-grid">
-                  {[...new Set(rows.map((a) => a.role))].map((role) => (
-                    <article key={role}>
-                      <ShieldCheck />
-                      <h3>{roleLabel(role)}</h3>
-                      <p>
-                        {rows.filter((a) => a.role === role).length} compte(s)
-                      </p>
-                    </article>
-                  ))}
-                </div>
-                <p>
-                  Les droits effectifs restent ceux du serveur et des
-                  affectations d’entreprise. La création de rôles personnalisés
-                  et les permissions détaillées nécessitent un chantier serveur
-                  distinct ; elles ne sont pas encore disponibles ici.
-                </p>
-              </section>
+              <AdminPermissionRoles accounts={rows} enterprises={enterprises} onSaved={load} />
             ) : (
               <>
                 <section
