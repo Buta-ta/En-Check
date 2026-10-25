@@ -6,14 +6,17 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowLeft,
-  SunMoon,
-  User,
+  ArrowUpRight,
+  Moon,
   ShieldCheck,
   SlidersHorizontal,
+  Sun,
+  User,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
 import PageCulturalBand from '../components/PageCulturalBand'
+import { AbomeyBlasonSvg } from '../components/AbomeySvg'
 import EmployeeProfilePhoto from '../components/EmployeeProfilePhoto'
 import {
   currentAdminAccount,
@@ -26,6 +29,7 @@ import AdminMfaSettings from '../components/AdminMfaSettings'
 import AdminAccountSessions from '../components/AdminAccountSessions'
 import AdminAccountPreferences from '../components/AdminAccountPreferences'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
+import { formaterDerniereConnexion, libelleRole } from '../utils/adminsPresentation'
 
 export default function MyAdminAccount() {
   const { darkMode, toggleTheme } = useTheme()
@@ -151,232 +155,327 @@ export default function MyAdminAccount() {
       )
     })
   }
+  function choisirPhoto(event) {
+    const chosen = event.target.files?.[0]
+    const acceptes = ['image/jpeg', 'image/png', 'image/webp']
+    if (chosen && (!acceptes.includes(chosen.type) || chosen.size > 2 * 1024 * 1024)) {
+      setNotice('Image JPG, PNG ou WebP, maximum 2 Mo.')
+      event.target.value = ''
+      return
+    }
+    if (chosen) setCropSource(chosen)
+    event.target.value = ''
+  }
   if (challenge) return challenge
+  const nomComplet =
+    [me?.first_name, me?.last_name].filter(Boolean).join(' ') || 'Compte administrateur'
+  const rubriques = [
+    ['profile', 'Mon profil', User],
+    ['security', 'Ma sécurité', ShieldCheck],
+    ['preferences', 'Mes préférences', SlidersHorizontal],
+  ]
+
   return (
-    <main className={`aa-page ${darkMode ? 'aa-dark' : ''}`}>
-      <nav className="aa-top">
-        <Link to="/dashboard">
-          <ArrowLeft size={16} /> Tableau de bord
-        </Link>
-        <button onClick={toggleTheme} aria-label="Changer le thème">
-          <SunMoon size={18} />
-        </button>
-      </nav>
-      <div className="aa-shell">
+    <main className={`aa-page aa-compte ${darkMode ? 'aa-dark' : ''}`}>
+      {/* Une bande courte : un en-tête de pièce, pas un frontispice. */}
+      <div className="aa-compte-bande">
         <PageCulturalBand pathname="/admins" />
-        <header className="aa-heading">
+      </div>
+
+      <div className="aa-compte-shell">
+        <nav className="aa-compte-barre" aria-label="Navigation du compte">
+          <Link className="aa-compte-retour" to="/dashboard">
+            <ArrowLeft size={14} />
+            Tableau de bord
+          </Link>
+          <div className="aa-compte-barre-actions">
+            {me?.role === 'super_admin' && (
+              <Link className="aa-compte-lien" to="/admins">
+                Administration des accès
+                <ArrowUpRight size={13} />
+              </Link>
+            )}
+            <button
+              type="button"
+              className="aa-bascule"
+              role="switch"
+              aria-checked={darkMode}
+              onClick={toggleTheme}
+              aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
+              title={darkMode ? 'Thème clair' : 'Thème sombre'}
+            >
+              <span className="aa-bascule-pastille">
+                {darkMode ? <Moon size={10} /> : <Sun size={10} />}
+              </span>
+            </button>
+          </div>
+        </nav>
+
+        <header className="aa-compte-entete">
+          <AbomeyBlasonSvg size={46} />
           <div>
-            <span className="aa-eyebrow">VOTRE ESPACE PERSONNEL</span>
+            <span className="aa-compte-eyebrow">Votre espace personnel</span>
             <h1>
               Mon compte<span>.</span>
             </h1>
             <p>Votre identité, votre sécurité, vos préférences.</p>
           </div>
-          {me?.role === 'super_admin' && (
-            <Link to="/admins">Administration des accès →</Link>
-          )}
         </header>
+
         {error ? (
-          <p role="alert" className="aa-panel">
-            {error} <Link to="/login">Se reconnecter</Link>
-          </p>
+          <div role="alert" className="aa-compte-vide">
+            <AbomeyBlasonSvg size={34} />
+            <p>{error}</p>
+            <Link className="aa-bouton-creux" to="/login">
+              Se reconnecter
+            </Link>
+          </div>
         ) : !me ? (
-          <p role="status" className="aa-panel">
-            Vérification de votre compte…
-          </p>
+          <div role="status" className="aa-compte-vide">
+            <AbomeyBlasonSvg size={34} />
+            <p>Vérification de votre compte…</p>
+          </div>
         ) : (
-          <div className="aa-account-grid">
-            <aside className="aa-panel aa-identity">
+          <div className="aa-compte-grille">
+            <aside className="aa-compte-identite" aria-label="Votre identité">
               <EmployeeProfilePhoto
                 employee={{ ...me, photo_url: preview || me.photo_url }}
               />
-              <h2>
-                {me.first_name} {me.last_name}
-              </h2>
+              <h2>{nomComplet}</h2>
               <p>{me.email}</p>
-              <span className="aa-state is-active">
-                {me.role === 'super_admin'
-                  ? 'Superadministrateur'
-                  : 'Administrateur'}
-              </span>
-              <div className="aa-account-nav">
-                {[
-                  ['profile', 'Mon profil', User],
-                  ['security', 'Ma sécurité', ShieldCheck],
-                  ['preferences', 'Mes préférences', SlidersHorizontal],
-                ].map(([key, label, Icon]) => (
+              <span className="aa-compte-role">{libelleRole(me.role)}</span>
+              <dl className="aa-compte-meta">
+                <div>
+                  <dt>Dernière connexion</dt>
+                  <dd>{formaterDerniereConnexion(me.last_login_at)}</dd>
+                </div>
+                <div>
+                  <dt>Rôle</dt>
+                  <dd>{libelleRole(me.role)}</dd>
+                </div>
+              </dl>
+            </aside>
+
+            <div className="aa-compte-contenu">
+              <nav
+                className="aa-compte-onglets"
+                role="tablist"
+                aria-label="Rubriques du compte"
+              >
+                {rubriques.map(([cle, libelle, Icone]) => (
                   <button
-                    key={key}
-                    aria-pressed={tab === key}
+                    key={cle}
+                    type="button"
+                    role="tab"
+                    aria-pressed={tab === cle}
                     onClick={() => {
-                      setTab(key)
+                      setTab(cle)
                       setNotice('')
                     }}
                   >
-                    <Icon size={18} />
-                    {label}
+                    <Icone size={14} />
+                    {libelle}
                   </button>
                 ))}
-              </div>
-            </aside>
-            <section className="aa-panel aa-account-form">
-              {tab === 'profile' && (
-                <form onSubmit={save}>
-                  <h2>Mon profil</h2>
-                  <p>Ces informations ne changent pas vos permissions.</p>
-                  <label>
-                    Prénom
-                    <input
-                      required
-                      maxLength={80}
-                      value={first}
-                      onChange={(e) => setFirst(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Nom
-                    <input
-                      required
-                      maxLength={80}
-                      value={last}
-                      onChange={(e) => setLast(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Photo de profil
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      disabled={busy}
-                      onChange={(e) => {
-                        const chosen = e.target.files?.[0]
-                        if (
-                          chosen &&
-                          (!['image/jpeg', 'image/png', 'image/webp'].includes(
-                            chosen.type,
-                          ) ||
-                            chosen.size > 2 * 1024 * 1024)
-                        ) {
-                          setNotice('Image JPG, PNG ou WebP, maximum 2 Mo.')
-                          e.target.value = ''
-                          return
-                        }
-                        if (chosen) setCropSource(chosen)
-                        e.target.value = ''
-                      }}
-                    />
-                  </label>
-                  <small>
-                    JPG, PNG ou WebP, 2 Mo maximum. Recadrez avant de valider.
-                    La photo sera publique après enregistrement du profil.
-                  </small>
-                  {file && (
-                    <div className="aa-photo-pending">
-                      <p role="status">
+              </nav>
+
+              <section className="aa-compte-panneau">
+                {tab === 'profile' && (
+                  <form className="aa-compte-formulaire" onSubmit={save}>
+                    <div className="aa-compte-section-tete">
+                      <h2>Mon profil</h2>
+                      <p>Ces informations ne changent pas vos permissions.</p>
+                    </div>
+
+                    <div className="aa-compte-champs">
+                      <label>
+                        Prénom
+                        <input
+                          required
+                          maxLength={80}
+                          value={first}
+                          onChange={(e) => setFirst(e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Nom
+                        <input
+                          required
+                          maxLength={80}
+                          value={last}
+                          onChange={(e) => setLast(e.target.value)}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="aa-compte-photo">
+                      <EmployeeProfilePhoto
+                        employee={{ ...me, photo_url: preview || me.photo_url }}
+                      />
+                      <div className="aa-compte-photo-texte">
+                        <strong>Photo de profil</strong>
+                        <small>
+                          JPG, PNG ou WebP, 2 Mo maximum. Recadrez avant de
+                          valider. La photo sera publique après enregistrement
+                          du profil.
+                        </small>
+                        <div className="aa-compte-photo-actions">
+                          <label>
+                            {file ? 'Changer la photo' : 'Choisir une image'}
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              disabled={busy}
+                              onChange={choisirPhoto}
+                            />
+                          </label>
+                          {file && (
+                            <button
+                              type="button"
+                              className="aa-compte-lien-discret"
+                              disabled={busy}
+                              onClick={() => setFile(null)}
+                            >
+                              Annuler le changement
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {file && (
+                      <p role="status" className="aa-compte-note">
                         Nouvelle photo recadrée, pas encore enregistrée.
                       </p>
+                    )}
+
+                    <label>
+                      Adresse de connexion
+                      <input value={me.email || ''} readOnly />
+                    </label>
+                    <p className="aa-compte-note">
+                      Le changement d’adresse avec double vérification sera
+                      ajouté dans un prochain lot.
+                    </p>
+
+                    <div className="aa-compte-pied">
                       <button
-                        type="button"
+                        type="submit"
+                        className="aa-bouton-plein"
                         disabled={busy}
-                        onClick={() => setFile(null)}
                       >
-                        Annuler le changement de photo
+                        {busy ? 'Enregistrement…' : 'Enregistrer mon profil'}
                       </button>
                     </div>
-                  )}
-                  <label>
-                    Adresse de connexion
-                    <input value={me.email || ''} readOnly />
-                  </label>
-                  <p className="aa-footnote">
-                    Le changement d’adresse avec double vérification sera ajouté
-                    dans un prochain lot.
-                  </p>
-                  <button className="aa-primary" disabled={busy}>
-                    {busy ? 'Enregistrement…' : 'Enregistrer mon profil'}
-                  </button>
-                </form>
-              )}
-              {tab === 'security' && (
-                <>
-                  <form onSubmit={changePassword}>
-                    <h2>Changer mon mot de passe</h2>
-                    <label>
-                      Mot de passe actuel
-                      <input
-                        type="password"
-                        required
-                        autoComplete="current-password"
-                        value={oldPassword}
-                        onChange={(e) => setOldPassword(e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Nouveau mot de passe
-                      <input
-                        type="password"
-                        minLength={12}
-                        required
-                        autoComplete="new-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Confirmer le nouveau mot de passe
-                      <input
-                        type="password"
-                        minLength={12}
-                        required
-                        autoComplete="new-password"
-                        value={confirm}
-                        onChange={(e) => setConfirm(e.target.value)}
-                      />
-                    </label>
-                    <button disabled={busy || !me.email}>
-                      Modifier mon mot de passe
-                    </button>
                   </form>
-                  <hr />
-                  <AdminVerifiedEmail />
-                  <AdminMfaSettings />
-                  <AdminSecurityAlerts />
-                  <AdminAccountSessions />
-                </>
-              )}
-              {tab === 'preferences' && (
-                <>
-                  <h2>Mes préférences</h2>
-                  <p>
-                    Le thème est enregistré sur cet appareil et partagé avec les
-                    autres pages.
+                )}
+
+                {tab === 'security' && (
+                  <div className="aa-compte-sections">
+                    <form onSubmit={changePassword}>
+                      <div className="aa-compte-section-tete">
+                        <h2>Changer mon mot de passe</h2>
+                        <p>
+                          Douze caractères minimum. Les sessions déjà ouvertes ne
+                          sont pas fermées par ce changement.
+                        </p>
+                      </div>
+                      <label>
+                        Mot de passe actuel
+                        <input
+                          type="password"
+                          required
+                          autoComplete="current-password"
+                          value={oldPassword}
+                          onChange={(e) => setOldPassword(e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Nouveau mot de passe
+                        <input
+                          type="password"
+                          minLength={12}
+                          required
+                          autoComplete="new-password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Confirmer le nouveau mot de passe
+                        <input
+                          type="password"
+                          minLength={12}
+                          required
+                          autoComplete="new-password"
+                          value={confirm}
+                          onChange={(e) => setConfirm(e.target.value)}
+                        />
+                      </label>
+                      <div className="aa-compte-pied">
+                        <button
+                          type="submit"
+                          className="aa-bouton-plein"
+                          disabled={busy || !me.email}
+                        >
+                          {busy ? 'Enregistrement…' : 'Modifier mon mot de passe'}
+                        </button>
+                      </div>
+                    </form>
+
+                    <AdminVerifiedEmail />
+                    <AdminMfaSettings />
+                    <AdminSecurityAlerts />
+                    <AdminAccountSessions />
+                  </div>
+                )}
+
+                {tab === 'preferences' && (
+                  <div className="aa-compte-sections">
+                    <div className="aa-compte-section-tete">
+                      <h2>Mes préférences</h2>
+                      <p>
+                        Le thème est enregistré sur cet appareil et partagé avec
+                        les autres pages.
+                      </p>
+                    </div>
+                    <div className="aa-compte-reglage">
+                      <div>
+                        <strong>Thème sombre</strong>
+                        <small>
+                          Indigo nuit, terre cuite et fil doré — l’identité de la
+                          maison.
+                        </small>
+                      </div>
+                      <button
+                        type="button"
+                        className="aa-bascule"
+                        role="switch"
+                        aria-checked={darkMode}
+                        onClick={toggleTheme}
+                        aria-label="Thème sombre"
+                      >
+                        <span className="aa-bascule-pastille">
+                          {darkMode ? <Moon size={10} /> : <Sun size={10} />}
+                        </span>
+                      </button>
+                    </div>
+                    <AdminAccountPreferences />
+                    <AdminMyPermissions />
+                    <AdminSupportDiagnostic />
+                  </div>
+                )}
+
+                {notice && (
+                  <p role="status" className="aa-notice">
+                    {notice}
                   </p>
-                  <button onClick={toggleTheme}>
-                    {darkMode
-                      ? 'Passer au thème clair'
-                      : 'Passer au thème sombre'}
-                  </button>
-                  <h3>Mes accès</h3>
-                  <p>
-                    Rôle serveur : <strong>{me.role}</strong>. Les permissions
-                    et les entreprises sont attribuées par le
-                    superadministrateur.
-                  </p>
-                  <AdminAccountPreferences />
-                  <AdminMyPermissions />
-                  <AdminSupportDiagnostic />
-                </>
-              )}
-              {notice && (
-                <p role="status" className="aa-notice">
-                  {notice}
-                </p>
-              )}
-            </section>
+                )}
+              </section>
+            </div>
           </div>
         )}
-        <PageCulturalBand pathname="/admins" placement="bottom" />
       </div>
+
       {cropSource && (
         <AdminAvatarCrop
           file={cropSource}
