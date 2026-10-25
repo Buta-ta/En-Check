@@ -2,7 +2,7 @@
 // 🎨 ENTREPRISES — la toile peinte de Korhogo
 //
 // Le registre des entreprises tient dans un seul écran : la
-// liste des maisons (une carte = un cadre peint), un panneau de
+// liste des entreprises (une carte = un cadre peint), un panneau de
 // chiffres à droite, et le formulaire dans un carton de toile.
 //
 // ⚠️ Aucune donnée, aucune règle métier n'a bougé : mêmes
@@ -505,12 +505,12 @@ export default function Entreprises() {
           <div className="en-titre-bloc">
             <KorhogoBlasonSvg size={54} />
             <div>
-              <span className="en-eyebrow">Le registre des maisons</span>
+              <span className="en-eyebrow">Le registre des entreprises</span>
               <h1 className="en-titre">
                 Entreprises<span>.</span>
               </h1>
               <p className="en-sous-titre">
-                Chaque cadre porte une maison : ses gens, ses pointages, ses modules.
+                Chaque fiche réunit une entreprise : ses employés, ses pointages, ses modules.
               </p>
             </div>
           </div>
@@ -577,7 +577,7 @@ export default function Entreprises() {
                 <strong>{entreprisesFiltrees.length}</strong>
                 <span>
                   {searchTerm ? `sur ${entreprises.length} ` : ''}
-                  {entreprisesFiltrees.length > 1 ? 'maisons' : 'maison'}
+                  {entreprisesFiltrees.length > 1 ? 'entreprises' : 'entreprise'}
                 </span>
               </div>
             </div>
@@ -586,7 +586,7 @@ export default function Entreprises() {
               {entreprisesFiltrees.length === 0 ? (
                 <div className="en-vide">
                   <KorhogoBlasonSvg size={46} />
-                  <h3>{searchTerm ? 'Aucune maison dans ce cadre' : 'La toile est encore vide'}</h3>
+                  <h3>{searchTerm ? 'Aucune entreprise dans ce cadre' : 'Aucune entreprise pour l’instant'}</h3>
                   <p>
                     {searchTerm
                       ? 'Aucun nom, code, secteur ou email ne correspond à cette recherche.'
@@ -627,10 +627,10 @@ export default function Entreprises() {
             <section className="en-panneau en-panneau--mesures">
               <h2 className="en-panneau-titre">
                 <Zap size={12} />
-                Sur la toile
+                En résumé
               </h2>
               <div className="en-mesure">
-                <span>Maisons</span>
+                <span>Entreprises</span>
                 <b>{entreprises.length}</b>
               </div>
               <div className="en-mesure">
@@ -661,7 +661,7 @@ export default function Entreprises() {
               <details className="en-note-pli">
                 <summary>{totalModules} modules allumés</summary>
                 <p>
-                  Chaque module coché dans une fiche est facturé à cette maison. Les six groupes
+                  Chaque module coché dans une fiche est facturé à cette entreprise. Les six groupes
                   sont : le pointage, la sécurité, l’organisation, la paie, les alertes et les
                   rapports.
                 </p>
@@ -708,7 +708,7 @@ export default function Entreprises() {
             <div className="en-carton-tete">
               <AlertTriangle size={18} color="var(--en-alerte)" />
               <div>
-                <h2 id="en-confirme-titre">Retirer cette maison ?</h2>
+                <h2 id="en-confirme-titre">Retirer cette entreprise ?</h2>
                 <p>Elle quittera le registre, ses données restent.</p>
               </div>
               <button
@@ -775,7 +775,7 @@ export default function Entreprises() {
               <KorhogoBlasonSvg size={34} />
               <div>
                 <h2 id="en-form-titre">
-                  {editingEntreprise ? 'Peindre la fiche' : 'Une nouvelle maison'}
+                  {editingEntreprise ? 'Modifier l’entreprise' : 'Nouvelle entreprise'}
                 </h2>
                 <p>
                   {editingEntreprise
@@ -996,7 +996,7 @@ export default function Entreprises() {
                       </span>
                     ) : (
                       <span className="en-aide" data-ton="alerte">
-                        Sans pays, l’impôt de cette maison ne sera pas calculé.
+                        Sans pays, l’impôt de cette entreprise ne sera pas calculé.
                       </span>
                     )}
                   </div>
@@ -1112,7 +1112,7 @@ export default function Entreprises() {
                               ? `, avec ${formData.auto_close_grace_minutes} min de tolérance`
                               : ''
                           }.`
-                        : 'La fermeture automatique est désactivée pour cette maison.'}
+                        : 'La fermeture automatique est désactivée pour cette entreprise.'}
                     </span>
                   </div>
                 </div>

@@ -196,8 +196,8 @@ describe('3. la refonte', () => {
     expect(css).toContain('.ct-raccourcis .abs-raccourci')
   })
 
-  it('nomme les gens dans une colonne, avec leur heure et leur état', () => {
-    expect(page).toContain('Les gens du jour')
+  it('nomme les employés dans une colonne, avec leur heure et leur état', () => {
+    expect(page).toContain('Employés du jour')
     expect(page).toContain('ct-planche')
     expect(page).toContain('formaterHeureLocale(data.lastTime)')
     // la recherche ne touche qu'à l'affichage
@@ -265,7 +265,7 @@ describe('4. la bascule et le téléphone', () => {
     expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*?grid-template-columns:\s*repeat\(2/)
     // 16 px : iOS ne zoome plus quand on touche un champ
     expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*?font-size:\s*16px/)
-    // la légende se replie sous la carte, les gens passent dessous
+    // la légende se replie sous la carte, la liste passe dessous
     expect(css).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.ct-atelier\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/)
     expect(css).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.ct-legende\s*\{[^}]*position:\s*static/)
   })
@@ -321,5 +321,52 @@ describe('5. le titre, la carte vide et les calques', () => {
     const zIndex = [...css.matchAll(/z-index:\s*(\d+)/g)].map((m) => Number(m[1]))
     const horsModale = zIndex.filter((z) => z < 1000)
     expect(Math.max(...horsModale)).toBeLessThan(80)
+  })
+})
+
+// ── 6. Le vocabulaire ──────────────────────────────────────
+
+describe('6. le vocabulaire de gestion', () => {
+  // la page parle comme un outil RH : entreprises, employés, pointages.
+  // Les métaphores restent dans les matières et les ornements, jamais
+  // dans un libellé qu'un responsable lirait à son comptable.
+  it('appelle une entreprise une entreprise', () => {
+    expect(page).not.toContain('Toutes les maisons')
+    expect(page).not.toContain("'La maison'")
+    expect(page).not.toContain('>La maison<')
+    expect(page).toContain('Toutes les entreprises')
+    expect(page).toContain('Entreprise non renseignée')
+    expect(page).toContain('<span className="ct-seuil-libelle">Entreprise</span>')
+  })
+
+  it('appelle un employé un employé', () => {
+    expect(page).not.toContain('Les gens du jour')
+    expect(page).not.toContain('Toutes les personnes')
+    expect(page).not.toContain('Aucune personne ne correspond')
+    expect(page).toMatch(/ct-etiquette">\s*<[^>]+aria-hidden="true" \/>\s*Employé\s*</)
+    expect(page).toContain('Tous les employés')
+    expect(page).toContain('Aucun employé ne correspond à ces filtres.')
+  })
+
+  it('nomme les champs comme des champs', () => {
+    expect(page).toMatch(/ct-etiquette">\s*<[^>]+aria-hidden="true" \/>\s*Date\s*</)
+    expect(page).toContain('<span className="ct-etiquette">Statut</span>')
+    expect(page).not.toContain('>Le jour<')
+    expect(page).not.toContain('>Le statut<')
+  })
+
+  it('garde le décor dans le décor, pas dans les textes de travail', () => {
+    // l'identité dogon reste, mais les messages de service sont neutres
+    expect(page).toContain('La porte du plateau')
+    expect(page).toContain('Chaque point correspond à un pointage géolocalisé sur le site.')
+    expect(page).toContain('Chargement des pointages…')
+    expect(page).not.toContain('On relève les traces')
+  })
+
+  it('ne laisse aucun identifiant « maison » traîner', () => {
+    expect(page).not.toContain('maisonAffichee')
+    expect(css).not.toContain('ct-seuil-maison')
+    expect(page).toContain('entrepriseAffichee')
+    expect(css).toContain('.ct-seuil-entreprise')
   })
 })
