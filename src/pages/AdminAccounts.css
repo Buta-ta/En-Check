@@ -943,3 +943,19 @@
 .aa-sessions textarea{min-height:80px;width:100%;background:var(--aa-paper);color:var(--aa-ink);border:1px solid var(--aa-line);border-radius:10px}
 .aa-account-form .aa-check-line{display:flex;align-items:center;gap:12px}
 .aa-account-form .aa-check-line input{width:20px;height:20px}
+
+/* Account workflows: shared light/dark tokens, no local navigation rail. */
+.aa-workflow { min-width: 0; overflow-wrap: anywhere; }
+.aa-workflow > summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
+.aa-workflow form { display: grid; gap: 14px; margin: 20px 0; }
+.aa-workflow label { display: grid; gap: 8px; font-size: 13px; margin: 12px 0; }
+.aa-workflow input:not([type=checkbox]),.aa-workflow select,.aa-workflow textarea,
+.aa-security-check input { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--aa-line); background: var(--aa-paper); color: var(--aa-ink); border-radius: 10px; padding: 12px; font: inherit; }
+.aa-workflow input[type=checkbox] { width: 18px; height: 18px; }
+.aa-workflow textarea { min-height: 88px; resize: vertical; }
+.aa-workflow button { margin: 8px 8px 8px 0; max-width: 100%; white-space: normal; }
+.aa-workflow details { border-top: 1px solid var(--aa-line); padding: 18px 0; }
+.aa-workflow summary { cursor: pointer; }
+.aa-workflow li { padding: 14px 0; border-top: 1px solid var(--aa-line); }
+.aa-workflow ul { list-style: none; padding: 0; }
+.aa-security-check { box-sizing: border-box; width: 100%; }

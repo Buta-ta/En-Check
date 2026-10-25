@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 const labels = {
+  mfa_recovery_requested: 'Récupération MFA demandée', mfa_recovery_completed: 'Facteurs MFA retirés', mfa_recovery_failed: 'Récupération MFA non confirmée',
+  auth_password_updated: 'Identifiants Auth modifiés', unfamiliar_browser: 'Navigateur inhabituel détecté', session_alert_acknowledged: 'Connexion vérifiée par le titulaire',
+  invitation_requested: 'Invitation demandée',
+  invitation_sent: 'Invitation envoyée',
+  invitation_failed: 'Échec de l’invitation',
+  invitation_cancelled: 'Invitation annulée',
+  invitation_accepted: 'Invitation acceptée',
+  email_verified: 'Adresse confirmée synchronisée',
+  account_insert: 'Compte créé', account_update: 'Compte modifié', account_delete: 'Compte supprimé',
+  enterprise_access_insert: 'Accès entreprise ajouté', enterprise_access_update: 'Accès entreprise modifié', enterprise_access_delete: 'Accès entreprise retiré',
+  access_updated: 'Accès enregistrés', account_archived: 'Compte archivé', account_restored: 'Compte sorti de l’archive',
+  support_granted: 'Diagnostic délégué', support_revoked: 'Délégations révoquées', diagnostic_read: 'Diagnostic consulté',
   profile_updated: 'Profil modifié',
   preferences_updated: 'Préférences modifiées',
   session_revoked: 'Accès API révoqué',
@@ -54,8 +66,8 @@ export default function AdminAccountJournal({ accounts }) {
         <span className="aa-eyebrow">TRAÇABILITÉ</span>
         <h2>Le journal des interventions</h2>
         <p>
-          Les 50 dernières actions du nouveau journal. Les opérations des
-          anciens écrans n’y figurent pas toutes.
+          Les 50 dernières actions enregistrées. La migration d’audit ajoute les
+          modifications des comptes et des liens d’entreprise, y compris depuis les anciens écrans.
         </p>
       </header>
       {loading ? (

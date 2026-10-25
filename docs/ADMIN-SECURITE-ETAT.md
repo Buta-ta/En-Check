@@ -1,5 +1,7 @@
 # Administration — état réel du chantier
 
+> Ce document décrit le lot précédent. Pour les ajouts et les restants actuels, voir [le chantier opérations](ADMIN-CHANTIER-OPERATIONS.md).
+
 ## Lot livré dans cette branche
 
 - Challenge TOTP à la connexion, avant les lectures métier ; contrôle AAL2.

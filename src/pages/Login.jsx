@@ -1,3 +1,5 @@
+import { ADMIN_FIELDS } from '../services/adminAccounts'
+import { adminPasswordChangeRequired } from '../services/adminPasswordCheckpoint'
 // ═══════════════════════════════════════════════════════════
 // 🔐 PAGE DE CONNEXION - AFROFUTURISTE + SÉCURISÉE
 // ═══════════════════════════════════════════════════════════
@@ -372,6 +374,10 @@ export default function Login() {
 
       // Resolve MFA before reading any protected business profile or data.
       await ensureMfa()
+      if (await adminPasswordChangeRequired()) {
+        window.location.assign('/admin/changer-mot-de-passe')
+        return
+      }
 
       // ⭐ LIVRAISON 05.C.1 : connexion réussie → on remet le compteur
       // serveur à zéro (et on note la date de dernière connexion).
@@ -387,8 +393,10 @@ export default function Login() {
       // 5. Récupérer le profil complet
       const { data: admin, error: adminError } = await supabase
         .from('admins')
-        .select('*')
+        .select(ADMIN_FIELDS)
         .eq('id', adminCheck.id)
+        .eq('user_id', authData.user.id)
+        .eq('is_active', true)
         .single()
 
       if (adminError || !admin) {
@@ -464,6 +472,12 @@ export default function Login() {
       }
       if (!selectedEnterprise && entreprises.length > 0) {
         selectedEnterprise = entreprises[0]
+      }
+
+      // Optional observation: never fabricate a successful alert record.
+      const observation = await supabase.rpc('encheck_account_session_seen')
+      if (observation.error && observation.error.code !== 'PGRST202') {
+        console.warn('Observation de sécurité non enregistrée.')
       }
 
       // 8. Stocker la session (SANS password_hash)
@@ -823,7 +837,8 @@ export default function Login() {
                 </>
               )}
             </button>
-          </form>
+          <a href="/admin/mot-de-passe-oublie">Mot de passe oublié ?</a>
+                </form>
 
           {/* ── FOOTER ── */}
           <div style={styles.cardFooter}>

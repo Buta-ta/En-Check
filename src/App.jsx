@@ -1,3 +1,5 @@
+import { adminPasswordChangeRequired } from './services/adminPasswordCheckpoint'
+import AdminRecovery from './pages/AdminRecovery'
 // src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider } from './contexts/ThemeContext'
@@ -17,7 +19,6 @@ import Employes from './pages/Employes'
 import Pointages from './pages/Pointages'
 import Entreprises from './pages/Entreprises'
 import Rapports from './pages/Rapports'
-import Admins from './pages/Admins'
 import AdminAccounts from './pages/AdminAccounts'
 import MyAdminAccount from './pages/MyAdminAccount'
 import Planning from './pages/Planning'
@@ -83,6 +84,7 @@ function AdminRoute({ children, requireSuperAdmin = false }) {
   const {ensureMfa,challenge}=useAdminMfaCheckpoint()
   const [checking, setChecking] = useState(true)
   const [authorized, setAuthorized] = useState(false)
+  const [passwordRequired, setPasswordRequired] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -138,6 +140,10 @@ function AdminRoute({ children, requireSuperAdmin = false }) {
 
         if (cancelled) return
         await ensureMfa()
+        if (await adminPasswordChangeRequired()) {
+          if (!cancelled) { setPasswordRequired(true); setChecking(false) }
+          return
+        }
         const { data: serverAdmin, error: roleError } = await supabase.from('admins')
           .select('id, role, is_active').eq('id', admin.id).eq('user_id', session.user.id).maybeSingle()
         if (roleError || !serverAdmin || serverAdmin.is_active !== true || (requireSuperAdmin && serverAdmin.role !== 'super_admin')) {
@@ -158,6 +164,7 @@ function AdminRoute({ children, requireSuperAdmin = false }) {
   }, [requireSuperAdmin,ensureMfa])
 
   if (challenge) return challenge
+  if (passwordRequired) return <Navigate to="/admin/changer-mot-de-passe" replace />
 
   if (checking) {
     return (
@@ -229,6 +236,10 @@ function App() {
 
           {/* ═══ AUTH ═══ */}
           <Route path="/login" element={<Login />} />
+          <Route path="/admin/mot-de-passe-oublie" element={<AdminRecovery />} />
+          <Route path="/admin/recuperation" element={<AdminRecovery mode="reset" />} />
+          <Route path="/admin/changer-mot-de-passe" element={<AdminRecovery mode="reset" />} />
+          <Route path="/admin/activation" element={<AdminRecovery mode="invite" />} />
 
 
           <Route path="/employee/login" element={<EmployeeLogin />} />
@@ -266,7 +277,7 @@ function App() {
             </AdminRoute>
           } />
           <Route path="/admins" element={<AdminRoute requireSuperAdmin><AdminAccounts /></AdminRoute>} />
-          <Route path="/admins/gestion-existante" element={<AdminRoute requireSuperAdmin><Admins /></AdminRoute>} />
+          <Route path="/admins/gestion-existante" element={<AdminRoute requireSuperAdmin><Navigate to="/admins" replace /></AdminRoute>} />
           <Route path="/mon-compte" element={<AdminRoute><MyAdminAccount /></AdminRoute>} />
           <Route path="/planning" element={
             <AdminRoute>
