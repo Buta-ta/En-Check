@@ -219,3 +219,69 @@ describe('3. la refonte', () => {
     expect(page).toContain('role="status"')
   })
 })
+
+// ── 4. Le jour et la poche ─────────────────────────────────
+
+describe('4. la bascule et le téléphone', () => {
+  it('prend la bascule clair / sombre de l’application', () => {
+    expect(page).toContain("import { useTheme } from '../contexts/ThemeContext'")
+    expect(page).toContain('const { darkMode, toggleTheme } = useTheme()')
+    // la page ne s'invente pas un thème : elle suit celui de l'admin
+    expect(page).toContain("className={`ct-page${darkMode ? '' : ' ct-clair'}`}")
+  })
+
+  it('pose un vrai interrupteur, nommé pour les deux sens', () => {
+    expect(page).toContain('className="ct-bascule"')
+    expect(page).toContain('role="switch"')
+    expect(page).toContain('aria-checked={darkMode}')
+    expect(page).toContain('onClick={toggleTheme}')
+    expect(page).toContain("darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'")
+    expect(css).toContain('.ct-bascule')
+  })
+
+  it('dessine le jour, pas seulement un bouton', () => {
+    expect(css).toContain('.ct-page.ct-clair')
+    // la patine prend la place de la nuit, l'encre celle de la patine
+    expect(css).toMatch(/\.ct-page\.ct-clair\s*\{[^}]*--ct-nuit:\s*#f4ead6/)
+    expect(css).toMatch(/\.ct-page\.ct-clair\s*\{[^}]*--ct-panneau:\s*#fbf4e4/)
+    expect(css).toMatch(/\.ct-page\.ct-clair\s*\{[^}]*--ct-patine:\s*#241a14/)
+    // les surfaces qui étaient noires doivent s'éclaircir
+    expect(css).toContain('.ct-page.ct-clair .ct-voile')
+    expect(css).toContain('.ct-page.ct-clair .ct-legende')
+    expect(css).toContain('.ct-page.ct-clair .ct-fond')
+  })
+
+  it('garde une encre lisible sur les fonds clairs', () => {
+    expect(css).toMatch(/\.ct-page\.ct-clair\s*\{[^}]*--ct-ok-texte:\s*#0b5f43/)
+    expect(css).toMatch(/\.ct-page\.ct-clair\s*\{[^}]*--ct-attente-texte:\s*#8a5506/)
+    expect(css).toMatch(/\.ct-page\.ct-clair\s*\{[^}]*--ct-alerte-texte:\s*#b91c1c/)
+    // le texte posé sur le bois reste clair dans les deux thèmes
+    expect(css).toContain('--ct-sur-bois: #f4ead6')
+  })
+
+  it('tient dans une poche : grille d’outils et champs à 16 px', () => {
+    expect(css).toContain('@media (max-width: 720px)')
+    expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*?\.ct-outils\s*\{[^}]*display:\s*grid/)
+    expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*?grid-template-columns:\s*repeat\(2/)
+    // 16 px : iOS ne zoome plus quand on touche un champ
+    expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*?font-size:\s*16px/)
+    // la légende se replie sous la carte, les gens passent dessous
+    expect(css).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.ct-atelier\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/)
+    expect(css).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.ct-legende\s*\{[^}]*position:\s*static/)
+  })
+
+  it('fait de la fiche une feuille sur téléphone', () => {
+    expect(css).toContain('@keyframes ct-fiche-sheet')
+    expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*?\.ct-fond\s*\{[^}]*place-items:\s*end stretch/)
+    expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*?animation:\s*ct-fiche-sheet/)
+    expect(css).toContain('env(safe-area-inset-bottom)')
+  })
+
+  it('tient encore sur les plus petits écrans', () => {
+    expect(css).toContain('@media (max-width: 460px)')
+    expect(css).toContain('@media (max-width: 380px)')
+    // les registres restent deux par deux jusqu'à 380 px
+    expect(css).toMatch(/@media \(max-width: 720px\)[\s\S]*?\.ct-registres\s*\{[^}]*grid-template-columns:\s*repeat\(2/)
+    expect(css).toMatch(/@media \(max-width: 460px\)[\s\S]*?\.ct-outils\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/)
+  })
+})

@@ -16,11 +16,13 @@ import { useNavigate } from 'react-router-dom'
 import PageCulturalBand from '../components/PageCulturalBand'
 import RaccourcisPages from '../components/RaccourcisPages'
 import { DogonBlasonSvg } from '../components/DogonSvg'
+import { useTheme } from '../contexts/ThemeContext'
 import './CarteTempsReel.css'
 import {
   ArrowLeft, MapPin, Users, Calendar, X, Activity,
   CheckCircle2, AlertTriangle, XCircle, Camera,
   LogIn, LogOut, Navigation, Search, RefreshCw, Building2,
+  Sun, Moon,
 } from 'lucide-react'
 import L from 'leaflet'
 import 'leaflet.markercluster'
@@ -86,6 +88,9 @@ export default function CarteTempsReel() {
   const channelRef = useRef(null)
 
   const navigate = useNavigate()
+  // La même bascule que le reste de l'application : le choix suit l'admin
+  // d'une page à l'autre et se retient d'une visite à l'autre.
+  const { darkMode, toggleTheme } = useTheme()
 
   // ═══════════════════════════════════════════════════════════
   // 🔧 INITIALISATION ADMIN
@@ -612,7 +617,7 @@ export default function CarteTempsReel() {
   // ═══════════════════════════════════════════════════════════
 
   return (
-    <div className="ct-page">
+    <div className={`ct-page${darkMode ? '' : ' ct-clair'}`}>
       <PageCulturalBand pathname="/carte-temps-reel" />
       <div className="ct-bordure" aria-hidden="true" />
 
@@ -641,6 +646,17 @@ export default function CarteTempsReel() {
             <i aria-hidden="true" />
             En direct
           </span>
+          <button
+            type="button"
+            className="ct-bascule"
+            role="switch"
+            aria-checked={darkMode}
+            onClick={toggleTheme}
+            aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
+            title={darkMode ? 'Thème clair' : 'Thème sombre'}
+          >
+            {darkMode ? <Moon size={14} aria-hidden="true" /> : <Sun size={14} aria-hidden="true" />}
+          </button>
         </div>
       </header>
 
@@ -745,7 +761,7 @@ export default function CarteTempsReel() {
             </select>
           </label>
 
-          <div className="ct-champ">
+          <div className="ct-champ ct-champ-statut">
             <span className="ct-etiquette">Le statut</span>
             <div className="ct-cles" role="group" aria-label="Filtrer par statut de pointage">
               {CLES_STATUT.map(({ cle, libelle }) => (
@@ -828,45 +844,48 @@ export default function CarteTempsReel() {
                   </h4>
 
                   <div className="ct-legende-corps">
-                    <p className="ct-legende-section">Sur le site</p>
-                    <div className="ct-legende-ligne">
-                      <span className="ct-point ct-point--plein" data-ton="ok" />
-                      <span>Présent</span>
-                    </div>
-                    <div className="ct-legende-ligne">
-                      <span className="ct-point ct-point--plein" data-ton="attente" />
-                      <span>Sorti</span>
-                    </div>
-                    <div className="ct-legende-ligne">
-                      <span className="ct-point" data-ton="alerte" />
-                      <span>Hors zone</span>
-                    </div>
-
-                    <div className="ct-legende-separateur" />
-
-                    <p className="ct-legende-section">Zone GPS</p>
-                    <div className="ct-legende-ligne">
-                      <span className="ct-point ct-point--plein" data-ton="ok" />
-                      <span>Non bloquante</span>
-                    </div>
-                    <div className="ct-legende-ligne">
-                      <span className="ct-point ct-point--creux" data-ton="alerte" />
-                      <span>Bloquante</span>
+                    <div className="ct-legende-groupe">
+                      <p className="ct-legende-section">Sur le site</p>
+                      <div className="ct-legende-ligne">
+                        <span className="ct-point ct-point--plein" data-ton="ok" />
+                        <span>Présent</span>
+                      </div>
+                      <div className="ct-legende-ligne">
+                        <span className="ct-point ct-point--plein" data-ton="attente" />
+                        <span>Sorti</span>
+                      </div>
+                      <div className="ct-legende-ligne">
+                        <span className="ct-point" data-ton="alerte" />
+                        <span>Hors zone</span>
+                      </div>
                     </div>
 
-                    <div className="ct-legende-separateur" />
-
-                    <p className="ct-legende-section">Groupe</p>
-                    <div className="ct-legende-ligne">
-                      <span className="ct-pastille">12</span>
-                      <span>Employés réunis</span>
+                    <div className="ct-legende-groupe">
+                      <p className="ct-legende-section">Zone GPS</p>
+                      <div className="ct-legende-ligne">
+                        <span className="ct-point ct-point--plein" data-ton="ok" />
+                        <span>Non bloquante</span>
+                      </div>
+                      <div className="ct-legende-ligne">
+                        <span className="ct-point ct-point--creux" data-ton="alerte" />
+                        <span>Bloquante</span>
+                      </div>
                     </div>
 
-                    <div className="ct-legende-separateur" />
+                    <div className="ct-legende-groupe">
+                      <p className="ct-legende-section">Groupe</p>
+                      <div className="ct-legende-ligne">
+                        <span className="ct-pastille">12</span>
+                        <span>Employés réunis</span>
+                      </div>
+                    </div>
 
-                    <div className="ct-legende-ligne">
-                      <span className="ct-point" data-ton="moi" />
-                      <span>Ma position</span>
+                    <div className="ct-legende-groupe">
+                      <p className="ct-legende-section">Vous</p>
+                      <div className="ct-legende-ligne">
+                        <span className="ct-point" data-ton="moi" />
+                        <span>Ma position</span>
+                      </div>
                     </div>
                   </div>
                 </div>
