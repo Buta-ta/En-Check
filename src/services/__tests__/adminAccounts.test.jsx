@@ -126,13 +126,18 @@ it('renders actual counts, both active and inactive accounts and opens the selec
   expect(
     [...host.querySelectorAll('.aa-metrics strong')].map((e) => e.textContent),
   ).toEqual(['1', '0', '1'])
+  // cliquer une ligne remplit le panneau permanent, à droite
   await act(async () => host.querySelectorAll('.aa-row')[1].click())
-  expect(host.querySelector('dialog').open).toBe(true)
-  expect(host.querySelector('#aa-account-title').textContent).toBe('Aïcha Test')
+  expect(host.querySelector('.aa-panneau').textContent).toContain('Aïcha Test')
+  // la fiche complète s'ouvre depuis la tuile de la ligne
+  await act(async () =>
+    host.querySelector('[aria-label="Ouvrir la fiche de Aïcha Test"]').click(),
+  )
+  expect(host.querySelector('#aa-fiche-titre').textContent).toBe('Aïcha Test')
   expect(host.textContent).not.toContain('2 invitations')
   const close = host.querySelector('[aria-label="Fermer la fiche"]')
   await act(async () => close.click())
-  expect(host.querySelector('dialog').open).toBe(false)
+  expect(host.querySelector('.aa-fiche').open).toBe(false)
 })
 it('filters without silently dropping inactive accounts', () => {
   expect(
@@ -210,7 +215,10 @@ async function openPasswordForm() {
   await mount()
   await act(async () => host.querySelectorAll('.aa-row')[1].click())
   await act(async () =>
-    [...host.querySelectorAll('dialog button')]
+    host.querySelector('[aria-label="Ouvrir la fiche de Aïcha Test"]').click(),
+  )
+  await act(async () =>
+    [...host.querySelectorAll('.aa-fiche-onglets button')]
       .find((button) => button.textContent === 'Sécurité')
       .click(),
   )
@@ -312,12 +320,12 @@ it('does not echo service errors containing credentials and clears secrets on fa
   ).toBe(true)
   await fillPasswordForm()
   await act(async () =>
-    [...host.querySelectorAll('dialog button')]
+    [...host.querySelectorAll('.aa-fiche-onglets button')]
       .find((button) => button.textContent === 'Profil')
       .click(),
   )
   await act(async () =>
-    [...host.querySelectorAll('dialog button')]
+    [...host.querySelectorAll('.aa-fiche-onglets button')]
       .find((button) => button.textContent === 'Sécurité')
       .click(),
   )
@@ -331,7 +339,7 @@ it('does not echo service errors containing credentials and clears secrets on fa
 it('renders the register without a duplicate sidebar and exposes the real journal', async () => {
   await mount()
   expect(host.querySelector('.aa-rail')).toBeNull()
-  expect(host.querySelector('h1').textContent).toContain('Comptes & accès')
+  expect(host.querySelector('h1').textContent).toContain('Administrateurs')
   await act(async () =>
     [...host.querySelectorAll('button')]
       .find((b) => b.textContent === 'Journal')
@@ -345,9 +353,12 @@ it('keeps sensitive actions collapsed until requested and uses the selected band
   await openPasswordForm()
   expect(host.querySelector('.aa-danger-section').open).toBe(false)
   expect(host.querySelector('.aa-password-section').open).toBe(false)
-  expect(
-    host.querySelector('dialog [data-cultural-motif="abomey"]'),
-  ).not.toBeNull()
+  // le panneau est permanent : il vit dans la page, pas dans un dialogue
+  expect(host.querySelector('.aa-panneau')).not.toBeNull()
+  expect(host.querySelector('dialog .aa-panneau')).toBeNull()
+  expect(host.querySelector('[data-cultural-motif="abomey"]')).not.toBeNull()
+  // et la fiche, elle, s'ouvre par-dessus
+  expect(host.querySelector('.aa-fiche')).not.toBeNull()
   // Identité propre à la page : l'appliqué d'Abomey, en SVG maison.
   // Avant, /admins empruntait l'image du bogolan de la Paie — une bande
   // de 46 px qui n'était pas la sienne.

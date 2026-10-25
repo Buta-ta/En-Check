@@ -61,43 +61,34 @@ export function formaterDerniereConnexion(valeur, maintenant = new Date()) {
  * que cette courbe affirme, c'est « il y avait N éléments à
  * cette date » — c'est vrai, et vérifiable dans les données.
  */
-export function serieCumulative(elements = [], champ = 'created_at', limite = 24) {
-  const dates = elements
-    .map((e) => e?.[champ])
-    .map((v) => (v ? new Date(v).getTime() : NaN))
-    .filter((t) => !Number.isNaN(t))
-    .sort((a, b) => a - b)
-
-  if (dates.length === 0) return [0, 0]
-  if (dates.length === 1) return [0, 1]
-
-  const pas = Math.max(1, Math.ceil(dates.length / limite))
-  const serie = []
-  for (let i = 0; i < dates.length; i += pas) serie.push(i + 1)
-  if (serie[serie.length - 1] !== dates.length) serie.push(dates.length)
-  return serie.length >= 2 ? serie : [0, dates.length]
+/**
+ * Les créations, mois par mois, sur les douze derniers mois.
+ * Vraies données : aucune bosse n'est inventée.
+ */
+export function serieMensuelle(rows = [], filtre = () => true, periode = new Date()) {
+  const series = Array.from({ length: 12 }, () => 0)
+  const index = new Map()
+  for (let i = 11; i >= 0; i -= 1) {
+    const d = new Date(periode.getFullYear(), periode.getMonth() - i, 1)
+    index.set(`${d.getFullYear()}-${d.getMonth()}`, 11 - i)
+  }
+  ;(rows || []).filter(filtre).forEach((row) => {
+    if (!row?.created_at) return
+    const d = new Date(row.created_at)
+    if (Number.isNaN(d.getTime())) return
+    const creneau = index.get(`${d.getFullYear()}-${d.getMonth()}`)
+    if (creneau !== undefined) series[creneau] += 1
+  })
+  return series
 }
 
-/**
- * La couverture des entreprises, dans le temps : à chaque date où
- * une entreprise reçoit son PREMIER administrateur, la courbe
- * monte d'un cran. Réel, jamais simulé.
- */
-export function serieCouverture(rows = []) {
-  const premiers = new Map()
-  rows.forEach((row) => {
-    if (!row?.enterprise_id || row.role === 'super_admin') return
-    const date = row.created_at ? new Date(row.created_at).getTime() : NaN
-    if (Number.isNaN(date)) return
-    const connu = premiers.get(row.enterprise_id)
-    if (connu === undefined || date < connu) premiers.set(row.enterprise_id, date)
+/** Le cumul des mois : une courbe qui monte, jamais un pic isolé. */
+export function cumuler(serie = []) {
+  let total = 0
+  return serie.map((valeur) => {
+    total += valeur
+    return total
   })
-  const dates = [...premiers.values()].sort((a, b) => a - b)
-  if (dates.length === 0) return [0, 0]
-  if (dates.length === 1) return [0, 1]
-  const serie = []
-  for (let i = 0; i < dates.length; i += 1) serie.push(i + 1)
-  return serie
 }
 
 /** Combien d'entreprises distinctes ont au moins un administrateur. */
@@ -128,6 +119,10 @@ export function libelleEtatAcces(etat) {
   )
 }
 
+/**
+ * Un sur-titre de colonne ou de champ : « Administrateur » → « ADMINISTRATEUR ».
+ * Les en-têtes de la maquette sont tous en capitales espacées.
+ */
 /**
  * Filtres de la page : texte, rôle et état, en plus du filtrage
  * par entreprise déjà fait par `filterAdminAccounts`.

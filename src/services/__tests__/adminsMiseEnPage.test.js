@@ -13,13 +13,13 @@ import path from 'node:path'
 import {
   ROLES,
   entreprisesCouvertes,
+  cumuler,
   etatAcces,
   filtrerParRole,
   formaterDerniereConnexion,
   libelleEtatAcces,
   libelleRole,
-  serieCouverture,
-  serieCumulative,
+  serieMensuelle,
   tonRole,
 } from '../../utils/adminsPresentation'
 
@@ -85,27 +85,47 @@ describe('3. la dernière connexion', () => {
 // ── 4. Les courbes ─────────────────────────────────────────
 
 describe('4. les courbes des cartes', () => {
-  it('ne dessine jamais une tendance inventée', () => {
-    expect(serieCumulative([])).toEqual([0, 0])
-    expect(serieCumulative([{ created_at: '2026-01-01T00:00:00Z' }])).toEqual([0, 1])
-    const serie = serieCumulative([
-      { created_at: '2026-01-01T00:00:00Z' },
-      { created_at: '2026-02-01T00:00:00Z' },
-      { created_at: '2026-03-01T00:00:00Z' },
-    ])
-    expect(serie[serie.length - 1]).toBe(3)
-    expect(serie.every((v) => v <= 3)).toBe(true)
+  const maintenant = new Date(2026, 9, 25, 9, 0, 0)
+
+  it('compte les créations dans les douze derniers mois, jamais au-delà', () => {
+    const serie = serieMensuelle(
+      [
+        { created_at: '2026-10-03T00:00:00Z' }, // ce mois-ci
+        { created_at: '2026-09-20T00:00:00Z' }, // le mois d'avant
+        { created_at: '2025-11-15T00:00:00Z' }, // premier mois de la fenêtre
+        { created_at: '2025-10-31T00:00:00Z' }, // treizième mois : dehors
+        { created_at: 'pas une date' },
+        { created_at: null },
+      ],
+      () => true,
+      maintenant,
+    )
+    expect(serie).toHaveLength(12)
+    expect(serie[11]).toBe(1) // octobre 2026
+    expect(serie[10]).toBe(1) // septembre 2026
+    expect(serie[0]).toBe(1) // novembre 2025
+    expect(serie.reduce((a, b) => a + b, 0)).toBe(3)
   })
 
-  it('compte une entreprise au jour de son PREMIER administrateur', () => {
-    const serie = serieCouverture([
-      { role: 'admin', enterprise_id: 'e1', created_at: '2026-01-10T00:00:00Z' },
-      { role: 'manager', enterprise_id: 'e1', created_at: '2026-02-10T00:00:00Z' },
-      { role: 'admin', enterprise_id: 'e2', created_at: '2026-03-10T00:00:00Z' },
-      // un super admin ne « couvre » aucune entreprise : il n'y est pas rattaché
-      { role: 'super_admin', enterprise_id: 'e3', created_at: '2026-04-10T00:00:00Z' },
-    ])
-    expect(serie).toEqual([1, 2])
+  it('ne compte que les lignes retenues par le filtre', () => {
+    const serie = serieMensuelle(
+      [
+        { created_at: '2026-10-03T00:00:00Z', is_active: true },
+        { created_at: '2026-10-04T00:00:00Z', is_active: false },
+      ],
+      (row) => row.is_active,
+      maintenant,
+    )
+    expect(serie.reduce((a, b) => a + b, 0)).toBe(1)
+  })
+
+  it('cumule sans jamais redescendre', () => {
+    expect(cumuler([])).toEqual([])
+    expect(cumuler([0, 2, 0, 1])).toEqual([0, 2, 2, 3])
+    const serie = cumuler(serieMensuelle([{ created_at: '2026-10-03T00:00:00Z' }], () => true, maintenant))
+    for (let i = 1; i < serie.length; i += 1) {
+      expect(serie[i]).toBeGreaterThanOrEqual(serie[i - 1])
+    }
   })
 })
 
@@ -134,36 +154,91 @@ describe('5. les trois chiffres', () => {
 
 // ── 6. La mise en page, vérifiée dans le code ─────────────
 
-describe('6. la page reconstruite', () => {
-  it('a deux bandes tissées pleine largeur', () => {
-    // avant : la bande vivait DANS la coque de 1280 px, donc encadrée
+describe('6. la page reconstruite (v3, mesurée sur la maquette)', () => {
+  it('pose une bande haute pleine largeur et une bande basse insérée', () => {
     expect(page).toContain('className="aa-bande"')
-    expect(page).toContain("placement=\"bottom\"")
-    expect(css).toMatch(/\.aa-register \.aa-bande\s*\{[^}]*width:\s*100%/)
-    // et la page ne garde pas le rembourrage qui empêcherait le pleine largeur
-    expect(css).toMatch(/\.aa-register\s*\{[^}]*padding:\s*0;/)
+    expect(page).toContain('className="aa-bande-basse"')
+    expect(page).toContain('placement="bottom"')
+    // la bande haute est une vraie hauteur, pas le gabarit de 88 px
+    expect(css).toMatch(
+      /\.aa-register \.aa-bande \.ec-cultural-top\[data-cultural-motif='abomey'\][^}]*height:\s*var\(--aa-bande-h\)/,
+    )
+    expect(css).toMatch(/--aa-bande-h:\s*clamp\(120px,\s*12\.8vw,\s*163px\)/)
+    // et la bande basse est insérée dans la colonne de contenu, arrondie
+    expect(css).toMatch(
+      /\.aa-register \.aa-bande-basse\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--aa-panneau-w\)/,
+    )
+    expect(css).toMatch(/\.aa-register \.aa-bande-basse-cadre\s*\{[^}]*border-radius:\s*10px/)
   })
 
-  it('a un tableau à cinq colonnes, pas une liste de cartes', () => {
-    for (const colonne of ['Administrateur', 'Rôle', 'Entreprises', 'Dernière connexion', 'Actions']) {
+  it('garde le panneau à droite comme un meuble, jamais une fenêtre', () => {
+    expect(page).toContain('className="aa-grille"')
+    expect(page).toContain('className="aa-panneau"')
+    expect(css).toMatch(
+      /\.aa-register \.aa-grille\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--aa-panneau-w\)/,
+    )
+    // 205 px sur 1024 : environ 20 % de la largeur, et collé au bord droit
+    expect(css).toMatch(/--aa-panneau-w:\s*clamp\(206px,\s*20vw,\s*300px\)/)
+    expect(css).toMatch(/\.aa-register \.aa-grille\s*\{[^}]*padding:[^;]*0 0 var\(--aa-pad\)/)
+    // le tiroir modal de la v2 a disparu : ni `position: fixed`, ni 460 px
+    expect(css).not.toMatch(/\.aa-drawer(?![-a-z])/)
+    expect(css).not.toContain('width: 460px')
+  })
+
+  it('a un tableau à quatre colonnes, des lignes de 48 px', () => {
+    for (const colonne of ['Administrateur', 'Rôle', 'Entreprise', 'Action']) {
       expect(page).toContain(colonne)
     }
-    expect(css).toMatch(/grid-template-columns:\s*minmax\(0, 1\.7fr\)[^;]*96px/)
+    expect(css).toMatch(
+      /\.aa-register \.aa-list-head,\s*\.aa-register \.aa-row\s*\{[^}]*grid-template-columns:\s*minmax\(150px, 1\.55fr\)/,
+    )
+    expect(css).toMatch(/--aa-ligne-h:\s*clamp\(48px,\s*4\.65vw,\s*67px\)/)
   })
 
-  it('affiche de vraies actions par ligne', () => {
-    // deux boutons : ouvrir la fiche, voir les interventions
-    expect(page).toContain('className="aa-action"')
-    expect(page).toContain('Ouvrir la fiche')
-    expect(page).toContain('Historique')
-    // et la ligne entière reste cliquable, comme avant
-    expect(page).toContain('className="aa-row"')
+  it('affiche les actions en tuiles pleines de 30 × 30, pas en contours', () => {
+    expect(page).toContain('className="aa-tuile"')
+    expect(page).toContain('aria-label={`Ouvrir la fiche de')
+    expect(css).toMatch(
+      /\.aa-register \.aa-tuile\s*\{[^}]*width:\s*30px[^}]*height:\s*30px[^}]*border:\s*0[^}]*border-radius:\s*8px[^}]*background:\s*var\(--aa-tuile\)/,
+    )
+    // la ligne entière reste cliquable
+    expect(page).toContain('className={`aa-row')
+    expect(page).toContain('onClick={() => choisirPourLeTiroir(admin)}')
+  })
+
+  it('colore la page comme la maquette, pas comme la v2', () => {
+    expect(css).toContain('--aa-fond: #180d0a')
+    expect(css).toContain('--aa-carte: #241b17')
+    expect(css).toContain('--aa-panneau: #291e1b')
+    expect(css).toContain('--aa-tuile: #3a2b26')
+    expect(css).toContain('--aa-terre: #8b3e1d')
+    // le terracotta clair de la v2 ne doit plus revenir
+    expect(css).not.toContain('#c4703f')
+    expect(css).not.toContain('#15110e')
+  })
+
+  it('coud chaque carte : pointillé au périmètre, pièces aux deux coins', () => {
+    expect(css).toMatch(
+      /\.aa-register \.aa-metrique\s*\{[^}]*border:\s*1px dashed var\(--aa-couture\)/,
+    )
+    expect(page).toContain('aa-metrique-coin--haut')
+    expect(page).toContain('aa-metrique-coin--bas')
+    expect(page).toContain('<AbomeyCoinSvg variante="indigo"')
+    expect(page).toContain('<AbomeyCoinSvg variante="ivoire"')
+  })
+
+  it('trace les vraies courbes, à 68 % de la carte et sans aplat', () => {
+    expect(page).toContain('serieMensuelle')
+    expect(page).toContain('CourbeOnduleeSvg')
+    expect(css).toMatch(/\.aa-register \.aa-metrique-courbe\s*\{[^}]*width:\s*68%/)
+    const svg = lire('src/components/AbomeySvg.jsx')
+    expect(svg).toMatch(/strokeWidth="1\.8"/)
+    expect(svg).toMatch(/fill="none"/)
   })
 
   it('affiche la dernière connexion depuis la base', () => {
     expect(page).toContain('formaterDerniereConnexion(admin.last_login_at)')
     const service = lire('src/services/adminAccounts.js')
-    // le champ doit être RÉELLEMENT demandé, sinon la colonne serait vide
     expect(service).toContain('last_login_at')
     expect(service).toContain('ADMIN_FIELDS')
   })
@@ -174,20 +249,40 @@ describe('6. la page reconstruite', () => {
     expect(page).toContain('filtrerParRole(filtered, roleFiltre)')
   })
 
-  it('garde le tiroir, la fiche et ses quatre onglets', () => {
-    expect(page).toContain("['Profil', 'Accès', 'Sécurité', 'Historique']")
-    expect(page).toContain('aa-account-title')
-    expect(css).toMatch(/\.aa-drawer\s*\{[^}]*position:\s*fixed/)
-    expect(css).toMatch(/\.aa-drawer\s*\{[^}]*width:\s*460px/)
+  it('garde la fiche et ses quatre onglets, retravaillés', () => {
+    expect(page).toMatch(
+      /\['Profil', Users\],[\s\S]*\['Accès', KeyRound\],[\s\S]*\['Sécurité', ShieldCheck\],[\s\S]*\['Historique', History\],/,
+    )
+    expect(page).toContain('className="aa-fiche-onglets"')
+    expect(css).toMatch(/\.aa-fiche-onglets > button\[aria-pressed='true'\]::after/)
+    expect(css).toMatch(
+      /\.aa-fiche-onglets > button\[aria-pressed='true'\]\s*\{\s*color:\s*var\(--aa-encre\)/,
+    )
+    // la fiche est un dialogue, mais le panneau, lui, n'en est pas un
+    expect(page).toContain('className="aa-fiche')
+    expect(css).toMatch(/\.aa-fiche\s*\{[^}]*width:\s*min\(1120px, 96vw\)/)
+  })
+
+  it('retravaille le bouton « Mon compte » et les onglets internes', () => {
+    expect(page).toContain('className="aa-lien-compte"')
+    expect(page).toContain('to="/mon-compte"')
+    expect(css).toMatch(/\.aa-register \.aa-lien-compte\s*\{[^}]*border:\s*1px dashed/)
+    expect(page).toContain('className="aa-tabs"')
+    expect(css).toMatch(/\.aa-register \.aa-tabs > button\[aria-pressed='true'\]::after/)
+    // l'ancien titre du tiroir n'existe plus
+    expect(page).not.toContain('aa-account-title')
   })
 
   it('ne casse pas l’écran « Mon compte », qui partage `.aa-page`', () => {
-    // la nouvelle mise en page est scopée sous `.aa-register`
     const monCompte = lire('src/pages/MyAdminAccount.jsx')
     expect(monCompte).toContain('aa-page')
     expect(monCompte).not.toContain('aa-register')
     // aucun sélecteur nu `.aa-page { padding: 0 }` n'a été introduit
     expect(css).not.toMatch(/^\.aa-page\s*\{[^}]*padding:\s*0;/m)
+    // les composants partagés gardent leurs crochets de style
+    for (const crochet of ['.aa-panel', '.aa-workflow', '.aa-journal', '.aa-section', '.aa-formulaire']) {
+      expect(css).toContain(crochet)
+    }
   })
 
   it('reste utilisable au clavier, sans animation imposée', () => {
@@ -199,8 +294,9 @@ describe('6. la page reconstruite', () => {
   })
 
   it('a un vrai responsive', () => {
-    expect(css).toMatch(/@media \(max-width: 1100px\)/)
-    expect(css).toMatch(/@media \(max-width: 860px\)/)
+    expect(css).toMatch(/@media \(max-width: 1180px\)/)
+    expect(css).toMatch(/@media \(max-width: 980px\)/)
+    expect(css).toMatch(/@media \(max-width: 760px\)/)
     expect(css).toMatch(/@media \(max-width: 520px\)/)
   })
 
