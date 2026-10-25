@@ -201,9 +201,9 @@ export default function MyAdminAccount() {
 
   return (
     <main className={`aa-page aa-compte ${darkMode ? 'aa-dark' : ''}`}>
-      {/* Une bande courte : un en-tête de pièce, pas un frontispice. */}
+      {/* La même bande que le registre : 76 px, comme Planning. */}
       <div className="aa-compte-bande">
-        <PageCulturalBand pathname="/admins" />
+        <PageCulturalBand pathname="/mon-compte" />
       </div>
 
       <div className="aa-compte-shell">
@@ -520,6 +520,11 @@ export default function MyAdminAccount() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Le fil de clôture : la même bande basse que les autres pages. */}
+      <div className="aa-compte-bande-basse">
+        <PageCulturalBand pathname="/mon-compte" placement="bottom" />
       </div>
 
       {cropSource && (

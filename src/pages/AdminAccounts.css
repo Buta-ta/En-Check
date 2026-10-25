@@ -49,8 +49,11 @@
   --aa-pad: clamp(16px, 9vw, 112px);
   --aa-ecart: clamp(14px, 2.1vw, 26px);
   --aa-panneau-w: clamp(206px, 20vw, 300px);
-  --aa-bande-h: clamp(120px, 12.8vw, 163px);
-  --aa-bande-basse-h: clamp(84px, 10.3vw, 132px);
+  /* les bandes ont la taille des autres pages (Planning, Absences…) :
+     76 px en haut, 32 px en bas, 60 px sur téléphone — ce sont les
+     valeurs de PageCulturalBand.css, pas une mesure propre à Abomey. */
+  --aa-bande-h: 76px;
+  --aa-bande-basse-h: 32px;
   --aa-ligne-h: clamp(48px, 4.65vw, 67px);
 
   box-sizing: border-box;
@@ -2180,14 +2183,15 @@
 /* ── 16. Mon compte — le même vocabulaire, une autre pièce ─── */
 
 .aa-compte {
-  padding: 0 0 clamp(28px, 4vw, 54px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
   background: var(--aa-fond);
 }
 
-/* une bande plus BASSE que celle du registre : c'est un en-tête, pas
-   un frontispice */
+/* la même bande que partout : 76 px en haut (60 sur téléphone), 32 en bas */
 .aa-compte-bande {
-  height: clamp(44px, 5.2vw, 58px);
+  height: var(--aa-bande-h);
   overflow: hidden;
   line-height: 0;
   border-bottom: 1px dashed var(--aa-couture);
@@ -2195,14 +2199,28 @@
 }
 
 .aa-compte-bande .ec-cultural-top[data-cultural-motif='abomey'] {
-  height: clamp(44px, 5.2vw, 58px);
+  height: var(--aa-bande-h);
   background-color: var(--aa-indigo-nuit);
 }
 
 .aa-compte-shell {
   width: min(1080px, 100%);
   margin: 0 auto;
-  padding: clamp(12px, 1.8vw, 22px) clamp(14px, 4vw, 32px) 0;
+  padding: clamp(12px, 1.8vw, 22px) clamp(14px, 4vw, 32px)
+    clamp(28px, 4vw, 54px);
+}
+
+/* le fil de clôture : 32 px, comme la bande basse de Planning */
+.aa-compte-bande-basse {
+  margin-top: auto;
+  line-height: 0;
+  background: var(--aa-indigo-nuit);
+  border-top: 1px dashed var(--aa-couture);
+}
+
+.aa-compte-bande-basse .ec-cultural-bottom[data-cultural-motif='abomey'] {
+  height: var(--aa-bande-basse-h);
+  background-color: var(--aa-indigo-nuit);
 }
 
 /* la barre : sortie à gauche, actions à droite */
@@ -3604,7 +3622,6 @@
   .aa-page {
     --aa-pad: clamp(14px, 4.4vw, 34px);
     --aa-panneau-w: 100%;
-    --aa-bande-h: clamp(96px, 15vw, 124px);
   }
 
   .aa-register .aa-grille {
@@ -3650,6 +3667,13 @@
   }
 }
 
+/* même point de rupture que .ec-cultural-top : 60 px sur téléphone */
+@media (max-width: 650px) {
+  .aa-page {
+    --aa-bande-h: 60px;
+  }
+}
+
 @media (max-width: 760px) {
   .aa-compte-champs {
     grid-template-columns: minmax(0, 1fr);
@@ -3669,8 +3693,6 @@
   }
 
   .aa-page {
-    --aa-bande-h: 88px;
-    --aa-bande-basse-h: 76px;
     --aa-ligne-h: 60px;
   }
 
