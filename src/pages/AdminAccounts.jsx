@@ -31,8 +31,8 @@ import './AdminAccounts.css'
 import AdminAccountSessions from '../components/AdminAccountSessions'
 import AdminAccountJournal from '../components/AdminAccountJournal'
 import {
-  ROLES, entreprisesCouvertes, etatAcces, filtrerParRole,
-  cumuler, formaterDerniereConnexion, libelleRole, serieMensuelle, tonRole,
+  ROLES, entreprisesCouvertes, entreprisesDuCompte, etatAcces, filtrerParRole,
+  cumuler, formaterDerniereConnexion, libelleEtatAcces, libelleRole, serieMensuelle, tonRole,
 } from '../utils/adminsPresentation'
 
 // ── Une icône par rôle : la pastille se lit avant d'être lue ──
@@ -71,7 +71,6 @@ export default function AdminAccounts() {
   const [enterprise, setEnterprise] = useState(params.get('enterprise') || ''),
     [status, setStatus] = useState('')
   const [selected, setSelected] = useState(null),
-    [tab, setTab] = useState('Profil'),
     [view, setView] = useState('accounts'),
     [roleFiltre, setRoleFiltre] = useState('tous'),
     [fiche, setFiche] = useState(null),
@@ -103,7 +102,7 @@ export default function AdminAccounts() {
       const [accounts, companies] = await Promise.all([
         supabase
           .from('admins')
-          .select(ADMIN_FIELDS)
+          .select(`${ADMIN_FIELDS},admin_entreprises(enterprise_id,is_active,created_at)`)
           .order('created_at', { ascending: false })
           .limit(1000),
         supabase
@@ -118,6 +117,11 @@ export default function AdminAccounts() {
       setMe(actor)
       setRows(accounts.data || [])
       setSelected(current => current ? (accounts.data || []).find(a => a.id === current.id) || null : null)
+      setFiche(current => {
+        if (!current) return null
+        const updated = (accounts.data || []).find(a => a.id === current.admin.id)
+        return updated ? { ...current, admin: updated } : null
+      })
       setEnterprises(companies.data || [])
     } catch (err) {
       if (request === epoch.current) setError(err.message)
@@ -132,7 +136,7 @@ export default function AdminAccounts() {
     }
   }, [load])
   useEffect(() => {
-    if (tab !== 'Historique' || !selected) return
+    if (fiche?.onglet !== 'Historique') return
     let cancelled = false
     setEvents([])
     setEventError('')
@@ -140,7 +144,7 @@ export default function AdminAccounts() {
     supabase
       .from('admin_account_events')
       .select('id,action,reason,created_at')
-      .eq('target_id', selected.id)
+      .eq('target_id', fiche.admin.id)
       .order('created_at', { ascending: false })
       .limit(50)
       .then(({ data, error: err }) => {
@@ -155,7 +159,7 @@ export default function AdminAccounts() {
     return () => {
       cancelled = true
     }
-  }, [selected, tab])
+  }, [fiche?.admin.id, fiche?.onglet])
   // Les deux boîtes de dialogue suivent leur état : on ouvre en `showModal`,
   // on referme par `close` — sinon la fiche resterait affichée au-dessus
   // d'une page dont l'état dit déjà « fermée ».
@@ -176,13 +180,13 @@ export default function AdminAccounts() {
   // Un écran de chargement qui clignote est pire que pas d'écran du tout :
   // on ne l'affiche qu'au-delà de 300 ms, et « Passer » ne le ramène jamais.
   useEffect(() => {
-    if (!loading || error) {
+    if (!loading || error || me) {
       setChargeur(false)
       return undefined
     }
     const minuterie = window.setTimeout(() => setChargeur(true), 300)
     return () => window.clearTimeout(minuterie)
-  }, [loading, error])
+  }, [loading, error, me])
 
   const filtered = useMemo(
     () => filterAdminAccounts(rows, search, enterprise, status),
@@ -198,7 +202,8 @@ export default function AdminAccounts() {
     event.preventDefault()
     if (actionLock.current) return
     setNotice('')
-    if (!selected || selected.id === me?.id) {
+    const target = fiche?.admin
+    if (!target || target.id === me?.id) {
       setNotice('Utilisez Mon compte pour votre propre mot de passe.')
       return
     }
@@ -230,7 +235,7 @@ export default function AdminAccounts() {
     setBusy(true)
     try {
       await accountRpc('encheck_account_password', {
-        p_admin_id: selected.id,
+        p_admin_id: target.id,
         p_password: newPassword,
         p_reason: passwordReason.trim(),
       })
@@ -254,17 +259,20 @@ export default function AdminAccounts() {
   async function changeStatus(event) {
     event.preventDefault()
     if (actionLock.current) return
+    const target = fiche?.admin
+    if (!target || target.id === me?.id) return
     actionLock.current = true
     setBusy(true)
     setNotice('')
     try {
       await accountRpc('encheck_account_status', {
-        p_admin_id: selected.id,
-        p_active: !selected.is_active,
+        p_admin_id: target.id,
+        p_active: !target.is_active,
         p_reason: reason,
       })
-      const updated = { ...selected, is_active: !selected.is_active }
-      setSelected(updated)
+      const updated = { ...target, is_active: !target.is_active }
+      setSelected(current => current?.id === updated.id ? updated : current)
+      setFiche(current => current?.admin.id === updated.id ? { ...current, admin: updated } : current)
       setRows((old) =>
         old.map((row) => (row.id === updated.id ? updated : row)),
       )
@@ -309,21 +317,37 @@ export default function AdminAccounts() {
   const serieEntreprises = useMemo(() => {
     const premiers = new Map()
     rows.forEach((a) => {
-      if (!a.enterprise_id || a.role === 'super_admin' || !a.created_at) return
-      const t = new Date(a.created_at).getTime()
-      if (Number.isNaN(t)) return
-      const connu = premiers.get(a.enterprise_id)
-      if (!connu || t < connu.t) premiers.set(a.enterprise_id, { t, row: a })
+      if (a.role === 'super_admin') return
+      entreprisesDuCompte(a).forEach(id => {
+        const lien = a.admin_entreprises?.find(l => l.enterprise_id === id && l.is_active)
+        const date = lien?.created_at || a.created_at
+        if (!date) return
+        const t = new Date(date).getTime()
+        if (!Number.isFinite(t)) return
+        const connu = premiers.get(id)
+        if (!connu || t < connu.t) premiers.set(id, { t, row: { created_at: date } })
+      })
     })
     return cumuler(serieMensuelle([...premiers.values()].map((v) => v.row)))
   }, [rows])
 
+  function fermerFiche() {
+    if (actionLock.current) return
+    clearPasswordForm()
+    setReason('')
+    setNotice('')
+    setFiche(null)
+  }
+
   function ouvrirFiche(admin, onglet = 'Profil', evenement = null) {
+    if (actionLock.current) return
     if (evenement) {
       evenement.stopPropagation()
       evenement.preventDefault()
     }
     clearPasswordForm()
+    setEvents([])
+    setEventError('')
     setFiche({ admin, onglet })
     setNotice('')
     setReason('')
@@ -332,7 +356,7 @@ export default function AdminAccounts() {
   // Quitter l'onglet Sécurité efface les secrets saisis, jamais conservés
   // en mémoire plus longtemps que l'écran qui les demande.
   function changerOngletFiche(nom) {
-    if (!fiche || fiche.onglet === nom) return
+    if (actionLock.current || !fiche || fiche.onglet === nom) return
     if (fiche.onglet === 'Sécurité') {
       clearPasswordForm()
       setNotice('')
@@ -344,14 +368,13 @@ export default function AdminAccounts() {
     clearPasswordForm()
     // Recliquer la ligne déjà choisie rend le panneau à son propre compte.
     setSelected((current) => (current?.id === admin.id ? null : admin))
-    setTab('Profil')
     setNotice('')
     setReason('')
   }
 
   function nomEntreprise(admin) {
     if (admin.role === 'super_admin') return 'Toutes les entreprises'
-    return enterprises.find((ent) => ent.id === admin.enterprise_id)?.name || 'Non renseignée'
+    return entreprisesDuCompte(admin).map(id => enterprises.find(ent => ent.id === id)?.name || 'Entreprise non disponible').join(', ') || 'Non renseignée'
   }
 
   // Le tiroir travaille toujours sur quelqu'un : la sélection, sinon soi.
@@ -767,7 +790,7 @@ export default function AdminAccounts() {
                     <dt>Accès de connexion</dt>
                     <dd>
                       <CaurisEtatSvg etat={etatAcces(cible)} size={11} />
-                      {etatAcces(cible) === 'lie' ? 'Actif' : etatAcces(cible) === 'non_lie' ? 'Non lié' : 'Verrouillé'}
+                      {libelleEtatAcces(etatAcces(cible))}
                     </dd>
                   </div>
                   <div>
@@ -826,7 +849,7 @@ export default function AdminAccounts() {
       <dialog
         ref={plein}
         className={`aa-fiche ${darkMode ? 'aa-dark' : ''}`}
-        onCancel={(event) => { event.preventDefault(); setFiche(null) }}
+        onCancel={(event) => { event.preventDefault(); fermerFiche() }}
         aria-labelledby="aa-fiche-titre"
       >
         {fiche && (
@@ -871,7 +894,7 @@ export default function AdminAccounts() {
                 <button
                   type="button"
                   className="aa-tuile"
-                  onClick={() => setFiche(null)}
+                  onClick={fermerFiche}
                   aria-label="Fermer la fiche"
                 >
                   <X size={16} />

@@ -400,3 +400,165 @@ it('reports an unavailable journal without pretending it is empty and allows ret
     'Aucune intervention enregistrée',
   )
 })
+
+it('targets the opened profile even when the side panel selects another account', async () => {
+  await mount()
+  await act(async () => host.querySelectorAll('.aa-row')[0].click())
+  await act(async () =>
+    host.querySelector('[aria-label="Ouvrir la fiche de Aïcha Test"]').click(),
+  )
+  await act(async () =>
+    [...host.querySelectorAll('.aa-fiche-onglets button')]
+      .find((b) => b.textContent === 'Sécurité')
+      .click(),
+  )
+  mock.rpc.mockResolvedValue({ error: null })
+  const form = await fillPasswordForm()
+  await act(async () =>
+    form.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    ),
+  )
+  expect(mock.rpc).toHaveBeenCalledWith(
+    'encheck_account_password',
+    expect.objectContaining({ p_admin_id: 'member' }),
+  )
+  expect(host.querySelector('.aa-panneau').textContent).toContain('Sara Test')
+})
+it('updates the opened account status with no side-panel selection and refreshes the profile', async () => {
+  await mount()
+  await act(async () =>
+    host.querySelector('[aria-label="Ouvrir la fiche de Aïcha Test"]').click(),
+  )
+  await act(async () =>
+    [...host.querySelectorAll('.aa-fiche-onglets button')]
+      .find((b) => b.textContent === 'Sécurité')
+      .click(),
+  )
+  mock.rpc.mockResolvedValue({ error: null })
+  const form = host.querySelector('.aa-danger-section form')
+  await act(async () =>
+    form.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    ),
+  )
+  expect(mock.rpc).toHaveBeenCalledWith(
+    'encheck_account_status',
+    expect.objectContaining({ p_admin_id: 'member', p_active: true }),
+  )
+  expect(host.querySelector('.aa-fiche-actions .aa-etat').textContent).toBe(
+    'Actif',
+  )
+  expect(form.querySelector('button').textContent).toBe('Désactiver ce compte')
+  expect(host.querySelector('.aa-panneau').textContent).toContain('Sara Test')
+})
+it('loads individual history for the open profile, not the panel selection', async () => {
+  await mount()
+  const original = mock.from.getMockImplementation(),
+    eq = vi.fn()
+  mock.from.mockImplementation((table) => {
+    if (table !== 'admin_account_events') return original(table)
+    const q = {
+      select: () => q,
+      eq: (...args) => {
+        eq(...args)
+        return q
+      },
+      order: () => q,
+      limit: async () => ({
+        data: [
+          {
+            id: 1,
+            action: 'profile_updated',
+            reason: 'Historique du bon compte',
+            created_at: '2026-10-25',
+          },
+        ],
+      }),
+    }
+    return q
+  })
+  await act(async () => host.querySelectorAll('.aa-row')[0].click())
+  await act(async () =>
+    host.querySelector('[aria-label="Ouvrir la fiche de Aïcha Test"]').click(),
+  )
+  await act(async () =>
+    [...host.querySelectorAll('.aa-fiche-onglets button')]
+      .find((b) => b.textContent === 'Historique')
+      .click(),
+  )
+  expect(eq).toHaveBeenCalledWith('target_id', 'member')
+  expect(host.querySelector('.aa-fiche').textContent).toContain(
+    'Historique du bon compte',
+  )
+})
+it('keeps a sensitive operation on screen until completion and clears secrets on close', async () => {
+  await openPasswordForm()
+  const form = await fillPasswordForm()
+  let release
+  mock.rpc.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        release = resolve
+      }),
+  )
+  await act(async () =>
+    form.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    ),
+  )
+  await act(async () =>
+    host.querySelector('[aria-label="Fermer la fiche"]').click(),
+  )
+  expect(host.querySelector('.aa-fiche').open).toBe(true)
+  await act(async () => release({ error: null }))
+  await fillPasswordForm()
+  await act(async () =>
+    host.querySelector('[aria-label="Fermer la fiche"]').click(),
+  )
+  expect(host.querySelector('.aa-fiche').open).toBe(false)
+  await act(async () =>
+    host.querySelector('[aria-label="Ouvrir la fiche de Aïcha Test"]').click(),
+  )
+  await act(async () =>
+    [...host.querySelectorAll('.aa-fiche-onglets button')]
+      .find((b) => b.textContent === 'Sécurité')
+      .click(),
+  )
+  expect(
+    [...host.querySelectorAll('input[type=password]')].every((i) => !i.value),
+  ).toBe(true)
+})
+it('filters by additional active enterprise assignments', () => {
+  const row = {
+    ...member,
+    admin_entreprises: [
+      { enterprise_id: 'second', is_active: true },
+      { enterprise_id: 'third', is_active: false },
+    ],
+  }
+  expect(filterAdminAccounts([row], '', 'second', '')).toEqual([row])
+  expect(filterAdminAccounts([row], '', 'third', '')).toEqual([])
+})
+it('never exposes a replacement form for oneself even when another account is selected', async () => {
+  await mount()
+  await act(async () => host.querySelectorAll('.aa-row')[1].click())
+  await act(async () =>
+    host.querySelector('[aria-label="Ouvrir la fiche de Sara Test"]').click(),
+  )
+  await act(async () =>
+    [...host.querySelectorAll('.aa-fiche-onglets button')]
+      .find((b) => b.textContent === 'Sécurité')
+      .click(),
+  )
+  expect(host.querySelector('.aa-password-form')).toBeNull()
+  const form = host.querySelector('.aa-danger-section form')
+  expect(form.querySelector('button').disabled).toBe(true)
+  mock.rpc.mockClear()
+  await act(async () =>
+    form.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    ),
+  )
+  expect(mock.rpc).not.toHaveBeenCalled()
+})

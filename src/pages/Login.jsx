@@ -240,7 +240,6 @@ export default function Login() {
       // non appliquée), on retombe sur l'ancienne lecture. La connexion ne peut
       // donc pas être cassée par l'absence de cette livraison.
       let adminCheck = null
-      let essaisRestants = null
 
       const { data: precheck, error: precheckError } = await supabase.rpc(
         'admin_login_precheck',
@@ -282,7 +281,6 @@ export default function Login() {
         }
 
         adminCheck = { id: precheck.admin_id, email: precheck.email }
-        essaisRestants = precheck.essais_restants ?? null
       } else {
         if (precheckError && precheckError.code !== 'PGRST202') {
           console.warn('[En-Check] Résolution serveur indisponible, repli local :', precheckError.message)
@@ -337,23 +335,10 @@ export default function Login() {
           'Mot de passe incorrect'
         )
 
-        // ⭐ LIVRAISON 05.C.1 : l'échec est compté dans la BASE, sur le compte.
-        // Le compteur du navigateur reste en place, mais il n'est plus la
-        // seule barrière : effacer son localStorage ne remet plus le compteur
-        // à zéro côté serveur.
-        let serveurLock = null
-        try {
-          const { data: suivi } = await supabase.rpc('admin_login_result', {
-            p_admin_id: adminCheck.id,
-            p_success: false,
-            p_reason: 'Mot de passe incorrect',
-          })
-          serveurLock = suivi?.verrouille_jusqu_a ? 5 : null
-        } catch (e) {
-          console.warn('[En-Check] Compteur serveur indisponible :', e?.message)
-        }
-
-        if (serveurLock || result.blocked) {
+        // The browser counter is only a local UX guard. Auth is responsible
+        // for server-side rate limiting: anonymous clients cannot report
+        // failures for arbitrary accounts or forge successful logins.
+        if (result.blocked) {
           toast.error('Compte temporairement bloqué après trop de tentatives (5 min)')
           setBlockState({
             blocked: true,
@@ -361,9 +346,7 @@ export default function Login() {
             attempts: SECURITY.MAX_ATTEMPTS,
           })
         } else {
-          const restants = essaisRestants !== null && essaisRestants > 1
-            ? essaisRestants - 1
-            : remaining
+          const restants = remaining
           toast.error(`Mot de passe incorrect (${restants} essai${restants > 1 ? 's' : ''} restant${restants > 1 ? 's' : ''})`)
           setBlockState({ blocked: false, blockedUntil: null, attempts: result.attempts })
         }
@@ -382,10 +365,11 @@ export default function Login() {
       // ⭐ LIVRAISON 05.C.1 : connexion réussie → on remet le compteur
       // serveur à zéro (et on note la date de dernière connexion).
       try {
-        await supabase.rpc('admin_login_result', {
+        const { error: trackingError } = await supabase.rpc('admin_login_result', {
           p_admin_id: adminCheck.id,
           p_success: true,
         })
+        if (trackingError) throw trackingError
       } catch (e) {
         console.warn('[En-Check] Compteur serveur indisponible :', e?.message)
       }

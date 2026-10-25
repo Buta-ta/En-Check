@@ -91,17 +91,26 @@ export function cumuler(serie = []) {
   })
 }
 
+/** Identifiants attribués, sans confondre ce résumé avec une autorisation serveur. */
+export function entreprisesDuCompte(row) {
+  return [...new Set([
+    row?.enterprise_id,
+    ...(row?.admin_entreprises || []).filter(link => link.is_active).map(link => link.enterprise_id),
+  ].filter(Boolean))]
+}
+
 /** Combien d'entreprises distinctes ont au moins un administrateur. */
 export function entreprisesCouvertes(rows = []) {
   const vues = new Set()
   rows.forEach((row) => {
-    if (row?.enterprise_id && row.role !== 'super_admin') vues.add(row.enterprise_id)
+    if (row?.role !== 'super_admin') entreprisesDuCompte(row).forEach(id => vues.add(id))
   })
   return vues.size
 }
 
 /** Ce qu'un compte peut réellement faire : se connecter, ou pas. */
 export function etatAcces(admin) {
+  if (admin?.is_active === false) return 'inactif'
   if (admin?.locked_until && new Date(admin.locked_until).getTime() > Date.now()) {
     return 'verrouille'
   }
@@ -112,6 +121,7 @@ export function etatAcces(admin) {
 export function libelleEtatAcces(etat) {
   return (
     {
+      inactif: 'Compte désactivé',
       verrouille: 'Compte verrouillé',
       non_lie: 'Sans accès de connexion',
       lie: 'Accès actif',

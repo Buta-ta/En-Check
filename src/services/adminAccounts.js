@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
+import { entreprisesDuCompte } from '../utils/adminsPresentation'
 export const ADMIN_FIELDS =
-  'id,user_id,first_name,last_name,email,username,role,enterprise_id,photo_url,is_active,created_at,last_login_at'
+  'id,user_id,first_name,last_name,email,username,role,enterprise_id,photo_url,is_active,created_at,last_login_at,locked_until'
 export async function currentAdminAccount() {
   const { data, error } = await supabase.auth.getUser()
   if (error || !data.user) throw new Error('Veuillez vous reconnecter.')
@@ -28,7 +29,7 @@ export function filterAdminAccounts(rows, search, enterprise, status) {
   const needle = search.trim().toLocaleLowerCase('fr')
   return rows.filter(
     (row) =>
-      (!enterprise || row.enterprise_id === enterprise) &&
+      (!enterprise || entreprisesDuCompte(row).includes(enterprise)) &&
       (!status || (status === 'active' ? row.is_active : !row.is_active)) &&
       [row.first_name, row.last_name, row.email, row.username]
         .join(' ')

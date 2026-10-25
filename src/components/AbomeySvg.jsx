@@ -266,7 +266,7 @@ export function CourbeOnduleeSvg({ valeurs = [], largeur = 280, hauteur = 46, to
 export function CaurisEtatSvg({ etat = 'lie', size = 12 }) {
   const plein = etat === 'lie'
   const teinte =
-    etat === 'verrouille' ? '#c0452f' : etat === 'non_lie' ? '#c98a16' : '#3e8e61'
+    (etat === 'verrouille' || etat === 'inactif') ? '#c0452f' : etat === 'non_lie' ? '#c98a16' : '#3e8e61'
   return (
     <svg width={size} height={size} viewBox="0 0 12 12" aria-hidden="true" focusable="false">
       <ellipse
