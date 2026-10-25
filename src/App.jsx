@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { Toaster } from 'react-hot-toast'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
+import useAdminMfaCheckpoint from './hooks/useAdminMfaCheckpoint'
 
 // Landing page
 import LandingPage from './pages/en-check'
@@ -79,6 +80,7 @@ const canShowDashboardPreview = import.meta.env.DEV || isVercelPreview
 // Un utilisateur qui modifie `localStorage.getItem('admin')` dans la console
 // F12 (ex. en changeant `role: "super_admin"` ou `expiresAt`) est bloqué.
 function AdminRoute({ children, requireSuperAdmin = false }) {
+  const {ensureMfa,challenge}=useAdminMfaCheckpoint()
   const [checking, setChecking] = useState(true)
   const [authorized, setAuthorized] = useState(false)
 
@@ -86,8 +88,10 @@ function AdminRoute({ children, requireSuperAdmin = false }) {
     let cancelled = false
 
     const denyAndClean = () => {
+      if (cancelled) return
       localStorage.removeItem('admin')
       localStorage.removeItem('last_enterprise_id')
+      void supabase.auth.signOut({scope:'local'}).catch(() => {})
       if (!cancelled) {
         setAuthorized(false)
         setChecking(false)
@@ -132,32 +136,12 @@ function AdminRoute({ children, requireSuperAdmin = false }) {
           return
         }
 
-        // 4. Si la route exige le rôle super_admin, vérifier côté serveur (table `admins`)
-        //    pour qu'aucune modification F12 de `admin.role` dans localStorage ne fonctionne.
-        if (requireSuperAdmin) {
-          if (admin.role !== 'super_admin') {
-            if (!cancelled) {
-              setAuthorized(false)
-              setChecking(false)
-            }
-            return
-          }
-
-          const { data: serverAdmin, error: roleError } = await supabase
-            .from('admins')
-            .select('id, role, is_active')
-            .eq('id', admin.id)
-            .eq('user_id', session.user.id)
-            .maybeSingle()
-
-          if (roleError || !serverAdmin || serverAdmin.is_active === false || serverAdmin.role !== 'super_admin') {
-            console.warn('[Sécurité VD-14] Accès Super Admin refusé par le serveur.')
-            if (!cancelled) {
-              setAuthorized(false)
-              setChecking(false)
-            }
-            return
-          }
+        if (cancelled) return
+        await ensureMfa()
+        const { data: serverAdmin, error: roleError } = await supabase.from('admins')
+          .select('id, role, is_active').eq('id', admin.id).eq('user_id', session.user.id).maybeSingle()
+        if (roleError || !serverAdmin || serverAdmin.is_active !== true || (requireSuperAdmin && serverAdmin.role !== 'super_admin')) {
+          denyAndClean(); return
         }
 
         if (!cancelled) {
@@ -171,7 +155,9 @@ function AdminRoute({ children, requireSuperAdmin = false }) {
 
     checkAuth()
     return () => { cancelled = true }
-  }, [requireSuperAdmin])
+  }, [requireSuperAdmin,ensureMfa])
+
+  if (challenge) return challenge
 
   if (checking) {
     return (

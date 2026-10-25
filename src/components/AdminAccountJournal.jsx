@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 const labels = {
   profile_updated: 'Profil modifié',
+  preferences_updated: 'Préférences modifiées',
+  session_revoked: 'Accès API révoqué',
   password_changed: 'Mot de passe remplacé',
   suspended: 'Compte désactivé',
   reactivated: 'Compte réactivé',

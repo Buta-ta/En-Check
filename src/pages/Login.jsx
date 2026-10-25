@@ -12,6 +12,7 @@ import {
 import toast from 'react-hot-toast'
 import ConnectionLogService from '../services/connectionLogService'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
+import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
 
 // ═══════════════════════════════════════════════════════════
 // 🔒 CONSTANTES DE SÉCURITÉ
@@ -116,6 +117,7 @@ function useCountdown(targetMs) {
 // 🔐 COMPOSANT PRINCIPAL
 // ═══════════════════════════════════════════════════════════
 export default function Login() {
+  const {ensureMfa,challenge} = useAdminMfaCheckpoint()
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -368,6 +370,9 @@ export default function Login() {
         return
       }
 
+      // Resolve MFA before reading any protected business profile or data.
+      await ensureMfa()
+
       // ⭐ LIVRAISON 05.C.1 : connexion réussie → on remet le compteur
       // serveur à zéro (et on note la date de dernière connexion).
       try {
@@ -512,7 +517,9 @@ export default function Login() {
       }
 
       // ✅ REDIRECTION VERS DASHBOARD
-      navigate('/dashboard')
+      let home = '/dashboard'
+      try { const result = await supabase.rpc('encheck_account_preferences',{p_values:null}); if(!result.error && ['/dashboard','/mon-compte','/pointages','/planning','/employes'].includes(result.data?.home_path)) home=result.data.home_path } catch { /* Preferences must not break an otherwise valid login. */ }
+      navigate(home)
 
 
     } catch (err) {
@@ -537,6 +544,8 @@ export default function Login() {
 
     setLoading(false)
   }
+
+  if (challenge) return challenge
 
   const attemptsRemaining = SECURITY.MAX_ATTEMPTS - blockState.attempts
   const isFormDisabled = loading || blockState.blocked

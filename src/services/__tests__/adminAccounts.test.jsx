@@ -210,6 +210,7 @@ async function openPasswordForm() {
       .find((button) => button.textContent === 'Sécurité')
       .click(),
   )
+  mock.rpc.mockClear()
 }
 async function fillPasswordForm(
   password = 'Secure-Example-123!',

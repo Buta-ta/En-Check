@@ -12,6 +12,7 @@ import {
   filterAdminAccounts,
 } from '../services/adminAccounts'
 import './AdminAccounts.css'
+import AdminAccountSessions from '../components/AdminAccountSessions'
 import AdminAccountJournal from '../components/AdminAccountJournal'
 
 const roleLabel = (role) =>
@@ -617,20 +618,12 @@ export default function AdminAccounts() {
                     </form>
                   </details>
                 )}
-                <div className="aa-security-availability">
-                  <div>
-                    <strong>Sessions</strong>
-                    <span>Gestion distante à venir</span>
-                  </div>
-                  <div>
-                    <strong>Double authentification</strong>
-                    <span>État à consulter dans Mon compte</span>
-                  </div>
-                </div>
+                <details className="aa-password-section"><summary>Sessions de connexion</summary><AdminAccountSessions adminId={selected.id}/></details>
+                <div className="aa-security-availability"><div><strong>Double authentification</strong><span>Enrôlement personnel depuis Mon compte, après activation du contrôle serveur.</span></div></div>
                 <details className="aa-help">
                   <summary>Comprendre les limites de ces actions</summary>
                   <p>
-                    La révocation distante des sessions, les invitations et le
+                    La révocation proposée couvre REST/RPC. Les invitations et le
                     dépannage délégué ne sont pas encore disponibles. Aucun état
                     de double authentification ou de session n’est inventé.
                   </p>

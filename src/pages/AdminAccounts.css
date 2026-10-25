@@ -933,3 +933,13 @@
     right: max(28px, calc((100vw - 1280px) / 2));
   }
 }
+.aa-security-check{max-width:520px;margin:40px auto}
+.aa-security-check form label,.aa-mfa-settings form label,.aa-sessions form label{display:grid;gap:8px;margin:14px 0;font-size:13px}
+.aa-security-check button,.aa-mfa-settings button,.aa-sessions button{margin:8px 8px 8px 0}
+.aa-mfa-qr{display:block;max-width:220px;width:100%;margin:16px 0;background:white;padding:12px;border-radius:12px}
+.aa-mfa-settings code{overflow-wrap:anywhere;white-space:normal}
+.aa-mfa-settings ul,.aa-sessions ul{list-style:none;padding:0}
+.aa-mfa-settings li,.aa-sessions li{padding:14px 0;border-top:1px solid var(--aa-line);font-size:12px;overflow-wrap:anywhere}
+.aa-sessions textarea{min-height:80px;width:100%;background:var(--aa-paper);color:var(--aa-ink);border:1px solid var(--aa-line);border-radius:10px}
+.aa-account-form .aa-check-line{display:flex;align-items:center;gap:12px}
+.aa-account-form .aa-check-line input{width:20px;height:20px}

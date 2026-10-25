@@ -18,9 +18,14 @@ import {
 } from '../services/adminAccounts'
 import './AdminAccounts.css'
 import AdminAvatarCrop from '../components/AdminAvatarCrop'
+import AdminMfaSettings from '../components/AdminMfaSettings'
+import AdminAccountSessions from '../components/AdminAccountSessions'
+import AdminAccountPreferences from '../components/AdminAccountPreferences'
+import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
 
 export default function MyAdminAccount() {
   const { darkMode, toggleTheme } = useTheme()
+  const { ensureMfa, challenge } = useAdminMfaCheckpoint()
   const [me, setMe] = useState(null),
     [error, setError] = useState(''),
     [notice, setNotice] = useState('')
@@ -34,7 +39,6 @@ export default function MyAdminAccount() {
   const [oldPassword, setOldPassword] = useState(''),
     [password, setPassword] = useState(''),
     [confirm, setConfirm] = useState('')
-  const [mfa, setMfa] = useState(null)
   const lock = useRef(false)
   useEffect(() => {
     let alive = true
@@ -62,17 +66,6 @@ export default function MyAdminAccount() {
     setPreview(url)
     return () => URL.revokeObjectURL(url)
   }, [file])
-  useEffect(() => {
-    let alive = true
-    if (me)
-      supabase.auth.mfa.listFactors().then(({ data, error: err }) => {
-        if (alive)
-          setMfa(err ? { error: err.message } : { factors: data.totp || [] })
-      })
-    return () => {
-      alive = false
-    }
-  }, [me])
   async function run(action) {
     if (lock.current) return
     lock.current = true
@@ -143,6 +136,7 @@ export default function MyAdminAccount() {
       })
       if (verified.error || verified.data.user?.id !== me.user_id)
         throw new Error('Vérification du mot de passe actuel refusée.')
+      await ensureMfa()
       const { error: err } = await supabase.auth.updateUser({ password })
       if (err) throw err
       setOldPassword('')
@@ -153,6 +147,7 @@ export default function MyAdminAccount() {
       )
     })
   }
+  if (challenge) return challenge
   return (
     <main className={`aa-page ${darkMode ? 'aa-dark' : ''}`}>
       <nav className="aa-top">
@@ -339,48 +334,8 @@ export default function MyAdminAccount() {
                     </button>
                   </form>
                   <hr />
-                  <h3>Double authentification</h3>
-                  <p>
-                    {!mfa
-                      ? 'Lecture de la configuration…'
-                      : mfa.error
-                        ? 'Configuration indisponible.'
-                        : mfa.factors.some((f) => f.status === 'verified')
-                          ? 'Un facteur TOTP est enregistré.'
-                          : 'Aucun facteur TOTP vérifié.'}
-                  </p>
-                  <p className="aa-footnote">
-                    L’activation guidée et l’obligation de vérification à chaque
-                    connexion nécessitent encore une intégration du parcours de
-                    connexion.
-                  </p>
-                  <h3>Sessions de connexion</h3>
-                  <p>
-                    Déconnecter les autres sessions révoque leur renouvellement.
-                    Un jeton déjà émis peut rester valable jusqu’à son
-                    expiration.
-                  </p>
-                  <button
-                    disabled={busy}
-                    onClick={() => {
-                      if (window.confirm('Déconnecter vos autres sessions ?'))
-                        run(async () => {
-                          const { error: err } = await supabase.auth.signOut({
-                            scope: 'others',
-                          })
-                          if (err) throw err
-                          setNotice(
-                            'Le renouvellement des autres sessions a été révoqué.',
-                          )
-                        })
-                    }}
-                  >
-                    Déconnecter mes autres sessions
-                  </button>
-                  <p className="aa-footnote">
-                    La liste des appareils et les alertes de connexion ne sont
-                    pas encore disponibles dans cet espace.
-                  </p>
+                  <AdminMfaSettings />
+                  <AdminAccountSessions />
                 </>
               )}
               {tab === 'preferences' && (
@@ -401,10 +356,7 @@ export default function MyAdminAccount() {
                     et les entreprises sont attribuées par le
                     superadministrateur.
                   </p>
-                  <p className="aa-footnote">
-                    Les préférences de notifications et de page d’accueil ne
-                    sont pas encore configurables ici.
-                  </p>
+                  <AdminAccountPreferences />
                 </>
               )}
               {notice && (
