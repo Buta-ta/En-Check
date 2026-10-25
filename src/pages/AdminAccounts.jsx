@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Search, ShieldCheck, Users, X,
-  Plus, History, Building2, KeyRound, SlidersHorizontal,
+  Plus, History, Building2, KeyRound, SlidersHorizontal, User,
   Sun, Moon, ArrowUpRight, Lock, UserPlus,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -771,9 +771,29 @@ export default function AdminAccounts() {
                   </p>
                 </div>
               </div>
+              <nav className="aa-fiche-onglets" role="tablist" aria-label="Rubriques de la fiche">
+                {[
+                  ['Profil', User],
+                  ['Accès', KeyRound],
+                  ['Sécurité', ShieldCheck],
+                  ['Historique', History],
+                ].map(([nom, Icone]) => (
+                  <button
+                    key={nom}
+                    type="button"
+                    role="tab"
+                    aria-pressed={fiche.onglet === nom}
+                    onClick={() => changerOngletFiche(nom)}
+                  >
+                    <Icone size={13} />
+                    {nom}
+                  </button>
+                ))}
+              </nav>
+
               <div className="aa-fiche-actions">
                 <span className={`aa-etat ${fiche.admin.is_active ? 'is-actif' : ''}`}>
-                  {fiche.admin.is_active ? 'Compte actif' : 'Compte inactif'}
+                  {fiche.admin.is_active ? 'Actif' : 'Inactif'}
                 </span>
                 <button
                   type="button"
@@ -781,29 +801,10 @@ export default function AdminAccounts() {
                   onClick={() => setFiche(null)}
                   aria-label="Fermer la fiche"
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               </div>
             </header>
-
-            <nav className="aa-fiche-onglets" role="tablist" aria-label="Rubriques de la fiche">
-              {[
-                ['Profil', Users],
-                ['Accès', KeyRound],
-                ['Sécurité', ShieldCheck],
-                ['Historique', History],
-              ].map(([nom, Icone]) => (
-                <button
-                  key={nom}
-                  role="tab"
-                  aria-pressed={fiche.onglet === nom}
-                  onClick={() => changerOngletFiche(nom)}
-                >
-                  <Icone size={15} />
-                  {nom}
-                </button>
-              ))}
-            </nav>
 
             <div className="aa-fiche-corps">
               {fiche.onglet === 'Profil' && (

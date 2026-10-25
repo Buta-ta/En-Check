@@ -249,18 +249,35 @@ describe('6. la page reconstruite (v3, mesurée sur la maquette)', () => {
     expect(page).toContain('filtrerParRole(filtered, roleFiltre)')
   })
 
-  it('garde la fiche et ses quatre onglets, retravaillés', () => {
+  it('garde la fiche et ses quatre onglets, dessinés en sélecteur', () => {
     expect(page).toMatch(
-      /\['Profil', Users\],[\s\S]*\['Accès', KeyRound\],[\s\S]*\['Sécurité', ShieldCheck\],[\s\S]*\['Historique', History\],/,
+      /\['Profil', User\],[\s\S]*\['Accès', KeyRound\],[\s\S]*\['Sécurité', ShieldCheck\],[\s\S]*\['Historique', History\],/,
     )
     expect(page).toContain('className="aa-fiche-onglets"')
-    expect(css).toMatch(/\.aa-fiche-onglets > button\[aria-pressed='true'\]::after/)
+    // un vrai sélecteur segmenté : piste sombre, onglet actif en terre cuite
     expect(css).toMatch(
-      /\.aa-fiche-onglets > button\[aria-pressed='true'\]\s*\{\s*color:\s*var\(--aa-encre\)/,
+      /\.aa-fiche-onglets\s*\{[^}]*border-radius:\s*999px[^}]*background:\s*rgba\(0, 0, 0, 0\.3\)/,
     )
+    const actif = css.match(
+      /\.aa-fiche-onglets > button\[aria-pressed='true'\]\s*\{([^}]*)\}/,
+    )
+    expect(actif).not.toBeNull()
+    expect(actif[1]).toMatch(/background:\s*var\(--aa-terre\)/)
+    expect(actif[1]).toMatch(/color:\s*var\(--aa-ivoire\)/)
+    // et le bandeau reste une seule ligne compacte
+    expect(css).toMatch(/\.aa-fiche-tete\s*\{[^}]*padding:\s*9px/)
+    expect(css).toMatch(/\.aa-fiche \.aa-avatar--grand\s*\{[^}]*width:\s*34px/)
     // la fiche est un dialogue, mais le panneau, lui, n'en est pas un
     expect(page).toContain('className="aa-fiche')
     expect(css).toMatch(/\.aa-fiche\s*\{[^}]*width:\s*min\(1120px, 96vw\)/)
+  })
+
+  it('ne laisse aucun bouton natif dans les panneaux', () => {
+    // les composants partagés n'ont pas de classe : un filet les dessine
+    expect(css).toMatch(/button:not\(\[class\]\)/)
+    expect(css).toMatch(
+      /:is\(\.aa-panel, \.aa-workflow, \.aa-section, \.aa-security-check,/,
+    )
   })
 
   it('retravaille le bouton « Mon compte » et les onglets internes', () => {
@@ -306,5 +323,57 @@ describe('6. la page reconstruite (v3, mesurée sur la maquette)', () => {
     expect(page).toContain('Votre propre compte est protégé')
     expect(page).toContain('changeAccountPassword')
     expect(page).toContain('encheck_account_password')
+  })
+})
+
+// ── 7. Mon compte ─────────────────────────────────────────
+
+describe('7. la page Mon compte', () => {
+  const compte = lire('src/pages/MyAdminAccount.jsx')
+
+  it('a une bande plus basse que le registre', () => {
+    expect(compte).toContain('className="aa-compte-bande"')
+    expect(css).toMatch(
+      /\.aa-compte-bande \.ec-cultural-top\[data-cultural-motif='abomey'\]\s*\{[^}]*height:\s*clamp\(44px, 5\.2vw, 58px\)/,
+    )
+    // la bande du registre, elle, monte jusqu'à 163 px
+    expect(css).toMatch(/--aa-bande-h:\s*clamp\(120px, 12\.8vw, 163px\)/)
+  })
+
+  it('dessine ses trois rubriques en sélecteur, pas en texte nu', () => {
+    expect(compte).toContain('className="aa-compte-onglets"')
+    expect(compte).toMatch(/role="tablist"/)
+    for (const libelle of ['Mon profil', 'Ma sécurité', 'Mes préférences']) {
+      expect(compte).toContain(libelle)
+    }
+    const actif = css.match(
+      /\.aa-compte-onglets > button\[aria-pressed='true'\]\s*\{([^}]*)\}/,
+    )
+    expect(actif).not.toBeNull()
+    expect(actif[1]).toMatch(/background:\s*var\(--aa-terre\)/)
+    expect(actif[1]).toMatch(/color:\s*var\(--aa-ivoire\)/)
+  })
+
+  it('place ses actions dans un pied de formulaire, avec de vrais boutons', () => {
+    expect(compte).toContain('className="aa-compte-pied"')
+    expect(compte).toContain('className="aa-bouton-plein"')
+    expect(css).toMatch(/\.aa-compte-pied\s*\{[^}]*justify-content:\s*flex-end/)
+    // plus aucun bouton nu pour changer de thème : un interrupteur
+    expect(compte.match(/role="switch"/g)).toHaveLength(2)
+    expect(compte).toContain('className="aa-bascule"')
+    expect(compte).not.toContain('SunMoon')
+  })
+
+  it('nomme le rôle en français, jamais le nom technique', () => {
+    expect(compte).toContain('libelleRole(me.role)')
+    expect(compte).not.toMatch(/\{me\.role\}/)
+    expect(compte).not.toContain('Rôle serveur')
+  })
+
+  it('garde le tableau de bord et l’administration accessibles', () => {
+    expect(compte).toContain('className="aa-compte-retour"')
+    expect(compte).toContain('to="/dashboard"')
+    expect(compte).toContain('className="aa-compte-lien"')
+    expect(compte).toContain('to="/admins"')
   })
 })

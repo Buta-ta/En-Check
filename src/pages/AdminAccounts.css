@@ -1379,18 +1379,18 @@
 .aa-fiche-tete {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: clamp(10px, 1.4vw, 18px);
   flex-wrap: wrap;
-  padding: clamp(16px, 1.8vw, 24px) clamp(16px, 2.2vw, 28px);
+  padding: 9px clamp(12px, 1.6vw, 20px);
   border-bottom: 1px dashed var(--aa-ligne);
 }
 
 .aa-fiche-marque {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .aa-fiche-marque > svg {
@@ -1399,22 +1399,28 @@
 }
 
 .aa-fiche-marque h2 {
-  margin: 2px 0 0;
-  font-size: clamp(17px, 1.7vw, 22px);
+  margin: 1px 0 0;
+  font-size: clamp(14px, 1.15vw, 16px);
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .aa-fiche-marque p {
-  margin: 3px 0 0;
-  font-size: 11px;
+  margin: 1px 0 0;
+  font-size: 10px;
   color: var(--aa-encre-faible);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .aa-fiche-eyebrow {
   display: block;
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -1424,14 +1430,15 @@
 .aa-fiche-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .aa-fiche .aa-etat {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  font-size: 9.5px;
+  padding: 3px 8px;
+  font-size: 8.5px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1449,8 +1456,8 @@
 .aa-fiche .aa-tuile {
   display: inline-grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 0;
   border-radius: 8px;
@@ -1464,51 +1471,48 @@
 }
 
 .aa-fiche-onglets {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex-wrap: wrap;
-  padding: 0 clamp(16px, 2.2vw, 28px);
-  border-bottom: 1px solid var(--aa-ligne);
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--aa-ligne);
 }
 
 .aa-fiche-onglets > button {
-  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 11px 12px 12px;
+  gap: 6px;
+  padding: 6px 13px;
   border: 0;
+  border-radius: 999px;
   background: transparent;
   color: var(--aa-encre-faible);
   font: inherit;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: color 0.16s ease;
-}
-
-.aa-fiche-onglets > button::after {
-  content: '';
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: -1px;
-  height: 2px;
-  border-radius: 2px;
-  background: transparent;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease;
 }
 
 .aa-fiche-onglets > button:hover {
-  color: var(--aa-encre-douce);
+  color: var(--aa-encre);
+  background: rgba(201, 169, 97, 0.1);
 }
 
 .aa-fiche-onglets > button[aria-pressed='true'] {
-  color: var(--aa-encre);
+  color: var(--aa-ivoire);
+  background: var(--aa-terre);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
-.aa-fiche-onglets > button[aria-pressed='true']::after {
-  background: var(--aa-terre);
+.aa-fiche-onglets > button[aria-pressed='true']:hover {
+  background: var(--aa-terre-chaud);
 }
 
 .aa-fiche-corps {
@@ -1535,8 +1539,9 @@
 }
 
 .aa-fiche .aa-avatar--grand {
-  width: 46px;
-  height: 46px;
+  width: 34px;
+  height: 34px;
+  font-size: 11px;
 }
 
 .aa-fiche .aa-avatar .ec-profile-photo {
@@ -1784,6 +1789,92 @@
 .aa-page .aa-avis--attention {
   background: rgba(139, 62, 29, 0.12);
   border-color: rgba(201, 169, 97, 0.36);
+}
+
+/* ── 12 bis. Les contrôles des composants partagés ─────────── */
+/* Douze composants (invitations, MFA, sessions, permissions,
+   préférences…) posent des <button> et des <input> SANS classe.
+   Sans ce filet, le navigateur dessine ses propres boutons gris au
+   milieu de la tenture. On ne touche qu'aux panneaux concernés —
+   jamais aux tuiles ni aux onglets, qui portent leurs classes. */
+
+.aa-page :is(.aa-panel, .aa-workflow, .aa-section, .aa-security-check,
+  .aa-mfa-settings, .aa-sessions, .aa-formulaire,
+  .aa-compte-panneau, .aa-compte-sections)
+  button:not([class]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--aa-encre);
+  background: transparent;
+  border: 1px solid var(--aa-couture);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.aa-page :is(.aa-panel, .aa-workflow, .aa-section, .aa-security-check,
+  .aa-mfa-settings, .aa-sessions, .aa-formulaire,
+  .aa-compte-panneau, .aa-compte-sections)
+  button:not([class]):hover:not(:disabled) {
+  border-color: var(--aa-fil);
+  background: rgba(201, 169, 97, 0.1);
+}
+
+.aa-page :is(.aa-panel, .aa-workflow, .aa-section, .aa-security-check,
+  .aa-mfa-settings, .aa-sessions, .aa-formulaire,
+  .aa-compte-panneau, .aa-compte-sections)
+  button:not([class]):disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.aa-page :is(.aa-panel, .aa-workflow, .aa-section, .aa-security-check,
+  .aa-mfa-settings, .aa-sessions, .aa-formulaire,
+  .aa-compte-panneau, .aa-compte-sections)
+  :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), textarea, select) {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--aa-encre);
+  background: var(--aa-champ);
+  border: 1px solid var(--aa-ligne);
+  border-radius: 8px;
+  outline: none;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.aa-page :is(.aa-panel, .aa-workflow, .aa-section, .aa-security-check,
+  .aa-mfa-settings, .aa-sessions, .aa-formulaire,
+  .aa-compte-panneau, .aa-compte-sections)
+  :is(input, textarea, select):focus {
+  border-color: var(--aa-couture-forte);
+  box-shadow: 0 0 0 3px rgba(139, 62, 29, 0.16);
+}
+
+.aa-page :is(.aa-panel, .aa-workflow, .aa-section, .aa-security-check,
+  .aa-mfa-settings, .aa-sessions, .aa-formulaire,
+  .aa-compte-panneau, .aa-compte-sections)
+  :is(h2, h3) {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--aa-encre);
 }
 
 /* ── 13. Les écrans partagés ───────────────────────────────── */
@@ -2119,6 +2210,594 @@
   color: var(--aa-encre-faible, #8a7461);
 }
 
+/* ── 16. Mon compte — le même vocabulaire, une autre pièce ─── */
+
+.aa-compte {
+  padding: 0 0 clamp(28px, 4vw, 54px);
+  background: var(--aa-fond);
+}
+
+/* une bande plus BASSE que celle du registre : c'est un en-tête, pas
+   un frontispice */
+.aa-compte-bande {
+  height: clamp(44px, 5.2vw, 58px);
+  overflow: hidden;
+  line-height: 0;
+  border-bottom: 1px dashed var(--aa-couture);
+  background: var(--aa-indigo-nuit);
+}
+
+.aa-compte-bande .ec-cultural-top[data-cultural-motif='abomey'] {
+  height: clamp(44px, 5.2vw, 58px);
+  background-color: var(--aa-indigo-nuit);
+}
+
+.aa-compte-shell {
+  width: min(1080px, 100%);
+  margin: 0 auto;
+  padding: clamp(12px, 1.8vw, 22px) clamp(14px, 4vw, 32px) 0;
+}
+
+/* la barre : sortie à gauche, actions à droite */
+.aa-compte-barre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.aa-compte-retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px 7px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--aa-encre-douce);
+  text-decoration: none;
+  background: var(--aa-carte);
+  border: 1px solid var(--aa-ligne);
+  border-radius: 999px;
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.aa-compte-retour:hover {
+  color: var(--aa-encre);
+  border-color: var(--aa-fil);
+}
+
+.aa-compte-barre-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.aa-compte-lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--aa-encre);
+  text-decoration: none;
+  background: var(--aa-carte);
+  border: 1px dashed var(--aa-couture);
+  border-radius: 999px;
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.aa-compte-lien:hover {
+  border-color: var(--aa-fil);
+  background: rgba(201, 169, 97, 0.1);
+}
+
+.aa-compte-lien svg {
+  color: var(--aa-fil);
+}
+
+/* l'en-tête */
+.aa-compte-entete {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: clamp(15px, 2.2vw, 26px) 0 clamp(12px, 1.6vw, 18px);
+}
+
+.aa-compte-entete h1 {
+  margin: 2px 0 0;
+  font-size: clamp(22px, 2.6vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--aa-encre);
+}
+
+.aa-compte-entete h1 span {
+  color: var(--aa-terre);
+}
+
+.aa-compte-entete p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--aa-encre-faible);
+}
+
+.aa-compte-eyebrow {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--aa-fil);
+}
+
+/* la grille : identité à gauche, contenu à droite */
+.aa-compte-grille {
+  display: grid;
+  grid-template-columns: minmax(218px, 0.72fr) minmax(0, 1.85fr);
+  gap: clamp(12px, 1.8vw, 20px);
+  align-items: start;
+}
+
+.aa-compte-identite {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: clamp(16px, 2vw, 24px) clamp(14px, 1.6vw, 20px);
+  text-align: center;
+  background: var(--aa-panneau);
+  border: 1px dashed var(--aa-couture);
+  border-radius: 4px;
+}
+
+.aa-compte-identite .ec-profile-photo {
+  display: grid;
+  place-items: center;
+  width: clamp(62px, 7vw, 78px);
+  height: clamp(62px, 7vw, 78px);
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--aa-indigo);
+  color: var(--aa-ivoire);
+  border: 1px dashed rgba(232, 220, 196, 0.55);
+  font-size: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.aa-compte-identite .ec-profile-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.aa-compte-identite h2 {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--aa-encre);
+}
+
+.aa-compte-identite p {
+  margin: 0;
+  max-width: 100%;
+  font-size: 10.5px;
+  color: var(--aa-encre-faible);
+  overflow-wrap: anywhere;
+}
+
+.aa-compte-role {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 4px;
+  padding: 3px 9px;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--aa-ivoire);
+  background: var(--aa-terre);
+  border-radius: 3px;
+}
+
+.aa-compte-meta {
+  display: grid;
+  gap: 0;
+  width: 100%;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--aa-ligne);
+  text-align: left;
+}
+
+.aa-compte-meta > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.aa-compte-meta dt {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--aa-encre-faible);
+}
+
+.aa-compte-meta dd {
+  margin: 0;
+  font-size: 10.5px;
+  text-align: right;
+  color: var(--aa-encre-douce);
+}
+
+/* le contenu et ses onglets */
+.aa-compte-contenu {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.4vw, 16px);
+  min-width: 0;
+}
+
+.aa-compte-onglets {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 3px;
+  overflow-x: auto;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--aa-ligne);
+}
+
+.aa-compte-onglets > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 15px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--aa-encre-faible);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.aa-compte-onglets > button:hover {
+  color: var(--aa-encre);
+  background: rgba(201, 169, 97, 0.1);
+}
+
+.aa-compte-onglets > button[aria-pressed='true'] {
+  color: var(--aa-ivoire);
+  background: var(--aa-terre);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.aa-compte-panneau {
+  padding: clamp(16px, 2vw, 26px);
+  background: var(--aa-carte);
+  border: 1px dashed var(--aa-couture);
+  border-radius: 4px;
+  box-shadow: var(--aa-ombre);
+}
+
+.aa-compte-section-tete {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--aa-ligne);
+}
+
+.aa-compte .aa-compte-section-tete h2 {
+  margin: 0;
+  font-size: clamp(15px, 1.5vw, 18px);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--aa-encre);
+}
+
+.aa-compte .aa-compte-section-tete p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--aa-encre-faible);
+}
+
+.aa-compte-formulaire {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+
+.aa-compte-champs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.aa-compte-formulaire > label,
+.aa-compte-champs > label {
+  display: grid;
+  gap: 6px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--aa-encre-faible);
+}
+
+.aa-compte-formulaire > label input,
+.aa-compte-champs > label input,
+.aa-compte-formulaire > label textarea {
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.aa-compte-formulaire input[readonly] {
+  color: var(--aa-encre-douce);
+  background: transparent;
+  border-style: dashed;
+}
+
+.aa-compte-note {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.55;
+  color: var(--aa-encre-faible);
+}
+
+/* la photo : une pièce qu'on épingle, pas un champ de formulaire */
+.aa-compte-photo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px dashed var(--aa-couture);
+  border-radius: 4px;
+  background: rgba(201, 169, 97, 0.05);
+}
+
+.aa-compte-photo .ec-profile-photo {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  flex: none;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--aa-indigo);
+  color: var(--aa-ivoire);
+  border: 1px dashed rgba(232, 220, 196, 0.5);
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.aa-compte-photo .ec-profile-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.aa-compte-photo-texte {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  flex: 1 1 180px;
+}
+
+.aa-compte-photo-texte strong {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--aa-encre);
+}
+
+.aa-compte-photo-texte small {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--aa-encre-faible);
+}
+
+.aa-compte-photo-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.aa-compte-photo-actions label,
+.aa-compte-photo-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 31px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--aa-ivoire);
+  background: var(--aa-tuile);
+  border: 1px solid var(--aa-tuile);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.aa-compte-photo-actions label:hover,
+.aa-compte-photo-actions button:hover {
+  background: var(--aa-tuile-survol);
+  border-color: var(--aa-tuile-survol);
+}
+
+.aa-compte-photo-actions input[type='file'] {
+  display: none;
+}
+
+.aa-compte-lien-discret {
+  min-height: 31px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--aa-encre-faible);
+  background: transparent;
+  border: 1px dashed var(--aa-ligne);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.aa-compte-lien-discret:hover {
+  color: var(--aa-encre);
+  border-color: var(--aa-couture-forte);
+}
+
+.aa-compte-pied {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--aa-ligne);
+}
+
+.aa-compte-pied .aa-bouton-plein {
+  min-width: 190px;
+}
+
+/* les réglages (thème) : une ligne, pas un bouton perdu */
+.aa-compte-reglage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px dashed var(--aa-ligne);
+  border-radius: 4px;
+  background: rgba(201, 169, 97, 0.04);
+}
+
+.aa-compte-reglage > div {
+  display: grid;
+  gap: 2px;
+}
+
+.aa-compte-reglage strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--aa-encre);
+}
+
+.aa-compte-reglage small {
+  font-size: 10px;
+  color: var(--aa-encre-faible);
+}
+
+.aa-compte .aa-bascule {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  width: 42px;
+  height: 22px;
+  padding: 2px;
+  border: 1px solid var(--aa-couture);
+  border-radius: 999px;
+  background: var(--aa-tuile);
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.aa-compte .aa-bascule:hover {
+  border-color: var(--aa-fil);
+}
+
+.aa-compte .aa-bascule-pastille {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--aa-ivoire);
+  color: var(--aa-indigo-nuit);
+  transition: transform 0.18s ease;
+}
+
+.aa-compte.aa-dark .aa-bascule-pastille {
+  transform: translateX(18px);
+}
+
+.aa-compte-sections {
+  display: grid;
+  gap: 14px;
+}
+
+.aa-compte-sections > section,
+.aa-compte-sections > .aa-panel,
+.aa-compte-sections > form {
+  padding: 14px 16px;
+  border: 1px dashed var(--aa-ligne);
+  border-radius: 4px;
+  background: rgba(201, 169, 97, 0.03);
+}
+
+.aa-compte-sections form {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.aa-compte-sections hr {
+  margin: 0;
+  border: 0;
+}
+
+.aa-compte-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: clamp(26px, 4vw, 44px) 18px;
+  text-align: center;
+  border: 1px dashed var(--aa-couture);
+  border-radius: 4px;
+  color: var(--aa-encre-faible);
+}
+
+.aa-compte-vide p {
+  margin: 0;
+  font-size: 12px;
+}
+
 /* ── 15. Adaptations ───────────────────────────────────────── */
 
 @media (max-width: 1180px) {
@@ -2129,6 +2808,23 @@
 }
 
 @media (max-width: 980px) {
+  .aa-compte-grille {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aa-compte-identite {
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .aa-compte-identite .aa-compte-meta {
+    flex: 1 1 100%;
+    border-top: 1px dashed var(--aa-ligne);
+  }
+
   .aa-page {
     --aa-pad: clamp(14px, 4.4vw, 34px);
     --aa-panneau-w: 100%;
@@ -2174,6 +2870,23 @@
 }
 
 @media (max-width: 760px) {
+  .aa-compte-champs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aa-compte-entete h1 {
+    font-size: 22px;
+  }
+
+  .aa-compte-pied {
+    justify-content: stretch;
+  }
+
+  .aa-compte-pied .aa-bouton-plein {
+    width: 100%;
+    min-width: 0;
+  }
+
   .aa-page {
     --aa-bande-h: 88px;
     --aa-bande-basse-h: 76px;
