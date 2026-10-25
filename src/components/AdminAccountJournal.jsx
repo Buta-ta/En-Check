@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import AdminExplication from './AdminExplication'
 import { supabase } from '../lib/supabase'
 const labels = {
   permission_role_created: 'Version de rôle créée', permission_role_assigned: 'Rôle personnalisé attribué', permission_role_removed: 'Restriction personnalisée retirée', permission_data_write: 'Écriture métier sous rôle personnalisé',
@@ -67,10 +68,13 @@ export default function AdminAccountJournal({ accounts }) {
       <header>
         <span className="aa-eyebrow">TRAÇABILITÉ</span>
         <h2>Le journal des interventions</h2>
-        <p>
-          Les 50 dernières actions enregistrées. La migration d’audit ajoute les
-          modifications des comptes et des liens d’entreprise, y compris depuis les anciens écrans.
-        </p>
+        <AdminExplication titre="Ce que ce journal enregistre">
+          <p>
+            Les 50 dernières actions enregistrées. La migration d’audit ajoute les
+            modifications des comptes et des liens d’entreprise, y compris depuis
+            les anciens écrans.
+          </p>
+        </AdminExplication>
       </header>
       {loading ? (
         <p role="status">Lecture du journal…</p>

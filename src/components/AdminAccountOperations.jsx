@@ -1,4 +1,6 @@
 import AdminAccountRetirement from './AdminAccountRetirement'
+import AdminExplication from './AdminExplication'
+import AdminSceau from './AdminSceau'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { accountRpc } from '../services/adminAccounts'
@@ -82,15 +84,13 @@ export default function AdminAccountOperations({
         <textarea
           minLength={5}
           maxLength={500}
+          placeholder="Ex. : nouvelle responsable paie, passage à temps partiel, audit interne…"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
         />
       </label>
       <details>
         <summary>Rôle et entreprises</summary>
-        <p>
-          Attribuez les rôles existants et les entreprises autorisées.
-        </p>
         <label>
           Rôle
           <select
@@ -103,10 +103,12 @@ export default function AdminAccountOperations({
             <option value="super_admin">Superadministrateur</option>
           </select>
         </label>
-        {enterprises.map((e) => (
-          <label key={e.id}>
-            <input
-              type="checkbox"
+        <fieldset className="aa-sceaux aa-sceaux--ent">
+          <legend>Entreprises autorisées</legend>
+          {enterprises.map((e) => (
+            <AdminSceau
+              key={e.id}
+              className="aa-sceau--large"
               disabled={busy || account.id === currentId}
               checked={ids.includes(e.id)}
               onChange={(ev) =>
@@ -116,10 +118,18 @@ export default function AdminAccountOperations({
                     : ids.filter((id) => id !== e.id),
                 )
               }
-            />
-            {e.name}
-          </label>
-        ))}
+            >
+              {e.name}
+            </AdminSceau>
+          ))}
+        </fieldset>
+        <AdminExplication titre="Comment ces accès sont appliqués">
+          <p>
+            Attribuez les rôles existants et les entreprises autorisées. Le
+            serveur applique la liste enregistrée : une entreprise non cochée
+            n’est plus accessible, même si la personne garde son rôle.
+          </p>
+        </AdminExplication>
         <button
           disabled={invalid || !loaded || account.id === currentId}
           onClick={() =>
@@ -136,11 +146,6 @@ export default function AdminAccountOperations({
       </details>
       <details>
         <summary>Archiver et transférer les accès</summary>
-        <p>
-          L’archivage désactive le compte et ses liens d’entreprise. Le
-          transfert porte uniquement sur ces accès, pas sur les tâches ni les
-          validations métier. L’historique est conservé.
-        </p>
         <label>
           Repreneur des accès d’entreprise
           <select
@@ -181,13 +186,16 @@ export default function AdminAccountOperations({
         >
           Retirer de l’archive sans réactiver
         </button>
+        <AdminExplication titre="Ce que l’archivage ne transfère pas">
+          <p>
+            L’archivage désactive le compte et ses liens d’entreprise. Le
+            transfert porte uniquement sur ces accès, pas sur les tâches ni les
+            validations métier. L’historique est conservé.
+          </p>
+        </AdminExplication>
       </details>
       <details>
         <summary>Assistance et diagnostic limité</summary>
-        <p>
-          La délégation autorise seulement un diagnostic technique, sans accès
-          aux données métier, aux secrets ou aux sessions du titulaire.
-        </p>
         <button
           disabled={busy}
           onClick={() =>
@@ -220,7 +228,7 @@ export default function AdminAccountOperations({
             value={delegate}
             onChange={(e) => setDelegate(e.target.value)}
           >
-            <option value="">Choisir</option>
+            <option value="">Choisir un intervenant</option>
             {accounts
               .filter((a) => a.is_active)
               .map((a) => (
@@ -236,6 +244,8 @@ export default function AdminAccountOperations({
             type="number"
             min={1}
             max={24}
+            inputMode="numeric"
+            placeholder="2"
             value={hours}
             onChange={(e) => setHours(Number(e.target.value))}
           />
@@ -264,10 +274,17 @@ export default function AdminAccountOperations({
         >
           Révoquer les délégations
         </button>
-        <p>
+        <p className="aa-sceau-note">
           Lien à transmettre à l’intervenant :{' '}
           <code>/mon-compte?diagnostic={account.id}</code>
         </p>
+        <AdminExplication titre="Ce que la délégation ouvre — et n’ouvre pas">
+          <p>
+            La délégation autorise seulement un diagnostic technique, sans accès
+            aux données métier, aux secrets ou aux sessions du titulaire. Elle
+            expire d’elle-même à la fin du délai choisi.
+          </p>
+        </AdminExplication>
       </details>
       <AdminAccountRetirement account={account} accounts={accounts} currentId={currentId} onSaved={onSaved} />
       {message && <p role="status">{message}</p>}

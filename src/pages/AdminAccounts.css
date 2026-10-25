@@ -1686,22 +1686,6 @@
   margin-top: 2px;
 }
 
-.aa-page .aa-password-confirm {
-  display: flex !important;
-  align-items: flex-start;
-  gap: 9px;
-  font-size: 11.5px;
-  font-weight: 400 !important;
-  color: var(--aa-encre-douce);
-}
-
-.aa-page .aa-password-confirm input {
-  width: 16px;
-  height: 16px;
-  margin: 2px 0 0;
-  accent-color: var(--aa-terre);
-}
-
 .aa-page .aa-section {
   padding: 0 clamp(12px, 1.4vw, 18px);
   background: rgba(201, 169, 97, 0.035);
@@ -2078,7 +2062,6 @@
   resize: vertical;
 }
 
-.aa-page .aa-workflow input[type='checkbox'],
 .aa-page .aa-security-check input[type='checkbox'],
 .aa-page .aa-account-form input[type='checkbox'] {
   width: 17px;
@@ -2110,14 +2093,6 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--aa-fil);
-}
-
-.aa-page .aa-workflow .aa-permission-actions label {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-weight: 400;
-  color: var(--aa-encre-douce);
 }
 
 .aa-page .aa-mfa-qr {
@@ -2153,16 +2128,8 @@
   overflow-wrap: anywhere;
 }
 
-.aa-page .aa-check-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
 
-.aa-page .aa-account-form .aa-check-line input {
-  width: 18px;
-  height: 18px;
-}
+
 
 .aa-page .aa-preferences {
   display: grid;
@@ -2864,6 +2831,749 @@
   margin: 0 0 clamp(12px, 1.6vw, 18px);
 }
 
+/* ── 18. Les contrôles dessinés ────────────────────────────── */
+/* Rien ici n'est une case grise du navigateur. Un champ est un
+   morceau de papier cousu, un choix est un sceau de cire, une
+   explication est un rabat de tissu qu'on soulève. Ça vaut pour
+   toute l'administration : registre, fiche et espace personnel. */
+
+/* — 18 a. Les champs de saisie — */
+
+.aa-page
+  :is(
+    .aa-panel,
+    .aa-formulaire,
+    .aa-workflow,
+    .aa-section,
+    .aa-security-check,
+    .aa-mfa-settings,
+    .aa-sessions,
+    .aa-preferences,
+    .aa-compte-formulaire,
+    .aa-compte-sections,
+    .aa-compte-panneau
+  )
+  :is(
+    input:not([type='checkbox']):not([type='radio']):not([type='file']):not(
+        [type='submit']
+      ):not([type='button']),
+    textarea,
+    select
+  ) {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--aa-encre);
+  caret-color: var(--aa-fil);
+  background-color: var(--aa-champ);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(0, 0, 0, 0.02)
+  );
+  border: 1px solid var(--aa-ligne);
+  border-radius: 10px;
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 169, 97, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.aa-page
+  :is(
+    .aa-panel,
+    .aa-formulaire,
+    .aa-workflow,
+    .aa-section,
+    .aa-security-check,
+    .aa-mfa-settings,
+    .aa-sessions,
+    .aa-preferences,
+    .aa-compte-formulaire,
+    .aa-compte-sections,
+    .aa-compte-panneau
+  )
+  :is(input, textarea, select):hover:not(:focus):not(:disabled) {
+  border-color: var(--aa-couture);
+}
+
+.aa-page
+  :is(
+    .aa-panel,
+    .aa-formulaire,
+    .aa-workflow,
+    .aa-section,
+    .aa-security-check,
+    .aa-mfa-settings,
+    .aa-sessions,
+    .aa-preferences,
+    .aa-compte-formulaire,
+    .aa-compte-sections,
+    .aa-compte-panneau
+  )
+  :is(input, textarea, select):focus {
+  outline: none;
+  border-color: var(--aa-fil);
+  box-shadow:
+    0 0 0 3px rgba(201, 169, 97, 0.16),
+    inset 0 0 0 1px rgba(201, 169, 97, 0.3);
+}
+
+.aa-page
+  :is(
+    .aa-panel,
+    .aa-formulaire,
+    .aa-workflow,
+    .aa-section,
+    .aa-security-check,
+    .aa-mfa-settings,
+    .aa-sessions,
+    .aa-preferences,
+    .aa-compte-formulaire,
+    .aa-compte-sections,
+    .aa-compte-panneau
+  )
+  :is(input, textarea)::placeholder {
+  color: var(--aa-encre-faible);
+  opacity: 1;
+  font-style: normal;
+}
+
+.aa-page
+  :is(
+    .aa-panel,
+    .aa-formulaire,
+    .aa-workflow,
+    .aa-section,
+    .aa-security-check,
+    .aa-mfa-settings,
+    .aa-sessions,
+    .aa-preferences,
+    .aa-compte-formulaire,
+    .aa-compte-sections,
+    .aa-compte-panneau
+  )
+  textarea {
+  min-height: 84px;
+  padding: 10px 12px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.aa-page
+  :is(
+    .aa-panel,
+    .aa-formulaire,
+    .aa-workflow,
+    .aa-section,
+    .aa-security-check,
+    .aa-mfa-settings,
+    .aa-sessions,
+    .aa-preferences,
+    .aa-compte-formulaire,
+    .aa-compte-sections,
+    .aa-compte-panneau
+  )
+  select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2012%208'%3E%3Cpath%20d='M1%201.5%206%206.5l5-5'%20fill='none'%20stroke='%23c9a961'%20stroke-width='1.7'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 11px 8px;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.aa-page
+  :is(
+    .aa-panel,
+    .aa-formulaire,
+    .aa-workflow,
+    .aa-section,
+    .aa-security-check,
+    .aa-mfa-settings,
+    .aa-sessions,
+    .aa-preferences,
+    .aa-compte-formulaire,
+    .aa-compte-sections,
+    .aa-compte-panneau
+  )
+  select
+  option {
+  background: var(--aa-carte);
+  color: var(--aa-encre);
+}
+
+.aa-page
+  :is(
+    .aa-panel,
+    .aa-formulaire,
+    .aa-workflow,
+    .aa-section,
+    .aa-security-check,
+    .aa-mfa-settings,
+    .aa-sessions,
+    .aa-preferences,
+    .aa-compte-formulaire,
+    .aa-compte-sections,
+    .aa-compte-panneau
+  )
+  input[readonly] {
+  border-style: dashed;
+  background-image: none;
+  color: var(--aa-encre-douce);
+  cursor: default;
+}
+
+.aa-page
+  :is(
+    .aa-panel,
+    .aa-formulaire,
+    .aa-workflow,
+    .aa-section,
+    .aa-security-check,
+    .aa-mfa-settings,
+    .aa-sessions,
+    .aa-preferences,
+    .aa-compte-formulaire,
+    .aa-compte-sections,
+    .aa-compte-panneau
+  )
+  :is(input, textarea, select):disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* les flèches natives des champs numériques jurent avec la tenture */
+.aa-page input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.aa-page input[type='number']::-webkit-outer-spin-button,
+.aa-page input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* — 18 b. Les sceaux : des cases à cocher qui ont l'air de cachets — */
+
+.aa-page
+  :is(
+    .aa-panel,
+    .aa-formulaire,
+    .aa-workflow,
+    .aa-section,
+    .aa-security-check,
+    .aa-mfa-settings,
+    .aa-sessions,
+    .aa-preferences,
+    .aa-compte-formulaire,
+    .aa-compte-sections,
+    .aa-compte-panneau
+  )
+  .aa-sceau {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 5px 13px 5px 7px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+  color: var(--aa-encre-douce);
+  background: rgba(201, 169, 97, 0.055);
+  border: 1px dashed var(--aa-couture);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.aa-page .aa-sceau:hover:not(:has(input:disabled)) {
+  color: var(--aa-encre);
+  border-color: var(--aa-fil);
+}
+
+.aa-page .aa-sceau input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.aa-page .aa-sceau-pastille {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: transparent;
+  background: transparent;
+  border: 1px dashed var(--aa-couture);
+  border-radius: 50%;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.aa-page .aa-sceau input:checked + .aa-sceau-pastille {
+  color: var(--aa-ivoire);
+  background: var(--aa-terre);
+  border: 1px solid var(--aa-fil);
+  box-shadow: 0 0 0 2px rgba(201, 169, 97, 0.18);
+  transform: rotate(-8deg);
+}
+
+.aa-page .aa-sceau:has(input:checked) {
+  color: var(--aa-encre);
+  background: rgba(139, 62, 29, 0.14);
+  border-color: var(--aa-couture-forte);
+  border-style: solid;
+}
+
+.aa-page .aa-sceau:focus-within {
+  border-color: var(--aa-fil);
+}
+
+.aa-page .aa-sceau input:focus-visible + .aa-sceau-pastille {
+  outline: 2px solid var(--aa-fil);
+  outline-offset: 2px;
+}
+
+.aa-page .aa-sceau:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aa-page .aa-sceaux {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.aa-page .aa-sceaux > legend {
+  padding: 0 0 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--aa-encre-douce);
+}
+
+.aa-page .aa-sceaux--ent {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.aa-page .aa-sceau--large {
+  justify-content: flex-start;
+  min-height: 40px;
+  border-radius: 10px;
+}
+
+.aa-page .aa-permission-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.aa-page .aa-permission-actions > legend {
+  padding: 0 0 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--aa-encre-douce);
+}
+
+.aa-page .aa-permission-actions .aa-sceau {
+  width: 100%;
+}
+
+.aa-page .aa-sceau-note {
+  margin: 8px 0 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--aa-encre-faible);
+}
+
+/* — 18 c. Les explications pliées — */
+
+.aa-page details.aa-explication {
+  margin: 8px 0 0;
+  padding: 0;
+  border: 0;
+  border-top: 1px dashed var(--aa-ligne);
+}
+
+.aa-page .aa-explication > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 6px;
+  list-style: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--aa-fil);
+  cursor: pointer;
+}
+
+.aa-page .aa-explication > summary::-webkit-details-marker {
+  display: none;
+}
+
+.aa-page .aa-explication > summary::before {
+  content: '+';
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--aa-fil);
+  border: 1px dashed var(--aa-couture);
+  border-radius: 50%;
+}
+
+.aa-page .aa-explication[open] > summary::before {
+  content: '–';
+}
+
+.aa-page .aa-explication > summary:hover {
+  color: var(--aa-encre);
+}
+
+.aa-page .aa-explication-texte {
+  display: grid;
+  gap: 8px;
+  padding: 2px 0 6px 24px;
+}
+
+.aa-page .aa-explication-texte :is(p, ul, ol, li) {
+  margin: 0;
+  padding: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--aa-encre-douce);
+  border: 0;
+}
+
+.aa-page .aa-explication-texte ul,
+.aa-page .aa-explication-texte ol {
+  padding-left: 16px;
+  list-style: disc;
+}
+
+.aa-page .aa-explication-texte ol {
+  list-style: decimal;
+}
+
+/* — 18 d. Des boutons taillés, pas des pastilles standard — */
+
+/* un pied de formulaire aligne ses boutons : pas de marge héritée */
+.aa-page .aa-formulaire-pied > :is(button, a) {
+  margin: 0;
+}
+
+.aa-page .aa-primary,
+.aa-page .aa-bouton-plein {
+  background-color: var(--aa-terre);
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(242, 232, 213, 0.07) 0 2px,
+    transparent 2px 7px
+  );
+  border-color: var(--aa-terre-chaud);
+  box-shadow:
+    inset 0 0 0 1px rgba(242, 232, 213, 0.16),
+    0 5px 14px rgba(0, 0, 0, 0.22);
+}
+
+.aa-page .aa-primary:hover,
+.aa-page .aa-bouton-plein:hover {
+  background-color: var(--aa-terre-chaud);
+  border-color: var(--aa-fil);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 1px rgba(242, 232, 213, 0.22),
+    0 8px 18px rgba(0, 0, 0, 0.26);
+}
+
+.aa-page .aa-primary:active,
+.aa-page .aa-bouton-plein:active {
+  transform: translateY(0);
+}
+
+.aa-page .aa-secondary,
+.aa-page .aa-bouton-creux {
+  background: rgba(201, 169, 97, 0.04);
+  border-style: dashed;
+}
+
+.aa-page .aa-secondary:hover,
+.aa-page .aa-bouton-creux:hover {
+  background: rgba(201, 169, 97, 0.1);
+  border-style: solid;
+}
+
+.aa-page .aa-bouton-danger {
+  border-style: dashed;
+}
+
+.aa-page .aa-bouton-danger:hover:not(:disabled) {
+  border-style: solid;
+}
+
+.aa-register .aa-tuile {
+  box-shadow: inset 0 0 0 1px rgba(201, 169, 97, 0.18);
+  transition:
+    transform 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.aa-register .aa-tuile:hover {
+  transform: translateY(-1px) rotate(-4deg);
+}
+
+.aa-register .aa-tuile:active {
+  transform: translateY(0) rotate(0deg);
+}
+
+/* les pastilles de rôle : une icône, un compte, un fil doré */
+.aa-register .aa-puces > button {
+  gap: 7px;
+}
+
+.aa-register .aa-puces > button svg {
+  flex: none;
+  opacity: 0.82;
+}
+
+.aa-register .aa-puces > button[aria-pressed='true'] {
+  box-shadow:
+    inset 0 0 0 1px var(--aa-fil),
+    0 3px 10px rgba(0, 0, 0, 0.22);
+}
+
+.aa-register .aa-puces > button[aria-pressed='true'] svg {
+  opacity: 1;
+}
+
+.aa-register .aa-puce-n {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--aa-encre-faible);
+  background: rgba(201, 169, 97, 0.14);
+  border-radius: 999px;
+}
+
+.aa-register .aa-puces > button[aria-pressed='true'] .aa-puce-n {
+  color: var(--aa-ivoire);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+/* — 18 d bis. Le filtre d’état : un interrupteur, pas une case — */
+
+.aa-register .aa-tabs > .aa-tabs-filtre {
+  gap: 7px;
+}
+
+.aa-register .aa-tabs-filtre-piste {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  width: 26px;
+  height: 14px;
+  padding: 2px;
+  border: 1px solid var(--aa-ligne);
+  border-radius: 999px;
+  background: rgba(201, 169, 97, 0.16);
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.aa-register .aa-tabs-filtre-pastille {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--aa-encre-faible);
+  transition:
+    transform 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.aa-register .aa-tabs-filtre[aria-pressed='true'] .aa-tabs-filtre-piste {
+  border-color: var(--aa-fil);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.aa-register .aa-tabs-filtre[aria-pressed='true'] .aa-tabs-filtre-pastille {
+  background: var(--aa-ivoire);
+  transform: translateX(11px);
+}
+
+/* — 18 e. Les listes denses : invitations et règles — */
+
+.aa-page .aa-invitations-liste,
+.aa-page .aa-regles-liste {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aa-page .aa-invitation,
+.aa-page .aa-regle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 9px 11px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--aa-encre-douce);
+  background: rgba(201, 169, 97, 0.035);
+  border: 1px dashed var(--aa-ligne);
+  border-radius: 10px;
+}
+
+.aa-page .aa-invitation strong,
+.aa-page .aa-regle strong {
+  font-weight: 600;
+  color: var(--aa-encre);
+  overflow-wrap: anywhere;
+}
+
+.aa-page .aa-invitation-etat {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--aa-encre-faible);
+}
+
+.aa-page .aa-invitation-etat[data-etat='sent'],
+.aa-page .aa-invitation-etat[data-etat='accepted'] {
+  color: var(--aa-ok);
+}
+
+.aa-page .aa-invitation-etat[data-etat='failed'],
+.aa-page .aa-invitation-etat[data-etat='cancelled'] {
+  color: var(--aa-alerte);
+}
+
+.aa-page .aa-regle--version {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+.aa-page .aa-regle--version > ul {
+  margin: 2px 0 0;
+  padding-left: 14px;
+  list-style: disc;
+}
+
+.aa-page .aa-regle--version > ul > li {
+  font-size: 11px;
+  color: var(--aa-encre-faible);
+}
+
+.aa-page .aa-invitation-actions,
+.aa-page .aa-regle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.aa-page .aa-invitation-actions button,
+.aa-page .aa-regle-actions button {
+  min-height: 27px;
+  padding: 0 10px;
+  font-size: 10.5px;
+}
+
+/* — 18 f. Le plein écran sur les navigateurs mobiles — */
+
+@supports (min-height: 100dvh) {
+  .aa-page {
+    min-height: 100dvh;
+  }
+}
+
+/* — 18 g. Le doigt n'est pas une souris — */
+
+@media (pointer: coarse) {
+  .aa-register .aa-tuile,
+  .aa-fiche .aa-tuile {
+    width: 34px;
+    height: 34px;
+  }
+
+  .aa-register .aa-recherche {
+    height: 44px;
+  }
+
+  .aa-register .aa-tabs > button,
+  .aa-fiche-onglets > button {
+    min-height: 40px;
+  }
+
+  .aa-page .aa-sceau {
+    min-height: 40px;
+  }
+
+  .aa-page .aa-sceau-pastille {
+    width: 22px;
+    height: 22px;
+  }
+
+  .aa-register .aa-puces > button,
+  .aa-register .aa-puce-select {
+    height: 34px;
+  }
+
+  .aa-page .aa-explication > summary {
+    padding: 11px 0 9px;
+  }
+}
+
 /* ── 15. Adaptations ───────────────────────────────────────── */
 
 @media (max-width: 1180px) {
@@ -2933,6 +3643,11 @@
   .aa-fiche .aa-champs--large {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  /* le tiroir n'a plus de hauteur fixe : il suit son contenu */
+  .aa-register .aa-panneau-pied {
+    margin-top: 6px;
+  }
 }
 
 @media (max-width: 760px) {
@@ -2967,6 +3682,15 @@
     grid-column: auto;
   }
 
+  .aa-register .aa-metrique {
+    min-height: 0;
+  }
+
+  /* la courbe garde sa place, mais plus étroite */
+  .aa-register .aa-metrique-courbe {
+    width: 46%;
+  }
+
   .aa-register .aa-heading {
     align-items: flex-start;
   }
@@ -2987,10 +3711,49 @@
     flex: 1 1 100%;
   }
 
+  /* les pastilles de rôle : une seule ligne qui défile au doigt */
+  .aa-register .aa-puces {
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .aa-register .aa-puces::-webkit-scrollbar {
+    display: none;
+  }
+
+  .aa-register .aa-puces > * {
+    flex: none;
+  }
+
   .aa-register .aa-puces > button,
   .aa-register .aa-puce-select {
     font-size: 10px;
     padding: 0 10px;
+  }
+
+  /* les onglets du registre : une ligne, jamais deux */
+  .aa-register .aa-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .aa-register .aa-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .aa-register .aa-tabs > button {
+    flex: none;
+  }
+
+  .aa-register .aa-tabs > .aa-tabs-filtre {
+    margin-left: 0;
+    margin-bottom: 4px;
   }
 
   /* le tableau se replie : la personne garde toute la largeur */
@@ -3017,6 +3780,14 @@
     padding-left: 36px;
   }
 
+  /* sur une ligne étroite, le détail du compte passe à la ligne
+     au lieu d'être coupé au milieu d'un mot */
+  .aa-register .aa-person-sub {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
   .aa-register .aa-col-ent {
     grid-area: ent;
     padding-left: 36px;
@@ -3026,15 +3797,90 @@
     grid-area: actions;
   }
 
+  /* la bande de raccourcis défile, sans passer à la ligne */
+  .aa-raccourcis {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+
+  .aa-raccourcis-libelle {
+    flex: none;
+  }
+
+  .aa-raccourcis .abs-raccourcis {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   .aa-page .aa-account-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* la fiche : un carnet plein écran, deux rangées de tête */
   .aa-fiche {
     width: 100vw;
+    width: 100dvw;
     height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
     border-radius: 0;
     border: 0;
+  }
+
+  .aa-fiche-tete {
+    padding: 11px 14px 9px;
+    row-gap: 8px;
+  }
+
+  .aa-fiche-onglets {
+    order: 3;
+    flex: 1 1 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .aa-fiche-onglets::-webkit-scrollbar {
+    display: none;
+  }
+
+  .aa-fiche-onglets > button {
+    flex: none;
+  }
+
+  .aa-fiche-corps {
+    padding: 16px 14px 28px;
+  }
+
+  .aa-page .aa-formulaire-pied {
+    justify-content: stretch;
+  }
+
+  .aa-page .aa-formulaire-pied > :is(button, a) {
+    flex: 1 1 auto;
+  }
+
+  .aa-page .aa-sceaux--ent {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aa-page .aa-permission-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* mon compte : la barre et le formulaire se replient */
+  .aa-compte-shell {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .aa-compte-entete {
+    gap: 10px;
+  }
+
+  .aa-compte-photo {
+    align-items: flex-start;
   }
 
   .aa-journal-liste li {
@@ -3059,6 +3905,39 @@
 
   .aa-register .aa-tabs > .aa-tabs-filtre {
     margin-left: 0;
+  }
+
+  .aa-register .aa-heading h1 {
+    font-size: 13px;
+  }
+
+  .aa-register .aa-grille {
+    padding-top: 14px;
+  }
+
+  .aa-register .aa-puce-n {
+    display: none;
+  }
+
+  .aa-raccourcis-libelle {
+    display: none;
+  }
+
+  .aa-page .aa-sceau {
+    font-size: 11px;
+  }
+
+  .aa-page .aa-permission-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aa-page .aa-explication-texte {
+    padding-left: 0;
+  }
+
+  .aa-compte-identite {
+    flex-direction: column;
+    text-align: center;
   }
 
   .aa-fiche-onglets > button {

@@ -6,8 +6,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Search, ShieldCheck, Users, X,
-  Plus, History, Building2, KeyRound, SlidersHorizontal, User,
+  Plus, History, Building2, KeyRound, User,
   Sun, Moon, ArrowUpRight, Lock, UserPlus,
+  Crown, UserCog, Eye,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
@@ -18,6 +19,8 @@ import {
 import EmployeeProfilePhoto from '../components/EmployeeProfilePhoto'
 import AdminsLoadingScreen from '../components/AdminsLoadingScreen'
 import RaccourcisPages from '../components/RaccourcisPages'
+import AdminExplication from '../components/AdminExplication'
+import AdminSceau from '../components/AdminSceau'
 import {
   ADMIN_FIELDS,
   currentAdminAccount,
@@ -31,6 +34,14 @@ import {
   ROLES, entreprisesCouvertes, etatAcces, filtrerParRole,
   cumuler, formaterDerniereConnexion, libelleRole, serieMensuelle, tonRole,
 } from '../utils/adminsPresentation'
+
+// ── Une icône par rôle : la pastille se lit avant d'être lue ──
+const ICONES_ROLE = {
+  super_admin: Crown,
+  admin: ShieldCheck,
+  manager: UserCog,
+  viewer: Eye,
+}
 
 // ── Les mois, pour les fiches ─────────────────────────────
 const MOIS_COURT = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin',
@@ -275,6 +286,13 @@ export default function AdminAccounts() {
   const sansAcces = actifs.filter((a) => etatAcces(a) === 'non_lie')
   const couvertes = entreprisesCouvertes(rows)
   const filtres = useMemo(() => filtrerParRole(filtered, roleFiltre), [filtered, roleFiltre])
+  // Le nombre affiché sur chaque pastille suit les filtres déjà posés
+  // (recherche, entreprise, état) — il ne promet jamais plus qu'il n'y a.
+  const compteParRole = useMemo(() => {
+    const compte = { tous: filtered.length }
+    for (const role of ROLES) compte[role] = filtered.filter((a) => a.role === role).length
+    return compte
+  }, [filtered])
 
   // Les courbes cumulent DOUZE mois réels de créations : aucune valeur
   // n'est inventée, et la forme ondule au lieu de tracer un pic unique.
@@ -488,7 +506,7 @@ export default function AdminAccounts() {
                   <Search size={16} />
                   <input
                     aria-label="Rechercher un administrateur"
-                    placeholder="Rechercher…"
+                    placeholder="Nom, e-mail ou entreprise…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
@@ -500,19 +518,32 @@ export default function AdminAccounts() {
                 </label>
 
                 <div className="aa-puces" role="group" aria-label="Filtrer par rôle">
-                  <button type="button" aria-pressed={roleFiltre === 'tous'} onClick={() => setRoleFiltre('tous')}>
+                  <button
+                    type="button"
+                    aria-pressed={roleFiltre === 'tous'}
+                    onClick={() => setRoleFiltre('tous')}
+                    title="Tous les rôles"
+                  >
+                    <Users size={12} />
                     Tous
+                    <span className="aa-puce-n">{compteParRole.tous}</span>
                   </button>
-                  {ROLES.map((role) => (
-                    <button
-                      key={role}
-                      type="button"
-                      aria-pressed={roleFiltre === role}
-                      onClick={() => setRoleFiltre(role)}
-                    >
-                      {libelleRole(role)}
-                    </button>
-                  ))}
+                  {ROLES.map((role) => {
+                    const IconeRole = ICONES_ROLE[role] || User
+                    return (
+                      <button
+                        key={role}
+                        type="button"
+                        aria-pressed={roleFiltre === role}
+                        onClick={() => setRoleFiltre(role)}
+                        title={`Afficher les comptes : ${libelleRole(role)}`}
+                      >
+                        <IconeRole size={12} />
+                        {libelleRole(role)}
+                        <span className="aa-puce-n">{compteParRole[role]}</span>
+                      </button>
+                    )
+                  })}
                   <label className="aa-puce-select">
                     <Building2 size={13} />
                     <select
@@ -520,7 +551,7 @@ export default function AdminAccounts() {
                       value={enterprise}
                       onChange={(e) => setEnterprise(e.target.value)}
                     >
-                      <option value="">Entreprise</option>
+                      <option value="">Toutes les entreprises</option>
                       {enterprises.map((ent) => (
                         <option key={ent.id} value={ent.id}>{ent.name}</option>
                       ))}
@@ -541,13 +572,21 @@ export default function AdminAccounts() {
                   Journal
                 </button>
                 <button
+                  type="button"
                   role="tab"
                   className="aa-tabs-filtre"
                   aria-pressed={status !== ''}
+                  aria-label={
+                    status === 'active'
+                      ? 'Afficher tous les états'
+                      : 'N’afficher que les comptes actifs'
+                  }
                   onClick={() => setStatus(status === '' ? 'active' : '')}
-                  title="N'afficher que les comptes actifs"
+                  title="Basculer entre tous les états et les seuls comptes actifs"
                 >
-                  <SlidersHorizontal size={13} />
+                  <span className="aa-tabs-filtre-piste" aria-hidden="true">
+                    <span className="aa-tabs-filtre-pastille" />
+                  </span>
                   {status === 'active' ? 'Actifs' : 'Tous les états'}
                 </button>
               </div>
@@ -895,6 +934,7 @@ export default function AdminAccounts() {
                           <input
                             type="password" required minLength={12} maxLength={72}
                             autoComplete="new-password"
+                            placeholder="Au moins 12 caractères, par exemple une phrase de passe"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             disabled={busy}
@@ -905,6 +945,7 @@ export default function AdminAccounts() {
                           <input
                             type="password" required minLength={12} maxLength={72}
                             autoComplete="new-password"
+                            placeholder="Répétez-le à l’identique"
                             value={passwordConfirmation}
                             onChange={(e) => setPasswordConfirmation(e.target.value)}
                             disabled={busy}
@@ -914,30 +955,32 @@ export default function AdminAccounts() {
                           Motif du changement
                           <textarea
                             required minLength={5} maxLength={500}
+                            placeholder="Ex. : compte compromis, demande du titulaire, départ de l’équipe…"
                             value={passwordReason}
                             onChange={(e) => setPasswordReason(e.target.value)}
                             disabled={busy}
                           />
                         </label>
                         <small>Le motif est conservé dans le journal. N’y inscrivez aucun mot de passe.</small>
-                        <label className="aa-password-confirm">
-                          <input
-                            type="checkbox" required
-                            checked={passwordAcknowledged}
-                            onChange={(e) => setPasswordAcknowledged(e.target.checked)}
-                            disabled={busy}
-                          />
+                        <AdminSceau
+                          checked={passwordAcknowledged}
+                          onChange={(e) => setPasswordAcknowledged(e.target.checked)}
+                          disabled={busy}
+                          required
+                        >
                           Je confirme le remplacement pour ce compte.
-                        </label>
+                        </AdminSceau>
                         <div className="aa-formulaire-pied">
                           <button className="aa-bouton-plein" disabled={busy} type="submit">
                             {busy ? 'Enregistrement…' : 'Remplacer le mot de passe'}
                           </button>
                         </div>
-                        <p className="aa-aide">
-                          Cette action n’envoie pas de lien de récupération, n’impose pas de changement à la
-                          prochaine connexion et ne ferme pas les sessions déjà ouvertes.
-                        </p>
+                        <AdminExplication titre="Ce que cette action fait — et ne fait pas">
+                          <p>
+                            Elle n’envoie pas de lien de récupération, n’impose pas de changement à la
+                            prochaine connexion et ne ferme pas les sessions déjà ouvertes.
+                          </p>
+                        </AdminExplication>
                       </form>
                     </details>
                   )}
@@ -958,18 +1001,21 @@ export default function AdminAccounts() {
                   <details className="aa-section aa-danger-section">
                     <summary>Désactiver ce compte</summary>
                     <form onSubmit={changeStatus} className="aa-formulaire">
-                      <p>
-                        Une désactivation conserve l’historique. Ce n’est ni une suppression définitive
-                        ni une révocation immédiate des jetons déjà émis.
-                      </p>
                       <label>
                         Motif de l’intervention
                         <textarea
                           required minLength={5} maxLength={500}
+                          placeholder="Ex. : fin de mission, remplacement par la responsable paie…"
                           value={reason}
                           onChange={(e) => setReason(e.target.value)}
                         />
                       </label>
+                      <AdminExplication titre="Ce qu’une désactivation conserve">
+                        <p>
+                          Une désactivation conserve l’historique. Ce n’est ni une suppression définitive
+                          ni une révocation immédiate des jetons déjà émis.
+                        </p>
+                      </AdminExplication>
                       <div className="aa-formulaire-pied">
                         <button
                           className="aa-bouton-danger"

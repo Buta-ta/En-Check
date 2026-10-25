@@ -108,6 +108,7 @@ export default function AdminAccountSessions({ adminId = null }) {
                     {session.ip || 'non renseignée'}
                   </small>
                   <button
+                    className="aa-bouton-creux"
                     disabled={busy || session.revoked || !enabled}
                     onClick={() => {
                       setSelected(session)
@@ -131,6 +132,7 @@ export default function AdminAccountSessions({ adminId = null }) {
                   minLength={5}
                   maxLength={500}
                   required
+                  placeholder="Ex. : appareil perdu, connexion suspecte signalée…"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   disabled={busy}
@@ -141,14 +143,19 @@ export default function AdminAccountSessions({ adminId = null }) {
                   ? 'Vous serez déconnecté de cette page.'
                   : 'Cette session ne pourra plus utiliser les API REST/RPC protégées.'}
               </p>
-              <button disabled={busy}>Confirmer la révocation</button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => setSelected(null)}
-              >
-                Annuler
-              </button>
+              <div className="aa-formulaire-pied">
+                <button className="aa-bouton-danger" disabled={busy}>
+                  Confirmer la révocation
+                </button>
+                <button
+                  type="button"
+                  className="aa-bouton-creux"
+                  disabled={busy}
+                  onClick={() => setSelected(null)}
+                >
+                  Annuler
+                </button>
+              </div>
             </form>
           )}
         </>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { accountRpc } from '../services/adminAccounts'
+import AdminExplication from './AdminExplication'
 const labels = {
   sending: 'Envoi en cours',
   sent: 'Envoyée',
@@ -65,10 +66,13 @@ export default function AdminInvitations({ enterprises = [] }) {
   return (
     <details id="admin-invitations" className="aa-panel aa-workflow">
       <summary>Invitations par e-mail</summary>
-      <p>
-        Crée un administrateur standard pour l’entreprise choisie, seulement
-        après validation de l’adresse. Aucun mot de passe n’est envoyé.
-      </p>
+      <AdminExplication titre="Ce que reçoit la personne invitée">
+        <p>
+          Crée un administrateur standard pour l’entreprise choisie, seulement
+          après validation de l’adresse. Aucun mot de passe n’est envoyé : le
+          lien d’activation expire de lui-même et se révoque.
+        </p>
+      </AdminExplication>
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -90,6 +94,8 @@ export default function AdminInvitations({ enterprises = [] }) {
           <input
             required
             maxLength={80}
+            autoComplete="given-name"
+            placeholder="Ex. : Awa"
             value={first}
             onChange={(e) => setFirst(e.target.value)}
           />
@@ -99,6 +105,8 @@ export default function AdminInvitations({ enterprises = [] }) {
           <input
             required
             maxLength={80}
+            autoComplete="family-name"
+            placeholder="Ex. : Dossou"
             value={last}
             onChange={(e) => setLast(e.target.value)}
           />
@@ -109,6 +117,8 @@ export default function AdminInvitations({ enterprises = [] }) {
             type="email"
             required
             maxLength={254}
+            autoComplete="email"
+            placeholder="Ex. : awa.dossou@entreprise.bj"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -120,7 +130,7 @@ export default function AdminInvitations({ enterprises = [] }) {
             value={enterprise}
             onChange={(e) => setEnterprise(e.target.value)}
           >
-            <option value="">Choisir</option>
+            <option value="">Choisir une entreprise</option>
             {enterprises.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.name}
@@ -128,45 +138,60 @@ export default function AdminInvitations({ enterprises = [] }) {
             ))}
           </select>
         </label>
-        <button disabled={busy}>Envoyer l’invitation</button>
+        <button className="aa-bouton-plein" disabled={busy}>
+          Envoyer l’invitation
+        </button>
       </form>
-      <button disabled={busy} onClick={() => run(load)}>
+      <button className="aa-bouton-creux" disabled={busy} onClick={() => run(load)}>
         Actualiser
       </button>
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
-      <ul>
-        {items.map((item) => (
-          <li key={item.id}>
-            <strong>{item.email}</strong> —{' '}
-            {item.state === 'sent' && Date.parse(item.expires_at) < Date.now()
-              ? 'Expirée'
-              : labels[item.state]}
-            {['sent', 'failed'].includes(item.state) && (
-              <button
-                disabled={
-                  busy || Date.now() - Date.parse(item.last_sent_at) < 60000
-                }
-                onClick={() => run(() => send({ id: item.id }))}
-              >
-                Renvoyer
-              </button>
-            )}
-            {['sent', 'failed', 'sending'].includes(item.state) && (
-              <button
-                disabled={busy}
-                onClick={() =>
-                  run(() =>
-                    accountRpc('encheck_invitation_cancel', { p_id: item.id }),
-                  )
-                }
-              >
-                Annuler
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+      {items.length > 0 && (
+        <ul className="aa-invitations-liste">
+          {items.map((item) => {
+            const expiree =
+              item.state === 'sent' && Date.parse(item.expires_at) < Date.now()
+            return (
+              <li className="aa-invitation" key={item.id}>
+                <strong>{item.email}</strong>
+                <span
+                  className="aa-invitation-etat"
+                  data-etat={expiree ? 'expired' : item.state}
+                >
+                  {expiree ? 'Expirée' : labels[item.state] || item.state}
+                </span>
+                <span className="aa-invitation-actions">
+                  {['sent', 'failed'].includes(item.state) && (
+                    <button
+                      className="aa-bouton-creux"
+                      disabled={
+                        busy || Date.now() - Date.parse(item.last_sent_at) < 60000
+                      }
+                      onClick={() => run(() => send({ id: item.id }))}
+                    >
+                      Renvoyer
+                    </button>
+                  )}
+                  {['sent', 'failed', 'sending'].includes(item.state) && (
+                    <button
+                      className="aa-bouton-creux"
+                      disabled={busy}
+                      onClick={() =>
+                        run(() =>
+                          accountRpc('encheck_invitation_cancel', { p_id: item.id }),
+                        )
+                      }
+                    >
+                      Annuler
+                    </button>
+                  )}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </details>
   )
 }

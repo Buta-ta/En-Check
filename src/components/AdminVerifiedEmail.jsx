@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { accountRpc } from '../services/adminAccounts'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
+import AdminExplication from './AdminExplication'
 export default function AdminVerifiedEmail() {
   const [email, setEmail] = useState(''),
     [busy, setBusy] = useState(false),
@@ -29,10 +30,12 @@ export default function AdminVerifiedEmail() {
   return (
     <section>
       <h3>Adresse e-mail vérifiée</h3>
-      <p>
-        La fiche utilise uniquement l’adresse confirmée dans Auth. Après
-        confirmation des e-mails, synchronisez votre fiche.
-      </p>
+      <AdminExplication titre="D’où vient l’adresse affichée">
+        <p>
+          La fiche utilise uniquement l’adresse confirmée dans Auth. Après
+          confirmation des e-mails, synchronisez votre fiche.
+        </p>
+      </AdminExplication>
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -55,11 +58,15 @@ export default function AdminVerifiedEmail() {
             type="email"
             required
             maxLength={254}
+            autoComplete="email"
+            placeholder="Ex. : awa.dossou@entreprise.bj"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
         </label>
-        <button disabled={busy}>Demander le changement</button>
+        <button className="aa-bouton-plein" disabled={busy}>
+          Demander le changement
+        </button>
       </form>
       <button
         disabled={busy}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import AdminExplication from './AdminExplication'
 import { accountRpc } from '../services/adminAccounts'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
 export default function AdminMfaSettings() {
@@ -115,10 +116,12 @@ export default function AdminMfaSettings() {
       <button type="button" disabled={busy} onClick={() => run(load)}>
         Actualiser la configuration
       </button>
-      <p>
-        Utilisez une application d’authentification. Conservez un second facteur
-        vérifié si vous souhaitez une solution de secours.
-      </p>
+      <AdminExplication titre="Quelle application, et comment la garder">
+        <p>
+          Utilisez une application d’authentification. Conservez un second facteur
+          vérifié si vous souhaitez une solution de secours.
+        </p>
+      </AdminExplication>
       {loading ? (
         <p role="status">Lecture des facteurs…</p>
       ) : (
@@ -150,10 +153,12 @@ export default function AdminMfaSettings() {
       {error && <p role="alert">{error}</p>}
       {enrollment ? (
         <form onSubmit={verify}>
-          <p>
-            QR code confidentiel : scannez-le avec votre application, puis
-            confirmez le code.
-          </p>
+          <AdminExplication titre="Comment inscrire l’authentificateur" ouvert>
+            <p>
+              QR code confidentiel : scannez-le avec votre application, puis
+              confirmez le code à six chiffres.
+            </p>
+          </AdminExplication>
           {qr && (
             <img
               className="aa-mfa-qr"
@@ -177,11 +182,15 @@ export default function AdminMfaSettings() {
               pattern="[0-9]{6}"
               required
               maxLength={6}
+              placeholder="123 456"
+              aria-label="Code de vérification à six chiffres"
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             />
           </label>
-          <button disabled={busy}>Activer ce facteur</button>
+          <button className="aa-bouton-plein" disabled={busy}>
+            Activer ce facteur
+          </button>
           <button
             type="button"
             disabled={busy}

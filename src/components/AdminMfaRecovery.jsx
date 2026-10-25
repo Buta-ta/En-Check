@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
+import AdminExplication from './AdminExplication'
 export default function AdminMfaRecovery({ account, currentId }) {
   const [email, setEmail] = useState(''),
     [reason, setReason] = useState(''),
@@ -13,12 +14,14 @@ export default function AdminMfaRecovery({ account, currentId }) {
   return (
     <details>
       <summary>Récupération du second facteur</summary>
-      <p>
-        Après vérification de l’identité du titulaire, retire les facteurs
-        perdus. Votre propre MFA doit être vérifiée (AAL2). Le titulaire devra
-        réinscrire un authentificateur. Ses sessions existantes seront bloquées
-        pour REST/RPC, mais pas pour les autres canaux.
-      </p>
+      <AdminExplication titre="Avant de retirer les facteurs">
+        <p>
+          Après vérification de l’identité du titulaire, retire les facteurs
+          perdus. Votre propre MFA doit être vérifiée (AAL2). Le titulaire devra
+          réinscrire un authentificateur. Ses sessions existantes seront bloquées
+          pour REST/RPC, mais pas pour les autres canaux.
+        </p>
+      </AdminExplication>
       <form
         onSubmit={async (e) => {
           e.preventDefault()
@@ -59,6 +62,8 @@ export default function AdminMfaRecovery({ account, currentId }) {
           <input
             type="email"
             required
+            autoComplete="off"
+            placeholder={account.email || 'adresse du titulaire'}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -69,11 +74,13 @@ export default function AdminMfaRecovery({ account, currentId }) {
             required
             minLength={5}
             maxLength={500}
+            placeholder="Ex. : téléphone perdu, identité vérifiée par appel au +229…"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
         </label>
         <button
+          className="aa-bouton-plein"
           disabled={
             busy ||
             email.trim().toLowerCase() !== account.email?.toLowerCase() ||

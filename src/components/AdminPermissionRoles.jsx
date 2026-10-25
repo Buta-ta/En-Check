@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { accountRpc } from '../services/adminAccounts'
+import AdminExplication from './AdminExplication'
+import AdminSceau from './AdminSceau'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
 const modules = {
   employees: 'Employés',
@@ -75,12 +77,14 @@ export default function AdminPermissionRoles({
   return (
     <section className="aa-panel aa-workflow">
       <h2>Rôles personnalisés</h2>
-      <p>
-        Permissions par module, action et entreprise, appliquées par le serveur.
-        Les tables non couvertes et les opérations métier RPC non auditées sont
-        refusées. Les droits s’ajoutent aux restrictions existantes, sans les
-        remplacer.
-      </p>
+      <AdminExplication titre="Comment le serveur applique ces permissions" ouvert>
+        <p>
+          Permissions par module, action et entreprise, appliquées par le serveur.
+          Les tables non couvertes et les opérations métier RPC non auditées sont
+          refusées. Les droits s’ajoutent aux restrictions existantes, sans les
+          remplacer.
+        </p>
+      </AdminExplication>
       <button disabled={busy} onClick={() => run(async () => {})}>
         Actualiser le catalogue
       </button>
@@ -99,10 +103,6 @@ export default function AdminPermissionRoles({
       )}
       <details>
         <summary>Créer une version de rôle</summary>
-        <p>
-          Les versions sont conservées. Pour modifier les permissions, créez une
-          nouvelle version puis réattribuez-la aux comptes concernés.
-        </p>
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -124,6 +124,7 @@ export default function AdminPermissionRoles({
               required
               minLength={2}
               maxLength={80}
+              placeholder="Ex. : Responsable paie — Cotonou"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -134,7 +135,7 @@ export default function AdminPermissionRoles({
               value={enterprise}
               onChange={(e) => setEnterprise(e.target.value)}
             >
-              <option value="">Choisir</option>
+              <option value="">Choisir une entreprise</option>
               {enterprises.map((e) => (
                 <option value={e.id} key={e.id}>
                   {e.name}
@@ -155,25 +156,25 @@ export default function AdminPermissionRoles({
           <fieldset className="aa-permission-actions">
             <legend>Actions autorisées</legend>
             {Object.entries(actions).map(([id, label]) => (
-              <label key={id}>
-                <input
-                  type="checkbox"
-                  checked={permissions.includes(id)}
-                  disabled={id === 'read'}
-                  onChange={(e) =>
-                    setPermissions(
-                      e.target.checked
-                        ? [...permissions, id]
-                        : permissions.filter((p) => p !== id),
-                    )
-                  }
-                />
+              <AdminSceau
+                key={id}
+                checked={permissions.includes(id)}
+                disabled={id === 'read'}
+                onChange={(e) =>
+                  setPermissions(
+                    e.target.checked
+                      ? [...permissions, id]
+                      : permissions.filter((p) => p !== id),
+                  )
+                }
+              >
                 {label}
-              </label>
+              </AdminSceau>
             ))}
           </fieldset>
           <button
             type="button"
+            className="aa-bouton-creux"
             disabled={!enterprise || busy || rules.length >= 100}
             onClick={() =>
               setRules([
@@ -186,18 +187,22 @@ export default function AdminPermissionRoles({
           >
             Ajouter cette règle
           </button>
-          <ul>
+          <ul className="aa-regles-liste">
             {rules.map((r, i) => (
-              <li key={`${r.enterprise_id}-${r.module}`}>
-                {enterprises.find((e) => e.id === r.enterprise_id)?.name} ·{' '}
-                {modules[r.module]} ·{' '}
-                {r.actions.map((a) => actions[a]).join(', ')}{' '}
-                <button
-                  type="button"
-                  onClick={() => setRules(rules.filter((_, j) => j !== i))}
-                >
-                  Retirer
-                </button>
+              <li className="aa-regle" key={`${r.enterprise_id}-${r.module}`}>
+                <span>
+                  {enterprises.find((e) => e.id === r.enterprise_id)?.name} ·{' '}
+                  {modules[r.module]} ·{' '}
+                  {r.actions.map((a) => actions[a]).join(', ')}
+                </span>
+                <span className="aa-regle-actions">
+                  <button
+                    type="button"
+                    onClick={() => setRules(rules.filter((_, j) => j !== i))}
+                  >
+                    Retirer
+                  </button>
+                </span>
               </li>
             ))}
           </ul>
@@ -207,26 +212,29 @@ export default function AdminPermissionRoles({
               required
               minLength={5}
               maxLength={500}
+              placeholder="Ex. : la responsable paie doit préparer les fiches sans accéder aux employés…"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
             />
           </label>
-          <button disabled={busy || !catalog || !rules.length}>
+          <button className="aa-bouton-plein" disabled={busy || !catalog || !rules.length}>
             Créer la version
           </button>
+          <AdminExplication titre="Pourquoi créer une nouvelle version">
+            <p>
+              Les versions sont conservées. Pour modifier les permissions, créez
+              une nouvelle version puis réattribuez-la aux comptes concernés :
+              rien n’est appliqué automatiquement.
+            </p>
+          </AdminExplication>
         </form>
       </details>
       <details>
         <summary>Attribuer ou retirer un rôle</summary>
-        <p>
-          Les superadministrateurs et les identités partagées avec un employé ne
-          peuvent pas recevoir de rôle personnalisé. Le retrait rétablit les
-          droits du rôle historique sur les entreprises actuellement affectées.
-        </p>
         <label>
           Administrateur
           <select value={target} onChange={(e) => setTarget(e.target.value)}>
-            <option value="">Choisir</option>
+            <option value="">Choisir un administrateur</option>
             {accounts
               .filter((a) => a.is_active && a.role !== 'super_admin')
               .map((a) => (
@@ -252,11 +260,13 @@ export default function AdminPermissionRoles({
           <textarea
             minLength={5}
             maxLength={500}
+            placeholder="Ex. : remplacement pendant un congé, demande de la direction…"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
         </label>
         <button
+          className="aa-bouton-plein"
           disabled={
             busy ||
             !catalog ||
@@ -286,15 +296,22 @@ export default function AdminPermissionRoles({
         >
           Appliquer au compte
         </button>
+        <AdminExplication titre="Qui ne peut pas recevoir de rôle personnalisé">
+          <p>
+            Les superadministrateurs et les identités partagées avec un employé
+            ne peuvent pas recevoir de rôle personnalisé. Le retrait rétablit les
+            droits du rôle historique sur les entreprises actuellement affectées.
+          </p>
+        </AdminExplication>
       </details>
       <h3>Versions et attributions</h3>
-      <ul>
+      <ul className="aa-regles-liste">
         {catalog?.roles.map((r) => (
-          <li key={r.id}>
+          <li className="aa-regle aa-regle--version" key={r.id}>
             <strong>{r.name}</strong> ·{' '}
             {catalog.bindings.filter((b) => b.role_id === r.id).length}{' '}
             compte(s)
-            <ul>
+            <ul className="aa-regles-liste">
               {r.grants.map((g, i) => (
                 <li key={i}>
                   {enterprises.find((e) => e.id === g.enterprise_id)?.name ||

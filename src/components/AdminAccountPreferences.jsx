@@ -65,6 +65,9 @@ export default function AdminAccountPreferences() {
         <input
           type="tel"
           maxLength={40}
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="Ex. : +229 01 97 00 00 00"
           value={values.phone}
           onChange={(e) => setValues({ ...values, phone: e.target.value })}
         />
@@ -73,6 +76,7 @@ export default function AdminAccountPreferences() {
         Fonction affichée
         <input
           maxLength={100}
+          placeholder="Ex. : Responsable des ressources humaines"
           value={values.job_title}
           onChange={(e) => setValues({ ...values, job_title: e.target.value })}
         />
@@ -100,17 +104,17 @@ export default function AdminAccountPreferences() {
         </select>
       </label>
       <p>Les contrôles d’accès de la page choisie restent applicables.</p>
-      <label className="aa-check-line">
-        <input
-          type="checkbox"
-          checked={values.email_notifications}
-          onChange={(e) =>
-            setValues({ ...values, email_notifications: e.target.checked })
-          }
-        />
+      <AdminSceau
+        checked={values.email_notifications}
+        onChange={(e) =>
+          setValues({ ...values, email_notifications: e.target.checked })
+        }
+      >
         Recevoir les alertes e-mail existantes
-      </label>
-      <button disabled={busy}>Enregistrer mes préférences</button>
+      </AdminSceau>
+      <button className="aa-bouton-plein" disabled={busy}>
+        Enregistrer mes préférences
+      </button>
       {message && <p role="status">{message}</p>}
     </form>
   )
