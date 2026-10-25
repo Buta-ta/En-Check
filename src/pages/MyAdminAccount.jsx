@@ -1,3 +1,6 @@
+import AdminSecurityAlerts from '../components/AdminSecurityAlerts'
+import AdminSupportDiagnostic from '../components/AdminSupportDiagnostic'
+import AdminVerifiedEmail from '../components/AdminVerifiedEmail'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -334,7 +337,9 @@ export default function MyAdminAccount() {
                     </button>
                   </form>
                   <hr />
+                  <AdminVerifiedEmail />
                   <AdminMfaSettings />
+                  <AdminSecurityAlerts />
                   <AdminAccountSessions />
                 </>
               )}
@@ -357,6 +362,7 @@ export default function MyAdminAccount() {
                     superadministrateur.
                   </p>
                   <AdminAccountPreferences />
+                  <AdminSupportDiagnostic />
                 </>
               )}
               {notice && (

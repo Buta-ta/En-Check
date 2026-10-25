@@ -1,5 +1,14 @@
 import { registerSW } from 'virtual:pwa-register'
 
+// Retire the previous API cache on load and after the new worker takes control.
+// Only this named legacy cache is removed; static assets remain available.
+const retireApiCache = () => {
+  if ('caches' in window) void caches.delete('api-cache').catch(() => {})
+}
+retireApiCache()
+navigator.serviceWorker?.addEventListener('controllerchange', retireApiCache)
+
+
 const updateSW = registerSW({
   onNeedRefresh() {
     const toast = document.createElement('div')

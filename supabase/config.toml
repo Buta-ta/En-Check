@@ -34,3 +34,14 @@ entrypoint = "./functions/assistant-explain/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/assistant-chat/index.ts"
+
+[functions.admin-invitations]
+enabled = true
+# Explicit getUser + caller-context authorization RPC before any privileged call.
+verify_jwt = false
+entrypoint = "./functions/admin-invitations/index.ts"
+
+[functions.admin-mfa-recovery]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/admin-mfa-recovery/index.ts"

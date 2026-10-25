@@ -1,3 +1,6 @@
+import AdminMfaRecovery from '../components/AdminMfaRecovery'
+import AdminAccountOperations from '../components/AdminAccountOperations'
+import AdminInvitations from '../components/AdminInvitations'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Search, ShieldCheck, Users, ArrowLeft, SunMoon, X } from 'lucide-react'
@@ -77,6 +80,7 @@ export default function AdminAccounts() {
       if (request !== epoch.current) return
       setMe(actor)
       setRows(accounts.data || [])
+      setSelected(current => current ? (accounts.data || []).find(a => a.id === current.id) || null : null)
       setEnterprises(companies.data || [])
     } catch (err) {
       if (request === epoch.current) setError(err.message)
@@ -241,10 +245,12 @@ export default function AdminAccounts() {
             </h1>
             <p>Le registre des administrateurs.</p>
           </div>
-          <Link className="aa-primary" to="/admins/gestion-existante">
-            Gérer / créer un compte
-          </Link>
+          <button className="aa-primary" onClick={() => {
+            const invitations = document.getElementById('admin-invitations')
+            if (invitations) { invitations.open = true; invitations.scrollIntoView({ behavior: 'smooth', block: 'start' }); invitations.querySelector('input')?.focus() }
+          }}>Inviter un compte</button>
         </header>
+        <AdminInvitations enterprises={enterprises} />
         <div className="aa-tabs">
           <button
             aria-pressed={view === 'accounts'}
@@ -498,24 +504,12 @@ export default function AdminAccounts() {
               </dl>
             )}
             {tab === 'Accès' && (
-              <section>
-                <h3>{roleLabel(selected.role)}</h3>
-                <p>
-                  Les droits ne peuvent pas être modifiés par le titulaire du
-                  compte.
-                </p>
-                <Link to="/admins/gestion-existante">
-                  Gérer les rôles et les entreprises existants →
-                </Link>
-                <p className="aa-footnote">
-                  Les rôles personnalisés et accès temporaires ne sont pas
-                  encore déployés.
-                </p>
-              </section>
+              <AdminAccountOperations key={selected.id} account={selected} accounts={rows} enterprises={enterprises} currentId={me?.id} onSaved={load} />
             )}
             {tab === 'Sécurité' && (
               <section>
                 <h3>Intervenir sur ce compte</h3>
+                <AdminMfaRecovery key={selected.id} account={selected} currentId={me?.id} />
                 <p>Les mots de passe existants ne sont jamais affichés.</p>
                 {selected.id === me?.id ? (
                   <Link className="aa-secondary" to="/mon-compte">

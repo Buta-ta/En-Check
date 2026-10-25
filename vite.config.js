@@ -22,15 +22,9 @@ export default defineConfig({
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 10,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 5 * 60
-              }
-            }
+            // Auth, REST/RPC, Edge and signed Storage responses must not
+            // survive authorization changes through an offline cache fallback.
+            handler: 'NetworkOnly'
           },
           {
             urlPattern: /^https:\/\/unpkg\.com\/.*/i,
