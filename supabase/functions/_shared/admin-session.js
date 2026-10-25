@@ -18,7 +18,10 @@ export async function adminSessionAllowed(
     // The SQL function checks active identity, Auth session, MFA, revocation
     // and mandatory password rotation. Missing migration is a denial, not fallback.
     return (
-      !error && data !== null && typeof data?.rest_guard_active === 'boolean'
+      !error &&
+      data !== null &&
+      typeof data?.rest_guard_active === 'boolean' &&
+      data.custom_role_restricted !== true
     )
   } catch {
     return false

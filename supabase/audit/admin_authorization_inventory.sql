@@ -7,7 +7,7 @@ select jsonb_build_object(
   select p.oid::regprocedure::text signature,p.prosecdef security_definer,p.provolatile volatility,p.proconfig settings,
    has_function_privilege('anon',p.oid,'execute') anon_execute,
    has_function_privilege('authenticated',p.oid,'execute') authenticated_execute,
-   md5(p.prosrc) implementation_fingerprint,
+   md5(p.prosrc) implementation_fingerprint,md5(pg_get_functiondef(p.oid)) definition_fingerprint,
    p.prosrc ~* '(insert[[:space:]]+into|update|delete[[:space:]]+from)[[:space:]]+auth[.]' mentions_direct_auth_mutation
   from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f' order by 1
  ) f),
