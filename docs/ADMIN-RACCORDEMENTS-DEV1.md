@@ -2,7 +2,7 @@
 
 ## Base préservée
 
-La branche a intégré `main` au commit `8191849` (PR 130–136), sans réécriture du redesign. Aucun changement de CSS, d’assets, de structure des panneaux, de sceaux, de chargement initial ou de navigation. Le cauris existant utilise simplement son rouge déjà prévu pour un compte désactivé, au lieu d’un signal vert trompeur.
+La branche a intégré `main` au commit `714d9b4` (PR 130–137, y compris le dernier ajustement des bandeaux), sans réécriture du redesign. Aucun changement de CSS, d’assets, de structure des panneaux, de sceaux, de chargement initial ou de navigation. Le cauris existant utilise simplement son rouge déjà prévu pour un compte désactivé, au lieu d’un signal vert trompeur.
 
 ## Corrections fonctionnelles
 
@@ -36,7 +36,7 @@ Les migrations n’ont exécuté aucune action sur un compte réel : seuls défi
 
 ## Validation
 
-- 909 tests / 96 fichiers réussis, dont scénarios panneau A / fiche B, absence de sélection, propre compte protégé, historique ciblé, état actualisé, fermeture en attente et secrets effacés.
+- 911 tests / 96 fichiers réussis, dont scénarios panneau A / fiche B, absence de sélection, propre compte protégé, historique ciblé, état actualisé, fermeture en attente et secrets effacés.
 - Tests SQL PGlite des migrations 012/013 : installation répétable, refus anonymes, refus d’un autre compte, refus d’un compte inactif, refus des déclarations d’échec client, date réellement issue d’Auth, autres comptes inchangés.
 - Build Vite/PWA réussi ; lint gate sans erreur (avertissement préexistant EnterpriseSelectorModal).
 - Tests DOM et SQL sur fixtures, pas une recette avec des comptes réels ni une nouvelle vérification visuelle au navigateur.
