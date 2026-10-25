@@ -1,0 +1,192 @@
+/* ═══════════════════════════════════════════════════════════
+   🗿 PORTE DE GRENIER DOGON — l'en-tête de la Carte en direct
+
+   La carte reste sur son fond de nuit : c'est une carte, elle a
+   besoin de contraste. Ce que la page emprunte au plateau de
+   Bandiagara, c'est la matière — le bois gravé du bandeau, la
+   patine de l'en-tête, les chevrons taillés qui séparent les
+   zones réelles.
+
+   Jetons :
+     --ct-bois        le panneau
+     --ct-bois-clair  la lumière sur le bois
+     --ct-gravure     l'incision noire
+     --ct-patine      le texte
+   ═══════════════════════════════════════════════════════════ */
+
+.ct-page {
+  --ct-bois: #7a5230;
+  --ct-bois-clair: #8e6240;
+  --ct-bois-fonce: #5f3d22;
+  --ct-gravure: #241c16;
+  --ct-patine: #f0e6d4;
+  --ct-patine-douce: #cbb59a;
+  --ct-patine-faible: #9c856b;
+  --ct-terre: #b4622a;
+  --ct-ligne: rgba(232, 220, 196, 0.16);
+
+  min-height: 100vh;
+  margin: 0;
+  background: #0a0a0f;
+  color: var(--ct-patine);
+}
+
+/* le fil de bois, juste sous le bandeau */
+.ct-bordure {
+  height: 10px;
+  flex: none;
+  background-image:
+    repeating-linear-gradient(
+      135deg,
+      var(--ct-gravure) 0 6px,
+      transparent 6px 13px
+    ),
+    linear-gradient(90deg, var(--ct-bois-fonce), var(--ct-bois), var(--ct-bois-fonce));
+}
+
+/* ── L'en-tête : le panneau gravé ─────────────────────────── */
+
+.ct-entete {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 22px clamp(18px, 3vw, 34px) 18px;
+  background:
+    linear-gradient(180deg, rgba(122, 82, 48, 0.14), transparent 70%),
+    #0a0a0f;
+  border-bottom: 2px solid var(--ct-bois-fonce);
+}
+
+.ct-retour {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  padding: 0;
+  color: var(--ct-patine);
+  background: rgba(122, 82, 48, 0.22);
+  border: 1.5px solid rgba(232, 220, 196, 0.22);
+  border-radius: 2px;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.ct-retour:hover {
+  background: var(--ct-bois);
+  border-color: var(--ct-bois-clair);
+}
+
+.ct-titre-bloc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.ct-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  color: var(--ct-terre);
+}
+
+.ct-titre {
+  margin: 0;
+  font-size: clamp(20px, 2.4vw, 26px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  color: var(--ct-patine);
+}
+
+.ct-titre span {
+  color: var(--ct-terre);
+}
+
+.ct-sous-titre {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ct-patine-faible);
+}
+
+.ct-entete-droite {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+/* la pastille « en direct » : un point qui respire */
+.ct-direct {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ct-patine);
+  background: rgba(63, 107, 74, 0.22);
+  border: 1px solid rgba(127, 176, 139, 0.45);
+  border-radius: 999px;
+}
+
+.ct-direct i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7fb08b;
+  box-shadow: 0 0 0 0 rgba(127, 176, 139, 0.6);
+  animation: ct-souffle 2.1s ease-out infinite;
+}
+
+@keyframes ct-souffle {
+  0% {
+    box-shadow: 0 0 0 0 rgba(127, 176, 139, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(127, 176, 139, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(127, 176, 139, 0);
+  }
+}
+
+/* ── Le pied : chevrons taillés et bande basse ───────────── */
+
+.ct-pied {
+  margin-top: auto;
+  line-height: 0;
+  background: #0a0a0f;
+  border-top: 1px dashed rgba(232, 220, 196, 0.22);
+}
+
+.ct-pied .ec-cultural-bottom[data-cultural-motif='dogon'] {
+  height: 32px;
+  background-color: #7a5230;
+}
+
+@media (max-width: 650px) {
+  .ct-entete {
+    padding: 16px 14px 14px;
+    gap: 10px;
+  }
+
+  .ct-pied .ec-cultural-bottom[data-cultural-motif='dogon'] {
+    height: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ct-direct i {
+    animation: none !important;
+  }
+}
