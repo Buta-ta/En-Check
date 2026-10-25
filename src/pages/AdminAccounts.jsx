@@ -16,6 +16,7 @@ import {
   AbomeyBlasonSvg, AbomeyCoinSvg, CourbeOnduleeSvg, CaurisEtatSvg,
 } from '../components/AbomeySvg'
 import EmployeeProfilePhoto from '../components/EmployeeProfilePhoto'
+import AdminsLoadingScreen from '../components/AdminsLoadingScreen'
 import {
   ADMIN_FIELDS,
   currentAdminAccount,
@@ -65,6 +66,8 @@ export default function AdminAccounts() {
     [actionRapide, setActionRapide] = useState(false)
   const plein = useRef(null)
   const actionRapideRef = useRef(null)
+  const [chargeur, setChargeur] = useState(false)
+  const [chargeurSaute, setChargeurSaute] = useState(false)
   const [events, setEvents] = useState([]),
     [eventError, setEventError] = useState(''),
     [historyLoading, setHistoryLoading] = useState(false)
@@ -157,6 +160,17 @@ export default function AdminAccounts() {
     if (actionRapide && !boite.open) boite.showModal()
     if (!actionRapide && boite.open) boite.close()
   }, [actionRapide])
+
+  // Un écran de chargement qui clignote est pire que pas d'écran du tout :
+  // on ne l'affiche qu'au-delà de 300 ms, et « Passer » ne le ramène jamais.
+  useEffect(() => {
+    if (!loading || error) {
+      setChargeur(false)
+      return undefined
+    }
+    const minuterie = window.setTimeout(() => setChargeur(true), 300)
+    return () => window.clearTimeout(minuterie)
+  }, [loading, error])
 
   const filtered = useMemo(
     () => filterAdminAccounts(rows, search, enterprise, status),
@@ -324,6 +338,19 @@ export default function AdminAccounts() {
   // Le tiroir travaille toujours sur quelqu'un : la sélection, sinon soi.
   const auTiroir = selected || me || null
   const cible = auTiroir
+
+  // ═══ L'ÉCRAN DE CHARGEMENT — la case des cauris ═══
+  if (chargeur && !chargeurSaute) {
+    return (
+      <AdminsLoadingScreen
+        darkMode={darkMode}
+        onSkip={() => {
+          setChargeurSaute(true)
+          setChargeur(false)
+        }}
+      />
+    )
+  }
 
   return (
     <main className={`aa-page aa-register ${darkMode ? 'aa-dark' : ''}`}>
