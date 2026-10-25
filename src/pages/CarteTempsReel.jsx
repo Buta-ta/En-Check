@@ -5,9 +5,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import PageHeader from '../components/PageHeader'
+import PageCulturalBand from '../components/PageCulturalBand'
+import { DogonBlasonSvg } from '../components/DogonSvg'
+import './CarteTempsReel.css'
 import {
-  MapPin, Users, Calendar, Filter, X, Activity,
+  ArrowLeft, MapPin, Users, Calendar, Filter, X, Activity,
   CheckCircle2, AlertTriangle, XCircle, Camera,
   LogIn, LogOut, Navigation,
 } from 'lucide-react'
@@ -677,11 +679,37 @@ export default function CarteTempsReel() {
         }
       `}</style>
 
-      <div style={styles.container}>
-        <PageHeader
-          title="Carte Temps Réel"
-          subtitle="Visualisation géographique des pointages"
-        />
+      <div className="ct-page" style={styles.container}>
+        <PageCulturalBand pathname="/carte-temps-reel" />
+        <div className="ct-bordure" aria-hidden="true" />
+
+        <header className="ct-entete">
+          <button
+            type="button"
+            className="ct-retour"
+            onClick={() => navigate('/dashboard')}
+            aria-label="Revenir au tableau de bord"
+            title="Tableau de bord"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <DogonBlasonSvg size={48} />
+          <div className="ct-titre-bloc">
+            <span className="ct-eyebrow">La porte du plateau</span>
+            <h1 className="ct-titre">
+              Carte en direct<span>.</span>
+            </h1>
+            <p className="ct-sous-titre">
+              Chaque point est une personne qui a pointé, quelque part sur le site.
+            </p>
+          </div>
+          <div className="ct-entete-droite">
+            <span className="ct-direct">
+              <i aria-hidden="true" />
+              En direct
+            </span>
+          </div>
+        </header>
 
         <main style={styles.main}>
 
@@ -936,6 +964,10 @@ export default function CarteTempsReel() {
           )}
         </main>
 
+        <div className="ct-pied">
+          <PageCulturalBand pathname="/carte-temps-reel" placement="bottom" />
+        </div>
+
         {/* MODAL DÉTAIL EMPLOYÉ */}
         {selectedEmployeData && (
           <div style={styles.modalOverlay} onClick={() => setSelectedEmployeData(null)}>
@@ -1109,13 +1141,17 @@ export default function CarteTempsReel() {
 
 const styles = {
   container: {
-    padding: '30px',
+    display: 'flex',
+    flexDirection: 'column',
     minHeight: '100vh',
     background: '#0A0A0F',
   },
   main: {
+    width: '100%',
     maxWidth: '1400px',
     margin: '0 auto',
+    padding: 'clamp(16px, 2.4vw, 28px) clamp(14px, 3vw, 30px) 0',
+    boxSizing: 'border-box',
   },
   enterpriseBanner: {
     display: 'flex',
