@@ -1585,101 +1585,24 @@
   color: var(--en-alerte);
 }
 
-/* ── 14. Le chargement : un cadre qu'on peint ─────────────── */
+/* ── 14. Le chargement : la scène se joue ─────────────────── */
 
 .en-chargement {
+  flex: 1;
   display: grid;
   place-items: center;
+  align-content: center;
   gap: 14px;
-  min-height: 100vh;
-  padding: 24px;
+  padding: clamp(24px, 5vh, 56px) 18px;
   text-align: center;
   background: var(--en-fond);
 }
 
-.en-chargement-cadre {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 132px;
-  height: 96px;
-  border: 2px solid var(--en-noir);
-  border-radius: 1px;
-}
-
-.en-chargement-cadre::before {
-  content: '';
-  position: absolute;
-  inset: 5px;
-  border: 1px dashed var(--en-couture-forte);
-  border-radius: 1px;
-}
-
-/* le pinceau passe et repasse le long du cadre */
-.en-chargement-cadre::after {
-  content: '';
-  position: absolute;
-  inset: 5px;
-  border-radius: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(180, 98, 42, 0.42) 42%,
-    rgba(201, 169, 97, 0.55) 50%,
-    rgba(180, 98, 42, 0.42) 58%,
-    transparent 100%
-  );
-  background-size: 220% 100%;
-  animation: en-pinceau 1.9s ease-in-out infinite;
-}
-
-@keyframes en-pinceau {
-  0% {
-    background-position: 160% 0;
-  }
-  100% {
-    background-position: -60% 0;
-  }
-}
-
-.en-chargement p {
+.en-chargement-texte {
   margin: 0;
   font-size: 11.5px;
   letter-spacing: 0.06em;
   color: var(--en-encre-faible);
-}
-
-.en-chargement-points {
-  display: flex;
-  gap: 5px;
-}
-
-.en-chargement-points i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--en-ocre);
-  animation: en-souffle 1.2s ease-in-out infinite;
-}
-
-.en-chargement-points i:nth-child(2) {
-  animation-delay: 0.16s;
-}
-
-.en-chargement-points i:nth-child(3) {
-  animation-delay: 0.32s;
-}
-
-@keyframes en-souffle {
-  0%,
-  100% {
-    opacity: 0.25;
-    transform: translateY(0);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-3px);
-  }
 }
 
 /* ── 15. Le fil de clôture ────────────────────────────────── */
@@ -1829,9 +1752,7 @@
   .en-action,
   .en-bouton,
   .en-carton,
-  .en-voile,
-  .en-chargement-cadre::after,
-  .en-chargement-points i {
+  .en-voile {
     animation: none !important;
     transition: none !important;
   }
