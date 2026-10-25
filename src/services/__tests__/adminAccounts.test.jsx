@@ -119,9 +119,13 @@ it('does not load the administrator directory for an ordinary admin', async () =
 it('renders actual counts, both active and inactive accounts and opens the selected profile', async () => {
   await mount()
   expect(host.querySelectorAll('.aa-row')).toHaveLength(2)
+  // Les trois cartes : comptes actifs, comptes actifs SANS accès de
+  // connexion, entreprises couvertes. `member` est inactif et n'a pas de
+  // `user_id` : il ne doit donc PAS compter comme un accès manquant, sinon
+  // la carte signale un problème qui n'en est pas un.
   expect(
     [...host.querySelectorAll('.aa-metrics strong')].map((e) => e.textContent),
-  ).toEqual(['1', '1', '1'])
+  ).toEqual(['1', '0', '1'])
   await act(async () => host.querySelectorAll('.aa-row')[1].click())
   expect(host.querySelector('dialog').open).toBe(true)
   expect(host.querySelector('#aa-account-title').textContent).toBe('Aïcha Test')
