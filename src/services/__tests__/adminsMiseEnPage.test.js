@@ -319,7 +319,7 @@ describe('6. la page reconstruite (v3, mesurée sur la maquette)', () => {
 
   it('garde toutes les protections de compte', () => {
     expect(page).toContain('aa-danger-section')
-    expect(page).toContain('selected.id === me?.id')
+    expect(page).toContain('target.id === me?.id')
     expect(page).toContain('Votre propre compte est protégé')
     expect(page).toContain('changeAccountPassword')
     expect(page).toContain('encheck_account_password')
