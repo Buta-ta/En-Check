@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 export const ADMIN_FIELDS =
-  'id,user_id,first_name,last_name,email,username,role,enterprise_id,photo_url,is_active,created_at'
+  'id,user_id,first_name,last_name,email,username,role,enterprise_id,photo_url,is_active,created_at,last_login_at'
 export async function currentAdminAccount() {
   const { data, error } = await supabase.auth.getUser()
   if (error || !data.user) throw new Error('Veuillez vous reconnecter.')

@@ -4,11 +4,16 @@ import AdminAccountOperations from '../components/AdminAccountOperations'
 import AdminInvitations from '../components/AdminInvitations'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Search, ShieldCheck, Users, ArrowLeft, SunMoon, X } from 'lucide-react'
+import {
+  Search, ShieldCheck, Users, ArrowLeft, SunMoon, X,
+  Plus, History, Building2, KeyRound, SlidersHorizontal,
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
 import PageCulturalBand from '../components/PageCulturalBand'
-import { AbomeyBlasonSvg } from '../components/AbomeySvg'
+import {
+  AbomeyBlasonSvg, AbomeyPastilleSvg, MiniCourbeSvg, CaurisEtatSvg,
+} from '../components/AbomeySvg'
 import EmployeeProfilePhoto from '../components/EmployeeProfilePhoto'
 import {
   ADMIN_FIELDS,
@@ -19,6 +24,10 @@ import {
 import './AdminAccounts.css'
 import AdminAccountSessions from '../components/AdminAccountSessions'
 import AdminAccountJournal from '../components/AdminAccountJournal'
+import {
+  ROLES, entreprisesCouvertes, etatAcces, filtrerParRole,
+  formaterDerniereConnexion, libelleRole, serieCouverture, serieCumulative, tonRole,
+} from '../utils/adminsPresentation'
 
 const roleLabel = (role) =>
   ({
@@ -42,7 +51,8 @@ export default function AdminAccounts() {
     [status, setStatus] = useState('')
   const [selected, setSelected] = useState(null),
     [tab, setTab] = useState('Profil'),
-    [view, setView] = useState('accounts')
+    [view, setView] = useState('accounts'),
+    [roleFiltre, setRoleFiltre] = useState('tous')
   const [events, setEvents] = useState([]),
     [eventError, setEventError] = useState(''),
     [historyLoading, setHistoryLoading] = useState(false)
@@ -224,197 +234,425 @@ export default function AdminAccounts() {
       setBusy(false)
     }
   }
+  // ── Ce que la page raconte ─────────────────────────────────
+  const parRole = useMemo(
+    () => ROLES.map((r) => ({ role: r, n: rows.filter((a) => a.role === r).length })),
+    [rows],
+  )
+  const compteActifs = rows.filter((a) => a.is_active).length
+  const sansAcces = rows.filter((a) => etatAcces(a) === 'non_lie' && a.is_active).length
+  const couvertes = entreprisesCouvertes(rows)
+  const filtres = useMemo(
+    () => filtrerParRole(filtered, roleFiltre),
+    [filtered, roleFiltre],
+  )
+
+  function ouvrirFiche(admin, onglet = 'Profil', evenement = null) {
+    if (evenement) {
+      evenement.stopPropagation()
+      opener.current = evenement.currentTarget
+    }
+    clearPasswordForm()
+    setSelected(admin)
+    setTab(onglet)
+    setNotice('')
+    setReason('')
+  }
+
+  function nomEntreprise(admin) {
+    if (admin.role === 'super_admin') return 'Toutes les entreprises'
+    return (
+      enterprises.find((ent) => ent.id === admin.enterprise_id)?.name ||
+      'Non renseignée'
+    )
+  }
+
   return (
     <main className={`aa-page aa-register ${darkMode ? 'aa-dark' : ''}`}>
-      <nav className="aa-top">
-        <Link to="/dashboard">
-          <ArrowLeft size={16} /> Tableau de bord
-        </Link>
-        <div>
-          <button onClick={toggleTheme} aria-label="Changer le thème">
-            <SunMoon size={18} />
-          </button>
-          <Link to="/mon-compte">Mon compte</Link>
-        </div>
-      </nav>
-      <div className="aa-shell">
+      {/* ═══ LA BANDE TISSÉE — pleine largeur ═══ */}
+      <div className="aa-bande">
         <PageCulturalBand pathname="/admins" />
+      </div>
+
+      <div className="aa-shell">
+        {/* ═══ LA BARRE DE TITRE ═══ */}
         <header className="aa-heading">
-          <div>
-            <span className="aa-eyebrow"><AbomeyBlasonSvg size={18} />ADMINISTRATION</span>
-            <h1>
-              Comptes &amp; accès<span>.</span>
-            </h1>
-            <p>Le registre des administrateurs.</p>
+          <div className="aa-marque">
+            <Link
+              className="aa-icone"
+              to="/dashboard"
+              aria-label="Retour au tableau de bord"
+              title="Retour au tableau de bord"
+            >
+              <ArrowLeft size={16} />
+            </Link>
+            <AbomeyBlasonSvg size={46} />
+            <div className="aa-marque-texte">
+              <span className="aa-eyebrow">Administrateurs</span>
+              <h1>
+                Comptes &amp; accès<span>.</span>
+              </h1>
+              <p>Gestion des accès et des rôles.</p>
+            </div>
           </div>
-          <button className="aa-primary" onClick={() => {
-            const invitations = document.getElementById('admin-invitations')
-            if (invitations) { invitations.open = true; invitations.scrollIntoView({ behavior: 'smooth', block: 'start' }); invitations.querySelector('input')?.focus() }
-          }}>Inviter un compte</button>
+          <div className="aa-heading-actions">
+            <Link className="aa-lien-discret" to="/mon-compte">
+              Mon compte
+            </Link>
+            <button
+              className="aa-bascule"
+              onClick={toggleTheme}
+              aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
+              title={darkMode ? 'Thème clair' : 'Thème sombre'}
+            >
+              <SunMoon size={15} />
+              <span className="aa-bascule-pastille" />
+            </button>
+            <button
+              className="aa-primary"
+              onClick={() => {
+                const invitations = document.getElementById('admin-invitations')
+                if (invitations) {
+                  invitations.open = true
+                  invitations.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  invitations.querySelector('input')?.focus()
+                }
+              }}
+            >
+              <Plus size={15} />
+              Inviter un compte
+            </button>
+          </div>
         </header>
+
         <AdminInvitations enterprises={enterprises} />
-        <div className="aa-tabs">
+
+        <div className="aa-tabs" role="tablist" aria-label="Sections de la page">
           <button
+            role="tab"
             aria-pressed={view === 'accounts'}
             onClick={() => setView('accounts')}
           >
             Comptes
           </button>
           <button
+            role="tab"
             aria-pressed={view === 'roles'}
             onClick={() => setView('roles')}
           >
             Rôles
           </button>
           <button
+            role="tab"
             aria-pressed={view === 'journal'}
             onClick={() => setView('journal')}
           >
             Journal
           </button>
         </div>
+
         {error ? (
           <div role="alert" className="aa-panel">
             <p>{error}</p>
             <button onClick={load}>Réessayer</button>
           </div>
         ) : loading ? (
-          <p role="status" className="aa-panel">
-            Lecture des comptes et des accès…
-          </p>
+          <div role="status" className="aa-panel aa-chargement">
+            <AbomeyBlasonSvg size={40} />
+            <p>Lecture des comptes et des accès…</p>
+          </div>
         ) : (
           <>
-            <div className="aa-metrics">
-              <article>
-                <Users />
-                <strong>{rows.filter((a) => a.is_active).length}</strong>
-                <span>Comptes actifs</span>
+            {/* ═══ LES TROIS CHIFFRES ═══ */}
+            <section className="aa-metrics" aria-label="État des accès">
+              <article className="aa-metrique">
+                <span className="aa-metrique-coin aa-metrique-coin--haut" aria-hidden="true">
+                  <AbomeyPastilleSvg variante="indigo" size={40} />
+                </span>
+                <span className="aa-metrique-coin aa-metrique-coin--bas" aria-hidden="true">
+                  <AbomeyPastilleSvg variante="terre" size={34} />
+                </span>
+                <span className="aa-metrique-icone"><Users size={16} /></span>
+                <span className="aa-metrique-libelle">Comptes actifs</span>
+                <div className="aa-metrique-valeur">
+                  <strong>{compteActifs}</strong>
+                  <span className="aa-metrique-total">/ {rows.length}</span>
+                </div>
+                <div className="aa-metrique-pied">
+                  <span className="aa-metrique-note">
+                    {parRole
+                      .filter((r) => r.n > 0)
+                      .map((r) => `${r.n} ${libelleRole(r.role).toLowerCase()}`)
+                      .join(' · ') || 'Aucun compte'}
+                  </span>
+                  <MiniCourbeSvg
+                    valeurs={serieCumulative(rows.filter((a) => a.is_active))}
+                    ton="vert"
+                    width={140}
+                    height={30}
+                  />
+                </div>
               </article>
-              <article>
-                <ShieldCheck />
-                <strong>{rows.filter((a) => !a.is_active).length}</strong>
-                <span>Comptes inactifs</span>
+
+              <article className={`aa-metrique${sansAcces > 0 ? ' aa-metrique--alerte' : ''}`}>
+                <span className="aa-metrique-coin aa-metrique-coin--haut" aria-hidden="true">
+                  <AbomeyPastilleSvg variante="or" size={40} />
+                </span>
+                <span className="aa-metrique-coin aa-metrique-coin--bas" aria-hidden="true">
+                  <AbomeyPastilleSvg variante="indigo" size={34} />
+                </span>
+                <span className="aa-metrique-icone"><KeyRound size={16} /></span>
+                <span className="aa-metrique-libelle">Sans accès de connexion</span>
+                <div className="aa-metrique-valeur">
+                  <strong>{sansAcces}</strong>
+                </div>
+                <div className="aa-metrique-pied">
+                  <span className="aa-metrique-note">
+                    {sansAcces === 0
+                      ? 'Tous les comptes actifs peuvent se connecter'
+                      : 'À relier à un moyen de connexion'}
+                  </span>
+                  <MiniCourbeSvg
+                    valeurs={serieCumulative(rows.filter((a) => !a.user_id))}
+                    ton="or"
+                    width={140}
+                    height={30}
+                  />
+                </div>
               </article>
-              <article>
-                <ShieldCheck />
-                <strong>
-                  {
-                    rows.filter((a) => a.role === 'super_admin' && a.is_active)
-                      .length
-                  }
-                </strong>
-                <span>Superadmins actifs</span>
+
+              <article className="aa-metrique">
+                <span className="aa-metrique-coin aa-metrique-coin--haut" aria-hidden="true">
+                  <AbomeyPastilleSvg variante="terre" size={40} />
+                </span>
+                <span className="aa-metrique-coin aa-metrique-coin--bas" aria-hidden="true">
+                  <AbomeyPastilleSvg variante="or" size={34} />
+                </span>
+                <span className="aa-metrique-icone"><Building2 size={16} /></span>
+                <span className="aa-metrique-libelle">Entreprises couvertes</span>
+                <div className="aa-metrique-valeur">
+                  <strong>{couvertes}</strong>
+                  <span className="aa-metrique-total">/ {enterprises.length}</span>
+                </div>
+                <div className="aa-metrique-pied">
+                  <span className="aa-metrique-note">
+                    {enterprises.length - couvertes > 0
+                      ? `${enterprises.length - couvertes} sans administrateur`
+                      : 'Chaque entreprise a un administrateur'}
+                  </span>
+                  <MiniCourbeSvg
+                    valeurs={serieCouverture(rows)}
+                    ton="terre"
+                    width={140}
+                    height={30}
+                  />
+                </div>
               </article>
-            </div>
+            </section>
+
             {view === 'journal' ? (
               <AdminAccountJournal accounts={rows} />
             ) : view === 'roles' ? (
               <AdminPermissionRoles accounts={rows} enterprises={enterprises} onSaved={load} />
             ) : (
               <>
-                <section
-                  className="aa-filters"
-                  aria-label="Filtrer les administrateurs"
-                >
-                  <label>
-                    <Search size={17} />
+                {/* ═══ RECHERCHE ET FILTRES ═══ */}
+                <section className="aa-outils" aria-label="Filtrer les administrateurs">
+                  <label className="aa-recherche">
+                    <Search size={16} />
                     <input
                       aria-label="Rechercher un administrateur"
-                      placeholder="Nom, prénom, adresse e-mail…"
+                      placeholder="Rechercher un administrateur…"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
-                  </label>
-                  <select
-                    aria-label="Entreprise"
-                    value={enterprise}
-                    onChange={(e) => setEnterprise(e.target.value)}
-                  >
-                    <option value="">Toutes les entreprises principales</option>
-                    {enterprises.map((ent) => (
-                      <option key={ent.id} value={ent.id}>
-                        {ent.name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="État du compte"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                  >
-                    <option value="">Tous les états</option>
-                    <option value="active">Actifs</option>
-                    <option value="inactive">Inactifs</option>
-                  </select>
-                </section>
-                <div className="aa-list">
-                  <div className="aa-list-head">
-                    <span>ADMINISTRATEUR</span>
-                    <span>ENTREPRISE PRINCIPALE</span>
-                    <span>RÔLE</span>
-                    <span>ÉTAT</span>
-                  </div>
-                  {filtered.map((admin) => (
-                    <button
-                      className="aa-row"
-                      aria-current={
-                        selected?.id === admin.id ? 'true' : undefined
-                      }
-                      key={admin.id}
-                      onClick={(e) => {
-                        opener.current = e.currentTarget
-                        clearPasswordForm()
-                        setSelected(admin)
-                        setTab('Profil')
-                        setNotice('')
-                        setReason('')
-                      }}
-                    >
-                      <span className="aa-person">
-                        <EmployeeProfilePhoto employee={admin} />
-                        <span>
-                          <strong>
-                            {admin.first_name} {admin.last_name}
-                          </strong>
-                          <small>{admin.email || admin.username}</small>
-                        </span>
-                      </span>
-                      <span>
-                        {enterprises.find(
-                          (ent) => ent.id === admin.enterprise_id,
-                        )?.name ||
-                          (admin.role === 'super_admin'
-                            ? 'Toutes les entreprises'
-                            : 'Non renseignée')}
-                      </span>
-                      <span>{roleLabel(admin.role)}</span>
-                      <span
-                        className={`aa-state ${admin.is_active ? 'is-active' : ''}`}
+                    {search && (
+                      <button
+                        type="button"
+                        aria-label="Effacer la recherche"
+                        onClick={() => setSearch('')}
                       >
-                        {admin.is_active ? 'Actif' : 'Inactif'}
-                      </span>
+                        <X size={14} />
+                      </button>
+                    )}
+                  </label>
+
+                  <div className="aa-puces" role="group" aria-label="Filtrer par rôle">
+                    <button
+                      type="button"
+                      aria-pressed={roleFiltre === 'tous'}
+                      onClick={() => setRoleFiltre('tous')}
+                    >
+                      Tous
                     </button>
-                  ))}
-                  {!filtered.length && (
-                    <p className="aa-empty">
-                      Aucun compte ne correspond à ces filtres.
-                    </p>
+                    {ROLES.map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        aria-pressed={roleFiltre === role}
+                        onClick={() => setRoleFiltre(role)}
+                      >
+                        {libelleRole(role)}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="aa-outils-selects">
+                    <label className="aa-select-champ">
+                      <Building2 size={14} />
+                      <select
+                        aria-label="Entreprise"
+                        value={enterprise}
+                        onChange={(e) => setEnterprise(e.target.value)}
+                      >
+                        <option value="">Toutes les entreprises</option>
+                        {enterprises.map((ent) => (
+                          <option key={ent.id} value={ent.id}>
+                            {ent.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="aa-select-champ">
+                      <SlidersHorizontal size={14} />
+                      <select
+                        aria-label="État du compte"
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                      >
+                        <option value="">Tous les états</option>
+                        <option value="active">Actifs</option>
+                        <option value="inactive">Inactifs</option>
+                      </select>
+                    </label>
+                  </div>
+                </section>
+
+                {/* ═══ LE TABLEAU ═══ */}
+                <div className="aa-list">
+                  <div className="aa-list-head" role="row">
+                    <span>Administrateur</span>
+                    <span className="aa-col-role">Rôle</span>
+                    <span className="aa-col-ent">Entreprises</span>
+                    <span className="aa-col-connexion">Dernière connexion</span>
+                    <span className="aa-col-actions">Actions</span>
+                  </div>
+                  {filtres.map((admin) => {
+                    const acces = etatAcces(admin)
+                    return (
+                      <div
+                        className="aa-row"
+                        key={admin.id}
+                        aria-current={selected?.id === admin.id ? 'true' : undefined}
+                        onClick={(e) => {
+                          opener.current = e.currentTarget
+                          ouvrirFiche(admin)
+                        }}
+                      >
+                        <span className="aa-person">
+                          <EmployeeProfilePhoto employee={admin} />
+                          <span>
+                            <button
+                              type="button"
+                              className="aa-person-nom"
+                              onClick={(e) => ouvrirFiche(admin, 'Profil', e)}
+                            >
+                              {admin.first_name} {admin.last_name}
+                            </button>
+                            <small>{admin.email || admin.username || 'Aucun identifiant'}</small>
+                          </span>
+                        </span>
+
+                        <span className="aa-col-role">
+                          <span className={`aa-badge aa-badge--${tonRole(admin.role)}`}>
+                            {libelleRole(admin.role)}
+                          </span>
+                          {!admin.is_active && (
+                            <span className="aa-badge aa-badge--eteint">Inactif</span>
+                          )}
+                        </span>
+
+                        <span className="aa-col-ent">
+                          <span className="aa-jeton" title={nomEntreprise(admin)}>
+                            {nomEntreprise(admin)}
+                          </span>
+                        </span>
+
+                        <span className={`aa-col-connexion${!admin.last_login_at ? ' aa-jamais' : ''}`}>
+                          <CaurisEtatSvg etat={acces} size={11} />
+                          <span>{formaterDerniereConnexion(admin.last_login_at)}</span>
+                        </span>
+
+                        <span className="aa-col-actions">
+                          <button
+                            type="button"
+                            className="aa-action"
+                            onClick={(e) => ouvrirFiche(admin, 'Profil', e)}
+                            aria-label={`Ouvrir la fiche de ${admin.first_name} ${admin.last_name}`}
+                            title="Ouvrir la fiche"
+                          >
+                            <ShieldCheck size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="aa-action"
+                            onClick={(e) => ouvrirFiche(admin, 'Historique', e)}
+                            aria-label={`Voir les interventions sur ${admin.first_name} ${admin.last_name}`}
+                            title="Historique"
+                          >
+                            <History size={15} />
+                          </button>
+                        </span>
+                      </div>
+                    )
+                  })}
+                  {!filtres.length && (
+                    <div className="aa-empty">
+                      <AbomeyBlasonSvg size={34} />
+                      <p>
+                        {rows.length
+                          ? 'Aucun compte ne correspond à ces filtres.'
+                          : 'Aucun compte administrateur pour le moment.'}
+                      </p>
+                      {(search || roleFiltre !== 'tous' || enterprise || status) && (
+                        <button
+                          type="button"
+                          className="aa-secondary"
+                          onClick={() => {
+                            setSearch('')
+                            setRoleFiltre('tous')
+                            setEnterprise('')
+                            setStatus('')
+                          }}
+                        >
+                          Effacer les filtres
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
+
                 <p className="aa-footnote">
-                  {filtered.length} compte(s) affiché(s).{' '}
+                  {filtres.length} compte(s) affiché(s) sur {rows.length}.{' '}
                   {rows.length === 1000
                     ? 'Affichage limité aux 1 000 comptes les plus récents.'
                     : ''}{' '}
-                  Les affectations multiples restent accessibles dans la gestion
-                  existante.
+                  Les affectations multiples restent accessibles dans la fiche de
+                  chaque compte.
                 </p>
               </>
             )}
           </>
         )}
+
+      </div>
+
+      {/* Bande basse, elle aussi pleine largeur */}
+      <div className="aa-bande">
         <PageCulturalBand pathname="/admins" placement="bottom" />
       </div>
+
+      {/* ═══ LE TIROIR DE LA FICHE ═══ */}
       <dialog
         ref={dialog}
         className={`aa-drawer ${darkMode ? 'aa-dark' : ''}`}
@@ -428,7 +666,7 @@ export default function AdminAccounts() {
           <>
             <PageCulturalBand pathname="/admins" placement="compact" />
             <header>
-              <span className="aa-eyebrow">FICHE ADMINISTRATEUR</span>
+              <span className="aa-eyebrow">Fiche administrateur</span>
               <button
                 onClick={close}
                 disabled={busy}
@@ -443,7 +681,7 @@ export default function AdminAccounts() {
                 {selected.first_name} {selected.last_name}
               </h2>
               <p>
-                {roleLabel(selected.role)} ·{' '}
+                {libelleRole(selected.role)} ·{' '}
                 {enterprises.find((ent) => ent.id === selected.enterprise_id)
                   ?.name ||
                   (selected.role === 'super_admin'
@@ -478,6 +716,8 @@ export default function AdminAccounts() {
                 <dd>{selected.email || 'Non renseignée'}</dd>
                 <dt>Identifiant</dt>
                 <dd>{selected.username || 'Non renseigné'}</dd>
+                <dt>Dernière connexion</dt>
+                <dd>{formaterDerniereConnexion(selected.last_login_at)}</dd>
                 <dt>Création</dt>
                 <dd>
                   {selected.created_at
