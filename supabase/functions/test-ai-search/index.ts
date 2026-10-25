@@ -1,3 +1,4 @@
+import { adminSessionAllowed } from '../_shared/admin-session.js'
 import { createClient } from 'npm:@supabase/supabase-js@2.87.3'
 import { createHandler } from './core.js'
 
@@ -14,6 +15,7 @@ Deno.serve(createHandler({
     const token = authorization.replace(/^Bearer\s+/i, '')
     const { data, error } = await client.auth.getUser(token)
     if (error || !data.user) return false
+    if (!await adminSessionAllowed(createClient, url, Deno.env.get('SUPABASE_ANON_KEY'), token)) return false
     // Authorization metadata only; no employees, salaries, schedules or attendance.
     const { data: admin, error: adminError } = await client.from('admins')
       .select('role,is_active').eq('user_id', data.user.id).maybeSingle()

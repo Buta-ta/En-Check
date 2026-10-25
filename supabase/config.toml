@@ -45,3 +45,8 @@ entrypoint = "./functions/admin-invitations/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/admin-mfa-recovery/index.ts"
+
+[functions.admin-retirement]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/admin-retirement/index.ts"

@@ -1,5 +1,7 @@
 # Administration — invitations, récupération et cycle de vie
 
+> État du lot précédent. Les ajouts de clôture, transferts, contrôles de session et la correction ciblée réellement appliquée sont décrits dans [ADMIN-CLOTURE-ET-CONTROLES.md](ADMIN-CLOTURE-ET-CONTROLES.md).
+
 ## État de la livraison
 
 **Code livré, pas activé sur Supabase. Le chantier global n’est pas terminé.**

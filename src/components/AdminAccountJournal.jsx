@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 const labels = {
+  responsibilities_transferred: 'Responsabilités transférées', retirement_requested: 'Clôture définitive demandée', retirement_cancelled: 'Clôture annulée', profile_retired: 'Profil définitivement clôturé', auth_identity_deleted: 'Identité Auth supprimée', retirement_assets_cleaned: 'Photos administrateur nettoyées',
   mfa_recovery_requested: 'Récupération MFA demandée', mfa_recovery_completed: 'Facteurs MFA retirés', mfa_recovery_failed: 'Récupération MFA non confirmée',
   auth_password_updated: 'Identifiants Auth modifiés', unfamiliar_browser: 'Navigateur inhabituel détecté', session_alert_acknowledged: 'Connexion vérifiée par le titulaire',
   invitation_requested: 'Invitation demandée',
