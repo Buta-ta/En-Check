@@ -258,9 +258,16 @@ it('fails closed for ambiguous identities and an unreviewed anonymous definer', 
 })
 it('fails closed on schema drift, unsafe views, computed relationships and changed RPC bodies', async () => {
   await db.exec(
-    'reset role;create view unsafe_view as select * from business_secrets;grant select on unsafe_view to authenticated;',
+    'reset role;create view unsafe_view as select * from business_secrets;grant select(secret) on unsafe_view to authenticated;',
   )
   await actor(B, '/rpc/encheck_my_permissions')
+  await expect(
+    db.query('select encheck_admin_request_guard()'),
+  ).rejects.toThrow('audit serveur')
+  await db.exec(
+    'reset role;revoke select(secret) on unsafe_view from authenticated;grant select(secret) on unsafe_view to anon;',
+  )
+  await actor(B)
   await expect(
     db.query('select encheck_admin_request_guard()'),
   ).rejects.toThrow('audit serveur')

@@ -8,7 +8,7 @@ Deux corrections ciblées ont réellement été appliquées dans le projet `en-c
 - précédemment, retrait de l’accès client à la primitive interne de création Auth (migration de traçabilité 008) ;
 - dans cette tranche, `employees_public` passe en `security_invoker=true` et perd tous les privilèges PUBLIC/anon (migration de traçabilité 011).
 
-Post-contrôle de 011, sur métadonnées uniquement : `anon SELECT=false`, `authenticated SELECT=true`, option `security_invoker=true`. Aucun compte ni aucune ligne d’employé modifié/consulté pour cet audit. Les droits de lecture des utilisateurs connectés dépendent maintenant des règles existantes sur `employees` ; ce contrôle n’est pas une certification de toutes ces règles.
+Post-contrôle de 011, sur métadonnées uniquement : `anon SELECT=false`, `authenticated SELECT=true`, option `security_invoker=true`. Vérification complémentaire : aucun droit anonyme de lecture par colonne ; aucune autre vue non invoker exposée à anon/authenticated, y compris par droits de colonne. Aucun compte ni aucune ligne d’employé modifié/consulté pour cet audit. Les droits de lecture des utilisateurs connectés dépendent maintenant des règles existantes sur `employees` ; ce contrôle n’est pas une certification de toutes ces règles.
 
 **Contrat pour l’équipe de l’application Pointage :** aucun usage de `employees_public` repéré dans ce dépôt. Tout consommateur anonyme de cette vue doit désormais s’authentifier et disposer des permissions de la table source. Vérifier les parcours de l’application tierce avant sa prochaine livraison ; son dépôt n’a pas été modifié. La vue n’a pas été supprimée ni ses colonnes changées.
 
