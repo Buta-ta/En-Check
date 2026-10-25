@@ -1,23 +1,36 @@
+/* ═══ APPLIQUÉ D'ABOMEY — palette ═══
+   Indigo profond, terre cuite et ivoire, plutôt que le brun générique.
+   Ces jetons alimentent TOUTE la page et ses seize composants. */
 .aa-page,
 .aa-drawer {
-  --aa-bg: #f7f3ed;
-  --aa-paper: #fffdfa;
-  --aa-ink: #24263f;
-  --aa-muted: #766e66;
-  --aa-line: #e4dbcf;
-  --aa-copper: #98552c;
-  --aa-soft: #f1e7da;
+  --aa-bg: #f6f1e7;
+  --aa-paper: #fffcf6;
+  --aa-ink: #1f2438;
+  --aa-muted: #6e6455;
+  --aa-line: rgba(61, 43, 31, 0.16);
+  --aa-copper: #a8552c;
+  --aa-soft: #f0e6d6;
+  --aa-indigo: #2a3a63;
+  --aa-fil: #a8842f;
+  --aa-good: #26734d;
+  --aa-warn: #a65f0f;
+  --aa-danger: #b43c28;
   color: var(--aa-ink);
   font-family: inherit;
 }
 .aa-dark {
-  --aa-bg: #171615;
-  --aa-paper: #24211f;
-  --aa-ink: #f6efe5;
-  --aa-muted: #c3b4a4;
-  --aa-line: #463d35;
-  --aa-copper: #e5ac79;
-  --aa-soft: #342b24;
+  --aa-bg: #15110e;
+  --aa-paper: #1d1811;
+  --aa-ink: #f4ebdc;
+  --aa-muted: #9a8b76;
+  --aa-line: rgba(240, 230, 210, 0.12);
+  --aa-copper: #c4703f;
+  --aa-soft: #241e16;
+  --aa-indigo: #3a4e7d;
+  --aa-fil: #d9b36a;
+  --aa-good: #3e8e61;
+  --aa-warn: #c97a16;
+  --aa-danger: #c0452f;
 }
 .aa-page {
   background: var(--aa-bg);
@@ -983,5 +996,72 @@
 @media (max-width: 600px) {
   .aa-permission-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   APPLIQUÉ D'ABOMEY — finitions
+   Le geste du textile : couture en pointillés, emblème, bande basse.
+   Aucune règle ici ne touche la structure ni la logique de la page.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Le sur-titre porte l'emblème, comme une pièce cousue */
+.aa-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Les cartes de chiffres : la couture d'angle */
+.aa-metrics article {
+  position: relative;
+  overflow: hidden;
+}
+.aa-metrics article::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px dashed var(--aa-line);
+  border-radius: 10px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+.aa-metrics article > * {
+  position: relative;
+  z-index: 1;
+}
+.aa-metrics svg {
+  border-style: dashed;
+}
+
+/* Les onglets : soulignement tissé, pas un simple trait gris */
+.aa-tabs {
+  border-bottom: 1px dashed var(--aa-line);
+}
+
+/* Le tiroir : bord cousu */
+.aa-drawer {
+  border-left: 1px dashed var(--aa-line);
+}
+
+/* Le bouton principal : aplati, jamais brillant */
+.aa-page .aa-primary {
+  box-shadow: 0 2px 0 var(--aa-line);
+}
+.aa-page .aa-primary:hover {
+  filter: brightness(1.06);
+}
+
+/* Le focus emprunte le fil doré de la bande */
+.aa-page :focus-visible,
+.aa-drawer :focus-visible {
+  outline-color: var(--aa-fil);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aa-page *,
+  .aa-drawer * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }
