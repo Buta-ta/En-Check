@@ -1,0 +1,1838 @@
+/* ═══════════════════════════════════════════════════════════
+   🎨 TOILE DE KORHOGO — la page Entreprises
+
+   La page est une pièce de toile peinte sénoufo : un coton écru,
+   des cadres tracés au noir de fumée, une ligne de couture en
+   pointillé terre, et dans chaque cadre un emblème — ici, une
+   entreprise.
+
+   Rien n'est décoratif gratuitement : le cadre noir tient le
+   contenu, la couture intérieure sépare le titre des chiffres,
+   et les chevrons de bordure remplacent les traits de séparation
+   qu'on trouve sur les autres pages.
+
+   Palette resserrée (voir §1) : écru, noir de fumée, ocre brûlé,
+   terre. Le thème sombre garde les mêmes rôles, simplement
+   inversés — le noir devient le fond, l'écru devient l'encre.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1. Les jetons ─────────────────────────────────────────── */
+
+.en-page {
+  /* la toile, thème clair */
+  --en-fond: #efe3cb;
+  --en-fond-2: #e6d7bb;
+  --en-carte: #fbf4e4;
+  --en-carte-2: #f4ead6;
+  --en-panneau: #e9dcc3;
+  --en-encre: #241c16;
+  --en-encre-douce: #4e3a2c;
+  --en-encre-faible: #8a7359;
+  --en-noir: #241c16;
+  --en-ocre: #b4622a;
+  --en-ocre-clair: #c9773c;
+  --en-terre: #8b3e1d;
+  --en-or: #a8863f;
+  --en-ivoire: #f2e8d5;
+  --en-champ: #fdf8ec;
+  --en-ligne: rgba(36, 28, 22, 0.16);
+  --en-couture: rgba(36, 28, 22, 0.34);
+  --en-couture-forte: rgba(36, 28, 22, 0.62);
+  --en-ok: #3f6b4a;
+  --en-alerte: #a2541f;
+  --en-ombre: 0 14px 34px rgba(36, 28, 22, 0.14);
+
+  --en-pad: clamp(16px, 8vw, 96px);
+  --en-ecart: clamp(14px, 1.9vw, 24px);
+  --en-panneau-w: clamp(220px, 21vw, 292px);
+
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--en-fond);
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(36, 28, 22, 0.022) 0 1px,
+      transparent 1px 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(36, 28, 22, 0.022) 0 1px,
+      transparent 1px 3px
+    );
+  color: var(--en-encre);
+  font-family: inherit;
+}
+
+.en-page.en-dark {
+  --en-fond: #15110e;
+  --en-fond-2: #1b1611;
+  --en-carte: #221a15;
+  --en-carte-2: #281f19;
+  --en-panneau: #1d1712;
+  --en-encre: #f2e8d5;
+  --en-encre-douce: #cdb99f;
+  --en-encre-faible: #9a8471;
+  --en-noir: #0f0b09;
+  --en-ocre: #c9713a;
+  --en-ocre-clair: #d98a52;
+  --en-terre: #b4622a;
+  --en-or: #c9a961;
+  --en-champ: rgba(0, 0, 0, 0.22);
+  --en-ligne: rgba(201, 169, 97, 0.18);
+  --en-couture: rgba(201, 169, 97, 0.4);
+  --en-couture-forte: rgba(201, 169, 97, 0.76);
+  --en-ok: #7fb08b;
+  --en-alerte: #d08a45;
+  --en-ombre: 0 18px 40px rgba(0, 0, 0, 0.55);
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(201, 169, 97, 0.02) 0 1px,
+      transparent 1px 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(201, 169, 97, 0.02) 0 1px,
+      transparent 1px 3px
+    );
+}
+
+.en-page *,
+.en-page *::before,
+.en-page *::after {
+  box-sizing: border-box;
+}
+
+.en-page :focus-visible {
+  outline: 2px solid var(--en-texte-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.en-page {
+  --en-texte-accent: var(--en-terre);
+}
+
+.en-page.en-dark {
+  --en-texte-accent: var(--en-or);
+}
+
+/* ── 2. La bordure tissée, sous la bande haute ─────────────── */
+
+.en-bordure {
+  height: 9px;
+  flex: none;
+  background-color: var(--en-ocre);
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--en-noir) 0 7px,
+    transparent 7px 15px
+  );
+  opacity: 0.92;
+}
+
+/* ── 3. La coque ───────────────────────────────────────────── */
+
+.en-shell {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: clamp(18px, 2.6vw, 34px) clamp(14px, 4vw, 34px)
+    clamp(30px, 4vw, 56px);
+  flex: 1 1 auto;
+}
+
+/* — l'en-tête : le blason, le titre, les actions — */
+
+.en-entete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: clamp(14px, 1.9vw, 22px);
+  border-bottom: 2px solid var(--en-noir);
+  box-shadow: 0 3px 0 -1px var(--en-couture-forte);
+}
+
+.en-titre-bloc {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.en-eyebrow {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  color: var(--en-ocre);
+}
+
+.en-page .en-titre {
+  margin: 2px 0 0;
+  font-size: clamp(24px, 3.1vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.06;
+  color: var(--en-encre);
+}
+
+.en-page .en-titre span {
+  color: var(--en-terre);
+}
+
+.en-sous-titre {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--en-encre-faible);
+}
+
+.en-entete-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+/* ── 4. Les boutons ────────────────────────────────────────── */
+
+.en-page .en-bouton,
+.en-page .en-bouton-creux,
+.en-page .en-bouton-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: 2px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.en-page .en-bouton {
+  background: var(--en-terre);
+  color: var(--en-ivoire);
+  border-color: var(--en-noir);
+  box-shadow: 2px 2px 0 0 var(--en-noir);
+}
+
+.en-page .en-bouton:hover {
+  background: var(--en-ocre);
+}
+
+.en-page .en-bouton:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 0 var(--en-noir);
+}
+
+.en-page .en-bouton-creux {
+  background: transparent;
+  color: var(--en-encre);
+  border-color: var(--en-couture-forte);
+  border-style: dashed;
+}
+
+.en-page .en-bouton-creux:hover {
+  background: rgba(180, 98, 42, 0.09);
+  border-color: var(--en-ocre);
+}
+
+.en-page .en-bouton-danger {
+  background: transparent;
+  color: var(--en-alerte);
+  border-color: currentColor;
+  border-style: dashed;
+}
+
+.en-page .en-bouton-danger:hover:not(:disabled) {
+  background: rgba(162, 84, 31, 0.12);
+}
+
+.en-page button:disabled,
+.en-page .en-bouton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* — la bascule clair / sombre — */
+
+.en-bascule {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  color: var(--en-encre-douce);
+  background: var(--en-carte);
+  border: 1.5px solid var(--en-couture);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.en-bascule:hover {
+  color: var(--en-ocre);
+  border-color: var(--en-ocre);
+}
+
+/* ── 5. Les raccourcis de pages ────────────────────────────── */
+
+.en-raccourcis {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: clamp(12px, 1.7vw, 18px) 0 0;
+}
+
+.en-raccourcis-libelle {
+  flex: none;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--en-encre-faible);
+}
+
+.en-raccourcis .abs-raccourcis {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px dashed var(--en-couture);
+  border-radius: 2px;
+  background: var(--en-carte-2);
+  scrollbar-width: none;
+}
+
+.en-raccourcis .abs-raccourcis::-webkit-scrollbar {
+  display: none;
+}
+
+.en-raccourcis .abs-raccourci {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 1px;
+  background: transparent;
+  color: var(--en-encre-douce);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+.en-raccourcis .abs-raccourci[data-compact='oui'] {
+  padding: 4px 9px;
+}
+
+.en-raccourcis .abs-raccourci svg {
+  flex: none;
+  opacity: 0.85;
+}
+
+.en-raccourcis .abs-raccourci:hover {
+  color: var(--en-encre);
+  background: rgba(180, 98, 42, 0.1);
+}
+
+.en-raccourcis .abs-raccourci[data-actif='oui'],
+.en-raccourcis .abs-raccourci[data-actif='oui']:hover {
+  color: var(--en-ivoire);
+  background: var(--en-terre);
+  cursor: default;
+}
+
+/* ── 6. Le corps : la liste à gauche, le panneau à droite ─── */
+
+.en-corps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--en-panneau-w);
+  gap: var(--en-ecart);
+  align-items: start;
+  margin-top: clamp(16px, 2.2vw, 26px);
+}
+
+.en-colonne {
+  min-width: 0;
+}
+
+/* — la barre d'outils — */
+
+.en-outils {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: clamp(12px, 1.7vw, 18px);
+}
+
+.en-recherche {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 0 12px;
+  height: 40px;
+  background: var(--en-carte);
+  border: 1.5px solid var(--en-noir);
+  border-radius: 2px;
+  box-shadow: 2px 2px 0 -0.5px var(--en-couture);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.en-recherche:focus-within {
+  border-color: var(--en-ocre);
+  box-shadow:
+    0 0 0 3px rgba(180, 98, 42, 0.14),
+    2px 2px 0 -0.5px var(--en-couture);
+}
+
+.en-recherche svg {
+  flex: none;
+  color: var(--en-encre-faible);
+}
+
+.en-page .en-recherche input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--en-encre);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.en-page .en-recherche input::placeholder {
+  color: var(--en-encre-faible);
+  opacity: 1;
+}
+
+.en-effacer {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--en-encre-faible);
+  background: transparent;
+  border: 1px dashed var(--en-couture);
+  border-radius: 1px;
+  cursor: pointer;
+}
+
+.en-effacer:hover {
+  color: var(--en-encre);
+  border-color: var(--en-ocre);
+}
+
+.en-compteur {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding-left: 4px;
+  white-space: nowrap;
+}
+
+.en-compteur strong {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--en-ocre);
+}
+
+.en-compteur span {
+  font-size: 11px;
+  color: var(--en-encre-faible);
+}
+
+/* ── 7. La carte d'une entreprise : un cadre peint ────────── */
+
+.en-liste {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.3vw, 14px);
+}
+
+.en-carte {
+  position: relative;
+  padding: clamp(13px, 1.8vw, 18px);
+  background: var(--en-carte);
+  border: 2px solid var(--en-noir);
+  border-radius: 2px;
+  box-shadow: 3px 3px 0 0 var(--en-couture);
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.en-carte::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px dashed var(--en-couture);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.en-carte:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 0 var(--en-couture);
+}
+
+.en-carte[data-ouvert='oui'] {
+  box-shadow: 5px 5px 0 0 var(--en-ocre);
+}
+
+.en-carte-tete {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.en-logo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  background: var(--en-carte-2);
+  border: 2px solid var(--en-noir);
+  border-radius: 1px;
+}
+
+.en-logo::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px dashed var(--en-couture);
+  pointer-events: none;
+}
+
+.en-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.en-infos {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.en-nom-ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.en-nom {
+  font-size: clamp(14px, 1.5vw, 16px);
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  line-height: 1.25;
+  color: var(--en-encre);
+}
+
+/* — le sceau de licence : un cachet rond, cerclé — */
+
+.en-licence {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px 2px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  color: var(--en-terre);
+  background: rgba(139, 62, 29, 0.1);
+}
+
+.en-licence::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.en-licence[data-licence='premium'] {
+  color: var(--en-or);
+  background: rgba(168, 134, 63, 0.13);
+}
+
+.en-licence[data-licence='enterprise'] {
+  color: var(--en-ocre);
+  background: rgba(180, 98, 42, 0.13);
+}
+
+.en-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+  font-size: 10.5px;
+  color: var(--en-encre-faible);
+}
+
+.en-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.en-meta strong {
+  font-weight: 650;
+  color: var(--en-encre-douce);
+}
+
+.en-modules-pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 3px 9px 3px 7px;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  color: var(--en-terre);
+  background: rgba(180, 98, 42, 0.1);
+  border: 1px dashed var(--en-ocre);
+  border-radius: 1px;
+}
+
+.en-modules-pastille[data-vide='oui'] {
+  color: var(--en-encre-faible);
+  background: transparent;
+  border-color: var(--en-ligne);
+}
+
+/* — les deux chiffres de la carte — */
+
+.en-chiffres {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  flex: none;
+}
+
+.en-chiffre {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 62px;
+  padding: 4px 8px;
+  background: var(--en-carte-2);
+  border: 1px dotted var(--en-couture);
+  border-radius: 1px;
+}
+
+.en-chiffre b {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--en-encre);
+}
+
+.en-chiffre span {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--en-encre-faible);
+}
+
+/* — les actions — */
+
+.en-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+}
+
+.en-action {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--en-encre-douce);
+  background: transparent;
+  border: 1.5px dashed var(--en-couture);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.en-action:hover {
+  color: var(--en-ivoire);
+  background: var(--en-terre);
+  border-color: var(--en-terre);
+  border-style: solid;
+  transform: translateY(-1px);
+}
+
+.en-action[data-ton='danger']:hover {
+  background: var(--en-alerte);
+  border-color: var(--en-alerte);
+}
+
+.en-action[data-actif='oui'] {
+  color: var(--en-ivoire);
+  background: var(--en-ocre);
+  border-color: var(--en-noir);
+  border-style: solid;
+}
+
+/* — le dépliant : contact, fermeture, modules — */
+
+.en-detail {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--en-couture);
+}
+
+.en-detail-grille {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(12px, 1.8vw, 22px);
+}
+
+.en-bloc-titre {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--en-ocre);
+}
+
+.en-duo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+  border-bottom: 1px dotted var(--en-ligne);
+}
+
+.en-duo:last-child {
+  border-bottom: 0;
+}
+
+.en-duo dt,
+.en-duo span:first-child {
+  font-size: 9.5px;
+  color: var(--en-encre-faible);
+}
+
+.en-duo dd,
+.en-duo span:last-child {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: right;
+  color: var(--en-encre-douce);
+  overflow-wrap: anywhere;
+}
+
+.en-modules-liste {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 10px;
+}
+
+.en-module-etat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--en-encre-faible);
+}
+
+.en-module-etat[data-actif='oui'] {
+  color: var(--en-encre-douce);
+}
+
+.en-teinte {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 10px;
+  color: var(--en-encre-faible);
+}
+
+.en-teinte i {
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--en-noir);
+  border-radius: 1px;
+}
+
+.en-teinte code {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 10px;
+  color: var(--en-encre-douce);
+}
+
+/* ── 8. Le panneau de droite ──────────────────────────────── */
+
+.en-panneau {
+  position: sticky;
+  top: 14px;
+  padding: 14px;
+  background: var(--en-panneau);
+  border: 2px solid var(--en-noir);
+  border-radius: 2px;
+  box-shadow: 3px 3px 0 0 var(--en-couture);
+}
+
+.en-panneau + .en-panneau {
+  margin-top: var(--en-ecart);
+}
+
+.en-panneau-titre {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding-bottom: 7px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--en-ocre);
+  border-bottom: 1px dashed var(--en-couture);
+}
+
+.en-mesure {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px dotted var(--en-ligne);
+}
+
+.en-mesure:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.en-mesure span {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--en-encre-faible);
+}
+
+.en-mesure b {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--en-encre);
+}
+
+.en-note {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--en-encre-douce);
+}
+
+.en-page details.en-note-pli {
+  margin-top: 10px;
+  border-top: 1px dashed var(--en-couture);
+  padding-top: 8px;
+}
+
+.en-page details.en-note-pli > summary {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--en-ocre);
+  cursor: pointer;
+  list-style: none;
+}
+
+.en-page details.en-note-pli > summary::-webkit-details-marker {
+  display: none;
+}
+
+.en-page details.en-note-pli > summary::before {
+  content: '+ ';
+  font-weight: 700;
+}
+
+.en-page details.en-note-pli[open] > summary::before {
+  content: '– ';
+}
+
+.en-page details.en-note-pli p {
+  margin: 7px 0 0;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--en-encre-douce);
+}
+
+/* ── 9. La liste vide ─────────────────────────────────────── */
+
+.en-vide {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: clamp(34px, 6vw, 64px) 20px;
+  text-align: center;
+  background: var(--en-carte-2);
+  border: 2px dashed var(--en-couture-forte);
+  border-radius: 2px;
+}
+
+.en-vide h3 {
+  margin: 8px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--en-encre);
+}
+
+.en-vide p {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--en-encre-faible);
+}
+
+.en-vide .en-bouton {
+  margin-top: 10px;
+}
+
+/* ── 10. Les avis (remplace les alertes du navigateur) ────── */
+
+.en-avis {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  border-radius: 2px;
+  border: 1px dashed var(--en-ocre);
+  background: rgba(180, 98, 42, 0.1);
+  color: var(--en-encre-douce);
+}
+
+.en-avis[data-ton='erreur'] {
+  border-color: var(--en-alerte);
+  background: rgba(162, 84, 31, 0.12);
+  color: var(--en-alerte);
+}
+
+.en-avis[data-ton='succes'] {
+  border-color: var(--en-ok);
+  background: rgba(63, 107, 74, 0.12);
+  color: var(--en-ok);
+}
+
+.en-avis svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* ── 11. Les modales : un carton de toile ─────────────────── */
+
+.en-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow-y: auto;
+  background: rgba(18, 13, 10, 0.62);
+  backdrop-filter: blur(2px);
+  animation: en-voile 0.18s ease;
+}
+
+@keyframes en-voile {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.en-carton {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--en-carte);
+  border: 2px solid var(--en-noir);
+  border-radius: 2px;
+  box-shadow:
+    6px 6px 0 0 rgba(36, 28, 22, 0.45),
+    0 26px 60px rgba(0, 0, 0, 0.4);
+  animation: en-carton 0.24s cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+@keyframes en-carton {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.en-carton--etroit {
+  width: min(430px, 100%);
+}
+
+.en-carton::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px dashed var(--en-couture);
+  pointer-events: none;
+}
+
+.en-carton-tete {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 15px 16px 12px;
+  border-bottom: 2px solid var(--en-noir);
+}
+
+.en-carton-tete h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  color: var(--en-encre);
+}
+
+.en-carton-tete p {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  color: var(--en-encre-faible);
+}
+
+.en-carton-fermer {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  padding: 0;
+  color: var(--en-encre-douce);
+  background: transparent;
+  border: 1.5px dashed var(--en-couture);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.en-carton-fermer:hover {
+  color: var(--en-ivoire);
+  background: var(--en-terre);
+  border-color: var(--en-terre);
+  border-style: solid;
+}
+
+.en-carton-corps {
+  padding: 14px 16px 18px;
+  overflow-y: auto;
+}
+
+.en-carton-pied {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+  padding: 12px 16px 14px;
+  border-top: 1px dashed var(--en-couture);
+}
+
+/* ── 12. Le formulaire : des cases peintes ────────────────── */
+
+.en-section {
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+
+.en-section > legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 9px;
+  padding-bottom: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--en-ocre);
+  border-bottom: 1px dashed var(--en-couture);
+}
+
+.en-champs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.en-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.en-champ--large {
+  grid-column: 1 / -1;
+}
+
+.en-page .en-etiquette {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--en-encre-faible);
+}
+
+.en-page .en-etiquette em {
+  font-style: normal;
+  color: var(--en-ocre);
+}
+
+.en-page
+  .en-champ
+  :is(
+    input:not([type='checkbox']):not([type='file']):not([type='color']),
+    select,
+    textarea
+  ) {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 11px;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--en-encre);
+  caret-color: var(--en-ocre);
+  background: var(--en-champ);
+  border: 1.5px solid var(--en-ligne);
+  border-radius: 1px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.en-page .en-champ :is(input, select, textarea):hover:not(:focus):not(:disabled) {
+  border-color: var(--en-couture);
+}
+
+.en-page .en-champ :is(input, select, textarea):focus {
+  border-color: var(--en-ocre);
+  box-shadow: 0 0 0 3px rgba(180, 98, 42, 0.14);
+}
+
+.en-page .en-champ :is(input, textarea)::placeholder {
+  color: var(--en-encre-faible);
+  opacity: 1;
+}
+
+.en-page .en-champ textarea {
+  min-height: 74px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.en-page .en-champ select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2012%208'%3E%3Cpath%20d='M1%201.5%206%206.5l5-5'%20fill='none'%20stroke='%238b3e1d'%20stroke-width='1.7'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 11px 8px;
+  cursor: pointer;
+}
+
+.en-page .en-champ select option {
+  background: var(--en-carte);
+  color: var(--en-encre);
+}
+
+.en-page .en-champ input:disabled,
+.en-page .en-champ select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.en-aide {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--en-encre-faible);
+}
+
+.en-aide[data-ton='alerte'] {
+  color: var(--en-alerte);
+}
+
+/* — le logo : un carré qu'on appuie pour choisir une image — */
+
+.en-logo-champ {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  grid-column: 1 / -1;
+}
+
+.en-logo-cadre {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  flex: none;
+  overflow: hidden;
+  padding: 0;
+  color: var(--en-encre-faible);
+  background: var(--en-carte-2);
+  border: 2px solid var(--en-noir);
+  border-radius: 1px;
+  cursor: pointer;
+}
+
+.en-logo-cadre::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px dashed var(--en-couture);
+  pointer-events: none;
+}
+
+.en-logo-cadre:hover {
+  border-color: var(--en-ocre);
+}
+
+.en-logo-cadre img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.en-logo-legende {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.en-logo-legende strong {
+  font-size: 11.5px;
+  color: var(--en-encre);
+}
+
+.en-logo-legende span {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--en-encre-faible);
+}
+
+/* — la couleur du badge — */
+
+.en-couleur {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.en-page .en-couleur input[type='color'] {
+  width: 40px;
+  height: 36px;
+  padding: 2px;
+  background: var(--en-champ);
+  border: 1.5px solid var(--en-ligne);
+  border-radius: 1px;
+  cursor: pointer;
+}
+
+.en-couleur code {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--en-encre-douce);
+}
+
+.en-couleur i {
+  flex: 1;
+  height: 30px;
+  border: 1.5px solid var(--en-noir);
+  border-radius: 1px;
+}
+
+/* — l'interrupteur de fermeture automatique — */
+
+.en-interrupteur-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  background: var(--en-carte-2);
+  border: 1.5px dashed var(--en-couture);
+  border-radius: 1px;
+}
+
+.en-interrupteur-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.en-interrupteur-texte strong {
+  font-size: 11.5px;
+  color: var(--en-encre);
+}
+
+.en-interrupteur-texte span {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--en-encre-faible);
+}
+
+.en-page .en-interrupteur {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  cursor: pointer;
+}
+
+.en-page .en-interrupteur input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  opacity: 0;
+}
+
+.en-piste {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 24px;
+  background: var(--en-fond-2);
+  border: 1.5px solid var(--en-couture-forte);
+  border-radius: 999px;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.en-piste::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: var(--en-carte);
+  border: 1.5px solid var(--en-couture-forte);
+  border-radius: 50%;
+  transition:
+    transform 0.18s cubic-bezier(0.3, 0, 0.2, 1),
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.en-page .en-interrupteur input:checked + .en-piste {
+  background: var(--en-terre);
+  border-color: var(--en-noir);
+}
+
+.en-page .en-interrupteur input:checked + .en-piste::after {
+  transform: translateX(18px);
+  background: var(--en-ivoire);
+  border-color: var(--en-ivoire);
+}
+
+.en-page .en-interrupteur input:focus-visible + .en-piste {
+  outline: 2px solid var(--en-texte-accent);
+  outline-offset: 2px;
+}
+
+/* — les sceaux de modules — */
+
+.en-sceaux-groupe {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 0 7px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--en-encre-faible);
+}
+
+.en-sceaux-groupe:first-of-type {
+  margin-top: 2px;
+}
+
+.en-sceaux-groupe b {
+  font-weight: 700;
+  color: var(--en-ocre);
+}
+
+.en-sceaux {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.en-page .en-sceau {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 9px;
+  text-align: left;
+  background: transparent;
+  border: 1.5px dashed var(--en-ligne);
+  border-radius: 1px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.en-page .en-sceau:hover {
+  border-color: var(--en-couture-forte);
+  background: rgba(180, 98, 42, 0.05);
+}
+
+.en-page .en-sceau input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.en-sceau-pastille {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: transparent;
+  background: var(--en-carte);
+  border: 1.5px solid var(--en-couture-forte);
+  border-radius: 50%;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.en-sceau-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.en-sceau-texte b {
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--en-encre-douce);
+}
+
+.en-sceau-texte span {
+  font-size: 9px;
+  line-height: 1.35;
+  color: var(--en-encre-faible);
+}
+
+.en-page .en-sceau:has(input:checked) {
+  background: rgba(180, 98, 42, 0.1);
+  border-color: var(--en-ocre);
+  border-style: solid;
+}
+
+.en-page .en-sceau input:checked + .en-sceau-pastille {
+  color: var(--en-ivoire);
+  background: var(--en-terre);
+  border-color: var(--en-noir);
+}
+
+.en-page .en-sceau:has(input:checked) .en-sceau-texte b {
+  color: var(--en-encre);
+}
+
+.en-page .en-sceau:has(input:focus-visible) {
+  outline: 2px solid var(--en-texte-accent);
+  outline-offset: 2px;
+}
+
+/* ── 13. La confirmation de suppression ───────────────────── */
+
+.en-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.en-confirmation p {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--en-encre-douce);
+}
+
+.en-confirmation strong {
+  color: var(--en-encre);
+}
+
+.en-confirmation em {
+  font-style: normal;
+  display: block;
+  margin-top: 5px;
+  color: var(--en-alerte);
+}
+
+/* ── 14. Le chargement : un cadre qu'on peint ─────────────── */
+
+.en-chargement {
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  min-height: 100vh;
+  padding: 24px;
+  text-align: center;
+  background: var(--en-fond);
+}
+
+.en-chargement-cadre {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 132px;
+  height: 96px;
+  border: 2px solid var(--en-noir);
+  border-radius: 1px;
+}
+
+.en-chargement-cadre::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px dashed var(--en-couture-forte);
+  border-radius: 1px;
+}
+
+/* le pinceau passe et repasse le long du cadre */
+.en-chargement-cadre::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(180, 98, 42, 0.42) 42%,
+    rgba(201, 169, 97, 0.55) 50%,
+    rgba(180, 98, 42, 0.42) 58%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  animation: en-pinceau 1.9s ease-in-out infinite;
+}
+
+@keyframes en-pinceau {
+  0% {
+    background-position: 160% 0;
+  }
+  100% {
+    background-position: -60% 0;
+  }
+}
+
+.en-chargement p {
+  margin: 0;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--en-encre-faible);
+}
+
+.en-chargement-points {
+  display: flex;
+  gap: 5px;
+}
+
+.en-chargement-points i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--en-ocre);
+  animation: en-souffle 1.2s ease-in-out infinite;
+}
+
+.en-chargement-points i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.en-chargement-points i:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes en-souffle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* ── 15. Le fil de clôture ────────────────────────────────── */
+
+.en-pied {
+  margin-top: auto;
+  line-height: 0;
+  background: #16120e;
+  border-top: 1px dashed var(--en-couture);
+}
+
+.en-pied .ec-cultural-bottom[data-cultural-motif='korhogo'] {
+  height: 32px;
+  background-color: #efe3cb;
+}
+
+@media (max-width: 650px) {
+  .en-pied .ec-cultural-bottom[data-cultural-motif='korhogo'] {
+    height: 28px;
+  }
+}
+
+/* ── 16. Adaptations ──────────────────────────────────────── */
+
+@media (max-width: 1040px) {
+  .en-corps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .en-panneau {
+    position: static;
+  }
+
+  .en-panneau--mesures {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 16px;
+    align-items: end;
+  }
+
+  .en-panneau--mesures .en-panneau-titre {
+    grid-column: 1 / -1;
+  }
+
+  .en-panneau--mesures .en-mesure {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    border-bottom: 0;
+    border-right: 1px dotted var(--en-ligne);
+    padding: 0 10px 0 0;
+  }
+
+  .en-panneau--mesures .en-mesure:last-child {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 860px) {
+  .en-detail-grille {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .en-chiffres {
+    order: 3;
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .en-entete {
+    align-items: flex-start;
+  }
+
+  .en-entete-actions {
+    width: 100%;
+  }
+
+  .en-entete-actions .en-bouton {
+    flex: 1;
+  }
+
+  .en-champs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .en-sceaux {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .en-modules-liste {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .en-carton {
+    max-height: calc(100dvh - 24px);
+  }
+
+  .en-carton-pied {
+    justify-content: stretch;
+  }
+
+  .en-carton-pied .en-bouton,
+  .en-carton-pied .en-bouton-creux {
+    flex: 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .en-detail-grille {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .en-carte-tete {
+    gap: 10px;
+  }
+
+  .en-chiffres {
+    gap: 6px;
+  }
+
+  .en-chiffre {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .en-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .en-panneau--mesures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .en-panneau--mesures .en-mesure {
+    flex-direction: row;
+    align-items: baseline;
+    padding: 6px 0;
+    border-right: 0;
+    border-bottom: 1px dotted var(--en-ligne);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .en-carte,
+  .en-action,
+  .en-bouton,
+  .en-carton,
+  .en-voile,
+  .en-chargement-cadre::after,
+  .en-chargement-points i {
+    animation: none !important;
+    transition: none !important;
+  }
+}

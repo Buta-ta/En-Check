@@ -1,57 +1,168 @@
-
 // ═══════════════════════════════════════════════════════════
-// 🏢 PAGE GESTION DES ENTREPRISES - AFROFUTURISTE
-// + CONFIGURATION AUTO-CLOSE
+// 🎨 ENTREPRISES — la toile peinte de Korhogo
+//
+// Le registre des entreprises tient dans un seul écran : la
+// liste des maisons (une carte = un cadre peint), un panneau de
+// chiffres à droite, et le formulaire dans un carton de toile.
+//
+// ⚠️ Aucune donnée, aucune règle métier n'a bougé : mêmes
+//    requêtes, mêmes champs, même chargement fiscal du pays à
+//    la création, même suppression douce. Seul l'habillage est
+//    neuf — et les boîtes de dialogue du navigateur ont laissé la place
+//    à des avis intégrés à la page.
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect, useRef, Fragment } from 'react'
-import { supabase } from '../lib/supabase'
-import TaxationService from '../services/taxationService'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Footprints,
-  Building2,
-  Plus,
-  ArrowLeft,
-  Search,
-  Edit,
-  Trash2,
-  X,
-  Save,
-  Users,
-  Clock,
-  Camera,
-  Shield,
-  Upload,
-  Palette,
-  Mail,
-  Phone,
-  MapPin,
-  Hash,
-  Zap,
   Activity,
-  ChevronDown,
-  ChevronUp,
-  Globe,
-  CreditCard,
-  QrCode,
+  AlertTriangle,
+  ArrowLeft,
+  Building2,
   Calendar,
   CalendarOff,
-  AlertTriangle,
-  FileText,
-  PenTool,
+  Camera,
+  Check,
   CheckCircle2,
-  XCircle,
-  ClipboardList,
-  TrendingUp,
-  Sparkles,
-  Timer,
-  ToggleLeft,
-  Radio,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  CreditCard,
+  Edit,
+  FileText,
+  Globe,
+  Hash,
+  Mail,
+  MapPin,
   Monitor,
-  Wallet,
+  Moon,
+  Palette,
+  PenTool,
+  Phone,
+  Plus,
+  QrCode,
+  Radio,
+  Save,
+  Search,
+  Shield,
   Smartphone,
+  Sun,
+  Timer,
+  Trash2,
+  TrendingUp,
+  Upload,
+  Users,
+  Wallet,
+  X,
+  XCircle,
+  Zap,
 } from 'lucide-react'
+
+import { supabase } from '../lib/supabase'
+import TaxationService from '../services/taxationService'
+import { useTheme } from '../contexts/ThemeContext'
+import PageCulturalBand from '../components/PageCulturalBand'
+import RaccourcisPages from '../components/RaccourcisPages'
+import { KorhogoBlasonSvg } from '../components/KorhogoSvg'
+import './Entreprises.css'
+
+// ── Les modules qu'une entreprise peut allumer ──────────────
+// Les clés sont celles de la base : elles ne changent pas. Seuls
+// les libellés ont été remis en français courant.
+const MODULES = [
+  // Le pointage
+  { key: 'module_qr_scanner', icon: QrCode, name: 'Scanner QR', desc: 'Pointage par scan de badge', groupe: 'Le pointage' },
+  { key: 'module_photo_pointage', icon: Camera, name: 'Photo au pointage', desc: 'Capture photo anti-fraude', groupe: 'Le pointage' },
+  { key: 'module_modification_pointages', icon: PenTool, name: 'Correction des pointages', desc: 'Modifier, avec traçabilité', groupe: 'Le pointage' },
+  { key: 'module_pointeuses', icon: Radio, name: 'Pointeuses du réseau', desc: 'Machines à badge reliées', groupe: 'Le pointage' },
+  { key: 'module_poste_pointage', icon: Monitor, name: 'Poste de pointage', desc: 'Tablette laissée à l’entrée', groupe: 'Le pointage' },
+
+  // La sécurité
+  { key: 'module_geolocalisation', icon: MapPin, name: 'Zones autorisées', desc: 'Périmètre GPS du site', groupe: 'La sécurité' },
+  { key: 'module_carte_temps_reel', icon: Activity, name: 'Carte en temps réel', desc: 'Position des équipes, en direct', groupe: 'La sécurité' },
+  { key: 'module_reconnaissance_faciale', icon: Users, name: 'Reconnaissance faciale', desc: 'Pointage par le visage', groupe: 'La sécurité' },
+
+  // L'organisation
+  { key: 'module_planning', icon: Calendar, name: 'Planning', desc: 'Horaires de travail', groupe: 'L’organisation' },
+  { key: 'module_retards', icon: AlertTriangle, name: 'Retards', desc: 'Statistiques et alertes', groupe: 'L’organisation' },
+  { key: 'module_heures_supplementaires', icon: Clock, name: 'Heures supplémentaires', desc: 'Calcul auto et majorations', groupe: 'L’organisation' },
+  { key: 'module_conges', icon: CalendarOff, name: 'Congés et absences', desc: 'Demandes et soldes', groupe: 'L’organisation' },
+  { key: 'module_taches', icon: FileText, name: 'Tâches', desc: 'Équipes, suivi et preuves', groupe: 'L’organisation' },
+  { key: 'module_predictions', icon: TrendingUp, name: 'Prévisions', desc: 'Anticipation de la charge', groupe: 'L’organisation' },
+  { key: 'module_espace_employe', icon: Users, name: 'Espace employé', desc: 'Portail en libre-service', groupe: 'L’organisation' },
+
+  // La paie
+  { key: 'module_fiches_paie', icon: CreditCard, name: 'Fiches de paie', desc: 'Bulletins et variables', groupe: 'La paie' },
+  { key: 'module_remunerations', icon: Wallet, name: 'Rémunérations', desc: 'Contrat, base, taux, indemnités', groupe: 'La paie' },
+  { key: 'module_cout_salarial', icon: TrendingUp, name: 'Coût salarial', desc: 'Coût de l’heure et du mois', groupe: 'La paie' },
+  { key: 'module_config_fiscale', icon: Shield, name: 'Configuration fiscale', desc: 'Cotisations et barème du pays', groupe: 'La paie' },
+
+  // Les alertes
+  { key: 'module_alertes_telephone', icon: Smartphone, name: 'Alertes sur téléphone', desc: 'Sans ouvrir l’application', groupe: 'Les alertes' },
+  { key: 'module_alertes_courrier', icon: Mail, name: 'Alertes par courrier', desc: 'Aux responsables', groupe: 'Les alertes' },
+
+  // Les rapports
+  { key: 'module_rapports_avances', icon: FileText, name: 'Rapports avancés', desc: 'PDF et Excel détaillés', groupe: 'Les rapports' },
+]
+
+const GROUPES = [...new Set(MODULES.map((m) => m.groupe))]
+
+const LICENCES = {
+  basic: { label: 'Basic', detail: 'Gratuit' },
+  premium: { label: 'Premium', detail: 'Abonnement' },
+  enterprise: { label: 'Enterprise', detail: 'Sur mesure' },
+}
+
+const VIDE = {
+  name: '',
+  code: '',
+  email: '',
+  phone: '',
+  address: '',
+  sector: '',
+  country_code: '',
+  matricule_prefix: '',
+  primary_color: '#D4AF37',
+  logo_url: '',
+  license_type: 'basic',
+
+  // la fermeture automatique des pointages
+  auto_close_enabled: false,
+  auto_close_time: '23:59',
+  auto_close_grace_minutes: 0,
+
+  ...Object.fromEntries(MODULES.map((m) => [m.key, false])),
+}
+
+// ── Le formulaire d'une entreprise, pré-rempli ou vierge ────
+function depuisEntreprise(entreprise) {
+  if (!entreprise) return { ...VIDE }
+  return {
+    name: entreprise.name || '',
+    code: entreprise.code || '',
+    email: entreprise.email || '',
+    phone: entreprise.phone || '',
+    address: entreprise.address || '',
+    sector: entreprise.sector || '',
+    country_code: entreprise.country_code || '',
+    matricule_prefix: entreprise.matricule_prefix || '',
+    primary_color: entreprise.primary_color || '#D4AF37',
+    logo_url: entreprise.logo_url || '',
+    license_type: entreprise.license_type || 'basic',
+    auto_close_enabled: Boolean(entreprise.auto_close_enabled),
+    auto_close_time: entreprise.auto_close_time || '23:59',
+    auto_close_grace_minutes: entreprise.auto_close_grace_minutes ?? 0,
+    ...Object.fromEntries(MODULES.map((m) => [m.key, Boolean(entreprise[m.key])])),
+  }
+}
+
+const modulesActifs = (ent) => MODULES.filter((m) => ent[m.key]).length
+
+const tolerance = (minutes) => {
+  const valeur = Number(minutes || 0)
+  if (valeur <= 0) return 'Aucune tolérance'
+  return `${valeur} min de tolérance`
+}
 
 export default function Entreprises() {
   const [admin, setAdmin] = useState(null)
@@ -63,244 +174,27 @@ export default function Entreprises() {
   const [uploading, setUploading] = useState(false)
   const [expandedCard, setExpandedCard] = useState(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
-  const navigate = useNavigate()
-  const fileInputRef = useRef(null)
-
+  const [avis, setAvis] = useState(null)
   const [paysDisponibles, setPaysDisponibles] = useState([])
-  const [formData, setFormData] = useState({
-    name: '',
-    code: '',
-    email: '',
-    phone: '',
-    address: '',
-    sector: '',
-    country_code: '',
-    matricule_prefix: '',
-    primary_color: '#D4AF37',
-    logo_url: '',
-    license_type: 'basic',
-
-    // ✅ AUTO-CLOSE
-    auto_close_enabled: false,
-    auto_close_time: '23:59',
-    auto_close_grace_minutes: 0,
-
-    module_qr_scanner: false,
-    module_photo_pointage: false,
-    module_planning: false,
-    module_retards: false,
-    module_rapports_avances: false,
-    module_modification_pointages: false,
-    module_conges: false,
-    module_geolocalisation: false,
-    module_carte_temps_reel: false,
-    module_reconnaissance_faciale: false,
-    module_heures_supplementaires: false,
-    module_espace_employe: false,
-    module_fiches_paie: false,
-    module_taches: false,
-    module_predictions: false,
-    module_pointeuses: false,
-    module_poste_pointage: false,
-    module_remunerations: false,
-    module_cout_salarial: false,
-    module_config_fiscale: false,
-    module_alertes_telephone: false,
-    module_alertes_courrier: false
-  })
-
+  const [formData, setFormData] = useState({ ...VIDE })
   const [logoPreview, setLogoPreview] = useState(null)
   const [logoFile, setLogoFile] = useState(null)
 
-  const modulesConfig = [
-    // ─── Le pointage ────────────────────────────────────────────────────────
-    {
-      key: 'module_qr_scanner',
-      icon: <QrCode size={16} />,
-      name: 'Scanner QR',
-      desc: 'Pointage par scan de badge',
-      color: '#F59E0B',
-      groupe: 'Le pointage'
-    },
-    {
-      key: 'module_photo_pointage',
-      icon: <Camera size={16} />,
-      name: 'Photo Pointage',
-      desc: 'Capture photo anti-fraude',
-      color: '#EC4899',
-      groupe: 'Le pointage'
-    },
-    {
-      key: 'module_modification_pointages',
-      icon: <PenTool size={16} />,
-      name: 'Modif. Pointages',
-      desc: 'Modifier avec traçabilité',
-      color: '#8B5CF6',
-      groupe: 'Le pointage'
-    },
-    {
-      key: 'module_pointeuses',
-      icon: <Radio size={16} />,
-      name: 'Pointeuses (ADMS)',
-      desc: 'Machines à badge du réseau',
-      color: '#14B8A6',
-      groupe: 'Le pointage'
-    },
-    {
-      key: 'module_poste_pointage',
-      icon: <Monitor size={16} />,
-      name: 'Poste de pointage',
-      desc: 'Tablette laissée à l\'entrée du site',
-      color: '#22C55E',
-      groupe: 'Le pointage'
-    },
+  const navigate = useNavigate()
+  const fileInputRef = useRef(null)
+  const { darkMode, toggleTheme } = useTheme()
 
-    // ─── La sécurité ────────────────────────────────────────────────────────
-    {
-      key: 'module_geolocalisation',
-      icon: <MapPin size={16} />,
-      name: 'Geofencing',
-      desc: 'Zones GPS autorisées',
-      color: '#10B981',
-      groupe: 'La sécurité'
-    },
-    {
-      key: 'module_carte_temps_reel',
-      icon: <Activity size={16} />,
-      name: 'Carte Temps Réel',
-      desc: 'Visualisation GPS live',
-      color: '#6366F1',
-      groupe: 'La sécurité'
-    },
-    {
-      key: 'module_reconnaissance_faciale',
-      icon: <Users size={16} />,
-      name: 'Reconnaissance Faciale',
-      desc: 'Pointage biométrique par visage',
-      color: '#EC4899',
-      groupe: 'La sécurité'
-    },
-
-    // ─── L\'organisation ────────────────────────────────────────────────────
-    {
-      key: 'module_planning',
-      icon: <Calendar size={16} />,
-      name: 'Planning',
-      desc: 'Horaires de travail',
-      color: '#10B981',
-      groupe: 'L\'organisation'
-    },
-    {
-      key: 'module_retards',
-      icon: <AlertTriangle size={16} />,
-      name: 'Retards',
-      desc: 'Stats et alertes retards',
-      color: '#EF4444',
-      groupe: 'L\'organisation'
-    },
-    {
-      key: 'module_heures_supplementaires',
-      icon: <Clock size={16} />,
-      name: 'Heures Supplémentaires',
-      desc: 'Calcul auto avec majorations',
-      color: '#F97316',
-      groupe: 'L\'organisation'
-    },
-    {
-      key: 'module_conges',
-      icon: <CalendarOff size={16} />,
-      name: 'Congés / Absences',
-      desc: 'Gestion des absences et congés',
-      color: '#14B8A6',
-      groupe: 'L\'organisation'
-    },
-    {
-      key: 'module_taches',
-      icon: <ClipboardList size={16} />,
-      name: 'Gestion des Tâches',
-      desc: 'Équipes, tâches, suivi et preuves',
-      color: '#F59E0B',
-      groupe: 'L\'organisation'
-    },
-    {
-      key: 'module_predictions',
-      icon: <TrendingUp size={16} />,
-      name: 'Prédictions',
-      desc: 'Anticipation de charge et besoins',
-      color: '#8B5CF6',
-      groupe: 'L\'organisation'
-    },
-    {
-      key: 'module_espace_employe',
-      icon: <Users size={16} />,
-      name: 'Espace Employé',
-      desc: 'Portail self-service employés',
-      color: '#22C55E',
-      groupe: 'L\'organisation'
-    },
-
-    // ─── La paie ────────────────────────────────────────────────────────────
-    {
-      key: 'module_fiches_paie',
-      icon: <CreditCard size={16} />,
-      name: 'Fiches de Paie',
-      desc: 'Bulletins de salaire & variables',
-      color: '#F59E0B',
-      groupe: 'La paie'
-    },
-    {
-      key: 'module_remunerations',
-      icon: <Wallet size={16} />,
-      name: 'Rémunérations',
-      desc: 'Contrat, base, taux et indemnités',
-      color: '#0EA5E9',
-      groupe: 'La paie'
-    },
-    {
-      key: 'module_cout_salarial',
-      icon: <TrendingUp size={16} />,
-      name: 'Coût Salarial',
-      desc: 'Coût de l\'heure et projection du mois',
-      color: '#6366F1',
-      groupe: 'La paie'
-    },
-    {
-      key: 'module_config_fiscale',
-      icon: <Shield size={16} />,
-      name: 'Configuration Fiscale',
-      desc: 'Cotisations et barème du pays',
-      color: '#8B5CF6',
-      groupe: 'La paie'
-    },
-
-    // ─── Les alertes ────────────────────────────────────────────────────────
-    {
-      key: 'module_alertes_telephone',
-      icon: <Smartphone size={16} />,
-      name: 'Alertes sur téléphone',
-      desc: 'Poussées sans ouvrir l\'application',
-      color: '#F59E0B',
-      groupe: 'Les alertes'
-    },
-    {
-      key: 'module_alertes_courrier',
-      icon: <Mail size={16} />,
-      name: 'Alertes par courrier',
-      desc: 'Envoyées aux responsables',
-      color: '#38BDF8',
-      groupe: 'Les alertes'
-    },
-
-    // ─── Les rapports ───────────────────────────────────────────────────────
-    {
-      key: 'module_rapports_avances',
-      icon: <FileText size={16} />,
-      name: 'Rapports Avancés',
-      desc: 'PDF et Excel détaillés',
-      color: '#6366F1',
-      groupe: 'Les rapports'
-    },
-  ]
+  // Échap referme le carton ouvert — comme une fenêtre de dialogue.
+  useEffect(() => {
+    if (!showModal && !showDeleteConfirm) return undefined
+    const auClavier = (e) => {
+      if (e.key !== 'Escape') return
+      if (showDeleteConfirm) setShowDeleteConfirm(null)
+      else setShowModal(false)
+    }
+    window.addEventListener('keydown', auClavier)
+    return () => window.removeEventListener('keydown', auClavier)
+  }, [showModal, showDeleteConfirm])
 
   useEffect(() => {
     const adminData = localStorage.getItem('admin')
@@ -308,13 +202,11 @@ export default function Entreprises() {
       navigate('/login')
       return
     }
-
     const parsedAdmin = JSON.parse(adminData)
     if (parsedAdmin.role !== 'super_admin') {
       navigate('/dashboard')
       return
     }
-
     setAdmin(parsedAdmin)
     loadData()
     loadPays()
@@ -361,11 +253,13 @@ export default function Entreprises() {
     const file = e.target.files?.[0]
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      alert('Veuillez sélectionner une image')
+      setAvis({ ton: 'erreur', texte: 'Choisissez une image : JPG, PNG ou WebP.' })
+      e.target.value = ''
       return
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert("L'image est trop grande (max 5MB)")
+      setAvis({ ton: 'erreur', texte: 'Cette image dépasse 5 Mo. Allégez-la avant de la déposer.' })
+      e.target.value = ''
       return
     }
 
@@ -373,6 +267,7 @@ export default function Entreprises() {
     const reader = new FileReader()
     reader.onloadend = () => setLogoPreview(reader.result)
     reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
   const uploadLogo = async (code) => {
@@ -403,104 +298,27 @@ export default function Entreprises() {
   }
 
   const handleAdd = () => {
-    setFormData({
-      name: '',
-      code: '',
-      email: '',
-      phone: '',
-      address: '',
-      sector: '',
-      matricule_prefix: '',
-      primary_color: '#D4AF37',
-      logo_url: '',
-      license_type: 'basic',
-
-      // ✅ AUTO-CLOSE
-      auto_close_enabled: false,
-      auto_close_time: '23:59',
-      auto_close_grace_minutes: 0,
-
-      module_qr_scanner: false,
-      module_photo_pointage: false,
-      module_planning: false,
-      module_retards: false,
-      module_rapports_avances: false,
-      module_modification_pointages: false,
-      module_conges: false,
-      module_geolocalisation: false,
-      module_carte_temps_reel: false,
-      module_reconnaissance_faciale: false,
-      module_heures_supplementaires: false,
-      module_espace_employe: false,
-      module_fiches_paie: false,
-      module_taches: false,
-      module_predictions: false,
-      module_pointeuses: false,
-      module_poste_pointage: false,
-      module_remunerations: false,
-      module_cout_salarial: false,
-      module_config_fiscale: false,
-      module_alertes_telephone: false,
-      module_alertes_courrier: false,
-    })
+    setFormData({ ...VIDE })
     setEditingEntreprise(null)
     setLogoPreview(null)
     setLogoFile(null)
+    setAvis(null)
     setShowModal(true)
   }
 
   const handleEdit = (entreprise) => {
-    setFormData({
-      name: entreprise.name,
-      code: entreprise.code,
-      email: entreprise.email || '',
-      phone: entreprise.phone || '',
-      address: entreprise.address || '',
-      sector: entreprise.sector || '',
-      country_code: entreprise.country_code || '',
-      matricule_prefix: entreprise.matricule_prefix || '',
-      primary_color: entreprise.primary_color || '#D4AF37',
-      logo_url: entreprise.logo_url || '',
-      license_type: entreprise.license_type || 'basic',
-
-      // ✅ AUTO-CLOSE
-      auto_close_enabled: entreprise.auto_close_enabled || false,
-      auto_close_time: entreprise.auto_close_time || '23:59',
-      auto_close_grace_minutes: entreprise.auto_close_grace_minutes ?? 0,
-
-      module_qr_scanner: entreprise.module_qr_scanner || false,
-      module_planning: entreprise.module_planning || false,
-      module_retards: entreprise.module_retards || false,
-      module_rapports_avances: entreprise.module_rapports_avances || false,
-      module_modification_pointages: entreprise.module_modification_pointages || false,
-      module_photo_pointage: entreprise.module_photo_pointage || false,
-      module_conges: entreprise.module_conges || false,
-      module_geolocalisation: entreprise.module_geolocalisation || false,
-      module_carte_temps_reel: entreprise.module_carte_temps_reel || false,
-      module_reconnaissance_faciale: entreprise.module_reconnaissance_faciale || false,
-      module_heures_supplementaires: entreprise.module_heures_supplementaires || false,
-      module_espace_employe: entreprise.module_espace_employe || false,
-      module_fiches_paie: entreprise.module_fiches_paie || false,
-      module_taches: entreprise.module_taches || false,
-      module_predictions: entreprise.module_predictions || false,
-      module_pointeuses: entreprise.module_pointeuses || false,
-      module_poste_pointage: entreprise.module_poste_pointage || false,
-      module_remunerations: entreprise.module_remunerations || false,
-      module_cout_salarial: entreprise.module_cout_salarial || false,
-      module_config_fiscale: entreprise.module_config_fiscale || false,
-      module_alertes_telephone: entreprise.module_alertes_telephone || false,
-      module_alertes_courrier: entreprise.module_alertes_courrier || false,
-    })
+    setFormData(depuisEntreprise(entreprise))
     setEditingEntreprise(entreprise)
     setLogoPreview(entreprise.logo_url || null)
     setLogoFile(null)
+    setAvis(null)
     setShowModal(true)
   }
 
   const handleSave = async () => {
     try {
       if (!formData.name) {
-        alert("Le nom de l'entreprise est obligatoire")
+        setAvis({ ton: 'erreur', texte: 'Le nom de l’entreprise est obligatoire.' })
         return
       }
 
@@ -527,39 +345,18 @@ export default function Entreprises() {
         address: formData.address || null,
         sector: formData.sector || null,
         country_code: formData.country_code || null,
-        currency: paysDisponibles.find((x) => x.country_code === formData.country_code)?.currency || null,
+        currency:
+          paysDisponibles.find((x) => x.country_code === formData.country_code)?.currency || null,
         matricule_prefix: formData.matricule_prefix || matricule_prefix,
         primary_color: formData.primary_color || '#D4AF37',
         logo_url: logoUrl || null,
         license_type: formData.license_type,
 
-        // ✅ AUTO-CLOSE
         auto_close_enabled: formData.auto_close_enabled,
         auto_close_time: formData.auto_close_time || '23:59',
         auto_close_grace_minutes: Number(formData.auto_close_grace_minutes || 0),
 
-        module_qr_scanner: formData.module_qr_scanner,
-        module_planning: formData.module_planning,
-        module_retards: formData.module_retards,
-        module_rapports_avances: formData.module_rapports_avances,
-        module_modification_pointages: formData.module_modification_pointages,
-        module_photo_pointage: formData.module_photo_pointage,
-        module_conges: formData.module_conges,
-        module_geolocalisation: formData.module_geolocalisation,
-        module_carte_temps_reel: formData.module_carte_temps_reel,
-        module_reconnaissance_faciale: formData.module_reconnaissance_faciale,
-        module_heures_supplementaires: formData.module_heures_supplementaires,
-        module_espace_employe: formData.module_espace_employe,
-        module_fiches_paie: formData.module_fiches_paie,
-        module_taches: formData.module_taches,
-        module_predictions: formData.module_predictions,
-        module_pointeuses: formData.module_pointeuses,
-        module_poste_pointage: formData.module_poste_pointage,
-        module_remunerations: formData.module_remunerations,
-        module_cout_salarial: formData.module_cout_salarial,
-        module_config_fiscale: formData.module_config_fiscale,
-        module_alertes_telephone: formData.module_alertes_telephone,
-        module_alertes_courrier: formData.module_alertes_courrier,
+        ...Object.fromEntries(MODULES.map((m) => [m.key, Boolean(formData[m.key])])),
       }
 
       let idEntreprise = editingEntreprise ? editingEntreprise.id : null
@@ -594,10 +391,12 @@ export default function Entreprises() {
           formData.country_code,
         )
         if (!res.success) {
-          alert(
-            '⚠️ Entreprise enregistrée, mais la configuration fiscale du pays n’a pas pu '
-            + 'être chargée : ' + res.error,
-          )
+          setAvis({
+            ton: 'erreur',
+            texte:
+              'Entreprise enregistrée, mais la configuration fiscale du pays n’a pas pu être '
+              + 'chargée : ' + res.error,
+          })
         }
       }
 
@@ -607,28 +406,30 @@ export default function Entreprises() {
       loadData()
     } catch (error) {
       console.error('Erreur sauvegarde:', error)
-      alert('Erreur lors de la sauvegarde')
+      setAvis({ ton: 'erreur', texte: 'L’enregistrement a échoué. Réessayez.' })
     }
   }
 
   const handleDelete = async (entreprise) => {
     const employeesCount = entreprise.employees?.[0]?.count || 0
     if (employeesCount > 0) {
-      alert(`Impossible de supprimer : ${employeesCount} employé(s) dans cette entreprise`)
+      setAvis({
+        ton: 'erreur',
+        texte: `Suppression impossible : ${employeesCount} employé${employeesCount > 1 ? 's' : ''} `
+          + `travaille${employeesCount > 1 ? 'nt' : ''} encore dans ${entreprise.name}.`,
+      })
       setShowDeleteConfirm(null)
       return
     }
 
     try {
-      await supabase
-        .from('enterprises')
-        .update({ is_active: false })
-        .eq('id', entreprise.id)
-
+      await supabase.from('enterprises').update({ is_active: false }).eq('id', entreprise.id)
       setShowDeleteConfirm(null)
+      setAvis({ ton: 'succes', texte: `${entreprise.name} a été retirée du registre.` })
       loadData()
     } catch (error) {
       console.error('Erreur suppression:', error)
+      setAvis({ ton: 'erreur', texte: 'La suppression a échoué. Réessayez.' })
     }
   }
 
@@ -638,7 +439,7 @@ export default function Entreprises() {
     setFormData({ ...formData, logo_url: '' })
   }
 
-  const entreprisesFiltrees = entreprises.filter(ent => {
+  const entreprisesFiltrees = entreprises.filter((ent) => {
     const search = searchTerm.toLowerCase()
     return (
       ent.name?.toLowerCase().includes(search) ||
@@ -653,1467 +454,932 @@ export default function Entreprises() {
     setFormData({
       ...formData,
       name,
-      matricule_prefix: editingEntreprise ? formData.matricule_prefix : prefix
+      matricule_prefix: editingEntreprise ? formData.matricule_prefix : prefix,
     })
   }
 
-  const getActiveModulesCount = (ent) => {
-    return modulesConfig.filter(m => ent[m.key]).length
-  }
+  const paysChoisi = paysDisponibles.find((x) => x.country_code === formData.country_code)
+  const sansBareme =
+    paysChoisi && (!paysChoisi.default_tax_brackets || paysChoisi.default_tax_brackets.length === 0)
 
-  const getLicenseBadge = (type) => {
-    switch (type) {
-      case 'enterprise':
-        return { label: 'Enterprise', color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' }
-      case 'premium':
-        return { label: 'Premium', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' }
-      default:
-        return { label: 'Basic', color: '#10B981', bg: 'rgba(16,185,129,0.12)' }
-    }
-  }
-
-  const formatGrace = (minutes) => {
-    const value = Number(minutes || 0)
-    if (value <= 0) return 'Aucune tolérance'
-    return `${value} min de tolérance`
-  }
+  const totalEmployes = entreprises.reduce((s, e) => s + (e.employees?.[0]?.count || 0), 0)
+  const totalPointages = entreprises.reduce((s, e) => s + (e.attendances?.[0]?.count || 0), 0)
+  const totalModules = entreprises.reduce((s, e) => s + modulesActifs(e), 0)
 
   if (loading) {
     return (
-      <>
-        <style>{`
-          @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-          }
-          @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-          }
-          @keyframes pulseRing {
-            0% { transform: scale(0.95); opacity: 0.6; }
-            70% { transform: scale(1.08); opacity: 0; }
-            100% { transform: scale(1.08); opacity: 0; }
-          }
-        `}</style>
-        <div style={styles.loadingContainer}>
-          <div style={styles.loadingIconWrap}>
-            <div style={styles.loadingPulseRing}></div>
-            <div style={styles.loadingPulse}>
-              <Building2 size={50} color="#F59E0B" />
-            </div>
-          </div>
-          <p style={styles.loadingText}>Chargement des entreprises...</p>
-          <div style={styles.loadingBar}>
-            <div style={styles.loadingBarFill}></div>
-          </div>
+      <div className={`en-page en-chargement ${darkMode ? 'en-dark' : ''}`}>
+        <div className="en-chargement-cadre">
+          <KorhogoBlasonSvg size={52} />
         </div>
-      </>
+        <p>On déroule la toile…</p>
+        <div className="en-chargement-points" aria-hidden="true">
+          <i /><i /><i />
+        </div>
+      </div>
     )
   }
 
   return (
-    <>
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(24px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(50px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
-        @keyframes expandIn {
-          from { opacity: 0; max-height: 0; }
-          to { opacity: 1; max-height: 700px; }
-        }
-        .afro-ent-card {
-          transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        }
-        .afro-ent-card:hover {
-          transform: translateY(-4px) !important;
-          box-shadow: 0 16px 50px rgba(0,0,0,0.4) !important;
-          border-color: rgba(245, 158, 11, 0.25) !important;
-        }
-        .afro-action-icon {
-          transition: all 0.2s ease !important;
-        }
-        .afro-action-icon:hover {
-          transform: scale(1.15) !important;
-          box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3) !important;
-        }
-        .afro-add-btn:hover {
-          transform: translateY(-2px) !important;
-          box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4) !important;
-        }
-        .afro-search:focus-within {
-          border-color: rgba(245, 158, 11, 0.5) !important;
-          box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1) !important;
-        }
-        .afro-back-btn:hover {
-          background: rgba(245, 158, 11, 0.2) !important;
-          border-color: rgba(245, 158, 11, 0.4) !important;
-        }
-        .afro-modal-overlay {
-          animation: fadeIn 0.3s ease;
-        }
-        .afro-modal-content {
-          animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .afro-module-toggle {
-          transition: all 0.2s ease !important;
-        }
-        .afro-module-toggle:hover {
-          background: rgba(245, 158, 11, 0.06) !important;
-          border-color: rgba(245, 158, 11, 0.3) !important;
-        }
-        .expand-section {
-          animation: expandIn 0.3s ease forwards;
-          overflow: hidden;
-        }
-        @media (max-width: 768px) {
-          .desktop-only { display: none !important; }
-          .mobile-stack { flex-direction: column !important; }
-          .mobile-full { width: 100% !important; }
-        }
-        @media (min-width: 769px) {
-          .mobile-only { display: none !important; }
-        }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0A0A0F; }
-        ::-webkit-scrollbar-thumb { background: #F59E0B; border-radius: 3px; }
-        select option { background: #141423; color: #E5E5E5; }
-      `}</style>
+    <main className={`en-page ${darkMode ? 'en-dark' : ''}`}>
+      <PageCulturalBand pathname="/entreprises" />
+      <div className="en-bordure" aria-hidden="true" />
 
-      <div style={styles.container}>
-        <div style={styles.bgPattern}></div>
-        <div style={styles.bgOrb1}></div>
-        <div style={styles.bgOrb2}></div>
-
-        <header style={styles.header}>
-          <div style={styles.headerInner}>
-            <div style={styles.headerLeft}>
-              <button className="afro-back-btn" onClick={() => navigate('/dashboard')} style={styles.backBtn}>
-                <ArrowLeft size={20} />
-              </button>
-              <div style={styles.logoMark}>
-                <Building2 size={22} color="#F59E0B" />
-              </div>
-              <div>
-                <h1 style={styles.headerTitle}>ENTREPRISES</h1>
-                <span style={styles.headerSub}>Gestion des organisations</span>
-              </div>
+      <div className="en-shell">
+        <header className="en-entete">
+          <div className="en-titre-bloc">
+            <KorhogoBlasonSvg size={54} />
+            <div>
+              <span className="en-eyebrow">Le registre des maisons</span>
+              <h1 className="en-titre">
+                Entreprises<span>.</span>
+              </h1>
+              <p className="en-sous-titre">
+                Chaque cadre porte une maison : ses gens, ses pointages, ses modules.
+              </p>
             </div>
-            <button className="afro-add-btn" onClick={handleAdd} style={styles.addBtnHeader}>
-              <Plus size={18} />
-              <span className="desktop-only">Nouvelle entreprise</span>
-              <span className="mobile-only" style={{ display: 'none' }}>Créer</span>
+          </div>
+
+          <div className="en-entete-actions">
+            <button
+              type="button"
+              className="en-bascule"
+              role="switch"
+              aria-checked={darkMode}
+              onClick={toggleTheme}
+              aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
+              title={darkMode ? 'Thème clair' : 'Thème sombre'}
+            >
+              {darkMode ? <Moon size={14} /> : <Sun size={14} />}
+            </button>
+            <button type="button" className="en-bouton-creux" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft size={14} />
+              Tableau de bord
+            </button>
+            <button type="button" className="en-bouton" onClick={handleAdd}>
+              <Plus size={15} />
+              Nouvelle entreprise
             </button>
           </div>
         </header>
 
-        <main style={styles.main}>
-          <div style={styles.summaryStrip}>
-            <div style={styles.summaryCard}>
-              <div style={{ ...styles.summaryIcon, background: 'rgba(245, 158, 11, 0.12)' }}>
-                <Building2 size={20} color="#F59E0B" />
-              </div>
-              <div style={styles.summaryInfo}>
-                <span style={styles.summaryNumber}>{entreprises.length}</span>
-                <span style={styles.summaryLabel}>Entreprises</span>
-              </div>
-            </div>
-            <div style={styles.summaryDivider}></div>
-            <div style={styles.summaryCard}>
-              <div style={{ ...styles.summaryIcon, background: 'rgba(16, 185, 129, 0.12)' }}>
-                <Users size={20} color="#10B981" />
-              </div>
-              <div style={styles.summaryInfo}>
-                <span style={styles.summaryNumber}>
-                  {entreprises.reduce((sum, e) => sum + (e.employees?.[0]?.count || 0), 0)}
-                </span>
-                <span style={styles.summaryLabel}>Employés</span>
-              </div>
-            </div>
-            <div style={styles.summaryDivider}></div>
-            <div style={styles.summaryCard}>
-              <div style={{ ...styles.summaryIcon, background: 'rgba(99, 102, 241, 0.12)' }}>
-                <Activity size={20} color="#6366F1" />
-              </div>
-              <div style={styles.summaryInfo}>
-                <span style={styles.summaryNumber}>
-                  {entreprises.reduce((sum, e) => sum + (e.attendances?.[0]?.count || 0), 0)}
-                </span>
-                <span style={styles.summaryLabel}>Pointages</span>
-              </div>
-            </div>
-          </div>
+        <div className="en-raccourcis">
+          <span className="en-raccourcis-libelle">Aller à</span>
+          <RaccourcisPages compact excludePaths={['/entreprises']} />
+        </div>
 
-          <div style={styles.toolbar}>
-            <div className="afro-search" style={styles.searchContainer}>
-              <Search size={18} color="#666" />
-              <input
-                type="text"
-                placeholder="Rechercher par nom, code, secteur..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={styles.searchInput}
-              />
-              {searchTerm && (
-                <button onClick={() => setSearchTerm('')} style={styles.clearSearch}>
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-            <div style={styles.resultCount}>
-              <span style={styles.resultNumber}>{entreprisesFiltrees.length}</span>
-              <span style={styles.resultText}>résultat{entreprisesFiltrees.length > 1 ? 's' : ''}</span>
-            </div>
-          </div>
+        <div className="en-corps">
+          <div className="en-colonne">
+            {avis && (
+              <p className="en-avis" role="status" data-ton={avis.ton}>
+                {avis.ton === 'succes' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                <span>{avis.texte}</span>
+              </p>
+            )}
 
-          <div style={styles.list}>
-            {entreprisesFiltrees.length === 0 ? (
-              <div style={styles.empty}>
-                <div style={styles.emptyIcon}>
-                  <Building2 size={48} color="#F59E0B" />
-                </div>
-                <h3 style={styles.emptyTitle}>Aucune entreprise trouvée</h3>
-                <p style={styles.emptySubtitle}>
-                  {searchTerm ? 'Modifiez votre recherche' : 'Commencez par créer votre première entreprise'}
-                </p>
-                {!searchTerm && (
-                  <button onClick={handleAdd} className="afro-add-btn" style={styles.emptyAddBtn}>
-                    <Plus size={18} /> Créer une entreprise
+            <div className="en-outils">
+              <div className="en-recherche">
+                <Search size={16} />
+                <input
+                  type="text"
+                  placeholder="Nom, code, secteur, email…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  aria-label="Rechercher une entreprise"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    className="en-effacer"
+                    onClick={() => setSearchTerm('')}
+                    aria-label="Effacer la recherche"
+                  >
+                    <X size={13} />
                   </button>
                 )}
               </div>
-            ) : (
-              entreprisesFiltrees.map((entreprise, index) => {
-                const license = getLicenseBadge(entreprise.license_type)
-                const activeModules = getActiveModulesCount(entreprise)
-                const isExpanded = expandedCard === entreprise.id
-
-                return (
-                  <div
-                    key={entreprise.id}
-                    className="afro-ent-card"
-                    style={{
-                      ...styles.entCard,
-                      animation: `fadeInUp 0.4s ease ${index * 0.06}s forwards`,
-                      opacity: 0,
-                    }}
-                  >
-                    <div
-                      style={{
-                        ...styles.cardGlowLine,
-                        background: `linear-gradient(90deg, transparent, ${entreprise.primary_color || '#F59E0B'}66, transparent)`,
-                      }}
-                    ></div>
-
-                    <div style={styles.cardMainRow}>
-                      <div
-                        style={{
-                          ...styles.entLogo,
-                          borderColor: `${entreprise.primary_color || '#F59E0B'}40`,
-                        }}
-                      >
-                        {entreprise.logo_url ? (
-                          <img src={entreprise.logo_url} alt="" style={styles.entLogoImg} />
-                        ) : (
-                          <Building2 size={24} color={entreprise.primary_color || '#F59E0B'} />
-                        )}
-                      </div>
-
-                      <div style={styles.entInfo}>
-                        <div style={styles.entNameRow}>
-                          <span style={styles.entName}>{entreprise.name}</span>
-                          <span
-                            style={{
-                              ...styles.licenseBadge,
-                              color: license.color,
-                              background: license.bg,
-                              borderColor: `${license.color}30`,
-                            }}
-                          >
-                            <CreditCard size={10} />
-                            {license.label}
-                          </span>
-                        </div>
-
-                        <div style={styles.entMetaRow}>
-                          {entreprise.sector && (
-                            <span style={styles.entMeta}>
-                              <Globe size={11} />
-                              {entreprise.sector}
-                            </span>
-                          )}
-                          <span style={styles.entMeta}>
-                            <Hash size={11} />
-                            {entreprise.code}
-                          </span>
-                          <span style={styles.entMeta}>
-                            <Hash size={11} />
-                            {entreprise.matricule_prefix || '---'}
-                          </span>
-                        </div>
-
-                        {entreprise.email && (
-                          <span style={styles.entEmail}>
-                            <Mail size={11} /> {entreprise.email}
-                          </span>
-                        )}
-
-                        <div style={styles.modulesChips}>
-                          {activeModules > 0 ? (
-                            <span style={styles.modulesCountBadge}>
-                              <Zap size={10} />
-                              {activeModules} module{activeModules > 1 ? 's' : ''} actif{activeModules > 1 ? 's' : ''}
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                ...styles.modulesCountBadge,
-                                color: '#666',
-                                background: 'rgba(255,255,255,0.03)',
-                                borderColor: 'rgba(255,255,255,0.06)',
-                              }}
-                            >
-                              Aucun module
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div style={styles.entStats}>
-                        <div style={styles.entStatItem}>
-                          <Users size={14} color="#10B981" />
-                          <span style={styles.entStatNumber}>{entreprise.employees?.[0]?.count || 0}</span>
-                          <span style={styles.entStatLabel}>Empl.</span>
-                        </div>
-                        <div style={styles.entStatItem}>
-                          <Clock size={14} color="#6366F1" />
-                          <span style={styles.entStatNumber}>{entreprise.attendances?.[0]?.count || 0}</span>
-                          <span style={styles.entStatLabel}>Point.</span>
-                        </div>
-                      </div>
-
-                      <div style={styles.entActions}>
-                        <button
-                          className="afro-action-icon"
-                          onClick={() => setExpandedCard(isExpanded ? null : entreprise.id)}
-                          style={{
-                            ...styles.entActionBtn,
-                            background: isExpanded ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255,255,255,0.04)',
-                            color: isExpanded ? '#F59E0B' : '#888',
-                          }}
-                          title="Détails"
-                        >
-                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                        </button>
-                        <button
-                          className="afro-action-icon"
-                          onClick={() => navigate(`/admins?enterprise=${entreprise.id}`)}
-                          style={{ ...styles.entActionBtn, color: '#10B981' }}
-                          title="Gérer les admins"
-                        >
-                          <Shield size={16} />
-                        </button>
-                        <button
-                          className="afro-action-icon"
-                          onClick={() => handleEdit(entreprise)}
-                          style={{ ...styles.entActionBtn, color: '#6366F1' }}
-                          title="Modifier"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          className="afro-action-icon"
-                          onClick={() => setShowDeleteConfirm(entreprise)}
-                          style={{ ...styles.entActionBtn, ...styles.entDeleteBtn }}
-                          title="Supprimer"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="expand-section" style={styles.expandedSection}>
-                        <div style={styles.expandDivider}></div>
-
-                        <div style={styles.expandGrid}>
-                          <div style={styles.expandBlock}>
-                            <h4 style={styles.expandBlockTitle}>
-                              <Mail size={14} color="#F59E0B" /> Contact
-                            </h4>
-                            <div style={styles.expandDetail}>
-                              <span style={styles.expandLabel}>Email</span>
-                              <span style={styles.expandValue}>{entreprise.email || '—'}</span>
-                            </div>
-                            <div style={styles.expandDetail}>
-                              <span style={styles.expandLabel}>Téléphone</span>
-                              <span style={styles.expandValue}>{entreprise.phone || '—'}</span>
-                            </div>
-                            <div style={styles.expandDetail}>
-                              <span style={styles.expandLabel}>Adresse</span>
-                              <span style={styles.expandValue}>{entreprise.address || '—'}</span>
-                            </div>
-                          </div>
-
-                          <div style={styles.expandBlock}>
-                            <h4 style={styles.expandBlockTitle}>
-                              <Timer size={14} color="#F59E0B" /> Auto-Close
-                            </h4>
-                            <div style={styles.expandDetail}>
-                              <span style={styles.expandLabel}>Statut</span>
-                              <span style={styles.expandValue}>
-                                {entreprise.auto_close_enabled ? 'Activé' : 'Désactivé'}
-                              </span>
-                            </div>
-                            <div style={styles.expandDetail}>
-                              <span style={styles.expandLabel}>Heure</span>
-                              <span style={styles.expandValue}>
-                                {entreprise.auto_close_time || '23:59'}
-                              </span>
-                            </div>
-                            <div style={styles.expandDetail}>
-                              <span style={styles.expandLabel}>Tolérance</span>
-                              <span style={styles.expandValue}>
-                                {formatGrace(entreprise.auto_close_grace_minutes)}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div style={styles.expandBlock}>
-                            <h4 style={styles.expandBlockTitle}>
-                              <Zap size={14} color="#F59E0B" /> Modules
-                            </h4>
-                            <div style={styles.expandModulesGrid}>
-                              {modulesConfig.map(mod => (
-                                <div key={mod.key} style={styles.expandModuleItem}>
-                                  {entreprise[mod.key] ? (
-                                    <CheckCircle2 size={14} color="#10B981" />
-                                  ) : (
-                                    <XCircle size={14} color="#444" />
-                                  )}
-                                  <span
-                                    style={{
-                                      ...styles.expandModuleName,
-                                      color: entreprise[mod.key] ? '#E5E5E5' : '#555',
-                                    }}
-                                  >
-                                    {mod.name}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={styles.colorPreviewRow}>
-                          <span style={styles.expandLabel}>Couleur badge</span>
-                          <div
-                            style={{
-                              width: '24px',
-                              height: '24px',
-                              borderRadius: '6px',
-                              background: entreprise.primary_color || '#D4AF37',
-                              border: '2px solid rgba(255,255,255,0.1)',
-                            }}
-                          ></div>
-                          <span style={{ ...styles.expandValue, fontFamily: 'monospace', fontSize: '12px' }}>
-                            {entreprise.primary_color || '#D4AF37'}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })
-            )}
-          </div>
-
-          <div style={styles.footer}>
-            <div style={styles.footerLine}></div>
-            <p style={styles.footerText}>
-              <Footprints size={14} color="#F59E0B" />
-              EN-CHECK • Gestion des Entreprises
-            </p>
-          </div>
-        </main>
-
-        {showDeleteConfirm && (
-          <div className="afro-modal-overlay" style={styles.modalOverlay}>
-            <div className="afro-modal-content" style={styles.confirmModal}>
-              <div style={styles.modalIconWrap}>
-                <AlertTriangle size={28} color="#EF4444" />
-              </div>
-              <h3 style={styles.confirmTitle}>Supprimer cette entreprise ?</h3>
-              <p style={styles.confirmText}>
-                <strong style={{ color: '#F59E0B' }}>{showDeleteConfirm.name}</strong>
-                <br />
-                {(showDeleteConfirm.employees?.[0]?.count || 0) > 0
-                  ? `⚠️ ${showDeleteConfirm.employees[0].count} employé(s) — suppression impossible`
-                  : 'Cette action est irréversible.'}
-              </p>
-              <div style={styles.confirmBtns}>
-                <button onClick={() => setShowDeleteConfirm(null)} style={styles.modalCancelBtn}>Annuler</button>
-                <button
-                  onClick={() => handleDelete(showDeleteConfirm)}
-                  style={{
-                    ...styles.modalDeleteBtn,
-                    opacity: (showDeleteConfirm.employees?.[0]?.count || 0) > 0 ? 0.4 : 1,
-                    pointerEvents: (showDeleteConfirm.employees?.[0]?.count || 0) > 0 ? 'none' : 'auto',
-                  }}
-                >
-                  <Trash2 size={16} /> Supprimer
-                </button>
+              <div className="en-compteur">
+                <strong>{entreprisesFiltrees.length}</strong>
+                <span>
+                  {searchTerm ? `sur ${entreprises.length} ` : ''}
+                  {entreprisesFiltrees.length > 1 ? 'maisons' : 'maison'}
+                </span>
               </div>
             </div>
-          </div>
-        )}
 
-        {showModal && (
-          <div className="afro-modal-overlay" style={styles.modalOverlay}>
-            <div className="afro-modal-content" style={styles.formModal}>
-              <div style={styles.formModalHeader}>
-                <div style={styles.formModalTitleWrap}>
-                  <div
-                    style={{
-                      ...styles.formModalIcon,
-                      background: editingEntreprise ? 'rgba(99,102,241,0.12)' : 'rgba(245,158,11,0.12)'
-                    }}
-                  >
-                    {editingEntreprise
-                      ? <Edit size={20} color="#6366F1" />
-                      : <Building2 size={20} color="#F59E0B" />}
-                  </div>
-                  <div>
-                    <h2 style={styles.formModalTitle}>
-                      {editingEntreprise ? "Modifier l'entreprise" : 'Nouvelle entreprise'}
-                    </h2>
-                    <span style={styles.formModalSub}>
-                      {editingEntreprise ? `Modification de ${editingEntreprise.name}` : 'Remplissez les informations'}
-                    </span>
-                  </div>
-                </div>
-                <button onClick={() => setShowModal(false)} style={styles.formCloseBtn}>
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div style={styles.formModalBody}>
-                <div style={styles.logoUploadSection}>
-                  <div style={styles.logoUploadBox} onClick={() => fileInputRef.current?.click()}>
-                    {logoPreview ? (
-                      <img src={logoPreview} alt="Preview" style={styles.logoUploadImg} />
-                    ) : (
-                      <div style={styles.logoUploadPlaceholder}>
-                        <Camera size={28} color="#F59E0B" />
-                        <span style={styles.logoUploadText}>Logo</span>
-                      </div>
-                    )}
-                    <div style={styles.logoUploadOverlay}>
-                      <Upload size={16} color="#FFF" />
-                    </div>
-                  </div>
-                  {logoPreview && (
-                    <button onClick={handleRemoveLogo} style={styles.logoRemoveBtn}>
-                      <X size={14} /> Retirer
+            <div className="en-liste">
+              {entreprisesFiltrees.length === 0 ? (
+                <div className="en-vide">
+                  <KorhogoBlasonSvg size={46} />
+                  <h3>{searchTerm ? 'Aucune maison dans ce cadre' : 'La toile est encore vide'}</h3>
+                  <p>
+                    {searchTerm
+                      ? 'Aucun nom, code, secteur ou email ne correspond à cette recherche.'
+                      : 'Créez votre première entreprise : elle recevra son code, son préfixe de matricules et son pays fiscal.'}
+                  </p>
+                  {searchTerm ? (
+                    <button type="button" className="en-bouton-creux" onClick={() => setSearchTerm('')}>
+                      <X size={14} />
+                      Effacer la recherche
+                    </button>
+                  ) : (
+                    <button type="button" className="en-bouton" onClick={handleAdd}>
+                      <Plus size={15} />
+                      Créer une entreprise
                     </button>
                   )}
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoSelect} style={{ display: 'none' }} />
                 </div>
-
-                <div style={styles.formField}>
-                  <label style={styles.formLabel}>
-                    <Building2 size={14} /> Nom de l'entreprise *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    style={styles.formInput}
-                    placeholder="Ex: TechSenegal"
+              ) : (
+                entreprisesFiltrees.map((entreprise) => (
+                  <CarteEntreprise
+                    key={entreprise.id}
+                    entreprise={entreprise}
+                    ouverte={expandedCard === entreprise.id}
+                    peutSupprimer={admin?.role === 'super_admin'}
+                    onBasculer={() =>
+                      setExpandedCard(expandedCard === entreprise.id ? null : entreprise.id)
+                    }
+                    onAdmins={() => navigate(`/admins?enterprise=${entreprise.id}`)}
+                    onModifier={() => handleEdit(entreprise)}
+                    onSupprimer={() => setShowDeleteConfirm(entreprise)}
                   />
-                </div>
+                ))
+              )}
+            </div>
+          </div>
 
-                <div style={styles.formField}>
-                  <label style={styles.formLabel}>
-                    <Palette size={14} /> Couleur du badge
-                  </label>
-                  <div style={styles.colorPickerRow}>
-                    <input
-                      type="color"
-                      value={formData.primary_color}
-                      onChange={(e) => setFormData({ ...formData, primary_color: e.target.value })}
-                      style={styles.colorInput}
-                    />
-                    <span style={styles.colorValue}>{formData.primary_color}</span>
-                    <div
-                      style={{
-                        flex: 1,
-                        height: '32px',
-                        borderRadius: '8px',
-                        background: `linear-gradient(135deg, ${formData.primary_color}, ${formData.primary_color}88)`,
-                        border: '1px solid rgba(255,255,255,0.1)',
-                      }}
-                    ></div>
-                  </div>
-                </div>
+          <aside className="en-colonne" aria-label="Chiffres du registre">
+            <section className="en-panneau en-panneau--mesures">
+              <h2 className="en-panneau-titre">
+                <Zap size={12} />
+                Sur la toile
+              </h2>
+              <div className="en-mesure">
+                <span>Maisons</span>
+                <b>{entreprises.length}</b>
+              </div>
+              <div className="en-mesure">
+                <span>Employés</span>
+                <b>{totalEmployes}</b>
+              </div>
+              <div className="en-mesure">
+                <span>Pointages</span>
+                <b>{totalPointages}</b>
+              </div>
+            </section>
 
-                {/* ✅ CONFIG AUTO-CLOSE */}
-                <div style={styles.autoCloseSection}>
-                  <div style={styles.modulesSectionHeader}>
-                    <Timer size={18} color="#F59E0B" />
-                    <h3 style={styles.modulesSectionTitle}>Configuration Auto-Close</h3>
-                  </div>
-
-                  <div style={styles.formField}>
-                    <label style={styles.autoCloseToggleRow}>
-                      <div style={styles.autoCloseToggleLeft}>
-                        <div style={styles.autoCloseToggleIcon}>
-                          <ToggleLeft size={18} color={formData.auto_close_enabled ? '#10B981' : '#888'} />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={styles.moduleToggleName}>Activer la fermeture automatique</span>
-                          <span style={styles.moduleToggleDesc}>
-                            Ferme automatiquement les pointages ouverts à l'heure définie
-                          </span>
-                        </div>
-                      </div>
-                      <div style={styles.toggleSwitch}>
-                        <input
-                          type="checkbox"
-                          checked={formData.auto_close_enabled}
-                          onChange={(e) => setFormData({ ...formData, auto_close_enabled: e.target.checked })}
-                          style={styles.toggleInput}
-                        />
-                        <div
-                          style={{
-                            ...styles.toggleTrack,
-                            background: formData.auto_close_enabled ? '#10B981' : 'rgba(255,255,255,0.1)',
-                          }}
-                        >
-                          <div
-                            style={{
-                              ...styles.toggleThumb,
-                              transform: formData.auto_close_enabled ? 'translateX(18px)' : 'translateX(2px)',
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-
-                  <div style={styles.formRow}>
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}>
-                        <Clock size={14} /> Heure auto-close
-                      </label>
-                      <input
-                        type="time"
-                        value={formData.auto_close_time}
-                        onChange={(e) => setFormData({ ...formData, auto_close_time: e.target.value })}
-                        style={styles.formInput}
-                        disabled={!formData.auto_close_enabled}
-                      />
-                    </div>
-
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}>
-                        <Timer size={14} /> Tolérance (minutes)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="300"
-                        value={formData.auto_close_grace_minutes}
-                        onChange={(e) => setFormData({ ...formData, auto_close_grace_minutes: e.target.value })}
-                        style={styles.formInput}
-                        placeholder="0"
-                        disabled={!formData.auto_close_enabled}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={styles.formHintBox}>
-                    <span style={styles.formHintStrong}>Aperçu :</span>
-                    <span style={styles.formHintText}>
-                      {formData.auto_close_enabled
-                        ? ` Auto-close à ${formData.auto_close_time || '23:59'}${Number(formData.auto_close_grace_minutes || 0) > 0 ? ` avec ${formData.auto_close_grace_minutes} min de tolérance` : ''}.`
-                        : ' Auto-close désactivé pour cette entreprise.'}
-                    </span>
-                  </div>
-                </div>
-
-                <div style={styles.modulesFormSection}>
-                  <div style={styles.modulesSectionHeader}>
-                    <Shield size={18} color="#F59E0B" />
-                    <h3 style={styles.modulesSectionTitle}>Modules & Licence</h3>
-                  </div>
-
-                  <div style={styles.formField}>
-                    <label style={styles.formLabel}>
-                      <CreditCard size={14} /> Type de licence
-                    </label>
-                    <select
-                      value={formData.license_type}
-                      onChange={(e) => setFormData({ ...formData, license_type: e.target.value })}
-                      style={styles.formSelect}
-                    >
-                      <option value="basic">🟢 Basic (Gratuit)</option>
-                      <option value="premium">🟡 Premium</option>
-                      <option value="enterprise">🟣 Enterprise</option>
-                    </select>
-                  </div>
-
-                  <div style={styles.moduleTogglesGrid}>
-                    {modulesConfig.map((mod, rang) => (
-                      <Fragment key={mod.key}>
-                      {(rang === 0 || modulesConfig[rang - 1].groupe !== mod.groupe) && (
-                        <div style={styles.groupeOptions}>
-                          <span>{mod.groupe}</span>
-                          <span style={styles.groupeOptionsCompte}>
-                            {modulesConfig.filter(m => m.groupe === mod.groupe && formData[m.key]).length}
-                            {' sur '}
-                            {modulesConfig.filter(m => m.groupe === mod.groupe).length}
-                          </span>
-                        </div>
-                      )}
-                      <label
-                        className="afro-module-toggle"
-                        style={{
-                          ...styles.moduleToggle,
-                          borderColor: formData[mod.key] ? `${mod.color}40` : 'rgba(255,255,255,0.06)',
-                          background: formData[mod.key] ? `${mod.color}08` : 'transparent',
-                        }}
-                      >
-                        <div style={{ ...styles.moduleToggleIcon, background: `${mod.color}15`, color: mod.color }}>
-                          {mod.icon}
-                        </div>
-                        <div style={styles.moduleToggleInfo}>
-                          <span style={styles.moduleToggleName}>{mod.name}</span>
-                          <span style={styles.moduleToggleDesc}>{mod.desc}</span>
-                        </div>
-                        <div style={styles.toggleSwitch}>
-                          <input
-                            type="checkbox"
-                            checked={formData[mod.key]}
-                            onChange={(e) => setFormData({ ...formData, [mod.key]: e.target.checked })}
-                            style={styles.toggleInput}
-                          />
-                          <div
-                            style={{
-                              ...styles.toggleTrack,
-                              background: formData[mod.key] ? mod.color : 'rgba(255,255,255,0.1)',
-                            }}
-                          >
-                            <div
-                              style={{
-                                ...styles.toggleThumb,
-                                transform: formData[mod.key] ? 'translateX(18px)' : 'translateX(2px)',
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      </label>
-                      </Fragment>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={styles.formField}>
-                  <label style={styles.formLabel}>
-                    <Globe size={14} /> Domaine / Secteur
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.sector}
-                    onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
-                    style={styles.formInput}
-                    placeholder="Ex: Banque, BTP, Santé..."
-                  />
-                </div>
-
-                {/* ⭐ LE PAYS, DÈS LA CRÉATION.
-                    Sans lui, l'entreprise n'a ni barème ni cotisations : son
-                    impôt sort à zéro et rien ne le signale. Le pays choisi
-                    charge sa configuration fiscale à la sauvegarde. */}
-                <div style={styles.formField}>
-                  <label style={styles.formLabel}>
-                    <Globe size={14} /> Pays (fiscalité)
-                  </label>
-                  <select
-                    value={formData.country_code}
-                    onChange={(e) => setFormData({ ...formData, country_code: e.target.value })}
-                    style={styles.formInput}
-                  >
-                    <option value="">— Aucun pays (impôt non calculé) —</option>
-                    {paysDisponibles.map((p) => (
-                      <option key={p.country_code} value={p.country_code}>
-                        {p.country_name || p.country_code}
-                        {(!p.default_tax_brackets || p.default_tax_brackets.length === 0)
-                          ? '  ⚠️ sans barème' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {formData.country_code && (
-                    <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
-                      {(() => {
-                        const pays = paysDisponibles.find((x) => x.country_code === formData.country_code)
-                        if (!pays) return ''
-                        if (!pays.default_tax_brackets || pays.default_tax_brackets.length === 0) {
-                          return '⚠️ Ce pays n’a pas de barème d’impôt dans le référentiel : ' +
-                                 'les salariés paieront ZÉRO impôt jusqu’à ce qu’on le renseigne.'
-                        }
-                        return 'Sa configuration fiscale (barème et cotisations) sera chargée ' +
-                               'automatiquement à la sauvegarde.'
-                      })()}
-                    </div>
-                  )}
-                </div>
-
-                <div style={styles.formField}>
-                  <label style={styles.formLabel}>
-                    <Hash size={14} /> Préfixe matricules
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.matricule_prefix}
-                    onChange={(e) => setFormData({ ...formData, matricule_prefix: e.target.value.toUpperCase().slice(0, 5) })}
-                    style={styles.formInput}
-                    placeholder="Ex: TS"
-                    maxLength={5}
-                  />
-                  <span style={styles.formHint}>
-                    Format : {formData.matricule_prefix || 'XXX'}-0001, {formData.matricule_prefix || 'XXX'}-0002...
+            <section className="en-panneau">
+              <h2 className="en-panneau-titre">
+                <Shield size={12} />
+                Les licences
+              </h2>
+              {Object.entries(LICENCES).map(([cle, { label, detail }]) => (
+                <div className="en-mesure" key={cle}>
+                  <span>
+                    {label} <em style={{ fontStyle: 'normal' }}>· {detail}</em>
                   </span>
+                  <b style={{ fontSize: 13 }}>
+                    {entreprises.filter((e) => (e.license_type || 'basic') === cle).length}
+                  </b>
                 </div>
+              ))}
+              <details className="en-note-pli">
+                <summary>{totalModules} modules allumés</summary>
+                <p>
+                  Chaque module coché dans une fiche est facturé à cette maison. Les six groupes
+                  sont : le pointage, la sécurité, l’organisation, la paie, les alertes et les
+                  rapports.
+                </p>
+              </details>
+            </section>
 
-                <div style={styles.formRow}>
-                  <div style={styles.formField}>
-                    <label style={styles.formLabel}><Mail size={14} /> Email</label>
+            <section className="en-panneau">
+              <h2 className="en-panneau-titre">
+                <Globe size={12} />
+                Le pays d’abord
+              </h2>
+              <p className="en-note">
+                Une entreprise sans pays n’a ni barème ni cotisations : son impôt sort à zéro sans
+                que rien ne le signale. Le pays choisi charge sa configuration fiscale dès
+                l’enregistrement.
+              </p>
+              <details className="en-note-pli">
+                <summary>Ce qui est chargé</summary>
+                <p>
+                  Les tranches d’impôt du référentiel et les cotisations sociales du pays. Une
+                  configuration réglée à la main n’est jamais écrasée tant que le pays ne change
+                  pas.
+                </p>
+              </details>
+            </section>
+          </aside>
+        </div>
+      </div>
+
+      {/* le fil de clôture, comme sur les autres pages */}
+      <div className="en-pied">
+        <PageCulturalBand pathname="/entreprises" placement="bottom" />
+      </div>
+
+      {showDeleteConfirm && (
+        <div className="en-voile" role="presentation" onClick={() => setShowDeleteConfirm(null)}>
+          <div
+            className="en-carton en-carton--etroit"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="en-confirme-titre"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="en-carton-tete">
+              <AlertTriangle size={18} color="var(--en-alerte)" />
+              <div>
+                <h2 id="en-confirme-titre">Retirer cette maison ?</h2>
+                <p>Elle quittera le registre, ses données restent.</p>
+              </div>
+              <button
+                type="button"
+                className="en-carton-fermer"
+                onClick={() => setShowDeleteConfirm(null)}
+                aria-label="Fermer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="en-carton-corps">
+              <div className="en-confirmation">
+                <Trash2 size={16} color="var(--en-alerte)" />
+                <p>
+                  <strong>{showDeleteConfirm.name}</strong>
+                  <br />
+                  {(showDeleteConfirm.employees?.[0]?.count || 0) > 0 ? (
+                    <em>
+                      {showDeleteConfirm.employees[0].count} employé
+                      {showDeleteConfirm.employees[0].count > 1 ? 's' : ''} encore rattaché
+                      {showDeleteConfirm.employees[0].count > 1 ? 's' : ''} — la suppression est
+                      impossible.
+                    </em>
+                  ) : (
+                    <em>Cette action ne peut pas être annulée depuis cet écran.</em>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="en-carton-pied">
+              <button
+                type="button"
+                className="en-bouton-creux"
+                onClick={() => setShowDeleteConfirm(null)}
+              >
+                Garder
+              </button>
+              <button
+                type="button"
+                className="en-bouton-danger"
+                onClick={() => handleDelete(showDeleteConfirm)}
+                disabled={(showDeleteConfirm.employees?.[0]?.count || 0) > 0}
+              >
+                <Trash2 size={14} />
+                Retirer du registre
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showModal && (
+        <div className="en-voile" role="presentation">
+          <div
+            className="en-carton"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="en-form-titre"
+          >
+            <div className="en-carton-tete">
+              <KorhogoBlasonSvg size={34} />
+              <div>
+                <h2 id="en-form-titre">
+                  {editingEntreprise ? 'Peindre la fiche' : 'Une nouvelle maison'}
+                </h2>
+                <p>
+                  {editingEntreprise
+                    ? `Modification de ${editingEntreprise.name}`
+                    : 'Nom, pays et licence suffisent pour commencer.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="en-carton-fermer"
+                onClick={() => setShowModal(false)}
+                aria-label="Fermer le formulaire"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="en-carton-corps">
+              {avis && (
+                <p className="en-avis" role="alert" data-ton={avis.ton}>
+                  <AlertTriangle size={14} />
+                  <span>{avis.texte}</span>
+                </p>
+              )}
+
+              {/* — 1. L'identité — */}
+              <fieldset className="en-section">
+                <legend>
+                  <Building2 size={11} />
+                  L’identité
+                </legend>
+
+                <div className="en-champs">
+                  <div className="en-logo-champ">
+                    <button
+                      type="button"
+                      className="en-logo-cadre"
+                      onClick={() => fileInputRef.current?.click()}
+                      aria-label="Choisir le logo de l’entreprise"
+                    >
+                      {logoPreview ? (
+                        <img src={logoPreview} alt="" />
+                      ) : (
+                        <Camera size={22} color="var(--en-encre-faible)" />
+                      )}
+                    </button>
+                    <div className="en-logo-legende">
+                      <strong>Le logo</strong>
+                      <span>
+                        JPG, PNG ou WebP, 5 Mo maximum. Il s’affiche dans le cadre, à gauche du nom.
+                      </span>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          className="en-bouton-creux"
+                          style={{ minHeight: 28, fontSize: 10.5, padding: '0 10px' }}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <Upload size={12} />
+                          {logoPreview ? 'Remplacer' : 'Choisir'}
+                        </button>
+                        {logoPreview && (
+                          <button
+                            type="button"
+                            className="en-bouton-danger"
+                            style={{ minHeight: 28, fontSize: 10.5, padding: '0 10px' }}
+                            onClick={handleRemoveLogo}
+                          >
+                            <X size={12} />
+                            Retirer
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoSelect}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+
+                  <div className="en-champ en-champ--large">
+                    <label className="en-etiquette" htmlFor="en-nom">
+                      Nom de l’entreprise <em>*</em>
+                    </label>
+                    <input
+                      id="en-nom"
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => handleNameChange(e.target.value)}
+                      placeholder="Ex. : Pharmacie Blanche Gomes"
+                    />
+                  </div>
+
+                  <div className="en-champ">
+                    <label className="en-etiquette" htmlFor="en-secteur">
+                      <Globe size={11} />
+                      Secteur
+                    </label>
+                    <input
+                      id="en-secteur"
+                      type="text"
+                      value={formData.sector}
+                      onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
+                      placeholder="Ex. : Banque, BTP, santé"
+                    />
+                  </div>
+
+                  <div className="en-champ">
+                    <span className="en-etiquette">
+                      <Palette size={11} />
+                      Couleur du badge
+                    </span>
+                    <div className="en-couleur">
+                      <input
+                        type="color"
+                        value={formData.primary_color}
+                        onChange={(e) =>
+                          setFormData({ ...formData, primary_color: e.target.value })
+                        }
+                        aria-label="Couleur du badge"
+                      />
+                      <code>{formData.primary_color}</code>
+                      <i
+                        aria-hidden="true"
+                        style={{
+                          background: `linear-gradient(135deg, ${formData.primary_color}, ${formData.primary_color}88)`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </fieldset>
+
+              {/* — 2. Les coordonnées — */}
+              <fieldset className="en-section">
+                <legend>
+                  <Phone size={11} />
+                  Les coordonnées
+                </legend>
+                <div className="en-champs">
+                  <div className="en-champ">
+                    <label className="en-etiquette" htmlFor="en-email">
+                      <Mail size={11} />
+                      Email
+                    </label>
+                    <input
+                      id="en-email"
                       type="email"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      style={styles.formInput}
-                      placeholder="contact@entreprise.com"
+                      placeholder="contact@entreprise.bj"
                     />
                   </div>
-                  <div style={styles.formField}>
-                    <label style={styles.formLabel}><Phone size={14} /> Téléphone</label>
+                  <div className="en-champ">
+                    <label className="en-etiquette" htmlFor="en-tel">
+                      <Phone size={11} />
+                      Téléphone
+                    </label>
                     <input
+                      id="en-tel"
                       type="tel"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      style={styles.formInput}
-                      placeholder="+221 33 000 00 00"
+                      placeholder="+229 01 97 00 00 00"
+                    />
+                  </div>
+                  <div className="en-champ en-champ--large">
+                    <label className="en-etiquette" htmlFor="en-adresse">
+                      <MapPin size={11} />
+                      Adresse
+                    </label>
+                    <textarea
+                      id="en-adresse"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="Rue, quartier, ville…"
                     />
                   </div>
                 </div>
+              </fieldset>
 
-                <div style={styles.formField}>
-                  <label style={styles.formLabel}><MapPin size={14} /> Adresse</label>
-                  <textarea
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    style={{ ...styles.formInput, minHeight: '80px', resize: 'vertical' }}
-                    placeholder="Adresse complète..."
-                  />
-                </div>
+              {/* — 3. Le pays et les matricules — */}
+              <fieldset className="en-section">
+                <legend>
+                  <Globe size={11} />
+                  Le pays et les matricules
+                </legend>
+                <div className="en-champs">
+                  <div className="en-champ">
+                    <label className="en-etiquette" htmlFor="en-pays">
+                      Pays (fiscalité)
+                    </label>
+                    <select
+                      id="en-pays"
+                      value={formData.country_code}
+                      onChange={(e) =>
+                        setFormData({ ...formData, country_code: e.target.value })
+                      }
+                    >
+                      <option value="">— Aucun pays —</option>
+                      {paysDisponibles.map((p) => (
+                        <option key={p.country_code} value={p.country_code}>
+                          {p.country_name || p.country_code}
+                          {!p.default_tax_brackets || p.default_tax_brackets.length === 0
+                            ? ' — sans barème'
+                            : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {formData.country_code ? (
+                      <span className="en-aide" data-ton={sansBareme ? 'alerte' : undefined}>
+                        {sansBareme
+                          ? 'Ce pays n’a pas de barème d’impôt : les salariés paieraient zéro impôt jusqu’à ce qu’on le renseigne.'
+                          : 'Son barème et ses cotisations seront chargés automatiquement à l’enregistrement.'}
+                      </span>
+                    ) : (
+                      <span className="en-aide" data-ton="alerte">
+                        Sans pays, l’impôt de cette maison ne sera pas calculé.
+                      </span>
+                    )}
+                  </div>
 
-                {editingEntreprise && (
-                  <div style={styles.formField}>
-                    <label style={styles.formLabel}><Hash size={14} /> Code entreprise</label>
+                  <div className="en-champ">
+                    <label className="en-etiquette" htmlFor="en-prefixe">
+                      <Hash size={11} />
+                      Préfixe des matricules
+                    </label>
                     <input
+                      id="en-prefixe"
                       type="text"
-                      value={formData.code}
-                      disabled
-                      style={{ ...styles.formInput, opacity: 0.5, cursor: 'not-allowed' }}
+                      value={formData.matricule_prefix}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          matricule_prefix: e.target.value.toUpperCase().slice(0, 5),
+                        })
+                      }
+                      placeholder="Ex. : PBG"
+                      maxLength={5}
+                    />
+                    <span className="en-aide">
+                      Format : {formData.matricule_prefix || 'XXX'}-0001,{' '}
+                      {formData.matricule_prefix || 'XXX'}-0002…
+                    </span>
+                  </div>
+
+                  {editingEntreprise && (
+                    <div className="en-champ en-champ--large">
+                      <label className="en-etiquette" htmlFor="en-code">
+                        Code de l’entreprise
+                      </label>
+                      <input id="en-code" type="text" value={formData.code} disabled />
+                      <span className="en-aide">
+                        Le code est attribué à la création et ne change plus : il sert de clé aux
+                        badges et aux imports.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </fieldset>
+
+              {/* — 4. La fermeture automatique — */}
+              <fieldset className="en-section">
+                <legend>
+                  <Timer size={11} />
+                  La fermeture automatique
+                </legend>
+
+                <div className="en-interrupteur-ligne">
+                  <span className="en-interrupteur-texte">
+                    <strong>Fermer les pointages à l’heure dite</strong>
+                    <span>
+                      Une journée oubliée n’est plus comptée en heures supplémentaires.
+                    </span>
+                  </span>
+                  <label className="en-interrupteur">
+                    <input
+                      type="checkbox"
+                      checked={formData.auto_close_enabled}
+                      onChange={(e) =>
+                        setFormData({ ...formData, auto_close_enabled: e.target.checked })
+                      }
+                      aria-label="Fermer les pointages à l’heure dite"
+                    />
+                    <span className="en-piste" />
+                  </label>
+                </div>
+
+                <div className="en-champs" style={{ marginTop: 10 }}>
+                  <div className="en-champ">
+                    <label className="en-etiquette" htmlFor="en-heure">
+                      <Clock size={11} />
+                      Heure de fermeture
+                    </label>
+                    <input
+                      id="en-heure"
+                      type="time"
+                      value={formData.auto_close_time}
+                      onChange={(e) =>
+                        setFormData({ ...formData, auto_close_time: e.target.value })
+                      }
+                      disabled={!formData.auto_close_enabled}
                     />
                   </div>
-                )}
-              </div>
+                  <div className="en-champ">
+                    <label className="en-etiquette" htmlFor="en-tolerance">
+                      <Timer size={11} />
+                      Tolérance (minutes)
+                    </label>
+                    <input
+                      id="en-tolerance"
+                      type="number"
+                      min="0"
+                      max="300"
+                      value={formData.auto_close_grace_minutes}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          auto_close_grace_minutes: e.target.value,
+                        })
+                      }
+                      placeholder="0"
+                      disabled={!formData.auto_close_enabled}
+                    />
+                  </div>
+                  <div className="en-champ en-champ--large">
+                    <span className="en-aide">
+                      {formData.auto_close_enabled
+                        ? `Fermeture à ${formData.auto_close_time || '23:59'}${
+                            Number(formData.auto_close_grace_minutes || 0) > 0
+                              ? `, avec ${formData.auto_close_grace_minutes} min de tolérance`
+                              : ''
+                          }.`
+                        : 'La fermeture automatique est désactivée pour cette maison.'}
+                    </span>
+                  </div>
+                </div>
+              </fieldset>
 
-              <div style={styles.formModalFooter}>
-                <button onClick={() => setShowModal(false)} style={styles.modalCancelBtn}>Annuler</button>
-                <button onClick={handleSave} style={styles.modalSaveBtn} disabled={uploading}>
-                  {uploading ? 'Upload en cours...' : (
-                    <>
-                      <Save size={16} />
-                      {editingEntreprise ? 'Enregistrer' : "Créer l'entreprise"}
-                    </>
-                  )}
-                </button>
-              </div>
+              {/* — 5. La licence et les modules — */}
+              <fieldset className="en-section">
+                <legend>
+                  <Shield size={11} />
+                  La licence et les modules
+                </legend>
+
+                <div className="en-champs">
+                  <div className="en-champ en-champ--large">
+                    <label className="en-etiquette" htmlFor="en-licence">
+                      <CreditCard size={11} />
+                      Type de licence
+                    </label>
+                    <select
+                      id="en-licence"
+                      value={formData.license_type}
+                      onChange={(e) =>
+                        setFormData({ ...formData, license_type: e.target.value })
+                      }
+                    >
+                      <option value="basic">Basic — gratuit</option>
+                      <option value="premium">Premium — abonnement</option>
+                      <option value="enterprise">Enterprise — sur mesure</option>
+                    </select>
+                  </div>
+                </div>
+
+                {GROUPES.map((groupe) => {
+                  const modules = MODULES.filter((m) => m.groupe === groupe)
+                  const allumes = modules.filter((m) => formData[m.key]).length
+                  return (
+                    <Fragment key={groupe}>
+                      <div className="en-sceaux-groupe">
+                        <span>{groupe}</span>
+                        <b>
+                          {allumes} sur {modules.length}
+                        </b>
+                      </div>
+                      <div className="en-sceaux">
+                        {modules.map((mod) => {
+                          const Icone = mod.icon
+                          return (
+                            <label className="en-sceau" key={mod.key}>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(formData[mod.key])}
+                                onChange={(e) =>
+                                  setFormData({ ...formData, [mod.key]: e.target.checked })
+                                }
+                              />
+                              <span className="en-sceau-pastille" aria-hidden="true">
+                                <Check size={11} strokeWidth={3.4} />
+                              </span>
+                              <span className="en-sceau-texte">
+                                <b>
+                                  <Icone size={10} style={{ verticalAlign: '-1px', marginRight: 3 }} />
+                                  {mod.name}
+                                </b>
+                                <span>{mod.desc}</span>
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </Fragment>
+                  )
+                })}
+              </fieldset>
+            </div>
+
+            <div className="en-carton-pied">
+              <button type="button" className="en-bouton-creux" onClick={() => setShowModal(false)}>
+                Annuler
+              </button>
+              <button type="button" className="en-bouton" onClick={handleSave} disabled={uploading}>
+                <Save size={14} />
+                {uploading
+                  ? 'Envoi du logo…'
+                  : editingEntreprise
+                    ? 'Enregistrer'
+                    : 'Créer l’entreprise'}
+              </button>
             </div>
           </div>
-        )}
-      </div>
-    </>
+        </div>
+      )}
+    </main>
   )
 }
 
-const styles = {
-  container: {
-    minHeight: '100vh', background: '#0A0A0F',
-    position: 'relative', overflow: 'hidden',
-  },
-  bgPattern: {
-    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundImage: `
-      radial-gradient(circle at 25% 25%, rgba(245, 158, 11, 0.03) 0%, transparent 50%),
-      radial-gradient(circle at 75% 75%, rgba(99, 102, 241, 0.03) 0%, transparent 50%)
-    `,
-    pointerEvents: 'none', zIndex: 0,
-  },
-  bgOrb1: {
-    position: 'fixed', top: '-15%', right: '-10%',
-    width: '500px', height: '500px', borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(245, 158, 11, 0.04) 0%, transparent 70%)',
-    pointerEvents: 'none', zIndex: 0,
-  },
-  bgOrb2: {
-    position: 'fixed', bottom: '-20%', left: '-10%',
-    width: '600px', height: '600px', borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(99, 102, 241, 0.03) 0%, transparent 70%)',
-    pointerEvents: 'none', zIndex: 0,
-  },
+// ── Une carte : un cadre peint sur la toile ────────────────
+function CarteEntreprise({ entreprise, ouverte, peutSupprimer, onBasculer, onAdmins, onModifier, onSupprimer }) {
+  const licence = LICENCES[entreprise.license_type] || LICENCES.basic
+  const actifs = modulesActifs(entreprise)
 
-  loadingContainer: {
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '24px',
-    background: '#0A0A0F',
-  },
-  loadingIconWrap: {
-    position: 'relative',
-    width: '90px',
-    height: '90px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingPulseRing: {
-    position: 'absolute',
-    width: '90px',
-    height: '90px',
-    borderRadius: '50%',
-    border: '2px solid rgba(245, 158, 11, 0.25)',
-    animation: 'pulseRing 1.8s ease-out infinite',
-  },
-  loadingPulse: { animation: 'float 2s ease-in-out infinite' },
-  loadingText: { color: '#888', fontSize: '16px', letterSpacing: '2px' },
-  loadingBar: {
-    width: '220px', height: '3px', background: 'rgba(245,158,11,0.1)',
-    borderRadius: '3px', overflow: 'hidden',
-  },
-  loadingBarFill: {
-    width: '40%', height: '100%',
-    background: 'linear-gradient(90deg, #F59E0B, #D97706)',
-    borderRadius: '3px', animation: 'shimmer 1.5s infinite', backgroundSize: '200% 100%',
-  },
+  return (
+    <article className="en-carte" data-ouvert={ouverte ? 'oui' : 'non'}>
+      <div className="en-carte-tete">
+        <div className="en-logo">
+          {entreprise.logo_url ? (
+            <img src={entreprise.logo_url} alt="" />
+          ) : (
+            <Building2 size={20} color={entreprise.primary_color || 'var(--en-terre)'} />
+          )}
+        </div>
 
-  header: {
-    background: 'rgba(15, 15, 25, 0.95)', backdropFilter: 'blur(20px)',
-    borderBottom: '1px solid rgba(245, 158, 11, 0.12)',
-    position: 'sticky', top: 0, zIndex: 100,
-  },
-  headerInner: {
-    maxWidth: '1400px', margin: '0 auto', padding: '12px 20px',
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-  },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
-  backBtn: {
-    background: 'rgba(245, 158, 11, 0.08)',
-    border: '1px solid rgba(245, 158, 11, 0.15)',
-    borderRadius: '10px', padding: '8px', color: '#F59E0B', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    transition: 'all 0.2s ease',
-  },
-  logoMark: {
-    width: '38px', height: '38px', borderRadius: '10px',
-    background: 'rgba(245, 158, 11, 0.1)',
-    border: '1px solid rgba(245, 158, 11, 0.2)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: {
-    color: '#FFFFFF', fontSize: '18px', fontWeight: '700',
-    letterSpacing: '3px', margin: 0, lineHeight: '1.2',
-  },
-  headerSub: {
-    color: '#F59E0B', fontSize: '10px', letterSpacing: '3px',
-    textTransform: 'uppercase', fontWeight: '500',
-  },
-  addBtnHeader: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-    color: '#000', padding: '10px 20px', borderRadius: '12px',
-    border: 'none', fontWeight: '700', fontSize: '14px',
-    cursor: 'pointer', transition: 'all 0.3s ease', letterSpacing: '0.5px',
-  },
+        <div className="en-infos">
+          <div className="en-nom-ligne">
+            <span className="en-nom">{entreprise.name}</span>
+            <span className="en-licence" data-licence={entreprise.license_type || 'basic'}>
+              {licence.label}
+            </span>
+          </div>
 
-  main: {
-    padding: '20px', maxWidth: '1400px', margin: '0 auto',
-    position: 'relative', zIndex: 1,
-  },
+          <div className="en-meta">
+            {entreprise.sector && (
+              <span>
+                <Globe size={10} />
+                {entreprise.sector}
+              </span>
+            )}
+            <span>
+              <Hash size={10} />
+              <strong>{entreprise.code}</strong>
+            </span>
+            <span>
+              <Hash size={10} />
+              {entreprise.matricule_prefix || '—'}
+            </span>
+            {entreprise.email && (
+              <span>
+                <Mail size={10} />
+                {entreprise.email}
+              </span>
+            )}
+          </div>
 
-  summaryStrip: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'rgba(20, 20, 35, 0.7)', backdropFilter: 'blur(10px)',
-    borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)',
-    padding: '16px 24px', marginBottom: '20px', flexWrap: 'wrap', gap: '0',
-  },
-  summaryCard: {
-    display: 'flex', alignItems: 'center', gap: '12px',
-    padding: '4px 20px', flex: '1 1 auto', justifyContent: 'center', minWidth: '100px',
-  },
-  summaryDivider: { width: '1px', height: '32px', background: 'rgba(255,255,255,0.08)' },
-  summaryIcon: {
-    width: '40px', height: '40px', borderRadius: '10px',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  summaryInfo: { display: 'flex', flexDirection: 'column' },
-  summaryNumber: { color: '#FFFFFF', fontSize: '22px', fontWeight: '700', lineHeight: '1' },
-  summaryLabel: {
-    color: '#666', fontSize: '11px', fontWeight: '600',
-    textTransform: 'uppercase', letterSpacing: '1px', marginTop: '2px',
-  },
+          <span className="en-modules-pastille" data-vide={actifs === 0 ? 'oui' : 'non'}>
+            <Zap size={10} />
+            {actifs > 0
+              ? `${actifs} module${actifs > 1 ? 's' : ''} allumé${actifs > 1 ? 's' : ''}`
+              : 'Aucun module'}
+          </span>
+        </div>
 
-  toolbar: {
-    display: 'flex', gap: '12px', marginBottom: '20px',
-    flexWrap: 'wrap', alignItems: 'center',
-  },
-  searchContainer: {
-    flex: '1 1 280px', display: 'flex', alignItems: 'center', gap: '10px',
-    background: 'rgba(20, 20, 35, 0.8)', backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    padding: '12px 16px', borderRadius: '14px', transition: 'all 0.3s ease',
-  },
-  searchInput: {
-    flex: 1, border: 'none', outline: 'none', fontSize: '14px',
-    background: 'transparent', color: '#E5E5E5', fontFamily: 'inherit',
-  },
-  clearSearch: {
-    background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '6px',
-    padding: '4px', cursor: 'pointer', color: '#888',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-  resultCount: { display: 'flex', alignItems: 'baseline', gap: '6px' },
-  resultNumber: { color: '#F59E0B', fontSize: '20px', fontWeight: '700' },
-  resultText: { color: '#666', fontSize: '12px' },
+        <div className="en-chiffres">
+          <div className="en-chiffre">
+            <b>{entreprise.employees?.[0]?.count || 0}</b>
+            <span>empl.</span>
+          </div>
+          <div className="en-chiffre">
+            <b>{entreprise.attendances?.[0]?.count || 0}</b>
+            <span>point.</span>
+          </div>
+        </div>
 
-  list: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  empty: {
-    textAlign: 'center', padding: '80px 20px',
-    background: 'rgba(20, 20, 35, 0.5)', borderRadius: '24px',
-    border: '1px solid rgba(255,255,255,0.04)',
-  },
-  emptyIcon: {
-    width: '80px', height: '80px', borderRadius: '20px',
-    background: 'rgba(245, 158, 11, 0.08)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    margin: '0 auto 24px auto',
-  },
-  emptyTitle: { color: '#FFFFFF', fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0' },
-  emptySubtitle: { color: '#666', fontSize: '14px', margin: '0 0 24px 0' },
-  emptyAddBtn: {
-    display: 'inline-flex', alignItems: 'center', gap: '8px',
-    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-    color: '#000', padding: '12px 24px', borderRadius: '12px',
-    border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer',
-    transition: 'all 0.3s ease',
-  },
+        <div className="en-actions">
+          <button
+            type="button"
+            className="en-action"
+            data-actif={ouverte ? 'oui' : 'non'}
+            onClick={onBasculer}
+            title={ouverte ? 'Replier la fiche' : 'Déplier la fiche'}
+            aria-expanded={ouverte}
+            aria-label={ouverte ? `Replier ${entreprise.name}` : `Déplier ${entreprise.name}`}
+          >
+            {ouverte ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          </button>
+          <button
+            type="button"
+            className="en-action"
+            onClick={onAdmins}
+            title="Voir les administrateurs"
+            aria-label={`Voir les administrateurs de ${entreprise.name}`}
+          >
+            <Shield size={14} />
+          </button>
+          <button
+            type="button"
+            className="en-action"
+            onClick={onModifier}
+            title="Modifier la fiche"
+            aria-label={`Modifier ${entreprise.name}`}
+          >
+            <Edit size={14} />
+          </button>
+          {peutSupprimer && (
+            <button
+              type="button"
+              className="en-action"
+              data-ton="danger"
+              onClick={onSupprimer}
+              title="Retirer du registre"
+              aria-label={`Retirer ${entreprise.name} du registre`}
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
 
-  entCard: {
-    background: 'rgba(20, 20, 35, 0.7)', backdropFilter: 'blur(10px)',
-    borderRadius: '18px', border: '1px solid rgba(255,255,255,0.06)',
-    padding: 'clamp(14px, 3vw, 20px)', position: 'relative', overflow: 'hidden',
-  },
-  cardGlowLine: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-  },
-  cardMainRow: {
-    display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap',
-  },
-  entLogo: {
-    width: '52px', height: '52px', borderRadius: '14px',
-    background: 'rgba(245, 158, 11, 0.06)',
-    border: '2px solid', display: 'flex', alignItems: 'center',
-    justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
-  },
-  entLogoImg: { width: '100%', height: '100%', objectFit: 'cover' },
-  entInfo: { flex: '1 1 200px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' },
-  entNameRow: {
-    display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
-  },
-  entName: { color: '#FFFFFF', fontWeight: '700', fontSize: '16px' },
-  licenseBadge: {
-    display: 'inline-flex', alignItems: 'center', gap: '4px',
-    padding: '2px 10px', borderRadius: '8px', fontSize: '10px',
-    fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase',
-    border: '1px solid',
-  },
-  entMetaRow: { display: 'flex', flexWrap: 'wrap', gap: '10px' },
-  entMeta: {
-    display: 'inline-flex', alignItems: 'center', gap: '4px',
-    color: '#888', fontSize: '12px',
-  },
-  entEmail: {
-    display: 'inline-flex', alignItems: 'center', gap: '4px',
-    color: '#666', fontSize: '11px',
-  },
-  modulesChips: { marginTop: '4px' },
-  modulesCountBadge: {
-    display: 'inline-flex', alignItems: 'center', gap: '4px',
-    padding: '3px 10px', borderRadius: '8px', fontSize: '10px',
-    fontWeight: '700', color: '#F59E0B', letterSpacing: '0.3px',
-    background: 'rgba(245, 158, 11, 0.08)',
-    border: '1px solid rgba(245, 158, 11, 0.15)',
-  },
-  entStats: {
-    display: 'flex', gap: '16px', flexShrink: 0,
-  },
-  entStatItem: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-  },
-  entStatNumber: { color: '#FFFFFF', fontSize: '18px', fontWeight: '700' },
-  entStatLabel: { color: '#666', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-  entActions: { display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap' },
-  entActionBtn: {
-    background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '10px', padding: '9px', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    transition: 'all 0.2s ease', color: '#888',
-  },
-  entDeleteBtn: {
-    borderColor: 'rgba(239, 68, 68, 0.15)', color: '#EF4444',
-  },
+      {ouverte && (
+        <div className="en-detail">
+          <div className="en-detail-grille">
+            <div>
+              <h4 className="en-bloc-titre">
+                <Mail size={11} />
+                Contact
+              </h4>
+              <div className="en-duo">
+                <span>Email</span>
+                <span>{entreprise.email || '—'}</span>
+              </div>
+              <div className="en-duo">
+                <span>Téléphone</span>
+                <span>{entreprise.phone || '—'}</span>
+              </div>
+              <div className="en-duo">
+                <span>Adresse</span>
+                <span>{entreprise.address || '—'}</span>
+              </div>
+            </div>
 
-  expandedSection: {
-    marginTop: '14px',
-  },
-  expandDivider: {
-    height: '1px', background: 'rgba(255,255,255,0.06)',
-    marginBottom: '16px',
-  },
-  expandGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
-    gap: '16px', marginBottom: '12px',
-  },
-  expandBlock: {
-    background: 'rgba(255,255,255,0.02)', borderRadius: '12px',
-    padding: '14px', border: '1px solid rgba(255,255,255,0.04)',
-  },
-  expandBlockTitle: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    color: '#FFFFFF', fontSize: '13px', fontWeight: '700',
-    marginBottom: '12px', margin: '0 0 12px 0',
-    textTransform: 'uppercase', letterSpacing: '0.5px',
-  },
-  expandDetail: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)',
-  },
-  expandLabel: { color: '#666', fontSize: '12px' },
-  expandValue: { color: '#E5E5E5', fontSize: '13px', fontWeight: '500' },
-  expandModulesGrid: {
-    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px',
-  },
-  expandModuleItem: {
-    display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0',
-  },
-  expandModuleName: { fontSize: '12px', fontWeight: '500' },
-  colorPreviewRow: {
-    display: 'flex', alignItems: 'center', gap: '10px',
-    padding: '8px 14px', background: 'rgba(255,255,255,0.02)',
-    borderRadius: '10px', border: '1px solid rgba(255,255,255,0.04)',
-  },
+            <div>
+              <h4 className="en-bloc-titre">
+                <Timer size={11} />
+                Fermeture auto.
+              </h4>
+              <div className="en-duo">
+                <span>État</span>
+                <span>{entreprise.auto_close_enabled ? 'Activée' : 'Désactivée'}</span>
+              </div>
+              <div className="en-duo">
+                <span>Heure</span>
+                <span>{entreprise.auto_close_time || '23:59'}</span>
+              </div>
+              <div className="en-duo">
+                <span>Tolérance</span>
+                <span>{tolerance(entreprise.auto_close_grace_minutes)}</span>
+              </div>
+              <div className="en-duo">
+                <span>Pays fiscal</span>
+                <span>{entreprise.country_code || '—'}</span>
+              </div>
+            </div>
 
-  footer: { marginTop: '48px', paddingBottom: '24px' },
-  footerLine: {
-    height: '1px',
-    background: 'linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.2), transparent)',
-    marginBottom: '20px',
-  },
-  footerText: {
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    gap: '8px', color: '#555', fontSize: '12px', letterSpacing: '2px',
-  },
+            <div>
+              <h4 className="en-bloc-titre">
+                <Zap size={11} />
+                Modules
+              </h4>
+              <div className="en-modules-liste">
+                {MODULES.map((mod) => (
+                  <span
+                    className="en-module-etat"
+                    key={mod.key}
+                    data-actif={entreprise[mod.key] ? 'oui' : 'non'}
+                  >
+                    {entreprise[mod.key] ? (
+                      <CheckCircle2 size={11} color="var(--en-ok)" />
+                    ) : (
+                      <XCircle size={11} color="var(--en-encre-faible)" />
+                    )}
+                    {mod.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
 
-  modalOverlay: {
-    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '16px', zIndex: 1000,
-  },
-  confirmModal: {
-    background: '#141423', border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '24px', width: '100%', maxWidth: '420px',
-    padding: 'clamp(24px, 5vw, 36px)', textAlign: 'center',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-  },
-  modalIconWrap: {
-    width: '64px', height: '64px', borderRadius: '18px',
-    background: 'rgba(239, 68, 68, 0.12)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    margin: '0 auto 20px auto',
-  },
-  confirmTitle: {
-    fontSize: '20px', fontWeight: '700', color: '#FFFFFF', marginBottom: '12px',
-  },
-  confirmText: {
-    color: '#888', marginBottom: '28px', lineHeight: '1.6', fontSize: '14px',
-  },
-  confirmBtns: { display: 'flex', gap: '12px' },
-  modalCancelBtn: {
-    flex: 1, padding: '14px', background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)', color: '#E5E5E5',
-    borderRadius: '14px', fontWeight: '600', fontSize: '14px',
-    cursor: 'pointer', transition: 'all 0.2s ease',
-  },
-  modalDeleteBtn: {
-    flex: 1, padding: '14px',
-    background: 'linear-gradient(135deg, #EF4444, #B91C1C)',
-    color: '#FFF', border: 'none', borderRadius: '14px',
-    fontWeight: '700', fontSize: '14px', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-    transition: 'all 0.2s ease',
-  },
-
-  formModal: {
-    background: '#0F0F19', border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '24px', width: '100%', maxWidth: '680px',
-    maxHeight: '90vh', overflow: 'hidden',
-    display: 'flex', flexDirection: 'column',
-    boxShadow: '0 20px 80px rgba(0,0,0,0.6)',
-  },
-  formModalHeader: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)',
-    flexShrink: 0,
-  },
-  formModalTitleWrap: { display: 'flex', alignItems: 'center', gap: '14px' },
-  formModalIcon: {
-    width: '42px', height: '42px', borderRadius: '12px',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  formModalTitle: { color: '#FFFFFF', fontSize: '18px', fontWeight: '700', margin: 0 },
-  formModalSub: { color: '#666', fontSize: '12px', marginTop: '2px', display: 'block' },
-  formCloseBtn: {
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '10px', padding: '8px', color: '#888', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    transition: 'all 0.2s ease',
-  },
-  formModalBody: {
-    padding: '24px', overflow: 'auto', flex: 1,
-    display: 'flex', flexDirection: 'column', gap: '16px',
-  },
-  formModalFooter: {
-    display: 'flex', justifyContent: 'flex-end', gap: '12px',
-    padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.06)',
-    flexShrink: 0,
-  },
-  modalSaveBtn: {
-    display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px',
-    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-    color: '#000', border: 'none', borderRadius: '12px',
-    fontWeight: '700', fontSize: '14px', cursor: 'pointer',
-    transition: 'all 0.2s ease',
-  },
-
-  logoUploadSection: {
-    display: 'flex', flexDirection: 'column',
-    alignItems: 'center', gap: '10px', marginBottom: '8px',
-  },
-  logoUploadBox: {
-    width: '90px', height: '90px', borderRadius: '18px',
-    background: 'rgba(245, 158, 11, 0.06)',
-    border: '2px dashed rgba(245, 158, 11, 0.3)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    cursor: 'pointer', position: 'relative', overflow: 'hidden',
-    transition: 'all 0.2s ease',
-  },
-  logoUploadImg: { width: '100%', height: '100%', objectFit: 'cover' },
-  logoUploadPlaceholder: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-  },
-  logoUploadText: { fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px' },
-  logoUploadOverlay: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    background: 'rgba(0,0,0,0.6)', padding: '6px',
-    display: 'flex', justifyContent: 'center',
-  },
-  logoRemoveBtn: {
-    display: 'flex', alignItems: 'center', gap: '4px',
-    background: 'none', border: 'none', color: '#EF4444',
-    fontSize: '12px', cursor: 'pointer', fontWeight: '600',
-  },
-
-  formField: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  formRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
-  formLabel: {
-    fontSize: '12px', fontWeight: '600', color: '#888',
-    display: 'flex', alignItems: 'center', gap: '6px',
-    textTransform: 'uppercase', letterSpacing: '0.5px',
-  },
-  formHint: { fontSize: '11px', color: '#555', marginTop: '2px' },
-  formInput: {
-    padding: '12px 14px', border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '12px', fontSize: '14px', outline: 'none',
-    transition: 'border-color 0.2s', width: '100%', boxSizing: 'border-box',
-    background: 'rgba(255,255,255,0.04)', color: '#E5E5E5', fontFamily: 'inherit',
-  },
-  formSelect: {
-    padding: '12px 14px', border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '12px', fontSize: '14px', outline: 'none',
-    background: 'rgba(255,255,255,0.04)', color: '#E5E5E5',
-    width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', cursor: 'pointer',
-  },
-  colorPickerRow: {
-    display: 'flex', alignItems: 'center', gap: '12px',
-  },
-  colorInput: {
-    width: '44px', height: '44px', padding: '0', border: 'none',
-    cursor: 'pointer', borderRadius: '10px', background: 'transparent',
-  },
-  colorValue: {
-    color: '#888', fontSize: '13px', fontFamily: 'monospace', minWidth: '70px',
-  },
-
-  // ✅ AUTO-CLOSE
-  autoCloseSection: {
-    padding: '20px',
-    background: 'rgba(99, 102, 241, 0.03)',
-    borderRadius: '16px',
-    border: '1px solid rgba(99, 102, 241, 0.12)',
-  },
-  autoCloseToggleRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '12px',
-    width: '100%',
-    cursor: 'pointer',
-  },
-  autoCloseToggleLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    flex: 1,
-  },
-  autoCloseToggleIcon: {
-    width: '34px',
-    height: '34px',
-    borderRadius: '10px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'rgba(99,102,241,0.12)',
-    flexShrink: 0,
-  },
-  formHintBox: {
-    marginTop: '12px',
-    padding: '10px 12px',
-    borderRadius: '10px',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.05)',
-  },
-  formHintStrong: {
-    color: '#F59E0B',
-    fontSize: '12px',
-    fontWeight: '700',
-  },
-  formHintText: {
-    color: '#888',
-    fontSize: '12px',
-  },
-
-  modulesFormSection: {
-    padding: '20px', background: 'rgba(245, 158, 11, 0.03)',
-    borderRadius: '16px', border: '1px solid rgba(245, 158, 11, 0.1)',
-  },
-  modulesSectionHeader: {
-    display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px',
-  },
-  modulesSectionTitle: {
-    color: '#FFFFFF', fontSize: '15px', fontWeight: '700',
-    margin: 0, letterSpacing: '0.5px',
-  },
-  groupeOptions: {
-    gridColumn: '1 / -1',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: '6px',
-    paddingBottom: '6px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
-    fontSize: '12px',
-    fontWeight: '600',
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-    color: '#F59E0B',
-  },
-  groupeOptionsCompte: {
-    fontSize: '11px',
-    fontWeight: '500',
-    letterSpacing: '0.02em',
-    textTransform: 'none',
-    color: '#6B6B6B',
-  },
-  moduleTogglesGrid: {
-    display: 'flex', flexDirection: 'column', gap: '8px',
-  },
-  moduleToggle: {
-    display: 'flex', alignItems: 'center', gap: '12px',
-    padding: '12px 14px', borderRadius: '12px',
-    border: '1px solid', cursor: 'pointer',
-    transition: 'all 0.2s ease',
-  },
-  moduleToggleIcon: {
-    width: '34px', height: '34px', borderRadius: '10px',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0,
-  },
-  moduleToggleInfo: {
-    flex: 1, display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0,
-  },
-  moduleToggleName: { color: '#FFFFFF', fontSize: '13px', fontWeight: '600' },
-  moduleToggleDesc: { color: '#666', fontSize: '11px' },
-  toggleSwitch: { position: 'relative', flexShrink: 0 },
-  toggleInput: {
-    position: 'absolute', opacity: 0, width: 0, height: 0,
-  },
-  toggleTrack: {
-    width: '38px', height: '20px', borderRadius: '10px',
-    cursor: 'pointer', transition: 'background 0.3s ease',
-    position: 'relative',
-  },
-  toggleThumb: {
-    width: '16px', height: '16px', borderRadius: '50%',
-    background: '#FFFFFF', position: 'absolute', top: '2px',
-    transition: 'transform 0.3s ease',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-  },
+          <div className="en-teinte">
+            <span>Couleur du badge</span>
+            <i style={{ background: entreprise.primary_color || '#D4AF37' }} />
+            <code>{entreprise.primary_color || '#D4AF37'}</code>
+          </div>
+        </div>
+      )}
+    </article>
+  )
 }
