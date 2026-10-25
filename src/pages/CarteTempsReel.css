@@ -1,81 +1,125 @@
 /* ═══════════════════════════════════════════════════════════
-   🗿 PORTE DE GRENIER DOGON — l'en-tête de la Carte en direct
+   🗿 LA PORTE DU PLATEAU — Carte en direct (refonte)
 
-   La carte reste sur son fond de nuit : c'est une carte, elle a
-   besoin de contraste. Ce que la page emprunte au plateau de
-   Bandiagara, c'est la matière — le bois gravé du bandeau, la
-   patine de l'en-tête, les chevrons taillés qui séparent les
-   zones réelles.
+   La page est une porte de grenier dogon : un panneau de bois
+   sombre, des registres qui se lisent de haut en bas, des
+   chevrons taillés à chaque seuil, et une ouverture au centre —
+   la carte, par laquelle on regarde le site.
 
-   Jetons :
-     --ct-bois        le panneau
-     --ct-bois-clair  la lumière sur le bois
-     --ct-gravure     l'incision noire
-     --ct-patine      le texte
+   Trois matières, trois rôles :
+     le bois       les panneaux et les cadres
+     la gravure    les creux, les séparations, les ombres
+     la patine     tout ce qui se lit
+   Les couleurs de STATUT (vert, ambre, rouge) restent celles du
+   produit : elles disent des données, pas un décor.
    ═══════════════════════════════════════════════════════════ */
 
 .ct-page {
+  /* la nuit */
+  --ct-nuit: #0d0a08;
+  --ct-nuit-2: #120e0b;
+
+  /* le bois */
   --ct-bois: #7a5230;
   --ct-bois-clair: #8e6240;
   --ct-bois-fonce: #5f3d22;
-  --ct-gravure: #241c16;
+  --ct-panneau: #241a14;
+  --ct-panneau-2: #2c2019;
+  --ct-creux: #180f0b;
+
+  /* les encres */
   --ct-patine: #f0e6d4;
   --ct-patine-douce: #cbb59a;
   --ct-patine-faible: #9c856b;
   --ct-terre: #b4622a;
-  --ct-ligne: rgba(232, 220, 196, 0.16);
+  --ct-ocre-clair: #c9773c;
+  --ct-brun: #8b3e1d;
 
+  /* les traits */
+  --ct-ligne: rgba(232, 220, 196, 0.14);
+  --ct-ligne-forte: rgba(232, 220, 196, 0.3);
+  --ct-ombre: 0 16px 36px rgba(0, 0, 0, 0.5);
+
+  /* les statuts — inchangés, ce sont des données */
+  --ct-ok: #10b981;
+  --ct-attente: #f59e0b;
+  --ct-alerte: #ef4444;
+  --ct-neutre: #6b7280;
+
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
   min-height: 100vh;
   margin: 0;
-  background: #0a0a0f;
+  background-color: var(--ct-nuit);
+  background-image:
+    radial-gradient(120% 80% at 50% -20%, rgba(122, 82, 48, 0.16), transparent 70%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(232, 220, 196, 0.014) 0 1px,
+      transparent 1px 3px
+    );
   color: var(--ct-patine);
+  font-family: inherit;
 }
 
-/* le fil de bois, juste sous le bandeau */
+.ct-page *,
+.ct-page *::before,
+.ct-page *::after {
+  box-sizing: border-box;
+}
+
+.ct-page :focus-visible {
+  outline: 2px solid var(--ct-ocre-clair);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ── 1. Les chevrons taillés ──────────────────────────────── */
+
 .ct-bordure {
   height: 10px;
   flex: none;
-  background-image:
-    repeating-linear-gradient(
-      135deg,
-      var(--ct-gravure) 0 6px,
-      transparent 6px 13px
-    ),
-    linear-gradient(90deg, var(--ct-bois-fonce), var(--ct-bois), var(--ct-bois-fonce));
+  background-color: var(--ct-bois);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='10' viewBox='0 0 14 10'%3E%3Cpath d='M0 8.5 L3.5 1.5 L7 8.5 L10.5 1.5 L14 8.5' fill='none' stroke='%23241a14' stroke-width='1.8'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: center;
 }
 
-/* ── L'en-tête : le panneau gravé ─────────────────────────── */
+/* ── 2. L'en-tête : le panneau gravé ──────────────────────── */
 
 .ct-entete {
   display: flex;
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
-  padding: 22px clamp(18px, 3vw, 34px) 18px;
+  padding: 22px clamp(18px, 3vw, 34px) 20px;
+  border-bottom: 1px solid var(--ct-ligne);
   background:
-    linear-gradient(180deg, rgba(122, 82, 48, 0.14), transparent 70%),
-    #0a0a0f;
-  border-bottom: 2px solid var(--ct-bois-fonce);
+    linear-gradient(180deg, rgba(122, 82, 48, 0.16), transparent 78%),
+    var(--ct-nuit);
 }
 
 .ct-retour {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   flex: none;
   padding: 0;
-  color: var(--ct-patine);
-  background: rgba(122, 82, 48, 0.22);
-  border: 1.5px solid rgba(232, 220, 196, 0.22);
+  color: var(--ct-patine-douce);
+  background: rgba(122, 82, 48, 0.2);
+  border: 1.5px solid var(--ct-ligne-forte);
   border-radius: 2px;
   cursor: pointer;
   transition:
+    color 0.16s ease,
     background-color 0.16s ease,
     border-color 0.16s ease;
 }
 
 .ct-retour:hover {
+  color: var(--ct-patine);
   background: var(--ct-bois);
   border-color: var(--ct-bois-clair);
 }
@@ -93,12 +137,12 @@
   font-weight: 700;
   letter-spacing: 0.19em;
   text-transform: uppercase;
-  color: var(--ct-terre);
+  color: var(--ct-ocre-clair);
 }
 
 .ct-titre {
   margin: 0;
-  font-size: clamp(20px, 2.4vw, 26px);
+  font-size: clamp(20px, 2.4vw, 27px);
   font-weight: 700;
   letter-spacing: -0.015em;
   line-height: 1.1;
@@ -110,7 +154,7 @@
 }
 
 .ct-sous-titre {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   font-size: 11.5px;
   line-height: 1.5;
   color: var(--ct-patine-faible);
@@ -128,50 +172,1871 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 6px 12px;
+  padding: 7px 13px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ct-patine);
-  background: rgba(63, 107, 74, 0.22);
-  border: 1px solid rgba(127, 176, 139, 0.45);
-  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  border-radius: 2px;
 }
 
 .ct-direct i {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #7fb08b;
-  box-shadow: 0 0 0 0 rgba(127, 176, 139, 0.6);
+  background: var(--ct-ok);
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
   animation: ct-souffle 2.1s ease-out infinite;
 }
 
 @keyframes ct-souffle {
   0% {
-    box-shadow: 0 0 0 0 rgba(127, 176, 139, 0.55);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
   }
   70% {
-    box-shadow: 0 0 0 7px rgba(127, 176, 139, 0);
+    box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(127, 176, 139, 0);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
   }
 }
 
-/* ── Le pied : chevrons taillés et bande basse ───────────── */
+/* ── 3. La coque ──────────────────────────────────────────── */
+
+.ct-coque {
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: clamp(14px, 2vw, 24px) clamp(14px, 3vw, 30px)
+    clamp(26px, 3.4vw, 44px);
+  flex: 1 1 auto;
+}
+
+/* ── 4. Le seuil : la maison et les raccourcis ────────────── */
+
+.ct-seuil {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  background: var(--ct-panneau);
+  border: 1px solid var(--ct-ligne);
+  border-left: 3px solid var(--ct-bois);
+  border-radius: 2px;
+}
+
+.ct-seuil-maison {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.ct-seuil-libelle {
+  flex: none;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ct-patine-faible);
+}
+
+.ct-seuil-nom {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ct-patine);
+  overflow-wrap: anywhere;
+}
+
+.ct-seuil-fait {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--ct-patine-douce);
+  background: var(--ct-creux);
+  border: 1px dashed rgba(201, 169, 97, 0.3);
+  border-radius: 1px;
+  white-space: nowrap;
+}
+
+/* les raccourcis de pages, dans la matière de la page */
+.ct-raccourcis {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.ct-raccourcis .abs-raccourcis {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--ct-ligne);
+  border-radius: 2px;
+  background: var(--ct-creux);
+  scrollbar-width: none;
+}
+
+.ct-raccourcis .abs-raccourcis::-webkit-scrollbar {
+  display: none;
+}
+
+.ct-raccourcis .abs-raccourci {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 1px;
+  background: transparent;
+  color: var(--ct-patine-douce);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+.ct-raccourcis .abs-raccourci[data-compact='oui'] {
+  padding: 4px 9px;
+}
+
+.ct-raccourcis .abs-raccourci svg {
+  flex: none;
+  opacity: 0.85;
+}
+
+.ct-raccourcis .abs-raccourci:hover {
+  color: var(--ct-patine);
+  background: rgba(122, 82, 48, 0.4);
+}
+
+.ct-raccourcis .abs-raccourci[data-actif='oui'],
+.ct-raccourcis .abs-raccourci[data-actif='oui']:hover {
+  color: var(--ct-patine);
+  background: var(--ct-brun);
+  cursor: default;
+}
+
+/* ── 5. Les registres : cinq stèles ───────────────────────── */
+
+.ct-registres {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(8px, 1vw, 12px);
+  margin-top: clamp(12px, 1.6vw, 18px);
+}
+
+.ct-stele {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 14px 13px 12px;
+  min-width: 0;
+  background: var(--ct-panneau);
+  border: 1px solid var(--ct-ligne);
+  border-bottom: 2px solid var(--ct-creux);
+  border-radius: 2px;
+}
+
+/* le losange taillé dans l'angle */
+.ct-stele::after {
+  content: '';
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 5px;
+  height: 5px;
+  transform: rotate(45deg);
+  background: var(--ct-bois-fonce);
+}
+
+/* la niche du chiffre : un creux taillé dans le panneau */
+.ct-stele-marque {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  color: var(--ct-patine-douce);
+  background: var(--ct-creux);
+  border: 1px solid var(--ct-ligne);
+  border-radius: 1px;
+}
+
+.ct-stele-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ct-stele-nombre {
+  font-size: clamp(19px, 2.1vw, 24px);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ct-patine);
+}
+
+.ct-stele-libelle {
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ct-patine-faible);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* la teinte de chaque registre : un filet, pas un aplat */
+.ct-stele[data-ton='ok'] {
+  border-left: 3px solid var(--ct-ok);
+}
+
+.ct-stele[data-ton='ok'] .ct-stele-marque {
+  color: var(--ct-ok);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.ct-stele[data-ton='attente'] {
+  border-left: 3px solid var(--ct-attente);
+}
+
+.ct-stele[data-ton='attente'] .ct-stele-marque {
+  color: var(--ct-attente);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.ct-stele[data-ton='alerte'] {
+  border-left: 3px solid var(--ct-alerte);
+}
+
+.ct-stele[data-ton='alerte'] .ct-stele-marque {
+  color: var(--ct-alerte);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.ct-stele[data-ton='neutre'] {
+  border-left: 3px solid var(--ct-neutre);
+}
+
+.ct-stele[data-ton='neutre'] .ct-stele-marque {
+  color: var(--ct-neutre);
+  border-color: rgba(107, 114, 128, 0.4);
+}
+
+.ct-stele[data-ton='bois'] {
+  border-left: 3px solid var(--ct-bois);
+}
+
+.ct-stele[data-ton='bois'] .ct-stele-marque {
+  color: var(--ct-ocre-clair);
+  border-color: rgba(122, 82, 48, 0.5);
+}
+
+/* ── 6. L'atelier : la carte à gauche, les gens à droite ──── */
+
+.ct-atelier {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(280px, 24vw, 360px);
+  gap: clamp(12px, 1.6vw, 20px);
+  align-items: start;
+  margin-top: clamp(14px, 2vw, 22px);
+}
+
+.ct-colonne {
+  min-width: 0;
+}
+
+/* ── 7. La barre d'outils : des champs taillés ────────────── */
+
+.ct-outils {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: clamp(12px, 1.6vw, 18px) 0 12px;
+}
+
+.ct-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ct-etiquette {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ct-patine-faible);
+}
+
+.ct-champ-date {
+  flex: 0 0 auto;
+}
+
+.ct-champ-select {
+  flex: 1 1 190px;
+  max-width: 300px;
+}
+
+.ct-page .ct-champ :is(input[type='date'], select) {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 11px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ct-patine);
+  background-color: var(--ct-creux);
+  border: 1.5px solid var(--ct-ligne-forte);
+  border-radius: 1px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.ct-page .ct-champ input[type='date'] {
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+.ct-page .ct-champ select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%237a5230' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 10px 7px;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.ct-page .ct-champ select option {
+  background: var(--ct-panneau);
+  color: var(--ct-patine);
+}
+
+.ct-page .ct-champ :is(input, select):hover {
+  border-color: var(--ct-bois);
+}
+
+.ct-page .ct-champ :is(input, select):focus {
+  border-color: var(--ct-terre);
+  box-shadow: 0 0 0 3px rgba(180, 98, 42, 0.18);
+}
+
+/* les clés de statut : quatre boutons, pas un menu déroulant */
+.ct-cles {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 3px;
+  background: var(--ct-creux);
+  border: 1.5px solid var(--ct-ligne-forte);
+  border-radius: 1px;
+}
+
+.ct-cle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 1px;
+  background: transparent;
+  color: var(--ct-patine-faible);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.ct-cle:hover {
+  color: var(--ct-patine);
+  background: rgba(122, 82, 48, 0.32);
+}
+
+.ct-cle[aria-pressed='true'] {
+  color: var(--ct-patine);
+  background: var(--ct-bois);
+  border-color: var(--ct-bois-clair);
+}
+
+.ct-cle i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+/* les deux boutons de la carte */
+.ct-boutons {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+}
+
+.ct-page .ct-bouton,
+.ct-page .ct-bouton-creux {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 1px;
+  border: 1.5px solid var(--ct-bois-clair);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.ct-page .ct-bouton {
+  color: var(--ct-patine);
+  background: var(--ct-brun);
+  border-color: var(--ct-bois);
+}
+
+.ct-page .ct-bouton:hover {
+  background: var(--ct-terre);
+}
+
+.ct-page .ct-bouton-creux {
+  color: var(--ct-patine-douce);
+  background: var(--ct-creux);
+  border-color: var(--ct-ligne-forte);
+  border-style: dashed;
+}
+
+.ct-page .ct-bouton-creux:hover {
+  color: var(--ct-patine);
+  border-color: var(--ct-bois-clair);
+  background: rgba(122, 82, 48, 0.28);
+}
+
+/* l'avis remplace les alertes du navigateur */
+.ct-avis {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 9px 12px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ct-patine-douce);
+  background: rgba(180, 98, 42, 0.12);
+  border: 1px dashed var(--ct-terre);
+  border-radius: 1px;
+}
+
+.ct-avis svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* ── 8. Le cadre : la carte est l'ouverture de la porte ───── */
+
+.ct-cadre {
+  position: relative;
+  padding: 9px;
+  background:
+    linear-gradient(180deg, rgba(142, 98, 64, 0.22), transparent 40%),
+    var(--ct-panneau);
+  border: 2px solid var(--ct-bois-fonce);
+  border-radius: 2px;
+  box-shadow: var(--ct-ombre);
+}
+
+/* les quatre clous de la porte */
+.ct-cadre::before,
+.ct-cadre::after {
+  content: '';
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ct-bois-clair);
+  box-shadow: inset 0 0 0 1.5px var(--ct-creux);
+  z-index: 3;
+}
+
+.ct-cadre::before {
+  bottom: 4px;
+  left: 4px;
+}
+
+.ct-cadre::after {
+  bottom: 4px;
+  right: 4px;
+}
+
+.ct-cadre-tete {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  padding: 4px 4px 9px;
+}
+
+.ct-cadre-titre {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--ct-patine-douce);
+}
+
+.ct-cadre-note {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--ct-patine-faible);
+}
+
+/* le linteau : la porte est taillée avant d'être ouverte */
+.ct-linteau {
+  height: 9px;
+  margin: 0 0 9px;
+  background-color: rgba(122, 82, 48, 0.22);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='9' viewBox='0 0 16 9'%3E%3Cpath d='M0 7.5 L4 1.5 L8 7.5 L12 1.5 L16 7.5' fill='none' stroke='%237a5230' stroke-width='1.6'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: center;
+  border-top: 1px solid var(--ct-creux);
+  border-bottom: 1px solid var(--ct-creux);
+}
+
+/* la carte elle-même */
+.ct-carte-niche {
+  position: relative;
+}
+
+.ct-carte {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: clamp(420px, 58vh, 640px);
+  background: #e8e0d8;
+  border: 1px solid var(--ct-creux);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+/* ── 9. La légende : une plaque vissée au cadre ───────────── */
+
+.ct-legende {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 500;
+  width: 186px;
+  padding: 11px 12px;
+  background: rgba(24, 15, 11, 0.94);
+  border: 1px solid var(--ct-bois-fonce);
+  border-radius: 1px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.ct-legende-titre {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ct-ocre-clair);
+  border-bottom: 1px dashed rgba(201, 169, 97, 0.32);
+}
+
+.ct-legende-section {
+  margin: 8px 0 5px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ct-patine-faible);
+}
+
+.ct-legende-section:first-of-type {
+  margin-top: 0;
+}
+
+.ct-legende-ligne {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0;
+  font-size: 10px;
+  color: var(--ct-patine-douce);
+}
+
+.ct-point[data-ton='ok'] {
+  color: var(--ct-ok);
+}
+
+.ct-point[data-ton='attente'] {
+  color: var(--ct-attente);
+}
+
+.ct-point[data-ton='alerte'] {
+  color: var(--ct-alerte);
+}
+
+.ct-point[data-ton='neutre'] {
+  color: var(--ct-neutre);
+}
+
+.ct-point[data-ton='moi'] {
+  color: #6366f1;
+}
+
+.ct-point {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+}
+
+.ct-point--plein {
+  background: currentColor;
+}
+
+.ct-point--creux {
+  background: transparent;
+  border-style: dashed;
+}
+
+.ct-pastille {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  font-size: 8px;
+  font-weight: 800;
+  color: var(--ct-patine);
+  background: var(--ct-bois);
+  border: 1px solid var(--ct-bois-clair);
+  border-radius: 50%;
+}
+
+.ct-legende-separateur {
+  height: 1px;
+  margin: 9px 0 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(201, 169, 97, 0.34) 0 5px,
+    transparent 5px 9px
+  );
+}
+
+/* ── 10. Les voiles : chargement et carte vide ────────────── */
+
+.ct-voile {
+  position: absolute;
+  inset: 0;
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 22px;
+  text-align: center;
+  background: rgba(13, 10, 8, 0.78);
+  backdrop-filter: blur(2px);
+}
+
+.ct-voile p {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--ct-patine-douce);
+}
+
+.ct-voile-note {
+  font-size: 10.5px;
+  color: var(--ct-patine-faible);
+}
+
+/* le balayage : un trait de pinceau qui traverse la niche */
+.ct-balayage {
+  position: relative;
+  width: 120px;
+  height: 6px;
+  overflow: hidden;
+  background: var(--ct-creux);
+  border: 1px solid var(--ct-ligne);
+}
+
+.ct-balayage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--ct-ocre-clair),
+    transparent
+  );
+  background-size: 70% 100%;
+  background-repeat: no-repeat;
+  animation: ct-balayage 1.5s ease-in-out infinite;
+}
+
+@keyframes ct-balayage {
+  0% {
+    background-position: -80% 0;
+  }
+  100% {
+    background-position: 180% 0;
+  }
+}
+
+/* ── 11. La colonne des gens ──────────────────────────────── */
+
+.ct-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--ct-panneau);
+  border: 1px solid var(--ct-ligne);
+  border-top: 2px solid var(--ct-bois);
+  border-radius: 2px;
+}
+
+.ct-liste-tete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ct-liste-titre {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ct-ocre-clair);
+}
+
+.ct-liste-compte {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ct-patine-faible);
+}
+
+/* la recherche */
+.ct-recherche {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  background: var(--ct-creux);
+  border: 1px solid var(--ct-ligne-forte);
+  border-radius: 1px;
+  transition: border-color 0.15s ease;
+}
+
+.ct-recherche:focus-within {
+  border-color: var(--ct-terre);
+}
+
+.ct-recherche svg {
+  flex: none;
+  color: var(--ct-patine-faible);
+}
+
+.ct-page .ct-recherche input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--ct-patine);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.ct-page .ct-recherche input::placeholder {
+  color: var(--ct-patine-faible);
+  opacity: 1;
+}
+
+/* les planches : une personne = une planche gravée */
+.ct-planches {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: clamp(300px, 46vh, 560px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ct-bois) transparent;
+}
+
+.ct-planches::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ct-planches::-webkit-scrollbar-thumb {
+  background: var(--ct-bois);
+  border-radius: 3px;
+}
+
+.ct-page .ct-planche {
+  display: flex;
+  font-family: inherit;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 9px;
+  text-align: left;
+  background: var(--ct-panneau-2);
+  border: 1px solid var(--ct-ligne);
+  border-left: 2px solid var(--ct-bois-fonce);
+  border-radius: 1px;
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    transform 0.14s ease;
+}
+
+.ct-page .ct-planche:hover {
+  background: rgba(122, 82, 48, 0.24);
+  border-color: var(--ct-bois);
+  transform: translateX(1px);
+}
+
+.ct-page .ct-planche[data-etat='ok'] {
+  border-left-color: var(--ct-ok);
+}
+
+.ct-page .ct-planche[data-etat='hors'] {
+  border-left-color: var(--ct-alerte);
+}
+
+.ct-page .ct-planche[data-etat='inconnu'] {
+  border-left-color: var(--ct-neutre);
+}
+
+.ct-planche-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ct-patine-douce);
+  background: var(--ct-creux);
+  border: 1.5px solid var(--ct-bois);
+  border-radius: 50%;
+}
+
+.ct-planche-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* le point de présence, en bas à droite du médaillon */
+.ct-planche-avatar::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ct-neutre);
+  border: 1.5px solid var(--ct-panneau-2);
+}
+
+.ct-planche[data-etat='ok'] .ct-planche-avatar::after {
+  background: var(--ct-ok);
+}
+
+.ct-planche[data-etat='hors'] .ct-planche-avatar::after {
+  background: var(--ct-alerte);
+}
+
+.ct-planche-infos {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ct-planche-nom {
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--ct-patine);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ct-planche-meta {
+  font-size: 9.5px;
+  color: var(--ct-patine-faible);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ct-planche-droite {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex: none;
+}
+
+.ct-grain {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 1px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.ct-grain[data-ton='ok'] {
+  color: var(--ct-ok);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.ct-grain[data-ton='attente'] {
+  color: var(--ct-attente);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.ct-grain[data-ton='alerte'] {
+  color: var(--ct-alerte);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.ct-grain[data-ton='neutre'] {
+  color: var(--ct-neutre);
+  background: rgba(107, 114, 128, 0.12);
+}
+
+/* la liste vide */
+.ct-liste-vide {
+  display: grid;
+  color: var(--ct-patine-faible);
+  place-items: center;
+  gap: 6px;
+  padding: 22px 10px;
+  text-align: center;
+  border: 1px dashed var(--ct-ligne-forte);
+  border-radius: 1px;
+}
+
+.ct-liste-vide p {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--ct-patine-faible);
+}
+
+/* ── 12. La fiche d'une personne ──────────────────────────── */
+
+.ct-fond {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow-y: auto;
+  background: rgba(8, 5, 3, 0.72);
+  backdrop-filter: blur(3px);
+  animation: ct-fond 0.16s ease;
+}
+
+@keyframes ct-fond {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ct-fiche {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--ct-panneau);
+  border: 2px solid var(--ct-bois-fonce);
+  border-radius: 2px;
+  box-shadow:
+    5px 5px 0 rgba(0, 0, 0, 0.45),
+    0 26px 60px rgba(0, 0, 0, 0.55);
+  animation: ct-fiche 0.22s cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+@keyframes ct-fiche {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ct-fiche::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px dashed rgba(201, 169, 97, 0.24);
+  pointer-events: none;
+}
+
+.ct-fiche-tete {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 13px;
+  border-bottom: 2px solid var(--ct-creux);
+}
+
+.ct-fiche-portrait {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ct-patine-douce);
+  background: var(--ct-creux);
+  border: 2px solid var(--ct-bois);
+  border-radius: 50%;
+}
+
+.ct-fiche-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ct-fiche-titres {
+  min-width: 0;
+  flex: 1;
+}
+
+.ct-page .ct-fiche-titres h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+  color: var(--ct-patine);
+}
+
+.ct-fiche-matricule {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--ct-patine-faible);
+}
+
+.ct-fermer {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--ct-patine-douce);
+  background: transparent;
+  border: 1.5px dashed var(--ct-ligne-forte);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.ct-fermer:hover {
+  color: var(--ct-patine);
+  background: var(--ct-brun);
+  border-color: var(--ct-brun);
+  border-style: solid;
+}
+
+.ct-fiche-corps {
+  padding: 14px 16px 18px;
+  overflow-y: auto;
+}
+
+.ct-fiche-sceaux {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+/* les informations : des creux étiquetés */
+.ct-fiche-infos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ct-fiche-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: var(--ct-creux);
+  border: 1px solid var(--ct-ligne);
+  border-radius: 1px;
+}
+
+.ct-fiche-info--large {
+  grid-column: 1 / -1;
+}
+
+.ct-fiche-libelle {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ct-patine-faible);
+}
+
+.ct-fiche-valeur {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ct-patine);
+  overflow-wrap: anywhere;
+}
+
+.ct-page .ct-gps {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--ct-ocre-clair);
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(201, 119, 60, 0.6);
+  width: fit-content;
+}
+
+.ct-page .ct-gps:hover {
+  color: var(--ct-patine);
+  border-bottom-color: var(--ct-patine);
+}
+
+/* la journée : une colonne d'heures, un sceau, un état */
+.ct-journee {
+  margin-top: 16px;
+}
+
+.ct-journee-titre {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 9px;
+  padding-bottom: 6px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ct-ocre-clair);
+  border-bottom: 1px dashed rgba(201, 169, 97, 0.3);
+}
+
+.ct-pointages {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ct-pointage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  background: var(--ct-panneau-2);
+  border: 1px solid var(--ct-ligne);
+  border-radius: 1px;
+}
+
+.ct-heure {
+  min-width: 46px;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ct-patine);
+}
+
+.ct-type {
+  flex: none;
+  min-width: 34px;
+  padding: 2px 6px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--ct-nuit);
+  border-radius: 1px;
+}
+
+.ct-type[data-type='in'] {
+  background: var(--ct-ok);
+}
+
+.ct-type[data-type='out'] {
+  background: var(--ct-attente);
+}
+
+.ct-pointage-etat {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--ct-patine-faible);
+}
+
+.ct-photo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: #ec4899;
+  background: rgba(236, 72, 153, 0.12);
+  border: 1px solid rgba(236, 72, 153, 0.4);
+  border-radius: 1px;
+}
+
+/* ── 13. Le pied ──────────────────────────────────────────── */
 
 .ct-pied {
   margin-top: auto;
   line-height: 0;
-  background: #0a0a0f;
-  border-top: 1px dashed rgba(232, 220, 196, 0.22);
+  background: var(--ct-nuit-2);
+  border-top: 1px dashed rgba(201, 169, 97, 0.24);
 }
 
 .ct-pied .ec-cultural-bottom[data-cultural-motif='dogon'] {
   height: 32px;
-  background-color: #7a5230;
+  background-color: var(--ct-bois);
+}
+
+/* ── 14. Les popups et les contrôles de Leaflet ───────────── */
+
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* on éteint le fond par défaut des groupes pour poser le nôtre */
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large,
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+  background: transparent !important;
+}
+
+.leaflet-container {
+  background: #e8e0d8;
+  font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper {
+  padding: 0;
+  overflow: hidden;
+  background: #fbf4e4;
+  border: 2px solid #5f3d22;
+  border-radius: 2px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  width: 250px !important;
+}
+
+.leaflet-popup-tip {
+  background: #fbf4e4;
+  border: 2px solid #5f3d22;
+  box-shadow: none;
+}
+
+.leaflet-popup-close-button {
+  top: 6px !important;
+  right: 6px !important;
+  color: #8b3e1d !important;
+  font-size: 16px !important;
+}
+
+.leaflet-bar a,
+.leaflet-control-zoom a {
+  color: #5f3d22 !important;
+  background: #f4ead6 !important;
+  border-color: #d8c9ad !important;
+  font-weight: 700;
+}
+
+.leaflet-bar a:hover {
+  background: #efe3cb !important;
+}
+
+.leaflet-control-attribution {
+  background: rgba(251, 244, 228, 0.86) !important;
+  color: #6b5540 !important;
+  font-size: 9px !important;
+}
+
+.leaflet-control-attribution a {
+  color: #8b3e1d !important;
+}
+
+/* le marqueur d'une personne : un médaillon gravé */
+.ct-pin {
+  position: relative;
+  width: 54px;
+  height: 68px;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: translate(-50%, -62%) scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: translate(-50%, -62%) scale(1.35);
+  }
+}
+
+.ct-pin-halo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  transform: translate(-50%, -62%);
+  opacity: 0.22;
+  animation: blink 1.8s ease-in-out infinite;
+}
+
+.ct-pin-medaillon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  transform: translate(-50%, -62%);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border-radius: 50%;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.ct-pin-plaque {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  padding: 2px 7px;
+  transform: translateX(-50%);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #fff;
+  border: 1.5px solid #fbf4e4;
+  border-radius: 2px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* le groupe : un anneau de bois, un chiffre patine */
+.ct-groupe {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #241a14;
+  border: 3px solid #7a5230;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.5);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.ct-groupe--petit {
+  width: 42px;
+  height: 42px;
+}
+
+.ct-groupe--moyen {
+  width: 50px;
+  height: 50px;
+}
+
+.ct-groupe--grand {
+  width: 58px;
+  height: 58px;
+}
+
+.ct-groupe b {
+  color: #f0e6d4;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ct-groupe span {
+  color: #9c856b;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* l'étiquette d'une zone : une plaque clouée au sol */
+.ct-zone[data-bloque='oui'] {
+  border-color: #ef4444;
+}
+
+.ct-zone[data-bloque='non'] {
+  border-color: #10b981;
+}
+
+.ct-zone {
+  display: inline-block;
+  padding: 3px 9px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #fbf4e4;
+  background: #241a14;
+  border: 2px solid #7a5230;
+  border-radius: 2px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+
+
+/* l'état d'un marqueur teinte le médaillon, jamais la plaque */
+.ct-pin[data-etat='ok'] .ct-pin-halo {
+  background: #10b981;
+}
+
+.ct-pin[data-etat='ok'] .ct-pin-medaillon {
+  background: #0b3d2e;
+  border: 3px solid #10b981;
+  color: #d5f5e8;
+}
+
+.ct-pin[data-etat='hors'] .ct-pin-halo {
+  background: #ef4444;
+}
+
+.ct-pin[data-etat='hors'] .ct-pin-medaillon {
+  background: #4a1717;
+  border: 3px solid #ef4444;
+  color: #f8d7d7;
+}
+
+.ct-pin[data-etat='inconnu'] .ct-pin-medaillon {
+  background: #2b2b32;
+  border: 3px solid #6b7280;
+  color: #d7d9de;
+}
+
+.ct-pin-plaque[data-etat='present'] {
+  background: #10b981;
+}
+
+.ct-pin-plaque[data-etat='sorti'] {
+  background: #f59e0b;
+}
+
+/* « ma position » : une chandelle indigo, éphémère */
+.ct-moi {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #6366f1;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 6px rgba(99, 102, 241, 0.3);
+}
+
+/* la popup : un carton clair posé sur la carte sombre */
+.ct-popup {
+  padding: 12px 13px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: #241a14;
+  background: #fbf4e4;
+}
+
+.ct-popup-tete {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-right: 14px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #e2d3b8;
+}
+
+.ct-popup-portrait {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #7a5230;
+  background: #efe3cb;
+  border: 2px solid #7a5230;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.ct-popup-identite {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ct-popup-nom {
+  font-size: 13.5px;
+  line-height: 1.2;
+  color: #241a14;
+}
+
+.ct-popup-matricule {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #8a7458;
+}
+
+.ct-popup-statut {
+  align-self: flex-start;
+  margin-top: 3px;
+  padding: 1px 7px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 1px;
+}
+
+.ct-popup [data-ton='ok'] {
+  color: #0f7a56;
+}
+
+.ct-popup [data-ton='attente'] {
+  color: #a1660b;
+}
+
+.ct-popup [data-ton='alerte'],
+.ct-popup [data-ton='hors'] {
+  color: #b91c1c;
+}
+
+.ct-popup [data-ton='inconnu'],
+.ct-popup [data-ton='neutre'] {
+  color: #6b7280;
+}
+
+.ct-popup-statut[data-ton='ok'] {
+  color: #0f7a56;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.ct-popup-statut[data-ton='attente'] {
+  color: #a1660b;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.ct-popup-journee {
+  padding: 8px 0 3px;
+}
+
+.ct-popup-section {
+  margin: 0 0 5px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #8a7458;
+}
+
+.ct-popup-pointage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  border-bottom: 1px dashed #e6d8bf;
+}
+
+.ct-popup-pointage:last-child {
+  border-bottom: 0;
+}
+
+.ct-popup-type {
+  padding: 1px 5px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fbf4e4;
+  border-radius: 1px;
+}
+
+.ct-popup-type[data-type='in'] {
+  background: #0f7a56;
+}
+
+.ct-popup-type[data-type='out'] {
+  background: #a1660b;
+}
+
+.ct-popup-heure {
+  flex: 1;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #241a14;
+}
+
+.ct-popup-etat {
+  font-size: 9.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ct-popup-pied {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  padding-top: 7px;
+  border-top: 1px dashed #e2d3b8;
+}
+
+.ct-popup-ligne {
+  margin: 0;
+  font-size: 10px;
+  color: #6b5540;
+}
+
+.ct-popup-ligne[data-bloque='oui'] {
+  color: #b91c1c;
+}
+
+.ct-popup-ligne[data-bloque='non'] {
+  color: #0f7a56;
+}
+
+.ct-popup--zone {
+  text-align: left;
+}
+
+.ct-popup--zone .ct-popup-nom {
+  display: block;
+  margin-bottom: 3px;
+}
+
+/* la fiche reprend la teinte de l'état sur le portrait */
+.ct-fiche-portrait[data-etat='ok'] {
+  border-color: var(--ct-ok);
+}
+
+.ct-fiche-portrait[data-etat='hors'] {
+  border-color: var(--ct-alerte);
+}
+
+.ct-pointage-etat[data-ton='ok'] {
+  color: var(--ct-ok);
+}
+
+.ct-pointage-etat[data-ton='hors'] {
+  color: var(--ct-alerte);
+}
+
+.ct-pointage-etat[data-ton='inconnu'] {
+  color: var(--ct-neutre);
+}
+
+/* ── 15. Adaptations ──────────────────────────────────────── */
+
+@media (max-width: 1180px) {
+  .ct-atelier {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .ct-registres {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .ct-atelier {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ct-planches {
+    max-height: none;
+  }
+
+  .ct-legende {
+    position: static;
+    width: auto;
+    margin: 9px 0 0;
+    background: var(--ct-panneau-2);
+    box-shadow: none;
+  }
+
+  .ct-legende-corps {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 16px;
+  }
+
+  .ct-legende-separateur {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .ct-registres {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ct-stele {
+    padding: 10px;
+    gap: 9px;
+  }
+
+  .ct-stele-marque {
+    width: 32px;
+    height: 32px;
+  }
+
+  .ct-boutons {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .ct-page .ct-bouton,
+  .ct-page .ct-bouton-creux {
+    flex: 1;
+  }
+
+  .ct-carte {
+    height: clamp(340px, 52vh, 460px);
+  }
+
+  .ct-cles {
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+
+  .ct-cles::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ct-fiche-infos {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 650px) {
@@ -183,10 +2048,28 @@
   .ct-pied .ec-cultural-bottom[data-cultural-motif='dogon'] {
     height: 28px;
   }
+
+  .ct-legende-corps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 460px) {
+  .ct-registres {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ct-direct i {
+  .ct-direct i,
+  .ct-pin-halo,
+  .ct-balayage::after,
+  .ct-fond,
+  .ct-fiche {
     animation: none !important;
+  }
+
+  .ct-page .ct-planche {
+    transition: none;
   }
 }

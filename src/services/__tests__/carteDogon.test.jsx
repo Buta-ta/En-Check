@@ -124,16 +124,98 @@ describe('2. la page', () => {
     expect(page).toContain('is_within_zone')
     expect(page).toContain('Légende')
     expect(page).toContain('Ma position')
-    // les couleurs de statut restent celles du produit
+    // les filtres et le temps réel n'ont pas bougé
+    expect(page).toContain('filterStatut')
+    expect(page).toContain('filterEmploye')
+    expect(page).toContain('carte-realtime-')
+    expect(page).toContain('markerClusterGroup')
+    expect(page).toContain('fitBounds')
+    // les couleurs de statut restent celles du produit : en CSS pour
+    // l'habillage, en JavaScript pour ce que Leaflet trace lui-même
     for (const couleur of ['#10B981', '#F59E0B', '#EF4444']) {
-      expect(page).toContain(couleur)
+      expect(css.toLowerCase()).toContain(couleur.toLowerCase())
     }
+    expect(page).toContain("#EF4444")
+    expect(page).toContain("#10B981")
   })
 
   it('passe au téléphone', () => {
     expect(css).toContain('@media (max-width: 650px)')
-    // la zone principale respire, la coque ne s'écrase pas
     expect(css).toContain('.ct-entete')
-    expect(page).toMatch(/main:\s*\{[^}]*boxSizing:\s*'border-box'/)
+    // la coque est mesurée en border-box : rien ne déborde de l'écran
+    expect(css).toMatch(/\.ct-page \*[^{]*\{[^}]*box-sizing:\s*border-box/)
+    expect(css).toMatch(/\.ct-coque\s*\{[^}]*box-sizing|box-sizing:\s*border-box/)
+  })
+})
+
+// ── 3. La refonte ──────────────────────────────────────────
+
+describe('3. la refonte', () => {
+  it('ne pose plus une seule règle de style dans le JSX', () => {
+    // plus de feuille inline, plus d'objet styles, plus d'attribut style
+    expect(page).not.toContain('<style>')
+    expect(page).not.toMatch(/\bstyle=\{\{/)
+    expect(page).not.toMatch(/\bstyle="/)
+    expect(page).not.toContain('const styles =')
+    // ce que Leaflet dessine passe par des classes de la feuille
+    expect(page).toContain('ct-pin')
+    expect(page).toContain('ct-groupe')
+    expect(page).toContain('ct-zone')
+    expect(css).toContain('.ct-pin[data-etat=\'ok\']')
+    expect(css).toContain('.ct-groupe--petit')
+  })
+
+  it('bat la page en registres, en seuil et en atelier', () => {
+    for (const classe of [
+      'ct-coque', 'ct-seuil', 'ct-raccourcis', 'ct-registres', 'ct-stele',
+      'ct-outils', 'ct-champ', 'ct-cles', 'ct-cle', 'ct-atelier', 'ct-cadre', 'ct-linteau',
+      'ct-carte-niche', 'ct-legende', 'ct-liste', 'ct-planche', 'ct-fiche',
+      'ct-fond',
+    ]) {
+      expect(css).toContain(`.${classe}`)
+    }
+    // les cinq registres de la journée
+    expect(page).toContain('Employés GPS')
+    expect(page).toContain('Présents')
+    expect(page).toContain('Sortis')
+    expect(page).toContain('Hors zone')
+    expect(page).toContain('Non vérifié')
+  })
+
+  it('remplace le menu de statut par quatre clés, sans changer les valeurs', () => {
+    for (const cle of ['tous', 'dans_zone', 'hors_zone', 'non_verifie']) {
+      expect(page).toContain(`cle: '${cle}'`)
+    }
+    expect(page).toContain('aria-pressed={filterStatut === cle}')
+    expect(css).toContain(".ct-cle[aria-pressed='true']")
+  })
+
+  it('donne à la page ses raccourcis, comme les autres coques', () => {
+    expect(page).toContain('RaccourcisPages compact')
+    expect(page).toContain("excludePaths={['/carte-temps-reel']}")
+    expect(css).toContain('.ct-raccourcis .abs-raccourci')
+  })
+
+  it('nomme les gens dans une colonne, avec leur heure et leur état', () => {
+    expect(page).toContain('Les gens du jour')
+    expect(page).toContain('ct-planche')
+    expect(page).toContain('formaterHeureLocale(data.lastTime)')
+    // la recherche ne touche qu'à l'affichage
+    expect(page).toContain('recherche')
+    expect(page).toContain('Chercher un nom ou un matricule')
+  })
+
+  it('ouvre une vraie fiche, refermable au clavier', () => {
+    expect(page).toContain('role="dialog"')
+    expect(page).toContain('aria-modal="true"')
+    expect(page).toContain("e.key === 'Escape'")
+    expect(page).toContain('aria-label="Fermer la fiche"')
+    expect(css).toContain('@keyframes ct-fiche')
+  })
+
+  it('remplace les alertes du navigateur par un avis dans la page', () => {
+    expect(page).not.toMatch(/[^.\w]alert\(/)
+    expect(page).toContain('className="ct-avis"')
+    expect(page).toContain('role="status"')
   })
 })

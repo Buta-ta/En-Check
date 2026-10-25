@@ -1,17 +1,26 @@
 // ═══════════════════════════════════════════════════════════
-// 🗺️ PAGE CARTE TEMPS RÉEL
+// 🗿 LA PORTE DU PLATEAU — CARTE TEMPS RÉEL
+//
+// Une porte de grenier dogon ouvre sur le site : les registres
+// du haut comptent la journée, l'ouverture du milieu montre le
+// plateau, la colonne de droite nomme les gens.
+//
+// Toute la mécanique est inchangée : mêmes requêtes, même canal
+// temps réel, mêmes filtres, mêmes marqueurs, même fiche.
+// Seul le dessin est neuf.
 // ═══════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import PageCulturalBand from '../components/PageCulturalBand'
+import RaccourcisPages from '../components/RaccourcisPages'
 import { DogonBlasonSvg } from '../components/DogonSvg'
 import './CarteTempsReel.css'
 import {
-  ArrowLeft, MapPin, Users, Calendar, Filter, X, Activity,
+  ArrowLeft, MapPin, Users, Calendar, X, Activity,
   CheckCircle2, AlertTriangle, XCircle, Camera,
-  LogIn, LogOut, Navigation,
+  LogIn, LogOut, Navigation, Search, RefreshCw, Building2,
 } from 'lucide-react'
 import L from 'leaflet'
 import 'leaflet.markercluster'
@@ -25,6 +34,32 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
+
+// Les couleurs que Leaflet attend en JavaScript, pas en CSS.
+const COULEUR_ZONE = { bloquante: '#EF4444', libre: '#10B981' }
+
+// Les quatre clés de statut — mêmes valeurs que la base.
+const CLES_STATUT = [
+  { cle: 'tous', libelle: 'Tous' },
+  { cle: 'dans_zone', libelle: 'Dans la zone' },
+  { cle: 'hors_zone', libelle: 'Hors zone' },
+  { cle: 'non_verifie', libelle: 'Non vérifié' },
+]
+
+const etatDe = (dansZone) => (dansZone === true ? 'ok' : dansZone === false ? 'hors' : 'inconnu')
+
+const initialesDe = (employe) => {
+  const a = (employe?.first_name || '').trim().charAt(0)
+  const b = (employe?.last_name || '').trim().charAt(0)
+  return `${a}${b}`.toUpperCase() || '?'
+}
+
+const distanceLisible = (metres) =>
+  metres == null
+    ? ''
+    : metres < 1000
+      ? `${metres} m`
+      : `${(metres / 1000).toFixed(1)} km`
 
 export default function CarteTempsReel() {
   const [admin, setAdmin] = useState(null)
@@ -40,6 +75,8 @@ export default function CarteTempsReel() {
   const [filterEmploye, setFilterEmploye] = useState('tous')
   const [employees, setEmployees] = useState([])
   const [enterpriseName, setEnterpriseName] = useState('')
+  const [avis, setAvis] = useState(null)
+  const [recherche, setRecherche] = useState('')
 
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
@@ -118,31 +155,16 @@ export default function CarteTempsReel() {
             spiderfyOnMaxZoom: true,
             iconCreateFunction: (cluster) => {
               const count = cluster.getChildCount()
-              const size = count < 5 ? 40 : count < 10 ? 48 : 56
+              const taille = count < 5 ? 'petit' : count < 10 ? 'moyen' : 'grand'
+              const size = count < 5 ? 42 : count < 10 ? 50 : 58
               return L.divIcon({
                 html: `
-                  <div style="
-                    width: ${size}px;
-                    height: ${size}px;
-                    background: linear-gradient(135deg, #1a1a2e, #16213e);
-                    border: 3px solid #10B981;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    box-shadow: 0 4px 15px rgba(16,185,129,0.4);
-                    font-family: sans-serif;
-                    flex-direction: column;
-                  ">
-                    <span style="color: #10B981; font-size: ${count < 10 ? 16 : 13}px; font-weight: 800; line-height: 1;">
-                      ${count}
-                    </span>
-                    <span style="color: #888; font-size: 9px; font-weight: 600;">
-                      emp.
-                    </span>
+                  <div class="ct-groupe ct-groupe--${taille}">
+                    <b>${count}</b>
+                    <span>emp.</span>
                   </div>
                 `,
-                className: '',
+                className: 'custom-marker',
                 iconSize: [size, size],
                 iconAnchor: [size / 2, size / 2],
               })
@@ -187,6 +209,16 @@ export default function CarteTempsReel() {
     }
   }, [])
 
+  // La fiche se ferme à la touche Échap, comme une vraie fenêtre.
+  useEffect(() => {
+    if (!selectedEmployeData) return undefined
+    const surTouche = (e) => {
+      if (e.key === 'Escape') setSelectedEmployeData(null)
+    }
+    window.addEventListener('keydown', surTouche)
+    return () => window.removeEventListener('keydown', surTouche)
+  }, [selectedEmployeData])
+
   // ═══════════════════════════════════════════════════════════
   // 📡 CHARGER ENTREPRISES
   // ═══════════════════════════════════════════════════════════
@@ -203,6 +235,7 @@ export default function CarteTempsReel() {
 
   const loadData = async () => {
     setLoading(true)
+    setAvis(null)
     try {
       let targetId = selectedEntrepriseId
       if (admin.role !== 'super_admin') {
@@ -273,6 +306,7 @@ export default function CarteTempsReel() {
 
     } catch (error) {
       console.error('Erreur chargement carte:', error)
+      setAvis("La carte n'a pas pu se mettre à jour. Vérifiez la connexion, puis réessayez.")
     } finally {
       setLoading(false)
     }
@@ -334,9 +368,11 @@ export default function CarteTempsReel() {
     // ── Zones géofencées ──
     zones.forEach((zone) => {
       try {
+        const teinte = zone.is_blocking ? COULEUR_ZONE.bloquante : COULEUR_ZONE.libre
+
         const circle = L.circle([zone.latitude, zone.longitude], {
-          color: zone.is_blocking ? '#EF4444' : '#10B981',
-          fillColor: zone.is_blocking ? '#EF4444' : '#10B981',
+          color: teinte,
+          fillColor: teinte,
           fillOpacity: 0.12,
           radius: zone.radius_meters,
           weight: 2,
@@ -344,23 +380,8 @@ export default function CarteTempsReel() {
         }).addTo(mapInstanceRef.current)
 
         const zoneIcon = L.divIcon({
-          className: '',
-          html: `
-            <div style="
-              background: white;
-              color: #111;
-              padding: 4px 10px;
-              border-radius: 20px;
-              font-size: 11px;
-              font-weight: 700;
-              font-family: sans-serif;
-              white-space: nowrap;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-              border: 2px solid ${zone.is_blocking ? '#EF4444' : '#10B981'};
-            ">
-              📍 ${zone.name}
-            </div>
-          `,
+          className: 'custom-marker',
+          html: `<span class="ct-zone" data-bloque="${zone.is_blocking ? 'oui' : 'non'}">${zone.name}</span>`,
           iconAnchor: [0, 0],
         })
 
@@ -370,12 +391,12 @@ export default function CarteTempsReel() {
         }).addTo(mapInstanceRef.current)
 
         zoneMarker.bindPopup(`
-          <div style="font-family: sans-serif; padding: 4px;">
-            <strong style="font-size: 14px;">📍 ${zone.name}</strong><br/>
-            <span style="color: #666; font-size: 12px;">
-              Rayon: ${zone.radius_meters}m<br/>
-              ${zone.is_blocking ? '🔒 Bloquant' : '✅ Non-bloquant'}
-            </span>
+          <div class="ct-popup ct-popup--zone">
+            <strong class="ct-popup-nom">${zone.name}</strong>
+            <p class="ct-popup-ligne">Rayon : ${zone.radius_meters} m</p>
+            <p class="ct-popup-ligne" data-bloque="${zone.is_blocking ? 'oui' : 'non'}">
+              ${zone.is_blocking ? 'Zone bloquante' : 'Zone non bloquante'}
+            </p>
           </div>
         `)
 
@@ -413,74 +434,24 @@ export default function CarteTempsReel() {
 
         if (!location_lat || !location_lng) return
 
-        // Couleurs selon statut
-        let ringColor = '#6B7280'
-        let bgColor = '#374151'
-        if (is_within_zone === true) { ringColor = '#10B981'; bgColor = '#065F46' }
-        if (is_within_zone === false) { ringColor = '#EF4444'; bgColor = '#7F1D1D' }
-
+        const etat = etatDe(is_within_zone)
         const estPresent = lastType === 'in'
-        const statusColor = estPresent ? '#10B981' : '#F59E0B'
         const statusLabel = estPresent ? 'Présent' : 'Sorti'
 
         const icon = L.divIcon({
-          className: '',
+          className: 'custom-marker',
           html: `
-            <div style="position: relative; width: 52px; height: 66px;">
-
-              ${estPresent ? `
-                <div style="
-                  position: absolute;
-                  top: 50%; left: 50%;
-                  transform: translate(-50%, -62%);
-                  width: 54px; height: 54px;
-                  border-radius: 50%;
-                  background: ${ringColor};
-                  opacity: 0.2;
-                  animation: blink 1.8s ease-in-out infinite;
-                "></div>
-              ` : ''}
-
-              <div style="
-                position: absolute;
-                top: 50%; left: 50%;
-                transform: translate(-50%, -62%);
-                width: 40px; height: 40px;
-                background: ${bgColor};
-                border: 3px solid ${ringColor};
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 4px 14px rgba(0,0,0,0.4);
-                font-size: 18px;
-              ">
-                👤
-              </div>
-
-              <div style="
-                position: absolute;
-                bottom: 0; left: 50%;
-                transform: translateX(-50%);
-                background: ${statusColor};
-                color: white;
-                font-size: 9px;
-                font-weight: 800;
-                font-family: sans-serif;
-                padding: 2px 7px;
-                border-radius: 6px;
-                border: 1.5px solid white;
-                white-space: nowrap;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-              ">
+            <div class="ct-pin" data-etat="${etat}">
+              ${estPresent ? '<span class="ct-pin-halo" aria-hidden="true"></span>' : ''}
+              <span class="ct-pin-medaillon">${initialesDe(emp)}</span>
+              <span class="ct-pin-plaque" data-etat="${estPresent ? 'present' : 'sorti'}">
                 ${statusLabel}
-              </div>
-
+              </span>
             </div>
           `,
-          iconSize: [52, 66],
-          iconAnchor: [26, 54],
-          popupAnchor: [0, -54],
+          iconSize: [54, 68],
+          iconAnchor: [27, 56],
+          popupAnchor: [0, -56],
         })
 
         const marker = L.marker([location_lat, location_lng], { icon })
@@ -489,64 +460,50 @@ export default function CarteTempsReel() {
 
         // Popup avec tous les pointages du jour
         const avatarHtml = emp?.photo_url
-          ? `<img src="${emp.photo_url}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid ${ringColor};"/>`
-          : `<div style="width:44px;height:44px;border-radius:50%;background:${bgColor};color:white;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid ${ringColor};">👤</div>`
+          ? `<img class="ct-popup-portrait" src="${emp.photo_url}" alt="" />`
+          : `<span class="ct-popup-portrait">${initialesDe(emp)}</span>`
 
         const pointagesHtml = empPointages.map(p => `
-          <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f0f0f0;">
-            <span style="
-              background:${p.check_type === 'in' ? '#10B981' : '#F59E0B'};
-              color:white;font-size:9px;font-weight:800;
-              padding:2px 6px;border-radius:4px;white-space:nowrap;
-            ">${p.check_type === 'in' ? 'IN' : 'OUT'}</span>
-            <span style="font-size:12px;font-weight:600;color:#333;flex:1;">
-              ${formaterHeureLocale(p.check_time)}
+          <div class="ct-popup-pointage">
+            <span class="ct-popup-type" data-type="${p.check_type === 'in' ? 'in' : 'out'}">
+              ${p.check_type === 'in' ? 'IN' : 'OUT'}
             </span>
-            <span style="font-size:11px;color:${p.is_within_zone === true ? '#10B981' : p.is_within_zone === false ? '#EF4444' : '#999'};">
-              ${p.is_within_zone === true ? '✅' : p.is_within_zone === false ? '⚠️' : '—'}
+            <span class="ct-popup-heure">${formaterHeureLocale(p.check_time)}</span>
+            <span class="ct-popup-etat" data-ton="${etatDe(p.is_within_zone)}">
+              ${p.is_within_zone === true ? 'Dans la zone'
+                : p.is_within_zone === false ? 'Hors zone' : 'Non vérifié'}
             </span>
           </div>
         `).join('')
 
-        const statutText =
-          is_within_zone === true ? '✅ Dans la zone'
-          : is_within_zone === false ? '⚠️ Hors zone'
-          : '— Non vérifié'
-
         marker.bindPopup(`
-          <div style="font-family:sans-serif;min-width:220px;max-width:260px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div class="ct-popup">
+            <header class="ct-popup-tete">
               ${avatarHtml}
-              <div>
-                <strong style="font-size:14px;display:block;">
-                  ${emp?.first_name || ''} ${emp?.last_name || ''}
-                </strong>
-                <span style="color:#666;font-size:11px;">${emp?.matricule || ''}</span><br/>
-                <span style="
-                  background:${statusColor};color:white;
-                  font-size:10px;font-weight:700;
-                  padding:2px 8px;border-radius:6px;
-                ">${statusLabel}</span>
+              <div class="ct-popup-identite">
+                <strong class="ct-popup-nom">${emp?.first_name || ''} ${emp?.last_name || ''}</strong>
+                <span class="ct-popup-matricule">${emp?.matricule || ''}</span>
+                <span class="ct-popup-statut" data-ton="${estPresent ? 'ok' : 'attente'}">
+                  ${statusLabel}
+                </span>
               </div>
-            </div>
+            </header>
 
-            <div style="border-top:1px solid #eee;padding-top:8px;margin-bottom:8px;">
-              <p style="font-size:11px;font-weight:700;color:#888;margin:0 0 6px 0;
-                text-transform:uppercase;letter-spacing:0.5px;">
-                Pointages du jour
-              </p>
+            <div class="ct-popup-journee">
+              <p class="ct-popup-section">Pointages du jour</p>
               ${pointagesHtml}
             </div>
 
-            <div style="font-size:12px;color:#555;line-height:1.8;">
-              ${statutText}
-              ${distance_meters
-                ? `<br/>📏 ${distance_meters < 1000
-                    ? distance_meters + 'm'
-                    : (distance_meters / 1000).toFixed(1) + 'km'}`
+            <footer class="ct-popup-pied">
+              <span class="ct-popup-etat" data-ton="${etat}">
+                ${is_within_zone === true ? 'Dans la zone'
+                  : is_within_zone === false ? 'Hors zone' : 'Non vérifié'}
+              </span>
+              ${distance_meters != null
+                ? `<span class="ct-popup-ligne">${distanceLisible(distance_meters)} de la zone</span>`
                 : ''}
-              ${geofence?.name ? `<br/>🏢 ${geofence.name}` : ''}
-            </div>
+              ${geofence?.name ? `<span class="ct-popup-ligne">${geofence.name}</span>` : ''}
+            </footer>
           </div>
         `)
 
@@ -585,37 +542,30 @@ export default function CarteTempsReel() {
 
   const centrerSurMaPosition = () => {
     if (!navigator.geolocation) {
-      alert("Géolocalisation non supportée")
+      setAvis("Ce navigateur ne sait pas vous situer : la géolocalisation n'y est pas disponible.")
       return
     }
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         if (!mapInstanceRef.current) return
+        setAvis(null)
         mapInstanceRef.current.setView([coords.latitude, coords.longitude], 15)
 
         const myIcon = L.divIcon({
-          className: '',
-          html: `
-            <div style="
-              width: 18px; height: 18px;
-              background: #6366F1;
-              border: 3px solid white;
-              border-radius: 50%;
-              box-shadow: 0 0 0 6px rgba(99,102,241,0.3);
-            "></div>
-          `,
+          className: 'custom-marker',
+          html: '<span class="ct-moi"></span>',
           iconSize: [18, 18],
           iconAnchor: [9, 9],
         })
 
         const m = L.marker([coords.latitude, coords.longitude], { icon: myIcon })
           .addTo(mapInstanceRef.current)
-          .bindPopup('📍 Votre position')
+          .bindPopup('<div class="ct-popup ct-popup--zone"><strong class="ct-popup-nom">Votre position</strong></div>')
           .openPopup()
 
         setTimeout(() => m.remove(), 6000)
       },
-      () => alert("Impossible d'obtenir votre position.")
+      () => setAvis("Impossible d'obtenir votre position. Autorisez la localisation dans le navigateur, puis réessayez.")
     )
   }
 
@@ -643,898 +593,508 @@ export default function CarteTempsReel() {
 
   const filteredEmployes = regrouperParEmploye(filteredPointages)
 
+  // Le filtre de recherche ne touche qu'à l'affichage de la colonne.
+  const employesAffiches = filteredEmployes.filter((data) => {
+    const q = recherche.trim().toLowerCase()
+    if (!q) return true
+    const nom = `${data.employee?.first_name || ''} ${data.employee?.last_name || ''}`.toLowerCase()
+    return nom.includes(q) || (data.employee?.matricule || '').toLowerCase().includes(q)
+  })
+
+  const maisonAffichee = selectedEntrepriseId === 'all' && admin?.role === 'super_admin'
+    ? 'Toutes les maisons'
+    : enterpriseName || 'La maison'
+
+  const pointagesGps = pointages.length
+
   // ═══════════════════════════════════════════════════════════
   // 🖥️ RENDER
   // ═══════════════════════════════════════════════════════════
 
   return (
-    <>
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes blink {
-          0%, 100% { opacity: 0.15; transform: translate(-50%, -62%) scale(1); }
-          50% { opacity: 0.4; transform: translate(-50%, -62%) scale(1.35); }
-        }
-        .custom-marker { background: transparent !important; border: none !important; }
-        .leaflet-container { background: #e8e0d8; }
-        .leaflet-popup-content-wrapper {
-          background: #fff;
-          border-radius: 12px;
-          box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-          border: none;
-        }
-        .leaflet-popup-tip { background: #fff; }
-        .leaflet-popup-content { margin: 14px 16px; }
+    <div className="ct-page">
+      <PageCulturalBand pathname="/carte-temps-reel" />
+      <div className="ct-bordure" aria-hidden="true" />
 
-        /* Style du cluster */
-        .marker-cluster-small,
-        .marker-cluster-medium,
-        .marker-cluster-large {
-          background: transparent !important;
-        }
-        .marker-cluster-small div,
-        .marker-cluster-medium div,
-        .marker-cluster-large div {
-          background: transparent !important;
-        }
-      `}</style>
+      <header className="ct-entete">
+        <button
+          type="button"
+          className="ct-retour"
+          onClick={() => navigate('/dashboard')}
+          aria-label="Revenir au tableau de bord"
+          title="Tableau de bord"
+        >
+          <ArrowLeft size={16} />
+        </button>
+        <DogonBlasonSvg size={48} />
+        <div className="ct-titre-bloc">
+          <span className="ct-eyebrow">La porte du plateau</span>
+          <h1 className="ct-titre">
+            Carte en direct<span>.</span>
+          </h1>
+          <p className="ct-sous-titre">
+            Chaque point est une personne qui a pointé, quelque part sur le site.
+          </p>
+        </div>
+        <div className="ct-entete-droite">
+          <span className="ct-direct">
+            <i aria-hidden="true" />
+            En direct
+          </span>
+        </div>
+      </header>
 
-      <div className="ct-page" style={styles.container}>
-        <PageCulturalBand pathname="/carte-temps-reel" />
-        <div className="ct-bordure" aria-hidden="true" />
+      <main className="ct-coque">
 
-        <header className="ct-entete">
-          <button
-            type="button"
-            className="ct-retour"
-            onClick={() => navigate('/dashboard')}
-            aria-label="Revenir au tableau de bord"
-            title="Tableau de bord"
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <DogonBlasonSvg size={48} />
-          <div className="ct-titre-bloc">
-            <span className="ct-eyebrow">La porte du plateau</span>
-            <h1 className="ct-titre">
-              Carte en direct<span>.</span>
-            </h1>
-            <p className="ct-sous-titre">
-              Chaque point est une personne qui a pointé, quelque part sur le site.
-            </p>
-          </div>
-          <div className="ct-entete-droite">
-            <span className="ct-direct">
-              <i aria-hidden="true" />
-              En direct
+        {/* ── Le seuil : la maison et les autres écrans ── */}
+        <section className="ct-seuil" aria-label="La maison et les autres écrans">
+          <div className="ct-seuil-maison">
+            <span className="ct-seuil-libelle">La maison</span>
+            <span className="ct-seuil-nom">{maisonAffichee}</span>
+            <span className="ct-seuil-fait">
+              <MapPin size={11} aria-hidden="true" />
+              {stats.total} employé{stats.total > 1 ? 's' : ''} géolocalisé{stats.total > 1 ? 's' : ''}
             </span>
+            {loading && <span className="ct-seuil-fait">Relevé en cours…</span>}
           </div>
-        </header>
 
-        <main style={styles.main}>
+          <div className="ct-raccourcis">
+            <span className="ct-seuil-libelle">Aller à</span>
+            <RaccourcisPages compact excludePaths={['/carte-temps-reel']} />
+          </div>
+        </section>
 
-          {/* BANDEAU ENTREPRISE */}
-          {enterpriseName && (
-            <div style={styles.enterpriseBanner}>
-              <MapPin size={16} color="#10B981" />
-              <span style={styles.enterpriseNameText}>{enterpriseName}</span>
-              <span style={styles.enterpriseSub}>
-                — {stats.total} employé{stats.total > 1 ? 's' : ''} avec pointage GPS
-                {loading && ' (actualisation...)'}
+        {avis && (
+          <p className="ct-avis" role="status">
+            <AlertTriangle size={13} aria-hidden="true" />
+            {avis}
+          </p>
+        )}
+
+        {/* ── Les registres de la journée ── */}
+        <section className="ct-registres" aria-label="Les registres de la journée">
+          {[
+            { icone: Users, ton: 'bois', valeur: stats.total, libelle: 'Employés GPS' },
+            { icone: CheckCircle2, ton: 'ok', valeur: stats.presents, libelle: 'Présents' },
+            { icone: LogOut, ton: 'attente', valeur: stats.sortis, libelle: 'Sortis' },
+            { icone: AlertTriangle, ton: 'alerte', valeur: stats.horsZone, libelle: 'Hors zone' },
+            { icone: XCircle, ton: 'neutre', valeur: stats.nonVerifie, libelle: 'Non vérifié' },
+          ].map(({ icone: Icone, ton, valeur, libelle }) => (
+            <div key={libelle} className="ct-stele" data-ton={ton}>
+              <span className="ct-stele-marque">
+                <Icone size={18} aria-hidden="true" />
+              </span>
+              <span className="ct-stele-texte">
+                <span className="ct-stele-nombre">{valeur}</span>
+                <span className="ct-stele-libelle">{libelle}</span>
               </span>
             </div>
+          ))}
+        </section>
+
+        {/* ── Les outils : le jour, la maison, la personne, le statut ── */}
+        <div className="ct-outils">
+          <label className="ct-champ ct-champ-date">
+            <span className="ct-etiquette">
+              <Calendar size={11} aria-hidden="true" />
+              Le jour
+            </span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              aria-label="Choisir le jour observé"
+            />
+          </label>
+
+          {admin?.role === 'super_admin' && (
+            <label className="ct-champ ct-champ-select">
+              <span className="ct-etiquette">
+                <Building2 size={11} aria-hidden="true" />
+                La maison
+              </span>
+              <select
+                value={selectedEntrepriseId}
+                onChange={(e) => setSelectedEntrepriseId(e.target.value)}
+                aria-label="Choisir l'entreprise"
+              >
+                <option value="all">Toutes les entreprises</option>
+                {entreprises.map((ent) => (
+                  <option key={ent.id} value={ent.id}>{ent.name}</option>
+                ))}
+              </select>
+            </label>
           )}
 
-          {/* TOOLBAR */}
-          <div style={styles.toolbar}>
-            <div style={styles.toolbarLeft}>
+          <label className="ct-champ ct-champ-select">
+            <span className="ct-etiquette">
+              <Users size={11} aria-hidden="true" />
+              La personne
+            </span>
+            <select
+              value={filterEmploye}
+              onChange={(e) => setFilterEmploye(e.target.value)}
+              aria-label="Choisir un employé"
+            >
+              <option value="tous">Toutes les personnes</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.first_name} {emp.last_name} ({emp.matricule})
+                </option>
+              ))}
+            </select>
+          </label>
 
-              <div style={styles.filterGroup}>
-                <Calendar size={16} color="#10B981" />
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  style={styles.dateInput}
-                />
-              </div>
-
-              {admin?.role === 'super_admin' && (
-                <div style={styles.filterGroup}>
-                  <Users size={16} color="#10B981" />
-                  <select
-                    value={selectedEntrepriseId}
-                    onChange={(e) => setSelectedEntrepriseId(e.target.value)}
-                    style={styles.select}
-                  >
-                    <option value="all">Toutes les entreprises</option>
-                    {entreprises.map((ent) => (
-                      <option key={ent.id} value={ent.id}>{ent.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div style={styles.filterGroup}>
-                <Filter size={16} color="#10B981" />
-                <select
-                  value={filterStatut}
-                  onChange={(e) => setFilterStatut(e.target.value)}
-                  style={styles.select}
+          <div className="ct-champ">
+            <span className="ct-etiquette">Le statut</span>
+            <div className="ct-cles" role="group" aria-label="Filtrer par statut de pointage">
+              {CLES_STATUT.map(({ cle, libelle }) => (
+                <button
+                  key={cle}
+                  type="button"
+                  className="ct-cle"
+                  aria-pressed={filterStatut === cle}
+                  onClick={() => setFilterStatut(cle)}
                 >
-                  <option value="tous">Tous les statuts</option>
-                  <option value="dans_zone">✅ Dans la zone</option>
-                  <option value="hors_zone">⚠️ Hors zone</option>
-                  <option value="non_verifie">— Non vérifié</option>
-                </select>
-              </div>
-
-              <div style={styles.filterGroup}>
-                <Users size={16} color="#10B981" />
-                <select
-                  value={filterEmploye}
-                  onChange={(e) => setFilterEmploye(e.target.value)}
-                  style={styles.select}
-                >
-                  <option value="tous">Tous les employés</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.first_name} {emp.last_name} ({emp.matricule})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div style={styles.toolbarRight}>
-              <div style={styles.liveBadge}>
-                <Activity size={14} />
-                <span>Temps réel</span>
-              </div>
-              <button onClick={centrerSurMaPosition} style={styles.geoBtn}>
-                <Navigation size={16} />
-                <span>Ma position</span>
-              </button>
-            </div>
-          </div>
-
-          {/* STATS */}
-          <div style={styles.statsGrid}>
-            {[
-              { icon: Users, color: '#10B981', bg: 'rgba(16,185,129,0.15)', value: stats.total, label: 'Employés GPS' },
-              { icon: CheckCircle2, color: '#10B981', bg: 'rgba(16,185,129,0.15)', value: stats.presents, label: 'Présents' },
-              { icon: LogOut, color: '#F59E0B', bg: 'rgba(245,158,11,0.15)', value: stats.sortis, label: 'Sortis' },
-              { icon: AlertTriangle, color: '#EF4444', bg: 'rgba(239,68,68,0.15)', value: stats.horsZone, label: 'Hors zone' },
-              { icon: XCircle, color: '#6B7280', bg: 'rgba(107,114,128,0.15)', value: stats.nonVerifie, label: 'Non vérifié' },
-            ].map((s, i) => (
-              <div key={i} style={styles.statCard}>
-                <div style={{ ...styles.statIcon, background: s.bg }}>
-                  <s.icon size={20} color={s.color} />
-                </div>
-                <div>
-                  <span style={styles.statNumber}>{s.value}</span>
-                  <span style={styles.statLabel}>{s.label}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* CARTE */}
-          <div style={styles.mapContainer}>
-            {loading && (
-              <div style={styles.loadingOverlay}>
-                <MapPin size={32} color="#10B981" />
-                <p style={{ color: '#888', fontSize: '14px', marginTop: '12px' }}>
-                  Actualisation...
-                </p>
-              </div>
-            )}
-
-            <div ref={mapRef} style={styles.map} />
-
-            {!loading && pointages.length === 0 && (
-              <div style={styles.mapOverlayMessage}>
-                <MapPin size={28} color="#10B981" />
-                <p style={styles.mapOverlayText}>Aucun pointage GPS pour cette date</p>
-                <p style={styles.mapOverlaySubtext}>
-                  Les pointages apparaîtront ici en temps réel.
-                </p>
-              </div>
-            )}
-
-            {/* LÉGENDE */}
-            <div style={styles.legend}>
-              <h4 style={styles.legendTitle}>Légende</h4>
-
-              <p style={styles.legendSection}>Statut employé</p>
-              <div style={styles.legendItem}>
-                <div style={{ ...styles.legendDot, background: '#10B981' }} />
-                <span>Présent</span>
-              </div>
-              <div style={styles.legendItem}>
-                <div style={{ ...styles.legendDot, background: '#F59E0B' }} />
-                <span>Sorti</span>
-              </div>
-
-              <div style={styles.legendSeparator} />
-
-              <p style={styles.legendSection}>Zone GPS</p>
-              <div style={styles.legendItem}>
-                <div style={{ ...styles.legendDot, background: '#10B981', opacity: 0.6 }} />
-                <span>Non-bloquante</span>
-              </div>
-              <div style={styles.legendItem}>
-                <div style={{ ...styles.legendDot, background: '#EF4444', opacity: 0.6 }} />
-                <span>Bloquante</span>
-              </div>
-
-              <div style={styles.legendSeparator} />
-
-              <p style={styles.legendSection}>Cluster</p>
-              <div style={styles.legendItem}>
-                <div style={{
-                  width: '22px', height: '22px', borderRadius: '50%',
-                  background: '#1a1a2e', border: '2px solid #10B981',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '9px', color: '#10B981', fontWeight: '800', flexShrink: 0,
-                }}>N</div>
-                <span>Groupe d'employés</span>
-              </div>
-
-              <div style={styles.legendSeparator} />
-
-              <div style={styles.legendItem}>
-                <div style={{
-                  width: '12px', height: '12px', borderRadius: '50%',
-                  background: '#6366F1', border: '2px solid white', flexShrink: 0,
-                }} />
-                <span>Ma position</span>
-              </div>
-            </div>
-          </div>
-
-          {/* LISTE EMPLOYÉS */}
-          {filteredEmployes.length > 0 && (
-            <div style={styles.list}>
-              <h3 style={styles.listTitle}>
-                Employés ({filteredEmployes.length})
-              </h3>
-              {filteredEmployes.map((data, idx) => (
-                <div
-                  key={data.employee?.id || idx}
-                  style={styles.listItem}
-                  onClick={() => setSelectedEmployeData(data)}
-                >
-                  <div style={styles.listItemLeft}>
-                    <div style={{
-                      ...styles.avatar,
-                      border: `2px solid ${
-                        data.is_within_zone === true ? '#10B981'
-                        : data.is_within_zone === false ? '#EF4444'
-                        : '#6B7280'
-                      }`,
-                    }}>
-                      {data.employee?.photo_url ? (
-                        <img src={data.employee.photo_url} alt="" style={styles.avatarImg} />
-                      ) : (
-                        <span style={{ fontSize: '18px' }}>👤</span>
-                      )}
-                    </div>
-                    <div>
-                      <div style={styles.employeeName}>
-                        {data.employee?.first_name} {data.employee?.last_name}
-                      </div>
-                      <div style={styles.employeeMeta}>
-                        {data.employee?.matricule}
-                        {' • '}
-                        {data.pointages.length} pointage{data.pointages.length > 1 ? 's' : ''}
-                        {data.geofence?.name && ` • ${data.geofence.name}`}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={styles.listItemRight}>
-                    <span style={{
-                      ...styles.typeBadge,
-                      background: data.lastType === 'in'
-                        ? 'rgba(16,185,129,0.12)'
-                        : 'rgba(245,158,11,0.12)',
-                      color: data.lastType === 'in' ? '#10B981' : '#F59E0B',
-                    }}>
-                      {data.lastType === 'in' ? <LogIn size={12} /> : <LogOut size={12} />}
-                      {data.lastType === 'in' ? 'Présent' : 'Sorti'}
-                    </span>
-
-                    <span style={{
-                      ...styles.zoneBadge,
-                      background: data.is_within_zone === true ? 'rgba(16,185,129,0.12)'
-                        : data.is_within_zone === false ? 'rgba(239,68,68,0.12)'
-                        : 'rgba(107,114,128,0.12)',
-                      color: data.is_within_zone === true ? '#10B981'
-                        : data.is_within_zone === false ? '#EF4444'
-                        : '#6B7280',
-                    }}>
-                      {data.is_within_zone === true ? '✅'
-                        : data.is_within_zone === false ? '⚠️' : '—'}
-                    </span>
-                  </div>
-                </div>
+                  <i aria-hidden="true" />
+                  {libelle}
+                </button>
               ))}
             </div>
-          )}
-        </main>
+          </div>
 
-        <div className="ct-pied">
-          <PageCulturalBand pathname="/carte-temps-reel" placement="bottom" />
+          <div className="ct-boutons">
+            <button
+              type="button"
+              className="ct-bouton-creux"
+              onClick={loadData}
+              title="Recharger les pointages du jour"
+            >
+              <RefreshCw size={14} aria-hidden="true" />
+              Actualiser
+            </button>
+            <button type="button" className="ct-bouton" onClick={centrerSurMaPosition}>
+              <Navigation size={14} aria-hidden="true" />
+              Ma position
+            </button>
+          </div>
         </div>
 
-        {/* MODAL DÉTAIL EMPLOYÉ */}
-        {selectedEmployeData && (
-          <div style={styles.modalOverlay} onClick={() => setSelectedEmployeData(null)}>
-            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-              <div style={styles.modalHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '44px', height: '44px', borderRadius: '50%',
-                    background: 'rgba(16,185,129,0.1)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '22px', overflow: 'hidden',
-                    border: `2px solid ${
-                      selectedEmployeData.is_within_zone === true ? '#10B981'
-                      : selectedEmployeData.is_within_zone === false ? '#EF4444'
-                      : '#6B7280'
-                    }`,
-                  }}>
-                    {selectedEmployeData.employee?.photo_url ? (
-                      <img
-                        src={selectedEmployeData.employee.photo_url}
-                        alt=""
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                    ) : '👤'}
-                  </div>
-                  <div>
-                    <h3 style={styles.modalTitle}>
-                      {selectedEmployeData.employee?.first_name}{' '}
-                      {selectedEmployeData.employee?.last_name}
-                    </h3>
-                    <p style={{ color: '#666', fontSize: '13px', margin: 0 }}>
-                      {selectedEmployeData.employee?.matricule}
-                    </p>
-                  </div>
-                </div>
-                <button onClick={() => setSelectedEmployeData(null)} style={styles.closeBtn}>
-                  <X size={20} />
-                </button>
+        {/* ── L'atelier : le plateau et les gens ── */}
+        <div className="ct-atelier">
+
+          <div className="ct-colonne">
+            <div className="ct-cadre">
+              <div className="ct-cadre-tete">
+                <h2 className="ct-cadre-titre">
+                  <Activity size={12} aria-hidden="true" />
+                  Le plateau vu d'en haut
+                </h2>
+                <span className="ct-cadre-note">
+                  {pointagesGps} pointage{pointagesGps > 1 ? 's' : ''} GPS
+                  {' · '}
+                  {zones.length} zone{zones.length > 1 ? 's' : ''}
+                </span>
               </div>
 
-              <div style={styles.modalBody}>
+              <div className="ct-linteau" aria-hidden="true" />
 
-                {/* Statut actuel */}
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                  <span style={{
-                    padding: '6px 14px', borderRadius: '20px',
-                    fontSize: '13px', fontWeight: '700',
-                    background: selectedEmployeData.lastType === 'in'
-                      ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
-                    color: selectedEmployeData.lastType === 'in' ? '#10B981' : '#F59E0B',
-                    border: `1px solid ${selectedEmployeData.lastType === 'in'
-                      ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`,
-                  }}>
-                    {selectedEmployeData.lastType === 'in' ? '✓ Présent' : '→ Sorti'}
-                  </span>
+              <div className="ct-carte-niche">
+                <div ref={mapRef} className="ct-carte" />
 
-                  <span style={{
-                    padding: '6px 14px', borderRadius: '20px',
-                    fontSize: '13px', fontWeight: '700',
-                    background: selectedEmployeData.is_within_zone === true
-                      ? 'rgba(16,185,129,0.12)'
-                      : selectedEmployeData.is_within_zone === false
-                      ? 'rgba(239,68,68,0.12)'
-                      : 'rgba(107,114,128,0.12)',
-                    color: selectedEmployeData.is_within_zone === true ? '#10B981'
-                      : selectedEmployeData.is_within_zone === false ? '#EF4444'
-                      : '#6B7280',
-                    border: `1px solid ${
-                      selectedEmployeData.is_within_zone === true ? 'rgba(16,185,129,0.3)'
-                      : selectedEmployeData.is_within_zone === false ? 'rgba(239,68,68,0.3)'
-                      : 'rgba(107,114,128,0.3)'
-                    }`,
-                  }}>
-                    {selectedEmployeData.is_within_zone === true ? '✅ Dans la zone'
-                      : selectedEmployeData.is_within_zone === false ? '⚠️ Hors zone'
-                      : '— Non vérifié'}
-                  </span>
+                {loading && (
+                  <div className="ct-voile">
+                    <span className="ct-balayage" aria-hidden="true" />
+                    <p>On relève les traces…</p>
+                    <span className="ct-voile-note">La carte se recompose.</span>
+                  </div>
+                )}
+
+                {!loading && pointages.length === 0 && (
+                  <div className="ct-voile">
+                    <MapPin size={26} aria-hidden="true" />
+                    <p>Aucun pointage GPS pour cette date.</p>
+                    <span className="ct-voile-note">
+                      Les pointages apparaîtront ici en temps réel.
+                    </span>
+                  </div>
+                )}
+
+                {/* LÉGENDE */}
+                <div className="ct-legende" aria-label="Légende de la carte">
+                  <h4 className="ct-legende-titre">
+                    <MapPin size={11} aria-hidden="true" />
+                    Légende
+                  </h4>
+
+                  <div className="ct-legende-corps">
+                    <p className="ct-legende-section">Sur le site</p>
+                    <div className="ct-legende-ligne">
+                      <span className="ct-point ct-point--plein" data-ton="ok" />
+                      <span>Présent</span>
+                    </div>
+                    <div className="ct-legende-ligne">
+                      <span className="ct-point ct-point--plein" data-ton="attente" />
+                      <span>Sorti</span>
+                    </div>
+                    <div className="ct-legende-ligne">
+                      <span className="ct-point" data-ton="alerte" />
+                      <span>Hors zone</span>
+                    </div>
+
+                    <div className="ct-legende-separateur" />
+
+                    <p className="ct-legende-section">Zone GPS</p>
+                    <div className="ct-legende-ligne">
+                      <span className="ct-point ct-point--plein" data-ton="ok" />
+                      <span>Non bloquante</span>
+                    </div>
+                    <div className="ct-legende-ligne">
+                      <span className="ct-point ct-point--creux" data-ton="alerte" />
+                      <span>Bloquante</span>
+                    </div>
+
+                    <div className="ct-legende-separateur" />
+
+                    <p className="ct-legende-section">Groupe</p>
+                    <div className="ct-legende-ligne">
+                      <span className="ct-pastille">12</span>
+                      <span>Employés réunis</span>
+                    </div>
+
+                    <div className="ct-legende-separateur" />
+
+                    <div className="ct-legende-ligne">
+                      <span className="ct-point" data-ton="moi" />
+                      <span>Ma position</span>
+                    </div>
+                  </div>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                {/* Infos GPS */}
-                <div style={styles.modalInfoItem}>
-                  <span style={styles.modalLabel}>Position GPS</span>
+          {/* ── La colonne des gens ── */}
+          <aside className="ct-colonne">
+            <div className="ct-liste">
+              <div className="ct-liste-tete">
+                <h3 className="ct-liste-titre">
+                  <Users size={12} aria-hidden="true" />
+                  Les gens du jour
+                </h3>
+                <span className="ct-liste-compte">
+                  {filteredEmployes.length} sur {stats.total}
+                </span>
+              </div>
+
+              <label className="ct-recherche">
+                <Search size={13} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={recherche}
+                  onChange={(e) => setRecherche(e.target.value)}
+                  placeholder="Chercher un nom ou un matricule"
+                  aria-label="Chercher une personne dans la liste"
+                />
+              </label>
+
+              {employesAffiches.length > 0 ? (
+                <ul className="ct-planches">
+                  {employesAffiches.map((data, idx) => {
+                    const etat = etatDe(data.is_within_zone)
+                    const estPresent = data.lastType === 'in'
+                    return (
+                      <li key={data.employee?.id || idx}>
+                        <button
+                          type="button"
+                          className="ct-planche"
+                          data-etat={etat}
+                          onClick={() => setSelectedEmployeData(data)}
+                          aria-label={`Voir la fiche de ${data.employee?.first_name || ''} ${data.employee?.last_name || ''}`}
+                        >
+                          <span className="ct-planche-avatar">
+                            {data.employee?.photo_url ? (
+                              <img src={data.employee.photo_url} alt="" />
+                            ) : (
+                              initialesDe(data.employee)
+                            )}
+                          </span>
+
+                          <span className="ct-planche-infos">
+                            <span className="ct-planche-nom">
+                              {data.employee?.first_name} {data.employee?.last_name}
+                            </span>
+                            <span className="ct-planche-meta">
+                              {data.employee?.matricule}
+                              {' · '}
+                              {data.pointages.length} pointage{data.pointages.length > 1 ? 's' : ''}
+                              {data.geofence?.name && ` · ${data.geofence.name}`}
+                            </span>
+                          </span>
+
+                          <span className="ct-planche-droite">
+                            <span className="ct-grain" data-ton={estPresent ? 'ok' : 'attente'}>
+                              {estPresent
+                                ? <LogIn size={10} aria-hidden="true" />
+                                : <LogOut size={10} aria-hidden="true" />}
+                              {estPresent ? 'Présent' : 'Sorti'}
+                            </span>
+                            <span className="ct-planche-meta">
+                              {formaterHeureLocale(data.lastTime)}
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : (
+                <div className="ct-liste-vide">
+                  <MapPin size={20} aria-hidden="true" />
+                  <p>
+                    {recherche.trim()
+                      ? 'Aucun nom ne correspond à cette recherche.'
+                      : pointages.length === 0
+                        ? 'Aucun pointage GPS sur cette date.'
+                        : 'Aucune personne ne correspond à ces filtres.'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      </main>
+
+      <div className="ct-pied">
+        <PageCulturalBand pathname="/carte-temps-reel" placement="bottom" />
+      </div>
+
+      {/* ── La fiche d'une personne ── */}
+      {selectedEmployeData && (
+        <div className="ct-fond" onClick={() => setSelectedEmployeData(null)}>
+          <div
+            className="ct-fiche"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ct-fiche-titre"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="ct-fiche-tete">
+              <span className="ct-fiche-portrait" data-etat={etatDe(selectedEmployeData.is_within_zone)}>
+                {selectedEmployeData.employee?.photo_url ? (
+                  <img src={selectedEmployeData.employee.photo_url} alt="" />
+                ) : (
+                  initialesDe(selectedEmployeData.employee)
+                )}
+              </span>
+
+              <div className="ct-fiche-titres">
+                <h2 id="ct-fiche-titre">
+                  {selectedEmployeData.employee?.first_name}{' '}
+                  {selectedEmployeData.employee?.last_name}
+                </h2>
+                <p className="ct-fiche-matricule">
+                  {selectedEmployeData.employee?.matricule}
+                  {' · '}
+                  dernier relevé à {formaterHeureLocale(selectedEmployeData.lastTime)}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="ct-fermer"
+                onClick={() => setSelectedEmployeData(null)}
+                aria-label="Fermer la fiche"
+                autoFocus
+              >
+                <X size={16} />
+              </button>
+            </header>
+
+            <div className="ct-fiche-corps">
+              <div className="ct-fiche-sceaux">
+                <span
+                  className="ct-grain"
+                  data-ton={selectedEmployeData.lastType === 'in' ? 'ok' : 'attente'}
+                >
+                  {selectedEmployeData.lastType === 'in' ? 'Présent' : 'Sorti'}
+                </span>
+                <span className="ct-grain" data-ton={etatDe(selectedEmployeData.is_within_zone)}>
+                  {selectedEmployeData.is_within_zone === true ? 'Dans la zone'
+                    : selectedEmployeData.is_within_zone === false ? 'Hors zone'
+                    : 'Non vérifié'}
+                </span>
+              </div>
+
+              <div className="ct-fiche-infos">
+                <div className="ct-fiche-info ct-fiche-info--large">
+                  <span className="ct-fiche-libelle">Position GPS</span>
                   <a
+                    className="ct-gps"
                     href={`https://www.google.com/maps?q=${selectedEmployeData.location_lat},${selectedEmployeData.location_lng}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={styles.gpsLink}
                   >
-                    📍 {Number(selectedEmployeData.location_lat).toFixed(5)},{' '}
+                    <MapPin size={12} aria-hidden="true" />
+                    {Number(selectedEmployeData.location_lat).toFixed(5)},{' '}
                     {Number(selectedEmployeData.location_lng).toFixed(5)}
                   </a>
                 </div>
 
                 {selectedEmployeData.distance_meters != null && (
-                  <div style={styles.modalInfoItem}>
-                    <span style={styles.modalLabel}>Distance zone</span>
-                    <span style={styles.modalValue}>
-                      {selectedEmployeData.distance_meters < 1000
-                        ? `${selectedEmployeData.distance_meters}m`
-                        : `${(selectedEmployeData.distance_meters / 1000).toFixed(1)}km`}
+                  <div className="ct-fiche-info">
+                    <span className="ct-fiche-libelle">Distance à la zone</span>
+                    <span className="ct-fiche-valeur">
+                      {distanceLisible(selectedEmployeData.distance_meters)}
                     </span>
                   </div>
                 )}
 
                 {selectedEmployeData.geofence?.name && (
-                  <div style={styles.modalInfoItem}>
-                    <span style={styles.modalLabel}>Zone</span>
-                    <span style={styles.modalValue}>{selectedEmployeData.geofence.name}</span>
+                  <div className="ct-fiche-info">
+                    <span className="ct-fiche-libelle">Zone</span>
+                    <span className="ct-fiche-valeur">{selectedEmployeData.geofence.name}</span>
                   </div>
                 )}
+              </div>
 
-                {/* Pointages du jour */}
-                <div style={{ marginTop: '20px' }}>
-                  <h4 style={{
-                    color: '#888', fontSize: '11px', fontWeight: '700',
-                    textTransform: 'uppercase', letterSpacing: '1px',
-                    margin: '0 0 12px 0',
-                  }}>
-                    Pointages du jour ({selectedEmployeData.pointages.length})
-                  </h4>
+              <section className="ct-journee">
+                <h3 className="ct-journee-titre">
+                  <Calendar size={11} aria-hidden="true" />
+                  Pointages du jour ({selectedEmployeData.pointages.length})
+                </h3>
 
+                <ol className="ct-pointages">
                   {selectedEmployeData.pointages.map((p, i) => (
-                    <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: '12px',
-                      padding: '12px', marginBottom: '8px',
-                      background: 'rgba(255,255,255,0.03)',
-                      borderRadius: '10px',
-                      border: '1px solid rgba(255,255,255,0.04)',
-                    }}>
-                      <span style={{
-                        background: p.check_type === 'in' ? '#10B981' : '#F59E0B',
-                        color: 'white', fontSize: '10px', fontWeight: '800',
-                        padding: '3px 8px', borderRadius: '6px', flexShrink: 0,
-                      }}>
+                    <li className="ct-pointage" key={i}>
+                      <span className="ct-heure">{formaterHeureLocale(p.check_time)}</span>
+                      <span
+                        className="ct-type"
+                        data-type={p.check_type === 'in' ? 'in' : 'out'}
+                      >
                         {p.check_type === 'in' ? 'IN' : 'OUT'}
                       </span>
-
-                      <span style={{ color: '#FFFFFF', fontSize: '14px', fontWeight: '600', flex: 1 }}>
-                        {formaterHeureLocale(p.check_time)}
+                      <span
+                        className="ct-pointage-etat"
+                        data-ton={etatDe(p.is_within_zone)}
+                      >
+                        {p.is_within_zone === true ? 'Dans la zone'
+                          : p.is_within_zone === false ? 'Hors zone'
+                          : 'Non vérifié'}
                       </span>
-
-                      <span style={{
-                        fontSize: '12px',
-                        color: p.is_within_zone === true ? '#10B981'
-                          : p.is_within_zone === false ? '#EF4444'
-                          : '#6B7280',
-                      }}>
-                        {p.is_within_zone === true ? '✅ Dans zone'
-                          : p.is_within_zone === false ? '⚠️ Hors zone'
-                          : '—'}
-                      </span>
-
                       {p.pointages_photos?.length > 0 && (
-                        <Camera size={14} color="#EC4899" />
+                        <span className="ct-photo" title="Photo du pointage">
+                          <Camera size={11} aria-hidden="true" />
+                        </span>
                       )}
-                    </div>
+                    </li>
                   ))}
-                </div>
-              </div>
+                </ol>
+              </section>
             </div>
           </div>
-        )}
-      </div>
-    </>
+        </div>
+      )}
+    </div>
   )
-}
-
-// ═══════════════════════════════════════════════════════════
-// 🎨 STYLES
-// ═══════════════════════════════════════════════════════════
-
-const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '100vh',
-    background: '#0A0A0F',
-  },
-  main: {
-    width: '100%',
-    maxWidth: '1400px',
-    margin: '0 auto',
-    padding: 'clamp(16px, 2.4vw, 28px) clamp(14px, 3vw, 30px) 0',
-    boxSizing: 'border-box',
-  },
-  enterpriseBanner: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    background: 'rgba(16, 185, 129, 0.08)',
-    border: '1px solid rgba(16, 185, 129, 0.2)',
-    borderRadius: '12px',
-    padding: '10px 16px',
-    marginBottom: '24px',
-  },
-  enterpriseNameText: {
-    color: '#10B981',
-    fontSize: '14px',
-    fontWeight: '600',
-  },
-  enterpriseSub: {
-    color: '#666',
-    fontSize: '13px',
-  },
-  toolbar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '24px',
-    flexWrap: 'wrap',
-    gap: '12px',
-  },
-  toolbarLeft: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: '12px',
-    flex: 1,
-  },
-  toolbarRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    flexShrink: 0,
-  },
-  filterGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    background: 'rgba(20, 20, 35, 0.8)',
-    backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    padding: '10px 16px',
-    borderRadius: '12px',
-    flex: '1 1 180px',
-  },
-  dateInput: {
-    border: 'none',
-    background: 'transparent',
-    color: '#E5E5E5',
-    fontSize: '14px',
-    outline: 'none',
-    fontFamily: 'inherit',
-    cursor: 'pointer',
-  },
-  select: {
-    border: 'none',
-    background: 'transparent',
-    color: '#E5E5E5',
-    fontSize: '14px',
-    outline: 'none',
-    fontFamily: 'inherit',
-    cursor: 'pointer',
-    flex: 1,
-  },
-  liveBadge: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    background: 'rgba(16, 185, 129, 0.1)',
-    border: '1px solid rgba(16, 185, 129, 0.25)',
-    color: '#10B981',
-    padding: '8px 16px',
-    borderRadius: '20px',
-    fontSize: '12px',
-    fontWeight: '700',
-    letterSpacing: '0.5px',
-  },
-  geoBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    background: 'rgba(99, 102, 241, 0.1)',
-    border: '1px solid rgba(99, 102, 241, 0.25)',
-    color: '#6366F1',
-    padding: '8px 16px',
-    borderRadius: '20px',
-    fontSize: '12px',
-    fontWeight: '700',
-    letterSpacing: '0.5px',
-    cursor: 'pointer',
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
-    gap: '16px',
-    marginBottom: '24px',
-  },
-  statCard: {
-    background: 'rgba(20, 20, 35, 0.8)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: '16px',
-    padding: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-    border: '1px solid rgba(255,255,255,0.06)',
-  },
-  statIcon: {
-    width: '48px',
-    height: '48px',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  statNumber: {
-    display: 'block',
-    fontSize: '28px',
-    fontWeight: '700',
-    color: '#FFFFFF',
-    lineHeight: '1',
-    marginBottom: '4px',
-  },
-  statLabel: {
-    display: 'block',
-    fontSize: '12px',
-    color: '#888',
-    fontWeight: '500',
-  },
-  mapContainer: {
-    position: 'relative',
-    marginBottom: '32px',
-  },
-  map: {
-    width: '100%',
-    height: '600px',
-    borderRadius: '20px',
-    border: '2px solid rgba(16, 185, 129, 0.2)',
-    overflow: 'hidden',
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    background: 'rgba(10, 10, 15, 0.6)',
-    backdropFilter: 'blur(4px)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '20px',
-    zIndex: 999,
-  },
-  mapOverlayMessage: {
-    position: 'absolute',
-    bottom: '20px',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    background: 'rgba(15, 15, 25, 0.92)',
-    backdropFilter: 'blur(10px)',
-    padding: '16px 24px',
-    borderRadius: '14px',
-    border: '1px solid rgba(16, 185, 129, 0.2)',
-    textAlign: 'center',
-    zIndex: 1000,
-    minWidth: '280px',
-  },
-  mapOverlayText: {
-    color: '#FFFFFF',
-    fontSize: '14px',
-    fontWeight: '600',
-    margin: '8px 0 4px 0',
-  },
-  mapOverlaySubtext: {
-    color: '#666',
-    fontSize: '12px',
-    margin: 0,
-  },
-  legend: {
-    position: 'absolute',
-    top: '20px',
-    right: '20px',
-    background: 'rgba(15, 15, 25, 0.95)',
-    backdropFilter: 'blur(10px)',
-    padding: '16px',
-    borderRadius: '12px',
-    border: '1px solid rgba(255,255,255,0.1)',
-    minWidth: '190px',
-    zIndex: 1000,
-  },
-  legendTitle: {
-    color: '#FFFFFF',
-    fontSize: '14px',
-    fontWeight: '700',
-    margin: '0 0 10px 0',
-  },
-  legendSection: {
-    color: '#888',
-    fontSize: '10px',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    margin: '4px 0 6px 0',
-  },
-  legendItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    marginBottom: '6px',
-    color: '#E5E5E5',
-    fontSize: '12px',
-  },
-  legendDot: {
-    width: '12px',
-    height: '12px',
-    borderRadius: '50%',
-    border: '2px solid white',
-    flexShrink: 0,
-  },
-  legendSeparator: {
-    height: '1px',
-    background: 'rgba(255,255,255,0.1)',
-    margin: '8px 0',
-  },
-  list: {
-    background: 'rgba(20, 20, 35, 0.6)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: '20px',
-    border: '1px solid rgba(255,255,255,0.06)',
-    padding: '20px',
-  },
-  listTitle: {
-    color: '#FFFFFF',
-    fontSize: '18px',
-    fontWeight: '600',
-    margin: '0 0 16px 0',
-  },
-  listItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '14px',
-    marginBottom: '10px',
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.04)',
-    borderRadius: '12px',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-  },
-  listItemLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    flex: 1,
-    minWidth: 0,
-  },
-  avatar: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '10px',
-    background: 'rgba(16, 185, 129, 0.1)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    flexShrink: 0,
-  },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  employeeName: {
-    color: '#FFFFFF',
-    fontSize: '14px',
-    fontWeight: '600',
-  },
-  employeeMeta: {
-    color: '#666',
-    fontSize: '12px',
-    marginTop: '2px',
-  },
-  listItemRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    flexShrink: 0,
-  },
-  typeBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-    padding: '4px 10px',
-    borderRadius: '8px',
-    fontSize: '11px',
-    fontWeight: '700',
-  },
-  zoneBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '28px',
-    height: '28px',
-    borderRadius: '8px',
-    fontSize: '14px',
-  },
-  modalOverlay: {
-    position: 'fixed',
-    top: 0, left: 0, right: 0, bottom: 0,
-    background: 'rgba(0,0,0,0.8)',
-    backdropFilter: 'blur(8px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '16px',
-    zIndex: 1000,
-    animation: 'fadeIn 0.2s ease',
-  },
-  modal: {
-    background: '#141423',
-    borderRadius: '20px',
-    maxWidth: '520px',
-    width: '100%',
-    maxHeight: '90vh',
-    overflow: 'auto',
-    border: '1px solid rgba(255,255,255,0.08)',
-  },
-  modalHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '20px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
-  },
-  modalTitle: {
-    color: '#FFFFFF',
-    fontSize: '18px',
-    fontWeight: '700',
-    margin: 0,
-  },
-  closeBtn: {
-    background: 'rgba(255,255,255,0.06)',
-    border: 'none',
-    borderRadius: '8px',
-    width: '32px',
-    height: '32px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    color: '#888',
-  },
-  modalBody: {
-    padding: '20px',
-  },
-  modalInfoItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '10px 0',
-    borderBottom: '1px solid rgba(255,255,255,0.04)',
-  },
-  modalLabel: {
-    color: '#888',
-    fontSize: '13px',
-    fontWeight: '500',
-  },
-  modalValue: {
-    color: '#E5E5E5',
-    fontSize: '14px',
-    fontWeight: '600',
-    textAlign: 'right',
-  },
-  gpsLink: {
-    color: '#10B981',
-    fontSize: '13px',
-    textDecoration: 'none',
-    fontFamily: 'monospace',
-  },
 }
