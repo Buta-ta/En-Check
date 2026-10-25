@@ -1,198 +1,280 @@
 // ═══════════════════════════════════════════════════════════
-// 🧵 APPLIQUÉ D'ABOMEY — vocabulaire visuel de la page
-//    Administrateurs
+// 🧵 APPLIQUÉ D'ABOMEY — le vocabulaire visuel de Comptes & accès
 //
 // Tenture appliquée du Danhomè (Bénin) : des formes de coton
 // DÉCOUPÉES ET COUSUES sur un fond contrasté — aplats francs,
-// couture visible, emblèmes héraldiques, bandes répétées.
+// couture visible, emblèmes, bandes répétées.
 //
-// ⚠️ Interprétation contemporaine, pas reproduction : les vraies
-//    tentures sont bien plus saturées. Sur une page où l'on lit
-//    des noms et des rôles, cette saturation rendrait le contenu
-//    illisible. On garde le GESTE — aplat, couture, blason —
-//    pas la palette d'origine.
+// ⚠️ Interprétation contemporaine, pas reproduction. Les vraies
+//    tentures sont plus saturées ; on garde le geste — aplat,
+//    couture, blason — et une palette resserrée sur l'indigo,
+//    la terre cuite et l'ivoire, lisibles derrière du texte.
 //
-// ⚠️ Aucun `viewBox` sur la frise : un motif placé dans un
-//    viewBox plus petit que la zone de rendu ne se répète pas,
-//    il s'étire. C'est le piège déjà rencontré sur le bogolan.
+// ⚠️ La frise est une bande continue de neuf tuiles : `slice`
+//    l'agrandit sans la déformer, et le motif ne se répète jamais
+//    en hauteur. Une `<pattern>` se recopiait verticalement et
+//    coupait les losanges dès que la bande dépassait 120 px.
 // ═══════════════════════════════════════════════════════════
 
-const ENCRE = '#1B2440'
-const INDIGO = '#2A3A63'
-const INDIGO_CLAIR = '#3A4E7D'
-const TERRE = '#B56235'
-const TERRE_CLAIR = '#C4703F'
-const IVOIRE = '#F0E6D2'
-const FIL = '#D9B36A'
+const INDIGO_NUIT = '#14202e'
+const INDIGO = '#1e3252'
+const INDIGO_CLAIR = '#2c4570'
+const TERRE = '#8b3e1d'
+const TERRE_CHAUD = '#a04a22'
+const IVOIRE = '#e8dcc4'
+const IVOIRE_CHAUD = '#f2e8d5'
+const FIL = '#c9a961'
+const FIL_SOMBRE = '#8a6f3a'
 
-// ── La bande tissée ────────────────────────────────────────
+// ── LA BANDE TISSÉE ────────────────────────────────────────
+// Tuile de 320 × 120 : losanges ivoire, chevrons terre cuite,
+// cauris par deux, silhouettes d'animaux, couture en haut et
+// en bas.
 export function AbomeyFriseSvg({ className = '' }) {
+  // Une tuile de 300 × 120, répétée NEUF fois dans une bande de 2700.
+  // `slice` met l'ensemble à l'échelle sans jamais déformer : la frise
+  // se contente de montrer plus ou moins de tuiles selon la largeur.
+  // (Une `<pattern>` se répétait aussi en hauteur et coupait le motif
+  //  dès que la bande dépassait 120 px.)
+  const tuile = (x) => (
+    <g key={x} transform={`translate(${x} 0)`}>
+      <rect width="300" height="120" fill={INDIGO_NUIT} />
+
+      {/* Bandeau de couture, en haut et en bas */}
+      <line x1="0" y1="6" x2="300" y2="6" stroke={IVOIRE} strokeWidth="1.6" strokeDasharray="7 6" strokeOpacity="0.5" />
+      <line x1="0" y1="114" x2="300" y2="114" stroke={IVOIRE} strokeWidth="1.6" strokeDasharray="7 6" strokeOpacity="0.5" />
+
+      {/* ═══ LOSANGE IVOIRE — cœur du motif, touche les bords ═══ */}
+      <polygon points="150,8 208,60 150,112 92,60" fill={IVOIRE} />
+      <polygon points="150,22 191,60 150,98 109,60" fill={INDIGO} stroke={FIL} strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.45" />
+      <polygon points="150,44 166,60 150,76 134,60" fill={TERRE_CHAUD} />
+
+      {/* ═══ CHEVRON TERRE CUITE — gauche, touche le bord ═══ */}
+      <path d="M 0 14 L 46 14 L 46 34 L 18 34 L 18 86 L 46 86 L 46 106 L 0 106 Z" fill={TERRE} />
+      <path d="M 3 18 L 42 18 L 42 30 L 14 30 L 14 90 L 42 90 L 42 102 L 3 102" fill="none" stroke={IVOIRE} strokeWidth="1" strokeDasharray="4 4" strokeOpacity="0.4" />
+
+      {/* ═══ CHEVRON INDIGO CLAIR — droite ═══ */}
+      <path d="M 300 14 L 254 14 L 254 34 L 282 34 L 282 86 L 254 86 L 254 106 L 300 106 Z" fill={INDIGO_CLAIR} />
+      <path d="M 297 18 L 258 18 L 258 30 L 286 30 L 286 90 L 258 90 L 258 102 L 297 102" fill="none" stroke={IVOIRE} strokeWidth="1" strokeDasharray="4 4" strokeOpacity="0.4" />
+
+      {/* ═══ CAURIS PAR DEUX ═══ */}
+      <g transform="translate(60 34) rotate(-16)">
+        <ellipse cx="0" cy="0" rx="7" ry="11" fill={IVOIRE_CHAUD} />
+        <path d="M 0 -9 L 0 9" stroke={INDIGO_NUIT} strokeWidth="1.8" strokeLinecap="round" />
+      </g>
+      <g transform="translate(76 44) rotate(14)">
+        <ellipse cx="0" cy="0" rx="7" ry="11" fill={IVOIRE_CHAUD} />
+        <path d="M 0 -9 L 0 9" stroke={INDIGO_NUIT} strokeWidth="1.8" strokeLinecap="round" />
+      </g>
+      <g transform="translate(240 44) rotate(-14)">
+        <ellipse cx="0" cy="0" rx="7" ry="11" fill={IVOIRE_CHAUD} />
+        <path d="M 0 -9 L 0 9" stroke={INDIGO_NUIT} strokeWidth="1.8" strokeLinecap="round" />
+      </g>
+      <g transform="translate(256 34) rotate(16)">
+        <ellipse cx="0" cy="0" rx="7" ry="11" fill={IVOIRE_CHAUD} />
+        <path d="M 0 -9 L 0 9" stroke={INDIGO_NUIT} strokeWidth="1.8" strokeLinecap="round" />
+      </g>
+
+      {/* ═══ SILHOUETTES — lion, oiseau, poisson ═══ */}
+      <g transform="translate(150 22) scale(1.05)">
+        <ellipse cx="0" cy="0" rx="9" ry="4.6" fill={TERRE_CHAUD} />
+        <circle cx="8" cy="-3.8" r="4" fill={TERRE_CHAUD} />
+        <rect x="-7" y="2.8" width="2.6" height="5" fill={TERRE_CHAUD} />
+        <rect x="2" y="2.8" width="2.6" height="5" fill={TERRE_CHAUD} />
+        <path d="M -9.5 -1 q -6 -3.5 -5 -9" stroke={TERRE_CHAUD} strokeWidth="1.7" fill="none" strokeLinecap="round" />
+        <circle cx="9.2" cy="-4.4" r="0.9" fill={IVOIRE} />
+      </g>
+      <g transform="translate(150 100) scale(1.05)">
+        <ellipse cx="0" cy="0" rx="8" ry="4.4" fill={TERRE_CHAUD} />
+        <circle cx="7" cy="-4" r="3.4" fill={TERRE_CHAUD} />
+        <polygon points="9.8,-4.8 13.6,-2.8 9.8,-1" fill={TERRE_CHAUD} />
+        <polygon points="-7.4,0.4 -14,-2.8 -12.8,4" fill={TERRE_CHAUD} />
+        <circle cx="8" cy="-4.6" r="0.85" fill={IVOIRE} />
+      </g>
+      <g transform="translate(46 60) scale(0.85)">
+        <ellipse cx="0" cy="0" rx="8" ry="4" fill={IVOIRE} fillOpacity="0.8" />
+        <circle cx="7" cy="-3.4" r="3.2" fill={IVOIRE} fillOpacity="0.8" />
+        <polygon points="9.6,-4 13,-2.2 9.6,-0.4" fill={IVOIRE} fillOpacity="0.8" />
+        <polygon points="-7,-0.4 -13,-3.6 -11.8,3" fill={IVOIRE} fillOpacity="0.8" />
+      </g>
+      <g transform="translate(254 60) scale(0.85) scale(-1,1)">
+        <ellipse cx="0" cy="0" rx="8" ry="4" fill={IVOIRE} fillOpacity="0.8" />
+        <circle cx="7" cy="-3.4" r="3.2" fill={IVOIRE} fillOpacity="0.8" />
+        <polygon points="9.6,-4 13,-2.2 9.6,-0.4" fill={IVOIRE} fillOpacity="0.8" />
+        <polygon points="-7,-0.4 -13,-3.6 -11.8,3" fill={IVOIRE} fillOpacity="0.8" />
+      </g>
+
+      {/* ═══ COUTURES DÉCORATIVES ═══ */}
+      <path d="M 150 8 L 92 60 L 150 112 L 208 60 Z" fill="none" stroke={FIL_SOMBRE} strokeWidth="1" strokeDasharray="5 4" strokeOpacity="0.5" />
+    </g>
+  )
+
   return (
     <svg
       className={className}
       width="100%"
       height="100%"
+      viewBox="0 0 2700 120"
+      preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
       focusable="false"
-      preserveAspectRatio="none"
     >
+      <rect width="2700" height="120" fill={INDIGO_NUIT} />
+      {[0, 300, 600, 900, 1200, 1500, 1800, 2100, 2400].map(tuile)}
+    </svg>
+  )
+}
+
+// ── LE BLASON : mosaïque cousue ────────────────────────────
+// Le carré de l'en-tête : patchwork de losanges terre cuite,
+// indigo et vert, bordé de couture. C'est l'emblème de la page.
+export function AbomeyBlasonSvg({ size = 52 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 52 52" aria-hidden="true" focusable="false">
       <defs>
-        <pattern id="encheck-abomey-frise" x="0" y="0" width="248" height="96" patternUnits="userSpaceOnUse">
-          <rect width="248" height="96" fill={ENCRE} />
-
-          {/* ── Rangée haute : chevrons et cauris ── */}
-          {[0, 124, 248].map((cx) => (
-            <g key={`chev-h-${cx}`}>
-              <path d={`M ${cx - 32} 20 L ${cx} 6 L ${cx + 32} 20`} stroke={INDIGO_CLAIR} strokeWidth="7" fill="none" />
-              <path
-                d={`M ${cx - 32} 20 L ${cx} 6 L ${cx + 32} 20`}
-                stroke={FIL} strokeWidth="1" fill="none" strokeDasharray="3 3" strokeOpacity="0.7"
-              />
-            </g>
-          ))}
-          {[62, 186].map((cx) => (
-            <g key={`cauris-h-${cx}`}>
-              <ellipse cx={cx} cy="13" rx="6" ry="8.5" fill={IVOIRE} />
-              <path d={`M ${cx} 6 L ${cx} 20`} stroke={ENCRE} strokeWidth="1.6" strokeLinecap="round" />
-              <path d={`M ${cx - 2.6} 10 L ${cx + 2.6} 10 M ${cx - 2.6} 16 L ${cx + 2.6} 16`} stroke={ENCRE} strokeWidth="0.8" />
-            </g>
-          ))}
-
-          {/* ── Rangée basse, en miroir ── */}
-          {[0, 124, 248].map((cx) => (
-            <g key={`chev-b-${cx}`}>
-              <path d={`M ${cx - 32} 76 L ${cx} 90 L ${cx + 32} 76`} stroke={INDIGO_CLAIR} strokeWidth="7" fill="none" />
-              <path
-                d={`M ${cx - 32} 76 L ${cx} 90 L ${cx + 32} 76`}
-                stroke={FIL} strokeWidth="1" fill="none" strokeDasharray="3 3" strokeOpacity="0.7"
-              />
-            </g>
-          ))}
-          {[62, 186].map((cx) => (
-            <g key={`cauris-b-${cx}`}>
-              <ellipse cx={cx} cy="83" rx="6" ry="8.5" fill={IVOIRE} />
-              <path d={`M ${cx} 76 L ${cx} 90`} stroke={ENCRE} strokeWidth="1.6" strokeLinecap="round" />
-            </g>
-          ))}
-
-          {/* ── Losanges royaux imbriqués ── */}
-          {[0, 124, 248].map((cx) => (
-            <g key={`losange-${cx}`}>
-              <polygon
-                points={`${cx},24 ${cx + 46},48 ${cx},72 ${cx - 46},48`}
-                fill={TERRE}
-                stroke={FIL} strokeWidth="1" strokeDasharray="3.5 3" strokeOpacity="0.75"
-              />
-              <polygon
-                points={`${cx},30.2 ${cx + 34},48 ${cx},65.8 ${cx - 34},48`}
-                fill={INDIGO}
-              />
-              <polygon
-                points={`${cx},37 ${cx + 21},48 ${cx},59 ${cx - 21},48`}
-                fill={IVOIRE}
-              />
-              <polygon
-                points={`${cx},41.5 ${cx + 11.5},48 ${cx},54.5 ${cx - 11.5},48`}
-                fill={INDIGO_CLAIR}
-                stroke={FIL} strokeWidth="0.8" strokeDasharray="2 2"
-              />
-              <rect x={cx - 2.5} y={45.5} width="5" height="5" fill={TERRE} />
-            </g>
-          ))}
-
-          {/* ── Emblèmes héraldiques : lion et oiseau ── */}
-          <g transform="translate(62 48)" fill={TERRE_CLAIR}>
-            <ellipse cx="-2" cy="0" rx="9" ry="5" />
-            <circle cx="8.5" cy="-3.5" r="4.4" />
-            <rect x="-8.5" y="3" width="3" height="5.5" />
-            <rect x="1" y="3" width="3" height="5.5" />
-            <path d="M -10.5 -1 q -6 -3.5 -5 -9" stroke={TERRE_CLAIR} strokeWidth="1.6" fill="none" strokeLinecap="round" />
-            <circle cx="9.5" cy="-4" r="0.9" fill={IVOIRE} />
-          </g>
-          <g transform="translate(186 48)" fill={TERRE_CLAIR}>
-            <ellipse cx="0" cy="1" rx="8" ry="5" />
-            <circle cx="7" cy="-4" r="3.4" />
-            <polygon points="10,-4.6 14.5,-2.6 10,-0.8" />
-            <polygon points="-7.5,1 -14,-2.5 -13,4" />
-            <path d="M -2 6 L -2 10 M 3 6 L 3 10" stroke={TERRE_CLAIR} strokeWidth="1.3" strokeLinecap="round" />
-            <circle cx="8" cy="-4.4" r="0.9" fill={IVOIRE} />
-          </g>
-        </pattern>
+        <clipPath id="encheck-blason-clip">
+          <rect x="3" y="3" width="46" height="46" rx="6" />
+        </clipPath>
       </defs>
-      <rect width="100%" height="100%" fill="url(#encheck-abomey-frise)" />
-    </svg>
-  )
-}
-
-// ── L'emblème de la page (blason carré) ────────────────────
-export function AbomeyBlasonSvg({ size = 46 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 46 46" aria-hidden="true" focusable="false">
-      <rect x="1" y="1" width="44" height="44" rx="7" fill={INDIGO} />
+      <rect x="1.5" y="1.5" width="49" height="49" rx="8" fill={INDIGO_NUIT} />
+      <g clipPath="url(#encheck-blason-clip)">
+        <polygon points="23,10 33,20 23,30 13,20" fill={TERRE} />
+        <polygon points="33,14 45,26 33,38 21,26" fill={INDIGO_CLAIR} />
+        <polygon points="15,22 25,32 15,42 5,32" fill="#3f6b4e" />
+        <polygon points="26,28 34,36 26,44 18,36" fill={TERRE_CHAUD} />
+        <rect x="20" y="4" width="4" height="44" fill="none" />
+      </g>
       <rect
-        x="3.5" y="3.5" width="39" height="39" rx="5"
-        fill="none" stroke={FIL} strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.8"
+        x="3" y="3" width="46" height="46" rx="6"
+        fill="none" stroke={IVOIRE} strokeWidth="1.4" strokeDasharray="4 3.5" strokeOpacity="0.8"
       />
-      <polygon points="23,8 37,23 23,38 9,23" fill={TERRE} />
-      <polygon points="23,12.5 32.5,23 23,33.5 13.5,23" fill={IVOIRE} />
-      <polygon points="23,17 28.5,23 23,29 17.5,23" fill={INDIGO} />
-      <rect x="21" y="21" width="4" height="4" fill={FIL} />
+      <rect x="1.5" y="1.5" width="49" height="49" rx="8" fill="none" stroke={FIL_SOMBRE} strokeWidth="1" />
     </svg>
   )
 }
 
-// ── Pastille d'angle, la « pièce » cousue sur la carte ─────
-export function AbomeyPastilleSvg({ variante = 'terre', size = 54 }) {
-  const fond = variante === 'indigo' ? INDIGO : variante === 'or' ? '#8A6A33' : TERRE
-  const motif = variante === 'indigo' ? TERRE : variante === 'or' ? IVOIRE : INDIGO
+// ── LE COIN COUSU : pièce d'appliqué triangulaire ──────────
+// Posé en haut-gauche ou en bas-droite d'une carte.
+export function AbomeyCoinSvg({ variante = 'terre', coin = 'haut', size = 76 }) {
+  const fond =
+    variante === 'indigo'
+      ? INDIGO
+      : variante === 'or'
+        ? '#9a7529'
+        : variante === 'ivoire'
+          ? IVOIRE
+          : TERRE
+  const motif =
+    variante === 'indigo'
+      ? TERRE
+      : variante === 'or'
+        ? INDIGO_NUIT
+        : variante === 'ivoire'
+          ? TERRE
+          : INDIGO
+  const retourne = coin === 'bas' ? 'scale(-1,-1)' : ''
+  const couture = variante === 'ivoire' ? FIL_SOMBRE : IVOIRE
+
   return (
-    <svg width={size} height={size} viewBox="0 0 54 54" aria-hidden="true" focusable="false">
-      <rect x="1" y="1" width="52" height="52" rx="8" fill={fond} />
-      <rect
-        x="4" y="4" width="46" height="46" rx="6"
-        fill="none" stroke={FIL} strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.85"
-      />
-      <polygon points="27,11 41,27 27,43 13,27" fill={motif} />
-      <polygon points="27,17 34.5,27 27,37 19.5,27" fill={IVOIRE} />
-      <rect x="24.5" y="24.5" width="5" height="5" fill={fond} />
+    <svg width={size} height={size} viewBox="0 0 76 76" aria-hidden="true" focusable="false">
+      <g transform={retourne === 'scale(-1,-1)' ? 'translate(76,76) scale(-1,-1)' : undefined}>
+        {/* la pièce de tissu */}
+        <path d="M 0 0 L 76 0 L 0 76 Z" fill={fond} />
+        {/* couture le long de l'hypoténuse */}
+        <path
+          d="M 9 0 L 0 9 M 22 0 L 0 22 M 35 0 L 0 35 M 48 0 L 0 48 M 61 0 L 0 61"
+          stroke={couture} strokeWidth="1.1" strokeOpacity="0.45"
+        />
+        <path
+          d="M 68 0 L 0 68"
+          stroke={couture} strokeWidth="1.6" strokeDasharray="5 4" strokeOpacity="0.75"
+        />
+        {/* motif : cauris ou losange selon la variante */}
+        {variante === 'or' ? (
+          <g transform="translate(26 16) rotate(-38)">
+            <ellipse cx="0" cy="0" rx="7" ry="10.5" fill={IVOIRE} />
+            <path d="M 0 -9 L 0 9" stroke={INDIGO_NUIT} strokeWidth="1.8" strokeLinecap="round" />
+          </g>
+        ) : (
+          <g transform="translate(27 15) rotate(-40)">
+            <polygon points="0,-11 9,0 0,11 -9,0" fill={motif} stroke={IVOIRE} strokeWidth="1" strokeDasharray="3 2.5" strokeOpacity="0.6" />
+            <polygon points="0,-5.5 4.5,0 0,5.5 -4.5,0" fill={IVOIRE} />
+          </g>
+        )}
+      </g>
     </svg>
   )
 }
 
-// ── La petite courbe des cartes (cumul réel) ───────────────
-export function MiniCourbeSvg({ valeurs = [], ton = 'terre', width = 150, height = 34 }) {
-  const trait = ton === 'vert' ? '#3E8E61' : ton === 'or' ? FIL : TERRE_CLAIR
-  const serie = valeurs.length >= 2 ? valeurs : [0, 0]
+// ── LA COURBE D'UNE CARTE ──────────────────────────────────
+// Calme, sans remplissage, sur toute la largeur disponible.
+// Les valeurs sont de VRAIES données (comptes par mois) : la
+// courbe ondule donc naturellement, sans rien inventer.
+export function CourbeOnduleeSvg({ valeurs = [], largeur = 280, hauteur = 46, ton = 'clair' }) {
+  const trait =
+    ton === 'terre' ? TERRE_CHAUD : ton === 'or' ? FIL : IVOIRE
+
+  const n = valeurs.length
+  const serie = n >= 2 ? valeurs : [0, 0]
   const max = Math.max(...serie, 1)
   const min = Math.min(...serie, 0)
   const amplitude = max - min || 1
-  const pas = width / (serie.length - 1)
+  const marge = 5
 
-  const points = serie.map((v, i) => {
-    const x = i * pas
-    const y = height - 4 - ((v - min) / amplitude) * (height - 8)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  })
+  const pts = serie.map((v, i) => ({
+    x: (i / (serie.length - 1)) * (largeur - marge * 2) + marge,
+    y: hauteur - marge - ((v - min) / amplitude) * (hauteur - marge * 2),
+  }))
+
+  // lissage : on passe par des courbes de Bézier, jamais des angles
+  let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`
+  for (let i = 0; i < pts.length - 1; i += 1) {
+    const p0 = pts[i - 1] || pts[i]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[i + 2] || p2
+    const c1x = p1.x + (p2.x - p0.x) / 6
+    const c1y = p1.y + (p2.y - p0.y) / 6
+    const c2x = p2.x - (p3.x - p1.x) / 6
+    const c2y = p2.y - (p3.y - p1.y) / 6
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
+  }
 
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true" focusable="false">
-      <polyline points={points.join(' ')} fill="none" stroke={trait} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <polyline
-        points={`0,${height} ${points.join(' ')} ${width},${height}`}
-        fill={trait} fillOpacity="0.10" stroke="none"
+    <svg
+      width="100%"
+      height={hauteur}
+      viewBox={`0 0 ${largeur} ${hauteur}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d={d}
+        fill="none"
+        stroke={trait}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeOpacity="0.85"
       />
     </svg>
   )
 }
 
-// ── Le sceau d'état : petit cauris plein / creux ───────────
+// ── LE CAURIS D'ÉTAT ───────────────────────────────────────
 export function CaurisEtatSvg({ etat = 'lie', size = 12 }) {
   const plein = etat === 'lie'
-  const teinte = etat === 'verrouille' ? '#C0452F' : etat === 'non_lie' ? '#C97A16' : '#3E8E61'
+  const teinte =
+    etat === 'verrouille' ? '#c0452f' : etat === 'non_lie' ? '#c98a16' : '#3e8e61'
   return (
     <svg width={size} height={size} viewBox="0 0 12 12" aria-hidden="true" focusable="false">
-      <ellipse cx="6" cy="6" rx="3.4" ry="5.2" fill={plein ? teinte : 'none'} stroke={teinte} strokeWidth="1.3" />
-      {plein && <path d="M6 1.6 L6 10.4" stroke="#15110E" strokeWidth="1" strokeOpacity="0.55" />}
+      <ellipse
+        cx="6" cy="6" rx="3.4" ry="5.2"
+        fill={plein ? teinte : 'none'}
+        stroke={teinte} strokeWidth="1.3"
+      />
+      {plein && <path d="M6 1.6 L6 10.4" stroke="#15110e" strokeWidth="1" strokeOpacity="0.55" />}
     </svg>
   )
 }
