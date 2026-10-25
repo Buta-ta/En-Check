@@ -342,10 +342,15 @@ it('keeps sensitive actions collapsed until requested and uses the selected band
   expect(host.querySelector('.aa-danger-section').open).toBe(false)
   expect(host.querySelector('.aa-password-section').open).toBe(false)
   expect(
-    host.querySelector('dialog [data-cultural-motif="admin-access"]'),
+    host.querySelector('dialog [data-cultural-motif="abomey"]'),
   ).not.toBeNull()
+  // Identité propre à la page : l'appliqué d'Abomey, en SVG maison.
+  // Avant, /admins empruntait l'image du bogolan de la Paie — une bande
+  // de 46 px qui n'était pas la sienne.
   const css = readFileSync('src/components/PageCulturalBand.css', 'utf8')
-  expect(css).toContain("url('/images/admin-bogolan-selected.webp')")
+  expect(css).toContain(".ec-cultural-top[data-cultural-motif='abomey']")
+  const band = readFileSync('src/components/PageCulturalBand.jsx', 'utf8')
+  expect(band).toContain("motif === 'abomey' && <AbomeyFriseSvg/>")
 })
 it('reports an unavailable journal without pretending it is empty and allows retry', async () => {
   await mount()

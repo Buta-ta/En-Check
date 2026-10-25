@@ -8,6 +8,7 @@ import { Search, ShieldCheck, Users, ArrowLeft, SunMoon, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
 import PageCulturalBand from '../components/PageCulturalBand'
+import { AbomeyBlasonSvg } from '../components/AbomeySvg'
 import EmployeeProfilePhoto from '../components/EmployeeProfilePhoto'
 import {
   ADMIN_FIELDS,
@@ -240,7 +241,7 @@ export default function AdminAccounts() {
         <PageCulturalBand pathname="/admins" />
         <header className="aa-heading">
           <div>
-            <span className="aa-eyebrow">ADMINISTRATION</span>
+            <span className="aa-eyebrow"><AbomeyBlasonSvg size={18} />ADMINISTRATION</span>
             <h1>
               Comptes &amp; accès<span>.</span>
             </h1>
