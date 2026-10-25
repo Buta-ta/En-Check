@@ -251,7 +251,7 @@
   flex: 1 1 auto;
 }
 
-/* ── 4. Le seuil : la maison et les raccourcis ────────────── */
+/* ── 4. Le seuil : l'entreprise et les raccourcis ─────────── */
 
 .ct-seuil {
   display: flex;
@@ -266,7 +266,7 @@
   border-radius: 2px;
 }
 
-.ct-seuil-maison {
+.ct-seuil-entreprise {
   display: flex;
   align-items: center;
   gap: 9px;

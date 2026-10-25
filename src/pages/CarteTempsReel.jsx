@@ -3,7 +3,7 @@
 //
 // Une porte de grenier dogon ouvre sur le site : les registres
 // du haut comptent la journée, l'ouverture du milieu montre le
-// plateau, la colonne de droite nomme les gens.
+// plateau, la colonne de droite nomme les employés.
 //
 // Toute la mécanique est inchangée : mêmes requêtes, même canal
 // temps réel, mêmes filtres, mêmes marqueurs, même fiche.
@@ -606,9 +606,9 @@ export default function CarteTempsReel() {
     return nom.includes(q) || (data.employee?.matricule || '').toLowerCase().includes(q)
   })
 
-  const maisonAffichee = selectedEntrepriseId === 'all' && admin?.role === 'super_admin'
-    ? 'Toutes les maisons'
-    : enterpriseName || 'La maison'
+  const entrepriseAffichee = selectedEntrepriseId === 'all' && admin?.role === 'super_admin'
+    ? 'Toutes les entreprises'
+    : enterpriseName || 'Entreprise non renseignée'
 
   const pointagesGps = pointages.length
 
@@ -638,7 +638,7 @@ export default function CarteTempsReel() {
             Carte en direct<span>.</span>
           </h1>
           <p className="ct-sous-titre">
-            Chaque point est une personne qui a pointé, quelque part sur le site.
+            Chaque point correspond à un pointage géolocalisé sur le site.
           </p>
         </div>
         <div className="ct-entete-droite">
@@ -662,16 +662,16 @@ export default function CarteTempsReel() {
 
       <main className="ct-coque">
 
-        {/* ── Le seuil : la maison et les autres écrans ── */}
-        <section className="ct-seuil" aria-label="La maison et les autres écrans">
-          <div className="ct-seuil-maison">
-            <span className="ct-seuil-libelle">La maison</span>
-            <span className="ct-seuil-nom">{maisonAffichee}</span>
+        {/* ── Le seuil : l'entreprise et les autres écrans ── */}
+        <section className="ct-seuil" aria-label="Entreprise et accès rapides">
+          <div className="ct-seuil-entreprise">
+            <span className="ct-seuil-libelle">Entreprise</span>
+            <span className="ct-seuil-nom">{entrepriseAffichee}</span>
             <span className="ct-seuil-fait">
               <MapPin size={11} aria-hidden="true" />
               {stats.total} employé{stats.total > 1 ? 's' : ''} géolocalisé{stats.total > 1 ? 's' : ''}
             </span>
-            {loading && <span className="ct-seuil-fait">Relevé en cours…</span>}
+            {loading && <span className="ct-seuil-fait">Mise à jour…</span>}
           </div>
 
           <div className="ct-raccourcis">
@@ -708,12 +708,12 @@ export default function CarteTempsReel() {
           ))}
         </section>
 
-        {/* ── Les outils : le jour, la maison, la personne, le statut ── */}
+        {/* ── Les outils : la date, l'entreprise, l'employé, le statut ── */}
         <div className="ct-outils">
           <label className="ct-champ ct-champ-date">
             <span className="ct-etiquette">
               <Calendar size={11} aria-hidden="true" />
-              Le jour
+              Date
             </span>
             <input
               type="date"
@@ -727,7 +727,7 @@ export default function CarteTempsReel() {
             <label className="ct-champ ct-champ-select">
               <span className="ct-etiquette">
                 <Building2 size={11} aria-hidden="true" />
-                La maison
+                Entreprise
               </span>
               <select
                 value={selectedEntrepriseId}
@@ -745,14 +745,14 @@ export default function CarteTempsReel() {
           <label className="ct-champ ct-champ-select">
             <span className="ct-etiquette">
               <Users size={11} aria-hidden="true" />
-              La personne
+              Employé
             </span>
             <select
               value={filterEmploye}
               onChange={(e) => setFilterEmploye(e.target.value)}
               aria-label="Choisir un employé"
             >
-              <option value="tous">Toutes les personnes</option>
+              <option value="tous">Tous les employés</option>
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
                   {emp.first_name} {emp.last_name} ({emp.matricule})
@@ -762,7 +762,7 @@ export default function CarteTempsReel() {
           </label>
 
           <div className="ct-champ ct-champ-statut">
-            <span className="ct-etiquette">Le statut</span>
+            <span className="ct-etiquette">Statut</span>
             <div className="ct-cles" role="group" aria-label="Filtrer par statut de pointage">
               {CLES_STATUT.map(({ cle, libelle }) => (
                 <button
@@ -796,7 +796,7 @@ export default function CarteTempsReel() {
           </div>
         </div>
 
-        {/* ── L'atelier : le plateau et les gens ── */}
+        {/* ── L'atelier : le plateau et les employés ── */}
         <div className="ct-atelier">
 
           <div className="ct-colonne">
@@ -821,8 +821,8 @@ export default function CarteTempsReel() {
                 {loading && (
                   <div className="ct-voile ct-voile--charge">
                     <span className="ct-balayage" aria-hidden="true" />
-                    <p>On relève les traces…</p>
-                    <span className="ct-voile-note">La carte se recompose.</span>
+                    <p>Chargement des pointages…</p>
+                    <span className="ct-voile-note">La carte se met à jour.</span>
                   </div>
                 )}
 
@@ -886,7 +886,7 @@ export default function CarteTempsReel() {
                     </div>
 
                     <div className="ct-legende-groupe">
-                      <p className="ct-legende-section">Vous</p>
+                      <p className="ct-legende-section">Votre position</p>
                       <div className="ct-legende-ligne">
                         <span className="ct-point" data-ton="moi" />
                         <span>Ma position</span>
@@ -898,13 +898,13 @@ export default function CarteTempsReel() {
             </div>
           </div>
 
-          {/* ── La colonne des gens ── */}
+          {/* ── La colonne des employés ── */}
           <aside className="ct-colonne">
             <div className="ct-liste">
               <div className="ct-liste-tete">
                 <h3 className="ct-liste-titre">
                   <Users size={12} aria-hidden="true" />
-                  Les gens du jour
+                  Employés du jour
                 </h3>
                 <span className="ct-liste-compte">
                   {filteredEmployes.length} sur {stats.total}
@@ -918,7 +918,7 @@ export default function CarteTempsReel() {
                   value={recherche}
                   onChange={(e) => setRecherche(e.target.value)}
                   placeholder="Chercher un nom ou un matricule"
-                  aria-label="Chercher une personne dans la liste"
+                  aria-label="Chercher un employé dans la liste"
                 />
               </label>
 
@@ -980,7 +980,7 @@ export default function CarteTempsReel() {
                       ? 'Aucun nom ne correspond à cette recherche.'
                       : pointages.length === 0
                         ? 'Aucun pointage GPS sur cette date.'
-                        : 'Aucune personne ne correspond à ces filtres.'}
+                        : 'Aucun employé ne correspond à ces filtres.'}
                   </p>
                 </div>
               )}
@@ -993,7 +993,7 @@ export default function CarteTempsReel() {
         <PageCulturalBand pathname="/carte-temps-reel" placement="bottom" />
       </div>
 
-      {/* ── La fiche d'une personne ── */}
+      {/* ── La fiche d'un employé ── */}
       {selectedEmployeData && (
         <div className="ct-fond" onClick={() => setSelectedEmployeData(null)}>
           <div
