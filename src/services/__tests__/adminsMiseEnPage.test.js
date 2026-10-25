@@ -159,11 +159,11 @@ describe('6. la page reconstruite (v3, mesurée sur la maquette)', () => {
     expect(page).toContain('className="aa-bande"')
     expect(page).toContain('className="aa-bande-basse"')
     expect(page).toContain('placement="bottom"')
-    // la bande haute est une vraie hauteur, pas le gabarit de 88 px
+    // la bande haute prend la hauteur de toutes les pages, pas un gabarit propre
     expect(css).toMatch(
       /\.aa-register \.aa-bande \.ec-cultural-top\[data-cultural-motif='abomey'\][^}]*height:\s*var\(--aa-bande-h\)/,
     )
-    expect(css).toMatch(/--aa-bande-h:\s*clamp\(120px,\s*12\.8vw,\s*163px\)/)
+    expect(css).toMatch(/--aa-bande-h:\s*76px/)
     // et la bande basse est insérée dans la colonne de contenu, arrondie
     expect(css).toMatch(
       /\.aa-register \.aa-bande-basse\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) var\(--aa-panneau-w\)/,
@@ -331,13 +331,52 @@ describe('6. la page reconstruite (v3, mesurée sur la maquette)', () => {
 describe('7. la page Mon compte', () => {
   const compte = lire('src/pages/MyAdminAccount.jsx')
 
-  it('a une bande plus basse que le registre', () => {
+  it('a la bande du registre, à la même hauteur que les autres pages', () => {
     expect(compte).toContain('className="aa-compte-bande"')
     expect(css).toMatch(
-      /\.aa-compte-bande \.ec-cultural-top\[data-cultural-motif='abomey'\]\s*\{[^}]*height:\s*clamp\(44px, 5\.2vw, 58px\)/,
+      /\.aa-compte-bande \.ec-cultural-top\[data-cultural-motif='abomey'\]\s*\{[^}]*height:\s*var\(--aa-bande-h\)/,
     )
-    // la bande du registre, elle, monte jusqu'à 163 px
-    expect(css).toMatch(/--aa-bande-h:\s*clamp\(120px, 12\.8vw, 163px\)/)
+    // le registre comme la fiche prennent la hauteur commune : 76 px
+    expect(css).toMatch(/--aa-bande-h:\s*76px/)
+    expect(css).not.toMatch(/clamp\(44px,\s*5\.2vw,\s*58px\)/)
+    expect(css).not.toMatch(/clamp\(120px,\s*12\.8vw,\s*163px\)/)
+  })
+
+  it('taille ses deux bandes comme Planning et les autres pages', () => {
+    const partage = lire('src/components/PageCulturalBand.css')
+    // les valeurs de référence vivent dans le composant partagé
+    expect(partage).toMatch(/\.ec-cultural-band\s*\{[^}]*height:\s*76px/)
+    expect(partage).toMatch(/\.ec-cultural-bottom\s*\{\s*height:\s*32px/)
+    expect(partage).toMatch(
+      /@media\s*\(max-width:\s*650px\)\s*\{\s*\.ec-cultural-top\s*\{\s*height:\s*60px/,
+    )
+    // Abomey ne fait plus exception : 76 / 32 / 60, comme le reste
+    expect(partage).toMatch(
+      /\.ec-cultural-top\[data-cultural-motif='abomey'\]\s*\{\s*height:\s*76px/,
+    )
+    expect(partage).toMatch(
+      /\.ec-cultural-bottom\[data-cultural-motif='abomey'\]\s*\{\s*height:\s*32px/,
+    )
+    expect(partage).not.toMatch(/height:\s*88px/)
+    // et l'administration les reprend à la lettre
+    expect(css).toMatch(/--aa-bande-h:\s*76px/)
+    expect(css).toMatch(/--aa-bande-basse-h:\s*32px/)
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*650px\)\s*\{\s*\.aa-page\s*\{\s*--aa-bande-h:\s*60px/,
+    )
+  })
+
+  it('ferme « Votre espace personnel » par la même bande basse', () => {
+    expect(compte).toContain('className="aa-compte-bande-basse"')
+    expect(compte).toMatch(
+      /aa-compte-bande-basse[\s\S]*PageCulturalBand pathname="\/mon-compte" placement="bottom"/,
+    )
+    expect(css).toMatch(
+      /\.aa-compte-bande-basse \.ec-cultural-bottom\[data-cultural-motif='abomey'\]\s*\{[^}]*height:\s*var\(--aa-bande-basse-h\)/,
+    )
+    // la bande reste collée au bas de la page, même quand la fiche est courte
+    expect(css).toMatch(/\.aa-compte\s*\{[^}]*display:\s*flex[^}]*flex-direction:\s*column/)
+    expect(css).toMatch(/\.aa-compte-bande-basse\s*\{[^}]*margin-top:\s*auto/)
   })
 
   it('dessine ses trois rubriques en sélecteur, pas en texte nu', () => {
