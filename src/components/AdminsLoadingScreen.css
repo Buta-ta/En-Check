@@ -1,0 +1,334 @@
+/* ═══════════════════════════════════════════════════════════
+   CHARGEMENT COMPTES & ACCÈS — une case de BD qu'on lit
+   L'illustration est un dessin (cauris du Fa), monté comme une
+   planche : marges ivoire, trait d'encre, légère bascule.
+   ═══════════════════════════════════════════════════════════ */
+
+.aa-loading {
+  --al-fond: #180d0a;
+  --al-creux: #120a07;
+  --al-carte: #241b17;
+  --al-encre: #f2e8d5;
+  --al-encre-douce: #cbb8a1;
+  --al-encre-faible: #9a8471;
+  --al-fil: #c9a961;
+  --al-couture: rgba(201, 169, 97, 0.42);
+  --al-ligne: rgba(201, 169, 97, 0.16);
+  --al-terre: #8b3e1d;
+  --al-ivoire: #f2e8d5;
+  --al-papier: #e8dcc4;
+  --al-papier-encre: #2b1a12;
+
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: clamp(12px, 2.6vw, 34px);
+  overflow-y: auto;
+  background:
+    radial-gradient(120% 80% at 50% -10%, #2a1712 0%, #180d0a 52%, #120806 100%);
+  color: var(--al-encre);
+}
+
+.aa-loading[data-theme='light'] {
+  --al-fond: #efe4d1;
+  --al-creux: #e2d3bb;
+  --al-carte: #fbf6ea;
+  --al-encre: #2b1a12;
+  --al-encre-douce: #5f4a3c;
+  --al-encre-faible: #8a7461;
+  --al-fil: #8a6f3a;
+  --al-couture: rgba(138, 111, 58, 0.42);
+  --al-ligne: rgba(58, 43, 38, 0.16);
+  --al-papier: #fbf6ea;
+  --al-papier-encre: #2b1a12;
+
+  background:
+    radial-gradient(120% 80% at 50% -10%, #f6eddd 0%, #efe4d1 55%, #e6d8c1 100%);
+}
+
+.aa-loading *,
+.aa-loading *::before,
+.aa-loading *::after {
+  box-sizing: border-box;
+}
+
+.aa-loading :focus-visible {
+  outline: 2px solid var(--al-fil);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.aa-loading-corner {
+  position: absolute;
+  width: clamp(46px, 7vw, 96px);
+  height: auto;
+  opacity: 0.34;
+  pointer-events: none;
+}
+
+.aa-loading-corner.is-top-left { top: 0; left: 0; }
+.aa-loading-corner.is-top-right { top: 0; right: 0; transform: scaleX(-1); }
+.aa-loading-corner.is-bottom-left { bottom: 0; left: 0; transform: scaleY(-1); }
+.aa-loading-corner.is-bottom-right { bottom: 0; right: 0; transform: scale(-1, -1); }
+
+.aa-loading-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 1.5vw, 16px);
+  width: min(760px, 100%);
+  margin: auto;
+}
+
+.aa-loading-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.aa-loading-brand-copy {
+  display: grid;
+  gap: 1px;
+  line-height: 1.1;
+}
+
+.aa-loading-brand-copy strong {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--al-encre);
+}
+
+.aa-loading-brand-copy span {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--al-encre-faible);
+}
+
+.aa-loading-bande {
+  width: 100%;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px dashed var(--al-couture);
+  line-height: 0;
+  background: #14202e;
+}
+
+.aa-loading-bande .ec-cultural-band,
+.aa-loading-bande .ec-cultural-top[data-cultural-motif='abomey'] {
+  height: 44px;
+  background-color: #14202e;
+}
+
+.aa-loading-titre {
+  margin: 0;
+  font-size: clamp(15px, 1.9vw, 19px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: var(--al-encre);
+}
+
+/* ── La case ─────────────────────────────────────────────── */
+
+.aa-loading-case {
+  position: relative;
+  width: min(620px, 100%);
+  margin: 0;
+  padding: 7px 7px 0;
+  background: var(--al-papier);
+  border: 2px solid var(--al-creux);
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.3),
+    0 24px 56px rgba(0, 0, 0, 0.48);
+  transform: rotate(-0.5deg);
+}
+
+.aa-loading-scene {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 2px solid var(--al-creux);
+  border-radius: 1px;
+  background: #0f0605;
+  animation: aa-case-encre 620ms cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+
+@keyframes aa-case-encre {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+.aa-loading-scene img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.28) translate(16%, 16%);
+  transition: transform 1200ms cubic-bezier(0.22, 0.72, 0.2, 1);
+  filter: saturate(0.96) contrast(1.04);
+  will-change: transform;
+}
+
+/* Lecture 1 : la main qui jette les cauris, en haut à gauche */
+.aa-loading-case[data-lecture='jet'] .aa-loading-scene img {
+  transform: scale(2.05) translate(24%, 26%);
+}
+
+/* Lecture 2 : le plateau et le signe tracé au kaolin */
+.aa-loading-case[data-lecture='signe'] .aa-loading-scene img {
+  transform: scale(1.44) translate(-3%, -14%);
+}
+
+.aa-loading-cartouche {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 8px 11px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--al-papier-encre);
+}
+
+.aa-loading-cartouche > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.aa-loading-cartouche-point {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--al-terre);
+  box-shadow: 0 0 0 3px rgba(139, 62, 29, 0.22);
+}
+
+/* ── Étapes, barre, pied ─────────────────────────────────── */
+
+.aa-loading-etapes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.aa-loading-etape {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--al-encre-faible);
+  background: var(--al-carte);
+  border: 1px dashed var(--al-couture);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.aa-loading-etape:hover {
+  color: var(--al-encre);
+  border-color: var(--al-fil);
+}
+
+.aa-loading-etape.is-active {
+  color: var(--al-ivoire);
+  background: var(--al-terre);
+  border-color: var(--al-terre);
+  border-style: solid;
+}
+
+.aa-loading-barre {
+  width: min(620px, 100%);
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(201, 169, 97, 0.14);
+}
+
+.aa-loading-barre-remplissage {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--al-terre) 0%, #c9a961 100%);
+  transition: width 0.32s ease;
+}
+
+.aa-loading-pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: min(620px, 100%);
+}
+
+.aa-loading-sous-titre {
+  margin: 0;
+  flex: 1 1 260px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--al-encre-faible);
+}
+
+.aa-loading-passer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--al-encre-douce);
+  background: transparent;
+  border: 1px dashed var(--al-ligne);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.aa-loading-passer:hover {
+  color: var(--al-encre);
+  border-color: var(--al-fil);
+}
+
+@media (max-width: 640px) {
+  .aa-loading-bande { height: 34px; }
+  .aa-loading-bande .ec-cultural-band,
+  .aa-loading-bande .ec-cultural-top[data-cultural-motif='abomey'] { height: 34px; }
+  .aa-loading-case { padding: 5px 5px 0; }
+  .aa-loading-cartouche { font-size: 9.5px; padding: 7px 6px 9px; }
+  .aa-loading-pied { justify-content: center; text-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aa-loading-scene {
+    animation: none;
+  }
+
+  .aa-loading-scene img {
+    transition: none;
+  }
+}
