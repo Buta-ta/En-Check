@@ -1,3 +1,4 @@
+import { adminSessionAllowed } from '../_shared/admin-session.js'
 import { createClient } from 'npm:@supabase/supabase-js@2.87.3'
 import { createHandler } from './core.js'
 const client = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '', {
@@ -10,6 +11,7 @@ Deno.serve(createHandler({
   authorize: async token => {
     const { data, error } = await client.auth.getUser(token)
     if (error || !data.user) return null
+    if (!await adminSessionAllowed(createClient, Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_ANON_KEY'), token)) return null
     const { data: admin, error: adminError } = await client.from('admins').select('id,is_active')
       .eq('user_id', data.user.id).eq('is_active', true).maybeSingle()
     return !adminError && admin?.is_active === true ? data.user.id : null

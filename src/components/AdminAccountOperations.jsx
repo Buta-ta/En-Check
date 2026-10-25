@@ -1,3 +1,4 @@
+import AdminAccountRetirement from './AdminAccountRetirement'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { accountRpc } from '../services/adminAccounts'
@@ -268,6 +269,7 @@ export default function AdminAccountOperations({
           <code>/mon-compte?diagnostic={account.id}</code>
         </p>
       </details>
+      <AdminAccountRetirement account={account} accounts={accounts} currentId={currentId} onSaved={onSaved} />
       {message && <p role="status">{message}</p>}
     </section>
   )

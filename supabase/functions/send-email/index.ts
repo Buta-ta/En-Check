@@ -1,3 +1,4 @@
+import { adminSessionAllowed } from '../_shared/admin-session.js'
 // ═══════════════════════════════════════════════════════════════════
 // ✉️ send-email — les alertes de pointage par courrier électronique
 // ═══════════════════════════════════════════════════════════════════
@@ -202,6 +203,7 @@ async function appelantEstSuperAdmin(authHeader: string | null): Promise<boolean
   });
   const { data, error } = await client.auth.getUser();
   if (error || !data?.user) return false;
+  if (!await adminSessionAllowed(createClient, SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY'), authHeader)) return false;
   const { data: ligne, error: e2 } = await supabase
     .from("admins")
     .select("id, role, is_active")

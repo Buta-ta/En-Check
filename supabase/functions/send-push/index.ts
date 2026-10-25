@@ -1,3 +1,4 @@
+import { adminSessionAllowed } from '../_shared/admin-session.js'
 // supabase/functions/send-push/index.ts
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -61,6 +62,7 @@ async function isSuperAdminCaller(authHeader: string | null) {
 
   const { data: authData, error: authErr } = await supabase.auth.getUser();
   if (authErr || !authData?.user) return false;
+  if (!await adminSessionAllowed(createClient, SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY'), authHeader)) return false;
 
   const userId = authData.user.id;
 
