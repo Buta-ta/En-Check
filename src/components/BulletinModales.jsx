@@ -14,6 +14,7 @@ import {
 import { useTheme } from '../contexts/ThemeContext'
 import { palettePaie } from '../styles/paieTheme'
 import { stylesBulletins } from '../styles/paieThemeBulletins'
+import { MOYENS_PAIEMENT } from '../services/paiementBulletins'
 
 // ═══════════════════════════════════════════════════════════
 // MODALES PRIMES & RETENUES (identiques à l'original)
@@ -59,4 +60,128 @@ export function PeriodDeductionModal({ employees, deductionTypes, defaultEmploye
   const P = palettePaie(darkMode)
   const [form, setForm] = useState({ employee_id: defaultEmployeeId || '', deduction_type_id: '', code: `ded_${Date.now()}`, name: '', amount: '', reason: '' })
   return (<PaieDrawer title="Retenue ponctuelle" onClose={onClose} busy={saving} help="Cette retenue concerne uniquement la période sélectionnée." example="Une avance déjà versée de 10 000 à déduire de cette paie."><div style={S.modalContent} onClick={e => e.stopPropagation()}><div style={S.modalHeader}><h3 style={S.modalTitle}>Nouvelle retenue ponctuelle</h3><button aria-label="Fermer le tiroir" disabled={saving} onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button></div><div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}><div style={S.formGroup}><label style={S.labelSmall}>Employé *</label><select value={form.employee_id} onChange={e => setForm(p => ({ ...p, employee_id: e.target.value }))} style={S.select}><option value="">Sélectionner</option>{employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.matricule})</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Type</label><select value={form.deduction_type_id} onChange={e => { const type = deductionTypes.find(t => t.id === e.target.value); setForm(p => ({ ...p, deduction_type_id: e.target.value, name: type?.name || p.name, code: type?.code || `ded_${Date.now()}` })) }} style={S.select}><option value="">Personnalisée</option>{deductionTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div style={S.formGroup}><label style={S.labelSmall}>Libellé *</label><input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Montant ({currency}) *</label><input type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} style={S.input} /></div><div style={S.formGroup}><label style={S.labelSmall}>Motif</label><input value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} style={S.input} /></div></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}` }}><button onClick={onClose} style={S.modalCancelBtn}>Annuler</button><button onClick={() => onSave(form)} style={S.primaryBtn} disabled={saving || !form.employee_id || !form.name || !form.amount}>{saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}<span>Ajouter</span></button></div></div></PaieDrawer>)
+}
+
+// ═══════════════════════════════════════════════════════════
+// 💳 LE PAIEMENT D'UN BULLETIN
+//
+// Un bulletin publié n'est pas un bulletin payé. Ce tiroir ne
+// transfère rien : il enregistre QUAND, COMMENT et SOUS QUELLE
+// RÉFÉRENCE l'argent est parti — ce que le rapport et la page
+// Pointages ont besoin de lire.
+// ═══════════════════════════════════════════════════════════
+
+export function PaiementModal({
+  employe,
+  periode = {},
+  net = null,
+  currency = '',
+  paiement = null,
+  onSave,
+  onRetirer,
+  onClose,
+  saving = false,
+}) {
+  const { darkMode } = useTheme()
+  const S = stylesBulletins(darkMode)
+  const P = palettePaie(darkMode)
+
+  const [form, setForm] = useState({
+    date: paiement?.payeLe ? String(paiement.payeLe).slice(0, 10) : new Date().toISOString().slice(0, 10),
+    methode: paiement?.moyen || 'especes',
+    reference: paiement?.reference || '',
+  })
+
+  const nom = `${employe?.first_name || ''} ${employe?.last_name || ''}`.trim() || 'Employé'
+  const montant = net != null
+    ? `${Math.round(net).toLocaleString('fr-FR')} ${currency || ''}`.trim()
+    : null
+
+  return (
+    <PaieDrawer
+      title={paiement ? 'Paiement enregistré' : 'Marquer comme payé'}
+      onClose={onClose}
+      busy={saving}
+      help="Le paiement se marque ici quand l'argent est réellement parti. Il n'est pas déclenché par cet écran."
+      example="Un virement du 30 septembre par Mobile Money, référence « MM-1029 »."
+    >
+      <div style={S.modalContent} onClick={e => e.stopPropagation()}>
+        <div style={S.modalHeader}>
+          <h3 style={S.modalTitle}>{paiement ? 'Paiement enregistré' : 'Marquer comme payé'}</h3>
+          <button aria-label="Fermer le tiroir" disabled={saving} onClick={onClose} style={S.modalCloseBtn}><X size={18} /></button>
+        </div>
+
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ padding: '12px 14px', background: P.vert1, border: `1px solid ${P.vert2}`, borderRadius: 12 }}>
+            <p style={{ color: P.vert, fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>{nom}</p>
+            <p style={{ color: P.texteDoux2, fontSize: 12, margin: 0 }}>
+              {periode.debut && periode.fin ? `Période ${periode.debut} → ${periode.fin}` : 'Période non définie'}
+              {montant ? ` · ${montant}` : ''}
+            </p>
+          </div>
+
+          <div style={S.formGroup}>
+            <label style={S.labelSmall}>Date du paiement *</label>
+            <input
+              type="date"
+              value={form.date}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+              style={S.input}
+            />
+          </div>
+
+          <div style={S.formGroup}>
+            <label style={S.labelSmall}>Moyen de paiement *</label>
+            <select
+              value={form.methode}
+              onChange={e => setForm(p => ({ ...p, methode: e.target.value }))}
+              style={S.select}
+            >
+              {MOYENS_PAIEMENT.map(m => (
+                <option key={m.cle} value={m.cle}>{m.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={S.formGroup}>
+            <label style={S.labelSmall}>Référence</label>
+            <input
+              value={form.reference}
+              onChange={e => setForm(p => ({ ...p, reference: e.target.value }))}
+              style={S.input}
+              placeholder="N° de transaction, de chèque, de bordereau…"
+            />
+          </div>
+
+          <p style={{ color: P.texteDoux2, fontSize: 11.5, margin: 0, lineHeight: 1.5 }}>
+            Cette marque n'envoie aucun argent : elle indique que le versement a eu lieu.
+            Le rapport de présence la reprend telle quelle.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 20px', borderTop: `1px solid ${P.voile5}`, flexWrap: 'wrap' }}>
+          {paiement && onRetirer && (
+            <button
+              type="button"
+              onClick={onRetirer}
+              disabled={saving}
+              style={{ ...S.modalCancelBtn, marginRight: 'auto', color: P.rouge, borderColor: P.rouge3 }}
+            >
+              Retirer la marque
+            </button>
+          )}
+          <button onClick={onClose} style={S.modalCancelBtn} disabled={saving}>Annuler</button>
+          <button
+            onClick={() => onSave(form)}
+            style={S.primaryBtn}
+            disabled={saving || !form.date || !form.methode}
+          >
+            {saving ? <RefreshCw size={16} style={{ animation: 'spin 0.9s linear infinite' }} /> : <Save size={16} />}
+            <span>{paiement ? 'Mettre à jour' : 'Marquer payé'}</span>
+          </button>
+        </div>
+      </div>
+    </PaieDrawer>
+  )
 }

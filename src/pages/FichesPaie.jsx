@@ -42,6 +42,9 @@ import { SignaturePad, SingleSignatureManager, StampManager } from '../component
 import {
   AllowanceModal, DeductionModal, LoanModal, BonusModal, PeriodDeductionModal,
 } from '../components/BulletinModales'
+import { ActionPaiement, BadgePaiement } from '../components/PaiementFiche'
+import { etatPaiementExport } from '../services/paiementBulletins'
+import { usePaiementsFiches } from '../hooks/usePaiementsFiches'
 
 // ═══════════════════════════════════════════════════════════
 // PAGE PRINCIPALE
@@ -129,7 +132,8 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
   const [savingImport, setSavingImport] = useState(false)
 
   const [sendingSlips, setSendingSlips] = useState(false)
-  const [sentSlips, setSentSlips] = useState(new Set())
+  // Payé n'est pas envoyé : le hook tient les deux marques.
+  const { sentSlips, paidSlips, paiementConnu, recharger: loadSentSlips, marquerEnvoyees, retirerEnvoyee, setPaiement } = usePaiementsFiches()
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [slipToDelete, setSlipToDelete] = useState(null)
@@ -308,13 +312,6 @@ export default function FichesPaie({ integre = false, ongletExterne = null, entr
       toast.error('Impossible de charger cette entreprise')
     }
     setLoading(false)
-  }
-
-  const loadSentSlips = async (entId, pStart, pEnd) => {
-    try {
-      const { data } = await supabase.from('employee_payslips').select('employee_id').eq('enterprise_id', entId).eq('period_start', pStart).eq('period_end', pEnd).or('is_deleted.is.null,is_deleted.eq.false')
-      setSentSlips(new Set((data || []).map(d => d.employee_id)))
-    } catch (err) { console.error('Erreur chargement fiches envoyées:', err) }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -658,6 +655,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
       'Impôt (IRPP)': row.taxation?.tax?.totalTax || 0,
       'Mode paiement': row.profile?.payment_method || '',
       'Envoyée': sentSlips.has(row.employee?.id) ? 'Oui' : 'Non',
+      ...etatPaiementExport(paidSlips.get(row.employee?.id)),
     }))
     data.push({
       'Matricule': '', 'Nom': 'TOTAUX', 'Prénom': '', 'Département': '', 'Poste': '', 'Classification': '', 'Catégorie': '', 'CNPS': '', 'Mode': '', 'Salaire de base': '',
@@ -670,7 +668,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
       'Cotis. salariales': previewRows.reduce((s, r) => s + (r.taxation?.contributions?.totalEmployee || 0), 0),
       'Cotis. patronales': previewRows.reduce((s, r) => s + (r.taxation?.contributions?.totalEmployer || 0), 0),
       'Impôt (IRPP)': previewRows.reduce((s, r) => s + (r.taxation?.tax?.totalTax || 0), 0),
-      'Mode paiement': '', 'Envoyée': '',
+      'Mode paiement': '', 'Envoyée': '', 'Payé le': '', 'Moyen de paiement': '', 'Référence': '',
     })
     const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Masse salariale')
     const periodLabel = new Date(periodStart + 'T12:00:00Z').toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -749,7 +747,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
         automatic: options.automatic, taxOverride: options.taxOverride,
         isCurrent: () => request === generationRequest.current,
       })
-      setSentSlips(prev => new Set([...prev, ...ids]))
+      marquerEnvoyees(ids)
       const text = `${ids.length} fiche(s) ${options.automatic ? 'envoyée(s) automatiquement' : 'envoyée(s)'} dans les espaces salariés.`
       setDeliveryNotice({ error: false, text })
       toast.success(text)
@@ -788,7 +786,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
         .eq('enterprise_id', enterpriseId).eq('employee_id', slipToDelete.employee.id)
         .eq('period_start', periodStart).eq('period_end', periodEnd)
       if (error) throw error
-      setSentSlips(prev => { const u = new Set(prev); u.delete(slipToDelete.employee.id); return u })
+      retirerEnvoyee(slipToDelete.employee.id)
       toast.success('Fiche retirée'); setShowDeleteModal(false); setSlipToDelete(null)
     } catch { toast.error('Erreur suppression fiche') }
     setDeletingSlip(false)
@@ -901,8 +899,9 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
     const totalCost = previewRows.reduce((s, r) => s + (r.employerCost || r.grossSalary || 0), 0)
     const totalEmployees = previewRows.length
     const alreadySent = previewRows.filter(r => sentSlips.has(r.employee?.id)).length
-    return { totalNet, totalGross, totalCost, totalEmployees, alreadySent }
-  }, [previewRows, sentSlips])
+    const paidCount = previewRows.filter(r => paidSlips.has(r.employee?.id)).length
+    return { totalNet, totalGross, totalCost, totalEmployees, alreadySent, paidCount }
+  }, [previewRows, sentSlips, paidSlips])
 
   const fmt = (amount) => PayrollService.formatMoney(amount, settings.currency)
 
@@ -1739,6 +1738,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                 <div style={S.summaryTopCard}><TrendingUp size={18} color={P.rouge} /><div><div style={S.summaryTopValue}>{previewRows.length ? fmt(summary.totalCost) : '—'}</div><div style={S.summaryTopLabel}>Coût employeur</div></div></div>
                 <div style={S.summaryTopCard}><Users size={18} color={P.indigo} /><div><div style={S.summaryTopValue}>{summary.totalEmployees}</div><div style={S.summaryTopLabel}>Fiches calculées</div></div></div>
                 <div style={S.summaryTopCard}><Send size={18} color={summary.alreadySent > 0 ? P.vert : P.texteFaint} /><div><div style={S.summaryTopValue}>{summary.alreadySent} / {summary.totalEmployees}</div><div style={S.summaryTopLabel}>Envoyées</div></div></div>
+                <div style={S.summaryTopCard}><Wallet size={18} color={summary.paidCount > 0 ? P.indigo : P.texteFaint} /><div><div style={S.summaryTopValue}>{paiementConnu ? `${summary.paidCount} / ${summary.totalEmployees}` : '—'}</div><div style={S.summaryTopLabel}>{paiementConnu ? 'Payées' : 'Paiement non suivi'}</div></div></div>
               </div>
 
               {previewRows.length > 0 && (
@@ -1775,6 +1775,7 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                                 <Badge color={row.profile?.salary_type === 'monthly' ? P.indigo : row.profile?.salary_type === 'hourly' ? P.ambre : P.vert}>{salaryTypeLabel}</Badge>
                                 {row.employee?.classification && <Badge color={P.violet}>{row.employee.classification}</Badge>}
                                 {isSent && <span style={S.sentBadge}><CheckCircle2 size={12} /> Envoyée</span>}
+                                <BadgePaiement paiement={paidSlips.get(row.employee?.id)} S={S} P={P} />
                               </div>
                               <div style={S.previewSub}>
                                 {row.employee?.matricule} • {row.employee?.position || row.employee?.department || 'Employé'}
@@ -1787,6 +1788,9 @@ const loadLeaveBalances = async (entId, employeesList, year) => {
                               <div style={S.previewNet}><small className="pw-net-caption">Net à verser</small>{fmt(row.netSalary)}</div>
                               <button onClick={() => handleDownloadSlip(row)} style={S.downloadBtn}><Download size={14} /><span>PDF</span></button>
                               <button onClick={() => handleSendToEmployee(row)} style={{ ...S.sendBtn, ...(isSent ? { opacity: 0.6 } : {}) }}><Send size={14} /><span>{isSent ? 'Renvoyer' : 'Envoyer'}</span></button>
+                              {isSent && (
+                                <ActionPaiement row={row} enterpriseId={enterpriseId} periodStart={periodStart} periodEnd={periodEnd} adminId={admin?.id} currency={settings.currency} isSent={isSent} paiement={paidSlips.get(row.employee?.id) || null} S={S} P={P} onPaiementChange={paiement => setPaiement(row.employee?.id, paiement)} />
+                              )}
                               {isSent && <button onClick={() => handleDeleteSentSlip(row)} style={S.deleteSentBtn} title="Retirer"><Trash2 size={14} /><span>Retirer</span></button>}
                             </div>
                           </div>

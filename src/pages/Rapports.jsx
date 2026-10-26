@@ -15,6 +15,12 @@ import PageCulturalBand from '../components/PageCulturalBand'
 import RaccourcisPages from '../components/RaccourcisPages'
 import { NsibidiBlasonSvg } from '../components/NsibidiSvg'
 import { useTheme } from '../contexts/ThemeContext'
+import { construirePauses } from '../services/pausesService'
+import { chargerBulletinsPeriode, resumerPaieParEmploye, libelleMoyen } from '../services/paiementBulletins'
+import {
+  pausesDeductiblesPourEmploye,
+  construireJournees,
+} from '../utils/rapportsPresence'
 import {
   DOC,
   MARGES,
@@ -35,7 +41,7 @@ import {
   ArrowLeft, Calendar, Building2, FileText, Download,
   FileSpreadsheet, Users, Clock, CheckCircle, AlertTriangle,
   Timer, CalendarOff, Sparkles, Eye, RefreshCw, CalendarDays,
-  TrendingUp, Sun, Moon, MapPin
+  TrendingUp, Sun, Moon, MapPin, Search, Coffee, Wallet
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import FeatureService from '../services/featureService'
@@ -434,6 +440,12 @@ export default function Rapports() {
   const [entreprises, setEntreprises] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedEntrepriseId, setSelectedEntrepriseId] = useState('all')
+  // Le périmètre fin : « tous les employés » ou une personne, pour vérifier
+  // ses heures avec elle. Sans ce filtre, un rapport ne répond jamais à la
+  // seule question qu'un salarié pose vraiment.
+  const [selectedEmployeId, setSelectedEmployeId] = useState('tous')
+  const [employes, setEmployes] = useState([])
+  const [rechercheEmploye, setRechercheEmploye] = useState('')
   const [dateDebut, setDateDebut] = useState('')
   const [dateFin, setDateFin] = useState('')
 
@@ -443,6 +455,11 @@ export default function Rapports() {
   const [includeConges, setIncludeConges] = useState(false)
 
   const [includePointages, setIncludePointages] = useState(false)
+  // Les pauses réellement effectuées se lisent toujours dans le registre ;
+  // la rubrique n'ajoute que l'annexe qui les détaille une par une.
+  const [includePauses, setIncludePauses] = useState(false)
+  // Les bulletins et leur paiement, quand l'entreprise a la paie.
+  const [includePaie, setIncludePaie] = useState(true)
 
   const [includeHolidays, setIncludeHolidays] = useState(false)
   const [includeWorkedHolidays, setIncludeWorkedHolidays] = useState(true)
@@ -450,6 +467,7 @@ export default function Rapports() {
 
   const [hasHeuresSupFeature, setHasHeuresSupFeature] = useState(false)
   const [hasAbsencesFeature, setHasAbsencesFeature] = useState(false)
+  const [hasBulletinsFeature, setHasBulletinsFeature] = useState(false)
 
   const [previewData, setPreviewData] = useState(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
@@ -483,7 +501,8 @@ export default function Rapports() {
 
   useEffect(() => {
     checkFeatures()
-  }, [selectedEntrepriseId, admin])
+    loadEmployes()
+  }, [selectedEntrepriseId, admin, selectedEmployeId, entreprises.length])
 
   const loadEntreprises = async () => {
     const { data } = await supabase
@@ -492,6 +511,30 @@ export default function Rapports() {
       .eq('is_active', true)
       .order('name')
     setEntreprises(data || [])
+  }
+
+  // La liste ne sert qu'à choisir : identité et entreprise, rien de plus.
+  const loadEmployes = async () => {
+    if (!admin) return
+    const scope = admin.role === 'super_admin'
+      ? selectedEntrepriseId
+      : (admin.selectedEnterprise?.id || admin.enterprise_id)
+
+    let query = supabase
+      .from('employees')
+      .select('id, first_name, last_name, matricule, enterprise_id')
+      .eq('is_active', true)
+      .order('last_name')
+
+    if (scope && scope !== 'all') query = query.eq('enterprise_id', scope)
+
+    const { data } = await query
+    const liste = data || []
+    setEmployes(liste)
+    // Le salarié choisi peut sortir du nouveau périmètre : on revient à tous.
+    if (selectedEmployeId !== 'tous' && !liste.some(e => e.id === selectedEmployeId)) {
+      setSelectedEmployeId('tous')
+    }
   }
 
   const checkFeatures = async () => {
@@ -504,21 +547,26 @@ export default function Rapports() {
     if (!enterpriseId || enterpriseId === 'all') {
       setHasHeuresSupFeature(admin.role === 'super_admin')
       setHasAbsencesFeature(admin.role === 'super_admin')
+      // « Toutes les entreprises » : la paie n'est proposée que si au moins
+      // une entreprise du lot a le module.
+      setHasBulletinsFeature(admin.role === 'super_admin' && (entreprises || []).some(e => e.module_fiches_paie === true))
       return
     }
 
     try {
       const { data: enterprise } = await supabase
         .from('enterprises')
-        .select('module_heures_supplementaires, module_conges')
+        .select('module_heures_supplementaires, module_conges, module_fiches_paie')
         .eq('id', enterpriseId)
         .single()
 
       setHasHeuresSupFeature(enterprise?.module_heures_supplementaires || false)
       setHasAbsencesFeature(enterprise?.module_conges || false)
+      setHasBulletinsFeature(enterprise?.module_fiches_paie === true)
     } catch {
       setHasHeuresSupFeature(false)
       setHasAbsencesFeature(false)
+      setHasBulletinsFeature(false)
     }
   }
 
@@ -540,8 +588,14 @@ export default function Rapports() {
         employeesQuery = employeesQuery.eq('enterprise_id', targetEnterpriseId)
       }
 
-      const { data: employees } = await employeesQuery
-      const employeeIds = employees?.map(e => e.id) || []
+      const { data: employeesBruts } = await employeesQuery
+
+      // Un rapport peut viser une seule personne : c'est le document qu'on
+      // discute avec elle, jour par jour.
+      const employees = (employeesBruts || []).filter(
+        e => selectedEmployeId === 'tous' || e.id === selectedEmployeId
+      )
+      const employeeIds = employees.map(e => e.id)
 
       let employeeSchedulesMap = {}
       if (employeeIds.length > 0) {
@@ -555,7 +609,7 @@ export default function Rapports() {
         })
       }
 
-      const enterpriseIds = [...new Set((employees || []).map(e => e.enterprise_id).filter(Boolean))]
+      const enterpriseIds = [...new Set(employees.map(e => e.enterprise_id).filter(Boolean))]
       let defaultScheduleByEnterprise = {}
 
       if (enterpriseIds.length > 0) {
@@ -595,6 +649,46 @@ export default function Rapports() {
         }
         const { data: zones } = await geofencesQuery
         ;(zones || []).forEach(z => { geofencesById[z.id] = z.name })
+      }
+
+      //  LES PAUSES — la même source que la page Pointages (`encheck_pauses_lire`).
+      //  Une pause réelle se déduit, une présumée validée aussi, une présumée
+      //  en attente se marque seulement. On lit toujours : la durée effective
+      //  du rapport doit être la même que celle de l'écran de pointage.
+      let pausesParEmploye = {}
+      try {
+        const { data: lignesPauses } = await supabase.rpc('encheck_pauses_lire', {
+          p_enterprise: targetEnterpriseId === 'all' ? null : targetEnterpriseId,
+          p_du: dateDebut,
+          p_au: dateFin,
+        })
+        const toutes = construirePauses(lignesPauses || []).paies
+        const perimetre = new Set(employeeIds)
+        toutes.forEach(p => {
+          if (!p.employe_id || !perimetre.has(p.employe_id)) return
+          if (!pausesParEmploye[p.employe_id]) pausesParEmploye[p.employe_id] = []
+          pausesParEmploye[p.employe_id].push(p)
+        })
+      } catch {
+        pausesParEmploye = {}  // sans pauses lisibles, on ne déduit rien — jamais d'invention
+      }
+
+      //  LES BULLETINS ET LEUR PAIEMENT — seulement si l'entreprise a la paie.
+      let bulletinsParEmploye = new Map()
+      let paiementConnu = true
+      if (includePaie && hasBulletinsFeature && employeeIds.length > 0) {
+        try {
+          const { bulletins, paiementConnu: connu } = await chargerBulletinsPeriode({
+            enterpriseId: targetEnterpriseId === 'all' ? null : targetEnterpriseId,
+            dateDebut,
+            dateFin,
+            employeeIds,
+          })
+          bulletinsParEmploye = resumerPaieParEmploye(bulletins)
+          paiementConnu = connu
+        } catch {
+          bulletinsParEmploye = new Map()
+        }
       }
 
       let absencesData = []
@@ -670,8 +764,11 @@ export default function Rapports() {
       }
 
       return {
-        employees: employees || [],
+        employees,
         attendances: attendances || [],
+        pausesParEmploye,
+        bulletinsParEmploye,
+        paiementConnu,
         geofencesById,
         employeeSchedulesMap,
         defaultScheduleByEnterprise,
@@ -688,6 +785,9 @@ export default function Rapports() {
       return {
         employees: [],
         attendances: [],
+        pausesParEmploye: {},
+        bulletinsParEmploye: new Map(),
+        paiementConnu: true,
         geofencesById: {},
         employeeSchedulesMap: {},
         defaultScheduleByEnterprise: {},
@@ -1026,6 +1126,200 @@ export default function Rapports() {
     }
   }
 
+  // ═══ LA LIGNE D'UN EMPLOYÉ — présence, pauses, effectif, paie ═══
+  //  Un seul endroit pour les trois exports : la durée affichée est la même
+  //  dans le PDF, le PDF graphique et le tableur.
+  const construireLigneEmploye = (emp, donnees) => {
+    const {
+      attendances,
+      employeeSchedulesMap,
+      defaultScheduleByEnterprise,
+      overtimeSettingsByEnterprise,
+      holidaySetByEnterprise,
+      holidayMapByEnterprise,
+      allSchedules,
+      absences,
+      pausesParEmploye = {},
+      bulletinsParEmploye = new Map(),
+    } = donnees
+
+    const stats = calculateEmployeeStats(
+      emp,
+      attendances,
+      employeeSchedulesMap,
+      defaultScheduleByEnterprise,
+      overtimeSettingsByEnterprise,
+      holidaySetByEnterprise,
+      holidayMapByEnterprise,
+      allSchedules
+    )
+
+    const absStats = calculateAbsenceStats(
+      emp.id,
+      absences,
+      holidaySetByEnterprise,
+      emp.enterprise_id,
+      includeNonWorkedHolidays
+    )
+
+    //  La pause ne se déduit que sur les pointages payables — la même liste
+    //  que celle qui a servi à calculer les heures.
+    const badgesPayables = filtrerPointagesPayables(attendances || [])
+      .filter(a => a.employee_id === emp.id)
+
+    const pauses = pausesDeductiblesPourEmploye({
+      pauses: pausesParEmploye[emp.id] || [],
+      attendances: badgesPayables,
+      employeeId: emp.id,
+    })
+
+    const presenceMinutes = stats.totalMinutes
+    const effectifMinutes = Math.max(0, presenceMinutes - pauses.minutes)
+
+    return {
+      emp,
+      stats,
+      absStats,
+      pauses,
+      paie: bulletinsParEmploye.get(emp.id) || null,
+      badges: badgesPayables,
+      presenceMinutes,
+      pauseMinutes: pauses.minutes,
+      effectifMinutes,
+      journees: null,
+    }
+  }
+
+  // ═══ LA PAIE, DITE EN CLAIR ═══
+  //  Trois états, trois phrases. Un bulletin remis n'est pas un bulletin payé :
+  //  le rapport ne doit jamais laisser croire l'un pour l'autre.
+  const etiquettePaie = (paie) => {
+    if (!paie) return { court: '—', long: 'Aucun bulletin sur la période', couleur: null }
+    if (paie.statut === 'paye') {
+      const jour = paie.payeLe ? formatDateFr(String(paie.payeLe).slice(0, 10)) : '—'
+      const moyen = libelleMoyen(paie.moyen)
+      const ref = paie.reference ? ` · réf. ${paie.reference}` : ''
+      return {
+        court: `Payé ${jour}`,
+        long: `Payé le ${jour} — ${moyen}${ref}`,
+        couleur: 'ok',
+      }
+    }
+    if (paie.statut === 'emis') {
+      return {
+        court: 'Émis',
+        long: `Bulletin émis le ${paie.emisLe ? formatDateFr(String(paie.emisLe).slice(0, 10)) : '—'} — paiement non marqué`,
+        couleur: 'attente',
+      }
+    }
+    return { court: 'Calculé', long: 'Bulletin calculé — ni émis ni payé', couleur: 'indigo' }
+  }
+
+  // ═══ LE REGISTRE D'UN SEUL EMPLOYÉ — jour par jour ═══
+  const construireJourneesEmploye = (ligne, donnees) => {
+    const minutesParJour = calculateWorkedMinutesByDay(ligne.emp.id, donnees.attendances || [])
+    return construireJournees({
+      attendances: ligne.badges,
+      employeeId: ligne.emp.id,
+      minutesParJour,
+      pausesParJour: ligne.pauses.parJour,
+      geofencesById: donnees.geofencesById || {},
+    })
+  }
+
+  // ═══ L'ANNEXE DES PAUSES ═══
+  //  Ce qui a été déduit, et ce qui a été seulement marqué. La différence
+  //  est la doctrine : on n'encaisse pas une présomption.
+  const ajouterAnnexePauses = (doc, { employeesData, pausesParEmploye, totalPauses, periodeLongue, y }) => {
+    const pausesListe = Object.entries(pausesParEmploye || {}).flatMap(([empId, liste]) =>
+      (liste || []).map(p => ({ ...p, employe_id: p.employe_id || empId }))
+    )
+    if (pausesListe.length === 0) return y
+
+    const nomParEmploye = new Map(employeesData.map(l => [l.emp.id, l.emp]))
+    const retenuesIds = new Set(
+      employeesData.flatMap(l => (l.pauses?.retenues || []).map(r => r.id)).filter(Boolean)
+    )
+    const statutLabels = {
+      reelle: 'Réelle',
+      validee: 'Présumée validée',
+      presumee: 'Présumée (en attente)',
+      ecartee: 'Écartée',
+    }
+
+    const lignes = pausesListe
+      .slice()
+      .sort((a, b) => String(b.jour || '').localeCompare(String(a.jour || '')))
+      .map(p => {
+        const emp = nomParEmploye.get(p.employe_id)
+        const deduite = p.ouverte
+          ? 'Non (pas de reprise)'
+          : p.statut === 'ecartee'
+            ? 'Non (écartée)'
+            : p.statut === 'presumee'
+              ? 'Non (en attente)'
+              : retenuesIds.has(p.id)
+                ? 'Oui'
+                : 'Non (déjà au pointage)'
+        return [
+          formatDateFr(p.jour),
+          `${emp?.first_name || ''} ${emp?.last_name || ''}`.trim() || '—',
+          p.debutHHMM || '—',
+          p.finHHMM || '—',
+          p.dureeMinutes > 0 ? formatMinutesToHM(p.dureeMinutes) : '—',
+          statutLabels[p.statut] || p.statut || '—',
+          deduite,
+        ]
+      })
+
+    return ajouterPageDetail(doc, {
+      titre: 'Pauses réellement effectuées',
+      sousTitre: `${lignes.length} pause${lignes.length > 1 ? 's' : ''} · ${formatMinutesToHM(totalPauses)} déduites · ${periodeLongue}`,
+      accent: DOC.ambre,
+      tete: ['Date', 'Employé', 'Début', 'Fin', 'Durée', 'Nature', 'Déduite'],
+      lignes,
+      colonnes: colonnesProportionnelles([1.0, 2.4, 0.75, 0.75, 0.85, 1.85, 1.9], {
+        largeur: largeurUtile(doc),
+        halign: ['left', 'left', 'center', 'center', 'center', 'left', 'left'],
+      }),
+      continuer: true,
+      y,
+      hauteurEstimee: 22 + lignes.length * 7,
+    }) + 12
+  }
+
+  // ═══ L'ANNEXE DES BULLETINS ═══
+  const ajouterAnnexePaie = (doc, { employeesData, periodeLongue, paiementConnu, y }) => {
+    const lignes = employeesData
+      .filter(l => l.paie)
+      .map(l => [
+        `${l.emp.first_name} ${l.emp.last_name}`,
+        l.emp.matricule || '—',
+        l.paie.periodStart && l.paie.periodEnd
+          ? `${formatDateFr(l.paie.periodStart)} → ${formatDateFr(l.paie.periodEnd)}`
+          : '—',
+        l.paie.net != null ? `${Math.round(l.paie.net).toLocaleString('fr-FR')} F` : '—',
+        etiquettePaie(l.paie).long,
+      ])
+
+    if (lignes.length === 0) return y
+
+    return ajouterPageDetail(doc, {
+      titre: 'Bulletins et paiements',
+      sousTitre: `${lignes.length} bulletin${lignes.length > 1 ? 's' : ''} · ${periodeLongue}${paiementConnu ? '' : ' · paiement non suivi sur cette base'}`,
+      accent: DOC.vert,
+      tete: ['Employé', 'Matricule', 'Période', 'Net', 'Paiement'],
+      lignes,
+      colonnes: colonnesProportionnelles([2.3, 1.15, 2.3, 1.2, 4.2], {
+        largeur: largeurUtile(doc),
+        halign: ['left', 'center', 'left', 'right', 'left'],
+      }),
+      continuer: true,
+      y,
+      hauteurEstimee: 22 + lignes.length * 7,
+    }) + 12
+  }
+
   const loadPreview = async () => {
     setLoadingPreview(true)
     try {
@@ -1052,43 +1346,66 @@ export default function Rapports() {
         totalWorkedHolidays: 0,
         totalWorkedHolidaysMinutes: 0,
         totalPointages: includePointages ? data.attendances.length : 0,
+        // Les pauses et la paie accompagnent chaque ligne : on les totalise
+        // comme les heures, sans les gonfler.
+        totalPauseMinutes: 0,
+        totalEffectifMinutes: 0,
+        totalPresumeesMinutes: 0,
+        totalPresumeesNombre: 0,
+        totalBulletins: 0,
+        totalPayes: 0,
+        paiementConnu: data.paiementConnu !== false,
+        journeesEmployeUnique: null,
         employees: [],
       }
 
       data.employees.forEach(emp => {
-        const empStats = calculateEmployeeStats(
-          emp,
-          data.attendances,
-          data.employeeSchedulesMap,
-          data.defaultScheduleByEnterprise,
-          data.overtimeSettingsByEnterprise,
-          data.holidaySetByEnterprise,
-          data.holidayMapByEnterprise,
-          data.allSchedules
-        )
-        const absStats = calculateAbsenceStats(
-          emp.id,
-          data.absences,
-          data.holidaySetByEnterprise,
-          emp.enterprise_id,
-          includeNonWorkedHolidays
-        )
+        const ligne = construireLigneEmploye(emp, data)
 
-        stats.totalRetards += empStats.retardsCount
-        stats.totalRetardsMinutes += empStats.retardsMinutes
-        stats.totalHeuresTravaillees += empStats.totalMinutes
-        stats.totalHeuresSup += empStats.totalHeuresSupMinutes
-        stats.totalAbsences += absStats.total
-        stats.totalConges += absStats.conges
-        stats.totalWorkedHolidays += empStats.workedHolidaysCount
-        stats.totalWorkedHolidaysMinutes += empStats.workedHolidaysMinutes
+        stats.totalRetards += ligne.stats.retardsCount
+        stats.totalRetardsMinutes += ligne.stats.retardsMinutes
+        stats.totalHeuresTravaillees += ligne.stats.totalMinutes
+        stats.totalHeuresSup += ligne.stats.heuresSupMinutes
+        stats.totalAbsences += ligne.absStats.total
+        stats.totalConges += ligne.absStats.conges
+        stats.totalWorkedHolidays += ligne.stats.workedHolidaysCount
+        stats.totalWorkedHolidaysMinutes += ligne.stats.workedHolidaysMinutes
+        stats.totalPauseMinutes += ligne.pauseMinutes
+        stats.totalEffectifMinutes += ligne.effectifMinutes
+        stats.totalPresumeesMinutes += ligne.pauses.presumeesMinutes
+        stats.totalPresumeesNombre += ligne.pauses.presumeesNombre
+        if (ligne.paie) {
+          stats.totalBulletins++
+          if (ligne.paie.statut === 'paye') stats.totalPayes++
+        }
+
+        const empStats = ligne.stats
+        const absStats = ligne.absStats
 
         if (!empStats.hasPlanningRetards) {
           stats.employesSansPlanningRetards++
         }
 
-        stats.employees.push({ ...emp, ...empStats, absences: absStats })
+        stats.employees.push({
+          ...emp,
+          ...empStats,
+          absences: absStats,
+          pauses: ligne.pauses,
+          paie: ligne.paie,
+          presenceMinutes: ligne.presenceMinutes,
+          pauseMinutes: ligne.pauseMinutes,
+          effectifMinutes: ligne.effectifMinutes,
+        })
       })
+
+      //  Le registre jour par jour n'a de sens que pour une personne : sur
+      //  vingt salariés, il noierait le rapport.
+      if (stats.employees.length === 1) {
+        stats.journeesEmployeUnique = construireJourneesEmploye(
+          { emp: stats.employees[0], badges: data.attendances.filter(a => a.employee_id === stats.employees[0].id), pauses: stats.employees[0].pauses },
+          data
+        )
+      }
 
       setPreviewData(stats)
     } catch (error) {
@@ -1117,54 +1434,59 @@ export default function Rapports() {
         holidays,
         holidaySetByEnterprise,
         holidayMapByEnterprise,
-        geofencesById
+        geofencesById,
+        pausesParEmploye,
+        bulletinsParEmploye,
+        paiementConnu
       } = await fetchReportData()
 
       const doc = new jsPDF()
       const pageWidth = doc.internal.pageSize.getWidth()
       const periodeLongue = `${formatDateLong(dateDebut)} — ${formatDateLong(dateFin)}`
 
-      const employeesData = employees.map(emp => {
-        const stats = calculateEmployeeStats(
-          emp,
-          attendances,
-          employeeSchedulesMap,
-          defaultScheduleByEnterprise,
-          overtimeSettingsByEnterprise,
-          holidaySetByEnterprise,
-          holidayMapByEnterprise,
-          allSchedules
-        )
+      const donnees = {
+        attendances,
+        employeeSchedulesMap,
+        defaultScheduleByEnterprise,
+        overtimeSettingsByEnterprise,
+        holidaySetByEnterprise,
+        holidayMapByEnterprise,
+        allSchedules,
+        absences,
+        pausesParEmploye,
+        bulletinsParEmploye,
+      }
 
-        const absStats = calculateAbsenceStats(
-          emp.id,
-          absences,
-          holidaySetByEnterprise,
-          emp.enterprise_id,
-          includeNonWorkedHolidays
-        )
+      const employeesData = employees.map(emp => construireLigneEmploye(emp, donnees))
 
-        return { emp, stats, absStats }
-      })
+      const totalPauses = employeesData.reduce((t, l) => t + l.pauseMinutes, 0)
+      const totalEffectif = employeesData.reduce((t, l) => t + l.effectifMinutes, 0)
+      const totalPresence = employeesData.reduce((t, l) => t + l.presenceMinutes, 0)
+
+      const employeUnique = employeesData.length === 1 ? employeesData[0] : null
+      const sujetEmploye = employeUnique
+        ? `${employeUnique.emp.first_name} ${employeUnique.emp.last_name}${employeUnique.emp.matricule ? ` (${employeUnique.emp.matricule})` : ''}`
+        : ''
+      const titreDocument = employeUnique ? 'Dossier de présence' : 'Rapport graphique'
 
       // Une page neuve reprend la bande gravée, en plus court.
       const nouvellePage = () => {
         doc.addPage()
         return dessinerEntete(doc, {
-          titre: 'Rapport graphique',
+          titre: 'Suite des graphiques',
           sousTitre: 'En-Check · les registres de craie',
           periode: periodeLongue,
           entreprise: selectedEnterpriseName,
-          complement: 'Suite des graphiques',
+          complement: employeUnique ? sujetEmploye : '',
         })
       }
 
       let yPos = dessinerEntete(doc, {
-        titre: 'Rapport graphique',
+        titre: titreDocument,
         sousTitre: 'En-Check · les registres de craie',
         periode: periodeLongue,
         entreprise: selectedEnterpriseName,
-        complement: 'Lecture visuelle de la période',
+        complement: employeUnique ? sujetEmploye : 'Lecture visuelle de la période',
       })
 
       const hauteurImage = 84
@@ -1292,6 +1614,27 @@ export default function Rapports() {
         )
       }
 
+      // ═══ GRAPHIQUE 6 : PRÉSENCE BRUTE, PAUSES, TEMPS EFFECTIF ═══
+      //  Les trois temps d'une même période, côte à côte : c'est l'écart
+      //  entre les deux premiers que le salarié vient discuter.
+      if (totalPresence > 0) {
+        await poserGraphique(
+          'Présence brute, pauses et temps effectif',
+          {
+            title: 'Les trois temps de la période',
+            labels: ['Présence brute', 'Pauses déduites', 'Temps effectif'],
+            values: [
+              Math.round(totalPresence / 60),
+              Math.round(totalPauses / 60),
+              Math.round(totalEffectif / 60),
+            ],
+            colors: ['#B4622A', '#C9A961', '#0B5F43'],
+          },
+          'bar',
+          DOC.vert
+        )
+      }
+
       // ═══ LE JOURNAL DES POINTAGES, SI ON L'A DEMANDÉ ═══
       if (includePointages) {
         const journal = construireJournalPointages({ attendances, employees, geofencesById })
@@ -1302,9 +1645,28 @@ export default function Rapports() {
         })
       }
 
+      if (includePauses) {
+        ajouterAnnexePauses(doc, {
+          employeesData,
+          pausesParEmploye,
+          totalPauses,
+          periodeLongue,
+          y: null,
+        })
+      }
+
+      if (includePaie && hasBulletinsFeature && bulletinsParEmploye.size > 0) {
+        ajouterAnnexePaie(doc, {
+          employeesData,
+          periodeLongue,
+          paiementConnu,
+          y: null,
+        })
+      }
+
       numeroterPages(doc, {
-        titre: 'Rapport graphique',
-        entreprise: selectedEnterpriseName,
+        titre: titreDocument,
+        entreprise: employeUnique ? sujetEmploye : selectedEnterpriseName,
         periode: periodeLongue,
       })
 
@@ -1317,7 +1679,10 @@ export default function Rapports() {
         }
       }
 
-      doc.save(`Rapport_Graphique_${enterpriseName}_${dateDebut}_${dateFin}.pdf`)
+      const suffixeEmploye = employeUnique && employeUnique.emp.matricule
+        ? `_${String(employeUnique.emp.matricule).replace(/[^a-zA-Z0-9]/g, '_')}`
+        : ''
+      doc.save(`Rapport${suffixeEmploye}_Graphique_${enterpriseName}_${dateDebut}_${dateFin}.pdf`)
       toast.success('PDF graphique généré avec succès !')
     } catch (error) {
       console.error('Erreur génération PDF graphique:', error)
@@ -1342,7 +1707,10 @@ export default function Rapports() {
         holidays,
         holidaySetByEnterprise,
         holidayMapByEnterprise,
-        geofencesById
+        geofencesById,
+        pausesParEmploye,
+        bulletinsParEmploye,
+        paiementConnu
       } = await fetchReportData()
 
       const doc = new jsPDF()
@@ -1366,25 +1734,25 @@ export default function Rapports() {
         return true
       })
 
-      const employeesData = employees.map(emp => {
-        const stats = calculateEmployeeStats(
-          emp,
-          attendances,
-          employeeSchedulesMap,
-          defaultScheduleByEnterprise,
-          overtimeSettingsByEnterprise,
-          holidaySetByEnterprise,
-          holidayMapByEnterprise,
-          allSchedules
-        )
+      let totalPauses = 0
+      let totalEffectif = 0
 
-        const absStats = calculateAbsenceStats(
-          emp.id,
-          absences,
-          holidaySetByEnterprise,
-          emp.enterprise_id,
-          includeNonWorkedHolidays
-        )
+      const donnees = {
+        attendances,
+        employeeSchedulesMap,
+        defaultScheduleByEnterprise,
+        overtimeSettingsByEnterprise,
+        holidaySetByEnterprise,
+        holidayMapByEnterprise,
+        allSchedules,
+        absences,
+        pausesParEmploye,
+        bulletinsParEmploye,
+      }
+
+      const employeesData = employees.map(emp => {
+        const ligne = construireLigneEmploye(emp, donnees)
+        const { stats, absStats } = ligne
 
         totalRetards += stats.retardsCount
         totalMinutesRetard += stats.retardsMinutes
@@ -1393,11 +1761,23 @@ export default function Rapports() {
         totalAbsencesDays += absStats.total
         totalWorkedHolidays += stats.workedHolidaysCount
         totalWorkedHolidaysMinutes += stats.workedHolidaysMinutes
+        totalPauses += ligne.pauseMinutes
+        totalEffectif += ligne.effectifMinutes
 
         if (!stats.hasPlanningRetards) nbSansPlanningRetards++
 
-        return { emp, stats, absStats }
+        return ligne
       })
+
+      //  Le rapport d'une personne porte son nom : on ne parle plus d'un
+      //  « registre des employés » quand il n'y a qu'une personne dedans.
+      const employeUnique = employeesData.length === 1 ? employeesData[0] : null
+      //  `Dossier de présence` tient dans la bande à 17 pt ; le nom, lui,
+      //  passe sous la période — c'est là qu'on le cherche.
+      const sujetEmploye = employeUnique
+        ? `${employeUnique.emp.first_name} ${employeUnique.emp.last_name}${employeUnique.emp.matricule ? ` (${employeUnique.emp.matricule})` : ''}`
+        : ''
+      const titreDocument = employeUnique ? 'Dossier de présence' : 'Rapport de pointage'
 
       const journal = includePointages
         ? construireJournalPointages({ attendances, employees, geofencesById })
@@ -1405,19 +1785,24 @@ export default function Rapports() {
 
       // ═══ LA TÊTE ═══
       let yPos = dessinerEntete(doc, {
-        titre: 'Rapport de pointage',
+        titre: titreDocument,
         sousTitre: 'En-Check · les registres de craie',
         periode: periodeLongue,
         entreprise: selectedEnterpriseName,
-        complement: `Édité le ${new Date().toLocaleDateString('fr-FR')}${includePointages ? ' · journal des pointages inclus' : ''}`,
+        complement: employeUnique
+          ? sujetEmploye
+          : `Édité le ${new Date().toLocaleDateString('fr-FR')}${includePointages ? ' · journal des pointages inclus' : ''}`,
       })
 
       // ═══ LE RÉSUMÉ ═══
       const resume = [
-        { label: 'Employés', valeur: totalEmployes },
-        { label: 'Jours ouvrés', valeur: joursOuvres },
-        { label: 'Total travaillé', valeur: formatMinutesToHM(totalHeuresTravail) },
+        { label: employeUnique ? 'Jours ouvrés' : 'Employés', valeur: employeUnique ? joursOuvres : totalEmployes },
+        { label: 'Présence brute', valeur: formatMinutesToHM(totalHeuresTravail) },
+        { label: 'Pauses déduites', valeur: formatMinutesToHM(totalPauses), accent: DOC.ambre },
       ]
+
+      //  Le temps effectif — ce qui se paie — juste à côté du brut.
+      resume.push({ label: 'Temps effectif', valeur: formatMinutesToHM(totalEffectif), accent: DOC.vert })
 
       if (includeRetards) {
         resume.push({ label: 'Retards', valeur: totalRetards, accent: DOC.rouge })
@@ -1441,6 +1826,10 @@ export default function Rapports() {
         resume.push({ label: 'Pointages', valeur: journal.length, accent: DOC.terre })
       }
 
+      if (includePaie && hasBulletinsFeature && !paiementConnu) {
+        resume.push({ label: 'Paiements', valeur: 'non suivis', accent: DOC.encreDouce })
+      }
+
       yPos = dessinerResume(doc, { y: yPos, entrees: resume, titre: 'Résumé de la période' })
 
       if (nbSansPlanningRetards > 0) {
@@ -1455,34 +1844,108 @@ export default function Rapports() {
         yPos += 6
       }
 
-      // ═══ LE REGISTRE DES EMPLOYÉS ═══
-      yPos = dessinerTitreSection(doc, 'Registre des employés', yPos, DOC.terre)
+      // ═══ LE PAIEMENT, DIT SOUS LE RÉSUMÉ ═══
+      //  Un seul salarié : la phrase complète. Beaucoup : l'annexe s'en charge.
+      if (employeUnique && includePaie && hasBulletinsFeature) {
+        const et = paiementConnu
+          ? etiquettePaie(employeUnique.paie)
+          : { long: 'Paiement non suivi sur cette base — la migration 20261026000018 n’est pas appliquée.', couleur: null }
+        const teinte = et.couleur === 'ok' ? DOC.vert
+          : et.couleur === 'attente' ? DOC.ambre
+            : et.couleur === 'indigo' ? DOC.indigoTexte
+              : DOC.encreDouce
 
-      const tableHeaders = ['Matricule', 'Nom complet', 'Poste', 'Jours', 'Heures', 'Moy/J']
-      const poidsColonnes = [1.2, 2.45, 1.62, 0.86, 1.02, 0.92]
-      const alignements = ['center', 'left', 'left', 'center', 'center', 'center']
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8.2)
+        doc.setTextColor(...teinte)
+        doc.text('Paie', MARGES.gauche + 1, yPos)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8.2)
+        doc.setTextColor(...DOC.encre)
+        doc.text(et.long, MARGES.gauche + 16, yPos)
+        yPos += 7
+      }
+
+      // ═══ LE REGISTRE ═══
+      yPos = dessinerTitreSection(
+        doc,
+        employeUnique ? 'Registre jour par jour' : 'Registre des employés',
+        yPos,
+        DOC.terre
+      )
+
+      const avecPaie = includePaie && hasBulletinsFeature && bulletinsParEmploye.size > 0
+
+      //  Une seule personne : on descend au jour. C'est le document qu'on
+      //  ouvre avec elle pour discuter une ligne contestée.
+      if (employeUnique) {
+        const journees = construireJourneesEmploye(employeUnique, {
+          attendances,
+          pausesParEmploye,
+          geofencesById,
+        })
+
+        //  Les poids valent la largeur que réclame le titre de colonne,
+        //  en millimètres : aucun en-tête ne déborde, même à 6,9 pt.
+        //  Le paiement n'est pas une colonne : il ne se paie pas « par jour ».
+        const enteteJour = ['Date', 'Entrée', 'Sortie', 'Présence', 'Pauses', 'Effectif', 'Zone']
+        const poidsJour = [11.5, 10.9, 10.3, 14.1, 11.8, 11.6, 38]
+        const alignJour = ['left', 'center', 'center', 'center', 'center', 'center', 'left']
+
+        const lignesJour = journees.map(j => [
+          formatDateFr(j.jour),
+          j.entree || '—',
+          j.sortie || '—',
+          formatMinutesToHM(j.presenceMinutes),
+          j.pauseMinutes > 0 ? formatMinutesToHM(j.pauseMinutes) : '—',
+          formatMinutesToHM(j.effectifMinutes),
+          j.zone || '—',
+        ])
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [enteteJour],
+          body: lignesJour.length > 0 ? lignesJour : [['Aucune journée', '—', '—', '—', '—', '—', '—']],
+          columnStyles: colonnesProportionnelles(poidsJour, {
+            largeur: largeurUtile(doc),
+            halign: alignJour,
+          }),
+          ...stylesTableau(DOC.terre),
+        })
+      }
+
+      //  Même règle : le poids d'une colonne, c'est la largeur de son titre.
+      const tableHeaders = ['Matricule', 'Nom complet', 'Poste', 'Jours', 'Présence', 'Pauses', 'Effectif', 'Moy/J']
+      const poidsColonnes = [14, 18.8, 10, 10, 14.1, 11.8, 11.6, 10.3]
+      const alignements = ['center', 'left', 'left', 'center', 'center', 'center', 'center', 'center']
+
+      if (avecPaie) {
+        tableHeaders.push('Paie')
+        poidsColonnes.push(14)
+        alignements.push('left')
+      }
 
       if (includeRetards) {
         tableHeaders.push('Retards', 'Tps perdu')
-        poidsColonnes.push(0.96, 1.05)
+        poidsColonnes.push(12.4, 15.1)
         alignements.push('center', 'center')
       }
 
       if (includeHeuresSup) {
         tableHeaders.push('H. sup')
-        poidsColonnes.push(0.9)
+        poidsColonnes.push(10.8)
         alignements.push('center')
       }
 
       if (includeHolidays) {
         tableHeaders.push('Fériés')
-        poidsColonnes.push(0.86)
+        poidsColonnes.push(10.5)
         alignements.push('center')
       }
 
       if (includeAbsences || includeConges) {
         tableHeaders.push('Absences')
-        poidsColonnes.push(1.12)
+        poidsColonnes.push(14.8)
         alignements.push('center')
       }
 
@@ -1491,15 +1954,25 @@ export default function Rapports() {
         halign: alignements,
       })
 
-      const tableData = employeesData.map(({ emp, stats, absStats }) => {
+      const tableData = employeesData.map(({ emp, stats, absStats, pauses, paie, effectifMinutes }) => {
+        const moyenneEffectif = stats.joursPresent > 0
+          ? Math.round(effectifMinutes / stats.joursPresent)
+          : 0
+
         const row = [
           emp.matricule || '—',
           `${emp.first_name} ${emp.last_name}`,
           emp.position || '—',
           stats.joursPresent.toString(),
           formatMinutesToHM(stats.totalMinutes),
-          formatMinutesToHM(stats.moyenneMinutes),
+          pauses.minutes > 0 ? formatMinutesToHM(pauses.minutes) : '—',
+          formatMinutesToHM(effectifMinutes),
+          formatMinutesToHM(moyenneEffectif),
         ]
+
+        if (avecPaie) {
+          row.push(etiquettePaie(paie).court)
+        }
 
         if (includeRetards) {
           row.push(stats.hasPlanningRetards ? stats.retardsCount.toString() : '—')
@@ -1521,25 +1994,32 @@ export default function Rapports() {
         return row
       })
 
-      autoTable(doc, {
-        startY: yPos,
-        head: [tableHeaders],
-        body: tableData,
-        columnStyles,
-        ...stylesTableau(DOC.terre),
-        didParseCell: (data) => {
-          if (includeRetards && data.section === 'body') {
-            const retardsColStart = 6
-            if (data.column.index === retardsColStart || data.column.index === retardsColStart + 1) {
-              if (data.cell.text[0] === '—') {
-                data.cell.styles.textColor = DOC.craieFaible
-              } else {
-                data.cell.styles.textColor = DOC.rouge
+      if (!employeUnique) {
+        // Les colonnes de retard ne sont plus à la même place depuis que
+        // « Pauses » et « Effectif » se sont glissées avant elles.
+        // 0 Matricule · 1 Nom · 2 Poste · 3 Jours · 4 Présence · 5 Pauses
+        // · 6 Effectif · 7 Moy/J · [8 Paie] → les retards suivent.
+        const retardsColStart = avecPaie ? 9 : 8
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [tableHeaders],
+          body: tableData,
+          columnStyles,
+          ...stylesTableau(DOC.terre),
+          didParseCell: (data) => {
+            if (includeRetards && data.section === 'body') {
+              if (data.column.index === retardsColStart || data.column.index === retardsColStart + 1) {
+                if (data.cell.text[0] === '—') {
+                  data.cell.styles.textColor = DOC.craieFaible
+                } else {
+                  data.cell.styles.textColor = DOC.rouge
+                }
               }
             }
           }
-        }
-      })
+        })
+      }
 
       // ═══ LES ANNEXES, À LA SUITE ═══
       // Elles commencent sous le registre quand la place suffit, sinon
@@ -1668,6 +2148,26 @@ export default function Rapports() {
         }
       }
 
+      // ═══ LES ANNEXES DU TEMPS RÉEL ET DE LA PAIE ═══
+      if (includePauses) {
+        yAnnexe = ajouterAnnexePauses(doc, {
+          employeesData,
+          pausesParEmploye,
+          totalPauses,
+          periodeLongue,
+          y: yAnnexe,
+        })
+      }
+
+      if (avecPaie) {
+        yAnnexe = ajouterAnnexePaie(doc, {
+          employeesData,
+          periodeLongue,
+          paiementConnu,
+          y: yAnnexe,
+        })
+      }
+
       // ═══ ANNEXE : LE JOURNAL DES POINTAGES ═══
       if (includePointages) {
         ajouterJournalPointages(doc, {
@@ -1678,8 +2178,8 @@ export default function Rapports() {
       }
 
       numeroterPages(doc, {
-        titre: 'Rapport de pointage',
-        entreprise: selectedEnterpriseName,
+        titre: titreDocument,
+        entreprise: employeUnique ? sujetEmploye : selectedEnterpriseName,
         periode: periodeLongue,
       })
 
@@ -1692,7 +2192,11 @@ export default function Rapports() {
         }
       }
 
-      doc.save(`Rapport_${enterpriseName}_${dateDebut}_${dateFin}.pdf`)
+      //  Un dossier individuel porte le matricule : on le retrouve sans ouvrir.
+      const suffixeEmploye = employeUnique && employeUnique.emp.matricule
+        ? `_${String(employeUnique.emp.matricule).replace(/[^a-zA-Z0-9]/g, '_')}`
+        : ''
+      doc.save(`Rapport${suffixeEmploye}_${enterpriseName}_${dateDebut}_${dateFin}.pdf`)
       toast.success('PDF généré avec succès !')
     } catch (error) {
       console.error('Erreur génération PDF:', error)
@@ -1717,13 +2221,37 @@ export default function Rapports() {
         holidays,
         holidaySetByEnterprise,
         holidayMapByEnterprise,
-        geofencesById
+        geofencesById,
+        pausesParEmploye,
+        bulletinsParEmploye,
+        paiementConnu
       } = await fetchReportData()
 
       const periodeCourte = `${formatDateFr(dateDebut)} au ${formatDateFr(dateFin)}`
       const titreDocument = `En-Check — Rapport de pointage — ${periodeCourte}`
 
-      const headers = ['Matricule', 'Nom', 'Prénom', 'Poste', 'Département', 'Jours présent', 'Heures total', 'Moyenne/jour']
+      const donnees = {
+        attendances,
+        employeeSchedulesMap,
+        defaultScheduleByEnterprise,
+        overtimeSettingsByEnterprise,
+        holidaySetByEnterprise,
+        holidayMapByEnterprise,
+        allSchedules,
+        absences,
+        pausesParEmploye,
+        bulletinsParEmploye,
+      }
+
+      const avecPaie = includePaie && hasBulletinsFeature && bulletinsParEmploye.size > 0
+
+      //  Le classeur dit la même chose que le PDF : présence brute, pauses
+      //  réellement déduites, temps effectif — puis la paie.
+      const headers = [
+        'Matricule', 'Nom', 'Prénom', 'Poste', 'Département', 'Jours présent',
+        'Présence brute', 'Pauses déduites', 'Temps effectif', 'Moyenne effective/jour',
+      ]
+      if (avecPaie) headers.push('Bulletin', 'Payé le', 'Moyen de paiement', 'Référence')
       if (includeRetards) headers.push('Nb retards', 'Temps retard', 'Planning retards')
       if (includeHeuresSup) headers.push('Heures sup', 'H. sup majorées', 'Total H. sup')
       if (includeHolidays) headers.push('Fériés travaillés', 'Minutes fériées')
@@ -1742,24 +2270,14 @@ export default function Rapports() {
         })
       }
 
-      const rows = employees.map(emp => {
-        const stats = calculateEmployeeStats(
-          emp,
-          attendances,
-          employeeSchedulesMap,
-          defaultScheduleByEnterprise,
-          overtimeSettingsByEnterprise,
-          holidaySetByEnterprise,
-          holidayMapByEnterprise,
-          allSchedules
-        )
-        const absStats = calculateAbsenceStats(
-          emp.id,
-          absences,
-          holidaySetByEnterprise,
-          emp.enterprise_id,
-          includeNonWorkedHolidays
-        )
+      const lignesEmployes = employees.map(emp => construireLigneEmploye(emp, donnees))
+
+      const rows = lignesEmployes.map(ligne => {
+        const { emp, stats, absStats, pauses, paie, effectifMinutes } = ligne
+        const moyenneEffective = stats.joursPresent > 0
+          ? Math.round(effectifMinutes / stats.joursPresent)
+          : 0
+        const et = etiquettePaie(paie)
 
         const row = [
           emp.matricule || '',
@@ -1769,8 +2287,17 @@ export default function Rapports() {
           emp.department || '',
           stats.joursPresent,
           formatMinutesToHM(stats.totalMinutes),
-          formatMinutesToHM(stats.moyenneMinutes),
+          formatMinutesToHM(pauses.minutes),
+          formatMinutesToHM(effectifMinutes),
+          formatMinutesToHM(moyenneEffective),
         ]
+
+        if (avecPaie) {
+          row.push(et.court)
+          row.push(paie?.payeLe ? formatDateFr(String(paie.payeLe).slice(0, 10)) : '')
+          row.push(paie?.statut === 'paye' ? libelleMoyen(paie.moyen) : '')
+          row.push((paie?.reference || '').replace(/;/g, ','))
+        }
 
         if (includeRetards) {
           row.push(stats.hasPlanningRetards ? stats.retardsCount : 'N/A')
@@ -1839,6 +2366,55 @@ export default function Rapports() {
           ])
         : []
 
+      //  Un seul salarié : le classeur descend au jour, comme le PDF.
+      const employeUnique = lignesEmployes.length === 1 ? lignesEmployes[0] : null
+      const journeesRows = employeUnique
+        ? construireJourneesEmploye(employeUnique, donnees).map(j => [
+            formatDateFr(j.jour),
+            j.entree || '',
+            j.sortie || '',
+            formatMinutesToHM(j.presenceMinutes),
+            formatMinutesToHM(j.pauseMinutes),
+            formatMinutesToHM(j.effectifMinutes),
+            j.zone || '',
+          ])
+        : []
+
+      //  Les pauses, ligne à ligne : ce qui a été déduit et ce qui ne l'a pas été.
+      const pausesRows = includePauses
+        ? Object.entries(pausesParEmploye || {}).flatMap(([empId, liste]) =>
+            (liste || []).map(p => {
+              const emp = employees.find(e => e.id === (p.employe_id || empId))
+              return [
+                formatDateFr(p.jour),
+                `${emp?.last_name || ''} ${emp?.first_name || ''}`.trim(),
+                emp?.matricule || '',
+                p.debutHHMM || '',
+                p.finHHMM || '',
+                formatMinutesToHM(p.dureeMinutes),
+                { reelle: 'Réelle', validee: 'Présumée validée', presumee: 'Présumée (en attente)', ecartee: 'Écartée' }[p.statut] || p.statut || '',
+                p.ouverte ? 'Non (pas de reprise)' : p.statut === 'presumee' ? 'Non (en attente)' : p.statut === 'ecartee' ? 'Non (ecartée)' : 'Oui',
+              ]
+            })
+          )
+        : []
+
+      const bulletinsRows = avecPaie
+        ? lignesEmployes.filter(l => l.paie).map(l => [
+            l.emp.last_name || '',
+            l.emp.first_name || '',
+            l.emp.matricule || '',
+            l.paie.periodStart || '',
+            l.paie.periodEnd || '',
+            l.paie.brut != null ? l.paie.brut : '',
+            l.paie.net != null ? l.paie.net : '',
+            etiquettePaie(l.paie).long,
+            l.paie.payeLe ? formatDateFr(String(l.paie.payeLe).slice(0, 10)) : '',
+            l.paie.statut === 'paye' ? libelleMoyen(l.paie.moyen) : '',
+            (l.paie.reference || '').replace(/;/g, ','),
+          ])
+        : []
+
       const journalLignes = includePointages
         ? journal.map(p => [
             p.date,
@@ -1866,6 +2442,10 @@ export default function Rapports() {
         includeRetards ? 'Note;Les employés sans planning (N/A) ne sont pas évalués pour les retards.' : '',
         includeHolidays ? `Jours fériés inclus;${includeWorkedHolidays ? 'Travaillés ' : ''}${includeNonWorkedHolidays ? 'Non travaillés' : ''}` : '',
         includePointages ? `Pointages;${journal.length}` : '',
+        `Présence brute;${formatMinutesToHM(lignesEmployes.reduce((t, l) => t + l.presenceMinutes, 0))}`,
+        `Pauses déduites;${formatMinutesToHM(lignesEmployes.reduce((t, l) => t + l.pauseMinutes, 0))}`,
+        `Temps effectif;${formatMinutesToHM(lignesEmployes.reduce((t, l) => t + l.effectifMinutes, 0))}`,
+        avecPaie ? `Paiements;${paiementConnu ? 'suivis' : 'non suivis sur cette base'}` : '',
         '',
         'REGISTRE DES EMPLOYÉS',
         headers.join(';'),
@@ -1875,6 +2455,20 @@ export default function Rapports() {
           : []),
         ...(absencesRows.length > 0
           ? ['', 'DETAIL ABSENCES ET CONGES', 'Employé;Matricule;Motif;Du;Au;Jours;Notes', ...absencesRows.map(r => r.join(';'))]
+          : []),
+        ...(journeesRows.length > 0
+          ? [
+              '',
+              'REGISTRE JOUR PAR JOUR',
+              'Date;Entrée;Sortie;Présence brute;Pauses déduites;Temps effectif;Zone',
+              ...journeesRows.map(r => r.join(';')),
+            ]
+          : []),
+        ...(pausesRows.length > 0
+          ? ['', 'PAUSES', 'Date;Employé;Matricule;Début;Fin;Durée;Nature;Déduite', ...pausesRows.map(r => r.join(';'))]
+          : []),
+        ...(bulletinsRows.length > 0
+          ? ['', 'BULLETINS ET PAIEMENTS', 'Nom;Prénom;Matricule;Début;Fin;Brut;Net;Paiement;Payé le;Moyen;Référence', ...bulletinsRows.map(r => r.join(';'))]
           : []),
         ...(journalLignes.length > 0
           ? [
@@ -1899,7 +2493,10 @@ export default function Rapports() {
         }
       }
 
-      link.download = `Rapport_${enterpriseName}_${dateDebut}_${dateFin}.csv`
+      const suffixeEmploye = employeUnique && employeUnique.emp.matricule
+        ? `_${String(employeUnique.emp.matricule).replace(/[^a-zA-Z0-9]/g, '_')}`
+        : ''
+      link.download = `Rapport${suffixeEmploye}_${enterpriseName}_${dateDebut}_${dateFin}.csv`
       link.click()
 
       toast.success('Excel généré avec succès !')
@@ -1919,6 +2516,28 @@ export default function Rapports() {
     }
     return admin?.selectedEnterprise?.name || 'Mon entreprise'
   }, [admin, selectedEntrepriseId, entreprises])
+
+  const employeSelectionne = employes.find(e => e.id === selectedEmployeId) || null
+
+  //  « Nom ou matricule » : on cherche comme on parle d'eux au bureau.
+  const employesFiltres = useMemo(() => {
+    const terme = rechercheEmploye.trim().toLowerCase()
+    const base = terme
+      ? employes.filter(e =>
+          `${e.first_name || ''} ${e.last_name || ''} ${e.matricule || ''}`.toLowerCase().includes(terme)
+        )
+      : employes
+    //  Le salarié déjà choisi reste dans la liste, même si la recherche
+    //  l'écarte : on ne change pas de sujet parce qu'on a tapé trois lettres.
+    if (employeSelectionne && !base.some(e => e.id === employeSelectionne.id)) {
+      return [employeSelectionne, ...base]
+    }
+    return base
+  }, [employes, rechercheEmploye, employeSelectionne])
+
+  //  La base sait-elle déjà marquer un paiement ? L'aperçu le dit ; avant
+  //  tout calcul, on ne prétend rien.
+  const paieSuivie = previewData ? previewData.paiementConnu !== false : true
 
   // Compté une fois pour la page entière (les PDF ont le leur).
   const joursOuvresPeriode = calculateWorkingDays(dateDebut, dateFin)
@@ -1977,6 +2596,28 @@ export default function Rapports() {
       bloque: false,
     },
     {
+      cle: 'pauses',
+      ton: 'attente',
+      Icone: Coffee,
+      titre: 'Détail des pauses',
+      desc: 'Chaque pause, déduite ou non',
+      actif: includePauses,
+      bascule: () => setIncludePauses(v => !v),
+      bloque: false,
+    },
+    {
+      cle: 'paie',
+      ton: 'ok',
+      Icone: Wallet,
+      titre: 'Paie',
+      desc: hasBulletinsFeature
+        ? (paieSuivie ? 'Bulletins et paiements' : 'Paiement non suivi')
+        : 'Module non activé',
+      actif: includePaie && hasBulletinsFeature,
+      bascule: () => setIncludePaie(v => !v),
+      bloque: !hasBulletinsFeature,
+    },
+    {
       cle: 'pointages',
       ton: 'terre',
       Icone: MapPin,
@@ -1992,13 +2633,18 @@ export default function Rapports() {
     { libelle: 'Résumé de la période', Icone: CheckCircle, ton: 'ok', actif: true },
     { libelle: 'Liste des employés', Icone: CheckCircle, ton: 'ok', actif: true },
     { libelle: 'Jours de présence', Icone: CheckCircle, ton: 'ok', actif: true },
-    { libelle: 'Heures travaillées', Icone: CheckCircle, ton: 'ok', actif: true },
-    { libelle: 'Moyenne par jour', Icone: CheckCircle, ton: 'ok', actif: true },
+    { libelle: 'Présence brute, pauses et temps effectif', Icone: Clock, ton: 'ok', actif: true },
+    { libelle: 'Moyenne effective par jour', Icone: CheckCircle, ton: 'ok', actif: true },
+    ...(selectedEmployeId !== 'tous'
+      ? [{ libelle: 'Registre jour par jour', Icone: CalendarDays, ton: 'terre', actif: true }]
+      : []),
     { libelle: 'Retards (planning requis)', Icone: AlertTriangle, ton: 'alerte', actif: includeRetards },
     { libelle: 'Heures supplémentaires', Icone: Timer, ton: 'attente', actif: includeHeuresSup },
     { libelle: 'Détail des congés', Icone: CalendarDays, ton: 'ok', actif: includeConges },
     { libelle: 'Registre des absences', Icone: CalendarOff, ton: 'indigo', actif: includeAbsences },
     { libelle: 'Jours fériés, travaillés ou non', Icone: Calendar, ton: 'violet', actif: includeHolidays },
+    { libelle: 'Pauses réellement effectuées', Icone: Coffee, ton: 'attente', actif: includePauses },
+    { libelle: 'Bulletins et paiements', Icone: Wallet, ton: 'ok', actif: includePaie && hasBulletinsFeature },
     { libelle: 'Journal des pointages (entrées, sorties, zones)', Icone: MapPin, ton: 'terre', actif: includePointages },
   ]
 
@@ -2130,6 +2776,51 @@ export default function Rapports() {
                     </select>
                   </label>
                 )}
+              </div>
+
+              {/* ── Le sujet du rapport : tout le monde, ou une personne ── */}
+              <div className="rp-sujet">
+                <div className="rp-sujet-tete">
+                  <span className="rp-etiquette">
+                    <Users size={11} aria-hidden="true" />
+                    Sujet du rapport
+                  </span>
+                  <span className="rp-sujet-note">
+                    {employeSelectionne
+                      ? `Dossier individuel · ${employeSelectionne.matricule || 'sans matricule'}`
+                      : `${employes.length} employé${employes.length > 1 ? 's' : ''} dans le périmètre`}
+                  </span>
+                </div>
+
+                <div className="rp-sujet-corps">
+                  <div className="rp-recherche">
+                    <Search size={13} aria-hidden="true" />
+                    <input
+                      type="search"
+                      value={rechercheEmploye}
+                      onChange={e => setRechercheEmploye(e.target.value)}
+                      placeholder="Nom ou matricule"
+                      aria-label="Chercher un employé par nom ou matricule"
+                    />
+                  </div>
+
+                  <select
+                    value={selectedEmployeId}
+                    onChange={e => { setSelectedEmployeId(e.target.value); setRechercheEmploye('') }}
+                    aria-label="Choisir l’employé du rapport"
+                    className="rp-select-employe"
+                  >
+                    <option value="tous">Tous les employés ({employes.length})</option>
+                    {employesFiltres.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.last_name} {emp.first_name}{emp.matricule ? ` · ${emp.matricule}` : ''}
+                      </option>
+                    ))}
+                    {employesFiltres.length === 0 && (
+                      <option value="tous" disabled>Aucun nom ne correspond</option>
+                    )}
+                  </select>
+                </div>
               </div>
 
               <div className="rp-sceaux" role="group" aria-label="Rubriques du rapport">
@@ -2294,9 +2985,15 @@ export default function Rapports() {
                   <Building2 size={12} aria-hidden="true" />
                   {selectedEnterpriseName}
                 </span>
+                <span className="rp-apercu-ligne">
+                  <Users size={12} aria-hidden="true" />
+                  {employeSelectionne
+                    ? `${employeSelectionne.first_name} ${employeSelectionne.last_name}${employeSelectionne.matricule ? ` · ${employeSelectionne.matricule}` : ''}`
+                    : `${employes.length} employé${employes.length > 1 ? 's' : ''}`}
+                </span>
               </div>
 
-              {(includeRetards || includeHeuresSup || includeConges || includeAbsences || includeHolidays || includePointages) && (
+              {(includeRetards || includeHeuresSup || includeConges || includeAbsences || includeHolidays || includePointages || includePauses || includePaie) && (
                 <div className="rp-etiquettes">
                   {includeRetards && (
                     <span className="rp-etiquette-ton" data-ton="alerte">
@@ -2323,6 +3020,16 @@ export default function Rapports() {
                       <Calendar size={10} aria-hidden="true" /> Fériés
                     </span>
                   )}
+                  {includePauses && (
+                    <span className="rp-etiquette-ton" data-ton="attente">
+                      <Coffee size={10} aria-hidden="true" /> Pauses
+                    </span>
+                  )}
+                  {includePaie && hasBulletinsFeature && (
+                    <span className="rp-etiquette-ton" data-ton="ok">
+                      <Wallet size={10} aria-hidden="true" /> Paiements
+                    </span>
+                  )}
                   {includePointages && (
                     <span className="rp-etiquette-ton" data-ton="terre">
                       <MapPin size={10} aria-hidden="true" /> Pointages
@@ -2340,7 +3047,15 @@ export default function Rapports() {
                     </div>
                     <div className="rp-mesure">
                       <span className="rp-mesure-valeur">{formatMinutesToHM(previewData.totalHeuresTravaillees)}</span>
-                      <span className="rp-mesure-libelle">Travaillé</span>
+                      <span className="rp-mesure-libelle">Présence brute</span>
+                    </div>
+                    <div className="rp-mesure" data-ton="attente">
+                      <span className="rp-mesure-valeur">{formatMinutesToHM(previewData.totalPauseMinutes)}</span>
+                      <span className="rp-mesure-libelle">Pauses</span>
+                    </div>
+                    <div className="rp-mesure" data-ton="ok">
+                      <span className="rp-mesure-valeur">{formatMinutesToHM(previewData.totalEffectifMinutes)}</span>
+                      <span className="rp-mesure-libelle">Effectif</span>
                     </div>
                     {includeRetards && (
                       <div className="rp-mesure" data-ton="alerte">
@@ -2375,6 +3090,47 @@ export default function Rapports() {
                         {previewData.totalWorkedHolidays} jour{previewData.totalWorkedHolidays > 1 ? 's' : ''} férié{previewData.totalWorkedHolidays > 1 ? 's' : ''} travaillé{previewData.totalWorkedHolidays > 1 ? 's' : ''} · {formatMinutesToHM(previewData.totalWorkedHolidaysMinutes)}
                       </span>
                     </p>
+                  )}
+
+                  {previewData.totalPresumeesNombre > 0 && (
+                    <p className="rp-constat" data-ton="attente">
+                      <Coffee size={12} aria-hidden="true" />
+                      <span>
+                        {previewData.totalPresumeesNombre} pause{previewData.totalPresumeesNombre > 1 ? 's' : ''} présumée{previewData.totalPresumeesNombre > 1 ? 's' : ''} en attente de validation ({formatMinutesToHM(previewData.totalPresumeesMinutes)}) : marquée{previewData.totalPresumeesNombre > 1 ? 's' : ''}, non déduite{previewData.totalPresumeesNombre > 1 ? 's' : ''}.
+                      </span>
+                    </p>
+                  )}
+
+                  {includePaie && hasBulletinsFeature && previewData.totalBulletins > 0 && (
+                    <p className="rp-constat" data-ton={previewData.totalPayes === previewData.totalBulletins ? 'ok' : 'attente'}>
+                      <Wallet size={12} aria-hidden="true" />
+                      <span>
+                        {previewData.totalPayes} bulletin{previewData.totalPayes > 1 ? 's' : ''} payé{previewData.totalPayes > 1 ? 's' : ''} sur {previewData.totalBulletins}
+                        {paieSuivie ? '' : ' · paiement non suivi sur cette base'}
+                      </span>
+                    </p>
+                  )}
+
+                  {previewData.journeesEmployeUnique?.length > 0 && (
+                    <div className="rp-journees">
+                      <p className="rp-journees-titre">
+                        <CalendarDays size={12} aria-hidden="true" />
+                        Jour par jour
+                      </p>
+                      <ul className="rp-journees-liste">
+                        {previewData.journeesEmployeUnique.map(j => (
+                          <li key={j.jour} className="rp-journee">
+                            <span className="rp-journee-date">{formatDateFr(j.jour)}</span>
+                            <span className="rp-journee-heures">{j.entree || '—'} → {j.sortie || '—'}</span>
+                            <span className="rp-journee-temps">
+                              {formatMinutesToHM(j.presenceMinutes)}
+                              {j.pauseMinutes > 0 && ` − ${formatMinutesToHM(j.pauseMinutes)}`}
+                              <strong> = {formatMinutesToHM(j.effectifMinutes)}</strong>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
 
                   {includeRetards && previewData.employesSansPlanningRetards > 0 && (

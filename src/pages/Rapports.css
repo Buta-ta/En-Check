@@ -478,6 +478,124 @@
   box-shadow: 0 0 0 3px rgba(180, 98, 42, 0.22);
 }
 
+/* ── 6 bis. Le sujet du rapport ────────────────────────────── */
+/*  Pas un simple menu : un cartouche qui dit QUI est le rapport.
+    Le cadre se resserre d'un trait de terre dès qu'on vise une
+    personne — le document n'est plus une liste, c'est un dossier.   */
+
+.rp-sujet {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 11px 12px 13px;
+  background: var(--rp-creux);
+  border: 1px solid var(--rp-ligne);
+  border-left: 2px solid var(--rp-terre);
+  border-radius: 1px;
+}
+
+.rp-sujet-tete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rp-sujet-note {
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--rp-craie-faible);
+}
+
+.rp-sujet-corps {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.9fr) minmax(0, 1.6fr);
+  gap: 8px;
+}
+
+.rp-page .rp-recherche {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 11px;
+  color: var(--rp-craie-faible);
+  background: var(--rp-panneau);
+  border: 1.5px solid var(--rp-ligne-forte);
+  border-radius: 1px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.rp-page .rp-recherche:focus-within {
+  border-color: var(--rp-terre);
+  box-shadow: 0 0 0 3px rgba(180, 98, 42, 0.22);
+}
+
+.rp-page .rp-recherche input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  font: inherit;
+  font-size: 12px;
+  color: var(--rp-craie);
+  background: none;
+  border: 0;
+  outline: none;
+}
+
+.rp-page .rp-recherche input::placeholder {
+  color: var(--rp-craie-faible);
+  font-style: italic;
+}
+
+.rp-page .rp-select-employe {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 30px 0 11px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--rp-craie);
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--rp-panneau);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23c9c2b0' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 10px 7px;
+  border: 1.5px solid var(--rp-ligne-forte);
+  border-radius: 1px;
+  outline: none;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.rp-page .rp-select-employe:hover {
+  border-color: var(--rp-craie-douce);
+}
+
+.rp-page .rp-select-employe:focus {
+  border-color: var(--rp-terre);
+  box-shadow: 0 0 0 3px rgba(180, 98, 42, 0.22);
+}
+
+.rp-page .rp-select-employe option {
+  background: var(--rp-panneau);
+  color: var(--rp-craie);
+}
+
+@media (max-width: 720px) {
+  .rp-sujet-corps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* ── 7. Les sceaux de contenu ─────────────────────────────── */
 
 .rp-sceaux {
@@ -902,6 +1020,10 @@
   color: var(--rp-terre-clair);
 }
 
+.rp-mesure[data-ton='ok'] .rp-mesure-valeur {
+  color: var(--rp-ok-texte);
+}
+
 .rp-mesure-libelle {
   font-size: 8.5px;
   font-weight: 650;
@@ -931,9 +1053,87 @@
   color: var(--rp-craie-faible);
 }
 
+.rp-constat[data-ton='attente'] {
+  border-left-color: var(--rp-attente-texte);
+}
+
+.rp-constat[data-ton='ok'] {
+  border-left-color: var(--rp-ok-texte);
+}
+
+.rp-constat[data-ton='alerte'] {
+  border-left-color: var(--rp-alerte-texte);
+}
+
 .rp-constat svg {
   flex: none;
   margin-top: 1px;
+}
+
+/* ── Le registre du jour, dans l'aperçu d'une personne seule ── */
+.rp-journees {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 10px;
+  background: var(--rp-creux);
+  border: 1px solid var(--rp-ligne);
+}
+
+.rp-journees-titre {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rp-craie-faible);
+}
+
+.rp-journees-liste {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+.rp-journee {
+  display: grid;
+  grid-template-columns: 62px 1fr auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 10.5px;
+  color: var(--rp-craie-douce);
+  border-top: 1px solid var(--rp-ligne);
+}
+
+.rp-journee:first-child {
+  border-top: 0;
+}
+
+.rp-journee-date {
+  font-weight: 650;
+  color: var(--rp-craie);
+}
+
+.rp-journee-heures {
+  font-variant-numeric: tabular-nums;
+}
+
+.rp-journee-temps {
+  font-variant-numeric: tabular-nums;
+  color: var(--rp-craie-faible);
+  white-space: nowrap;
+}
+
+.rp-journee-temps strong {
+  color: var(--rp-ok-texte);
 }
 
 .rp-apercu-vide {
@@ -1066,6 +1266,12 @@
       rgba(22, 34, 44, 0.02) 0 1px,
       transparent 1px 3px
     );
+}
+
+/* En clair, la flèche du menu passe à l'encre : la craie ne se lirait pas. */
+.rp-page.rp-clair .rp-champ select,
+.rp-page.rp-clair .rp-select-employe {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%233b4a55' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .rp-page.rp-clair .rp-bordure {
