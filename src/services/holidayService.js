@@ -8,10 +8,12 @@
 import { db } from '../lib/db'
 
 // ── Codes pays francophones supportés ──
+//  Le Bénin ouvre la liste africaine : c'est le premier marché.
 export const SUPPORTED_COUNTRIES = [
   { code: 'FR', name: 'France',           flag: '🇫🇷' },
   { code: 'BE', name: 'Belgique',         flag: '🇧🇪' },
   { code: 'CH', name: 'Suisse',           flag: '🇨🇭' },
+  { code: 'BJ', name: 'Bénin',            flag: '🇧🇯' },
   { code: 'SN', name: 'Sénégal',          flag: '🇸🇳' },
   { code: 'CI', name: 'Côte d\'Ivoire',   flag: '🇨🇮' },
   { code: 'CM', name: 'Cameroun',         flag: '🇨🇲' },
