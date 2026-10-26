@@ -1,0 +1,1206 @@
+/* ═══════════════════════════════════════════════════════════
+   ✍️ LES REGISTRES DE CRAIE — page Rapports (refonte)
+
+   Les rapports sont un tableau de comptes tracé à la craie sur
+   l'indigo : une bande de signes nsibidi en haut, un en-tête qui
+   nomme la page, puis des registres — un cartouche pour composer
+   le rapport, un pour l'aperçu, une marge pour ce qu'il contient.
+
+   Trois matières, trois rôles :
+     l'indigo      les panneaux et les fonds
+     la craie      tout ce qui se lit
+     la terre      les sceaux, les accents, les alertes
+   Les couleurs de données (vert, ambre, rouge, violet) restent
+   celles du produit : elles disent un état, pas un décor.
+   ═══════════════════════════════════════════════════════════ */
+
+.rp-page {
+  /* la nuit indigo */
+  --rp-nuit: #0b141c;
+  --rp-nuit-2: #0e1922;
+
+  /* les panneaux */
+  --rp-panneau: #101c28;
+  --rp-panneau-2: #142430;
+  --rp-creux: #0a1219;
+
+  /* les craies */
+  --rp-craie: #f2e8d5;
+  --rp-craie-douce: #c9c2b0;
+  --rp-craie-faible: #93a2ae;
+
+  /* les accents */
+  --rp-terre: #b4622a;
+  --rp-terre-clair: #c9773c;
+  --rp-brun: #8b3e1d;
+
+  /* les traits */
+  --rp-ligne: rgba(242, 232, 213, 0.14);
+  --rp-ligne-forte: rgba(242, 232, 213, 0.3);
+  --rp-pointille: rgba(242, 232, 213, 0.22);
+  --rp-ombre: 0 16px 38px rgba(0, 0, 0, 0.5);
+
+  /* les données — inchangées, ce sont des états */
+  --rp-ok: #10b981;
+  --rp-attente: #f59e0b;
+  --rp-alerte: #ef4444;
+  --rp-indigo: #6366f1;
+  --rp-violet: #8b5cf6;
+
+  --rp-ok-texte: #10b981;
+  --rp-attente-texte: #f59e0b;
+  --rp-alerte-texte: #ef4444;
+  --rp-indigo-texte: #818cf8;
+  --rp-violet-texte: #a78bfa;
+
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--rp-nuit);
+  background-image:
+    radial-gradient(110% 70% at 50% -10%, rgba(23, 41, 58, 0.85), transparent 68%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(242, 232, 213, 0.012) 0 1px,
+      transparent 1px 3px
+    );
+  color: var(--rp-craie);
+  font-family: inherit;
+}
+
+.rp-page *,
+.rp-page *::before,
+.rp-page *::after {
+  box-sizing: border-box;
+}
+
+.rp-page :focus-visible {
+  outline: 2px solid var(--rp-terre-clair);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+
+/* ── 1. La bordure de craie ───────────────────────────────── */
+
+.rp-bordure {
+  height: 9px;
+  flex: none;
+  background-color: var(--rp-panneau);
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--rp-craie) 0 2px,
+    transparent 2px 12px
+  );
+  opacity: 0.75;
+}
+
+/* ── 2. L'en-tête ─────────────────────────────────────────── */
+
+.rp-entete {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 22px clamp(18px, 3vw, 34px) 20px;
+  border-bottom: 1px solid var(--rp-ligne);
+  background:
+    linear-gradient(180deg, rgba(23, 41, 58, 0.55), transparent 80%),
+    var(--rp-nuit);
+}
+
+.rp-retour {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  padding: 0;
+  color: var(--rp-craie-douce);
+  background: var(--rp-panneau);
+  border: 1.5px solid var(--rp-ligne-forte);
+  border-radius: 1px;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.rp-retour:hover {
+  color: var(--rp-craie);
+  background: var(--rp-panneau-2);
+  border-color: var(--rp-craie-douce);
+}
+
+.rp-titre-bloc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.rp-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+  color: var(--rp-terre-clair);
+}
+
+.rp-titre {
+  margin: 0;
+  font-size: clamp(20px, 2.4vw, 27px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  color: var(--rp-craie);
+}
+
+.rp-titre span {
+  color: var(--rp-terre);
+}
+
+.rp-sous-titre {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--rp-craie-faible);
+}
+
+.rp-entete-droite {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+/* la bascule clair / sombre, comme sur les autres coques */
+.rp-bascule {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  color: var(--rp-craie-douce);
+  background: var(--rp-creux);
+  border: 1.5px solid var(--rp-ligne-forte);
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    color 0.16s ease,
+    background-color 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.rp-bascule:hover {
+  color: var(--rp-terre-clair);
+  background: var(--rp-panneau-2);
+  border-color: var(--rp-craie-douce);
+}
+
+/* ── 3. La coque ──────────────────────────────────────────── */
+
+.rp-coque {
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  padding: clamp(14px, 2vw, 24px) clamp(14px, 3vw, 30px)
+    clamp(26px, 3.4vw, 44px);
+  flex: 1 1 auto;
+}
+
+/* ── 4. Le seuil : l'entreprise et les autres écrans ──────── */
+
+.rp-seuil {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  background: var(--rp-panneau);
+  border: 1px solid var(--rp-ligne);
+  border-left: 3px solid var(--rp-terre);
+  border-radius: 1px;
+}
+
+.rp-seuil-entreprise {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.rp-seuil-libelle {
+  flex: none;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rp-craie-faible);
+}
+
+.rp-seuil-nom {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rp-craie);
+  overflow-wrap: anywhere;
+}
+
+.rp-seuil-fait {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--rp-craie-douce);
+  background: var(--rp-creux);
+  border: 1px dashed var(--rp-pointille);
+  border-radius: 1px;
+  white-space: nowrap;
+}
+
+.rp-raccourcis {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* les raccourcis de pages, dans la matière de la page */
+.rp-raccourcis .abs-raccourcis {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--rp-ligne);
+  border-radius: 1px;
+  background: var(--rp-creux);
+  scrollbar-width: none;
+}
+
+.rp-raccourcis .abs-raccourcis::-webkit-scrollbar {
+  display: none;
+}
+
+.rp-raccourcis .abs-raccourci {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 1px;
+  background: transparent;
+  color: var(--rp-craie-douce);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+.rp-raccourcis .abs-raccourci[data-compact='oui'] {
+  padding: 4px 9px;
+}
+
+.rp-raccourcis .abs-raccourci svg {
+  flex: none;
+  opacity: 0.85;
+}
+
+.rp-raccourcis .abs-raccourci:hover {
+  color: var(--rp-craie);
+  background: rgba(180, 98, 42, 0.18);
+}
+
+.rp-raccourcis .abs-raccourci[data-actif='oui'],
+.rp-raccourcis .abs-raccourci[data-actif='oui']:hover {
+  color: var(--rp-craie);
+  background: var(--rp-brun);
+  cursor: default;
+}
+
+/* ── 5. La grille : composer à gauche, aperçu à droite ─────── */
+
+.rp-atelier {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(300px, 27vw, 400px);
+  gap: clamp(12px, 1.6vw, 20px);
+  align-items: start;
+  margin-top: clamp(14px, 2vw, 20px);
+}
+
+.rp-colonne {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.6vw, 18px);
+}
+
+/* le cartouche : un panneau cerclé de craie */
+.rp-cartouche {
+  position: relative;
+  padding: clamp(14px, 1.8vw, 20px);
+  background: var(--rp-panneau);
+  border: 1px solid var(--rp-ligne);
+  border-top: 2px solid var(--rp-terre);
+  border-radius: 1px;
+}
+
+.rp-cartouche-tete {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.rp-cartouche-icone {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  color: var(--rp-terre-clair);
+  background: var(--rp-creux);
+  border: 1px solid var(--rp-ligne);
+  border-radius: 1px;
+}
+
+.rp-cartouche-titres {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.rp-cartouche-titre {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--rp-craie);
+}
+
+.rp-cartouche-note {
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--rp-craie-faible);
+}
+
+/* ── 6. Les champs ────────────────────────────────────────── */
+
+.rp-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rp-etiquette {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rp-craie-faible);
+}
+
+.rp-champs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rp-champ--large {
+  grid-column: 1 / -1;
+}
+
+.rp-page .rp-champ :is(input[type='date'], select) {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 11px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--rp-craie);
+  background-color: var(--rp-creux);
+  border: 1.5px solid var(--rp-ligne-forte);
+  border-radius: 1px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.rp-page .rp-champ input[type='date'] {
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+.rp-page .rp-champ select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%23c9c2b0' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  background-size: 10px 7px;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+
+.rp-page .rp-champ select option {
+  background: var(--rp-panneau);
+  color: var(--rp-craie);
+}
+
+.rp-page .rp-champ :is(input, select):hover {
+  border-color: var(--rp-craie-douce);
+}
+
+.rp-page .rp-champ :is(input, select):focus {
+  border-color: var(--rp-terre);
+  box-shadow: 0 0 0 3px rgba(180, 98, 42, 0.22);
+}
+
+/* ── 7. Les sceaux de contenu ─────────────────────────────── */
+
+.rp-sceaux {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+}
+
+/* une option est un sceau : un creux qu'on allume d'un trait de terre */
+.rp-page .rp-sceau {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 11px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--rp-creux);
+  border: 1px solid var(--rp-ligne);
+  border-left: 2px solid var(--rp-ligne-forte);
+  border-radius: 1px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.rp-page .rp-sceau:hover:not(:disabled) {
+  border-color: var(--rp-craie-douce);
+  background: var(--rp-panneau-2);
+}
+
+.rp-page .rp-sceau[aria-pressed='true'] {
+  border-left-width: 3px;
+  background: var(--rp-panneau-2);
+}
+
+/* la couleur propre à chaque type de contenu */
+.rp-page .rp-sceau[data-ton='alerte'][aria-pressed='true'] {
+  border-left-color: var(--rp-alerte-texte);
+}
+
+.rp-page .rp-sceau[data-ton='attente'][aria-pressed='true'] {
+  border-left-color: var(--rp-attente-texte);
+}
+
+.rp-page .rp-sceau[data-ton='ok'][aria-pressed='true'] {
+  border-left-color: var(--rp-ok-texte);
+}
+
+.rp-page .rp-sceau[data-ton='indigo'][aria-pressed='true'] {
+  border-left-color: var(--rp-indigo-texte);
+}
+
+.rp-page .rp-sceau[data-ton='violet'][aria-pressed='true'] {
+  border-left-color: var(--rp-violet-texte);
+}
+
+.rp-page .rp-sceau:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rp-sceau-icone {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  background: var(--rp-panneau);
+  border: 1px solid var(--rp-ligne);
+  border-radius: 1px;
+}
+
+.rp-sceau-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rp-sceau-titre {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--rp-craie-douce);
+  transition: color 0.15s ease;
+}
+
+.rp-sceau[aria-pressed='true'] .rp-sceau-titre {
+  color: var(--rp-craie);
+}
+
+.rp-sceau-desc {
+  font-size: 9.5px;
+  line-height: 1.4;
+  color: var(--rp-craie-faible);
+}
+
+/* la pastille de coche, dessinée — jamais une case native */
+.rp-sceau-marque {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--rp-nuit);
+  background: transparent;
+  border: 1.5px solid var(--rp-ligne-forte);
+  border-radius: 50%;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.rp-sceau[aria-pressed='true'][data-ton='alerte'] .rp-sceau-marque {
+  background: var(--rp-alerte-texte);
+  border-color: var(--rp-alerte-texte);
+}
+
+.rp-sceau[aria-pressed='true'][data-ton='attente'] .rp-sceau-marque {
+  background: var(--rp-attente-texte);
+  border-color: var(--rp-attente-texte);
+}
+
+.rp-sceau[aria-pressed='true'][data-ton='ok'] .rp-sceau-marque {
+  background: var(--rp-ok-texte);
+  border-color: var(--rp-ok-texte);
+}
+
+.rp-sceau[aria-pressed='true'][data-ton='indigo'] .rp-sceau-marque {
+  background: var(--rp-indigo-texte);
+  border-color: var(--rp-indigo-texte);
+}
+
+.rp-sceau[aria-pressed='true'][data-ton='violet'] .rp-sceau-marque {
+  background: var(--rp-violet-texte);
+  border-color: var(--rp-violet-texte);
+}
+
+/* les deux sous-options des jours fériés */
+.rp-sous-sceaux {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--rp-pointille);
+}
+
+/* la note d'aide : un filet de craie, pas un encadré */
+.rp-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--rp-craie-faible);
+  border-left: 2px solid var(--rp-pointille);
+  background: rgba(242, 232, 213, 0.03);
+}
+
+.rp-note svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.rp-note strong {
+  color: var(--rp-craie-douce);
+}
+
+/* ── 8. Les boutons d'export ──────────────────────────────── */
+
+.rp-exports {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--rp-pointille);
+}
+
+.rp-page .rp-export {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 1 1 180px;
+  height: 42px;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--rp-craie);
+  border: 1.5px solid var(--rp-ligne-forte);
+  border-radius: 1px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.rp-page .rp-export[data-ton='principal'] {
+  color: #f7efe0;
+  background: var(--rp-brun);
+  border-color: var(--rp-brun);
+}
+
+.rp-page .rp-export[data-ton='principal']:hover:not(:disabled) {
+  background: var(--rp-terre);
+  border-color: var(--rp-terre);
+}
+
+.rp-page .rp-export[data-ton='creux'] {
+  color: var(--rp-craie-douce);
+  background: var(--rp-creux);
+  border-style: dashed;
+}
+
+.rp-page .rp-export[data-ton='creux']:hover:not(:disabled) {
+  color: var(--rp-craie);
+  border-color: var(--rp-craie-douce);
+  background: var(--rp-panneau-2);
+}
+
+.rp-page .rp-export:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.rp-page .rp-export svg {
+  flex: none;
+}
+
+/* ── 9. L'aperçu : la marge du scribe ─────────────────────── */
+
+.rp-apercu {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: clamp(14px, 1.8vw, 18px);
+  background: var(--rp-panneau);
+  border: 1px solid var(--rp-ligne);
+  border-top: 2px solid var(--rp-craie-douce);
+  border-radius: 1px;
+}
+
+.rp-apercu-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rp-apercu-titre {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--rp-terre-clair);
+}
+
+.rp-actualiser {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--rp-craie-douce);
+  background: var(--rp-creux);
+  border: 1px solid var(--rp-ligne-forte);
+  border-radius: 1px;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.rp-actualiser:hover:not(:disabled) {
+  color: var(--rp-craie);
+  border-color: var(--rp-craie-douce);
+}
+
+.rp-actualiser:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.rp-apercu-lignes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--rp-pointille);
+}
+
+.rp-apercu-ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--rp-craie-douce);
+}
+
+.rp-apercu-ligne svg {
+  flex: none;
+  color: var(--rp-terre-clair);
+}
+
+/* les étiquettes de ce qui sera inclus */
+.rp-etiquettes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.rp-etiquette-ton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  font-size: 9.5px;
+  font-weight: 700;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+}
+
+.rp-etiquette-ton[data-ton='alerte'] {
+  color: var(--rp-alerte-texte);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.rp-etiquette-ton[data-ton='attente'] {
+  color: var(--rp-attente-texte);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.rp-etiquette-ton[data-ton='ok'] {
+  color: var(--rp-ok-texte);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.rp-etiquette-ton[data-ton='indigo'] {
+  color: var(--rp-indigo-texte);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.rp-etiquette-ton[data-ton='violet'] {
+  color: var(--rp-violet-texte);
+  background: rgba(139, 92, 246, 0.1);
+}
+
+/* les chiffres de l'aperçu : un tableau à cinq colonnes */
+.rp-mesures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 1px;
+  background: var(--rp-ligne);
+  border: 1px solid var(--rp-ligne);
+}
+
+.rp-mesure {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 9px 10px;
+  background: var(--rp-panneau);
+}
+
+.rp-mesure-valeur {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--rp-craie);
+  font-variant-numeric: tabular-nums;
+}
+
+.rp-mesure[data-ton='alerte'] .rp-mesure-valeur {
+  color: var(--rp-alerte-texte);
+}
+
+.rp-mesure[data-ton='attente'] .rp-mesure-valeur {
+  color: var(--rp-attente-texte);
+}
+
+.rp-mesure[data-ton='violet'] .rp-mesure-valeur {
+  color: var(--rp-violet-texte);
+}
+
+.rp-mesure-libelle {
+  font-size: 8.5px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rp-craie-faible);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* les deux constats de l'aperçu */
+.rp-constat {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px 9px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--rp-craie-douce);
+  background: var(--rp-creux);
+  border-left: 2px solid var(--rp-violet-texte);
+}
+
+.rp-constat[data-ton='neutre'] {
+  border-left-color: var(--rp-pointille);
+  color: var(--rp-craie-faible);
+}
+
+.rp-constat svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.rp-apercu-vide {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 18px 12px;
+  text-align: center;
+  border: 1px dashed var(--rp-pointille);
+}
+
+.rp-apercu-vide p {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--rp-craie-faible);
+}
+
+/* ── 10. La marge : ce que contient le rapport ────────────── */
+
+.rp-marge {
+  padding: clamp(14px, 1.8vw, 18px);
+  background: var(--rp-panneau);
+  border: 1px solid var(--rp-ligne);
+  border-radius: 1px;
+}
+
+.rp-marge-titre {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--rp-terre-clair);
+  border-bottom: 1px dashed var(--rp-pointille);
+}
+
+.rp-marge-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rp-marge-ligne {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--rp-craie-douce);
+}
+
+.rp-marge-ligne svg {
+  flex: none;
+  color: var(--rp-ok-texte);
+}
+
+.rp-marge-ligne[data-ton='alerte'] svg {
+  color: var(--rp-alerte-texte);
+}
+
+.rp-marge-ligne[data-ton='attente'] svg {
+  color: var(--rp-attente-texte);
+}
+
+.rp-marge-ligne[data-ton='indigo'] svg {
+  color: var(--rp-indigo-texte);
+}
+
+.rp-marge-ligne[data-ton='violet'] svg {
+  color: var(--rp-violet-texte);
+}
+
+/* ── 11. Le pied ──────────────────────────────────────────── */
+
+.rp-pied {
+  margin-top: auto;
+  line-height: 0;
+  background: var(--rp-nuit-2);
+  border-top: 1px dashed var(--rp-pointille);
+}
+
+.rp-pied .ec-cultural-bottom[data-cultural-motif='nsibidi'] {
+  height: 32px;
+}
+
+/* ── 12. Le jour : le thème clair ─────────────────────────── */
+
+.rp-page.rp-clair {
+  --rp-nuit: #f4efdf;
+  --rp-nuit-2: #ece5d1;
+  --rp-panneau: #fbf7ec;
+  --rp-panneau-2: #f6f0df;
+  --rp-creux: #ece4cf;
+
+  --rp-craie: #16222c;
+  --rp-craie-douce: #3b4a55;
+  --rp-craie-faible: #55636e;
+
+  --rp-ligne: rgba(22, 34, 44, 0.16);
+  --rp-ligne-forte: rgba(22, 34, 44, 0.3);
+  --rp-pointille: rgba(22, 34, 44, 0.22);
+  --rp-ombre: 0 14px 30px rgba(22, 34, 44, 0.14);
+
+  --rp-ok-texte: #0b5f43;
+  --rp-attente-texte: #8a5506;
+  --rp-alerte-texte: #b91c1c;
+  --rp-indigo-texte: #4338ca;
+  --rp-violet-texte: #6d28d9;
+
+  --rp-terre: #a8551f;
+  --rp-terre-clair: #96491a;
+  --rp-brun: #7a3413;
+
+  background-image:
+    radial-gradient(110% 70% at 50% -10%, rgba(180, 98, 42, 0.1), transparent 68%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(22, 34, 44, 0.02) 0 1px,
+      transparent 1px 3px
+    );
+}
+
+.rp-page.rp-clair .rp-bordure {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--rp-craie-douce) 0 2px,
+    transparent 2px 12px
+  );
+  opacity: 0.5;
+}
+
+.rp-page.rp-clair .rp-champ input[type='date'] {
+  color-scheme: light;
+}
+
+.rp-page.rp-clair .rp-champ select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5l5-5' fill='none' stroke='%233b4a55' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.rp-page.rp-clair .rp-export[data-ton='principal'] {
+  color: #fbf7ec;
+  background: var(--rp-terre);
+  border-color: var(--rp-terre);
+}
+
+.rp-page.rp-clair .rp-export[data-ton='principal']:hover:not(:disabled) {
+  background: var(--rp-brun);
+  border-color: var(--rp-brun);
+}
+
+/* ── 13. Adaptations ──────────────────────────────────────── */
+
+@keyframes rp-tourne {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rp-tourne {
+  animation: rp-tourne 1s linear infinite;
+}
+
+@media (max-width: 1180px) {
+  .rp-atelier {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+@media (max-width: 980px) {
+  .rp-atelier {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rp-apercu {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .rp-page {
+    min-height: 100dvh;
+    overflow-x: clip;
+  }
+
+  /* 16 px : iOS ne zoome plus quand on touche un champ */
+  .rp-page .rp-champ :is(input[type='date'], select) {
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .rp-champs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rp-sceaux {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rp-page .rp-sceau {
+    padding: 11px;
+  }
+
+  .rp-page .rp-export {
+    flex: 1 1 100%;
+    height: 46px;
+  }
+
+  .rp-mesures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 650px) {
+  .rp-entete {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    padding: 16px 14px 14px;
+    gap: 10px 12px;
+  }
+
+  .rp-entete > .rp-retour {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .rp-entete > svg {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .rp-entete > .rp-titre-bloc {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .rp-entete > .rp-entete-droite {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-end;
+  }
+
+  .rp-sous-titre {
+    font-size: 11px;
+  }
+
+  .rp-seuil {
+    padding: 11px 12px;
+  }
+
+  .rp-pied .ec-cultural-bottom[data-cultural-motif='nsibidi'] {
+    height: 28px;
+  }
+}
+
+@media (max-width: 460px) {
+  .rp-cartouche,
+  .rp-apercu,
+  .rp-marge {
+    padding: 12px;
+  }
+
+  .rp-mesures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rp-sous-sceaux {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rp-tourne {
+    animation: none !important;
+  }
+
+  .rp-page .rp-sceau,
+  .rp-page .rp-export {
+    transition: none;
+  }
+}

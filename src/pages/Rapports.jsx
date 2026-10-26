@@ -11,11 +11,16 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import PageCulturalBand from '../components/PageCulturalBand'
+import RaccourcisPages from '../components/RaccourcisPages'
+import { NsibidiBlasonSvg } from '../components/NsibidiSvg'
+import { useTheme } from '../contexts/ThemeContext'
+import './Rapports.css'
 import {
   ArrowLeft, Calendar, Building2, FileText, Download,
   FileSpreadsheet, Users, Clock, CheckCircle, AlertTriangle,
-  BarChart3, Timer, CalendarOff, Settings,
-  Sparkles, Eye, RefreshCw, CalendarDays, TrendingUp
+  Timer, CalendarOff, Sparkles, Eye, RefreshCw, CalendarDays,
+  TrendingUp, Sun, Moon
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import FeatureService from '../services/featureService'
@@ -433,6 +438,9 @@ export default function Rapports() {
   const [loadingPreview, setLoadingPreview] = useState(false)
 
   const navigate = useNavigate()
+  // Le même thème que le reste de l'application : le choix suit l'admin
+  // d'une page à l'autre et se retient d'une visite à l'autre.
+  const { darkMode, toggleTheme } = useTheme()
 
   useEffect(() => {
     const adminData = localStorage.getItem('admin')
@@ -1857,433 +1865,467 @@ export default function Rapports() {
     return admin?.selectedEnterprise?.name || 'Mon entreprise'
   }, [admin, selectedEntrepriseId, entreprises])
 
+  // Compté une fois pour la page entière (les PDF ont le leur).
+  const joursOuvresPeriode = calculateWorkingDays(dateDebut, dateFin)
+
+  // Les contenus qui se déclenchent dans le rapport : un ton par famille.
+  // Les libellés sont ceux du produit, le dessin celui de la page.
+  const SCEAUX = [
+    {
+      cle: 'retards',
+      ton: 'alerte',
+      Icone: AlertTriangle,
+      titre: 'Retards',
+      desc: 'Employés disposant d’un planning',
+      actif: includeRetards,
+      bascule: () => setIncludeRetards(v => !v),
+      bloque: false,
+    },
+    {
+      cle: 'heures-sup',
+      ton: 'attente',
+      Icone: Timer,
+      titre: 'Heures supplémentaires',
+      desc: hasHeuresSupFeature ? 'Dépassements horaires' : 'Module non activé',
+      actif: includeHeuresSup,
+      bascule: () => setIncludeHeuresSup(v => !v),
+      bloque: !hasHeuresSupFeature,
+    },
+    {
+      cle: 'conges',
+      ton: 'ok',
+      Icone: CalendarDays,
+      titre: 'Congés',
+      desc: hasAbsencesFeature ? 'Congés approuvés' : 'Module non activé',
+      actif: includeConges,
+      bascule: () => setIncludeConges(v => !v),
+      bloque: !hasAbsencesFeature,
+    },
+    {
+      cle: 'absences',
+      ton: 'indigo',
+      Icone: CalendarOff,
+      titre: 'Absences',
+      desc: hasAbsencesFeature ? 'Maladie, autres…' : 'Module non activé',
+      actif: includeAbsences,
+      bascule: () => setIncludeAbsences(v => !v),
+      bloque: !hasAbsencesFeature,
+    },
+    {
+      cle: 'feries',
+      ton: 'violet',
+      Icone: Calendar,
+      titre: 'Jours fériés',
+      desc: 'Travaillés ou non travaillés',
+      actif: includeHolidays,
+      bascule: () => setIncludeHolidays(v => !v),
+      bloque: false,
+    },
+  ]
+
+  const CONTENUS = [
+    { libelle: 'Résumé de la période', Icone: CheckCircle, ton: 'ok', actif: true },
+    { libelle: 'Liste des employés', Icone: CheckCircle, ton: 'ok', actif: true },
+    { libelle: 'Jours de présence', Icone: CheckCircle, ton: 'ok', actif: true },
+    { libelle: 'Heures travaillées', Icone: CheckCircle, ton: 'ok', actif: true },
+    { libelle: 'Moyenne par jour', Icone: CheckCircle, ton: 'ok', actif: true },
+    { libelle: 'Retards (planning requis)', Icone: AlertTriangle, ton: 'alerte', actif: includeRetards },
+    { libelle: 'Heures supplémentaires', Icone: Timer, ton: 'attente', actif: includeHeuresSup },
+    { libelle: 'Détail des congés', Icone: CalendarDays, ton: 'ok', actif: includeConges },
+    { libelle: 'Registre des absences', Icone: CalendarOff, ton: 'indigo', actif: includeAbsences },
+    { libelle: 'Jours fériés, travaillés ou non', Icone: Calendar, ton: 'violet', actif: includeHolidays },
+  ]
+
   return (
-    <>
-      <style>{`
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .afro-btn { transition: all 0.3s ease !important; }
-        .afro-btn:hover:not(:disabled) { transform: translateY(-2px) !important; box-shadow: 0 8px 25px rgba(0,0,0,0.3) !important; }
-        .afro-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .afro-card { animation: fadeInUp 0.5s ease forwards; }
-        .option-toggle { transition: all 0.2s ease; cursor: pointer; }
-        .option-toggle:hover { background: rgba(255,255,255,0.04) !important; border-color: rgba(255,255,255,0.15) !important; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0A0A0F; }
-        ::-webkit-scrollbar-thumb { background: #F59E0B; border-radius: 4px; }
-        select option { background: #141423; color: #E5E5E5; }
-      `}</style>
+    <div className={`rp-page${darkMode ? '' : ' rp-clair'}`}>
+      <PageCulturalBand pathname="/rapports" />
+      <div className="rp-bordure" aria-hidden="true" />
 
-      <div style={S.container}>
-        <div style={S.bgPattern}></div>
+      <header className="rp-entete">
+        <button
+          type="button"
+          className="rp-retour"
+          onClick={() => navigate('/dashboard')}
+          aria-label="Revenir au tableau de bord"
+          title="Tableau de bord"
+        >
+          <ArrowLeft size={16} />
+        </button>
 
-        <header style={S.header}>
-          <div style={S.headerInner}>
-            <div style={S.headerLeft}>
-              <button onClick={() => navigate('/dashboard')} style={S.backBtn}>
-                <ArrowLeft size={20} />
-              </button>
-              <div style={S.logoContainer}>
-                <BarChart3 size={24} color="#F59E0B" />
-              </div>
-              <div>
-                <h1 style={S.headerTitle}>RAPPORTS</h1>
-                <span style={S.headerSubtitle}>Exports & Statistiques</span>
-              </div>
-            </div>
+        <NsibidiBlasonSvg size={48} />
+
+        <div className="rp-titre-bloc">
+          <span className="rp-eyebrow">Les registres de craie</span>
+          <h1 className="rp-titre">
+            Rapports<span>.</span>
+          </h1>
+          <p className="rp-sous-titre">
+            Choisissez une période et ce que le rapport doit compter, puis exportez-le en PDF ou en tableur.
+          </p>
+        </div>
+
+        <div className="rp-entete-droite">
+          <button
+            type="button"
+            className="rp-bascule"
+            role="switch"
+            aria-checked={darkMode}
+            onClick={toggleTheme}
+            aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
+            title={darkMode ? 'Thème clair' : 'Thème sombre'}
+          >
+            {darkMode ? <Moon size={14} aria-hidden="true" /> : <Sun size={14} aria-hidden="true" />}
+          </button>
+        </div>
+      </header>
+
+      <main className="rp-coque">
+
+        {/* ── Le seuil : l'entreprise, la période, les autres écrans ── */}
+        <section className="rp-seuil" aria-label="Entreprise et accès rapides">
+          <div className="rp-seuil-entreprise">
+            <span className="rp-seuil-libelle">Entreprise</span>
+            <span className="rp-seuil-nom">{selectedEnterpriseName}</span>
+            <span className="rp-seuil-fait">
+              <Calendar size={11} aria-hidden="true" />
+              {formatDateFr(dateDebut)} → {formatDateFr(dateFin)}
+            </span>
+            <span className="rp-seuil-fait">
+              <Clock size={11} aria-hidden="true" />
+              {joursOuvresPeriode} jour{joursOuvresPeriode > 1 ? 's' : ''} ouvré{joursOuvresPeriode > 1 ? 's' : ''}
+            </span>
+            {loading && <span className="rp-seuil-fait">Génération en cours…</span>}
           </div>
-        </header>
 
-        <main style={S.main}>
-          <div className="afro-card" style={S.card}>
-            <div style={S.cardHeader}>
-              <div style={S.cardIconWrap}>
-                <FileText size={24} color="#F59E0B" />
-              </div>
-              <div>
-                <h2 style={S.cardTitle}>Générer un Rapport</h2>
-                <p style={S.cardSubtitle}>Configurez et exportez vos données</p>
-              </div>
-            </div>
+          <div className="rp-raccourcis">
+            <span className="rp-seuil-libelle">Aller à</span>
+            <RaccourcisPages compact excludePaths={['/rapports']} />
+          </div>
+        </section>
 
-            <div style={S.section}>
-              <label style={S.label}><Calendar size={16} /> Période</label>
-              <div style={S.dateRow}>
-                <div style={S.dateGroup}>
-                  <span style={S.dateLabel}>Du</span>
-                  <input type="date" value={dateDebut} onChange={e => setDateDebut(e.target.value)} style={S.dateInput} />
-                </div>
-                <div style={S.dateGroup}>
-                  <span style={S.dateLabel}>Au</span>
-                  <input type="date" value={dateFin} onChange={e => setDateFin(e.target.value)} style={S.dateInput} />
+        <div className="rp-atelier">
+
+          {/* ── La colonne du composeur ── */}
+          <div className="rp-colonne">
+
+            <section className="rp-cartouche" aria-labelledby="rp-composer-titre">
+              <div className="rp-cartouche-tete">
+                <span className="rp-cartouche-icone">
+                  <FileText size={17} aria-hidden="true" />
+                </span>
+                <div className="rp-cartouche-titres">
+                  <h2 className="rp-cartouche-titre" id="rp-composer-titre">Composer le rapport</h2>
+                  <p className="rp-cartouche-note">La période, l’entreprise et les rubriques à compter.</p>
                 </div>
               </div>
-            </div>
 
-            {admin?.role === 'super_admin' && (
-              <div style={S.section}>
-                <label style={S.label}><Building2 size={16} /> Entreprise</label>
-                <select value={selectedEntrepriseId} onChange={e => setSelectedEntrepriseId(e.target.value)} style={S.select}>
-                  <option value="all">Toutes les entreprises</option>
-                  {entreprises.map(ent => <option key={ent.id} value={ent.id}>{ent.name}</option>)}
-                </select>
+              <div className="rp-champs">
+                <label className="rp-champ">
+                  <span className="rp-etiquette">
+                    <Calendar size={11} aria-hidden="true" />
+                    Du
+                  </span>
+                  <input
+                    type="date"
+                    value={dateDebut}
+                    onChange={e => setDateDebut(e.target.value)}
+                    aria-label="Date de début de la période"
+                  />
+                </label>
+
+                <label className="rp-champ">
+                  <span className="rp-etiquette">
+                    <Calendar size={11} aria-hidden="true" />
+                    Au
+                  </span>
+                  <input
+                    type="date"
+                    value={dateFin}
+                    onChange={e => setDateFin(e.target.value)}
+                    aria-label="Date de fin de la période"
+                  />
+                </label>
+
+                {admin?.role === 'super_admin' && (
+                  <label className="rp-champ rp-champ--large">
+                    <span className="rp-etiquette">
+                      <Building2 size={11} aria-hidden="true" />
+                      Entreprise
+                    </span>
+                    <select
+                      value={selectedEntrepriseId}
+                      onChange={e => setSelectedEntrepriseId(e.target.value)}
+                      aria-label="Choisir l’entreprise du rapport"
+                    >
+                      <option value="all">Toutes les entreprises</option>
+                      {entreprises.map(ent => (
+                        <option key={ent.id} value={ent.id}>{ent.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
               </div>
-            )}
 
-            <div style={S.section}>
-              <label style={S.label}><Settings size={16} /> Contenu du rapport</label>
-              <div style={S.optionsGrid}>
-                <label className="option-toggle" style={{
-                  ...S.optionCard,
-                  borderColor: includeRetards ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.08)',
-                  background: includeRetards ? 'rgba(239,68,68,0.08)' : 'transparent',
-                }}>
-                  <input type="checkbox" checked={includeRetards} onChange={e => setIncludeRetards(e.target.checked)} style={{ display: 'none' }} />
-                  <div style={{ ...S.optionIcon, background: 'rgba(239,68,68,0.15)' }}>
-                    <AlertTriangle size={20} color="#EF4444" />
-                  </div>
-                  <div style={S.optionContent}>
-                    <span style={{ ...S.optionTitle, color: includeRetards ? '#EF4444' : '#888' }}>Retards</span>
-                    <span style={S.optionDesc}>Employés avec planning uniquement</span>
-                  </div>
-                  <div style={{ ...S.optionCheck, background: includeRetards ? '#EF4444' : 'rgba(255,255,255,0.06)' }}>
-                    {includeRetards && <CheckCircle size={14} color="#FFF" />}
-                  </div>
-                </label>
-
-                <label className="option-toggle" style={{
-                  ...S.optionCard,
-                  borderColor: includeHeuresSup ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.08)',
-                  background: includeHeuresSup ? 'rgba(245,158,11,0.08)' : 'transparent',
-                  opacity: hasHeuresSupFeature ? 1 : 0.5,
-                  pointerEvents: hasHeuresSupFeature ? 'auto' : 'none',
-                }}>
-                  <input type="checkbox" checked={includeHeuresSup} onChange={e => setIncludeHeuresSup(e.target.checked)} disabled={!hasHeuresSupFeature} style={{ display: 'none' }} />
-                  <div style={{ ...S.optionIcon, background: 'rgba(245,158,11,0.15)' }}>
-                    <Timer size={20} color="#F59E0B" />
-                  </div>
-                  <div style={S.optionContent}>
-                    <span style={{ ...S.optionTitle, color: includeHeuresSup ? '#F59E0B' : '#888' }}>Heures Sup</span>
-                    <span style={S.optionDesc}>{hasHeuresSupFeature ? 'Dépassements horaires' : 'Module non activé'}</span>
-                  </div>
-                  <div style={{ ...S.optionCheck, background: includeHeuresSup ? '#F59E0B' : 'rgba(255,255,255,0.06)' }}>
-                    {includeHeuresSup && <CheckCircle size={14} color="#FFF" />}
-                  </div>
-                </label>
-
-                <label className="option-toggle" style={{
-                  ...S.optionCard,
-                  borderColor: includeConges ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.08)',
-                  background: includeConges ? 'rgba(16,185,129,0.08)' : 'transparent',
-                  opacity: hasAbsencesFeature ? 1 : 0.5,
-                  pointerEvents: hasAbsencesFeature ? 'auto' : 'none',
-                }}>
-                  <input type="checkbox" checked={includeConges} onChange={e => setIncludeConges(e.target.checked)} disabled={!hasAbsencesFeature} style={{ display: 'none' }} />
-                  <div style={{ ...S.optionIcon, background: 'rgba(16,185,129,0.15)' }}>
-                    <CalendarDays size={20} color="#10B981" />
-                  </div>
-                  <div style={S.optionContent}>
-                    <span style={{ ...S.optionTitle, color: includeConges ? '#10B981' : '#888' }}>Congés</span>
-                    <span style={S.optionDesc}>{hasAbsencesFeature ? 'Congés approuvés' : 'Module non activé'}</span>
-                  </div>
-                  <div style={{ ...S.optionCheck, background: includeConges ? '#10B981' : 'rgba(255,255,255,0.06)' }}>
-                    {includeConges && <CheckCircle size={14} color="#FFF" />}
-                  </div>
-                </label>
-
-                <label className="option-toggle" style={{
-                  ...S.optionCard,
-                  borderColor: includeAbsences ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)',
-                  background: includeAbsences ? 'rgba(99,102,241,0.08)' : 'transparent',
-                  opacity: hasAbsencesFeature ? 1 : 0.5,
-                  pointerEvents: hasAbsencesFeature ? 'auto' : 'none',
-                }}>
-                  <input type="checkbox" checked={includeAbsences} onChange={e => setIncludeAbsences(e.target.checked)} disabled={!hasAbsencesFeature} style={{ display: 'none' }} />
-                  <div style={{ ...S.optionIcon, background: 'rgba(99,102,241,0.15)' }}>
-                    <CalendarOff size={20} color="#6366F1" />
-                  </div>
-                  <div style={S.optionContent}>
-                    <span style={{ ...S.optionTitle, color: includeAbsences ? '#6366F1' : '#888' }}>Absences</span>
-                    <span style={S.optionDesc}>{hasAbsencesFeature ? 'Maladie, autres...' : 'Module non activé'}</span>
-                  </div>
-                  <div style={{ ...S.optionCheck, background: includeAbsences ? '#6366F1' : 'rgba(255,255,255,0.06)' }}>
-                    {includeAbsences && <CheckCircle size={14} color="#FFF" />}
-                  </div>
-                </label>
-
-                <label className="option-toggle" style={{
-                  ...S.optionCard,
-                  borderColor: includeHolidays ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.08)',
-                  background: includeHolidays ? 'rgba(139,92,246,0.08)' : 'transparent',
-                }}>
-                  <input type="checkbox" checked={includeHolidays} onChange={e => setIncludeHolidays(e.target.checked)} style={{ display: 'none' }} />
-                  <div style={{ ...S.optionIcon, background: 'rgba(139,92,246,0.15)' }}>
-                    <Calendar size={20} color="#8B5CF6" />
-                  </div>
-                  <div style={S.optionContent}>
-                    <span style={{ ...S.optionTitle, color: includeHolidays ? '#8B5CF6' : '#888' }}>Jours fériés</span>
-                    <span style={S.optionDesc}>Travaillés ou non travaillés</span>
-                  </div>
-                  <div style={{ ...S.optionCheck, background: includeHolidays ? '#8B5CF6' : 'rgba(255,255,255,0.06)' }}>
-                    {includeHolidays && <CheckCircle size={14} color="#FFF" />}
-                  </div>
-                </label>
+              <div className="rp-sceaux" role="group" aria-label="Rubriques du rapport">
+                {SCEAUX.map(({ cle, ton, Icone, titre, desc, actif, bascule, bloque }) => (
+                  <button
+                    key={cle}
+                    type="button"
+                    className="rp-sceau"
+                    data-ton={ton}
+                    aria-pressed={actif}
+                    disabled={bloque}
+                    onClick={bascule}
+                  >
+                    <span className="rp-sceau-icone">
+                      <Icone size={15} aria-hidden="true" />
+                    </span>
+                    <span className="rp-sceau-texte">
+                      <span className="rp-sceau-titre">{titre}</span>
+                      <span className="rp-sceau-desc">{desc}</span>
+                    </span>
+                    <span className="rp-sceau-marque" aria-hidden="true">
+                      {actif && <CheckCircle size={12} />}
+                    </span>
+                  </button>
+                ))}
               </div>
 
               {includeHolidays && (
-                <div style={{
-                  marginTop: 14,
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                  gap: 10,
-                }}>
-                  <label className="option-toggle" style={{
-                    ...S.optionCard,
-                    borderColor: includeWorkedHolidays ? 'rgba(245,158,11,0.35)' : 'rgba(255,255,255,0.08)',
-                    background: includeWorkedHolidays ? 'rgba(245,158,11,0.08)' : 'transparent',
-                  }}>
-                    <input type="checkbox" checked={includeWorkedHolidays} onChange={e => setIncludeWorkedHolidays(e.target.checked)} style={{ display: 'none' }} />
-                    <div style={{ ...S.optionIcon, background: 'rgba(245,158,11,0.15)' }}>
-                      <Timer size={18} color="#F59E0B" />
-                    </div>
-                    <div style={S.optionContent}>
-                      <span style={{ ...S.optionTitle, color: includeWorkedHolidays ? '#F59E0B' : '#888' }}>Fériés travaillés</span>
-                      <span style={S.optionDesc}>Inclure les jours fériés avec pointage</span>
-                    </div>
-                    <div style={{ ...S.optionCheck, background: includeWorkedHolidays ? '#F59E0B' : 'rgba(255,255,255,0.06)' }}>
-                      {includeWorkedHolidays && <CheckCircle size={14} color="#FFF" />}
-                    </div>
-                  </label>
+                <div className="rp-sous-sceaux">
+                  <button
+                    type="button"
+                    className="rp-sceau"
+                    data-ton="attente"
+                    aria-pressed={includeWorkedHolidays}
+                    onClick={() => setIncludeWorkedHolidays(v => !v)}
+                  >
+                    <span className="rp-sceau-icone">
+                      <Timer size={15} aria-hidden="true" />
+                    </span>
+                    <span className="rp-sceau-texte">
+                      <span className="rp-sceau-titre">Fériés travaillés</span>
+                      <span className="rp-sceau-desc">Fériés avec pointage</span>
+                    </span>
+                    <span className="rp-sceau-marque" aria-hidden="true">
+                      {includeWorkedHolidays && <CheckCircle size={12} />}
+                    </span>
+                  </button>
 
-                  <label className="option-toggle" style={{
-                    ...S.optionCard,
-                    borderColor: includeNonWorkedHolidays ? 'rgba(99,102,241,0.35)' : 'rgba(255,255,255,0.08)',
-                    background: includeNonWorkedHolidays ? 'rgba(99,102,241,0.08)' : 'transparent',
-                  }}>
-                    <input type="checkbox" checked={includeNonWorkedHolidays} onChange={e => setIncludeNonWorkedHolidays(e.target.checked)} style={{ display: 'none' }} />
-                    <div style={{ ...S.optionIcon, background: 'rgba(99,102,241,0.15)' }}>
-                      <CalendarOff size={18} color="#6366F1" />
-                    </div>
-                    <div style={S.optionContent}>
-                      <span style={{ ...S.optionTitle, color: includeNonWorkedHolidays ? '#6366F1' : '#888' }}>Fériés non travaillés</span>
-                      <span style={S.optionDesc}>Inclure les jours fériés sans pointage</span>
-                    </div>
-                    <div style={{ ...S.optionCheck, background: includeNonWorkedHolidays ? '#6366F1' : 'rgba(255,255,255,0.06)' }}>
-                      {includeNonWorkedHolidays && <CheckCircle size={14} color="#FFF" />}
-                    </div>
-                  </label>
+                  <button
+                    type="button"
+                    className="rp-sceau"
+                    data-ton="indigo"
+                    aria-pressed={includeNonWorkedHolidays}
+                    onClick={() => setIncludeNonWorkedHolidays(v => !v)}
+                  >
+                    <span className="rp-sceau-icone">
+                      <CalendarOff size={15} aria-hidden="true" />
+                    </span>
+                    <span className="rp-sceau-texte">
+                      <span className="rp-sceau-titre">Fériés non travaillés</span>
+                      <span className="rp-sceau-desc">Fériés sans pointage</span>
+                    </span>
+                    <span className="rp-sceau-marque" aria-hidden="true">
+                      {includeNonWorkedHolidays && <CheckCircle size={12} />}
+                    </span>
+                  </button>
                 </div>
               )}
 
               {includeRetards && (
-                <div style={{
-                  display: 'flex', alignItems: 'flex-start', gap: '10px',
-                  marginTop: '12px', padding: '12px 14px',
-                  background: 'rgba(107,114,128,0.08)',
-                  border: '1px solid rgba(107,114,128,0.15)',
-                  borderRadius: '10px',
-                }}>
-                  <AlertTriangle size={14} color="#9CA3AF" style={{ flexShrink: 0, marginTop: '1px' }} />
-                  <p style={{ color: '#9CA3AF', fontSize: '12px', margin: 0, lineHeight: '1.5' }}>
-                    Les retards ne sont calculés que pour les employés ayant un planning défini (individuel ou entreprise par défaut). Les autres apparaissent avec <strong>N/A</strong>.
-                  </p>
-                </div>
+                <p className="rp-note">
+                  <AlertTriangle size={13} aria-hidden="true" />
+                  <span>
+                    Les retards ne sont calculés que pour les employés ayant un planning défini,
+                    individuel ou d’entreprise. Les autres apparaissent avec <strong>N/A</strong>.
+                  </span>
+                </p>
               )}
-            </div>
 
-            <div style={S.previewSection}>
-              <div style={S.previewHeader}>
-                <h3 style={S.previewTitle}><Eye size={16} color="#F59E0B" /> Aperçu du rapport</h3>
-                <button onClick={loadPreview} disabled={loadingPreview} style={S.previewBtn}>
-                  <RefreshCw size={14} style={loadingPreview ? { animation: 'spin 1s linear infinite' } : {}} />
-                  {loadingPreview ? 'Chargement...' : 'Actualiser'}
+              <div className="rp-exports">
+                <button
+                  type="button"
+                  className="rp-export"
+                  data-ton="principal"
+                  onClick={generatePDF}
+                  disabled={loading}
+                >
+                  {loading ? <RefreshCw size={16} className="rp-tourne" aria-hidden="true" /> : <Download size={16} aria-hidden="true" />}
+                  {loading ? 'Génération…' : 'Télécharger le PDF'}
+                </button>
+
+                <button
+                  type="button"
+                  className="rp-export"
+                  data-ton="creux"
+                  onClick={generateGraphicalPDF}
+                  disabled={loading}
+                >
+                  {loading ? <RefreshCw size={16} className="rp-tourne" aria-hidden="true" /> : <TrendingUp size={16} aria-hidden="true" />}
+                  {loading ? 'Génération…' : 'PDF graphique'}
+                </button>
+
+                <button
+                  type="button"
+                  className="rp-export"
+                  data-ton="creux"
+                  onClick={generateExcel}
+                  disabled={loading}
+                >
+                  {loading ? <RefreshCw size={16} className="rp-tourne" aria-hidden="true" /> : <FileSpreadsheet size={16} aria-hidden="true" />}
+                  {loading ? 'Génération…' : 'Télécharger le tableur'}
+                </button>
+              </div>
+            </section>
+
+            {/* ── La marge : ce que le rapport contient ── */}
+            <section className="rp-marge" aria-labelledby="rp-marge-titre">
+              <h2 className="rp-marge-titre" id="rp-marge-titre">
+                <Sparkles size={12} aria-hidden="true" />
+                Ce que contient le rapport
+              </h2>
+              <ul className="rp-marge-liste">
+                {CONTENUS.filter(c => c.actif).map(({ libelle, Icone, ton }) => (
+                  <li key={libelle} className="rp-marge-ligne" data-ton={ton}>
+                    <Icone size={13} aria-hidden="true" />
+                    <span>{libelle}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </div>
+
+          {/* ── La marge du scribe : l'aperçu ── */}
+          <aside className="rp-colonne">
+            <section className="rp-apercu" aria-labelledby="rp-apercu-titre">
+              <div className="rp-apercu-tete">
+                <h2 className="rp-apercu-titre" id="rp-apercu-titre">
+                  <Eye size={12} aria-hidden="true" />
+                  Aperçu du rapport
+                </h2>
+                <button
+                  type="button"
+                  className="rp-actualiser"
+                  onClick={loadPreview}
+                  disabled={loadingPreview}
+                >
+                  <RefreshCw size={12} className={loadingPreview ? 'rp-tourne' : ''} aria-hidden="true" />
+                  {loadingPreview ? 'Chargement…' : 'Actualiser'}
                 </button>
               </div>
 
-              <div style={S.previewContent}>
-                <div style={S.previewItem}>
-                  <Calendar size={14} color="#F59E0B" />
-                  <span>{formatDateFr(dateDebut)} — {formatDateFr(dateFin)}</span>
-                </div>
-                <div style={S.previewItem}>
-                  <Clock size={14} color="#F59E0B" />
-                  <span>{calculateWorkingDays(dateDebut, dateFin)} jours ouvrés</span>
-                </div>
-                <div style={S.previewItem}>
-                  <Building2 size={14} color="#F59E0B" />
-                  <span>{selectedEnterpriseName}</span>
-                </div>
-
-                <div style={S.previewTags}>
-                  {includeRetards && <span style={{ ...S.previewTag, background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}><AlertTriangle size={10} /> Retards</span>}
-                  {includeHeuresSup && <span style={{ ...S.previewTag, background: 'rgba(245,158,11,0.15)', color: '#F59E0B' }}><Timer size={10} /> H.Sup</span>}
-                  {includeConges && <span style={{ ...S.previewTag, background: 'rgba(16,185,129,0.15)', color: '#10B981' }}><CalendarDays size={10} /> Congés</span>}
-                  {includeAbsences && <span style={{ ...S.previewTag, background: 'rgba(99,102,241,0.15)', color: '#6366F1' }}><CalendarOff size={10} /> Absences</span>}
-                  {includeHolidays && <span style={{ ...S.previewTag, background: 'rgba(139,92,246,0.15)', color: '#8B5CF6' }}><Calendar size={10} /> Fériés</span>}
-                </div>
-
-                {previewData && (
-                  <>
-                    <div style={S.previewStats}>
-                      <div style={S.previewStatItem}>
-                        <span style={S.previewStatValue}>{previewData.totalEmployees}</span>
-                        <span style={S.previewStatLabel}>Employés</span>
-                      </div>
-                      <div style={S.previewStatItem}>
-                        <span style={S.previewStatValue}>{formatMinutesToHM(previewData.totalHeuresTravaillees)}</span>
-                        <span style={S.previewStatLabel}>Travaillé</span>
-                      </div>
-                      {includeRetards && (
-                        <div style={S.previewStatItem}>
-                          <span style={{ ...S.previewStatValue, color: '#EF4444' }}>{previewData.totalRetards}</span>
-                          <span style={S.previewStatLabel}>Retards</span>
-                        </div>
-                      )}
-                      {includeHeuresSup && previewData.totalHeuresSup > 0 && (
-                        <div style={S.previewStatItem}>
-                          <span style={{ ...S.previewStatValue, color: '#F59E0B' }}>{formatMinutesToHM(previewData.totalHeuresSup)}</span>
-                          <span style={S.previewStatLabel}>H.Sup</span>
-                        </div>
-                      )}
-                      {includeHolidays && (
-                        <div style={S.previewStatItem}>
-                          <span style={{ ...S.previewStatValue, color: '#8B5CF6' }}>{previewData.totalHolidayDays}</span>
-                          <span style={S.previewStatLabel}>Fériés</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {includeHolidays && previewData.totalWorkedHolidays > 0 && (
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        marginTop: '8px', padding: '10px 12px',
-                        background: 'rgba(139,92,246,0.08)',
-                        border: '1px solid rgba(139,92,246,0.15)',
-                        borderRadius: '8px',
-                      }}>
-                        <Calendar size={13} color="#8B5CF6" />
-                        <span style={{ color: '#C4B5FD', fontSize: '12px' }}>
-                          {previewData.totalWorkedHolidays} jour{previewData.totalWorkedHolidays > 1 ? 's' : ''} férié{previewData.totalWorkedHolidays > 1 ? 's' : ''} travaillé{previewData.totalWorkedHolidays > 1 ? 's' : ''} • {formatMinutesToHM(previewData.totalWorkedHolidaysMinutes)}
-                        </span>
-                      </div>
-                    )}
-
-                    {previewData.employesSansPlanningRetards > 0 && includeRetards && (
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        marginTop: '8px', padding: '10px 12px',
-                        background: 'rgba(107,114,128,0.08)',
-                        border: '1px solid rgba(107,114,128,0.15)',
-                        borderRadius: '8px',
-                      }}>
-                        <Users size={13} color="#9CA3AF" />
-                        <span style={{ color: '#9CA3AF', fontSize: '12px' }}>
-                          {previewData.employesSansPlanningRetards} employé{previewData.employesSansPlanningRetards > 1 ? 's' : ''} sans planning — retards non évalués
-                        </span>
-                      </div>
-                    )}
-                  </>
-                )}
+              <div className="rp-apercu-lignes">
+                <span className="rp-apercu-ligne">
+                  <Calendar size={12} aria-hidden="true" />
+                  {formatDateFr(dateDebut)} — {formatDateFr(dateFin)}
+                </span>
+                <span className="rp-apercu-ligne">
+                  <Clock size={12} aria-hidden="true" />
+                  {joursOuvresPeriode} jours ouvrés
+                </span>
+                <span className="rp-apercu-ligne">
+                  <Building2 size={12} aria-hidden="true" />
+                  {selectedEnterpriseName}
+                </span>
               </div>
-            </div>
 
-            <div style={S.downloadButtons}>
-              <button className="afro-btn" onClick={generatePDF} style={S.pdfBtn} disabled={loading}>
-                {loading
-                  ? <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                  : <Download size={18} />
-                }
-                {loading ? 'Génération...' : 'Télécharger PDF'}
-              </button>
-              <button className="afro-btn" onClick={generateGraphicalPDF} style={S.graphicalBtn} disabled={loading}>
-                {loading
-                  ? <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                  : <TrendingUp size={18} />
-                }
-                {loading ? 'Génération...' : 'PDF Graphique'}
-              </button>
-              <button className="afro-btn" onClick={generateExcel} style={S.excelBtn} disabled={loading}>
-                {loading
-                  ? <RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                  : <FileSpreadsheet size={18} />
-                }
-                {loading ? 'Génération...' : 'Télécharger Excel'}
-              </button>
-            </div>
-          </div>
+              {(includeRetards || includeHeuresSup || includeConges || includeAbsences || includeHolidays) && (
+                <div className="rp-etiquettes">
+                  {includeRetards && (
+                    <span className="rp-etiquette-ton" data-ton="alerte">
+                      <AlertTriangle size={10} aria-hidden="true" /> Retards
+                    </span>
+                  )}
+                  {includeHeuresSup && (
+                    <span className="rp-etiquette-ton" data-ton="attente">
+                      <Timer size={10} aria-hidden="true" /> H. sup
+                    </span>
+                  )}
+                  {includeConges && (
+                    <span className="rp-etiquette-ton" data-ton="ok">
+                      <CalendarDays size={10} aria-hidden="true" /> Congés
+                    </span>
+                  )}
+                  {includeAbsences && (
+                    <span className="rp-etiquette-ton" data-ton="indigo">
+                      <CalendarOff size={10} aria-hidden="true" /> Absences
+                    </span>
+                  )}
+                  {includeHolidays && (
+                    <span className="rp-etiquette-ton" data-ton="violet">
+                      <Calendar size={10} aria-hidden="true" /> Fériés
+                    </span>
+                  )}
+                </div>
+              )}
 
-          <div className="afro-card" style={{ ...S.infoCard, animationDelay: '0.1s' }}>
-            <h3 style={S.infoTitle}><Sparkles size={18} color="#F59E0B" /> Ce que contient votre rapport</h3>
-            <div style={S.infoGrid}>
-              <div style={S.infoItem}><CheckCircle size={16} color="#10B981" /><span>Résumé de la période</span></div>
-              <div style={S.infoItem}><CheckCircle size={16} color="#10B981" /><span>Liste des employés</span></div>
-              <div style={S.infoItem}><CheckCircle size={16} color="#10B981" /><span>Jours de présence</span></div>
-              <div style={S.infoItem}><CheckCircle size={16} color="#10B981" /><span>Heures travaillées</span></div>
-              <div style={S.infoItem}><CheckCircle size={16} color="#10B981" /><span>Moyenne par jour</span></div>
-              {includeRetards && <div style={{ ...S.infoItem, color: '#EF4444' }}><AlertTriangle size={16} /><span>Retards (planning requis)</span></div>}
-              {includeHeuresSup && <div style={{ ...S.infoItem, color: '#F59E0B' }}><Timer size={16} /><span>Heures supplémentaires</span></div>}
-              {includeConges && <div style={{ ...S.infoItem, color: '#10B981' }}><CalendarDays size={16} /><span>Détail des congés</span></div>}
-              {includeAbsences && <div style={{ ...S.infoItem, color: '#6366F1' }}><CalendarOff size={16} /><span>Registre absences</span></div>}
-              {includeHolidays && <div style={{ ...S.infoItem, color: '#8B5CF6' }}><Calendar size={16} /><span>Jours fériés travaillés ou non</span></div>}
-            </div>
-          </div>
-        </main>
+              {previewData ? (
+                <>
+                  <div className="rp-mesures">
+                    <div className="rp-mesure">
+                      <span className="rp-mesure-valeur">{previewData.totalEmployees}</span>
+                      <span className="rp-mesure-libelle">Employés</span>
+                    </div>
+                    <div className="rp-mesure">
+                      <span className="rp-mesure-valeur">{formatMinutesToHM(previewData.totalHeuresTravaillees)}</span>
+                      <span className="rp-mesure-libelle">Travaillé</span>
+                    </div>
+                    {includeRetards && (
+                      <div className="rp-mesure" data-ton="alerte">
+                        <span className="rp-mesure-valeur">{previewData.totalRetards}</span>
+                        <span className="rp-mesure-libelle">Retards</span>
+                      </div>
+                    )}
+                    {includeHeuresSup && previewData.totalHeuresSup > 0 && (
+                      <div className="rp-mesure" data-ton="attente">
+                        <span className="rp-mesure-valeur">{formatMinutesToHM(previewData.totalHeuresSup)}</span>
+                        <span className="rp-mesure-libelle">H. sup</span>
+                      </div>
+                    )}
+                    {includeHolidays && (
+                      <div className="rp-mesure" data-ton="violet">
+                        <span className="rp-mesure-valeur">{previewData.totalHolidayDays}</span>
+                        <span className="rp-mesure-libelle">Fériés</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {includeHolidays && previewData.totalWorkedHolidays > 0 && (
+                    <p className="rp-constat">
+                      <Calendar size={12} aria-hidden="true" />
+                      <span>
+                        {previewData.totalWorkedHolidays} jour{previewData.totalWorkedHolidays > 1 ? 's' : ''} férié{previewData.totalWorkedHolidays > 1 ? 's' : ''} travaillé{previewData.totalWorkedHolidays > 1 ? 's' : ''} · {formatMinutesToHM(previewData.totalWorkedHolidaysMinutes)}
+                      </span>
+                    </p>
+                  )}
+
+                  {includeRetards && previewData.employesSansPlanningRetards > 0 && (
+                    <p className="rp-constat" data-ton="neutre">
+                      <Users size={12} aria-hidden="true" />
+                      <span>
+                        {previewData.employesSansPlanningRetards} employé{previewData.employesSansPlanningRetards > 1 ? 's' : ''} sans planning : retards non évalués.
+                      </span>
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div className="rp-apercu-vide">
+                  <Eye size={18} aria-hidden="true" />
+                  <p>
+                    Aucun aperçu pour l’instant.<br />
+                    Touchez « Actualiser » pour compter la période.
+                  </p>
+                </div>
+              )}
+            </section>
+          </aside>
+        </div>
+      </main>
+
+      <div className="rp-pied">
+        <PageCulturalBand pathname="/rapports" placement="bottom" />
       </div>
-    </>
+    </div>
   )
-}
-
-// ═══════════════════════════════════════════════════════════
-// 🎨 STYLES
-// ═══════════════════════════════════════════════════════════
-const S = {
-  container: { minHeight: '100vh', background: '#0A0A0F', position: 'relative', overflow: 'hidden' },
-  bgPattern: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: `radial-gradient(circle at 20% 50%, rgba(245, 158, 11, 0.03) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.03) 0%, transparent 50%)`, pointerEvents: 'none', zIndex: 0 },
-  header: { background: 'rgba(15, 15, 25, 0.95)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(245, 158, 11, 0.15)', position: 'sticky', top: 0, zIndex: 100 },
-  headerInner: { maxWidth: '900px', margin: '0 auto', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
-  backBtn: { width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
-  logoContainer: { width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#FFFFFF', fontSize: '18px', fontWeight: '700', letterSpacing: '2px', margin: 0 },
-  headerSubtitle: { color: '#F59E0B', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '500' },
-  main: { padding: '24px 20px 60px', maxWidth: '700px', margin: '0 auto', position: 'relative', zIndex: 1 },
-  card: { background: 'rgba(20, 20, 35, 0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '20px', padding: '24px', marginBottom: '20px' },
-  cardHeader: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '28px' },
-  cardIconWrap: { width: '52px', height: '52px', borderRadius: '14px', background: 'rgba(245, 158, 11, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { color: '#FFFFFF', fontSize: '20px', fontWeight: '700', margin: 0 },
-  cardSubtitle: { color: '#888', fontSize: '13px', margin: '4px 0 0 0' },
-  section: { marginBottom: '24px' },
-  label: { display: 'flex', alignItems: 'center', gap: '8px', color: '#888', fontWeight: '600', marginBottom: '12px', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-  dateRow: { display: 'flex', gap: '12px', flexWrap: 'wrap' },
-  dateGroup: { flex: 1, minWidth: '140px' },
-  dateLabel: { display: 'block', fontSize: '11px', color: '#666', marginBottom: '6px' },
-  dateInput: { width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#FFFFFF', fontSize: '15px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' },
-  select: { width: '100%', padding: '14px 16px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', color: '#FFFFFF', fontSize: '15px', outline: 'none', cursor: 'pointer', boxSizing: 'border-box', fontFamily: 'inherit' },
-  optionsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' },
-  optionCard: { display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px', borderRadius: '14px', border: '1px solid', transition: 'all 0.2s ease' },
-  optionIcon: { width: '42px', height: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  optionContent: { flex: 1, minWidth: 0 },
-  optionTitle: { display: 'block', fontSize: '14px', fontWeight: '600' },
-  optionDesc: { display: 'block', fontSize: '11px', color: '#666', marginTop: '2px' },
-  optionCheck: { width: '22px', height: '22px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  previewSection: { background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.12)', borderRadius: '16px', padding: '18px', marginBottom: '24px' },
-  previewHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
-  previewTitle: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '700', color: '#FFFFFF', margin: 0 },
-  previewBtn: { display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: '#888', fontSize: '12px', fontWeight: '500', cursor: 'pointer', fontFamily: 'inherit' },
-  previewContent: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  previewItem: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#CCC' },
-  previewTags: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' },
-  previewTag: { display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600' },
-  previewStats: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' },
-  previewStatItem: { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' },
-  previewStatValue: { fontSize: '20px', fontWeight: '800', color: '#FFF', fontFamily: "'SF Mono', 'Fira Code', monospace" },
-  previewStatLabel: { fontSize: '10px', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' },
-  downloadButtons: { display: 'flex', gap: '12px', flexWrap: 'wrap' },
-  pdfBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '16px', background: 'linear-gradient(135deg, #EF4444, #DC2626)', color: '#FFFFFF', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', minWidth: '140px', fontFamily: 'inherit' },
-  graphicalBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '16px', background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)', color: '#FFFFFF', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', minWidth: '140px', fontFamily: 'inherit' },
-  excelBtn: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '16px', background: 'linear-gradient(135deg, #10B981, #059669)', color: '#FFFFFF', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', minWidth: '140px', fontFamily: 'inherit' },
-  infoCard: { background: 'rgba(20, 20, 35, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '16px', padding: '20px' },
-  infoTitle: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '16px', fontWeight: '700', color: '#FFFFFF', marginBottom: '16px' },
-  infoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' },
-  infoItem: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#CCC' },
 }
