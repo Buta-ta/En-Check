@@ -13,7 +13,7 @@ export default function AdminMfaRecovery({ account, currentId }) {
   if (account.id === currentId) return null
   if (challenge) return challenge
   return (
-    <details>
+    <details className="aa-section">
       <summary>Récupération du second facteur</summary>
       <AdminExplication titre="Avant de retirer les facteurs">
         <p>
@@ -31,6 +31,7 @@ export default function AdminMfaRecovery({ account, currentId }) {
       </AdminExplication>
       <button
         type="button"
+        className="aa-bouton-creux"
         disabled={busy}
         onClick={async () => {
           if (lock.current) return
@@ -67,6 +68,7 @@ export default function AdminMfaRecovery({ account, currentId }) {
         Consulter l’état de récupération
       </button>
       <form
+        className="aa-formulaire"
         onSubmit={async (e) => {
           e.preventDefault()
           if (lock.current) return
@@ -123,18 +125,22 @@ export default function AdminMfaRecovery({ account, currentId }) {
             onChange={(e) => setReason(e.target.value)}
           />
         </label>
-        <button
-          className="aa-bouton-plein"
-          disabled={
-            busy ||
-            email.trim().toLowerCase() !== account.email?.toLowerCase() ||
-            reason.trim().length < 5
-          }
-        >
-          Retirer les facteurs perdus
-        </button>
+        <div className="aa-formulaire-pied">
+          <button
+            className="aa-bouton-plein"
+            disabled={
+              busy ||
+              email.trim().toLowerCase() !== account.email?.toLowerCase() ||
+              reason.trim().length < 5
+            }
+          >
+            Retirer les facteurs perdus
+          </button>
+        </div>
       </form>
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <p role="status" className="aa-notice">{message}</p>
+      )}
     </details>
   )
 }
