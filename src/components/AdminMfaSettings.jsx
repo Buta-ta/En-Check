@@ -121,6 +121,15 @@ export default function AdminMfaSettings({
       setCode('')
       await load()
     })
+  // Reprise d’une inscription déjà scannée (QR perdu après rechargement) :
+  // seule la saisie du code reste nécessaire, sans nouveau QR.
+  const resume = (f) => {
+    setEnrollment({ id: f.id, totp: null })
+    setCode('')
+    setError('')
+    setNotice('')
+  }
+  const pending = factors.some((f) => f.status !== 'verified')
   if (challenge) return challenge
   const qr = enrollment?.totp?.qr_code
   return (
@@ -151,6 +160,15 @@ export default function AdminMfaSettings({
                 {f.friendly_name || 'Authentificateur'} ·{' '}
                 {f.status === 'verified' ? 'Vérifié' : 'À terminer'}
               </span>
+              {f.status !== 'verified' && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => resume(f)}
+                >
+                  Saisir le code
+                </button>
+              )}
               <button
                 type="button"
                 disabled={busy}
@@ -169,17 +187,40 @@ export default function AdminMfaSettings({
           ))}
         </ul>
       )}
+      {pending && !enrollment && !loading && (
+        <p className="aa-notice">
+          Inscription en attente : si vous avez déjà scanné le QR, choisissez
+          « Saisir le code » dans la liste. Sinon retirez l’ancienne entrée,
+          puis « Ajouter un authentificateur ».
+        </p>
+      )}
       {notice && <p role="status">{notice}</p>}
       {error && <p role="alert">{error}</p>}
       {enrollment ? (
         <form onSubmit={verify}>
-          <AdminExplication titre="Comment inscrire l’authentificateur" ouvert>
-            <p>
-              QR code confidentiel : scannez-le avec votre application, puis
-              confirmez le code à six chiffres de cette même entrée, pas celui
-              d’une ancienne inscription. Vérifiez que le téléphone utilise la
-              date et l’heure automatiques.
-            </p>
+          <AdminExplication
+            titre={
+              enrollment.totp
+                ? 'Comment inscrire l’authentificateur'
+                : 'Terminer l’inscription déjà scannée'
+            }
+            ouvert
+          >
+            {enrollment.totp ? (
+              <p>
+                QR code confidentiel : scannez-le avec votre application, puis
+                confirmez le code à six chiffres de cette même entrée, pas celui
+                d’une ancienne inscription. Vérifiez que le téléphone utilise
+                la date et l’heure automatiques.
+              </p>
+            ) : (
+              <p>
+                Utilisez l’entrée déjà présente dans votre application
+                d’authentification (même nom que le facteur « À terminer ») et
+                saisissez son code à six chiffres. Vérifiez que le téléphone
+                utilise la date et l’heure automatiques.
+              </p>
+            )}
           </AdminExplication>
           {qr && (
             <img
@@ -192,10 +233,18 @@ export default function AdminMfaSettings({
               }
             />
           )}
-          <details>
-            <summary>Clé de configuration manuelle</summary>
-            <code>{enrollment.totp.secret}</code>
-          </details>
+          {enrollment.totp && (
+            <details>
+              <summary>
+                Le scan ne passe pas ? Saisie manuelle de la clé
+              </summary>
+              <p>
+                Dans votre application d’authentification, choisissez
+                « ajout manuel / TOTP » et saisissez cette clé telle quelle :
+              </p>
+              <code>{enrollment.totp.secret}</code>
+            </details>
+          )}
           <label>
             Code de vérification
             <input

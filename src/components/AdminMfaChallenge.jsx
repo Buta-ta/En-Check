@@ -1,8 +1,10 @@
 import { adminMfaErrorMessage } from '../services/adminMfaErrors'
+import { useTheme } from '../contexts/ThemeContext'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import '../pages/AdminAccounts.css'
 export default function AdminMfaChallenge({ onVerified, onCancel }) {
+  const { darkMode } = useTheme()
   const [factors, setFactors] = useState([]),
     [factor, setFactor] = useState(''),
     [code, setCode] = useState(''),
@@ -62,7 +64,7 @@ export default function AdminMfaChallenge({ onVerified, onCancel }) {
     }
   }
   return (
-    <main className="aa-page">
+    <main className={`aa-page ${darkMode ? 'aa-dark' : ''}`}>
       <section className="aa-panel aa-security-check">
         <span className="aa-eyebrow">VÉRIFICATION DE SÉCURITÉ</span>
         <h1>Confirmer votre connexion</h1>
