@@ -10,7 +10,7 @@ export default function AdminMfaRequirement({ account, currentId }) {
   if (account.id === currentId) return null
   if (challenge) return challenge
   return (
-    <details>
+    <details className="aa-section">
       <summary>Exiger la double authentification</summary>
       <p>
         L’accès aux données sera bloqué tant que ce compte n’aura pas configuré
@@ -18,6 +18,7 @@ export default function AdminMfaRequirement({ account, currentId }) {
       </p>
       <button
         type="button"
+        className="aa-bouton-creux"
         disabled={busy}
         onClick={async () => {
           if (lock.current) return
@@ -53,6 +54,7 @@ export default function AdminMfaRequirement({ account, currentId }) {
         Consulter l’obligation
       </button>
       <form
+        className="aa-formulaire"
         onSubmit={async (e) => {
           e.preventDefault()
           if (
@@ -96,11 +98,18 @@ export default function AdminMfaRequirement({ account, currentId }) {
             disabled={busy}
           />
         </label>
-        <button disabled={busy || reason.trim().length < 5}>
-          Exiger la double authentification
-        </button>
+        <div className="aa-formulaire-pied">
+          <button
+            className="aa-bouton-plein"
+            disabled={busy || reason.trim().length < 5}
+          >
+            Exiger la double authentification
+          </button>
+        </div>
       </form>
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <p role="status" className="aa-notice">{message}</p>
+      )}
     </details>
   )
 }

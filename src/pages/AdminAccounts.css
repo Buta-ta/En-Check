@@ -1728,6 +1728,24 @@
   padding-bottom: 14px;
 }
 
+.aa-page .aa-section > button {
+  margin: 2px 0 14px;
+}
+
+.aa-page .aa-section > p {
+  margin: 10px 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--aa-encre-douce);
+}
+
+.aa-page .aa-formulaire p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--aa-encre-douce);
+}
+
 .aa-page .aa-danger-section,
 .aa-page .aa-section--danger {
   border-color: rgba(162, 84, 31, 0.42);
