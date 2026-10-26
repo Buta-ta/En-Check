@@ -9,7 +9,9 @@ it('résout routes, sous-routes, paramètres, alias paie et repli sans faux pré
   for (const path of ['/paie','/fiches-paie','/configuration-fiscale']) expect(culturalMotifForPath(path)).toBe('bogolan')
   expect(culturalMotifForPath('/absences')).toBe('ndebele')
   for (const [path, motif] of [['/pointages','adinkra'],['/pauses','lesotho'],['/employes','zoulou']]) expect(culturalMotifForPath(path)).toBe(motif)
-  for (const path of ['/planning-other','/','/rapports']) expect(culturalMotifForPath(path)).toBe('kente')
+  for (const path of ['/planning-other','/','/salaires-inconnus']) expect(culturalMotifForPath(path)).toBe('kente')
+  expect(culturalMotifForPath('/rapports')).toBe('nsibidi')
+  expect(culturalMotifForPath('/rapports?periode=mois')).toBe('nsibidi')
 })
 it('les bandeaux sont décoratifs et le Kente existant reste disponible', () => {
   const html=renderToStaticMarkup(<PageCulturalBand pathname="/planning"/> )
