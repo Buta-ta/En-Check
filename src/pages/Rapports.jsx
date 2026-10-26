@@ -35,6 +35,7 @@ import {
   colonnesProportionnelles,
   largeurUtile,
   dessinerBlason,
+  nettoyerCellule,
 } from '../utils/documentsRapports'
 import './Rapports.css'
 import {
@@ -47,6 +48,7 @@ import toast from 'react-hot-toast'
 import FeatureService from '../services/featureService'
 import HolidayService from '../services/holidayService'
 import { filtrerPointagesPayables } from '../services/seuilsPointage'
+import { texteImprimable } from '../utils/textePdf'
 
 // ═══════════════════════════════════════════════════════════
 // UTILITAIRES DE FORMATAGE
@@ -1296,7 +1298,7 @@ export default function Rapports() {
         `${l.emp.first_name} ${l.emp.last_name}`,
         l.emp.matricule || '—',
         l.paie.periodStart && l.paie.periodEnd
-          ? `${formatDateFr(l.paie.periodStart)} → ${formatDateFr(l.paie.periodEnd)}`
+          ? `${formatDateFr(l.paie.periodStart)} au ${formatDateFr(l.paie.periodEnd)}`
           : '—',
         l.paie.net != null ? `${Math.round(l.paie.net).toLocaleString('fr-FR')} F` : '—',
         etiquettePaie(l.paie).long,
@@ -1862,7 +1864,7 @@ export default function Rapports() {
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(8.2)
         doc.setTextColor(...DOC.encre)
-        doc.text(et.long, MARGES.gauche + 16, yPos)
+        doc.text(texteImprimable(et.long), MARGES.gauche + 16, yPos)
         yPos += 7
       }
 
@@ -2008,6 +2010,8 @@ export default function Rapports() {
           columnStyles,
           ...stylesTableau(DOC.terre),
           didParseCell: (data) => {
+            //  ce tableau pose ses propres couleurs : il reprend le nettoyage
+            nettoyerCellule(data)
             if (includeRetards && data.section === 'body') {
               if (data.column.index === retardsColStart || data.column.index === retardsColStart + 1) {
                 if (data.cell.text[0] === '—') {

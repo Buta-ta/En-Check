@@ -8,6 +8,7 @@ import { ecrireReglesFiscales } from './reglesFiscalesEcriture'
 import { minutesDepuisMinuit } from '../utils/timezoneUtils'
 import { SEUILS_PAR_DEFAUT, filtrerPointagesPayables } from './seuilsPointage'
 import jsPDF from 'jspdf'
+import { texteImprimable } from '../utils/textePdf'
 import autoTable from 'jspdf-autotable'
 
 class PayrollService {
@@ -1806,7 +1807,12 @@ class PayrollService {
       if (isProvisional) {
         doc.setFillColor(254, 243, 199)
         doc.setDrawColor(245, 158, 11)
-        const warnLines = doc.splitTextToSize(provisionalWarning, pageWidth - 2 * margin - 8)
+        //  jsPDF écrit en WinAnsi : un émoji sort en bouillie. On garde la
+        //  phrase, on retire seulement ce que la police ne sait pas écrire.
+        const warnLines = doc.splitTextToSize(
+          texteImprimable(provisionalWarning),
+          pageWidth - 2 * margin - 8
+        )
         const warnHeight = warnLines.length * 3.8 + 6
         doc.roundedRect(margin, yPos, pageWidth - 2 * margin, warnHeight, 2, 2, 'FD')
         doc.setFontSize(7.5)
