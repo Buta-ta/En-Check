@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import AdminExplication from './AdminExplication'
 import { accountRpc } from '../services/adminAccounts'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
-export default function AdminMfaSettings() {
+export default function AdminMfaSettings({ statusRpc = 'encheck_account_security_status' }) {
   const [factors, setFactors] = useState([]),
     [enrollment, setEnrollment] = useState(null),
     [code, setCode] = useState(''),
@@ -16,7 +16,7 @@ export default function AdminMfaSettings() {
   async function load() {
     const [{ data, error: err }, status] = await Promise.all([
       supabase.auth.mfa.listFactors(),
-      accountRpc('encheck_account_security_status', {}),
+      accountRpc(statusRpc, {}),
     ])
     if (err) throw new Error('Lecture des facteurs indisponible.')
     setFactors(data?.totp || [])
@@ -24,7 +24,7 @@ export default function AdminMfaSettings() {
   }
   useEffect(() => {
     let alive = true
-    accountRpc('encheck_account_security_status', {})
+    accountRpc(statusRpc, {})
       .then((status) => {
         if (alive) setServerReady(status?.rest_guard_active === true)
       })
@@ -49,7 +49,7 @@ export default function AdminMfaSettings() {
     return () => {
       alive = false
     }
-  }, [])
+  }, [statusRpc])
   async function run(action) {
     if (lock.current) return
     lock.current = true

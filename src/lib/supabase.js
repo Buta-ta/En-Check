@@ -46,7 +46,16 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Aucune option ajoutée : le comportement est exactement celui d'avant.
 // Les sessions déjà ouvertes dans les navigateurs continuent de fonctionner.
 // ───────────────────────────────────────────────────────────────────────────
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: { fetch: async (...args) => {
+    const response = await fetch(...args)
+    if (response.status === 403 && window.location.pathname !== '/admin/mfa-obligatoire') {
+      const body = await response.clone().json().catch(() => null)
+      if (body?.message === 'MFA_ENROLLMENT_REQUIRED') window.location.assign('/admin/mfa-obligatoire')
+    }
+    return response
+  } },
+})
 
 // ───────────────────────────────────────────────────────────────────────────
 // CLIENT 2 — EMPLOYÉ

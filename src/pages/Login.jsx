@@ -1,3 +1,4 @@
+import { redirectForMfaObligation } from '../services/adminMfaObligation'
 import { ADMIN_FIELDS } from '../services/adminAccounts'
 import { adminPasswordChangeRequired } from '../services/adminPasswordCheckpoint'
 // ═══════════════════════════════════════════════════════════
@@ -356,7 +357,8 @@ export default function Login() {
       }
 
       // Resolve MFA before reading any protected business profile or data.
-      await ensureMfa()
+      if (await redirectForMfaObligation()) return
+        await ensureMfa()
       if (await adminPasswordChangeRequired()) {
         window.location.assign('/admin/changer-mot-de-passe')
         return
