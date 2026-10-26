@@ -2,6 +2,7 @@
 import { beforeEach, afterEach, it, expect, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { ThemeProvider } from '../../contexts/ThemeContext'
 import AdminMfaChallenge from '../../components/AdminMfaChallenge'
 const mfa = vi.hoisted(() => ({
   listFactors: vi.fn(),
@@ -26,7 +27,11 @@ beforeEach(async () => {
   verified = vi.fn()
   cancel = vi.fn()
   await act(async () =>
-    root.render(<AdminMfaChallenge onVerified={verified} onCancel={cancel} />),
+    root.render(
+      <ThemeProvider>
+        <AdminMfaChallenge onVerified={verified} onCancel={cancel} />
+      </ThemeProvider>,
+    ),
   )
 })
 afterEach(async () => {

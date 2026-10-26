@@ -1871,6 +1871,34 @@
   margin: clamp(28px, 6vw, 64px) auto;
 }
 
+/* QR d’inscription MFA : toujours posé sur un fond blanc, à taille fixe
+   assez grande pour un scan fiable depuis un téléphone. */
+.aa-page .aa-mfa-qr {
+  display: block;
+  width: min(280px, 100%);
+  height: auto;
+  margin: 14px auto 4px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid var(--aa-ligne);
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(43, 26, 18, 0.12);
+}
+
+.aa-page .aa-mfa-settings code {
+  display: block;
+  margin: 8px 0;
+  padding: 9px 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  word-break: break-all;
+  color: var(--aa-encre);
+  background: var(--aa-champ);
+  border: 1px dashed var(--aa-couture);
+  border-radius: 8px;
+}
+
 .aa-page .aa-account-grid {
   display: grid;
   grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.6fr);
