@@ -61,8 +61,8 @@ vi.mock('../../services/holidayService', async (importOriginal) => {
     ...original,
     default: {
       getGlobalHolidays: async () => [
-        { id: 'g1', name: 'Fête de l’Indépendance', date: '1960-08-01', is_recurring: true, country_code: 'BJ', is_worked: false, overtime_rate: 100 },
-        { id: 'g2', name: 'Noël', date: '2024-12-25', is_recurring: true, country_code: 'BJ', is_worked: false, overtime_rate: 100 },
+        { id: 'g1', name: 'Fête de l’Indépendance', date: '1960-08-01', is_recurring: true, country_code: 'ZZ', is_worked: false, overtime_rate: 100 },
+        { id: 'g2', name: 'Noël', date: '2024-12-25', is_recurring: true, country_code: 'ZZ', is_worked: false, overtime_rate: 100 },
       ],
       getEnterpriseOverrides: async () => [],
       toggleGlobalHoliday: basculer,
@@ -75,9 +75,9 @@ const CSS = readFileSync('src/pages/JoursFeries.css', 'utf8')
 const BAND_CSS = readFileSync('src/components/PageCulturalBand.css', 'utf8')
 
 const globalHolidays = [
-  { id: 'g1', name: 'Fête de l’Indépendance', date: '1960-08-01', is_recurring: true, country_code: 'BJ', is_worked: false, overtime_rate: 100 },
-  { id: 'g2', name: 'Noël', date: '2024-12-25', is_recurring: true, country_code: 'BJ', is_worked: false, overtime_rate: 100 },
-  { id: 'g3', name: 'Journée des Martyrs', date: '2026-01-16', is_recurring: false, country_code: 'BJ', is_worked: true, overtime_rate: 50 },
+  { id: 'g1', name: 'Fête de l’Indépendance', date: '1960-08-01', is_recurring: true, country_code: 'ZZ', is_worked: false, overtime_rate: 100 },
+  { id: 'g2', name: 'Noël', date: '2024-12-25', is_recurring: true, country_code: 'ZZ', is_worked: false, overtime_rate: 100 },
+  { id: 'g3', name: 'Journée des Martyrs', date: '2026-01-16', is_recurring: false, country_code: 'ZZ', is_worked: true, overtime_rate: 50 },
 ]
 
 const ownHolidays = [
@@ -379,14 +379,15 @@ describe('8. la page se monte et répond', () => {
   })
 
   it('un pays absent du catalogue affiche son code, sans drapeau inventé', async () => {
-    //  les données de test portent « BJ » : le catalogue ne connaît pas le Bénin
+    //  les données de test portent « ZZ » : un code que le catalogue ignore
+    //  (le Bénin, lui, y est entré : c'est le modèle de fêtes du round 19)
     const pastille = [...hote.querySelectorAll('.jf-pays-puce')]
-      .find(b => b.textContent.includes('BJ'))
+      .find(b => b.textContent.includes('ZZ'))
     expect(pastille).toBeTruthy()
     expect(pastille.querySelector('.jf-pays-drapeau')).toBeNull()
     //  la ligne de registre affiche le code, pas un globe générique
     const meta = hote.querySelector('.jf-jour-meta')
-    expect(meta.textContent).toContain('BJ')
+    expect(meta.textContent).toContain('ZZ')
     expect(meta.textContent).not.toContain('🌍')
   })
 

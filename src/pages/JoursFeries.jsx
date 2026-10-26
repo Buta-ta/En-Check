@@ -18,12 +18,13 @@ import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, Globe, Building2, Calendar, CalendarDays,
   Pencil, Trash2, X, Info, Power, PowerOff, Sun, Moon,
-  RefreshCw, Save, AlertTriangle,
+  RefreshCw, Save, AlertTriangle, Check,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { supabase } from '../lib/supabase'
 import HolidayService, { SUPPORTED_COUNTRIES } from '../services/holidayService'
+import { modeleFeries, paysAvecModele, feriesAAjouter } from '../services/modelesFeries'
 import { useTheme } from '../contexts/ThemeContext'
 import useLoadingMinimum from '../hooks/useLoadingMinimum'
 import PageCulturalBand from '../components/PageCulturalBand'
@@ -113,6 +114,15 @@ function formaterJour(date) {
   return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
+/** « vendredi 9 janvier 2026 » — pour la liste d'un modèle. */
+function formaterDateModele(isoDate) {
+  const date = new Date(`${isoDate}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return isoDate
+  return date.toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  })
+}
+
 export default function JoursFeries() {
   const navigate = useNavigate()
   const { darkMode, toggleTheme } = useTheme()
@@ -147,6 +157,10 @@ export default function JoursFeries() {
 
   // Activation en masse
   const [togglingAll, setTogglingAll] = useState(false)
+
+  // Modèle de fêtes du pays (Bénin, …)
+  const [showModele, setShowModele] = useState(false)
+  const [chargementModele, setChargementModele] = useState(false)
 
   const isSuperAdmin = admin?.role === 'super_admin'
   const annee = new Date().getFullYear()
@@ -385,6 +399,53 @@ export default function JoursFeries() {
   }
 
   // ════════════════════════════════════
+  // LE MODÈLE DU PAYS
+  // ════════════════════════════════════
+  const modeleActif = modeleFeries(filterCountry)
+
+  const planModele = useMemo(() => {
+    if (!modeleActif) return null
+    const existants = globalHolidays.filter(h => h.country_code === modeleActif.code)
+    return feriesAAjouter(modeleActif, annee, existants)
+  }, [modeleActif, globalHolidays, annee])
+
+  const ouvrirModele = () => setShowModele(true)
+
+  const chargerModele = async () => {
+    if (!modeleActif || !planModele || planModele.aCreer.length === 0) return
+    setChargementModele(true)
+
+    let crees = 0
+    let echecs = 0
+
+    for (const ferie of planModele.aCreer) {
+      const result = await HolidayService.createHoliday(null, {
+        name: ferie.nom,
+        date: ferie.date,
+        is_recurring: ferie.recurrent,
+        country_code: modeleActif.code,
+        is_worked: false,
+        overtime_rate: 100,
+      })
+      if (result.success) crees += 1
+      else echecs += 1
+    }
+
+    setChargementModele(false)
+    setShowModele(false)
+
+    if (crees > 0) {
+      toast.success(
+        `${crees} fête${crees > 1 ? 's' : ''} du ${modeleActif.nom} ajoutée${crees > 1 ? 's' : ''}`
+      )
+    }
+    if (echecs > 0) {
+      toast.error(`${echecs} fête${echecs > 1 ? 's n’ont' : ' n’a'} pas pu être créée${echecs > 1 ? 's' : ''}`)
+    }
+    await loadGlobalHolidays()
+  }
+
+  // ════════════════════════════════════
   // DÉRIVÉS
   // ════════════════════════════════════
   const filteredGlobal = filterCountry === 'ALL'
@@ -392,12 +453,18 @@ export default function JoursFeries() {
     : globalHolidays.filter(h => h.country_code === filterCountry)
 
   const paysDisponibles = useMemo(() => {
-    const codes = [...new Set(globalHolidays.map(h => h.country_code).filter(Boolean))]
+    //  Un pays qui a un modèle doit être proposé même s'il n'a encore
+    //  aucune fête enregistrée : c'est justement là qu'on vient le charger.
+    const codes = [...new Set([
+      ...globalHolidays.map(h => h.country_code).filter(Boolean),
+      ...paysAvecModele().map(m => m.code),
+    ])]
     return codes
       .map(code => ({
         code,
         ...paysInfo(code),
         nombre: globalHolidays.filter(h => h.country_code === code).length,
+        modele: Boolean(modeleFeries(code)),
       }))
       .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
   }, [globalHolidays])
@@ -687,7 +754,9 @@ export default function JoursFeries() {
                   >
                     {p.drapeau && <span className="jf-pays-drapeau" aria-hidden="true">{p.drapeau}</span>}
                     {p.nom}
-                    <span className="jf-onglet-compte">{p.nombre}</span>
+                    {p.modele && p.nombre === 0
+                      ? <span className="jf-pays-modele">modèle prêt</span>
+                      : <span className="jf-onglet-compte">{p.nombre}</span>}
                   </button>
                 ))}
               </div>
@@ -706,6 +775,13 @@ export default function JoursFeries() {
                 </button>
               )}
 
+              {isSuperAdmin && modeleActif && (
+                <button type="button" className="jf-bouton" onClick={ouvrirModele}>
+                  <CalendarDays size={14} aria-hidden="true" />
+                  Charger le modèle {modeleActif.nom}
+                </button>
+              )}
+
               {isSuperAdmin && (
                 <button type="button" className="jf-bouton" data-ton="indigo" onClick={openCreateModal}>
                   <Plus size={14} aria-hidden="true" />
@@ -718,8 +794,22 @@ export default function JoursFeries() {
               {globalTries.length === 0 ? (
                 <div className="jf-vide">
                   <Globe size={26} aria-hidden="true" />
-                  <strong>Aucune fête pour ce pays</strong>
-                  <p>Choisissez un autre pays, ou ajoutez une fête si vous êtes super administrateur.</p>
+                  <strong>
+                    {modeleActif
+                      ? `Le ${modeleActif.nom} n’a encore aucune fête publiée`
+                      : 'Aucune fête pour ce pays'}
+                  </strong>
+                  <p>
+                    {modeleActif && isSuperAdmin
+                      ? `Le modèle ${modeleActif.nom} connaît déjà les fêtes légales de l’année.`
+                      : 'Choisissez un autre pays, ou ajoutez une fête si vous êtes super administrateur.'}
+                  </p>
+                  {isSuperAdmin && modeleActif && (
+                    <button type="button" className="jf-bouton" data-ton="terre" onClick={ouvrirModele}>
+                      <CalendarDays size={14} aria-hidden="true" />
+                      Charger le modèle {modeleActif.nom}
+                    </button>
+                  )}
                 </div>
               ) : (
                 globalTries.map((holiday, i) => {
@@ -1123,6 +1213,107 @@ export default function JoursFeries() {
                 {deleting
                   ? <><RefreshCw size={13} className="jf-tourne" aria-hidden="true" /> Suppression…</>
                   : <><Trash2 size={13} aria-hidden="true" /> Supprimer</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ LE MODÈLE DU PAYS ══ */}
+      {showModele && planModele && modeleActif && (
+        <div className="jf-voile" onClick={() => !chargementModele && setShowModele(false)}>
+          <div
+            className="jf-modale"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jf-modele-titre"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="jf-modale-tete">
+              <LesothoSceauSvg taille={34} ton="indigo" />
+              <div className="jf-modale-titres">
+                <h2 className="jf-modale-titre" id="jf-modele-titre">
+                  Modèle {modeleActif.nom}
+                </h2>
+                <span className="jf-modale-sous">
+                  {planModele.aCreer.length === 0
+                    ? `Tout est déjà là pour ${annee}`
+                    : `${planModele.aCreer.length} fête${planModele.aCreer.length > 1 ? 's' : ''} à créer pour ${annee}`}
+                  {' · '}
+                  {modeleActif.source}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="jf-icone-bouton"
+                onClick={() => !chargementModele && setShowModele(false)}
+                aria-label="Fermer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="jf-modale-corps">
+              {planModele.aCreer.length > 0 && (
+                <ul className="jf-modele-liste">
+                  {planModele.aCreer.map(ferie => (
+                    <li className="jf-modele-item" key={`${ferie.nom}-${ferie.date}`}>
+                      <span className="jf-modele-date">{formaterDateModele(ferie.date)}</span>
+                      <span className="jf-modele-nom">{ferie.nom}</span>
+                      <span className="jf-modele-nature" data-nature={ferie.nature}>
+                        {ferie.recurrent ? 'chaque année' : 'cette année'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {planModele.dejaPresents.length > 0 && (
+                <p className="jf-modele-note">
+                  {planModele.dejaPresents.length} fête{planModele.dejaPresents.length > 1 ? 's' : ''} déjà
+                  présente{planModele.dejaPresents.length > 1 ? 's' : ''} — rien à refaire.
+                </p>
+              )}
+
+              {planModele.nonCalculables.length > 0 && (
+                <div className="jf-modele-inconnues">
+                  <span className="jf-etiquette">Ce que le modèle ne date pas</span>
+                  <p>
+                    Les fêtes religieuses musulmanes suivent la lune : leur date est
+                    annoncée chaque année. On ne la devine pas — saisissez-la quand
+                    elle tombe.
+                  </p>
+                  <ul>
+                    {planModele.nonCalculables.map(f => (
+                      <li key={f.nom}>
+                        <strong>{f.nom}</strong> — {f.note}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="jf-modale-pied">
+              <button
+                type="button"
+                className="jf-bouton"
+                onClick={() => !chargementModele && setShowModele(false)}
+                disabled={chargementModele}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="jf-bouton"
+                data-ton="terre"
+                onClick={chargerModele}
+                disabled={chargementModele || planModele.aCreer.length === 0}
+              >
+                {chargementModele
+                  ? <><RefreshCw size={14} className="jf-tourne" aria-hidden="true" /> Création…</>
+                  : <><Check size={14} aria-hidden="true" /> Créer {planModele.aCreer.length} fête{planModele.aCreer.length > 1 ? 's' : ''}</>
                 }
               </button>
             </div>

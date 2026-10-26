@@ -755,6 +755,38 @@
   line-height: 1;
 }
 
+/*  « modèle prêt » : un petit losange creux, l'idée d'une réserve
+    de fêtes qu'on n'a pas encore dépliée */
+.jf-pays-modele {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px 2px 6px;
+  border-radius: 999px;
+  /*  --jf-terre ne tient que 3,57:1 sur le panneau sombre : le badge
+      est en 9 px, il lui faut la terre claire */
+  border: 1px solid var(--jf-terre-clair);
+  color: var(--jf-terre-clair);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.jf-pays-modele::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+
+/*  sélectionné, le losange passe en craie pour rester lisible sur l'indigo */
+.jf-pays-puce[aria-pressed='true'] .jf-pays-modele {
+  border-color: rgba(239, 231, 215, 0.5);
+  color: var(--jf-craie);
+}
+
 .jf-bouton {
   display: inline-flex;
   align-items: center;
@@ -1080,6 +1112,10 @@
   max-width: 46ch;
   font-size: 11.5px;
   line-height: 1.5;
+}
+
+.jf-vide .jf-bouton {
+  margin-top: 6px;
 }
 
 .jf-explication {
@@ -1452,6 +1488,146 @@
   padding: 13px 18px;
   border-top: 1px solid var(--jf-ligne);
   background: var(--jf-creux);
+}
+
+/* ══ LE MODÈLE DU PAYS ══ */
+/*  une bande de tissu : chaque fête est un motif posé sur la chaîne,
+    la date à gauche comme un repère de métier */
+.jf-modele-liste {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-radius: 9px;
+  overflow: hidden;
+  border: 1px solid var(--jf-ligne);
+}
+
+.jf-modele-item {
+  display: grid;
+  /*  la date prend la place qu'il lui faut : une date française
+      (« jeudi 1 janvier 2026 ») ne doit pas se replier au milieu */
+  grid-template-columns: max-content minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 13px 9px 15px;
+  background: var(--jf-creux);
+  position: relative;
+}
+
+/*  le fil de trame, à gauche de chaque ligne */
+.jf-modele-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--jf-terre);
+}
+
+.jf-modele-item:nth-child(even) {
+  background: var(--jf-panneau);
+}
+
+.jf-modele-date {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--jf-craie);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.jf-modele-nom {
+  font-size: 12px;
+  color: var(--jf-craie-douce);
+  min-width: 0;
+}
+
+.jf-modele-nature {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--jf-craie-douce);
+  border: 1px solid var(--jf-ligne);
+  border-radius: 999px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+/*  une fête fixe se répète chaque année : son badge est tissé plein,
+    les autres restent au trait */
+.jf-modele-nature[data-nature='fixe'] {
+  color: var(--jf-craie);
+  border-color: var(--jf-ligne-forte);
+  background: var(--jf-panneau-2);
+}
+
+.jf-modele-note {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--jf-craie-douce);
+}
+
+/*  les fêtes que le modèle refuse de dater */
+.jf-modele-inconnues {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 9px;
+  border: 1px dashed var(--jf-ligne);
+  background: var(--jf-creux);
+}
+
+.jf-modele-inconnues p {
+  margin: 7px 0 8px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--jf-craie-douce);
+}
+
+.jf-modele-inconnues ul {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jf-modele-inconnues li {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--jf-craie-douce);
+}
+
+.jf-modele-inconnues li strong {
+  color: var(--jf-craie);
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .jf-modele-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 10px;
+    padding: 10px 12px 10px 14px;
+  }
+
+  .jf-modele-date {
+    grid-column: 1;
+  }
+
+  .jf-modele-nature {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .jf-modele-nom {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }
 
 /* la modale de suppression */
