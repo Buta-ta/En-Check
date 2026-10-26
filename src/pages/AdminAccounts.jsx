@@ -1,4 +1,5 @@
 import AdminPermissionRoles from '../components/AdminPermissionRoles'
+import AdminBornes from '../components/AdminBornes'
 import AdminMfaRecovery from '../components/AdminMfaRecovery'
 import AdminAccountOperations from '../components/AdminAccountOperations'
 import AdminInvitations from '../components/AdminInvitations'
@@ -617,7 +618,10 @@ export default function AdminAccounts() {
               {view === 'journal' ? (
                 <AdminAccountJournal accounts={rows} />
               ) : view === 'roles' ? (
-                <AdminPermissionRoles accounts={rows} enterprises={enterprises} onSaved={load} />
+                <>
+                  <AdminPermissionRoles accounts={rows} enterprises={enterprises} onSaved={load} />
+                  <AdminBornes enterprises={enterprises} />
+                </>
               ) : (
                 <>
                   {/* ── Le tableau ── */}

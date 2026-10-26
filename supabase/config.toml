@@ -50,3 +50,9 @@ entrypoint = "./functions/admin-mfa-recovery/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/admin-retirement/index.ts"
+
+[functions.pointage-enrollment-photo]
+enabled = true
+# The handler verifies the application token via caller-context RPC, no cookies.
+verify_jwt = false
+entrypoint = "./functions/pointage-enrollment-photo/index.ts"
