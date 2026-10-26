@@ -1,5 +1,12 @@
 # Obligation MFA individuelle — livraison applicative, activation séparée
 
+**État au 26 octobre 2026 : migration 019 APPLIQUÉE en production**
+(`admin_mfa_obligation`) — config `admin_mfa_policy_config.enabled=false`,
+zéro obligation enregistrée, zéro effet sur les sessions existantes. Le guard est
+enveloppé par `encheck_admin_request_guard_before_mfa` (chaîne 001→004→010
+reprise à l'identique). L'émission d'obligations (`encheck_mfa_exiger`) reste
+**désactivée** jusqu'à activation coordonnée après recette sur compte de test.
+
 ## Parcours intégré
 
 - Fiche d'un autre compte Admin → Sécurité → Exiger la double authentification.

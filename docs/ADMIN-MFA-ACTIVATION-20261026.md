@@ -1,5 +1,38 @@
 # Socle MFA Admin — activation du 26 octobre 2026
 
+## Extension du 26 octobre 2026 (après la recette titulaire)
+
+Tout le reste du chantier Admin a été appliqué en production le même jour,
+dans l'ordre strict (1 create_migration par réplique, chaque migration
+transactionnelle/idempotente, préflight intégrés) :
+
+- `admin_account_workspace` (20261024000001) et `admin_account_password`
+  (20261024000002) : base comptes + bucket `admin-avatars` (public, 2 Mo,
+  jpeg/png/webp) + service de mot de passe avec audit.
+- Série 20261025000001→010 : sessions/révocations, invitations, cycle de vie
+  (accès/archivage/rétablissement/délégation de support), mot de passe
+  temporaire (checkpoint), récupération MFA historique (005, drainé par 020),
+  alertes session, retrait de profil (retraite irréversible, AAL2, archivage
+  ≥7 j, approbateur distinct), helpers Auth privés (008), canaux d'identité +
+  policies restrictives `encheck_admin_session_restrictive` sur toutes les
+  tables publiques (009), permissions personnalisées inactives (010 :
+  framework `enabled=false`, guard final count=1 + `custom_guard_route`).
+- Restauration de `encheck_admin_session_valid` stricte (count=1 + AAL2) après
+  010, version alignée sur le socle 018.
+- `admin_mfa_obligation` (019) : enveloppe du guard par
+  `encheck_admin_request_guard_before_mfa`, policies `encheck_mfa_obligation`
+  restrictives, émission désactivée (`enabled=false`, 0 obligation).
+- `admin_mfa_recovery_v2` (020) : table `admin_mfa_recoveries_v2`,
+  prepare/claim/finish/status v2, accès bloqué pendant récupération en cours.
+- Edge `admin-mfa-recovery` (v1 ACTIVE, verify_jwt=false) + secret
+  `ADMIN_APP_ORIGIN=https://en-check.vercel.app`.
+
+Smoke GUC (simulation SQL, sans réseau PostgREST) : statut OK, sessions OK
+(session courante marquée), alertes vides, `obligation_statut`
+{required:false, satisfied:true}, admin sans AAL2 refusé 42501, employé et
+anon inchangés, table de pointage borne non régressée (service_role seul).
+Rien n'est activé : obligations 0, récupérations 0, rôles personnalisés 0.
+
 ## Exécuté réellement
 
 - Préflight : aucun admin actif sans liaison Auth, aucun UID ambigu, aucun compte
