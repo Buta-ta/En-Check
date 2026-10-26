@@ -1,3 +1,4 @@
+import AdminMfaRequirement from '../components/AdminMfaRequirement'
 import AdminPermissionRoles from '../components/AdminPermissionRoles'
 import AdminBornes from '../components/AdminBornes'
 import AdminMfaRecovery from '../components/AdminMfaRecovery'
@@ -941,6 +942,7 @@ export default function AdminAccounts() {
 
               {fiche.onglet === 'Sécurité' && (
                 <div className="aa-fiche-section">
+                  <AdminMfaRequirement key={`require-${fiche.admin.id}`} account={fiche.admin} currentId={me?.id} />
                   <AdminMfaRecovery key={fiche.admin.id} account={fiche.admin} currentId={me?.id} />
                   <p className="aa-aide">Les mots de passe existants ne sont jamais affichés.</p>
 

@@ -1,3 +1,5 @@
+import AdminMfaRequired from './pages/AdminMfaRequired'
+import { redirectForMfaObligation } from './services/adminMfaObligation'
 import { adminPasswordChangeRequired } from './services/adminPasswordCheckpoint'
 import AdminRecovery from './pages/AdminRecovery'
 // src/App.jsx
@@ -139,6 +141,7 @@ function AdminRoute({ children, requireSuperAdmin = false }) {
         }
 
         if (cancelled) return
+        if (await redirectForMfaObligation()) return
         await ensureMfa()
         if (await adminPasswordChangeRequired()) {
           if (!cancelled) { setPasswordRequired(true); setChecking(false) }
@@ -235,6 +238,7 @@ function App() {
           <Route path="/" element={isVercelPreview ? <DashboardDesignPreview /> : <LandingPage />} />
 
           {/* ═══ AUTH ═══ */}
+          <Route path="/admin/mfa-obligatoire" element={<AdminMfaRequired />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin/mot-de-passe-oublie" element={<AdminRecovery />} />
           <Route path="/admin/recuperation" element={<AdminRecovery mode="reset" />} />
