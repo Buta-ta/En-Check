@@ -538,6 +538,11 @@
   border-left-color: var(--rp-violet-texte);
 }
 
+/* le journal des pointages porte la couleur de la page */
+.rp-page .rp-sceau[data-ton='terre'][aria-pressed='true'] {
+  border-left-color: var(--rp-terre-clair);
+}
+
 .rp-page .rp-sceau:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -618,6 +623,11 @@
 .rp-sceau[aria-pressed='true'][data-ton='violet'] .rp-sceau-marque {
   background: var(--rp-violet-texte);
   border-color: var(--rp-violet-texte);
+}
+
+.rp-sceau[aria-pressed='true'][data-ton='terre'] .rp-sceau-marque {
+  background: var(--rp-terre-clair);
+  border-color: var(--rp-terre-clair);
 }
 
 /* les deux sous-options des jours fériés */
@@ -846,6 +856,11 @@
   background: rgba(139, 92, 246, 0.1);
 }
 
+.rp-etiquette-ton[data-ton='terre'] {
+  color: var(--rp-terre-clair);
+  background: rgba(180, 98, 42, 0.12);
+}
+
 /* les chiffres de l'aperçu : un tableau à cinq colonnes */
 .rp-mesures {
   display: grid;
@@ -881,6 +896,10 @@
 
 .rp-mesure[data-ton='violet'] .rp-mesure-valeur {
   color: var(--rp-violet-texte);
+}
+
+.rp-mesure[data-ton='terre'] .rp-mesure-valeur {
+  color: var(--rp-terre-clair);
 }
 
 .rp-mesure-libelle {
@@ -993,6 +1012,10 @@
 
 .rp-marge-ligne[data-ton='violet'] svg {
   color: var(--rp-violet-texte);
+}
+
+.rp-marge-ligne[data-ton='terre'] svg {
+  color: var(--rp-terre-clair);
 }
 
 /* ── 11. Le pied ──────────────────────────────────────────── */

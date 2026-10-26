@@ -15,12 +15,27 @@ import PageCulturalBand from '../components/PageCulturalBand'
 import RaccourcisPages from '../components/RaccourcisPages'
 import { NsibidiBlasonSvg } from '../components/NsibidiSvg'
 import { useTheme } from '../contexts/ThemeContext'
+import {
+  DOC,
+  MARGES,
+  dessinerEntete,
+  dessinerResume,
+  dessinerTitreSection,
+  stylesTableau,
+  ajouterPageDetail,
+  ajouterJournalPointages,
+  construireJournalPointages,
+  numeroterPages,
+  colonnesProportionnelles,
+  largeurUtile,
+  dessinerBlason,
+} from '../utils/documentsRapports'
 import './Rapports.css'
 import {
   ArrowLeft, Calendar, Building2, FileText, Download,
   FileSpreadsheet, Users, Clock, CheckCircle, AlertTriangle,
   Timer, CalendarOff, Sparkles, Eye, RefreshCw, CalendarDays,
-  TrendingUp, Sun, Moon
+  TrendingUp, Sun, Moon, MapPin
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import FeatureService from '../services/featureService'
@@ -115,7 +130,7 @@ const hslToHex = (h, s, l) => {
 const adjustColor = (color, amount) => {
   // Assurer que color est une chaîne valide
   if (!color || typeof color !== 'string') {
-    return '#F59E0B' // Couleur par défaut
+    return '#B4622A' // la terre de la page, par défaut
   }
 
   // Nettoyer la couleur
@@ -154,8 +169,8 @@ const createChartImage = (chartData, type = 'bar') => {
     canvas.height = 400
     const ctx = canvas.getContext('2d')
 
-    // Fond
-    ctx.fillStyle = '#FFFFFF'
+    // Fond de papier, pas de blanc d'écran
+    ctx.fillStyle = '#FBF7EC'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     if (type === 'bar') {
@@ -178,7 +193,7 @@ const drawBarChart = (ctx, data, width, height) => {
   const barWidth = Math.min((chartWidth / data.labels.length) - 20, 60)
   
   // Axes
-  ctx.strokeStyle = '#333333'
+  ctx.strokeStyle = '#3B4A55'
   ctx.lineWidth = 2
   ctx.beginPath()
   ctx.moveTo(padding, padding)
@@ -187,7 +202,7 @@ const drawBarChart = (ctx, data, width, height) => {
   ctx.stroke()
 
   // Grille horizontale
-  ctx.strokeStyle = '#E5E5E5'
+  ctx.strokeStyle = '#E6DCC8'
   ctx.lineWidth = 1
   for (let i = 0; i <= 5; i++) {
     const y = padding + (chartHeight / 5) * i
@@ -204,7 +219,7 @@ const drawBarChart = (ctx, data, width, height) => {
     const y = height - padding - barHeight
 
     // Couleur de base
-    const baseColor = data.colors?.[index] || '#F59E0B'
+    const baseColor = data.colors?.[index] || '#B4622A'
     
     // Gradient
     const gradient = ctx.createLinearGradient(x, y, x, height - padding)
@@ -218,12 +233,12 @@ const drawBarChart = (ctx, data, width, height) => {
     ctx.fillRect(x, y, barWidth, barHeight)
 
     // Bordure
-    ctx.strokeStyle = '#333333'
+    ctx.strokeStyle = '#3B4A55'
     ctx.lineWidth = 1
     ctx.strokeRect(x, y, barWidth, barHeight)
 
     // Valeur au-dessus
-    ctx.fillStyle = '#333333'
+    ctx.fillStyle = '#16222C'
     ctx.font = 'bold 12px Arial'
     ctx.textAlign = 'center'
     ctx.fillText(value.toString(), x + barWidth / 2, y - 5)
@@ -233,7 +248,7 @@ const drawBarChart = (ctx, data, width, height) => {
     ctx.translate(x + barWidth / 2, height - padding + 15)
     ctx.rotate(-Math.PI / 6)
     ctx.font = '10px Arial'
-    ctx.fillStyle = '#666666'
+    ctx.fillStyle = '#55636E'
     ctx.textAlign = 'right'
     const label = data.labels[index].length > 15 ? data.labels[index].substring(0, 12) + '...' : data.labels[index]
     ctx.fillText(label, 0, 0)
@@ -242,7 +257,7 @@ const drawBarChart = (ctx, data, width, height) => {
 
   // Titre
   ctx.font = 'bold 16px Arial'
-  ctx.fillStyle = '#141423'
+  ctx.fillStyle = '#16222C'
   ctx.textAlign = 'center'
   ctx.fillText(data.title || '', width / 2, 30)
 }
@@ -255,7 +270,7 @@ const drawPieChart = (ctx, data, width, height) => {
   
   if (total === 0) {
     ctx.font = '14px Arial'
-    ctx.fillStyle = '#666666'
+    ctx.fillStyle = '#55636E'
     ctx.textAlign = 'center'
     ctx.fillText('Aucune donnée disponible', centerX, centerY)
     return
@@ -273,7 +288,7 @@ const drawPieChart = (ctx, data, width, height) => {
     ctx.closePath()
     ctx.fillStyle = data.colors?.[index] || `hsl(${index * 360 / data.values.length}, 70%, 60%)`
     ctx.fill()
-    ctx.strokeStyle = '#FFFFFF'
+    ctx.strokeStyle = '#FBF7EC'
     ctx.lineWidth = 3
     ctx.stroke()
 
@@ -284,7 +299,7 @@ const drawPieChart = (ctx, data, width, height) => {
       const labelY = centerY + Math.sin(labelAngle) * (radius * 0.6)
       
       const percentage = ((value / total) * 100).toFixed(1)
-      ctx.fillStyle = '#FFFFFF'
+      ctx.fillStyle = '#FBF7EC'
       ctx.font = 'bold 12px Arial'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -306,12 +321,12 @@ const drawPieChart = (ctx, data, width, height) => {
       // Carré couleur
       ctx.fillStyle = data.colors?.[index] || `hsl(${index * 360 / data.values.length}, 70%, 60%)`
       ctx.fillRect(legendX, legendY, 18, 18)
-      ctx.strokeStyle = '#333333'
+      ctx.strokeStyle = '#3B4A55'
       ctx.lineWidth = 1
       ctx.strokeRect(legendX, legendY, 18, 18)
       
       // Texte
-      ctx.fillStyle = '#333333'
+      ctx.fillStyle = '#16222C'
       ctx.font = '11px Arial'
       ctx.textAlign = 'left'
       ctx.textBaseline = 'middle'
@@ -323,7 +338,7 @@ const drawPieChart = (ctx, data, width, height) => {
 
   // Titre
   ctx.font = 'bold 16px Arial'
-  ctx.fillStyle = '#141423'
+  ctx.fillStyle = '#16222C'
   ctx.textAlign = 'center'
   ctx.fillText(data.title || '', width / 2, 25)
 }
@@ -335,7 +350,7 @@ const drawLineChart = (ctx, data, width, height) => {
   const maxValue = Math.max(...data.values, 1)
   
   // Axes
-  ctx.strokeStyle = '#333333'
+  ctx.strokeStyle = '#3B4A55'
   ctx.lineWidth = 2
   ctx.beginPath()
   ctx.moveTo(padding, padding)
@@ -344,7 +359,7 @@ const drawLineChart = (ctx, data, width, height) => {
   ctx.stroke()
 
   // Grille horizontale
-  ctx.strokeStyle = '#E5E5E5'
+  ctx.strokeStyle = '#E6DCC8'
   ctx.lineWidth = 1
   for (let i = 0; i <= 5; i++) {
     const y = padding + (chartHeight / 5) * i
@@ -354,14 +369,14 @@ const drawLineChart = (ctx, data, width, height) => {
     ctx.stroke()
     
     // Valeur
-    ctx.fillStyle = '#666666'
+    ctx.fillStyle = '#55636E'
     ctx.font = '11px Arial'
     ctx.textAlign = 'right'
     ctx.fillText(Math.round(maxValue * (1 - i / 5)).toString(), padding - 10, y + 4)
   }
 
   // Ligne
-  ctx.strokeStyle = '#F59E0B'
+  ctx.strokeStyle = '#8B3E1D'
   ctx.lineWidth = 3
   ctx.beginPath()
   
@@ -384,9 +399,9 @@ const drawLineChart = (ctx, data, width, height) => {
     
     ctx.beginPath()
     ctx.arc(x, y, 5, 0, 2 * Math.PI)
-    ctx.fillStyle = '#F59E0B'
+    ctx.fillStyle = '#8B3E1D'
     ctx.fill()
-    ctx.strokeStyle = '#FFFFFF'
+    ctx.strokeStyle = '#FBF7EC'
     ctx.lineWidth = 2
     ctx.stroke()
     
@@ -396,7 +411,7 @@ const drawLineChart = (ctx, data, width, height) => {
       ctx.translate(x, height - padding + 15)
       ctx.rotate(-Math.PI / 6)
       ctx.font = '9px Arial'
-      ctx.fillStyle = '#666666'
+      ctx.fillStyle = '#55636E'
       ctx.textAlign = 'right'
       ctx.fillText(data.labels[index], 0, 0)
       ctx.restore()
@@ -405,7 +420,7 @@ const drawLineChart = (ctx, data, width, height) => {
 
   // Titre
   ctx.font = 'bold 16px Arial'
-  ctx.fillStyle = '#141423'
+  ctx.fillStyle = '#16222C'
   ctx.textAlign = 'center'
   ctx.fillText(data.title || '', width / 2, 30)
 }
@@ -426,6 +441,8 @@ export default function Rapports() {
   const [includeHeuresSup, setIncludeHeuresSup] = useState(false)
   const [includeAbsences, setIncludeAbsences] = useState(false)
   const [includeConges, setIncludeConges] = useState(false)
+
+  const [includePointages, setIncludePointages] = useState(false)
 
   const [includeHolidays, setIncludeHolidays] = useState(false)
   const [includeWorkedHolidays, setIncludeWorkedHolidays] = useState(true)
@@ -569,6 +586,17 @@ export default function Rapports() {
 
       const { data: attendances } = await attendancesQuery
 
+      // Le journal nomme les zones : on charge leurs noms seulement s'il est demandé.
+      const geofencesById = {}
+      if (includePointages) {
+        let geofencesQuery = supabase.from('geofences').select('id, name')
+        if (targetEnterpriseId !== 'all') {
+          geofencesQuery = geofencesQuery.eq('enterprise_id', targetEnterpriseId)
+        }
+        const { data: zones } = await geofencesQuery
+        ;(zones || []).forEach(z => { geofencesById[z.id] = z.name })
+      }
+
       let absencesData = []
       if (includeAbsences || includeConges) {
         let absQuery = supabase
@@ -644,6 +672,7 @@ export default function Rapports() {
       return {
         employees: employees || [],
         attendances: attendances || [],
+        geofencesById,
         employeeSchedulesMap,
         defaultScheduleByEnterprise,
         absences: absencesData,
@@ -659,6 +688,7 @@ export default function Rapports() {
       return {
         employees: [],
         attendances: [],
+        geofencesById: {},
         employeeSchedulesMap: {},
         defaultScheduleByEnterprise: {},
         absences: [],
@@ -1021,6 +1051,7 @@ export default function Rapports() {
         totalHolidayDays: filteredHolidayRows.length,
         totalWorkedHolidays: 0,
         totalWorkedHolidaysMinutes: 0,
+        totalPointages: includePointages ? data.attendances.length : 0,
         employees: [],
       }
 
@@ -1085,33 +1116,13 @@ export default function Rapports() {
         allSchedules,
         holidays,
         holidaySetByEnterprise,
-        holidayMapByEnterprise
+        holidayMapByEnterprise,
+        geofencesById
       } = await fetchReportData()
 
       const doc = new jsPDF()
       const pageWidth = doc.internal.pageSize.getWidth()
-
-      const primaryColor = [245, 158, 11]
-      const darkColor = [20, 20, 35]
-
-      // ═══ EN-TÊTE ═══
-      doc.setFillColor(...darkColor)
-      doc.rect(0, 0, pageWidth, 50, 'F')
-      doc.setFillColor(...primaryColor)
-      doc.rect(0, 48, pageWidth, 2, 'F')
-
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(28)
-      doc.setFont('helvetica', 'bold')
-      doc.text('EN-CHECK', pageWidth / 2, 20, { align: 'center' })
-
-      doc.setFontSize(14)
-      doc.setFont('helvetica', 'normal')
-      doc.text('Rapport Graphique de Pointage', pageWidth / 2, 30, { align: 'center' })
-
-      doc.setFontSize(11)
-      doc.setTextColor(...primaryColor)
-      doc.text(`${formatDateLong(dateDebut)} - ${formatDateLong(dateFin)}`, pageWidth / 2, 42, { align: 'center' })
+      const periodeLongue = `${formatDateLong(dateDebut)} — ${formatDateLong(dateFin)}`
 
       const employeesData = employees.map(emp => {
         const stats = calculateEmployeeStats(
@@ -1136,117 +1147,129 @@ export default function Rapports() {
         return { emp, stats, absStats }
       })
 
-      let yPos = 60
+      // Une page neuve reprend la bande gravée, en plus court.
+      const nouvellePage = () => {
+        doc.addPage()
+        return dessinerEntete(doc, {
+          titre: 'Rapport graphique',
+          sousTitre: 'En-Check · les registres de craie',
+          periode: periodeLongue,
+          entreprise: selectedEnterpriseName,
+          complement: 'Suite des graphiques',
+        })
+      }
 
-      // ═══ GRAPHIQUE 1: TOP 10 EMPLOYÉS PAR HEURES TRAVAILLÉES ═══
+      let yPos = dessinerEntete(doc, {
+        titre: 'Rapport graphique',
+        sousTitre: 'En-Check · les registres de craie',
+        periode: periodeLongue,
+        entreprise: selectedEnterpriseName,
+        complement: 'Lecture visuelle de la période',
+      })
+
+      const hauteurImage = 84
+
+      const poserGraphique = async (titre, chartData, type, accent) => {
+        const image = await createChartImage(chartData, type)
+        if (yPos + hauteurImage + 18 > 272) yPos = nouvellePage()
+        yPos = dessinerTitreSection(doc, titre, yPos, accent)
+        doc.addImage(image, 'PNG', MARGES.gauche, yPos, pageWidth - MARGES.gauche - MARGES.droite, hauteurImage)
+        yPos += hauteurImage + 10
+      }
+
+      // ═══ GRAPHIQUE 1 : TOP 10 EMPLOYÉS PAR HEURES TRAVAILLÉES ═══
       const topEmployees = [...employeesData]
         .sort((a, b) => b.stats.totalMinutes - a.stats.totalMinutes)
         .slice(0, 10)
 
       if (topEmployees.length > 0) {
-        // Générer des couleurs en format hexadécimal valide
-        const colors = topEmployees.map((_, i) => {
-          const hue = 45 + i * 5
-          const saturation = 90
-          const lightness = 60 - i * 3
-          return hslToHex(hue, saturation, lightness)
-        })
+        const teintes = ['#8B3E1D', '#A8551F', '#B4622A', '#C9773C', '#96603A', '#7A4A26', '#B8783F', '#8E5A2E', '#C08A52', '#6F4423']
 
-        const chartData1 = {
-          title: 'Top 10 Employés - Heures Travaillées',
-          labels: topEmployees.map(e => `${e.emp.first_name} ${e.emp.last_name.charAt(0)}.`),
-          values: topEmployees.map(e => Math.round(e.stats.totalMinutes / 60)),
-          colors: colors,
-        }
-
-        const chart1Image = await createChartImage(chartData1, 'bar')
-        doc.addImage(chart1Image, 'PNG', 10, yPos, pageWidth - 20, 90)
-        yPos += 100
+        await poserGraphique(
+          'Top 10 des employés par heures travaillées',
+          {
+            title: 'Heures travaillées sur la période',
+            labels: topEmployees.map(e => `${e.emp.first_name} ${e.emp.last_name.charAt(0)}.`),
+            values: topEmployees.map(e => Math.round(e.stats.totalMinutes / 60)),
+            colors: topEmployees.map((_, i) => teintes[i % teintes.length]),
+          },
+          'bar',
+          DOC.terre
+        )
       }
 
-      // ═══ GRAPHIQUE 2: RÉPARTITION PRÉSENCE ═══
+      // ═══ GRAPHIQUE 2 : RÉPARTITION PRÉSENCE ═══
       if (includeRetards || includeAbsences || includeConges) {
-        if (yPos > 200) {
-          doc.addPage()
-          yPos = 20
-        }
-
         const totalDaysPresent = employeesData.reduce((sum, e) => sum + e.stats.joursPresent, 0)
         const totalAbsences = employeesData.reduce((sum, e) => sum + e.absStats.total, 0)
         const totalRetards = employeesData.reduce((sum, e) => sum + e.stats.retardsCount, 0)
 
         if (totalDaysPresent > 0 || totalAbsences > 0 || totalRetards > 0) {
-          const chartData2 = {
-            title: 'Répartition Globale - Présence & Retards',
-            labels: ['Jours Présent', 'Absences', 'Retards'],
-            values: [totalDaysPresent, totalAbsences, totalRetards],
-            colors: ['#10B981', '#EF4444', '#F59E0B'],
-          }
-
-          const chart2Image = await createChartImage(chartData2, 'pie')
-          doc.addImage(chart2Image, 'PNG', 10, yPos, pageWidth - 20, 90)
-          yPos += 100
+          await poserGraphique(
+            'Présence, absences et retards',
+            {
+              title: 'Répartition globale',
+              labels: ['Jours présent', 'Absences', 'Retards'],
+              values: [totalDaysPresent, totalAbsences, totalRetards],
+              colors: ['#0B5F43', '#B91C1C', '#8A5506'],
+            },
+            'pie',
+            DOC.vert
+          )
         }
       }
 
-      // ═══ GRAPHIQUE 3: HEURES SUP PAR EMPLOYÉ ═══
+      // ═══ GRAPHIQUE 3 : HEURES SUP PAR EMPLOYÉ ═══
       if (includeHeuresSup) {
         const empWithOvertime = employeesData.filter(e => e.stats.totalHeuresSupMinutes > 0)
-        
-        if (empWithOvertime.length > 0) {
-          doc.addPage()
-          yPos = 20
 
-          const topOvertime = empWithOvertime
+        if (empWithOvertime.length > 0) {
+          const topOvertime = [...empWithOvertime]
             .sort((a, b) => b.stats.totalHeuresSupMinutes - a.stats.totalHeuresSupMinutes)
             .slice(0, 10)
 
-          const chartData3 = {
-            title: 'Top 10 - Heures Supplémentaires',
-            labels: topOvertime.map(e => `${e.emp.first_name} ${e.emp.last_name.charAt(0)}.`),
-            values: topOvertime.map(e => Math.round(e.stats.totalHeuresSupMinutes / 60)),
-            colors: topOvertime.map(() => '#F59E0B'),
-          }
-
-          const chart3Image = await createChartImage(chartData3, 'bar')
-          doc.addImage(chart3Image, 'PNG', 10, yPos, pageWidth - 20, 90)
-          yPos += 100
+          await poserGraphique(
+            'Heures supplémentaires par employé',
+            {
+              title: 'Top 10 des heures supplémentaires',
+              labels: topOvertime.map(e => `${e.emp.first_name} ${e.emp.last_name.charAt(0)}.`),
+              values: topOvertime.map(e => Math.round(e.stats.totalHeuresSupMinutes / 60)),
+              colors: topOvertime.map(() => '#8A5506'),
+            },
+            'bar',
+            DOC.ambre
+          )
         }
       }
 
-      // ═══ GRAPHIQUE 4: ABSENCES PAR TYPE ═══
+      // ═══ GRAPHIQUE 4 : ABSENCES PAR TYPE ═══
       if (includeAbsences || includeConges) {
         const totalConges = employeesData.reduce((sum, e) => sum + e.absStats.conges, 0)
         const totalMaladie = employeesData.reduce((sum, e) => sum + e.absStats.maladie, 0)
         const totalAutre = employeesData.reduce((sum, e) => sum + e.absStats.autre, 0)
 
         if (totalConges + totalMaladie + totalAutre > 0) {
-          if (yPos > 200) {
-            doc.addPage()
-            yPos = 20
-          }
-
-          const chartData4 = {
-            title: 'Répartition des Absences par Type',
-            labels: ['Congés', 'Maladie', 'Autre'],
-            values: [totalConges, totalMaladie, totalAutre],
-            colors: ['#10B981', '#6366F1', '#8B5CF6'],
-          }
-
-          const chart4Image = await createChartImage(chartData4, 'pie')
-          doc.addImage(chart4Image, 'PNG', 10, yPos, pageWidth - 20, 90)
-          yPos += 100
+          await poserGraphique(
+            'Absences par motif',
+            {
+              title: 'Répartition des absences',
+              labels: ['Congés', 'Maladie', 'Autre'],
+              values: [totalConges, totalMaladie, totalAutre],
+              colors: ['#0B5F43', '#4338CA', '#6D28D9'],
+            },
+            'pie',
+            DOC.indigoTexte
+          )
         }
       }
 
-      // ═══ GRAPHIQUE 5: ÉVOLUTION DES HEURES PAR SEMAINE ═══
+      // ═══ GRAPHIQUE 5 : ÉVOLUTION DES HEURES PAR SEMAINE ═══
       const weeklyHours = {}
-      
-      // Calculer les heures travaillées par semaine
+
       employeesData.forEach(({ emp }) => {
         const empAttendances = attendances.filter(a => a.employee_id === emp.id)
         const dailyMinutes = calculateWorkedMinutesByDay(emp.id, empAttendances)
-        
+
         Object.entries(dailyMinutes).forEach(([dateStr, minutes]) => {
           const date = new Date(dateStr + 'T12:00:00Z')
           const weekNum = getWeekNumber(date)
@@ -1255,20 +1278,35 @@ export default function Rapports() {
       })
 
       const sortedWeeks = Object.keys(weeklyHours).sort((a, b) => parseInt(a) - parseInt(b))
-      
+
       if (sortedWeeks.length > 1) {
-        doc.addPage()
-        yPos = 20
-
-        const chartData5 = {
-          title: 'Évolution des Heures Travaillées par Semaine',
-          labels: sortedWeeks.map(w => `S${w}`),
-          values: sortedWeeks.map(w => Math.round(weeklyHours[w] / 60)),
-        }
-
-        const chart5Image = await createChartImage(chartData5, 'line')
-        doc.addImage(chart5Image, 'PNG', 10, yPos, pageWidth - 20, 90)
+        await poserGraphique(
+          'Évolution hebdomadaire',
+          {
+            title: 'Heures travaillées, semaine par semaine',
+            labels: sortedWeeks.map(w => `S${w}`),
+            values: sortedWeeks.map(w => Math.round(weeklyHours[w] / 60)),
+          },
+          'line',
+          DOC.brun
+        )
       }
+
+      // ═══ LE JOURNAL DES POINTAGES, SI ON L'A DEMANDÉ ═══
+      if (includePointages) {
+        const journal = construireJournalPointages({ attendances, employees, geofencesById })
+        ajouterJournalPointages(doc, {
+          lignes: journal,
+          periode: periodeLongue,
+          entreprise: selectedEnterpriseName,
+        })
+      }
+
+      numeroterPages(doc, {
+        titre: 'Rapport graphique',
+        entreprise: selectedEnterpriseName,
+        periode: periodeLongue,
+      })
 
       let enterpriseName = 'Toutes_Entreprises'
       if (selectedEntrepriseId !== 'all') {
@@ -1303,36 +1341,12 @@ export default function Rapports() {
         allSchedules,
         holidays,
         holidaySetByEnterprise,
-        holidayMapByEnterprise
+        holidayMapByEnterprise,
+        geofencesById
       } = await fetchReportData()
 
       const doc = new jsPDF()
-      const pageWidth = doc.internal.pageSize.getWidth()
-
-      const primaryColor = [245, 158, 11]
-      const darkColor = [20, 20, 35]
-      const redColor = [239, 68, 68]
-      const blueColor = [99, 102, 241]
-      const purpleColor = [139, 92, 246]
-      const grayColor = [100, 100, 100]
-
-      doc.setFillColor(...darkColor)
-      doc.rect(0, 0, pageWidth, 50, 'F')
-      doc.setFillColor(...primaryColor)
-      doc.rect(0, 48, pageWidth, 2, 'F')
-
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(28)
-      doc.setFont('helvetica', 'bold')
-      doc.text('EN-CHECK', pageWidth / 2, 20, { align: 'center' })
-
-      doc.setFontSize(14)
-      doc.setFont('helvetica', 'normal')
-      doc.text('Rapport de Pointage', pageWidth / 2, 30, { align: 'center' })
-
-      doc.setFontSize(11)
-      doc.setTextColor(...primaryColor)
-      doc.text(`${formatDateLong(dateDebut)} - ${formatDateLong(dateFin)}`, pageWidth / 2, 42, { align: 'center' })
+      const periodeLongue = `${formatDateLong(dateDebut)} — ${formatDateLong(dateFin)}`
 
       const totalEmployes = employees.length
       const joursOuvres = calculateWorkingDays(dateDebut, dateFin)
@@ -1385,130 +1399,123 @@ export default function Rapports() {
         return { emp, stats, absStats }
       })
 
-      let yPos = 60
+      const journal = includePointages
+        ? construireJournalPointages({ attendances, employees, geofencesById })
+        : []
 
-      const summaryHeight = includeHolidays
-        ? (nbSansPlanningRetards > 0 ? 74 : 64)
-        : (nbSansPlanningRetards > 0 ? 62 : 52)
+      // ═══ LA TÊTE ═══
+      let yPos = dessinerEntete(doc, {
+        titre: 'Rapport de pointage',
+        sousTitre: 'En-Check · les registres de craie',
+        periode: periodeLongue,
+        entreprise: selectedEnterpriseName,
+        complement: `Édité le ${new Date().toLocaleDateString('fr-FR')}${includePointages ? ' · journal des pointages inclus' : ''}`,
+      })
 
-      doc.setFillColor(248, 250, 252)
-      doc.roundedRect(14, yPos - 4, pageWidth - 28, summaryHeight, 3, 3, 'F')
-      doc.setDrawColor(230, 230, 230)
-      doc.roundedRect(14, yPos - 4, pageWidth - 28, summaryHeight, 3, 3, 'S')
+      // ═══ LE RÉSUMÉ ═══
+      const resume = [
+        { label: 'Employés', valeur: totalEmployes },
+        { label: 'Jours ouvrés', valeur: joursOuvres },
+        { label: 'Total travaillé', valeur: formatMinutesToHM(totalHeuresTravail) },
+      ]
 
-      doc.setTextColor(...darkColor)
-      doc.setFontSize(14)
-      doc.setFont('helvetica', 'bold')
-      doc.text('RESUME GENERAL', 20, yPos + 8)
-
-      doc.setFontSize(10)
-      doc.setFont('helvetica', 'normal')
-
-      const col1 = 20
-      const col2 = 85
-      const col3 = 145
-
-      doc.setTextColor(...grayColor)
-      doc.text(`Employes : ${totalEmployes}`, col1, yPos + 22)
-      doc.text(`Jours ouvres : ${joursOuvres}`, col2, yPos + 22)
-      doc.text(`Total travaille : ${formatMinutesToHM(totalHeuresTravail)}`, col3, yPos + 22)
-
-      let ligne2Y = yPos + 34
       if (includeRetards) {
-        doc.setTextColor(...redColor)
-        doc.text(`Retards : ${totalRetards}`, col1, ligne2Y)
-        doc.text(`Temps perdu : ${formatMinutesToHM(totalMinutesRetard)}`, col2, ligne2Y)
+        resume.push({ label: 'Retards', valeur: totalRetards, accent: DOC.rouge })
+        resume.push({ label: 'Temps perdu', valeur: formatMinutesToHM(totalMinutesRetard), accent: DOC.rouge })
       }
 
       if (includeHeuresSup && totalHeuresSup > 0) {
-        doc.setTextColor(...primaryColor)
-        doc.text(`Heures sup : ${formatMinutesToHM(totalHeuresSup)}`, includeRetards ? col3 : col1, ligne2Y)
+        resume.push({ label: 'Heures sup', valeur: formatMinutesToHM(totalHeuresSup), accent: DOC.ambre })
       }
 
-      let line3Y = yPos + 46
       if ((includeAbsences || includeConges) && totalAbsencesDays > 0) {
-        doc.setTextColor(...blueColor)
-        doc.text(`Jours d'absence : ${totalAbsencesDays}`, col1, line3Y)
+        resume.push({ label: 'Jours d’absence', valeur: totalAbsencesDays, accent: DOC.indigoTexte })
       }
 
       if (includeHolidays) {
-        doc.setTextColor(...purpleColor)
-        doc.text(`Jours feries : ${filteredHolidayRows.length}`, col2, line3Y)
-        doc.text(`Feries travailles : ${totalWorkedHolidays}`, col3, line3Y)
+        resume.push({ label: 'Jours fériés', valeur: filteredHolidayRows.length, accent: DOC.violet })
+        resume.push({ label: 'Fériés travaillés', valeur: totalWorkedHolidays, accent: DOC.violet })
       }
+
+      if (includePointages) {
+        resume.push({ label: 'Pointages', valeur: journal.length, accent: DOC.terre })
+      }
+
+      yPos = dessinerResume(doc, { y: yPos, entrees: resume, titre: 'Résumé de la période' })
 
       if (nbSansPlanningRetards > 0) {
-        doc.setTextColor(...grayColor)
+        doc.setFont('helvetica', 'italic')
+        doc.setFontSize(7.2)
+        doc.setTextColor(...DOC.encreDouce)
         doc.text(
-          `Note : ${nbSansPlanningRetards} employe(s) sans planning — retards non evalues`,
-          col1,
-          includeHolidays ? yPos + 58 : yPos + (includeRetards || includeHeuresSup ? 58 : 46)
+          `Note : ${nbSansPlanningRetards} employé(s) sans planning — retards non évalués.`,
+          MARGES.gauche + 1,
+          yPos
         )
+        yPos += 6
       }
 
-      yPos += summaryHeight + 10
+      // ═══ LE REGISTRE DES EMPLOYÉS ═══
+      yPos = dessinerTitreSection(doc, 'Registre des employés', yPos, DOC.terre)
 
-      const tableHeaders = ['Matricule', 'Nom Complet', 'Poste', 'Jours', 'Heures', 'Moy/J']
-      const columnStyles = {
-        0: { halign: 'center', cellWidth: 24 },
-        1: { halign: 'left', cellWidth: 42 },
-        2: { halign: 'left', cellWidth: 26 },
-        3: { halign: 'center', cellWidth: 14 },
-        4: { halign: 'center', cellWidth: 18 },
-        5: { halign: 'center', cellWidth: 16 },
-      }
-
-      let colIdx = 6
+      const tableHeaders = ['Matricule', 'Nom complet', 'Poste', 'Jours', 'Heures', 'Moy/J']
+      const poidsColonnes = [1.2, 2.45, 1.62, 0.86, 1.02, 0.92]
+      const alignements = ['center', 'left', 'left', 'center', 'center', 'center']
 
       if (includeRetards) {
         tableHeaders.push('Retards', 'Tps perdu')
-        columnStyles[colIdx] = { halign: 'center', cellWidth: 16 }
-        columnStyles[colIdx + 1] = { halign: 'center', cellWidth: 20 }
-        colIdx += 2
+        poidsColonnes.push(0.96, 1.05)
+        alignements.push('center', 'center')
       }
 
       if (includeHeuresSup) {
-        tableHeaders.push('H. Sup')
-        columnStyles[colIdx] = { halign: 'center', cellWidth: 18 }
-        colIdx++
+        tableHeaders.push('H. sup')
+        poidsColonnes.push(0.9)
+        alignements.push('center')
       }
 
       if (includeHolidays) {
-        tableHeaders.push('Feries')
-        columnStyles[colIdx] = { halign: 'center', cellWidth: 16 }
-        colIdx++
+        tableHeaders.push('Fériés')
+        poidsColonnes.push(0.86)
+        alignements.push('center')
       }
 
       if (includeAbsences || includeConges) {
         tableHeaders.push('Absences')
-        columnStyles[colIdx] = { halign: 'center', cellWidth: 18 }
+        poidsColonnes.push(1.12)
+        alignements.push('center')
       }
+
+      const columnStyles = colonnesProportionnelles(poidsColonnes, {
+        largeur: largeurUtile(doc),
+        halign: alignements,
+      })
 
       const tableData = employeesData.map(({ emp, stats, absStats }) => {
         const row = [
-          emp.matricule || '-',
+          emp.matricule || '—',
           `${emp.first_name} ${emp.last_name}`,
-          emp.position || '-',
+          emp.position || '—',
           stats.joursPresent.toString(),
           formatMinutesToHM(stats.totalMinutes),
           formatMinutesToHM(stats.moyenneMinutes),
         ]
 
         if (includeRetards) {
-          row.push(stats.hasPlanningRetards ? stats.retardsCount.toString() : '-')
-          row.push(stats.hasPlanningRetards ? formatMinutesToHM(stats.retardsMinutes) : '-')
+          row.push(stats.hasPlanningRetards ? stats.retardsCount.toString() : '—')
+          row.push(stats.hasPlanningRetards ? formatMinutesToHM(stats.retardsMinutes) : '—')
         }
 
         if (includeHeuresSup) {
-          row.push(stats.totalHeuresSupMinutes > 0 ? formatMinutesToHM(stats.totalHeuresSupMinutes) : '-')
+          row.push(stats.totalHeuresSupMinutes > 0 ? formatMinutesToHM(stats.totalHeuresSupMinutes) : '—')
         }
 
         if (includeHolidays) {
-          row.push(stats.workedHolidaysCount > 0 ? `${stats.workedHolidaysCount}` : '-')
+          row.push(stats.workedHolidaysCount > 0 ? `${stats.workedHolidaysCount}` : '—')
         }
 
         if (includeAbsences || includeConges) {
-          row.push(absStats.total > 0 ? `${absStats.total}j` : '-')
+          row.push(absStats.total > 0 ? `${absStats.total}j` : '—')
         }
 
         return row
@@ -1518,46 +1525,29 @@ export default function Rapports() {
         startY: yPos,
         head: [tableHeaders],
         body: tableData,
-        headStyles: {
-          fillColor: darkColor,
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          halign: 'center',
-          fontSize: 8,
-          cellPadding: 4,
-        },
-        bodyStyles: { fontSize: 8, cellPadding: 3 },
-        alternateRowStyles: { fillColor: [250, 250, 252] },
         columnStyles,
-        styles: { overflow: 'linebreak', font: 'helvetica' },
+        ...stylesTableau(DOC.terre),
         didParseCell: (data) => {
           if (includeRetards && data.section === 'body') {
             const retardsColStart = 6
             if (data.column.index === retardsColStart || data.column.index === retardsColStart + 1) {
-              if (data.cell.text[0] === '-') {
-                data.cell.styles.textColor = [150, 150, 150]
+              if (data.cell.text[0] === '—') {
+                data.cell.styles.textColor = DOC.craieFaible
               } else {
-                data.cell.styles.textColor = redColor
+                data.cell.styles.textColor = DOC.rouge
               }
             }
           }
         }
       })
 
+      // ═══ LES ANNEXES, À LA SUITE ═══
+      // Elles commencent sous le registre quand la place suffit, sinon
+      // sur une page neuve avec la bande gravée.
+      let yAnnexe = doc.lastAutoTable ? doc.lastAutoTable.finalY + 12 : null
+
+      // LES JOURS FÉRIÉS
       if (includeHolidays && filteredHolidayRows.length > 0) {
-        doc.addPage()
-
-        doc.setFillColor(...darkColor)
-        doc.rect(0, 0, pageWidth, 35, 'F')
-        doc.setFillColor(...purpleColor)
-        doc.rect(0, 33, pageWidth, 2, 'F')
-
-        doc.setTextColor(255, 255, 255)
-        doc.setFontSize(18)
-        doc.setFont('helvetica', 'bold')
-        doc.text('DETAIL DES JOURS FERIES', pageWidth / 2, 22, { align: 'center' })
-
-        const holidayHeaders = ['Date', 'Jour férié', 'Entreprise', 'Type', 'Taux']
         const holidayRows = filteredHolidayRows.map(h => [
           formatDateFr(h.date),
           h.name || 'Jour férié',
@@ -1568,44 +1558,31 @@ export default function Rapports() {
           `${h.overtime_rate ?? 100}%`,
         ])
 
-        autoTable(doc, {
-          startY: 45,
-          head: [holidayHeaders],
-          body: holidayRows,
-          headStyles: {
-            fillColor: purpleColor,
-            textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            fontSize: 9,
-            cellPadding: 4,
-          },
-          bodyStyles: { fontSize: 8, cellPadding: 3 },
-          alternateRowStyles: { fillColor: [248, 245, 255] },
-        })
+        yAnnexe = ajouterPageDetail(doc, {
+          titre: 'Détail des jours fériés',
+          sousTitre: `${holidayRows.length} jour${holidayRows.length > 1 ? 's' : ''} · ${periodeLongue}`,
+          accent: DOC.violet,
+          tete: ['Date', 'Jour férié', 'Entreprise', 'Type', 'Taux'],
+          lignes: holidayRows,
+          colonnes: colonnesProportionnelles([1.1, 2.8, 2.4, 1.5, 0.9], {
+            largeur: largeurUtile(doc),
+            halign: ['left', 'left', 'left', 'left', 'right'],
+          }),
+          continuer: true,
+          y: yAnnexe,
+          hauteurEstimee: 22 + holidayRows.length * 7,
+        }) + 12
       }
 
+      // LES ABSENCES ET CONGÉS
       if ((includeAbsences || includeConges) && absences.length > 0) {
-        doc.addPage()
-
-        doc.setFillColor(...darkColor)
-        doc.rect(0, 0, pageWidth, 35, 'F')
-        doc.setFillColor(...blueColor)
-        doc.rect(0, 33, pageWidth, 2, 'F')
-
-        doc.setTextColor(255, 255, 255)
-        doc.setFontSize(18)
-        doc.setFont('helvetica', 'bold')
-        doc.text('DETAIL DES ABSENCES ET CONGES', pageWidth / 2, 22, { align: 'center' })
-
-        const absHeaders = ['Employe', 'Type', 'Du', 'Au', 'Jours', 'Notes']
-
         const typeLabels = {
-          conge: 'Conge paye',
+          conge: 'Congé payé',
           maladie: 'Maladie',
-          maternite: 'Maternite/Paternite',
+          maternite: 'Maternité / paternité',
           formation: 'Formation',
           deces: 'Deuil',
-          injustifie: 'Absence injustifiee',
+          injustifie: 'Absence injustifiée',
           autre: 'Autre',
         }
 
@@ -1620,90 +1597,91 @@ export default function Rapports() {
               )
 
           return [
-            `${abs.employees?.first_name || ''} ${abs.employees?.last_name || ''}`.trim() || '-',
-            typeLabels[abs.reason] || abs.reason || '-',
+            `${abs.employees?.first_name || ''} ${abs.employees?.last_name || ''}`.trim() || '—',
+            typeLabels[abs.reason] || abs.reason || '—',
             formatDateFr(abs.start_date),
             formatDateFr(abs.end_date),
             `${days}j`,
-            (abs.notes || '-').substring(0, 35) + (abs.notes?.length > 35 ? '...' : ''),
+            (abs.notes || '—').substring(0, 35) + (abs.notes?.length > 35 ? '…' : ''),
           ]
         })
 
-        autoTable(doc, {
-          startY: 45,
-          head: [absHeaders],
-          body: absData,
-          headStyles: {
-            fillColor: blueColor,
-            textColor: [255, 255, 255],
-            fontStyle: 'bold',
-            fontSize: 9,
-            cellPadding: 4,
-          },
-          bodyStyles: { fontSize: 8, cellPadding: 3 },
-          alternateRowStyles: { fillColor: [245, 247, 255] },
-        })
+        yAnnexe = ajouterPageDetail(doc, {
+          titre: 'Absences et congés',
+          sousTitre: `${absData.length} absence${absData.length > 1 ? 's' : ''} · ${periodeLongue}`,
+          accent: DOC.indigoTexte,
+          tete: ['Employé', 'Motif', 'Du', 'Au', 'Jours', 'Notes'],
+          lignes: absData,
+          colonnes: colonnesProportionnelles([2.4, 2.6, 1.2, 1.2, 0.8, 2.2], {
+            largeur: largeurUtile(doc),
+            halign: ['left', 'left', 'left', 'left', 'right', 'left'],
+          }),
+          continuer: true,
+          y: yAnnexe,
+          hauteurEstimee: 22 + absData.length * 7,
+        }) + 12
       }
 
+      // LES HEURES SUPPLÉMENTAIRES
       if (includeHeuresSup) {
         const employeesWithOvertime = employeesData.filter(({ stats }) => stats.totalHeuresSupMinutes > 0)
 
         if (employeesWithOvertime.length > 0) {
-          doc.addPage()
-
-          doc.setFillColor(...darkColor)
-          doc.rect(0, 0, pageWidth, 35, 'F')
-          doc.setFillColor(...primaryColor)
-          doc.rect(0, 33, pageWidth, 2, 'F')
-
-          doc.setTextColor(255, 255, 255)
-          doc.setFontSize(18)
-          doc.setFont('helvetica', 'bold')
-          doc.text('DETAIL DES HEURES SUPPLEMENTAIRES', pageWidth / 2, 22, { align: 'center' })
-
-          const otHeaders = [
-            'Matricule', 'Employe', 'Heures travaillees',
-            'Seuil', 'H. Sup normales', 'H. Sup majorees', 'Total H. Sup',
-          ]
+          const otHeaders = ['Matricule', 'Employé', 'Travail', 'Seuil', 'H. sup', 'Majorées', 'Total']
+          const poidsSup = [1.2, 2.6, 1.2, 1.1, 1.05, 1.15, 1]
+          const alignSup = ['center', 'left', 'center', 'center', 'center', 'center', 'center']
 
           if (includeHolidays) {
-            otHeaders.push('Fériés travaillés')
+            otHeaders.push('Fériés')
+            poidsSup.push(0.8)
+            alignSup.push('center')
           }
 
           const otData = employeesWithOvertime.map(({ emp, stats }) => {
             const row = [
-              emp.matricule || '-',
+              emp.matricule || '—',
               `${emp.first_name} ${emp.last_name}`,
               formatMinutesToHM(stats.totalMinutes),
               formatMinutesToHM(stats.dailyThresholdMinutes) + '/j',
               formatMinutesToHM(stats.heuresSupMinutes),
-              stats.heuresSupMajorees > 0 ? formatMinutesToHM(stats.heuresSupMajorees) : '-',
+              stats.heuresSupMajorees > 0 ? formatMinutesToHM(stats.heuresSupMajorees) : '—',
               formatMinutesToHM(stats.totalHeuresSupMinutes),
             ]
-
-            if (includeHolidays) {
-              row.push(stats.workedHolidaysCount > 0 ? `${stats.workedHolidaysCount}` : '-')
-            }
-
+            if (includeHolidays) row.push(stats.workedHolidaysCount > 0 ? `${stats.workedHolidaysCount}` : '—')
             return row
           })
 
-          autoTable(doc, {
-            startY: 45,
-            head: [otHeaders],
-            body: otData,
-            headStyles: {
-              fillColor: primaryColor,
-              textColor: [0, 0, 0],
-              fontStyle: 'bold',
-              fontSize: 8,
-              cellPadding: 4,
-            },
-            bodyStyles: { fontSize: 8, cellPadding: 3 },
-            alternateRowStyles: { fillColor: [255, 251, 245] },
-          })
+          yAnnexe = ajouterPageDetail(doc, {
+            titre: 'Heures supplémentaires',
+            sousTitre: `${otData.length} employé${otData.length > 1 ? 's' : ''} · ${periodeLongue}`,
+            accent: DOC.ambre,
+            tete: otHeaders,
+            lignes: otData,
+            colonnes: colonnesProportionnelles(poidsSup, {
+              largeur: largeurUtile(doc),
+              halign: alignSup,
+            }),
+            continuer: true,
+            y: yAnnexe,
+            hauteurEstimee: 22 + otData.length * 7,
+          }) + 12
         }
       }
+
+      // ═══ ANNEXE : LE JOURNAL DES POINTAGES ═══
+      if (includePointages) {
+        ajouterJournalPointages(doc, {
+          lignes: journal,
+          periode: periodeLongue,
+          entreprise: selectedEnterpriseName,
+        })
+      }
+
+      numeroterPages(doc, {
+        titre: 'Rapport de pointage',
+        entreprise: selectedEnterpriseName,
+        periode: periodeLongue,
+      })
 
       let enterpriseName = 'Toutes_Entreprises'
       if (selectedEntrepriseId !== 'all') {
@@ -1738,14 +1716,31 @@ export default function Rapports() {
         allSchedules,
         holidays,
         holidaySetByEnterprise,
-        holidayMapByEnterprise
+        holidayMapByEnterprise,
+        geofencesById
       } = await fetchReportData()
 
-      const headers = ['Matricule', 'Nom', 'Prénom', 'Poste', 'Département', 'Jours Présent', 'Heures Total', 'Moyenne/Jour']
-      if (includeRetards) headers.push('Nb Retards', 'Temps Retard', 'Planning Retards')
-      if (includeHeuresSup) headers.push('Heures Sup', 'H.Sup Majorées', 'Total H.Sup')
+      const periodeCourte = `${formatDateFr(dateDebut)} au ${formatDateFr(dateFin)}`
+      const titreDocument = `En-Check — Rapport de pointage — ${periodeCourte}`
+
+      const headers = ['Matricule', 'Nom', 'Prénom', 'Poste', 'Département', 'Jours présent', 'Heures total', 'Moyenne/jour']
+      if (includeRetards) headers.push('Nb retards', 'Temps retard', 'Planning retards')
+      if (includeHeuresSup) headers.push('Heures sup', 'H. sup majorées', 'Total H. sup')
       if (includeHolidays) headers.push('Fériés travaillés', 'Minutes fériées')
       if (includeAbsences || includeConges) headers.push('Congés (j)', 'Maladie (j)', 'Autre (j)')
+      if (includePointages) headers.push('Pointages')
+
+      const journal = includePointages
+        ? construireJournalPointages({ attendances, employees, geofencesById })
+        : []
+
+      const pointagesParEmploye = new Map()
+      if (includePointages) {
+        journal.forEach(p => {
+          const cle = p.matricule
+          pointagesParEmploye.set(cle, (pointagesParEmploye.get(cle) || 0) + 1)
+        })
+      }
 
       const rows = employees.map(emp => {
         const stats = calculateEmployeeStats(
@@ -1800,6 +1795,10 @@ export default function Rapports() {
           row.push(absStats.autre)
         }
 
+        if (includePointages) {
+          row.push(pointagesParEmploye.get(emp.matricule || '') || 0)
+        }
+
         return row
       })
 
@@ -1821,14 +1820,70 @@ export default function Rapports() {
             ])
         : []
 
+      const absencesRows = (includeAbsences || includeConges) && absences.length > 0
+        ? absences.map(abs => [
+            `${abs.employees?.first_name || ''} ${abs.employees?.last_name || ''}`.trim(),
+            abs.employees?.matricule || '',
+            abs.reason || '',
+            formatDateFr(abs.start_date),
+            formatDateFr(abs.end_date),
+            includeNonWorkedHolidays
+              ? calcBusinessDays(abs.start_date, abs.end_date)
+              : HolidayService.countWorkingDays(
+                  abs.start_date,
+                  abs.end_date,
+                  holidaySetByEnterprise[abs.enterprise_id] || new Set(),
+                  true
+                ),
+            (abs.notes || '').replace(/;/g, ','),
+          ])
+        : []
+
+      const journalLignes = includePointages
+        ? journal.map(p => [
+            p.date,
+            p.heure,
+            p.matricule,
+            p.nom,
+            p.prenom,
+            p.sens,
+            p.dansZone,
+            p.distance,
+            p.precision,
+            p.methode,
+            p.autoCloture,
+            p.suspect,
+            (p.motifSuspect || '').replace(/;/g, ','),
+            p.zone,
+            p.latitude,
+            p.longitude,
+          ])
+        : []
+
       const csvContent = [
-        `Rapport En-Check - ${formatDateFr(dateDebut)} au ${formatDateFr(dateFin)}`,
-        includeRetards ? 'Note: Les employés sans planning (N/A) ne sont pas évalués pour les retards.' : '',
-        includeHolidays ? `Jours fériés inclus: ${includeWorkedHolidays ? 'Travaillés ' : ''}${includeNonWorkedHolidays ? 'Non travaillés' : ''}` : '',
+        titreDocument,
+        `Entreprise;${selectedEnterpriseName}`,
+        includeRetards ? 'Note;Les employés sans planning (N/A) ne sont pas évalués pour les retards.' : '',
+        includeHolidays ? `Jours fériés inclus;${includeWorkedHolidays ? 'Travaillés ' : ''}${includeNonWorkedHolidays ? 'Non travaillés' : ''}` : '',
+        includePointages ? `Pointages;${journal.length}` : '',
         '',
+        'REGISTRE DES EMPLOYÉS',
         headers.join(';'),
         ...rows.map(row => row.join(';')),
-        ...(includeHolidays && holidayRows.length > 0 ? ['', 'DETAIL JOURS FERIES', 'Date;Nom;Entreprise;Type;Taux', ...holidayRows.map(r => r.join(';'))] : [])
+        ...(includeHolidays && holidayRows.length > 0
+          ? ['', 'DETAIL JOURS FERIES', 'Date;Nom;Entreprise;Type;Taux', ...holidayRows.map(r => r.join(';'))]
+          : []),
+        ...(absencesRows.length > 0
+          ? ['', 'DETAIL ABSENCES ET CONGES', 'Employé;Matricule;Motif;Du;Au;Jours;Notes', ...absencesRows.map(r => r.join(';'))]
+          : []),
+        ...(journalLignes.length > 0
+          ? [
+              '',
+              'JOURNAL DES POINTAGES',
+              'Date;Heure;Matricule;Nom;Prénom;Sens;Zone GPS;Distance;Précision (m);Méthode;Clôture auto;Suspect;Motif suspect;Zone;Latitude;Longitude',
+              ...journalLignes.map(r => r.join(';')),
+            ]
+          : []),
       ].filter(line => line !== null).join('\n')
 
       const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -1921,6 +1976,16 @@ export default function Rapports() {
       bascule: () => setIncludeHolidays(v => !v),
       bloque: false,
     },
+    {
+      cle: 'pointages',
+      ton: 'terre',
+      Icone: MapPin,
+      titre: 'Pointages',
+      desc: 'Le journal brut : heures, zones, GPS',
+      actif: includePointages,
+      bascule: () => setIncludePointages(v => !v),
+      bloque: false,
+    },
   ]
 
   const CONTENUS = [
@@ -1934,6 +1999,7 @@ export default function Rapports() {
     { libelle: 'Détail des congés', Icone: CalendarDays, ton: 'ok', actif: includeConges },
     { libelle: 'Registre des absences', Icone: CalendarOff, ton: 'indigo', actif: includeAbsences },
     { libelle: 'Jours fériés, travaillés ou non', Icone: Calendar, ton: 'violet', actif: includeHolidays },
+    { libelle: 'Journal des pointages (entrées, sorties, zones)', Icone: MapPin, ton: 'terre', actif: includePointages },
   ]
 
   return (
@@ -2230,7 +2296,7 @@ export default function Rapports() {
                 </span>
               </div>
 
-              {(includeRetards || includeHeuresSup || includeConges || includeAbsences || includeHolidays) && (
+              {(includeRetards || includeHeuresSup || includeConges || includeAbsences || includeHolidays || includePointages) && (
                 <div className="rp-etiquettes">
                   {includeRetards && (
                     <span className="rp-etiquette-ton" data-ton="alerte">
@@ -2255,6 +2321,11 @@ export default function Rapports() {
                   {includeHolidays && (
                     <span className="rp-etiquette-ton" data-ton="violet">
                       <Calendar size={10} aria-hidden="true" /> Fériés
+                    </span>
+                  )}
+                  {includePointages && (
+                    <span className="rp-etiquette-ton" data-ton="terre">
+                      <MapPin size={10} aria-hidden="true" /> Pointages
                     </span>
                   )}
                 </div>
@@ -2287,6 +2358,12 @@ export default function Rapports() {
                       <div className="rp-mesure" data-ton="violet">
                         <span className="rp-mesure-valeur">{previewData.totalHolidayDays}</span>
                         <span className="rp-mesure-libelle">Fériés</span>
+                      </div>
+                    )}
+                    {includePointages && (
+                      <div className="rp-mesure" data-ton="terre">
+                        <span className="rp-mesure-valeur">{previewData.totalPointages}</span>
+                        <span className="rp-mesure-libelle">Pointages</span>
                       </div>
                     )}
                   </div>
