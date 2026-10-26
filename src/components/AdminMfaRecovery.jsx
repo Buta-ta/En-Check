@@ -1,3 +1,4 @@
+import { accountRpc } from '../services/adminAccounts'
 import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
@@ -18,10 +19,53 @@ export default function AdminMfaRecovery({ account, currentId }) {
         <p>
           Après vérification de l’identité du titulaire, retire les facteurs
           perdus. Votre propre MFA doit être vérifiée (AAL2). Le titulaire devra
-          réinscrire un authentificateur. Ses sessions existantes seront bloquées
-          pour REST/RPC, mais pas pour les autres canaux.
+          réinscrire un authentificateur. L’obligation MFA est conservée ou
+          créée. Les sessions antérieures sont refusées par les contrôles
+          intégrés ; les copies téléchargées et les liens déjà signés ne sont
+          pas effacés.
+        </p>
+        <p>
+          La confirmation de l’adresse ne prouve pas l’identité : vérifiez le
+          titulaire par un canal connu avant cette intervention.
         </p>
       </AdminExplication>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={async () => {
+          if (lock.current) return
+          lock.current = true
+          setBusy(true)
+          try {
+            await ensureMfa()
+            const result = await accountRpc('encheck_mfa_recovery_status_v2', {
+              p_target_id: account.id,
+            })
+            const labels = {
+              none: 'Aucune récupération enregistrée.',
+              pending:
+                'Intervention préparée. Ne la relancez pas : vérification opérateur requise si elle reste en attente.',
+              running:
+                'Intervention en cours ou interrompue. Ne la relancez pas sans vérification opérateur.',
+              failed:
+                'Intervention non confirmée ou partielle. L’accès reste bloqué ; vérifiez la cause avant une nouvelle demande.',
+              completed:
+                'Facteurs retirés. Le titulaire doit ouvrir une nouvelle session et réinscrire son authentificateur. L’obligation MFA reste active.',
+            }
+            if (!labels[result?.state]) throw Error()
+            setMessage(labels[result.state])
+          } catch {
+            setMessage(
+              'État indisponible. Aucun succès confirmé ; vérifiez votre MFA et la migration serveur.',
+            )
+          } finally {
+            lock.current = false
+            setBusy(false)
+          }
+        }}
+      >
+        Consulter l’état de récupération
+      </button>
       <form
         onSubmit={async (e) => {
           e.preventDefault()
@@ -41,15 +85,15 @@ export default function AdminMfaRecovery({ account, currentId }) {
               'admin-mfa-recovery',
               { body: { target_id: account.id, confirm_email: email, reason } },
             )
-            if (error || !data?.completed) throw new Error()
+            if (error || data?.completed !== true) throw new Error()
             setEmail('')
             setReason('')
             setMessage(
-              'Facteurs retirés. Invitez le titulaire à réinscrire un authentificateur et vérifiez ses sessions.',
+              'Facteurs retirés. Le titulaire doit se reconnecter puis réinscrire son authentificateur. L’obligation MFA reste active.',
             )
           } catch {
             setMessage(
-              'Récupération non confirmée. Vérifiez votre MFA, le délai de deux minutes et le journal avant de réessayer.',
+              'Récupération non confirmée. Consultez son état avant toute nouvelle demande ; ne relancez pas une intervention en attente ou en cours.',
             )
           } finally {
             lock.current = false

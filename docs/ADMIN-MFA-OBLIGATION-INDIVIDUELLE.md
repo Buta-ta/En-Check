@@ -54,6 +54,11 @@ déjà enregistrées. Aucune rétrogradation automatique en accès par mot de pa
 
 ## Suite : récupération et recette avant généralisation
 
+Le raccordement de récupération v2 est désormais codé : voir
+[le contrat020 et ses limites](ADMIN-MFA-RECUPERATION-V2.md). Il n'est pas encore
+déployé ni activé ; les prérequis de recette ci-dessous restent applicables.
+
+
 La récupération existante n'est pas déployée par cette livraison. La raccorder ensuite
 sans supprimer la ligne d'obligation : vérification d'identité, intervention autorisée
 et auditée, invalidation des facteurs perdus et des sessions, nouvel enrôlement par le

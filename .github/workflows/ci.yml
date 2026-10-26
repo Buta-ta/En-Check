@@ -42,6 +42,9 @@ jobs:
       - name: Contrôle Edge photos et codec JPEG sans EXIF
         run: bash scripts/test-pointage-photo-codec.sh
 
+      - name: Contrôle Edge récupération MFA
+        run: bash scripts/check-admin-mfa-recovery.sh
+
       - name: Exécution des tests unitaires financiers (VD-15)
         run: npm test
 
