@@ -84,6 +84,17 @@ it('requires explicit scoped creation after MFA and allows hiding the one-time s
   )
   expect(host.querySelector('input[readonly]')).toBeNull()
 })
+it('shows an explicit empty state after loading with MFA', async () => {
+  await mount()
+  await act(async () => {
+    [...host.querySelectorAll('button')]
+      .find((b) => b.textContent.includes('Charger les bornes'))
+      .click()
+  })
+  expect(mock.mfa).toHaveBeenCalledTimes(1)
+  expect(mock.rpc).toHaveBeenCalledWith('encheck_bornes_lister', {})
+  expect(host.textContent).toContain('Aucune borne autorisée')
+})
 it('does not echo raw server errors that could contain credentials', async () => {
   await mount()
   await fill()

@@ -8,8 +8,17 @@ est ajouté sous les rôles pour les superadministrateurs.
 ## Mise à jour MFA — 26 octobre, après livraison initiale
 
 Le socle minimal018 et la configuration du hook REST ont maintenant été exécutés.
-Le titulaire doit encore enrôler et tester son facteur ; aucune borne autorisée
-automatiquement. Voir [le compte rendu et les étapes](ADMIN-MFA-ACTIVATION-20261026.md).
+Le titulaire a enrôlé un facteur (statut **Vérifié**) et testé une connexion
+privée où le code a été demandé et accepté. Recette borne exécutée ensuite via
+Admin → Rôles → Bornes : `borne-recette-01` créée (EN-NOUS, 30 j), secret
+présenté une seule fois puis renouvelé, puis borne révoquée ; audit privé
+`pointage_borne_events` : created 16:53:27Z, rotated 16:56:38Z, revoked
+16:56:59Z, motif « Recette borne » à chaque intervention. La borne de recette
+reste révoquée (identifiant réservé, pas de réactivation). Recette RPC côté
+serveur : appareil inconnu / secret erroné refusés avec le même message générique,
+secret valide → jeton bk1_ (bail 24 h), snapshot 4 employés actifs aux champs
+attendus, reconnexion invalidant l'ancien jeton, jeton falsifié refusé.
+Voir [le compte rendu et les étapes](ADMIN-MFA-ACTIVATION-20261026.md).
 Les constats MFA ci-dessous décrivent le préflight initial, pas cet état actualisé.
 La fermeture Storage et la recette tablette restent en attente.
 
@@ -23,7 +32,8 @@ La fermeture Storage et la recette tablette restent en attente.
   `verify_jwt=false` est intentionnel : jeton applicatif validé par RPC015,
   pas un JWT Supabase Auth. Aucune clé service_role dans le client.
 - Post-check live : tables privées, helper inaccessible à anon, administration
-  inaccessible à anon ; appels sans jeton refusés. **Zéro borne créée.**
+  inaccessible à anon ; appels sans jeton refusés. Aucune borne réelle
+  provisionnée ; seule la borne de recette (créée puis révoquée, ci-dessus).
 - **Aucun superadmin actif avec facteur MFA vérifié** au préflight. La fonction
   générale `encheck_account_security_status()` est absente. Le socle MFA Admin
   doit être activé/validé, puis le titulaire doit lui-même enrôler son facteur,
