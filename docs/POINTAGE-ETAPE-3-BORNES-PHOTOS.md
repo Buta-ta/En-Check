@@ -5,6 +5,14 @@ Le dépôt Pointage reste sous la responsabilité de son équipe : aucune modifi
 faite ici dans ce dépôt tiers. Pas de redesign Admin ; un volet fonctionnel replié
 est ajouté sous les rôles pour les superadministrateurs.
 
+## Mise à jour MFA — 26 octobre, après livraison initiale
+
+Le socle minimal018 et la configuration du hook REST ont maintenant été exécutés.
+Le titulaire doit encore enrôler et tester son facteur ; aucune borne autorisée
+automatiquement. Voir [le compte rendu et les étapes](ADMIN-MFA-ACTIVATION-20261026.md).
+Les constats MFA ci-dessous décrivent le préflight initial, pas cet état actualisé.
+La fermeture Storage et la recette tablette restent en attente.
+
 ## Déploiement et limites réelles
 
 - Migrations 016/017 exécutées sur `cxggndvhwdolbtyezjde`, noms historiques
