@@ -16,6 +16,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import autoTable from 'jspdf-autotable'
+import { texteImprimable } from './textePdf'
 
 // ── La palette imprimée ────────────────────────────────────
 
@@ -155,6 +156,14 @@ export function dessinerEntete(doc, {
 } = {}) {
   const largeur = doc.internal.pageSize.getWidth ? doc.internal.pageSize.getWidth() : LARGEUR_PAGE
 
+  //  Ce que la police ne sait pas dessiner ne part pas dans le document :
+  //  une flèche entre deux dates sortait en « !’ ».
+  titre = texteImprimable(titre)
+  sousTitre = texteImprimable(sousTitre)
+  periode = texteImprimable(periode)
+  entreprise = texteImprimable(entreprise)
+  complement = texteImprimable(complement)
+
   doc.setFillColor(...DOC.indigo)
   doc.rect(0, 0, largeur, 42, 'F')
   doc.setFillColor(...DOC.terre)
@@ -195,6 +204,12 @@ export function dessinerEntete(doc, {
  */
 export function dessinerResume(doc, { y = 50, entrees = [], titre = 'Résumé de la période' } = {}) {
   if (!entrees.length) return y
+  titre = texteImprimable(titre)
+  entrees = entrees.map(e => ({
+    ...e,
+    label: texteImprimable(e.label),
+    valeur: texteImprimable(e.valeur),
+  }))
 
   const largeur = (doc.internal.pageSize.getWidth ? doc.internal.pageSize.getWidth() : LARGEUR_PAGE) - MARGES.gauche - MARGES.droite
   const colonnes = 3
@@ -251,6 +266,7 @@ export function dessinerResume(doc, { y = 50, entrees = [], titre = 'Résumé de
 
 /** Un petit carré de terre, un titre, un filet : comme sur la page. */
 export function dessinerTitreSection(doc, texte, y, accent = DOC.terre) {
+  texte = texteImprimable(texte)
   const largeur = (doc.internal.pageSize.getWidth ? doc.internal.pageSize.getWidth() : LARGEUR_PAGE) - MARGES.gauche - MARGES.droite
 
   doc.setFillColor(...accent)
@@ -298,6 +314,18 @@ export function colonnesProportionnelles(poids, { largeur = LARGEUR_PAGE - MARGE
 
 // ── Les tableaux ───────────────────────────────────────────
 
+/**
+ * Nettoie le texte d'une cellule. Branché deux fois : à la composition
+ * (`didParseCell`) et au moment de peindre (`willDrawCell`), pour qu'un
+ * tableau qui pose son propre `didParseCell` — les couleurs de retard,
+ * par exemple — ne puisse pas laisser passer de charabia.
+ */
+export function nettoyerCellule(data) {
+  if (Array.isArray(data?.cell?.text)) {
+    data.cell.text = data.cell.text.map(texteImprimable)
+  }
+}
+
 /** Le contrat de style commun à tous les registres du document. */
 export function stylesTableau(accent = DOC.terre) {
   return {
@@ -322,6 +350,10 @@ export function stylesTableau(accent = DOC.terre) {
     alternateRowStyles: { fillColor: DOC.bande },
     styles: { overflow: 'linebreak', font: 'helvetica' },
     // le filet de terre sous la ligne de tête, un trait de craie entre les lignes
+    didParseCell: nettoyerCellule,
+    //  Et au moment de peindre : un tableau qui pose ses propres couleurs
+    //  (didParseCell) ne peut pas laisser passer de charabia pour autant.
+    willDrawCell: nettoyerCellule,
     didDrawCell: (data) => {
       if (data.section === 'head' && data.row.index === 0) {
         data.doc.setFillColor(...accent)
@@ -361,6 +393,11 @@ export function ajouterPageDetail(doc, {
   y = null,
   hauteurEstimee = null,
 } = {}) {
+  titre = texteImprimable(titre)
+  sousTitre = texteImprimable(sousTitre)
+  tete = tete.map(texteImprimable)
+  lignes = lignes.map(ligne => (Array.isArray(ligne) ? ligne.map(texteImprimable) : ligne))
+
   const besoin = hauteurEstimee ?? (26 + Math.min(lignes.length, 6) * 7)
 
   if (continuer && y !== null && y + besoin < 272) {
@@ -556,6 +593,9 @@ export function ajouterJournalPointages(doc, {
 
 /** Numérote chaque page et rappelle de quel document il s'agit. */
 export function numeroterPages(doc, { titre = 'Rapport de pointage', entreprise = '', periode = '' } = {}) {
+  titre = texteImprimable(titre)
+  entreprise = texteImprimable(entreprise)
+  periode = texteImprimable(periode)
   const pages = doc.internal.getNumberOfPages()
   const largeur = doc.internal.pageSize.getWidth ? doc.internal.pageSize.getWidth() : LARGEUR_PAGE
 
