@@ -202,9 +202,17 @@ function AdminRoute({ children, requireSuperAdmin = false }) {
 // ═══════════════════════════════════════════════════════════
 function SessionListener() {
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
         if (!session) {
+          // Se reconnecter alors qu'une session existe dans le stockage émet
+          // SIGNED_OUT (ancienne session) juste avant SIGNED_IN (nouvelle).
+          // Attendre un instant et re-vérifier avant de conclure que la
+          // session est perdue : un forçage immédiat vers /login tue sinon
+          // le défi MFA en cours (« code demandé puis page renvoyée »).
+          await new Promise((resolve) => setTimeout(resolve, 800))
+          const { data } = await supabase.auth.getSession()
+          if (data?.session) return
           // Session expirée côté Supabase → nettoyer le localStorage
           localStorage.removeItem('admin')
           localStorage.removeItem('last_enterprise_id')

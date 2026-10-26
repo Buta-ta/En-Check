@@ -3,11 +3,14 @@
 ## État réel au 26 octobre 2026
 
 Code intégré à la fiche Admin existante et à l'Edge `admin-mfa-recovery`.
-**Migration020 et nouvelle Edge NON déployées par ce lot.** Aucun compte ou facteur
-réel modifié, aucune obligation imposée, aucun secret Auth récupéré pour les tests.
-Préflight live en lecture seule : socle018 présent, RPC d'obligation019 absente,
-récupération historique et v2 absentes, zéro superadmin actif avec facteur vérifié.
-La configuration d'une obligation et la récupération restent désactivées.
+**Migration020 APPLIQUÉE en production** (`admin_mfa_recovery_v2`) et **Edge
+`admin-mfa-recovery` DÉPLOYÉE** (version 1, ACTIVE, `verify_jwt=false`, secret
+`ADMIN_APP_ORIGIN=https://en-check.vercel.app`). La fonction historique
+`encheck_mfa_recovery_prepare` (005) a été révoquée ; table `admin_mfa_recoveries_v2`
+vide, zéro intervention. Aucun compte ou facteur réel modifié, aucune obligation
+imposée, aucun secret Auth récupéré pour les tests. La préparation de récupération
+(`prepare_v2`) reste **désactivée** tant que l'activation coordonnée 019 est
+désactivée — elle l'est après installation.
 
 ## Parcours et contrôles
 

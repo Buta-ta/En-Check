@@ -179,10 +179,14 @@ Admin conserve `PhotoSignee` et sa signature habituelle (3600s), déjà compatib
 avec les références authenticated. La nouvelle durée300s concerne le broker
 personnel, pas toutes les images du produit. Tester photos historiques ET nouvelles.
 
-## 5. Fermeture coordonnée — NON APPLIQUÉE
+## 5. Fermeture coordonnée — APPLIQUÉE (26 octobre 2026, conservée)
 
 Script `supabase/outils-sql/20261026_fermer_acces_direct_photos_enrolement.sql` :
 policies RESTRICTIVE, donc les anciennes policies larges ne les contournent pas.
+**Exécuté en production le 26 octobre 2026** ; le choix du titulaire est de
+**conserver** cette fermeture. Matrice vérifiée après bascule : anon 0/10 refusés,
+employé 0/10 refusés, admin sans AAL2 0/10 refusés, admin AAL2 + session valide
+10/10 autorisés, service_role BYPASSRLS.
 - SELECT anon refusé ; Auth seulement admin/manager actif dans son entreprise ou
   superadmin, UID unique + session Auth valide, guard général respecté s'il existe.
 - INSERT/UPDATE/DELETE directs anon/auth refusés pour ce bucket ; service_role reste
@@ -190,16 +194,16 @@ policies RESTRICTIVE, donc les anciennes policies larges ne les contournent pas.
 - Le script est transactionnel/réexécutable et testé sur base isolée avec policies
   permissives préexistantes. **Ne pas le déplacer dans migrations sans feu vert.**
 
-Ordre de bascule :
+Ordre de bascule (état au 26 octobre 2026) :
 1. Pointage confirme intégration v2 + photo Edge, sans fallback direct.
 2. Socle Admin/MFA opérationnel, facteur enrôlé par le titulaire, vraie borne autorisée.
 3. Recette croisée : personnel PIN/QR, entre entreprises, statuts pending/rejected,
    départ d'employé, rotation/révocation, expiration/reconnexion, offline et horloge,
    horaires/jour/nuit, Admin lecture photos anciennes/nouvelles, ADMS non régressé.
-4. Exécuter la fermeture Storage après accord commun ; vérifier anon interdit,
-   owner Edge autorisé, autre employé interdit, Admin légitime autorisé.
+4. **Fait** — fermeture Storage exécutée en production (matrice ci-dessus) ; le
+   socle Admin (001–010) et MFA (018/019/020 + Edge) sont installés le même jour.
 5. Auditer/fermer séparément anciennes RPC visage/direct tables ; aligner TTL et
-   sessions anciennes sans révoquer massivement ni casser ADMS.
+   sessions anciennes sans révoquer massivement ni casser ADMS. **En attente.**
 
 Ne pas annoncer « photos entièrement privées » ou « bascule terminée » avant4/5.
 Une éventuelle marche arrière doit être explicitement coordonnée ; ne jamais
