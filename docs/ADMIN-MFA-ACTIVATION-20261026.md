@@ -25,6 +25,13 @@ par l'agent. L'écran doit confirmer `rest_guard_active=true` avant d'autoriser
 l'inscription. Si le bouton reste désactivé, ne pas le forcer : vérifier le
 rechargement PostgREST et la session Auth.
 
+## Recette titulaire réussie — 26 octobre, en fin de journée
+
+Le titulaire a exécuté les étapes ci-dessus : facteur Google Authenticator inscrit
+et **Vérifié**, puis nouvelle connexion en fenêtre privée où le code a été demandé
+et accepté avant l'accès aux données Admin. Le scan TOTP natif, que l'agent ne
+peut pas réaliser à sa place, est donc couvert par la recette du titulaire.
+
 ## Ce que protège ce socle
 
 REST/RPC : admin actif, UID unique, session Auth présente/non expirée/non révoquée.

@@ -190,6 +190,9 @@ export default function AdminBornes({ enterprises = [] }) {
           </section>
         )}
         {message && <p role="status">{message}</p>}
+        {rows && rows.length === 0 && (
+          <p role="status">Aucune borne autorisée pour l’instant.</p>
+        )}
         {rows && (
           <ul>
             {rows.map((b) => (
