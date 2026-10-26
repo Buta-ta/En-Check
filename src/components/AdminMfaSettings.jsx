@@ -1,13 +1,17 @@
+import { adminMfaErrorMessage } from '../services/adminMfaErrors'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import AdminExplication from './AdminExplication'
 import { accountRpc } from '../services/adminAccounts'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
-export default function AdminMfaSettings({ statusRpc = 'encheck_account_security_status' }) {
+export default function AdminMfaSettings({
+  statusRpc = 'encheck_account_security_status',
+}) {
   const [factors, setFactors] = useState([]),
     [enrollment, setEnrollment] = useState(null),
     [code, setCode] = useState(''),
     [error, setError] = useState(''),
+    [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true)
   const [serverReady, setServerReady] = useState(false)
@@ -55,12 +59,11 @@ export default function AdminMfaSettings({ statusRpc = 'encheck_account_security
     lock.current = true
     setBusy(true)
     setError('')
+    setNotice('')
     try {
       await action()
-    } catch {
-      setError(
-        'Opération non confirmée. Vérifiez votre connexion et réessayez.',
-      )
+    } catch (err) {
+      setError(adminMfaErrorMessage(err))
     } finally {
       setBusy(false)
       lock.current = false
@@ -82,17 +85,33 @@ export default function AdminMfaSettings({ statusRpc = 'encheck_account_security
   async function verify(event) {
     event.preventDefault()
     await run(async () => {
-      if (!/^\d{6}$/.test(code)) throw Error()
-      const result = await supabase.auth.mfa.challengeAndVerify({
-        factorId: enrollment.id,
-        code,
-      })
-      if (result.error) throw result.error
-      setEnrollment(null)
-      setCode('')
-      await load()
+      try {
+        if (!/^\d{6}$/.test(code)) throw { code: 'mfa_code_format' }
+        const result = await supabase.auth.mfa.challengeAndVerify({
+          factorId: enrollment.id,
+          code,
+        })
+        if (result.error) throw result.error
+        const level = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+        if (level.error || level.data?.currentLevel !== 'aal2')
+          throw { code: 'mfa_assurance_not_confirmed' }
+        setEnrollment(null)
+        setNotice(
+          'Facteur vérifié. Gardez cette session ouverte pendant le test de votre prochaine connexion.',
+        )
+        try {
+          await load()
+        } catch {
+          setError(
+            'Le facteur a été vérifié, mais la liste ou les services Admin n’ont pas pu être actualisés. Actualisez la configuration ; ne recréez pas le facteur pour cette seule erreur.',
+          )
+        }
+      } finally {
+        setCode('')
+      }
     })
   }
+
   const remove = (id) =>
     run(async () => {
       await ensureMfa()
@@ -118,8 +137,8 @@ export default function AdminMfaSettings({ statusRpc = 'encheck_account_security
       </button>
       <AdminExplication titre="Quelle application, et comment la garder">
         <p>
-          Utilisez une application d’authentification. Conservez un second facteur
-          vérifié si vous souhaitez une solution de secours.
+          Utilisez une application d’authentification. Conservez un second
+          facteur vérifié si vous souhaitez une solution de secours.
         </p>
       </AdminExplication>
       {loading ? (
@@ -150,13 +169,16 @@ export default function AdminMfaSettings({ statusRpc = 'encheck_account_security
           ))}
         </ul>
       )}
+      {notice && <p role="status">{notice}</p>}
       {error && <p role="alert">{error}</p>}
       {enrollment ? (
         <form onSubmit={verify}>
           <AdminExplication titre="Comment inscrire l’authentificateur" ouvert>
             <p>
               QR code confidentiel : scannez-le avec votre application, puis
-              confirmez le code à six chiffres.
+              confirmez le code à six chiffres de cette même entrée, pas celui
+              d’une ancienne inscription. Vérifiez que le téléphone utilise la
+              date et l’heure automatiques.
             </p>
           </AdminExplication>
           {qr && (
@@ -177,6 +199,7 @@ export default function AdminMfaSettings({ statusRpc = 'encheck_account_security
           <label>
             Code de vérification
             <input
+              disabled={busy}
               inputMode="numeric"
               autoComplete="one-time-code"
               pattern="[0-9]{6}"
@@ -188,7 +211,10 @@ export default function AdminMfaSettings({ statusRpc = 'encheck_account_security
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             />
           </label>
-          <button className="aa-bouton-plein" disabled={busy}>
+          <button
+            className="aa-bouton-plein"
+            disabled={busy || code.length !== 6}
+          >
             Activer ce facteur
           </button>
           <button

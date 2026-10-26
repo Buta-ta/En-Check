@@ -63,7 +63,7 @@ it('never grants access on an aal1 response', async () => {
   })
   await submit()
   expect(verified).not.toHaveBeenCalled()
-  expect(host.textContent).toContain('Vérification refusée')
+  expect(host.textContent).toContain('mfa_assurance_not_confirmed')
 })
 it('clears codes and hides raw provider errors', async () => {
   mfa.challengeAndVerify.mockResolvedValue({

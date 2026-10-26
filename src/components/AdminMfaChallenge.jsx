@@ -1,3 +1,4 @@
+import { adminMfaErrorMessage } from '../services/adminMfaErrors'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import '../pages/AdminAccounts.css'
@@ -41,21 +42,20 @@ export default function AdminMfaChallenge({ onVerified, onCancel }) {
     setError('')
     try {
       if (!/^\d{6}$/.test(code) || !factors.some((f) => f.id === factor))
-        throw Error()
+        throw { code: 'mfa_code_format' }
       const result = await supabase.auth.mfa.challengeAndVerify({
         factorId: factor,
         code,
       })
       if (result.error) throw result.error
       const level = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-      if (level.error || level.data?.currentLevel !== 'aal2') throw Error()
+      if (level.error || level.data?.currentLevel !== 'aal2')
+        throw { code: 'mfa_assurance_not_confirmed' }
       setCode('')
       await onVerified()
-    } catch {
+    } catch (err) {
       setCode('')
-      setError(
-        'Vérification refusée. Utilisez le code actuel de votre application.',
-      )
+      setError(adminMfaErrorMessage(err))
     } finally {
       lock.current = false
       setBusy(false)
