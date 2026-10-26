@@ -1,88 +1,168 @@
 // src/pages/JoursFeries.jsx
 // ══════════════════════════════════════════════════════════
-// 🎌 PAGE GESTION DES JOURS FÉRIÉS
-// - Vue admin entreprise : gérer ses propres + opt-out globaux
-// - Vue superadmin : gérer les globaux par pays
+// 🧶 JOURS FÉRIÉS — le calendrier tissé
+//
+// La couverture du Lesotho : un champ de crème, deux lisières
+// indigo, un liseré de terre cuite. Les fêtes du pays sont brodées
+// en indigo, celles de l'entreprise en terre.
+//
+// Deux registres, une seule vérité : un jour férié se désactive
+// pour UNE entreprise, il ne se supprime pas du pays. Le registre
+// du pays est en lecture pour tout le monde ; seul le super
+// administrateur le modifie. Le registre de l'entreprise
+// s'ajoute librement, et c'est lui qu'on édite.
 // ══════════════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Plus, Globe, Building2, Calendar,
-  Pencil, Trash2, ToggleLeft, ToggleRight, X,
-  CheckCircle, AlertCircle, Save, RefreshCw,
-  ChevronDown, Info, Power, PowerOff
+  ArrowLeft, Plus, Globe, Building2, Calendar, CalendarDays,
+  Pencil, Trash2, X, Info, Power, PowerOff, Sun, Moon,
+  RefreshCw, Save, AlertTriangle,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+
 import { supabase } from '../lib/supabase'
 import HolidayService, { SUPPORTED_COUNTRIES } from '../services/holidayService'
+import { useTheme } from '../contexts/ThemeContext'
+import useLoadingMinimum from '../hooks/useLoadingMinimum'
+import PageCulturalBand from '../components/PageCulturalBand'
+import RaccourcisPages from '../components/RaccourcisPages'
+import JoursFeriesAnnee from '../components/JoursFeriesAnnee'
+import JoursFeriesLoading from '../components/JoursFeriesLoading'
+import { LesothoSceauSvg, LesothoLosangeSvg, LesothoCoutureSvg } from '../components/LesothoMotif'
+import './JoursFeries.css'
 
-// ── Tabs ──
-const TABS = {
-  GLOBAL: 'global', // Fériés globaux par pays (tous)
-  OWN:    'own',    // Fériés propres à l'enterprise
+// ── Les deux registres ──
+const REGISTRES = {
+  PAYS: 'pays',   // les fêtes du pays, communes à toutes les entreprises
+  MAISON: 'maison', // les fêtes propres à l'entreprise
 }
 
-export default function JoursFeries() {
-  const [admin, setAdmin]           = useState(null)
-  const [loading, setLoading]       = useState(true)
-  const [activeTab, setActiveTab]   = useState(TABS.GLOBAL)
+const MOIS_COURTS = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc']
 
-  // Entreprise active
-  const [enterprises, setEnterprises]   = useState([])
-  const [selectedEntId, setSelectedEntId] = useState(null)
+// ── La date d'un jour férié, ramenée à l'année en cours ──
+function dateDuJourFerie(holiday, annee = new Date().getFullYear()) {
+  const brut = String(holiday?.date || '')
+  const [a, m, j] = brut.split('-').map(Number)
+  if (!m || !j) return null
+  if (holiday.is_recurring) return new Date(annee, m - 1, j, 12)
+  if (a !== annee) return null
+  return new Date(a, m - 1, j, 12)
+}
 
-  // Données
-  const [globalHolidays, setGlobalHolidays]   = useState([])
-  const [ownHolidays, setOwnHolidays]         = useState([])
-  const [overrides, setOverrides]             = useState([]) // Map holiday_id → override
+/**
+ * La date à montrer sur le médaillon : celle de l'année en cours pour une
+ * fête récurrente, la vraie date sinon — même si elle tombe une autre année.
+ */
+function dateAffichage(holiday) {
+  const resolue = dateDuJourFerie(holiday)
+  if (resolue) return resolue
+  const brute = new Date(`${holiday?.date}T12:00:00`)
+  return Number.isNaN(brute.getTime()) ? null : brute
+}
 
-  // Filtres
-  const [filterCountry, setFilterCountry]   = useState('ALL')
+/** La date résolue, écrite en français. */
+function resolveHolidayDate(holiday) {
+  const d = dateDuJourFerie(holiday)
+  if (!d) {
+    const brut = new Date(`${holiday?.date}T12:00:00Z`)
+    return Number.isNaN(brut.getTime())
+      ? '—'
+      : brut.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+  }
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
 
-  // Modal
-  const [showModal, setShowModal]     = useState(false)
-  const [editingHoliday, setEditingHoliday] = useState(null) // null = création
-  const [saving, setSaving]           = useState(false)
-  const [form, setForm]               = useState(defaultForm())
+/** Le prochain jour férié encore à venir, sur cette année ou la suivante. */
+function prochainJourFerie(liste, depuis = new Date()) {
+  const debutJour = new Date(depuis.getFullYear(), depuis.getMonth(), depuis.getDate())
+  let meilleur = null
 
-  // Modal suppression
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [deletingId, setDeletingId]           = useState(null)
-  const [deleting, setDeleting]               = useState(false)
-
-  // Toggle en masse
-  const [togglingAll, setTogglingAll] = useState(false)
-
-  const navigate = useNavigate()
-
-  function defaultForm() {
-    return {
-      name:          '',
-      date:          '',
-      is_recurring:  true,
-      // Plus de défaut 'FR' : ton marché est d'abord africain.
-      country_code:  '',
-      is_worked:     false,
-      overtime_rate: 100,
+  for (const { holiday, origine } of liste) {
+    for (const annee of [depuis.getFullYear(), depuis.getFullYear() + 1]) {
+      const d = dateDuJourFerie(holiday, annee)
+      if (!d || d < debutJour) continue
+      if (!meilleur || d < meilleur.date) meilleur = { date: d, holiday, origine }
+      break
     }
   }
 
-  // ════════════════════════════════════
-  // INIT
-  // ════════════════════════════════════
+  return meilleur
+}
+
+/** Les jours qui restent avant une date. */
+function joursAvant(date, depuis = new Date()) {
+  const a = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const b = new Date(depuis.getFullYear(), depuis.getMonth(), depuis.getDate())
+  return Math.round((a - b) / 86400000)
+}
+
+//  Tous les pays ne sont pas au catalogue (le Bénin, par exemple, y manque) :
+//  on affiche alors le code, sans inventer de drapeau.
+function paysInfo(code) {
+  const connu = SUPPORTED_COUNTRIES.find(c => c.code === code)
+  return {
+    nom: connu?.name || code || '—',
+    drapeau: connu?.flag || '',
+  }
+}
+
+function formaterJour(date) {
+  if (!date) return '—'
+  return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
+export default function JoursFeries() {
+  const navigate = useNavigate()
+  const { darkMode, toggleTheme } = useTheme()
+  const { minLoadingDone, skipLoading } = useLoadingMinimum(1400)
+
+  const [admin, setAdmin] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [registre, setRegistre] = useState(REGISTRES.PAYS)
+
+  // Entreprise active
+  const [enterprises, setEnterprises] = useState([])
+  const [selectedEntId, setSelectedEntId] = useState(null)
+
+  // Données
+  const [globalHolidays, setGlobalHolidays] = useState([])
+  const [ownHolidays, setOwnHolidays] = useState([])
+  const [overrides, setOverrides] = useState({})
+
+  // Filtre pays
+  const [filterCountry, setFilterCountry] = useState('ALL')
+
+  // Modale de saisie
+  const [showModal, setShowModal] = useState(false)
+  const [editingHoliday, setEditingHoliday] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState(defaultForm())
+
+  // Modale de suppression
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+
+  // Activation en masse
+  const [togglingAll, setTogglingAll] = useState(false)
+
+  const isSuperAdmin = admin?.role === 'super_admin'
+  const annee = new Date().getFullYear()
+
   useEffect(() => {
     const adminData = localStorage.getItem('admin')
-    if (!adminData) { navigate('/login'); return }
+    if (!adminData) {
+      navigate('/login')
+      return
+    }
 
     const parsed = JSON.parse(adminData)
     setAdmin(parsed)
 
     if (parsed.role === 'super_admin') {
-      loadEnterprises().then(() => {
-        // superadmin : par défaut on affiche les globaux
-        loadGlobalHolidays()
-      })
+      loadEnterprises().then(() => loadGlobalHolidays())
     } else {
       const entId = parsed.selectedEnterprise?.id || parsed.enterprise_id
       setSelectedEntId(entId)
@@ -90,6 +170,9 @@ export default function JoursFeries() {
     }
   }, [navigate])
 
+  // ════════════════════════════════════
+  // LECTURES
+  // ════════════════════════════════════
   const loadEnterprises = async () => {
     const { data } = await supabase
       .from('enterprises')
@@ -101,18 +184,31 @@ export default function JoursFeries() {
 
   const loadAll = async (entId) => {
     setLoading(true)
-    await Promise.all([
-      loadGlobalHolidays(),
-      loadOwnHolidays(entId),
-      loadOverrides(entId),
-    ])
-    setLoading(false)
+    try {
+      await Promise.all([
+        loadGlobalHolidays(),
+        loadOwnHolidays(entId),
+        loadOverrides(entId),
+      ])
+    } catch (error) {
+      //  une lecture qui échoue ne doit pas laisser la page sur son métier à tisser
+      console.error(error)
+      toast.error('Les jours fériés n’ont pas pu être chargés')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const loadGlobalHolidays = async () => {
-    const data = await HolidayService.getGlobalHolidays()
-    setGlobalHolidays(data)
-    if (!selectedEntId) setLoading(false)
+    try {
+      const data = await HolidayService.getGlobalHolidays()
+      setGlobalHolidays(data || [])
+    } catch (error) {
+      console.error(error)
+      toast.error('Les fêtes du pays n’ont pas pu être chargées')
+    } finally {
+      if (!selectedEntId) setLoading(false)
+    }
   }
 
   const loadOwnHolidays = async (entId) => {
@@ -133,113 +229,86 @@ export default function JoursFeries() {
     setOverrides(map)
   }
 
-  // Quand l'admin superadmin change d'enterprise
   const handleEntChange = async (entId) => {
     setSelectedEntId(entId)
-    if (entId) await loadAll(entId)
-  }
-
-  // ════════════════════════════════════
-  // ACTIONS — Toggle global ON/OFF
-  // ════════════════════════════════════
-  const handleToggleGlobal = async (holiday) => {
-    if (!selectedEntId) {
-      toast.error('Sélectionnez une entreprise d\'abord')
-      return
-    }
-    const currentOverride = overrides[holiday.id]
-    const newEnabled = currentOverride ? !currentOverride.is_enabled : false // par défaut activé donc on désactive
-
-    const result = await HolidayService.toggleGlobalHoliday(
-      selectedEntId,
-      holiday.id,
-      newEnabled
-    )
-
-    if (result.success) {
-      toast.success(newEnabled ? 'Jour férié activé' : 'Jour férié désactivé')
-      await loadOverrides(selectedEntId)
+    if (entId) {
+      await loadAll(entId)
     } else {
-      toast.error('Erreur lors de la mise à jour')
+      setOwnHolidays([])
+      setOverrides({})
     }
   }
 
+  // ════════════════════════════════════
+  // L'ÉTAT D'UNE FÊTE POUR CETTE ENTREPRISE
+  // ════════════════════════════════════
   const isGlobalEnabled = (holidayId) => {
     const ov = overrides[holidayId]
-    if (!ov) return true // Pas d'override = activé par défaut
+    if (!ov) return true // pas de décision enregistrée = la fête s'applique
     return ov.is_enabled !== false
   }
 
-  // ════════════════════════════════════
-  // NOUVELLE FONCTION — Toggle ALL
-  // ════════════════════════════════════
-  const handleToggleAllGlobal = async () => {
+  const handleToggleGlobal = async (holiday) => {
     if (!selectedEntId) {
-      toast.error('Sélectionnez une entreprise d\'abord')
+      toast.error('Choisissez d’abord une entreprise')
       return
     }
 
+    const actifAujourdhui = isGlobalEnabled(holiday.id)
+    const result = await HolidayService.toggleGlobalHoliday(selectedEntId, holiday.id, !actifAujourdhui)
+
+    if (result.success) {
+      toast.success(actifAujourdhui ? 'Jour férié désactivé pour cette entreprise' : 'Jour férié activé pour cette entreprise')
+      await loadOverrides(selectedEntId)
+    } else {
+      toast.error('La mise à jour n’a pas abouti')
+    }
+  }
+
+  // ════════════════════════════════════
+  // ACTIVATION EN MASSE
+  // ════════════════════════════════════
+  const handleToggleAllGlobal = async () => {
+    if (!selectedEntId) {
+      toast.error('Choisissez d’abord une entreprise')
+      return
+    }
     if (filteredGlobal.length === 0) {
       toast.error('Aucun jour férié à modifier')
       return
     }
 
-    // Déterminer si on doit tout activer ou tout désactiver
-    // Si au moins un est activé, on désactive tout. Sinon on active tout.
-    const hasEnabledHolidays = filteredGlobal.some(h => isGlobalEnabled(h.id))
-    const newEnabledState = !hasEnabledHolidays
+    const auMoinsUnActif = filteredGlobal.some(h => isGlobalEnabled(h.id))
+    const nouvelEtat = !auMoinsUnActif
 
     setTogglingAll(true)
-    
     try {
-      // Traiter tous les jours fériés filtrés
-      const promises = filteredGlobal.map(holiday => 
-        HolidayService.toggleGlobalHoliday(
-          selectedEntId,
-          holiday.id,
-          newEnabledState
+      const resultats = await Promise.all(
+        filteredGlobal.map(holiday =>
+          HolidayService.toggleGlobalHoliday(selectedEntId, holiday.id, nouvelEtat)
         )
       )
 
-      const results = await Promise.all(promises)
-      
-      // Vérifier si toutes les opérations ont réussi
-      const allSuccessful = results.every(r => r.success)
-      
-      if (allSuccessful) {
+      if (resultats.every(r => r.success)) {
         toast.success(
-          newEnabledState 
-            ? `✅ ${filteredGlobal.length} jour(s) férié(s) activé(s)`
-            : `🚫 ${filteredGlobal.length} jour(s) férié(s) désactivé(s)`
+          nouvelEtat
+            ? `${filteredGlobal.length} jour${filteredGlobal.length > 1 ? 's' : ''} férié${filteredGlobal.length > 1 ? 's' : ''} activé${filteredGlobal.length > 1 ? 's' : ''}`
+            : `${filteredGlobal.length} jour${filteredGlobal.length > 1 ? 's' : ''} férié${filteredGlobal.length > 1 ? 's' : ''} désactivé${filteredGlobal.length > 1 ? 's' : ''}`
         )
-        await loadOverrides(selectedEntId)
       } else {
-        toast.error('Certaines modifications ont échoué')
-        await loadOverrides(selectedEntId)
+        toast.error('Certaines modifications n’ont pas abouti')
       }
+      await loadOverrides(selectedEntId)
     } catch (error) {
-      toast.error('Erreur lors de la modification en masse')
+      toast.error('La modification en masse a échoué')
       console.error(error)
     } finally {
       setTogglingAll(false)
     }
   }
 
-  // Déterminer le label du bouton toggle all
-  const getToggleAllLabel = () => {
-    if (filteredGlobal.length === 0) return 'Aucun jour férié'
-    const hasEnabled = filteredGlobal.some(h => isGlobalEnabled(h.id))
-    return hasEnabled ? 'Tout désactiver' : 'Tout activer'
-  }
-
-  const getToggleAllIcon = () => {
-    if (filteredGlobal.length === 0) return Power
-    const hasEnabled = filteredGlobal.some(h => isGlobalEnabled(h.id))
-    return hasEnabled ? PowerOff : Power
-  }
-
   // ════════════════════════════════════
-  // ACTIONS — CRUD propres fériés
+  // ÉCRITURES
   // ════════════════════════════════════
   const openCreateModal = () => {
     setEditingHoliday(null)
@@ -250,22 +319,22 @@ export default function JoursFeries() {
   const openEditModal = (holiday) => {
     setEditingHoliday(holiday)
     setForm({
-      name:          holiday.name,
-      date:          holiday.date,
-      is_recurring:  holiday.is_recurring ?? true,
-      country_code:  holiday.country_code || '',
-      is_worked:     holiday.is_worked ?? false,
+      name: holiday.name,
+      date: holiday.date,
+      is_recurring: holiday.is_recurring ?? true,
+      country_code: holiday.country_code || '',
+      is_worked: holiday.is_worked ?? false,
       overtime_rate: holiday.overtime_rate ?? 100,
     })
     setShowModal(true)
   }
 
   const handleSave = async () => {
-    if (!form.name.trim()) { toast.error('Nom requis'); return }
-    if (!form.date)         { toast.error('Date requise'); return }
+    if (!form.name.trim()) { toast.error('Le nom est requis'); return }
+    if (!form.date) { toast.error('La date est requise'); return }
 
-    if (!selectedEntId && admin.role !== 'super_admin') {
-      toast.error('Enterprise non sélectionnée')
+    if (!selectedEntId && admin?.role !== 'super_admin') {
+      toast.error('Aucune entreprise sélectionnée')
       return
     }
 
@@ -273,27 +342,20 @@ export default function JoursFeries() {
     try {
       let result
       if (editingHoliday) {
-        result = await HolidayService.updateHoliday(
-          editingHoliday.id,
-          selectedEntId,
-          form
-        )
+        result = await HolidayService.updateHoliday(editingHoliday.id, selectedEntId, form)
       } else {
-        // Superadmin peut créer un global (enterprise_id = null)
-        const entId = admin.role === 'super_admin' && activeTab === TABS.GLOBAL
-          ? null
-          : selectedEntId
+        // Le super administrateur peut créer une fête du pays (sans entreprise)
+        const entId = admin?.role === 'super_admin' && registre === REGISTRES.PAYS ? null : selectedEntId
         result = await HolidayService.createHoliday(entId, form)
       }
 
       if (result.success) {
         toast.success(editingHoliday ? 'Jour férié modifié' : 'Jour férié créé')
         setShowModal(false)
-        // Recharger
-        if (activeTab === TABS.GLOBAL) await loadGlobalHolidays()
+        if (registre === REGISTRES.PAYS) await loadGlobalHolidays()
         else await loadOwnHolidays(selectedEntId)
       } else {
-        toast.error('Erreur : ' + (result.error || 'inconnue'))
+        toast.error('Enregistrement impossible : ' + (result.error || 'raison inconnue'))
       }
     } finally {
       setSaving(false)
@@ -312,979 +374,773 @@ export default function JoursFeries() {
     if (result.success) {
       toast.success('Jour férié supprimé')
       setShowDeleteModal(false)
-      await loadOwnHolidays(selectedEntId)
+      //  on recharge le registre d'où venait la fête, pas l'autre
+      if (registre === REGISTRES.PAYS) await loadGlobalHolidays()
+      else await loadOwnHolidays(selectedEntId)
     } else {
-      toast.error('Erreur suppression')
+      toast.error('Suppression impossible')
     }
     setDeleting(false)
     setDeletingId(null)
   }
 
   // ════════════════════════════════════
-  // FILTRES
+  // DÉRIVÉS
   // ════════════════════════════════════
   const filteredGlobal = filterCountry === 'ALL'
     ? globalHolidays
     : globalHolidays.filter(h => h.country_code === filterCountry)
 
-  // Pays disponibles dans les globaux
-  const availableCountries = [...new Set(globalHolidays.map(h => h.country_code))]
+  const paysDisponibles = useMemo(() => {
+    const codes = [...new Set(globalHolidays.map(h => h.country_code).filter(Boolean))]
+    return codes
+      .map(code => ({
+        code,
+        ...paysInfo(code),
+        nombre: globalHolidays.filter(h => h.country_code === code).length,
+      }))
+      .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+  }, [globalHolidays])
 
-  const isSuperAdmin = admin?.role === 'super_admin'
+  //  Les deux registres, rangés du premier au dernier jour de l'année.
+  const globalTries = useMemo(() => {
+    const rang = (h) => {
+      const d = dateDuJourFerie(h)
+      return d ? d.getTime() : 0
+    }
+    return [...filteredGlobal].sort((a, b) => rang(a) - rang(b))
+  }, [filteredGlobal])
 
-  // ════════════════════════════════════
-  // RENDER
-  // ════════════════════════════════════
-  if (loading) {
+  const ownTries = useMemo(() => {
+    const rang = (h) => {
+      const d = dateDuJourFerie(h)
+      return d ? d.getTime() : 0
+    }
+    return [...ownHolidays].sort((a, b) => rang(a) - rang(b))
+  }, [ownHolidays])
+
+  //  Ce qui compte vraiment pour l'entreprise, tous registres confondus.
+  const fetesActives = useMemo(() => {
+    const liste = []
+    for (const holiday of globalHolidays) {
+      //  même règle que `isGlobalEnabled`, lue ici pour que le calcul
+      //  se refasse dès qu'une décision change
+      const ov = overrides[holiday.id]
+      if (ov && ov.is_enabled === false) continue
+      liste.push({ holiday, origine: 'pays' })
+    }
+    for (const holiday of ownHolidays) liste.push({ holiday, origine: 'entreprise' })
+    return liste
+  }, [globalHolidays, ownHolidays, overrides])
+
+  const prochain = useMemo(() => prochainJourFerie(fetesActives), [fetesActives])
+
+  const nbDesactivees = globalHolidays.filter(h => !isGlobalEnabled(h.id)).length
+  const nbTravaillees = fetesActives.filter(({ holiday }) => holiday.is_worked).length
+
+  //  Ce que propose le bouton d'activation en masse, selon ce qui est
+  //  déjà actif dans le pays affiché. Calculé ici, APRÈS le filtre.
+  const auMoinsUnActif = filteredGlobal.some(h => isGlobalEnabled(h.id))
+  const libelleToggleAll = filteredGlobal.length === 0
+    ? 'Aucun jour férié'
+    : auMoinsUnActif ? 'Tout désactiver' : 'Tout activer'
+  const IconeToggleAll = auMoinsUnActif ? PowerOff : Power
+
+  //  Le chargement : les données, plus un plancher pour que la scène soit vue.
+  if ((loading && globalHolidays.length === 0) || !minLoadingDone) {
     return (
-      <div style={S.loadingWrap}>
-        <RefreshCw size={32} color="#8B5CF6" style={{ animation: 'spin 1s linear infinite' }} />
-        <p style={{ color: '#888', marginTop: '12px' }}>Chargement des jours fériés...</p>
-        <style>{`@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
-      </div>
+      <JoursFeriesLoading
+        darkMode={darkMode}
+        onSkip={() => {
+          skipLoading()
+          setLoading(false)
+        }}
+      />
     )
   }
 
-  const ToggleAllIcon = getToggleAllIcon()
+  const nomEntreprise = enterprises.find(e => e.id === selectedEntId)?.name
+    || admin?.selectedEnterprise?.name
+    || 'votre entreprise'
+
+  const formulaireGlobal = registre === REGISTRES.PAYS && isSuperAdmin
 
   return (
-    <>
-      <style>{`
-        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        @keyframes fadeInUp {
-          from { opacity:0; transform:translateY(20px); }
-          to   { opacity:1; transform:translateY(0); }
-        }
-        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-        @keyframes slideUp {
-          from { opacity:0; transform:translateY(30px); }
-          to   { opacity:1; transform:translateY(0); }
-        }
-        .holiday-row:hover { background: rgba(139,92,246,0.05) !important; }
-        .toggle-btn:hover  { opacity: 0.8 !important; }
-        .action-btn:hover  { transform: scale(1.1) !important; }
-        select option { background:#141423; color:#E5E5E5; }
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
-      `}</style>
+    <div className={`jf-page${darkMode ? '' : ' jf-clair'}`}>
+      <PageCulturalBand pathname="/jours-feries" />
+      <div className="jf-bordure" aria-hidden="true" />
 
-      <div style={S.container}>
-        {/* ── Fond ── */}
-        <div style={S.bgOrb1} />
-        <div style={S.bgOrb2} />
+      {/* ══ L'EN-TÊTE ══ */}
+      <header className="jf-entete">
+        <button
+          type="button"
+          className="jf-retour"
+          onClick={() => navigate('/dashboard')}
+          aria-label="Revenir au tableau de bord"
+          title="Tableau de bord"
+        >
+          <ArrowLeft size={17} />
+        </button>
 
-        {/* ══ HEADER ══ */}
-        <header style={S.header}>
-          <div style={S.headerInner}>
-            <div style={S.headerLeft}>
-              <button onClick={() => navigate('/dashboard')} style={S.backBtn}>
-                <ArrowLeft size={20} />
-              </button>
-              <div style={S.logoWrap}>
-                <span style={{ fontSize: '22px' }}>🎌</span>
-              </div>
-              <div>
-                <h1 style={S.headerTitle}>JOURS FÉRIÉS</h1>
-                <span style={S.headerSub}>Configuration par entreprise</span>
-              </div>
+        <LesothoSceauSvg taille={46} ton="terre" />
+
+        <div className="jf-titre-bloc">
+          <span className="jf-eyebrow">Le calendrier tissé</span>
+          <h1 className="jf-titre">Jours fériés<span>.</span></h1>
+          <p className="jf-sous-titre">
+            Les fêtes du pays s’appliquent à toutes les entreprises ; chacune peut
+            désactiver celles qu’elle ne suit pas, et coudre les siennes.
+          </p>
+        </div>
+
+        <div className="jf-entete-droite">
+          {isSuperAdmin && (
+            <div className="jf-entreprise">
+              <Building2 size={14} aria-hidden="true" />
+              <select
+                value={selectedEntId || ''}
+                onChange={e => handleEntChange(e.target.value || null)}
+                aria-label="Entreprise dont on règle les jours fériés"
+              >
+                <option value="">Toutes les entreprises</option>
+                {enterprises.map(e => (
+                  <option key={e.id} value={e.id}>{e.name}</option>
+                ))}
+              </select>
             </div>
+          )}
 
-            {/* Sélecteur enterprise (superadmin) */}
-            {isSuperAdmin && (
-              <div style={S.entSelector}>
-                <Building2 size={16} color="#8B5CF6" />
-                <select
-                  value={selectedEntId || ''}
-                  onChange={e => handleEntChange(e.target.value || null)}
-                  style={S.select}
-                >
-                  <option value="">— Sélectionner une entreprise —</option>
-                  {enterprises.map(e => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-        </header>
+          <button
+            type="button"
+            className="jf-bascule"
+            role="switch"
+            aria-checked={darkMode}
+            onClick={toggleTheme}
+            aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
+            title={darkMode ? 'Thème clair' : 'Thème sombre'}
+          >
+            {darkMode ? <Moon size={14} aria-hidden="true" /> : <Sun size={14} aria-hidden="true" />}
+          </button>
+        </div>
+      </header>
 
-        {/* ══ MAIN ══ */}
-        <main style={S.main}>
+      <main className="jf-coque">
 
-          {/* Info banner si pas d'enterprise sélectionnée (superadmin) */}
-          {isSuperAdmin && !selectedEntId && (
-            <div style={S.infoBanner}>
-              <Info size={18} color="#8B5CF6" />
-              <span style={{ color: '#A78BFA', fontSize: '14px' }}>
-                Sélectionnez une entreprise pour gérer ses jours fériés spécifiques
-                et activer/désactiver les fériés globaux.
+        {/* ══ LE SEUIL ══ */}
+        <section className="jf-seuil" aria-label="Entreprise, année et accès rapides">
+          <div className="jf-seuil-gauche">
+            <div className="jf-seuil-item">
+              <span className="jf-seuil-libelle">Entreprise</span>
+              <span className="jf-seuil-valeur">
+                <Building2 size={12} aria-hidden="true" />
+                {nomEntreprise}
               </span>
             </div>
-          )}
-
-          {/* ── TABS ── */}
-          <div style={S.tabs}>
-            <button
-              onClick={() => setActiveTab(TABS.GLOBAL)}
-              style={{
-                ...S.tab,
-                ...(activeTab === TABS.GLOBAL ? S.tabActive : {}),
-              }}
-            >
-              <Globe size={16} />
-              Jours fériés globaux
-              <span style={S.tabCount}>{filteredGlobal.length}</span>
-            </button>
-            <button
-              onClick={() => setActiveTab(TABS.OWN)}
-              style={{
-                ...S.tab,
-                ...(activeTab === TABS.OWN ? S.tabActive : {}),
-              }}
-            >
-              <Building2 size={16} />
-              Propres à l'entreprise
-              <span style={S.tabCount}>{ownHolidays.length}</span>
-            </button>
+            <div className="jf-seuil-item">
+              <span className="jf-seuil-libelle">Année</span>
+              <span className="jf-seuil-valeur">
+                <Calendar size={12} aria-hidden="true" />
+                {annee}
+              </span>
+            </div>
+            <div className="jf-seuil-item">
+              <span className="jf-seuil-libelle">Prochain</span>
+              <span className="jf-seuil-valeur">
+                <CalendarDays size={12} aria-hidden="true" />
+                {prochain ? formaterJour(prochain.date) : 'aucun à venir'}
+              </span>
+            </div>
           </div>
 
-          {/* ══ TAB GLOBAL ══ */}
-          {activeTab === TABS.GLOBAL && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="jf-raccourcis">
+            <RaccourcisPages compact excludePaths={['/jours-feries']} />
+          </div>
+        </section>
 
-              {/* Barre d'outils */}
-              <div style={S.toolbar}>
-                {/* Filtre pays */}
-                <div style={S.filterBox}>
-                  <Globe size={16} color="#8B5CF6" />
-                  <select
-                    value={filterCountry}
-                    onChange={e => setFilterCountry(e.target.value)}
-                    style={S.select}
+        {/* ══ L'ANNÉE ET SES MESURES ══ */}
+        <div className="jf-haut">
+          <JoursFeriesAnnee
+            annee={annee}
+            globalHolidays={globalHolidays}
+            ownHolidays={ownHolidays}
+            isGlobalEnabled={isGlobalEnabled}
+            prochain={
+              prochain && prochain.date.getFullYear() === annee
+                ? { jour: prochain.date.getDate(), mois: prochain.date.getMonth() }
+                : null
+            }
+            noteSuivante={
+              prochain && prochain.date.getFullYear() !== annee
+                ? `La prochaine fête tombe en ${prochain.date.getFullYear()} : ${formaterJour(prochain.date)} ${prochain.date.getFullYear()}.`
+                : ''
+            }
+          />
+
+          <div className="jf-mesures">
+            <article className="jf-mesure" data-ton="indigo">
+              <span className="jf-mesure-libelle">Fêtes du pays</span>
+              <span className="jf-mesure-valeur">
+                {filteredGlobal.length}
+                <small>{filterCountry === 'ALL' ? 'au total' : 'pour ce pays'}</small>
+              </span>
+              <span className="jf-mesure-detail">
+                {paysDisponibles.length} pays représenté{paysDisponibles.length > 1 ? 's' : ''}
+              </span>
+            </article>
+
+            <article className="jf-mesure" data-ton="terre">
+              <span className="jf-mesure-libelle">Fêtes de l’entreprise</span>
+              <span className="jf-mesure-valeur">
+                {ownHolidays.length}
+                <small>{ownHolidays.length > 1 ? 'ajoutées' : 'ajoutée'}</small>
+              </span>
+              <span className="jf-mesure-detail">
+                {selectedEntId ? nomEntreprise : 'choisissez une entreprise'}
+              </span>
+            </article>
+
+            <article className="jf-mesure" data-ton={nbDesactivees > 0 ? 'attente' : 'ok'}>
+              <span className="jf-mesure-libelle">Désactivées</span>
+              <span className="jf-mesure-valeur">
+                {nbDesactivees}
+                <small>par l’entreprise</small>
+              </span>
+              <span className="jf-mesure-detail">
+                {nbTravaillees > 0 ? `${nbTravaillees} fête${nbTravaillees > 1 ? 's' : ''} travaillée${nbTravaillees > 1 ? 's' : ''}` : 'aucune fête travaillée'}
+              </span>
+            </article>
+
+            <article className="jf-mesure" data-ton="ok">
+              <span className="jf-mesure-libelle">Prochain jour férié</span>
+              <span className="jf-mesure-valeur">
+                {prochain ? joursAvant(prochain.date) : '—'}
+                <small>{prochain && joursAvant(prochain.date) === 1 ? 'jour' : 'jours'}</small>
+              </span>
+              <span className="jf-mesure-detail" title={prochain?.holiday?.name}>
+                {prochain ? prochain.holiday.name : 'rien à venir cette année'}
+              </span>
+            </article>
+          </div>
+        </div>
+
+        {/* ══ LES DEUX REGISTRES ══ */}
+        <div className="jf-onglets" role="tablist" aria-label="Registres des jours fériés">
+          <button
+            type="button"
+            role="tab"
+            id="jf-onglet-pays"
+            aria-selected={registre === REGISTRES.PAYS}
+            aria-controls="jf-registre-pays"
+            className="jf-onglet"
+            onClick={() => setRegistre(REGISTRES.PAYS)}
+          >
+            <Globe size={14} aria-hidden="true" />
+            Fêtes du pays
+            <span className="jf-onglet-compte">{filteredGlobal.length}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="jf-onglet-maison"
+            aria-selected={registre === REGISTRES.MAISON}
+            aria-controls="jf-registre-maison"
+            className="jf-onglet"
+            onClick={() => setRegistre(REGISTRES.MAISON)}
+          >
+            <Building2 size={14} aria-hidden="true" />
+            Fêtes de l’entreprise
+            <span className="jf-onglet-compte">{ownHolidays.length}</span>
+          </button>
+        </div>
+
+        {/* ── Registre du pays ── */}
+        {registre === REGISTRES.PAYS && (
+          <div id="jf-registre-pays" role="tabpanel" aria-labelledby="jf-onglet-pays">
+            {isSuperAdmin && !selectedEntId && (
+              <div className="jf-note">
+                <Info size={15} aria-hidden="true" />
+                <span>
+                  Vous voyez les fêtes du pays telles qu’elles sont publiées.
+                  Choisissez une entreprise, en haut, pour décider lesquelles elle suit.
+                </span>
+              </div>
+            )}
+
+            <div className="jf-barre">
+              <div className="jf-pays" role="group" aria-label="Filtrer par pays">
+                <button
+                  type="button"
+                  className="jf-pays-puce"
+                  aria-pressed={filterCountry === 'ALL'}
+                  onClick={() => setFilterCountry('ALL')}
+                >
+                  Tous les pays
+                  <span className="jf-onglet-compte">{globalHolidays.length}</span>
+                </button>
+                {paysDisponibles.map(p => (
+                  <button
+                    key={p.code}
+                    type="button"
+                    className="jf-pays-puce"
+                    aria-pressed={filterCountry === p.code}
+                    onClick={() => setFilterCountry(p.code)}
                   >
-                    <option value="ALL">Tous les pays</option>
-                    {availableCountries.map(code => {
-                      const country = SUPPORTED_COUNTRIES.find(c => c.code === code)
-                      return (
-                        <option key={code} value={code}>
-                          {country?.flag} {country?.name || code}
-                        </option>
-                      )
-                    })}
-                  </select>
-                </div>
-
-                {/* NOUVEAU BOUTON - Toggle All (seulement si entreprise sélectionnée) */}
-                {selectedEntId && (
-                  <button 
-                    onClick={handleToggleAllGlobal}
-                    disabled={togglingAll || filteredGlobal.length === 0}
-                    style={{
-                      ...S.toggleAllBtn,
-                      opacity: togglingAll || filteredGlobal.length === 0 ? 0.5 : 1,
-                      cursor: togglingAll || filteredGlobal.length === 0 ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {togglingAll ? (
-                      <>
-                        <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} />
-                        Modification...
-                      </>
-                    ) : (
-                      <>
-                        <ToggleAllIcon size={16} />
-                        {getToggleAllLabel()}
-                      </>
-                    )}
+                    {p.drapeau && <span className="jf-pays-drapeau" aria-hidden="true">{p.drapeau}</span>}
+                    {p.nom}
+                    <span className="jf-onglet-compte">{p.nombre}</span>
                   </button>
-                )}
-
-                {/* Bouton créer un global (superadmin seulement) */}
-                {isSuperAdmin && (
-                  <button onClick={openCreateModal} style={S.createBtn}>
-                    <Plus size={16} />
-                    Ajouter un jour férié global
-                  </button>
-                )}
+                ))}
               </div>
 
-              {/* Note explicative */}
               {selectedEntId && (
-                <div style={S.noteBox}>
-                  <ToggleRight size={16} color="#10B981" />
-                  <span style={{ color: '#888', fontSize: '13px' }}>
-                    Utilisez les interrupteurs pour activer/désactiver chaque
-                    jour férié global pour <strong style={{ color: '#E5E5E5' }}>
-                      {enterprises.find(e => e.id === selectedEntId)?.name || 'cette entreprise'}
-                    </strong>.
-                    Les jours désactivés ne seront pas comptés dans les retards,
-                    absences et calculs d'heures.
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  className="jf-bouton"
+                  onClick={handleToggleAllGlobal}
+                  disabled={togglingAll || filteredGlobal.length === 0}
+                >
+                  {togglingAll
+                    ? <><RefreshCw size={14} className="jf-tourne" aria-hidden="true" /> Modification…</>
+                    : <><IconeToggleAll size={14} aria-hidden="true" /> {libelleToggleAll}</>
+                  }
+                </button>
               )}
 
-              {/* Liste */}
-              <div style={S.listWrap}>
-                {filteredGlobal.length === 0 ? (
-                  <div style={S.emptyState}>
-                    <Globe size={40} color="#555" />
-                    <p style={{ color: '#666', margin: '12px 0 0 0' }}>
-                      Aucun jour férié global pour ce pays
-                    </p>
-                  </div>
-                ) : (
-                  filteredGlobal.map((holiday, i) => {
-                    const enabled    = selectedEntId ? isGlobalEnabled(holiday.id) : true
-                    const country    = SUPPORTED_COUNTRIES.find(c => c.code === holiday.country_code)
-                    const resolvedDate = resolveHolidayDate(holiday)
-
-                    return (
-                      <div
-                        key={holiday.id}
-                        className="holiday-row"
-                        style={{
-                          ...S.row,
-                          opacity: selectedEntId && !enabled ? 0.45 : 1,
-                          borderLeft: `3px solid ${enabled ? '#8B5CF6' : '#333'}`,
-                          animation: `fadeInUp 0.3s ease ${i * 0.03}s forwards`,
-                        }}
-                      >
-                        {/* Infos */}
-                        <div style={S.rowInfo}>
-                          <div style={S.rowMain}>
-                            <span style={S.rowName}>{holiday.name}</span>
-                            {holiday.is_recurring && (
-                              <span style={S.recurringBadge}>📅 Récurrent</span>
-                            )}
-                            {holiday.is_worked && (
-                              <span style={S.workedBadge}>🔨 Travaillé</span>
-                            )}
-                          </div>
-                          <div style={S.rowMeta}>
-                            <span style={S.rowDate}>
-                              <Calendar size={12} />
-                              {resolvedDate}
-                            </span>
-                            <span style={S.rowCountry}>
-                              {country?.flag} {country?.name || holiday.country_code}
-                            </span>
-                            <span style={S.rowRate}>
-                              +{holiday.overtime_rate}% si travaillé
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div style={S.rowActions}>
-                          {/* Toggle (seulement si enterprise sélectionnée) */}
-                          {selectedEntId && (
-                            <button
-                              className="toggle-btn"
-                              onClick={() => handleToggleGlobal(holiday)}
-                              style={{
-                                ...S.toggleBtn,
-                                color: enabled ? '#10B981' : '#555',
-                              }}
-                              title={enabled ? 'Désactiver pour cette entreprise' : 'Activer pour cette entreprise'}
-                            >
-                              {enabled
-                                ? <ToggleRight size={26} />
-                                : <ToggleLeft size={26} />
-                              }
-                            </button>
-                          )}
-
-                          {/* Edit (superadmin seulement pour les globaux) */}
-                          {isSuperAdmin && (
-                            <>
-                              <button
-                                className="action-btn"
-                                onClick={() => openEditModal(holiday)}
-                                style={S.editBtn}
-                                title="Modifier"
-                              >
-                                <Pencil size={14} />
-                              </button>
-                              <button
-                                className="action-btn"
-                                onClick={() => confirmDelete(holiday.id)}
-                                style={S.deleteBtn}
-                                title="Supprimer"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
+              {isSuperAdmin && (
+                <button type="button" className="jf-bouton" data-ton="indigo" onClick={openCreateModal}>
+                  <Plus size={14} aria-hidden="true" />
+                  Ajouter une fête du pays
+                </button>
+              )}
             </div>
-          )}
 
-          {/* ══ TAB OWN ══ */}
-          {activeTab === TABS.OWN && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-              {!selectedEntId ? (
-                <div style={S.emptyState}>
-                  <Building2 size={40} color="#555" />
-                  <p style={{ color: '#666', margin: '12px 0 0 0' }}>
-                    Sélectionnez une entreprise pour voir ses jours fériés
-                  </p>
+            <div className="jf-registre">
+              {globalTries.length === 0 ? (
+                <div className="jf-vide">
+                  <Globe size={26} aria-hidden="true" />
+                  <strong>Aucune fête pour ce pays</strong>
+                  <p>Choisissez un autre pays, ou ajoutez une fête si vous êtes super administrateur.</p>
                 </div>
               ) : (
-                <>
-                  {/* Barre d'outils */}
-                  <div style={S.toolbar}>
-                    <div style={S.noteBox}>
-                      <Info size={15} color="#F59E0B" />
-                      <span style={{ color: '#888', fontSize: '13px' }}>
-                        Ajoutez ici les jours fériés spécifiques à votre entreprise
-                        (fêtes locales, ponts, jours exceptionnels...).
+                globalTries.map((holiday, i) => {
+                  const active = selectedEntId ? isGlobalEnabled(holiday.id) : true
+                  const pays = paysInfo(holiday.country_code)
+                  const date = dateAffichage(holiday)
+
+                  return (
+                    <article
+                      key={holiday.id}
+                      className="jf-jour"
+                      data-origine="pays"
+                      data-actif={active ? 'oui' : 'non'}
+                      style={{ animationDelay: `${Math.min(i, 12) * 0.02}s` }}
+                    >
+                      <span className="jf-medaillon" aria-hidden="true">
+                        <LesothoLosangeSvg taille={54} ton="indigo" />
+                        <span className="jf-medaillon-texte">
+                          <span className="jf-medaillon-jour">{date ? date.getDate() : '—'}</span>
+                          <span className="jf-medaillon-mois">{date ? MOIS_COURTS[date.getMonth()] : ''}</span>
+                        </span>
                       </span>
-                    </div>
-                    <button onClick={openCreateModal} style={S.createBtn}>
-                      <Plus size={16} />
-                      Ajouter
-                    </button>
-                  </div>
 
-                  {/* Liste */}
-                  <div style={S.listWrap}>
-                    {ownHolidays.length === 0 ? (
-                      <div style={S.emptyState}>
-                        <Calendar size={40} color="#555" />
-                        <p style={{ color: '#666', margin: '12px 0 8px 0' }}>
-                          Aucun jour férié propre à cette entreprise
-                        </p>
-                        <button onClick={openCreateModal} style={S.emptyAddBtn}>
-                          <Plus size={14} /> Ajouter le premier
-                        </button>
+                      <div className="jf-jour-corps">
+                        <div className="jf-jour-tete">
+                          <span className="jf-jour-nom">{holiday.name}</span>
+                          {holiday.is_recurring && <span className="jf-badge" data-ton="indigo">Chaque année</span>}
+                          {holiday.is_worked && <span className="jf-badge" data-ton="attente">Travaillée</span>}
+                          {!active && <span className="jf-badge" data-ton="neutre">Désactivée</span>}
+                        </div>
+                        <div className="jf-jour-meta">
+                          <span>
+                            <Calendar size={11} aria-hidden="true" />
+                            {resolveHolidayDate(holiday)}
+                          </span>
+                          <span>{pays.drapeau} {pays.nom}</span>
+                          <span>+{holiday.overtime_rate}% si travaillée</span>
+                        </div>
                       </div>
-                    ) : (
-                      ownHolidays.map((holiday, i) => {
-                        const resolvedDate = resolveHolidayDate(holiday)
-                        return (
-                          <div
-                            key={holiday.id}
-                            className="holiday-row"
-                            style={{
-                              ...S.row,
-                              borderLeft: '3px solid #F59E0B',
-                              animation: `fadeInUp 0.3s ease ${i * 0.03}s forwards`,
-                            }}
-                          >
-                            <div style={S.rowInfo}>
-                              <div style={S.rowMain}>
-                                <span style={S.rowName}>{holiday.name}</span>
-                                {holiday.is_recurring && (
-                                  <span style={S.recurringBadge}>📅 Récurrent</span>
-                                )}
-                                {holiday.is_worked && (
-                                  <span style={S.workedBadge}>🔨 Travaillé</span>
-                                )}
-                              </div>
-                              <div style={S.rowMeta}>
-                                <span style={S.rowDate}>
-                                  <Calendar size={12} />
-                                  {resolvedDate}
-                                </span>
-                                <span style={S.rowRate}>
-                                  +{holiday.overtime_rate}% si travaillé
-                                </span>
-                              </div>
-                            </div>
 
-                            <div style={S.rowActions}>
-                              <button
-                                className="action-btn"
-                                onClick={() => openEditModal(holiday)}
-                                style={S.editBtn}
-                                title="Modifier"
-                              >
-                                <Pencil size={14} />
-                              </button>
-                              <button
-                                className="action-btn"
-                                onClick={() => confirmDelete(holiday.id)}
-                                style={S.deleteBtn}
-                                title="Supprimer"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })
-                    )}
-                  </div>
-                </>
+                      <div className="jf-jour-actions">
+                        {selectedEntId && (
+                          <button
+                            type="button"
+                            className="jf-interrupteur"
+                            role="switch"
+                            aria-checked={active}
+                            onClick={() => handleToggleGlobal(holiday)}
+                            aria-label={`${holiday.name} — ${active ? 'désactiver' : 'activer'} pour ${nomEntreprise}`}
+                            title={active ? 'Désactiver pour cette entreprise' : 'Activer pour cette entreprise'}
+                          />
+                        )}
+
+                        {isSuperAdmin && (
+                          <>
+                            <button
+                              type="button"
+                              className="jf-icone-bouton"
+                              onClick={() => openEditModal(holiday)}
+                              title="Modifier"
+                              aria-label={`Modifier ${holiday.name}`}
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              className="jf-icone-bouton"
+                              data-ton="danger"
+                              onClick={() => confirmDelete(holiday.id)}
+                              title="Supprimer"
+                              aria-label={`Supprimer ${holiday.name}`}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </article>
+                  )
+                })
               )}
             </div>
-          )}
+          </div>
+        )}
 
-        </main>
-
-        {/* ══ MODAL CRÉATION / ÉDITION ══ */}
-        {showModal && (
-          <div style={S.overlay} onClick={() => !saving && setShowModal(false)}>
-            <div style={S.modal} onClick={e => e.stopPropagation()}>
-              <div style={S.modalHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={S.modalIcon}>
-                    <span style={{ fontSize: '20px' }}>🎌</span>
-                  </div>
-                  <div>
-                    <h2 style={S.modalTitle}>
-                      {editingHoliday ? 'Modifier le jour férié' : 'Nouveau jour férié'}
-                    </h2>
-                    <span style={S.modalSub}>
-                      {activeTab === TABS.GLOBAL && isSuperAdmin
-                        ? 'Jour férié global (tous pays)'
-                        : enterprises.find(e => e.id === selectedEntId)?.name || 'Entreprise'
-                      }
-                    </span>
-                  </div>
+        {/* ── Registre de l'entreprise ── */}
+        {registre === REGISTRES.MAISON && (
+          <div id="jf-registre-maison" role="tabpanel" aria-labelledby="jf-onglet-maison">
+            {!selectedEntId ? (
+              <div className="jf-vide">
+                <Building2 size={26} aria-hidden="true" />
+                <strong>Choisissez une entreprise</strong>
+                <p>Le registre des fêtes propres à une entreprise s’ouvre dès qu’une entreprise est sélectionnée.</p>
+              </div>
+            ) : (
+              <>
+                <div className="jf-barre">
+                  <p className="jf-taux-note jf-barre-note">
+                    Fêtes locales, ponts, jours exceptionnels : ce que vous ajoutez ici
+                    ne vaut que pour {nomEntreprise}.
+                  </p>
+                  <button type="button" className="jf-bouton" data-ton="terre" onClick={openCreateModal}>
+                    <Plus size={14} aria-hidden="true" />
+                    Ajouter une fête
+                  </button>
                 </div>
-                <button
-                  onClick={() => !saving && setShowModal(false)}
-                  style={S.closeBtn}
-                >
-                  <X size={18} />
-                </button>
+
+                <div className="jf-registre">
+                  {ownTries.length === 0 ? (
+                    <div className="jf-vide">
+                      <Calendar size={26} aria-hidden="true" />
+                      <strong>Aucune fête propre à cette entreprise</strong>
+                      <p>Les fêtes du pays s’appliquent déjà. Ajoutez ici ce qui n’existe que chez vous.</p>
+                      <button type="button" className="jf-bouton" data-ton="terre" onClick={openCreateModal}>
+                        <Plus size={14} aria-hidden="true" />
+                        Ajouter la première
+                      </button>
+                    </div>
+                  ) : (
+                    ownTries.map((holiday, i) => {
+                      const date = dateAffichage(holiday)
+                      return (
+                        <article
+                          key={holiday.id}
+                          className="jf-jour"
+                          data-origine="entreprise"
+                          style={{ animationDelay: `${Math.min(i, 12) * 0.02}s` }}
+                        >
+                          <span className="jf-medaillon" aria-hidden="true">
+                            <LesothoLosangeSvg taille={54} ton="terre" />
+                            <span className="jf-medaillon-texte">
+                              <span className="jf-medaillon-jour">{date ? date.getDate() : '—'}</span>
+                              <span className="jf-medaillon-mois">{date ? MOIS_COURTS[date.getMonth()] : ''}</span>
+                            </span>
+                          </span>
+
+                          <div className="jf-jour-corps">
+                            <div className="jf-jour-tete">
+                              <span className="jf-jour-nom">{holiday.name}</span>
+                              {holiday.is_recurring && <span className="jf-badge" data-ton="indigo">Chaque année</span>}
+                              {holiday.is_worked && <span className="jf-badge" data-ton="attente">Travaillée</span>}
+                            </div>
+                            <div className="jf-jour-meta">
+                              <span>
+                                <Calendar size={11} aria-hidden="true" />
+                                {resolveHolidayDate(holiday)}
+                              </span>
+                              <span>+{holiday.overtime_rate}% si travaillée</span>
+                            </div>
+                          </div>
+
+                          <div className="jf-jour-actions">
+                            <button
+                              type="button"
+                              className="jf-icone-bouton"
+                              onClick={() => openEditModal(holiday)}
+                              title="Modifier"
+                              aria-label={`Modifier ${holiday.name}`}
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              className="jf-icone-bouton"
+                              data-ton="danger"
+                              onClick={() => confirmDelete(holiday.id)}
+                              title="Supprimer"
+                              aria-label={`Supprimer ${holiday.name}`}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </article>
+                      )
+                    })
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ══ CE QUE FAIT UN JOUR FÉRIÉ ══ */}
+        <details className="jf-explication">
+          <summary>
+            <Info size={13} aria-hidden="true" />
+            Ce qu’un jour férié change dans les calculs
+          </summary>
+          <div className="jf-explication-corps">
+            <ul>
+              <li><strong>Férié non travaillé</strong> — la journée n’est ni une absence, ni un retard.</li>
+              <li><strong>Férié travaillé</strong> — les heures comptent, avec la majoration réglée sur la fête.</li>
+              <li><strong>Désactivé pour l’entreprise</strong> — le jour redevient un jour ouvré ordinaire, avec son planning.</li>
+            </ul>
+            <p>
+              Une désactivation ne touche jamais les autres entreprises : elle est
+              enregistrée pour celle qui la demande, et se retire au même endroit.
+            </p>
+            {/*  la couture prend l'encre du thème : craie sur l'indigo,
+                indigo sur la crème — jamais un trait invisible */}
+            <LesothoCoutureSvg className="jf-explication-couture" ton={darkMode ? 'indigo' : 'craie'} />
+          </div>
+        </details>
+      </main>
+
+      {/* ══ LA MODALE DE SAISIE ══ */}
+      {showModal && (
+        <div className="jf-voile" onClick={() => !saving && setShowModal(false)}>
+          <div
+            className="jf-modale"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="jf-modale-titre"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="jf-modale-tete">
+              <LesothoSceauSvg taille={34} ton={formulaireGlobal ? 'indigo' : 'terre'} />
+              <div className="jf-modale-titres">
+                <h2 className="jf-modale-titre" id="jf-modale-titre">
+                  {editingHoliday ? 'Modifier le jour férié' : 'Nouveau jour férié'}
+                </h2>
+                <span className="jf-modale-sous">
+                  {formulaireGlobal
+                    ? 'Fête du pays — elle s’appliquera à toutes les entreprises'
+                    : `Fête propre à ${nomEntreprise}`}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="jf-icone-bouton"
+                onClick={() => !saving && setShowModal(false)}
+                aria-label="Fermer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="jf-modale-corps">
+              <label className="jf-champ">
+                <span className="jf-etiquette">Nom du jour férié</span>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  placeholder="Fête de l’Indépendance"
+                  disabled={saving}
+                />
+              </label>
+
+              <div className="jf-champ-ligne">
+                <label className="jf-champ">
+                  <span className="jf-etiquette">Date</span>
+                  <input
+                    type="date"
+                    value={form.date}
+                    onChange={e => setForm({ ...form, date: e.target.value })}
+                    disabled={saving}
+                  />
+                </label>
+
+                <label className="jf-champ">
+                  <span className="jf-etiquette">Pays</span>
+                  <select
+                    value={form.country_code}
+                    onChange={e => setForm({ ...form, country_code: e.target.value })}
+                    disabled={saving}
+                  >
+                    <option value="">— Aucun —</option>
+                    {SUPPORTED_COUNTRIES.map(c => (
+                      <option key={c.code} value={c.code}>{c.name}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
 
-              <div style={S.modalBody}>
-                {/* Nom */}
-                <div style={S.field}>
-                  <label style={S.label}>Nom du jour férié *</label>
+              <div>
+                <span className="jf-etiquette">Ce que ce jour devient</span>
+                <div className="jf-options">
+                  <button
+                    type="button"
+                    className="jf-option"
+                    aria-pressed={form.is_recurring}
+                    onClick={() => setForm({ ...form, is_recurring: !form.is_recurring })}
+                    disabled={saving}
+                  >
+                    <span className="jf-option-marque" aria-hidden="true" />
+                    <span className="jf-option-texte">
+                      <span className="jf-option-titre">Chaque année</span>
+                      <span className="jf-option-aide">Se répète au même jour et au même mois</span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="jf-option"
+                    aria-pressed={form.is_worked}
+                    onClick={() => setForm({ ...form, is_worked: !form.is_worked })}
+                    disabled={saving}
+                  >
+                    <span className="jf-option-marque" aria-hidden="true" />
+                    <span className="jf-option-texte">
+                      <span className="jf-option-titre">Jour travaillé</span>
+                      <span className="jf-option-aide">Les heures comptent, avec majoration</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <span className="jf-etiquette">Majoration si on travaille ce jour-là</span>
+                <div className="jf-taux">
+                  {[25, 50, 100, 150, 200].map(taux => (
+                    <button
+                      key={taux}
+                      type="button"
+                      className="jf-taux-puce"
+                      aria-pressed={form.overtime_rate === taux}
+                      onClick={() => setForm({ ...form, overtime_rate: taux })}
+                      disabled={saving}
+                    >
+                      +{taux} %
+                    </button>
+                  ))}
                   <input
-                    type="text"
-                    value={form.name}
-                    onChange={e => setForm({ ...form, name: e.target.value })}
-                    placeholder="ex: Fête de l'Indépendance"
-                    style={S.input}
+                    type="number"
+                    className="jf-taux-libre"
+                    aria-label="Majoration en pourcentage"
+                    value={form.overtime_rate}
+                    onChange={e => setForm({ ...form, overtime_rate: parseInt(e.target.value, 10) || 0 })}
+                    min="0"
+                    max="300"
+                    step="25"
                     disabled={saving}
                   />
                 </div>
-
-                {/* Date + Pays */}
-                <div style={S.fieldRow}>
-                  <div style={S.field}>
-                    <label style={S.label}>Date *</label>
-                    <input
-                      type="date"
-                      value={form.date}
-                      onChange={e => setForm({ ...form, date: e.target.value })}
-                      style={S.input}
-                      disabled={saving}
-                    />
-                  </div>
-                  <div style={S.field}>
-                    <label style={S.label}>Pays</label>
-                    <select
-                      value={form.country_code}
-                      onChange={e => setForm({ ...form, country_code: e.target.value })}
-                      style={S.select}
-                      disabled={saving}
-                    >
-                      {SUPPORTED_COUNTRIES.map(c => (
-                        <option key={c.code} value={c.code}>
-                          {c.flag} {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Options */}
-                <div style={S.optionsGrid}>
-                  {/* Récurrent */}
-                  <label style={S.checkLabel}>
-                    <input
-                      type="checkbox"
-                      checked={form.is_recurring}
-                      onChange={e => setForm({ ...form, is_recurring: e.target.checked })}
-                      style={{ accentColor: '#8B5CF6', width: '16px', height: '16px' }}
-                      disabled={saving}
-                    />
-                    <div>
-                      <span style={{ color: '#E5E5E5', fontSize: '14px', fontWeight: '500' }}>
-                        Récurrent
-                      </span>
-                      <span style={{ display: 'block', color: '#666', fontSize: '11px' }}>
-                        Se répète chaque année (même jour/mois)
-                      </span>
-                    </div>
-                  </label>
-
-                  {/* Travaillé */}
-                  <label style={S.checkLabel}>
-                    <input
-                      type="checkbox"
-                      checked={form.is_worked}
-                      onChange={e => setForm({ ...form, is_worked: e.target.checked })}
-                      style={{ accentColor: '#F59E0B', width: '16px', height: '16px' }}
-                      disabled={saving}
-                    />
-                    <div>
-                      <span style={{ color: '#E5E5E5', fontSize: '14px', fontWeight: '500' }}>
-                        Jour travaillé
-                      </span>
-                      <span style={{ display: 'block', color: '#666', fontSize: '11px' }}>
-                        Les retards sont quand même comptés
-                      </span>
-                    </div>
-                  </label>
-                </div>
-
-                {/* Taux HS */}
-                <div style={S.field}>
-                  <label style={S.label}>
-                    Taux heures supplémentaires si travaillé (%)
-                  </label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <input
-                      type="number"
-                      value={form.overtime_rate}
-                      onChange={e => setForm({
-                        ...form,
-                        overtime_rate: parseInt(e.target.value) || 0,
-                      })}
-                      min="0"
-                      max="300"
-                      step="25"
-                      style={{ ...S.input, width: '120px' }}
-                      disabled={saving}
-                    />
-                    <span style={{ color: '#666', fontSize: '13px' }}>
-                      {form.overtime_rate === 100
-                        ? '→ Paie doublée'
-                        : form.overtime_rate === 50
-                        ? '→ Majoration 50%'
-                        : form.overtime_rate === 25
-                        ? '→ Majoration 25%'
-                        : `→ Majoration ${form.overtime_rate}%`
-                      }
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div style={S.modalFooter}>
-                <button
-                  onClick={() => !saving && setShowModal(false)}
-                  disabled={saving}
-                  style={S.cancelBtn}
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving || !form.name.trim() || !form.date}
-                  style={{
-                    ...S.saveBtn,
-                    opacity: saving || !form.name.trim() || !form.date ? 0.5 : 1,
-                    cursor: saving || !form.name.trim() || !form.date
-                      ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {saving ? (
-                    <>
-                      <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} />
-                      Sauvegarde...
-                    </>
-                  ) : (
-                    <>
-                      <Save size={15} />
-                      {editingHoliday ? 'Modifier' : 'Créer'}
-                    </>
-                  )}
-                </button>
+                <p className="jf-taux-note jf-taux-note-bas">
+                  {form.overtime_rate === 100 ? 'Paie doublée' : `Majoration de ${form.overtime_rate} %`}
+                </p>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* ══ MODAL SUPPRESSION ══ */}
-        {showDeleteModal && (
-          <div style={S.overlay} onClick={() => !deleting && setShowDeleteModal(false)}>
-            <div
-              style={{
-                background: '#0F0F19',
-                border: '1px solid rgba(239,68,68,0.2)',
-                borderRadius: '20px',
-                width: '100%', maxWidth: '380px',
-                padding: '28px', textAlign: 'center',
-                animation: 'slideUp 0.3s ease forwards',
-              }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div style={{
-                width: '60px', height: '60px', borderRadius: '50%',
-                background: 'rgba(239,68,68,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 16px',
-              }}>
-                <Trash2 size={26} color="#EF4444" />
-              </div>
-              <h3 style={{ color: '#FFF', fontSize: '18px', fontWeight: '700', margin: '0 0 8px' }}>
-                Supprimer ce jour férié ?
-              </h3>
-              <p style={{ color: '#888', fontSize: '13px', margin: '0 0 24px' }}>
-                Cette action est irréversible. Il ne sera plus pris en compte
-                dans les calculs de retards, absences et heures supplémentaires.
-              </p>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  disabled={deleting}
-                  style={{
-                    flex: 1, padding: '12px',
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '10px', color: '#FFF',
-                    fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit',
-                  }}
-                >
-                  Annuler
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  style={{
-                    flex: 1, padding: '12px',
-                    background: '#EF4444', border: 'none',
-                    borderRadius: '10px', color: '#FFF',
-                    fontWeight: '700', cursor: deleting ? 'not-allowed' : 'pointer',
-                    fontFamily: 'inherit', opacity: deleting ? 0.7 : 1,
-                    display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', gap: '8px',
-                  }}
-                >
-                  {deleting
-                    ? <><RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> Suppression...</>
-                    : <><Trash2 size={14} /> Supprimer</>
-                  }
-                </button>
-              </div>
+            <div className="jf-modale-pied">
+              <button
+                type="button"
+                className="jf-bouton"
+                onClick={() => !saving && setShowModal(false)}
+                disabled={saving}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="jf-bouton"
+                data-ton="terre"
+                onClick={handleSave}
+                disabled={saving || !form.name.trim() || !form.date}
+              >
+                {saving
+                  ? <><RefreshCw size={14} className="jf-tourne" aria-hidden="true" /> Enregistrement…</>
+                  : <><Save size={14} aria-hidden="true" /> {editingHoliday ? 'Enregistrer' : 'Créer'}</>
+                }
+              </button>
             </div>
           </div>
-        )}
-      </div>
-    </>
+        </div>
+      )}
+
+      {/* ══ LA MODALE DE SUPPRESSION ══ */}
+      {showDeleteModal && (
+        <div className="jf-voile" onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div
+            className="jf-modale jf-modale-suppression"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="jf-suppression-titre"
+            onClick={e => e.stopPropagation()}
+          >
+            <span className="jf-suppression-icone">
+              <AlertTriangle size={24} aria-hidden="true" />
+            </span>
+            <h2 id="jf-suppression-titre">Supprimer ce jour férié ?</h2>
+            <p>
+              Il ne sera plus pris en compte dans les retards, les absences et les
+              heures supplémentaires. Cette action ne se défait pas.
+            </p>
+            <div className="jf-modale-pied">
+              <button
+                type="button"
+                className="jf-bouton"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                Garder
+              </button>
+              <button
+                type="button"
+                className="jf-supprimer"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting
+                  ? <><RefreshCw size={13} className="jf-tourne" aria-hidden="true" /> Suppression…</>
+                  : <><Trash2 size={13} aria-hidden="true" /> Supprimer</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
-// ── Helper : affichage de la date résolue pour l'année courante ──
-function resolveHolidayDate(holiday) {
-  const currentYear = new Date().getFullYear()
-  const originalDate = new Date(holiday.date + 'T12:00:00Z')
-
-  let displayDate
-  if (holiday.is_recurring) {
-    const month = String(originalDate.getUTCMonth() + 1).padStart(2, '0')
-    const day   = String(originalDate.getUTCDate()).padStart(2, '0')
-    displayDate = new Date(`${currentYear}-${month}-${day}T12:00:00Z`)
-  } else {
-    displayDate = originalDate
+// ── Le formulaire vierge ──
+function defaultForm() {
+  return {
+    name: '',
+    date: '',
+    is_recurring: true,
+    country_code: '',
+    is_worked: false,
+    overtime_rate: 100,
   }
-
-  return displayDate.toLocaleDateString('fr-FR', {
-    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
-  })
-}
-
-// ══════════════════════════════════════════════════════════
-// 🎨 STYLES
-// ══════════════════════════════════════════════════════════
-const S = {
-  container: {
-    minHeight: '100vh',
-    background: '#0A0A0F',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  bgOrb1: {
-    position: 'fixed', top: '-20%', right: '-10%',
-    width: '500px', height: '500px', borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(139,92,246,0.05) 0%, transparent 70%)',
-    pointerEvents: 'none', zIndex: 0,
-  },
-  bgOrb2: {
-    position: 'fixed', bottom: '-20%', left: '-10%',
-    width: '600px', height: '600px', borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(245,158,11,0.03) 0%, transparent 70%)',
-    pointerEvents: 'none', zIndex: 0,
-  },
-  loadingWrap: {
-    minHeight: '100vh', display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center', background: '#0A0A0F',
-  },
-  header: {
-    background: 'rgba(15,15,25,0.95)', backdropFilter: 'blur(20px)',
-    borderBottom: '1px solid rgba(139,92,246,0.15)',
-    position: 'sticky', top: 0, zIndex: 100,
-  },
-  headerInner: {
-    maxWidth: '1100px', margin: '0 auto', padding: '12px 20px',
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', gap: '12px', flexWrap: 'wrap',
-  },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
-  backBtn: {
-    width: '40px', height: '40px', borderRadius: '10px',
-    background: 'rgba(245,158,11,0.1)',
-    border: '1px solid rgba(245,158,11,0.2)',
-    color: '#F59E0B', display: 'flex', alignItems: 'center',
-    justifyContent: 'center', cursor: 'pointer',
-  },
-  logoWrap: {
-    width: '42px', height: '42px', borderRadius: '12px',
-    background: 'rgba(139,92,246,0.12)',
-    border: '1px solid rgba(139,92,246,0.2)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: {
-    color: '#FFF', fontSize: '18px', fontWeight: '700',
-    letterSpacing: '2px', margin: 0, lineHeight: '1.2',
-  },
-  headerSub: {
-    color: '#8B5CF6', fontSize: '10px', letterSpacing: '3px',
-    textTransform: 'uppercase', fontWeight: '500',
-  },
-  entSelector: {
-    display: 'flex', alignItems: 'center', gap: '10px',
-    background: 'rgba(20,20,35,0.8)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '10px', padding: '8px 14px',
-  },
-  main: {
-    padding: '24px 20px', maxWidth: '1100px',
-    margin: '0 auto', position: 'relative', zIndex: 1,
-    display: 'flex', flexDirection: 'column', gap: '20px',
-  },
-  infoBanner: {
-    display: 'flex', alignItems: 'center', gap: '12px',
-    padding: '14px 18px',
-    background: 'rgba(139,92,246,0.08)',
-    border: '1px solid rgba(139,92,246,0.2)',
-    borderRadius: '12px',
-  },
-  tabs: {
-    display: 'flex', gap: '4px',
-    background: 'rgba(20,20,35,0.8)',
-    borderRadius: '14px', padding: '4px',
-    border: '1px solid rgba(255,255,255,0.06)',
-    width: 'fit-content',
-  },
-  tab: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '10px 18px', borderRadius: '10px',
-    border: 'none', background: 'transparent',
-    color: '#888', fontSize: '13px', fontWeight: '500',
-    cursor: 'pointer', fontFamily: 'inherit',
-    transition: 'all 0.2s ease',
-  },
-  tabActive: {
-    background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
-    color: '#FFF',
-  },
-  tabCount: {
-    background: 'rgba(255,255,255,0.12)',
-    color: 'inherit', padding: '1px 7px',
-    borderRadius: '8px', fontSize: '11px', fontWeight: '700',
-  },
-  toolbar: {
-    display: 'flex', gap: '12px',
-    alignItems: 'center', flexWrap: 'wrap',
-  },
-  filterBox: {
-    display: 'flex', alignItems: 'center', gap: '10px',
-    background: 'rgba(20,20,35,0.8)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '10px', padding: '8px 14px', flex: 1, maxWidth: '300px',
-  },
-  select: {
-    background: 'transparent', border: 'none',
-    outline: 'none', color: '#FFF',
-    fontSize: '14px', cursor: 'pointer', width: '100%',
-  },
-  toggleAllBtn: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '10px 20px',
-    background: 'linear-gradient(135deg, #10B981, #059669)',
-    color: '#FFF', border: 'none', borderRadius: '10px',
-    fontWeight: '600', fontSize: '13px',
-    cursor: 'pointer', fontFamily: 'inherit',
-    whiteSpace: 'nowrap',
-    transition: 'all 0.2s ease',
-  },
-  createBtn: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '10px 20px',
-    background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
-    color: '#FFF', border: 'none', borderRadius: '10px',
-    fontWeight: '600', fontSize: '13px',
-    cursor: 'pointer', fontFamily: 'inherit',
-    whiteSpace: 'nowrap',
-  },
-  noteBox: {
-    display: 'flex', alignItems: 'flex-start', gap: '10px',
-    padding: '12px 16px',
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '10px', flex: 1,
-  },
-  listWrap: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  emptyState: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    padding: '48px 20px',
-    background: 'rgba(20,20,35,0.5)',
-    border: '1px solid rgba(255,255,255,0.04)',
-    borderRadius: '16px', textAlign: 'center',
-  },
-  emptyAddBtn: {
-    display: 'inline-flex', alignItems: 'center', gap: '6px',
-    padding: '10px 18px',
-    background: 'rgba(139,92,246,0.1)',
-    border: '1px solid rgba(139,92,246,0.2)',
-    color: '#8B5CF6', borderRadius: '10px',
-    fontWeight: '600', fontSize: '13px',
-    cursor: 'pointer', fontFamily: 'inherit',
-  },
-  row: {
-    display: 'flex', alignItems: 'center', gap: '12px',
-    background: 'rgba(20,20,35,0.6)', backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '12px', padding: '14px 18px',
-    transition: 'all 0.2s ease',
-  },
-  rowInfo: { flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' },
-  rowMain: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
-  rowName: { color: '#FFF', fontSize: '14px', fontWeight: '600' },
-  recurringBadge: {
-    padding: '2px 8px', borderRadius: '6px', fontSize: '10px',
-    fontWeight: '600',
-    background: 'rgba(99,102,241,0.12)', color: '#818CF8',
-    border: '1px solid rgba(99,102,241,0.2)',
-  },
-  workedBadge: {
-    padding: '2px 8px', borderRadius: '6px', fontSize: '10px',
-    fontWeight: '600',
-    background: 'rgba(245,158,11,0.12)', color: '#F59E0B',
-    border: '1px solid rgba(245,158,11,0.2)',
-  },
-  rowMeta: { display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' },
-  rowDate: {
-    display: 'flex', alignItems: 'center', gap: '4px',
-    color: '#888', fontSize: '12px',
-  },
-  rowCountry: { color: '#666', fontSize: '12px' },
-  rowRate:    { color: '#555', fontSize: '11px' },
-  rowActions: { display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 },
-  toggleBtn: {
-    background: 'none', border: 'none',
-    cursor: 'pointer', padding: '4px',
-    transition: 'opacity 0.2s ease',
-    display: 'flex', alignItems: 'center',
-  },
-  editBtn: {
-    width: '32px', height: '32px', borderRadius: '8px',
-    background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)',
-    color: '#818CF8', display: 'flex', alignItems: 'center',
-    justifyContent: 'center', cursor: 'pointer',
-    transition: 'transform 0.2s ease',
-  },
-  deleteBtn: {
-    width: '32px', height: '32px', borderRadius: '8px',
-    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
-    color: '#EF4444', display: 'flex', alignItems: 'center',
-    justifyContent: 'center', cursor: 'pointer',
-    transition: 'transform 0.2s ease',
-  },
-  // Modal
-  overlay: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
-    backdropFilter: 'blur(8px)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '16px', zIndex: 1000, animation: 'fadeIn 0.3s ease',
-  },
-  modal: {
-    background: '#0F0F19', border: '1px solid rgba(139,92,246,0.2)',
-    borderRadius: '24px', width: '100%', maxWidth: '520px',
-    maxHeight: '92vh', overflow: 'hidden',
-    display: 'flex', flexDirection: 'column',
-    animation: 'slideUp 0.3s ease forwards',
-  },
-  modalHeader: {
-    display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', padding: '20px 24px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
-  },
-  modalIcon: {
-    width: '42px', height: '42px', borderRadius: '12px',
-    background: 'rgba(139,92,246,0.12)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-  modalTitle: { color: '#FFF', fontSize: '17px', fontWeight: '700', margin: 0 },
-  modalSub:   { color: '#666', fontSize: '12px', display: 'block', marginTop: '2px' },
-  closeBtn: {
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '10px', padding: '8px',
-    color: '#888', cursor: 'pointer',
-    display: 'flex', alignItems: 'center',
-  },
-  modalBody: {
-    padding: '24px', overflow: 'auto', flex: 1,
-    display: 'flex', flexDirection: 'column', gap: '16px',
-  },
-  field: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  fieldRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
-  label: {
-    fontSize: '12px', fontWeight: '600', color: '#888',
-    textTransform: 'uppercase', letterSpacing: '0.5px',
-  },
-  input: {
-    padding: '11px 14px',
-    border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '10px', fontSize: '14px',
-    background: 'rgba(255,255,255,0.04)', color: '#E5E5E5',
-    fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
-    width: '100%',
-  },
-  optionsGrid: {
-    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px',
-  },
-  checkLabel: {
-    display: 'flex', alignItems: 'flex-start', gap: '10px',
-    padding: '12px 14px',
-    background: 'rgba(255,255,255,0.02)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '10px', cursor: 'pointer',
-  },
-  modalFooter: {
-    display: 'flex', justifyContent: 'flex-end', gap: '12px',
-    padding: '16px 24px',
-    borderTop: '1px solid rgba(255,255,255,0.06)',
-  },
-  cancelBtn: {
-    padding: '11px 20px',
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: '#E5E5E5', borderRadius: '10px',
-    fontWeight: '600', fontSize: '14px',
-    cursor: 'pointer', fontFamily: 'inherit',
-  },
-  saveBtn: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '11px 24px',
-    background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
-    color: '#FFF', border: 'none', borderRadius: '10px',
-    fontWeight: '700', fontSize: '14px',
-    cursor: 'pointer', fontFamily: 'inherit',
-  },
 }

@@ -16,7 +16,7 @@ export function culturalMotifForPath(pathname = '') {
   if (page === 'entreprises') return 'korhogo'
   if (page === 'carte-temps-reel') return 'dogon'
   if (page === 'rapports') return 'nsibidi'
-  if (page === 'pauses') return 'lesotho'
+  if (page === 'pauses' || page === 'jours-feries') return 'lesotho'
   if (page === 'employes') return 'zoulou'
   if (page === 'planning') return 'kuba'
   if (page === 'absences') return 'ndebele'
