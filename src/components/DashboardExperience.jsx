@@ -674,14 +674,33 @@ export default function DashboardExperience({
       )
     }
     if (itemId === 'profile') {
+      // Le bloc entier mène à la page Administrateurs : l'avatar, le nom,
+      // le rôle. Un simple bouton d'avatar ne se voyait pas cliquable.
+      if (!isSuperAdmin) {
+        return (
+          <div className="topbar-admin" title={`${adminName} · ${adminRole}`}>
+            <div className="topbar-avatar">{adminInitials}</div>
+            <div className="topbar-admin-copy">
+              <span className="topbar-admin-name">{adminName}</span>
+              <span className="topbar-admin-role">{adminRole}</span>
+            </div>
+          </div>
+        )
+      }
       return (
-        <div className="topbar-admin" title={`${adminName} · ${adminRole}`}>
-          <div className="topbar-avatar">{adminInitials}</div>
-          <div className="topbar-admin-copy">
+        <Link
+          className="topbar-admin topbar-admin--lien"
+          to="/admins"
+          title={`${adminName} · ${adminRole} — ouvrir la page Administrateurs`}
+          aria-label={`${adminName}, ${adminRole} — ouvrir la page Administrateurs`}
+        >
+          <span className="topbar-avatar">{adminInitials}</span>
+          <span className="topbar-admin-copy">
             <span className="topbar-admin-name">{adminName}</span>
             <span className="topbar-admin-role">{adminRole}</span>
-          </div>
-        </div>
+          </span>
+          <ChevronRight className="topbar-admin-chevron" size={14} aria-hidden="true" />
+        </Link>
       )
     }
     return null
@@ -817,6 +836,10 @@ export default function DashboardExperience({
               </div>
             </div>
           </header>
+
+          {/* LE BANDEAU DU BOGOLAN — juste après la barre du haut, pleine
+              largeur : la pièce réelle de la page Paie & fiscalité. */}
+          <div className="dashboard-bogolan" aria-hidden="true" />
 
           <main className="dashboard-main">
             {isCustomizing && (

@@ -291,6 +291,24 @@ export default function Planning() {
 
   // Filtre de focus : totaux et grille liés au groupe ou au collaborateur sélectionné
   const [focusFilter, setFocusFilter] = useState({ type: "all", value: null });
+  // La barre de filtres et de légende se replie : le planning garde la
+  // place pour la grille. Le choix est retenu d'une visite à l'autre.
+  const [legendeOuverte, setLegendeOuverte] = useState(() => {
+    try {
+      return localStorage.getItem("planning_legende_ouverte") !== "false";
+    } catch {
+      return true;
+    }
+  });
+  const basculerLegende = () => {
+    const suite = !legendeOuverte;
+    setLegendeOuverte(suite);
+    try {
+      localStorage.setItem("planning_legende_ouverte", String(suite));
+    } catch {
+      // Un navigateur qui refuse le stockage ne bloque pas le repli.
+    }
+  };
 
   // Vues En-Check : "semaine" (défaut) | "mois" | "jour" | "demandes"
   const [planningView, setPlanningView] = useState("semaine");
@@ -2968,8 +2986,34 @@ export default function Planning() {
           )}
         </section>
 
-        {/* BARRE DE FOCUS + LÉGENDE DES COULEURS */}
-        <section className="sk-focus-bar" aria-label="Filtre d'affichage et légende">
+        {/* BARRE DE FOCUS + LÉGENDE DES COULEURS — pliable */}
+        <section
+          className={`sk-focus-bar${legendeOuverte ? " is-ouverte" : " is-repliee"}`}
+          aria-label="Filtre d'affichage et légende"
+        >
+          <div className="sk-focus-tete">
+            <button
+              type="button"
+              className="sk-focus-toggle"
+              onClick={basculerLegende}
+              aria-expanded={legendeOuverte}
+              aria-controls="sk-focus-corps"
+            >
+              <ChevronDown size={15} className="sk-focus-chevron" aria-hidden="true" />
+              <span className="sk-focus-toggle-titre">
+                {legendeOuverte ? "Replier les filtres et la légende" : "Filtres, équipes et légende"}
+              </span>
+            </button>
+            {!legendeOuverte && (
+              <span className="sk-focus-resume">
+                {scopedEmployees.length} collaborateur(s) · {focusLabel}
+                {focusFilter.type !== "all" ? " · filtre actif" : ""}
+              </span>
+            )}
+          </div>
+
+          {legendeOuverte && (
+            <div className="sk-focus-corps" id="sk-focus-corps">
           <div className="sk-focus-left">
             <span className="sk-focus-label">
               <Users size={13} /> Afficher
@@ -3075,6 +3119,8 @@ export default function Planning() {
               </span>
             </span>
           </div>
+            </div>
+          )}
         </section>
 
         {/* 2. VUE SEMAINE (MATRICE EN-CHECK DRAG & DROP) */}

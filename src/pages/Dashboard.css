@@ -407,6 +407,32 @@
   align-items: center;
 }
 
+/* Le bloc du profil est un lien : il se voit au cadre, pas au texte. */
+.topbar-admin--lien {
+  padding: 3px 7px 3px 4px;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  transition: border-color 160ms ease;
+}
+
+.topbar-admin--lien:hover { border-color: rgba(193, 116, 60, 0.55); }
+
+.topbar-admin-chevron { flex: 0 0 auto; color: var(--accent-strong); }
+
+/* ── LE BANDEAU DU BOGOLAN — sous la barre du haut ──
+   La pièce réelle de la page Paie & fiscalité, répétée en largeur. */
+.dashboard-bogolan {
+  height: 48px;
+  background-image: url('/images/paie-bogolan-haut.webp');
+  background-repeat: repeat-x;
+  background-position: center;
+  background-size: auto 48px;
+  border-bottom: 1px solid rgba(36, 28, 22, 0.22);
+  mask-image: linear-gradient(90deg, transparent, #000 2.5%, #000 97.5%, transparent);
+}
+
 .topbar-left { max-width: 65%; flex: 0 1 auto; flex-wrap: wrap; align-content: center; gap: 14px; }
 .topbar-actions { flex: 1 1 auto; justify-content: flex-end; gap: 8px; }
 .topbar-actions-list { display: flex; min-width: 0; flex: 1 1 auto; flex-wrap: wrap; align-items: center; align-content: center; justify-content: flex-end; gap: 10px; overflow: visible; }
