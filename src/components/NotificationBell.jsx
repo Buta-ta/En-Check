@@ -1,14 +1,51 @@
-// src/components/NotificationBell.jsx
+// ═══════════════════════════════════════════════════════════
+// LA CLOCHE — chaque notification porte l'icône de sa page
+//
+// Refonte : plus un seul style en ligne, plus une seule couleur
+// sombre en dur. Le panneau suit le thème de la page, et le
+// médaillon d'une notification reprend l'icône de la barre
+// latérale : une sortie manquante montre l'horloge de Pointages,
+// une demande de congé le calendrier d'Absences. La puce nomme la
+// page pour qu'on sache où le clic mène avant de cliquer.
+// ═══════════════════════════════════════════════════════════
 
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Bell, X, Check, CheckCheck, ShieldCheck, AlertTriangle,
-  Clock, CalendarOff, TrendingUp, FileText, ScanFace,
-  Megaphone, ChevronRight, CalendarDays,
+  AlertTriangle, Bell, Building2, CalendarDays, CalendarOff, Check,
+  CheckCheck, ChevronRight, Clock, Coffee, FileText, MapPin, Megaphone,
+  ScanFace, ShieldCheck, Sparkles, Timer, TrendingUp, Users, Wallet, X,
 } from 'lucide-react'
+import './NotificationBell.css'
 
-const ICON_MAP = {
+// La page visée par une notification, avec SON icône et SON nom.
+const PAGES = {
+  '/dashboard': { libelle: 'Vue d’ensemble', Icone: Bell },
+  '/pointages': { libelle: 'Pointages', Icone: Clock },
+  '/retards': { libelle: 'Retards', Icone: Timer },
+  '/pauses': { libelle: 'Pauses', Icone: Coffee },
+  '/absences': { libelle: 'Absences', Icone: CalendarOff },
+  '/planning': { libelle: 'Planning', Icone: CalendarDays },
+  '/employes': { libelle: 'Équipe', Icone: Users },
+  '/jours-feries': { libelle: 'Jours fériés', Icone: CalendarDays },
+  '/heures-supplementaires': { libelle: 'Heures supplémentaires', Icone: Clock },
+  '/rapports': { libelle: 'Rapports', Icone: FileText },
+  '/paie': { libelle: 'Paie & fiscalité', Icone: ShieldCheck },
+  '/remunerations': { libelle: 'Rémunérations', Icone: Wallet },
+  '/prospection': { libelle: 'Prospection', Icone: TrendingUp },
+  '/entreprises': { libelle: 'Entreprises', Icone: Building2 },
+  '/admins': { libelle: 'Administrateurs', Icone: ShieldCheck },
+  '/system-messages': { libelle: 'Messages système', Icone: Megaphone },
+  '/analytics': { libelle: 'Analytics du site', Icone: TrendingUp },
+  '/geopointage': { libelle: 'Géopointage', Icone: MapPin },
+  '/reconnaissance-faciale': { libelle: 'Reconnaissance faciale', Icone: ScanFace },
+  '/predictions': { libelle: 'Prédictions', Icone: Sparkles },
+  '/configuration-pointeuse': { libelle: 'Configuration pointeuse', Icone: ScanFace },
+}
+
+// Les anciennes notifications ne portent qu'une clé d'icône : on la garde
+// comme secours, mais la page reste la source de vérité.
+const ICONES_DE_SECOURS = {
   shield: ShieldCheck,
   alert: AlertTriangle,
   clock: Clock,
@@ -20,605 +57,253 @@ const ICON_MAP = {
   megaphone: Megaphone,
 }
 
-const CATEGORY_LABELS = {
-  all: { label: 'Tout', icon: Bell },
-  pointages: { label: 'Pointages', icon: Clock },
-  planning: { label: 'Planning', icon: CalendarDays },
-  rh: { label: 'RH', icon: CalendarOff },
-  commercial: { label: 'Commercial', icon: TrendingUp },
-  system: { label: 'Système', icon: Megaphone },
+const CATEGORIES = {
+  all: 'Tout',
+  pointages: 'Pointages',
+  planning: 'Planning',
+  rh: 'RH',
+  commercial: 'Commercial',
+  system: 'Système',
 }
 
-export default function NotificationBell({ 
-  notifications = [], 
-  unreadCount = 0, 
-  hasHighPriority = false, 
-  markAsRead, 
-  markAllAsRead, 
-  onNavigate 
+function instantPresent() {
+  return Date.now()
+}
+
+function cheminSeul(chemin) {
+  return String(chemin || '').split('?')[0].split('#')[0]
+}
+
+/** La page d'une notification : son nom, son icône, sa teinte. */
+function pageDeNotification(notification) {
+  const chemin = cheminSeul(notification?.path)
+  const page = PAGES[chemin]
+  return {
+    chemin: page ? chemin : null,
+    libelle: page?.libelle || null,
+    Icone: page?.Icone || ICONES_DE_SECOURS[notification?.icon] || Bell,
+  }
+}
+
+export default function NotificationBell({
+  notifications = [],
+  unreadCount = 0,
+  hasHighPriority = false,
+  markAsRead,
+  markAllAsRead,
+  onNavigate,
 }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [activeCategory, setActiveCategory] = useState('all')
-  const [detailModalOpen, setDetailModalOpen] = useState(false)
-  const [selectedNotif, setSelectedNotif] = useState(null)
-  const panelRef = useRef(null)
-  const bellRef = useRef(null)
+  const [ouvert, setOuvert] = useState(false)
+  const [categorieActive, setCategorieActive] = useState('all')
+  const [detailOuvert, setDetailOuvert] = useState(false)
+  const [selection, setSelection] = useState(null)
+  const panneauRef = useRef(null)
+  const clocheRef = useRef(null)
   const navigate = useNavigate()
 
-  // ═══ ANIMATION : Cloche s'anime si unreadCount > 0 ═══
-  const shouldAnimate = unreadCount > 0
-  const isUrgent = hasHighPriority || unreadCount >= 3  // Urgent si high priority OU 3+ notifications
+  const urgente = hasHighPriority || unreadCount >= 3
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (
-        panelRef.current && !panelRef.current.contains(e.target) &&
-        bellRef.current && !bellRef.current.contains(e.target)
-      ) {
-        setIsOpen(false)
+    if (!ouvert) return undefined
+    const surClic = (evenement) => {
+      if (panneauRef.current && !panneauRef.current.contains(evenement.target)
+        && clocheRef.current && !clocheRef.current.contains(evenement.target)) {
+        setOuvert(false)
       }
     }
-    if (isOpen) document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isOpen])
-
-  const filteredNotifs = activeCategory === 'all'
-    ? notifications
-    : notifications.filter(n => n.category === activeCategory)
-
-  const categoryCounts = notifications.reduce((acc, n) => {
-    if (!n.read) {
-      acc[n.category] = (acc[n.category] || 0) + 1
+    const surTouche = (evenement) => { if (evenement.key === 'Escape') setOuvert(false) }
+    document.addEventListener('mousedown', surClic)
+    document.addEventListener('keydown', surTouche)
+    return () => {
+      document.removeEventListener('mousedown', surClic)
+      document.removeEventListener('keydown', surTouche)
     }
-    return acc
+  }, [ouvert])
+
+  const filtrees = categorieActive === 'all'
+    ? notifications
+    : notifications.filter((notification) => notification.category === categorieActive)
+
+  const compteurs = notifications.reduce((accumulateur, notification) => {
+    if (!notification.read) {
+      accumulateur[notification.category] = (accumulateur[notification.category] || 0) + 1
+    }
+    return accumulateur
   }, {})
 
-  const handleNotifClick = (notif) => {
-    if (markAsRead) markAsRead(notif.key)
-    
-    // ═══ Si c'est un signal d'assiduité, afficher le détail dans une modale ═══
-    if (notif.category === 'assiduite') {
-      setSelectedNotif(notif)
-      setDetailModalOpen(true)
+  const ouvrirNotification = (notification) => {
+    if (markAsRead) markAsRead(notification.key)
+    if (notification.category === 'assiduite') {
+      setSelection(notification)
+      setDetailOuvert(true)
       return
     }
-    
-    // ═══ Navigation classique pour les autres alertes ═══
-    setIsOpen(false)
-    if (notif.path) {
+    setOuvert(false)
+    if (notification.path) {
       if (onNavigate) onNavigate()
-      navigate(notif.path)
+      navigate(notification.path)
     }
   }
 
-  const formatTime = (timestamp) => {
-    if (!timestamp) return ''
-    const d = new Date(timestamp)
-    const now = new Date()
-    const diffMs = now - d
-    const diffMin = Math.floor(diffMs / 60000)
-    const diffH = Math.floor(diffMs / 3600000)
-
-    if (diffMin < 1) return 'À l\'instant'
-    if (diffMin < 60) return `il y a ${diffMin}min`
-    if (diffH < 24) return `il y a ${diffH}h`
-    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
+  const quitterLeDetailVers = (notification) => {
+    setDetailOuvert(false)
+    if (!notification?.path) return
+    setOuvert(false)
+    if (onNavigate) onNavigate()
+    navigate(notification.path)
   }
 
-  const getPriorityDot = (priority) => {
-    if (priority === 'high') return '#EF4444'
-    if (priority === 'medium') return '#F59E0B'
-    return '#6B7280'
+  const temps = (horodatage) => {
+    if (!horodatage) return ''
+    const date = new Date(horodatage)
+    const minutes = Math.floor((instantPresent() - date.getTime()) / 60000)
+    if (minutes < 1) return 'à l’instant'
+    if (minutes < 60) return `il y a ${minutes} min`
+    const heures = Math.floor(minutes / 60)
+    if (heures < 24) return `il y a ${heures} h`
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
   }
 
   return (
-    <div style={{ position: 'relative' }}>
-      <style>{`
-        @keyframes bellShake {
-          0%, 100% { transform: rotate(0deg); }
-          10% { transform: rotate(14deg); }
-          20% { transform: rotate(-12deg); }
-          30% { transform: rotate(10deg); }
-          40% { transform: rotate(-8deg); }
-          50% { transform: rotate(6deg); }
-          60% { transform: rotate(-4deg); }
-          70% { transform: rotate(2deg); }
-          80% { transform: rotate(-1deg); }
-          90% { transform: rotate(1deg); }
-        }
-        @keyframes bellPulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-        }
-        @keyframes pulseBadge {
-          0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245,158,11,0.4); }
-          50% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(245,158,11,0); }
-        }
-        @keyframes urgentPulse {
-          0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
-          50% { transform: scale(1.2); box-shadow: 0 0 0 10px rgba(239,68,68,0); }
-        }
-        @keyframes glowPulse {
-          0%, 100% { box-shadow: 0 0 5px rgba(245,158,11,0.3), inset 0 0 5px rgba(245,158,11,0.1); }
-          50% { box-shadow: 0 0 20px rgba(245,158,11,0.5), inset 0 0 10px rgba(245,158,11,0.2); }
-        }
-        @keyframes notifSlideIn {
-          from { opacity: 0; transform: translateY(-8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes panelFadeIn {
-          from { opacity: 0; transform: translateY(-10px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .notif-item:hover {
-          background: rgba(245,158,11,0.08) !important;
-          border-color: rgba(245,158,11,0.2) !important;
-        }
-        .notif-cat-btn:hover {
-          background: rgba(245,158,11,0.1) !important;
-        }
-        .bell-container-active {
-          animation: glowPulse 2s ease-in-out infinite;
-        }
-      `}</style>
-
-      {/* ═══ BELL BUTTON ═══ */}
+    <div className="notification-bell">
       <button
-        ref={bellRef}
-        onClick={() => setIsOpen(!isOpen)}
-        className={shouldAnimate ? 'bell-container-active' : ''}
-        style={{
-          position: 'relative',
-          width: '44px',
-          height: '44px',
-          borderRadius: '12px',
-          background: isOpen 
-            ? 'rgba(245,158,11,0.2)' 
-            : shouldAnimate 
-              ? 'rgba(245,158,11,0.12)' 
-              : 'rgba(245,158,11,0.08)',
-          border: `1.5px solid ${
-            isOpen 
-              ? 'rgba(245,158,11,0.4)' 
-              : shouldAnimate 
-                ? 'rgba(245,158,11,0.3)' 
-                : 'rgba(245,158,11,0.15)'
-          }`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          transition: 'all 0.3s ease',
-        }}
+        ref={clocheRef}
+        type="button"
+        className={`cloche-bouton${ouvert ? ' est-ouvert' : ''}${unreadCount > 0 ? ' a-des-non-lues' : ''}${urgente ? ' est-urgente' : ''}`}
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} non lues` : 'Notifications'}
+        aria-expanded={ouvert}
+        aria-haspopup="dialog"
+        onClick={() => setOuvert((valeur) => !valeur)}
       >
-        <Bell
-          size={21}
-          color="#F59E0B"
-          style={{
-            animation: shouldAnimate 
-              ? isUrgent 
-                ? 'bellShake 0.8s ease-in-out infinite' 
-                : 'bellPulse 1.5s ease-in-out infinite'
-              : 'none',
-            filter: shouldAnimate ? 'drop-shadow(0 0 4px rgba(245,158,11,0.5))' : 'none',
-          }}
-        />
-
-        {/* ═══ BADGE ═══ */}
+        <Bell size={20} aria-hidden="true" />
         {unreadCount > 0 && (
-          <span style={{
-            position: 'absolute',
-            top: '-7px',
-            right: '-7px',
-            minWidth: '22px',
-            height: '22px',
-            borderRadius: '11px',
-            background: isUrgent
-              ? 'linear-gradient(135deg, #EF4444, #DC2626)'
-              : 'linear-gradient(135deg, #F59E0B, #D97706)',
-            color: '#FFF',
-            fontSize: '11px',
-            fontWeight: '800',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0 6px',
-            border: '2.5px solid #0F0F19',
-            animation: isUrgent ? 'urgentPulse 1.2s infinite' : 'pulseBadge 2s infinite',
-            zIndex: 10,
-          }}>
+          <span className={`cloche-pastille${urgente ? ' est-urgente' : ''}`} aria-hidden="true">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
 
-      {/* ═══ DROPDOWN PANEL ═══ */}
-      {isOpen && (
-        <div
-          ref={panelRef}
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 10px)',
-            right: 0,
-            width: 'min(420px, calc(100vw - 32px))',
-            maxHeight: '75vh',
-            background: 'linear-gradient(180deg, #161628 0%, #0F0F1A 100%)',
-            border: '1px solid rgba(245,158,11,0.2)',
-            borderRadius: '20px',
-            boxShadow: '0 25px 80px rgba(0,0,0,0.7), 0 0 60px rgba(245,158,11,0.08)',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            animation: 'panelFadeIn 0.25s ease forwards',
-            zIndex: 1000,
-          }}
-        >
-          {/* Header */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '18px 20px',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            background: 'rgba(245,158,11,0.03)',
-            flexShrink: 0,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{
-                width: '36px', height: '36px', borderRadius: '11px',
-                background: unreadCount > 0 
-                  ? 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.1))' 
-                  : 'rgba(245,158,11,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: '1px solid rgba(245,158,11,0.2)',
-              }}>
-                <Bell size={18} color="#F59E0B" />
-              </div>
-              <div>
-                <h3 style={{ color: '#FFF', fontSize: '16px', fontWeight: '700', margin: 0 }}>
-                  Notifications
-                </h3>
-                <span style={{ 
-                  color: unreadCount > 0 ? '#F59E0B' : '#666', 
-                  fontSize: '12px',
-                  fontWeight: unreadCount > 0 ? '600' : '400',
-                }}>
-                  {unreadCount > 0 ? `${unreadCount} non lue${unreadCount > 1 ? 's' : ''}` : 'Tout est lu ✓'}
-                </span>
-              </div>
+      {ouvert && (
+        <div className="cloche-panneau" ref={panneauRef} role="dialog" aria-label="Notifications">
+          <header className="cloche-tete">
+            <span className="cloche-tete-icone" aria-hidden="true"><Bell size={17} /></span>
+            <div className="cloche-tete-texte">
+              <h2>Notifications</h2>
+              <p>
+                {unreadCount > 0
+                  ? `${unreadCount} non lue${unreadCount > 1 ? 's' : ''}`
+                  : 'Tout est lu'}
+              </p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="cloche-tete-actions">
               {unreadCount > 0 && markAllAsRead && (
-                <button
-                  onClick={markAllAsRead}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    background: 'rgba(16,185,129,0.12)',
-                    border: '1px solid rgba(16,185,129,0.25)',
-                    color: '#10B981',
-                    padding: '7px 14px',
-                    borderRadius: '9px',
-                    fontSize: '12px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  <CheckCheck size={14} /> Tout lu
+                <button type="button" className="cloche-tout-lu" onClick={markAllAsRead}>
+                  <CheckCheck size={13} aria-hidden="true" />
+                  <span>Tout lire</span>
                 </button>
               )}
-              <button
-                onClick={() => setIsOpen(false)}
-                style={{
-                  width: '32px', height: '32px', borderRadius: '9px',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#888', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <X size={16} />
+              <button type="button" className="cloche-fermer" onClick={() => setOuvert(false)} aria-label="Fermer les notifications">
+                <X size={15} aria-hidden="true" />
               </button>
             </div>
-          </div>
+          </header>
 
-          {/* Category tabs */}
-          <div style={{
-            display: 'flex',
-            gap: '6px',
-            padding: '12px 16px',
-            borderBottom: '1px solid rgba(255,255,255,0.04)',
-            overflowX: 'auto',
-            flexShrink: 0,
-            background: 'rgba(0,0,0,0.15)',
-          }}>
-            {Object.entries(CATEGORY_LABELS).map(([key, { label }]) => {
-              const count = key === 'all' ? unreadCount : (categoryCounts[key] || 0)
-              const isActive = activeCategory === key
+          <div className="cloche-onglets">
+            {Object.entries(CATEGORIES).map(([cle, libelle]) => {
+              const nombre = cle === 'all' ? unreadCount : (compteurs[cle] || 0)
               return (
                 <button
-                  key={key}
-                  className="notif-cat-btn"
-                  onClick={() => setActiveCategory(key)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    padding: '7px 14px',
-                    borderRadius: '9px',
-                    border: `1px solid ${isActive ? 'rgba(245,158,11,0.35)' : 'rgba(255,255,255,0.08)'}`,
-                    background: isActive ? 'rgba(245,158,11,0.15)' : 'transparent',
-                    color: isActive ? '#F59E0B' : '#888',
-                    fontSize: '12px',
-                    fontWeight: isActive ? '700' : '500',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    transition: 'all 0.2s ease',
-                  }}
+                  key={cle}
+                  type="button"
+                  className={`cloche-onglet${categorieActive === cle ? ' est-actif' : ''}`}
+                  aria-pressed={categorieActive === cle}
+                  onClick={() => setCategorieActive(cle)}
                 >
-                  {label}
-                  {count > 0 && (
-                    <span style={{
-                      minWidth: '18px', height: '18px',
-                      borderRadius: '9px',
-                      background: isActive ? '#F59E0B' : 'rgba(255,255,255,0.12)',
-                      color: isActive ? '#000' : '#AAA',
-                      fontSize: '10px',
-                      fontWeight: '800',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      padding: '0 5px',
-                    }}>
-                      {count}
-                    </span>
-                  )}
+                  {libelle}
+                  {nombre > 0 && <span className="cloche-onglet-nombre">{nombre}</span>}
                 </button>
               )
             })}
           </div>
 
-          {/* Notifications list */}
-          <div style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '10px 14px',
-          }}>
-            {filteredNotifs.length === 0 ? (
-              <div style={{
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                padding: '50px 20px', gap: '14px',
-              }}>
-                <div style={{
-                  width: '60px', height: '60px', borderRadius: '18px',
-                  background: 'rgba(16,185,129,0.1)',
-                  border: '1px solid rgba(16,185,129,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Check size={28} color="#10B981" />
-                </div>
-                <p style={{ color: '#AAA', fontSize: '15px', fontWeight: '600', margin: 0 }}>
-                  Aucune notification
-                </p>
-                <p style={{ color: '#555', fontSize: '13px', margin: 0, textAlign: 'center' }}>
-                  {activeCategory !== 'all' ? 'Dans cette catégorie' : 'Tout est en ordre !'}
-                </p>
+          <div className="cloche-liste">
+            {filtrees.length === 0 ? (
+              <div className="cloche-vide">
+                <span className="cloche-vide-icone" aria-hidden="true"><Check size={24} /></span>
+                <p>Aucune notification</p>
+                <span>{categorieActive === 'all' ? 'Tout est en ordre.' : 'Dans cette catégorie.'}</span>
               </div>
             ) : (
-              filteredNotifs.map((notif, i) => {
-                const IconComponent = ICON_MAP[notif.icon] || Bell
+              filtrees.map((notification) => {
+                const { libelle, Icone } = pageDeNotification(notification)
                 return (
                   <button
-                    key={notif.key}
-                    className="notif-item"
-                    onClick={() => handleNotifClick(notif)}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '14px',
-                      padding: '14px 16px',
-                      borderRadius: '14px',
-                      border: `1px solid ${!notif.read ? `${notif.color}30` : 'rgba(255,255,255,0.05)'}`,
-                      background: !notif.read ? `${notif.color}0A` : 'transparent',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      fontFamily: 'inherit',
-                      marginBottom: '6px',
-                      transition: 'all 0.2s ease',
-                      animation: `notifSlideIn 0.25s ease ${i * 0.04}s both`,
-                      position: 'relative',
-                    }}
+                    key={notification.key}
+                    type="button"
+                    className={`cloche-item${notification.read ? '' : ' est-non-lue'}`}
+                    style={{ '--notif-teinte': notification.color || '#c1743c' }}
+                    onClick={() => ouvrirNotification(notification)}
                   >
-                    {/* Priority dot */}
-                    {!notif.read && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '16px',
-                        left: '8px',
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        background: getPriorityDot(notif.priority),
-                        boxShadow: `0 0 10px ${getPriorityDot(notif.priority)}90`,
-                      }} />
-                    )}
-
-                    {/* Icon */}
-                    <div style={{
-                      width: '42px', height: '42px', borderRadius: '12px',
-                      background: `${notif.color}18`,
-                      border: `1px solid ${notif.color}25`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                      marginLeft: !notif.read ? '12px' : '0',
-                    }}>
-                      <IconComponent size={20} color={notif.color} />
-                    </div>
-
-                    {/* Content */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{
-                        color: notif.read ? '#AAA' : '#FFF',
-                        fontSize: '14px',
-                        fontWeight: notif.read ? '500' : '600',
-                        margin: '0 0 4px 0',
-                        lineHeight: '1.35',
-                      }}>
-                        {notif.title}
-                      </p>
-                      <p style={{
-                        color: notif.read ? '#666' : '#999',
-                        fontSize: '12px',
-                        margin: '0 0 6px 0',
-                        lineHeight: '1.45',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}>
-                        {notif.subtitle}
-                      </p>
-                      <span style={{
-                        color: '#555',
-                        fontSize: '11px',
-                        fontWeight: '500',
-                      }}>
-                        {formatTime(notif.timestamp)}
+                    <span className="cloche-item-medaillon" aria-hidden="true"><Icone size={18} /></span>
+                    <span className="cloche-item-corps">
+                      <span className="cloche-item-titre">{notification.title}</span>
+                      <span className="cloche-item-texte">{notification.subtitle}</span>
+                      <span className="cloche-item-pied">
+                        {libelle && (
+                          <span className="cloche-page">
+                            <span className="cloche-page-point" aria-hidden="true" />
+                            {libelle}
+                          </span>
+                        )}
+                        <span className="cloche-item-temps">{temps(notification.timestamp)}</span>
                       </span>
-                    </div>
-
-                    {/* Arrow */}
-                    <ChevronRight size={16} color="#555" style={{ flexShrink: 0, marginTop: '4px' }} />
+                    </span>
+                    <ChevronRight size={15} className="cloche-item-chevron" aria-hidden="true" />
                   </button>
                 )
               })
             )}
           </div>
 
-          {/* Footer */}
-          {notifications.length > 0 && (
-            <div style={{
-              padding: '14px 18px',
-              borderTop: '1px solid rgba(255,255,255,0.06)',
-              display: 'flex',
-              justifyContent: 'center',
-              background: 'rgba(0,0,0,0.1)',
-              flexShrink: 0,
-            }}>
-              <span style={{
-                color: '#555',
-                fontSize: '11px',
-                fontWeight: '500',
-              }}>
-                {notifications.length} notification{notifications.length > 1 ? 's' : ''} · Actualisation auto 60s
-              </span>
-            </div>
-          )}
+          <footer className="cloche-pied">
+            {notifications.length} notification{notifications.length > 1 ? 's' : ''}
+            {notifications.length > 0 ? ' · actualisation auto' : ''}
+          </footer>
         </div>
       )}
 
-      {/* ═══ MODALE DE DÉTAIL POUR LES SIGNAUX D'ASSIDUITÉ ═══ */}
-      {detailModalOpen && selectedNotif && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.6)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          backdropFilter: 'blur(4px)',
-        }} onClick={() => setDetailModalOpen(false)}>
-          <div style={{
-            background: 'white',
-            borderRadius: '20px',
-            padding: '32px',
-            maxWidth: '500px',
-            width: '90%',
-            maxHeight: '80vh',
-            overflow: 'auto',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px',
-            }}>
-              <h3 style={{
-                margin: 0,
-                color: '#111',
-                fontSize: '18px',
-                fontWeight: '700',
-              }}>
-                Signal d'assiduité
-              </h3>
-              <button onClick={() => setDetailModalOpen(false)} style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '8px',
-                borderRadius: '8px',
-              }}>
-                <X size={20} color="#666" />
+      {detailOuvert && selection && (
+        <div
+          className="cloche-voile"
+          onMouseDown={(evenement) => { if (evenement.target === evenement.currentTarget) setDetailOuvert(false) }}
+        >
+          <div className="cloche-fenetre" role="dialog" aria-modal="true" aria-labelledby="cloche-detail-titre">
+            <header className="cloche-fenetre-tete">
+              <span className="cloche-fenetre-icone" aria-hidden="true">
+                {(() => { const { Icone } = pageDeNotification(selection); return <Icone size={17} /> })()}
+              </span>
+              <div>
+                <p className="cloche-eyebrow">Signal d’assiduité</p>
+                <h2 id="cloche-detail-titre">Détail du signal</h2>
+              </div>
+              <button type="button" className="cloche-fermer" onClick={() => setDetailOuvert(false)} aria-label="Fermer le détail">
+                <X size={15} aria-hidden="true" />
               </button>
+            </header>
+            <div className="cloche-fenetre-corps">
+              <strong>{selection.title}</strong>
+              <p>{selection.subtitle}</p>
             </div>
-            
-            <div style={{
-              color: '#333',
-              fontSize: '15px',
-              lineHeight: '1.6',
-              marginBottom: '20px',
-            }}>
-              <p style={{ fontWeight: '600', marginBottom: '8px' }}>
-                {selectedNotif.title}
-              </p>
-              <p style={{ color: '#555', whiteSpace: 'pre-wrap' }}>
-                {selectedNotif.subtitle}
-              </p>
-            </div>
-            
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end',
-            }}>
-              <button onClick={() => setDetailModalOpen(false)} style={{
-                padding: '10px 24px',
-                borderRadius: '10px',
-                border: '1px solid #ddd',
-                background: 'white',
-                color: '#666',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-              }}>
+            <footer className="cloche-fenetre-pied">
+              <button type="button" className="cloche-bouton-creux" onClick={() => setDetailOuvert(false)}>
                 Fermer
               </button>
-              <button onClick={() => {
-                setDetailModalOpen(false)
-                if (selectedNotif.path) {
-                  if (onNavigate) onNavigate()
-                  navigate(selectedNotif.path)
-                }
-              }} style={{
-                padding: '10px 24px',
-                borderRadius: '10px',
-                border: 'none',
-                background: '#F59E0B',
-                color: 'white',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-              }}>
-                Voir les pointages
-              </button>
-            </div>
+              {selection.path && (
+                <button type="button" className="cloche-bouton-plein" onClick={() => quitterLeDetailVers(selection)}>
+                  Ouvrir la page
+                </button>
+              )}
+            </footer>
           </div>
         </div>
       )}

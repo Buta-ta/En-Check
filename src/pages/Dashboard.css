@@ -57,11 +57,11 @@
   --danger-soft: rgba(226, 139, 128, 0.14);
   --violet: #b8a0d0;
   --violet-soft: rgba(184, 160, 208, 0.14);
-  --sidebar: #11110f;
-  --sidebar-ink: #f5f0e7;
-  --sidebar-muted: #aaa398;
-  --sidebar-line: rgba(255, 255, 255, 0.09);
-  --sidebar-active: #e6a45b;
+  --sidebar: #1b1410;
+  --sidebar-ink: #f0e4cb;
+  --sidebar-muted: #c4b49b;
+  --sidebar-line: rgba(240, 228, 203, 0.12);
+  --sidebar-active: #c1743c;
   --shadow: 0 14px 40px rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 3px 14px rgba(0, 0, 0, 0.14);
   color-scheme: dark;
@@ -116,12 +116,44 @@
   z-index: 0;
   content: "";
   pointer-events: none;
-  opacity: 0.62;
+  opacity: 0.55;
+  /* La trame du bogolan : fils serrés, puis deux rangs de chevrons très
+     pâles — assez pour dire « tissé », pas assez pour gêner la lecture. */
   background-image:
-    linear-gradient(45deg, transparent 48.5%, rgba(230, 164, 91, 0.075) 49.5%, rgba(230, 164, 91, 0.075) 50.5%, transparent 51.5%),
-    linear-gradient(-45deg, transparent 48.5%, rgba(255, 255, 255, 0.045) 49.5%, rgba(255, 255, 255, 0.045) 50.5%, transparent 51.5%);
-  background-size: 34px 34px;
-  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.6) 58%, transparent 100%);
+    repeating-linear-gradient(90deg, rgba(240, 228, 203, 0.035) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, rgba(240, 228, 203, 0.028) 0 1px, transparent 1px 7px);
+  background-size: 7px 7px, 7px 7px;
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.7) 55%, transparent 100%);
+}
+
+/* ── LE VRAI BANDEAU DU BOGOLAN ──
+   Ce ne sont pas des formes redessinées : ce sont les deux pièces de la
+   page Paie & fiscalité (`paie-bogolan-haut.webp`, `paie-bogolan-bas.webp`),
+   posées en haut et en bas de la barre, pleine largeur. */
+.sidebar-bogolan {
+  position: relative;
+  z-index: 1;
+  height: 58px;
+  flex: 0 0 58px;
+  margin: 2px -16px 14px;
+  background-image: url('/images/paie-bogolan-haut.webp');
+  background-repeat: repeat-x;
+  background-position: center;
+  background-size: auto 58px;
+  border-top: 1px solid rgba(240, 228, 203, 0.16);
+  border-bottom: 1px solid rgba(240, 228, 203, 0.16);
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+
+.sidebar-bogolan--bas {
+  height: 26px;
+  flex: 0 0 26px;
+  margin: 12px -16px 10px;
+  background-image: url('/images/paie-bogolan-bas.webp');
+  background-size: auto 26px;
+  border-top: 0;
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  opacity: 0.9;
 }
 
 .sidebar-brand,
@@ -132,7 +164,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 2px 9px 25px;
+  padding: 2px 9px 12px;
 }
 
 .sidebar-brand-mark {
@@ -264,25 +296,52 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 18px 4px 15px;
-  padding: 12px;
-  color: #e5c89f;
+  margin: 16px 4px 12px;
+  padding: 11px;
+  color: #e7cda9;
+  font-size: 11px;
   text-decoration: none;
-  border: 1px solid rgba(230, 170, 97, 0.2);
-  border-radius: 13px;
-  background: rgba(230, 170, 97, 0.08);
-  transition: background-color 160ms ease;
+  border: 1px solid rgba(193, 116, 60, 0.32);
+  border-radius: 11px;
+  background: rgba(193, 116, 60, 0.1);
+  transition: border-color 160ms ease;
 }
 
-.sidebar-portal-link:hover { background: rgba(230, 170, 97, 0.15); }
+.sidebar-portal-link:hover { border-color: rgba(216, 161, 60, 0.7); }
 .sidebar-portal-link span { flex: 1; font-size: 11px; font-weight: 650; }
 
 .sidebar-profile {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 5px 0;
-  border-top: 1px solid var(--sidebar-line);
+  gap: 8px;
+  padding: 4px 2px 0;
+}
+
+.sidebar-profile-link {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  color: var(--sidebar-ink);
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.sidebar-profile-link:hover {
+  border-color: rgba(193, 116, 60, 0.6);
+  transform: translateX(1px);
+}
+
+.sidebar-profile-link.is-statique { cursor: default; }
+.sidebar-profile-link.is-statique:hover { border-color: transparent; transform: none; }
+
+.sidebar-profile-chevron {
+  flex: 0 0 auto;
+  color: #c1743c;
 }
 
 .sidebar-profile-avatar,
@@ -293,7 +352,7 @@
   color: #372718;
   font-weight: 780;
   border-radius: 50%;
-  background: linear-gradient(140deg, #ecc48d, #cc8150);
+  background: linear-gradient(140deg, #e6b489, #b4663f);
 }
 
 .sidebar-profile-avatar { width: 34px; height: 34px; font-size: 11px; }

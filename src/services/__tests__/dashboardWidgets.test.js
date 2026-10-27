@@ -80,7 +80,10 @@ describe('câblage du tableau de bord', () => {
     expect(dashboardSrc).toContain('retardsOptionActive = false,')
     expect(dashboardSrc).toContain("available: retardsOptionActive")
     expect(dashboardSrc).toContain("...(retardsOptionActive ? [{ id: 'late', label: 'Retards' }] : []),")
-    // Et l'onglet actif revient sur « Tous » s'il disparaît
-    expect(dashboardSrc).toContain("if (!retardsOptionActive && activityFilter === 'late') setActivityFilter('all')")
+    // Et l'onglet actif revient sur « Tous » s'il disparaît : le filtre
+    // retenu est calculé, jamais un état intermédiaire affiché une frame.
+    expect(dashboardSrc).toContain("const filtreActivite = !retardsOptionActive && activityFilter === 'late' ? 'all' : activityFilter")
+    expect(dashboardSrc).toContain('filtreActivite === filter.id')
+    expect(dashboardSrc).toContain('filtreActivite === \'late\'')
   })
 })
