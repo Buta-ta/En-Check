@@ -1,0 +1,741 @@
+/* ═══════════════════════════════════════════════════════════
+   LES COURRIELS — le registre des tentatives (toile de korhogo)
+
+   Ce fichier ne rouvre pas une palette : il emprunte les jetons
+   `--ms-*` posés par la page. Il ajoute la lisière de santé, le
+   registre à sept compteurs, le journal de cartouches et le
+   composeur d'envoi de contrôle.
+
+   Aucun survol ne touche le fond, la couleur d'un texte ni
+   l'opacité d'un champ : seulement le trait et le soulignement.
+   ═══════════════════════════════════════════════════════════ */
+
+.ms-courriels {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ── l'en-tête de la vue ────────────────────────────────── */
+.ms-courriels-tete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.ms-courriels-tete .ms-vue-titre { margin: 0; }
+
+.ms-courriels-tete .ms-vue-note {
+  margin: 5px 0 0;
+  max-width: 74ch;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ms-faible);
+}
+
+.ms-courriels-gestes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── la lisière de santé ────────────────────────────────── */
+.ms-sante {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid var(--ms-ligne);
+  border-left: 3px solid var(--ms-attente);
+  border-radius: 2px;
+  background-color: var(--ms-fumee-2);
+}
+
+.ms-sante-verdict {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 250px;
+  color: var(--ms-attente);
+}
+
+.ms-sante-verdict > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ms-sante-verdict strong {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ms-coton);
+}
+
+.ms-sante-detail {
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--ms-faible);
+}
+
+.ms-sante[data-ton='vert'] {
+  border-left-color: var(--ms-vert);
+}
+
+.ms-sante[data-ton='vert'] .ms-sante-verdict { color: var(--ms-vert); }
+
+.ms-sante[data-ton='alerte'] {
+  border-left-color: var(--ms-alerte);
+}
+
+.ms-sante[data-ton='alerte'] .ms-sante-verdict { color: var(--ms-alerte); }
+
+.ms-sante-criteres {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1;
+}
+
+.ms-sante-criteres li {
+  display: grid;
+  grid-template-columns: 8px auto;
+  grid-template-areas:
+    'point libelle'
+    'point valeur';
+  column-gap: 7px;
+  padding: 0 14px;
+  border-left: 1px solid var(--ms-ligne);
+}
+
+.ms-sante-criteres li:first-child {
+  border-left: none;
+  padding-left: 0;
+}
+
+.ms-sante-point {
+  grid-area: point;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background-color: var(--ms-vert);
+}
+
+.ms-sante-criteres li[data-ok='non'] .ms-sante-point {
+  background-color: var(--ms-alerte);
+}
+
+.ms-sante-libelle {
+  grid-area: libelle;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ms-faible);
+}
+
+.ms-sante-valeur {
+  grid-area: valeur;
+  font-size: 11px;
+  color: var(--ms-coton-doux);
+}
+
+.ms-sante-criteres li[data-ok='non'] .ms-sante-valeur {
+  color: #fca5a5;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* ── le registre à sept compteurs ───────────────────────── */
+.ms-registre {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border: 1px solid var(--ms-ligne);
+  border-radius: 2px;
+  background-color: var(--ms-creux);
+  overflow: hidden;
+}
+
+.ms-registre-cellule {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 14px;
+  border-left: 1px solid var(--ms-ligne);
+}
+
+.ms-registre-cellule:first-child { border-left: none; }
+
+.ms-registre-nombre {
+  font-family: 'Fraunces', 'Playfair Display', Georgia, serif;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ms-coton);
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-registre-cellule[data-ton='vert'] .ms-registre-nombre { color: var(--ms-vert); }
+.ms-registre-cellule[data-ton='alerte'] .ms-registre-nombre { color: var(--ms-alerte); }
+.ms-registre-cellule[data-ton='attente'] .ms-registre-nombre { color: var(--ms-attente); }
+.ms-registre-cellule[data-ton='lete'] .ms-registre-nombre { color: var(--ms-lete); }
+.ms-registre-cellule[data-ton='or'] .ms-registre-nombre { color: var(--ms-or); }
+.ms-registre-cellule[data-ton='faible'] .ms-registre-nombre { color: var(--ms-coton-doux); }
+
+.ms-registre-libelle {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ms-faible);
+}
+
+.ms-lecture {
+  margin: -4px 0 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--ms-ligne-forte);
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--ms-faible);
+}
+
+/* ── la barre de lecture ────────────────────────────────── */
+.ms-courriels-barre {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 9px 10px;
+  border: 1px solid var(--ms-ligne);
+  border-radius: 2px;
+  background-color: var(--ms-fumee-2);
+}
+
+.ms-courriels-recherche {
+  flex: 1 1 260px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ms-ligne);
+  border-radius: 2px;
+  background-color: var(--ms-creux);
+  color: var(--ms-faible);
+}
+
+.ms-courriels-recherche:focus-within { border-color: var(--ms-or); }
+
+.ms-courriels-recherche input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--ms-coton);
+  font-size: 11.5px;
+  outline: none;
+}
+
+.ms-courriels-recherche input::placeholder { color: var(--ms-faible); }
+
+.ms-courriels-barre .ms-compte { margin-left: 2px; }
+
+/* ── le journal ─────────────────────────────────────────── */
+.ms-courriels-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ms-courriel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 12px 17px;
+  border: 1px solid var(--ms-ligne);
+  border-radius: 2px;
+  background-color: var(--ms-carte);
+}
+
+.ms-courriel::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background-color: var(--ms-faible);
+}
+
+.ms-courriel[data-ton='vert']::before { background-color: var(--ms-vert); }
+.ms-courriel[data-ton='alerte']::before { background-color: var(--ms-alerte); }
+.ms-courriel[data-ton='attente']::before { background-color: var(--ms-attente); }
+.ms-courriel[data-ton='lete']::before { background-color: var(--ms-lete); }
+.ms-courriel[data-ton='or']::before { background-color: var(--ms-or); }
+
+.ms-courriel-tete {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.ms-courriel-sujet {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ms-coton);
+}
+
+.ms-courriel-date {
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+  color: var(--ms-faible);
+  white-space: nowrap;
+}
+
+.ms-etiquette[data-ton='lete'] {
+  border-color: rgba(232, 161, 127, 0.45);
+  color: var(--ms-lete);
+}
+
+.ms-page.ms-clair .ms-etiquette[data-ton='attente'] { color: #a35a06; }
+.ms-page.ms-clair .ms-etiquette[data-ton='or'] { color: #7d5f16; }
+.ms-page.ms-clair .ms-etiquette[data-ton='lete'] { color: #9a4a22; }
+
+.ms-courriel-meta,
+.ms-courriel-comptes {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--ms-coton-doux);
+}
+
+.ms-courriel-comptes span[data-ton='vert'] { color: var(--ms-vert); }
+.ms-courriel-comptes span[data-ton='alerte'] { color: var(--ms-alerte); }
+
+.ms-courriel-erreur {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 2px 0 0;
+  padding: 7px 9px;
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  border-left: 2px solid var(--ms-alerte);
+  border-radius: 2px;
+  background-color: rgba(70, 25, 22, 0.32);
+  color: #f3b5b5;
+  font-size: 10.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.ms-courriel-erreur svg { flex: 0 0 auto; margin-top: 2px; }
+
+.ms-courriel-gestes,
+.ms-courriel-confirme {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.ms-courriel-confirme {
+  justify-content: flex-end;
+  padding: 7px 9px;
+  border: 1px solid var(--ms-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--ms-fumee-2);
+}
+
+.ms-courriel-confirme > span {
+  margin-right: auto;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--ms-coton-doux);
+}
+
+.ms-bouton--petit {
+  min-height: 30px;
+  padding: 4px 9px;
+  font-size: 10.5px;
+}
+
+.ms-pivote { transform: rotate(180deg); }
+
+/* ── le détail déplié ───────────────────────────────────── */
+.ms-courriel-detail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ms-ligne);
+}
+
+.ms-courriel-panneau {
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--ms-ligne);
+  border-radius: 2px;
+  background-color: var(--ms-creux);
+}
+
+.ms-courriel-panneau--large { grid-column: 1 / -1; }
+
+.ms-courriel-panneau .ms-eyebrow { margin: 0 0 6px; }
+
+.ms-courriel-vide,
+.ms-courriel-adresse {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--ms-faible);
+  overflow-wrap: anywhere;
+}
+
+.ms-courriel-adresse { color: var(--ms-coton-doux); }
+
+.ms-courriel-resultats,
+.ms-courriel-contenu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--ms-coton-doux);
+}
+
+.ms-courriel-resultats li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+
+.ms-courriel-resultats li[data-ok='oui'] .ms-courriel-signe { color: var(--ms-vert); }
+.ms-courriel-resultats li[data-ok='non'] .ms-courriel-signe { color: var(--ms-alerte); }
+
+.ms-courriel-signe {
+  flex: 0 0 auto;
+  display: inline-flex;
+  margin-top: 1px;
+}
+
+.ms-courriel-raison { color: var(--ms-faible); }
+
+.ms-courriel-trace {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 12px;
+  margin: 0;
+}
+
+.ms-courriel-trace div { min-width: 0; }
+
+.ms-courriel-trace dt {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ms-faible);
+}
+
+.ms-courriel-trace dd {
+  margin: 1px 0 0;
+  font-size: 10.5px;
+  color: var(--ms-coton-doux);
+  overflow-wrap: anywhere;
+}
+
+.ms-courriel-contenu li { overflow-wrap: anywhere; }
+.ms-courriel-contenu strong { color: var(--ms-coton); font-weight: 600; }
+
+/* ── la pagination ──────────────────────────────────────── */
+.ms-courriels-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--ms-ligne);
+  border-radius: 2px;
+  background-color: var(--ms-fumee-2);
+  color: var(--ms-coton-doux);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.ms-courriels-plus:hover { border-color: var(--ms-ligne-forte); }
+.ms-courriels-plus:disabled { cursor: progress; }
+
+/* ── le composeur ───────────────────────────────────────── */
+.ms-fenetre[data-taille='large'] { max-width: 980px; }
+
+.ms-fenetre-note {
+  margin-right: auto;
+  align-self: center;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--ms-faible);
+}
+
+.ms-composeur {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ms-composeur-grille {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.ms-composeur-colonne {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+}
+
+.ms-composeur .ms-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ms-composeur .ms-champ input,
+.ms-composeur .ms-champ select,
+.ms-composeur .ms-champ textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--ms-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--ms-creux);
+  color: var(--ms-coton);
+  font-size: 11.5px;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+}
+
+.ms-composeur .ms-champ input:focus,
+.ms-composeur .ms-champ select:focus,
+.ms-composeur .ms-champ textarea:focus {
+  border-color: var(--ms-or);
+}
+
+.ms-champ-note {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--ms-faible);
+}
+
+.ms-lignes-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ms-lignes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ms-ligne {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 11px;
+  border: 1px solid var(--ms-ligne);
+  border-radius: 2px;
+  background-color: var(--ms-fumee-2);
+}
+
+.ms-ligne legend {
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ms-ocre);
+}
+
+.ms-ligne-retirer {
+  align-self: flex-end;
+}
+
+/* ── l'aperçu ───────────────────────────────────────────── */
+.ms-apercu-courriel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  border-left: 3px solid var(--ms-vert);
+  border-radius: 2px;
+  background-color: rgba(12, 42, 34, 0.34);
+}
+
+.ms-apercu-courriel .ms-eyebrow { margin: 0; color: var(--ms-vert); }
+
+.ms-apercu-courriel-titre {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ms-coton);
+}
+
+.ms-apercu-courriel-note,
+.ms-apercu-courriel-pied,
+.ms-apercu-courriel-vide {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.55;
+  color: var(--ms-coton-doux);
+}
+
+.ms-apercu-courriel-pied {
+  padding-top: 7px;
+  border-top: 1px solid rgba(16, 185, 129, 0.18);
+  color: var(--ms-faible);
+}
+
+.ms-apercu-courriel-vide { color: var(--ms-faible); }
+
+.ms-puces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ms-puces li {
+  padding: 4px 8px;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 999px;
+  background-color: rgba(16, 185, 129, 0.1);
+  font-size: 10px;
+  color: #a7f3d0;
+  overflow-wrap: anywhere;
+}
+
+/* ── la confirmation d'envoi ────────────────────────────── */
+.ms-confirmation-envoi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 11px 12px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-left: 3px solid var(--ms-alerte);
+  border-radius: 2px;
+  background-color: rgba(50, 18, 16, 0.45);
+}
+
+.ms-confirmation-envoi p {
+  flex: 1 1 320px;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--ms-coton);
+}
+
+.ms-confirmation-envoi strong { color: #fca5a5; }
+
+.ms-confirmation-envoi code {
+  padding: 1px 5px;
+  border: 1px solid var(--ms-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--ms-creux);
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ms-or);
+}
+
+.ms-confirmation-envoi input {
+  width: 132px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--ms-alerte);
+  border-radius: 2px;
+  background-color: var(--ms-creux);
+  color: var(--ms-coton);
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  outline: none;
+}
+
+/* ── les écrans étroits ─────────────────────────────────── */
+@media (max-width: 1180px) {
+  .ms-registre { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ms-registre-cellule:nth-child(5) { border-left: none; }
+}
+
+@media (max-width: 980px) {
+  .ms-composeur-grille { grid-template-columns: minmax(0, 1fr); }
+  .ms-courriel-detail { grid-template-columns: minmax(0, 1fr); }
+  .ms-sante-criteres li:nth-child(3) { border-left: none; padding-left: 0; }
+}
+
+@media (max-width: 720px) {
+  .ms-courriels-tete { flex-direction: column; }
+  .ms-courriels-gestes { width: 100%; }
+  .ms-courriels-gestes .ms-bouton,
+  .ms-courriels-gestes .ms-bouton-creux { flex: 1; justify-content: center; }
+  .ms-sante { flex-direction: column; align-items: stretch; gap: 10px; }
+  .ms-sante-criteres { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .ms-sante-criteres li,
+  .ms-sante-criteres li:first-child,
+  .ms-sante-criteres li:nth-child(3) { border-left: none; padding: 0; }
+  .ms-registre { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ms-registre-cellule:nth-child(odd) { border-left: none; }
+  .ms-courriels-barre { flex-direction: column; align-items: stretch; }
+  .ms-courriels-barre .ms-date { width: 100%; }
+  .ms-courriel-tete { grid-template-columns: auto minmax(0, 1fr); }
+  .ms-courriel-date { grid-column: 2; }
+  .ms-courriel-sujet { white-space: normal; }
+  .ms-courriel-gestes { justify-content: flex-start; }
+  .ms-fenetre[data-taille='large'] { max-width: none; }
+  .ms-confirmation-envoi { flex-direction: column; align-items: stretch; }
+  .ms-confirmation-envoi input { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-pivote { transition: none; }
+}
