@@ -265,7 +265,12 @@ describe('la vue Équipes', () => {
       equipe({ id: 'eq-2', name: 'Expédition', member_count: 1, leader_employee_id: null, leader: null, health: { health_score: 40, status: 'warning' } }),
     ]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    expect(hote.textContent).toContain('2 équipes · 3 membres · 1 chef d’équipe désigné')
+    const scene = hote.querySelector('.zl-scene-sous')
+    const nombres = [...scene.querySelectorAll('strong')].map((n) => n.textContent)
+    expect(nombres).toEqual(['2', '3', '1'])
+    expect(scene.textContent).toContain('2 équipes')
+    expect(scene.textContent).toContain('3 membres en équipe')
+    expect(scene.textContent).toContain('1 chef d’équipe désigné')
   })
 
   it('lit la santé en perles, pas en pourcentage nu', async () => {
@@ -369,7 +374,13 @@ describe('la vue Tâches', () => {
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
     const colonnes = [...hote.querySelectorAll('.zl-colonne-titre')].map((c) => c.textContent.trim())
     expect(colonnes).toEqual(['À faire', 'En cours', 'Terminées', 'Validées'])
-    expect(hote.textContent).toContain('2 tâches · 0 en cours')
+    const scene = hote.querySelector('.zl-scene-sous')
+    const nombres = [...scene.querySelectorAll('strong')].map((n) => n.textContent)
+    expect(nombres).toHaveLength(4)
+    expect(nombres[0]).toBe('2')
+    expect(nombres[1]).toBe('0')
+    expect(scene.textContent).toContain('2 tâches')
+    expect(scene.textContent).toContain('0 en cours')
   })
 
   it('écrit la priorité et l’échéance en français, en clair', async () => {
@@ -682,6 +693,44 @@ describe('la page Employés', () => {
     await act(async () => ongletTaches.click())
     expect(hote.querySelector('.emp-onglet[aria-current="page"]').textContent.trim()).toBe('Tâches')
     expect(hote.textContent).toContain('Nouvelle tâche')
+  })
+
+  it('n’accroche pas un trait de points après le dernier onglet', () => {
+    // la capture montrait une file de petits points qui ne menait nulle part
+    expect(EMPLOYES).not.toContain('emp-onglets-fil')
+    expect(CSS).not.toContain('.emp-onglets-fil')
+    // la barre se nomme et se termine par un filet, pas par un ornement
+    expect(EMPLOYES).toContain('<p className="emp-onglets-titre">Sommaire</p>')
+    expect(CSS).toMatch(/\.emp-onglets \{[^}]*border-bottom: 1px solid var\(--pt-line\)/)
+    expect(CSS).toMatch(/\.emp-onglet\[aria-current='page'\] \{[^}]*border-bottom-color/)
+    // une seule marque par onglet : l'icône, pas une perle en plus
+    expect(CSS).not.toContain('.emp-onglet::before')
+  })
+
+  it('ne met qu’une seule bande de raccourcis de pages sur la page', () => {
+    const enTete = readFileSync('src/components/EmployesAfroTechSections.jsx', 'utf8')
+    expect(enTete).not.toContain('pointages-quick-nav')
+    expect(EMPLOYES).toContain("<RaccourcisPages compact excludePaths={['/employes']} />")
+  })
+
+  it('sépare les chiffres par une perle, pas par un point de texte', async () => {
+    etat.taches = [tache()]
+    await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
+    const sous = hote.querySelector('.zl-scene-sous')
+    expect(sous.querySelectorAll('.zl-sep')).toHaveLength(3)
+    expect(sous.textContent).not.toContain('·')
+    expect(CSS).toMatch(/\.zl-scene-sous strong \{[^}]*Georgia/)
+    expect(CSS).toMatch(/\.zl-scene-sous \.zl-sep \{[^}]*border-radius: 50%/)
+  })
+
+  it('chiffre chaque module par une part, jamais par une phrase creuse', async () => {
+    etat.taches = [tache(), tache({ id: 't-2', title: 'Clôturer le mois', status: 'validated' })]
+    await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
+    const notes = [...hote.querySelectorAll('.zl-medaillon-note')].map((n) => n.textContent.trim())
+    expect(notes).toEqual(['50 % du total', '0 % du total', '0 % du total', '50 % du total'])
+    // le dessin est posé sur le drap, dans la même section que le titre
+    expect(hote.querySelectorAll('.zl-scene > .zl-medaillons')).toHaveLength(1)
+    expect(CSS).toMatch(/\.zl-medaillon \+ \.zl-medaillon \{[^}]*border-left/)
   })
 
   it('garde les raccourcis de pages sous les trois vues', async () => {

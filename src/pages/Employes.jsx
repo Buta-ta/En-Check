@@ -1070,13 +1070,13 @@ export default function Employes() {
           darkMode={darkMode}
           onToggleTheme={toggleTheme}
           onBackDashboard={() => navigate('/dashboard')}
-          onNavigate={(path) => navigate(path)}
           onAddEmployee={vueActive === 'annuaire' ? handleAdd : undefined}
         />
 
         {/* ═══ MAIN ═══ */}
         <main style={styles.main}>
           <nav className="emp-onglets" aria-label="Vues de la page Employés">
+            <p className="emp-onglets-titre">Sommaire</p>
             {[
               { cle: 'annuaire', libelle: 'Annuaire', icone: Users },
               ...(vueAutorisee
@@ -1096,7 +1096,6 @@ export default function Employes() {
                 <Icone size={15} /> {libelle}
               </button>
             ))}
-            <span className="emp-onglets-fil" aria-hidden="true" />
           </nav>
 
           {vueActive === 'annuaire' && (

@@ -120,33 +120,46 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   1. LA BARRE DE VUES — trois perles sur un fil
+   1. LE SOMMAIRE — trois vues, une seule page
    ═══════════════════════════════════════════════════════════════════ */
 
+/*  Un sommaire, pas une barre d'onglets flottante : une ligne posée
+    sur la page, un filet qui la ferme, et la vue ouverte soulignée
+    au cuivre. Rien à droite — un trait de points qui ne veut rien
+    dire n'a pas sa place ici. */
 .emp-onglets {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex-wrap: wrap;
-  padding: 6px 8px;
-  margin-bottom: 18px;
-  border: 1px solid var(--pt-line);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 60%),
-    var(--pt-surface);
-  box-shadow: 0 6px 20px rgba(48, 32, 18, 0.06);
+  margin: 0 0 14px;
+  padding: 0 0 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--pt-line);
+  background: transparent;
+  box-shadow: none;
+}
+
+.emp-onglets-titre {
+  margin: 0 14px 0 0;
+  color: var(--pt-muted);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .emp-onglet {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   min-height: 44px;
-  padding: 10px 16px 10px 14px;
-  border: 1px solid transparent;
-  border-radius: 13px;
+  margin-bottom: -1px;
+  padding: 10px 16px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   background: transparent;
   color: var(--pt-ink-soft);
   font: inherit;
@@ -154,35 +167,28 @@
   font-weight: 700;
   letter-spacing: 0.01em;
   cursor: pointer;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color 0.18s ease;
 }
 
-/* la perle de l'onglet : pleine quand on y est, creuse sinon */
-.emp-onglet::before {
-  content: '';
-  width: 9px;
-  height: 9px;
+/*  Pas de perle devant l'icône : deux marques pour un seul onglet,
+    c'est une de trop. L'icône dit la vue, le trait dit où l'on est. */
+.emp-onglet svg {
   flex: none;
-  border: 1px solid var(--pt-copper);
-  border-radius: 50%;
-  background: transparent;
+  color: var(--pt-copper);
 }
 
 .emp-onglet:hover {
-  border-color: var(--pt-line);
+  border-bottom-color: var(--pt-line);
 }
 
+/* la vue ouverte : le trait passe au cuivre et s'épaissit */
 .emp-onglet[aria-current='page'] {
-  border-color: var(--pt-copper-strong);
-  background: var(--pt-copper-soft);
+  border-bottom-color: var(--pt-copper-strong);
   color: var(--pt-ink);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
-.emp-onglet[aria-current='page']::before {
-  background: radial-gradient(circle at 34% 30%, var(--pt-surface), var(--pt-copper-strong) 78%);
-  border-color: var(--pt-copper-strong);
-  box-shadow: 0 0 0 3px rgba(156, 83, 33, 0.16);
+.emp-onglet[aria-current='page'] svg {
+  color: var(--pt-copper-strong);
 }
 
 .emp-onglet-nombre {
@@ -205,38 +211,20 @@
   color: var(--pt-copper-strong);
 }
 
-/* le fil qui relie les onglets, fait de perles régulières */
-.emp-onglets-fil {
-  flex: 1 1 60px;
-  min-width: 44px;
-  height: 12px;
-  margin: 0 4px;
-  background-image:
-    radial-gradient(circle, var(--pt-copper) 2.4px, transparent 2.8px),
-    linear-gradient(var(--pt-line), var(--pt-line));
-  background-size: 13px 12px, 100% 1px;
-  background-position: center, center;
-  background-repeat: repeat-x, no-repeat;
-  opacity: 0.6;
-}
-
 @media (max-width: 560px) {
-  .emp-onglets-fil {
+  .emp-onglets-titre {
     display: none;
   }
   .emp-onglet {
     flex: 1 1 auto;
     justify-content: center;
-    padding: 10px 10px;
+    padding: 10px 8px 11px;
     font-size: 12px;
-  }
-  .emp-onglet::before {
-    display: none;
   }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   2. LA SCÈNE — la frise, le titre, les actions
+   2. LA SCÈNE — la frise, le titre, les actions, les chiffres
    ═══════════════════════════════════════════════════════════════════ */
 
 .zl-scene {
@@ -264,51 +252,41 @@
   overflow: hidden;
 }
 
-/* la frise et les pampilles vivent sur le drap : on leur donne
-   le fil clair, pas celui de la page */
+/* la frise vit sur le drap : on lui donne le fil clair, pas celui
+   de la page */
 .zl-scene-frise {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  --zl-fil: rgba(247, 236, 219, 0.32);
-  --zl-fil-faible: rgba(247, 236, 219, 0.16);
-  --zl-creux: rgba(247, 236, 219, 0.14);
+  display: block;
   border-bottom: 1px solid var(--zl-scene-trait);
+  --zl-fil: rgba(247, 236, 219, 0.3);
+  --zl-fil-faible: rgba(247, 236, 219, 0.12);
+  --zl-creux: rgba(247, 236, 219, 0.13);
 }
 
-.zl-scene-frise svg[data-testid='frise-perles'] {
-  opacity: 0.95;
-}
-
-.zl-scene-frise-pampilles {
-  margin-top: -2px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.16), transparent);
-}
-
-.zl-scene-frise-pampilles svg {
-  margin-bottom: -1px;
-  opacity: 0.9;
+.zl-scene-frise svg {
+  display: block;
+  width: 100%;
 }
 
 .zl-scene-corps {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
+  gap: 20px 24px;
   flex-wrap: wrap;
-  padding: 22px clamp(16px, 2.6vw, 28px) 26px;
+  padding: 22px clamp(16px, 2.6vw, 30px) 24px;
 }
 
 .zl-scene-texte {
   min-width: 0;
-  flex: 1 1 320px;
+  flex: 1 1 340px;
 }
 
 .zl-eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 8px;
+  gap: 9px;
+  margin: 0 0 10px;
   color: var(--zl-scene-cuivre);
   font-size: 9.5px;
   font-weight: 800;
@@ -324,10 +302,10 @@
   margin: 0;
   color: var(--zl-scene-encre);
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(34px, 5vw, 54px);
+  font-size: clamp(36px, 5vw, 56px);
   font-weight: 600;
-  letter-spacing: -0.028em;
-  line-height: 0.98;
+  letter-spacing: -0.03em;
+  line-height: 0.96;
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.28);
 }
 
@@ -335,31 +313,61 @@
   color: var(--zl-scene-cuivre);
 }
 
+/* la ligne de chiffres : le nombre en serif, le mot en petit, et
+   une perle entre deux groupes — jamais un trait de points */
 .zl-scene-sous {
-  max-width: 62ch;
-  margin: 12px 0 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 14px 0 0;
   color: var(--zl-scene-douce);
   font-size: 12.5px;
-  line-height: 1.65;
+  line-height: 1.5;
 }
 
 .zl-scene-sous strong {
+  margin-right: 3px;
   color: var(--zl-scene-encre);
-  font-weight: 750;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 17px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
+.zl-scene-sous .zl-sep {
+  width: 4px;
+  height: 4px;
+  margin: 0 4px;
+  border-radius: 50%;
+  background: var(--zl-scene-douce);
+  opacity: 0.45;
+}
+
+/* ── les actions ─────────────────────────────────────────────── */
 .zl-scene-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  padding-top: 4px;
 }
 
-/* les boutons de la scène : contour clair sur le drap */
+/* les utilitaires (rafraîchir, aide) restent petits et en retrait,
+   séparés des deux actions qui créent quelque chose */
+.zl-scene-utilitaires {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 10px;
+  margin-right: 2px;
+  border-right: 1px solid var(--zl-scene-trait);
+}
+
 .zl-scene-actions .zl-bouton {
-  border-color: var(--zl-scene-trait);
-  background: rgba(247, 236, 219, 0.07);
+  border-color: rgba(247, 236, 219, 0.22);
+  background: rgba(247, 236, 219, 0.05);
   color: var(--zl-scene-encre);
 }
 
@@ -368,16 +376,31 @@
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32);
 }
 
+.zl-scene-actions .zl-bouton-icone {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-color: rgba(247, 236, 219, 0.18);
+  background: transparent;
+}
+
 .zl-scene-actions .zl-bouton-principal {
-  border-color: #e2a566;
-  background: linear-gradient(180deg, #edb87c, #d58d4b);
+  border-color: #e8ab6c;
+  background: linear-gradient(180deg, #f0bd83, #d58d4b);
   color: #2a1a0e;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.36);
 }
 
 .zl-scene-actions .zl-bouton-principal:hover {
-  border-color: #f0c48f;
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.42);
+  border-color: #f6cd9c;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.44);
+}
+
+[data-theme='dark'] .zl-scene {
+  border-color: rgba(230, 210, 184, 0.2);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.55);
 }
 
 /* ── les boutons ──────────────────────────────────────── */
@@ -431,10 +454,6 @@
   justify-content: center;
 }
 
-[data-theme='dark'] .zl-scene {
-  border-color: rgba(230, 210, 184, 0.2);
-  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.55);
-}
 
 /* ═══════════════════════════════════════════════════════════════════
    3. LES MÉDAILLONS — un anneau de perles par chiffre
@@ -443,54 +462,42 @@
 .zl-medaillons {
   /*  Les chiffres ne flottent pas au-dessus de la page : ils sont
       posés sur le drap, dans le prolongement de la frise, comme les
-      médaillons d'une parure. Un filet clair les sépare du titre. */
+      médaillons d'une parure. Un filet clair les sépare du titre,
+      un trait vertical sépare les quatre groupes. */
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
-  gap: 4px 6px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 0;
   margin: 0;
-  padding: 18px clamp(16px, 2.6vw, 28px) 26px;
+  padding: 20px clamp(16px, 2.6vw, 30px) 24px;
   border-top: 1px solid var(--zl-scene-trait);
-  background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.14), transparent 40%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.14), transparent 46%);
 }
 
 .zl-medaillon {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
-  padding: 8px 10px 8px 8px;
+  padding: 6px 18px 6px 0;
   border: 0;
-  border-radius: 16px;
+  border-radius: 0;
   background: transparent;
 }
 
-/*  un point de perle devant chaque médaillon : le lien avec le fil */
-.zl-medaillon::before {
-  content: '';
-  position: absolute;
-  left: -2px;
-  top: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  transform: translateY(-50%);
-  background: var(--zl-scene-cuivre);
-  opacity: 0.5;
-}
-
-.zl-medaillon:first-child::before {
-  display: none;
+/* le trait qui sépare deux groupes de chiffres */
+.zl-medaillon + .zl-medaillon {
+  padding-left: 20px;
+  border-left: 1px solid var(--zl-scene-trait);
 }
 
 .zl-medaillon-rond {
   position: relative;
   display: grid;
-  width: 58px;
-  height: 58px;
+  width: 62px;
+  height: 62px;
   flex: none;
   place-items: center;
 }
@@ -504,7 +511,7 @@
   position: relative;
   color: var(--zl-scene-encre);
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 21px;
+  font-size: 23px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -515,7 +522,7 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .zl-medaillon-libelle {
@@ -541,9 +548,22 @@
   color: #a8d3b0;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   4. LE FIL — la séparation entre deux blocs de lecture
-   ═══════════════════════════════════════════════════════════════════ */
+/*  en deux colonnes, le trait de séparation passe à l'horizontale :
+    un trait vertical au milieu d'une grille donnerait une couture
+    qui ne veut rien dire */
+@media (max-width: 900px) {
+  .zl-medaillon + .zl-medaillon {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .zl-medaillon {
+    padding: 10px 0;
+    border-top: 1px solid var(--zl-scene-trait);
+  }
+  .zl-medaillon:nth-child(2) {
+    border-top: 0;
+  }
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    5. LE REGISTRE DES DÉCISIONS (« À décider »)
