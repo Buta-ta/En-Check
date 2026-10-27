@@ -1,1761 +1,1398 @@
 // ═══════════════════════════════════════════════════════════
-// 📋 PAGE PROSPECTION - ESPACE EN-CHECK V2
-// Avec informations entreprise enrichies
+// 🧭 PROSPECTION — les prospects et leurs devis, dans une pièce
+//
+// Deux pages vivaient côte à côte : le registre des prospects et
+// l'atelier des devis. On passait de l'une à l'autre par un bouton,
+// et il fallait se souvenir de ce qui avait été dit à qui. Elles
+// font maintenant une page, avec trois vues :
+//
+//   · Prospects — le pipeline, six étapes, une fiche par entreprise ;
+//   · Devis     — les devis enregistrés, leurs montants, leurs gestes ;
+//   · Appels    — les scénarios de prospection téléphonique.
+//
+// Le motif est l'appliqué d'Abomey : des pièces de toile cousues sur
+// un fond d'indigo, une couture visible, des emblèmes. Chaque carte
+// est une pièce ; chaque colonne du pipeline, une bande de tissu.
+//
+// Aucune formule d'atelier, aucun nom de table : la page parle du
+// travail commercial, pas de la base de données.
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  TrendingUp, Plus, Search, X, Edit, Trash2, Save,
-  ArrowLeft, Phone, Mail, MapPin, Users, Building2,
-  Calendar, FileText, AlertTriangle, CheckCircle2,
-  Clock, XCircle, MessageCircle, Filter, Eye,
-  Briefcase, StickyNote, Globe, Link, DollarSign,
-  Instagram, Facebook, Linkedin, Twitter, ExternalLink,
-  Star, Target, Hash, ChevronDown, ChevronUp,
+  AlertTriangle, ArrowLeft, Building2, CalendarClock, Check, CheckCircle2,
+  ChevronRight, Download, FileText, MessageCircle, Moon, Pencil, Phone,
+  PhoneCall, Plus, Receipt, Search, Send, Sun, Trash2, TrendingUp, Users,
+  X, XCircle,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { supabase } from '../lib/supabase'
+import PageCulturalBand from '../components/PageCulturalBand'
+import RaccourcisPages from '../components/RaccourcisPages'
+import AtelierDevis from '../components/AtelierDevis'
+import { AbomeyBlasonAppliqueSvg } from '../components/AbomeySvg'
+import { useTheme } from '../contexts/ThemeContext'
+import {
+  CONFIG_INITIAL, STATUTS_DEVIS, calculerDevis, formatF, totauxDuDevis,
+} from '../lib/devis'
+import {
+  handleDownloadEcheancier, handleDownloadFacture, handleDownloadPDF,
+} from '../lib/devisDocuments'
+import {
+  CANAUX, FORMES_JURIDIQUES, FORM_INITIAL, NIVEAUX_CONTACT, OBJECTIONS_UNIVERSELLES,
+  POTENTIELS, SCENARIOS_PROSPECTION, SECTEURS, STATUTS,
+  correspond, dateCourte, joursDeRetard, manquesDe, potentielDe, relanceDue,
+  statutDe,
+} from '../lib/prospection'
+import './Prospection.css'
 
-// ═══════════════════════════════════════════════════════════
-// 📊 CONFIG STATUTS
-// ═══════════════════════════════════════════════════════════
-const STATUTS = [
-  { key: 'a_contacter',    label: 'À contacter',    color: '#6B7280', bg: 'rgba(107,114,128,0.12)', border: 'rgba(107,114,128,0.25)', icon: Clock },
-  { key: 'contacte',       label: 'Contacté',       color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.25)',  icon: Phone },
-  { key: 'en_negociation', label: 'En négociation', color: '#6366F1', bg: 'rgba(99,102,241,0.12)',  border: 'rgba(99,102,241,0.25)',  icon: MessageCircle },
-  { key: 'devis_envoye',   label: 'Devis envoyé',   color: '#F97316', bg: 'rgba(249,115,22,0.12)',  border: 'rgba(249,115,22,0.25)',  icon: FileText },
-  { key: 'signe',          label: 'Signé ✓',        color: '#10B981', bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.25)', icon: CheckCircle2 },
-  { key: 'perdu',          label: 'Perdu',           color: '#EF4444', bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.25)',  icon: XCircle },
+const VUES = [
+  { cle: 'prospects', libelle: 'Prospects', icone: Users },
+  { cle: 'devis', libelle: 'Devis', icone: FileText },
+  { cle: 'appels', libelle: 'Appels', icone: PhoneCall },
 ]
 
-const SECTEURS = [
-  'Commerce / Retail', 'BTP / Construction', 'Banque / Finance',
-  'Télécom', 'Santé / Médical', 'Éducation / Formation',
-  'Administration / ONG', 'Industrie / Production',
-  'Hôtellerie / Restauration', 'Transport / Logistique', 'Autre',
-]
+const TON_POTENTIEL = { fort: 'vert', moyen: 'or', faible: 'faible' }
 
-const FORMES_JURIDIQUES = [
-  'SARL', 'SA', 'SAS', 'SUARL', 'GIE', 'Association / ONG',
-  'Entreprise individuelle', 'Autre',
-]
-
-const NIVEAUX_CONTACT = [
-  { value: 'decisionnaire', label: '⭐ Décisionnaire' },
-  { value: 'influenceur',   label: '💡 Influenceur' },
-  { value: 'utilisateur',   label: '👤 Utilisateur' },
-  { value: 'inconnu',       label: '❓ Inconnu' },
-]
-
-const CANAUX = [
-  'Réseau / Bouche-à-oreille', 'LinkedIn', 'Prospection directe',
-  'Site web', 'Événement / Salon', 'Partenaire', 'Autre',
-]
-
-const POTENTIELS = [
-  { value: 'fort',   label: '🔥 Fort',   color: '#10B981' },
-  { value: 'moyen',  label: '⚡ Moyen',  color: '#F59E0B' },
-  { value: 'faible', label: '❄️ Faible', color: '#6B7280' },
-]
-
-const FORM_INITIAL = {
-  // Infos de base
-  company_name: '',
-  sector: '',
-  city: '',
-  nb_employees_estimate: '',
-  nb_sites_estimate: 1,
-  // Infos entreprise enrichies
-  website: '',
-  adresse: '',
-  google_maps_url: '',
-  chiffre_affaires: '',
-  forme_juridique: '',
-  date_creation: '',
-  reseaux_sociaux: { linkedin: '', facebook: '', instagram: '', twitter: '' },
-  concurrent_actuel: '',
-  potentiel: '',
-  canal_acquisition: '',
-  niveau_contact: '',
-  // Contact
-  contact_name: '',
-  contact_phone: '',
-  contact_email: '',
-  contact_role: '',
-  // Suivi
-  status: 'a_contacter',
-  next_contact_date: '',
-  notes: '',
+const ICONE_STATUT = {
+  a_contacter: CalendarClock,
+  contacte: Phone,
+  en_negociation: MessageCircle,
+  devis_envoye: Send,
+  signe: CheckCircle2,
+  perdu: XCircle,
 }
 
-export default function Prospection() {
-  const [admin, setAdmin] = useState(null)
-  const [prospects, setProspects] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all')
+const ICONE_DEVIS = {
+  brouillon: FileText,
+  envoye: Send,
+  accepte: CheckCircle2,
+  refuse: XCircle,
+}
 
-  // Modals
-  const [showModal, setShowModal] = useState(false)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [showDetailModal, setShowDetailModal] = useState(false)
-  const [editingProspect, setEditingProspect] = useState(null)
-  const [prospectToDelete, setProspectToDelete] = useState(null)
-  const [selectedProspect, setSelectedProspect] = useState(null)
+// ── les petits morceaux ─────────────────────────────────────
 
-  // Section active du formulaire
-  const [activeSection, setActiveSection] = useState('base')
+function Chargement({ texte = 'Chargement de la prospection…', note = 'Les fiches arrivent du serveur.' }) {
+  return (
+    <div className="ps-charge" role="status" aria-live="polite">
+      <div className="ps-charge-chevrons" aria-hidden="true">
+        <span className="ps-charge-chevron" />
+        <span className="ps-charge-chevron" />
+        <span className="ps-charge-chevron" />
+      </div>
+      <p className="ps-charge-texte">{texte}</p>
+      <p className="ps-charge-note">{note}</p>
+    </div>
+  )
+}
 
-  const [formData, setFormData] = useState(FORM_INITIAL)
-
-  const navigate = useNavigate()
+function Fenetre({ eyebrow, titre, surFermer, children, pied, large = false, labelledBy }) {
+  const panneau = useRef(null)
 
   useEffect(() => {
-    const adminData = localStorage.getItem('admin')
-    if (!adminData) { navigate('/login'); return }
-    const parsedAdmin = JSON.parse(adminData)
-    if (parsedAdmin.role !== 'super_admin') { navigate('/dashboard'); return }
-    setAdmin(parsedAdmin)
-    loadProspects()
-  }, [navigate])
-
-  // ─── CHARGEMENT ──────────────────────────────────────
-  const loadProspects = async () => {
-    setLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from('prospects')
-        .select('*')
-        .order('created_at', { ascending: false })
-      if (error) throw error
-      setProspects(data || [])
-    } catch (error) {
-      console.error('Erreur chargement prospects:', error)
-      toast.error('Erreur lors du chargement')
+    const surTouche = (evenement) => {
+      if (evenement.key === 'Escape') surFermer()
     }
-    setLoading(false)
-  }
-
-  // ─── STATS ───────────────────────────────────────────
-  const stats = {
-    total: prospects.length,
-    en_negociation: prospects.filter(p => p.status === 'en_negociation').length,
-    devis_envoye: prospects.filter(p => p.status === 'devis_envoye').length,
-    signes: prospects.filter(p => p.status === 'signe').length,
-    perdus: prospects.filter(p => p.status === 'perdu').length,
-    a_relancer: prospects.filter(p => {
-      if (!p.next_contact_date) return false
-      return new Date(p.next_contact_date) <= new Date()
-    }).length,
-  }
-
-  // ─── FILTRES ─────────────────────────────────────────
-  const prospectsFiltres = prospects.filter(p => {
-    const search = searchTerm.toLowerCase()
-    const matchSearch = (
-      p.company_name?.toLowerCase().includes(search) ||
-      p.contact_name?.toLowerCase().includes(search) ||
-      p.city?.toLowerCase().includes(search) ||
-      p.sector?.toLowerCase().includes(search)
-    )
-    const matchStatus = filterStatus === 'all' || p.status === filterStatus
-    return matchSearch && matchStatus
-  })
-
-  // ─── HELPERS ─────────────────────────────────────────
-  const getStatut = (key) => STATUTS.find(s => s.key === key) || STATUTS[0]
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return null
-    return new Date(dateStr).toLocaleDateString('fr-FR', {
-      day: '2-digit', month: 'short', year: 'numeric'
-    })
-  }
-
-  const isRelanceUrgente = (dateStr) => {
-    if (!dateStr) return false
-    return new Date(dateStr) <= new Date()
-  }
-
-  const getPotentielConfig = (val) =>
-    POTENTIELS.find(p => p.value === val) || null
-
-  // ─── CRUD ────────────────────────────────────────────
-  const handleAdd = () => {
-    setFormData(FORM_INITIAL)
-    setEditingProspect(null)
-    setActiveSection('base')
-    setShowModal(true)
-  }
-
-  const handleEdit = (prospect) => {
-    setFormData({
-      company_name:       prospect.company_name || '',
-      sector:             prospect.sector || '',
-      city:               prospect.city || '',
-      nb_employees_estimate: prospect.nb_employees_estimate || '',
-      nb_sites_estimate:  prospect.nb_sites_estimate || 1,
-      website:            prospect.website || '',
-      adresse:            prospect.adresse || '',
-      google_maps_url:    prospect.google_maps_url || '',
-      chiffre_affaires:   prospect.chiffre_affaires || '',
-      forme_juridique:    prospect.forme_juridique || '',
-      date_creation:      prospect.date_creation || '',
-      reseaux_sociaux:    prospect.reseaux_sociaux || { linkedin: '', facebook: '', instagram: '', twitter: '' },
-      concurrent_actuel:  prospect.concurrent_actuel || '',
-      potentiel:          prospect.potentiel || '',
-      canal_acquisition:  prospect.canal_acquisition || '',
-      niveau_contact:     prospect.niveau_contact || '',
-      contact_name:       prospect.contact_name || '',
-      contact_phone:      prospect.contact_phone || '',
-      contact_email:      prospect.contact_email || '',
-      contact_role:       prospect.contact_role || '',
-      status:             prospect.status || 'a_contacter',
-      next_contact_date:  prospect.next_contact_date || '',
-      notes:              prospect.notes || '',
-    })
-    setEditingProspect(prospect)
-    setActiveSection('base')
-    setShowModal(true)
-  }
-
-  const handleSave = async () => {
-    if (!formData.company_name.trim()) {
-      toast.error('Le nom de l\'entreprise est obligatoire')
-      return
+    window.addEventListener('keydown', surTouche)
+    const ancien = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', surTouche)
+      document.body.style.overflow = ancien
     }
+  }, [surFermer])
 
-    try {
-      const dataToSave = {
-        company_name:         formData.company_name.trim(),
-        sector:               formData.sector || null,
-        city:                 formData.city || null,
-        nb_employees_estimate: parseInt(formData.nb_employees_estimate) || 0,
-        nb_sites_estimate:    parseInt(formData.nb_sites_estimate) || 1,
-        website:              formData.website || null,
-        adresse:              formData.adresse || null,
-        google_maps_url:      formData.google_maps_url || null,
-        chiffre_affaires:     formData.chiffre_affaires || null,
-        forme_juridique:      formData.forme_juridique || null,
-        date_creation:        formData.date_creation || null,
-        reseaux_sociaux:      formData.reseaux_sociaux || {},
-        concurrent_actuel:    formData.concurrent_actuel || null,
-        potentiel:            formData.potentiel || null,
-        canal_acquisition:    formData.canal_acquisition || null,
-        niveau_contact:       formData.niveau_contact || null,
-        contact_name:         formData.contact_name || null,
-        contact_phone:        formData.contact_phone || null,
-        contact_email:        formData.contact_email || null,
-        contact_role:         formData.contact_role || null,
-        status:               formData.status,
-        next_contact_date:    formData.next_contact_date || null,
-        notes:                formData.notes || null,
-        updated_at:           new Date().toISOString(),
-        updated_by:           admin.id,
-      }
-
-      if (editingProspect) {
-        const { error } = await supabase
-          .from('prospects')
-          .update(dataToSave)
-          .eq('id', editingProspect.id)
-        if (error) throw error
-        toast.success('Prospect modifié !')
-      } else {
-        const { error } = await supabase
-          .from('prospects')
-          .insert({ ...dataToSave, created_by: admin.id })
-        if (error) throw error
-        toast.success('Prospect ajouté !')
-      }
-
-      setShowModal(false)
-      loadProspects()
-    } catch (error) {
-      console.error('Erreur sauvegarde:', error)
-      toast.error('Erreur lors de la sauvegarde')
-    }
-  }
-
-  const handleChangeStatus = async (prospect, newStatus) => {
-    try {
-      const { error } = await supabase
-        .from('prospects')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', prospect.id)
-      if (error) throw error
-      toast.success('Statut mis à jour')
-      loadProspects()
-      if (selectedProspect?.id === prospect.id) {
-        setSelectedProspect({ ...selectedProspect, status: newStatus })
-      }
-    } catch {
-      toast.error('Erreur mise à jour statut')
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!prospectToDelete) return
-    try {
-      const { error } = await supabase
-        .from('prospects')
-        .delete()
-        .eq('id', prospectToDelete.id)
-      if (error) throw error
-      toast.success('Prospect supprimé')
-      setShowDeleteModal(false)
-      setProspectToDelete(null)
-      loadProspects()
-    } catch {
-      toast.error('Erreur lors de la suppression')
-    }
-  }
-
-  const handleCreateDevis = (prospect) => {
-    navigate(`/devis?prospect=${prospect.id}`)
-  }
-
-  // ─── SECTIONS FORMULAIRE ─────────────────────────────
-  const FORM_SECTIONS = [
-    { key: 'base',       label: '🏢 Entreprise',     desc: 'Infos de base' },
-    { key: 'enrichi',    label: '📊 Détails',        desc: 'Infos enrichies' },
-    { key: 'contact',    label: '👤 Contact',        desc: 'Personne à contacter' },
-    { key: 'suivi',      label: '📅 Suivi',          desc: 'Statut commercial' },
-  ]
-
-  if (loading) {
-    return (
-      <div style={styles.loadingContainer}>
-        <div style={{ animation: 'float 2s ease-in-out infinite' }}>
-          <TrendingUp size={50} color="#10B981" />
-        </div>
-        <p style={styles.loadingText}>Chargement des prospects...</p>
-      </div>
-    )
-  }
+  useEffect(() => {
+    const premier = panneau.current?.querySelector('button, input, select, textarea, [tabindex]')
+    if (premier) premier.focus({ preventScroll: true })
+  }, [])
 
   return (
-    <>
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-        .prospect-card { transition: all 0.3s ease !important; }
-        .prospect-card:hover {
-          transform: translateY(-3px) !important;
-          box-shadow: 0 12px 40px rgba(0,0,0,0.4) !important;
-          border-color: rgba(16,185,129,0.3) !important;
-        }
-        .afro-action-icon { transition: all 0.2s ease !important; }
-        .afro-action-icon:hover { transform: scale(1.1) !important; }
-        .status-chip { transition: all 0.2s ease !important; cursor: pointer; }
-        .status-chip:hover { opacity: 0.8 !important; transform: scale(1.05) !important; }
-        .section-tab { transition: all 0.2s ease !important; }
-        .section-tab:hover { background: rgba(16,185,129,0.08) !important; }
-        .social-link:hover { opacity: 0.7 !important; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0A0A0F; }
-        ::-webkit-scrollbar-thumb { background: #10B981; border-radius: 3px; }
-        select option { background: #141423; color: #E5E5E5; }
-      `}</style>
-
-      <div style={styles.container}>
-        <div style={styles.bgPattern}></div>
-
-        {/* ═══ HEADER ═══ */}
-        <header style={styles.header}>
-          <div style={styles.headerInner}>
-            <div style={styles.headerLeft}>
-              <button onClick={() => navigate('/dashboard')} style={styles.backBtn}>
-                <ArrowLeft size={20} />
-              </button>
-              <div style={styles.logoMark}>
-                <TrendingUp size={22} color="#10B981" />
-              </div>
-              <div>
-                <h1 style={styles.headerTitle}>PROSPECTION</h1>
-                <span style={styles.headerSub}>Espace En-Check</span>
-              </div>
-            </div>
-            <button onClick={handleAdd} style={styles.addBtn}>
-              <Plus size={18} />
-              <span>Nouveau prospect</span>
-            </button>
+    <div className="ps-voile" onMouseDown={(evenement) => { if (evenement.target === evenement.currentTarget) surFermer() }}>
+      <div
+        className={`ps-fenetre${large ? ' ps-fenetre--large' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        ref={panneau}
+      >
+        <header className="ps-fenetre-tete">
+          <div>
+            {eyebrow && <p className="ps-eyebrow">{eyebrow}</p>}
+            <h2 className="ps-fenetre-titre" id={labelledBy}>{titre}</h2>
           </div>
+          <button type="button" className="ps-fenetre-fermer" onClick={surFermer} aria-label="Fermer">
+            <X size={15} />
+          </button>
         </header>
+        <div className="ps-fenetre-corps">{children}</div>
+        {pied && <footer className="ps-fenetre-pied">{pied}</footer>}
+      </div>
+    </div>
+  )
+}
 
-        <main style={styles.main}>
+function Etiquette({ ton = 'neutre', children, icone: Icone }) {
+  return (
+    <span className="ps-etiquette" data-ton={ton}>
+      {Icone && <Icone size={11} aria-hidden="true" />}
+      {children}
+    </span>
+  )
+}
 
-          {/* ═══ STATS ═══ */}
-          <div style={styles.statsGrid}>
-            {[
-              { label: 'Total',          value: stats.total,           color: '#F59E0B' },
-              { label: 'En négociation', value: stats.en_negociation,  color: '#6366F1' },
-              { label: 'Devis envoyés',  value: stats.devis_envoye,    color: '#F97316' },
-              { label: 'Signés',         value: stats.signes,          color: '#10B981' },
-              { label: 'À relancer',     value: stats.a_relancer,      color: '#EF4444' },
-            ].map((stat, i) => (
-              <div key={i} style={{ ...styles.statCard, borderColor: stat.color + '30' }}>
-                <span style={{ ...styles.statNumber, color: stat.color }}>{stat.value}</span>
-                <span style={styles.statLabel}>{stat.label}</span>
-              </div>
-            ))}
+function Champ({ libelle, children, large = false }) {
+  return (
+    <label className={`ps-champ${large ? ' ps-champ--large' : ''}`}>
+      <span className="ps-champ-libelle">{libelle}</span>
+      {children}
+    </label>
+  )
+}
+
+// ── la carte d'un prospect dans le pipeline ────────────────
+
+function CarteProspect({ prospect, onOuvrir, onDevis, onModifier }) {
+  const potentiel = potentielDe(prospect.potentiel)
+  const enRetard = relanceDue(prospect.next_contact_date)
+  const manques = manquesDe(prospect)
+
+  return (
+    <article className="ps-carte" data-potentiel={prospect.potentiel || 'aucun'}>
+      <button type="button" className="ps-carte-ouvrir" onClick={() => onOuvrir(prospect)}>
+        <span className="ps-carte-nom">{prospect.company_name}</span>
+        <span className="ps-carte-sous">
+          {[prospect.sector, prospect.city].filter(Boolean).join(' · ') || 'Secteur et ville à renseigner'}
+        </span>
+      </button>
+
+      <div className="ps-carte-marques">
+        {potentiel
+          ? <Etiquette ton={TON_POTENTIEL[potentiel.value]}>{potentiel.label}</Etiquette>
+          : <Etiquette ton="faible">Potentiel à dire</Etiquette>}
+        {prospect.nb_employees_estimate > 0 && (
+          <span className="ps-carte-effectif">{prospect.nb_employees_estimate} employés</span>
+        )}
+      </div>
+
+      <p className="ps-carte-contact">
+        {prospect.contact_name || 'Aucun contact nommé'}
+        {prospect.contact_phone && <span> · {prospect.contact_phone}</span>}
+      </p>
+
+      {prospect.next_contact_date && (
+        <p className="ps-carte-relance" data-etat={enRetard ? 'retard' : 'prevu'}>
+          <CalendarClock size={12} aria-hidden="true" />
+          {enRetard
+            ? `Relance due depuis ${joursDeRetard(prospect.next_contact_date)} j`
+            : `Relance le ${dateCourte(prospect.next_contact_date)}`}
+        </p>
+      )}
+
+      {manques.length > 0 && (
+        <p className="ps-carte-manque">Il manque : {manques.join(', ')}</p>
+      )}
+
+      <div className="ps-carte-gestes">
+        <button type="button" className="ps-lien" onClick={() => onDevis(prospect)}>
+          <FileText size={12} /> Devis
+        </button>
+        <button type="button" className="ps-lien" onClick={() => onModifier(prospect)}>
+          <Pencil size={12} /> Modifier
+        </button>
+      </div>
+    </article>
+  )
+}
+
+// ── la fiche complète ──────────────────────────────────────
+
+function FicheProspect({ prospect, devis, onFermer, onModifier, onDevis, onSupprimer, onStatut }) {
+  const statut = statutDe(prospect.status)
+  const devisDuProspect = devis.filter((d) => d.prospect_id === prospect.id)
+  const reseaux = prospect.reseaux_sociaux || {}
+
+  return (
+    <aside className="ps-fiche" aria-label={`Fiche de ${prospect.company_name}`}>
+      <header className="ps-fiche-tete">
+        <div>
+          <p className="ps-eyebrow">Fiche prospect</p>
+          <h2 className="ps-fiche-titre">{prospect.company_name}</h2>
+          <div className="ps-fiche-marques">
+            <Etiquette ton="or" icone={ICONE_STATUT[prospect.status] || CalendarClock}>{statut.label}</Etiquette>
+            {prospect.potentiel && (
+              <Etiquette ton={TON_POTENTIEL[prospect.potentiel]}>{potentielDe(prospect.potentiel).label}</Etiquette>
+            )}
+            {prospect.forme_juridique && <Etiquette ton="neutre">{prospect.forme_juridique}</Etiquette>}
           </div>
+        </div>
+        <button type="button" className="ps-fiche-fermer" onClick={onFermer} aria-label="Fermer la fiche">
+          <X size={15} />
+        </button>
+      </header>
 
-          {/* ═══ TOOLBAR ═══ */}
-          <div style={styles.toolbar}>
-            <div style={styles.searchBox}>
-              <Search size={16} color="#666" />
-              <input
-                type="text"
-                placeholder="Rechercher entreprise, contact, ville..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={styles.searchInput}
-              />
-              {searchTerm && (
-                <button onClick={() => setSearchTerm('')} style={styles.clearBtn}>
-                  <X size={14} />
-                </button>
+      <div className="ps-fiche-corps">
+        <section className="ps-fiche-section">
+          <h3>Le contact</h3>
+          <dl className="ps-fiche-liste">
+            <div><dt>Nom</dt><dd>{prospect.contact_name || '—'}</dd></div>
+            <div><dt>Rôle</dt><dd>{prospect.contact_role || '—'}</dd></div>
+            <div><dt>Téléphone</dt><dd>{prospect.contact_phone || '—'}</dd></div>
+            <div><dt>Courriel</dt><dd>{prospect.contact_email || '—'}</dd></div>
+            <div><dt>Niveau</dt><dd>{NIVEAUX_CONTACT.find((n) => n.value === prospect.niveau_contact)?.label || '—'}</dd></div>
+          </dl>
+        </section>
+
+        <section className="ps-fiche-section">
+          <h3>L’entreprise</h3>
+          <dl className="ps-fiche-liste">
+            <div><dt>Secteur</dt><dd>{prospect.sector || '—'}</dd></div>
+            <div><dt>Ville</dt><dd>{prospect.city || '—'}</dd></div>
+            <div><dt>Adresse</dt><dd>{prospect.adresse || '—'}</dd></div>
+            <div><dt>Effectif</dt><dd>{prospect.nb_employees_estimate ? `${prospect.nb_employees_estimate} employés` : '—'}</dd></div>
+            <div><dt>Sites</dt><dd>{prospect.nb_sites_estimate || '—'}</dd></div>
+            <div><dt>Chiffre d’affaires</dt><dd>{prospect.chiffre_affaires || '—'}</dd></div>
+            <div><dt>Créée en</dt><dd>{prospect.date_creation || '—'}</dd></div>
+            <div><dt>Concurrent en place</dt><dd>{prospect.concurrent_actuel || '—'}</dd></div>
+            <div><dt>Canal</dt><dd>{prospect.canal_acquisition || '—'}</dd></div>
+          </dl>
+          {(prospect.website || reseaux.linkedin || reseaux.facebook) && (
+            <p className="ps-fiche-liens">
+              {prospect.website && (
+                <a href={prospect.website} target="_blank" rel="noreferrer">{prospect.website}</a>
               )}
-            </div>
-            <div style={styles.filterBox}>
-              <Filter size={14} color="#10B981" />
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                style={styles.filterSelect}
-              >
-                <option value="all">Tous les statuts</option>
-                {STATUTS.map(s => (
-                  <option key={s.key} value={s.key}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-            <span style={styles.resultCount}>
-              {prospectsFiltres.length} résultat{prospectsFiltres.length > 1 ? 's' : ''}
-            </span>
-          </div>
+              {['linkedin', 'facebook', 'instagram', 'twitter'].map((cle) =>
+                reseaux[cle] ? (
+                  <a key={cle} href={reseaux[cle]} target="_blank" rel="noreferrer">
+                    {cle.charAt(0).toUpperCase() + cle.slice(1)}
+                  </a>
+                ) : null,
+              )}
+            </p>
+          )}
+        </section>
 
-          {/* ═══ PIPELINE ═══ */}
-          <div style={styles.pipelineHeader}>
-            {STATUTS.map(s => {
-              const count = prospects.filter(p => p.status === s.key).length
+        <section className="ps-fiche-section">
+          <h3>Le suivi</h3>
+          {prospect.next_contact_date && (
+            <p className="ps-fiche-relance" data-etat={relanceDue(prospect.next_contact_date) ? 'retard' : 'prevu'}>
+              <CalendarClock size={13} aria-hidden="true" />
+              {relanceDue(prospect.next_contact_date)
+                ? `Relance due depuis ${joursDeRetard(prospect.next_contact_date)} j`
+                : `Relance prévue le ${dateCourte(prospect.next_contact_date)}`}
+            </p>
+          )}
+          <div className="ps-fiche-etapes" role="group" aria-label="Changer l’étape du prospect">
+            {STATUTS.map((item) => {
+              const Icone = ICONE_STATUT[item.key]
+              const actif = prospect.status === item.key
               return (
                 <button
-                  key={s.key}
-                  onClick={() => setFilterStatus(filterStatus === s.key ? 'all' : s.key)}
-                  style={{
-                    ...styles.pipelineChip,
-                    background: filterStatus === s.key ? s.bg : 'rgba(255,255,255,0.03)',
-                    borderColor: filterStatus === s.key ? s.color + '50' : 'rgba(255,255,255,0.06)',
-                    color: filterStatus === s.key ? s.color : '#666',
-                  }}
+                  key={item.key}
+                  type="button"
+                  className="ps-etape-bouton"
+                  data-actif={actif ? 'oui' : 'non'}
+                  onClick={() => !actif && onStatut(prospect, item.key)}
                 >
-                  <span>{s.label}</span>
-                  <span style={{
-                    ...styles.pipelineCount,
-                    background: filterStatus === s.key ? s.color + '20' : 'rgba(255,255,255,0.06)',
-                    color: filterStatus === s.key ? s.color : '#555',
-                  }}>
-                    {count}
-                  </span>
+                  <Icone size={12} aria-hidden="true" />
+                  {item.label}
                 </button>
               )
             })}
           </div>
+          {prospect.notes && <p className="ps-fiche-notes">{prospect.notes}</p>}
+        </section>
 
-          {/* ═══ LISTE ═══ */}
-          <div style={styles.list}>
-            {prospectsFiltres.length === 0 ? (
-              <div style={styles.empty}>
-                <div style={styles.emptyIcon}>
-                  <TrendingUp size={48} color="#10B981" />
-                </div>
-                <p style={styles.emptyTitle}>Aucun prospect trouvé</p>
-                <p style={styles.emptySubtitle}>
-                  {searchTerm || filterStatus !== 'all'
-                    ? 'Modifiez vos filtres'
-                    : 'Commencez par ajouter votre premier prospect'}
-                </p>
-                {!searchTerm && filterStatus === 'all' && (
-                  <button onClick={handleAdd} style={styles.emptyBtn}>
-                    <Plus size={16} /> Ajouter un prospect
-                  </button>
-                )}
-              </div>
-            ) : (
-              prospectsFiltres.map((prospect, index) => {
-                const statut = getStatut(prospect.status)
-                const StatutIcon = statut.icon
-                const urgent = isRelanceUrgente(prospect.next_contact_date)
-                const potentiel = getPotentielConfig(prospect.potentiel)
-
+        <section className="ps-fiche-section">
+          <h3>Ses devis</h3>
+          {devisDuProspect.length === 0 ? (
+            <p className="ps-fiche-vide">Aucun devis pour ce prospect.</p>
+          ) : (
+            <ul className="ps-fiche-devis">
+              {devisDuProspect.map((d) => {
+                const totaux = totauxDuDevis(d)
                 return (
-                  <div
-                    key={prospect.id}
-                    className="prospect-card"
-                    style={{
-                      ...styles.card,
-                      animation: `fadeInUp 0.4s ease ${index * 0.04}s forwards`,
-                      opacity: 0,
-                      borderLeftColor: statut.color + '60',
-                    }}
-                  >
-                    <div style={styles.cardTop}>
-                      <div style={styles.cardMain}>
-                        {/* Titre */}
-                        <div style={styles.cardTitleRow}>
-                          <h3 style={styles.cardCompany}>{prospect.company_name}</h3>
-                          <div style={{
-                            ...styles.statutBadge,
-                            background: statut.bg,
-                            borderColor: statut.border,
-                            color: statut.color,
-                          }}>
-                            <StatutIcon size={11} />
-                            <span>{statut.label}</span>
-                          </div>
-                          {urgent && (
-                            <div style={styles.urgentBadge}>
-                              <AlertTriangle size={11} />
-                              <span>À relancer</span>
-                            </div>
-                          )}
-                          {potentiel && (
-                            <span style={{
-                              padding: '3px 8px', borderRadius: '6px',
-                              fontSize: '10px', fontWeight: '700',
-                              color: potentiel.color,
-                              background: potentiel.color + '15',
-                              border: `1px solid ${potentiel.color}30`,
-                            }}>
-                              {potentiel.label}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Meta */}
-                        <div style={styles.cardMeta}>
-                          {prospect.sector && (
-                            <span style={styles.metaItem}>
-                              <Briefcase size={11} /> {prospect.sector}
-                            </span>
-                          )}
-                          {prospect.city && (
-                            <span style={styles.metaItem}>
-                              <MapPin size={11} /> {prospect.city}
-                            </span>
-                          )}
-                          {prospect.nb_employees_estimate > 0 && (
-                            <span style={styles.metaItem}>
-                              <Users size={11} /> ~{prospect.nb_employees_estimate} emp
-                            </span>
-                          )}
-                          {prospect.nb_sites_estimate > 0 && (
-                            <span style={styles.metaItem}>
-                              <Building2 size={11} /> {prospect.nb_sites_estimate} site{prospect.nb_sites_estimate > 1 ? 's' : ''}
-                            </span>
-                          )}
-                          {prospect.chiffre_affaires && (
-                            <span style={styles.metaItem}>
-                              <DollarSign size={11} /> {prospect.chiffre_affaires}
-                            </span>
-                          )}
-                          {prospect.forme_juridique && (
-                            <span style={styles.metaItem}>
-                              <Hash size={11} /> {prospect.forme_juridique}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Liens web + réseaux */}
-                        {(prospect.website || prospect.reseaux_sociaux?.linkedin) && (
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                            {prospect.website && (
-                              <a
-                                href={prospect.website.startsWith('http') ? prospect.website : `https://${prospect.website}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ ...styles.contactLink, color: '#10B981' }}
-                                onClick={e => e.stopPropagation()}
-                              >
-                                <Globe size={11} /> Site web
-                              </a>
-                            )}
-                            {prospect.google_maps_url && (
-                              <a
-                                href={prospect.google_maps_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ ...styles.contactLink, color: '#F59E0B' }}
-                                onClick={e => e.stopPropagation()}
-                              >
-                                <MapPin size={11} /> Google Maps
-                              </a>
-                            )}
-                            {prospect.reseaux_sociaux?.linkedin && (
-                              <a
-                                href={prospect.reseaux_sociaux.linkedin}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ ...styles.contactLink, color: '#0077B5' }}
-                                onClick={e => e.stopPropagation()}
-                              >
-                                <Linkedin size={11} /> LinkedIn
-                              </a>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Contact */}
-                        {(prospect.contact_name || prospect.contact_phone) && (
-                          <div style={styles.cardContact}>
-                            {prospect.contact_name && (
-                              <span style={styles.contactItem}>
-                                👤 {prospect.contact_name}
-                                {prospect.contact_role && ` · ${prospect.contact_role}`}
-                                {prospect.niveau_contact && (
-                                  <span style={{ color: '#888', marginLeft: '4px' }}>
-                                    ({NIVEAUX_CONTACT.find(n => n.value === prospect.niveau_contact)?.label})
-                                  </span>
-                                )}
-                              </span>
-                            )}
-                            {prospect.contact_phone && (
-                              <a href={`tel:${prospect.contact_phone}`} style={styles.contactLink}>
-                                <Phone size={11} /> {prospect.contact_phone}
-                              </a>
-                            )}
-                            {prospect.contact_email && (
-                              <a href={`mailto:${prospect.contact_email}`} style={styles.contactLink}>
-                                <Mail size={11} /> {prospect.contact_email}
-                              </a>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Prochain contact */}
-                        {prospect.next_contact_date && (
-                          <div style={{
-                            ...styles.nextContact,
-                            background: urgent ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.03)',
-                            borderColor: urgent ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.06)',
-                            color: urgent ? '#EF4444' : '#888',
-                          }}>
-                            <Calendar size={11} />
-                            <span>
-                              {urgent ? '⚠️ Relance prévue le ' : 'Prochain contact : '}
-                              {formatDate(prospect.next_contact_date)}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Notes */}
-                        {prospect.notes && (
-                          <p style={styles.cardNotes}>
-                            <StickyNote size={11} color="#666" />
-                            {prospect.notes.length > 120
-                              ? prospect.notes.slice(0, 120) + '...'
-                              : prospect.notes}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Actions */}
-                      <div style={styles.cardActions}>
-                        <button
-                          className="afro-action-icon"
-                          onClick={() => { setSelectedProspect(prospect); setShowDetailModal(true) }}
-                          style={{ ...styles.actionBtn, color: '#F59E0B' }}
-                          title="Voir détail"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <button
-                          className="afro-action-icon"
-                          onClick={() => handleCreateDevis(prospect)}
-                          style={{ ...styles.actionBtn, color: '#10B981' }}
-                          title="Créer un devis"
-                        >
-                          <FileText size={16} />
-                        </button>
-                        <button
-                          className="afro-action-icon"
-                          onClick={() => handleEdit(prospect)}
-                          style={{ ...styles.actionBtn, color: '#6366F1' }}
-                          title="Modifier"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          className="afro-action-icon"
-                          onClick={() => { setProspectToDelete(prospect); setShowDeleteModal(true) }}
-                          style={{ ...styles.actionBtn, color: '#EF4444' }}
-                          title="Supprimer"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Statut rapide */}
-                    <div style={styles.cardStatusRow}>
-                      <span style={styles.statusRowLabel}>Changer statut :</span>
-                      <div style={styles.statusChips}>
-                        {STATUTS.map(s => (
-                          <button
-                            key={s.key}
-                            className="status-chip"
-                            onClick={() => handleChangeStatus(prospect, s.key)}
-                            style={{
-                              ...styles.statusChip,
-                              background: prospect.status === s.key ? s.bg : 'transparent',
-                              borderColor: prospect.status === s.key ? s.color + '50' : 'rgba(255,255,255,0.06)',
-                              color: prospect.status === s.key ? s.color : '#555',
-                              fontWeight: prospect.status === s.key ? '700' : '400',
-                            }}
-                          >
-                            {s.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  <li key={d.id}>
+                    <strong>{d.numero}</strong>
+                    <span>{formatF(totaux.totalFixeNet)} F + {formatF(totaux.totalMensuelNet)} F/mois</span>
+                  </li>
                 )
-              })
-            )}
-          </div>
-        </main>
-
-        {/* ═══════════════════════════════════════════════════
-            MODAL ADD/EDIT - AVEC SECTIONS
-        ═══════════════════════════════════════════════════ */}
-        {showModal && (
-          <div style={styles.overlay} onClick={() => setShowModal(false)}>
-            <div style={styles.modal} onClick={e => e.stopPropagation()}>
-
-              {/* Header */}
-              <div style={styles.modalHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={styles.modalIcon}>
-                    {editingProspect
-                      ? <Edit size={20} color="#10B981" />
-                      : <Plus size={20} color="#10B981" />
-                    }
-                  </div>
-                  <div>
-                    <h2 style={styles.modalTitle}>
-                      {editingProspect ? 'Modifier le prospect' : 'Nouveau prospect'}
-                    </h2>
-                    <span style={styles.modalSub}>
-                      {editingProspect ? editingProspect.company_name : 'Remplissez les informations'}
-                    </span>
-                  </div>
-                </div>
-                <button onClick={() => setShowModal(false)} style={styles.closeBtn}>
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Tabs sections */}
-              <div style={styles.sectionTabs}>
-                {FORM_SECTIONS.map(sec => (
-                  <button
-                    key={sec.key}
-                    className="section-tab"
-                    onClick={() => setActiveSection(sec.key)}
-                    style={{
-                      ...styles.sectionTab,
-                      background: activeSection === sec.key
-                        ? 'rgba(16,185,129,0.1)'
-                        : 'transparent',
-                      borderColor: activeSection === sec.key
-                        ? 'rgba(16,185,129,0.3)'
-                        : 'transparent',
-                      color: activeSection === sec.key ? '#10B981' : '#666',
-                    }}
-                  >
-                    <span style={{ fontSize: '13px', fontWeight: '600' }}>{sec.label}</span>
-                    <span style={{ fontSize: '10px', opacity: 0.7 }}>{sec.desc}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div style={styles.modalBody}>
-
-                {/* ── SECTION BASE ── */}
-                {activeSection === 'base' && (
-                  <>
-                    <div style={styles.sectionTitle}>🏢 Informations de base</div>
-
-                    <div style={styles.formField}>
-                      <label style={styles.label}>Nom de l'entreprise *</label>
-                      <input
-                        type="text"
-                        value={formData.company_name}
-                        onChange={e => setFormData({ ...formData, company_name: e.target.value })}
-                        style={styles.input}
-                        placeholder="Ex: TechSenegal SARL"
-                      />
-                    </div>
-
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Secteur</label>
-                        <select
-                          value={formData.sector}
-                          onChange={e => setFormData({ ...formData, sector: e.target.value })}
-                          style={styles.select}
-                        >
-                          <option value="">-- Sélectionner --</option>
-                          {SECTEURS.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </div>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Ville</label>
-                        <input
-                          type="text"
-                          value={formData.city}
-                          onChange={e => setFormData({ ...formData, city: e.target.value })}
-                          style={styles.input}
-                          placeholder="Ex: Dakar"
-                        />
-                      </div>
-                    </div>
-
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Nb employés (estimation)</label>
-                        <input
-                          type="number"
-                          value={formData.nb_employees_estimate}
-                          onChange={e => setFormData({ ...formData, nb_employees_estimate: e.target.value })}
-                          style={styles.input}
-                          placeholder="Ex: 25"
-                          min="0"
-                        />
-                      </div>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Nb sites</label>
-                        <input
-                          type="number"
-                          value={formData.nb_sites_estimate}
-                          onChange={e => setFormData({ ...formData, nb_sites_estimate: e.target.value })}
-                          style={styles.input}
-                          placeholder="Ex: 2"
-                          min="1"
-                        />
-                      </div>
-                    </div>
-
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Potentiel</label>
-                        <select
-                          value={formData.potentiel}
-                          onChange={e => setFormData({ ...formData, potentiel: e.target.value })}
-                          style={styles.select}
-                        >
-                          <option value="">-- Évaluer --</option>
-                          {POTENTIELS.map(p => (
-                            <option key={p.value} value={p.value}>{p.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Canal d'acquisition</label>
-                        <select
-                          value={formData.canal_acquisition}
-                          onChange={e => setFormData({ ...formData, canal_acquisition: e.target.value })}
-                          style={styles.select}
-                        >
-                          <option value="">-- Comment connu --</option>
-                          {CANAUX.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* ── SECTION ENRICHIE ── */}
-                {activeSection === 'enrichi' && (
-                  <>
-                    <div style={styles.sectionTitle}>📊 Informations détaillées</div>
-
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Forme juridique</label>
-                        <select
-                          value={formData.forme_juridique}
-                          onChange={e => setFormData({ ...formData, forme_juridique: e.target.value })}
-                          style={styles.select}
-                        >
-                          <option value="">-- Sélectionner --</option>
-                          {FORMES_JURIDIQUES.map(f => <option key={f} value={f}>{f}</option>)}
-                        </select>
-                      </div>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Depuis (année de création)</label>
-                        <input
-                          type="text"
-                          value={formData.date_creation}
-                          onChange={e => setFormData({ ...formData, date_creation: e.target.value })}
-                          style={styles.input}
-                          placeholder="Ex: 2010 ou 15 ans"
-                        />
-                      </div>
-                    </div>
-
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Chiffre d'affaires</label>
-                        <input
-                          type="text"
-                          value={formData.chiffre_affaires}
-                          onChange={e => setFormData({ ...formData, chiffre_affaires: e.target.value })}
-                          style={styles.input}
-                          placeholder="Ex: 500M FCFA / an"
-                        />
-                      </div>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Concurrent actuel</label>
-                        <input
-                          type="text"
-                          value={formData.concurrent_actuel}
-                          onChange={e => setFormData({ ...formData, concurrent_actuel: e.target.value })}
-                          style={styles.input}
-                          placeholder="Ex: Pointeuse Anviz, Excel..."
-                        />
-                      </div>
-                    </div>
-
-                    <div style={styles.formField}>
-                      <label style={styles.label}>Adresse complète</label>
-                      <textarea
-                        value={formData.adresse}
-                        onChange={e => setFormData({ ...formData, adresse: e.target.value })}
-                        style={{ ...styles.input, minHeight: '70px', resize: 'vertical' }}
-                        placeholder="Ex: Zone industrielle, Rue 10, Dakar"
-                      />
-                    </div>
-
-                    <div style={styles.sectionTitle}>🌐 Web & Présence en ligne</div>
-
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>
-                          <Globe size={11} style={{ verticalAlign: 'middle' }} /> Site web
-                        </label>
-                        <input
-                          type="url"
-                          value={formData.website}
-                          onChange={e => setFormData({ ...formData, website: e.target.value })}
-                          style={styles.input}
-                          placeholder="https://entreprise.sn"
-                        />
-                      </div>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>
-                          <MapPin size={11} style={{ verticalAlign: 'middle' }} /> Google Maps URL
-                        </label>
-                        <input
-                          type="url"
-                          value={formData.google_maps_url}
-                          onChange={e => setFormData({ ...formData, google_maps_url: e.target.value })}
-                          style={styles.input}
-                          placeholder="https://maps.google.com/..."
-                        />
-                      </div>
-                    </div>
-
-                    {/* Réseaux sociaux */}
-                    <div style={styles.sectionTitle}>📱 Réseaux sociaux</div>
-
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>
-                          <Linkedin size={11} style={{ verticalAlign: 'middle', color: '#0077B5' }} /> LinkedIn
-                        </label>
-                        <input
-                          type="url"
-                          value={formData.reseaux_sociaux?.linkedin || ''}
-                          onChange={e => setFormData({
-                            ...formData,
-                            reseaux_sociaux: { ...formData.reseaux_sociaux, linkedin: e.target.value }
-                          })}
-                          style={styles.input}
-                          placeholder="https://linkedin.com/company/..."
-                        />
-                      </div>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>
-                          <Facebook size={11} style={{ verticalAlign: 'middle', color: '#1877F2' }} /> Facebook
-                        </label>
-                        <input
-                          type="url"
-                          value={formData.reseaux_sociaux?.facebook || ''}
-                          onChange={e => setFormData({
-                            ...formData,
-                            reseaux_sociaux: { ...formData.reseaux_sociaux, facebook: e.target.value }
-                          })}
-                          style={styles.input}
-                          placeholder="https://facebook.com/..."
-                        />
-                      </div>
-                    </div>
-
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>
-                          <Instagram size={11} style={{ verticalAlign: 'middle', color: '#E4405F' }} /> Instagram
-                        </label>
-                        <input
-                          type="url"
-                          value={formData.reseaux_sociaux?.instagram || ''}
-                          onChange={e => setFormData({
-                            ...formData,
-                            reseaux_sociaux: { ...formData.reseaux_sociaux, instagram: e.target.value }
-                          })}
-                          style={styles.input}
-                          placeholder="https://instagram.com/..."
-                        />
-                      </div>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>
-                          <Twitter size={11} style={{ verticalAlign: 'middle', color: '#1DA1F2' }} /> Twitter / X
-                        </label>
-                        <input
-                          type="url"
-                          value={formData.reseaux_sociaux?.twitter || ''}
-                          onChange={e => setFormData({
-                            ...formData,
-                            reseaux_sociaux: { ...formData.reseaux_sociaux, twitter: e.target.value }
-                          })}
-                          style={styles.input}
-                          placeholder="https://twitter.com/..."
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* ── SECTION CONTACT ── */}
-                {activeSection === 'contact' && (
-                  <>
-                    <div style={styles.sectionTitle}>👤 Contact principal</div>
-
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Nom complet</label>
-                        <input
-                          type="text"
-                          value={formData.contact_name}
-                          onChange={e => setFormData({ ...formData, contact_name: e.target.value })}
-                          style={styles.input}
-                          placeholder="Ex: Moussa Diallo"
-                        />
-                      </div>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Rôle / Poste</label>
-                        <input
-                          type="text"
-                          value={formData.contact_role}
-                          onChange={e => setFormData({ ...formData, contact_role: e.target.value })}
-                          style={styles.input}
-                          placeholder="Ex: Directeur Général"
-                        />
-                      </div>
-                    </div>
-
-                    <div style={styles.formField}>
-                      <label style={styles.label}>Niveau de contact</label>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {NIVEAUX_CONTACT.map(n => (
-                          <button
-                            key={n.value}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, niveau_contact: n.value })}
-                            style={{
-                              padding: '8px 14px', borderRadius: '10px',
-                              border: '1px solid',
-                              borderColor: formData.niveau_contact === n.value
-                                ? 'rgba(16,185,129,0.5)'
-                                : 'rgba(255,255,255,0.08)',
-                              background: formData.niveau_contact === n.value
-                                ? 'rgba(16,185,129,0.1)'
-                                : 'transparent',
-                              color: formData.niveau_contact === n.value ? '#10B981' : '#888',
-                              fontSize: '13px', fontWeight: '600',
-                              cursor: 'pointer', fontFamily: 'inherit',
-                              transition: 'all 0.2s ease',
-                            }}
-                          >
-                            {n.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Téléphone</label>
-                        <input
-                          type="tel"
-                          value={formData.contact_phone}
-                          onChange={e => setFormData({ ...formData, contact_phone: e.target.value })}
-                          style={styles.input}
-                          placeholder="+221 77 000 00 00"
-                        />
-                      </div>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Email</label>
-                        <input
-                          type="email"
-                          value={formData.contact_email}
-                          onChange={e => setFormData({ ...formData, contact_email: e.target.value })}
-                          style={styles.input}
-                          placeholder="contact@entreprise.com"
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* ── SECTION SUIVI ── */}
-                {activeSection === 'suivi' && (
-                  <>
-                    <div style={styles.sectionTitle}>📅 Suivi commercial</div>
-
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Statut</label>
-                        <select
-                          value={formData.status}
-                          onChange={e => setFormData({ ...formData, status: e.target.value })}
-                          style={styles.select}
-                        >
-                          {STATUTS.map(s => (
-                            <option key={s.key} value={s.key}>{s.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div style={styles.formField}>
-                        <label style={styles.label}>Date prochain contact</label>
-                        <input
-                          type="date"
-                          value={formData.next_contact_date}
-                          onChange={e => setFormData({ ...formData, next_contact_date: e.target.value })}
-                          style={styles.input}
-                        />
-                      </div>
-                    </div>
-
-                    <div style={styles.formField}>
-                      <label style={styles.label}>Notes & Observations</label>
-                      <textarea
-                        value={formData.notes}
-                        onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                        style={{ ...styles.input, minHeight: '120px', resize: 'vertical' }}
-                        placeholder="Historique des échanges, points importants, prochaines étapes..."
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div style={styles.modalFooter}>
-                {/* Navigation entre sections */}
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {activeSection !== 'base' && (
-                    <button
-                      onClick={() => {
-                        const idx = FORM_SECTIONS.findIndex(s => s.key === activeSection)
-                        if (idx > 0) setActiveSection(FORM_SECTIONS[idx - 1].key)
-                      }}
-                      style={{
-                        ...styles.cancelBtn,
-                        padding: '10px 16px', fontSize: '13px',
-                      }}
-                    >
-                      ← Précédent
-                    </button>
-                  )}
-                  {activeSection !== 'suivi' && (
-                    <button
-                      onClick={() => {
-                        const idx = FORM_SECTIONS.findIndex(s => s.key === activeSection)
-                        if (idx < FORM_SECTIONS.length - 1) setActiveSection(FORM_SECTIONS[idx + 1].key)
-                      }}
-                      style={{
-                        ...styles.cancelBtn,
-                        padding: '10px 16px', fontSize: '13px',
-                      }}
-                    >
-                      Suivant →
-                    </button>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button onClick={() => setShowModal(false)} style={styles.cancelBtn}>
-                    Annuler
-                  </button>
-                  <button onClick={handleSave} style={styles.saveBtn}>
-                    <Save size={16} />
-                    {editingProspect ? 'Enregistrer' : 'Ajouter'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ═══ MODAL DETAIL ═══ */}
-        {showDetailModal && selectedProspect && (
-          <div style={styles.overlay} onClick={() => setShowDetailModal(false)}>
-            <div style={styles.modal} onClick={e => e.stopPropagation()}>
-              <div style={styles.modalHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    ...styles.modalIcon,
-                    background: getStatut(selectedProspect.status).bg,
-                  }}>
-                    <Building2 size={20} color={getStatut(selectedProspect.status).color} />
-                  </div>
-                  <div>
-                    <h2 style={styles.modalTitle}>{selectedProspect.company_name}</h2>
-                    <span style={{ color: getStatut(selectedProspect.status).color, fontSize: '12px', display: 'block' }}>
-                      {getStatut(selectedProspect.status).label}
-                    </span>
-                  </div>
-                </div>
-                <button onClick={() => setShowDetailModal(false)} style={styles.closeBtn}>
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div style={styles.modalBody}>
-                {/* Infos de base */}
-                <div style={styles.detailGrid}>
-                  {[
-                    { label: 'Secteur',          value: selectedProspect.sector },
-                    { label: 'Ville',             value: selectedProspect.city },
-                    { label: 'Employés',          value: selectedProspect.nb_employees_estimate ? `~${selectedProspect.nb_employees_estimate}` : null },
-                    { label: 'Sites',             value: selectedProspect.nb_sites_estimate },
-                    { label: 'Forme juridique',   value: selectedProspect.forme_juridique },
-                    { label: 'Création',          value: selectedProspect.date_creation },
-                    { label: 'Chiffre d\'affaires', value: selectedProspect.chiffre_affaires },
-                    { label: 'Concurrent actuel', value: selectedProspect.concurrent_actuel },
-                    { label: 'Canal acquisition', value: selectedProspect.canal_acquisition },
-                    { label: 'Potentiel',         value: selectedProspect.potentiel ? getPotentielConfig(selectedProspect.potentiel)?.label : null },
-                  ].filter(i => i.value).map((item, i) => (
-                    <div key={i} style={styles.detailItem}>
-                      <span style={styles.detailLabel}>{item.label}</span>
-                      <span style={styles.detailValue}>{item.value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Adresse */}
-                {selectedProspect.adresse && (
-                  <>
-                    <div style={styles.sectionTitle}>📍 Adresse</div>
-                    <div style={styles.notesBox}>{selectedProspect.adresse}</div>
-                  </>
-                )}
-
-                {/* Liens */}
-                {(selectedProspect.website || selectedProspect.google_maps_url ||
-                  selectedProspect.reseaux_sociaux?.linkedin ||
-                  selectedProspect.reseaux_sociaux?.facebook) && (
-                  <>
-                    <div style={styles.sectionTitle}>🌐 Web & Réseaux</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {selectedProspect.website && (
-                        <a
-                          href={selectedProspect.website.startsWith('http') ? selectedProspect.website : `https://${selectedProspect.website}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={styles.socialLink}
-                        >
-                          <Globe size={14} /> Site web
-                          <ExternalLink size={10} />
-                        </a>
-                      )}
-                      {selectedProspect.google_maps_url && (
-                        <a
-                          href={selectedProspect.google_maps_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ ...styles.socialLink, background: 'rgba(245,158,11,0.12)', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.25)' }}
-                        >
-                          <MapPin size={14} /> Google Maps
-                          <ExternalLink size={10} />
-                        </a>
-                      )}
-                      {selectedProspect.reseaux_sociaux?.linkedin && (
-                        <a href={selectedProspect.reseaux_sociaux.linkedin} target="_blank" rel="noopener noreferrer"
-                          style={{ ...styles.socialLink, background: 'rgba(0,119,181,0.12)', color: '#0077B5', borderColor: 'rgba(0,119,181,0.25)' }}>
-                          <Linkedin size={14} /> LinkedIn <ExternalLink size={10} />
-                        </a>
-                      )}
-                      {selectedProspect.reseaux_sociaux?.facebook && (
-                        <a href={selectedProspect.reseaux_sociaux.facebook} target="_blank" rel="noopener noreferrer"
-                          style={{ ...styles.socialLink, background: 'rgba(24,119,242,0.12)', color: '#1877F2', borderColor: 'rgba(24,119,242,0.25)' }}>
-                          <Facebook size={14} /> Facebook <ExternalLink size={10} />
-                        </a>
-                      )}
-                      {selectedProspect.reseaux_sociaux?.instagram && (
-                        <a href={selectedProspect.reseaux_sociaux.instagram} target="_blank" rel="noopener noreferrer"
-                          style={{ ...styles.socialLink, background: 'rgba(228,64,95,0.12)', color: '#E4405F', borderColor: 'rgba(228,64,95,0.25)' }}>
-                          <Instagram size={14} /> Instagram <ExternalLink size={10} />
-                        </a>
-                      )}
-                      {selectedProspect.reseaux_sociaux?.twitter && (
-                        <a href={selectedProspect.reseaux_sociaux.twitter} target="_blank" rel="noopener noreferrer"
-                          style={{ ...styles.socialLink, background: 'rgba(29,161,242,0.12)', color: '#1DA1F2', borderColor: 'rgba(29,161,242,0.25)' }}>
-                          <Twitter size={14} /> Twitter <ExternalLink size={10} />
-                        </a>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {/* Contact */}
-                {(selectedProspect.contact_name || selectedProspect.contact_phone) && (
-                  <>
-                    <div style={styles.sectionTitle}>👤 Contact</div>
-                    <div style={styles.detailGrid}>
-                      {[
-                        { label: 'Nom',            value: selectedProspect.contact_name },
-                        { label: 'Rôle',           value: selectedProspect.contact_role },
-                        { label: 'Niveau contact', value: NIVEAUX_CONTACT.find(n => n.value === selectedProspect.niveau_contact)?.label },
-                        { label: 'Téléphone',      value: selectedProspect.contact_phone },
-                        { label: 'Email',          value: selectedProspect.contact_email },
-                      ].filter(i => i.value).map((item, i) => (
-                        <div key={i} style={styles.detailItem}>
-                          <span style={styles.detailLabel}>{item.label}</span>
-                          <span style={styles.detailValue}>{item.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                {/* Notes */}
-                {selectedProspect.notes && (
-                  <>
-                    <div style={styles.sectionTitle}>📝 Notes</div>
-                    <div style={styles.notesBox}>{selectedProspect.notes}</div>
-                  </>
-                )}
-
-                {/* Changer statut */}
-                <div style={styles.sectionTitle}>🔄 Changer le statut</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {STATUTS.map(s => (
-                    <button
-                      key={s.key}
-                      onClick={() => handleChangeStatus(selectedProspect, s.key)}
-                      style={{
-                        ...styles.statusChip,
-                        background: selectedProspect.status === s.key ? s.bg : 'transparent',
-                        borderColor: selectedProspect.status === s.key ? s.color + '50' : 'rgba(255,255,255,0.1)',
-                        color: selectedProspect.status === s.key ? s.color : '#888',
-                        fontWeight: selectedProspect.status === s.key ? '700' : '400',
-                      }}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={styles.modalFooter}>
-                <button
-                  onClick={() => { setShowDetailModal(false); handleEdit(selectedProspect) }}
-                  style={styles.cancelBtn}
-                >
-                  <Edit size={14} /> Modifier
-                </button>
-                <button
-                  onClick={() => { setShowDetailModal(false); handleCreateDevis(selectedProspect) }}
-                  style={styles.saveBtn}
-                >
-                  <FileText size={16} /> Créer un devis
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ═══ MODAL DELETE ═══ */}
-        {showDeleteModal && prospectToDelete && (
-          <div style={styles.overlay} onClick={() => setShowDeleteModal(false)}>
-            <div style={styles.confirmModal} onClick={e => e.stopPropagation()}>
-              <div style={styles.confirmIcon}>
-                <AlertTriangle size={28} color="#EF4444" />
-              </div>
-              <h3 style={styles.confirmTitle}>Supprimer ce prospect ?</h3>
-              <p style={styles.confirmText}>
-                <strong style={{ color: '#F59E0B' }}>{prospectToDelete.company_name}</strong>
-                <br />Cette action est irréversible.
-              </p>
-              <div style={styles.confirmBtns}>
-                <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtn}>
-                  Annuler
-                </button>
-                <button onClick={handleDelete} style={styles.deleteBtn}>
-                  <Trash2 size={16} /> Supprimer
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+              })}
+            </ul>
+          )}
+        </section>
       </div>
-    </>
+
+      <footer className="ps-fiche-pied">
+        <button type="button" className="ps-bouton" onClick={() => onDevis(prospect)}>
+          <FileText size={14} /> Créer son devis
+        </button>
+        <button type="button" className="ps-bouton-creux" onClick={() => onModifier(prospect)}>
+          <Pencil size={14} /> Modifier
+        </button>
+        <button type="button" className="ps-bouton-discret ps-bouton-discret--danger" onClick={() => onSupprimer(prospect)}>
+          <Trash2 size={14} /> Supprimer
+        </button>
+      </footer>
+    </aside>
+  )
+}
+
+// ── la fenêtre d'un prospect (création / modification) ─────
+
+const SECTIONS_FORM = [
+  { cle: 'base', libelle: 'Entreprise' },
+  { cle: 'details', libelle: 'Détails' },
+  { cle: 'contact', libelle: 'Contact' },
+  { cle: 'suivi', libelle: 'Suivi' },
+]
+
+function FenetreProspect({ prospect, onFermer, onEnregistrer }) {
+  const [section, setSection] = useState('base')
+  const [etat, setEtat] = useState(() => ({ ...FORM_INITIAL, ...(prospect || {}) }))
+  const [erreur, setErreur] = useState('')
+  const [envoi, setEnvoi] = useState(false)
+
+  const changer = (cle, valeur) => setEtat((actuel) => ({ ...actuel, [cle]: valeur }))
+  const changerReseau = (cle, valeur) =>
+    setEtat((actuel) => ({ ...actuel, reseaux_sociaux: { ...actuel.reseaux_sociaux, [cle]: valeur } }))
+
+  const enregistrer = async () => {
+    if (!String(etat.company_name || '').trim()) {
+      setSection('base')
+      setErreur('Le nom de l’entreprise est obligatoire.')
+      return
+    }
+    setEnvoi(true)
+    setErreur('')
+    try {
+      await onEnregistrer({
+        company_name: etat.company_name.trim(),
+        sector: etat.sector || null,
+        city: etat.city || null,
+        adresse: etat.adresse || null,
+        website: etat.website || null,
+        google_maps_url: etat.google_maps_url || null,
+        chiffre_affaires: etat.chiffre_affaires || null,
+        forme_juridique: etat.forme_juridique || null,
+        date_creation: etat.date_creation || null,
+        reseaux_sociaux: etat.reseaux_sociaux || {},
+        concurrent_actuel: etat.concurrent_actuel || null,
+        potentiel: etat.potentiel || null,
+        canal_acquisition: etat.canal_acquisition || null,
+        niveau_contact: etat.niveau_contact || null,
+        nb_employees_estimate: parseInt(etat.nb_employees_estimate, 10) || 0,
+        nb_sites_estimate: parseInt(etat.nb_sites_estimate, 10) || 1,
+        contact_name: etat.contact_name || null,
+        contact_phone: etat.contact_phone || null,
+        contact_email: etat.contact_email || null,
+        contact_role: etat.contact_role || null,
+        status: etat.status || 'a_contacter',
+        next_contact_date: etat.next_contact_date || null,
+        notes: etat.notes || null,
+      })
+    } catch (probleme) {
+      console.error(probleme)
+      setErreur('L’enregistrement a échoué. Vérifiez la connexion, puis réessayez.')
+    } finally {
+      setEnvoi(false)
+    }
+  }
+
+  return (
+    <Fenetre
+      eyebrow={prospect ? 'Modifier' : 'Nouveau'}
+      titre={prospect ? prospect.company_name : 'Ouvrir une fiche'}
+      labelledBy="ps-titre-prospect"
+      surFermer={onFermer}
+      large
+      pied={(
+        <>
+          <button type="button" className="ps-bouton-creux" onClick={onFermer}>Annuler</button>
+          <button type="button" className="ps-bouton" onClick={enregistrer} disabled={envoi}>
+            <Check size={14} /> {envoi ? 'Enregistrement…' : prospect ? 'Enregistrer les changements' : 'Ouvrir la fiche'}
+          </button>
+        </>
+      )}
+    >
+      <nav className="ps-sections" aria-label="Sections de la fiche">
+        {SECTIONS_FORM.map((item) => (
+          <button
+            key={item.cle}
+            type="button"
+            className="ps-section-onglet"
+            data-actif={section === item.cle ? 'oui' : 'non'}
+            aria-pressed={section === item.cle}
+            onClick={() => setSection(item.cle)}
+          >
+            {item.libelle}
+          </button>
+        ))}
+      </nav>
+
+      {erreur && <p className="ps-erreur" role="alert"><AlertTriangle size={13} /> {erreur}</p>}
+
+      {section === 'base' && (
+        <div className="ps-grille">
+          <Champ libelle="Nom de l’entreprise" large>
+            <input value={etat.company_name} onChange={(e) => changer('company_name', e.target.value)} autoFocus />
+          </Champ>
+          <Champ libelle="Secteur">
+            <select value={etat.sector} onChange={(e) => changer('sector', e.target.value)}>
+              <option value="">À renseigner</option>
+              {SECTEURS.map((secteur) => <option key={secteur} value={secteur}>{secteur}</option>)}
+            </select>
+          </Champ>
+          <Champ libelle="Ville">
+            <input value={etat.city} onChange={(e) => changer('city', e.target.value)} />
+          </Champ>
+          <Champ libelle="Effectif estimé">
+            <input type="number" min="0" value={etat.nb_employees_estimate} onChange={(e) => changer('nb_employees_estimate', e.target.value)} />
+          </Champ>
+          <Champ libelle="Sites">
+            <input type="number" min="1" value={etat.nb_sites_estimate} onChange={(e) => changer('nb_sites_estimate', e.target.value)} />
+          </Champ>
+          <Champ libelle="Forme juridique">
+            <select value={etat.forme_juridique} onChange={(e) => changer('forme_juridique', e.target.value)}>
+              <option value="">À renseigner</option>
+              {FORMES_JURIDIQUES.map((forme) => <option key={forme} value={forme}>{forme}</option>)}
+            </select>
+          </Champ>
+        </div>
+      )}
+
+      {section === 'details' && (
+        <div className="ps-grille">
+          <Champ libelle="Site web">
+            <input value={etat.website} onChange={(e) => changer('website', e.target.value)} placeholder="https://" />
+          </Champ>
+          <Champ libelle="Adresse">
+            <input value={etat.adresse} onChange={(e) => changer('adresse', e.target.value)} />
+          </Champ>
+          <Champ libelle="Chiffre d’affaires">
+            <input value={etat.chiffre_affaires} onChange={(e) => changer('chiffre_affaires', e.target.value)} placeholder="450 000 000 F" />
+          </Champ>
+          <Champ libelle="Année de création">
+            <input value={etat.date_creation} onChange={(e) => changer('date_creation', e.target.value)} placeholder="2019" />
+          </Champ>
+          <Champ libelle="Concurrent en place">
+            <input value={etat.concurrent_actuel} onChange={(e) => changer('concurrent_actuel', e.target.value)} />
+          </Champ>
+          <Champ libelle="Canal d’acquisition">
+            <select value={etat.canal_acquisition} onChange={(e) => changer('canal_acquisition', e.target.value)}>
+              <option value="">À renseigner</option>
+              {CANAUX.map((canal) => <option key={canal} value={canal}>{canal}</option>)}
+            </select>
+          </Champ>
+          <Champ libelle="Lien LinkedIn">
+            <input value={etat.reseaux_sociaux?.linkedin || ''} onChange={(e) => changerReseau('linkedin', e.target.value)} />
+          </Champ>
+          <Champ libelle="Lien Facebook">
+            <input value={etat.reseaux_sociaux?.facebook || ''} onChange={(e) => changerReseau('facebook', e.target.value)} />
+          </Champ>
+          <Champ libelle="Lien Instagram">
+            <input value={etat.reseaux_sociaux?.instagram || ''} onChange={(e) => changerReseau('instagram', e.target.value)} />
+          </Champ>
+        </div>
+      )}
+
+      {section === 'contact' && (
+        <div className="ps-grille">
+          <Champ libelle="Nom du contact">
+            <input value={etat.contact_name} onChange={(e) => changer('contact_name', e.target.value)} />
+          </Champ>
+          <Champ libelle="Rôle">
+            <input value={etat.contact_role} onChange={(e) => changer('contact_role', e.target.value)} placeholder="Gérante, DAF…" />
+          </Champ>
+          <Champ libelle="Téléphone">
+            <input value={etat.contact_phone} onChange={(e) => changer('contact_phone', e.target.value)} placeholder="+229" />
+          </Champ>
+          <Champ libelle="Courriel">
+            <input type="email" value={etat.contact_email} onChange={(e) => changer('contact_email', e.target.value)} />
+          </Champ>
+          <Champ libelle="Niveau du contact" large>
+            <select value={etat.niveau_contact} onChange={(e) => changer('niveau_contact', e.target.value)}>
+              <option value="">À renseigner</option>
+              {NIVEAUX_CONTACT.map((niveau) => <option key={niveau.value} value={niveau.value}>{niveau.label}</option>)}
+            </select>
+          </Champ>
+        </div>
+      )}
+
+      {section === 'suivi' && (
+        <div className="ps-grille">
+          <Champ libelle="Potentiel" large>
+            <div className="ps-potentiels">
+              {POTENTIELS.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  className="ps-potentiel"
+                  data-ton={TON_POTENTIEL[item.value]}
+                  data-actif={etat.potentiel === item.value ? 'oui' : 'non'}
+                  onClick={() => changer('potentiel', etat.potentiel === item.value ? '' : item.value)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </Champ>
+          <Champ libelle="Étape">
+            <select value={etat.status} onChange={(e) => changer('status', e.target.value)}>
+              {STATUTS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+            </select>
+          </Champ>
+          <Champ libelle="Prochaine relance">
+            <input type="date" value={etat.next_contact_date || ''} onChange={(e) => changer('next_contact_date', e.target.value)} />
+          </Champ>
+          <Champ libelle="Notes" large>
+            <textarea rows={4} value={etat.notes} onChange={(e) => changer('notes', e.target.value)} />
+          </Champ>
+        </div>
+      )}
+    </Fenetre>
+  )
+}
+
+// ── la fenêtre des dates d'un document ─────────────────────
+
+function FenetreDocument({ demande, onFermer, onProduire }) {
+  const [emission, setEmission] = useState(() => new Date().toISOString().slice(0, 10))
+  const [echeance, setEcheance] = useState(() => {
+    const date = new Date()
+    date.setDate(date.getDate() + 30)
+    return date.toISOString().slice(0, 10)
+  })
+  const [depart, setDepart] = useState(() => new Date().toISOString().slice(0, 10))
+  const [signatureEnCheck, setSignatureEnCheck] = useState('')
+  const [signatureClient, setSignatureClient] = useState('')
+
+  const libelles = { devis: 'Devis', facture: 'Facture', echeancier: 'Échéancier' }
+
+  return (
+    <Fenetre
+      eyebrow={`Document · ${demande.devis.numero}`}
+      titre={libelles[demande.type]}
+      labelledBy="ps-titre-document"
+      surFermer={onFermer}
+      pied={(
+        <>
+          <button type="button" className="ps-bouton-creux" onClick={onFermer}>Annuler</button>
+          <button
+            type="button"
+            className="ps-bouton"
+            onClick={() => onProduire({ type: demande.type, devis: demande.devis, emission, echeance, depart, signatureEnCheck, signatureClient })}
+          >
+            <Download size={14} /> Préparer le PDF
+          </button>
+        </>
+      )}
+    >
+      <p className="ps-note">
+        Les montants sont ceux du devis enregistré. Les dates ci-dessous figurent sur le document.
+      </p>
+      <div className="ps-grille">
+        {demande.type === 'facture' && (
+          <>
+            <Champ libelle="Date d’émission">
+              <input type="date" value={emission} onChange={(e) => setEmission(e.target.value)} />
+            </Champ>
+            <Champ libelle="Date d’échéance">
+              <input type="date" value={echeance} onChange={(e) => setEcheance(e.target.value)} />
+            </Champ>
+          </>
+        )}
+        {demande.type === 'echeancier' && (
+          <Champ libelle="Première échéance">
+            <input type="date" value={depart} onChange={(e) => setDepart(e.target.value)} />
+          </Champ>
+        )}
+        <Champ libelle="Date de signature — En-Check">
+          <input type="date" value={signatureEnCheck} onChange={(e) => setSignatureEnCheck(e.target.value)} />
+        </Champ>
+        <Champ libelle="Date de signature — client">
+          <input type="date" value={signatureClient} onChange={(e) => setSignatureClient(e.target.value)} />
+        </Champ>
+      </div>
+    </Fenetre>
   )
 }
 
 // ═══════════════════════════════════════════════════════════
-// 🎨 STYLES
+// LA PAGE
 // ═══════════════════════════════════════════════════════════
-const styles = {
-  container: {
-    minHeight: '100vh', background: '#0A0A0F',
-    position: 'relative', overflow: 'hidden',
-  },
-  bgPattern: {
-    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundImage: `
-      radial-gradient(circle at 20% 30%, rgba(16,185,129,0.04) 0%, transparent 50%),
-      radial-gradient(circle at 80% 70%, rgba(99,102,241,0.03) 0%, transparent 50%)
-    `,
-    pointerEvents: 'none', zIndex: 0,
-  },
-  loadingContainer: {
-    minHeight: '100vh', display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center', gap: '24px', background: '#0A0A0F',
-  },
-  loadingText: { color: '#888', fontSize: '16px', letterSpacing: '2px' },
-  header: {
-    background: 'rgba(15,15,25,0.95)', backdropFilter: 'blur(20px)',
-    borderBottom: '1px solid rgba(16,185,129,0.15)',
-    position: 'sticky', top: 0, zIndex: 100,
-  },
-  headerInner: {
-    maxWidth: '1400px', margin: '0 auto', padding: '12px 20px',
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-  },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
-  backBtn: {
-    background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)',
-    borderRadius: '10px', padding: '8px', color: '#10B981', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-  logoMark: {
-    width: '38px', height: '38px', borderRadius: '10px',
-    background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: {
-    color: '#FFFFFF', fontSize: '18px', fontWeight: '700',
-    letterSpacing: '3px', margin: 0,
-  },
-  headerSub: {
-    color: '#10B981', fontSize: '10px', letterSpacing: '3px',
-    textTransform: 'uppercase', fontWeight: '500',
-  },
-  addBtn: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    background: 'linear-gradient(135deg, #10B981, #059669)',
-    color: '#000', padding: '10px 20px', borderRadius: '12px',
-    border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer',
-  },
-  main: {
-    padding: '20px', maxWidth: '1400px',
-    margin: '0 auto', position: 'relative', zIndex: 1,
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%,160px),1fr))',
-    gap: '12px', marginBottom: '24px',
-  },
-  statCard: {
-    background: 'rgba(20,20,35,0.8)', borderRadius: '14px',
-    border: '1px solid', padding: '16px',
-    display: 'flex', flexDirection: 'column', gap: '4px',
-  },
-  statNumber: { fontSize: '28px', fontWeight: '700', lineHeight: '1' },
-  statLabel: { color: '#888', fontSize: '12px', fontWeight: '500' },
-  toolbar: {
-    display: 'flex', gap: '10px', marginBottom: '16px',
-    flexWrap: 'wrap', alignItems: 'center',
-  },
-  searchBox: {
-    flex: '1 1 280px', display: 'flex', alignItems: 'center', gap: '10px',
-    background: 'rgba(20,20,35,0.8)', border: '1px solid rgba(255,255,255,0.06)',
-    padding: '10px 14px', borderRadius: '12px',
-  },
-  searchInput: {
-    flex: 1, border: 'none', outline: 'none',
-    background: 'transparent', color: '#E5E5E5',
-    fontSize: '14px', fontFamily: 'inherit',
-  },
-  clearBtn: {
-    background: 'none', border: 'none', color: '#666',
-    cursor: 'pointer', display: 'flex', alignItems: 'center',
-  },
-  filterBox: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    background: 'rgba(20,20,35,0.8)', border: '1px solid rgba(16,185,129,0.15)',
-    padding: '10px 14px', borderRadius: '12px',
-  },
-  filterSelect: {
-    background: 'transparent', border: 'none',
-    color: '#E5E5E5', fontSize: '14px', cursor: 'pointer',
-    outline: 'none', fontFamily: 'inherit',
-  },
-  resultCount: { color: '#666', fontSize: '13px', whiteSpace: 'nowrap' },
-  pipelineHeader: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' },
-  pipelineChip: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '8px 14px', borderRadius: '20px',
-    border: '1px solid', cursor: 'pointer',
-    fontSize: '12px', fontWeight: '600',
-    transition: 'all 0.2s ease', background: 'transparent',
-  },
-  pipelineCount: {
-    padding: '2px 8px', borderRadius: '10px',
-    fontSize: '11px', fontWeight: '700',
-  },
-  list: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  empty: {
-    textAlign: 'center', padding: '60px 20px',
-    background: 'rgba(20,20,35,0.6)', borderRadius: '20px',
-    border: '1px solid rgba(255,255,255,0.06)',
-  },
-  emptyIcon: {
-    width: '80px', height: '80px', borderRadius: '20px',
-    background: 'rgba(16,185,129,0.08)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    margin: '0 auto 20px',
-  },
-  emptyTitle: { color: '#FFFFFF', fontSize: '18px', fontWeight: '600', margin: '0 0 8px' },
-  emptySubtitle: { color: '#666', fontSize: '14px', margin: '0 0 24px' },
-  emptyBtn: {
-    display: 'inline-flex', alignItems: 'center', gap: '8px',
-    background: 'linear-gradient(135deg, #10B981, #059669)',
-    color: '#000', padding: '12px 24px', borderRadius: '12px',
-    border: 'none', fontWeight: '700', fontSize: '14px', cursor: 'pointer',
-  },
-  card: {
-    background: 'rgba(20,20,35,0.7)', backdropFilter: 'blur(10px)',
-    borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)',
-    borderLeft: '3px solid', padding: '18px 20px',
-    display: 'flex', flexDirection: 'column', gap: '14px',
-  },
-  cardTop: {
-    display: 'flex', gap: '16px',
-    justifyContent: 'space-between', alignItems: 'flex-start',
-  },
-  cardMain: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' },
-  cardTitleRow: { display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
-  cardCompany: { color: '#FFFFFF', fontSize: '16px', fontWeight: '700', margin: 0 },
-  statutBadge: {
-    display: 'inline-flex', alignItems: 'center', gap: '5px',
-    padding: '4px 12px', borderRadius: '20px',
-    fontSize: '11px', fontWeight: '700', border: '1px solid',
-  },
-  urgentBadge: {
-    display: 'inline-flex', alignItems: 'center', gap: '5px',
-    padding: '4px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: '700',
-    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', color: '#EF4444',
-  },
-  cardMeta: { display: 'flex', flexWrap: 'wrap', gap: '10px' },
-  metaItem: {
-    display: 'inline-flex', alignItems: 'center', gap: '4px',
-    color: '#888', fontSize: '12px',
-  },
-  cardContact: { display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' },
-  contactItem: { color: '#E5E5E5', fontSize: '12px', fontWeight: '500' },
-  contactLink: {
-    display: 'inline-flex', alignItems: 'center', gap: '4px',
-    color: '#10B981', fontSize: '12px', textDecoration: 'none', fontWeight: '500',
-  },
-  nextContact: {
-    display: 'inline-flex', alignItems: 'center', gap: '6px',
-    padding: '5px 12px', borderRadius: '8px',
-    border: '1px solid', fontSize: '12px', width: 'fit-content',
-  },
-  cardNotes: {
-    display: 'flex', alignItems: 'flex-start', gap: '6px',
-    color: '#666', fontSize: '12px', margin: 0, lineHeight: '1.5',
-  },
-  cardActions: {
-    display: 'flex', gap: '6px', flexShrink: 0, flexDirection: 'column',
-  },
-  actionBtn: {
-    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '8px', padding: '8px', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-  cardStatusRow: {
-    display: 'flex', alignItems: 'center', gap: '10px',
-    paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.04)',
-    flexWrap: 'wrap',
-  },
-  statusRowLabel: { color: '#555', fontSize: '11px', fontWeight: '600', whiteSpace: 'nowrap' },
-  statusChips: { display: 'flex', gap: '6px', flexWrap: 'wrap' },
-  statusChip: {
-    padding: '4px 10px', borderRadius: '8px', border: '1px solid',
-    cursor: 'pointer', fontSize: '11px', transition: 'all 0.2s ease',
-    background: 'transparent',
-  },
-  overlay: {
-    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '16px', zIndex: 1000, animation: 'fadeIn 0.2s ease',
-  },
-  modal: {
-    background: '#0F0F19', border: '1px solid rgba(16,185,129,0.15)',
-    borderRadius: '24px', width: '100%', maxWidth: '640px',
-    maxHeight: '90vh', overflow: 'hidden',
-    display: 'flex', flexDirection: 'column',
-    boxShadow: '0 20px 80px rgba(0,0,0,0.6)',
-  },
-  modalHeader: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
-  },
-  modalIcon: {
-    width: '42px', height: '42px', borderRadius: '12px',
-    background: 'rgba(16,185,129,0.12)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-  modalTitle: { color: '#FFFFFF', fontSize: '18px', fontWeight: '700', margin: 0 },
-  modalSub: { color: '#666', fontSize: '12px', marginTop: '2px', display: 'block' },
-  closeBtn: {
-    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '10px', padding: '8px', color: '#888', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
 
-  // Tabs sections formulaire
-  sectionTabs: {
-    display: 'flex', gap: '2px', padding: '8px 12px',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
-    flexShrink: 0, flexWrap: 'wrap',
-  },
-  sectionTab: {
-    display: 'flex', flexDirection: 'column', gap: '1px',
-    padding: '8px 14px', borderRadius: '8px',
-    border: '1px solid transparent',
-    cursor: 'pointer', fontFamily: 'inherit',
-    flex: '1 1 auto', alignItems: 'center',
-    transition: 'all 0.2s ease', background: 'transparent',
-  },
+export default function Prospection() {
+  const navigate = useNavigate()
+  const [parametres, setParametres] = useSearchParams()
+  const { darkMode, toggleTheme } = useTheme()
 
-  modalBody: {
-    padding: '20px 24px', overflow: 'auto', flex: 1,
-    display: 'flex', flexDirection: 'column', gap: '14px',
-  },
-  modalFooter: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    gap: '12px', padding: '16px 24px',
-    borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
-  },
-  sectionTitle: {
-    color: '#888', fontSize: '11px', fontWeight: '700',
-    textTransform: 'uppercase', letterSpacing: '1px',
-    paddingBottom: '4px', borderBottom: '1px solid rgba(255,255,255,0.04)',
-  },
-  formField: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  formRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
-  label: {
-    color: '#888', fontSize: '11px', fontWeight: '600',
-    textTransform: 'uppercase', letterSpacing: '0.5px',
-    display: 'flex', alignItems: 'center', gap: '4px',
-  },
-  input: {
-    padding: '11px 14px', border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '10px', fontSize: '14px', outline: 'none',
-    width: '100%', boxSizing: 'border-box',
-    background: 'rgba(255,255,255,0.04)', color: '#E5E5E5', fontFamily: 'inherit',
-  },
-  select: {
-    padding: '11px 14px', border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '10px', fontSize: '14px', outline: 'none',
-    background: 'rgba(255,255,255,0.04)', color: '#E5E5E5',
-    width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', cursor: 'pointer',
-  },
-  cancelBtn: {
-    display: 'flex', alignItems: 'center', gap: '6px',
-    padding: '12px 20px', background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.1)', color: '#E5E5E5',
-    borderRadius: '12px', fontWeight: '600', fontSize: '14px',
-    cursor: 'pointer', fontFamily: 'inherit',
-  },
-  saveBtn: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '12px 24px', background: 'linear-gradient(135deg, #10B981, #059669)',
-    color: '#000', border: 'none', borderRadius: '12px',
-    fontWeight: '700', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit',
-  },
-  deleteBtn: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '12px 24px', background: 'linear-gradient(135deg, #EF4444, #B91C1C)',
-    color: '#FFF', border: 'none', borderRadius: '12px',
-    fontWeight: '700', fontSize: '14px', cursor: 'pointer',
-  },
-  confirmModal: {
-    background: '#141423', border: '1px solid rgba(255,255,255,0.08)',
-    borderRadius: '24px', width: '100%', maxWidth: '420px',
-    padding: '36px', textAlign: 'center',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-  },
-  confirmIcon: {
-    width: '64px', height: '64px', borderRadius: '18px',
-    background: 'rgba(239,68,68,0.12)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    margin: '0 auto 20px',
-  },
-  confirmTitle: { color: '#FFFFFF', fontSize: '20px', fontWeight: '700', marginBottom: '12px' },
-  confirmText: { color: '#888', marginBottom: '28px', lineHeight: '1.6', fontSize: '14px' },
-  confirmBtns: { display: 'flex', gap: '12px' },
-  detailGrid: {
-    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: '10px',
-  },
-  detailItem: {
-    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
-    borderRadius: '10px', padding: '12px',
-    display: 'flex', flexDirection: 'column', gap: '4px',
-  },
-  detailLabel: { color: '#666', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-  detailValue: { color: '#FFFFFF', fontSize: '14px', fontWeight: '600' },
-  notesBox: {
-    padding: '14px 16px', background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px',
-    color: '#888', fontSize: '13px', lineHeight: '1.6',
-  },
-  socialLink: {
-    display: 'inline-flex', alignItems: 'center', gap: '6px',
-    padding: '6px 14px', borderRadius: '8px',
-    background: 'rgba(16,185,129,0.12)', color: '#10B981',
-    border: '1px solid rgba(16,185,129,0.25)',
-    textDecoration: 'none', fontSize: '12px', fontWeight: '600',
-    transition: 'opacity 0.2s ease',
-  },
+  const [admin, setAdmin] = useState(null)
+  const [prospects, setProspects] = useState([])
+  const [devis, setDevis] = useState([])
+  const [chargement, setChargement] = useState(true)
+  const [avis, setAvis] = useState(null)
+
+  const [vue, setVue] = useState(() => {
+    const demandee = parametres.get('vue')
+    return VUES.some((item) => item.cle === demandee) ? demandee : 'prospects'
+  })
+
+  const [recherche, setRecherche] = useState('')
+  const [filtrePotentiel, setFiltrePotentiel] = useState('tous')
+  const [rechercheDevis, setRechercheDevis] = useState('')
+  const [filtreDevis, setFiltreDevis] = useState('tous')
+
+  const [fiche, setFiche] = useState(null)
+  const [fenetreProspect, setFenetreProspect] = useState(null) // { prospect } ou {}
+  const [aSupprimer, setASupprimer] = useState(null)
+  const [document_, setDocument] = useState(null)
+  const [scenario, setScenario] = useState(null)
+  const [atelier, setAtelier] = useState(null) // { devis } ou { prospect }
+
+  // ── l'accès et les données ──────────────────────────────
+  useEffect(() => {
+    const brut = localStorage.getItem('admin')
+    if (!brut) { navigate('/login'); return }
+    let parse
+    try {
+      parse = JSON.parse(brut)
+    } catch {
+      navigate('/login')
+      return
+    }
+    if (parse.role !== 'super_admin') { navigate('/dashboard'); return }
+    setAdmin(parse)
+  }, [navigate])
+
+  const charger = useCallback(async () => {
+    setChargement(true)
+    try {
+      const [reponseProspects, reponseDevis] = await Promise.all([
+        supabase.from('prospects').select('*').order('created_at', { ascending: false }),
+        supabase.from('devis').select('*').order('created_at', { ascending: false }),
+      ])
+      if (reponseProspects.error) throw reponseProspects.error
+      if (reponseDevis.error) throw reponseDevis.error
+      setProspects(reponseProspects.data || [])
+      setDevis(reponseDevis.data || [])
+    } catch (probleme) {
+      console.error(probleme)
+      setAvis({ ton: 'erreur', texte: 'Les fiches n’ont pas pu être chargées. Vérifiez la connexion, puis rechargez.' })
+    } finally {
+      setChargement(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (admin) charger()
+  }, [admin, charger])
+
+  const changerVue = (cle) => {
+    setVue(cle)
+    const suivant = new URLSearchParams(parametres)
+    suivant.set('vue', cle)
+    setParametres(suivant, { replace: true })
+  }
+
+  // ── les chiffres ────────────────────────────────────────
+  const stats = useMemo(() => {
+    const relances = prospects.filter((p) => relanceDue(p.next_contact_date)).length
+    const ouverts = devis.filter((d) => d.status === 'brouillon' || d.status === 'envoye').length
+    const signes = devis.filter((d) => d.status === 'accepte')
+    const mrr = signes.reduce((somme, d) => somme + (totauxDuDevis(d).totalMensuelNet || 0), 0)
+    return { prospects: prospects.length, relances, ouverts, signes: signes.length, mrr }
+  }, [prospects, devis])
+
+  const prospectsFiltres = useMemo(
+    () => prospects.filter((p) =>
+      correspond(p, recherche) && (filtrePotentiel === 'tous' || p.potentiel === filtrePotentiel),
+    ),
+    [prospects, recherche, filtrePotentiel],
+  )
+
+  const devisFiltres = useMemo(() => {
+    const terme = rechercheDevis.trim().toLowerCase()
+    return devis.filter((d) => {
+      const client = prospects.find((p) => p.id === d.prospect_id)
+      const dansTexte = !terme
+        || (d.numero || '').toLowerCase().includes(terme)
+        || (client?.company_name || '').toLowerCase().includes(terme)
+      const dansStatut = filtreDevis === 'tous' || d.status === filtreDevis
+      return dansTexte && dansStatut
+    })
+  }, [devis, prospects, rechercheDevis, filtreDevis])
+
+  const colonnes = useMemo(
+    () => STATUTS.map((statut) => ({
+      ...statut,
+      fiches: prospectsFiltres.filter((p) => (p.status || 'a_contacter') === statut.key),
+    })),
+    [prospectsFiltres],
+  )
+
+  // ── les gestes ──────────────────────────────────────────
+  const enregistrerProspect = async (donnees) => {
+    if (fenetreProspect?.prospect) {
+      const { error } = await supabase
+        .from('prospects')
+        .update({ ...donnees, updated_at: new Date().toISOString(), updated_by: admin?.id })
+        .eq('id', fenetreProspect.prospect.id)
+      if (error) throw error
+      setAvis({ ton: 'ok', texte: 'La fiche est à jour.' })
+    } else {
+      const { error } = await supabase
+        .from('prospects')
+        .insert({ ...donnees, created_by: admin?.id })
+      if (error) throw error
+      setAvis({ ton: 'ok', texte: 'Le prospect est ouvert.' })
+    }
+    setFenetreProspect(null)
+    await charger()
+  }
+
+  const changerStatut = async (prospect, statut) => {
+    const ancien = prospect.status
+    setProspects((liste) => liste.map((p) => (p.id === prospect.id ? { ...p, status: statut } : p)))
+    setFiche((actuelle) => (actuelle?.id === prospect.id ? { ...actuelle, status: statut } : actuelle))
+    const { error } = await supabase
+      .from('prospects')
+      .update({ status: statut, updated_at: new Date().toISOString() })
+      .eq('id', prospect.id)
+    if (error) {
+      setProspects((liste) => liste.map((p) => (p.id === prospect.id ? { ...p, status: ancien } : p)))
+      setAvis({ ton: 'erreur', texte: 'L’étape n’a pas pu être changée.' })
+      return
+    }
+    setAvis({ ton: 'ok', texte: `${prospect.company_name} est maintenant à l’étape « ${statutDe(statut).label} ».` })
+  }
+
+  const supprimerProspect = async () => {
+    if (!aSupprimer) return
+    const { error } = await supabase.from('prospects').delete().eq('id', aSupprimer.prospect.id)
+    if (error) {
+      setAvis({ ton: 'erreur', texte: 'La fiche n’a pas pu être supprimée.' })
+      setASupprimer(null)
+      return
+    }
+    setASupprimer(null)
+    setFiche(null)
+    setAvis({ ton: 'ok', texte: 'La fiche est supprimée.' })
+    await charger()
+  }
+
+  const changerStatutDevis = async (ligne, statut) => {
+    setDevis((liste) => liste.map((d) => (d.id === ligne.id ? { ...d, status: statut } : d)))
+    const { error } = await supabase.from('devis').update({ status: statut }).eq('id', ligne.id)
+    if (error) {
+      setDevis((liste) => liste.map((d) => (d.id === ligne.id ? { ...d, status: ligne.status } : d)))
+      setAvis({ ton: 'erreur', texte: 'Le statut du devis n’a pas pu être changé.' })
+      return
+    }
+    setAvis({ ton: 'ok', texte: `Devis ${ligne.numero} : ${STATUTS_DEVIS.find((s) => s.key === statut)?.label}.` })
+  }
+
+  const supprimerDevis = async () => {
+    if (!aSupprimer?.devis) return
+    const { error } = await supabase.from('devis').delete().eq('id', aSupprimer.devis.id)
+    if (error) {
+      setAvis({ ton: 'erreur', texte: 'Le devis n’a pas pu être supprimé.' })
+      setASupprimer(null)
+      return
+    }
+    setASupprimer(null)
+    setAvis({ ton: 'ok', texte: 'Le devis est supprimé.' })
+    await charger()
+  }
+
+  const produireDocument = ({ type, devis: ligne, emission, echeance, depart, signatureEnCheck, signatureClient }) => {
+    const calcul = ligne.detail_calcul?.lignesFixe
+      ? ligne.detail_calcul
+      : calculerDevis(ligne.config || CONFIG_INITIAL, ligne.niveau || 'moy', {})
+    const totaux = totauxDuDevis(ligne)
+    try {
+      if (type === 'devis') {
+        handleDownloadPDF(ligne, calcul, totaux, signatureEnCheck, signatureClient, prospects)
+      } else if (type === 'facture') {
+        handleDownloadFacture(ligne, calcul, totaux, emission, echeance, signatureEnCheck, signatureClient, false, prospects)
+      } else {
+        handleDownloadEcheancier(ligne, calcul, totaux, depart, {}, signatureEnCheck, signatureClient, {}, false, prospects)
+      }
+      setAvis({ ton: 'ok', texte: `Le ${type === 'devis' ? 'devis' : type === 'facture' ? 'facture' : 'échéancier'} s’ouvre en PDF.` })
+    } catch (probleme) {
+      console.error(probleme)
+      setAvis({ ton: 'erreur', texte: 'Le document n’a pas pu être préparé.' })
+    }
+    setDocument(null)
+  }
+
+  const envoyerParWhatsApp = (ligne) => {
+    const totaux = totauxDuDevis(ligne)
+    const client = prospects.find((p) => p.id === ligne.prospect_id)
+    const texte = [
+      `DEVIS EN-CHECK — ${ligne.numero || 'BROUILLON'}`,
+      client ? `Client : ${client.company_name}` : '',
+      '',
+      `Investissement initial : ${formatF(totaux.totalFixeNet)} FCFA`,
+      `Abonnement mensuel : ${formatF(totaux.totalMensuelNet)} FCFA/mois`,
+      `Engagement : ${totaux.nbMois} mois`,
+      `Total : ${formatF(totaux.totalAnnuelNet)} FCFA`,
+      '',
+      'Devis établi par En-Check.',
+    ].filter(Boolean).join('\n')
+    window.open(`https://wa.me/?text=${encodeURIComponent(texte)}`, '_blank')
+  }
+
+  // ── le rendu ────────────────────────────────────────────
+  if (chargement && !admin) {
+    return <div className="ps-page"><Chargement texte="Ouverture de la prospection…" note="Vérification de la session." /></div>
+  }
+
+  return (
+    <div className={`ps-page${darkMode ? '' : ' ps-clair'}`}>
+      <PageCulturalBand pathname="/prospection" />
+      <div className="ps-couture" aria-hidden="true" />
+
+      <header className="ps-entete">
+        <button
+          type="button"
+          className="ps-retour"
+          onClick={() => navigate('/dashboard')}
+          aria-label="Revenir au tableau de bord"
+          title="Tableau de bord"
+        >
+          <ArrowLeft size={16} />
+        </button>
+        <AbomeyBlasonAppliqueSvg size={56} />
+
+        <div className="ps-titre-bloc">
+          <p className="ps-eyebrow">Commercial · pipeline</p>
+          <h1 className="ps-titre">Prospection<span>.</span></h1>
+          <p className="ps-sous-titre">
+            Les prospects et les devis, dans la même pièce. Rien ne se perd entre les deux.
+          </p>
+        </div>
+
+        <div className="ps-entete-droite">
+          <span className="ps-pastille">
+            <i aria-hidden="true" data-etat={stats.ouverts > 0 ? 'ok' : 'faible'} />
+            {stats.ouverts === 0
+              ? 'aucun devis ouvert'
+              : `${stats.ouverts} devis ouvert${stats.ouverts > 1 ? 's' : ''}`}
+          </span>
+          <button
+            type="button"
+            className="ps-theme"
+            role="switch"
+            aria-checked={darkMode}
+            onClick={toggleTheme}
+            aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
+            title={darkMode ? 'Thème clair' : 'Thème sombre'}
+          >
+            {darkMode ? <Moon size={14} aria-hidden="true" /> : <Sun size={14} aria-hidden="true" />}
+          </button>
+        </div>
+      </header>
+
+      <main className="ps-coque">
+        {/* ── le seuil ─────────────────────────────────── */}
+        <section className="ps-seuil" aria-label="Résumé et accès rapides">
+          <div className="ps-seuil-texte">
+            <p className="ps-seuil-libelle">Pipeline</p>
+            <p className="ps-seuil-chiffre">
+              {stats.prospects} prospects · {devis.length} devis · {stats.signes} signé{stats.signes > 1 ? 's' : ''}
+            </p>
+            <p className="ps-seuil-note">
+              {stats.relances > 0
+                ? `${stats.relances} relance${stats.relances > 1 ? 's' : ''} à faire aujourd’hui`
+                : 'Aucune relance en retard'}
+            </p>
+          </div>
+          <div className="ps-raccourcis">
+            <span className="ps-seuil-libelle">Aller à</span>
+            <RaccourcisPages compact excludePaths={['/prospection']} />
+          </div>
+        </section>
+
+        {avis && (
+          <p className="ps-avis" data-ton={avis.ton} role="status">
+            {avis.ton === 'ok' ? <CheckCircle2 size={13} aria-hidden="true" /> : <AlertTriangle size={13} aria-hidden="true" />}
+            {avis.texte}
+            <button type="button" className="ps-avis-fermer" onClick={() => setAvis(null)} aria-label="Masquer ce message">
+              <X size={12} />
+            </button>
+          </p>
+        )}
+
+        {/* ── les stèles ───────────────────────────────── */}
+        <section className="ps-steles" aria-label="Chiffres de la prospection">
+          {[
+            { libelle: 'Prospects', valeur: stats.prospects, note: 'dans le pipeline', ton: 'or', icone: Users },
+            { libelle: 'À relancer', valeur: stats.relances, note: 'date dépassée', ton: 'terre', icone: CalendarClock },
+            { libelle: 'Devis ouverts', valeur: stats.ouverts, note: 'brouillon ou envoyé', ton: 'bleu', icone: FileText },
+            { libelle: 'Signés', valeur: stats.signes, note: `${formatF(stats.mrr)} F de MRR`, ton: 'vert', icone: TrendingUp },
+          ].map((item) => {
+            const Icone = item.icone
+            return (
+              <div className="ps-stele" data-ton={item.ton} key={item.libelle}>
+                <span className="ps-stele-marque"><Icone size={16} aria-hidden="true" /></span>
+                <span className="ps-stele-texte">
+                  <span className="ps-stele-nombre">{item.valeur}</span>
+                  <span className="ps-stele-libelle">{item.libelle}</span>
+                  <span className="ps-stele-note">{item.note}</span>
+                </span>
+              </div>
+            )
+          })}
+        </section>
+
+        {/* ── le sommaire ──────────────────────────────── */}
+        <div className="ps-sommaire">
+          <p className="ps-sommaire-titre">Sommaire</p>
+          <div className="ps-sommaire-liste" role="tablist" aria-label="Vues de la prospection">
+            {VUES.map((item) => {
+              const Icone = item.icone
+              const actif = vue === item.cle
+              const compte = item.cle === 'prospects' ? prospects.length : item.cle === 'devis' ? devis.length : null
+              return (
+                <button
+                  key={item.cle}
+                  type="button"
+                  role="tab"
+                  id={`ps-onglet-${item.cle}`}
+                  aria-selected={actif}
+                  aria-controls={`ps-vue-${item.cle}`}
+                  className="ps-onglet"
+                  data-actif={actif ? 'oui' : 'non'}
+                  onClick={() => changerVue(item.cle)}
+                >
+                  <Icone size={14} aria-hidden="true" />
+                  {item.libelle}
+                  {compte !== null && <span className="ps-onglet-compte">{compte}</span>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {chargement ? (
+          <Chargement />
+        ) : (
+          <>
+            {/* ═══ PROSPECTS ═══ */}
+            {vue === 'prospects' && (
+              <section className="ps-vue" id="ps-vue-prospects" role="tabpanel" aria-labelledby="ps-onglet-prospects">
+                <header className="ps-vue-tete">
+                  <div>
+                    <h2 className="ps-vue-titre">Pipeline</h2>
+                    <p className="ps-vue-note">
+                      Une fiche par entreprise, six étapes. Changer d’étape se fait dans la fiche.
+                    </p>
+                  </div>
+                  <button type="button" className="ps-bouton" onClick={() => setFenetreProspect({})}>
+                    <Plus size={15} /> Nouveau prospect
+                  </button>
+                </header>
+
+                <div className="ps-barre">
+                  <label className="ps-recherche">
+                    <Search size={15} aria-hidden="true" />
+                    <input
+                      type="search"
+                      value={recherche}
+                      onChange={(e) => setRecherche(e.target.value)}
+                      placeholder="Rechercher une entreprise, une ville, un contact"
+                      aria-label="Rechercher un prospect"
+                    />
+                    {recherche && (
+                      <button type="button" onClick={() => setRecherche('')} aria-label="Effacer la recherche">
+                        <X size={13} />
+                      </button>
+                    )}
+                  </label>
+                  <div className="ps-filtres" role="group" aria-label="Filtrer par potentiel">
+                    {[{ valeur: 'tous', label: 'Tous' }, ...POTENTIELS.map((p) => ({ valeur: p.value, label: p.label }))].map((option) => (
+                      <button
+                        key={option.valeur}
+                        type="button"
+                        className="ps-filtre"
+                        data-actif={filtrePotentiel === option.valeur ? 'oui' : 'non'}
+                        aria-pressed={filtrePotentiel === option.valeur}
+                        onClick={() => setFiltrePotentiel(option.valeur)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {prospects.length === 0 ? (
+                  <div className="ps-vide">
+                    <Building2 size={34} aria-hidden="true" />
+                    <p className="ps-vide-titre">Aucun prospect pour l’instant</p>
+                    <p className="ps-vide-texte">
+                      Une fiche demande le nom de l’entreprise et un contact. Le reste vient au fil des appels.
+                    </p>
+                    <button type="button" className="ps-bouton" onClick={() => setFenetreProspect({})}>
+                      <Plus size={15} /> Ouvrir la première fiche
+                    </button>
+                  </div>
+                ) : (
+                  <div className="ps-pipeline">
+                    {colonnes.map((colonne) => {
+                      const Icone = ICONE_STATUT[colonne.key]
+                      return (
+                        <div className="ps-colonne" key={colonne.key} data-statut={colonne.key}>
+                          <header className="ps-colonne-tete">
+                            <span className="ps-colonne-titre">
+                              <Icone size={12} aria-hidden="true" /> {colonne.label}
+                            </span>
+                            <span className="ps-colonne-compte">{colonne.fiches.length}</span>
+                          </header>
+                          <div className="ps-colonne-corps">
+                            {colonne.fiches.length === 0 ? (
+                              <p className="ps-colonne-vide">Rien à cette étape.</p>
+                            ) : colonne.fiches.map((prospect) => (
+                              <CarteProspect
+                                key={prospect.id}
+                                prospect={prospect}
+                                onOuvrir={setFiche}
+                                onDevis={(p) => setAtelier({ prospect: p })}
+                                onModifier={(p) => setFenetreProspect({ prospect: p })}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {prospects.length > 0 && prospectsFiltres.length === 0 && (
+                  <p className="ps-aucun">Aucun prospect ne correspond à cette recherche.</p>
+                )}
+              </section>
+            )}
+
+            {/* ═══ DEVIS ═══ */}
+            {vue === 'devis' && (
+              <section className="ps-vue" id="ps-vue-devis" role="tabpanel" aria-labelledby="ps-onglet-devis">
+                <header className="ps-vue-tete">
+                  <div>
+                    <h2 className="ps-vue-titre">Devis</h2>
+                    <p className="ps-vue-note">Les montants enregistrés, et les documents qui en sortent.</p>
+                  </div>
+                  <button type="button" className="ps-bouton" onClick={() => setAtelier({})}>
+                    <Plus size={15} /> Nouveau devis
+                  </button>
+                </header>
+
+                <div className="ps-barre">
+                  <label className="ps-recherche">
+                    <Search size={15} aria-hidden="true" />
+                    <input
+                      type="search"
+                      value={rechercheDevis}
+                      onChange={(e) => setRechercheDevis(e.target.value)}
+                      placeholder="Rechercher un numéro ou un client"
+                      aria-label="Rechercher un devis"
+                    />
+                    {rechercheDevis && (
+                      <button type="button" onClick={() => setRechercheDevis('')} aria-label="Effacer la recherche">
+                        <X size={13} />
+                      </button>
+                    )}
+                  </label>
+                  <div className="ps-filtres" role="group" aria-label="Filtrer par statut">
+                    {[{ key: 'tous', label: 'Tous' }, ...STATUTS_DEVIS].map((option) => (
+                      <button
+                        key={option.key}
+                        type="button"
+                        className="ps-filtre"
+                        data-actif={filtreDevis === option.key ? 'oui' : 'non'}
+                        aria-pressed={filtreDevis === option.key}
+                        onClick={() => setFiltreDevis(option.key)}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {devis.length === 0 ? (
+                  <div className="ps-vide">
+                    <FileText size={34} aria-hidden="true" />
+                    <p className="ps-vide-titre">Aucun devis</p>
+                    <p className="ps-vide-texte">
+                      L’atelier part d’un prospect ou de rien : le barème s’applique, puis la négociation.
+                    </p>
+                    <button type="button" className="ps-bouton" onClick={() => setAtelier({})}>
+                      <Plus size={15} /> Créer un devis
+                    </button>
+                  </div>
+                ) : (
+                  <div className="ps-devis-liste">
+                    {devisFiltres.map((ligne) => {
+                      const totaux = totauxDuDevis(ligne)
+                      const statut = STATUTS_DEVIS.find((s) => s.key === ligne.status) || STATUTS_DEVIS[0]
+                      const Icone = ICONE_DEVIS[ligne.status] || FileText
+                      const client = prospects.find((p) => p.id === ligne.prospect_id)
+                      return (
+                        <article className="ps-devis" key={ligne.id} data-statut={ligne.status}>
+                          <div className="ps-devis-identite">
+                            <p className="ps-devis-numero">{ligne.numero || 'Sans numéro'}</p>
+                            <p className="ps-devis-client">{client?.company_name || 'Sans prospect lié'}</p>
+                          </div>
+
+                          <Etiquette ton={ligne.status === 'accepte' ? 'vert' : ligne.status === 'refuse' ? 'terre' : ligne.status === 'envoye' ? 'bleu' : 'faible'} icone={Icone}>
+                            {statut.label}
+                          </Etiquette>
+
+                          <div className="ps-devis-montants">
+                            <span>
+                              <span className="ps-devis-libelle">Investissement</span>
+                              <strong>{formatF(totaux.totalFixeNet)} F</strong>
+                            </span>
+                            <span>
+                              <span className="ps-devis-libelle">Mensuel</span>
+                              <strong>{formatF(totaux.totalMensuelNet)} F</strong>
+                            </span>
+                            <span>
+                              <span className="ps-devis-libelle">Engagement</span>
+                              <strong>{totaux.nbMois} mois</strong>
+                            </span>
+                          </div>
+
+                          <div className="ps-devis-gestes">
+                            {client && (
+                              <button type="button" className="ps-lien" onClick={() => setFiche(client)}>
+                                <Users size={12} /> Fiche
+                              </button>
+                            )}
+                            <label className="ps-statut-select">
+                              <span className="ps-visuellement-cache">Statut du devis</span>
+                              <select value={ligne.status} onChange={(e) => changerStatutDevis(ligne, e.target.value)}>
+                                {STATUTS_DEVIS.map((option) => (
+                                  <option key={option.key} value={option.key}>{option.label}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <button type="button" className="ps-lien" onClick={() => setAtelier({ devis: ligne })}>
+                              <Pencil size={12} /> Modifier
+                            </button>
+                            <button type="button" className="ps-lien" onClick={() => setDocument({ type: 'devis', devis: ligne })}>
+                              <Download size={12} /> Devis
+                            </button>
+                            <button type="button" className="ps-lien" onClick={() => setDocument({ type: 'facture', devis: ligne })}>
+                              <Receipt size={12} /> Facture
+                            </button>
+                            <button type="button" className="ps-lien" onClick={() => setDocument({ type: 'echeancier', devis: ligne })}>
+                              <CalendarClock size={12} /> Échéancier
+                            </button>
+                            <button type="button" className="ps-lien" onClick={() => envoyerParWhatsApp(ligne)}>
+                              <MessageCircle size={12} /> WhatsApp
+                            </button>
+                            <button
+                              type="button"
+                              className="ps-lien ps-lien--danger"
+                              onClick={() => setASupprimer({ devis: ligne })}
+                            >
+                              <Trash2 size={12} /> Supprimer
+                            </button>
+                          </div>
+                        </article>
+                      )
+                    })}
+                    {devisFiltres.length === 0 && (
+                      <p className="ps-aucun">Aucun devis ne correspond à ce filtre.</p>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* ═══ APPELS ═══ */}
+            {vue === 'appels' && (
+              <section className="ps-vue" id="ps-vue-appels" role="tabpanel" aria-labelledby="ps-onglet-appels">
+                <header className="ps-vue-tete">
+                  <div>
+                    <h2 className="ps-vue-titre">Les appels</h2>
+                    <p className="ps-vue-note">
+                      Un scénario par métier : l’accroche, ce qu’on explique, et ce qu’on demande à la fin.
+                    </p>
+                  </div>
+                </header>
+
+                <div className="ps-scenarios">
+                  {SCENARIOS_PROSPECTION.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      className="ps-scenario"
+                      onClick={() => setScenario(item)}
+                    >
+                      <span className="ps-scenario-rond" aria-hidden="true">
+                        <PhoneCall size={15} />
+                      </span>
+                      <span className="ps-scenario-texte">
+                        <span className="ps-scenario-titre">{item.label}</span>
+                        <span className="ps-scenario-note">{item.context?.[0] || 'Scénario d’appel'}</span>
+                      </span>
+                      <ChevronRight size={15} aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+
+                <div className="ps-objections">
+                  <h3 className="ps-objections-titre">Les objections qui reviennent</h3>
+                  <ul>
+                    {OBJECTIONS_UNIVERSELLES.map((item) => (
+                      <li key={item.objection}>
+                        <p className="ps-objection">{item.objection}</p>
+                        <p className="ps-reponse">{item.reponse}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </main>
+
+      <footer className="ps-pied">
+        <span className="ps-pied-marque">PROSPECTION</span>
+        <span className="ps-pied-sep">·</span>
+        <span>En-Check, appliqué d’Abomey</span>
+        <span className="ps-pied-sep">·</span>
+        <span>{stats.prospects} prospects, {devis.length} devis</span>
+      </footer>
+
+      <PageCulturalBand pathname="/prospection" placement="bottom" />
+
+      {/* ── la fiche ──────────────────────────────────── */}
+      {fiche && (
+        <>
+          <div className="ps-fiche-voile" onClick={() => setFiche(null)} aria-hidden="true" />
+          <FicheProspect
+            prospect={prospects.find((p) => p.id === fiche.id) || fiche}
+            devis={devis}
+            onFermer={() => setFiche(null)}
+            onModifier={(p) => { setFiche(null); setFenetreProspect({ prospect: p }) }}
+            onDevis={(p) => { setFiche(null); setAtelier({ prospect: p }) }}
+            onSupprimer={(p) => setASupprimer({ prospect: p })}
+            onStatut={changerStatut}
+          />
+        </>
+      )}
+
+      {/* ── les fenêtres ──────────────────────────────── */}
+      {fenetreProspect && (
+        <FenetreProspect
+          prospect={fenetreProspect.prospect || null}
+          onFermer={() => setFenetreProspect(null)}
+          onEnregistrer={enregistrerProspect}
+        />
+      )}
+
+      {document_ && (
+        <FenetreDocument
+          demande={document_}
+          onFermer={() => setDocument(null)}
+          onProduire={produireDocument}
+        />
+      )}
+
+      {scenario && (
+        <Fenetre
+          eyebrow="Scénario d’appel"
+          titre={scenario.label}
+          labelledBy="ps-titre-scenario"
+          surFermer={() => setScenario(null)}
+          large
+          pied={<button type="button" className="ps-bouton-creux" onClick={() => setScenario(null)}>Fermer</button>}
+        >
+          <div className="ps-scenario-detail">
+            <section>
+              <h3>Le contexte</h3>
+              <ul>{scenario.context?.map((ligne) => <li key={ligne}>{ligne}</li>)}</ul>
+            </section>
+            <section>
+              <h3>L’accroche</h3>
+              <p>{scenario.accroche}</p>
+            </section>
+            <section>
+              <h3>Ce qu’on explique</h3>
+              <p>{scenario.pitch}</p>
+              {scenario.argumentCle && <p className="ps-argument">{scenario.argumentCle}</p>}
+              {scenario.chiffreImpact && <p className="ps-argument">{scenario.chiffreImpact}</p>}
+              {scenario.argumentROI && <p className="ps-argument">{scenario.argumentROI}</p>}
+            </section>
+            <section>
+              <h3>Ce qu’on demande</h3>
+              <p>{scenario.close}</p>
+            </section>
+            {scenario.barrieres?.length > 0 && (
+              <section>
+                <h3>Les barrières</h3>
+                <ul className="ps-barrieres">
+                  {scenario.barrieres.map((item) => (
+                    <li key={item.situation}>
+                      <p className="ps-objection">{item.situation}</p>
+                      <p className="ps-reponse">{item.reponse}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {scenario.objectionPrix && (
+              <section>
+                <h3>Quand le prix arrive</h3>
+                <p>{scenario.objectionPrix}</p>
+              </section>
+            )}
+          </div>
+        </Fenetre>
+      )}
+
+      {aSupprimer && (
+        <Fenetre
+          eyebrow="Suppression"
+          titre={aSupprimer.devis ? 'Supprimer ce devis ?' : 'Supprimer cette fiche ?'}
+          labelledBy="ps-titre-suppression"
+          surFermer={() => setASupprimer(null)}
+          pied={(
+            <>
+              <button type="button" className="ps-bouton-creux" onClick={() => setASupprimer(null)}>Annuler</button>
+              <button
+                type="button"
+                className="ps-bouton ps-bouton--danger"
+                onClick={aSupprimer.devis ? supprimerDevis : supprimerProspect}
+              >
+                <Trash2 size={14} /> {aSupprimer.devis ? 'Supprimer le devis' : 'Supprimer la fiche'}
+              </button>
+            </>
+          )}
+        >
+          <p className="ps-note">
+            {aSupprimer.devis
+              ? <>Le devis <strong>{aSupprimer.devis.numero}</strong> et ses montants seront perdus. Le prospect, lui, reste en place.</>
+              : <>La fiche <strong>{aSupprimer.prospect.company_name}</strong> sera retirée du pipeline. Les devis déjà créés ne sont pas supprimés.</>}
+          </p>
+        </Fenetre>
+      )}
+
+      {/* ── l'atelier ─────────────────────────────────── */}
+      {atelier && (
+        <AtelierDevis
+          prospects={prospects}
+          devis={atelier.devis || null}
+          prospectInitial={atelier.prospect || null}
+          onFermer={() => setAtelier(null)}
+          onEnregistre={charger}
+          onAvis={setAvis}
+        />
+      )}
+    </div>
+  )
 }

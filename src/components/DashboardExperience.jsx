@@ -284,7 +284,6 @@ export default function DashboardExperience({
         { label: 'Administrateurs', icon: ShieldCheck, path: '/admins', show: isSuperAdmin },
         { label: 'Messages système', icon: Bell, path: '/system-messages', show: isSuperAdmin },
         { label: 'Prospection', icon: TrendingUp, path: '/prospection', show: isSuperAdmin },
-        { label: 'Devis', icon: FileSearch, path: '/devis', show: isSuperAdmin },
         { label: 'Journal des connexions', icon: Activity, path: '/connexions', show: isSuperAdmin },
         { label: 'Carte des connexions', icon: Globe, path: '/connexions-map', show: isSuperAdmin },
         { label: 'Notifications push', icon: Bell, path: '/push-notifications', show: isSuperAdmin },

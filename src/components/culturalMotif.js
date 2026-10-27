@@ -17,6 +17,8 @@ export function culturalMotifForPath(pathname = '') {
   if (page === 'retards') return 'retards-tissage'
   if (page === 'pointages') return 'adinkra'
   if (page === 'admins' || page === 'mon-compte') return 'abomey'
+  // Les devis ont rejoint la prospection : même appliqué cousu.
+  if (page === 'prospection' || page === 'devis') return 'abomey'
   if (page === 'entreprises') return 'korhogo'
   // Les pointeuses et le poste de pointage ont fusionné sous la même toile.
   if (page === 'configuration-pointeuse' || page === 'pointeuses') return 'korhogo'

@@ -692,7 +692,7 @@ export default function useNotifications(admin) {
               subtitle: data.slice(0, 2).map(d => d.numero).join(', ') + (data.length > 2 ? '...' : ''),
               icon: 'file',
               color: '#6366F1',
-              path: '/devis',
+              path: '/prospection?vue=devis',
               timestamp: new Date().toISOString(),
             })
           }
