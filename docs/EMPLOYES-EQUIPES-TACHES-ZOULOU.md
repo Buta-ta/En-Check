@@ -128,13 +128,14 @@ que le fichier exporté contient.
 - **la bande**, juste sous le bandeau, ne redessine rien : elle reprend le
   **motif du bandeau de page**, à l'identique. Perles (`employes-zoulou.webp`,
   le défaut), Aso Oke (`heures-aso-oke.svg`), Bogolan
-  (`paie-bogolan-haut.webp`), Ndebele (`absences-ndebele.webp`) sont les
-  images de `public/images`, posées avec la même règle que la page —
-  `repeat-x`, centrées, `auto 100 %`. Kente et Dogon sont les frises
-  vectorielles maison (`KenteWovenTapestrySvg`, `DogonFriseSvg`), rendues
-  dans un cadre qui prend la largeur de la carte. Le septième choix, « Aucun
-  », ne laisse qu'un filet. La bande passe de 76 px (page) à 28 px (carte) :
-  c'est la hauteur qui change, jamais le dessin ;
+  (`paie-bogolan-haut.webp`), Ndebele (`absences-ndebele.webp`) et Raphia
+  (`planning-kuba.webp`, le velours kuba du Kongo) sont les images de
+  `public/images`, posées avec la même règle que la page — `repeat-x`,
+  centrées, `auto 100 %`. Kente et Dogon sont les frises vectorielles maison
+  (`KenteWovenTapestrySvg`, `DogonFriseSvg`), rendues dans un cadre qui prend
+  la largeur de la carte. Le huitième choix, « Aucun », ne laisse qu'un
+  filet. La bande passe de 76 px (page) à 28 px (carte) : c'est la hauteur
+  qui change, jamais le dessin ;
 - **le portrait** est un médaillon de 104 px, cerclé de la couleur de
   l'entreprise ; sans photo, les initiales prennent la place — jamais un
   cadre vide ;
@@ -164,8 +165,9 @@ carte :
   tant qu'on n'a rien choisi), six accents du registre, et un sélecteur
   libre. Choisir de nouveau la couleur de l'entreprise remet la carte
   « d'origine » ;
-- **le motif culturel** : sept choix, chacun montré en vignette avec sa
-  vraie bande — Perles, Kente, Aso Oke, Bogolan, Ndebele, Dogon, Aucun.
+- **le motif culturel** : huit choix, chacun montré en vignette avec sa
+  vraie bande — Perles, Kente, Aso Oke, Bogolan, Ndebele, Raphia (Kongo),
+  Dogon, Aucun.
   « Revenir à la carte d'origine » remet l'accent de l'entreprise et les
   perles.
 
@@ -335,7 +337,7 @@ Les messages disent ce qui se passe et ce qu'on peut faire :
 ## Tests
 
 `src/services/__tests__/employesEquipesTaches.test.jsx` — 66 tests.
-`src/services/__tests__/badgeEmploye.test.jsx` — 24 tests.
+`src/services/__tests__/badgeEmploye.test.jsx` — 25 tests.
 `src/services/__tests__/modalesEmployes.test.jsx` — 16 tests.
 
 Ce qu'ils défendent :
@@ -383,10 +385,11 @@ Ce qu'ils défendent :
 10. **la personnalisation de la carte** : départ sur la couleur de
     l'entreprise et les perles, changement de teinte retenu par employé,
     changement de motif qui change vraiment le dessin de la bande (l'image
-    du bandeau pour Perles, Aso Oke, Bogolan, Ndebele ; la frise pour Kente
+    du bandeau pour Perles, Aso Oke, Bogolan, Ndebele, Raphia ; la frise pour Kente
     et Dogon — jamais une vignette inventée), image répétée comme sur la
     page, identifiant de motif propre à chaque frise, retour à la carte
-    d'origine, aucun code hexadécimal dans les réglages ;
+    d'origine, aucun code hexadécimal dans les réglages ; la liste des huit
+    choix est complète et dans l'ordre ;
 11. **les fenêtres du registre** : titre selon le cas (créer, migrer,
     modifier), identifiant réel et « non renseigné », dernière connexion
     avec sa perle, enregistrement impossible tant que le mot de passe est
