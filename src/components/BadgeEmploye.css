@@ -1,0 +1,299 @@
+/* ════════════════════════════════════════════════════════════
+   LA CARTE DE SERVICE — la fenêtre qui la montre
+   ────────────────────────────────────────────────────────────
+   Le badge lui-même est dessiné en styles calculés dans
+   BadgeEmploye.jsx : c'est un objet imprimé, il ne doit dépendre
+   ni du thème de la page ni d'une feuille de style pour sortir
+   proprement de html2canvas.
+
+   Cette feuille-ci ne porte que la fenêtre : le voile, le cadre,
+   les deux boutons. Même écriture que le registre perlé — du
+   papier, des filets, aucune boîte à ombre portée inutile.
+   ════════════════════════════════════════════════════════════ */
+
+.bge-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(22, 15, 9, 0.62);
+  animation: bge-voile-entre 0.18s ease both;
+}
+
+.bge-fenetre {
+  position: relative;
+  display: flex;
+  max-height: calc(100vh - 40px);
+  width: min(420px, 100%);
+  flex-direction: column;
+  padding: 20px 22px 16px;
+  overflow-y: auto;
+  border: 1px solid rgba(60, 40, 22, 0.24);
+  border-radius: 8px;
+  background: #f5f0e6;
+  color: #1c140d;
+  box-shadow: 0 28px 70px rgba(18, 12, 7, 0.42);
+  animation: bge-fenetre-entre 0.24s cubic-bezier(0.22, 0.7, 0.3, 1) both;
+}
+
+[data-theme='dark'] .bge-fenetre {
+  border-color: rgba(240, 226, 202, 0.24);
+  background: #17110b;
+  color: #f4ecdf;
+}
+
+/* ── l'en-tête ─────────────────────────────────────────────── */
+
+.bge-entete {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(60, 40, 22, 0.18);
+}
+
+[data-theme='dark'] .bge-entete {
+  border-bottom-color: rgba(240, 226, 202, 0.18);
+}
+
+.bge-eyebrow {
+  margin: 0 0 5px;
+  color: #7a6952;
+  font-size: 7.8px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+[data-theme='dark'] .bge-eyebrow {
+  color: #a6957c;
+}
+
+.bge-titre {
+  margin: 0;
+  color: inherit;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.bge-sous-titre {
+  margin: 5px 0 0;
+  overflow: hidden;
+  color: #6b5c44;
+  font-size: 10.4px;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-theme='dark'] .bge-sous-titre {
+  color: #a6957c;
+}
+
+.bge-fermer {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(60, 40, 22, 0.28);
+  border-radius: 50%;
+  background: transparent;
+  color: #6b5c44;
+  cursor: pointer;
+  transition: box-shadow 0.16s ease, color 0.16s ease;
+}
+
+.bge-fermer:hover {
+  box-shadow: inset 0 0 0 1px rgba(60, 40, 22, 0.34);
+}
+
+[data-theme='dark'] .bge-fermer {
+  border-color: rgba(240, 226, 202, 0.28);
+  color: #a6957c;
+}
+
+[data-theme='dark'] .bge-fermer:hover {
+  box-shadow: inset 0 0 0 1px rgba(240, 226, 202, 0.34);
+}
+
+.bge-fermer:focus-visible,
+.bge-bouton:focus-visible {
+  outline: 2px solid #8f4d1d;
+  outline-offset: 2px;
+}
+
+[data-theme='dark'] .bge-fermer:focus-visible,
+[data-theme='dark'] .bge-bouton:focus-visible {
+  outline-color: #d99a58;
+}
+
+/* ── l'aperçu ──────────────────────────────────────────────── */
+
+.bge-apercu {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 14px;
+}
+
+/* l'échelle ne touche que l'affichage : le nœud exporté garde
+   sa taille réelle, c'est html2canvas qui le rend en 3× */
+.bge-echelle {
+  display: flex;
+  justify-content: center;
+  transform: scale(var(--bge-echelle, 1));
+  transform-origin: top center;
+}
+
+/* ── les deux gestes ───────────────────────────────────────── */
+
+.bge-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.bge-bouton {
+  display: inline-flex;
+  min-height: 42px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12.2px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.bge-bouton:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.bge-bouton--second {
+  border: 1px solid rgba(60, 40, 22, 0.32);
+  background: transparent;
+  color: #42342a;
+}
+
+.bge-bouton--second:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px rgba(60, 40, 22, 0.42);
+}
+
+.bge-bouton--principal {
+  border: 1px solid #74400f;
+  background: #8f4d1d;
+  color: #ffffff;
+}
+
+.bge-bouton--principal:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
+}
+
+[data-theme='dark'] .bge-bouton--second {
+  border-color: rgba(240, 226, 202, 0.32);
+  color: #dccdba;
+}
+
+[data-theme='dark'] .bge-bouton--second:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px rgba(240, 226, 202, 0.42);
+}
+
+[data-theme='dark'] .bge-bouton--principal {
+  border-color: #c8873f;
+  background: #d99a58;
+  color: #241a12;
+}
+
+/* ── les mentions ──────────────────────────────────────────── */
+
+.bge-note {
+  margin: 10px 0 0;
+  color: #7a6952;
+  font-size: 9.6px;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+[data-theme='dark'] .bge-note {
+  color: #a6957c;
+}
+
+.bge-alerte {
+  margin: 8px 0 0;
+  color: #a2452e;
+  font-size: 10.4px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+[data-theme='dark'] .bge-alerte {
+  color: #e8927c;
+}
+
+/* ── le mouvement ──────────────────────────────────────────── */
+
+@keyframes bge-voile-entre {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bge-fenetre-entre {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes bge-tourne {
+  to { transform: rotate(360deg); }
+}
+
+.bge-tourne {
+  animation: bge-tourne 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bge-voile,
+  .bge-fenetre {
+    animation: none;
+  }
+  .bge-tourne {
+    animation-duration: 2.4s;
+  }
+}
+
+/* ── les petits écrans ─────────────────────────────────────── */
+
+@media (max-width: 420px) {
+  .bge-voile {
+    padding: 12px;
+  }
+  .bge-fenetre {
+    padding: 16px 16px 13px;
+  }
+  .bge-titre {
+    font-size: 19px;
+  }
+}
+
+@media (max-width: 379px) {
+  .bge-apercu {
+    padding: 12px 0 8px;
+  }
+  .bge-echelle {
+    --bge-echelle: 0.86;
+    height: 430px;
+  }
+}

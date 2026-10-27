@@ -96,7 +96,12 @@ cartes de chiffres, ni courbes, ni portraits :
   remplit ;
 - **les actions en mots** : `Fiche`, `Badge`, puis un menu `⋯` pour les
   horaires, l'envoi des horaires, les pointages, le mot de passe, l'ouverture
-  ou la fermeture du portail et la suppression ;
+  ou la fermeture du portail et la suppression. Le menu est **du papier
+  opaque**, posé **au-dessus** de la ligne suivante : la ligne qui l'ouvre
+  monte d'un cran (`data-menu="ouvert"`) et le menu se referme au clic
+  ailleurs comme à `Échap`. Sans cette élévation, le texte de l'entrée du
+  dessous se peignait par-dessus le menu — on lisait « Fiche » et « Badge »
+  au travers ;
 - l'ancien portail est signalé **sur la ligne**, pas seulement dans le menu
   (« portail à migrer »), et une note en haut de liste dit combien de
   personnes sont concernées.
@@ -106,6 +111,41 @@ la vitrine analytique et les portraits en grand format. Ils parlaient une
 autre langue (cartes sombres, ombres, dégradés) que le registre, et
 faisaient doublon avec le colophon. Aucune fonction ne disparaît pour
 autant : chaque filtre des cartes se retrouve dans la rangée de perles.
+
+### Le badge — la carte de service
+
+La planche est dans le dépôt : `docs/design/carte-de-service.png`.
+
+Le badge n'est plus une vignette à dégradé : c'est **une carte de service**,
+au format 300 × 500 px, dessinée en styles calculés dans
+`src/components/BadgeEmploye.jsx` — ce que l'écran montre est exactement ce
+que le fichier exporté contient.
+
+- **le bandeau** porte la couleur de l'entreprise, son logo (ou son
+  monogramme), et un fil de perles ; le texte du bandeau passe à l'encre
+  quand la couleur est claire, au papier quand elle est sombre — la couleur
+  est lue, sa lisibilité est calculée ;
+- **le portrait** est un médaillon de 104 px, cerclé de la couleur de
+  l'entreprise ; sans photo, les initiales prennent la place — jamais un
+  cadre vide ;
+- **l'identité** : nom en serif, poste en petites capitales, département en
+  italique — rien d'inventé, une donnée absente disparaît ;
+- **le registre de service** : matricule, contrat (traduit : `Interim` →
+  `Intérim`), date d'entrée en français. Trois lignes au plus, séparées par
+  des filets ;
+- **le QR** (108 px, correction `H`) porte le **jeton** du badge
+  (`qr_token`), jamais le matricule seul ; sans jeton ni matricule, la carte
+  écrit « QR à générer » au lieu d'encoder du vide ;
+- **le pied** : la marque En-Check, la phrase de la maison et le matricule.
+
+La fenêtre autour (`BadgeEmploye.css`) suit le registre : papier `#f5f0e6`
+le jour, `#17110b` la nuit, deux filets, un seul aplat de cuivre pour
+`Télécharger`. Elle se ferme à `Échap`, au clic sur le voile, et bloque le
+défilement du fond. Un export raté se dit en une phrase, dans la fenêtre —
+plus d'`alert`, plus d'emoji, plus de code hexadécimal affiché.
+
+L'export reste `html2canvas` en **3 ×** (900 × 1500 px), fond transparent,
+puis le partage natif s'il existe — sinon le fichier est téléchargé.
 
 ### Les raccourcis de pages — en haut à droite
 
@@ -237,7 +277,8 @@ Les messages disent ce qui se passe et ce qu'on peut faire :
 
 ## Tests
 
-`src/services/__tests__/employesEquipesTaches.test.jsx` — 64 tests.
+`src/services/__tests__/employesEquipesTaches.test.jsx` — 66 tests.
+`src/services/__tests__/badgeEmploye.test.jsx` — 15 tests.
 
 Ce qu'ils défendent :
 
@@ -271,7 +312,16 @@ Ce qu'ils défendent :
 7. **page entière** : les trois onglets s'affichent, on passe d'une vue à
    l'autre sans quitter la page, les chiffres sont séparés par un filet, et
    les raccourcis sont **dans la barre du haut** — un seul bandeau, avant le
-   registre, jamais en bas.
+   registre, jamais en bas ;
+8. **le menu du `⋯`** : papier opaque avec repli explicite, ligne ouverte
+   élevée au-dessus des suivantes, fermeture au clic ailleurs et à `Échap` ;
+9. **la carte de service** : nom, poste, département et données réelles,
+   aucune ligne inventée quand la donnée manque, couleur d'entreprise
+   respectée avec un texte lisible dessus, repli sur l'or de la maison si la
+   couleur est illisible, QR qui suit le jeton, « QR à générer » quand il n'y
+   a rien à encoder, initiales sans photo, fermeture de la fenêtre, échec
+   d'export dit en français (jamais `alert`), export en 3 × sur fond
+   transparent, et aucun code technique dans l'interface.
 
 Chaque test neuf a été vérifié par mutation : rétablir l'ancien
 comportement doit le faire échouer.
@@ -284,4 +334,7 @@ comportement doit le faire échouer.
   aucune migration n'est nécessaire pour cette refonte ;
 - la tranche perlée suit la hauteur réelle des entrées : une colonne très
   courte montre une tranche courte — c'est voulu, pour ne pas tirer un fil
-  vide sur toute la hauteur de la grille.
+  vide sur toute la hauteur de la grille ;
+- le badge s'exporte en **PNG seulement** : pas de PDF ni de recto-verso,
+  et la fidélité du fichier dépend de `html2canvas` (les ombres très fines
+  peuvent s'aplatir) ; le QR, lui, est un vrai SVG et reste scannable.
