@@ -117,7 +117,7 @@ autant : chaque filtre des cartes se retrouve dans la rangée de perles.
 La planche est dans le dépôt : `docs/design/carte-de-service.png`.
 
 Le badge n'est plus une vignette à dégradé : c'est **une carte de service**,
-au format 300 × 500 px, dessinée en styles calculés dans
+au format 300 × 520 px, dessinée en styles calculés dans
 `src/components/BadgeEmploye.jsx` — ce que l'écran montre est exactement ce
 que le fichier exporté contient.
 
@@ -125,10 +125,16 @@ que le fichier exporté contient.
   monogramme) ; le texte passe à l'encre quand la couleur est claire, au
   papier quand elle est sombre — la couleur est lue, sa lisibilité est
   calculée ;
-- **la bande tissée**, juste sous le bandeau, porte le **motif culturel** :
-  perles (le défaut), kente, aso oke, bogolan, ndebele, dogon — ou un simple
-  filet. Le motif est tracé à la teinte de la carte, dans ses valeurs
-  claires et foncées, pour rester lisible quelle que soit la couleur ;
+- **la bande**, juste sous le bandeau, ne redessine rien : elle reprend le
+  **motif du bandeau de page**, à l'identique. Perles (`employes-zoulou.webp`,
+  le défaut), Aso Oke (`heures-aso-oke.svg`), Bogolan
+  (`paie-bogolan-haut.webp`), Ndebele (`absences-ndebele.webp`) sont les
+  images de `public/images`, posées avec la même règle que la page —
+  `repeat-x`, centrées, `auto 100 %`. Kente et Dogon sont les frises
+  vectorielles maison (`KenteWovenTapestrySvg`, `DogonFriseSvg`), rendues
+  dans un cadre qui prend la largeur de la carte. Le septième choix, « Aucun
+  », ne laisse qu'un filet. La bande passe de 76 px (page) à 28 px (carte) :
+  c'est la hauteur qui change, jamais le dessin ;
 - **le portrait** est un médaillon de 104 px, cerclé de la couleur de
   l'entreprise ; sans photo, les initiales prennent la place — jamais un
   cadre vide ;
@@ -148,7 +154,7 @@ le jour, `#17110b` la nuit, deux filets, un seul aplat de cuivre pour
 défilement du fond. Un export raté se dit en une phrase, dans la fenêtre —
 plus d'`alert`, plus d'emoji, plus de code hexadécimal affiché.
 
-L'export reste `html2canvas` en **3 ×** (900 × 1500 px), fond transparent,
+L'export reste `html2canvas` en **3 ×** (900 × 1560 px), fond transparent,
 puis le partage natif s'il existe — sinon le fichier est téléchargé.
 
 **Personnaliser la carte.** La fenêtre a deux réglages, à droite de la
@@ -158,7 +164,8 @@ carte :
   tant qu'on n'a rien choisi), six accents du registre, et un sélecteur
   libre. Choisir de nouveau la couleur de l'entreprise remet la carte
   « d'origine » ;
-- **le motif culturel** : sept écritures, chacune montrée en vignette.
+- **le motif culturel** : sept choix, chacun montré en vignette avec sa
+  vraie bande — Perles, Kente, Aso Oke, Bogolan, Ndebele, Dogon, Aucun.
   « Revenir à la carte d'origine » remet l'accent de l'entreprise et les
   perles.
 
@@ -328,7 +335,7 @@ Les messages disent ce qui se passe et ce qu'on peut faire :
 ## Tests
 
 `src/services/__tests__/employesEquipesTaches.test.jsx` — 66 tests.
-`src/services/__tests__/badgeEmploye.test.jsx` — 20 tests.
+`src/services/__tests__/badgeEmploye.test.jsx` — 24 tests.
 `src/services/__tests__/modalesEmployes.test.jsx` — 16 tests.
 
 Ce qu'ils défendent :
@@ -375,9 +382,11 @@ Ce qu'ils défendent :
    transparent, et aucun code technique dans l'interface ;
 10. **la personnalisation de la carte** : départ sur la couleur de
     l'entreprise et les perles, changement de teinte retenu par employé,
-    changement de motif qui change vraiment le dessin de la bande (rectangles
-    du kente, pas de perles), retour à la carte d'origine, aucun code
-    hexadécimal dans les réglages ;
+    changement de motif qui change vraiment le dessin de la bande (l'image
+    du bandeau pour Perles, Aso Oke, Bogolan, Ndebele ; la frise pour Kente
+    et Dogon — jamais une vignette inventée), image répétée comme sur la
+    page, identifiant de motif propre à chaque frise, retour à la carte
+    d'origine, aucun code hexadécimal dans les réglages ;
 11. **les fenêtres du registre** : titre selon le cas (créer, migrer,
     modifier), identifiant réel et « non renseigné », dernière connexion
     avec sa perle, enregistrement impossible tant que le mot de passe est

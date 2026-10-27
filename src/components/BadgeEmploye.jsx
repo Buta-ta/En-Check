@@ -21,12 +21,12 @@ import { QRCodeSVG } from 'qrcode.react'
 import { X, Download, Share2, Check, Loader2 } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import EnCheckBrandMark from './EnCheckBrandMark'
-import { BandeMotif } from './badge/MotifsBadge'
+import { BandeMotif, HAUTEUR_BANDE } from './badge/MotifsBadge'
 import { MOTIFS, estMotif } from './badge/motifs'
 import './BadgeEmploye.css'
 
 const LARGEUR = 300
-const HAUTEUR = 500
+const HAUTEUR = 520
 const ECHELLE_EXPORT = 3
 
 const PAPIER = [245, 240, 230]
@@ -228,7 +228,6 @@ function stylesDe(palette) {
     },
     bandeMotif: {
       flex: 'none',
-      height: '10px',
       overflow: 'hidden',
       lineHeight: 0,
     },
@@ -431,7 +430,7 @@ export default function BadgeEmploye({
   }
 
   const palette = useMemo(() => paletteDe(couleur), [couleur])
-  const paletteBande = useMemo(() => ({ ...palette, papier: '#f5f0e6' }), [palette])
+  const paletteBande = useMemo(() => ({ ...palette, papier: '#f5f0e6', filets: 'rgba(60, 40, 22, 0.16)' }), [palette])
   const s = useMemo(() => stylesDe(palette), [palette])
 
   const nom = nomCompletDe(employee) || 'Nom à compléter'
@@ -584,7 +583,7 @@ export default function BadgeEmploye({
 
               {/* la bande tissée : le motif choisi, à la couleur de la carte */}
               <div style={s.bandeMotif} data-motif={motif} data-testid="badge-bande">
-                <BandeMotif motif={motif} palette={paletteBande} largeur={LARGEUR} hauteur={10} />
+                <BandeMotif motif={motif} palette={paletteBande} hauteur={HAUTEUR_BANDE} />
               </div>
 
               {/* ── la personne ── */}
@@ -692,12 +691,13 @@ export default function BadgeEmploye({
                       key={choix.id}
                       type="button"
                       className="bge-motif"
+                      data-motif-choix={choix.id}
                       aria-pressed={motif === choix.id}
                       title={choix.detail}
                       onClick={() => setMotif(choix.id)}
                     >
                       <span className="bge-motif-vignette">
-                        <BandeMotif motif={choix.id} palette={paletteBande} largeur={96} hauteur={10} />
+                        <BandeMotif motif={choix.id} palette={paletteBande} hauteur={22} />
                       </span>
                       <span className="bge-motif-nom">{choix.nom}</span>
                     </button>
