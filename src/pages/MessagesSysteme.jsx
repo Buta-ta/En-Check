@@ -17,7 +17,7 @@
 // lisière de chevrons. Aucun envoi ne part sans dire qui il touche.
 // ═══════════════════════════════════════════════════════════
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   AlertTriangle, ArrowLeft, Bell, CalendarClock, Check, CheckCircle2, Download, Info,
@@ -27,7 +27,8 @@ import {
 import { supabase } from '../lib/supabase'
 import PageCulturalBand from '../components/PageCulturalBand'
 import RaccourcisPages from '../components/RaccourcisPages'
-import EmailDeliveryMonitor from '../components/EmailDeliveryMonitor'
+import CourrielsSysteme from '../components/CourrielsSysteme'
+import FenetreModale from '../components/FenetreModale'
 import { KorhogoBlasonNuitSvg } from '../components/KorhogoSvg'
 import { useTheme } from '../contexts/ThemeContext'
 import {
@@ -35,8 +36,9 @@ import {
   TYPES_ANNONCE, compterAnnonces, confirmationValide, construireCSV,
   etatAnnonce, filtrerEnvois, graviteDe, libelleCible, libelleCibleLog,
   libelleGravite, libellePriorite, libelleType, nomPersonne, plageAnnonce,
-  resumeCourriels, resumeDestinataires, resumeEnvois, tempsRelatif, trierAnnonces,
+  resumeDestinataires, resumeEnvois, tempsRelatif, trierAnnonces,
 } from '../lib/messagesSysteme'
+import { resumeCourriels } from '../lib/courriels'
 import './MessagesSysteme.css'
 
 const VUES = [
@@ -83,47 +85,6 @@ function Chargement({ texte = 'Lecture des messages…', note = 'Les annonces et
       </div>
       <p className="ms-charge-texte">{texte}</p>
       <p className="ms-charge-note">{note}</p>
-    </div>
-  )
-}
-
-function Fenetre({ eyebrow, titre, labelledBy, surFermer, pied, children }) {
-  const panneau = useRef(null)
-
-  useEffect(() => {
-    const surTouche = (evenement) => { if (evenement.key === 'Escape') surFermer() }
-    window.addEventListener('keydown', surTouche)
-    const ancien = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', surTouche)
-      document.body.style.overflow = ancien
-    }
-  }, [surFermer])
-
-  useEffect(() => {
-    const premier = panneau.current?.querySelector('button, input, select, textarea, [tabindex]')
-    if (premier) premier.focus({ preventScroll: true })
-  }, [])
-
-  return (
-    <div
-      className="ms-voile"
-      onMouseDown={(evenement) => { if (evenement.target === evenement.currentTarget) surFermer() }}
-    >
-      <div className="ms-fenetre" role="dialog" aria-modal="true" aria-labelledby={labelledBy} ref={panneau}>
-        <header className="ms-fenetre-tete">
-          <div>
-            {eyebrow && <p className="ms-eyebrow">{eyebrow}</p>}
-            <h2 className="ms-fenetre-titre" id={labelledBy}>{titre}</h2>
-          </div>
-          <button type="button" className="ms-fenetre-fermer" onClick={surFermer} aria-label="Fermer">
-            <X size={15} />
-          </button>
-        </header>
-        <div className="ms-fenetre-corps">{children}</div>
-        {pied && <footer className="ms-fenetre-pied">{pied}</footer>}
-      </div>
     </div>
   )
 }
@@ -277,11 +238,11 @@ export default function MessagesSysteme() {
     try {
       const { data, error } = await supabase
         .from('encheck_email_logs')
-        .select('statut, envoyes, echecs, created_at')
-        .order('created_at', { ascending: false })
-        .limit(200)
+        .select('statut, envoyes, echecs, cree_le, archived_at')
+        .order('cree_le', { ascending: false })
+        .limit(250)
       if (error) throw error
-      setCourriels(resumeCourriels(data || []))
+      setCourriels(resumeCourriels((data || []).filter((ligne) => !ligne.archived_at)))
     } catch {
       // La table de suivi peut ne pas être installée : la page le dit
       // sans casser le reste.
@@ -1089,25 +1050,7 @@ export default function MessagesSysteme() {
         {/* ═══ 3. E-MAILS ═══ */}
         {vue === 'emails' && (
           <section className="ms-vue" id="ms-vue-emails" role="tabpanel" aria-labelledby="ms-onglet-emails">
-            <header className="ms-vue-tete">
-              <div>
-                <h2 className="ms-vue-titre">Les courriels</h2>
-                <p className="ms-vue-note">
-                  Ce que le fournisseur a accepté, ce qui a échoué, et les relances — le moniteur reste maître de ses envois.
-                </p>
-              </div>
-              {courriels && (
-                <div className="ms-vue-gestes">
-                  <Etiquette ton="or">{courriels.tentatives} tentatives lues</Etiquette>
-                  <Etiquette ton={courriels.echecs > 0 ? 'alerte' : 'vert'}>{courriels.echecs} échecs</Etiquette>
-                  <Etiquette ton={courriels.partiels > 0 ? 'attente' : 'neutre'}>{courriels.partiels} partiels</Etiquette>
-                </div>
-              )}
-            </header>
-
-            <div className="ms-moniteur">
-              <EmailDeliveryMonitor />
-            </div>
+            <CourrielsSysteme onJournal={chargerCourriels} />
           </section>
         )}
       </main>
@@ -1127,7 +1070,7 @@ export default function MessagesSysteme() {
 
       {/* ── les fenêtres de suppression ─────────────────── */}
       {suppression?.type === 'annonce' && (
-        <Fenetre
+        <FenetreModale
           eyebrow="Suppression · annonce"
           titre="Supprimer cette annonce ?"
           labelledBy="ms-titre-annonce"
@@ -1146,11 +1089,11 @@ export default function MessagesSysteme() {
             reverront pas ; les autres ne la verront jamais.
           </p>
           <p className="ms-note ms-note--forte">Cette action est définitive.</p>
-        </Fenetre>
+        </FenetreModale>
       )}
 
       {suppression?.type === 'envoi' && (
-        <Fenetre
+        <FenetreModale
           eyebrow="Suppression · historique"
           titre="Retirer cette entrée ?"
           labelledBy="ms-titre-envoi"
@@ -1168,11 +1111,11 @@ export default function MessagesSysteme() {
             « {suppression.envoi.title} » quitte l’historique. Le téléphone qui l’a reçue la garde, et les
             compteurs de la période baissent d’autant.
           </p>
-        </Fenetre>
+        </FenetreModale>
       )}
 
       {suppression?.type === 'historique' && (
-        <Fenetre
+        <FenetreModale
           eyebrow="Suppression · notifications"
           titre={`Vider ${envois.length} envoi${envois.length > 1 ? 's' : ''} de l’historique ?`}
           labelledBy="ms-titre-historique"
@@ -1218,7 +1161,7 @@ export default function MessagesSysteme() {
             <Shield size={13} aria-hidden="true" />
             Cette action est définitive et ne peut pas être annulée.
           </p>
-        </Fenetre>
+        </FenetreModale>
       )}
     </div>
   )

@@ -245,29 +245,6 @@ export function construireCSV(logs = []) {
 }
 
 // ── les courriels, lus comme le moniteur les lit ──────────
-export function statutCourriel(log) {
-  if (log?.statut) return log.statut
-  const envoyes = Number(log?.envoyes) || 0
-  const echecs = Number(log?.echecs) || 0
-  if (envoyes > 0 && echecs > 0) return 'partial'
-  return envoyes > 0 ? 'accepted' : 'failed'
-}
-
-export function resumeCourriels(logs = [], maintenant = new Date()) {
-  const compte = { tentatives: logs.length, acceptees: 0, echecs: 0, partiels: 0, aujourdhui: 0 }
-  logs.forEach((log) => {
-    const statut = statutCourriel(log)
-    if (statut === 'accepted') compte.acceptees += 1
-    else if (statut === 'partial') compte.partiels += 1
-    else compte.echecs += 1
-    if (log.created_at) {
-      const date = new Date(log.created_at)
-      if (!isNaN(date.getTime()) && date.toDateString() === maintenant.toDateString()) compte.aujourdhui += 1
-    }
-  })
-  return compte
-}
-
 // ── la confirmation de suppression ────────────────────────
 export function confirmationValide(valeur) {
   return String(valeur || '').trim().toUpperCase() === MOT_CONFIRMATION

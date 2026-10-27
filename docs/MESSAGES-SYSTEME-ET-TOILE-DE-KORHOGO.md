@@ -19,7 +19,7 @@ La planche est dans le dépôt : `docs/design/refonte-messages-systeme.png`
 | --- | --- |
 | `SystemMessages` → `/system-messages` (1 003 lignes, styles en ligne) | **Messages système** → `/system-messages`, vue *Annonces* |
 | `PushNotifications` → `/push-notifications` (1 142 lignes, deux onglets `push`/`email`) | la même page, vues *Notifications push* et *E-mails* |
-| `EmailDeliveryMonitor` (887 lignes) — monté tel quel | inchangé, dans la vue *E-mails* |
+| `EmailDeliveryMonitor` (887 lignes, 7 cartes de chiffres, listes en styles en ligne) | **remplacé** : `CourrielsSysteme` + `lib/courriels.js`, vue *E-mails* |
 
 - **une seule entrée de menu** : **Messages système** (icône `Bell`) ;
   « Notifications push » disparaît de la barre ;
@@ -106,9 +106,41 @@ Le sommaire porte des compteurs réels, et l'adresse garde la vue choisie
 
 ### E-mails — ce qui arrive par courriel
 
-`EmailDeliveryMonitor` est monté tel quel : ses en-têtes de santé, ses
-filtres et ses relances gardent leur comportement. La page ne fait que
-compter (`encheck_email_logs` → acceptés, partiels, échecs).
+Le moniteur de 887 lignes n'est plus embarqué : il a été **repris de
+zéro** dans `CourrielsSysteme` (planche :
+`docs/design/refonte-courriels.png`, 1500 × 1900). Rien n'est perdu, tout
+est redessiné.
+
+- **lisière de santé** sur un seul trait : Expéditeur, Brevo/SMTP, Origine
+  du site, Secret SQL, chaque critère avec son point et son verdict ; le
+  détail bloque l'envoi et le dit ;
+- **registre à sept compteurs** sur une ligne de fumée — tentatives,
+  acceptés, échecs, partiels, non envoyés, bloqués, aujourd'hui — au lieu
+  de sept cartes séparées ;
+- **note de lecture** : les chiffres portent sur les tentatives chargées,
+  et « accepté » ne veut pas dire « reçu » ;
+- **journal** : un cartouche par tentative, rail coloré par statut,
+  sujet, date, entreprise, source, adresses, compteurs, erreur ;
+  - détail déplié : résultat **par adresse**, trace technique
+    (fournisseur, identifiant, durée, archivé le), contenu enregistré,
+    contrôle du routage ;
+  - gestes : Relancer (confirmation en ligne), Corriger, Archiver /
+    Restaurer, Détail ;
+- **filtres** : recherche, statut, source, voir les archivés — tout se
+  fait sur les lignes chargées, **sans rappeler le serveur** ; export CSV
+  de la vue ;
+- **pagination réelle** : « Charger les 250 tentatives plus anciennes »
+  interroge la page suivante (`range`) ;
+- **composeur** dans la fenêtre partagée (`FenetreModale`, taille
+  `large`) : mode (mon adresse, un administrateur, des adresses, une
+  entreprise), sujet, lien, lignes d'alerte éditables, **aperçu
+  obligatoire** des destinataires réels, puis saisie de **`ENVOYER`**
+  avant l'envoi. Le résultat du fournisseur est dit (accepté, partiel,
+  échec), et un journal indisponible est signalé au lieu d'être masqué.
+
+Deux corrections de fond au passage : la vue lisait `created_at`, qui
+n'existe pas dans `encheck_email_logs` — la colonne réelle est `cree_le` ;
+et la stèle de la page ne compte plus les tentatives archivées.
 
 ## 5. La bibliothèque
 
@@ -119,15 +151,34 @@ compter (`encheck_email_logs` → acceptés, partiels, échecs).
 | mots | `MOT_CONFIRMATION`, `TYPES_ANNONCE`, `PRIORITES`, `CIBLES`, `GRAVITES`, `CIBLES_ENVOI`, `PERIODES` |
 | annonces | `etatAnnonce`, `compterAnnonces`, `trierAnnonces`, `plageAnnonce` |
 | envois | `graviteDe`, `libelleCibleLog`, `filtrerEnvois`, `resumeEnvois`, `partPourcent` |
-| courriels | `statutCourriel`, `resumeCourriels` |
+| courriels | `statutCourriel`, `resumeCourriels` (déplacés dans `lib/courriels.js`) |
 | sortie | `construireCSV`, `dateHeure`, `dateCourte`, `tempsRelatif` |
 | garde-fous | `confirmationValide`, `resumeDestinataires`, `nomPersonne` |
 
 Le CSV tient en sept colonnes : `Quand ; Titre ; Message ; Gravité ;
 Destinataires ; Envoyés ; Échecs`.
 
+`src/lib/courriels.js` — même règle, aucune dépendance :
+
+| Groupe | Fonctions |
+| --- | --- |
+| mots | `STATUTS_COURRIEL`, `SOURCES_COURRIEL`, `GRAVITES_LIGNE`, `MODES_ENVOI`, `MOT_ENVOI`, `TAILLE_PAGE` |
+| lecture | `statutCourriel`, `metaStatut`, `sourceDe`, `metaSource`, `adressesDe`, `resultatsDe`, `lignesDe`, `analyseDe` |
+| compte | `compteCourriels`, `resumeCourriels`, `filtrerCourriels` |
+| gestes | `peutRelancer`, `peutCorriger`, `adressesRelance` |
+| santé | `santeCourriels` (critères, manquants, `peutEnvoyer`, `envoisAuto`) |
+| brouillon | `adressesValides`, `brouillonVide`, `brouillonRelance`, `destinatairesBrouillon`, `resumeBrouillon`, `requeteCourriel` |
+| sortie | `confirmationEnvoiValide`, `construireCSV`, `dateCourriel`, `dureeCourriel` |
+
 ## 6. Vérifications
 
+- `src/services/__tests__/courrielsSysteme.test.jsx` — **44 tests** :
+  statuts et sources, adresses et résultats, dates et durées, compte des
+  sept familles sur `cree_le`, filtres et recherche, relance/correction,
+  santé de la fonction, brouillon et corps envoyé, CSV, puis la vue :
+  lisière, registre, journal, détail, archivage, export, pagination,
+  aperçu obligatoire, `ENVOYER`, succès et échec dits, et la lecture du
+  dessin (styles en ligne, emoji, survols, responsive, fenêtre partagée) ;
 - `src/services/__tests__/messagesSysteme.test.jsx` — **43 tests** :
   fusion et redirection, disparition des entrées de menu, « Mon compte »
   hors barre mais page vivante, motif korhogo, bibliothèque, publication,
@@ -142,7 +193,7 @@ Destinataires ; Envoyés ; Échecs`.
 
 ## 7. Ce qui n'a pas bougé
 
-`EmailDeliveryMonitor.jsx`, `SystemMessageBanner.jsx`,
+`SystemMessageBanner.jsx`, `supabase/functions/send-email`,
 `supabase/functions/send-push/index.ts`, les tables `messages_systeme`,
 `push_logs`, `encheck_email_logs`, `PageCulturalBand`, `RaccourcisPages`,
 `ThemeContext`, `KorhogoSvg`.

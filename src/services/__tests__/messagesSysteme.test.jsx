@@ -33,9 +33,10 @@ import {
   compterAnnonces, confirmationValide, construireCSV, dateCourte, dateHeure,
   estDansFenetre, etatAnnonce, filtrerEnvois, graviteDe, libelleCible, libelleCibleLog,
   libelleGravite, libellePriorite, libelleType, nomPersonne, plageAnnonce,
-  resumeCourriels, resumeDestinataires, resumeEnvois, statutCourriel, tempsRelatif,
+  resumeDestinataires, resumeEnvois, tempsRelatif,
   trierAnnonces,
 } from '../../lib/messagesSysteme'
+import { resumeCourriels, statutCourriel } from '../../lib/courriels'
 
 // ── la fausse base ─────────────────────────────────────────
 const { faux } = vi.hoisted(() => {
@@ -134,8 +135,8 @@ vi.mock('../../contexts/ThemeContext', () => ({
   useTheme: () => ({ darkMode: true, toggleTheme: () => {} }),
 }))
 
-vi.mock('../../components/EmailDeliveryMonitor', () => ({
-  default: () => <div data-testid="moniteur-email">Le moniteur e-mail</div>,
+vi.mock('../../components/CourrielsSysteme', () => ({
+  default: () => <div data-testid="courriels-systeme">Le registre des courriels</div>,
 }))
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')
@@ -720,8 +721,8 @@ describe('6. les courriels', () => {
     await ouvrir()
     await cliquer(onglet('E-mails'))
     expect(hote.querySelector('#ms-vue-emails')).not.toBeNull()
-    expect(hote.querySelector('[data-testid="moniteur-email"]')).not.toBeNull()
-    expect(hote.textContent).toContain('le moniteur reste maître de ses envois')
+    expect(hote.querySelector('[data-testid="courriels-systeme"]')).not.toBeNull()
+    expect(hote.textContent).not.toContain('le moniteur reste maître de ses envois')
   })
 
   it('compte les courriels en échec dans la stèle', async () => {

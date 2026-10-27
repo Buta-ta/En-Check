@@ -986,15 +986,6 @@
   color: var(--ms-faible);
 }
 
-/* ── le moniteur e-mail, posé sur le mur ────────────────── */
-.ms-moniteur {
-  border: 1px solid var(--ms-ligne);
-  border-radius: 2px;
-  background-color: var(--ms-fumee-2);
-  padding: 4px 6px;
-  overflow: hidden;
-}
-
 /* ── les états vides et le chargement ───────────────────── */
 .ms-vide {
   display: flex;
