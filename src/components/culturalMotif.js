@@ -24,6 +24,9 @@ export function culturalMotifForPath(pathname = '') {
   if (page === 'pauses' || page === 'jours-feries') return 'lesotho'
   if (page === 'employes') return 'zoulou'
   if (page === 'planning') return 'kuba'
+  // Les enrôlements et les réglages ont fusionné sous le même velours.
+  // Les deux adresses retirées gardent l'identité de la page qui les reçoit.
+  if (['reconnaissance-faciale', 'enrollements-faciaux', 'config-reco-faciale'].includes(page)) return 'kuba'
   if (page === 'absences') return 'ndebele'
   //  Rémunérations nourrit la Paie : même pagne de boue, même famille.
   if (page === 'remunerations') return 'bogolan'

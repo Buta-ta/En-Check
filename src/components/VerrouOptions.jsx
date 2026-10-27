@@ -55,8 +55,7 @@ const ADRESSES = {
   // des deux options ouvre la page, elle ne se ferme que si les deux
   // sont éteintes.
   '/geopointage': ['module_geolocalisation', 'module_carte_temps_reel'],
-  '/enrollements-faciaux': 'module_reconnaissance_faciale',
-  '/config-reco-faciale': 'module_reconnaissance_faciale',
+  '/reconnaissance-faciale': 'module_reconnaissance_faciale',
   '/pointeuses': 'module_pointeuses',
   '/poste': 'module_poste_pointage',
   '/predictions': 'module_predictions',
