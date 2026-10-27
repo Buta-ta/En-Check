@@ -181,6 +181,7 @@ describe('la personnalisation de la carte', () => {
       'aso-oke': 'heures-aso-oke.svg',
       bogolan: 'paie-bogolan-haut.webp',
       ndebele: 'absences-ndebele.webp',
+      raphia: 'planning-kuba.webp',
     }
     for (const [motif, fichier] of Object.entries(images)) {
       await act(async () => hote.querySelector(`[data-motif-choix="${motif}"]`).click())
@@ -188,6 +189,13 @@ describe('la personnalisation de la carte', () => {
       expect(bande.getAttribute('data-motif')).toBe(motif)
       expect(bande.querySelector('[data-motif]').style.backgroundImage).toContain(fichier)
     }
+  })
+
+  it('offre chaque motif de la liste, et rien de plus', async () => {
+    await rendre()
+    const choix = [...hote.querySelectorAll('[data-motif-choix]')].map((b) => b.getAttribute('data-motif-choix'))
+    expect(choix).toEqual(['perles', 'kente', 'aso-oke', 'bogolan', 'ndebele', 'raphia', 'dogon', 'aucun'])
+    expect(choix).toContain('raphia')
   })
 
   it('pose l’image du bandeau comme sur la page : répétée, à la hauteur', async () => {

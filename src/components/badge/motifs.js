@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 //
 // Un badge ne dessine pas son propre motif : il reprend celui de la
-// page, à l'identique. Trois motifs viennent des images de bandeau
+// page, à l'identique. Cinq motifs viennent des images de bandeau
 // (`public/images`), deux des frises vectorielles maison (kente,
 // dogon). Ce qui change d'un écran à l'autre, c'est la hauteur —
 // jamais le dessin.
@@ -38,6 +38,12 @@ export const MOTIFS = [
     nom: 'Ndebele',
     detail: 'La peinture ndebele',
     image: '/images/absences-ndebele.webp',
+  },
+  {
+    id: 'raphia',
+    nom: 'Raphia',
+    detail: 'Le velours kuba du Kongo',
+    image: '/images/planning-kuba.webp',
   },
   {
     id: 'dogon',
