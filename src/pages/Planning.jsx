@@ -38,6 +38,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ClipboardCheck,
+  ClipboardCopy,
+  ClipboardPaste,
   Users,
   User,
   Briefcase,
@@ -56,6 +59,12 @@ import {
   FileText,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  decrireModele,
+  libelleModele,
+  paquetDepuisModele,
+  raccourciPressePapiers,
+} from "../lib/planningCopie";
 import MotifsAbsenceService, { resoudreMotif } from "../services/motifsAbsenceService";
 import { MOTIFS_PAR_DEFAUT, getMotifConfig } from "../constants/motifsAbsence";
 import ChoixPeriode from "../components/ChoixPeriode";
@@ -757,6 +766,27 @@ export default function Planning() {
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
 
+  // ═══ COPIER / COLLER UN MODÈLE ═══
+  // Le modèle copié reste en mémoire de la page : un clic sur « Copier »,
+  // ou Ctrl/⌘+C sur un modèle, puis « Coller » dans une case ou Ctrl/⌘+V.
+  const [modeleCopie, setModeleCopie] = useState(null);
+  const [caseCible, setCaseCible] = useState(null);
+  const modeleActifRef = useRef(null);
+
+  const copierModele = (tpl) => {
+    if (!tpl) return;
+    modeleActifRef.current = tpl;
+    setModeleCopie({ template: tpl, libelle: libelleModele(tpl) });
+    toast.success(
+      `« ${libelleModele(tpl)} » copié — collez-le dans une case (Ctrl+V ou « Coller »).`
+    );
+  };
+
+  const oublierModeleCopie = () => {
+    setModeleCopie(null);
+    setCaseCible(null);
+  };
+
   // ═══ GLISSER-DÉPOSER TACTILE (mobile) : appui long sur un modèle puis touche la case ═══
   const touchTimerRef = useRef(null);
 
@@ -783,7 +813,7 @@ export default function Planning() {
     if (!touchDragPayload) return false;
     const payload = touchDragPayload;
     setDraggedPayload(payload);
-    handleDropOnCell({ preventDefault: () => {}, altKey: false }, emp, dayItem);
+    handleDropOnCell({ preventDefault: () => {}, altKey: false }, emp, dayItem, payload);
     clearTouchDrag();
     return true;
   };
@@ -793,7 +823,7 @@ export default function Planning() {
     if (!touchDragPayload) return false;
     const payload = touchDragPayload;
     setDraggedPayload(payload);
-    handleDropOnCalendarDay({ preventDefault: () => {} }, dateStr);
+    handleDropOnCalendarDay({ preventDefault: () => {} }, dateStr, payload);
     clearTouchDrag();
     return true;
   };
@@ -1083,10 +1113,10 @@ export default function Planning() {
   // ═══ DÉPÔT D'UN MODÈLE SUR UNE CASE DU CALENDRIER MENSUEL ═══
   // Si un collaborateur est ciblé par le focus, le modèle lui est réellement affecté
   // (comme dans la vue Semaine). Sinon il est déposé au niveau de la journée.
-  const handleDropOnCalendarDay = (e, dateStr) => {
+  const handleDropOnCalendarDay = (e, dateStr, payloadExplicite = null) => {
     e.preventDefault();
     setMonthDropDate(null);
-    const payload = draggedPayload || touchDragPayload;
+    const payload = payloadExplicite || draggedPayload || touchDragPayload;
     setDraggedPayload(null);
     setTouchDragPayload(null);
     if (!payload) return;
@@ -1512,10 +1542,10 @@ export default function Planning() {
     }
   };
 
-  const handleDropOnCell = async (e, targetEmp, targetDay) => {
+  const handleDropOnCell = async (e, targetEmp, targetDay, payloadExplicite = null) => {
     e.preventDefault();
     const duplicateMode = Boolean(e.altKey || e.ctrlKey || e.metaKey || isAltPressed);
-    const payload = draggedPayload;
+    const payload = payloadExplicite || draggedPayload;
     setDropTargetCell(null);
     setDraggedPayload(null);
 
@@ -1692,6 +1722,91 @@ export default function Planning() {
       );
     }
   };
+
+  // Application du modèle copié sur une case (clic « Coller » ou Ctrl/⌘+V)
+  const collerModeleDansCellule = (emp, dayItem) => {
+    if (!modeleCopie) {
+      toast.error("Copiez d'abord un modèle du dock (Ctrl+C ou « Copier »).");
+      return false;
+    }
+    handleDropOnCell(
+      { preventDefault: () => {}, altKey: false },
+      emp,
+      dayItem,
+      paquetDepuisModele(modeleCopie.template)
+    );
+    return true;
+  };
+
+  const collerModeleSurJour = (dateStr) => {
+    if (!modeleCopie) {
+      toast.error("Copiez d'abord un modèle du dock (Ctrl+C ou « Copier »).");
+      return false;
+    }
+    handleDropOnCalendarDay(
+      { preventDefault: () => {} },
+      dateStr,
+      paquetDepuisModele(modeleCopie.template)
+    );
+    return true;
+  };
+
+  // Mémorise la dernière case survolée : c'est elle que Ctrl/⌘+V remplit.
+  const survolerCase = (vue, empId, dateStr, dayNum) => {
+    if (!modeleCopie) return;
+    setCaseCible({ vue, empId, dateStr, dayNum });
+  };
+
+  const collerDansCaseCible = () => {
+    if (!modeleCopie) return;
+    if (!caseCible) {
+      toast.error("Survolez une case du calendrier, puis appuyez sur Ctrl+V.");
+      return;
+    }
+    if (caseCible.vue === "mois") {
+      collerModeleSurJour(caseCible.dateStr);
+      return;
+    }
+    const emp = employees.find((item) => String(item.id) === String(caseCible.empId));
+    if (!emp) return;
+    const journalier = weekDays.find((d) => d.dateStr === caseCible.dateStr) || {
+      dateStr: caseCible.dateStr,
+      dayNum: caseCible.dayNum || dayNumFromDateStr(caseCible.dateStr),
+      labelHeader: caseCible.dateStr,
+    };
+    collerModeleDansCellule(emp, journalier);
+  };
+
+  // ═══ RACCOURCIS CTRL/⌘+C ET CTRL/⌘+V ═══
+  // Pas de tableau de dépendances : les gestionnaires de dépôt sont
+  // recréés à chaque rendu et doivent rester à jour.
+  useEffect(() => {
+    const surTouche = (evenement) => {
+      if (evenement.key === "Escape" && modeleCopie) {
+        oublierModeleCopie();
+        return;
+      }
+      const selection =
+        typeof window.getSelection === "function"
+          ? String(window.getSelection() || "")
+          : "";
+      const action = raccourciPressePapiers(evenement, selection);
+      if (action === "copier") {
+        const modele = modeleActifRef.current;
+        if (!modele) return;
+        evenement.preventDefault();
+        copierModele(modele);
+        return;
+      }
+      if (action === "coller") {
+        if (!modeleCopie) return;
+        evenement.preventDefault();
+        collerDansCaseCible();
+      }
+    };
+    window.addEventListener("keydown", surTouche);
+    return () => window.removeEventListener("keydown", surTouche);
+  });
 
   // Dépôt d'un modèle directement sur la ligne entière d'un employé (affecte toute sa semaine Lun-Ven)
   const handleDropOnEmployeeRow = async (e, targetEmp) => {
@@ -2900,9 +3015,17 @@ export default function Planning() {
                   key={tpl.id}
                   className={`sk-brick ${
                     touchDragPayload?.template?.id === tpl.id ? "is-armed" : ""
+                  } ${
+                    modeleCopie?.template?.id === tpl.id ? "is-copie" : ""
                   }`}
                   style={{ "--brick-color": tpl.color || "#B56235" }}
                   draggable
+                  onMouseEnter={() => {
+                    modeleActifRef.current = tpl;
+                  }}
+                  onFocus={() => {
+                    modeleActifRef.current = tpl;
+                  }}
                   onDragStart={(e) => handleDragStartTemplate(e, tpl)}
                   onDragEnd={() => {
                     setDraggedPayload(null);
@@ -2939,6 +3062,24 @@ export default function Planning() {
                   </div>
 
                   <div className="sk-brick-actions">
+                    <button
+                      type="button"
+                      className={`sk-brick-copy${
+                        modeleCopie?.template?.id === tpl.id ? " is-copie" : ""
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copierModele(tpl);
+                      }}
+                      title="Copier ce modèle (Ctrl+C) puis le coller dans une case du calendrier (Ctrl+V)"
+                      aria-label={`Copier le modèle ${tpl.label}`}
+                    >
+                      {modeleCopie?.template?.id === tpl.id ? (
+                        <ClipboardCheck size={13} />
+                      ) : (
+                        <ClipboardCopy size={13} />
+                      )}
+                    </button>
                     {tpl.isCustom && (
                       <>
                         <button
@@ -2985,6 +3126,38 @@ export default function Planning() {
             </div>
           )}
         </section>
+
+        {/* MODÈLE COPIÉ — rappel permanent tant qu'il attend d'être collé */}
+        {modeleCopie && (
+          <div className="sk-copie-bar" role="status" aria-live="polite">
+            <ClipboardCheck size={16} className="sk-copie-icone" aria-hidden="true" />
+            <span className="sk-copie-texte">
+              <strong>{libelleModele(modeleCopie.template)}</strong>
+              <span>
+                {decrireModele(modeleCopie.template)} — survolez une case, puis{" "}
+                <strong>Coller</strong> ou <kbd>Ctrl</kbd>+<kbd>V</kbd>
+              </span>
+            </span>
+            <button
+              type="button"
+              className="sk-copie-coller"
+              onClick={collerDansCaseCible}
+              title="Coller le modèle dans la case survolée"
+            >
+              <ClipboardPaste size={13} />
+              Coller dans la case
+            </button>
+            <button
+              type="button"
+              className="sk-copie-annuler"
+              onClick={oublierModeleCopie}
+              title="Annuler la copie (Échap)"
+              aria-label="Annuler la copie du modèle"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {/* BARRE DE FOCUS + LÉGENDE DES COULEURS — pliable */}
         <section
@@ -3410,10 +3583,22 @@ export default function Planning() {
                                           key={dayItem.dateStr}
                                           className={`sk-td-cell ${
                                             isDropOver ? "is-drop-over" : ""
-                                          } ${touchDragPayload ? "is-touch-armed" : ""}`}
+                                          } ${touchDragPayload ? "is-touch-armed" : ""} ${
+                                            modeleCopie ? "is-collable" : ""
+                                          } ${
+                                            caseCible?.vue === "semaine" &&
+                                            String(caseCible.empId) === String(emp.id) &&
+                                            caseCible.dateStr === dayItem.dateStr
+                                              ? "is-cible-collage"
+                                              : ""
+                                          }`}
                                           onDragOver={(e) => handleDragOverCell(e, emp, dayItem)}
                                           onDragLeave={() => setDropTargetCell(null)}
                                           onDrop={(e) => handleDropOnCell(e, emp, dayItem)}
+                                          onMouseEnter={() =>
+                                            survolerCase("semaine", emp.id, dayItem.dateStr, dayItem.dayNum)
+                                          }
+                                          onMouseLeave={() => setCaseCible(null)}
                                           onClickCapture={(e) => {
                                             if (touchDragPayload) {
                                               e.stopPropagation();
@@ -3423,6 +3608,20 @@ export default function Planning() {
                                           }}
                                         >
                                           <PlanningPayslipBadge entries={payslipEntries([emp], dayItem.dateStr)} />
+                                          {modeleCopie && (
+                                            <button
+                                              type="button"
+                                              className="sk-case-coller"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                collerModeleDansCellule(emp, dayItem);
+                                              }}
+                                              title={`Coller « ${libelleModele(modeleCopie.template)} » sur ${dayItem.dateStr}`}
+                                            >
+                                              <ClipboardPaste size={12} />
+                                              Coller
+                                            </button>
+                                          )}
                                           {/* Infobulle flottante En-Check lors du survol en Drag & Drop */}
                                           {isDropOver && (
                                             <div className="sk-drag-tooltip">
@@ -3839,6 +4038,12 @@ export default function Planning() {
                       key={emp.id}
                       className={`sk-day-row ${isDropOver ? "is-drop-over" : ""} ${
                         touchDragPayload ? "is-touch-armed" : ""
+                      } ${modeleCopie ? "is-collable" : ""} ${
+                        caseCible?.vue === "jour" &&
+                        String(caseCible.empId) === String(emp.id) &&
+                        caseCible.dateStr === dayItem.dateStr
+                          ? "is-cible-collage"
+                          : ""
                       }`}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -3846,6 +4051,8 @@ export default function Planning() {
                       }}
                       onDragLeave={() => setDayDropEmpId(null)}
                       onDrop={(e) => handleDropOnCell(e, emp, dayItem)}
+                      onMouseEnter={() => survolerCase("jour", emp.id, dayItem.dateStr, dayItem.dayNum)}
+                      onMouseLeave={() => setCaseCible(null)}
                       onClickCapture={(e) => {
                         if (touchDragPayload) {
                           e.stopPropagation();
@@ -3921,6 +4128,20 @@ export default function Planning() {
                                 {isDropOver
                                   ? "Déposer ici"
                                   : "+ Ajouter (ou déposer un modèle)"}
+                              </button>
+                            )}
+                            {modeleCopie && (
+                              <button
+                                type="button"
+                                className="sk-case-coller is-jour"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  collerModeleDansCellule(emp, dayItem);
+                                }}
+                                title={`Coller « ${libelleModele(modeleCopie.template)} »`}
+                              >
+                                <ClipboardPaste size={12} />
+                                Coller « {libelleModele(modeleCopie.template)} »
                               </button>
                             )}
                           </div>
@@ -4099,6 +4320,10 @@ export default function Planning() {
                       isToday ? "is-today" : ""
                     } ${isSelected ? "is-selected" : ""} ${
                       touchDragPayload ? "is-touch-armed" : ""
+                    } ${modeleCopie ? "is-collable" : ""} ${
+                      caseCible?.vue === "mois" && caseCible.dateStr === cell.date
+                        ? "is-cible-collage"
+                        : ""
                     }`}
                     style={
                       cell.isHoliday
@@ -4110,6 +4335,8 @@ export default function Planning() {
                       setSelectedCalendarDay(cell);
                       setCalendarDate(new Date(cell.date + "T12:00:00"));
                     }}
+                    onMouseEnter={() => survolerCase("mois", null, cell.date, cellDayNum)}
+                    onMouseLeave={() => setCaseCible(null)}
                     onDoubleClick={() => setPlanningView("jour")}
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -4134,6 +4361,21 @@ export default function Planning() {
                     </div>
 
                     <PlanningPayslipBadge entries={payslipEntries(scopedEmployees, cell.date)} />
+
+                    {modeleCopie && (
+                      <button
+                        type="button"
+                        className="sk-case-coller is-mois"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          collerModeleSurJour(cell.date);
+                        }}
+                        title={`Coller « ${libelleModele(modeleCopie.template)} » sur cette journée`}
+                      >
+                        <ClipboardPaste size={12} />
+                        Coller
+                      </button>
+                    )}
 
                     {cell.isHoliday ? (
                       <div className="sk-cal-holiday">{cell.holiday?.name}</div>
