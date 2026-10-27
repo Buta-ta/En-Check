@@ -41,8 +41,9 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import EnterpriseSwitcher from './EnterpriseSwitcher'
+import SidebarNavigation from './SidebarNavigation'
 import NotificationBell from './NotificationBell'
 import SystemMessageBanner from './SystemMessageBanner'
 import AttendanceHeroImage from './AttendanceHeroImage'
@@ -115,25 +116,6 @@ const TOPBAR_RIGHT_AVAILABLE_IDS = TOPBAR_RIGHT_CATALOG.map((item) => item.id)
 const ALL_TOPBAR_AVAILABLE_IDS = [...TOPBAR_LEFT_AVAILABLE_IDS, ...TOPBAR_RIGHT_AVAILABLE_IDS]
 const DEFAULT_TOPBAR_LEFT_ITEM_IDS = ['enterprise', 'date']
 const DEFAULT_TOPBAR_RIGHT_ITEM_IDS = ['dashboard-customize', 'theme', 'notifications', 'profile']
-
-function DashboardNavItem({ item, isActive, tabState, onSelect }) {
-  const Icon = item.icon
-  const hasNewActivity = Boolean(tabState?.activeTriggers?.length && !tabState.viewed)
-
-  return (
-    <button
-      type="button"
-      className={`sidebar-link${isActive ? ' is-active' : ''}`}
-      aria-current={isActive ? 'page' : undefined}
-      onClick={() => onSelect(item)}
-    >
-      <span className="sidebar-link-icon"><Icon size={16} strokeWidth={1.8} /></span>
-      <span className="sidebar-link-label">{item.label}</span>
-      {item.count > 0 && <span className="sidebar-link-count">{item.count > 99 ? '99+' : item.count}</span>}
-      {!item.count && hasNewActivity && <span className="sidebar-link-dot" aria-label="Nouvelle activité" />}
-    </button>
-  )
-}
 
 export default function DashboardExperience({
   admin,
@@ -409,9 +391,9 @@ export default function DashboardExperience({
   const [isTopbarCatalogOpen, setIsTopbarCatalogOpen] = useState(false)
   const [draggedTopbarItemId, setDraggedTopbarItemId] = useState(null)
   const [activityFilter, setActivityFilter] = useState('all')
-  useEffect(() => {
-    if (!retardsOptionActive && activityFilter === 'late') setActivityFilter('all')
-  }, [retardsOptionActive, activityFilter])
+  // L'option « retards » peut être coupée par le module : le filtre retenu
+  // revient alors à « tout », sans passer par un état intermédiaire.
+  const filtreActivite = !retardsOptionActive && activityFilter === 'late' ? 'all' : activityFilter
   const [selectedActivityItem, setSelectedActivityItem] = useState(null)
   const [isForgottenExitModalOpen, setIsForgottenExitModalOpen] = useState(false)
   const [exitTimesById, setExitTimesById] = useState({})
@@ -747,27 +729,15 @@ export default function DashboardExperience({
             </div>
           </div>
 
+          <div className="sidebar-bogolan" aria-hidden="true" />
+
           <div className="dashboard-sidebar-scroll">
-            {navigationSections.map((section) => {
-              const visibleItems = section.items.filter((item) => item.show)
-              if (!visibleItems.length) return null
-              return (
-                <div className="sidebar-nav-group" key={section.label}>
-                  <p className="sidebar-section-label">{section.label}</p>
-                  <nav className="sidebar-nav-list" aria-label={section.label}>
-                    {visibleItems.map((item) => (
-                      <DashboardNavItem
-                        key={item.path || item.label}
-                        item={item}
-                        isActive={Boolean(item.active)}
-                        tabState={item.tabKey ? tabStates[item.tabKey] : null}
-                        onSelect={handleNavigation}
-                      />
-                    ))}
-                  </nav>
-                </div>
-              )
-            })}
+            <SidebarNavigation
+              sections={navigationSections}
+              tabStates={tabStates}
+              onSelect={handleNavigation}
+              idAdministrateur={admin?.id}
+            />
 
             <a
               className="sidebar-portal-link"
@@ -782,12 +752,32 @@ export default function DashboardExperience({
             </a>
           </div>
 
+          <div className="sidebar-bogolan sidebar-bogolan--bas" aria-hidden="true" />
+
           <div className="sidebar-profile">
-            <div className="sidebar-profile-avatar">{adminInitials}</div>
-            <div className="sidebar-profile-copy">
-              <span className="sidebar-profile-name">{adminName}</span>
-              <span className="sidebar-profile-role">{adminRole}</span>
-            </div>
+            {isSuperAdmin ? (
+              <Link
+                className="sidebar-profile-link"
+                to="/admins"
+                title="Ouvrir la page Administrateurs"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span className="sidebar-profile-avatar">{adminInitials}</span>
+                <span className="sidebar-profile-copy">
+                  <span className="sidebar-profile-name">{adminName}</span>
+                  <span className="sidebar-profile-role">{adminRole}</span>
+                </span>
+                <ChevronRight className="sidebar-profile-chevron" size={15} aria-hidden="true" />
+              </Link>
+            ) : (
+              <div className="sidebar-profile-link is-statique">
+                <span className="sidebar-profile-avatar">{adminInitials}</span>
+                <span className="sidebar-profile-copy">
+                  <span className="sidebar-profile-name">{adminName}</span>
+                  <span className="sidebar-profile-role">{adminRole}</span>
+                </span>
+              </div>
+            )}
             <button type="button" className="sidebar-logout" onClick={handleLogout} title="Déconnexion" aria-label="Déconnexion">
               <LogOut size={15} />
             </button>
@@ -1148,9 +1138,9 @@ export default function DashboardExperience({
                         <button
                           type="button"
                           key={filter.id}
-                          className={`dashboard-activity-filter${activityFilter === filter.id ? ' is-active' : ''}`}
+                          className={`dashboard-activity-filter${filtreActivite === filter.id ? ' is-active' : ''}`}
                           onClick={() => setActivityFilter(filter.id)}
-                          aria-pressed={activityFilter === filter.id}
+                          aria-pressed={filtreActivite === filter.id}
                         >
                           {filter.label}
                         </button>
@@ -1160,20 +1150,20 @@ export default function DashboardExperience({
                   </div>
                 </div>
                 {recentActivity.filter((item) => (
-                  activityFilter === 'all'
+                  filtreActivite === 'all'
                     ? true
-                    : activityFilter === 'late'
+                    : filtreActivite === 'late'
                       ? Boolean(item.isLate)
-                      : String(item.type || '').toLowerCase() === activityFilter
+                      : String(item.type || '').toLowerCase() === filtreActivite
                 )).length > 0 ? (
                   <div className="dashboard-activity-list">
                     {recentActivity
                       .filter((item) => (
-                        activityFilter === 'all'
+                        filtreActivite === 'all'
                           ? true
-                          : activityFilter === 'late'
+                          : filtreActivite === 'late'
                             ? Boolean(item.isLate)
-                            : String(item.type || '').toLowerCase() === activityFilter
+                            : String(item.type || '').toLowerCase() === filtreActivite
                       ))
                       .slice(0, 5)
                       .map((item) => {
