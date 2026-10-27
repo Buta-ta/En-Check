@@ -17,7 +17,7 @@ import {
   BarChart2, ChevronDown, ChevronUp, Zap, Activity, ArrowRight, UserPlus,
   Briefcase, Hash, Mail, Phone, Building2, Shield, Grid3X3, LayoutList,
   Key, Lock, UserCheck, UserX, Calendar, Heart, Globe, CreditCard,
-  FileText, Award, User, MapPin, Flag, Baby, Layers, Radio
+  FileText, Award, User, MapPin, Flag, Baby, Layers, Radio, ClipboardList, Network
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BadgeEmploye from '../components/BadgeEmploye'
@@ -32,6 +32,10 @@ import {
   EmployesPortraitCard,
 } from '../components/EmployesAfroTechSections'
 import { useTheme } from '../contexts/ThemeContext'
+import RaccourcisPages from '../components/RaccourcisPages'
+import EquipesVue from '../components/equipes/EquipesVue'
+import TachesVue from '../components/taches/TachesVue'
+import '../components/zoulou/zoulou.css'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
 import { formaterHeureLocale, jourLocal } from '../utils/timezoneUtils'
 
@@ -127,6 +131,7 @@ export default function Employes() {
   const [showPin, setShowPin] = useState(false)
   const [uploading, setUploading] = useState(false)
 
+  const [moduleTaches, setModuleTaches] = useState(false)
   const [modulePlanning, setModulePlanning] = useState(false)
   const [moduleQRCode, setModuleQRCode] = useState(false)
 
@@ -138,7 +143,7 @@ export default function Employes() {
   const [savingPassword, setSavingPassword] = useState(false)
 
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const fileInputRef = useRef(null)
 
   const joursSemaine = [
@@ -396,12 +401,14 @@ export default function Employes() {
         setEntreprises(entreprisesData || [])
         modulePlanningActif = true
         moduleQRCodeActif = true
+        setModuleTaches(true)
       } else if (targetEnterpriseId) {
         const { data: entrepriseData } = await supabase.from('enterprises').select('*').eq('id', targetEnterpriseId).single()
         setEntreprises(entrepriseData ? [entrepriseData] : [])
         if (entrepriseData) {
           modulePlanningActif = entrepriseData.module_planning || false
           moduleQRCodeActif = entrepriseData.module_qr_scanner || false
+          setModuleTaches(Boolean(entrepriseData.module_taches))
         }
       }
 
@@ -995,6 +1002,32 @@ export default function Employes() {
   }
 
   // ═══════════════════════════════════════════════════════════
+  // LA PAGE A TROIS VUES : ANNUAIRE · ÉQUIPES · TÂCHES
+  //
+  // L'annuaire reste la vue d'entrée. Les deux autres vues
+  // remplacent les anciennes pages /equipes et /taches, qui
+  // renvoient maintenant ici (App.jsx). L'adresse porte la vue
+  // (`?vue=equipes`), donc un lien reste partageable et le
+  // bouton « retour » du navigateur fonctionne.
+  //
+  // Si l'option « Équipes et tâches » est éteinte sur la fiche
+  // de l'entreprise, ces deux vues ne sont pas proposées : on
+  // ne montre pas une porte qui ne mène nulle part.
+  // ═══════════════════════════════════════════════════════════
+  const vueDemandee = searchParams.get('vue')
+  const vueAutorisee = moduleTaches || admin?.role === 'super_admin'
+  const vueActive = vueAutorisee && (vueDemandee === 'equipes' || vueDemandee === 'taches')
+    ? vueDemandee
+    : 'annuaire'
+  const entrepriseDesVues = selectedEnterpriseFilter !== 'all'
+    ? selectedEnterpriseFilter
+    : (admin?.selectedEnterprise?.id || admin?.enterprise_id || null)
+
+  const changerVue = (cle) => {
+    setSearchParams(cle === 'annuaire' ? {} : { vue: cle }, { replace: true })
+  }
+
+  // ═══════════════════════════════════════════════════════════
   // RENDU
   // ═══════════════════════════════════════════════════════════
 
@@ -1038,11 +1071,36 @@ export default function Employes() {
           onToggleTheme={toggleTheme}
           onBackDashboard={() => navigate('/dashboard')}
           onNavigate={(path) => navigate(path)}
-          onAddEmployee={handleAdd}
+          onAddEmployee={vueActive === 'annuaire' ? handleAdd : undefined}
         />
 
         {/* ═══ MAIN ═══ */}
         <main style={styles.main}>
+          <nav className="emp-onglets" aria-label="Vues de la page Employés">
+            {[
+              { cle: 'annuaire', libelle: 'Annuaire', icone: Users },
+              ...(vueAutorisee
+                ? [
+                  { cle: 'equipes', libelle: 'Équipes', icone: Network },
+                  { cle: 'taches', libelle: 'Tâches', icone: ClipboardList },
+                ]
+                : []),
+            ].map(({ cle, libelle, icone: Icone }) => (
+              <button
+                key={cle}
+                type="button"
+                className="emp-onglet"
+                aria-current={vueActive === cle ? 'page' : undefined}
+                onClick={() => changerVue(cle)}
+              >
+                <Icone size={15} /> {libelle}
+              </button>
+            ))}
+            <span className="emp-onglets-fil" aria-hidden="true" />
+          </nav>
+
+          {vueActive === 'annuaire' && (
+            <>
           <EmployesExecutiveKpis
             employes={employesFiltres}
             liveStatusByEmployee={liveStatusByEmployee}
@@ -1251,6 +1309,19 @@ export default function Employes() {
               })}
             </div>
           )}
+
+            </>
+          )}
+
+          {vueActive === 'equipes' && (
+            <EquipesVue enterpriseId={entrepriseDesVues} employes={employes} />
+          )}
+
+          {vueActive === 'taches' && (
+            <TachesVue enterpriseId={entrepriseDesVues} employes={employes} />
+          )}
+
+          <RaccourcisPages compact excludePaths={['/employes']} />
 
           <div style={styles.footer}>
             <div style={styles.footerLine}></div>

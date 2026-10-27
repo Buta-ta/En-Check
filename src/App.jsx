@@ -61,8 +61,6 @@ import ConfigurationFiscale from './pages/ConfigurationFiscale'
 import PaieFiscalite from './pages/PaieFiscalite'
 import ConnectionLogs from './pages/ConnectionLogs'
 import ConnectionsMap from './pages/ConnectionsMap'
-import Teams from './pages/Teams'
-import Tasks from './pages/Tasks'
 import TaskDetail from './pages/TaskDetail'
 import EmployeeTasks from './pages/employee/EmployeeTasks'
 import Predictions from './pages/Predictions'
@@ -446,17 +444,13 @@ function App() {
             </EmployeeRoute>
           } />
 
-          <Route path="/equipes" element={
-            <AdminRoute>
-              <Teams />
-            </AdminRoute>
-          } />
-
-          <Route path="/taches" element={
-            <AdminRoute>
-              <Tasks />
-            </AdminRoute>
-          } />
+          {/* ═══ ÉQUIPES ET TÂCHES ONT REJOINT L'ANNUAIRE ═══
+              Une seule page porte les trois vues : /employes?vue=equipes
+              et ?vue=taches. Les anciennes adresses restent valables :
+              elles renvoient vers la bonne vue, pour ne casser aucun
+              lien déjà envoyé (favoris, messages, raccourcis). */}
+          <Route path="/equipes" element={<Navigate to="/employes?vue=equipes" replace />} />
+          <Route path="/taches" element={<Navigate to="/employes?vue=taches" replace />} />
 
 
 
