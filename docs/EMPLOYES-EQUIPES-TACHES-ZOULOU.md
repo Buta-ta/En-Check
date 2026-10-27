@@ -73,6 +73,47 @@ Trois décisions, tenues sur les deux écrans :
 | barre d'outils | recherche soulignée d'un trait, filtres « perle creuse / perle pleine », sélecteurs sans cadre, actions en mots soulignés, un bouton de cuivre plein |
 | pied | « À décider » : un pli qu'on ouvre, jamais une bannière qui hurle |
 
+### Annuaire — ce que dessine la vue
+
+L'annuaire est le troisième onglet du même registre ; il n'a plus ni
+cartes de chiffres, ni courbes, ni portraits :
+
+- **le même feuillet** que les deux autres vues : folio, eyebrow, titre
+  serif `Annuaire.`, et un colophon de quatre chiffres réels — effectif,
+  personnes en poste (ou `—` quand le pointage n'est pas suivi), accès
+  portail ouverts, et personnes encore sur l'ancien portail (en corail) ;
+- **une seule barre d'outils** : recherche au trait, compteur
+  « n sur N affichés », `Rafraîchir` en mot souligné, et un seul aplat de
+  cuivre, `Ajouter un employé` ;
+- **les filtres en perles** : tout le monde, en poste, portail ouvert,
+  à migrer, CDI, CDD, autres contrats, sans horaire, sans pointeuse.
+  Chaque perle répond à une question qu'on se pose devant la liste ;
+- **une entrée par personne**, numérotée : portrait en pastille (photo ou
+  initiales), nom en serif, matricule et contrat en petites capitales,
+  poste · département · classification · ancienneté, puis une ligne d'état
+  — présence (perle de couleur et heure), régime horaire, accès portail,
+  fiche de paie envoyée — et les heures de la semaine sur un filet qui se
+  remplit ;
+- **les actions en mots** : `Fiche`, `Badge`, puis un menu `⋯` pour les
+  horaires, l'envoi des horaires, les pointages, le mot de passe, l'ouverture
+  ou la fermeture du portail et la suppression ;
+- l'ancien portail est signalé **sur la ligne**, pas seulement dans le menu
+  (« portail à migrer »), et une note en haut de liste dit combien de
+  personnes sont concernées.
+
+Ce qui a été retiré, et pourquoi : les quatre cartes de chiffres à courbes,
+la vitrine analytique et les portraits en grand format. Ils parlaient une
+autre langue (cartes sombres, ombres, dégradés) que le registre, et
+faisaient doublon avec le colophon. Aucune fonction ne disparaît pour
+autant : chaque filtre des cartes se retrouve dans la rangée de perles.
+
+### Les raccourcis de pages — en haut à droite
+
+La bande de raccourcis (`RaccourcisPages`) ne vit plus au bas de la page :
+elle est **dans la barre du haut, à droite des trois onglets**. Ce sont des
+mots discrets, avec leur icône, un filet au survol et rien d'autre — la page
+courante n'y figure pas puisqu'elle est exclue.
+
 ### Équipes — ce que dessine la vue
 
 - **le collier de l'entreprise** : tout l'effectif en une parure. Un groupe
@@ -196,7 +237,7 @@ Les messages disent ce qui se passe et ce qu'on peut faire :
 
 ## Tests
 
-`src/services/__tests__/employesEquipesTaches.test.jsx` — 54 tests.
+`src/services/__tests__/employesEquipesTaches.test.jsx` — 64 tests.
 
 Ce qu'ils défendent :
 
@@ -205,25 +246,32 @@ Ce qu'ils défendent :
    n'existent plus, `VerrouOptions` ne surveille plus une adresse morte ;
 2. **onglets** : trois vues, annuaire par défaut, l'adresse porte la vue
    (`?vue=`), les raccourcis de pages restent dans la coque ;
-3. **vue Équipes** : folio, titre, colophon de quatre chiffres, parts
+3. **vue Annuaire** : même feuillet que les autres vues, colophon qui
+   n'avance que du réel (`—` quand le pointage n'est pas suivi), entrée
+   numérotée avec portrait en pastille, présence chiffrée, absence de
+   numéro de pointeuse dite en clair, fiche et badge au clic, autres gestes
+   rangés dans le menu, portail à migrer signalé sur la ligne, aucun
+   ancien portrait ni carte de chiffres ;
+4. **vue Équipes** : folio, titre, colophon de quatre chiffres, parts
    réelles ou tiret, collier avec perle du chef cerclée et perles creuses
    pour les personnes à rattacher, santé en cinq perles, entrées
    numérotées, équipe vide sans avatar fantôme, filtres et recherche,
    décisions repliées, absence de prédictions dite en clair ;
-4. **vue Tâches** : titre et colophon, quatre colonnes nommées et leur
+5. **vue Tâches** : titre et colophon, quatre colonnes nommées et leur
    compte, numéro et perle de priorité, priorité / catégorie / échéance en
    français, glisser-déposer qui appelle vraiment `updateTask`, sélection
    et vidage, bascule en liste, catégories filtrantes, états vides ;
-5. **ton et dessin** : feuillet sans carte, entrées au filet, tranche
+6. **ton et dessin** : feuillet sans carte, entrées au filet, tranche
    perlée des colonnes, collier d'échéance, aucune tâche refusée cachée,
    aucun mot d'atelier, règles `:hover` sans fond / couleur / opacité,
    cibles de doigt (44 px pour les onglets, 42 px pour l'action
    principale, 40 px pour les liens), contrastes calculés dans les deux
    thèmes, initiales lisibles sur toutes les perles, absence de
    l'ancienne scène ;
-6. **page entière** : les trois onglets s'affichent, on passe d'une vue à
-   l'autre sans quitter la page, les chiffres sont séparés par un filet,
-   les raccourcis ne renvoient pas vers la page courante.
+7. **page entière** : les trois onglets s'affichent, on passe d'une vue à
+   l'autre sans quitter la page, les chiffres sont séparés par un filet, et
+   les raccourcis sont **dans la barre du haut** — un seul bandeau, avant le
+   registre, jamais en bas.
 
 Chaque test neuf a été vérifié par mutation : rétablir l'ancien
 comportement doit le faire échouer.

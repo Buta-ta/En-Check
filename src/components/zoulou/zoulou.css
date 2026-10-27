@@ -1609,42 +1609,373 @@
   }
 }
 
-/* ── les raccourcis de pages, en bas de coque ─────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   12. LA BARRE DU HAUT — les vues à gauche, les raccourcis à droite
+   ═══════════════════════════════════════════════════════════════════ */
 
-.pointages-afrotech-shell .abs-raccourcis,
-.employes-afrotech .abs-raccourcis {
+.emp-barre {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
   flex-wrap: wrap;
-  padding: 18px 0 26px;
+  margin: 0 0 24px;
+  padding: 0;
+  border-bottom: 1px solid var(--pt-line);
 }
 
-.pointages-afrotech-shell .abs-raccourci {
+/* dans la barre, les onglets n'ont plus de filet à eux */
+.emp-barre .emp-onglets {
+  flex: 1 1 auto;
+  margin: 0;
+  border-bottom: 0;
+}
+
+.emp-barre-raccourcis {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* les raccourcis sont des mots, pas des pastilles : même écriture que
+   les actions du registre — un filet au survol, rien d'autre */
+.emp-barre .abs-raccourcis {
+  display: flex;
+  align-items: center;
+  gap: 2px 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0;
+}
+
+.emp-barre .abs-raccourci {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--pt-ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: box-shadow 0.16s ease;
+}
+
+.emp-barre .abs-raccourci svg {
+  color: var(--pt-muted);
+}
+
+.emp-barre .abs-raccourci:hover {
+  box-shadow: inset 0 -1px 0 0 var(--pt-copper-strong);
+}
+
+.emp-barre .abs-raccourci[aria-current='page'] {
+  color: var(--pt-muted);
+  pointer-events: none;
+}
+
+@media (max-width: 1180px) {
+  .emp-barre {
+    align-items: flex-start;
+  }
+  .emp-barre .abs-raccourcis {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .emp-barre .abs-raccourci {
+    font-size: 10.4px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   13. L'ANNUAIRE — une entrée par personne, comme les équipes
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-compte {
+  color: var(--rg-faint);
+  font-size: 10.4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rg-entree-annuaire {
+  grid-template-columns: 40px minmax(0, 1.9fr) minmax(0, 0.95fr) auto;
+  align-items: start;
+  padding: 20px 0;
+  column-gap: 20px;
+}
+
+.rg-cellule-identite {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* le portrait, en pastille de registre : la photo si elle existe,
+   les initiales sinon — jamais un cadre vide */
+.rg-avatar-annuaire {
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rg-hair-fort);
+  border-radius: 50%;
+  background: var(--rg-paper);
+  color: var(--rg-copper);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+.rg-avatar-annuaire img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rg-identite-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rg-identite-texte .rg-entree-titre {
+  font-size: clamp(18px, 1.8vw, 23px);
+  line-height: 1.1;
+}
+
+.rg-annuaire-sous {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+  color: var(--rg-faint);
+  font-size: 9.8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rg-annuaire-matricule {
+  color: var(--rg-soft);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+}
+
+.rg-annuaire-manque {
+  text-transform: none;
+  letter-spacing: 0;
+  font-style: italic;
+}
+
+.rg-identite-texte .rg-entree-note {
+  margin: 0;
+}
+
+/* la ligne d'état : présence, régime, portail */
+.rg-annuaire-etats {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  color: var(--rg-faint);
+  font-size: 10.2px;
+}
+
+.rg-presence {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 38px;
-  padding: 8px 13px;
-  border: 1px solid var(--pt-line);
-  border-radius: 999px;
-  background: var(--pt-surface);
-  color: var(--pt-ink-soft);
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  color: var(--rg-soft);
 }
 
-.pointages-afrotech-shell .abs-raccourci:hover {
-  border-color: var(--pt-copper);
-  box-shadow: 0 8px 18px rgba(48, 32, 18, 0.08);
+.rg-presence[data-etat='non_pointe'] {
+  color: var(--rg-faint);
 }
 
-.pointages-afrotech-shell .abs-raccourci[aria-current='page'] {
-  border-color: var(--pt-copper-strong);
-  background: var(--pt-copper-soft);
-  color: var(--pt-ink);
-  pointer-events: none;
+.rg-presence-perle {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--rg-perle-cuivre);
+}
+
+.rg-presence-perle[data-ton='teal'] { background: var(--rg-perle-teal); }
+.rg-presence-perle[data-ton='cuivre'] { background: var(--rg-perle-cuivre); }
+.rg-presence-perle[data-ton='sauge'] { background: var(--rg-perle-sauge); }
+.rg-presence-perle[data-ton='creme'] { background: var(--rg-perle-creme); }
+.rg-presence-perle[data-ton='faible'] { background: transparent; box-shadow: inset 0 0 0 1px var(--rg-hair-fort); }
+
+.rg-presence-texte {
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-annuaire-regime {
+  color: var(--rg-faint);
+}
+
+.rg-annuaire-compte {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rg-annuaire-compte[data-etat='migrer'] { color: var(--rg-corail); font-weight: 700; }
+.rg-annuaire-compte[data-etat='ouvert'] { color: var(--rg-teal); }
+.rg-annuaire-compte[data-etat='ferme'] { color: var(--rg-corail); }
+.rg-annuaire-compte[data-etat='aucun'] { color: var(--rg-faint); font-style: italic; }
+
+/* les heures de la semaine : un filet qui se remplit, et son chiffre */
+.rg-annuaire-heures {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: min(260px, 100%);
+  margin-top: 2px;
+}
+
+.rg-jauge {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  background: var(--rg-hair);
+}
+
+.rg-jauge-remplie {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--rg-copper);
+}
+
+.rg-jauge-remplie[data-complet='oui'] {
+  background: var(--rg-teal);
+}
+
+.rg-annuaire-heures-texte {
+  color: var(--rg-faint);
+  font-size: 9.6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* la fiche de paie envoyée : une mention soulignée, pas une pastille */
+.rg-annuaire-paie .sk-payslip-badge {
+  margin: 0;
+  color: var(--rg-teal);
+}
+
+.rg-annuaire-paie .sk-payslip-badge summary {
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--rg-teal);
+  font-size: 10.2px;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--rg-hair-fort);
+}
+
+.rg-annuaire-paie .sk-payslip-badge summary svg {
+  display: none;
+  animation: none;
+}
+
+.rg-annuaire-paie .sk-payslip-badge summary:focus-visible {
+  outline: 2px solid var(--rg-copper);
+  outline-offset: 2px;
+}
+
+.rg-annuaire-paie .sk-payslip-info {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--rg-hair-fort);
+  border-radius: 4px;
+  background: var(--rg-paper);
+  color: var(--rg-soft);
+  font-size: 10.4px;
+  line-height: 1.6;
+}
+
+/* la colonne du jour */
+.rg-cellule-jour {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.rg-annuaire-jour {
+  color: var(--rg-soft);
+  font-size: 11.4px;
+  line-height: 1.4;
+}
+
+.rg-annuaire-jour-note {
+  color: var(--rg-faint);
+  font-size: 9.8px;
+}
+
+/* le menu d'une personne s'ouvre sous ses actions */
+.rg-menu-annuaire {
+  min-width: 210px;
+}
+
+.rg-note[data-ton='corail'] {
+  border-left-color: var(--rg-perle-corail);
+  color: var(--rg-soft);
+}
+
+@media (max-width: 1080px) {
+  .rg-entree-annuaire {
+    grid-template-columns: 34px minmax(0, 1.6fr) auto;
+  }
+  .rg-cellule-jour {
+    grid-column: 2 / 3;
+    grid-row: 2;
+    margin-top: 10px;
+  }
+}
+
+@media (max-width: 760px) {
+  .rg-entree-annuaire {
+    grid-template-columns: 28px minmax(0, 1fr);
+    row-gap: 10px;
+  }
+  .rg-cellule-identite,
+  .rg-cellule-jour {
+    grid-column: 2 / -1;
+  }
+  .rg-cellule-jour {
+    grid-row: auto;
+    margin-top: 0;
+  }
+  .rg-entree-annuaire .rg-entree-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+  .rg-avatar-annuaire {
+    width: 38px;
+    height: 38px;
+    font-size: 12px;
+  }
 }
 
 /* le petit indicateur tournant des chargements */

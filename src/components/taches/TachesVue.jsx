@@ -33,6 +33,7 @@ import {
   CategoryModal, TaskModal, DeleteModal, ShortcutsModal,
 } from './TachesModales'
 import { CollierEcheanceSvg, RosacePerlesSvg } from '../zoulou/PerlesZoulouSvg'
+import { Folio, Colophon } from '../zoulou/RegistreEntete'
 import '../zoulou/zoulou.css'
 
 const COLONNES = [
@@ -84,31 +85,6 @@ const joursRestants = (valeur) => {
   const date = new Date(valeur)
   if (Number.isNaN(date.getTime())) return null
   return Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-}
-
-// ── le folio ───────────────────────────────────────────────────────
-function Folio({ droite }) {
-  return (
-    <div className="rg-folio">
-      <p className="rg-marque"><strong>En-Check</strong> · Gestion du personnel</p>
-      <p className="rg-folio-droite">{droite}</p>
-    </div>
-  )
-}
-
-// ── le colophon : quatre chiffres, un filet entre chacun ───────────
-function Colophon({ chiffres }) {
-  return (
-    <dl className="rg-colophon">
-      {chiffres.map(({ valeur, libelle, note, ton }) => (
-        <div className="rg-chiffre" key={libelle} data-ton={ton || 'normal'}>
-          <dd className="rg-chiffre-valeur">{valeur}</dd>
-          <dt className="rg-chiffre-libelle">{libelle}</dt>
-          <dd className="rg-chiffre-note">{note}</dd>
-        </div>
-      ))}
-    </dl>
-  )
 }
 
 // ── l'échéance, dessinée : une perle par jour qui reste ────────────
