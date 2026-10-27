@@ -18,7 +18,8 @@ import { describe, expect, it } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
-import PageCulturalBand, { culturalMotifForPath } from '../../components/PageCulturalBand'
+import PageCulturalBand from '../../components/PageCulturalBand'
+import { culturalMotifForPath } from '../../components/culturalMotif'
 import { DogonBlasonSvg, DogonFriseSvg } from '../../components/DogonSvg'
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')

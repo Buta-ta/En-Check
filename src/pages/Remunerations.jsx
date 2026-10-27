@@ -1,138 +1,80 @@
 // src/pages/Remunerations.jsx
 // ═══════════════════════════════════════════════════════════════════════════
-//  Les rémunérations — ce que chaque contrat prévoit
+//  LES RÉMUNÉRATIONS — le pagne de boue
 // ═══════════════════════════════════════════════════════════════════════════
 //
 //  C'est la pièce sans laquelle aucun chiffre n'est calculable : combien gagne
 //  la personne, sur quelle base (mois, jour ou heure), pour combien d'heures
-//  prévues, et avec quelles indemnités.
+//  prévues, et avec quels compléments.
 //
-//  Cette page ne remplace pas la fiche de paie : elle la complète. Elle montre
-//  côte à côte TOUS les salariés d'une entreprise, dit combien sont déjà
-//  renseignés, et permet de compléter les autres en quelques clics — au lieu
-//  d'ouvrir quatorze fiches l'une après l'autre.
-//
-//  CE QUI EST ÉCRIT
-//  ────────────────
+//  CE QUI EST ÉCRIT (inchangé)
+//  ───────────────────────────
 //    · `employee_payroll_profiles` : le type de rémunération, la base, les
-//      taux horaire et journalier, les indemnités, la prime fixe, les heures
+//      taux horaire et journalier, les compléments, la prime fixe, les heures
 //      et les jours du contrat ;
-//    · `employees.contract_type` : la nature du contrat (CDI, CDD, journalier,
-//      stage, prestation).
+//    · `employees.contract_type` : la nature du contrat (CDI, CDD…).
 //
-//  Rien d'autre n'est touché. Le barème fiscal, lui, suit le pays déclaré sur
+//  Rien d'autre n'est touché. Le barème fiscal suit le pays déclaré sur
 //  l'entreprise : c'est lui qui décide des retenues, pas cette page.
+//
+//  CE QUI CHANGE (la refonte)
+//  ──────────────────────────
+//    · le tableau de treize colonnes devient une BANDE par salarié, avec sa
+//      propre jauge de teinture : on voit ce qui manque sans lire ;
+//    · « Enregistrer (n) » ne compte plus les saisies mais les VRAIS écarts
+//      avec ce qui est en base — revenir sur sa frappe ne salit plus la page ;
+//    · « Reprendre pour… » recopie les compléments et le rythme d'une bande
+//      sur d'autres salariés, sans jamais copier un salaire par accident ;
+//    · l'action principale est collée en bas, au centre, et répond à ⌘S.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Wallet, RefreshCw, AlertTriangle, Info, Save, CheckCircle2, Users,
-  TrendingUp, Clock
+  ArrowLeft, Wallet, RefreshCw, AlertTriangle, Info, Save, CheckCircle2, Users,
+  Clock, TrendingUp, Sun, Moon, Building2, Search, Copy, X, Check, ArrowRight,
+  TriangleAlert, Coins,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
-import PageHeader from '../components/PageHeader'
+import { useTheme } from '../contexts/ThemeContext'
+import useLoadingMinimum from '../hooks/useLoadingMinimum'
+import PageCulturalBand from '../components/PageCulturalBand'
+import RaccourcisPages from '../components/RaccourcisPages'
+import RemunerationsLoading from '../components/RemunerationsLoading'
+import {
+  BogolanMedaillonSvg, BogolanTeinture, BogolanLosangeSvg, BogolanPanSvg,
+} from '../components/RemunerationsBogolan'
+import './Remunerations.css'
 
 // ───────────────────────────────────────────────────────────────────────────
-//  PRÉSENTATION
+//  LES CONTRATS ET LES RYTHMES
 // ───────────────────────────────────────────────────────────────────────────
-const S = {
-  page: { minHeight: '100vh', background: '#F8FAFC', paddingBottom: 48 },
-  conteneur: { maxWidth: 1280, margin: '0 auto', padding: '0 24px' },
-  carte: {
-    background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 14,
-    padding: 20, marginBottom: 16,
-  },
-  bandeau: {
-    display: 'flex', gap: 12, alignItems: 'flex-start',
-    background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: 12,
-    padding: '14px 16px', marginBottom: 16,
-  },
-  alerte: {
-    display: 'flex', gap: 12, alignItems: 'flex-start',
-    background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 12,
-    padding: '14px 16px', marginBottom: 16,
-  },
-  succes: {
-    display: 'flex', gap: 12, alignItems: 'flex-start',
-    background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 12,
-    padding: '14px 16px', marginBottom: 16,
-  },
-  ligne: { display: 'flex', alignItems: 'center' },
-  label: { fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: 0.4 },
-  select: {
-    border: '1px solid #CBD5E1', borderRadius: 9, padding: '8px 12px',
-    fontSize: 14, background: '#FFFFFF', color: '#0F172A', outline: 'none',
-  },
-  champ: {
-    border: '1px solid #CBD5E1', borderRadius: 8, padding: '7px 10px',
-    fontSize: 13.5, width: '100%', outline: 'none', textAlign: 'right',
-  },
-  btnPrimaire: {
-    display: 'inline-flex', alignItems: 'center', gap: 8,
-    background: '#4F46E5', color: '#FFFFFF', border: 'none', borderRadius: 9,
-    padding: '9px 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-  },
-  btnFantome: {
-    display: 'inline-flex', alignItems: 'center', gap: 8,
-    background: '#FFFFFF', color: '#334155', border: '1px solid #CBD5E1',
-    borderRadius: 9, padding: '8px 14px', fontSize: 14, fontWeight: 700,
-    cursor: 'pointer',
-  },
-  btnMinute: {
-    display: 'inline-flex', alignItems: 'center', gap: 6,
-    background: '#EEF2FF', color: '#4338CA', border: '1px solid #C7D2FE',
-    borderRadius: 8, padding: '6px 11px', fontSize: 13, fontWeight: 700,
-    cursor: 'pointer', whiteSpace: 'nowrap',
-  },
-  grille: {
-    display: 'grid', gap: 14, marginBottom: 16,
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-  },
-  indicateur: {
-    background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 14,
-    padding: '16px 18px',
-  },
-  chiffre: { fontSize: 26, fontWeight: 800, color: '#0F172A', lineHeight: 1.15 },
-  tableau: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
-  th: {
-    textAlign: 'left', padding: '10px 10px', color: '#64748B',
-    fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-    borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap',
-  },
-  thD: {
-    textAlign: 'right', padding: '10px 10px', color: '#64748B',
-    fontSize: 11, fontWeight: 800, letterSpacing: 0.4,
-    borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap',
-  },
-  td: { padding: '8px 10px', borderBottom: '1px solid #F1F5F9', color: '#0F172A' },
-  tdNom: {
-    padding: '8px 10px', borderBottom: '1px solid #F1F5F9',
-    color: '#0F172A', fontWeight: 700, whiteSpace: 'nowrap',
-  },
-  jauge: {
-    height: 9, background: '#EEF2F7', borderRadius: 99, overflow: 'hidden',
-    marginTop: 10,
-  },
-  vide: { padding: '48px 24px', textAlign: 'center', color: '#94A3B8', fontSize: 14 },
-}
-
-const CSS = `
-  .spin { animation: ec-spin 1s linear infinite; }
-  @keyframes ec-spin { to { transform: rotate(360deg); } }
-  table.remu tbody tr:hover { background: #F8FAFC; }
-  table.remu input:focus { border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
-  table.remu select:focus { border-color: #6366F1; }
-`
-
 const TYPES_CONTRAT = ['CDI', 'CDD', 'Journalier', 'Stage', 'Prestation', 'Autre']
 
 const TYPES_REMUNERATION = [
-  { id: 'monthly', libelle: 'Mensuel' },
-  { id: 'daily',   libelle: 'Journalier' },
-  { id: 'hourly',  libelle: 'Horaire' },
+  { id: 'monthly', libelle: 'Mensuel',   unite: 'mois' },
+  { id: 'daily',   libelle: 'Journalier', unite: 'jour' },
+  { id: 'hourly',  libelle: 'Horaire',   unite: 'heure' },
 ]
+
+//  Ce qu'il faut pour que le coût soit calculable, par rythme.
+//  Deux nombres et la nature du contrat : trois cases de teinture.
+const ATTENDUS = {
+  monthly: ['base_salary', 'contract_hours_per_month'],
+  daily:   ['daily_rate', 'contract_days_per_month'],
+  hourly:  ['hourly_rate', 'contract_hours_per_month'],
+}
+
+const LIBELLES = {
+  base_salary: 'la base mensuelle',
+  hourly_rate: 'le taux horaire',
+  daily_rate: 'le taux journalier',
+  contract_hours_per_month: 'les heures du mois',
+  contract_days_per_month: 'les jours du mois',
+}
+
+const COMPLEMENTS = ['transport_allowance', 'housing_allowance', 'fixed_bonus']
 
 // ───────────────────────────────────────────────────────────────────────────
 //  OUTILS
@@ -142,9 +84,17 @@ function nombre(v) {
   return Number.isFinite(n) ? n : 0
 }
 
+const rempli = (v) => v !== '' && v !== null && v !== undefined && nombre(v) > 0
+
 function formaterMontant(v, devise) {
   if (v === null || v === undefined || Number.isNaN(Number(v)) || Number(v) === 0) return '—'
-  const n = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(v))
+  const n = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(Number(v))
+  return devise ? `${n} ${devise}` : n
+}
+
+function formaterEntier(v, devise) {
+  if (!Number.isFinite(v) || v === 0) return '—'
+  const n = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(v)
   return devise ? `${n} ${devise}` : n
 }
 
@@ -163,26 +113,45 @@ function ligneVide() {
   }
 }
 
+const identique = (a, b) => String(a ?? '') === String(b ?? '')
+
+const initiales = (prenom, nom) => {
+  const a = String(prenom || '').trim()
+  const b = String(nom || '').trim()
+  const l = (s) => (s ? s[0].toUpperCase() : '')
+  return `${l(a)}${l(b)}` || '—'
+}
+
+const nomComplet = (e) => [e.first_name, e.last_name].filter(Boolean).join(' ') || '—'
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  LA PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 export default function Remunerations() {
   const navigate = useNavigate()
+  const { darkMode, toggleTheme } = useTheme()
+  const { minLoadingDone, skipLoading } = useLoadingMinimum(1400)
 
   const [admin, setAdmin] = useState(null)
-  const [enterprises, setEnterprises] = useState([])
+  const [societes, setSocietes] = useState([])
   const [selectedEntId, setSelectedEntId] = useState(null)
   const [entreprise, setEntreprise] = useState(null)
 
   const [employes, setEmployes] = useState([])
   const [formulaires, setFormulaires] = useState({})
   const [contracts, setContracts] = useState({})
-  const [souilles, setSouilles] = useState({})
+  const [reference, setReference] = useState({})
   const [connus, setConnus] = useState({})
 
   const [loading, setLoading] = useState(true)
   const [rafraichir, setRafraichir] = useState(false)
   const [enregistrement, setEnregistrement] = useState(null)
+  const [enregistrementTout, setEnregistrementTout] = useState(false)
+
+  const [recherche, setRecherche] = useState('')
+  const [filtre, setFiltre] = useState('TOUS')
+
+  const [appliquer, setAppliquer] = useState(null)
 
   const estSuperAdmin = admin?.role === 'super_admin'
   const devise = entreprise?.currency || ''
@@ -195,7 +164,7 @@ export default function Remunerations() {
     if (!brut) { navigate('/login'); return }
 
     let parsed
-    try { parsed = JSON.parse(brut) } catch (_) { navigate('/login'); return }
+    try { parsed = JSON.parse(brut) } catch { navigate('/login'); return }
 
     setAdmin(parsed)
 
@@ -215,7 +184,7 @@ export default function Remunerations() {
       setLoading(false)
       return
     }
-    setEnterprises(data || [])
+    setSocietes(data || [])
     if (data && data.length > 0) setSelectedEntId(data[0].id)
     else setLoading(false)
   }
@@ -254,10 +223,7 @@ export default function Remunerations() {
     const liste = resEmp.data || []
     setEmployes(liste)
 
-    //  Ce qui est déjà déclaré remplit le formulaire ; le reste part vide,
-    //  mais reste identifiable : c'est ce qui compte pour la jauge.
     const profils = {}
-    const contrats = {}
     const deja = {}
     ;(resProf.data || []).forEach(p => {
       profils[p.employee_id] = {
@@ -277,34 +243,130 @@ export default function Remunerations() {
 
     const formulairesInit = {}
     const contratsInit = {}
+    const referenceInit = {}
+
     liste.forEach(e => {
-      formulairesInit[e.id] = profils[e.id] || ligneVide()
+      const profil = profils[e.id] || ligneVide()
+      formulairesInit[e.id] = { ...profil }
       contratsInit[e.id] = e.contract_type || ''
+      //  la référence sert à savoir si une bande a VRAIMENT changé :
+      //  revenir sur sa frappe ne doit pas laisser la page sale
+      referenceInit[e.id] = { form: { ...profil }, contrat: e.contract_type || '' }
     })
 
     setFormulaires(formulairesInit)
     setContracts(contratsInit)
+    setReference(referenceInit)
     setConnus(deja)
-    setSouilles({})
     setLoading(false)
     setRafraichir(false)
   }, [])
 
   useEffect(() => {
     if (selectedEntId) chargerTout(selectedEntId)
-  }, [selectedEntId, chargerTout])
+    //  un compte sans entreprise n'a rien à charger : sans cette sortie,
+    //  la page resterait sur son écran de chargement indéfiniment
+    else if (admin) setLoading(false)
+  }, [selectedEntId, chargerTout, admin])
 
   const modifier = (id, champ, valeur) => {
     setFormulaires(f => ({ ...f, [id]: { ...(f[id] || ligneVide()), [champ]: valeur } }))
-    setSouilles(s => ({ ...s, [id]: true }))
   }
+
+  // ─────────────────────────────────────────────────────────
+  //  CE QUI A VRAIMENT CHANGÉ
+  // ─────────────────────────────────────────────────────────
+  const modifie = useCallback((id) => {
+    const f = formulaires[id]
+    const ref = reference[id]
+    if (!f || !ref) return false
+    if (!identique(contracts[id], ref.contrat)) return true
+    return Object.keys(ligneVide()).some(champ => !identique(f[champ], ref.form[champ]))
+  }, [formulaires, contracts, reference])
+
+  const modifications = employes.filter(e => modifie(e.id)).length
+
+  // ─────────────────────────────────────────────────────────
+  //  LES CALCULS
+  // ─────────────────────────────────────────────────────────
+  const coutMensuel = useCallback((f) => {
+    if (!f) return 0
+    const comp = COMPLEMENTS.reduce((s, c) => s + nombre(f[c]), 0)
+    if (f.salary_type === 'hourly') return nombre(f.hourly_rate) * nombre(f.contract_hours_per_month) + comp
+    if (f.salary_type === 'daily') return nombre(f.daily_rate) * nombre(f.contract_days_per_month) + comp
+    return nombre(f.base_salary) + comp
+  }, [])
+
+  const tauxHoraire = useCallback((f) => {
+    if (!f) return 0
+    const heures = nombre(f.contract_hours_per_month)
+    if (f.salary_type === 'hourly') return nombre(f.hourly_rate)
+    if (!heures) return 0
+    if (f.salary_type === 'daily') {
+      return (nombre(f.daily_rate) * nombre(f.contract_days_per_month)) / heures
+    }
+    return nombre(f.base_salary) / heures
+  }, [])
+
+  const manquants = useCallback((id) => {
+    const f = formulaires[id]
+    if (!f) return ['la rémunération']
+    const liste = (ATTENDUS[f.salary_type] || ATTENDUS.monthly)
+      .filter(champ => !rempli(f[champ]))
+      .map(champ => LIBELLES[champ])
+    if (!contracts[id]) liste.unshift('le type de contrat')
+    return liste
+  }, [formulaires, contracts])
+
+  const etatBande = useCallback((id) => {
+    if (manquants(id).length === 0) return modifie(id) ? 'pret' : 'complet'
+    return 'incomplet'
+  }, [manquants, modifie])
+
+  const total = employes.length
+  const renseignes = employes.filter(e => connus[e.id]).length
+  const calculables = employes.filter(e => manquants(e.id).length === 0).length
+  const incomplets = total - calculables
+
+  const masseMensuelle = employes.reduce((acc, e) => acc + coutMensuel(formulaires[e.id]), 0)
+  const heuresContrat = employes.reduce(
+    (acc, e) => acc + nombre(formulaires[e.id]?.contract_hours_per_month), 0
+  )
+  const heuresPonderees = employes.reduce((acc, e) => {
+    const h = nombre(formulaires[e.id]?.contract_hours_per_month)
+    return h > 0 ? acc + h : acc
+  }, 0)
+  const coutHoraireMoyen = heuresPonderees > 0
+    ? employes.reduce((acc, e) => {
+      const h = nombre(formulaires[e.id]?.contract_hours_per_month)
+      return h > 0 ? acc + coutMensuel(formulaires[e.id]) : acc
+    }, 0) / heuresPonderees
+    : 0
+
+  const progression = total > 0 ? Math.round((calculables / total) * 100) : 0
+
+  // ─────────────────────────────────────────────────────────
+  //  LA LISTE AFFICHÉE
+  // ─────────────────────────────────────────────────────────
+  const visibles = useMemo(() => {
+    const q = recherche.trim().toLowerCase()
+    return employes.filter(e => {
+      const etat = etatBande(e.id)
+      if (filtre === 'INCOMPLETS' && etat !== 'incomplet') return false
+      if (filtre === 'PRETS' && etat !== 'complet') return false
+      if (!q) return true
+      return [nomComplet(e), e.matricule, e.position, e.department]
+        .filter(Boolean)
+        .some(v => String(v).toLowerCase().includes(q))
+    })
+  }, [employes, etatBande, filtre, recherche])
 
   // ─────────────────────────────────────────────────────────
   //  ENREGISTRER
   // ─────────────────────────────────────────────────────────
-  const enregistrer = async (id) => {
+  const enregistrer = useCallback(async (id) => {
     const f = formulaires[id]
-    if (!f || !selectedEntId) return
+    if (!f || !selectedEntId) return false
 
     setEnregistrement(id)
     try {
@@ -341,360 +403,806 @@ export default function Remunerations() {
       }
 
       setConnus(k => ({ ...k, [id]: true }))
-      setSouilles(s => ({ ...s, [id]: false }))
-      toast.success('Rémunération enregistrée.')
+      setReference(r => ({ ...r, [id]: { form: { ...f }, contrat: typeContrat || '' } }))
+      return true
     } catch (err) {
-      toast.error("L'enregistrement n'a pas abouti.")
+      console.error(err)
+      return false
+    } finally {
+      setEnregistrement(null)
     }
-    setEnregistrement(null)
+  }, [formulaires, contracts, selectedEntId])
+
+  const enregistrerUne = async (id) => {
+    const ok = await enregistrer(id)
+    if (ok) toast.success('Rémunération enregistrée.')
+    else toast.error("L'enregistrement n'a pas abouti.")
   }
 
-  const enregistrerTout = async () => {
-    const ids = Object.keys(souilles).filter(id => souilles[id])
+  const enregistrerTout = useCallback(async () => {
+    const ids = employes.filter(e => modifie(e.id)).map(e => e.id)
     if (ids.length === 0) {
       toast('Aucune modification en attente.')
       return
     }
-    for (const id of ids) await enregistrer(id)
+
+    setEnregistrementTout(true)
+    let faits = 0
+    for (const id of ids) {
+      //  on ne s'arrête pas au premier échec : le bilan dit ce qui reste
+      const ok = await enregistrer(id)
+      if (ok) faits += 1
+    }
+    setEnregistrementTout(false)
+
+    if (faits === ids.length) {
+      toast.success(`${faits} bande${faits > 1 ? 's' : ''} enregistrée${faits > 1 ? 's' : ''}.`)
+    } else if (faits > 0) {
+      toast.error(`${faits} enregistrée${faits > 1 ? 's' : ''}, ${ids.length - faits} en échec.`)
+    } else {
+      toast.error("Aucun enregistrement n'a abouti.")
+    }
+  }, [employes, modifie, enregistrer])
+
+  // ─────────────────────────────────────────────────────────
+  //  LE RACCOURCI ⌘S / CTRL+S
+  // ─────────────────────────────────────────────────────────
+  const raccourci = useRef(enregistrerTout)
+  raccourci.current = enregistrerTout
+
+  useEffect(() => {
+    const surTouche = (ev) => {
+      if (!(ev.metaKey || ev.ctrlKey) || ev.key.toLowerCase() !== 's') return
+      ev.preventDefault()
+      raccourci.current()
+    }
+    window.addEventListener('keydown', surTouche)
+    return () => window.removeEventListener('keydown', surTouche)
+  }, [])
+
+  // ─────────────────────────────────────────────────────────
+  //  REPRENDRE UNE BANDE POUR D'AUTRES
+  // ─────────────────────────────────────────────────────────
+  const ouvrirAppliquer = (sourceId) => {
+    setAppliquer({
+      sourceId,
+      champs: {
+        salary_type: true,
+        contract_hours_per_month: true,
+        contract_days_per_month: true,
+        transport_allowance: true,
+        housing_allowance: true,
+        fixed_bonus: true,
+        overtime_eligible: true,
+        //  un salaire ne se recopie pas par accident : ces trois-là
+        //  sont proposés, mais décochés
+        base_salary: false,
+        hourly_rate: false,
+        daily_rate: false,
+      },
+      destinataires: {},
+    })
+  }
+
+  const basculerChamp = (champ) => {
+    setAppliquer(a => (a ? { ...a, champs: { ...a.champs, [champ]: !a.champs[champ] } } : a))
+  }
+
+  const basculerDestinataire = (id) => {
+    setAppliquer(a => (a
+      ? { ...a, destinataires: { ...a.destinataires, [id]: !a.destinataires[id] } }
+      : a))
+  }
+
+  const appliquerReprise = () => {
+    if (!appliquer) return
+    const source = formulaires[appliquer.sourceId]
+    const cibles = Object.entries(appliquer.destinataires).filter(([, v]) => v).map(([id]) => id)
+    const champs = Object.entries(appliquer.champs).filter(([, v]) => v).map(([c]) => c)
+
+    if (cibles.length === 0) { toast.error('Choisissez au moins un salarié.'); return }
+    if (champs.length === 0) { toast.error('Choisissez au moins une valeur à reprendre.'); return }
+
+    setFormulaires(f => {
+      const suivant = { ...f }
+      for (const id of cibles) {
+        const base = { ...(f[id] || ligneVide()) }
+        for (const champ of champs) base[champ] = source[champ]
+        suivant[id] = base
+      }
+      return suivant
+    })
+
+    setAppliquer(null)
+    toast.success(
+      `${champs.length} valeur${champs.length > 1 ? 's' : ''} reprise${champs.length > 1 ? 's' : ''} pour ${cibles.length} salarié${cibles.length > 1 ? 's' : ''}. Rien n’est écrit avant d’enregistrer.`
+    )
   }
 
   // ─────────────────────────────────────────────────────────
-  //  LES CHIFFRES
+  //  L'ÉCRAN DE CHARGEMENT
   // ─────────────────────────────────────────────────────────
-  const total = employes.length
-  const renseignes = employes.filter(e => connus[e.id]).length
-  const modifications = Object.values(souilles).filter(Boolean).length
-  const complet = total > 0 && renseignes === total
-  const progression = total > 0 ? Math.round((renseignes / total) * 100) : 0
+  if ((loading && employes.length === 0) || !minLoadingDone) {
+    return (
+      <RemunerationsLoading
+        darkMode={darkMode}
+        onSkip={() => {
+          skipLoading()
+          setLoading(false)
+        }}
+      />
+    )
+  }
 
-  const masseMensuelle = employes.reduce((acc, e) => {
-    const f = formulaires[e.id]
-    if (!f) return acc
-    if (f.salary_type === 'hourly') return acc + nombre(f.hourly_rate) * nombre(f.contract_hours_per_month)
-    if (f.salary_type === 'daily') return acc + nombre(f.daily_rate) * nombre(f.contract_days_per_month)
-    return acc + nombre(f.base_salary) + nombre(f.transport_allowance) + nombre(f.housing_allowance) + nombre(f.fixed_bonus)
-  }, 0)
+  const nomEntreprise = societes.find(e => e.id === selectedEntId)?.name
+    || admin?.selectedEnterprise?.name
+    || entreprise?.name
+    || 'votre entreprise'
+
+  const page = `rw-page${darkMode ? '' : ' rw-clair'}`
+  const aucunResultat = visibles.length === 0
 
   return (
-    <div style={S.page}>
-      <style>{CSS}</style>
+    <div className={page}>
+      <PageCulturalBand pathname="/remunerations" />
+      <div className="rw-bordure" aria-hidden="true" />
 
-      <PageHeader
-        title="Rémunérations"
-        subtitle="Ce que prévoit chaque contrat : la base, le rythme et les heures attendues"
-      />
+      {/* ══ L'EN-TÊTE ══ */}
+      <header className="rw-entete">
+        <button
+          type="button"
+          className="rw-retour"
+          onClick={() => navigate('/dashboard')}
+          aria-label="Revenir au tableau de bord"
+          title="Tableau de bord"
+        >
+          <ArrowLeft size={17} />
+        </button>
 
-      <div style={S.conteneur}>
+        <BogolanLosangeSvg taille={44} ton="cuivre" />
 
-        {/* ── L'entreprise ────────────────────────────────── */}
-        <div style={S.carte}>
-          <div style={{ ...S.ligne, gap: 12, flexWrap: 'wrap' }}>
-            {estSuperAdmin && enterprises.length > 0 && (
-              <>
-                <span style={S.label}>ENTREPRISE</span>
-                <select
-                  style={S.select}
-                  value={selectedEntId || ''}
-                  onChange={(e) => setSelectedEntId(e.target.value)}
-                >
-                  {enterprises.map(e => (
-                    <option key={e.id} value={e.id}>{e.name}{e.code ? ` (${e.code})` : ''}</option>
-                  ))}
-                </select>
-              </>
-            )}
-
-            {entreprise && (
-              <span style={{ fontSize: 13, color: '#64748B' }}>
-                Devise <strong style={{ color: '#0F172A' }}>{entreprise.currency || 'non déclarée'}</strong>
-                {' · '}
-                Pays <strong style={{ color: '#0F172A' }}>{entreprise.country_code || 'non déclaré'}</strong>
-              </span>
-            )}
-
-            <button
-              style={S.btnFantome}
-              onClick={() => { setRafraichir(true); chargerTout(selectedEntId) }}
-              disabled={rafraichir}
-            >
-              <RefreshCw size={16} className={rafraichir ? 'spin' : ''} />
-              <span>Rafraîchir</span>
-            </button>
-
-            <button
-              style={{ ...S.btnPrimaire, marginLeft: 'auto' }}
-              onClick={enregistrerTout}
-              disabled={modifications === 0 || !!enregistrement}
-            >
-              <Save size={16} />
-              <span>
-                {enregistrement
-                  ? 'Enregistrement…'
-                  : modifications > 0
-                    ? `Enregistrer (${modifications})`
-                    : 'Enregistrer'}
-              </span>
-            </button>
-          </div>
+        <div className="rw-titre-bloc">
+          <span className="rw-eyebrow">Le pagne de boue</span>
+          <h1 className="rw-titre">Rémunérations<span>.</span></h1>
+          <p className="rw-sous-titre">
+            Ce que chaque contrat prévoit : la base, le rythme, les compléments et
+            les heures attendues. Une bande par salarié, teintée quand il ne
+            manque plus rien.
+          </p>
         </div>
 
-        {/* ── Où en est-on ────────────────────────────────── */}
-        {complet && total > 0 ? (
-          <div style={S.succes}>
-            <CheckCircle2 size={22} color="#047857" style={{ flexShrink: 0, marginTop: 2 }} />
-            <div style={{ fontSize: 13.5, lineHeight: 1.75, color: '#065F46' }}>
-              <strong>Les {total} salariés sont renseignés.</strong> Le calcul du coût peut
-              s'appuyer sur des bases complètes — il reste à vérifier les cotisations
-              employeur dans <strong>Configuration fiscale</strong>.
+        <div className="rw-entete-droite">
+          {estSuperAdmin && societes.length > 0 && (
+            <div className="rw-entreprise">
+              <Building2 size={14} aria-hidden="true" />
+              <select
+                value={selectedEntId || ''}
+                onChange={e => setSelectedEntId(e.target.value || null)}
+                aria-label="Entreprise dont on règle les rémunérations"
+              >
+                {societes.map(e => (
+                  <option key={e.id} value={e.id}>{e.name}{e.code ? ` (${e.code})` : ''}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="rw-bascule"
+            data-forme="carre"
+            onClick={() => { setRafraichir(true); chargerTout(selectedEntId) }}
+            disabled={rafraichir || !selectedEntId}
+            aria-label="Recharger les rémunérations"
+            title="Recharger"
+          >
+            <RefreshCw size={15} className={rafraichir ? 'rw-tourne' : ''} />
+          </button>
+
+          <button
+            type="button"
+            className="rw-bascule"
+            role="switch"
+            aria-checked={darkMode}
+            onClick={toggleTheme}
+            aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
+            title={darkMode ? 'Thème clair' : 'Thème sombre'}
+          >
+            {darkMode ? <Moon size={15} aria-hidden="true" /> : <Sun size={15} aria-hidden="true" />}
+          </button>
+        </div>
+      </header>
+
+      <main className="rw-coque">
+
+        {/* ══ LE SEUIL ══ */}
+        <section className="rw-seuil" aria-label="Entreprise, devise et accès rapides">
+          <div className="rw-seuil-gauche">
+            <div className="rw-seuil-item">
+              <span className="rw-seuil-libelle">Entreprise</span>
+              <span className="rw-seuil-valeur">
+                <Building2 size={12} aria-hidden="true" />
+                {nomEntreprise}
+              </span>
+            </div>
+            <div className="rw-seuil-item">
+              <span className="rw-seuil-libelle">Devise</span>
+              <span className="rw-seuil-valeur">
+                <Coins size={12} aria-hidden="true" />
+                {devise || 'non déclarée'}
+              </span>
+            </div>
+            <div className="rw-seuil-item">
+              <span className="rw-seuil-libelle">Pays du barème</span>
+              <span className="rw-seuil-valeur">
+                {entreprise?.country_code || 'non déclaré'}
+              </span>
+            </div>
+            <div className="rw-seuil-item">
+              <span className="rw-seuil-libelle">Salariés actifs</span>
+              <span className="rw-seuil-valeur">{total}</span>
+            </div>
+          </div>
+
+          <div className="rw-raccourcis">
+            <RaccourcisPages compact excludePaths={['/remunerations']} />
+          </div>
+        </section>
+
+        {/* ══ LES MESURES ET LES REPÈRES ══ */}
+        <div className="rw-haut">
+          <div className="rw-mesures">
+            <article className="rw-mesure" data-ton={progression === 100 ? 'ok' : 'attente'}>
+              <span className="rw-mesure-libelle">
+                <Users size={12} aria-hidden="true" />
+                Salariés renseignés
+              </span>
+              <span className="rw-mesure-valeur">
+                {renseignes}<small>/ {total}</small>
+              </span>
+              <span className="rw-mesure-detail">
+                {renseignes === total && total > 0
+                  ? 'toutes les fiches ont un profil'
+                  : `${total - renseignes} à ouvrir pour la première fois`}
+              </span>
+              <span className="rw-trame" aria-hidden="true">
+                {employes.slice(0, 28).map(e => (
+                  <span key={e.id} className="rw-point" data-fait={connus[e.id] ? 'oui' : 'non'} />
+                ))}
+              </span>
+            </article>
+
+            <article className="rw-mesure">
+              <span className="rw-mesure-libelle">
+                <Wallet size={12} aria-hidden="true" />
+                Masse mensuelle
+              </span>
+              <span className="rw-mesure-valeur">{formaterEntier(Math.round(masseMensuelle), devise)}</span>
+              <span className="rw-mesure-detail">
+                base et compléments, hors cotisations et heures supplémentaires
+              </span>
+            </article>
+
+            <article className="rw-mesure">
+              <span className="rw-mesure-libelle">
+                <Clock size={12} aria-hidden="true" />
+                Heures de contrat
+              </span>
+              <span className="rw-mesure-valeur">
+                {formaterEntier(Math.round(heuresContrat), '')}
+                <small>h / mois</small>
+              </span>
+              <span className="rw-mesure-detail">
+                la référence du coût de l’heure prévu
+              </span>
+            </article>
+
+            <article className="rw-mesure" data-ton={incomplets === 0 ? 'ok' : 'alerte'}>
+              <span className="rw-mesure-libelle">
+                <Coins size={12} aria-hidden="true" />
+                Coût moyen de l’heure
+              </span>
+              <span className="rw-mesure-valeur">{formaterMontant(coutHoraireMoyen, devise)}</span>
+              <span className="rw-mesure-detail">
+                {heuresPonderees > 0
+                  ? `pondéré sur ${employes.filter(e => nombre(formulaires[e.id]?.contract_hours_per_month) > 0).length} salarié(s) dont les heures sont connues`
+                  : 'aucune heure de contrat renseignée'}
+              </span>
+            </article>
+          </div>
+
+          <aside className="rw-reperes">
+            <span className="rw-reperes-titre">
+              <Info size={12} aria-hidden="true" />
+              Ce qu’il faut pour calculer
+            </span>
+            <p>
+              Le coût d’un salarié se déduit de <strong>sa base</strong> et de
+              <strong> son rythme</strong>. Le coût de l’heure, lui, a besoin des
+              heures du mois :
+            </p>
+            <ul className="rw-reperes-liste">
+              <li>base mensuelle ÷ heures du mois</li>
+              <li>taux journalier × jours ÷ heures</li>
+              <li>taux horaire, tel quel</li>
+            </ul>
+            <p>
+              Ces montants alimentent le coût, pas le bulletin. Les retenues suivent
+              le <strong>barème du pays déclaré sur l’entreprise</strong>.
+            </p>
+          </aside>
+        </div>
+
+        {/* ══ LE CONSTAT ══ */}
+        {total === 0 ? null : incomplets === 0 ? (
+          <div className="rw-constat" data-ton="ok">
+            <CheckCircle2 size={17} aria-hidden="true" />
+            <div className="rw-constat-texte">
+              <strong>Les {total} bandes sont teintées.</strong> Le coût de chaque
+              salarié est calculable — il reste à vérifier les cotisations employeur
+              dans <strong>Configuration fiscale</strong>.
             </div>
           </div>
         ) : (
-          <div style={S.alerte}>
-            <AlertTriangle size={22} color="#B91C1C" style={{ flexShrink: 0, marginTop: 2 }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13.5, lineHeight: 1.75, color: '#7F1D1D' }}>
-                <strong>{total - renseignes} salarié{total - renseignes > 1 ? 's' : ''} sur {total} n'a{total - renseignes > 1 ? 'ont' : ''} pas encore de rémunération déclarée.</strong>{' '}
-                Tant qu'elle manque, leur coût est compté à zéro dans la page Coût salarial.
-              </div>
-              <div style={S.jauge}>
-                <div style={{
-                  width: `${progression}%`, height: '100%',
-                  background: progression === 100 ? '#059669' : '#F59E0B', borderRadius: 99,
-                }} />
-              </div>
-              <div style={{ fontSize: 12.5, color: '#991B1B', marginTop: 6, fontWeight: 700 }}>
-                {progression} % renseigné
-              </div>
+          <div className="rw-constat" data-ton="alerte">
+            <AlertTriangle size={17} aria-hidden="true" />
+            <div className="rw-constat-texte">
+              <strong>
+                {incomplets} bande{incomplets > 1 ? 's' : ''} sur {total} n’{incomplets > 1 ? 'ont' : 'a'} pas
+                de coût calculable.
+              </strong>{' '}
+              Tant qu’il manque un chiffre, le coût de ces salariés est compté à zéro
+              dans la page Coût salarial.
             </div>
+            <button
+              type="button"
+              className="rw-bouton"
+              data-taille="petit"
+              onClick={() => setFiltre('INCOMPLETS')}
+            >
+              Voir les {incomplets}
+              <ArrowRight size={13} aria-hidden="true" />
+            </button>
           </div>
         )}
 
-        {/* ── Les indicateurs ─────────────────────────────── */}
-        <div style={S.grille}>
-          <div style={S.indicateur}>
-            <div style={{ ...S.ligne, gap: 8, marginBottom: 8 }}>
-              <Users size={16} color="#4F46E5" />
-              <span style={S.label}>SALARIÉS RENSEIGNÉS</span>
+        {/* ══ LE PAGNE ══ */}
+        <section className="rw-pagne" aria-labelledby="rw-pagne-titre">
+          <div className="rw-pagne-tete">
+            <div className="rw-pagne-titres">
+              <h2 className="rw-pagne-titre" id="rw-pagne-titre">
+                Contrat et rémunération
+                <span className="rw-pagne-compte">{visibles.length}</span>
+              </h2>
+              <span className="rw-pagne-note">
+                Modifie une case puis enregistre : rien n’est écrit tant que tu ne le demandes pas.
+              </span>
             </div>
-            <div style={S.chiffre}>
-              {renseignes}<span style={S.unite || { fontSize: 15, color: '#94A3B8' }}> / {total}</span>
+
+            <label className="rw-recherche">
+              <Search size={13} aria-hidden="true" />
+              <input
+                type="search"
+                value={recherche}
+                onChange={e => setRecherche(e.target.value)}
+                placeholder="Nom, matricule, poste…"
+                aria-label="Chercher un salarié"
+              />
+            </label>
+
+            <div className="rw-filtres" role="group" aria-label="Filtrer les bandes">
+              {[
+                { id: 'TOUS', libelle: 'Toutes' },
+                { id: 'INCOMPLETS', libelle: `À compléter (${incomplets})` },
+                { id: 'PRETS', libelle: 'Prêtes' },
+              ].map(f => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className="rw-filtre"
+                  aria-pressed={filtre === f.id}
+                  onClick={() => setFiltre(f.id)}
+                >
+                  {f.libelle}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div style={S.indicateur}>
-            <div style={{ ...S.ligne, gap: 8, marginBottom: 8 }}>
-              <Wallet size={16} color="#4F46E5" />
-              <span style={S.label}>MASSE MENSUELLE DÉCLARÉE</span>
+          {aucunResultat ? (
+            <div className="rw-vide">
+              <BogolanPanSvg hauteur={40} ton="cuivre" />
+              <strong>
+                {recherche.trim()
+                  ? `Aucun salarié ne correspond à « ${recherche.trim()} »`
+                  : filtre === 'INCOMPLETS'
+                    ? 'Toutes les bandes sont teintées'
+                    : filtre === 'PRETS'
+                      ? 'Aucune bande n’est complète pour l’instant'
+                      : 'Aucun salarié actif sur cette entreprise'}
+              </strong>
+              <p>
+                {filtre !== 'TOUS' || recherche.trim()
+                  ? 'Change de filtre ou vide la recherche pour revoir tout le pagne.'
+                  : 'Ajoute des salariés depuis la page Employés : le pagne se tisse à partir de là.'}
+              </p>
+              {(filtre !== 'TOUS' || recherche.trim()) && (
+                <button
+                  type="button"
+                  className="rw-bouton"
+                  data-taille="petit"
+                  onClick={() => { setFiltre('TOUS'); setRecherche('') }}
+                >
+                  Tout revoir
+                </button>
+              )}
             </div>
-            <div style={S.chiffre}>{formaterMontant(masseMensuelle, devise)}</div>
-            <div style={{ fontSize: 12.5, color: '#64748B', marginTop: 4 }}>
-              hors cotisations et heures supplémentaires
-            </div>
-          </div>
-
-          <div style={S.indicateur}>
-            <div style={{ ...S.ligne, gap: 8, marginBottom: 8 }}>
-              <Clock size={16} color="#4F46E5" />
-              <span style={S.label}>HEURES DE CONTRAT</span>
-            </div>
-            <div style={S.chiffre}>
-              {formaterMontant(
-                employes.reduce((acc, e) =>
-                  acc + nombre(formulaires[e.id]?.contract_hours_per_month), 0), '')
-              }<span style={{ fontSize: 15, color: '#94A3B8' }}> h / mois</span>
-            </div>
-            <div style={{ fontSize: 12.5, color: '#64748B', marginTop: 4 }}>
-              la référence du coût de l'heure prévu
-            </div>
-          </div>
-        </div>
-
-        {/* ── D'où vient le chiffre ───────────────────────── */}
-        <div style={S.bandeau}>
-          <Info size={20} color="#6366F1" style={{ flexShrink: 0, marginTop: 2 }} />
-          <div style={{ fontSize: 13.5, lineHeight: 1.8, color: '#3730A3' }}>
-            Ces montants alimentent le calcul du coût, pas le bulletin. Les retenues et
-            l'impôt suivent le <strong>barème du pays déclaré sur l'entreprise</strong> —
-            pour un groupe présent dans plusieurs pays, chaque entreprise porte le sien.
-            Le taux horaire est déduit de la base et des heures du contrat quand tu ne le
-            saisis pas.
-          </div>
-        </div>
-
-        {/* ── Le tableau ──────────────────────────────────── */}
-        <div style={{ ...S.carte, padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0' }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A' }}>
-              Contrat et rémunération
-            </div>
-            <div style={{ fontSize: 13, color: '#64748B' }}>
-              Modifie une case puis enregistre : rien n'est écrit tant que tu ne le demandes pas.
-            </div>
-          </div>
-
-          {loading ? (
-            <div style={S.vide}>Chargement…</div>
-          ) : employes.length === 0 ? (
-            <div style={S.vide}>Aucun salarié actif sur cette entreprise.</div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="remu" style={S.tableau}>
-                <thead>
-                  <tr>
-                    <th style={S.th}>Matricule</th>
-                    <th style={S.th}>Salarié</th>
-                    <th style={S.th}>Contrat</th>
-                    <th style={S.th}>Rythme</th>
-                    <th style={S.thD}>Base</th>
-                    <th style={S.thD}>Taux / heure</th>
-                    <th style={S.thD}>Taux / jour</th>
-                    <th style={S.thD}>Heures</th>
-                    <th style={S.thD}>Jours</th>
-                    <th style={S.thD}>Transport</th>
-                    <th style={S.thD}>Logement</th>
-                    <th style={S.thD}>Prime</th>
-                    <th style={S.thD}>Coût / heure</th>
-                    <th style={{ ...S.thD, textAlign: 'center' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {employes.map(e => {
-                    const f = formulaires[e.id] || ligneVide()
-                    const heures = nombre(f.contract_hours_per_month)
-                    const taux = nombre(f.hourly_rate) ||
-                      (heures > 0 ? nombre(f.base_salary) / heures : 0)
-                    return (
-                      <tr key={e.id}>
-                        <td style={S.td}>{e.matricule || '—'}</td>
-                        <td style={S.tdNom}>
-                          {[e.first_name, e.last_name].filter(Boolean).join(' ') || '—'}
-                          <div style={{ fontSize: 11.5, fontWeight: 500, color: '#94A3B8' }}>
-                            {e.position || e.department || ''}
-                          </div>
-                        </td>
-                        <td style={S.td}>
+            <div className="rw-bandes">
+              {visibles.map(e => {
+                const f = formulaires[e.id] || ligneVide()
+                const etat = etatBande(e.id)
+                const ilManque = manquants(e.id)
+                const taux = tauxHoraire(f)
+                const salarieModifie = modifie(e.id)
+                const actif = (champ) => (ATTENDUS[f.salary_type] || ATTENDUS.monthly).includes(champ)
+                const remplis = 3 - ilManque.length
+
+                return (
+                  <article
+                    key={e.id}
+                    className="rw-bande"
+                    data-etat={etat}
+                    data-modifie={salarieModifie ? 'oui' : 'non'}
+                    aria-label={`${nomComplet(e)} — ${etat === 'complet' ? 'à jour' : etat === 'pret' ? 'à enregistrer' : 'incomplète'}`}
+                  >
+                    <div className="rw-bande-teinture" title={`${remplis} case(s) sur 3`}>
+                      <BogolanTeinture remplis={remplis} total={3} ton="cuivre" />
+                    </div>
+
+                    <div className="rw-bande-corps">
+
+                      <div className="rw-bande-tete">
+                        <span className="rw-medaillon">
+                          <BogolanMedaillonSvg taille={46} ton={etat === 'incomplet' ? 'cuivre' : 'craie'} />
+                          <span className="rw-medaillon-initiales">{initiales(e.first_name, e.last_name)}</span>
+                        </span>
+
+                        <div className="rw-identite">
+                          <span className="rw-nom" title={nomComplet(e)}>{nomComplet(e)}</span>
+                          <span className="rw-meta">
+                            {e.matricule && <code>{e.matricule}</code>}
+                            {[e.position, e.department].filter(Boolean).join(' · ') || 'poste non renseigné'}
+                          </span>
+                        </div>
+
+                        <div className="rw-selects">
                           <select
-                            style={{ ...S.select, fontSize: 12.5, padding: '6px 8px' }}
+                            className="rw-select"
                             value={contracts[e.id] || ''}
-                            onChange={(ev) => {
-                              setContracts(c => ({ ...c, [e.id]: ev.target.value }))
-                              setSouilles(s => ({ ...s, [e.id]: true }))
-                            }}
+                            onChange={ev => setContracts(c => ({ ...c, [e.id]: ev.target.value }))}
+                            aria-label={`Type de contrat de ${nomComplet(e)}`}
                           >
-                            <option value="">—</option>
+                            <option value="">Contrat —</option>
                             {TYPES_CONTRAT.map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
-                        </td>
-                        <td style={S.td}>
+
                           <select
-                            style={{ ...S.select, fontSize: 12.5, padding: '6px 8px' }}
+                            className="rw-select"
                             value={f.salary_type || 'monthly'}
-                            onChange={(ev) => modifier(e.id, 'salary_type', ev.target.value)}
+                            onChange={ev => modifier(e.id, 'salary_type', ev.target.value)}
+                            aria-label={`Rythme de paie de ${nomComplet(e)}`}
                           >
                             {TYPES_REMUNERATION.map(t => (
                               <option key={t.id} value={t.id}>{t.libelle}</option>
                             ))}
                           </select>
-                        </td>
-                        <td style={S.td}>
-                          <input
-                            style={{ ...S.champ, width: 110 }}
-                            value={f.base_salary}
-                            onChange={(ev) => modifier(e.id, 'base_salary', ev.target.value)}
-                            inputMode="decimal"
-                          />
-                        </td>
-                        <td style={S.td}>
-                          <input
-                            style={{ ...S.champ, width: 90 }}
-                            value={f.hourly_rate}
-                            onChange={(ev) => modifier(e.id, 'hourly_rate', ev.target.value)}
-                            inputMode="decimal"
-                          />
-                        </td>
-                        <td style={S.td}>
-                          <input
-                            style={{ ...S.champ, width: 90 }}
-                            value={f.daily_rate}
-                            onChange={(ev) => modifier(e.id, 'daily_rate', ev.target.value)}
-                            inputMode="decimal"
-                          />
-                        </td>
-                        <td style={S.td}>
-                          <input
-                            style={{ ...S.champ, width: 74 }}
-                            value={f.contract_hours_per_month}
-                            onChange={(ev) => modifier(e.id, 'contract_hours_per_month', ev.target.value)}
-                            inputMode="decimal"
-                          />
-                        </td>
-                        <td style={S.td}>
-                          <input
-                            style={{ ...S.champ, width: 64 }}
-                            value={f.contract_days_per_month}
-                            onChange={(ev) => modifier(e.id, 'contract_days_per_month', ev.target.value)}
-                            inputMode="decimal"
-                          />
-                        </td>
-                        <td style={S.td}>
-                          <input
-                            style={{ ...S.champ, width: 90 }}
-                            value={f.transport_allowance}
-                            onChange={(ev) => modifier(e.id, 'transport_allowance', ev.target.value)}
-                            inputMode="decimal"
-                          />
-                        </td>
-                        <td style={S.td}>
-                          <input
-                            style={{ ...S.champ, width: 90 }}
-                            value={f.housing_allowance}
-                            onChange={(ev) => modifier(e.id, 'housing_allowance', ev.target.value)}
-                            inputMode="decimal"
-                          />
-                        </td>
-                        <td style={S.td}>
-                          <input
-                            style={{ ...S.champ, width: 90 }}
-                            value={f.fixed_bonus}
-                            onChange={(ev) => modifier(e.id, 'fixed_bonus', ev.target.value)}
-                            inputMode="decimal"
-                          />
-                        </td>
-                        <td style={{ ...S.td, textAlign: 'right', color: '#64748B', whiteSpace: 'nowrap' }}>
-                          {taux > 0 ? formaterMontant(taux, devise) : '—'}
-                        </td>
-                        <td style={{ ...S.td, textAlign: 'center' }}>
+                        </div>
+                      </div>
+
+                      <div className="rw-groupes">
+                        <div className="rw-groupe">
+                          <span className="rw-groupe-titre">La base du rythme</span>
+                          <div className="rw-cases" data-groupe="base">
+                            {[
+                              { champ: 'base_salary', libelle: 'Mensuelle', unite: devise },
+                              { champ: 'hourly_rate', libelle: 'Par heure', unite: devise },
+                              { champ: 'daily_rate', libelle: 'Par jour', unite: devise },
+                            ].map(({ champ, libelle, unite }) => (
+                              <label
+                                key={champ}
+                                className="rw-case"
+                                data-actif={actif(champ) ? 'oui' : 'non'}
+                              >
+                                <span className="rw-case-libelle">{libelle}</span>
+                                <span className="rw-case-corps">
+                                  <input
+                                    className="rw-case-champ"
+                                    value={f[champ]}
+                                    onChange={ev => modifier(e.id, champ, ev.target.value)}
+                                    inputMode="decimal"
+                                    placeholder="—"
+                                    aria-label={`${libelle} de ${nomComplet(e)}`}
+                                  />
+                                  <span className="rw-case-unite">{unite || '—'}</span>
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="rw-groupe">
+                          <span className="rw-groupe-titre">Le temps prévu</span>
+                          <div className="rw-cases" data-groupe="temps">
+                            {[
+                              { champ: 'contract_hours_per_month', libelle: 'Heures / mois', unite: 'h' },
+                              { champ: 'contract_days_per_month', libelle: 'Jours / mois', unite: 'j' },
+                            ].map(({ champ, libelle, unite }) => (
+                              <label
+                                key={champ}
+                                className="rw-case"
+                                data-actif={actif(champ) ? 'oui' : 'non'}
+                              >
+                                <span className="rw-case-libelle">{libelle}</span>
+                                <span className="rw-case-corps">
+                                  <input
+                                    className="rw-case-champ"
+                                    value={f[champ]}
+                                    onChange={ev => modifier(e.id, champ, ev.target.value)}
+                                    inputMode="decimal"
+                                    placeholder="—"
+                                    aria-label={`${libelle} de ${nomComplet(e)}`}
+                                  />
+                                  <span className="rw-case-unite">{unite}</span>
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="rw-groupe">
+                          <span className="rw-groupe-titre">Les compléments</span>
+                          <div className="rw-cases" data-groupe="complements">
+                            {[
+                              { champ: 'transport_allowance', libelle: 'Transport' },
+                              { champ: 'housing_allowance', libelle: 'Logement' },
+                              { champ: 'fixed_bonus', libelle: 'Prime fixe' },
+                            ].map(({ champ, libelle }) => (
+                              <label key={champ} className="rw-case" data-actif="oui">
+                                <span className="rw-case-libelle">{libelle}</span>
+                                <span className="rw-case-corps">
+                                  <input
+                                    className="rw-case-champ"
+                                    value={f[champ]}
+                                    onChange={ev => modifier(e.id, champ, ev.target.value)}
+                                    inputMode="decimal"
+                                    placeholder="—"
+                                    aria-label={`${libelle} de ${nomComplet(e)}`}
+                                  />
+                                  <span className="rw-case-unite">{devise || '—'}</span>
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rw-bande-pied">
+                        <span className="rw-cout">
+                          Coût de l’heure
+                          <strong>{taux > 0 ? formaterMontant(taux, devise) : '—'}</strong>
+                        </span>
+
+                        {ilManque.length > 0 ? (
+                          <span className="rw-manque">
+                            <TriangleAlert size={12} aria-hidden="true" />
+                            il manque {ilManque.join(', ')}
+                          </span>
+                        ) : (
+                          <span className="rw-etat" data-ton={salarieModifie ? 'attente' : 'ok'}>
+                            <Check size={11} aria-hidden="true" />
+                            {salarieModifie ? 'à enregistrer' : 'à jour'}
+                          </span>
+                        )}
+
+                        {ilManque.length > 0 && (
+                          <span className="rw-etat" data-ton="alerte">
+                            {remplis} / 3
+                          </span>
+                        )}
+
+                        <div className="rw-pied-droite">
                           <button
-                            style={S.btnMinute}
-                            onClick={() => enregistrer(e.id)}
-                            disabled={enregistrement === e.id}
+                            type="button"
+                            className="rw-interrupteur"
+                            aria-checked={f.overtime_eligible !== false}
+                            aria-label={`Heures supplémentaires de ${nomComplet(e)}`}
+                            title="Les heures supplémentaires comptent-elles pour ce salarié ?"
+                            onClick={() => modifier(
+                              e.id, 'overtime_eligible', f.overtime_eligible === false
+                            )}
                           >
-                            {enregistrement === e.id ? '…' : souilles[e.id] ? 'Enregistrer' : 'À jour'}
+                            <span className="rw-interrupteur-piste" aria-hidden="true" />
+                            heures supp.
                           </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+
+                          <button
+                            type="button"
+                            className="rw-bouton"
+                            data-ton="discret"
+                            data-taille="petit"
+                            onClick={() => ouvrirAppliquer(e.id)}
+                            title="Reprendre ces valeurs pour d’autres salariés"
+                          >
+                            <Copy size={12} aria-hidden="true" />
+                            Reprendre
+                          </button>
+
+                          <button
+                            type="button"
+                            className="rw-bouton"
+                            data-ton={salarieModifie ? 'cuivre' : undefined}
+                            data-taille="petit"
+                            onClick={() => enregistrerUne(e.id)}
+                            disabled={enregistrement === e.id || !salarieModifie}
+                          >
+                            {enregistrement === e.id
+                              ? <><RefreshCw size={12} className="rw-tourne" aria-hidden="true" /> Enregistrement…</>
+                              : salarieModifie
+                                ? <><Save size={12} aria-hidden="true" /> Enregistrer</>
+                                : <><Check size={12} aria-hidden="true" /> À jour</>}
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  </article>
+                )
+              })}
             </div>
           )}
-        </div>
+        </section>
 
-        {/* ── La note de bas de page ──────────────────────── */}
-        <div style={{ ...S.carte, background: '#F8FAFC' }}>
-          <div style={{ ...S.ligne, gap: 8, marginBottom: 6 }}>
-            <TrendingUp size={16} color="#4F46E5" />
-            <span style={S.label}>ET ENSUITE</span>
-          </div>
-          <div style={{ fontSize: 13, lineHeight: 1.8, color: '#475569' }}>
+        {/* ══ ET ENSUITE ══ */}
+        <div className="rw-note">
+          <TrendingUp size={15} aria-hidden="true" />
+          <span>
             Une fois les rémunérations déclarées et les cotisations employeur renseignées
-            dans Configuration fiscale, la page <strong>Coût salarial</strong> affiche le coût
-            réel de chaque personne et la projection du mois.
-          </div>
+            dans <strong>Configuration fiscale</strong>, la page <strong>Coût salarial</strong>
+            {' '}affiche le coût réel de chaque personne et la projection du mois.
+          </span>
         </div>
 
-      </div>
+      </main>
+
+      <PageCulturalBand pathname="/remunerations" placement="bottom" />
+
+      {/* ══ LA BARRE D'ASSEMBLAGE ══ */}
+      {modifications > 0 && (
+        <div className="rw-barre" role="status">
+          <span className="rw-barre-compte">
+            <strong>{modifications} bande{modifications > 1 ? 's' : ''} modifiée{modifications > 1 ? 's' : ''}</strong>
+            <span>rien n’est encore écrit</span>
+          </span>
+          <span className="rw-touche" aria-hidden="true">{(navigator.userAgent || '').includes('Mac') ? '⌘' : 'Ctrl'} + S</span>
+          <button
+            type="button"
+            className="rw-bouton"
+            data-ton="cuivre"
+            onClick={enregistrerTout}
+            disabled={enregistrementTout}
+          >
+            {enregistrementTout
+              ? <><RefreshCw size={13} className="rw-tourne" aria-hidden="true" /> Enregistrement…</>
+              : <><Save size={13} aria-hidden="true" /> Enregistrer ({modifications})</>}
+          </button>
+        </div>
+      )}
+
+      {/* ══ REPRENDRE UNE BANDE POUR D'AUTRES ══ */}
+      {appliquer && (
+        <div className="rw-voile" onClick={() => setAppliquer(null)}>
+          <div
+            className="rw-modale"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rw-appliquer-titre"
+            onClick={ev => ev.stopPropagation()}
+          >
+            <div className="rw-modale-tete">
+              <BogolanMedaillonSvg taille={34} ton="cuivre" />
+              <div className="rw-modale-titres">
+                <h2 className="rw-modale-titre" id="rw-appliquer-titre">
+                  Reprendre la bande de {nomComplet(employes.find(x => x.id === appliquer.sourceId) || {})}
+                </h2>
+                <span className="rw-modale-sous">
+                  Rien n’est envoyé à la base : les bandes choisies sont remplies ici,
+                  puis tu enregistres quand tu veux.
+                </span>
+              </div>
+              <button
+                type="button"
+                className="rw-bouton"
+                data-ton="discret"
+                onClick={() => setAppliquer(null)}
+                aria-label="Fermer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="rw-modale-corps">
+              <div>
+                <span className="rw-etiquette">Ce qui se reprend</span>
+                <div className="rw-champs rw-dessus">
+                  {[
+                    ['salary_type', 'Le rythme'],
+                    ['contract_hours_per_month', 'Heures'],
+                    ['contract_days_per_month', 'Jours'],
+                    ['transport_allowance', 'Transport'],
+                    ['housing_allowance', 'Logement'],
+                    ['fixed_bonus', 'Prime'],
+                    ['overtime_eligible', 'Heures supp.'],
+                    ['base_salary', 'Base mensuelle'],
+                    ['hourly_rate', 'Taux horaire'],
+                    ['daily_rate', 'Taux journalier'],
+                  ].map(([champ, libelle]) => (
+                    <button
+                      key={champ}
+                      type="button"
+                      className="rw-champ-puce"
+                      aria-pressed={Boolean(appliquer.champs[champ])}
+                      onClick={() => basculerChamp(champ)}
+                    >
+                      {libelle}
+                    </button>
+                  ))}
+                </div>
+                <p className="rw-pagne-note rw-dessus">
+                  Les trois montants de base sont décochés : un salaire ne se recopie
+                  pas par accident.
+                </p>
+              </div>
+
+              <div>
+                <span className="rw-etiquette">
+                  À qui ({Object.values(appliquer.destinataires).filter(Boolean).length} choisi
+                  {Object.values(appliquer.destinataires).filter(Boolean).length > 1 ? 's' : ''})
+                </span>
+                <div className="rw-appliquer-liste rw-dessus">
+                  {employes.filter(e => e.id !== appliquer.sourceId).map(e => (
+                    <button
+                      key={e.id}
+                      type="button"
+                      className="rw-appliquer-item"
+                      aria-pressed={Boolean(appliquer.destinataires[e.id])}
+                      onClick={() => basculerDestinataire(e.id)}
+                    >
+                      <span className="rw-case-coche" aria-hidden="true">
+                        <Check size={11} />
+                      </span>
+                      <span className="rw-appliquer-nom">{nomComplet(e)}</span>
+                      <span className="rw-appliquer-meta">
+                        {contracts[e.id] || 'contrat —'} · {etatBande(e.id) === 'incomplet' ? 'à compléter' : 'à jour'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="rw-modale-pied">
+              <button type="button" className="rw-bouton" onClick={() => setAppliquer(null)}>
+                Annuler
+              </button>
+              <button type="button" className="rw-bouton" data-ton="cuivre" onClick={appliquerReprise}>
+                <Copy size={13} aria-hidden="true" />
+                Reprendre
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
