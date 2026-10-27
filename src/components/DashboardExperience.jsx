@@ -28,7 +28,6 @@ import {
   RotateCcw,
   SlidersHorizontal,
   Radio,
-  Settings,
   Shield,
   ShieldCheck,
   Sparkles,
@@ -36,6 +35,7 @@ import {
   Timer,
   TrendingUp,
   UserCheck,
+  ScanFace,
   UserPlus,
   UserX,
   Users,
@@ -268,8 +268,9 @@ export default function DashboardExperience({
         // Le plateau et les zones sont un seul écran : l'un ou l'autre des
         // deux modules ouvre « Géopointage ».
         { label: 'Géopointage', icon: MapPin, path: '/geopointage', show: isSuperAdmin || moduleCarteTempsReel || moduleGeofencing, tabKey: 'GEOFENCING' },
-        { label: 'Enrôlements faciaux', icon: UserCheck, path: '/enrollements-faciaux', show: isSuperAdmin || moduleRecoFaciale },
-        { label: 'Configuration faciale', icon: Settings, path: '/config-reco-faciale', show: isSuperAdmin || moduleRecoFaciale },
+        // Les enrôlements et leurs réglages sont un seul écran : une seule
+        // entrée pour la reconnaissance faciale.
+        { label: 'Reconnaissance faciale', icon: ScanFace, path: '/reconnaissance-faciale', show: isSuperAdmin || moduleRecoFaciale },
         { label: 'Pointeuses ADMS', icon: Radio, path: '/pointeuses', show: isSuperAdmin || modulePointeuses },
         { label: 'Poste de pointage', icon: Activity, path: '/poste', show: isSuperAdmin || modulePostePointage },
       ],

@@ -32,6 +32,9 @@ import HeuresSupplementaires from './pages/HeuresSupplementaires'
 import Prospection from './pages/Prospection'
 import Devis from './pages/Devis'
 import Geopointage from './pages/Geopointage'
+// La reconnaissance faciale réunit les enrôlements et leurs réglages :
+// une seule page, une seule porte.
+import ReconnaissanceFaciale from './pages/ReconnaissanceFaciale'
 import JoursFeries from './pages/JoursFeries'
 
 // Employee pages
@@ -45,7 +48,6 @@ import EmployeeRoute from './components/EmployeeRoute'
 // écran que l'entreprise n'a pas acheté.
 import VerrouOptions from './components/VerrouOptions'
 
-import GestionEnrolements from './pages/GestionEnrolements'
 // Le poste de pointage : l'écran qu'on laisse allumé à l'entrée du site — la
 // tablette lit le badge de l'employé et enregistre son arrivée ou son départ.
 import PostePointage from './pages/PostePointage'
@@ -53,7 +55,6 @@ import PostePointage from './pages/PostePointage'
 // télécharger `appareils.json` — sans jamais ouvrir Supabase.
 import Pointeuses from './pages/Pointeuses'
 import Remunerations from './pages/Remunerations'
-import ConfigRecoFaciale from './pages/ConfigRecoFaciale'
 import FichesPaie from './pages/FichesPaie'
 import EmployeeFichesPaie from './pages/employee/EmployeeFichesPaie'
 import ConfigurationFiscale from './pages/ConfigurationFiscale'
@@ -355,16 +356,15 @@ function App() {
           } />
           <Route path="/geofencing" element={<Navigate to="/geopointage" replace />} />
           <Route path="/carte-temps-reel" element={<Navigate to="/geopointage" replace />} />
-          <Route path="/enrollements-faciaux" element={
+          <Route path="/reconnaissance-faciale" element={
             <AdminRoute>
-              <GestionEnrolements />
+              <ReconnaissanceFaciale />
             </AdminRoute>
           } />
-          <Route path="/config-reco-faciale" element={
-            <AdminRoute>
-              <ConfigRecoFaciale />
-            </AdminRoute>
-          } />
+          {/* Les deux anciennes adresses ouvrent la page commune : un
+              signet ou un lien ancien ne tombe pas dans le vide. */}
+          <Route path="/enrollements-faciaux" element={<Navigate to="/reconnaissance-faciale" replace />} />
+          <Route path="/config-reco-faciale" element={<Navigate to="/reconnaissance-faciale" replace />} />
           <Route path="/pointeuses" element={
             <AdminRoute>
               <Pointeuses />
