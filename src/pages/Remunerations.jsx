@@ -265,7 +265,10 @@ export default function Remunerations() {
   const [masseMois, setMasseMois] = useState(null)
   const [cotisations, setCotisations] = useState(0)
   const [coutCharge, setCoutCharge] = useState(false)
-  const [calculAbsent, setCalculAbsent] = useState(false)
+  //  'ok' tant que le calcul répond ; 'absent' si la fonction n'est pas
+  //  installée ; 'erreur' si elle répond par une panne (500). Dans les deux
+  //  derniers cas, la page le dit et ne fait pas semblant.
+  const [coutEtat, setCoutEtat] = useState('ok')
   const [controleBudget, setControleBudget] = useState(false)
 
   const estSuperAdmin = admin?.role === 'super_admin'
@@ -424,13 +427,36 @@ export default function Remunerations() {
   const chargerCout = useCallback(async (entId) => {
     if (!entId) return
     setCoutCharge(true)
-    setCalculAbsent(false)
+    setCoutEtat('ok')
 
     const p = bornes(periode, moisAffiche)
     const m = bornes('mois', moisAffiche)
 
-    const [resLignes, resProjection, resBudget, resCotisations, resMois] = await Promise.all([
-      supabase.rpc('encheck_cout_periode', { p_enterprise: entId, p_du: p.du, p_au: p.au }),
+    //  Un seul appel d'abord : si le calcul est en panne, on n'en déclenche
+    //  pas trois de plus (le navigateur affichait trois erreurs 500 pour un
+    //  seul écran). La page le dit, et s'arrête là.
+    const resLignes = await supabase.rpc('encheck_cout_periode', {
+      p_enterprise: entId,
+      p_du: p.du,
+      p_au: p.au,
+    })
+
+    if (resLignes.error || !Array.isArray(resLignes.data)) {
+      const message = resLignes.error?.message || ''
+      const code = resLignes.error?.code || ''
+      setCoutEtat(code === 'PGRST202' || /Could not find the function/i.test(message)
+        ? 'absent'
+        : 'erreur')
+      setLignesCout([])
+      setProjection(null)
+      setMasseMois(null)
+      setCoutCharge(false)
+      return
+    }
+
+    setLignesCout(resLignes.data)
+
+    const [resProjection, resBudget, resCotisations, resMois] = await Promise.all([
       supabase.rpc('encheck_cout_projeter', { p_enterprise: entId }),
       supabase
         .from('encheck_reglages_cout')
@@ -450,16 +476,8 @@ export default function Remunerations() {
         : supabase.rpc('encheck_cout_periode', { p_enterprise: entId, p_du: m.du, p_au: m.au }),
     ])
 
-    //  Le calcul n'est pas installé sur cette base : on le dit, sans casser
-    //  le reste de la page.
-    const absent = resLignes.error
-      && /PGRST202|Could not find the function/i.test(resLignes.error.message || '')
-    setCalculAbsent(Boolean(absent))
-
-    if (resLignes.error && !absent) toast.error("Le calcul du coût n'a pas répondu.")
-    const lignes = resLignes.error || !Array.isArray(resLignes.data) ? [] : resLignes.data
-    setLignesCout(lignes)
-
+    //  Une projection en panne ne doit pas emporter la page : le mois compté
+    //  fait foi, et le reste s'affiche normalement.
     setProjection(resProjection.error ? null : resProjection.data || null)
     setBudget(resBudget.error ? null : resBudget.data || null)
     setCotisations(resCotisations.count || 0)
@@ -467,7 +485,7 @@ export default function Remunerations() {
     const somme = (liste) => (Array.isArray(liste)
       ? liste.reduce((acc, l) => acc + (Number(l.cout) || 0), 0)
       : null)
-    setMasseMois(periode === 'mois' ? somme(lignes) : somme(resMois.data))
+    setMasseMois(periode === 'mois' ? somme(resLignes.data) : somme(resMois.data))
 
     setCoutCharge(false)
   }, [periode, moisAffiche])
@@ -1497,8 +1515,38 @@ export default function Remunerations() {
               </button>
             </section>
 
+            {/* ══ LE CALCUL NE RÉPOND PAS ══
+                On le dit une fois, avec le chemin pour réessayer — et on
+                n'affiche pas quatre mesures vides qui feraient croire à des
+                chiffres à zéro. */}
+            {!coutCharge && coutEtat !== 'ok' && (
+              <div className="rw-constat" data-ton="alerte">
+                <AlertTriangle size={17} aria-hidden="true" />
+                <div className="rw-constat-texte">
+                  <strong>
+                    {coutEtat === 'absent'
+                      ? 'Le calcul du coût n’est pas installé sur cette base.'
+                      : 'Le calcul du coût n’a pas répondu.'}
+                  </strong>{' '}
+                  {coutEtat === 'absent'
+                    ? 'Les rémunérations, les heures et les autres écrans continuent de fonctionner : seule cette lecture manque.'
+                    : 'Vos rémunérations sont intactes : c’est le calcul qui a échoué. Réessayez dans un instant ; si la panne dure, la fonction de calcul est à vérifier sur la base.'}
+                </div>
+                <button
+                  type="button"
+                  className="rw-bouton"
+                  data-taille="petit"
+                  onClick={() => chargerCout(selectedEntId)}
+                  disabled={!selectedEntId}
+                >
+                  <RefreshCw size={12} aria-hidden="true" />
+                  Réessayer
+                </button>
+              </div>
+            )}
+
             {/* ══ POURQUOI CE MOIS-LÀ ══ */}
-            {messageMois && !coutCharge && (
+            {coutEtat === 'ok' && messageMois && !coutCharge && (
               <div className="rw-constat" data-ton={messageMois.ton}>
                 <Info size={17} aria-hidden="true" />
                 <div className="rw-constat-texte">{messageMois.texte}</div>
@@ -1516,7 +1564,7 @@ export default function Remunerations() {
             )}
 
             {/* ══ CE QUI MANQUE POUR UN CHIFFRE COMPLET ══ */}
-            {!coutCharge && !calculAbsent && (sansMontant > 0 || cotisations === 0) && (
+            {coutEtat === 'ok' && !coutCharge && (sansMontant > 0 || cotisations === 0) && (
               <div className="rw-constat" data-ton="alerte">
                 <AlertTriangle size={17} aria-hidden="true" />
                 <div className="rw-constat-texte">
@@ -1545,17 +1593,8 @@ export default function Remunerations() {
               </div>
             )}
 
-            {calculAbsent && (
-              <div className="rw-constat" data-ton="alerte">
-                <AlertTriangle size={17} aria-hidden="true" />
-                <div className="rw-constat-texte">
-                  <strong>Le calcul du coût n’est pas installé sur cette base.</strong>{' '}
-                  Les heures, les rémunérations et les autres écrans continuent de fonctionner.
-                </div>
-              </div>
-            )}
-
             {/* ══ LES QUATRE MESURES, ET D’OÙ VIENT LE CHIFFRE ══ */}
+            {coutEtat === 'ok' && (
             <div className="rw-haut">
               <div className="rw-mesures">
                 <article className="rw-mesure">
@@ -1648,8 +1687,10 @@ export default function Remunerations() {
                 </p>
               </aside>
             </div>
+            )}
 
             {/* ══ LE DÉTAIL, SALARIÉ PAR SALARIÉ ══ */}
+            {coutEtat === 'ok' && (
             <section className="rw-pagne" aria-labelledby="rw-cout-titre">
               <div className="rw-pagne-tete">
                 <div className="rw-pagne-titres">
@@ -1680,16 +1721,12 @@ export default function Remunerations() {
                   <strong>
                     {rechercheCout.trim()
                       ? `Aucun salarié ne correspond à « ${rechercheCout.trim()} »`
-                      : calculAbsent
-                        ? 'Le calcul du coût n’est pas disponible sur cette base'
-                        : 'Aucun salarié actif sur cette entreprise'}
+                      : 'Aucun salarié actif sur cette entreprise'}
                   </strong>
                   <p>
                     {rechercheCout.trim()
                       ? 'Videz la recherche pour revoir toute la liste.'
-                      : calculAbsent
-                        ? 'Les rémunérations et les autres écrans restent utilisables : seule cette lecture manque.'
-                        : 'Ajoutez des salariés depuis la page Employés : leur coût apparaîtra ici dès qu’un profil de paie existera.'}
+                      : 'Ajoutez des salariés depuis la page Employés : leur coût apparaîtra ici dès qu’un profil de paie existera.'}
                   </p>
                   {rechercheCout.trim() && (
                     <button
@@ -1797,8 +1834,10 @@ export default function Remunerations() {
                 </div>
               )}
             </section>
+            )}
 
             {/* ══ CE QUE CET ÉCRAN NE FAIT PAS ══ */}
+            {coutEtat === 'ok' && (
             <div className="rw-note">
               <CheckCircle2 size={15} aria-hidden="true" />
               <span>
@@ -1808,6 +1847,7 @@ export default function Remunerations() {
                 bulletins et les déclarations restent du ressort de la comptabilité.
               </span>
             </div>
+            )}
           </>
         )}
 

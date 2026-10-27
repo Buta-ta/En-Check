@@ -118,6 +118,29 @@ L'ancienne adresse `/cout-salarial` **redirige** vers
 module accepte l'une ou l'autre des deux options (`module_remunerations`,
 `module_cout_salarial`) : une page, deux portes d'entrée.
 
+Le **menu latéral** ne porte plus de ligne « Coût salarial » : la page des
+rémunérations est la seule porte, sa barre d'onglets fait le reste. La
+**commande rapide** du tableau de bord y mène encore, pour un client qui
+n'aurait que ce module-là.
+
+### Quand le calcul ne répond pas
+
+L'ancienne page lançait trois appels en parallèle (`periode`, `projeter`, et un
+second `periode` pour le repli du mois). Sur une base où la fonction échoue, le
+navigateur affichait **trois erreurs 500 pour un seul écran**, et la page
+affichait des zéros comme si l'entreprise n'avait personne.
+
+Désormais la vue **sonde une seule fois** `encheck_cout_periode` :
+
+- si elle répond, le reste s'enchaîne (projection, budget, cotisations, repli du
+  mois) ;
+- sinon, un **seul** constat le dit, et il distingue les deux cas : la fonction
+  n'est pas installée sur cette base, ou elle a échoué. Aucune mesure à zéro,
+  aucune ligne fantôme, et un bouton **Réessayer** pour relancer à la demande.
+
+Une **projection** en panne ne prive pas de la masse du mois : le mois compté
+fait foi, le reste s'affiche normalement.
+
 ## Ce qui change dans la page
 
 **Le tableau de treize colonnes disparaît.** C'était le vrai problème : treize
@@ -264,7 +287,7 @@ formule d'atelier réintroduite, couleur de texte changée au survol — chacune
 fait tomber au moins un test.
 
 La fusion a son propre fichier —
-`src/services/__tests__/remunerationsCout.test.jsx`, 24 tests :
+`src/services/__tests__/remunerationsCout.test.jsx`, 28 tests :
 
 - l'ancienne page n'existe plus, l'ancienne adresse redirige, le calcul est
   bien emporté (les quatre fonctions et le réglage de budget) ;
@@ -276,6 +299,9 @@ La fusion a son propre fichier —
 - la recherche, à sa place habituelle dans la barre de titre ;
 - le budget se contrôle depuis la barre ; sans budget, pas de barre, et ⌘S
   n'enregistre rien depuis une vue qui ne fait que lire ;
+- les pannes : un calcul en échec le dit sans vider la page et **sans répéter
+  l'appel**, une fonction absente se dit autrement, « Réessayer » relance, et
+  une projection en panne laisse les chiffres du mois debout ;
 - le ton et la lisibilité : aucune formule d'atelier, aucun texte dimmé.
 
 Deux sections défendent le ton et la lisibilité au survol :
