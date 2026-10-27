@@ -123,3 +123,16 @@ déconnexion reste un bouton séparé, à côté.
 | `src/pages/Dashboard.css` | espresso/bogolan, bandeaux réels, pied cliquable |
 | `src/services/__tests__/navigationPerso.test.js` | 52 tests — la logique |
 | `src/services/__tests__/sidebarNavigation.test.jsx` | 16 tests — les gestes à l'écran |
+
+---
+
+## 8. Retouches de navigation (round 44)
+
+| Demande | Réponse |
+|---|---|
+| « **Bc / Buta code / Super administrateur** » cliquable | Le bloc du **profil dans la barre du haut** devient un lien vers `/admins` (avatar + nom + rôle + chevron), comme celui de la barre latérale. Le cadre s'éclaire au survol, le texte ne bouge pas. |
+| Bandeau bogolan après le navbar | `.dashboard-bogolan`, 48 px, pleine largeur, juste après `</header>` : la **vraie** pièce `paie-bogolan-haut.webp` en `repeat-x`, bords fondus. |
+| Flèche retour en haut à gauche | `.aa-retour` (Administrateurs) et `.en-retour` (Entreprises) : cercle cousu, 38 px, `aria-label="Retour au tableau de bord"`. Le bouton « Tableau de bord » redondant de la page Entreprises a été retiré. |
+| Section du planning pliable | `.sk-focus-bar` devient repliable : bouton `.sk-focus-toggle` (`aria-expanded`, `aria-controls`), corps `.sk-focus-corps` conditionnel, résumé « N collaborateur(s) · filtre » quand elle est repliée, chevron qui pivote. Le choix est retenu (`localStorage["planning_legende_ouverte"]`). Le filtre, le compteur et la légende (Disponibilité, Types de cartes, Signaux) restent dans le corps. |
+
+Tests : `src/services/__tests__/retouchesNavigation.test.js` (16 tests).

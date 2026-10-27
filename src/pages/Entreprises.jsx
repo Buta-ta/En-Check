@@ -502,16 +502,27 @@ export default function Entreprises() {
 
       <div className="en-shell">
         <header className="en-entete">
-          <div className="en-titre-bloc">
-            <KorhogoBlasonSvg size={54} />
-            <div>
-              <span className="en-eyebrow">Le registre des entreprises</span>
-              <h1 className="en-titre">
-                Entreprises<span>.</span>
-              </h1>
-              <p className="en-sous-titre">
-                Chaque fiche réunit une entreprise : ses employés, ses pointages, ses modules.
-              </p>
+          <div className="en-entete-gauche">
+            <button
+              type="button"
+              className="en-retour"
+              onClick={() => navigate('/dashboard')}
+              aria-label="Retour au tableau de bord"
+              title="Retour au tableau de bord"
+            >
+              <ArrowLeft size={16} aria-hidden="true" />
+            </button>
+            <div className="en-titre-bloc">
+              <KorhogoBlasonSvg size={54} />
+              <div>
+                <span className="en-eyebrow">Le registre des entreprises</span>
+                <h1 className="en-titre">
+                  Entreprises<span>.</span>
+                </h1>
+                <p className="en-sous-titre">
+                  Chaque fiche réunit une entreprise : ses employés, ses pointages, ses modules.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -526,10 +537,6 @@ export default function Entreprises() {
               title={darkMode ? 'Thème clair' : 'Thème sombre'}
             >
               {darkMode ? <Moon size={14} /> : <Sun size={14} />}
-            </button>
-            <button type="button" className="en-bouton-creux" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft size={14} />
-              Tableau de bord
             </button>
             <button type="button" className="en-bouton" onClick={handleAdd}>
               <Plus size={15} />

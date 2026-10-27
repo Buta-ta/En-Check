@@ -347,6 +347,39 @@
   border-bottom: 1px dashed var(--aa-ligne);
 }
 
+.aa-register .aa-heading-gauche {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* La flèche de retour, en haut à gauche : un cercle cousu, pas un lien nu. */
+.aa-register .aa-retour {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  color: var(--aa-encre);
+  text-decoration: none;
+  border: 1px solid var(--aa-couture);
+  border-radius: 50%;
+  background: var(--aa-carte);
+  box-shadow: 0 2px 0 -1px var(--aa-couture);
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.aa-register .aa-retour:hover {
+  border-color: var(--aa-couture-forte);
+  transform: translateX(-2px);
+}
+
+.aa-register .aa-retour:focus-visible {
+  outline: 2px solid var(--aa-fil);
+  outline-offset: 3px;
+}
+
 .aa-register .aa-marque {
   display: flex;
   align-items: center;

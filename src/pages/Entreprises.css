@@ -194,6 +194,39 @@
   color: var(--en-encre-faible);
 }
 
+.en-entete-gauche {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* La flèche de retour, en haut à gauche, dans le cadre de la toile. */
+.en-page .en-retour {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  color: var(--en-encre);
+  border: 1px solid var(--en-couture);
+  border-radius: 50%;
+  background: var(--en-carte);
+  box-shadow: 0 2px 0 -1px var(--en-couture-forte);
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.en-page .en-retour:hover {
+  border-color: var(--en-noir);
+  transform: translateX(-2px);
+}
+
+.en-page .en-retour:focus-visible {
+  outline: 2px solid var(--en-ocre);
+  outline-offset: 3px;
+}
+
 .en-entete-actions {
   display: flex;
   align-items: center;
