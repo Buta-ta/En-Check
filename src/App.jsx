@@ -30,7 +30,6 @@ import SystemMessages from './pages/SystemMessages'
 import Absences from './pages/Absences'
 import HeuresSupplementaires from './pages/HeuresSupplementaires'
 import Prospection from './pages/Prospection'
-import Devis from './pages/Devis'
 import Geopointage from './pages/Geopointage'
 // La reconnaissance faciale réunit les enrôlements et leurs réglages :
 // une seule page, une seule porte.
@@ -396,11 +395,9 @@ function App() {
               <Prospection />
             </AdminRoute>
           } />
-          <Route path="/devis" element={
-            <AdminRoute requireSuperAdmin>
-              <Devis />
-            </AdminRoute>
-          } />
+          {/* Les devis ont rejoint la prospection : l'ancienne adresse ouvre
+              la page commune sur sa vue devis. */}
+          <Route path="/devis" element={<Navigate to="/prospection?vue=devis" replace />} />
           <Route path="/connexions" element={
             <AdminRoute requireSuperAdmin>
               <ConnectionLogs />
