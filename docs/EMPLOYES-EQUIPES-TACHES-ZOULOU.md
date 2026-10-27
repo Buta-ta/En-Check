@@ -1,4 +1,4 @@
-# Employés · Équipes · Tâches — une seule page, motif perles zoulou
+# Employés · Équipes · Tâches — une seule page, le registre perlé
 
 ## Ce qui change
 
@@ -25,119 +25,139 @@ Conséquences volontaires :
 - les anciennes adresses restent valables : `/equipes` et `/taches`
   renvoient vers la bonne vue (`Navigate … replace`). Un favori ou un lien
   envoyé hier ne casse pas ;
-- la commande rapide du tableau de bord s'appelle désormais « Gérer les
-  équipes et les tâches » et pointe sur `/employes?vue=equipes` ;
-- `VerrouOptions` ne surveille plus `/equipes` ni `/taches` : ces adresses
-  n'existent plus. L'option reste verrouillable par son nom, et les deux
-  vues ne s'affichent que si `module_taches` est allumé (super
-  administrateur excepté). Sinon l'onglet n'est pas proposé — on ne montre
-  pas une porte qui ne mène nulle part — et l'adresse directe affiche une
-  phrase qui dit quoi demander et à qui.
+- la commande rapide du tableau de bord s'appelle « Gérer les équipes et
+  les tâches » et pointe sur `/employes?vue=equipes` ;
+- `VerrouOptions` ne surveille plus `/equipes` ni `/taches`. L'option
+  reste verrouillable par son nom, et les deux vues ne s'affichent que si
+  `module_taches` est allumé (super administrateur excepté). Sinon
+  l'onglet n'est pas proposé — on ne montre pas une porte qui ne mène
+  nulle part — et l'adresse directe affiche une phrase qui dit quoi
+  demander et à qui.
 
-## Direction artistique : les perles zoulou
+## Direction artistique : le registre perlé
 
-Référence visuelle : `docs/design/zoulou-perles-bande-planche.jpg` (bande
-perlée, fond espresso, losanges crème / cuivre / bleu-vert / sauge et un
-accent corail). Le dessin existant du motif zoulou de l'annuaire
-(`public/images/employes-zoulou.webp`, `PageCulturalBand`) ne change pas :
-les deux nouvelles vues en reprennent le vocabulaire, sans le répéter tel
-quel.
+Les planches de référence sont dans le dépôt :
 
-**Tout est dessiné en SVG**, dans `src/components/zoulou/PerlesZoulouSvg.jsx` :
-aucune image, aucune police d'icônes, aucun dégradé posé en `background`
-d'une photo. Six signes, chacun avec un sens :
+- `docs/design/refonte-equipes.png` (1440 × 1010) ;
+- `docs/design/refonte-taches.png` (1440 × 780).
 
-| Signe | Composant | Ce qu'il dit |
+**L'idée tient en une phrase** : un registre de maison, tenu à la main,
+dont la tranche est perlée. Ce n'est pas une planche de cartes et pas un
+tableau de bord : une page de papier ivoire, des filets, du blanc, des
+chiffres en serif et des perles là où il faut compter quelque chose.
+
+Trois décisions, tenues sur les deux écrans :
+
+1. **aucune carte.** Rien ne flotte dans une boîte blanche à coin arrondi
+   et à ombre. Ce qui sépare deux entrées, c'est un filet horizontal ;
+   ce qui sépare deux colonnes, c'est un filet vertical et une tranche
+   perlée. Le fond de la page reste le papier.
+2. **une seule barre d'outils, à la même place.** Folio, filet, eyebrow,
+   titre serif avec son point de cuivre, colophon de quatre chiffres,
+   filet plein ; puis la barre — recherche au trait, filtres à perle,
+   sélecteur au trait, actions en mots soulignés, et **un seul** aplat de
+   cuivre pour l'action qui crée.
+3. **les perles ne décorent pas : elles comptent.** Une perle par personne
+   sur le collier de l'entreprise, une perle par tranche de vingt points
+   de santé, une perle par jour restant avant une échéance, une tranche
+   perlée par colonne de tâches. Aucune perle sans nombre derrière.
+
+### Le feuillet (les deux vues)
+
+| Élément | Règle |
+| --- | --- |
+| folio | `En-Check · Gestion du personnel` à gauche, le nom du registre à droite, un filet dessous |
+| eyebrow | un mot de cuivre en capitales espacées, précédé de trois points de perle |
+| titre | serif (Georgia), très grand, chasse serrée, un point de cuivre en guise de point final |
+| colophon | quatre chiffres séparés par un filet vertical : valeur serif, libellé en petites capitales, note chiffrée réelle (`100 % des équipes`, `dont 4 jamais ouvertes`, `—` quand il n'y a rien à compter) |
+| barre d'outils | recherche soulignée d'un trait, filtres « perle creuse / perle pleine », sélecteurs sans cadre, actions en mots soulignés, un bouton de cuivre plein |
+| pied | « À décider » : un pli qu'on ouvre, jamais une bannière qui hurle |
+
+### Équipes — ce que dessine la vue
+
+- **le collier de l'entreprise** : tout l'effectif en une parure. Un groupe
+  par équipe, séparés par un filet vertical ; chaque personne est une perle
+  portant ses initiales, le fil prend le ton de l'équipe, la perle du chef
+  est cerclée de noir, et les personnes sans équipe sont des perles creuses
+  posées sur un fil corail, à part, avec la mention « à rattacher » ;
+- **le registre** : une entrée par équipe, numérotée (`01`, `02`…), avec le
+  nom en serif, la description, un **filet de la couleur de l'équipe** sous
+  la description, les membres en initiales (le chef cerclé), la santé en
+  cinq perles et son pourcentage (`Non suivie` quand aucune mesure
+  n'existe), puis trois actions en mots : `Membres`, `Modifier`, `⋯` ;
+- le menu `⋯` ouvre `Modifier l'équipe`, `Changer de chef`, `Supprimer` ;
+- recherche, filtres (toutes, avec chef, sans chef, vides, à surveiller) et
+  tri par nom, effectif ou santé.
+
+### Tâches — ce que dessine la vue
+
+- **les catégories** : une perle à la couleur de la catégorie, son nom, son
+  effectif, et « + Nouvelle catégorie » à droite du filet ;
+- **quatre colonnes de registre** : *À faire*, *En cours*, *Terminées*,
+  *Validées*. Chacune a sa **tranche perlée** à gauche, qui suit la hauteur
+  réelle des entrées, un titre serif, son compte et une ligne de
+  description ;
+- **une entrée de tâche** n'est pas une carte : une perle de priorité, un
+  numéro italique, le titre en serif, puis la priorité et la catégorie en
+  petit, l'**échéance dessinée en collier** avec sa phrase (`6 j restants`,
+  `retard de 3 j`), la personne en pastille et en nom, et deux actions en
+  mots (`Modifier`, la corbeille) ;
+- une colonne vide dit « Rien ici » et garde une **rosace creuse** ; chaque
+  colonne se termine par « + ajouter une tâche » ;
+- **la vue Liste** donne la même matière à plat : une ligne par tâche, avec
+  son état, son équipe, sa catégorie, sa personne et son échéance ;
+- sélection multiple (la case est une perle qu'on remplit) et suppression
+  groupée avec confirmation ;
+- les tâches refusées ou annulées ne figurent pas au tableau : une phrase
+  le dit et renvoie à la liste.
+
+### Les dessins
+
+`src/components/zoulou/PerlesZoulouSvg.jsx` ne contient plus que ce qui
+sert, et rien de plus :
+
+| Dessin | Rôle |
+| --- | --- |
+| `CollierEcheanceSvg` | une perle par jour restant (onze au plus, puis trois points) ; corail et dernière perle cerclée en retard |
+| `RosacePerlesSvg` | quatorze perles creuses en couronne : l'état vide, dessiné |
+
+Tout est en SVG, sans image, sans police d'icônes, sans dégradé posé en
+`background` d'une photo.
+
+### Palette du registre
+
+Tout passe par des variables `--rg-*` posées sur `.emp-vues`, avec deux
+jeux complets : le papier sous `.emp-vues`, la nuit sous
+`[data-theme='dark'] .emp-vues`. Les fenêtres de travail gardent leurs
+variables `--zl-*`, **reliées à la palette du registre** pour ne pas jurer
+avec lui.
+
+| Rôle | Clair | Nuit |
 | --- | --- | --- |
-| la **frise** | `FrisePerlesSvg` | la couture perlée qui coiffe la vue : une trame tissée très pâle, une couture en dents et un rang de grosses perles qui ondule. Chevrons pour les Équipes, zigzag pour les Tâches |
-| l'**anneau** | `AnneauPerlesSvg` | une proportion en perles pleines sur un cercle fermé — jamais un camembert, jamais une barre |
-| le **losange** | `LosangePerlesSvg` | quatre perles et un cœur : la puce qui marque un repère |
-| la **rosace** | `RosacePerlesSvg` | deux anneaux de perles : le filigrane d'une carte, l'état vide |
-| le **collier** | `CollierEcheanceSvg` | une perle par jour qui reste avant l'échéance ; en retard, le collier est corail et la dernière perle se cerne |
-
-### La scène
-
-Chaque vue s'ouvre sur **une scène en drap espresso** (`.zl-scene`) : la
-frise en haut, puis un titre en serif, une ligne de chiffres et les
-actions. Les **modules de chiffres ne flottent pas sur la page** : ils
-sont posés sur le drap, dans le prolongement de la frise, séparés du titre
-par un filet clair. C'est le contraste entre le drap sombre et la page
-ivoire qui donne son relief à l'écran — et c'est le même drap dans les
-deux thèmes, comme la bande de référence.
-
-Trois règles d'écriture, tirées de la première revue :
-
-- **rien d'ornemental qui ne dise rien** : la barre de vues ne se termine
-  plus par une file de petits points sans fonction. C'est un sommaire —
-  un mot, trois entrées, un filet, et un trait de cuivre sous la vue
-  ouverte. Une seule marque par entrée : l'icône, pas une perle en plus ;
-- **les chiffres se lisent** : dans la scène, le nombre s'écrit en serif,
-  le mot en petit, et une perle sépare deux groupes — plus de chapelet de
-  points de ponctuation (`·`). Chaque module du bandeau donne une part
-  (« 100 % du total »), et un tiret quand il n'y a rien à compter ;
-- **les actions sont hiérarchisées** : les utilitaires (rafraîchir,
-  raccourcis) restent petits, à gauche d'un filet ; les deux actions qui
-  créent quelque chose sont à droite, dont une seule pleine.
-
-| Rôle de la scène | Couleur | Contraste sur `#241A12` |
-| --- | --- | --- |
-| drap | `#241A12` (dégradé `#2C1F15` → `#1A120C`) | — |
-| encre | `#F7ECDB` | 14,6:1 |
-| texte secondaire | `#CFB697` | 8,8:1 |
-| cuivre (eyebrow, libellés) | `#E2A566` | 8,0:1 |
-| alerte | `#F0A68C` | 8,6:1 |
-| réussite | `#A8D3B0` | 10,2:1 |
-
-Le texte du bouton principal se pose sur le cuivre clair du drap :
-`#2A1A0E` sur `#D58D4B` = 6,2:1.
-
-### La santé, les proportions
-
-- la **santé d'une équipe** se lit en cinq perles (une par tranche de
-  20 points) et en clair : sans mesure, elle affiche « Non suivie » et
-  aucune perle n'est remplie — on ne fait pas semblant de mesurer ;
-- les **anneaux** du bandeau et des cartes sont remplis par une part
-  réelle (équipes avec des membres, part de l'effectif en équipe, équipes
-  dirigées, personnes à rattacher), jamais par un remplissage décoratif ;
-- l'**échéance d'une tâche** est dessinée en collier ; le texte reste là
-  pour le chiffre exact.
-
-### Palette
-
-Tout passe par des variables `--zl-*`, écrites en dur (elles ne dépendent
-plus des `--pt-*` du shell, pour que les contrastes soient calculables par
-le test), avec deux jeux complets : clair sous `.emp-vues`, sombre sous
-`[data-theme='dark'] .emp-vues`.
-
-| Rôle | Clair | Sombre |
-| --- | --- | --- |
-| fond de page | `#FAF6F0` | `#15110E` |
-| surface (papier ivoire) | `#FFFDF8` | `#201A15` |
-| creux | `#F4EDE2` | `#2A221C` |
-| encre | `#231911` | `#F7EFE4` |
-| texte doux | `#4E3D2E` | `#DFD0BE` |
-| texte faible | `#74604C` | `#A6937E` |
-| cuivre d'action | `#A45C24` | `#D58D4B` |
-| cuivre plein | `#823F14` | `#C57C3C` |
-| bleu-vert | `#1F6B60` | `#6FBFAE` |
-| sauge | `#55662F` | `#A8BE7E` |
-| corail | `#A8452F` | `#E8917C` |
-| perles (verre) | crème `#EFE1C3`, cuivre `#C08A4D`, bleu-vert `#4F9389`, sauge `#8BA268`, corail `#D08B74` | `#F0E2C6`, `#D69A5C`, `#71B9AD`, `#A5BB7D`, `#D67C62` |
+| papier | `#F5F0E6` | `#17110B` |
+| encre | `#1C140D` | `#F4ECDF` |
+| texte doux | `#42342A` | `#DCCDBA` |
+| texte faible | `#6B5C44` | `#A6957C` |
+| cuivre d'action | `#8F4D1D` | `#D99A58` |
+| cuivre plein | `#74400F` | `#C8873F` |
+| bleu-vert | `#2B6A5F` | `#74BCAE` |
+| sauge | `#56652A` | `#ADC081` |
+| corail | `#A2452E` | `#E8927C` |
+| perles (verre) | crème `#E0C9A0`, cuivre `#B8823F`, bleu-vert `#4F9389`, sauge `#8BA268`, corail `#C8785C` | `#EFE0C2`, `#C99154`, `#6FB9AD`, `#A2BB7C`, `#D48163` |
 
 ### Contrastes calculés
 
 | Texte → fond | Ratio | Verdict |
 | --- | --- | --- |
-| encre `#231911` sur surface `#FFFDF8` | 17,0:1 | ok |
-| doux `#4E3D2E` sur creux `#F4EDE2` | 8,9:1 | ok |
-| faible `#74604C` sur creux `#F4EDE2` | 5,1:1 | ok |
-| doux `#DFD0BE` sur creux sombre `#2A221C` | 10,3:1 | ok |
-| faible `#A6937E` sur creux sombre `#2A221C` | 5,3:1 | ok |
-| encre de scène `#F7ECDB` sur drap `#241A12` | 14,6:1 | ok |
-| cuivre clair `#A45C24` sur creux `#F4EDE2` | 4,4:1 | **interdit** → on emploie `#823F14` (6,8:1) |
+| encre `#1C140D` sur papier `#F5F0E6` | 16,0:1 | ok |
+| doux `#42342A` sur papier `#F5F0E6` | 10,5:1 | ok |
+| faible `#6B5C44` sur papier `#F5F0E6` | 5,7:1 | ok |
+| cuivre `#8F4D1D` sur papier `#F5F0E6` | 5,7:1 | ok |
+| sur-cuivre `#FFFFFF` sur cuivre plein `#74400F` | 8,5:1 | ok |
+| encre nuit `#F4ECDF` sur papier nuit `#17110B` | 16,0:1 | ok |
+| initiales `#241A12` sur chaque perle | 5,8:1 à 13,1:1 | ok |
 
-Le test lit les valeurs dans la feuille et recalcule ces ratios : il
-échoue si une teinte de scène passe sous 4,5:1.
+Le test lit les valeurs dans la feuille et recalcule ces ratios.
 
 ### Survol
 
@@ -153,61 +173,30 @@ propriétés.
 
 ### Le mouvement
 
-Les cartes, colonnes, modules et le registre **se posent** une fois
-(`@keyframes zl-perle-pose`, 0,42 s, décalage de 40 ms par carte) ; tout
-est coupé sous `prefers-reduced-motion: reduce`.
-
-## Les vues
-
-### Équipes
-
-- en-tête (la scène) : frise perlée, titre serif, ligne de chiffres,
-  puis quatre modules à anneau — équipes, membres, chefs d'équipe,
-  personnes sans équipe — séparés par un trait ;
-- collier « À décider » : alertes, personnes sans équipe, regroupements
-  possibles, besoins d'effectif, dépliables onglet par onglet. Sans
-  l'option Prédictions, le collier dit simplement que ces analyses sont
-  éteintes ;
-- cartes ou liste (deux présentations, une seule lecture) : pastille de
-  couleur, jauge de santé, fil d'avatars avec le chef marqué, effectif,
-  chef nommé, actions *Membres / Modifier* et menu *Chef / Supprimer* ;
-- recherche, filtres (avec chef, sans chef, vides, à surveiller) et tri.
-
-Le tableau à colonnes de l'ancienne page a été retiré : il doublait la
-liste sans rien dire de plus.
-
-### Tâches
-
-- quatre perles de chiffres : à faire, en cours, en retard, terminées ;
-- bloc « À surveiller » dépliable quand les prédictions sont allumées ;
-- catégories : une puce par catégorie avec son effectif, plus l'édition ;
-- deux présentations : **Tableau** (glisser-déposer entre colonnes) et
-  **Liste** (une ligne par tâche, pour balayer) ;
-- sélection multiple et suppression groupée, avec confirmation ;
-- les tâches refusées ou annulées ne figurent pas au tableau : une phrase
-  le dit et renvoie à la liste, plutôt que de les faire disparaître en
-  silence.
+Les entrées, les tâches et les groupes du collier **se posent** une fois
+(`@keyframes rg-pose`, 0,34 s), avec un décalage de 30 ms par entrée.
+Tout est coupé sous `prefers-reduced-motion: reduce`.
 
 ## Le ton
 
 On reste un service professionnel. Aucun mot d'atelier ne doit apparaître
 dans un texte lu : ni « pagne », ni « bande », ni « teinture », ni
-« atelier », ni « métier à perles », ni « collier ». Les noms de classes
-CSS peuvent porter le motif ; **les phrases, non**. Le vocabulaire est
-celui de la gestion : équipe, chef d'équipe, effectif, échéance, priorité,
-catégorie, valider.
+« atelier », ni « métier à perles ». Les noms de classes CSS peuvent
+porter le motif ; **les phrases, non**. Le vocabulaire est celui de la
+gestion : équipe, chef d'équipe, effectif, échéance, priorité, catégorie,
+valider.
 
 Les messages disent ce qui se passe et ce qu'on peut faire :
 
 - « Aucune équipe pour l'instant » + le bouton pour créer la première ;
 - « Aucune tâche ne correspond » + le conseil d'élargir la recherche ;
 - « Option Équipes non activée » + qui peut l'allumer ;
-- « Le calcul… » n'existe plus ici, mais la règle reste : on nomme le
-  manque, on ne masque pas.
+- « Les analyses d'équipe ne sont pas activées » quand Prédictions est
+  éteint — on nomme le manque, on ne masque pas.
 
 ## Tests
 
-`src/services/__tests__/employesEquipesTaches.test.jsx` — 36 tests.
+`src/services/__tests__/employesEquipesTaches.test.jsx` — 54 tests.
 
 Ce qu'ils défendent :
 
@@ -216,33 +205,35 @@ Ce qu'ils défendent :
    n'existent plus, `VerrouOptions` ne surveille plus une adresse morte ;
 2. **onglets** : trois vues, annuaire par défaut, l'adresse porte la vue
    (`?vue=`), les raccourcis de pages restent dans la coque ;
-3. **vue Équipes** : phrase de comptage, jauge de perles, chef nommé,
-   équipe vide qui ne montre pas d'avatars fantômes, état vide, option
-   éteinte expliquée, ouverture de la fenêtre de création, collier
-   d'alertes, absence de prédictions dite en clair ;
-4. **vue Tâches** : quatre colonnes nommées, priorité et échéance en
+3. **vue Équipes** : folio, titre, colophon de quatre chiffres, parts
+   réelles ou tiret, collier avec perle du chef cerclée et perles creuses
+   pour les personnes à rattacher, santé en cinq perles, entrées
+   numérotées, équipe vide sans avatar fantôme, filtres et recherche,
+   décisions repliées, absence de prédictions dite en clair ;
+4. **vue Tâches** : titre et colophon, quatre colonnes nommées et leur
+   compte, numéro et perle de priorité, priorité / catégorie / échéance en
    français, glisser-déposer qui appelle vraiment `updateTask`, sélection
    et vidage, bascule en liste, catégories filtrantes, états vides ;
-5. **ton et dessin** : aucun mot d'atelier dans les textes rendus, règles
-   `:hover` sans fond / couleur / opacité, cibles de doigt (44 px pour les
-   onglets, 40 px pour les boutons), contrastes calculés dans les deux
-   thèmes, perles dessinées en CSS (pas d'image, pas de dégradé de texte) ;
+5. **ton et dessin** : feuillet sans carte, entrées au filet, tranche
+   perlée des colonnes, collier d'échéance, aucune tâche refusée cachée,
+   aucun mot d'atelier, règles `:hover` sans fond / couleur / opacité,
+   cibles de doigt (44 px pour les onglets, 42 px pour l'action
+   principale, 40 px pour les liens), contrastes calculés dans les deux
+   thèmes, initiales lisibles sur toutes les perles, absence de
+   l'ancienne scène ;
 6. **page entière** : les trois onglets s'affichent, on passe d'une vue à
-   l'autre sans quitter la page, les raccourcis ne renvoient pas vers la
-   page courante.
+   l'autre sans quitter la page, les chiffres sont séparés par un filet,
+   les raccourcis ne renvoient pas vers la page courante.
 
 Chaque test neuf a été vérifié par mutation : rétablir l'ancien
-comportement doit le faire échouer (route, entrée de menu, phrase de
-comptage, jauge, cible du glisser, libellé de priorité, adresse des
-onglets, `background` ajouté au survol, contraste sombre, mot d'atelier,
-visibilité des onglets, changement de vue).
+comportement doit le faire échouer.
 
 ## Limites connues
 
-- l'ancienne page Équipes proposait un tableau à colonnes (déplacer un
-  membre d'une équipe à l'autre). Il a été retiré ; le déplacement se fait
-  par la fenêtre « Membres » (retirer puis ajouter) ;
 - les vues chargent leurs données à l'ouverture, indépendamment de
   l'annuaire : le premier affichage d'une vue coûte une lecture ;
 - `getTeams` reste la seule source des équipes ; aucune table n'a changé,
-  aucune migration n'est nécessaire pour cette refonte.
+  aucune migration n'est nécessaire pour cette refonte ;
+- la tranche perlée suit la hauteur réelle des entrées : une colonne très
+  courte montre une tranche courte — c'est voulu, pour ne pas tirer un fil
+  vide sur toute la hauteur de la grille.
