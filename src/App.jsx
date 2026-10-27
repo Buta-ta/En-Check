@@ -51,9 +51,9 @@ import VerrouOptions from './components/VerrouOptions'
 // Le poste de pointage : l'écran qu'on laisse allumé à l'entrée du site — la
 // tablette lit le badge de l'employé et enregistre son arrivée ou son départ.
 import PostePointage from './pages/PostePointage'
-// La page « Pointeuses » : enregistrer une machine ADMS, lire son secret,
-// télécharger `appareils.json` — sans jamais ouvrir Supabase.
-import Pointeuses from './pages/Pointeuses'
+// La configuration pointeuse réunit les machines ADMS et le poste de
+// pointage : un seul écran pour le matériel de l'entrée.
+import ConfigurationPointeuse from './pages/ConfigurationPointeuse'
 import Remunerations from './pages/Remunerations'
 import FichesPaie from './pages/FichesPaie'
 import EmployeeFichesPaie from './pages/employee/EmployeeFichesPaie'
@@ -365,11 +365,15 @@ function App() {
               signet ou un lien ancien ne tombe pas dans le vide. */}
           <Route path="/enrollements-faciaux" element={<Navigate to="/reconnaissance-faciale" replace />} />
           <Route path="/config-reco-faciale" element={<Navigate to="/reconnaissance-faciale" replace />} />
-          <Route path="/pointeuses" element={
+          <Route path="/configuration-pointeuse" element={
             <AdminRoute>
-              <Pointeuses />
+              <ConfigurationPointeuse />
             </AdminRoute>
           } />
+          {/* L'ancienne adresse des pointeuses ouvre la page commune.
+              `/poste` reste l'écran de la tablette : il n'est pas un écran
+              d'administration, et une tablette doit pouvoir l'ouvrir seule. */}
+          <Route path="/pointeuses" element={<Navigate to="/configuration-pointeuse" replace />} />
           {/* Le coût salarial a rejoint les rémunérations : l'ancienne adresse
               continue de fonctionner, elle ouvre la vue coût. */}
           <Route

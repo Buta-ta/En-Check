@@ -1,0 +1,788 @@
+/* ═══════════════════════════════════════════════════════════════
+   🖥️ LE POSTE DE L'ENTRÉE — la toile de Korhogo, en grand
+
+   L'écran d'une tablette qu'on laisse allumé : il se lit à deux
+   mètres, en plein soleil comme le soir. Le mur est de fumée, la
+   toile est écru, l'ocre fait le lien — la même famille que
+   « Configuration pointeuse », sans son registre.
+
+   Rien de clignotant : la seule animation est celle du travail en
+   cours, et elle s'arrête avec l'écran. Les couleurs de geste
+   restent celles du produit — vert pour une arrivée, bleu pour un
+   départ, rouge pour un refus.
+   ═══════════════════════════════════════════════════════════════ */
+
+.pp-page {
+  --pp-mur: #171310;
+  --pp-mur-2: #1e1815;
+  --pp-carte: #241d18;
+  --pp-creux: #100c0a;
+
+  --pp-coton: #f2e8d5;
+  --pp-coton-doux: #cbbda4;
+  --pp-coton-faible: #9a8b73;
+
+  --pp-ocre: #c9773c;
+  --pp-or: #c9a961;
+
+  --pp-ligne: rgba(201, 169, 97, 0.2);
+  --pp-ligne-forte: rgba(201, 169, 97, 0.44);
+
+  --pp-entree: #10b981;
+  --pp-sortie: #3b82f6;
+  --pp-alerte: #ef4444;
+
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  background-color: var(--pp-mur);
+  background-image:
+    radial-gradient(120% 70% at 50% -10%, rgba(201, 119, 60, 0.14), transparent 66%),
+    repeating-linear-gradient(0deg, rgba(242, 232, 213, 0.012) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(242, 232, 213, 0.012) 0 1px, transparent 1px 3px);
+  color: var(--pp-coton);
+  font-family: inherit;
+}
+
+.pp-page *,
+.pp-page *::before,
+.pp-page *::after {
+  box-sizing: border-box;
+}
+
+.pp-page :focus-visible {
+  outline: 2px solid var(--pp-ocre);
+  outline-offset: 2px;
+}
+
+/* ── 1. La couture de chevrons, en haut et en bas ─────────── */
+
+.pp-couture {
+  height: 10px;
+  flex: none;
+  background-color: #241c16;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='10' viewBox='0 0 18 10'%3E%3Cpath d='M0 8.4 L4.5 1.6 L9 8.4 L13.5 1.6 L18 8.4' fill='none' stroke='%23c9773c' stroke-width='1.8'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: center;
+}
+
+.pp-couture--basse {
+  margin-top: auto;
+}
+
+/* ── 2. L'installation ───────────────────────────────────── */
+
+.pp-page--installation {
+  align-items: center;
+  justify-content: center;
+  padding: 32px 18px;
+}
+
+.pp-installation {
+  width: min(520px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: auto 0;
+  padding: clamp(24px, 5vw, 40px) clamp(20px, 4vw, 34px) clamp(26px, 5vw, 38px);
+  border: 1px solid var(--pp-ligne-forte);
+  border-radius: 3px;
+  background-color: var(--pp-carte);
+  background-image: repeating-linear-gradient(135deg, rgba(201, 169, 97, 0.04) 0 2px, transparent 2px 9px);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.pp-eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pp-coton-faible);
+}
+
+.pp-titre-installation {
+  margin: 0;
+  font-size: clamp(26px, 4.6vw, 36px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--pp-coton);
+}
+
+.pp-texte-installation {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--pp-coton-doux);
+}
+
+.pp-champ-installation {
+  width: 100%;
+  margin-top: 4px;
+  text-align: left;
+}
+
+/* ── 3. Les champs ───────────────────────────────────────── */
+
+.pp-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  text-align: left;
+}
+
+.pp-etiquette {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pp-coton-faible);
+}
+
+.pp-champ input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--pp-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--pp-creux);
+  font-family: inherit;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  color: var(--pp-coton);
+}
+
+.pp-champ input::placeholder {
+  color: var(--pp-coton-faible);
+  letter-spacing: 0;
+  font-size: 15px;
+}
+
+.pp-champ input:focus {
+  outline: none;
+  border-color: var(--pp-ocre);
+  box-shadow: 0 0 0 3px rgba(201, 119, 60, 0.2);
+}
+
+.pp-champ-code {
+  width: 220px;
+  height: 64px;
+  margin-top: 6px;
+  padding: 0 14px;
+  border: 1px solid var(--pp-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--pp-creux);
+  font-family: inherit;
+  font-size: 30px;
+  letter-spacing: 12px;
+  text-align: center;
+  color: var(--pp-coton);
+}
+
+.pp-champ-code:focus {
+  outline: none;
+  border-color: var(--pp-ocre);
+  box-shadow: 0 0 0 3px rgba(201, 119, 60, 0.2);
+}
+
+/* ── 4. Les boutons ──────────────────────────────────────── */
+
+.pp-bouton,
+.pp-bouton-creux,
+.pp-bouton-discret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.pp-bouton {
+  border: 1px solid var(--pp-ocre);
+  background-color: var(--pp-ocre);
+  color: #171310;
+}
+
+.pp-bouton:hover:not(:disabled) {
+  box-shadow: 0 0 0 3px rgba(201, 119, 60, 0.24);
+}
+
+.pp-bouton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pp-bouton--large {
+  min-height: 52px;
+  padding: 0 26px;
+  font-size: 15px;
+}
+
+.pp-bouton-creux {
+  border: 1px solid var(--pp-ligne-forte);
+  background-color: transparent;
+  color: var(--pp-coton-doux);
+}
+
+.pp-bouton-creux:hover {
+  border-color: var(--pp-ocre);
+}
+
+.pp-bouton-discret {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--pp-ligne-forte);
+  background: transparent;
+  font-size: 11.5px;
+  color: var(--pp-coton-doux);
+}
+
+.pp-bouton-discret:hover {
+  border-color: var(--pp-ocre);
+}
+
+.pp-bouton-discret--danger {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.pp-bouton-discret--danger:hover {
+  border-color: var(--pp-alerte);
+}
+
+.pp-lien {
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--pp-coton-doux);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: border-color 0.16s ease;
+}
+
+.pp-lien:hover {
+  border-color: var(--pp-ligne-forte);
+}
+
+/* ── 5. Les notes et l'erreur ────────────────────────────── */
+
+.pp-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--pp-coton-faible);
+}
+
+.pp-note strong,
+.pp-note em {
+  color: var(--pp-coton-doux);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.pp-note--reglages {
+  padding-top: 9px;
+  border-top: 1px dashed var(--pp-ligne);
+}
+
+.pp-erreur {
+  width: 100%;
+  margin: 0;
+  padding: 9px 11px;
+  border-left: 2px solid var(--pp-alerte);
+  font-size: 12px;
+  line-height: 1.5;
+  color: #fca5a5;
+  background-color: rgba(239, 68, 68, 0.1);
+  text-align: left;
+}
+
+/* ── 6. L'en-tête ────────────────────────────────────────── */
+
+.pp-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px clamp(14px, 3vw, 28px);
+  border-bottom: 1px solid var(--pp-ligne);
+  background-image: linear-gradient(180deg, rgba(201, 119, 60, 0.1), transparent 80%);
+}
+
+.pp-entete-gauche {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pp-entete-textes {
+  min-width: 0;
+}
+
+.pp-nom-entreprise {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--pp-coton);
+  overflow-wrap: anywhere;
+}
+
+.pp-sous-titre {
+  margin: 1px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: capitalize;
+  color: var(--pp-coton-faible);
+}
+
+.pp-entete-droite {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.pp-horloge {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--pp-coton);
+}
+
+/* ── 7. L'avis d'horloge ─────────────────────────────────── */
+
+.pp-avis-horloge {
+  margin: 0;
+  padding: 9px clamp(14px, 3vw, 28px);
+  border-bottom: 1px solid var(--pp-ligne);
+  border-left: 3px solid #f59e0b;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #fcd34d;
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+/* ── 8. Les réglages du poste ────────────────────────────── */
+
+.pp-reglages {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px clamp(14px, 3vw, 28px) 0;
+  padding: 14px 16px;
+  border: 1px solid var(--pp-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--pp-mur-2);
+}
+
+.pp-reglages-fiche {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.pp-reglages-fiche dt {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pp-coton-faible);
+}
+
+.pp-reglages-fiche dd {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--pp-coton-doux);
+  overflow-wrap: anywhere;
+}
+
+.pp-reglages-fiche code {
+  font-family: ui-monospace, 'DejaVu Sans Mono', monospace;
+  font-size: 11px;
+  color: var(--pp-ocre);
+}
+
+.pp-reglages-gestes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── 9. Le centre ────────────────────────────────────────── */
+
+.pp-centre {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(18px, 4vh, 40px) clamp(14px, 3vw, 28px);
+}
+
+/* ── 10. Les grandes cartes ──────────────────────────────── */
+
+.pp-grande-carte {
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: clamp(24px, 5vw, 40px) clamp(20px, 4vw, 34px);
+  border: 1px solid var(--pp-ligne-forte);
+  border-top: 3px solid var(--pp-coton-faible);
+  border-radius: 3px;
+  background-color: var(--pp-carte);
+  background-image: repeating-linear-gradient(135deg, rgba(201, 169, 97, 0.04) 0 2px, transparent 2px 9px);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+
+.pp-grande-carte[data-etat='confirme'][data-sens='in'] {
+  border-top-color: var(--pp-entree);
+}
+
+.pp-grande-carte[data-etat='confirme'][data-sens='out'] {
+  border-top-color: var(--pp-sortie);
+}
+
+.pp-grande-carte[data-etat='refus'] {
+  border-top-color: var(--pp-alerte);
+}
+
+.pp-rond {
+  display: grid;
+  place-items: center;
+  width: clamp(64px, 10vw, 82px);
+  height: clamp(64px, 10vw, 82px);
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background-color: var(--pp-entree);
+  font-size: clamp(28px, 4.4vw, 36px);
+  font-weight: 700;
+  line-height: 1;
+  color: #0b1e15;
+}
+
+.pp-grande-carte[data-sens='out'] .pp-rond {
+  background-color: var(--pp-sortie);
+  color: #0b1420;
+}
+
+.pp-grande-carte[data-etat='refus'] .pp-rond {
+  background-color: var(--pp-alerte);
+  color: #fff;
+}
+
+.pp-rond svg {
+  display: block;
+}
+
+.pp-rond--neutre {
+  background-color: var(--pp-creux) !important;
+  border: 1px solid var(--pp-ligne-forte);
+  color: var(--pp-coton-doux) !important;
+}
+
+.pp-rond--attente {
+  background-color: transparent !important;
+  border: 2px solid rgba(201, 119, 60, 0.28);
+}
+
+.pp-rond-anneau {
+  width: 46%;
+  height: 46%;
+  border: 2px solid var(--pp-ocre);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: pp-tourne 0.9s linear infinite;
+}
+
+@keyframes pp-tourne {
+  to { transform: rotate(360deg); }
+}
+
+.pp-nom-confirme {
+  margin: 0;
+  font-size: clamp(22px, 4vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: var(--pp-coton);
+  overflow-wrap: anywhere;
+}
+
+.pp-geste {
+  margin: 0;
+  font-size: clamp(16px, 2.6vw, 21px);
+  font-weight: 600;
+  color: var(--pp-entree);
+}
+
+.pp-grande-carte[data-sens='out'] .pp-geste {
+  color: #60a5fa;
+}
+
+.pp-consigne {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--pp-coton-doux);
+}
+
+.pp-message-refus {
+  margin: 0;
+  max-width: 44ch;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #fca5a5;
+}
+
+.pp-mention-suspect {
+  margin: 2px 0 0;
+  max-width: 42ch;
+  padding: 8px 10px;
+  border-left: 2px solid #f59e0b;
+  font-size: 11.5px;
+  line-height: 1.55;
+  text-align: left;
+  color: #fcd34d;
+  background-color: rgba(245, 158, 11, 0.08);
+}
+
+.pp-reviendra {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--pp-coton-faible);
+}
+
+.pp-boutons-ligne {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+/* ── 11. Le scan ─────────────────────────────────────────── */
+
+.pp-scan {
+  width: min(620px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.pp-consigne-grande {
+  margin: 0;
+  font-size: clamp(19px, 3.4vw, 27px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--pp-coton);
+}
+
+.pp-cadre-camera {
+  position: relative;
+  width: min(420px, 84vw);
+  aspect-ratio: 1;
+  padding: 10px;
+  border: 1px solid var(--pp-ligne);
+  border-radius: 2px;
+  background-color: var(--pp-creux);
+}
+
+.pp-zone-camera {
+  width: 100%;
+  height: 100%;
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.pp-zone-camera video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
+/* les quatre encoches peintes, comme un cadre de toile */
+.pp-cadre-coin {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--pp-ocre);
+}
+
+.pp-cadre-coin--hg {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.pp-cadre-coin--hd {
+  top: -1px;
+  right: -1px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.pp-cadre-coin--bg {
+  bottom: -1px;
+  left: -1px;
+  border-right: none;
+  border-top: none;
+}
+
+.pp-cadre-coin--bd {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+}
+
+.pp-sans-camera {
+  position: absolute;
+  inset: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px;
+  background-color: var(--pp-mur-2);
+  text-align: center;
+}
+
+.pp-sans-camera-titre {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pp-coton);
+}
+
+.pp-sans-camera-texte {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--pp-coton-faible);
+}
+
+.pp-astuce {
+  margin: 0;
+  max-width: 48ch;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--pp-coton-faible);
+}
+
+.pp-bloc-saisie {
+  width: min(460px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--pp-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--pp-mur-2);
+  text-align: left;
+}
+
+.pp-saisie-champs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* ── 12. Le pied ─────────────────────────────────────────── */
+
+.pp-pied {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-top: 1px solid var(--pp-ligne);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--pp-coton-faible);
+}
+
+.pp-pied-sep {
+  color: var(--pp-ocre);
+}
+
+/* ── 13. Le responsive ───────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .pp-reglages-fiche {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pp-saisie-champs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pp-horloge {
+    font-size: 20px;
+  }
+
+  .pp-boutons-ligne .pp-bouton,
+  .pp-boutons-ligne .pp-bouton-creux {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .pp-entete {
+    align-items: flex-start;
+  }
+
+  .pp-entete-droite {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .pp-cadre-camera {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-page *,
+  .pp-page *::before,
+  .pp-page *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
