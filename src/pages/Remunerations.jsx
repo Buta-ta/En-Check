@@ -1,6 +1,6 @@
 // src/pages/Remunerations.jsx
 // ═══════════════════════════════════════════════════════════════════════════
-//  LES RÉMUNÉRATIONS — le pagne de boue
+//  LES RÉMUNÉRATIONS — contrat et rémunération
 // ═══════════════════════════════════════════════════════════════════════════
 //
 //  C'est la pièce sans laquelle aucun chiffre n'est calculable : combien gagne
@@ -19,11 +19,11 @@
 //
 //  CE QUI CHANGE (la refonte)
 //  ──────────────────────────
-//    · le tableau de treize colonnes devient une BANDE par salarié, avec sa
-//      propre jauge de teinture : on voit ce qui manque sans lire ;
+//    · le tableau de treize colonnes devient une ligne par salarié, avec
+//      une jauge de complétude : on voit ce qui manque sans lire ;
 //    · « Enregistrer (n) » ne compte plus les saisies mais les VRAIS écarts
 //      avec ce qui est en base — revenir sur sa frappe ne salit plus la page ;
-//    · « Reprendre pour… » recopie les compléments et le rythme d'une bande
+//    · « Reprendre pour… » recopie les compléments et le rythme d'une ligne
 //      sur d'autres salariés, sans jamais copier un salaire par accident ;
 //    · l'action principale est collée en bas, au centre, et répond à ⌘S.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -59,7 +59,7 @@ const TYPES_REMUNERATION = [
 ]
 
 //  Ce qu'il faut pour que le coût soit calculable, par rythme.
-//  Deux nombres et la nature du contrat : trois cases de teinture.
+//  Deux nombres et la nature du contrat : trois cases de complétude.
 const ATTENDUS = {
   monthly: ['base_salary', 'contract_hours_per_month'],
   daily:   ['daily_rate', 'contract_days_per_month'],
@@ -249,7 +249,7 @@ export default function Remunerations() {
       const profil = profils[e.id] || ligneVide()
       formulairesInit[e.id] = { ...profil }
       contratsInit[e.id] = e.contract_type || ''
-      //  la référence sert à savoir si une bande a VRAIMENT changé :
+      //  la référence sert à savoir si une ligne a VRAIMENT changé :
       //  revenir sur sa frappe ne doit pas laisser la page sale
       referenceInit[e.id] = { form: { ...profil }, contrat: e.contract_type || '' }
     })
@@ -436,7 +436,7 @@ export default function Remunerations() {
     setEnregistrementTout(false)
 
     if (faits === ids.length) {
-      toast.success(`${faits} bande${faits > 1 ? 's' : ''} enregistrée${faits > 1 ? 's' : ''}.`)
+      toast.success(`${faits} ligne${faits > 1 ? 's' : ''} enregistrée${faits > 1 ? 's' : ''}.`)
     } else if (faits > 0) {
       toast.error(`${faits} enregistrée${faits > 1 ? 's' : ''}, ${ids.length - faits} en échec.`)
     } else {
@@ -461,7 +461,7 @@ export default function Remunerations() {
   }, [])
 
   // ─────────────────────────────────────────────────────────
-  //  REPRENDRE UNE BANDE POUR D'AUTRES
+  //  REPRENDRE DES VALEURS POUR D'AUTRES
   // ─────────────────────────────────────────────────────────
   const ouvrirAppliquer = (sourceId) => {
     setAppliquer({
@@ -562,12 +562,11 @@ export default function Remunerations() {
         <BogolanLosangeSvg taille={44} ton="cuivre" />
 
         <div className="rw-titre-bloc">
-          <span className="rw-eyebrow">Le pagne de boue</span>
+          <span className="rw-eyebrow">Contrats et montants</span>
           <h1 className="rw-titre">Rémunérations<span>.</span></h1>
           <p className="rw-sous-titre">
-            Ce que chaque contrat prévoit : la base, le rythme, les compléments et
-            les heures attendues. Une bande par salarié, teintée quand il ne
-            manque plus rien.
+            La base, le rythme, les compléments et les heures prévues de chaque
+            contrat. Une ligne par salarié, avec ce qui reste à renseigner.
           </p>
         </div>
 
@@ -738,9 +737,9 @@ export default function Remunerations() {
           <div className="rw-constat" data-ton="ok">
             <CheckCircle2 size={17} aria-hidden="true" />
             <div className="rw-constat-texte">
-              <strong>Les {total} bandes sont teintées.</strong> Le coût de chaque
-              salarié est calculable — il reste à vérifier les cotisations employeur
-              dans <strong>Configuration fiscale</strong>.
+              <strong>Les {total} salariés ont une rémunération complète.</strong>{' '}
+              Le coût de chacun est calculable — il reste à vérifier les cotisations
+              employeur dans <strong>Configuration fiscale</strong>.
             </div>
           </div>
         ) : (
@@ -748,8 +747,8 @@ export default function Remunerations() {
             <AlertTriangle size={17} aria-hidden="true" />
             <div className="rw-constat-texte">
               <strong>
-                {incomplets} bande{incomplets > 1 ? 's' : ''} sur {total} n’{incomplets > 1 ? 'ont' : 'a'} pas
-                de coût calculable.
+                {incomplets} salarié{incomplets > 1 ? 's' : ''} sur {total} n’{incomplets > 1 ? 'ont' : 'a'} pas
+                de rémunération complète.
               </strong>{' '}
               Tant qu’il manque un chiffre, le coût de ces salariés est compté à zéro
               dans la page Coût salarial.
@@ -766,7 +765,7 @@ export default function Remunerations() {
           </div>
         )}
 
-        {/* ══ LE PAGNE ══ */}
+        {/* ══ LA LISTE ══ */}
         <section className="rw-pagne" aria-labelledby="rw-pagne-titre">
           <div className="rw-pagne-tete">
             <div className="rw-pagne-titres">
@@ -775,7 +774,7 @@ export default function Remunerations() {
                 <span className="rw-pagne-compte">{visibles.length}</span>
               </h2>
               <span className="rw-pagne-note">
-                Modifie une case puis enregistre : rien n’est écrit tant que tu ne le demandes pas.
+                Modifiez une case puis enregistrez : rien n’est écrit tant que vous ne le demandez pas.
               </span>
             </div>
 
@@ -790,7 +789,7 @@ export default function Remunerations() {
               />
             </label>
 
-            <div className="rw-filtres" role="group" aria-label="Filtrer les bandes">
+            <div className="rw-filtres" role="group" aria-label="Filtrer les lignes">
               {[
                 { id: 'TOUS', libelle: 'Toutes' },
                 { id: 'INCOMPLETS', libelle: `À compléter (${incomplets})` },
@@ -816,15 +815,15 @@ export default function Remunerations() {
                 {recherche.trim()
                   ? `Aucun salarié ne correspond à « ${recherche.trim()} »`
                   : filtre === 'INCOMPLETS'
-                    ? 'Toutes les bandes sont teintées'
+                    ? 'Toutes les rémunérations sont renseignées'
                     : filtre === 'PRETS'
-                      ? 'Aucune bande n’est complète pour l’instant'
+                      ? 'Aucune ligne n’est complète pour l’instant'
                       : 'Aucun salarié actif sur cette entreprise'}
               </strong>
               <p>
                 {filtre !== 'TOUS' || recherche.trim()
-                  ? 'Change de filtre ou vide la recherche pour revoir tout le pagne.'
-                  : 'Ajoute des salariés depuis la page Employés : le pagne se tisse à partir de là.'}
+                  ? 'Changez de filtre ou videz la recherche pour revoir toute la liste.'
+                  : 'Ajoutez des salariés depuis la page Employés : ils apparaîtront ici.'}
               </p>
               {(filtre !== 'TOUS' || recherche.trim()) && (
                 <button
@@ -856,7 +855,7 @@ export default function Remunerations() {
                     data-modifie={salarieModifie ? 'oui' : 'non'}
                     aria-label={`${nomComplet(e)} — ${etat === 'complet' ? 'à jour' : etat === 'pret' ? 'à enregistrer' : 'incomplète'}`}
                   >
-                    <div className="rw-bande-teinture" title={`${remplis} case(s) sur 3`}>
+                    <div className="rw-bande-teinture" title={`${remplis} information${remplis > 1 ? 's' : ''} sur 3 renseignée${remplis > 1 ? 's' : ''}`}>
                       <BogolanTeinture remplis={remplis} total={3} ton="cuivre" />
                     </div>
 
@@ -1081,7 +1080,7 @@ export default function Remunerations() {
       {modifications > 0 && (
         <div className="rw-barre" role="status">
           <span className="rw-barre-compte">
-            <strong>{modifications} bande{modifications > 1 ? 's' : ''} modifiée{modifications > 1 ? 's' : ''}</strong>
+            <strong>{modifications} ligne{modifications > 1 ? 's' : ''} modifiée{modifications > 1 ? 's' : ''}</strong>
             <span>rien n’est encore écrit</span>
           </span>
           <span className="rw-touche" aria-hidden="true">{(navigator.userAgent || '').includes('Mac') ? '⌘' : 'Ctrl'} + S</span>
@@ -1099,7 +1098,7 @@ export default function Remunerations() {
         </div>
       )}
 
-      {/* ══ REPRENDRE UNE BANDE POUR D'AUTRES ══ */}
+      {/* ══ REPRENDRE DES VALEURS POUR D'AUTRES ══ */}
       {appliquer && (
         <div className="rw-voile" onClick={() => setAppliquer(null)}>
           <div
@@ -1113,11 +1112,11 @@ export default function Remunerations() {
               <BogolanMedaillonSvg taille={34} ton="cuivre" />
               <div className="rw-modale-titres">
                 <h2 className="rw-modale-titre" id="rw-appliquer-titre">
-                  Reprendre la bande de {nomComplet(employes.find(x => x.id === appliquer.sourceId) || {})}
+                  Reprendre les valeurs de {nomComplet(employes.find(x => x.id === appliquer.sourceId) || {})}
                 </h2>
                 <span className="rw-modale-sous">
-                  Rien n’est envoyé à la base : les bandes choisies sont remplies ici,
-                  puis tu enregistres quand tu veux.
+                  Rien n’est envoyé à la base : les lignes choisies sont remplies ici,
+                  puis vous enregistrez quand vous le souhaitez.
                 </span>
               </div>
               <button
@@ -1160,7 +1159,7 @@ export default function Remunerations() {
                 </div>
                 <p className="rw-pagne-note rw-dessus">
                   Les trois montants de base sont décochés : un salaire ne se recopie
-                  pas par accident.
+                  pas par défaut.
                 </p>
               </div>
 

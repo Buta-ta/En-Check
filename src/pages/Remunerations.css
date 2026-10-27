@@ -48,6 +48,10 @@
   /* le texte posé sur un bouton cuivre */
   --rw-sur-cuivre: #1A1009;
 
+  /*  sans cela, les champs natifs (et leur survol) sont peints selon le
+      schéma du système : texte clair sur champ clair, ou l'inverse */
+  color-scheme: dark;
+
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -84,6 +88,8 @@
   --rw-alerte: #A8332A;
 
   --rw-sur-cuivre: #FBF5EA;
+
+  color-scheme: light;
 
   background-image: radial-gradient(120% 70% at 50% -10%, rgba(196, 112, 47, 0.1), transparent 62%);
 }
@@ -615,6 +621,8 @@
 }
 
 .rw-recherche input {
+  appearance: none;
+  -webkit-appearance: none;
   width: 168px;
   padding: 0;
   border: 0;
@@ -684,8 +692,36 @@
   border-bottom: 0;
 }
 
+/*  Le survol ne change JAMAIS le fond derrière un texte. Il éclaire la
+    tranche de gauche, souligne la ligne et redessine le cadre des cases :
+    le fond d'une ligne variait sous des libellés de 9 px, et les cases
+    s'y fondaient — le texte devenait illisible, dans les deux thèmes. */
 .rw-bande:hover {
+  border-bottom-color: var(--rw-ligne-forte);
+}
+
+.rw-bande:hover .rw-bande-teinture {
   background: var(--rw-panneau-2);
+}
+
+.rw-bande:hover .rw-case {
+  border-color: var(--rw-ligne-forte);
+}
+
+/*  la case du rythme choisi garde son trait de cuivre, même survolée :
+    c'est elle qui porte le calcul */
+.rw-bande:hover .rw-case[data-actif='oui'] {
+  border-color: var(--rw-cuivre);
+  border-bottom-color: var(--rw-cuivre);
+}
+
+.rw-bande[data-etat='complet']:hover .rw-bande-teinture {
+  background: var(--rw-cuivre);
+  box-shadow: inset 0 0 0 2px var(--rw-ocre);
+}
+
+.rw-bande[data-modifie='oui']:hover {
+  border-bottom-color: var(--rw-cuivre);
 }
 
 .rw-bande[data-modifie='oui'] {
@@ -883,8 +919,25 @@
   border: 1px solid var(--rw-ligne);
   border-bottom: 2px solid var(--rw-ligne);
   border-radius: 7px;
-  background: var(--rw-nuit);
+  /*  le creux, pas la nuit : le champ doit se lire comme un champ, et
+      se détacher de la ligne où il est posé (1,15:1 sombre, 1,27:1 clair) */
+  background: var(--rw-creux);
   transition: border-color 0.14s ease, background-color 0.14s ease;
+}
+
+/*  le survol d'une case ne change que son trait : ni fond, ni couleur de
+    texte. Le champ garde la couleur de la page, lisible sur les deux. */
+.rw-case:hover {
+  border-color: var(--rw-ligne-forte);
+  border-bottom-color: var(--rw-ligne-forte);
+}
+
+.rw-case:hover .rw-case-libelle {
+  color: var(--rw-douce);
+}
+
+.rw-case:hover .rw-case-champ {
+  color: var(--rw-encre);
 }
 
 .rw-case:focus-within {
@@ -892,16 +945,25 @@
   border-bottom-color: var(--rw-cuivre);
 }
 
+.rw-case:focus-within .rw-case-champ {
+  color: var(--rw-encre);
+}
+
 /*  la case du rythme choisi : c'est elle qui porte le calcul, les
     deux autres restent saisissables mais s'effacent */
 .rw-case[data-actif='oui'] {
   border-color: var(--rw-cuivre);
   border-bottom-color: var(--rw-cuivre);
-  background: color-mix(in srgb, var(--rw-cuivre) 9%, var(--rw-nuit));
+  /*  6 % et pas 9 % : au-delà, le libellé de 8,5 px tombait à 4,45:1
+      sur le fond teinté, en thème clair */
+  background: color-mix(in srgb, var(--rw-cuivre) 6%, var(--rw-creux));
 }
 
 .rw-case[data-actif='non'] {
-  opacity: 0.72;
+  /*  jamais d'opacité sur un champ : à 72 %, le libellé tombait à
+      2,8:1 en thème clair. Le trait pointillé suffit à dire « hors
+      calcul », le texte reste à pleine encre. */
+  border-style: dashed;
 }
 
 .rw-case-libelle {
@@ -928,6 +990,10 @@
   padding: 0;
   border: 0;
   outline: none;
+  /*  aucun fond natif : la case fournit le sien, et le texte reste
+      lisible au survol comme au repos */
+  appearance: none;
+  -webkit-appearance: none;
   background: transparent;
   color: var(--rw-encre);
   font-family: inherit;
