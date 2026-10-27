@@ -259,8 +259,8 @@ export const TABS_CONFIG = {
 
   GEOFENCING: {
     key: 'GEOFENCING',
-    path: '/geofencing',
-    label: 'Geofencing',
+    path: '/geopointage',
+    label: 'Géopointage',
     color: '#10B981',
     icon: MapPin,
     triggers: {

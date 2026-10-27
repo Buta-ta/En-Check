@@ -31,8 +31,7 @@ import Absences from './pages/Absences'
 import HeuresSupplementaires from './pages/HeuresSupplementaires'
 import Prospection from './pages/Prospection'
 import Devis from './pages/Devis'
-import ConfigGeofencing from './pages/ConfigGeofencing'
-import CarteTempsReel from './pages/CarteTempsReel'
+import Geopointage from './pages/Geopointage'
 import JoursFeries from './pages/JoursFeries'
 
 // Employee pages
@@ -346,16 +345,16 @@ function App() {
             </AdminRoute>
           } />
           <Route path="/configuration-fiscale" element={<Navigate to="/paie" replace />} />
-          <Route path="/geofencing" element={
+          {/* Le plateau et les zones ne font plus qu'un écran : « Géopointage ».
+              Les deux anciennes adresses restent vivantes pour les liens
+              déjà partagés — elles ouvrent la page commune. */}
+          <Route path="/geopointage" element={
             <AdminRoute>
-              <ConfigGeofencing />
+              <Geopointage />
             </AdminRoute>
           } />
-          <Route path="/carte-temps-reel" element={
-            <AdminRoute>
-              <CarteTempsReel />
-            </AdminRoute>
-          } />
+          <Route path="/geofencing" element={<Navigate to="/geopointage" replace />} />
+          <Route path="/carte-temps-reel" element={<Navigate to="/geopointage" replace />} />
           <Route path="/enrollements-faciaux" element={
             <AdminRoute>
               <GestionEnrolements />

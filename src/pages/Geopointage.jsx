@@ -1,13 +1,19 @@
 // ═══════════════════════════════════════════════════════════
-// 🗿 LA PORTE DU PLATEAU — CARTE TEMPS RÉEL
+// 🗿 LA PORTE DU PLATEAU — GÉOPOINTAGE
 //
-// Une porte de grenier dogon ouvre sur le site : les registres
-// du haut comptent la journée, l'ouverture du milieu montre le
-// plateau, la colonne de droite nomme les employés.
+// Une seule page, deux travaux : voir où l'on pointe, et tracer
+// les zones où l'on a le droit de pointer. L'écran des zones ne
+// vit plus à part — il est descendu sous le plateau, dans le même
+// panneau gravé, avec les mêmes registres et les mêmes gestes.
 //
-// Toute la mécanique est inchangée : mêmes requêtes, même canal
-// temps réel, mêmes filtres, mêmes marqueurs, même fiche.
-// Seul le dessin est neuf.
+// De haut en bas : les registres qui comptent la journée, les
+// outils qui filtrent, le plateau (la carte) et sa colonne
+// d'employés, puis les zones du site — leur rayon, leur mode,
+// leur état — qu'on trace, modifie, éteint ou supprime sur place.
+//
+// Toute la mécanique d'origine est conservée : mêmes requêtes,
+// même canal temps réel, mêmes filtres, mêmes marqueurs, même
+// fiche, et les mêmes tables `geofences` / `attendances`.
 // ═══════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef } from 'react'
@@ -17,12 +23,12 @@ import PageCulturalBand from '../components/PageCulturalBand'
 import RaccourcisPages from '../components/RaccourcisPages'
 import { DogonBlasonSvg } from '../components/DogonSvg'
 import { useTheme } from '../contexts/ThemeContext'
-import './CarteTempsReel.css'
+import './Geopointage.css'
 import {
   ArrowLeft, MapPin, Users, Calendar, X, Activity,
   CheckCircle2, AlertTriangle, XCircle, Camera,
   LogIn, LogOut, Navigation, Search, RefreshCw, Building2,
-  Sun, Moon,
+  Sun, Moon, Plus, Edit2, Trash2, Save, Lock, Unlock, Layers,
 } from 'lucide-react'
 import L from 'leaflet'
 import 'leaflet.markercluster'
@@ -63,7 +69,7 @@ const distanceLisible = (metres) =>
       ? `${metres} m`
       : `${(metres / 1000).toFixed(1)} km`
 
-export default function CarteTempsReel() {
+export default function Geopointage() {
   const [admin, setAdmin] = useState(null)
   const [loading, setLoading] = useState(true)
   const [mapReady, setMapReady] = useState(false)
@@ -79,6 +85,17 @@ export default function CarteTempsReel() {
   const [enterpriseName, setEnterpriseName] = useState('')
   const [avis, setAvis] = useState(null)
   const [recherche, setRecherche] = useState('')
+
+  // ── les zones du site, gérées sur cette même page ──
+  const [zonesGestion, setZonesGestion] = useState([])
+  const [zonesChargees, setZonesChargees] = useState(false)
+  // `null` : la fenêtre est fermée. Sinon, la zone en cours d'écriture.
+  const [formulaireZone, setFormulaireZone] = useState(null)
+  const [zoneASupprimer, setZoneASupprimer] = useState(null)
+  const [avisZone, setAvisZone] = useState(null)
+  const [positionEnCours, setPositionEnCours] = useState(false)
+  const [enregistrementZone, setEnregistrementZone] = useState(false)
+  const [zoneEnCoursDeSuppression, setZoneEnCoursDeSuppression] = useState(null)
 
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
@@ -122,6 +139,20 @@ export default function CarteTempsReel() {
   useEffect(() => {
     if (admin) loadData()
   }, [admin, selectedDate, selectedEntrepriseId])
+
+  // Une zone appartient à une entreprise : « toutes » n'en a pas.
+  // Le super administrateur choisit donc celle dont il trace les zones.
+  const entrepriseDesZones = (() => {
+    if (selectedEntrepriseId && selectedEntrepriseId !== 'all') return selectedEntrepriseId
+    if (admin && admin.role !== 'super_admin') {
+      return admin.selectedEnterprise?.id || admin.enterprise_id || null
+    }
+    return null
+  })()
+
+  useEffect(() => {
+    if (admin) chargerZonesGestion()
+  }, [admin, selectedEntrepriseId])
 
   // ═══════════════════════════════════════════════════════════
   // 🗺️ INITIALISER LA CARTE (avec retry)
@@ -314,6 +345,254 @@ export default function CarteTempsReel() {
       setAvis("La carte n'a pas pu se mettre à jour. Vérifiez la connexion, puis réessayez.")
     } finally {
       setLoading(false)
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // ⬡ LES ZONES DU SITE — lues pour la gestion, pas seulement pour la carte
+  //
+  // La carte ne montre que les zones actives : elle raconte la
+  // journée. La gestion, elle, doit voir aussi les zones éteintes —
+  // sinon une zone qu'on vient d'éteindre disparaîtrait de l'écran
+  // et l'on ne pourrait plus la rallumer.
+  // ═══════════════════════════════════════════════════════════
+
+  const chargerZonesGestion = async () => {
+    if (!entrepriseDesZones) {
+      setZonesGestion([])
+      setZonesChargees(true)
+      return
+    }
+    try {
+      const { data, error } = await supabase
+        .from('geofences')
+        .select('*')
+        .eq('enterprise_id', entrepriseDesZones)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setZonesGestion(data || [])
+      setAvisZone(null)
+    } catch (erreur) {
+      console.error('Erreur chargement des zones :', erreur)
+      setAvisZone({ ton: 'alerte', texte: 'Les zones n’ont pas pu être chargées. Vérifiez la connexion, puis réessayez.' })
+    } finally {
+      setZonesChargees(true)
+    }
+  }
+
+  const ouvrirFormulaireZone = (zone = null) => {
+    setAvisZone(null)
+    setFormulaireZone(
+      zone
+        ? {
+            id: zone.id,
+            name: zone.name || '',
+            latitude: String(zone.latitude ?? ''),
+            longitude: String(zone.longitude ?? ''),
+            radius_meters: Number(zone.radius_meters) || 200,
+            is_blocking: Boolean(zone.is_blocking),
+            is_active: zone.is_active !== false,
+          }
+        : {
+            id: null,
+            name: '',
+            latitude: '',
+            longitude: '',
+            radius_meters: 200,
+            is_blocking: false,
+            is_active: true,
+          },
+    )
+  }
+
+  const fermerFormulaireZone = () => setFormulaireZone(null)
+
+  const poserCentreDeZone = (champ, valeur) => {
+    setFormulaireZone((zone) => ({ ...zone, [champ]: valeur }))
+  }
+
+  // Le navigateur situe d'abord au plus juste, puis retombe sur le réseau
+  // (WiFi / 4G) : un chantier couvert n'a pas toujours le GPS.
+  const obtenirPositionActuelle = () => {
+    if (!navigator.geolocation) {
+      setAvisZone({ ton: 'alerte', texte: 'Ce navigateur ne sait pas vous situer : la géolocalisation n’y est pas disponible.' })
+      return
+    }
+    if (positionEnCours) return
+    setPositionEnCours(true)
+
+    const poser = (position) => {
+      setFormulaireZone((zone) => ({
+        ...zone,
+        latitude: position.coords.latitude.toFixed(6),
+        longitude: position.coords.longitude.toFixed(6),
+      }))
+      setPositionEnCours(false)
+    }
+
+    const approximatif = () => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          poser(position)
+          setAvisZone({ ton: 'ok', texte: 'Position approximative obtenue (réseau). Ajustez-la en cliquant sur la carte.' })
+        },
+        () => {
+          setPositionEnCours(false)
+          setAvisZone({
+            ton: 'alerte',
+            texte: 'Position introuvable. Autorisez la localisation, ou cliquez sur la carte pour poser le centre.',
+          })
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+      )
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      poser,
+      (erreur) => {
+        if (erreur.code === erreur.POSITION_UNAVAILABLE || erreur.code === erreur.TIMEOUT) {
+          approximatif()
+          return
+        }
+        setPositionEnCours(false)
+        setAvisZone({
+          ton: 'alerte',
+          texte: erreur.code === erreur.PERMISSION_DENIED
+            ? 'Localisation refusée. Autorisez l’accès dans les réglages du navigateur, ou cliquez sur la carte.'
+            : 'Position introuvable. Rapprochez-vous d’une fenêtre, ou cliquez sur la carte.',
+        })
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
+    )
+  }
+
+  const enregistrerZone = async (evenement) => {
+    evenement.preventDefault()
+    if (!formulaireZone) return
+    if (!entrepriseDesZones) {
+      setAvisZone({ ton: 'alerte', texte: 'Choisissez d’abord une entreprise : une zone lui appartient.' })
+      return
+    }
+
+    const nom = formulaireZone.name.trim()
+    const latitude = Number(formulaireZone.latitude)
+    const longitude = Number(formulaireZone.longitude)
+    if (!nom) {
+      setAvisZone({ ton: 'alerte', texte: 'Donnez un nom à la zone : c’est ce nom que l’employé verra à son pointage.' })
+      return
+    }
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      setAvisZone({ ton: 'alerte', texte: 'Il manque le centre de la zone. Utilisez votre position, ou cliquez sur la carte.' })
+      return
+    }
+
+    const donnees = {
+      enterprise_id: entrepriseDesZones,
+      name: nom,
+      latitude,
+      longitude,
+      radius_meters: Number(formulaireZone.radius_meters) || 200,
+      is_blocking: Boolean(formulaireZone.is_blocking),
+      is_active: formulaireZone.is_active !== false,
+    }
+
+    setEnregistrementZone(true)
+    setAvisZone(null)
+    try {
+      const requete = formulaireZone.id
+        ? supabase.from('geofences').update(donnees).eq('id', formulaireZone.id)
+        : supabase.from('geofences').insert(donnees)
+      const { error } = await requete
+      if (error) throw error
+
+      setFormulaireZone(null)
+      await chargerZonesGestion()
+      await loadData()
+      setAvisZone({
+        ton: 'ok',
+        texte: formulaireZone.id ? `Zone « ${nom} » enregistrée.` : `Zone « ${nom} » créée.`,
+      })
+    } catch (erreur) {
+      console.error('Erreur enregistrement zone :', erreur)
+      setAvisZone({ ton: 'alerte', texte: `La zone n’a pas pu être enregistrée : ${erreur.message || 'erreur inconnue'}.` })
+    } finally {
+      setEnregistrementZone(false)
+    }
+  }
+
+  const basculerZone = async (zone) => {
+    setAvisZone(null)
+    setZoneEnCoursDeSuppression(null)
+    try {
+      const { error } = await supabase
+        .from('geofences')
+        .update({ is_active: !zone.is_active })
+        .eq('id', zone.id)
+      if (error) throw error
+      await chargerZonesGestion()
+      await loadData()
+      setAvisZone({ ton: 'ok', texte: zone.is_active ? `Zone « ${zone.name} » éteinte.` : `Zone « ${zone.name} » rallumée.` })
+    } catch (erreur) {
+      console.error('Erreur bascule zone :', erreur)
+      setAvisZone({ ton: 'alerte', texte: 'L’état de la zone n’a pas pu être changé.' })
+    }
+  }
+
+  // Avant de supprimer, on regarde ce qui s'y rattache : l'historique
+  // des pointages est conservé, seule la référence à la zone s'efface.
+  const demanderSuppressionZone = async (zone) => {
+    setAvisZone(null)
+    setZoneEnCoursDeSuppression(zone.id)
+    let nbPointages = 0
+    try {
+      const { count, error } = await supabase
+        .from('attendances')
+        .select('*', { count: 'exact', head: true })
+        .eq('geofence_id', zone.id)
+      if (error) throw error
+      nbPointages = count || 0
+    } catch (erreur) {
+      console.warn('Pointages liés illisibles :', erreur)
+    } finally {
+      setZoneEnCoursDeSuppression(null)
+    }
+    setZoneASupprimer({ zone, nbPointages })
+  }
+
+  const confirmerSuppressionZone = async () => {
+    if (!zoneASupprimer) return
+    const { zone, nbPointages } = zoneASupprimer
+    setZoneEnCoursDeSuppression(zone.id)
+    try {
+      if (nbPointages > 0) {
+        const { error: detacher } = await supabase
+          .from('attendances')
+          .update({ geofence_id: null })
+          .eq('geofence_id', zone.id)
+        if (detacher) throw detacher
+      }
+      const { error } = await supabase.from('geofences').delete().eq('id', zone.id)
+      if (error) throw error
+
+      setZoneASupprimer(null)
+      await chargerZonesGestion()
+      await loadData()
+      setAvisZone({
+        ton: 'ok',
+        texte: nbPointages > 0
+          ? `Zone « ${zone.name} » supprimée. ${nbPointages} pointage${nbPointages > 1 ? 's' : ''} conservé${nbPointages > 1 ? 's' : ''}, sans référence à la zone.`
+          : `Zone « ${zone.name} » supprimée.`,
+      })
+    } catch (erreur) {
+      console.error('Erreur suppression zone :', erreur)
+      setAvisZone({
+        ton: 'alerte',
+        texte: erreur.code === '23503'
+          ? 'Suppression impossible : des données sont encore liées à cette zone.'
+          : `La zone n’a pas pu être supprimée : ${erreur.message || 'erreur inconnue'}.`,
+      })
+    } finally {
+      setZoneEnCoursDeSuppression(null)
     }
   }
 
@@ -618,7 +897,7 @@ export default function CarteTempsReel() {
 
   return (
     <div className={`ct-page${darkMode ? '' : ' ct-clair'}`}>
-      <PageCulturalBand pathname="/carte-temps-reel" />
+      <PageCulturalBand pathname="/geopointage" />
       <div className="ct-bordure" aria-hidden="true" />
 
       <header className="ct-entete">
@@ -635,10 +914,10 @@ export default function CarteTempsReel() {
         <div className="ct-titre-bloc">
           <span className="ct-eyebrow">La porte du plateau</span>
           <h1 className="ct-titre">
-            Carte en direct<span>.</span>
+            Géopointage<span>.</span>
           </h1>
           <p className="ct-sous-titre">
-            Chaque point correspond à un pointage géolocalisé sur le site.
+            Les pointages géolocalisés du jour, et les zones où l’on a le droit de pointer.
           </p>
         </div>
         <div className="ct-entete-droite">
@@ -676,7 +955,7 @@ export default function CarteTempsReel() {
 
           <div className="ct-raccourcis">
             <span className="ct-seuil-libelle">Aller à</span>
-            <RaccourcisPages compact excludePaths={['/carte-temps-reel']} />
+            <RaccourcisPages compact excludePaths={['/geopointage']} />
           </div>
         </section>
 
@@ -987,10 +1266,135 @@ export default function CarteTempsReel() {
             </div>
           </aside>
         </div>
+
+        {/* ── Les zones du site : tracées, éteintes, reprises ici ── */}
+        <section className="ct-zones" aria-label="Les zones de pointage du site">
+          <div className="ct-zones-tete">
+            <h2 className="ct-zones-titre">
+              <Layers size={12} aria-hidden="true" />
+              Les zones du site
+            </h2>
+            <span className="ct-zones-note">
+              {zonesGestion.length} zone{zonesGestion.length > 1 ? 's' : ''}
+              {' · '}
+              {zonesGestion.filter((zone) => zone.is_active).length} active{zonesGestion.filter((zone) => zone.is_active).length > 1 ? 's' : ''}
+              {zonesGestion.some((zone) => zone.is_blocking)
+                ? ` · ${zonesGestion.filter((zone) => zone.is_blocking).length} bloquante${zonesGestion.filter((zone) => zone.is_blocking).length > 1 ? 's' : ''}`
+                : ''}
+            </span>
+            <button
+              type="button"
+              className="ct-bouton"
+              onClick={() => ouvrirFormulaireZone()}
+              disabled={!entrepriseDesZones}
+              title={entrepriseDesZones ? 'Tracer une nouvelle zone' : 'Choisissez une entreprise'}
+            >
+              <Plus size={14} aria-hidden="true" />
+              Tracer une zone
+            </button>
+          </div>
+
+          {avisZone && (
+            <p className="ct-avis ct-avis--zone" data-ton={avisZone.ton} role="status">
+              {avisZone.ton === 'ok'
+                ? <CheckCircle2 size={13} aria-hidden="true" />
+                : <AlertTriangle size={13} aria-hidden="true" />}
+              {avisZone.texte}
+            </p>
+          )}
+
+          {!entrepriseDesZones ? (
+            <p className="ct-zones-vide">
+              <MapPin size={16} aria-hidden="true" />
+              <span>Choisissez une entreprise dans les outils : une zone lui appartient.</span>
+            </p>
+          ) : !zonesChargees ? (
+            <p className="ct-zones-vide">
+              <RefreshCw size={16} className="ct-tourne" aria-hidden="true" />
+              <span>Chargement des zones…</span>
+            </p>
+          ) : zonesGestion.length === 0 ? (
+            <div className="ct-zones-vide ct-zones-vide--vide">
+              <MapPin size={18} aria-hidden="true" />
+              <p>Aucune zone tracée pour cette entreprise.</p>
+              <p className="ct-zones-vide-note">
+                Une zone, c’est un centre, un rayon, et le choix de refuser — ou non —
+                un pointage fait dehors.
+              </p>
+            </div>
+          ) : (
+            <ul className="ct-zones-liste">
+              {zonesGestion.map((zone, index) => (
+                <li
+                  className="ct-zone"
+                  key={zone.id}
+                  data-active={zone.is_active ? 'oui' : 'non'}
+                  data-mode={zone.is_blocking ? 'bloquante' : 'libre'}
+                  data-occupee={zoneEnCoursDeSuppression === zone.id ? 'oui' : 'non'}
+                >
+                  <span className="ct-zone-numero">{String(index + 1).padStart(2, '0')}</span>
+
+                  <span className="ct-zone-identite">
+                    <span className="ct-zone-nom">{zone.name}</span>
+                    <span className="ct-zone-meta">
+                      {Number(zone.latitude).toFixed(5)}, {Number(zone.longitude).toFixed(5)}
+                      {' · '}
+                      rayon {zone.radius_meters} m
+                    </span>
+                  </span>
+
+                  <span className="ct-zone-etats">
+                    <span className="ct-grain" data-ton={zone.is_blocking ? 'alerte' : 'ok'}>
+                      {zone.is_blocking
+                        ? <Lock size={9} aria-hidden="true" />
+                        : <Unlock size={9} aria-hidden="true" />}
+                      {zone.is_blocking ? 'Bloquante' : 'Non bloquante'}
+                    </span>
+                    <span className="ct-grain" data-ton={zone.is_active ? 'ok' : 'neutre'}>
+                      {zone.is_active ? 'Active' : 'Éteinte'}
+                    </span>
+                  </span>
+
+                  <span className="ct-zone-actions">
+                    <button
+                      type="button"
+                      className="ct-lien"
+                      onClick={() => ouvrirFormulaireZone(zone)}
+                      aria-label={`Modifier la zone ${zone.name}`}
+                    >
+                      <Edit2 size={12} aria-hidden="true" />
+                      Modifier
+                    </button>
+                    <button
+                      type="button"
+                      className="ct-lien"
+                      onClick={() => basculerZone(zone)}
+                      aria-label={zone.is_active ? `Éteindre la zone ${zone.name}` : `Rallumer la zone ${zone.name}`}
+                    >
+                      {zone.is_active
+                        ? <Lock size={12} aria-hidden="true" />
+                        : <Unlock size={12} aria-hidden="true" />}
+                      {zone.is_active ? 'Éteindre' : 'Rallumer'}
+                    </button>
+                    <button
+                      type="button"
+                      className="ct-lien ct-lien--danger"
+                      onClick={() => demanderSuppressionZone(zone)}
+                      aria-label={`Supprimer la zone ${zone.name}`}
+                    >
+                      <Trash2 size={12} aria-hidden="true" />
+                      Supprimer
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </main>
 
       <div className="ct-pied">
-        <PageCulturalBand pathname="/carte-temps-reel" placement="bottom" />
+        <PageCulturalBand pathname="/geopointage" placement="bottom" />
       </div>
 
       {/* ── La fiche d'un employé ── */}
@@ -1119,6 +1523,318 @@ export default function CarteTempsReel() {
           </div>
         </div>
       )}
+
+      {/* ── La zone : on la trace ici, sans quitter la page ── */}
+      {formulaireZone && (
+        <div
+          className="ct-fond"
+          onClick={fermerFormulaireZone}
+        >
+          <form
+            className="ct-formulaire"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ct-zone-titre"
+            onClick={(evenement) => evenement.stopPropagation()}
+            onSubmit={enregistrerZone}
+          >
+            <header className="ct-formulaire-tete">
+              <div className="ct-formulaire-titres">
+                <p className="ct-eyebrow">Zones de pointage</p>
+                <h2 className="ct-formulaire-titre" id="ct-zone-titre">
+                  {formulaireZone.id ? 'Modifier la zone' : 'Tracer une zone'}
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="ct-fermer"
+                onClick={fermerFormulaireZone}
+                aria-label="Fermer la zone"
+              >
+                <X size={16} />
+              </button>
+            </header>
+
+            <div className="ct-formulaire-corps">
+              <label className="ct-champ ct-champ-large">
+                <span className="ct-etiquette">Nom de la zone</span>
+                <input
+                  type="text"
+                  value={formulaireZone.name}
+                  onChange={(evenement) => poserCentreDeZone('name', evenement.target.value)}
+                  placeholder="Siège, entrepôt, chantier…"
+                  maxLength={80}
+                  required
+                />
+              </label>
+
+              <div className="ct-formulaire-outil">
+                <button
+                  type="button"
+                  className="ct-bouton-creux"
+                  onClick={obtenirPositionActuelle}
+                  disabled={positionEnCours}
+                >
+                  {positionEnCours
+                    ? <RefreshCw size={14} className="ct-tourne" aria-hidden="true" />
+                    : <Navigation size={14} aria-hidden="true" />}
+                  {positionEnCours ? 'Recherche de la position…' : 'Utiliser ma position actuelle'}
+                </button>
+                <span className="ct-formulaire-aide">
+                  Ou cliquez sur la carte pour poser le centre.
+                </span>
+              </div>
+
+              <CarteDeZone
+                latitude={formulaireZone.latitude}
+                longitude={formulaireZone.longitude}
+                rayon={formulaireZone.radius_meters}
+                bloquante={formulaireZone.is_blocking}
+                onPointer={(latitude, longitude) => {
+                  setFormulaireZone((zone) => ({
+                    ...zone,
+                    latitude: latitude.toFixed(6),
+                    longitude: longitude.toFixed(6),
+                  }))
+                }}
+              />
+
+              <div className="ct-formulaire-duo">
+                <label className="ct-champ">
+                  <span className="ct-etiquette">Latitude</span>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={formulaireZone.latitude}
+                    onChange={(evenement) => poserCentreDeZone('latitude', evenement.target.value)}
+                    required
+                  />
+                </label>
+                <label className="ct-champ">
+                  <span className="ct-etiquette">Longitude</span>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={formulaireZone.longitude}
+                    onChange={(evenement) => poserCentreDeZone('longitude', evenement.target.value)}
+                    required
+                  />
+                </label>
+              </div>
+
+              <label className="ct-champ ct-champ-large ct-champ-curseur">
+                <span className="ct-etiquette">Rayon · {formulaireZone.radius_meters} m</span>
+                <input
+                  type="range"
+                  min="50"
+                  max="5000"
+                  step="50"
+                  value={formulaireZone.radius_meters}
+                  onChange={(evenement) => poserCentreDeZone('radius_meters', Number(evenement.target.value))}
+                />
+                <span className="ct-curseur-bornes">
+                  <span>50 m</span>
+                  <span>5 000 m</span>
+                </span>
+              </label>
+
+              <div className="ct-formulaire-choix">
+                <label className="ct-option">
+                  <input
+                    type="checkbox"
+                    checked={formulaireZone.is_blocking}
+                    onChange={(evenement) => poserCentreDeZone('is_blocking', evenement.target.checked)}
+                  />
+                  <span className="ct-option-texte">
+                    <span className="ct-option-titre">Zone bloquante</span>
+                    <span className="ct-option-note">Un pointage fait hors de ce cercle est refusé.</span>
+                  </span>
+                </label>
+                <label className="ct-option">
+                  <input
+                    type="checkbox"
+                    checked={formulaireZone.is_active}
+                    onChange={(evenement) => poserCentreDeZone('is_active', evenement.target.checked)}
+                  />
+                  <span className="ct-option-texte">
+                    <span className="ct-option-titre">Zone active</span>
+                    <span className="ct-option-note">Éteinte, elle reste dans la liste mais n’est plus appliquée.</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <footer className="ct-formulaire-pied">
+              <p className="ct-formulaire-aide">
+                {formulaireZone.is_blocking
+                  ? 'Bloquante : le pointage hors zone est refusé.'
+                  : 'Non bloquante : le pointage hors zone est enregistré et signalé.'}
+              </p>
+              <button type="button" className="ct-bouton-creux" onClick={fermerFormulaireZone}>
+                Annuler
+              </button>
+              <button type="submit" className="ct-bouton" disabled={enregistrementZone}>
+                <Save size={14} aria-hidden="true" />
+                {enregistrementZone
+                  ? 'Enregistrement…'
+                  : formulaireZone.id ? 'Enregistrer la zone' : 'Créer la zone'}
+              </button>
+            </footer>
+          </form>
+        </div>
+      )}
+
+      {/* ── La suppression d'une zone se demande une fois ── */}
+      {zoneASupprimer && (
+        <div className="ct-fond" onClick={() => setZoneASupprimer(null)}>
+          <div
+            className="ct-formulaire ct-formulaire--etroit"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ct-suppression-titre"
+            onClick={(evenement) => evenement.stopPropagation()}
+          >
+            <header className="ct-formulaire-tete">
+              <div className="ct-formulaire-titres">
+                <p className="ct-eyebrow">Zones de pointage</p>
+                <h2 className="ct-formulaire-titre" id="ct-suppression-titre">
+                  Supprimer la zone « {zoneASupprimer.zone.name} »
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="ct-fermer"
+                onClick={() => setZoneASupprimer(null)}
+                aria-label="Fermer la confirmation"
+              >
+                <X size={16} />
+              </button>
+            </header>
+
+            <div className="ct-formulaire-corps">
+              <p className="ct-formulaire-texte">
+                La zone disparaît de la carte et de cette liste. Cette action ne se défait pas.
+              </p>
+              {zoneASupprimer.nbPointages > 0 ? (
+                <p className="ct-formulaire-texte ct-formulaire-texte--attention">
+                  <AlertTriangle size={14} aria-hidden="true" />
+                  {zoneASupprimer.nbPointages} pointage{zoneASupprimer.nbPointages > 1 ? 's sont' : ' est'} rattaché{zoneASupprimer.nbPointages > 1 ? 's' : ''} à cette zone.
+                  Les pointages sont conservés : seule leur référence à la zone s’efface.
+                </p>
+              ) : (
+                <p className="ct-formulaire-texte">Aucun pointage n’est rattaché à cette zone.</p>
+              )}
+            </div>
+
+            <footer className="ct-formulaire-pied">
+              <p className="ct-formulaire-aide" />
+              <button type="button" className="ct-bouton-creux" onClick={() => setZoneASupprimer(null)}>
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="ct-bouton ct-bouton--danger"
+                onClick={confirmerSuppressionZone}
+                disabled={zoneEnCoursDeSuppression === zoneASupprimer.zone.id}
+              >
+                <Trash2 size={14} aria-hidden="true" />
+                {zoneEnCoursDeSuppression === zoneASupprimer.zone.id ? 'Suppression…' : 'Supprimer la zone'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🗺️ LA CARTE DU FORMULAIRE — un cercle qu'on pose au doigt
+//
+// Elle vit dans la fenêtre de la zone et nulle part ailleurs :
+// elle se crée à l'ouverture, se retire à la fermeture. Le clic
+// pose le centre ; le rayon et le mode se dessinent en direct,
+// avec les deux couleurs de zone du produit (vert libre, rouge
+// bloquante).
+// ═══════════════════════════════════════════════════════════
+
+function CarteDeZone({ latitude, longitude, rayon, bloquante, onPointer }) {
+  const support = useRef(null)
+  const carteRef = useRef(null)
+  const cercleRef = useRef(null)
+  const marqueurRef = useRef(null)
+  const pointerRef = useRef(onPointer)
+
+  // le clic lit toujours la dernière version du rappel, sans
+  // recréer la carte à chaque rendu
+  useEffect(() => {
+    pointerRef.current = onPointer
+  }, [onPointer])
+
+  useEffect(() => {
+    if (!support.current || carteRef.current) return undefined
+
+    const lat = Number(latitude)
+    const lng = Number(longitude)
+    const pose = latitude !== '' && longitude !== '' && Number.isFinite(lat) && Number.isFinite(lng)
+
+    const carte = L.map(support.current, { scrollWheelZoom: true })
+      .setView(pose ? [lat, lng] : [6.3654, 2.4183], pose ? 16 : 6)
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19,
+    }).addTo(carte)
+
+    carte.on('click', (evenement) => {
+      pointerRef.current?.(evenement.latlng.lat, evenement.latlng.lng)
+    })
+
+    carteRef.current = carte
+    // La fenêtre s'ouvre dans la page : la taille du cadre n'est
+    // connue qu'une fois posée, on redemande le calcul.
+    setTimeout(() => carte.invalidateSize(), 120)
+
+    return () => {
+      carte.remove()
+      carteRef.current = null
+      cercleRef.current = null
+      marqueurRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const carte = carteRef.current
+    if (!carte) return
+
+    const lat = Number(latitude)
+    const lng = Number(longitude)
+    if (latitude === '' || longitude === '' || !Number.isFinite(lat) || !Number.isFinite(lng)) return
+
+    const teinte = bloquante ? COULEUR_ZONE.bloquante : COULEUR_ZONE.libre
+
+    if (cercleRef.current) cercleRef.current.remove()
+    if (marqueurRef.current) marqueurRef.current.remove()
+
+    cercleRef.current = L.circle([lat, lng], {
+      color: teinte,
+      fillColor: teinte,
+      fillOpacity: 0.14,
+      radius: Number(rayon) || 200,
+      weight: 2,
+      dashArray: bloquante ? '6, 4' : null,
+    }).addTo(carte)
+
+    marqueurRef.current = L.marker([lat, lng]).addTo(carte)
+    carte.setView([lat, lng], Math.max(carte.getZoom(), 15))
+  }, [latitude, longitude, rayon, bloquante])
+
+  return (
+    <div className="ct-formulaire-carte">
+      <div ref={support} className="ct-carte-zone" />
+      <p className="ct-formulaire-aide">
+        Cliquez sur la carte : le centre de la zone se pose là.
+      </p>
     </div>
   )
 }
