@@ -112,6 +112,7 @@ it('les billets sont câblés aux vues passeport/groupée/liste et aux deux vues
   const employes = readFileSync('src/pages/Employes.jsx','utf8')
   expect(employes).toContain('useEmployeePayslipIndicators(employes)')
   expect(employes).toContain('payslipEntries={payslipIndicators.entriesFor(employee)}')
-  expect(employes).toContain('<PlanningPayslipBadge entries={payslipIndicators.entriesFor(employee)}')
-  expect(readFileSync('src/components/EmployesAfroTechSections.jsx','utf8')).toContain('<PlanningPayslipBadge entries={payslipEntries}')
+  expect(employes).toContain('payslipDate={payslipIndicators.date}')
+  // l'annuaire porte le billet dans chaque entrée de registre
+  expect(readFileSync('src/components/equipes/EntreeEmploye.jsx','utf8')).toContain('<PlanningPayslipBadge entries={payslipEntries} referenceDate={payslipDate}')
 })

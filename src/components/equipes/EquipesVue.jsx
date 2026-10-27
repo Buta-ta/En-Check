@@ -36,6 +36,7 @@ import {
   TeamModal, MembersModal, DeleteModal, HistoryModal, ShortcutsModal,
 } from './EquipesModales'
 import { RosacePerlesSvg } from '../zoulou/PerlesZoulouSvg'
+import { Folio, Colophon } from '../zoulou/RegistreEntete'
 import '../zoulou/zoulou.css'
 
 const FILTRES = [
@@ -76,31 +77,6 @@ const tonEquipe = (equipe, rang) => {
   if (couleur === '#C8785C' || couleur === '#A2452E') return 'corail'
   if (couleur === '#E0C9A0') return 'creme'
   return TONS_PERLE[rang % TONS_PERLE.length]
-}
-
-// ── le folio : la marque et le nom du registre ─────────────────────
-function Folio({ droite }) {
-  return (
-    <div className="rg-folio">
-      <p className="rg-marque"><strong>En-Check</strong> · Gestion du personnel</p>
-      <p className="rg-folio-droite">{droite}</p>
-    </div>
-  )
-}
-
-// ── le colophon : quatre chiffres, un filet entre chacun ───────────
-function Colophon({ chiffres }) {
-  return (
-    <dl className="rg-colophon">
-      {chiffres.map(({ valeur, libelle, note, ton }) => (
-        <div className="rg-chiffre" key={libelle} data-ton={ton || 'normal'}>
-          <dd className="rg-chiffre-valeur">{valeur}</dd>
-          <dt className="rg-chiffre-libelle">{libelle}</dt>
-          <dd className="rg-chiffre-note">{note}</dd>
-        </div>
-      ))}
-    </dl>
-  )
 }
 
 // ── le collier de l'entreprise : une perle par personne ────────────

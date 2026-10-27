@@ -31,6 +31,7 @@ import { ThemeProvider } from '../../contexts/ThemeContext'
 import Employes from '../../pages/Employes'
 import EquipesVue from '../../components/equipes/EquipesVue'
 import TachesVue from '../../components/taches/TachesVue'
+import EntreeEmploye from '../../components/equipes/EntreeEmploye'
 
 const APP = readFileSync('src/App.jsx', 'utf8')
 const MENU = readFileSync('src/components/DashboardExperience.jsx', 'utf8')
@@ -238,6 +239,161 @@ describe('les onglets de la page Employés', () => {
 
   it('embarque les raccourcis de pages de la coque refondue', () => {
     expect(EMPLOYES).toContain("<RaccourcisPages compact excludePaths={['/employes']} />")
+  })
+})
+
+// ═══════════════════════════════════════════════════════════
+// ② bis La vue Annuaire — même registre que les deux autres
+// ═══════════════════════════════════════════════════════════
+
+const personne = (surcharge = {}) => ({
+  id: 'emp-1',
+  first_name: 'Awa',
+  last_name: 'Dossou',
+  matricule: 'EMP-001',
+  contract_type: 'CDI',
+  position: 'Technicienne de ligne',
+  department: 'Maintenance',
+  classification: 'employe',
+  hire_date: '2021-03-01',
+  machine_pin: '42',
+  employee_portal_enabled: true,
+  user_id: 'u-1',
+  employee_schedules: [],
+  enterprises: { module_planning: true },
+  ...surcharge,
+})
+
+const rendreEntree = async (props = {}) => {
+  const actions = {
+    onOuvrirFiche: vi.fn(),
+    onBadge: vi.fn(),
+    onHoraires: vi.fn(),
+    onPartagerHoraires: vi.fn(),
+    onPointages: vi.fn(),
+    onMotDePasse: vi.fn(),
+    onBasculerPortail: vi.fn(),
+    onSupprimer: vi.fn(),
+  }
+  await rendre(
+    <EntreeEmploye
+      employee={personne()}
+      numero={1}
+      liveStatus={{ state: 'en_poste', entryHHMM: '08:12' }}
+      stats={{ totalSeconds: 3600, percentage: 80, label: '32 h sur 40 h' }}
+      scheduleInfo="08:00 → 17:00"
+      regimeLabel="Horaire d’entreprise"
+      seniority="4 ans 6m"
+      derniereConnexion="Connexion il y a 2 j"
+      contractLabel="CDI"
+      classificationLabel="Employé"
+      portalEnabled
+      planningEnabled
+      aCompte
+      ancienSysteme={false}
+      {...actions}
+      {...props}
+    />,
+  )
+  return actions
+}
+
+describe('la vue Annuaire', () => {
+  it('ouvre sur un feuillet, un titre serif et un colophon de quatre chiffres', async () => {
+    await rendre(
+      <ThemeProvider>
+        <Employes />
+      </ThemeProvider>,
+    )
+    for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
+
+    expect(hote.querySelector('.rg-folio').textContent).toContain('Registre du personnel')
+    expect(hote.querySelector('.rg-eyebrow').textContent).toContain('Tout le personnel')
+    expect(hote.querySelector('h2.rg-titre').textContent).toBe('Annuaire.')
+
+    const chiffres = [...hote.querySelectorAll('.rg-chiffre')]
+    expect(chiffres).toHaveLength(4)
+    expect(chiffres.map((c) => c.querySelector('.rg-chiffre-libelle').textContent))
+      .toEqual(['Employés', 'En poste', 'Portail', 'À migrer'])
+    // rien à compter : un tiret, pas un zéro inventé pour la présence
+    expect(chiffres[1].querySelector('.rg-chiffre-valeur').textContent).toBe('—')
+    expect(chiffres[1].querySelector('.rg-chiffre-note').textContent).toBe('pointage non suivi')
+  })
+
+  it('explique l’annuaire vide et propose la première fiche', async () => {
+    await rendre(
+      <ThemeProvider>
+        <Employes />
+      </ThemeProvider>,
+    )
+    for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
+    expect(hote.textContent).toContain('Aucun employé pour l’instant')
+    expect(hote.querySelector('[data-testid="rosace-perles"]')).not.toBeNull()
+    expect(boutonAvec('Ajouter un employé')).toBeTruthy()
+  })
+
+  it('range une personne en entrée de registre numérotée', async () => {
+    await rendreEntree()
+    const entree = hote.querySelector('.rg-entree-annuaire')
+    expect(entree).not.toBeNull()
+    expect(entree.querySelector('.rg-entree-index').textContent).toBe('01')
+    expect(entree.querySelector('.rg-entree-titre').textContent).toBe('Awa Dossou')
+    expect(entree.querySelector('.rg-avatar-annuaire').textContent).toBe('AD')
+    expect(entree.textContent).toContain('EMP-001')
+    expect(entree.textContent).toContain('CDI')
+    expect(entree.textContent).toContain('Technicienne de ligne')
+    expect(entree.textContent).toContain('Maintenance')
+  })
+
+  it('lit la présence et les heures de la semaine, sans les inventer', async () => {
+    await rendreEntree()
+    const presence = hote.querySelector('.rg-presence')
+    expect(presence.getAttribute('data-etat')).toBe('en_poste')
+    expect(presence.textContent).toContain('En poste · 08:12')
+    expect(hote.querySelector('.rg-annuaire-heures-texte').textContent).toBe('32 h sur 40 h')
+    expect(hote.querySelector('.rg-jauge-remplie').getAttribute('style')).toContain('80%')
+
+    await relancer(<EntreeEmploye employee={personne()} numero={2} />)
+    expect(hote.querySelector('.rg-presence').textContent).toContain('Non pointé')
+    expect(hote.querySelector('.rg-annuaire-heures')).toBeNull()
+  })
+
+  it('dit quand il n’y a pas de numéro de pointeuse, au lieu de laisser un blanc', async () => {
+    await rendreEntree({ employee: personne({ machine_pin: '' }) })
+    expect(hote.textContent).toContain('aucun numéro de pointage')
+  })
+
+  it('ouvre la fiche d’un clic sur le nom, le badge d’un clic sur Badge', async () => {
+    const actions = await rendreEntree()
+    await act(async () => hote.querySelector('.rg-entree-titre button').click())
+    expect(actions.onOuvrirFiche).toHaveBeenCalledWith(expect.objectContaining({ id: 'emp-1' }))
+
+    await act(async () => boutonAvec('Badge').click())
+    expect(actions.onBadge).toHaveBeenCalledTimes(1)
+  })
+
+  it('garde les autres gestes dans un menu, pas sur la ligne', async () => {
+    const actions = await rendreEntree()
+    const menuBouton = hote.querySelector('.rg-entree-actions button[aria-expanded]')
+    expect(menuBouton.getAttribute('aria-expanded')).toBe('false')
+    await act(async () => menuBouton.click())
+    expect(menuBouton.getAttribute('aria-expanded')).toBe('true')
+    const menu = hote.querySelector('.rg-menu-annuaire')
+    expect(menu.textContent).toContain('Horaires')
+    expect(menu.textContent).toContain('Voir les pointages')
+    expect(menu.textContent).toContain('Mot de passe')
+    expect(menu.textContent).toContain('Supprimer la fiche')
+
+    await act(async () => [...menu.querySelectorAll('button')].find((b) => b.textContent.includes('Horaires')).click())
+    expect(actions.onHoraires).toHaveBeenCalledTimes(1)
+    expect(hote.querySelector('.rg-menu-annuaire')).toBeNull()
+  })
+
+  it('signale un portail à migrer sans attendre qu’on ouvre le menu', async () => {
+    await rendreEntree({ ancienSysteme: true, portalEnabled: false })
+    const compte = hote.querySelector('.rg-annuaire-compte')
+    expect(compte.getAttribute('data-etat')).toBe('migrer')
+    expect(compte.textContent).toContain('portail à migrer')
   })
 })
 
@@ -772,7 +928,9 @@ describe('la page Employés', () => {
     expect(onglets).toEqual(['Annuaire', 'Équipes', 'Tâches'])
     const actif = hote.querySelector('.emp-onglet[aria-current="page"]')
     expect(actif.textContent.trim()).toBe('Annuaire')
-    expect(hote.textContent).toContain('Annuaire des Employés')
+    // l'annuaire s'ouvre sur le même feuillet que les deux autres vues
+    expect(hote.querySelector('h2.rg-titre').textContent).toBe('Annuaire.')
+    expect(hote.querySelector('.rg-folio').textContent).toContain('En-Check')
   })
 
   it('passe aux équipes et aux tâches sans quitter la page', async () => {
@@ -780,7 +938,7 @@ describe('la page Employés', () => {
     await act(async () => [...hote.querySelectorAll('.emp-onglet')].find((o) => o.textContent.includes('Équipes')).click())
     expect(hote.querySelector('.emp-onglet[aria-current="page"]').textContent.trim()).toBe('Équipes')
     expect(hote.textContent).toContain('Nouvelle équipe')
-    expect(hote.textContent).not.toContain('Annuaire des Employés')
+    expect(hote.querySelector('.rg-annuaire')).toBeNull()
 
     await act(async () => [...hote.querySelectorAll('.emp-onglet')].find((o) => o.textContent.includes('Tâches')).click())
     expect(hote.querySelector('.emp-onglet[aria-current="page"]').textContent.trim()).toBe('Tâches')
@@ -815,11 +973,44 @@ describe('la page Employés', () => {
     expect(notes).toEqual(['dont 1 jamais ouvertes', '0 % du registre', '0 % du registre', '50 % du registre'])
   })
 
-  it('garde les raccourcis de pages sous les trois vues', async () => {
+  it('garde les raccourcis de pages en haut à droite, jamais en bas', async () => {
     await monterPage()
     const raccourcis = hote.querySelector('[data-testid="raccourcis-pages"]')
     expect(raccourcis).not.toBeNull()
     expect(raccourcis.querySelector('a[href="/pointages"]')).not.toBeNull()
     expect(raccourcis.querySelector('a[href="/employes"]')).toBeNull()
+
+    // ils vivent dans la barre du haut, avec les onglets
+    const barre = hote.querySelector('.emp-barre')
+    expect(barre).not.toBeNull()
+    expect(barre.querySelector('[data-testid="raccourcis-pages"]')).not.toBeNull()
+    expect(barre.querySelector('.emp-onglets')).not.toBeNull()
+
+    // et avant le contenu de la vue, pas après
+    const vue = hote.querySelector('.rg-annuaire')
+    expect(vue).not.toBeNull()
+    expect(barre.compareDocumentPosition(vue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // aucun second bandeau de raccourcis plus bas
+    expect(hote.querySelectorAll('[data-testid="raccourcis-pages"]')).toHaveLength(1)
+  })
+
+  it('n’a plus de cartes de chiffres ni de portraits à la place du registre', () => {
+    expect(EMPLOYES).not.toContain('employes-portrait-grid')
+    expect(EMPLOYES).not.toContain('EmployesPortraitCard')
+    expect(EMPLOYES).not.toContain('EmployesExecutiveKpis')
+    expect(EMPLOYES).not.toContain('EmployesAnalyticsCharts')
+    const sections = readFileSync('src/components/EmployesAfroTechSections.jsx', 'utf8')
+    expect(sections).not.toContain('EmployesExecutiveKpis')
+    expect(sections).not.toContain('employes-framed-card')
+  })
+
+  it('tient tous les raccourcis dans la barre haute, entre les onglets et le registre', () => {
+    const barre = EMPLOYES.indexOf('<div className="emp-barre-raccourcis">')
+    const registre = EMPLOYES.indexOf('<div className="emp-vues rg-annuaire">')
+    expect(barre).toBeGreaterThan(0)
+    expect(registre).toBeGreaterThan(barre)
+    // plus aucun raccourci après les vues
+    const apresVues = EMPLOYES.indexOf('<RaccourcisPages', registre)
+    expect(apresVues).toBe(-1)
   })
 })
