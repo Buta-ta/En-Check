@@ -36,7 +36,7 @@ import {
 } from './EquipesModales'
 import {
   AnneauPerlesSvg, FilMembresSvg, FrisePerlesSvg, LosangePerlesSvg,
-  PampillesSvg, RosacePerlesSvg,
+  RosacePerlesSvg,
 } from '../zoulou/PerlesZoulouSvg'
 import '../zoulou/zoulou.css'
 
@@ -744,10 +744,7 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
       {/* ══ LA SCÈNE : la frise, le titre, les actions ══ */}
       <section className="zl-scene" aria-label="Vue Équipes">
         <div className="zl-scene-frise">
-          <FrisePerlesSvg hauteur={52} motif="chevrons" />
-          <div className="zl-scene-frise-pampilles">
-            <PampillesSvg nombre={30} hauteur={20} />
-          </div>
+          <FrisePerlesSvg hauteur={46} motif="chevrons" />
         </div>
 
         <div className="zl-scene-corps">
@@ -758,25 +755,29 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
             </p>
             <h2 className="zl-scene-titre">Équipes<span>.</span></h2>
             <p className="zl-scene-sous">
-              <strong>{equipes.length}</strong> équipe{equipes.length > 1 ? 's' : ''} ·{' '}
-              <strong>{totalMembres}</strong> membre{totalMembres > 1 ? 's' : ''} ·{' '}
-              <strong>{totalChefs}</strong> chef{totalChefs > 1 ? 's' : ''} d’équipe désigné{totalChefs > 1 ? 's' : ''}
+              <span><strong>{equipes.length}</strong> équipe{equipes.length > 1 ? 's' : ''}</span>
+              <span className="zl-sep" aria-hidden="true" />
+              <span><strong>{totalMembres}</strong> membre{totalMembres > 1 ? 's' : ''} en équipe</span>
+              <span className="zl-sep" aria-hidden="true" />
+              <span><strong>{totalChefs}</strong> chef{totalChefs > 1 ? 's' : ''} d’équipe désigné{totalChefs > 1 ? 's' : ''}</span>
             </p>
           </div>
           <div className="zl-scene-actions">
-            <button type="button" className="zl-bouton zl-bouton-icone" onClick={() => charger(enterpriseId)}
-              aria-label="Rafraîchir les équipes" title="Rafraîchir (R)">
-              <RefreshCw size={15} />
-            </button>
-            <button type="button" className="zl-bouton zl-bouton-icone"
-              onClick={async () => { await chargerHistorique(); setMontrerHistorique(true) }}
-              aria-label="Historique des équipes" title="Historique">
-              <History size={15} />
-            </button>
-            <button type="button" className="zl-bouton zl-bouton-icone"
-              onClick={() => setMontrerRaccourcis(true)} aria-label="Raccourcis clavier" title="Raccourcis (?)">
-              <HelpCircle size={15} />
-            </button>
+            <div className="zl-scene-utilitaires">
+              <button type="button" className="zl-bouton zl-bouton-icone" onClick={() => charger(enterpriseId)}
+                aria-label="Rafraîchir les équipes" title="Rafraîchir (R)">
+                <RefreshCw size={15} />
+              </button>
+              <button type="button" className="zl-bouton zl-bouton-icone"
+                onClick={async () => { await chargerHistorique(); setMontrerHistorique(true) }}
+                aria-label="Historique des équipes" title="Historique">
+                <History size={15} />
+              </button>
+              <button type="button" className="zl-bouton zl-bouton-icone"
+                onClick={() => setMontrerRaccourcis(true)} aria-label="Raccourcis clavier" title="Raccourcis (?)">
+                <HelpCircle size={15} />
+              </button>
+            </div>
             <button type="button" className="zl-bouton zl-bouton-principal" onClick={ouvrirNouvelleEquipe}>
               <Plus size={15} /> Nouvelle équipe
             </button>
@@ -787,20 +788,22 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
         <div className="zl-medaillons">
           <div className="zl-medaillon">
             <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={58} parts={26} remplis={part(equipesAvecMembres, equipes.length, 26)} ton="cuivre" />
+              <AnneauPerlesSvg taille={62} parts={26} remplis={part(equipesAvecMembres, equipes.length, 26)} ton="cuivre" />
               <span className="zl-medaillon-cle">{equipes.length}</span>
             </span>
             <span className="zl-medaillon-texte">
               <span className="zl-medaillon-libelle">Équipes</span>
               <span className="zl-medaillon-note">
-                {equipes.length === 0 ? 'à créer' : `${equipesAvecMembres} avec des membres`}
+                {equipes.length === 0
+                  ? '—'
+                  : `${Math.round((equipesAvecMembres / equipes.length) * 100)} % ont des membres`}
               </span>
             </span>
           </div>
 
           <div className="zl-medaillon">
             <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={58} parts={26} remplis={part(totalMembres, effectifConnu, 26)} ton="teal" />
+              <AnneauPerlesSvg taille={62} parts={26} remplis={part(totalMembres, effectifConnu, 26)} ton="teal" />
               <span className="zl-medaillon-cle">{totalMembres}</span>
             </span>
             <span className="zl-medaillon-texte">
@@ -808,33 +811,37 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
               <span className="zl-medaillon-note">
                 {effectifConnu > 0
                   ? `${Math.round((totalMembres / effectifConnu) * 100)} % de l’effectif`
-                  : 'effectif inconnu'}
+                  : '—'}
               </span>
             </span>
           </div>
 
           <div className="zl-medaillon">
             <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={58} parts={26} remplis={part(totalChefs, equipes.length, 26)} ton="sauge" />
+              <AnneauPerlesSvg taille={62} parts={26} remplis={part(totalChefs, equipes.length, 26)} ton="sauge" />
               <span className="zl-medaillon-cle">{totalChefs}</span>
             </span>
             <span className="zl-medaillon-texte">
               <span className="zl-medaillon-libelle">Chefs d’équipe</span>
               <span className="zl-medaillon-note">
-                {equipes.length > 0 && totalChefs === equipes.length ? 'toutes dirigées' : 'des équipes sans chef'}
+                {equipes.length === 0
+                  ? '—'
+                  : `${Math.round((totalChefs / equipes.length) * 100)} % des équipes`}
               </span>
             </span>
           </div>
 
           <div className="zl-medaillon">
             <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={58} parts={26} remplis={part(orphelins.length, effectifConnu, 26)} ton="corail" />
+              <AnneauPerlesSvg taille={62} parts={26} remplis={part(orphelins.length, effectifConnu, 26)} ton="corail" />
               <span className="zl-medaillon-cle">{orphelins.length}</span>
             </span>
             <span className="zl-medaillon-texte">
               <span className="zl-medaillon-libelle">Sans équipe</span>
               <span className="zl-medaillon-note" data-ton={orphelins.length > 0 ? 'alerte' : 'ok'}>
-                {orphelins.length > 0 ? 'à rattacher' : 'tous rattachés'}
+                {effectifConnu > 0
+                  ? `${Math.round((orphelins.length / effectifConnu) * 100)} % de l’effectif`
+                  : '—'}
               </span>
             </span>
           </div>

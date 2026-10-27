@@ -34,7 +34,7 @@ import {
 } from './TachesModales'
 import {
   AnneauPerlesSvg, CollierEcheanceSvg, FrisePerlesSvg,
-  LosangePerlesSvg, PampillesSvg, RosacePerlesSvg,
+  LosangePerlesSvg, RosacePerlesSvg,
 } from '../zoulou/PerlesZoulouSvg'
 import '../zoulou/zoulou.css'
 
@@ -519,10 +519,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
       {/* ══ LA SCÈNE : la frise, le titre, les actions ══ */}
       <section className="zl-scene" aria-label="Vue Tâches">
         <div className="zl-scene-frise">
-          <FrisePerlesSvg hauteur={52} motif="zigzag" />
-          <div className="zl-scene-frise-pampilles">
-            <PampillesSvg nombre={30} hauteur={20} />
-          </div>
+          <FrisePerlesSvg hauteur={46} motif="zigzag" />
         </div>
 
         <div className="zl-scene-corps">
@@ -533,23 +530,28 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
             </p>
             <h2 className="zl-scene-titre">Tâches<span>.</span></h2>
             <p className="zl-scene-sous">
-              <strong>{chiffres.total}</strong> tâche{chiffres.total > 1 ? 's' : ''} ·{' '}
-              <strong>{chiffres.enCours}</strong> en cours ·{' '}
-              <strong>{chiffres.retard}</strong> en retard ·{' '}
-              <strong>{chiffres.terminees}</strong> terminée{chiffres.terminees > 1 ? 's' : ''}
+              <span><strong>{chiffres.total}</strong> tâche{chiffres.total > 1 ? 's' : ''}</span>
+              <span className="zl-sep" aria-hidden="true" />
+              <span><strong>{chiffres.enCours}</strong> en cours</span>
+              <span className="zl-sep" aria-hidden="true" />
+              <span><strong>{chiffres.retard}</strong> en retard</span>
+              <span className="zl-sep" aria-hidden="true" />
+              <span><strong>{chiffres.terminees}</strong> terminée{chiffres.terminees > 1 ? 's' : ''}</span>
             </p>
           </div>
           <div className="zl-scene-actions">
-            <button type="button" className="zl-bouton zl-bouton-icone" onClick={() => charger(enterpriseId)}
-              aria-label="Rafraîchir les tâches" title="Rafraîchir (R)">
-              <RefreshCw size={15} />
-            </button>
+            <div className="zl-scene-utilitaires">
+              <button type="button" className="zl-bouton zl-bouton-icone" onClick={() => charger(enterpriseId)}
+                aria-label="Rafraîchir les tâches" title="Rafraîchir (R)">
+                <RefreshCw size={15} />
+              </button>
+              <button type="button" className="zl-bouton zl-bouton-icone"
+                onClick={() => setMontrerRaccourcis(true)} aria-label="Raccourcis clavier" title="Raccourcis (?)">
+                <HelpCircle size={15} />
+              </button>
+            </div>
             <button type="button" className="zl-bouton" onClick={ouvrirNouvelleCategorie}>
               <Tag size={14} /> Nouvelle catégorie
-            </button>
-            <button type="button" className="zl-bouton zl-bouton-icone"
-              onClick={() => setMontrerRaccourcis(true)} aria-label="Raccourcis clavier" title="Raccourcis (?)">
-              <HelpCircle size={15} />
             </button>
             <button type="button" className="zl-bouton zl-bouton-principal" onClick={ouvrirNouvelleTache}>
               <Plus size={15} /> Nouvelle tâche
@@ -561,42 +563,46 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
         <div className="zl-medaillons">
           <div className="zl-medaillon">
             <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={58} parts={26} remplis={part(chiffres.aFaire, chiffres.total, 26)} ton="teal" />
+              <AnneauPerlesSvg taille={62} parts={26} remplis={part(chiffres.aFaire, chiffres.total, 26)} ton="teal" />
               <span className="zl-medaillon-cle">{chiffres.aFaire}</span>
             </span>
             <span className="zl-medaillon-texte">
               <span className="zl-medaillon-libelle">À faire</span>
-              <span className="zl-medaillon-note">assignées, pas commencées</span>
-            </span>
-          </div>
-
-          <div className="zl-medaillon">
-            <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={58} parts={26} remplis={part(chiffres.enCours, chiffres.total, 26)} ton="cuivre" />
-              <span className="zl-medaillon-cle">{chiffres.enCours}</span>
-            </span>
-            <span className="zl-medaillon-texte">
-              <span className="zl-medaillon-libelle">En cours</span>
-              <span className="zl-medaillon-note">le travail est commencé</span>
-            </span>
-          </div>
-
-          <div className="zl-medaillon">
-            <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={58} parts={26} remplis={part(chiffres.retard, chiffres.total, 26)} ton="corail" />
-              <span className="zl-medaillon-cle">{chiffres.retard}</span>
-            </span>
-            <span className="zl-medaillon-texte">
-              <span className="zl-medaillon-libelle">En retard</span>
-              <span className="zl-medaillon-note" data-ton={chiffres.retard > 0 ? 'alerte' : 'ok'}>
-                {chiffres.retard > 0 ? 'échéance dépassée' : 'aucune échéance dépassée'}
+              <span className="zl-medaillon-note">
+                {chiffres.total > 0 ? `${Math.round((chiffres.aFaire / chiffres.total) * 100)} % du total` : '—'}
               </span>
             </span>
           </div>
 
           <div className="zl-medaillon">
             <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={58} parts={26} remplis={part(chiffres.terminees, chiffres.total, 26)} ton="sauge" />
+              <AnneauPerlesSvg taille={62} parts={26} remplis={part(chiffres.enCours, chiffres.total, 26)} ton="cuivre" />
+              <span className="zl-medaillon-cle">{chiffres.enCours}</span>
+            </span>
+            <span className="zl-medaillon-texte">
+              <span className="zl-medaillon-libelle">En cours</span>
+              <span className="zl-medaillon-note">
+                {chiffres.total > 0 ? `${Math.round((chiffres.enCours / chiffres.total) * 100)} % du total` : '—'}
+              </span>
+            </span>
+          </div>
+
+          <div className="zl-medaillon">
+            <span className="zl-medaillon-rond">
+              <AnneauPerlesSvg taille={62} parts={26} remplis={part(chiffres.retard, chiffres.total, 26)} ton="corail" />
+              <span className="zl-medaillon-cle">{chiffres.retard}</span>
+            </span>
+            <span className="zl-medaillon-texte">
+              <span className="zl-medaillon-libelle">En retard</span>
+              <span className="zl-medaillon-note" data-ton={chiffres.retard > 0 ? 'alerte' : 'ok'}>
+                {chiffres.total > 0 ? `${Math.round((chiffres.retard / chiffres.total) * 100)} % du total` : '—'}
+              </span>
+            </span>
+          </div>
+
+          <div className="zl-medaillon">
+            <span className="zl-medaillon-rond">
+              <AnneauPerlesSvg taille={62} parts={26} remplis={part(chiffres.terminees, chiffres.total, 26)} ton="sauge" />
               <span className="zl-medaillon-cle">{chiffres.terminees}</span>
             </span>
             <span className="zl-medaillon-texte">
@@ -604,7 +610,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
               <span className="zl-medaillon-note">
                 {chiffres.total > 0
                   ? `${Math.round((chiffres.terminees / chiffres.total) * 100)} % du total`
-                  : 'rien à finir'}
+                  : '—'}
               </span>
             </span>
           </div>

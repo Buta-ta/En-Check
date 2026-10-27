@@ -6,14 +6,15 @@
 // une appartenance ; deux perles qui se touchent racontent une
 // union. On reprend exactement cela :
 //
-//   · la FRISE     — la bande tissée qui coiffe une vue : des
-//                    losanges en perles, reliés par le fil ;
+//   · la FRISE     — la couture perlée qui coiffe une vue : une
+//                    trame tissée, une couture en dents, un rang
+//                    de grosses perles ;
 //   · l'ANNEAU     — un cercle de perles dont la part pleine
 //                    donne une proportion (jamais un camembert) ;
 //   · le LOSANGE   — une marque de repère, quatre perles et un
 //                    centre, à la taille d'une puce ;
-//   · la PAMPILLE  — les perles qui pendent au bas d'un panneau,
-//                    et qui s'allègent pour dire « ça continue ».
+//   · la ROSACE    — deux anneaux de perles, en filigrane ;
+//   · le COLLIER   — une perle par jour restant avant une échéance.
 //
 // Tout est dessiné ici, en SVG : aucune image, aucune police
 // d'icônes. Les couleurs viennent des variables --zl-*, donc le
@@ -24,41 +25,29 @@ import { useId } from 'react'
 
 const TONS = ['creme', 'cuivre', 'teal', 'sauge', 'corail']
 
-/** Un rang de perles le long d'un segment — le geste de base. */
-function rang(x0, y0, x1, y1, nombre, tons, rayon = 2.2, decalage = 0) {
-  return Array.from({ length: nombre }, (_, i) => {
-    const t = nombre === 1 ? 0 : i / (nombre - 1)
-    const ton = tons[(i + decalage) % tons.length]
-    return (
-      <circle
-        key={`${x0}-${i}`}
-        cx={Number((x0 + (x1 - x0) * t).toFixed(2))}
-        cy={Number((y0 + (y1 - y0) * t).toFixed(2))}
-        r={rayon}
-        fill={`var(--zl-perle-${ton})`}
-      />
-    )
-  })
-}
-
 /**
- * La bande tissée : le motif d'une ceinture perlée — deux rails de
- * fines perles, un double chevron qui se répond, un œil au centre.
- * Elle se répète sur toute la largeur, d'où l'absence de viewBox :
- * une unité vaut un pixel, sinon le motif serait étiré.
+ * La frise : un rang de perles posé sur une couture brodée.
+ *
+ * Elle tient en trois signes qui se répètent — une trame tissée très
+ * discrète, une couture en dents de scie, et le rang de perles qui
+ * ondule doucement. Rien de plus : une frise qui court sur toute la
+ * largeur doit être calme, sinon elle vole la vedette au titre.
+ *
+ * `motif` change la couture : « chevrons » pour les Équipes (dents
+ * larges), « zigzag » pour les Tâches (dents serrées, plus nerveuses).
+ * Pas de viewBox : une unité vaut un pixel, sinon le motif s'étire.
  */
 export function FrisePerlesSvg({
-  hauteur = 52,
+  hauteur = 46,
   motif = 'chevrons',
   className = '',
   fond = 'transparent',
 }) {
   const id = useId().replace(/:/g, '')
-  const pas = motif === 'chevrons' ? 78 : 62
+  const pas = motif === 'chevrons' ? 116 : 84
+  const dent = motif === 'chevrons' ? 11 : 8
   const m = hauteur / 2
-  const RAILS = ['creme', 'creme']
-  const CHEVRON = ['cuivre', 'creme', 'sauge', 'creme', 'cuivre', 'creme']
-  const CHEVRON_BAS = ['teal', 'creme', 'sauge', 'creme', 'teal', 'creme']
+  const perles = motif === 'chevrons' ? 6 : 5
 
   return (
     <svg
@@ -72,58 +61,44 @@ export function FrisePerlesSvg({
     >
       <defs>
         <pattern id={`frise-${id}`} width={pas} height={hauteur} patternUnits="userSpaceOnUse">
-          {/* la trame : de fines bandes tissées sous les perles */}
-          {Array.from({ length: Math.ceil(hauteur / 9) }, (_, i) => (
-            <rect key={`t${i}`} x="0" y={i * 9} width={pas} height="4" fill="var(--zl-fil-faible)" opacity="0.16" />
+          {/* la trame tissée, à peine visible */}
+          {Array.from({ length: Math.ceil(hauteur / 10) }, (_, i) => (
+            <rect
+              key={`t${i}`}
+              x="0" y={5 + i * 10}
+              width={pas} height="2.6"
+              fill="var(--zl-fil-faible)"
+              opacity="0.16"
+            />
           ))}
 
-          {/* les deux rails : de petites perles régulières */}
-          {Array.from({ length: Math.ceil(pas / 9) }, (_, i) => (
-            <g key={`r${i}`}>
-              <circle cx={3.5 + i * 9} cy="5" r="1.3" fill="var(--zl-perle-creme)" opacity="0.55" />
-              <circle cx={3.5 + i * 9} cy={hauteur - 5} r="1.3" fill="var(--zl-perle-creme)" opacity="0.55" />
-            </g>
-          ))}
+          {/* la couture : des dents régulières, dessinées au fil */}
+          <polyline
+            points={
+              motif === 'chevrons'
+                ? `0,${m - dent} ${pas / 2},${m + dent} ${pas},${m - dent}`
+                : `0,${m - dent} ${pas / 4},${m + dent} ${pas / 2},${m - dent} ${(pas * 3) / 4},${m + dent} ${pas},${m - dent}`
+            }
+            fill="none"
+            stroke="var(--zl-fil)"
+            strokeWidth="1"
+            strokeLinejoin="round"
+          />
 
-          {motif === 'chevrons' ? (
-            <g>
-              {rang(2, 13, pas / 2, m - 6, 6, CHEVRON, 2.2, 0)}
-              {rang(pas / 2, m - 6, pas - 2, 13, 6, CHEVRON, 2.2, 1)}
-              {rang(2, hauteur - 13, pas / 2, m + 6, 6, CHEVRON_BAS, 2.2, 2)}
-              {rang(pas / 2, m + 6, pas - 2, hauteur - 13, 6, CHEVRON_BAS, 2.2, 3)}
-              {/* l'œil : quatre perles autour d'un cœur corail */}
-              <circle cx={pas / 2} cy={m} r="3.2" fill="var(--zl-perle-corail)" />
-              <circle cx={pas / 2} cy={m - 8} r="1.8" fill="var(--zl-perle-creme)" />
-              <circle cx={pas / 2} cy={m + 8} r="1.8" fill="var(--zl-perle-creme)" />
-              <circle cx={pas / 2 - 10} cy={m} r="1.8" fill="var(--zl-perle-creme)" />
-              <circle cx={pas / 2 + 10} cy={m} r="1.8" fill="var(--zl-perle-creme)" />
-              {/* les grains d'entre-deux : le motif respire */}
-              {Array.from({ length: Math.ceil(pas / 15) }, (_, i) => (
-                <circle key={`g${i}`} cx={8 + i * 15} cy={m} r="1.1" fill="var(--zl-perle-creme)" opacity="0.22" />
-              ))}
-            </g>
-          ) : (
-            <g>
-              {/* la dent de scie : le fil qu'on enfile perle après perle */}
-              <polyline
-                points={`0,${m} ${pas / 4},${m - 15} ${pas / 2},${m} ${(pas * 3) / 4},${m + 15} ${pas},${m}`}
-                fill="none"
-                stroke="var(--zl-fil)"
-                strokeWidth="1.3"
-                strokeLinejoin="round"
+          {/* le rang de perles : il ondule, les tailles alternent */}
+          {Array.from({ length: perles }, (_, i) => {
+            const x = 5 + i * (pas / (perles - 0.2))
+            const y = m + Math.sin((i / perles) * Math.PI * 2) * (dent - 6)
+            return (
+              <circle
+                key={`p${i}`}
+                cx={Number(x.toFixed(2))}
+                cy={Number(y.toFixed(2))}
+                r={i % 4 === 0 ? 5 : 4.1}
+                fill={`var(--zl-perle-${TONS[i % TONS.length]})`}
               />
-              {[
-                [0, m, 0], [pas / 4, m - 15, 1], [pas / 2, m, 2], [(pas * 3) / 4, m + 15, 3],
-              ].map(([x, y, i]) => (
-                <circle key={`s${i}`} cx={x} cy={y} r="2.6" fill={`var(--zl-perle-${TONS[i % TONS.length]})`} />
-              ))}
-              <circle cx={pas / 8} cy={m - 7.5} r="1.6" fill="var(--zl-perle-creme)" opacity="0.5" />
-              <circle cx={(pas * 5) / 8} cy={m + 7.5} r="1.6" fill="var(--zl-perle-creme)" opacity="0.5" />
-              {Array.from({ length: Math.ceil(pas / 13) }, (_, i) => (
-                <circle key={`g${i}`} cx={5 + i * 13} cy={m} r="1" fill="var(--zl-perle-creme)" opacity="0.2" />
-              ))}
-            </g>
-          )}
+            )
+          })}
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill={`url(#frise-${id})`} />
@@ -208,41 +183,6 @@ export function LosangePerlesSvg({
       <circle cx={c} cy={c + d} r="2.1" fill={`var(--zl-perle-${ton})`} />
       <circle cx={c - d} cy={c} r="2.1" fill={`var(--zl-perle-${ton})`} />
       <circle cx={c} cy={c} r="1.7" fill="var(--zl-perle-creme)" />
-    </svg>
-  )
-}
-
-/**
- * Les pampilles : des perles qui pendent, de longueurs inégales.
- * Posées au bas d'un panneau, elles disent « la vue continue »
- * sans barre de défilement ni flèche.
- */
-export function PampillesSvg({ nombre = 18, hauteur = 26, className = '' }) {
-  return (
-    <svg
-      className={className}
-      width="100%"
-      height={hauteur}
-      aria-hidden="true"
-      data-testid="pampilles"
-      style={{ display: 'block' }}
-    >
-      {Array.from({ length: nombre }, (_, i) => {
-        const x = ((i + 0.5) / nombre) * 100
-        const longueur = [10, 17, 13, 22, 15, 19][i % 6]
-        return (
-          <g key={i}>
-            <line
-              x1={`${x}%`} y1="0" x2={`${x}%`} y2={longueur}
-              stroke="var(--zl-fil-faible)" strokeWidth="0.8"
-            />
-            <circle
-              cx={`${x}%`} cy={longueur} r={i % 3 === 0 ? 2.6 : 2}
-              fill={`var(--zl-perle-${TONS[i % TONS.length]})`}
-            />
-          </g>
-        )
-      })}
     </svg>
   )
 }

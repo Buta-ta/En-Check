@@ -58,7 +58,6 @@ export function EmployesCulturalHero({
   onSelectEnterprise,
   onToggleTheme,
   onBackDashboard,
-  onNavigate,
   onAddEmployee,
 }) {
   return (
@@ -86,15 +85,6 @@ export function EmployesCulturalHero({
 
         <div className="employes-concept-center-col">
           <h1 className="employes-concept-center-title">Employés</h1>
-          {onNavigate && (
-            <nav className="pointages-quick-nav" aria-label="Navigation rapide En-Check">
-              <button type="button" onClick={() => onNavigate('/dashboard')}>Dashboard</button>
-              <button type="button" onClick={() => onNavigate('/pointages')}>Pointages</button>
-              <button type="button" className="is-active" aria-current="page">Employés</button>
-              <button type="button" onClick={() => onNavigate('/pauses')}>Pauses</button>
-              <button type="button" onClick={() => onNavigate('/planning')}>Planning</button>
-            </nav>
-          )}
         </div>
 
         <div className="employes-concept-actions">

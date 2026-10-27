@@ -49,22 +49,35 @@ d'une photo. Six signes, chacun avec un sens :
 
 | Signe | Composant | Ce qu'il dit |
 | --- | --- | --- |
-| la **frise** | `FrisePerlesSvg` | la bande tissée qui coiffe la vue : deux rails de fines perles, un double chevron, un œil au centre. Chevrons pour les Équipes, dent de scie pour les Tâches |
+| la **frise** | `FrisePerlesSvg` | la couture perlée qui coiffe la vue : une trame tissée très pâle, une couture en dents et un rang de grosses perles qui ondule. Chevrons pour les Équipes, zigzag pour les Tâches |
 | l'**anneau** | `AnneauPerlesSvg` | une proportion en perles pleines sur un cercle fermé — jamais un camembert, jamais une barre |
 | le **losange** | `LosangePerlesSvg` | quatre perles et un cœur : la puce qui marque un repère |
-| la **pampille** | `PampillesSvg` | les perles qui pendent au bas de la frise : la vue continue |
 | la **rosace** | `RosacePerlesSvg` | deux anneaux de perles : le filigrane d'une carte, l'état vide |
 | le **collier** | `CollierEcheanceSvg` | une perle par jour qui reste avant l'échéance ; en retard, le collier est corail et la dernière perle se cerne |
 
 ### La scène
 
 Chaque vue s'ouvre sur **une scène en drap espresso** (`.zl-scene`) : la
-frise en haut, les pampilles dessous, puis un titre en serif, un
-sous-titre chiffré et les actions. Les **modules de chiffres ne flottent
-pas sur la page** : ils sont posés sur le drap, dans le prolongement de la
-frise, séparés du titre par un filet clair. C'est le contraste entre le
-drap sombre et la page ivoire qui donne son relief à l'écran — et c'est le
-même drap dans les deux thèmes, comme la bande de référence.
+frise en haut, puis un titre en serif, une ligne de chiffres et les
+actions. Les **modules de chiffres ne flottent pas sur la page** : ils
+sont posés sur le drap, dans le prolongement de la frise, séparés du titre
+par un filet clair. C'est le contraste entre le drap sombre et la page
+ivoire qui donne son relief à l'écran — et c'est le même drap dans les
+deux thèmes, comme la bande de référence.
+
+Trois règles d'écriture, tirées de la première revue :
+
+- **rien d'ornemental qui ne dise rien** : la barre de vues ne se termine
+  plus par une file de petits points sans fonction. C'est un sommaire —
+  un mot, trois entrées, un filet, et un trait de cuivre sous la vue
+  ouverte. Une seule marque par entrée : l'icône, pas une perle en plus ;
+- **les chiffres se lisent** : dans la scène, le nombre s'écrit en serif,
+  le mot en petit, et une perle sépare deux groupes — plus de chapelet de
+  points de ponctuation (`·`). Chaque module du bandeau donne une part
+  (« 100 % du total »), et un tiret quand il n'y a rien à compter ;
+- **les actions sont hiérarchisées** : les utilitaires (rafraîchir,
+  raccourcis) restent petits, à gauche d'un filet ; les deux actions qui
+  créent quelque chose sont à droite, dont une seule pleine.
 
 | Rôle de la scène | Couleur | Contraste sur `#241A12` |
 | --- | --- | --- |
@@ -148,9 +161,9 @@ est coupé sous `prefers-reduced-motion: reduce`.
 
 ### Équipes
 
-- en-tête (la scène) : frise perlée, titre serif, sous-titre chiffré,
+- en-tête (la scène) : frise perlée, titre serif, ligne de chiffres,
   puis quatre modules à anneau — équipes, membres, chefs d'équipe,
-  personnes sans équipe ;
+  personnes sans équipe — séparés par un trait ;
 - collier « À décider » : alertes, personnes sans équipe, regroupements
   possibles, besoins d'effectif, dépliables onglet par onglet. Sans
   l'option Prédictions, le collier dit simplement que ces analyses sont
