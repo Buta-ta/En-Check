@@ -1,29 +1,42 @@
 /* ════════════════════════════════════════════════════════════════════
    PERLES ZOULOU — les vues Équipes et Tâches de la page Employés
    ────────────────────────────────────────────────────────────────────
-   Le vocabulaire visuel vient de la bande perlée de la page Employés :
-   un fil tendu, des perles rondes, des losanges, et une palette de
-   verre — crème, cuivre, bleu-vert, sauge, corail — sur drap espresso.
+   Une parure zoulou se lit : les perles ne décorent pas, elles disent.
+   Ici, chaque signe porte une information :
 
-   Règle de survol (tenue sur tous les écrans) : un survol change le
-   trait et l'ombre, JAMAIS le fond derrière un texte, ni la couleur
+     · la FRISE      ouvre la vue, comme le col d'une parure ;
+     · l'ANNEAU      donne une proportion (perles pleines / perles vides) ;
+     · le LOSANGE    marque un repère (puce, onglet, état) ;
+     · la PAMPILLE   ferme un panneau et dit que la liste continue ;
+     · le FIL        sépare deux blocs de lecture.
+
+   Le dessin vit dans PerlesZoulouSvg.jsx ; cette feuille ne pose que
+   la couleur, l'espace et le rythme.
+
+   Règle de survol, tenue sur tous les écrans : un survol change le
+   trait et l'ombre — JAMAIS le fond derrière un texte, la couleur
    d'un texte, ni l'opacité d'un champ.
-
-   Les teintes viennent de --pt-* (la coque Employés) pour rester dans
-   la même maison, et basculent avec le thème clair / sombre.
    ════════════════════════════════════════════════════════════════════ */
 
 .emp-vues {
-  --zl-encre: var(--pt-ink);
-  --zl-douce: var(--pt-ink-soft);
-  --zl-faible: var(--pt-muted);
-  --zl-surface: var(--pt-surface);
-  --zl-surface-2: var(--pt-surface-soft);
-  --zl-creux: var(--pt-surface-soft);
-  --zl-fond: var(--pt-canvas);
-  --zl-fond-2: var(--pt-surface);
-  --zl-trait: var(--pt-line);
-  --zl-trait-fort: rgba(93, 66, 39, 0.22);
+  /* ── la matière ───────────────────────────────────────── */
+  /*  Les cinq teintes de texte et de fond sont écrites en clair,
+      et non empruntées à la coque : ces vues doivent rester
+      lisibles même montées ailleurs, et un test peut alors
+      calculer leur contraste au lieu de le supposer. Elles
+      reprennent exactement la palette de la coque Employés. */
+  --zl-encre: #231911;
+  --zl-douce: #4e3d2e;
+  --zl-faible: #74604c;
+  --zl-surface: #fffdf8;
+  --zl-surface-2: #f4ede2;
+  --zl-creux: #f4ede2;
+  --zl-fond: #faf6f0;
+  --zl-fond-2: #ffffff;
+  --zl-trait: rgba(93, 66, 39, 0.13);
+  --zl-trait-fort: rgba(93, 66, 39, 0.24);
+
+  /* ── l'action ─────────────────────────────────────────── */
   --zl-cuivre: #a45c24;
   --zl-cuivre-fort: #823f14;
   --zl-sur-cuivre: #ffffff;
@@ -33,20 +46,58 @@
   --zl-sauge: #55662f;
   --zl-corail: #a8452f;
   --zl-corail-fort: #8a3324;
+
+  /* ── le verre des perles ──────────────────────────────── */
   --zl-perle-creme: #efe1c3;
   --zl-perle-cuivre: #c08a4d;
   --zl-perle-teal: #4f9389;
   --zl-perle-sauge: #8ba268;
   --zl-perle-corail: #d08b74;
-  --zl-rayon: 18px;
+
+  /* ── le fil et la trame ───────────────────────────────── */
+  --zl-fil: rgba(93, 66, 39, 0.34);
+  --zl-fil-faible: rgba(93, 66, 39, 0.18);
+  --zl-trame: rgba(93, 66, 39, 0.05);
+  --zl-ombre: 0 10px 26px rgba(48, 32, 18, 0.08);
+  --zl-ombre-forte: 0 18px 44px rgba(48, 32, 18, 0.14);
+
+  --zl-rayon: 20px;
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
+  padding-bottom: 6px;
+  isolation: isolate;
 }
 
+/* la trame de perles, très pâle, qui donne du grain au fond */
+.emp-vues::before {
+  content: '';
+  position: absolute;
+  inset: -10px -10px 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--zl-trame) 1px, transparent 1.4px);
+  background-size: 17px 17px;
+  background-position: 4px 6px;
+  border-radius: 26px;
+}
+
+/* ── le thème sombre : les mêmes rôles, le verre plus clair ── */
+
 [data-theme='dark'] .emp-vues {
-  --zl-trait-fort: rgba(229, 212, 192, 0.22);
+  --zl-encre: #f7efe4;
+  --zl-douce: #dfd0be;
+  --zl-faible: #a6937e;
+  --zl-surface: #201a15;
+  --zl-surface-2: #2a221c;
+  --zl-creux: #2a221c;
+  --zl-fond: #15110e;
+  --zl-fond-2: #201a15;
+  --zl-trait: rgba(229, 212, 192, 0.12);
+  --zl-trait-fort: rgba(229, 212, 192, 0.24);
   --zl-cuivre: #d58d4b;
   --zl-cuivre-fort: #c57c3c;
   --zl-sur-cuivre: #241a12;
@@ -61,36 +112,60 @@
   --zl-perle-teal: #71b9ad;
   --zl-perle-sauge: #a5bb7d;
   --zl-perle-corail: #d67c62;
+  --zl-fil: rgba(230, 210, 184, 0.3);
+  --zl-fil-faible: rgba(230, 210, 184, 0.15);
+  --zl-trame: rgba(230, 210, 184, 0.05);
+  --zl-ombre: 0 10px 26px rgba(0, 0, 0, 0.28);
+  --zl-ombre-forte: 0 18px 44px rgba(0, 0, 0, 0.4);
 }
 
-/* ═══ ONGLETS DE LA PAGE (Annuaire · Équipes · Tâches) ═══ */
+/* ═══════════════════════════════════════════════════════════════════
+   1. LA BARRE DE VUES — trois perles sur un fil
+   ═══════════════════════════════════════════════════════════════════ */
 
 .emp-onglets {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
-  padding: 6px;
+  padding: 6px 8px;
   margin-bottom: 18px;
   border: 1px solid var(--pt-line);
-  border-radius: 16px;
-  background: var(--pt-surface);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 60%),
+    var(--pt-surface);
+  box-shadow: 0 6px 20px rgba(48, 32, 18, 0.06);
 }
 
 .emp-onglet {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   min-height: 44px;
-  padding: 10px 16px;
+  padding: 10px 16px 10px 14px;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: 13px;
   background: transparent;
   color: var(--pt-ink-soft);
   font: inherit;
   font-size: 13px;
   font-weight: 700;
+  letter-spacing: 0.01em;
   cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+/* la perle de l'onglet : pleine quand on y est, creuse sinon */
+.emp-onglet::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border: 1px solid var(--pt-copper);
+  border-radius: 50%;
+  background: transparent;
 }
 
 .emp-onglet:hover {
@@ -101,6 +176,13 @@
   border-color: var(--pt-copper-strong);
   background: var(--pt-copper-soft);
   color: var(--pt-ink);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.emp-onglet[aria-current='page']::before {
+  background: radial-gradient(circle at 34% 30%, var(--pt-surface), var(--pt-copper-strong) 78%);
+  border-color: var(--pt-copper-strong);
+  box-shadow: 0 0 0 3px rgba(156, 83, 33, 0.16);
 }
 
 .emp-onglet-nombre {
@@ -123,16 +205,19 @@
   color: var(--pt-copper-strong);
 }
 
+/* le fil qui relie les onglets, fait de perles régulières */
 .emp-onglets-fil {
   flex: 1 1 60px;
-  min-width: 40px;
-  height: 10px;
-  margin: 0 6px;
-  background-image: radial-gradient(circle, var(--pt-copper) 2.2px, transparent 2.6px);
-  background-size: 12px 10px;
-  background-repeat: repeat-x;
-  background-position: center;
-  opacity: 0.55;
+  min-width: 44px;
+  height: 12px;
+  margin: 0 4px;
+  background-image:
+    radial-gradient(circle, var(--pt-copper) 2.4px, transparent 2.8px),
+    linear-gradient(var(--pt-line), var(--pt-line));
+  background-size: 13px 12px, 100% 1px;
+  background-position: center, center;
+  background-repeat: repeat-x, no-repeat;
+  opacity: 0.6;
 }
 
 @media (max-width: 560px) {
@@ -145,77 +230,179 @@
     padding: 10px 10px;
     font-size: 12px;
   }
+  .emp-onglet::before {
+    display: none;
+  }
 }
 
-/* ═══ EN-TÊTE DE VUE ═══ */
+/* ═══════════════════════════════════════════════════════════════════
+   2. LA SCÈNE — la frise, le titre, les actions
+   ═══════════════════════════════════════════════════════════════════ */
 
-.zl-tete {
+.zl-scene {
+  /*  La scène porte ses propres teintes : elle est toujours en drap
+      espresso, comme la bande perlée qui a servi de référence. Le
+      reste de la vue reste sur la page claire ou sombre — c'est ce
+      contraste qui donne son relief à l'écran. */
+  --zl-scene-fond: #241a12;
+  --zl-scene-encre: #f7ecdb;
+  --zl-scene-douce: #cfb697;
+  --zl-scene-cuivre: #e2a566;
+  --zl-scene-trait: rgba(247, 236, 219, 0.18);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(20, 12, 6, 0.4);
+  border-radius: 26px;
+  background:
+    radial-gradient(120% 150% at 10% -30%, rgba(213, 141, 75, 0.34), transparent 58%),
+    radial-gradient(90% 120% at 92% 120%, rgba(79, 147, 137, 0.22), transparent 60%),
+    linear-gradient(178deg, #2c1f15, #1a120c 78%);
+  color: var(--zl-scene-encre);
+  box-shadow: 0 24px 54px rgba(30, 18, 8, 0.3);
+  overflow: hidden;
+}
+
+/* la frise et les pampilles vivent sur le drap : on leur donne
+   le fil clair, pas celui de la page */
+.zl-scene-frise {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  --zl-fil: rgba(247, 236, 219, 0.32);
+  --zl-fil-faible: rgba(247, 236, 219, 0.16);
+  --zl-creux: rgba(247, 236, 219, 0.14);
+  border-bottom: 1px solid var(--zl-scene-trait);
+}
+
+.zl-scene-frise svg[data-testid='frise-perles'] {
+  opacity: 0.95;
+}
+
+.zl-scene-frise-pampilles {
+  margin-top: -2px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.16), transparent);
+}
+
+.zl-scene-frise-pampilles svg {
+  margin-bottom: -1px;
+  opacity: 0.9;
+}
+
+.zl-scene-corps {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 14px;
+  gap: 18px;
   flex-wrap: wrap;
+  padding: 22px clamp(16px, 2.6vw, 28px) 26px;
 }
 
-.zl-tete-texte {
+.zl-scene-texte {
   min-width: 0;
+  flex: 1 1 320px;
 }
 
-.zl-titre {
-  display: flex;
+.zl-eyebrow {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--zl-scene-cuivre);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.zl-eyebrow svg circle {
+  fill: var(--zl-scene-cuivre);
+}
+
+.zl-scene-titre {
   margin: 0;
-  color: var(--zl-encre);
-  font-size: clamp(19px, 2.4vw, 24px);
-  font-weight: 780;
-  letter-spacing: -0.01em;
+  color: var(--zl-scene-encre);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(34px, 5vw, 54px);
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  line-height: 0.98;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.28);
 }
 
-.zl-titre-perle {
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-cuivre) 72%);
-  box-shadow: 0 0 0 3px var(--zl-cuivre-voile);
-  flex-shrink: 0;
+.zl-scene-titre span {
+  color: var(--zl-scene-cuivre);
 }
 
-.zl-sous-titre {
-  margin: 6px 0 0;
-  color: var(--zl-faible);
+.zl-scene-sous {
+  max-width: 62ch;
+  margin: 12px 0 0;
+  color: var(--zl-scene-douce);
   font-size: 12.5px;
-  line-height: 1.5;
+  line-height: 1.65;
 }
 
-.zl-tete-actions {
+.zl-scene-sous strong {
+  color: var(--zl-scene-encre);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.zl-scene-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
+/* les boutons de la scène : contour clair sur le drap */
+.zl-scene-actions .zl-bouton {
+  border-color: var(--zl-scene-trait);
+  background: rgba(247, 236, 219, 0.07);
+  color: var(--zl-scene-encre);
+}
+
+.zl-scene-actions .zl-bouton:hover {
+  border-color: var(--zl-scene-cuivre);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32);
+}
+
+.zl-scene-actions .zl-bouton-principal {
+  border-color: #e2a566;
+  background: linear-gradient(180deg, #edb87c, #d58d4b);
+  color: #2a1a0e;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+}
+
+.zl-scene-actions .zl-bouton-principal:hover {
+  border-color: #f0c48f;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.42);
+}
+
+/* ── les boutons ──────────────────────────────────────── */
+
 .zl-bouton {
   display: inline-flex;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
   align-items: center;
   gap: 7px;
   min-height: 40px;
   padding: 9px 14px;
-  border: 1px solid var(--zl-trait);
+  border: 1px solid var(--zl-trait-fort);
   border-radius: 12px;
   background: var(--zl-surface);
   color: var(--zl-douce);
   font: inherit;
   font-size: 12.5px;
   font-weight: 700;
-  cursor: pointer;
   white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .zl-bouton:hover {
   border-color: var(--zl-cuivre);
-  box-shadow: 0 8px 20px rgba(38, 24, 12, 0.1);
+  box-shadow: var(--zl-ombre);
 }
 
 .zl-bouton[disabled] {
@@ -224,12 +411,16 @@
 
 .zl-bouton-principal {
   border-color: var(--zl-cuivre-fort);
-  background: var(--zl-cuivre-fort);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 55%),
+    var(--zl-cuivre-fort);
   color: var(--zl-sur-cuivre);
+  box-shadow: 0 8px 22px rgba(120, 66, 22, 0.22);
 }
 
 .zl-bouton-principal:hover {
   border-color: var(--zl-cuivre);
+  box-shadow: 0 12px 28px rgba(120, 66, 22, 0.3);
 }
 
 .zl-bouton-icone {
@@ -240,141 +431,159 @@
   justify-content: center;
 }
 
-/* ═══ FIL DE PERLES (séparateur) ═══ */
-
-.zl-fil {
-  position: relative;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  gap: 0;
+[data-theme='dark'] .zl-scene {
+  border-color: rgba(230, 210, 184, 0.2);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.55);
 }
 
-.zl-fil::before {
+/* ═══════════════════════════════════════════════════════════════════
+   3. LES MÉDAILLONS — un anneau de perles par chiffre
+   ═══════════════════════════════════════════════════════════════════ */
+
+.zl-medaillons {
+  /*  Les chiffres ne flottent pas au-dessus de la page : ils sont
+      posés sur le drap, dans le prolongement de la frise, comme les
+      médaillons d'une parure. Un filet clair les sépare du titre. */
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 4px 6px;
+  margin: 0;
+  padding: 18px clamp(16px, 2.6vw, 28px) 26px;
+  border-top: 1px solid var(--zl-scene-trait);
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.14), transparent 40%);
+}
+
+.zl-medaillon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 10px 8px 8px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+}
+
+/*  un point de perle devant chaque médaillon : le lien avec le fil */
+.zl-medaillon::before {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
+  left: -2px;
   top: 50%;
-  height: 1px;
-  background: var(--zl-trait);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: var(--zl-scene-cuivre);
+  opacity: 0.5;
 }
 
-.zl-fil-perles {
+.zl-medaillon:first-child::before {
+  display: none;
+}
+
+.zl-medaillon-rond {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding-right: 10px;
-  background: var(--zl-fond);
-}
-
-.zl-fil-perle {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--zl-perle-cuivre);
-}
-
-.zl-fil-perle:nth-child(3n + 1) {
-  background: var(--zl-perle-teal);
-}
-
-.zl-fil-perle:nth-child(3n + 2) {
-  background: var(--zl-perle-creme);
-}
-
-.zl-fil-perle.is-grosse {
-  width: 11px;
-  height: 11px;
-  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-cuivre) 74%);
-}
-
-/* ═══ PERLES DE CHIFFRES ═══ */
-
-.zl-perles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 158px), 1fr));
-  gap: 10px;
+  width: 58px;
+  height: 58px;
+  flex: none;
+  place-items: center;
 }
 
-.zl-perle-carte {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  min-width: 0;
-  padding: 12px 14px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 16px;
-  background: var(--zl-surface);
+.zl-medaillon-rond svg {
+  position: absolute;
+  inset: 0;
 }
 
-.zl-perle-rond {
-  display: inline-flex;
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  color: #241a12;
-  font-size: 10px;
-  font-weight: 800;
-  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-cuivre) 78%);
+.zl-medaillon-cle {
+  position: relative;
+  color: var(--zl-scene-encre);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 21px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
 }
 
-.zl-perle-carte[data-ton='teal'] .zl-perle-rond {
-  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-teal) 78%);
-}
-
-.zl-perle-carte[data-ton='sauge'] .zl-perle-rond {
-  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-sauge) 78%);
-}
-
-.zl-perle-carte[data-ton='corail'] .zl-perle-rond {
-  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-corail) 78%);
-}
-
-.zl-perle-texte {
+.zl-medaillon-texte {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
-.zl-perle-valeur {
-  color: var(--zl-encre);
-  font-size: 18px;
-  font-weight: 780;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-}
-
-.zl-perle-libelle {
-  color: var(--zl-faible);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.045em;
+.zl-medaillon-libelle {
+  color: var(--zl-scene-cuivre);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
-/* ═══ COLLIER D'INFORMATION (alertes, sans équipe, suggestions) ═══ */
+.zl-medaillon-note {
+  color: var(--zl-scene-encre);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.zl-medaillon-note[data-ton='alerte'] {
+  color: #f0a68c;
+}
+
+.zl-medaillon-note[data-ton='ok'] {
+  color: #a8d3b0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   4. LE FIL — la séparation entre deux blocs de lecture
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════
+   5. LE REGISTRE DES DÉCISIONS (« À décider »)
+   ═══════════════════════════════════════════════════════════════════ */
 
 .zl-collier {
   border: 1px solid var(--zl-trait);
   border-radius: var(--zl-rayon);
   background: var(--zl-surface);
+  box-shadow: var(--zl-ombre);
   overflow: hidden;
 }
 
 .zl-collier-tete {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 11px 14px;
+  padding: 12px 16px 13px;
   border-bottom: 1px solid var(--zl-trait);
+  background:
+    linear-gradient(90deg, var(--zl-cuivre-voile), transparent 42%),
+    var(--zl-surface);
+}
+
+/*  le registre est cousu, pas collé : un rang de perles court
+    sous sa tête, du plus dense au plus espacé */
+.zl-collier-tete::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 4px;
+  height: 5px;
+  background-image: radial-gradient(circle, var(--zl-perle-cuivre) 1.7px, transparent 2.1px);
+  background-size: 10px 5px;
+  background-repeat: repeat-x;
+  opacity: 0.55;
 }
 
 .zl-collier-titre {
@@ -383,17 +592,17 @@
   gap: 8px;
   margin: 0;
   color: var(--zl-douce);
-  font-size: 12px;
-  font-weight: 760;
-  letter-spacing: 0.05em;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 .zl-collier-corps {
   display: grid;
-  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
-  gap: 12px;
-  padding: 12px;
+  grid-template-columns: minmax(0, 230px) minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
 }
 
 .zl-collier-choix {
@@ -407,7 +616,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 9px 11px;
+  padding: 10px 12px;
   border: 1px solid var(--zl-trait);
   border-radius: 12px;
   background: var(--zl-creux);
@@ -417,14 +626,17 @@
   font-weight: 700;
   text-align: left;
   cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .zl-collier-onglet:hover {
   border-color: var(--zl-cuivre);
 }
 
+/* l'onglet choisi : un trait large et une perle pleine */
 .zl-collier-onglet[aria-pressed='true'] {
   border-color: var(--zl-cuivre);
+  border-left-width: 4px;
   background: var(--zl-cuivre-voile);
   color: var(--zl-encre);
 }
@@ -434,7 +646,7 @@
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  max-height: 240px;
+  max-height: 250px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -445,10 +657,11 @@
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 10px 12px;
+  padding: 11px 13px;
+  border: 1px solid var(--zl-trait);
   border-left: 3px solid var(--zl-perle-cuivre);
-  border-radius: 10px;
-  background: var(--zl-creux);
+  border-radius: 11px;
+  background: var(--zl-surface);
 }
 
 .zl-collier-item[data-grave='oui'] {
@@ -464,26 +677,31 @@
   margin: 0;
   color: var(--zl-encre);
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 750;
 }
 
 .zl-collier-item-note {
-  margin: 3px 0 0;
+  margin: 4px 0 0;
   color: var(--zl-faible);
   font-size: 11.5px;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .zl-collier-vide {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   margin: 0;
   padding: 14px;
   border: 1px dashed var(--zl-trait-fort);
-  border-radius: 10px;
+  border-radius: 11px;
   color: var(--zl-faible);
   font-size: 12px;
 }
 
-/* ═══ BARRE D'OUTILS ═══ */
+/* ═══════════════════════════════════════════════════════════════════
+   6. LA BARRE D'OUTILS
+   ═══════════════════════════════════════════════════════════════════ */
 
 .zl-outils {
   display: flex;
@@ -501,9 +719,10 @@
   min-width: 180px;
   padding: 0 12px;
   border: 1px solid var(--zl-trait);
-  border-radius: 13px;
+  border-radius: 14px;
   background: var(--zl-surface);
   color: var(--zl-faible);
+  box-shadow: var(--zl-ombre);
 }
 
 .zl-recherche input {
@@ -544,7 +763,7 @@
 .zl-puce {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-height: 36px;
   padding: 7px 12px;
   border: 1px solid var(--zl-trait);
@@ -555,10 +774,12 @@
   font-size: 12px;
   font-weight: 650;
   cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .zl-puce:hover {
   border-color: var(--zl-cuivre);
+  box-shadow: var(--zl-ombre);
 }
 
 .zl-puce[aria-pressed='true'] {
@@ -570,6 +791,7 @@
 .zl-puce-perle {
   width: 9px;
   height: 9px;
+  flex: none;
   border-radius: 50%;
   background: var(--zl-perle-cuivre);
 }
@@ -595,12 +817,18 @@
   max-width: 220px;
   padding: 9px 12px;
   border: 1px solid var(--zl-trait);
-  border-radius: 13px;
+  border-radius: 14px;
   background: var(--zl-surface);
   color: var(--zl-encre);
   font: inherit;
   font-size: 12.5px;
   cursor: pointer;
+  box-shadow: var(--zl-ombre);
+  color-scheme: light;
+}
+
+[data-theme='dark'] .zl-select {
+  color-scheme: dark;
 }
 
 .zl-bascule {
@@ -608,8 +836,9 @@
   gap: 3px;
   padding: 3px;
   border: 1px solid var(--zl-trait);
-  border-radius: 12px;
+  border-radius: 13px;
   background: var(--zl-surface);
+  box-shadow: var(--zl-ombre);
 }
 
 .zl-bascule button {
@@ -619,17 +848,18 @@
   min-height: 36px;
   padding: 7px 11px;
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
   color: var(--zl-faible);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  transition: border-color 0.16s ease;
 }
 
 .zl-bascule button:hover {
-  border-color: var(--zl-trait);
+  border-color: var(--zl-trait-fort);
 }
 
 .zl-bascule button[aria-pressed='true'] {
@@ -639,16 +869,21 @@
 }
 
 .zl-compte {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--zl-faible);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
-/* ═══ GRILLE ET CARTES ÉQUIPE ═══ */
+/* ═══════════════════════════════════════════════════════════════════
+   7. LES CARTES ÉQUIPE — un médaillon, un fil, une jauge
+   ═══════════════════════════════════════════════════════════════════ */
 
 .zl-grille {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 12px;
 }
 
@@ -656,53 +891,68 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 16px 14px;
+  gap: 13px;
+  padding: 0 16px 15px;
   border: 1px solid var(--zl-trait);
   border-radius: var(--zl-rayon);
   background: var(--zl-surface);
+  box-shadow: var(--zl-ombre);
   overflow: hidden;
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
+/* la bande tissée du haut : trois rangs de perles en quinconce */
 .zl-carte::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 8px;
-  background-image: radial-gradient(circle, var(--zl-perle-cuivre) 2.4px, transparent 2.8px);
-  background-size: 13px 8px;
+  height: 10px;
+  background-image:
+    radial-gradient(circle, var(--zl-perle-cuivre) 2.2px, transparent 2.6px),
+    radial-gradient(circle, var(--zl-perle-teal) 1.7px, transparent 2.1px);
+  background-size: 12px 10px, 12px 10px;
+  background-position: 2px 3px, 8px 6px;
   background-repeat: repeat-x;
-  background-position: center;
-  opacity: 0.9;
+  opacity: 0.85;
+}
+
+/* la rosace en filigrane, dans le coin */
+.zl-carte-filigrane {
+  position: absolute;
+  right: -14px;
+  bottom: -14px;
+  opacity: 0.14;
+  pointer-events: none;
 }
 
 .zl-carte:hover {
   border-color: var(--zl-cuivre);
-  box-shadow: 0 14px 34px rgba(38, 24, 12, 0.1);
+  box-shadow: var(--zl-ombre-forte);
 }
 
 .zl-carte-tete {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
-  padding-top: 4px;
+  padding-top: 16px;
 }
 
 .zl-carte-titre {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   min-width: 0;
   margin: 0;
   color: var(--zl-encre);
-  font-size: 15px;
-  font-weight: 760;
-  line-height: 1.3;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
 .zl-carte-titre span {
@@ -711,10 +961,11 @@
   white-space: nowrap;
 }
 
+/* la perle d'identité : la couleur choisie pour l'équipe */
 .zl-pastille {
   width: 11px;
   height: 11px;
-  flex-shrink: 0;
+  flex: none;
   border-radius: 50%;
   background: var(--zl-perle-cuivre);
   box-shadow: 0 0 0 3px var(--zl-cuivre-voile);
@@ -724,12 +975,226 @@
   margin: 0;
   color: var(--zl-faible);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.55;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* le médaillon de l'équipe : anneau + initiales */
+.zl-carte-medaillon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.zl-carte-medaillon-rond {
+  position: relative;
+  display: grid;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--zl-surface-2);
+}
+
+.zl-carte-medaillon-rond svg {
+  position: absolute;
+  inset: 0;
+}
+
+.zl-carte-medaillon-cle {
+  position: relative;
+  color: var(--zl-douce);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.zl-carte-medaillon-texte {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* le fil de membres */
+.zl-membres {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  padding-top: 9px;
+}
+
+.zl-membres-fil {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 18px;
+  pointer-events: none;
+}
+
+.zl-perle-avatar {
+  position: relative;
+  display: inline-flex;
+  width: 31px;
+  height: 31px;
+  align-items: center;
+  justify-content: center;
+  margin-right: -7px;
+  border: 2px solid var(--zl-surface);
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-teal) 82%);
+  color: #241a12;
+  font-size: 10px;
+  font-weight: 800;
+  overflow: hidden;
+}
+
+.zl-perle-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.zl-perle-avatar.is-chef {
+  box-shadow: 0 0 0 2px var(--zl-cuivre), 0 0 0 5px var(--zl-cuivre-voile);
+}
+
+.zl-perle-plus {
+  display: inline-flex;
+  min-width: 31px;
+  height: 31px;
+  align-items: center;
+  justify-content: center;
+  margin-left: 11px;
+  padding: 0 8px;
+  border: 1px solid var(--zl-trait-fort);
+  border-radius: 999px;
+  background: var(--zl-creux);
+  color: var(--zl-douce);
+  font-size: 10.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.zl-carte-pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 11px;
+  border-top: 1px solid var(--zl-trait);
+}
+
+.zl-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--zl-faible);
+  font-size: 11.5px;
+}
+
+.zl-meta strong {
+  color: var(--zl-douce);
+  font-weight: 750;
+}
+
+.zl-carte-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.zl-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--zl-trait);
+  border-radius: 10px;
+  background: var(--zl-creux);
+  color: var(--zl-douce);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.zl-mini:hover {
+  border-color: var(--zl-cuivre);
+  box-shadow: var(--zl-ombre);
+}
+
+/* ── la jauge de santé : cinq perles enfilées ─────────── */
+
+.zl-sante {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border: 1px solid var(--zl-trait);
+  border-radius: 999px;
+  background: var(--zl-creux);
+  color: var(--zl-douce);
+  font-size: 11px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.zl-sante-perles {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* le fil qui traverse les cinq perles */
+.zl-sante-perles::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: 50%;
+  height: 1px;
+  background: var(--zl-fil-faible);
+}
+
+.zl-sante-perle {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--zl-trait-fort);
+  background: var(--zl-surface);
+}
+
+.zl-sante-perle.is-pleine {
+  border-color: transparent;
+  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-sauge) 76%);
+}
+
+.zl-sante[data-etat='a-surveiller'] .zl-sante-perle.is-pleine {
+  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-cuivre) 76%);
+}
+
+.zl-sante[data-etat='critique'] .zl-sante-perle.is-pleine {
+  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-corail) 76%);
+}
+
+/* ── le menu d'une carte ──────────────────────────────── */
 
 .zl-menage {
   display: inline-flex;
@@ -738,10 +1203,11 @@
   align-items: center;
   justify-content: center;
   border: 1px solid var(--zl-trait);
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--zl-creux);
   color: var(--zl-faible);
   cursor: pointer;
+  transition: border-color 0.16s ease;
 }
 
 .zl-menage:hover {
@@ -750,18 +1216,18 @@
 
 .zl-menu {
   position: absolute;
-  top: 46px;
+  top: 52px;
   right: 14px;
   z-index: 30;
   display: flex;
-  min-width: 168px;
+  min-width: 176px;
   flex-direction: column;
   gap: 2px;
-  padding: 5px;
+  padding: 6px;
   border: 1px solid var(--zl-trait-fort);
-  border-radius: 12px;
+  border-radius: 13px;
   background: var(--zl-surface);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--zl-ombre-forte);
 }
 
 .zl-menu button {
@@ -789,151 +1255,9 @@
   color: var(--zl-corail);
 }
 
-/* fil de membres : perles-avatars */
-
-.zl-membres {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex-wrap: wrap;
-  row-gap: 8px;
-}
-
-.zl-perle-avatar {
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  margin-right: -6px;
-  border: 2px solid var(--zl-surface);
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-teal) 82%);
-  color: #241a12;
-  font-size: 10px;
-  font-weight: 800;
-  overflow: hidden;
-}
-
-.zl-perle-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.zl-perle-avatar.is-chef {
-  box-shadow: 0 0 0 2px var(--zl-cuivre);
-}
-
-.zl-perle-plus {
-  display: inline-flex;
-  min-width: 30px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  margin-left: 10px;
-  padding: 0 8px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 999px;
-  background: var(--zl-creux);
-  color: var(--zl-faible);
-  font-size: 10.5px;
-  font-weight: 750;
-}
-
-.zl-carte-pied {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding-top: 10px;
-  border-top: 1px solid var(--zl-trait);
-}
-
-.zl-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--zl-faible);
-  font-size: 11.5px;
-  min-width: 0;
-}
-
-.zl-meta strong {
-  color: var(--zl-douce);
-  font-weight: 700;
-}
-
-.zl-carte-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.zl-mini {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 32px;
-  padding: 6px 10px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 9px;
-  background: var(--zl-creux);
-  color: var(--zl-douce);
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.zl-mini:hover {
-  border-color: var(--zl-cuivre);
-}
-
-/* jauge de santé : cinq perles */
-
-.zl-sante {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 9px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 999px;
-  background: var(--zl-creux);
-  color: var(--zl-douce);
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.zl-sante-perles {
-  display: inline-flex;
-  gap: 3px;
-}
-
-.zl-sante-perle {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  border: 1px solid var(--zl-trait-fort);
-  background: transparent;
-}
-
-.zl-sante-perle.is-pleine {
-  border-color: transparent;
-  background: var(--zl-perle-sauge);
-}
-
-.zl-sante[data-etat='a-surveiller'] .zl-sante-perle.is-pleine {
-  background: var(--zl-perle-cuivre);
-}
-
-.zl-sante[data-etat='critique'] .zl-sante-perle.is-pleine {
-  background: var(--zl-perle-corail);
-}
-
-/* ═══ LISTE (mode compact) ═══ */
+/* ═══════════════════════════════════════════════════════════════════
+   8. LA LISTE (vue compacte)
+   ═══════════════════════════════════════════════════════════════════ */
 
 .zl-liste {
   display: flex;
@@ -942,20 +1266,22 @@
 }
 
 .zl-ligne {
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
   border: 1px solid var(--zl-trait);
-  border-radius: 14px;
+  border-left: 3px solid var(--zl-perle-cuivre);
+  border-radius: 15px;
   background: var(--zl-surface);
+  box-shadow: var(--zl-ombre);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .zl-ligne:hover {
   border-color: var(--zl-cuivre);
-  box-shadow: 0 10px 24px rgba(38, 24, 12, 0.08);
+  box-shadow: var(--zl-ombre-forte);
 }
 
 .zl-ligne-principal {
@@ -969,7 +1295,7 @@
   margin: 0;
   color: var(--zl-encre);
   font-size: 13.5px;
-  font-weight: 740;
+  font-weight: 750;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -992,12 +1318,12 @@
   min-width: 0;
 }
 
-/* ═══ TÂCHES — TABLEAU ═══ */
+/* ═══════════════════════════════════════════════════════════════════
+   9. LES TÂCHES — le métier
+   ═══════════════════════════════════════════════════════════════════ */
 
 .zl-taches {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .zl-tableau {
@@ -1007,19 +1333,23 @@
   align-items: start;
 }
 
+/* chaque colonne est un métier : la chaîne verticale se voit dans le fond */
 .zl-colonne {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
   min-width: 0;
-  padding: 10px;
+  padding: 10px 10px 12px;
   border: 1px solid var(--zl-trait);
-  border-radius: 16px;
-  background: var(--zl-surface-2);
+  border-radius: 18px;
+  background:
+    repeating-linear-gradient(90deg, var(--zl-trame) 0 1px, transparent 1px 9px),
+    var(--zl-surface-2);
 }
 
 .zl-colonne[data-survol='oui'] {
   border-color: var(--zl-cuivre);
+  box-shadow: inset 0 0 0 1px var(--zl-cuivre), var(--zl-ombre);
 }
 
 .zl-colonne-tete {
@@ -1027,7 +1357,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 2px 2px 8px;
+  padding: 2px 2px 9px;
   border-bottom: 1px solid var(--zl-trait);
 }
 
@@ -1037,9 +1367,9 @@
   gap: 7px;
   margin: 0;
   color: var(--zl-douce);
-  font-size: 12px;
-  font-weight: 780;
-  letter-spacing: 0.03em;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -1047,42 +1377,61 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 60px;
+  min-height: 64px;
 }
 
+/* la carte de tâche : un liseré de perles vertical à gauche */
 .zl-carte-tache {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 11px 11px 9px;
+  gap: 9px;
+  padding: 12px 11px 10px 18px;
   border: 1px solid var(--zl-trait);
-  border-left: 3px solid var(--zl-perle-cuivre);
-  border-radius: 12px;
+  border-radius: 13px;
   background: var(--zl-surface);
+  box-shadow: var(--zl-ombre);
   cursor: grab;
   transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
+.zl-carte-tache::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: 6px;
+  width: 6px;
+  background-image: radial-gradient(circle, var(--zl-perle-cuivre) 2.1px, transparent 2.5px);
+  background-size: 6px 8px;
+  background-repeat: repeat-y;
+  opacity: 0.85;
+}
+
 .zl-carte-tache:hover {
-  border-color: var(--zl-trait-fort);
-  border-left-color: var(--zl-cuivre);
-  box-shadow: 0 10px 24px rgba(38, 24, 12, 0.12);
+  border-color: var(--zl-cuivre);
+  box-shadow: var(--zl-ombre-forte);
 }
 
-.zl-carte-tache[data-priorite='critical'] {
-  border-left-color: var(--zl-corail);
+.zl-carte-tache[data-priorite='critical']::before {
+  background-image: radial-gradient(circle, var(--zl-perle-corail) 2.1px, transparent 2.5px);
 }
 
-.zl-carte-tache[data-priorite='high'] {
-  border-left-color: var(--zl-perle-cuivre);
+.zl-carte-tache[data-priorite='high']::before {
+  background-image: radial-gradient(circle, var(--zl-perle-cuivre) 2.1px, transparent 2.5px);
 }
 
-.zl-carte-tache[data-priorite='low'] {
-  border-left-color: var(--zl-perle-teal);
+.zl-carte-tache[data-priorite='medium']::before {
+  background-image: radial-gradient(circle, var(--zl-perle-sauge) 2.1px, transparent 2.5px);
+}
+
+.zl-carte-tache[data-priorite='low']::before {
+  background-image: radial-gradient(circle, var(--zl-perle-teal) 2.1px, transparent 2.5px);
 }
 
 .zl-carte-tache[data-selection='oui'] {
   border-color: var(--zl-cuivre);
+  box-shadow: inset 0 0 0 1px var(--zl-cuivre), var(--zl-ombre);
 }
 
 .zl-carte-tache-titre {
@@ -1090,19 +1439,19 @@
   padding: 0;
   border: 0;
   background: none;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
   color: var(--zl-encre);
+  font-family: inherit;
   font-size: 12.8px;
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.42;
+  text-align: left;
+  cursor: pointer;
 }
 
 .zl-carte-tache-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   flex-wrap: wrap;
   color: var(--zl-faible);
   font-size: 11px;
@@ -1118,7 +1467,7 @@
   background: var(--zl-creux);
   color: var(--zl-douce);
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 750;
 }
 
 .zl-etiquette[data-ton='retard'] {
@@ -1131,29 +1480,7 @@
   color: var(--zl-cuivre-fort);
 }
 
-/* ═══ TÂCHES — LISTE ═══ */
-
-.zl-tache-ligne {
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
-  display: grid;
-  grid-template-columns: auto minmax(0, 2fr) minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 13px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 13px;
-  background: var(--zl-surface);
-}
-
-.zl-tache-ligne:hover {
-  border-color: var(--zl-cuivre);
-  box-shadow: 0 10px 24px rgba(38, 24, 12, 0.08);
-}
-
-.zl-tache-ligne[data-selection='oui'] {
-  border-color: var(--zl-cuivre);
-}
-
+/* la case de sélection : une perle qu'on remplit */
 .zl-case {
   display: inline-flex;
   width: 22px;
@@ -1161,23 +1488,53 @@
   align-items: center;
   justify-content: center;
   border: 1px solid var(--zl-trait-fort);
-  border-radius: 7px;
+  border-radius: 50%;
   background: var(--zl-creux);
   color: transparent;
   cursor: pointer;
-}
-
-.zl-case[aria-pressed='true'] {
-  border-color: var(--zl-cuivre);
-  background: var(--zl-cuivre-voile);
-  color: var(--zl-cuivre);
+  transition: border-color 0.16s ease;
 }
 
 .zl-case:hover {
   border-color: var(--zl-cuivre);
 }
 
-/* ═══ CATÉGORIES ═══ */
+.zl-case[aria-pressed='true'] {
+  border-color: var(--zl-cuivre-fort);
+  background: var(--zl-cuivre-fort);
+  color: var(--zl-sur-cuivre);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   10. LA LISTE DES TÂCHES
+   ═══════════════════════════════════════════════════════════════════ */
+
+.zl-tache-ligne {
+  display: grid;
+  grid-template-columns: auto minmax(0, 2fr) minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid var(--zl-trait);
+  border-radius: 14px;
+  background: var(--zl-surface);
+  box-shadow: var(--zl-ombre);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.zl-tache-ligne:hover {
+  border-color: var(--zl-cuivre);
+  box-shadow: var(--zl-ombre-forte);
+}
+
+.zl-tache-ligne[data-selection='oui'] {
+  border-color: var(--zl-cuivre);
+  box-shadow: inset 0 0 0 1px var(--zl-cuivre);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   11. CATÉGORIES, SÉLECTION, ÉTATS
+   ═══════════════════════════════════════════════════════════════════ */
 
 .zl-categories {
   display: flex;
@@ -1188,18 +1545,17 @@
   border: 1px solid var(--zl-trait);
   border-radius: var(--zl-rayon);
   background: var(--zl-surface);
+  box-shadow: var(--zl-ombre);
 }
 
 .zl-categories-titre {
   margin: 0 6px 0 0;
   color: var(--zl-faible);
-  font-size: 11px;
-  font-weight: 760;
-  letter-spacing: 0.05em;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
-
-/* ═══ BARRE DE SÉLECTION ═══ */
 
 .zl-selection {
   display: flex;
@@ -1213,7 +1569,7 @@
   background: var(--zl-cuivre-voile);
   color: var(--zl-douce);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 750;
 }
 
 .zl-selection-actions {
@@ -1222,33 +1578,51 @@
   flex-wrap: wrap;
 }
 
-/* ═══ ÉTATS ═══ */
+.zl-vide::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background-image:
+    radial-gradient(circle, var(--zl-perle-cuivre) 2.2px, transparent 2.6px),
+    radial-gradient(circle, var(--zl-perle-sauge) 1.7px, transparent 2.1px);
+  background-size: 12px 10px, 12px 10px;
+  background-position: 2px 3px, 8px 6px;
+  background-repeat: repeat-x;
+  opacity: 0.75;
+}
 
 .zl-vide {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  padding: 40px 20px;
+  padding: 42px 20px 34px;
   border: 1px dashed var(--zl-trait-fort);
   border-radius: var(--zl-rayon);
   background: var(--zl-surface);
+  box-shadow: var(--zl-ombre);
   text-align: center;
+  overflow: hidden;
 }
 
 .zl-vide h3 {
   margin: 0;
   color: var(--zl-encre);
-  font-size: 15px;
-  font-weight: 760;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 19px;
+  font-weight: 600;
 }
 
 .zl-vide p {
-  max-width: 420px;
+  max-width: 440px;
   margin: 0;
   color: var(--zl-faible);
   font-size: 12.5px;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 .zl-chargement {
@@ -1258,9 +1632,9 @@
 }
 
 .zl-chargement-ligne {
-  height: 74px;
+  height: 76px;
   border: 1px solid var(--zl-trait);
-  border-radius: 14px;
+  border-radius: 15px;
   background: linear-gradient(90deg, var(--zl-creux) 25%, var(--zl-surface) 50%, var(--zl-creux) 75%);
   background-size: 200% 100%;
   animation: zl-brille 1.4s linear infinite;
@@ -1274,24 +1648,27 @@
 .zl-note-module {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 13px 15px;
   border: 1px solid var(--zl-trait);
+  border-left: 3px solid var(--zl-perle-teal);
   border-radius: 14px;
   background: var(--zl-surface);
   color: var(--zl-douce);
   font-size: 12.5px;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
-/* ═══ RACCOURCIS DE PAGES (bandeau commun) ═══ */
+/* ═══════════════════════════════════════════════════════════════════
+   12. RACCOURCIS DE PAGES (bandeau commun à toutes les coques)
+   ═══════════════════════════════════════════════════════════════════ */
 
-.employes-afrotech .abs-raccourcis,
-.pointages-afrotech-shell .abs-raccourcis {
+.pointages-afrotech-shell .abs-raccourcis,
+.employes-afrotech .abs-raccourcis {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 4px 0 28px;
+  padding: 6px 0 26px;
 }
 
 .pointages-afrotech-shell .abs-raccourci {
@@ -1299,7 +1676,7 @@
   align-items: center;
   gap: 7px;
   min-height: 38px;
-  padding: 8px 12px;
+  padding: 8px 13px;
   border: 1px solid var(--pt-line);
   border-radius: 999px;
   background: var(--pt-surface);
@@ -1307,10 +1684,12 @@
   font-size: 12px;
   font-weight: 700;
   text-decoration: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .pointages-afrotech-shell .abs-raccourci:hover {
   border-color: var(--pt-copper);
+  box-shadow: 0 8px 18px rgba(48, 32, 18, 0.08);
 }
 
 .pointages-afrotech-shell .abs-raccourci[aria-current='page'] {
@@ -1320,7 +1699,47 @@
   pointer-events: none;
 }
 
-/* ═══ RESPONSIVE ═══ */
+/* ═══════════════════════════════════════════════════════════════════
+   13. LE MOUVEMENT — les perles se posent, une fois
+   ═══════════════════════════════════════════════════════════════════ */
+
+@keyframes zl-perle-pose {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.zl-carte,
+.zl-colonne,
+.zl-medaillon,
+.zl-collier {
+  animation: zl-perle-pose 0.42s cubic-bezier(0.22, 0.7, 0.3, 1) both;
+}
+
+.zl-grille > .zl-carte:nth-child(2) { animation-delay: 0.04s; }
+.zl-grille > .zl-carte:nth-child(3) { animation-delay: 0.08s; }
+.zl-grille > .zl-carte:nth-child(4) { animation-delay: 0.12s; }
+.zl-grille > .zl-carte:nth-child(5) { animation-delay: 0.16s; }
+.zl-grille > .zl-carte:nth-child(6) { animation-delay: 0.2s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .zl-carte,
+  .zl-colonne,
+  .zl-medaillon,
+  .zl-collier,
+  .zl-chargement-ligne {
+    animation: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   14. RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 1080px) {
   .zl-tableau {
@@ -1340,13 +1759,16 @@
     grid-template-columns: auto minmax(0, 1fr);
     row-gap: 6px;
   }
+  .zl-scene-corps {
+    align-items: flex-start;
+  }
 }
 
 @media (max-width: 640px) {
   .zl-tableau {
     grid-template-columns: minmax(0, 1fr);
   }
-  .zl-tete-actions {
+  .zl-scene-actions {
     width: 100%;
   }
   .zl-bouton-principal {
@@ -1357,4 +1779,55 @@
     max-width: none;
     flex: 1 1 160px;
   }
+  .zl-scene-titre {
+    font-size: 32px;
+  }
+}
+
+/* ── l'état vide d'une colonne : une rosace et un mot ─────── */
+
+.zl-colonne-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 10px;
+  border: 1px dashed var(--zl-trait);
+  border-radius: 12px;
+  color: var(--zl-faible);
+  font-size: 11.5px;
+}
+
+/* ── le collier d'échéance ─────────────────────────────────────────── */
+
+.zl-echeance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.zl-echeance-collier {
+  flex: none;
+  /*  en sombre, le fil doit tenir sur la carte */
+  --zl-fil: rgba(214, 154, 92, 0.5);
+}
+
+.zl-echeance-texte {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--zl-faible);
+  font-size: 10.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.zl-echeance[data-ton='retard'] .zl-echeance-texte {
+  color: var(--zl-corail);
+}
+
+.zl-echeance[data-ton='bientot'] .zl-echeance-texte {
+  color: var(--zl-cuivre-fort);
 }
