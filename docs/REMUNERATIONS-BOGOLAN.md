@@ -141,6 +141,18 @@ Désormais la vue **sonde une seule fois** `encheck_cout_periode` :
 Une **projection** en panne ne prive pas de la masse du mois : le mois compté
 fait foi, le reste s'affiche normalement.
 
+### Le mois se choisit, et le calcul se voit
+
+**Le mois affiché est un bouton.** Il ouvre la liste des mois réellement
+pointés — avec leur nombre de pointages — plus le mois en cours. Un clic vaut
+une dizaine de flèches quand on remonte six mois en arrière. La liste se ferme
+au choix, au clic à côté ou sur `Échap`, et rend le focus au bouton.
+
+**Le calcul se voit.** Pendant qu'il tourne — première ouverture comme
+« Réessayer » après une panne — l'écran affiche « Calcul en cours… » et **ne
+montre ni mesures à zéro ni lignes fantômes** : les chiffres n'apparaissent
+qu'une fois calculés.
+
 ## Ce qui change dans la page
 
 **Le tableau de treize colonnes disparaît.** C'était le vrai problème : treize
@@ -287,7 +299,7 @@ formule d'atelier réintroduite, couleur de texte changée au survol — chacune
 fait tomber au moins un test.
 
 La fusion a son propre fichier —
-`src/services/__tests__/remunerationsCout.test.jsx`, 28 tests :
+`src/services/__tests__/remunerationsCout.test.jsx`, 31 tests :
 
 - l'ancienne page n'existe plus, l'ancienne adresse redirige, le calcul est
   bien emporté (les quatre fonctions et le réglage de budget) ;
@@ -302,6 +314,9 @@ La fusion a son propre fichier —
 - les pannes : un calcul en échec le dit sans vider la page et **sans répéter
   l'appel**, une fonction absente se dit autrement, « Réessayer » relance, et
   une projection en panne laisse les chiffres du mois debout ;
+- le mois cliquable : la liste s'ouvre, annonce les pointages de chaque mois,
+  se ferme au choix comme au clic à côté ; pendant le calcul, l'écran le dit
+  et n'affiche pas encore de chiffres ;
 - le ton et la lisibilité : aucune formule d'atelier, aucun texte dimmé.
 
 Deux sections défendent le ton et la lisibilité au survol :

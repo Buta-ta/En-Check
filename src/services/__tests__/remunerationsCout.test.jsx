@@ -50,10 +50,12 @@ const cleMois = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2
 const maintenant = new Date()
 const MOIS_COURANT = cleMois(maintenant)
 const MOIS_PRECEDENT = cleMois(new Date(maintenant.getFullYear(), maintenant.getMonth() - 1, 1))
-const LIBELLE_PRECEDENT = (() => {
-  const [a, m] = MOIS_PRECEDENT.split('-').map(Number)
+const libelle = (cle) => {
+  const [a, m] = cle.split('-').map(Number)
   return `${MOIS_FR[m - 1]} ${a}`
-})()
+}
+const LIBELLE_PRECEDENT = libelle(MOIS_PRECEDENT)
+const LIBELLE_COURANT = libelle(MOIS_COURANT)
 
 // ── la base simulée ────────────────────────────────────────
 const { etat, appels, toasts } = vi.hoisted(() => ({
@@ -66,6 +68,7 @@ const { etat, appels, toasts } = vi.hoisted(() => ({
     cotisations: 0,
     erreurPeriode: null,
     erreurProjection: false,
+    lent: false,
   },
   appels: { rpc: [], ecritures: [] },
   toasts: [],
@@ -140,6 +143,9 @@ vi.mock('../../lib/supabase', () => {
       return Promise.resolve({ data: etat.pointages, error: null })
     }
     if (nom === 'encheck_cout_periode') {
+      //  une base lente : la promesse ne se résout jamais, l'écran doit
+      //  dire qu'il travaille
+      if (etat.lent) return new Promise(() => {})
       return Promise.resolve(etat.erreurPeriode
         ? { data: null, error: etat.erreurPeriode }
         : { data: etat.lignes, error: null })
@@ -275,6 +281,7 @@ describe('2. la vue coût', () => {
     etat.cotisations = 3
     etat.erreurPeriode = null
     etat.erreurProjection = false
+    etat.lent = false
     appels.rpc = []
     appels.ecritures = []
     toasts.length = 0
@@ -378,6 +385,59 @@ describe('2. la vue coût', () => {
     //  l'écart se lit en clair, du côté qui coûte
     expect(texte(kossi.querySelector('.rw-etat'))).toContain('1,2 % sur l’heure prévue')
     expect(kossi.querySelector('.rw-etat').getAttribute('data-ton')).toBe('alerte')
+  })
+
+  it('le mois affiché est cliquable : on saute au mois voulu', async () => {
+    await monter()
+
+    const bouton = hote.querySelector('.rw-mois-nom')
+    expect(bouton.tagName).toBe('BUTTON')
+    expect(bouton.getAttribute('aria-expanded')).toBe('false')
+
+    await clic(bouton)
+    expect(bouton.getAttribute('aria-expanded')).toBe('true')
+
+    const options = [...hote.querySelectorAll('.rw-mois-option')]
+    expect(options.length).toBeGreaterThanOrEqual(2)
+
+    //  le mois pointé est proposé avec son compte, et il est celui qui est lu
+    const pointe = options.find(o => texte(o).includes(LIBELLE_PRECEDENT))
+    expect(texte(pointe)).toContain('12 pointages')
+    expect(pointe.getAttribute('aria-selected')).toBe('true')
+
+    //  le mois en cours est toujours proposé
+    expect(options.some(o => texte(o).includes(LIBELLE_COURANT))).toBe(true)
+
+    //  choisir referme la liste et change l'en-tête
+    await clic(options.find(o => texte(o).includes(LIBELLE_COURANT)))
+    expect(hote.querySelector('.rw-mois-liste')).toBeNull()
+    expect(texte(hote.querySelector('.rw-mois-nom'))).toBe(LIBELLE_COURANT)
+  })
+
+  it('la liste des mois se ferme d’un clic à côté', async () => {
+    await monter()
+
+    await clic(hote.querySelector('.rw-mois-nom'))
+    expect(hote.querySelector('.rw-mois-liste')).not.toBeNull()
+
+    await clic(hote.querySelector('.rw-mois-voile'))
+    expect(hote.querySelector('.rw-mois-liste')).toBeNull()
+    //  et le mois n'a pas bougé
+    expect(texte(hote.querySelector('.rw-mois-nom'))).toBe(LIBELLE_PRECEDENT)
+  })
+
+  it('pendant le calcul, l’écran dit qu’il travaille — sans zéros en attendant', async () => {
+    etat.lent = true
+    await monter()
+
+    const attente = [...hote.querySelectorAll('.rw-constat')]
+      .find(c => texte(c).includes('Calcul en cours'))
+    expect(attente).toBeDefined()
+    expect(attente.getAttribute('role')).toBe('status')
+
+    //  aucune mesure vide, aucune ligne fantôme pendant le calcul
+    expect(hote.querySelectorAll('.rw-mesure')).toHaveLength(0)
+    expect(hote.querySelectorAll('.rw-bande')).toHaveLength(0)
   })
 
   it('la recherche de la vue coût suit le nom et le matricule', async () => {
@@ -571,6 +631,7 @@ describe('3. le ton reste professionnel dans la vue coût', () => {
     etat.cotisations = 3
     etat.erreurPeriode = null
     etat.erreurProjection = false
+    etat.lent = false
 
     hote = document.createElement('div')
     document.body.append(hote)
