@@ -56,7 +56,10 @@ const ADRESSES = {
   // sont éteintes.
   '/geopointage': ['module_geolocalisation', 'module_carte_temps_reel'],
   '/reconnaissance-faciale': 'module_reconnaissance_faciale',
-  '/pointeuses': 'module_pointeuses',
+  // Machines ADMS et poste de pointage font un seul écran : l'une ou
+  // l'autre option ouvre la page. L'écran du poste, lui, n'est pas un
+  // écran d'administration : il ne dépend que de sa propre option.
+  '/configuration-pointeuse': ['module_pointeuses', 'module_poste_pointage'],
   '/poste': 'module_poste_pointage',
   '/predictions': 'module_predictions',
 }

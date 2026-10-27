@@ -18,6 +18,8 @@ export function culturalMotifForPath(pathname = '') {
   if (page === 'pointages') return 'adinkra'
   if (page === 'admins' || page === 'mon-compte') return 'abomey'
   if (page === 'entreprises') return 'korhogo'
+  // Les pointeuses et le poste de pointage ont fusionné sous la même toile.
+  if (page === 'configuration-pointeuse' || page === 'pointeuses') return 'korhogo'
   // Le plateau et les zones ont fusionné : une seule porte dogon.
   if (page === 'geopointage' || page === 'carte-temps-reel') return 'dogon'
   if (page === 'rapports') return 'nsibidi'

@@ -27,7 +27,7 @@ import {
   Plus,
   RotateCcw,
   SlidersHorizontal,
-  Radio,
+  Router,
   Shield,
   ShieldCheck,
   Sparkles,
@@ -271,8 +271,9 @@ export default function DashboardExperience({
         // Les enrôlements et leurs réglages sont un seul écran : une seule
         // entrée pour la reconnaissance faciale.
         { label: 'Reconnaissance faciale', icon: ScanFace, path: '/reconnaissance-faciale', show: isSuperAdmin || moduleRecoFaciale },
-        { label: 'Pointeuses ADMS', icon: Radio, path: '/pointeuses', show: isSuperAdmin || modulePointeuses },
-        { label: 'Poste de pointage', icon: Activity, path: '/poste', show: isSuperAdmin || modulePostePointage },
+        // Les machines ADMS et le poste de pointage font un seul écran :
+        // l'une ou l'autre des deux options ouvre « Configuration pointeuse ».
+        { label: 'Configuration pointeuse', icon: Router, path: '/configuration-pointeuse', show: isSuperAdmin || modulePointeuses || modulePostePointage },
       ],
     },
     {

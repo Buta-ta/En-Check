@@ -390,3 +390,60 @@ export function KorhogoBlasonSvg({ size = 52, className = '' }) {
     </svg>
   )
 }
+
+// ── LE BLASON DE NUIT ─────────────────────────────────────
+// Le même emblème, posé sur un mur de fumée : la toile reste
+// reconnaissable (cadre peint, couture, soleil), mais elle ne
+// troue plus l'écran d'une plaque claire. Sert à la fois à
+// « Configuration pointeuse » et à l'écran du poste.
+export function KorhogoBlasonNuitSvg({ size = 52, className = '' }) {
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 52 52"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect x="1.5" y="1.5" width="49" height="49" rx="3" fill="#241d18" stroke={OR} strokeWidth="1.6" />
+      <rect
+        x="4.5"
+        y="4.5"
+        width="43"
+        height="43"
+        rx="1.5"
+        fill="none"
+        stroke={TERRE}
+        strokeWidth="1.1"
+        strokeDasharray="4 2.6"
+        strokeOpacity="0.9"
+      />
+      {/* les chevrons peints, en haut et en bas */}
+      <path d="M 6 9 L 11 12 L 6 15 M 13 9 L 18 12 L 13 15 M 20 9 L 25 12 L 20 15" fill="none" stroke={OCRE} strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M 6 37 L 11 40 L 6 43 M 13 37 L 18 40 L 13 43 M 20 37 L 25 40 L 20 43" fill="none" stroke={OCRE} strokeWidth="1.6" strokeLinejoin="round" />
+      {/* le soleil, emblème du registre */}
+      <g transform="translate(31 26)">
+        {Array.from({ length: 8 }, (_, i) => {
+          const a = (i * Math.PI) / 4
+          return (
+            <line
+              key={i}
+              x1={Math.cos(a) * 6.5}
+              y1={Math.sin(a) * 6.5}
+              x2={Math.cos(a) * 10}
+              y2={Math.sin(a) * 10}
+              stroke={OR}
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          )
+        })}
+        <circle r="5.4" fill={OCRE} stroke="#f2e8d5" strokeWidth="1.2" />
+        <circle r="1.6" fill="#241c16" />
+      </g>
+      {/* un point de couture dans le coin libre */}
+      <circle cx="16" cy="26" r="1.7" fill={OR} />
+    </svg>
+  )
+}
