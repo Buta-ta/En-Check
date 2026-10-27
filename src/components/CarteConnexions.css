@@ -1,0 +1,224 @@
+/* ═══════════════════════════════════════════════════════════
+   LA CARTE — une pièce de toile posée à plat
+
+   Les épingles sont des points cousus (ocre pour un employé, or
+   pour un administrateur), les amas des pastilles de toile. La
+   bulle est dessinée dans la même gamme que la page ; les noms de
+   classe d'icônes (`.an-epingle`, `.an-bulle`) sont posés par
+   Leaflet, donc hors du composant : elles vivent ici.
+   ═══════════════════════════════════════════════════════════ */
+
+.an-carte-cadre {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: 1px solid var(--an-ligne, rgba(201, 169, 97, 0.24));
+  border-radius: 3px;
+  background-color: var(--an-creux, #100c0a);
+  overflow: hidden;
+}
+
+.an-carte-toile {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+}
+
+.an-carte-cadre .leaflet-container {
+  background-color: #0f1310;
+  font-family: inherit;
+}
+
+.an-carte-cadre .leaflet-control-attribution {
+  background-color: rgba(16, 12, 10, 0.8);
+  font-size: 9px;
+  color: #8d8172;
+}
+
+.an-carte-cadre .leaflet-control-attribution a {
+  color: #b8a887;
+}
+
+.an-carte-cadre .leaflet-bar a {
+  border-color: rgba(201, 169, 97, 0.3);
+  background-color: #241d18;
+  color: #f2e8d5;
+}
+
+.an-carte-cadre .leaflet-bar a:hover {
+  background-color: #2f2620;
+}
+
+/* ── les épingles ──────────────────────────────────────── */
+
+.an-epingle {
+  background: transparent;
+  border: none;
+}
+
+.an-epingle-point {
+  display: block;
+  border: 2px solid #f2e8d5;
+  border-radius: 50%;
+  background-color: var(--an-epingle, #c9773c);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(201, 119, 60, 0.18);
+}
+
+.an-epingle-point--cible {
+  border-color: #f2e8d5;
+  box-shadow: 0 0 0 4px rgba(201, 169, 97, 0.35), 0 0 22px rgba(201, 119, 60, 0.7);
+  animation: an-pouls 1.1s ease-in-out infinite;
+}
+
+@keyframes an-pouls {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+/* ── les amas ──────────────────────────────────────────── */
+
+.an-amas {
+  background: transparent;
+  border: none;
+}
+
+.an-amas-point {
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(242, 232, 213, 0.9);
+  border-radius: 50%;
+  background-color: var(--an-amas, #c9773c);
+  font-size: 13px;
+  font-weight: 700;
+  color: #171310;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 0 4px rgba(201, 119, 60, 0.2);
+}
+
+/* ── la bulle ──────────────────────────────────────────── */
+
+.an-bulle-cadre .leaflet-popup-content-wrapper {
+  border: 1px solid rgba(201, 169, 97, 0.35);
+  border-top: 2px solid #c9773c;
+  border-radius: 3px;
+  background-color: #171310;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6);
+}
+
+.an-bulle-cadre .leaflet-popup-content {
+  margin: 12px 14px;
+  font-family: inherit;
+}
+
+.an-bulle-cadre .leaflet-popup-tip {
+  background-color: #171310;
+  border: 1px solid rgba(201, 169, 97, 0.3);
+}
+
+.an-bulle-cadre a.leaflet-popup-close-button {
+  color: #9a8b73;
+}
+
+.an-bulle {
+  min-width: 180px;
+}
+
+.an-bulle p {
+  margin: 0;
+}
+
+.an-bulle-nom {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f2e8d5;
+}
+
+.an-bulle-sous {
+  font-size: 10.5px;
+  color: #9a8b73;
+  overflow-wrap: anywhere;
+}
+
+.an-bulle-ligne {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: #cbbda4;
+}
+
+.an-bulle-entreprise {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: #c9a961;
+}
+
+.an-bulle-etat {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.an-bulle-etat[data-etat='ok'] {
+  color: #6ee7b7;
+}
+
+.an-bulle-etat[data-etat='refus'] {
+  color: #fca5a5;
+}
+
+/* ── l'attente ─────────────────────────────────────────── */
+
+.an-carte-attente {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background-color: rgba(16, 12, 10, 0.9);
+  border-radius: 3px;
+}
+
+.an-carte-attente p {
+  margin: 0;
+  font-size: 12px;
+  color: #9a8b73;
+}
+
+.an-carte-attente-chevrons {
+  display: flex;
+  gap: 5px;
+}
+
+.an-carte-attente-chevrons i {
+  width: 13px;
+  height: 13px;
+  border-top: 2px solid #c9a961;
+  border-right: 2px solid #c9a961;
+  transform: rotate(45deg);
+  animation: an-chevron 1.1s ease-in-out infinite;
+}
+
+.an-carte-attente-chevrons i:nth-child(2) { animation-delay: 0.14s; }
+.an-carte-attente-chevrons i:nth-child(3) { animation-delay: 0.28s; }
+
+@keyframes an-chevron {
+  0%, 100% { opacity: 0.2; transform: rotate(45deg) translateX(0); }
+  50% { opacity: 1; transform: rotate(45deg) translateX(3px); }
+}
+
+@media (max-width: 720px) {
+  .an-carte-cadre,
+  .an-carte-toile {
+    min-height: 340px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .an-carte-cadre *,
+  .an-carte-attente-chevrons i {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

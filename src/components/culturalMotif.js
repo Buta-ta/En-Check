@@ -25,6 +25,8 @@ export function culturalMotifForPath(pathname = '') {
   // Le plateau et les zones ont fusionné : une seule porte dogon.
   if (page === 'geopointage' || page === 'carte-temps-reel') return 'dogon'
   if (page === 'rapports') return 'nsibidi'
+  // Le journal, la carte et les visites ont une seule page : une seule toile.
+  if (['analytics', 'connexions', 'connexions-map'].includes(page)) return 'korhogo'
   if (page === 'pauses' || page === 'jours-feries') return 'lesotho'
   if (page === 'employes') return 'zoulou'
   if (page === 'planning') return 'kuba'

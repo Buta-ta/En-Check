@@ -16,7 +16,6 @@ import {
   Coffee,
   FileSearch,
   FileText,
-  Globe,
   LayoutDashboard,
   LogOut,
   MapPin,
@@ -49,7 +48,6 @@ import SystemMessageBanner from './SystemMessageBanner'
 import AttendanceHeroImage from './AttendanceHeroImage'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
-import LandingAnalytics from '../pages/LandingAnalytics'
 import { formaterHeureLocale } from '../utils/timezoneUtils'
 import { estPauseReelleEffectuee, formaterTempsPauseEnDirect } from '../services/pausesService'
 import {
@@ -179,8 +177,6 @@ export default function DashboardExperience({
   markAllAsRead,
   handleLogout,
   handleEnterpriseSwitch,
-  showAnalytics,
-  setShowAnalytics,
   mobileMenuOpen,
   setMobileMenuOpen,
   tabStates = {},
@@ -284,11 +280,9 @@ export default function DashboardExperience({
         { label: 'Administrateurs', icon: ShieldCheck, path: '/admins', show: isSuperAdmin },
         { label: 'Messages système', icon: Bell, path: '/system-messages', show: isSuperAdmin },
         { label: 'Prospection', icon: TrendingUp, path: '/prospection', show: isSuperAdmin },
-        { label: 'Journal des connexions', icon: Activity, path: '/connexions', show: isSuperAdmin },
-        { label: 'Carte des connexions', icon: Globe, path: '/connexions-map', show: isSuperAdmin },
         { label: 'Notifications push', icon: Bell, path: '/push-notifications', show: isSuperAdmin },
         { label: 'Test IA (isolé)', icon: Sparkles, path: '/test-ia', show: isSuperAdmin },
-        { label: 'Analytics du site', icon: TrendingUp, show: isSuperAdmin, action: () => setShowAnalytics((visible) => !visible) },
+        { label: 'Analytics du site', icon: TrendingUp, path: '/analytics', show: isSuperAdmin },
       ],
     },
   ]
@@ -898,16 +892,6 @@ export default function DashboardExperience({
             )}
 
             {showSystemMessages && <SystemMessageBanner userType="admins" />}
-
-            {isSuperAdmin && showAnalytics && (
-              <section className="dashboard-analytics-panel" aria-label="Analytics de la page d’accueil">
-                <div className="dashboard-analytics-heading">
-                  <span>Analytics de la page d’accueil</span>
-                  <button type="button" className="dashboard-analytics-close" onClick={() => setShowAnalytics(false)}>Fermer</button>
-                </div>
-                <LandingAnalytics />
-              </section>
-            )}
 
             {loadError && (
               <div className="dashboard-error-banner" role="alert">
