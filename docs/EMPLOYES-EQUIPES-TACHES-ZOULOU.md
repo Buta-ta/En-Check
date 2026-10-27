@@ -43,51 +43,88 @@ accent corail). Le dessin existant du motif zoulou de l'annuaire
 les deux nouvelles vues en reprennent le vocabulaire, sans le répéter tel
 quel.
 
-Quatre signes, réutilisés partout :
+**Tout est dessiné en SVG**, dans `src/components/zoulou/PerlesZoulouSvg.jsx` :
+aucune image, aucune police d'icônes, aucun dégradé posé en `background`
+d'une photo. Six signes, chacun avec un sens :
 
-1. **le fil** — une ligne tendue, semée de perles, qui sépare deux blocs
-   (`.zl-fil`). Il ne décore pas : il marque une rupture de lecture ;
-2. **la perle de chiffre** — un verre clair avec une initiale, posé devant
-   un nombre et son libellé (`.zl-perle-rond`). Quatre par vue, pas plus :
-   ce sont les seuls chiffres à retenir d'un coup d'œil ;
-3. **la pastille** — un point de couleur, jamais seul : toujours collé au
-   nom de l'équipe ou de la catégorie qu'il désigne (`.zl-pastille`) ;
-4. **la jauge de cinq perles** — la santé d'une équipe se lit en perles
-   pleines, pas en pourcentage nu (`.zl-sante`).
+| Signe | Composant | Ce qu'il dit |
+| --- | --- | --- |
+| la **frise** | `FrisePerlesSvg` | la bande tissée qui coiffe la vue : deux rails de fines perles, un double chevron, un œil au centre. Chevrons pour les Équipes, dent de scie pour les Tâches |
+| l'**anneau** | `AnneauPerlesSvg` | une proportion en perles pleines sur un cercle fermé — jamais un camembert, jamais une barre |
+| le **losange** | `LosangePerlesSvg` | quatre perles et un cœur : la puce qui marque un repère |
+| la **pampille** | `PampillesSvg` | les perles qui pendent au bas de la frise : la vue continue |
+| la **rosace** | `RosacePerlesSvg` | deux anneaux de perles : le filigrane d'une carte, l'état vide |
+| le **collier** | `CollierEcheanceSvg` | une perle par jour qui reste avant l'échéance ; en retard, le collier est corail et la dernière perle se cerne |
 
-Le tableau des tâches est un **métier à perles** : quatre colonnes, une
-carte par tâche, un liseré de couleur à gauche qui donne la priorité. On
-fait glisser une carte d'une colonne à l'autre pour changer son état.
+### La scène
+
+Chaque vue s'ouvre sur **une scène en drap espresso** (`.zl-scene`) : la
+frise en haut, les pampilles dessous, puis un titre en serif, un
+sous-titre chiffré et les actions. Les **modules de chiffres ne flottent
+pas sur la page** : ils sont posés sur le drap, dans le prolongement de la
+frise, séparés du titre par un filet clair. C'est le contraste entre le
+drap sombre et la page ivoire qui donne son relief à l'écran — et c'est le
+même drap dans les deux thèmes, comme la bande de référence.
+
+| Rôle de la scène | Couleur | Contraste sur `#241A12` |
+| --- | --- | --- |
+| drap | `#241A12` (dégradé `#2C1F15` → `#1A120C`) | — |
+| encre | `#F7ECDB` | 14,6:1 |
+| texte secondaire | `#CFB697` | 8,8:1 |
+| cuivre (eyebrow, libellés) | `#E2A566` | 8,0:1 |
+| alerte | `#F0A68C` | 8,6:1 |
+| réussite | `#A8D3B0` | 10,2:1 |
+
+Le texte du bouton principal se pose sur le cuivre clair du drap :
+`#2A1A0E` sur `#D58D4B` = 6,2:1.
+
+### La santé, les proportions
+
+- la **santé d'une équipe** se lit en cinq perles (une par tranche de
+  20 points) et en clair : sans mesure, elle affiche « Non suivie » et
+  aucune perle n'est remplie — on ne fait pas semblant de mesurer ;
+- les **anneaux** du bandeau et des cartes sont remplis par une part
+  réelle (équipes avec des membres, part de l'effectif en équipe, équipes
+  dirigées, personnes à rattacher), jamais par un remplissage décoratif ;
+- l'**échéance d'une tâche** est dessinée en collier ; le texte reste là
+  pour le chiffre exact.
 
 ### Palette
 
-Tout passe par des variables, donc le basculement clair / sombre de la
-page fonctionne sans code en plus.
+Tout passe par des variables `--zl-*`, écrites en dur (elles ne dépendent
+plus des `--pt-*` du shell, pour que les contrastes soient calculables par
+le test), avec deux jeux complets : clair sous `.emp-vues`, sombre sous
+`[data-theme='dark'] .emp-vues`.
 
 | Rôle | Clair | Sombre |
 | --- | --- | --- |
-| fond de page | `--pt-canvas` | `--pt-canvas` |
-| surface | `--pt-surface` | `--pt-surface` |
-| encre | `--pt-ink` | `--pt-ink` |
-| texte de bouton sur cuivre | `#FFFFFF` | `#241A12` |
+| fond de page | `#FAF6F0` | `#15110E` |
+| surface (papier ivoire) | `#FFFDF8` | `#201A15` |
+| creux | `#F4EDE2` | `#2A221C` |
+| encre | `#231911` | `#F7EFE4` |
+| texte doux | `#4E3D2E` | `#DFD0BE` |
+| texte faible | `#74604C` | `#A6937E` |
 | cuivre d'action | `#A45C24` | `#D58D4B` |
-| cuivre plein (bouton) | `#823F14` | `#C57C3C` |
+| cuivre plein | `#823F14` | `#C57C3C` |
 | bleu-vert | `#1F6B60` | `#6FBFAE` |
 | sauge | `#55662F` | `#A8BE7E` |
 | corail | `#A8452F` | `#E8917C` |
-| perles (verre) | crème `#EFE1C3`, cuivre `#C08A4D`, bleu-vert `#4F9389`, sauge `#8BA268`, corail `#D08B74` | mêmes rôles, teintes plus claires |
+| perles (verre) | crème `#EFE1C3`, cuivre `#C08A4D`, bleu-vert `#4F9389`, sauge `#8BA268`, corail `#D08B74` | `#F0E2C6`, `#D69A5C`, `#71B9AD`, `#A5BB7D`, `#D67C62` |
 
 ### Contrastes calculés
 
 | Texte → fond | Ratio | Verdict |
 | --- | --- | --- |
-| encre `#231911` sur surface blanche | 17,2:1 | ok |
-| blanc sur cuivre plein `#823F14` | 7,9:1 | ok |
-| encre sombre `#F7EFE4` sur surface sombre `#201A15` | 15,1:1 | ok |
-| encre `#241A12` sur cuivre sombre plein `#C57C3C` | 5,1:1 | ok |
-| initiales `#241A12` sur perle bleu-vert `#4F9389` | 4,8:1 | ok |
-| initiales `#241A12` sur perle corail `#D08B74` | 6,2:1 | ok |
+| encre `#231911` sur surface `#FFFDF8` | 17,0:1 | ok |
+| doux `#4E3D2E` sur creux `#F4EDE2` | 8,9:1 | ok |
+| faible `#74604C` sur creux `#F4EDE2` | 5,1:1 | ok |
+| doux `#DFD0BE` sur creux sombre `#2A221C` | 10,3:1 | ok |
+| faible `#A6937E` sur creux sombre `#2A221C` | 5,3:1 | ok |
+| encre de scène `#F7ECDB` sur drap `#241A12` | 14,6:1 | ok |
 | cuivre clair `#A45C24` sur creux `#F4EDE2` | 4,4:1 | **interdit** → on emploie `#823F14` (6,8:1) |
+
+Le test lit les valeurs dans la feuille et recalcule ces ratios : il
+échoue si une teinte de scène passe sous 4,5:1.
 
 ### Survol
 
@@ -101,11 +138,19 @@ Un survol change **le trait** et **l'ombre**, rien d'autre :
 Le test lit chaque règle `:hover` de la feuille et refuse ces trois
 propriétés.
 
+### Le mouvement
+
+Les cartes, colonnes, modules et le registre **se posent** une fois
+(`@keyframes zl-perle-pose`, 0,42 s, décalage de 40 ms par carte) ; tout
+est coupé sous `prefers-reduced-motion: reduce`.
+
 ## Les vues
 
 ### Équipes
 
-- en-tête : nombre d'équipes, de membres, de chefs désignés ;
+- en-tête (la scène) : frise perlée, titre serif, sous-titre chiffré,
+  puis quatre modules à anneau — équipes, membres, chefs d'équipe,
+  personnes sans équipe ;
 - collier « À décider » : alertes, personnes sans équipe, regroupements
   possibles, besoins d'effectif, dépliables onglet par onglet. Sans
   l'option Prédictions, le collier dit simplement que ces analyses sont

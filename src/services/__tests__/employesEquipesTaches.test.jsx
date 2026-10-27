@@ -448,6 +448,116 @@ describe('la vue Tâches', () => {
 // ═══════════════════════════════════════════════════════════
 
 describe('le ton et le dessin', () => {
+  it('ouvre chaque vue sur une scène en drap, avec sa frise et son titre', async () => {
+    etat.equipes = [equipe()]
+    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+    const scene = hote.querySelector('.zl-scene')
+    expect(scene, 'scène Équipes').not.toBeNull()
+    expect(scene.querySelector('[data-testid="frise-perles"]')).not.toBeNull()
+    expect(scene.querySelector('.zl-scene-titre').textContent).toBe('Équipes.')
+    expect(scene.querySelector('.zl-scene-titre').tagName).toBe('H2')
+    // la frise est un dessin, pas une photographie ni une police d'icônes
+    expect(scene.querySelector('img')).toBeNull()
+    expect(scene.querySelector('[data-testid="frise-perles"]').getAttribute('aria-hidden')).toBe('true')
+
+    etat.taches = [tache()]
+    await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
+    const sceneTaches = hote.querySelector('.zl-scene')
+    expect(sceneTaches).not.toBeNull()
+    expect(sceneTaches.querySelector('[data-testid="frise-perles"]').getAttribute('data-motif')).toBe('zigzag')
+    expect(sceneTaches.querySelector('.zl-scene-titre').textContent).toBe('Tâches.')
+  })
+
+  it('donne à chaque chiffre son anneau de perles, rempli d’une proportion réelle', async () => {
+    etat.equipes = [
+      equipe(),
+      equipe({ id: 'eq-2', name: 'Expédition', member_count: 1, leader_employee_id: null, leader: null }),
+      equipe({ id: 'eq-3', name: 'Qualité', member_count: 0, members: [], leader_employee_id: null, leader: null }),
+    ]
+    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+    const medaillons = [...hote.querySelectorAll('.zl-medaillon')]
+    expect(medaillons).toHaveLength(4)
+    for (const m of medaillons) {
+      const anneau = m.querySelector('[data-testid="anneau-perles"]')
+      expect(anneau, m.textContent).not.toBeNull()
+      expect(Number(anneau.dataset.parts)).toBe(26)
+      const remplis = Number(anneau.dataset.remplis)
+      expect(remplis).toBeGreaterThanOrEqual(0)
+      expect(remplis).toBeLessThanOrEqual(26)
+    }
+    // « Chefs d’équipe » : une équipe sur trois → 9 perles pleines
+    const chefs = medaillons.find((m) => m.textContent.includes('Chefs d’équipe'))
+    expect(Number(chefs.querySelector('[data-testid="anneau-perles"]').dataset.remplis)).toBe(9)
+  })
+
+  it('ne mesure pas une santé qu’on n’a pas mesurée', async () => {
+    etat.equipes = [equipe({ health: null })]
+    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+    const jauge = hote.querySelector('.zl-sante')
+    expect(jauge.textContent).toContain('Non suivie')
+    expect(jauge.querySelectorAll('.zl-sante-perle.is-pleine')).toHaveLength(0)
+    expect(jauge.getAttribute('data-etat')).toBe('inconnu')
+  })
+
+  it('pose les chiffres sur le drap, pas sur des cartes blanches', async () => {
+    // le défaut reproché au premier jet : quatre panneaux blancs sous la scène
+    etat.equipes = [equipe()]
+    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+    const scene = hote.querySelector('.zl-scene')
+    expect(scene.querySelector('.zl-medaillons'), 'médaillons dans la scène').not.toBeNull()
+    expect(hote.querySelectorAll('.zl-scene > .zl-medaillons')).toHaveLength(1)
+
+    expect(CSS).toMatch(/\.zl-medaillon \{[^}]*background: transparent/)
+    expect(CSS).toMatch(/\.zl-scene \{[^}]*#241a12/)
+    expect(CSS).toMatch(/\.zl-scene-titre \{[^}]*Georgia/)
+  })
+
+  it('garde le texte de la scène lisible sur le drap, quelle que soit la page', () => {
+    const lire = (nom) => {
+      const trouve = new RegExp(`${nom}:\\s*(#[0-9a-fA-F]{6})`).exec(CSS)
+      expect(trouve, nom).not.toBeNull()
+      return trouve[1]
+    }
+    const luminance = (hex) => {
+      const canaux = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      const lineaire = canaux.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+      return 0.2126 * lineaire[0] + 0.7152 * lineaire[1] + 0.0722 * lineaire[2]
+    }
+    const contraste = (a, b) => {
+      const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
+      return (x + 0.05) / (y + 0.05)
+    }
+    expect(contraste(lire('--zl-scene-encre'), lire('--zl-scene-fond'))).toBeGreaterThan(7)
+    expect(contraste(lire('--zl-scene-douce'), lire('--zl-scene-fond'))).toBeGreaterThan(4.5)
+    expect(contraste(lire('--zl-scene-cuivre'), lire('--zl-scene-fond'))).toBeGreaterThan(4.5)
+  })
+
+  it('dessine l’échéance en perles, une perle par jour qui reste', async () => {
+    etat.taches = [
+      tache({ id: 't-1', due_at: new Date(Date.now() + 6 * 24 * 3600 * 1000).toISOString() }),
+      tache({ id: 't-2', title: 'Relancer le fournisseur', due_at: new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString() }),
+    ]
+    await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
+    const colliers = [...hote.querySelectorAll('[data-testid="collier-echeance"]')]
+    expect(colliers).toHaveLength(2)
+    // le tableau est trié par échéance : la plus urgente d'abord
+    const avenir = colliers.find((c) => c.getAttribute('data-etat') === 'a-venir')
+    const retard = colliers.find((c) => c.getAttribute('data-etat') === 'retard')
+    expect(avenir.getAttribute('data-etat')).toBe('a-venir')
+    expect(avenir.getAttribute('data-jours')).toBe('6')
+    expect(avenir.querySelectorAll('circle').length).toBeGreaterThanOrEqual(6)
+    expect(retard.getAttribute('data-etat')).toBe('retard')
+    expect(retard.getAttribute('data-jours')).toBe('-4')
+    // le retard garde le texte qui chiffre le retard : le dessin ne remplace pas la phrase
+    expect(hote.textContent).toMatch(/En retard de \d+j/)
+  })
+
+  it('dit, au tableau, que des tâches refusées ne sont pas affichées', async () => {
+    etat.taches = [tache(), tache({ id: 't-2', title: 'Reprise à faire', status: 'rejected' })]
+    await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
+    expect(hote.textContent).toContain('1 tâche refusée ou annulée ne figure pas au tableau')
+  })
+
   it('ne met aucun mot d’atelier dans les textes lus', async () => {
     etat.equipes = [equipe()]
     etat.taches = [tache({ status: 'in_progress' })]
@@ -511,7 +621,20 @@ describe('le ton et le dessin', () => {
       expect(contraste('#241a12', lire(verre)), verre).toBeGreaterThan(4.5)
       expect(contraste('#241a12', lireSombre(verre)), verre).toBeGreaterThan(4.5)
     }
-    expect(CSS).toMatch(/\.zl-perle-rond \{[^}]*color: #241a12/)
+    // les initiales posées dans une perle-avatar gardent l'encre sombre
+    expect(CSS).toMatch(/\.zl-perle-avatar \{[^}]*color: #241a12/)
+
+    // et le texte des médaillons reste lisible sur la surface de la carte
+    const surSurface = (nom, fond) => {
+      const trouve = new RegExp(`${nom}:\\s*(#[0-9a-fA-F]{6})`).exec(CSS)
+      expect(trouve, nom).not.toBeNull()
+      return trouve[1]
+    }
+    expect(contraste(surSurface('--zl-douce', ''), '#f4ede2')).toBeGreaterThan(4.5)
+    expect(contraste(surSurface('--zl-faible', ''), '#f4ede2')).toBeGreaterThan(4.5)
+    const douceSombre = /--zl-douce:\s*(#[0-9a-fA-F]{6})/.exec(CSS.slice(CSS.indexOf("[data-theme='dark']")))
+    expect(douceSombre).not.toBeNull()
+    expect(contraste(douceSombre[1], '#2a221c')).toBeGreaterThan(4.5)
   })
 
   it('dessine les perles sans image et sans dépendre d’un dégradé de texte', () => {

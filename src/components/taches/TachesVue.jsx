@@ -32,6 +32,10 @@ import { getTeams } from '../../services/teamService'
 import {
   CategoryModal, TaskModal, DeleteModal, ShortcutsModal,
 } from './TachesModales'
+import {
+  AnneauPerlesSvg, CollierEcheanceSvg, FrisePerlesSvg,
+  LosangePerlesSvg, PampillesSvg, RosacePerlesSvg,
+} from '../zoulou/PerlesZoulouSvg'
 import '../zoulou/zoulou.css'
 
 const COLONNES = [
@@ -71,6 +75,11 @@ const initiales = (personne) =>
 const nomComplet = (personne) =>
   [personne?.first_name, personne?.last_name].filter(Boolean).join(' ') || 'Personne non assignée'
 
+const part = (morceau, total, perles = 26) => {
+  if (!total || total <= 0) return 0
+  return Math.round((Math.max(0, morceau) / total) * perles)
+}
+
 const dateCourte = (valeur) => {
   if (!valeur) return null
   const date = new Date(valeur)
@@ -78,14 +87,27 @@ const dateCourte = (valeur) => {
   return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
 }
 
+/**
+ * L'échéance, dessinée : un collier d'une perle par jour qui reste.
+ * Le texte reste là pour la lecture précise, mais le regard sait
+ * combien il reste de temps avant même de lire le chiffre.
+ */
 function EtiquetteEcheance({ tache }) {
   const echeance = getDeadlineStatus(tache?.due_at)
   if (!tache?.due_at) return null
   const ton = echeance.overdue ? 'retard' : echeance.urgency === 'critical' || echeance.urgency === 'high' ? 'bientot' : 'normal'
+  const jours = Math.ceil((new Date(tache.due_at) - new Date()) / (1000 * 60 * 60 * 24))
   return (
-    <span className="zl-etiquette" data-ton={ton}>
-      {echeance.overdue ? <AlertTriangle size={10} /> : null}
-      {echeance.text} · {dateCourte(tache.due_at)}
+    <span className="zl-echeance" data-ton={ton} title={`Échéance : ${dateCourte(tache.due_at)}`}>
+      <CollierEcheanceSvg
+        jours={jours}
+        enRetard={echeance.overdue}
+        className="zl-echeance-collier"
+      />
+      <span className="zl-echeance-texte">
+        {echeance.overdue ? <AlertTriangle size={10} /> : null}
+        {echeance.text} · {dateCourte(tache.due_at)}
+      </span>
     </span>
   )
 }
@@ -149,7 +171,9 @@ function CarteTache({ tache, onOuvrir, onModifier, onSupprimer, selection, onBas
       </div>
 
       <div className="zl-carte-tache-meta" style={{ justifyContent: 'space-between' }}>
-        <PastillePersonne personne={tache.assigned_employee} />
+        <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+          <PastillePersonne personne={tache.assigned_employee} />
+        </span>
         <div style={{ display: 'flex', gap: 4 }}>
           <button type="button" className="zl-menage" onClick={() => onModifier(tache)} aria-label={`Modifier ${tache.title}`}>
             <Pencil size={12} />
@@ -463,7 +487,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
     return (
       <div className="emp-vues">
         <div className="zl-vide">
-          <ClipboardList size={26} />
+          <RosacePerlesSvg taille={76} ton="teal" />
           <h3>Sélectionnez une entreprise</h3>
           <p>
             Les tâches se lisent entreprise par entreprise. Choisissez-la dans
@@ -478,7 +502,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
     return (
       <div className="emp-vues">
         <div className="zl-vide">
-          <ClipboardList size={26} />
+          <RosacePerlesSvg taille={76} ton="cuivre" />
           <h3>Option Équipes et tâches non activée</h3>
           <p>
             Cette entreprise n’a pas l’option Équipes et tâches. Un administrateur
@@ -492,71 +516,102 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
 
   return (
     <div className="emp-vues zl-taches">
-      <header className="zl-tete">
-        <div className="zl-tete-texte">
-          <h2 className="zl-titre"><span className="zl-titre-perle" aria-hidden="true" /> Tâches</h2>
-          <p className="zl-sous-titre">
-            {chiffres.total} tâche{chiffres.total > 1 ? 's' : ''} · {chiffres.enCours} en cours ·{' '}
-            {chiffres.retard} en retard · {chiffres.terminees} terminée{chiffres.terminees > 1 ? 's' : ''}
-          </p>
+      {/* ══ LA SCÈNE : la frise, le titre, les actions ══ */}
+      <section className="zl-scene" aria-label="Vue Tâches">
+        <div className="zl-scene-frise">
+          <FrisePerlesSvg hauteur={52} motif="zigzag" />
+          <div className="zl-scene-frise-pampilles">
+            <PampillesSvg nombre={30} hauteur={20} />
+          </div>
         </div>
-        <div className="zl-tete-actions">
-          <button type="button" className="zl-bouton zl-bouton-icone" onClick={() => charger(enterpriseIdProp || enterpriseId)}
-            aria-label="Rafraîchir les tâches" title="Rafraîchir (R)">
-            <RefreshCw size={15} />
-          </button>
-          <button type="button" className="zl-bouton" onClick={ouvrirNouvelleCategorie}>
-            <Tag size={14} /> Nouvelle catégorie
-          </button>
-          <button type="button" className="zl-bouton zl-bouton-icone"
-            onClick={() => setMontrerRaccourcis(true)} aria-label="Raccourcis clavier" title="Raccourcis (?)">
-            <HelpCircle size={15} />
-          </button>
-          <button type="button" className="zl-bouton zl-bouton-principal" onClick={ouvrirNouvelleTache}>
-            <Plus size={15} /> Nouvelle tâche
-          </button>
-        </div>
-      </header>
 
-      <div className="zl-fil" aria-hidden="true">
-        <span className="zl-fil-perles">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <span key={i} className={`zl-fil-perle${i === 1 ? ' is-grosse' : ''}`} />
-          ))}
-        </span>
-      </div>
+        <div className="zl-scene-corps">
+          <div className="zl-scene-texte">
+            <p className="zl-eyebrow">
+              <LosangePerlesSvg taille={16} ton="corail" />
+              Le travail en cours
+            </p>
+            <h2 className="zl-scene-titre">Tâches<span>.</span></h2>
+            <p className="zl-scene-sous">
+              <strong>{chiffres.total}</strong> tâche{chiffres.total > 1 ? 's' : ''} ·{' '}
+              <strong>{chiffres.enCours}</strong> en cours ·{' '}
+              <strong>{chiffres.retard}</strong> en retard ·{' '}
+              <strong>{chiffres.terminees}</strong> terminée{chiffres.terminees > 1 ? 's' : ''}
+            </p>
+          </div>
+          <div className="zl-scene-actions">
+            <button type="button" className="zl-bouton zl-bouton-icone" onClick={() => charger(enterpriseId)}
+              aria-label="Rafraîchir les tâches" title="Rafraîchir (R)">
+              <RefreshCw size={15} />
+            </button>
+            <button type="button" className="zl-bouton" onClick={ouvrirNouvelleCategorie}>
+              <Tag size={14} /> Nouvelle catégorie
+            </button>
+            <button type="button" className="zl-bouton zl-bouton-icone"
+              onClick={() => setMontrerRaccourcis(true)} aria-label="Raccourcis clavier" title="Raccourcis (?)">
+              <HelpCircle size={15} />
+            </button>
+            <button type="button" className="zl-bouton zl-bouton-principal" onClick={ouvrirNouvelleTache}>
+              <Plus size={15} /> Nouvelle tâche
+            </button>
+          </div>
+        </div>
 
-      <div className="zl-perles">
-        <div className="zl-perle-carte" data-ton="teal">
-          <span className="zl-perle-rond" aria-hidden="true">À</span>
-          <span className="zl-perle-texte">
-            <span className="zl-perle-valeur">{chiffres.aFaire}</span>
-            <span className="zl-perle-libelle">À faire</span>
-          </span>
-        </div>
-        <div className="zl-perle-carte" data-ton="cuivre">
-          <span className="zl-perle-rond" aria-hidden="true">EC</span>
-          <span className="zl-perle-texte">
-            <span className="zl-perle-valeur">{chiffres.enCours}</span>
-            <span className="zl-perle-libelle">En cours</span>
-          </span>
-        </div>
-        <div className="zl-perle-carte" data-ton="corail">
-          <span className="zl-perle-rond" aria-hidden="true">R</span>
-          <span className="zl-perle-texte">
-            <span className="zl-perle-valeur">{chiffres.retard}</span>
-            <span className="zl-perle-libelle">En retard</span>
-          </span>
-        </div>
-        <div className="zl-perle-carte" data-ton="sauge">
-          <span className="zl-perle-rond" aria-hidden="true">T</span>
-          <span className="zl-perle-texte">
-            <span className="zl-perle-valeur">{chiffres.terminees}</span>
-            <span className="zl-perle-libelle">Terminées</span>
-          </span>
-        </div>
-      </div>
+        {/* ══ LES MÉDAILLONS : la part de chaque état ══ */}
+        <div className="zl-medaillons">
+          <div className="zl-medaillon">
+            <span className="zl-medaillon-rond">
+              <AnneauPerlesSvg taille={58} parts={26} remplis={part(chiffres.aFaire, chiffres.total, 26)} ton="teal" />
+              <span className="zl-medaillon-cle">{chiffres.aFaire}</span>
+            </span>
+            <span className="zl-medaillon-texte">
+              <span className="zl-medaillon-libelle">À faire</span>
+              <span className="zl-medaillon-note">assignées, pas commencées</span>
+            </span>
+          </div>
 
+          <div className="zl-medaillon">
+            <span className="zl-medaillon-rond">
+              <AnneauPerlesSvg taille={58} parts={26} remplis={part(chiffres.enCours, chiffres.total, 26)} ton="cuivre" />
+              <span className="zl-medaillon-cle">{chiffres.enCours}</span>
+            </span>
+            <span className="zl-medaillon-texte">
+              <span className="zl-medaillon-libelle">En cours</span>
+              <span className="zl-medaillon-note">le travail est commencé</span>
+            </span>
+          </div>
+
+          <div className="zl-medaillon">
+            <span className="zl-medaillon-rond">
+              <AnneauPerlesSvg taille={58} parts={26} remplis={part(chiffres.retard, chiffres.total, 26)} ton="corail" />
+              <span className="zl-medaillon-cle">{chiffres.retard}</span>
+            </span>
+            <span className="zl-medaillon-texte">
+              <span className="zl-medaillon-libelle">En retard</span>
+              <span className="zl-medaillon-note" data-ton={chiffres.retard > 0 ? 'alerte' : 'ok'}>
+                {chiffres.retard > 0 ? 'échéance dépassée' : 'aucune échéance dépassée'}
+              </span>
+            </span>
+          </div>
+
+          <div className="zl-medaillon">
+            <span className="zl-medaillon-rond">
+              <AnneauPerlesSvg taille={58} parts={26} remplis={part(chiffres.terminees, chiffres.total, 26)} ton="sauge" />
+              <span className="zl-medaillon-cle">{chiffres.terminees}</span>
+            </span>
+            <span className="zl-medaillon-texte">
+              <span className="zl-medaillon-libelle">Terminées</span>
+              <span className="zl-medaillon-note">
+                {chiffres.total > 0
+                  ? `${Math.round((chiffres.terminees / chiffres.total) * 100)} % du total`
+                  : 'rien à finir'}
+              </span>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      
       {predictions && alertes.length > 0 && (
         <section className="zl-collier" aria-label="Tâches à surveiller">
           <header className="zl-collier-tete">
@@ -677,7 +732,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
         </div>
       ) : tachesFiltrees.length === 0 ? (
         <div className="zl-vide">
-          <ClipboardList size={26} />
+          <RosacePerlesSvg taille={76} ton={taches.length === 0 ? 'cuivre' : 'teal'} />
           <h3>{taches.length === 0 ? 'Aucune tâche pour l’instant' : 'Aucune tâche ne correspond'}</h3>
           <p>
             {taches.length === 0
@@ -724,7 +779,10 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
                   />
                 ))}
                 {parStatut[colonne.cle].length === 0 && (
-                  <p className="zl-collier-vide" style={{ padding: 10, fontSize: 11.5 }}>Rien ici.</p>
+                  <div className="zl-colonne-vide">
+                    <RosacePerlesSvg taille={38} ton={colonne.perle} />
+                    <span>Rien ici.</span>
+                  </div>
                 )}
               </div>
             </section>
