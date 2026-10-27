@@ -79,7 +79,6 @@ export default function Dashboard() {
   const [loadError, setLoadError] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
-  const [showAnalytics, setShowAnalytics] = useState(false)
 
   const [modulePlanning, setModulePlanning] = useState(false)
   const [moduleRetards, setModuleRetards] = useState(false)
@@ -1015,8 +1014,6 @@ export default function Dashboard() {
         markAllAsRead={markAllAsRead}
         handleLogout={handleLogout}
         handleEnterpriseSwitch={handleEnterpriseSwitch}
-        showAnalytics={showAnalytics}
-        setShowAnalytics={setShowAnalytics}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
         tabStates={tabStates}

@@ -58,8 +58,7 @@ import FichesPaie from './pages/FichesPaie'
 import EmployeeFichesPaie from './pages/employee/EmployeeFichesPaie'
 import ConfigurationFiscale from './pages/ConfigurationFiscale'
 import PaieFiscalite from './pages/PaieFiscalite'
-import ConnectionLogs from './pages/ConnectionLogs'
-import ConnectionsMap from './pages/ConnectionsMap'
+import AnalyticsSite from './pages/AnalyticsSite'
 import TaskDetail from './pages/TaskDetail'
 import EmployeeTasks from './pages/employee/EmployeeTasks'
 import Predictions from './pages/Predictions'
@@ -398,16 +397,14 @@ function App() {
           {/* Les devis ont rejoint la prospection : l'ancienne adresse ouvre
               la page commune sur sa vue devis. */}
           <Route path="/devis" element={<Navigate to="/prospection?vue=devis" replace />} />
-          <Route path="/connexions" element={
+          {/* Le journal, la carte et les visites ne font plus qu'une page. */}
+          <Route path="/analytics" element={
             <AdminRoute requireSuperAdmin>
-              <ConnectionLogs />
+              <AnalyticsSite />
             </AdminRoute>
           } />
-          <Route path="/connexions-map" element={
-            <AdminRoute requireSuperAdmin>
-              <ConnectionsMap />
-            </AdminRoute>
-          } />
+          <Route path="/connexions" element={<Navigate to="/analytics" replace />} />
+          <Route path="/connexions-map" element={<Navigate to="/analytics?vue=carte" replace />} />
 
 
 
