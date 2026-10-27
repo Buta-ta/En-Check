@@ -121,10 +121,14 @@ au format 300 × 500 px, dessinée en styles calculés dans
 `src/components/BadgeEmploye.jsx` — ce que l'écran montre est exactement ce
 que le fichier exporté contient.
 
-- **le bandeau** porte la couleur de l'entreprise, son logo (ou son
-  monogramme), et un fil de perles ; le texte du bandeau passe à l'encre
-  quand la couleur est claire, au papier quand elle est sombre — la couleur
-  est lue, sa lisibilité est calculée ;
+- **le bandeau** porte la couleur de la carte, son logo (ou son
+  monogramme) ; le texte passe à l'encre quand la couleur est claire, au
+  papier quand elle est sombre — la couleur est lue, sa lisibilité est
+  calculée ;
+- **la bande tissée**, juste sous le bandeau, porte le **motif culturel** :
+  perles (le défaut), kente, aso oke, bogolan, ndebele, dogon — ou un simple
+  filet. Le motif est tracé à la teinte de la carte, dans ses valeurs
+  claires et foncées, pour rester lisible quelle que soit la couleur ;
 - **le portrait** est un médaillon de 104 px, cerclé de la couleur de
   l'entreprise ; sans photo, les initiales prennent la place — jamais un
   cadre vide ;
@@ -146,6 +150,52 @@ plus d'`alert`, plus d'emoji, plus de code hexadécimal affiché.
 
 L'export reste `html2canvas` en **3 ×** (900 × 1500 px), fond transparent,
 puis le partage natif s'il existe — sinon le fichier est téléchargé.
+
+**Personnaliser la carte.** La fenêtre a deux réglages, à droite de la
+carte :
+
+- **la couleur** : la teinte de l'entreprise en premier (la carte la suit
+  tant qu'on n'a rien choisi), six accents du registre, et un sélecteur
+  libre. Choisir de nouveau la couleur de l'entreprise remet la carte
+  « d'origine » ;
+- **le motif culturel** : sept écritures, chacune montrée en vignette.
+  « Revenir à la carte d'origine » remet l'accent de l'entreprise et les
+  perles.
+
+Le choix est rangé par employé dans le navigateur
+(`encheck:carte:<id>`), pas dans la base : c'est un réglage d'impression,
+il ne justifie pas une migration. Il est donc retenu **sur cet appareil**,
+et la fenêtre le dit.
+
+### Les fenêtres — l'accès au portail et l'envoi des horaires
+
+Les fenêtres de la page partagent une coque unique,
+`src/components/registre/ModaleRegistre.jsx` (CSS `ModaleRegistre.css`) :
+papier `#f5f0e6` le jour, `#17110b` la nuit, deux filets, un titre serif, un
+pied discret. Elle se ferme à `Échap`, au clic sur le voile, et bloque le
+défilement du fond.
+
+**L'accès à l'espace employé** (`ModaleAccesPortail.jsx`). La fenêtre dit
+d'abord à qui on a affaire : le matricule, le téléphone et l'email réels —
+ou « non renseigné » — puis la dernière connexion, avec une perle pleine
+quand l'employé est déjà venu et une perle creuse quand il ne s'est jamais
+connecté. Viennent ensuite les deux champs du mot de passe, avec leur
+longueur et leur correspondance dites en clair, puis l'état du portail et sa
+bascule. Trois cas, un seul titre : créer, migrer, modifier. Sans matricule,
+l'enregistrement reste fermé et la fenêtre explique pourquoi.
+
+**L'envoi des horaires** (`ModaleHoraires.jsx`). Le clic ne peut plus ne
+rien faire : la fenêtre s'ouvre, montre la journée, la pause, les jours et le
+planning lus dans la base, puis **le message exact** qui sera envoyé. On
+peut le copier, l'ouvrir dans WhatsApp (sur le numéro de l'employé quand il
+est renseigné), l'envoyer par SMS ou par email. Si le navigateur bloque la
+fenêtre WhatsApp, une phrase le dit et le message reste sous la main. Sans
+horaire défini, la fenêtre propose d'aller les définir.
+
+> Ce que le clic précédent faisait : `window.open('https://wa.me/?text=…')`.
+> Un bloqueur de fenêtres, un onglet ouvert derrière, et rien ne se passait
+> à l'écran — d'où l'impression d'un bouton mort. Aucune donnée n'était en
+> cause : il manquait seulement quelque chose à voir.
 
 ### Les raccourcis de pages — en haut à droite
 
@@ -278,7 +328,8 @@ Les messages disent ce qui se passe et ce qu'on peut faire :
 ## Tests
 
 `src/services/__tests__/employesEquipesTaches.test.jsx` — 66 tests.
-`src/services/__tests__/badgeEmploye.test.jsx` — 15 tests.
+`src/services/__tests__/badgeEmploye.test.jsx` — 20 tests.
+`src/services/__tests__/modalesEmployes.test.jsx` — 16 tests.
 
 Ce qu'ils défendent :
 
@@ -321,7 +372,22 @@ Ce qu'ils défendent :
    couleur est illisible, QR qui suit le jeton, « QR à générer » quand il n'y
    a rien à encoder, initiales sans photo, fermeture de la fenêtre, échec
    d'export dit en français (jamais `alert`), export en 3 × sur fond
-   transparent, et aucun code technique dans l'interface.
+   transparent, et aucun code technique dans l'interface ;
+10. **la personnalisation de la carte** : départ sur la couleur de
+    l'entreprise et les perles, changement de teinte retenu par employé,
+    changement de motif qui change vraiment le dessin de la bande (rectangles
+    du kente, pas de perles), retour à la carte d'origine, aucun code
+    hexadécimal dans les réglages ;
+11. **les fenêtres du registre** : titre selon le cas (créer, migrer,
+    modifier), identifiant réel et « non renseigné », dernière connexion
+    avec sa perle, enregistrement impossible tant que le mot de passe est
+    court ou mal confirmé, mot de passe envoyé une seule fois, refus de la
+    base affiché, absence de matricule dite en clair, bascule du portail qui
+    revient en arrière si la base refuse ; côté horaires : journées, pause et
+    jours réels, message sobre sans emoji, WhatsApp sur le numéro de
+    l'employé, blocage de la fenêtre dit en clair, copie du message, SMS et
+    email seulement quand ils sont possibles, et « aucun horaire » avec le
+    geste pour les définir.
 
 Chaque test neuf a été vérifié par mutation : rétablir l'ancien
 comportement doit le faire échouer.
@@ -337,4 +403,9 @@ comportement doit le faire échouer.
   vide sur toute la hauteur de la grille ;
 - le badge s'exporte en **PNG seulement** : pas de PDF ni de recto-verso,
   et la fidélité du fichier dépend de `html2canvas` (les ombres très fines
-  peuvent s'aplatir) ; le QR, lui, est un vrai SVG et reste scannable.
+  peuvent s'aplatir) ; le QR, lui, est un vrai SVG et reste scannable ;
+- la couleur et le motif de la carte sont retenus **par appareil**, pas dans
+  la base : un autre poste retrouve la carte par défaut. Les ranger dans
+  l'entreprise demanderait une colonne dédiée ;
+- l'envoi des horaires passe par WhatsApp, le SMS ou l'email du téléphone :
+  l'application ne les envoie pas elle-même, elle prépare le message.

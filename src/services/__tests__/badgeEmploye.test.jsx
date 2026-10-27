@@ -60,6 +60,8 @@ afterEach(() => {
 })
 
 async function rendre(props = {}) {
+  // le réglage de l'appareil est propre à chaque essai
+  act(() => window.localStorage.clear())
   await act(async () => {
     racine.render(
       <BadgeEmploye
@@ -158,6 +160,61 @@ describe('la carte de service', () => {
   it('annonce la taille réelle du fichier exporté', async () => {
     await rendre()
     expect(hote.textContent).toContain('900 × 1500 px')
+  })
+})
+
+describe('la personnalisation de la carte', () => {
+  it('part de la couleur de l’entreprise et du motif de perles', async () => {
+    await rendre()
+    expect(carte().querySelector('header').style.background).toBe('rgb(212, 175, 55)')
+    expect(hote.querySelector('[data-testid="badge-bande"]').getAttribute('data-motif')).toBe('perles')
+    expect(carte().querySelectorAll('svg circle').length).toBeGreaterThan(10)
+  })
+
+  it('change la couleur de la carte et retient le choix', async () => {
+    await rendre()
+    const teal = hote.querySelector('[aria-label="Teal"]')
+    await act(async () => teal.click())
+
+    expect(carte().querySelector('header').style.background).toBe('rgb(43, 106, 95)')
+    expect(teal.getAttribute('aria-pressed')).toBe('true')
+    const range = JSON.parse(window.localStorage.getItem('encheck:carte:emp-1'))
+    expect(range).toEqual({ couleur: '#2b6a5f', motif: 'perles' })
+  })
+
+  it('change le motif et le dessine dans la bande', async () => {
+    await rendre()
+    const kente = hote.querySelector('[title="Blocs tissés"]')
+    await act(async () => kente.click())
+
+    const bande = hote.querySelector('[data-testid="badge-bande"]')
+    expect(bande.getAttribute('data-motif')).toBe('kente')
+    expect(kente.getAttribute('aria-pressed')).toBe('true')
+    // le kente est fait de blocs, pas de perles
+    expect(bande.querySelectorAll('rect').length).toBeGreaterThan(20)
+    expect(bande.querySelectorAll('circle').length).toBe(0)
+  })
+
+  it('revient à la carte d’origine, entreprise et perles', async () => {
+    await rendre()
+    await act(async () => hote.querySelector('[aria-label="Corail"]').click())
+    await act(async () => hote.querySelector('[title="Grille de cases"]').click())
+    expect(carte().querySelector('header').style.background).toBe('rgb(162, 69, 46)')
+
+    const retour = [...hote.querySelectorAll('button')].find((b) => b.textContent.includes('Revenir à la carte'))
+    await act(async () => retour.click())
+    expect(carte().querySelector('header').style.background).toBe('rgb(212, 175, 55)')
+    expect(hote.querySelector('[data-testid="badge-bande"]').getAttribute('data-motif')).toBe('perles')
+    expect([...hote.querySelectorAll('button')].some((b) => b.textContent.includes('Revenir à la carte'))).toBe(false)
+  })
+
+  it('ne montre ni code hexadécimal ni nom de champ dans les réglages', async () => {
+    await rendre()
+    const reglages = hote.querySelector('.bge-reglages').textContent
+    expect(reglages).not.toMatch(/#[0-9a-f]{6}/i)
+    expect(reglages).toContain('Motif culturel')
+    expect(reglages).toContain('Perles')
+    expect(reglages).toContain('Kente')
   })
 })
 
