@@ -394,7 +394,7 @@ export default function TaskDetail() {
     } catch (error) {
       console.error(error)
       toast.error('Impossible de charger la tâche')
-      navigate('/taches')
+      navigate('/employes?vue=taches')
     } finally {
       setLoading(false)
     }
@@ -581,7 +581,7 @@ export default function TaskDetail() {
         <div className="task-container" style={S.container}>
           {/* TOP BAR */}
           <div style={S.topBar}>
-            <button onClick={() => navigate('/taches')} style={S.backBtn}>
+            <button onClick={() => navigate('/employes?vue=taches')} style={S.backBtn}>
               <ArrowLeft size={16} />
               <span>Retour</span>
             </button>

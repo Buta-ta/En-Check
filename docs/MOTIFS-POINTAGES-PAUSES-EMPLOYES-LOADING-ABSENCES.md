@@ -8,7 +8,7 @@ Les trois bandeaux et la scène de chargement ont été explicitement validés a
 ## Livraison
 - Pointages : inspiration adinkra du Ghana, indigo/cuivre/ivoire.
 - Pauses : inspiration des textiles du Lesotho, crème/bleu/terre cuite.
-- Employés : inspiration des perles zoulou d’Afrique du Sud, losanges colorés sur espresso.
+- Employés (et, depuis la fusion, les vues Équipes et Tâches de la même page) : inspiration des perles zoulou d’Afrique du Sud, losanges colorés sur espresso. Voir `docs/EMPLOYES-EQUIPES-TACHES-ZOULOU.md`.
 - Images sélectionnées converties en WebP optimisés, proportions conservées. Intégration aux bandeaux supérieurs et inférieurs des pages.
 - Les trois écrans de chargement reprennent leur nouveau motif, sans changer leurs scènes, étapes, bouton Passer ou règles de chargement existantes.
 - Correspondance centralisée PageCulturalBand : l’assistant compact et son dialogue suivent les trois nouvelles identités à chaque navigation. Planning kuba, Absences ndebele et Paie bogolan inchangés ; Kente conservé en repli sur les autres routes.

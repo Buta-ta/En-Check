@@ -57,8 +57,6 @@ const ADRESSES = {
   '/config-reco-faciale': 'module_reconnaissance_faciale',
   '/pointeuses': 'module_pointeuses',
   '/poste': 'module_poste_pointage',
-  '/taches': 'module_taches',
-  '/equipes': 'module_taches',
   '/predictions': 'module_predictions',
 }
 

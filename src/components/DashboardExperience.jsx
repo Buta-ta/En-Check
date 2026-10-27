@@ -264,8 +264,6 @@ export default function DashboardExperience({
     {
       label: 'Outils',
       items: [
-        { label: 'Équipes & tâches', icon: CalendarDays, path: '/taches', show: isSuperAdmin || moduleTaches, tabKey: 'TACHES' },
-        { label: 'Équipes', icon: Users, path: '/equipes', show: isSuperAdmin || moduleTaches },
         { label: 'Prédictions', icon: Sparkles, path: '/predictions', show: isSuperAdmin || modulePredictions, tabKey: 'PREDICTIONS' },
         { label: 'Carte en direct', icon: MapPin, path: '/carte-temps-reel', show: isSuperAdmin || moduleCarteTempsReel },
         { label: 'Zones de pointage', icon: Globe, path: '/geofencing', show: isSuperAdmin || moduleGeofencing, tabKey: 'GEOFENCING' },
@@ -373,7 +371,7 @@ export default function DashboardExperience({
     { id: 'payslips', label: 'Ouvrir les fiches de paie', description: 'Accéder aux bulletins', icon: Wallet, path: '/paie?onglet=fiches', category: 'Paie', show: isSuperAdmin || moduleFichesPaie || moduleConfigFiscale },
     { id: 'remuneration', label: 'Gérer les rémunérations', description: 'Consulter les rémunérations', icon: Wallet, path: '/remunerations', category: 'Paie', show: isSuperAdmin || moduleRemunerations },
     { id: 'salary-cost', label: 'Voir le coût salarial', description: 'Accéder aux indicateurs de coût', icon: TrendingUp, path: '/remunerations?vue=cout', category: 'Paie', show: isSuperAdmin || moduleCoutSalarial },
-    { id: 'teams', label: 'Gérer les équipes', description: 'Consulter les équipes et tâches', icon: Users, path: '/equipes', category: 'Outils', show: isSuperAdmin || moduleTaches },
+    { id: 'teams', label: 'Gérer les équipes et les tâches', description: 'Ouvrir l’annuaire, les équipes et les tâches', icon: Users, path: '/employes?vue=equipes', category: 'Outils', show: isSuperAdmin || moduleTaches },
     { id: 'predictions', label: 'Ouvrir les prédictions', description: 'Consulter les prévisions disponibles', icon: Sparkles, path: '/predictions', category: 'Outils', show: isSuperAdmin || modulePredictions },
     { id: 'companies', label: 'Gérer les entreprises', description: 'Accéder aux entreprises', icon: Building2, path: '/entreprises', category: 'Administration', show: Boolean(isSuperAdmin) },
   ].filter((action) => action.show)
