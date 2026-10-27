@@ -246,12 +246,6 @@ function EntreeEquipe({ equipe, rang, onMembres, onModifier, onRetirer, onChange
       </div>
 
       <div className="rg-entree-actions">
-        <button type="button" className="rg-lien" onClick={() => onMembres(equipe)}>
-          <UserPlus size={12} /> Membres
-        </button>
-        <button type="button" className="rg-lien" onClick={() => onModifier(equipe)}>
-          <UserCog size={12} /> Modifier
-        </button>
         <button
           type="button"
           className="rg-lien"
@@ -260,6 +254,12 @@ function EntreeEquipe({ equipe, rang, onMembres, onModifier, onRetirer, onChange
           onClick={() => setMenu((v) => !v)}
         >
           <MoreVertical size={14} />
+        </button>
+        <button type="button" className="rg-lien" onClick={() => onModifier(equipe)}>
+          <UserCog size={12} /> Modifier
+        </button>
+        <button type="button" className="rg-lien" data-fort="oui" onClick={() => onMembres(equipe)}>
+          <UserPlus size={12} /> Membres
         </button>
         {menu && (
           <div className="rg-menu">

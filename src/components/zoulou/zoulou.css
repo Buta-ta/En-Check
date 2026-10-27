@@ -52,7 +52,7 @@
   flex-direction: column;
   gap: 0;
   min-width: 0;
-  padding: 0 0 10px 54px;
+  padding: 0 0 10px 26px;
   isolation: isolate;
 }
 
@@ -62,8 +62,8 @@
   position: absolute;
   top: 118px;
   bottom: 46px;
-  left: 22px;
-  width: 12px;
+  left: 4px;
+  width: 10px;
   background-image:
     radial-gradient(circle at 6px 0, var(--rg-perle-creme) 2.6px, transparent 3px),
     radial-gradient(circle at 6px 0, var(--rg-perle-cuivre) 2.2px, transparent 2.6px),
@@ -536,6 +536,13 @@
 
 .rg-lien[aria-pressed='true'] {
   color: var(--rg-ink);
+  text-decoration-color: var(--rg-copper);
+}
+
+/* l'action d'une entrée que l'on vient chercher : elle est en cuivre */
+.rg-lien[data-fort='oui'] {
+  color: var(--rg-copper);
+  font-weight: 700;
   text-decoration-color: var(--rg-copper);
 }
 
@@ -1554,10 +1561,10 @@
 
 @media (max-width: 760px) {
   .emp-vues {
-    padding-left: 30px;
+    padding-left: 18px;
   }
   .emp-vues::before {
-    left: 8px;
+    left: 0;
     top: 90px;
   }
   .rg-entree {
