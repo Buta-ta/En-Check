@@ -151,6 +151,7 @@ function CollierEntreprise({ equipes, orphelins }) {
 // ── une entrée du registre ─────────────────────────────────────────
 function EntreeEquipe({ equipe, rang, onMembres, onModifier, onRetirer, onChangerChef }) {
   const [menu, setMenu] = useState(false)
+  const actionsRef = useRef(null)
   const membres = equipe?.members || []
   const effectif = equipe.member_count ?? membres.length
   const score = Number(equipe?.health?.health_score)
@@ -158,8 +159,26 @@ function EntreeEquipe({ equipe, rang, onMembres, onModifier, onRetirer, onChange
   const etat = ETAT_SANTE[equipe?.health?.status] || ETAT_SANTE.healthy
   const perles = suivi ? Math.min(5, Math.max(0, Math.ceil(Math.round(score) / 20))) : 0
 
+  // même règle que dans l'annuaire : le menu se referme au clic
+  // ailleurs et à Échap, et sa ligne passe devant les suivantes
+  useEffect(() => {
+    if (!menu) return undefined
+    const surPointeur = (evenement) => {
+      if (!actionsRef.current?.contains(evenement.target)) setMenu(false)
+    }
+    const surTouche = (evenement) => {
+      if (evenement.key === 'Escape') setMenu(false)
+    }
+    document.addEventListener('pointerdown', surPointeur)
+    document.addEventListener('keydown', surTouche)
+    return () => {
+      document.removeEventListener('pointerdown', surPointeur)
+      document.removeEventListener('keydown', surTouche)
+    }
+  }, [menu])
+
   return (
-    <li className="rg-entree">
+    <li className="rg-entree" data-menu={menu ? 'ouvert' : undefined}>
       <span className="rg-entree-index">{String(rang + 1).padStart(2, '0')}</span>
 
       <div className="rg-cellule">
@@ -221,12 +240,13 @@ function EntreeEquipe({ equipe, rang, onMembres, onModifier, onRetirer, onChange
         </span>
       </div>
 
-      <div className="rg-entree-actions">
+      <div className="rg-entree-actions" ref={actionsRef}>
         <button
           type="button"
           className="rg-lien"
           aria-label={`Actions pour ${equipe.name}`}
           aria-expanded={menu}
+          aria-haspopup="true"
           onClick={() => setMenu((v) => !v)}
         >
           <MoreVertical size={14} />
@@ -238,13 +258,14 @@ function EntreeEquipe({ equipe, rang, onMembres, onModifier, onRetirer, onChange
           <UserPlus size={12} /> Membres
         </button>
         {menu && (
-          <div className="rg-menu">
+          <div className="rg-menu" role="group" aria-label={`Actions pour ${equipe.name}`}>
             <button type="button" onClick={() => { setMenu(false); onModifier(equipe) }}>
               <UserCog size={13} /> Modifier l’équipe
             </button>
             <button type="button" onClick={() => { setMenu(false); onChangerChef(equipe) }}>
               <Users size={13} /> Changer de chef
             </button>
+            <span className="rg-menu-sep" aria-hidden="true" />
             <button type="button" className="is-danger" onClick={() => { setMenu(false); onRetirer(equipe) }}>
               <UserMinus size={13} /> Supprimer
             </button>

@@ -14,7 +14,7 @@
 // une présence inconnue s'écrit « Non pointé ».
 // ═══════════════════════════════════════════════════════════
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PlanningPayslipBadge from '../PlanningPayslipBadge'
 import {
   BadgeCheck, CalendarClock, Clock3, Key, MoreVertical,
@@ -89,10 +89,33 @@ export default function EntreeEmploye({
   onSupprimer,
 }) {
   const [menu, setMenu] = useState(false)
+  const actionsRef = useRef(null)
   const presence = liveStatus?.state || 'non_pointe'
 
+  // Le menu se referme dès qu'on clique ailleurs ou qu'on appuie sur
+  // Échap : sinon il reste posé sur la ligne suivante.
+  useEffect(() => {
+    if (!menu) return undefined
+    const surPointeur = (evenement) => {
+      if (!actionsRef.current?.contains(evenement.target)) setMenu(false)
+    }
+    const surTouche = (evenement) => {
+      if (evenement.key === 'Escape') setMenu(false)
+    }
+    document.addEventListener('pointerdown', surPointeur)
+    document.addEventListener('keydown', surTouche)
+    return () => {
+      document.removeEventListener('pointerdown', surPointeur)
+      document.removeEventListener('keydown', surTouche)
+    }
+  }, [menu])
+
   return (
-    <li className="rg-entree rg-entree-annuaire" data-presence={presence}>
+    <li
+      className="rg-entree rg-entree-annuaire"
+      data-presence={presence}
+      data-menu={menu ? 'ouvert' : undefined}
+    >
       <span className="rg-entree-index">{String(numero).padStart(2, '0')}</span>
 
       <div className="rg-cellule rg-cellule-identite">
@@ -165,7 +188,7 @@ export default function EntreeEmploye({
         )}
       </div>
 
-      <div className="rg-entree-actions">
+      <div className="rg-entree-actions" ref={actionsRef}>
         <button type="button" className="rg-lien" onClick={() => onOuvrirFiche(employee)}>
           <UserCog size={12} /> Fiche
         </button>
@@ -177,13 +200,14 @@ export default function EntreeEmploye({
           className="rg-lien"
           aria-label={`Autres actions pour ${nomComplet(employee)}`}
           aria-expanded={menu}
+          aria-haspopup="true"
           onClick={() => setMenu((v) => !v)}
         >
           <MoreVertical size={14} />
         </button>
 
         {menu && (
-          <div className="rg-menu rg-menu-annuaire">
+          <div className="rg-menu rg-menu-annuaire" role="group" aria-label={`Autres actions pour ${nomComplet(employee)}`}>
             {planningEnabled && (
               <>
                 <button type="button" onClick={() => { setMenu(false); onHoraires(employee) }}>
@@ -207,6 +231,7 @@ export default function EntreeEmploye({
                 <Nfc size={13} /> {portalEnabled ? 'Fermer le portail' : 'Ouvrir le portail'}
               </button>
             )}
+            <span className="rg-menu-sep" aria-hidden="true" />
             <button type="button" className="is-danger" onClick={() => { setMenu(false); onSupprimer(employee) }}>
               <Trash2 size={13} /> Supprimer la fiche
             </button>

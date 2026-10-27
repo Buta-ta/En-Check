@@ -1,697 +1,637 @@
 // ═══════════════════════════════════════════════════════════
-// 🎫 COMPOSANT BADGE EMPLOYÉ - AFROFUTURISTE (QR SCANNABLE)
+// LA CARTE DE SERVICE — le badge d'un employé
+//
+// Ce que c'est : un objet imprimé. Il ne suit donc pas le thème
+// de la page — il reste sur papier, avec la couleur de
+// l'entreprise comme seul accent, et il sort en PNG par
+// html2canvas. C'est pourquoi il est dessiné en styles calculés
+// ici et non par une feuille de style : ce que l'écran montre
+// est exactement ce que le fichier contient.
+//
+// Ce qu'il porte, et rien de plus :
+//   · l'entreprise, son logo, son accent ;
+//   · la personne — portrait, nom, poste, département ;
+//   · les données de service réellement renseignées
+//     (matricule, contrat, date d'entrée) ;
+//   · le QR du badge, qui mène au jeton du portail.
 // ═══════════════════════════════════════════════════════════
 
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { X, Download, Share2, Footprints, Sparkles, CheckCircle2 } from 'lucide-react'
+import { X, Download, Share2, Check, Loader2 } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import EnCheckBrandMark from './EnCheckBrandMark'
+import './BadgeEmploye.css'
 
-export default function BadgeEmploye({ 
-  employee, 
-  entrepriseName, 
-  entrepriseLogo, 
-  primaryColor = '#D4AF37', 
-  onClose 
-}) {
-  const badgeRef = useRef(null)
-  const [downloading, setDownloading] = useState(false)
-  const [downloadSuccess, setDownloadSuccess] = useState(false)
+const LARGEUR = 300
+const HAUTEUR = 500
+const ECHELLE_EXPORT = 3
 
-  const badgeColor = primaryColor || '#D4AF37'
+const PAPIER = [245, 240, 230]
+const ENCRE = [28, 20, 13]
+const CONTRATS = {
+  CDI: 'CDI',
+  CDD: 'CDD',
+  Stage: 'Stage',
+  Interim: 'Intérim',
+  Intérim: 'Intérim',
+  Apprentissage: 'Apprentissage',
+  Freelance: 'Freelance',
+}
 
-  // ═══════════════════════════════════════════════════════════
-  // 📥 TÉLÉCHARGER LE BADGE EN IMAGE PNG
-  // ═══════════════════════════════════════════════════════════
-  const downloadBadge = async () => {
-    if (!badgeRef.current) return
-    setDownloading(true)
+// ── la couleur de l'entreprise : on la lit, on ne l'invente pas ──
+function lireCouleur(valeur) {
+  const texte = String(valeur || '').trim().replace('#', '')
+  if (!/^[0-9a-f]{3}$|^[0-9a-f]{6}$/i.test(texte)) return [212, 175, 55]
+  const plein = texte.length === 3 ? texte.split('').map((c) => c + c).join('') : texte
+  return [0, 2, 4].map((i) => parseInt(plein.slice(i, i + 2), 16))
+}
 
-    try {
-      const canvas = await html2canvas(badgeRef.current, {
-        scale: 3,
-        backgroundColor: null,
-        useCORS: true,
-        allowTaint: true,
-        logging: false
-      })
+function versHex([r, g, b]) {
+  return `#${[r, g, b].map((n) => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0')).join('')}`
+}
 
-      const link = document.createElement('a')
-      link.download = `badge-${employee.matricule}.png`
-      link.href = canvas.toDataURL('image/png', 1.0)
-      link.click()
+function melange(a, b, part) {
+  return versHex([0, 1, 2].map((i) => a[i] * (1 - part) + b[i] * part))
+}
 
-      setDownloadSuccess(true)
-      setTimeout(() => setDownloadSuccess(false), 2000)
-    } catch (error) {
-      console.error('Erreur téléchargement:', error)
-      alert('Erreur lors du téléchargement')
-    }
-    setDownloading(false)
+function luminance([r, g, b]) {
+  const lin = [r, g, b].map((n) => {
+    const s = n / 255
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+}
+
+function paletteDe(primaryColor) {
+  const accent = lireCouleur(primaryColor)
+  const clair = luminance(accent) > 0.4
+  return {
+    accent: versHex(accent),
+    surAccent: clair ? '#1c140d' : '#f7f1e6',
+    accentTexte: clair ? melange(accent, ENCRE, 0.46) : melange(accent, PAPIER, 0.2),
+    accentVoile: melange(accent, PAPIER, 0.87),
+    perleA: melange(accent, PAPIER, 0.28),
+    perleB: melange(accent, PAPIER, 0.62),
   }
+}
 
-  // ═══════════════════════════════════════════════════════════
-  // 📤 PARTAGER LE BADGE
-  // ═══════════════════════════════════════════════════════════
-  const shareBadge = async () => {
-    if (!badgeRef.current) return
+// ── les données de service : seulement ce qui est renseigné ──────
+function formaterDate(valeur) {
+  if (!valeur) return ''
+  const date = new Date(`${String(valeur).slice(0, 10)}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }).format(date)
+}
 
-    try {
-      const canvas = await html2canvas(badgeRef.current, {
-        scale: 3,
-        backgroundColor: null,
-        useCORS: true,
-        allowTaint: true,
-        logging: false
-      })
+function nomCompletDe(employee) {
+  return `${employee?.first_name || ''} ${employee?.last_name || ''}`.replace(/\s+/g, ' ').trim()
+}
 
-      canvas.toBlob(async (blob) => {
-        if (!blob) {
-          alert('Erreur lors de la génération')
-          return
-        }
+function initialesDe(employee) {
+  const lettres = [employee?.first_name, employee?.last_name]
+    .map((mot) => (mot ? String(mot).trim()[0] : ''))
+    .join('')
+    .toUpperCase()
+  return lettres || '—'
+}
 
-        const file = new File([blob], `badge-${employee.matricule}.png`, { 
-          type: 'image/png' 
-        })
+function monogrammeDe(nom) {
+  const mots = String(nom || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (mots.length === 0) return 'EC'
+  return (mots.length > 1 ? mots[0][0] + mots[1][0] : mots[0].slice(0, 2)).toUpperCase()
+}
 
-        if (navigator.share && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({
-              title: `Badge - ${employee.first_name} ${employee.last_name}`,
-              text: `Badge employé ${employee.matricule}`,
-              files: [file]
-            })
-          } catch (err) {
-            if (err.name !== 'AbortError') {
-              downloadBadge()
-            }
-          }
-        } else {
-          downloadBadge()
-          alert('Partage non supporté. Le badge a été téléchargé.')
-        }
-      }, 'image/png', 1.0)
-    } catch (error) {
-      console.error('Erreur partage:', error)
-      downloadBadge()
-    }
+function lignesDeService(employee) {
+  const lignes = []
+  if (employee?.matricule) lignes.push(['Matricule', employee.matricule])
+  const contrat = CONTRATS[employee?.contract_type] || employee?.contract_type
+  if (contrat) lignes.push(['Contrat', contrat])
+  const entree = formaterDate(employee?.hire_date)
+  if (entree) lignes.push(['Entrée', entree])
+  return lignes.slice(0, 3)
+}
+
+// ── l'écriture de la carte, calculée une fois par palette ───────
+function stylesDe(palette) {
+  const hair = 'rgba(60, 40, 22, 0.16)'
+  const hairFort = 'rgba(60, 40, 22, 0.3)'
+  const serif = "Georgia, 'Times New Roman', serif"
+
+  return {
+    carte: {
+      position: 'relative',
+      display: 'flex',
+      width: `${LARGEUR}px`,
+      height: `${HAUTEUR}px`,
+      flexDirection: 'column',
+      overflow: 'hidden',
+      border: `1px solid ${hairFort}`,
+      borderRadius: '10px',
+      background: '#f5f0e6',
+      color: '#1c140d',
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+      boxSizing: 'border-box',
+    },
+
+    // le bandeau : la couleur de l'entreprise, et le nom en clair
+    bandeau: {
+      position: 'relative',
+      flex: 'none',
+      padding: '12px 15px 16px',
+      background: palette.accent,
+      color: palette.surAccent,
+    },
+    rail: { display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 },
+    puce: {
+      display: 'flex',
+      width: '34px',
+      height: '34px',
+      flex: 'none',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      border: '1px solid rgba(28, 20, 13, 0.12)',
+      borderRadius: '50%',
+      background: '#f5f0e6',
+    },
+    puceImage: { width: '100%', height: '100%', objectFit: 'contain' },
+    puceMonogramme: {
+      color: palette.accentTexte,
+      fontFamily: serif,
+      fontSize: '12.5px',
+      letterSpacing: '0.02em',
+    },
+    entreprise: {
+      overflow: 'hidden',
+      margin: 0,
+      color: palette.surAccent,
+      fontSize: '12.4px',
+      fontWeight: 700,
+      letterSpacing: '0.05em',
+      lineHeight: 1.2,
+      textOverflow: 'ellipsis',
+      textTransform: 'uppercase',
+      whiteSpace: 'nowrap',
+    },
+    entrepriseSous: {
+      margin: '2px 0 0',
+      color: palette.surAccent,
+      fontSize: '7px',
+      letterSpacing: '0.26em',
+      opacity: 0.76,
+      textTransform: 'uppercase',
+    },
+    marque: {
+      flex: 'none',
+      marginLeft: 'auto',
+      color: palette.surAccent,
+      fontSize: '6.4px',
+      letterSpacing: '0.2em',
+      opacity: 0.82,
+    },
+    perlesBandeau: {
+      position: 'absolute',
+      right: '15px',
+      bottom: '6px',
+      left: '15px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    perleBandeau: { display: 'block', width: '2.5px', height: '2.5px', borderRadius: '50%' },
+
+    corps: {
+      display: 'flex',
+      flex: '1 1 auto',
+      minHeight: 0,
+      flexDirection: 'column',
+      alignItems: 'center',
+      padding: '12px 17px 0',
+    },
+
+    portrait: {
+      display: 'flex',
+      width: '104px',
+      height: '104px',
+      flex: 'none',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      border: `2px solid ${palette.accent}`,
+      borderRadius: '50%',
+      background: palette.accentVoile,
+      boxShadow: `0 0 0 4px #f5f0e6, 0 0 0 5px ${hair}`,
+    },
+    portraitImage: { width: '100%', height: '100%', objectFit: 'cover' },
+    portraitInitiales: {
+      color: palette.accentTexte,
+      fontFamily: serif,
+      fontSize: '31px',
+      letterSpacing: '0.02em',
+    },
+
+    nom: {
+      maxWidth: '100%',
+      overflow: 'hidden',
+      margin: '11px 0 0',
+      color: '#1c140d',
+      fontFamily: serif,
+      fontSize: '20px',
+      fontWeight: 400,
+      letterSpacing: '0.005em',
+      lineHeight: 1.15,
+      textAlign: 'center',
+      textOverflow: 'ellipsis',
+      textTransform: 'uppercase',
+      whiteSpace: 'nowrap',
+    },
+    poste: {
+      margin: '5px 0 0',
+      color: palette.accentTexte,
+      fontSize: '8px',
+      fontWeight: 700,
+      letterSpacing: '0.2em',
+      textAlign: 'center',
+      textTransform: 'uppercase',
+    },
+    departement: {
+      margin: '3px 0 0',
+      color: '#6b5c44',
+      fontFamily: serif,
+      fontSize: '9.4px',
+      fontStyle: 'italic',
+      textAlign: 'center',
+    },
+
+    registre: {
+      width: '100%',
+      margin: '9px 0 0',
+      padding: 0,
+      borderTop: `1px solid ${hair}`,
+    },
+    ligne: {
+      display: 'flex',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+      gap: '10px',
+      padding: '4.4px 0',
+      borderBottom: `1px solid ${hair}`,
+    },
+    cle: {
+      margin: 0,
+      color: '#7a6952',
+      fontSize: '7px',
+      fontWeight: 800,
+      letterSpacing: '0.18em',
+      textTransform: 'uppercase',
+    },
+    valeur: {
+      overflow: 'hidden',
+      margin: 0,
+      color: '#42342a',
+      fontSize: '9.6px',
+      fontWeight: 600,
+      letterSpacing: '0.02em',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+
+    qrZone: {
+      display: 'flex',
+      margin: 'auto 0 0',
+      paddingTop: '10px',
+      flexDirection: 'column',
+      alignItems: 'center',
+    },
+    qrPlaque: {
+      position: 'relative',
+      padding: '5px',
+      border: `1px solid ${hairFort}`,
+      background: '#ffffff',
+    },
+    qrVide: {
+      display: 'flex',
+      width: '108px',
+      height: '108px',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#7a6952',
+      fontSize: '7.2px',
+      letterSpacing: '0.16em',
+      textAlign: 'center',
+      textTransform: 'uppercase',
+    },
+    qrNote: {
+      margin: '5px 0 0',
+      color: '#7a6952',
+      fontSize: '7px',
+      letterSpacing: '0.2em',
+      textTransform: 'uppercase',
+    },
+
+    pied: {
+      display: 'flex',
+      flex: 'none',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '8px',
+      marginTop: '8px',
+      padding: '7px 15px 8px',
+      borderTop: `1px solid ${hairFort}`,
+      background: palette.accentVoile,
+    },
+    piedMarque: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '5px',
+      color: palette.accentTexte,
+      fontSize: '7px',
+      letterSpacing: '0.14em',
+      textTransform: 'uppercase',
+    },
+    piedSerie: {
+      color: '#6b5c44',
+      fontSize: '7.4px',
+      fontVariantNumeric: 'tabular-nums',
+      letterSpacing: '0.16em',
+    },
   }
+}
 
+// les quatre angles du QR : deux traits, comme un repère de lecture
+function AnglesDeQr({ couleur }) {
+  const base = { position: 'absolute', width: '9px', height: '9px', borderColor: couleur, borderStyle: 'solid' }
   return (
     <>
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        .badge-overlay {
-          animation: fadeIn 0.3s ease;
-        }
-        .badge-modal {
-          animation: slideUp 0.4s ease;
-        }
-        .badge-download-btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(0,0,0,0.4);
-        }
-        .badge-share-btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
-        }
-        .badge-close-btn:hover {
-          background: rgba(239, 68, 68, 0.15);
-          color: #EF4444;
-        }
-      `}</style>
-
-      <div className="badge-overlay" style={styles.overlay}>
-        {/* Background particles */}
-        <div style={styles.bgParticle1}></div>
-        <div style={styles.bgParticle2}></div>
-
-        <div className="badge-modal" style={styles.modal}>
-          {/* Header */}
-          <div style={styles.header}>
-            <div style={styles.headerLeft}>
-              <div style={{
-                ...styles.headerIcon,
-                background: `${badgeColor}15`,
-                borderColor: `${badgeColor}30`,
-              }}>
-                <Sparkles size={18} color={badgeColor} />
-              </div>
-              <div>
-                <h2 style={styles.headerTitle}>Badge Employé</h2>
-                <span style={styles.headerSub}>Aperçu et téléchargement</span>
-              </div>
-            </div>
-            <button onClick={onClose} className="badge-close-btn" style={styles.closeBtn}>
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* Zone de prévisualisation */}
-          <div style={styles.previewArea}>
-            {/* Glow effect */}
-            <div style={{
-              ...styles.previewGlow,
-              background: `radial-gradient(ellipse, ${badgeColor}20, transparent 70%)`,
-            }}></div>
-
-            <div 
-              ref={badgeRef}
-              style={{
-                ...styles.badgeContent,
-                background: `linear-gradient(180deg, ${badgeColor} 0%, ${badgeColor} 32%, #FFFFFF 32%, #FFFFFF 100%)`
-              }}
-            >
-              {/* Empreintes En-Check en filigrane dans le header */}
-              <div style={styles.footprintsWatermark}>
-                <Footprints size={120} color="rgba(255,255,255,0.1)" />
-              </div>
-
-              {/* Contenu du badge */}
-              <div style={styles.badgeInner}>
-                
-                {/* Header avec logo En-Check */}
-                <div style={styles.badgeHeader}>
-                  <EnCheckBrandMark size={22} />
-                  <span style={styles.enCheckText}>EN-CHECK</span>
-                </div>
-
-                {/* Nom de l'entreprise */}
-                <div style={styles.entrepriseName}>
-                  {entrepriseName}
-                </div>
-
-                {/* Photo */}
-                <div style={styles.photoWrapper}>
-                  <div style={{
-                    ...styles.photoCircle,
-                    border: `4px solid ${badgeColor}`
-                  }}>
-                    {employee.photo_url ? (
-                      <img 
-                        src={employee.photo_url} 
-                        alt={employee.first_name}
-                        style={styles.photo}
-                        crossOrigin="anonymous"
-                      />
-                    ) : (
-                      <div style={{
-                        ...styles.initials,
-                        backgroundColor: badgeColor,
-                        color: '#FFFFFF'
-                      }}>
-                        {employee.first_name?.[0]}{employee.last_name?.[0]}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Nom de l'employé */}
-                <h3 style={styles.employeeName}>
-                  {employee.first_name} {employee.last_name}
-                </h3>
-
-                {/* Poste - avec fond coloré */}
-                <div style={{
-                  ...styles.positionBadge,
-                  backgroundColor: badgeColor
-                }}>
-                  {employee.position || 'Employé'}
-                </div>
-
-                {/* Département si présent */}
-                {employee.department && (
-                  <p style={styles.department}>
-                    {employee.department}
-                  </p>
-                )}
-
-                {/* QR Code - IDENTIQUE À L'ORIGINAL */}
-                <div style={{
-                  ...styles.qrWrapper,
-                  borderColor: badgeColor
-                }}>
-                    {/* ⭐ LIVRAISON 11 — le QR porte désormais le JETON du badge
-                        (qr_token), et non le matricule. Le matricule n'est pas un
-                        secret : il est écrit en clair sur le badge, alors qu'un jeton
-                        peut être remplacé. S'il manque, on retombe sur le matricule —
-                        mais l'application exigera alors le PIN, car un identifiant
-                        seul n'authentifie personne. */}
-                    <QRCodeSVG 
-                      value={employee.qr_token || employee.matricule} 
-                      size={75} 
-                      level="H"
-                    fgColor="#3D2B1F"
-                    bgColor="#FFFFFF"
-                  />
-                </div>
-
-                {/* Matricule */}
-                <p style={{
-                  ...styles.matricule,
-                  color: badgeColor
-                }}>
-                  {employee.matricule}
-                </p>
-
-                {/* Footer avec logo entreprise + En-Check */}
-                <div style={styles.badgeFooter}>
-                  {entrepriseLogo ? (
-                    <img 
-                      src={entrepriseLogo} 
-                      alt=""
-                      style={styles.entrepriseLogo}
-                      crossOrigin="anonymous"
-                    />
-                  ) : (
-                    <div style={styles.footerSpacer} />
-                  )}
-                  
-                  {/* Signature En-Check */}
-                  <div style={styles.enCheckSignature}>
-                    <EnCheckBrandMark size={14} />
-                    <span style={styles.poweredBy}>En-Check · On gère !</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Empreintes décoratives en bas à droite */}
-              <div style={styles.footprintsDecor}>
-                <Footprints size={50} color="rgba(0,0,0,0.03)" />
-              </div>
-            </div>
-          </div>
-
-          {/* Indication de la couleur */}
-          <div style={styles.colorInfo}>
-            <span style={{
-              ...styles.colorDot,
-              backgroundColor: badgeColor
-            }} />
-            <span style={styles.colorLabel}>Couleur entreprise</span>
-            <span style={styles.colorHex}>{badgeColor}</span>
-          </div>
-
-          {/* Boutons d'action */}
-          <div style={styles.actions}>
-            <button 
-              onClick={downloadBadge} 
-              className="badge-download-btn"
-              style={styles.downloadBtn}
-              disabled={downloading}
-            >
-              {downloading ? (
-                <div style={styles.spinner}></div>
-              ) : downloadSuccess ? (
-                <CheckCircle2 size={18} color="#10B981" />
-              ) : (
-                <Download size={18} />
-              )}
-              <span>
-                {downloading ? 'Génération...' : downloadSuccess ? 'Téléchargé !' : 'Télécharger'}
-              </span>
-            </button>
-            <button 
-              onClick={shareBadge} 
-              className="badge-share-btn"
-              style={{
-                ...styles.shareBtn,
-                backgroundColor: badgeColor
-              }}
-            >
-              <Share2 size={18} />
-              <span>Partager</span>
-            </button>
-          </div>
-
-          {/* Footer tip */}
-          <p style={styles.footerTip}>
-            💡 Export haute résolution (3x)
-          </p>
-        </div>
-      </div>
+      <span aria-hidden="true" style={{ ...base, top: '-1px', left: '-1px', borderWidth: '2px 0 0 2px' }} />
+      <span aria-hidden="true" style={{ ...base, top: '-1px', right: '-1px', borderWidth: '2px 2px 0 0' }} />
+      <span aria-hidden="true" style={{ ...base, bottom: '-1px', left: '-1px', borderWidth: '0 0 2px 2px' }} />
+      <span aria-hidden="true" style={{ ...base, bottom: '-1px', right: '-1px', borderWidth: '0 2px 2px 0' }} />
     </>
   )
 }
 
-const styles = {
-  // ═══ OVERLAY ═══
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(6, 6, 12, 0.95)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2000,
-    padding: '20px',
-  },
-  bgParticle1: {
-    position: 'absolute',
-    top: '20%',
-    left: '15%',
-    width: '300px',
-    height: '300px',
-    borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(245, 158, 11, 0.06), transparent 70%)',
-    pointerEvents: 'none',
-  },
-  bgParticle2: {
-    position: 'absolute',
-    bottom: '15%',
-    right: '20%',
-    width: '250px',
-    height: '250px',
-    borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(99, 102, 241, 0.04), transparent 70%)',
-    pointerEvents: 'none',
-  },
+export default function BadgeEmploye({
+  employee,
+  entrepriseName,
+  entrepriseLogo,
+  primaryColor = '#D4AF37',
+  onClose,
+}) {
+  const badgeRef = useRef(null)
+  const minuteur = useRef(null)
+  const [telechargement, setTelechargement] = useState(false)
+  const [succes, setSucces] = useState(false)
+  const [partage, setPartage] = useState(false)
+  const [message, setMessage] = useState('')
 
-  // ═══ MODAL ═══
-  modal: {
-    backgroundColor: '#0F0F18',
-    borderRadius: '24px',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    padding: '24px',
-    maxWidth: '420px',
-    width: '100%',
-    boxShadow: '0 30px 80px rgba(0,0,0,0.5)',
-    position: 'relative',
-    zIndex: 1,
-  },
+  const palette = useMemo(() => paletteDe(primaryColor), [primaryColor])
+  const s = useMemo(() => stylesDe(palette), [palette])
 
-  // ═══ HEADER ═══
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '24px',
-  },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  headerIcon: {
-    width: '42px',
-    height: '42px',
-    borderRadius: '12px',
-    border: '1px solid',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: '18px',
-    fontWeight: '700',
-    color: '#FFFFFF',
-    margin: 0,
-  },
-  headerSub: {
-    fontSize: '12px',
-    color: '#666',
-  },
-  closeBtn: {
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '10px',
-    padding: '10px',
-    cursor: 'pointer',
-    color: '#888',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'all 0.2s ease',
-  },
+  const nom = nomCompletDe(employee) || 'Nom à compléter'
+  const nomEntreprise = String(entrepriseName || 'En-Check').trim() || 'En-Check'
+  const lignes = useMemo(() => lignesDeService(employee), [employee])
+  const qrValeur = employee?.qr_token || employee?.matricule || ''
+  const tailleNom = nom.length > 24 ? 15.5 : nom.length > 18 ? 17.5 : 20
+  const reference = employee?.matricule ? `N° ${employee.matricule}` : 'Carte nominative'
 
-  // ═══ PREVIEW AREA ═══
-  previewArea: {
-    display: 'flex',
-    justifyContent: 'center',
-    marginBottom: '20px',
-    position: 'relative',
-    padding: '16px 0',
-  },
-  previewGlow: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: '320px',
-    height: '500px',
-    borderRadius: '30px',
-    pointerEvents: 'none',
-  },
+  // la fenêtre se ferme à Échap, et le fond ne défile plus dessous
+  useEffect(() => {
+    const surTouche = (evenement) => {
+      if (evenement.key === 'Escape') onClose?.()
+    }
+    const ancienDebordement = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', surTouche)
+    return () => {
+      document.removeEventListener('keydown', surTouche)
+      document.body.style.overflow = ancienDebordement
+      if (minuteur.current) clearTimeout(minuteur.current)
+    }
+  }, [onClose])
 
-  // ═══ BADGE CONTENT (IDENTIQUE À L'ORIGINAL) ═══
-  badgeContent: {
-    width: '280px',
-    height: '480px',
-    borderRadius: '20px',
-    position: 'relative',
-    overflow: 'hidden',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-  },
-  footprintsWatermark: {
-    position: 'absolute',
-    top: '-20px',
-    right: '-30px',
-    transform: 'rotate(25deg)',
-    zIndex: 0,
-  },
-  footprintsDecor: {
-    position: 'absolute',
-    bottom: '60px',
-    right: '10px',
-    transform: 'rotate(-15deg)',
-    zIndex: 0,
-  },
-  badgeInner: {
-    position: 'relative',
-    zIndex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    paddingTop: '12px',
-    height: '100%',
-  },
-  badgeHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    marginBottom: '8px',
-  },
-  enCheckText: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: '10px',
-    fontWeight: '600',
-    letterSpacing: '2px',
-  },
-  entrepriseName: {
-    color: '#FFFFFF',
-    fontSize: '15px',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    textAlign: 'center',
-    letterSpacing: '1.5px',
-    marginBottom: '18px',
-    textShadow: '0 2px 4px rgba(0,0,0,0.2)',
-    padding: '0 15px',
-  },
-  photoWrapper: {
-    marginBottom: '12px',
-  },
-  photoCircle: {
-    width: '95px',
-    height: '95px',
-    borderRadius: '50%',
-    backgroundColor: '#FFFFFF',
-    padding: '3px',
-    boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
-    overflow: 'hidden',
-  },
-  photo: {
-    width: '100%',
-    height: '100%',
-    borderRadius: '50%',
-    objectFit: 'cover',
-  },
-  initials: {
-    width: '100%',
-    height: '100%',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '30px',
-    fontWeight: '700',
-  },
-  employeeName: {
-    fontSize: '18px',
-    fontWeight: '800',
-    color: '#3D2B1F',
-    margin: '5px 0 8px 0',
-    textAlign: 'center',
-  },
-  positionBadge: {
-    color: '#FFFFFF',
-    fontSize: '10px',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    padding: '5px 14px',
-    borderRadius: '20px',
-    marginBottom: '4px',
-  },
-  department: {
-    fontSize: '11px',
-    color: '#888888',
-    margin: '0 0 12px 0',
-  },
-  qrWrapper: {
-    backgroundColor: '#FFFFFF',
-    padding: '8px',
-    borderRadius: '12px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-    borderWidth: '2px',
-    borderStyle: 'solid',
-  },
-  matricule: {
-    fontFamily: 'monospace',
-    fontSize: '13px',
-    fontWeight: '700',
-    letterSpacing: '2px',
-    marginTop: '8px',
-  },
-  badgeFooter: {
-    position: 'absolute',
-    bottom: '12px',
-    left: '0',
-    right: '0',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '0 15px',
-  },
-  entrepriseLogo: {
-    width: '35px',
-    height: '35px',
-    objectFit: 'contain',
-    opacity: 0.6,
-  },
-  footerSpacer: {
-    width: '35px',
-  },
-  enCheckSignature: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  poweredBy: {
-    fontSize: '9px',
-    color: '#CCCCCC',
-    fontWeight: '500',
-    letterSpacing: '0.5px',
-  },
+  const capturer = useCallback(async () => {
+    if (!badgeRef.current) throw new Error('badge absent')
+    return html2canvas(badgeRef.current, {
+      scale: ECHELLE_EXPORT,
+      backgroundColor: null,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+    })
+  }, [])
 
-  // ═══ COLOR INFO ═══
-  colorInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '10px',
-    marginBottom: '20px',
-    padding: '12px 16px',
-    background: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: '12px',
-    border: '1px solid rgba(255, 255, 255, 0.05)',
-  },
-  colorDot: {
-    width: '16px',
-    height: '16px',
-    borderRadius: '50%',
-    border: '2px solid rgba(255, 255, 255, 0.2)',
-  },
-  colorLabel: {
-    fontSize: '13px',
-    color: '#666',
-  },
-  colorHex: {
-    fontSize: '12px',
-    color: '#888',
-    fontFamily: 'monospace',
-    background: 'rgba(255, 255, 255, 0.05)',
-    padding: '3px 8px',
-    borderRadius: '6px',
-  },
+  const nomFichier = `badge-${(employee?.matricule || nom).toString().replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.png`
 
-  // ═══ ACTIONS ═══
-  actions: {
-    display: 'flex',
-    gap: '12px',
-    justifyContent: 'center',
-  },
-  downloadBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
-    color: '#FFFFFF',
-    padding: '14px 24px',
-    borderRadius: '12px',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    flex: 1,
-  },
-  shareBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-    color: '#FFFFFF',
-    border: 'none',
-    padding: '14px 24px',
-    borderRadius: '12px',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    flex: 1,
-  },
-  spinner: {
-    width: '18px',
-    height: '18px',
-    border: '2px solid rgba(255, 255, 255, 0.2)',
-    borderTopColor: '#FFFFFF',
-    borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite',
-  },
+  const telecharger = useCallback(async () => {
+    if (telechargement || partage) return
+    setTelechargement(true)
+    setMessage('')
+    try {
+      const canvas = await capturer()
+      const lien = document.createElement('a')
+      lien.download = nomFichier
+      lien.href = canvas.toDataURL('image/png', 1.0)
+      lien.click()
+      setSucces(true)
+      if (minuteur.current) clearTimeout(minuteur.current)
+      minuteur.current = setTimeout(() => setSucces(false), 2400)
+    } catch {
+      setMessage('Le fichier n’a pas pu être généré. Réessayez dans un instant.')
+    } finally {
+      setTelechargement(false)
+    }
+  }, [capturer, nomFichier, partage, telechargement])
 
-  // ═══ FOOTER TIP ═══
-  footerTip: {
-    textAlign: 'center',
-    color: '#555',
-    fontSize: '12px',
-    marginTop: '16px',
-    marginBottom: 0,
-  },
+  const partager = useCallback(async () => {
+    if (telechargement || partage) return
+    setPartage(true)
+    setMessage('')
+    try {
+      const canvas = await capturer()
+      const blob = await new Promise((resoudre) => canvas.toBlob(resoudre, 'image/png', 1.0))
+      if (!blob) throw new Error('blob absent')
+      const fichier = new File([blob], nomFichier, { type: 'image/png' })
+
+      if (navigator.share && navigator.canShare?.({ files: [fichier] })) {
+        try {
+          await navigator.share({ title: `Carte de service — ${nom}`, files: [fichier] })
+        } catch (erreur) {
+          if (erreur?.name !== 'AbortError') throw erreur
+        }
+      } else {
+        const lien = document.createElement('a')
+        lien.download = nomFichier
+        lien.href = URL.createObjectURL(fichier)
+        lien.click()
+        URL.revokeObjectURL(lien.href)
+        setMessage('Le partage direct n’est pas disponible ici : la carte a été téléchargée.')
+      }
+    } catch {
+      setMessage('Le partage n’a pas abouti. La carte peut être téléchargée.')
+    } finally {
+      setPartage(false)
+    }
+  }, [capturer, nom, nomFichier, partage, telechargement])
+
+  return (
+    <div
+      className="bge-voile"
+      role="presentation"
+      onMouseDown={(evenement) => {
+        if (evenement.target === evenement.currentTarget) onClose?.()
+      }}
+    >
+      <div className="bge-fenetre" role="dialog" aria-modal="true" aria-labelledby="bge-titre">
+        <header className="bge-entete">
+          <div style={{ minWidth: 0 }}>
+            <p className="bge-eyebrow">Badge employé</p>
+            <h2 className="bge-titre" id="bge-titre">Carte de service</h2>
+            <p className="bge-sous-titre">{nom}</p>
+          </div>
+          <button type="button" className="bge-fermer" onClick={onClose} aria-label="Fermer le badge">
+            <X size={15} />
+          </button>
+        </header>
+
+        <div className="bge-apercu">
+          <div className="bge-echelle">
+            <div ref={badgeRef} style={s.carte} data-testid="badge-carte">
+              {/* ── l'entreprise ── */}
+              <header style={s.bandeau}>
+                <div style={s.rail}>
+                  <span style={s.puce}>
+                    {entrepriseLogo ? (
+                      <img
+                        src={entrepriseLogo}
+                        alt=""
+                        crossOrigin="anonymous"
+                        style={s.puceImage}
+                      />
+                    ) : (
+                      <span style={s.puceMonogramme}>{monogrammeDe(nomEntreprise)}</span>
+                    )}
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={s.entreprise}>{nomEntreprise}</p>
+                    <p style={s.entrepriseSous}>Carte de service</p>
+                  </div>
+                  <span style={s.marque}>EN-CHECK</span>
+                </div>
+                <div style={s.perlesBandeau} aria-hidden="true">
+                  {Array.from({ length: 36 }).map((_, index) => (
+                    <span
+                      key={index}
+                      style={{
+                        ...s.perleBandeau,
+                        background: index % 2 === 0 ? palette.perleA : palette.perleB,
+                        opacity: index % 3 === 0 ? 1 : 0.6,
+                      }}
+                    />
+                  ))}
+                </div>
+              </header>
+
+              {/* ── la personne ── */}
+              <div style={s.corps}>
+                <div style={s.portrait}>
+                  {employee?.photo_url ? (
+                    <img
+                      src={employee.photo_url}
+                      alt=""
+                      crossOrigin="anonymous"
+                      style={s.portraitImage}
+                    />
+                  ) : (
+                    <span style={s.portraitInitiales}>{initialesDe(employee)}</span>
+                  )}
+                </div>
+
+                <h3 style={{ ...s.nom, fontSize: `${tailleNom}px` }}>{nom}</h3>
+
+                {employee?.position && <p style={s.poste}>{employee.position}</p>}
+                {employee?.department && <p style={s.departement}>{employee.department}</p>}
+
+                {lignes.length > 0 && (
+                  <dl style={s.registre}>
+                    {lignes.map(([cle, valeur]) => (
+                      <div key={cle} style={s.ligne}>
+                        <dt style={s.cle}>{cle}</dt>
+                        <dd style={s.valeur}>{valeur}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+
+                <div style={s.qrZone}>
+                  <div style={s.qrPlaque}>
+                    {qrValeur ? (
+                      <QRCodeSVG
+                        value={qrValeur}
+                        size={108}
+                        level="H"
+                        fgColor="#1c140d"
+                        bgColor="#ffffff"
+                      />
+                    ) : (
+                      <span style={s.qrVide}>QR à générer</span>
+                    )}
+                    <AnglesDeQr couleur={palette.accent} />
+                  </div>
+                  <p style={s.qrNote}>Scannez pour pointer</p>
+                </div>
+              </div>
+
+              {/* ── la maison ── */}
+              <footer style={s.pied}>
+                <span style={s.piedMarque}>
+                  <EnCheckBrandMark size={12} />
+                  En-Check · On gère !
+                </span>
+                <span style={s.piedSerie}>{reference}</span>
+              </footer>
+            </div>
+          </div>
+        </div>
+
+        <div className="bge-actions">
+          <button
+            type="button"
+            className="bge-bouton bge-bouton--second"
+            onClick={partager}
+            disabled={telechargement || partage}
+          >
+            {partage ? <Loader2 size={15} className="bge-tourne" /> : <Share2 size={15} />}
+            Partager
+          </button>
+          <button
+            type="button"
+            className="bge-bouton bge-bouton--principal"
+            onClick={telecharger}
+            disabled={telechargement || partage}
+          >
+            {telechargement ? (
+              <Loader2 size={15} className="bge-tourne" />
+            ) : succes ? (
+              <Check size={15} />
+            ) : (
+              <Download size={15} />
+            )}
+            {telechargement ? 'Génération…' : succes ? 'Téléchargé' : 'Télécharger'}
+          </button>
+        </div>
+
+        <p className="bge-note">
+          PNG · {LARGEUR * ECHELLE_EXPORT} × {HAUTEUR * ECHELLE_EXPORT} px · fond transparent
+        </p>
+        {message && (
+          <p className="bge-alerte" role="alert">{message}</p>
+        )}
+      </div>
+    </div>
+  )
 }

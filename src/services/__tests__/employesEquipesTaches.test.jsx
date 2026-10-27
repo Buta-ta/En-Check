@@ -389,6 +389,40 @@ describe('la vue Annuaire', () => {
     expect(hote.querySelector('.rg-menu-annuaire')).toBeNull()
   })
 
+  it('pose le menu sur un papier opaque, au-dessus de la ligne suivante', async () => {
+    await rendreEntree()
+    const ligne = hote.querySelector('.rg-entree-annuaire')
+    const menuBouton = hote.querySelector('.rg-entree-actions button[aria-expanded]')
+    expect(ligne.getAttribute('data-menu')).toBeNull()
+    await act(async () => menuBouton.click())
+    // la ligne ouverte monte : sans cela, le texte du dessous se peint dessus
+    expect(ligne.getAttribute('data-menu')).toBe('ouvert')
+
+    const opaque = CSS.match(/\.rg-menu \{([^}]*)\}/)[1]
+    expect(opaque).toMatch(/background-color: var\(--rg-paper, #[0-9a-f]{6}\)/)
+    const ouvert = CSS.match(/\.rg-entree\[data-menu='ouvert'\] \{([^}]*)\}/)[1]
+    expect(ouvert).toMatch(/z-index:\s*\d+/)
+  })
+
+  it('referme le menu d’un clic ailleurs ou d’un Échap', async () => {
+    await rendreEntree()
+    const menuBouton = hote.querySelector('.rg-entree-actions button[aria-expanded]')
+    await act(async () => menuBouton.click())
+    expect(hote.querySelector('.rg-menu-annuaire')).not.toBeNull()
+
+    await act(async () => {
+      document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    })
+    expect(hote.querySelector('.rg-menu-annuaire')).toBeNull()
+
+    await act(async () => menuBouton.click())
+    expect(hote.querySelector('.rg-menu-annuaire')).not.toBeNull()
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    })
+    expect(hote.querySelector('.rg-menu-annuaire')).toBeNull()
+  })
+
   it('signale un portail à migrer sans attendre qu’on ouvre le menu', async () => {
     await rendreEntree({ ancienSysteme: true, portalEnabled: false })
     const compte = hote.querySelector('.rg-annuaire-compte')
