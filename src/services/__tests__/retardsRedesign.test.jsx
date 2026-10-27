@@ -12,7 +12,7 @@ import {
   retardsCSV,
   allRetardRows,
 } from '../../utils/retardsPresentation'
-import { culturalMotifForPath } from '../../components/PageCulturalBand'
+import { culturalMotifForPath } from '../../components/culturalMotif'
 
 const mock = vi.hoisted(() => ({
   rpc: vi.fn(),

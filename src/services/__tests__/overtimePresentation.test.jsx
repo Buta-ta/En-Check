@@ -9,7 +9,7 @@ import {
   overtimeWorkedSeconds,
 } from '../../utils/overtimePresentation'
 import OvertimeDashboard from '../../components/OvertimeDashboard'
-import { culturalMotifForPath } from '../../components/PageCulturalBand'
+import { culturalMotifForPath } from '../../components/culturalMotif'
 
 const row = (id, dateStr, worked, overtime) => ({
   employee: { id, first_name: 'Amina', last_name: id },

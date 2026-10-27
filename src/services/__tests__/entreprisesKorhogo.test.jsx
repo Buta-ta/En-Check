@@ -21,14 +21,17 @@ import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { renderToStaticMarkup } from 'react-dom/server'
 import Entreprises from '../../pages/Entreprises'
-import PageCulturalBand, { culturalMotifForPath } from '../../components/PageCulturalBand'
+import PageCulturalBand from '../../components/PageCulturalBand'
+import { culturalMotifForPath } from '../../components/culturalMotif'
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')
 const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
 
 const source = lire('src/pages/Entreprises.jsx')
 const css = lire('src/pages/Entreprises.css')
-const bande = lire('src/components/PageCulturalBand.jsx')
+//  la carte des motifs vit à part depuis Rémunérations : un module de
+//  composants ne doit exporter que des composants
+const bande = lire('src/components/culturalMotif.js')
 const svg = lire('src/components/KorhogoSvg.jsx')
 
 // ── Le faux Supabase ───────────────────────────────────────
