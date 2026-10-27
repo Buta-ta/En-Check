@@ -18,7 +18,8 @@ export function culturalMotifForPath(pathname = '') {
   if (page === 'pointages') return 'adinkra'
   if (page === 'admins' || page === 'mon-compte') return 'abomey'
   if (page === 'entreprises') return 'korhogo'
-  if (page === 'carte-temps-reel') return 'dogon'
+  // Le plateau et les zones ont fusionné : une seule porte dogon.
+  if (page === 'geopointage' || page === 'carte-temps-reel') return 'dogon'
   if (page === 'rapports') return 'nsibidi'
   if (page === 'pauses' || page === 'jours-feries') return 'lesotho'
   if (page === 'employes') return 'zoulou'

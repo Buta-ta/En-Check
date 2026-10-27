@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   🗿 LA PORTE DU PLATEAU — Carte en direct (refonte)
+   🗿 LA PORTE DU PLATEAU — Géopointage (carte + zones)
 
    La page est une porte de grenier dogon : un panneau de bois
    sombre, des registres qui se lisent de haut en bas, des
@@ -2489,5 +2489,516 @@
 
   .ct-page .ct-planche {
     transition: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   13. LES ZONES DU SITE — le registre sous le plateau
+
+   La gestion des zones n'a plus d'écran à elle : elle descend
+   sous la carte, dans le même panneau. Chaque zone est une ligne
+   de registre — un numéro, un nom, ses mesures, son état, ses
+   gestes — et se règle dans la même fenêtre que le reste.
+   ═══════════════════════════════════════════════════════════ */
+
+.ct-zones {
+  margin: 12px 0 0;
+  padding: 12px 14px 6px;
+  background:
+    linear-gradient(180deg, rgba(142, 98, 64, 0.16), transparent 36%),
+    var(--ct-panneau);
+  border: 2px solid var(--ct-bois-fonce);
+  border-radius: 2px;
+  box-shadow: var(--ct-ombre);
+}
+
+.ct-zones-tete {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ct-ligne);
+}
+
+.ct-zones-titre {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+  color: var(--ct-patine-douce);
+}
+
+.ct-zones-note {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ct-patine-faible);
+}
+
+.ct-zones-tete .ct-bouton {
+  margin-left: auto;
+}
+
+.ct-zones-tete .ct-bouton:disabled {
+  cursor: not-allowed;
+}
+
+.ct-avis--zone {
+  margin: 10px 0 0;
+}
+
+.ct-avis[data-ton='ok'] {
+  color: var(--ct-ok-texte);
+  background: rgba(16, 185, 129, 0.1);
+  border-color: var(--ct-ok);
+}
+
+.ct-avis[data-ton='alerte'] {
+  color: var(--ct-alerte-texte);
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--ct-alerte);
+}
+
+/* la liste des zones */
+.ct-zones-liste {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ct-zone {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1.5fr) auto auto;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--ct-ligne);
+  transition: box-shadow 0.14s ease;
+}
+
+.ct-zone:last-child {
+  border-bottom: 0;
+}
+
+/* le survol marque la ligne d'un trait, sans toucher aux textes */
+.ct-zone:hover {
+  box-shadow: inset 3px 0 0 -1px var(--ct-bois-clair);
+}
+
+.ct-zone[data-occupee='oui'] {
+  pointer-events: none;
+}
+
+.ct-zone-numero {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 11px;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+  color: var(--ct-patine-faible);
+}
+
+.ct-zone-identite {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ct-zone-nom {
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--ct-patine);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ct-zone[data-active='non'] .ct-zone-nom {
+  color: var(--ct-patine-faible);
+}
+
+.ct-zone[data-active='non'] .ct-zone-meta {
+  text-decoration: line-through;
+  text-decoration-color: var(--ct-ligne-forte);
+}
+
+.ct-zone-meta {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ct-patine-faible);
+}
+
+.ct-zone-etats {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* les gestes : des mots, pas des pastilles muettes */
+.ct-zone-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ct-page .ct-lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 38px;
+  padding: 0 7px;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ct-patine-douce);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 1px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.14s ease;
+}
+
+.ct-page .ct-lien:hover {
+  border-color: var(--ct-ligne-forte);
+}
+
+.ct-page .ct-lien svg {
+  flex: none;
+  color: var(--ct-patine-faible);
+}
+
+.ct-page .ct-lien--danger,
+.ct-page .ct-lien--danger svg {
+  color: var(--ct-alerte-texte);
+}
+
+/* ce qu'on dit quand une entreprise n'a pas encore de zone */
+.ct-zones-vide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 16px 12px;
+  font-size: 11.5px;
+  text-align: center;
+  color: var(--ct-patine-faible);
+  border: 1px dashed var(--ct-ligne-forte);
+  border-radius: 1px;
+}
+
+.ct-zones-vide p {
+  margin: 0;
+}
+
+.ct-zones-vide--vide {
+  flex-direction: column;
+  gap: 5px;
+  padding: 22px 12px;
+}
+
+.ct-zones-vide--vide svg {
+  color: var(--ct-bois-clair);
+}
+
+.ct-zones-vide-note {
+  max-width: 46ch;
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   14. LES FENÊTRES — une zone se trace sans quitter la page
+   ═══════════════════════════════════════════════════════════ */
+
+.ct-formulaire {
+  width: min(720px, 100%);
+  max-height: min(92vh, 900px);
+  overflow-y: auto;
+  background:
+    linear-gradient(180deg, rgba(142, 98, 64, 0.14), transparent 30%),
+    var(--ct-panneau);
+  border: 2px solid var(--ct-bois-fonce);
+  border-radius: 2px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  animation: ct-fiche 0.2s ease;
+}
+
+.ct-formulaire--etroit {
+  width: min(490px, 100%);
+}
+
+.ct-formulaire-tete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--ct-ligne);
+}
+
+.ct-formulaire-titres {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ct-formulaire-titre {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--ct-patine);
+}
+
+.ct-formulaire-corps {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 14px 16px;
+}
+
+.ct-formulaire-pied {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--ct-ligne);
+}
+
+.ct-formulaire-pied .ct-formulaire-aide {
+  flex: 1;
+  min-width: 0;
+}
+
+.ct-formulaire-aide {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--ct-patine-faible);
+}
+
+.ct-formulaire-texte {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--ct-patine-douce);
+}
+
+.ct-formulaire-texte--attention {
+  padding: 9px 11px;
+  color: var(--ct-attente-texte);
+  background: rgba(245, 158, 11, 0.09);
+  border: 1px dashed var(--ct-attente);
+  border-radius: 1px;
+}
+
+.ct-formulaire-texte--attention svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.ct-formulaire-outil {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ct-formulaire-outil .ct-formulaire-aide {
+  flex: 1 1 180px;
+}
+
+.ct-page .ct-champ-large {
+  width: 100%;
+}
+
+/* les champs de la fenêtre reprennent l'écriture des outils */
+.ct-page .ct-formulaire .ct-champ :is(input[type='text'], input[type='number']) {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ct-patine);
+  background: var(--ct-creux);
+  border: 1px solid var(--ct-ligne-forte);
+  border-radius: 1px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.ct-page .ct-formulaire .ct-champ :is(input[type='text'], input[type='number']):focus {
+  border-color: var(--ct-terre);
+}
+
+.ct-formulaire-duo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ct-champ-curseur input[type='range'] {
+  width: 100%;
+  height: 26px;
+  margin: 0;
+  accent-color: var(--ct-terre);
+  cursor: pointer;
+}
+
+.ct-curseur-bornes {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  color: var(--ct-patine-faible);
+}
+
+.ct-formulaire-carte {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ct-carte-zone {
+  height: 250px;
+  background: var(--ct-creux);
+  border: 1px solid var(--ct-ligne-forte);
+  border-radius: 1px;
+}
+
+/* les deux choix : bloquante, active */
+.ct-formulaire-choix {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ct-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 11px;
+  background: var(--ct-panneau-2);
+  border: 1px solid var(--ct-ligne);
+  border-radius: 1px;
+  cursor: pointer;
+}
+
+.ct-option input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: var(--ct-terre);
+  cursor: pointer;
+}
+
+.ct-option-texte {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ct-option-titre {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--ct-patine);
+}
+
+.ct-option-note {
+  font-size: 9.5px;
+  line-height: 1.45;
+  color: var(--ct-patine-faible);
+}
+
+.ct-page .ct-bouton--danger {
+  color: #fdf2f2;
+  background: var(--ct-alerte);
+  border-color: #b91c1c;
+}
+
+.ct-page .ct-bouton--danger:hover {
+  background: #b91c1c;
+}
+
+.ct-tourne {
+  animation: ct-tourne 0.9s linear infinite;
+}
+
+@keyframes ct-tourne {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 980px) {
+  .ct-zone {
+    grid-template-columns: 24px minmax(0, 1fr);
+    row-gap: 6px;
+  }
+
+  .ct-zone-etats,
+  .ct-zone-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .ct-zones {
+    padding: 11px 11px 4px;
+  }
+
+  .ct-zones-tete .ct-bouton {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .ct-formulaire {
+    max-height: none;
+  }
+
+  .ct-formulaire-duo,
+  .ct-formulaire-choix {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ct-carte-zone {
+    height: 210px;
+  }
+
+  .ct-formulaire-pied {
+    flex-wrap: wrap;
+  }
+
+  .ct-formulaire-pied .ct-bouton,
+  .ct-formulaire-pied .ct-bouton-creux {
+    flex: 1 1 auto;
+  }
+
+  .ct-page .ct-formulaire .ct-champ :is(input[type='text'], input[type='number']) {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ct-formulaire,
+  .ct-tourne {
+    animation: none;
   }
 }

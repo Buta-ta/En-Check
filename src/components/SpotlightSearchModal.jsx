@@ -89,7 +89,7 @@ export default function SpotlightSearchModal({ admin, onClose, isOpen }) {
     if (result.type === 'action') {
       if (result.action === 'goDashboard') navigate('/dashboard')
       if (result.action === 'goReports') navigate('/rapports')
-      if (result.action === 'goMap') navigate('/carte-temps-reel')
+      if (result.action === 'goMap') navigate('/geopointage')
       if (result.action === 'goPredictions') navigate('/predictions')
       onClose()
       return

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// 🗿 LA PORTE DU PLATEAU — la Carte en direct
+// 🗿 LA PORTE DU PLATEAU — Géopointage
 //
 // Ce que ces tests gardent :
 //   ① le motif de la page est la porte de grenier dogon, et il
@@ -11,7 +11,10 @@
 //     sans perdre le retour au tableau de bord ni la pastille
 //     « en direct » ;
 //   ④ la carte elle-même n'a pas bougé : Leaflet, les zones, la
-//     légende et les données sont intacts.
+//     légende et les données sont intacts ;
+//   ⑤ le plateau et les zones ne font qu'un écran : une seule
+//     entrée de menu, une seule adresse, deux redirections, et
+//     la gestion des zones dans la même écriture.
 // ═══════════════════════════════════════════════════════════
 
 import { describe, expect, it } from 'vitest'
@@ -25,17 +28,20 @@ import { DogonBlasonSvg, DogonFriseSvg } from '../../components/DogonSvg'
 const ROOT = path.resolve(import.meta.dirname, '../../..')
 const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
 
-const page = lire('src/pages/CarteTempsReel.jsx')
-const css = lire('src/pages/CarteTempsReel.css')
+const page = lire('src/pages/Geopointage.jsx')
+const css = lire('src/pages/Geopointage.css')
 const frise = lire('src/components/DogonSvg.jsx')
 const partage = lire('src/components/PageCulturalBand.css')
 
 // ── 1. Le motif ────────────────────────────────────────────
 
 describe('1. la porte dogon', () => {
-  it('devient le motif de la Carte en direct', () => {
+  it('devient le motif de Géopointage', () => {
+    expect(culturalMotifForPath('/geopointage')).toBe('dogon')
+    expect(culturalMotifForPath('/geopointage?date=2026-10-25')).toBe('dogon')
+    // l'ancienne adresse garde son identité : les liens partagés
+    // arrivent sur la même porte
     expect(culturalMotifForPath('/carte-temps-reel')).toBe('dogon')
-    expect(culturalMotifForPath('/carte-temps-reel?date=2026-10-25')).toBe('dogon')
     // les autres pages gardent leur identité
     expect(culturalMotifForPath('/entreprises')).toBe('korhogo')
     expect(culturalMotifForPath('/admins')).toBe('abomey')
@@ -43,7 +49,7 @@ describe('1. la porte dogon', () => {
   })
 
   it('est dessiné en SVG, une frise de neuf tuiles', () => {
-    const rendu = renderToStaticMarkup(<PageCulturalBand pathname="/carte-temps-reel" />)
+    const rendu = renderToStaticMarkup(<PageCulturalBand pathname="/geopointage" />)
     expect(rendu).toContain('data-cultural-motif="dogon"')
     expect(rendu).toContain('<svg')
 
@@ -92,9 +98,15 @@ describe('1. la porte dogon', () => {
 // ── 2. La page ─────────────────────────────────────────────
 
 describe('2. la page', () => {
+  it('charge sa propre feuille, et pas celle d’une page disparue', () => {
+    expect(page).toContain("import './Geopointage.css'")
+    expect(page).not.toContain('CarteTempsReel')
+    expect(fs.existsSync(path.join(ROOT, 'src/pages/CarteTempsReel.css'))).toBe(false)
+  })
+
   it('tend la bande haute, la bordure et la bande basse', () => {
-    expect(page).toContain('<PageCulturalBand pathname="/carte-temps-reel" />')
-    expect(page).toContain('<PageCulturalBand pathname="/carte-temps-reel" placement="bottom" />')
+    expect(page).toContain('<PageCulturalBand pathname="/geopointage" />')
+    expect(page).toContain('<PageCulturalBand pathname="/geopointage" placement="bottom" />')
     expect(page).toContain('className="ct-bordure"')
     expect(page).toContain('className="ct-pied"')
   })
@@ -104,7 +116,7 @@ describe('2. la page', () => {
     expect(page).toContain('className="ct-entete"')
     expect(page).toContain('<DogonBlasonSvg size={48} />')
     expect(page).toContain('La porte du plateau')
-    expect(page).toContain('Carte en direct')
+    expect(page).toContain('Géopointage<span>.</span>')
     // le retour au tableau de bord reste un bouton nommé
     expect(page).toContain('aria-label="Revenir au tableau de bord"')
     expect(page).toContain("navigate('/dashboard')")
@@ -193,7 +205,7 @@ describe('3. la refonte', () => {
 
   it('donne à la page ses raccourcis, comme les autres coques', () => {
     expect(page).toContain('RaccourcisPages compact')
-    expect(page).toContain("excludePaths={['/carte-temps-reel']}")
+    expect(page).toContain("excludePaths={['/geopointage']}")
     expect(css).toContain('.ct-raccourcis .abs-raccourci')
   })
 
@@ -359,7 +371,7 @@ describe('6. le vocabulaire de gestion', () => {
   it('garde le décor dans le décor, pas dans les textes de travail', () => {
     // l'identité dogon reste, mais les messages de service sont neutres
     expect(page).toContain('La porte du plateau')
-    expect(page).toContain('Chaque point correspond à un pointage géolocalisé sur le site.')
+    expect(page).toContain('Les pointages géolocalisés du jour, et les zones où l’on a le droit de pointer.')
     expect(page).toContain('Chargement des pointages…')
     expect(page).not.toContain('On relève les traces')
   })
@@ -369,5 +381,105 @@ describe('6. le vocabulaire de gestion', () => {
     expect(css).not.toContain('ct-seuil-maison')
     expect(page).toContain('entrepriseAffichee')
     expect(css).toContain('.ct-seuil-entreprise')
+  })
+})
+
+// ── 7. La fusion : un écran, une entrée, une adresse ───────
+
+describe('7. la fusion du plateau et des zones', () => {
+  const menu = lire('src/components/DashboardExperience.jsx')
+  const routes = lire('src/App.jsx')
+  const verrou = lire('src/components/VerrouOptions.jsx')
+  const assistant = lire('src/components/AssistantDock.jsx')
+  const recherche = lire('src/components/SpotlightSearchModal.jsx')
+
+  it('ne laisse qu’une entrée de menu : Géopointage', () => {
+    expect(menu).toContain("label: 'Géopointage'")
+    expect(menu).toContain("path: '/geopointage'")
+    // les deux anciennes entrées ont disparu
+    expect(menu).not.toContain("label: 'Carte en direct'")
+    expect(menu).not.toContain("label: 'Zones de pointage'")
+    expect(menu).not.toContain("'/carte-temps-reel'")
+    expect(menu).not.toContain("'/geofencing'")
+    // l'un ou l'autre des deux modules ouvre la page
+    expect(menu).toMatch(/path: '\/geopointage', show: isSuperAdmin \|\| moduleCarteTempsReel \|\| moduleGeofencing/)
+  })
+
+  it('ouvre une seule adresse et redirige les deux anciennes', () => {
+    expect(routes).toContain('path="/geopointage"')
+    expect(routes).toContain('<Geopointage />')
+    expect(routes).toContain('<Route path="/geofencing" element={<Navigate to="/geopointage" replace />} />')
+    expect(routes).toContain('<Route path="/carte-temps-reel" element={<Navigate to="/geopointage" replace />} />')
+    // l'ancienne page de configuration n'existe plus
+    expect(routes).not.toContain('ConfigGeofencing')
+    expect(fs.existsSync(path.join(ROOT, 'src/pages/ConfigGeofencing.jsx'))).toBe(false)
+  })
+
+  it('garde la page ouverte si l’une des deux options est vendue', () => {
+    expect(verrou).toContain("'/geopointage': ['module_geolocalisation', 'module_carte_temps_reel']")
+    expect(verrou).not.toContain("'/geofencing'")
+    expect(verrou).not.toContain("'/carte-temps-reel'")
+  })
+
+  it('envoie l’assistant et la recherche sur la même page', () => {
+    expect(assistant).toContain("geofence: '/geopointage'")
+    expect(assistant).toContain("goMap: '/geopointage'")
+    expect(recherche).toContain("navigate('/geopointage')")
+    expect(assistant).not.toContain("'/geofencing'")
+    expect(recherche).not.toContain("'/carte-temps-reel'")
+  })
+
+  it('gère les zones dans la page, sans renvoyer ailleurs', () => {
+    expect(page).toContain('Les zones du site')
+    expect(page).toContain('Tracer une zone')
+    expect(page).toContain('className="ct-zones"')
+    expect(page).toContain('className="ct-zone"')
+    // les quatre verrous de la table, et rien de plus
+    expect(page).toContain(".from('geofences')")
+    expect(page).toContain(".from('geofences').update(")
+    expect(page).toContain(".from('geofences').delete()")
+    // une zone éteinte reste visible : c'est la liste de gestion
+    expect(page).toContain('is_active')
+    expect(page).toContain('Rallumer')
+    expect(page).toContain('Éteindre')
+    // la suppression dit ce qu'elle emporte
+    expect(page).toContain('pointage')
+    expect(page).toContain('geofence_id: null')
+    expect(page).toContain('role="dialog"')
+    expect(page).toContain('aria-modal="true"')
+  })
+
+  it('garde une planche de référence du nouvel écran', () => {
+    expect(fs.existsSync(path.join(ROOT, 'docs/design/refonte-geopointage.png'))).toBe(true)
+  })
+
+  it('trace la zone sur une carte cliquable, avec son rayon et son mode', () => {
+    expect(page).toContain('function CarteDeZone')
+    expect(page).toContain('onPointer')
+    expect(page).toContain("type=\"range\"")
+    expect(page).toContain('min="50"')
+    expect(page).toContain('max="5000"')
+    expect(page).toContain('Zone bloquante')
+    expect(page).toContain('Zone active')
+    expect(css).toContain('.ct-carte-zone')
+    expect(css).toMatch(/\.ct-carte-zone\s*\{[^}]*height:\s*250px/)
+  })
+
+  it('n’ajoute aucun style dans le JSX et aucune ombre de moins de 1000', () => {
+    expect(page).not.toMatch(/\bstyle=\{\{/)
+    expect(page).not.toMatch(/\bstyle="/)
+    expect(page).not.toContain('<style>')
+    const zIndex = [...css.matchAll(/z-index:\s*(\d+)/g)].map((m) => Number(m[1]))
+    const horsModale = zIndex.filter((z) => z < 1000)
+    expect(Math.max(...horsModale)).toBeLessThan(80)
+  })
+
+  it('écrit les zones avec les mots du métier, sans emoji', () => {
+    const blocZones = page.slice(page.indexOf('Les zones du site'), page.indexOf('La zone : on la trace'))
+    expect(blocZones).not.toMatch(/[\u2600-\u27bf\u{1F300}-\u{1FAFF}]/u)
+    expect(blocZones).not.toContain('Geofencing')
+    expect(blocZones).toContain('zone')
+    expect(page).toContain('Zone bloquante')
+    expect(page.toLowerCase()).not.toContain('maison')
   })
 })

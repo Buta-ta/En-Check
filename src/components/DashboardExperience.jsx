@@ -265,8 +265,9 @@ export default function DashboardExperience({
       label: 'Outils',
       items: [
         { label: 'Prédictions', icon: Sparkles, path: '/predictions', show: isSuperAdmin || modulePredictions, tabKey: 'PREDICTIONS' },
-        { label: 'Carte en direct', icon: MapPin, path: '/carte-temps-reel', show: isSuperAdmin || moduleCarteTempsReel },
-        { label: 'Zones de pointage', icon: Globe, path: '/geofencing', show: isSuperAdmin || moduleGeofencing, tabKey: 'GEOFENCING' },
+        // Le plateau et les zones sont un seul écran : l'un ou l'autre des
+        // deux modules ouvre « Géopointage ».
+        { label: 'Géopointage', icon: MapPin, path: '/geopointage', show: isSuperAdmin || moduleCarteTempsReel || moduleGeofencing, tabKey: 'GEOFENCING' },
         { label: 'Enrôlements faciaux', icon: UserCheck, path: '/enrollements-faciaux', show: isSuperAdmin || moduleRecoFaciale },
         { label: 'Configuration faciale', icon: Settings, path: '/config-reco-faciale', show: isSuperAdmin || moduleRecoFaciale },
         { label: 'Pointeuses ADMS', icon: Radio, path: '/pointeuses', show: isSuperAdmin || modulePointeuses },
