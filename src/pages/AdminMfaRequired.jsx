@@ -13,12 +13,21 @@ export default function AdminMfaRequired() {
   useEffect(() => {
     let alive = true
     mfaObligationStatus()
-      .then(() => {
-        if (alive) setReady(true)
+      .then((status) => {
+        if (!alive) return
+        if (status.satisfied) {
+          // Obligation levée : on quitte l'écran d'obligation au lieu
+          // d'y laisser l'utilisateur bloqué.
+          window.location.assign('/login')
+          return
+        }
+        setReady(true)
       })
       .catch(() => {
         if (alive)
-          setMessage('Session indisponible. Reconnectez-vous pour poursuivre.')
+          setMessage(
+            'Session expirée ou refusée par le contrôle serveur (reconnexion, révocation après une récupération…). Reconnectez-vous, puis revenez ici.',
+          )
       })
     return () => {
       alive = false
