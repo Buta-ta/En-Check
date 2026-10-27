@@ -258,7 +258,6 @@ export default function DashboardExperience({
       items: [
         { label: 'Heures supplémentaires', icon: Timer, path: '/heures-supplementaires', show: isSuperAdmin || moduleHeuresSup, tabKey: 'HEURES_SUP' },
         { label: 'Rémunérations', icon: Wallet, path: '/remunerations', show: isSuperAdmin || moduleRemunerations },
-        { label: 'Coût salarial', icon: TrendingUp, path: '/remunerations?vue=cout', show: isSuperAdmin || moduleCoutSalarial },
         { label: 'Paie & fiscalité', icon: Shield, path: '/paie', show: isSuperAdmin || moduleFichesPaie || moduleConfigFiscale },
       ],
     },

@@ -64,6 +64,8 @@ const { etat, appels, toasts } = vi.hoisted(() => ({
     pointages: [],
     projection: null,
     cotisations: 0,
+    erreurPeriode: null,
+    erreurProjection: false,
   },
   appels: { rpc: [], ecritures: [] },
   toasts: [],
@@ -138,10 +140,14 @@ vi.mock('../../lib/supabase', () => {
       return Promise.resolve({ data: etat.pointages, error: null })
     }
     if (nom === 'encheck_cout_periode') {
-      return Promise.resolve({ data: etat.lignes, error: null })
+      return Promise.resolve(etat.erreurPeriode
+        ? { data: null, error: etat.erreurPeriode }
+        : { data: etat.lignes, error: null })
     }
     if (nom === 'encheck_cout_projeter') {
-      return Promise.resolve({ data: etat.projection, error: null })
+      return Promise.resolve(etat.erreurProjection
+        ? { data: null, error: { code: '500', message: 'Internal server error' } }
+        : { data: etat.projection, error: null })
     }
     if (nom === 'encheck_cout_controler') {
       return Promise.resolve({ data: 1, error: null })
@@ -205,12 +211,18 @@ describe('1. une seule page pour les deux lectures', () => {
     }
     expect(PAGE).toContain("from('encheck_reglages_cout')")
     //  et les paramètres restent ceux des fonctions de la base
-    expect(PAGE).toContain("{ p_enterprise: entId, p_du: p.du, p_au: p.au }")
+    expect(PAGE).toMatch(/p_enterprise:\s*entId/)
+    expect(PAGE).toMatch(/p_du:\s*p\.du/)
+    expect(PAGE).toMatch(/p_au:\s*p\.au/)
   })
 
-  it('le menu du tableau de bord mène aux deux vues de la même page', () => {
+  it('le coût n’encombre plus le menu : il vit dans la page', () => {
+    //  plus de ligne « Coût salarial » dans la navigation latérale
+    expect(DASHBOARD).not.toMatch(/\{ label: 'Coût salarial'/)
     expect(DASHBOARD).not.toContain("path: '/cout-salarial'")
-    expect(DASHBOARD).toContain("{ label: 'Coût salarial', icon: TrendingUp, path: '/remunerations?vue=cout'")
+    //  la commande rapide, elle, reste : un client qui n'a que ce module
+    //  doit pouvoir ouvrir la vue
+    expect(DASHBOARD).toContain("label: 'Voir le coût salarial'")
     expect(DASHBOARD).toContain("path: '/remunerations?vue=cout', category: 'Paie'")
   })
 
@@ -261,6 +273,8 @@ describe('2. la vue coût', () => {
     etat.projection = { projete: 1450000 }
     etat.budget = { budget_mensuel: 1500000, seuil_alerte_pct: 90, alerte_actif: true }
     etat.cotisations = 3
+    etat.erreurPeriode = null
+    etat.erreurProjection = false
     appels.rpc = []
     appels.ecritures = []
     toasts.length = 0
@@ -451,6 +465,64 @@ describe('2. la vue coût', () => {
     expect(texte(hote.querySelector('.rw-constat'))).toContain('ce n’est pas une panne')
   })
 
+  it('un calcul en panne le dit, sans vider la page ni répéter l’appel', async () => {
+    etat.erreurPeriode = { code: '500', message: 'Internal server error' }
+    await monter()
+
+    const constat = [...hote.querySelectorAll('.rw-constat')]
+      .find(c => texte(c).includes('n’a pas répondu'))
+    expect(constat).toBeDefined()
+    expect(texte(constat)).toContain('Vos rémunérations sont intactes')
+
+    //  pas de mesures à zéro, pas de lignes fantômes
+    expect(hote.querySelectorAll('.rw-mesure')).toHaveLength(0)
+    expect(hote.querySelectorAll('.rw-bande')).toHaveLength(0)
+
+    //  et un seul appel en panne : ni projection, ni repli du mois
+    expect(appels.rpc.filter(a => a.nom === 'encheck_cout_periode')).toHaveLength(1)
+    expect(appels.rpc.filter(a => a.nom === 'encheck_cout_projeter')).toHaveLength(0)
+  })
+
+  it('une fonction absente se dit autrement qu’une panne', async () => {
+    etat.erreurPeriode = {
+      code: 'PGRST202',
+      message: 'Could not find the function public.encheck_cout_periode(p_au, p_du, p_enterprise)',
+    }
+    await monter()
+
+    const constat = [...hote.querySelectorAll('.rw-constat')]
+      .find(c => texte(c).includes('n’est pas installé'))
+    expect(constat).toBeDefined()
+    expect(texte(constat)).toContain('seule cette lecture manque')
+  })
+
+  it('« Réessayer » relance le calcul quand il revient', async () => {
+    etat.erreurPeriode = { code: '500', message: 'Internal server error' }
+    await monter()
+
+    etat.erreurPeriode = null
+    const bouton = [...hote.querySelectorAll('.rw-constat .rw-bouton')]
+      .find(b => texte(b).includes('Réessayer'))
+    await clic(bouton)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50)
+    })
+
+    expect(hote.querySelectorAll('.rw-mesure')).toHaveLength(4)
+    expect(hote.querySelectorAll('.rw-bande')).toHaveLength(2)
+  })
+
+  it('une projection en panne n’emporte pas les chiffres du mois', async () => {
+    etat.erreurProjection = true
+    await monter()
+
+    const mesures = [...hote.querySelectorAll('.rw-mesure')]
+    expect(mesures).toHaveLength(4)
+    //  la projection retombe sur la masse comptée du mois
+    expect(texte(mesures[3])).toContain('330 600')
+    expect(hote.querySelectorAll('.rw-bande')).toHaveLength(2)
+  })
+
   it('⌘S n’enregistre pas depuis une vue qui ne fait que lire', async () => {
     await monter()
 
@@ -497,6 +569,8 @@ describe('3. le ton reste professionnel dans la vue coût', () => {
     etat.projection = { projete: 1450000 }
     etat.budget = { budget_mensuel: 1500000, seuil_alerte_pct: 90, alerte_actif: true }
     etat.cotisations = 3
+    etat.erreurPeriode = null
+    etat.erreurProjection = false
 
     hote = document.createElement('div')
     document.body.append(hote)
