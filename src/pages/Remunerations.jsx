@@ -52,7 +52,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft, Wallet, RefreshCw, AlertTriangle, Info, Save, CheckCircle2, Users,
   Clock, TrendingUp, Sun, Moon, Building2, Search, Copy, X, Check, ArrowRight,
-  TriangleAlert, Coins, Calendar, PiggyBank, ChevronLeft, ChevronRight,
+  TriangleAlert, Coins, Calendar, PiggyBank, ChevronLeft, ChevronRight, ChevronDown,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
@@ -249,6 +249,8 @@ export default function Remunerations() {
 
   const [appliquer, setAppliquer] = useState(null)
   const [rechercheCout, setRechercheCout] = useState('')
+  const [moisOuvert, setMoisOuvert] = useState(false)
+  const boutonMois = useRef(null)
 
   //  ── la vue : ce que la page écrit (contrats) ou ce qu'elle lit (coût)
   //  La vue vit dans l'adresse (`?vue=cout`) : un lien vers le coût s'ouvre
@@ -661,6 +663,26 @@ export default function Remunerations() {
           texte: `Vous regardez ${libelleMois(moisAffiche)} : le mois en cours n’a pas encore de pointage, l’écran s’est placé sur le dernier mois travaillé (${nbPointagesPeriode} pointage${nbPointagesPeriode > 1 ? 's' : ''} compté${nbPointagesPeriode > 1 ? 's' : ''}).`,
         }
         : null
+
+  //  Les mois qu'on peut choisir d'un clic : ceux où l'équipe a réellement
+  //  pointé, plus le mois affiché et le mois en cours. Le plus récent d'abord.
+  const moisProposes = useMemo(() => {
+    const pointes = new Map(moisPointes.map(m => [m.mois, m.nb]))
+    const tous = new Set([...pointes.keys(), moisActuel(), moisAffiche].filter(Boolean))
+    return [...tous]
+      .sort((a, b) => (a < b ? 1 : -1))
+      .slice(0, 24)
+      .map(mois => ({ mois, nb: pointes.get(mois) || 0 }))
+  }, [moisPointes, moisAffiche])
+
+  const fermerMois = () => {
+    setMoisOuvert(false)
+    boutonMois.current?.focus()
+  }
+
+  //  Les chiffres ne s'affichent que s'ils sont calculés : ni quatre mesures
+  //  à zéro pendant le premier chargement, ni lignes fantômes après une panne.
+  const coutPret = coutEtat === 'ok' && !(coutCharge && lignesCout.length === 0)
 
   const lignesAffichees = useMemo(() => {
     const q = rechercheCout.trim().toLowerCase()
@@ -1481,17 +1503,39 @@ export default function Remunerations() {
                   <button
                     type="button"
                     className="rw-mois-fleche"
-                    onClick={() => setMoisAffiche(ajouterMois(moisAffiche, -1))}
+                    onClick={() => {
+                      setMoisOuvert(false)
+                      setMoisAffiche(ajouterMois(moisAffiche, -1))
+                    }}
                     aria-label="Mois précédent"
                     title="Mois précédent"
                   >
                     <ChevronLeft size={13} aria-hidden="true" />
                   </button>
-                  <span className="rw-mois-nom">{libelleMois(moisAffiche)}</span>
+
+                  {/*  Le mois lui-même est un bouton : on saute d'un clic au
+                      mois voulu au lieu d'avancer de mois en mois. */}
+                  <button
+                    type="button"
+                    ref={boutonMois}
+                    className="rw-mois-nom"
+                    aria-haspopup="listbox"
+                    aria-expanded={moisOuvert}
+                    aria-label={`Mois affiché : ${libelleMois(moisAffiche)}. Choisir un autre mois`}
+                    title="Choisir un mois"
+                    onClick={() => setMoisOuvert(ouvert => !ouvert)}
+                  >
+                    {libelleMois(moisAffiche)}
+                    <ChevronDown size={11} aria-hidden="true" />
+                  </button>
+
                   <button
                     type="button"
                     className="rw-mois-fleche"
-                    onClick={() => setMoisAffiche(ajouterMois(moisAffiche, 1))}
+                    onClick={() => {
+                      setMoisOuvert(false)
+                      setMoisAffiche(ajouterMois(moisAffiche, 1))
+                    }}
                     disabled={moisAffiche >= moisActuel()}
                     aria-label="Mois suivant"
                     title={moisAffiche >= moisActuel()
@@ -1500,6 +1544,50 @@ export default function Remunerations() {
                   >
                     <ChevronRight size={13} aria-hidden="true" />
                   </button>
+
+                  {moisOuvert && (
+                    <>
+                      <button
+                        type="button"
+                        className="rw-mois-voile"
+                        aria-label="Fermer la liste des mois"
+                        tabIndex={-1}
+                        onClick={() => setMoisOuvert(false)}
+                      />
+                      <div
+                        className="rw-mois-liste"
+                        role="listbox"
+                        aria-label="Mois à afficher"
+                        onKeyDown={ev => {
+                          if (ev.key === 'Escape') {
+                            ev.stopPropagation()
+                            fermerMois()
+                          }
+                        }}
+                      >
+                        {moisProposes.map(m => (
+                          <button
+                            key={m.mois}
+                            type="button"
+                            role="option"
+                            aria-selected={m.mois === moisAffiche}
+                            className="rw-mois-option"
+                            onClick={() => {
+                              setMoisAffiche(m.mois)
+                              setMoisOuvert(false)
+                            }}
+                          >
+                            <span>{libelleMois(m.mois)}</span>
+                            <span className="rw-mois-option-nb">
+                              {m.nb > 0
+                                ? `${m.nb} pointage${m.nb > 1 ? 's' : ''}`
+                                : 'aucun pointage'}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -1514,6 +1602,19 @@ export default function Remunerations() {
                 Actualiser
               </button>
             </section>
+
+            {/* ══ LE CALCUL TOURNE ══
+                Il tourne aussi quand on réessaie après une panne : l'écran
+                dit qu'il travaille au lieu de laisser croire qu'il est figé. */}
+            {coutCharge && (
+              <div className="rw-constat" data-ton="attente" role="status">
+                <RefreshCw size={17} className="rw-tourne" aria-hidden="true" />
+                <div className="rw-constat-texte">
+                  <strong>Calcul en cours…</strong>{' '}
+                  Les chiffres de la période s’affichent dès que la base a répondu.
+                </div>
+              </div>
+            )}
 
             {/* ══ LE CALCUL NE RÉPOND PAS ══
                 On le dit une fois, avec le chemin pour réessayer — et on
@@ -1546,7 +1647,7 @@ export default function Remunerations() {
             )}
 
             {/* ══ POURQUOI CE MOIS-LÀ ══ */}
-            {coutEtat === 'ok' && messageMois && !coutCharge && (
+            {coutPret && messageMois && !coutCharge && (
               <div className="rw-constat" data-ton={messageMois.ton}>
                 <Info size={17} aria-hidden="true" />
                 <div className="rw-constat-texte">{messageMois.texte}</div>
@@ -1564,7 +1665,7 @@ export default function Remunerations() {
             )}
 
             {/* ══ CE QUI MANQUE POUR UN CHIFFRE COMPLET ══ */}
-            {coutEtat === 'ok' && !coutCharge && (sansMontant > 0 || cotisations === 0) && (
+            {coutPret && !coutCharge && (sansMontant > 0 || cotisations === 0) && (
               <div className="rw-constat" data-ton="alerte">
                 <AlertTriangle size={17} aria-hidden="true" />
                 <div className="rw-constat-texte">
@@ -1594,7 +1695,7 @@ export default function Remunerations() {
             )}
 
             {/* ══ LES QUATRE MESURES, ET D’OÙ VIENT LE CHIFFRE ══ */}
-            {coutEtat === 'ok' && (
+            {coutPret && (
             <div className="rw-haut">
               <div className="rw-mesures">
                 <article className="rw-mesure">
@@ -1690,7 +1791,7 @@ export default function Remunerations() {
             )}
 
             {/* ══ LE DÉTAIL, SALARIÉ PAR SALARIÉ ══ */}
-            {coutEtat === 'ok' && (
+            {coutPret && (
             <section className="rw-pagne" aria-labelledby="rw-cout-titre">
               <div className="rw-pagne-tete">
                 <div className="rw-pagne-titres">
@@ -1713,9 +1814,7 @@ export default function Remunerations() {
                 </label>
               </div>
 
-              {coutCharge && lignesCout.length === 0 ? (
-                <div className="rw-vide">Calcul en cours…</div>
-              ) : lignesAffichees.length === 0 ? (
+              {lignesAffichees.length === 0 ? (
                 <div className="rw-vide">
                   <BogolanPanSvg hauteur={40} ton="cuivre" />
                   <strong>
@@ -1837,7 +1936,7 @@ export default function Remunerations() {
             )}
 
             {/* ══ CE QUE CET ÉCRAN NE FAIT PAS ══ */}
-            {coutEtat === 'ok' && (
+            {coutPret && (
             <div className="rw-note">
               <CheckCircle2 size={15} aria-hidden="true" />
               <span>
