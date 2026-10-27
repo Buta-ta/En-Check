@@ -66,12 +66,27 @@ Filtres par type, par état, par dates, recherche libre côté écran. Sélectio
 multiple, export CSV, et purge.
 
 ### Carte
-Les traces réussies et géolocalisées, sur un calque sombre, avec les amas du
-markercluster. Ocre pour un employé, or pour un administrateur. Un clic sur une
-épingle — ou sur une personne de la liste — la met en avant, même dans un amas.
-Plages de 1 h à 7 j, suivi automatique toutes les 30 s, et le nombre de lieux
-distincts. `CarteConnexions` ne décide de rien : il reçoit les connexions, un
-centre, un zoom et prévient au clic.
+Les traces réussies et géolocalisées, avec les amas du markercluster. Ocre pour
+un employé, or pour un administrateur. Un clic sur une épingle — ou sur une
+personne de la liste — la met en avant, même dans un amas. Plages de 1 h à 7 j,
+suivi automatique toutes les 30 s, et le nombre de lieux distincts.
+`CarteConnexions` ne décide de rien : il reçoit les connexions, un centre, un
+zoom et prévient au clic.
+
+**Le fond de carte** vient d'**OpenStreetMap** (`tile.openstreetmap.org`) :
+aucune clé, aucun compte, aucun quota à déclarer. Les anciennes tuiles sombres
+de CARTO réclamaient une clé et la carte restait grise avec un message
+« api key required ». C'est la feuille de style qui assombrit les tuiles en
+thème de nuit (`filter: invert(1) hue-rotate(180deg)` sur le seul calque des
+tuiles) : les épingles, les amas et les bulles gardent leurs couleurs, et le
+fournisseur ne change pas. Si le serveur de tuiles ne répond pas, le quadrillage
+reste, les épingles restent à leur place et un mot le dit.
+
+**Les calques de Leaflet ne sortent plus de la carte.** Les panneaux de Leaflet
+montent jusqu'à `z-index: 1000` ; sans barrière, ils passaient par-dessus la
+barre de recherche de l'assistant, fixée en bas de l'écran, qui apparaissait
+floutée. Le cadre de la carte porte maintenant `isolation: isolate` et
+`z-index: 0` : tout ce que Leaflet empile reste à l'intérieur.
 
 ### Visites du site
 Quatre cartouches (visites, nouvelles, durée moyenne, rebond), le graphique des
@@ -133,11 +148,11 @@ Aucun calcul n'est refait dans le JSX ni dupliqué depuis
 | `src/components/DashboardExperience.jsx` | une entrée de menu, panneau retiré |
 | `src/pages/Dashboard.jsx`, `DashboardDesignPreview.jsx` | `showAnalytics` retiré |
 | `src/components/culturalMotif.js` | `analytics`, `connexions`, `connexions-map` → `korhogo` |
-| `src/services/__tests__/analyticsSite.test.jsx` | nouveau — 38 tests |
+| `src/services/__tests__/analyticsSite.test.jsx` | nouveau — 43 tests |
 
 ## 8. Validation
 
 - `npx eslint src --config eslint.gate.config.js` → 0 erreur ;
-- `npx vitest run src/services/__tests__/analyticsSite.test.jsx` → 38 ✓ ;
-- `npx vitest run` → 130 fichiers, 1 573 tests ✓ ;
+- `npx vitest run src/services/__tests__/analyticsSite.test.jsx` → 43 ✓ ;
+- `npx vitest run` → 130 fichiers, 1 578 tests ✓ ;
 - `npx vite build` → ✓.

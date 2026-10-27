@@ -722,3 +722,45 @@ describe('6. la toile, à la lecture', () => {
     expect(positions[0]).toBeLessThan(pied)
   })
 })
+
+// ═══════════════════════════════════════════════════════════
+// 7. LE FOND DE CARTE ET SES CALQUES
+// ═══════════════════════════════════════════════════════════
+
+describe('7. un fond de carte sans clé', () => {
+  it('a quitté les tuiles qui réclamaient une clé', () => {
+    expect(CARTE).not.toContain('cartocdn')
+    expect(CARTE).not.toContain('carto.com')
+    expect(CARTE).not.toContain('api_key')
+    expect(CARTE).not.toContain('apikey')
+    expect(CARTE).not.toContain('access_token')
+  })
+
+  it('sert les tuiles d’OpenStreetMap, avec leur attribution', () => {
+    expect(CARTE).toContain("const FOND = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'")
+    expect(CARTE).toContain('openstreetmap.org/copyright')
+    expect(CARTE).toContain('Leaflet.tileLayer(FOND')
+    expect(CARTE).not.toContain('unpkg.com')
+  })
+
+  it('assombrit les tuiles par la feuille de style, pas par le fournisseur', () => {
+    expect(CARTE_CSS).toContain(".an-carte-cadre[data-fond='osm'][data-sombre='oui'] .leaflet-tile-pane")
+    expect(CARTE_CSS).toContain('filter: invert(1) hue-rotate(180deg)')
+    expect(PAGE).toContain('sombre={darkMode}')
+  })
+
+  it('garde ses calques sous la barre de recherche de l’assistant', () => {
+    // Sans barrière, les panneaux de Leaflet (z-index 400 à 1000)
+    // passent par-dessus la barre fixée en bas de l'écran.
+    expect(CARTE_CSS).toContain('isolation: isolate')
+    expect(CARTE_CSS).toMatch(/\.an-carte-cadre \{[^}]*isolation: isolate;[^}]*z-index: 0;/)
+    expect(CARTE_CSS).not.toMatch(/z-index: (1[0-9]{3,}|[2-9][0-9]{2,})/)
+  })
+
+  it('reste vivante si le fond ne répond pas', () => {
+    expect(CARTE).toContain("couche.on('tileerror'")
+    expect(CARTE).toContain('an-carte-muette')
+    expect(CARTE_CSS).toContain('.an-carte-muette')
+    expect(CARTE).toContain('les épingles restent à leur place')
+  })
+})

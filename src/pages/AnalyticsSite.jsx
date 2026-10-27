@@ -1009,6 +1009,7 @@ export default function AnalyticsSite() {
                     centre={centre}
                     zoom={zoom}
                     identifiantCible={cible}
+                    sombre={darkMode}
                     surEpingles={(connexion) => {
                       setCible(null)
                       setTimeout(() => setCible(connexion.id), 40)

@@ -17,12 +17,22 @@ import './CarteConnexions.css'
 const OCRE = '#c9773c'
 const OR = '#c9a961'
 
+// ── LE FOND DE CARTE ──────────────────────────────────────
+// OpenStreetMap, servi par openstreetmap.org : pas de clé, pas de
+// compte, pas de quota à déclarer. Les anciennes tuiles sombres de
+// CARTO réclamaient une clé et la carte restait grise.
+// En thème de nuit, c'est la feuille de style qui retourne les
+// tuiles (voir CarteConnexions.css) — le fournisseur ne change pas.
+const FOND = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+
 function CarteConnexions({
   connexions = [],
   centre = [14.6937, -17.4441],
   zoom = 3,
   surEpingles,
   identifiantCible = null,
+  sombre = true,
   horodatage = (valeur) => (valeur ? new Date(valeur).toLocaleString('fr-FR') : '—'),
 }) {
   const conteneur = useRef(null)
@@ -31,6 +41,9 @@ function CarteConnexions({
   const epingles = useRef({})
   const [Leaflet, setLeaflet] = useState(null)
   const [pret, setPret] = useState(false)
+  const [fondMuet, setFondMuet] = useState(false)
+  const tuiles = useRef(null)
+  const erreurs = useRef(0)
 
   // ── le chargement de Leaflet, une seule fois ──
   useEffect(() => {
@@ -52,12 +65,6 @@ function CarteConnexions({
         }
 
         const L = module.default || module
-        delete L.Icon.Default.prototype._getIconUrl
-        L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-          iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-          shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        })
 
         if (!abandonne) setLeaflet(L)
       } catch (probleme) {
@@ -74,11 +81,6 @@ function CarteConnexions({
     if (!Leaflet || !conteneur.current || carte.current) return
 
     const instance = Leaflet.map(conteneur.current, { center: centre, zoom, zoomControl: true })
-    Leaflet.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-      { attribution: '&copy; <a href="https://carto.com/">CARTO</a>', maxZoom: 19 },
-    ).addTo(instance)
-
     carte.current = instance
     setPret(true)
 
@@ -89,6 +91,33 @@ function CarteConnexions({
         setPret(false)
       }
     }
+  }, [Leaflet])
+
+  // ── le fond de carte : OpenStreetMap, sans clé ni compte ──
+  useEffect(() => {
+    if (!Leaflet || !carte.current) return
+    const instance = carte.current
+
+    if (tuiles.current) {
+      instance.removeLayer(tuiles.current)
+      tuiles.current = null
+    }
+
+    const couche = Leaflet.tileLayer(FOND, {
+      attribution: ATTRIBUTION,
+      maxZoom: 19,
+      crossOrigin: true,
+    })
+
+    // Si le serveur de tuiles ne répond pas, la carte reste vivante :
+    // les épingles se posent sur le quadrillage, et un mot le dit.
+    couche.on('tileerror', () => {
+      erreurs.current += 1
+      if (erreurs.current === 6) setFondMuet(true)
+    })
+
+    couche.addTo(instance)
+    tuiles.current = couche
   }, [Leaflet])
 
   // ── suivre le centre et le zoom décidés par la page ──
@@ -240,7 +269,7 @@ function CarteConnexions({
   }, [identifiantCible, pret, Leaflet])
 
   return (
-    <div className="an-carte-cadre">
+    <div className="an-carte-cadre" data-sombre={sombre ? 'oui' : 'non'} data-fond="osm">
       {!pret && (
         <div className="an-carte-attente" role="status">
           <span className="an-carte-attente-chevrons" aria-hidden="true">
@@ -250,6 +279,11 @@ function CarteConnexions({
         </div>
       )}
       <div className="an-carte-toile" ref={conteneur} />
+      {fondMuet && (
+        <p className="an-carte-muette" role="status">
+          Le fond de carte n’a pas répondu — les épingles restent à leur place.
+        </p>
+      )}
     </div>
   )
 }
