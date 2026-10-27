@@ -1,9 +1,8 @@
 // ═══════════════════════════════════════════════════════════
 // 🟤 LE CHARGEMENT DES RÉMUNÉRATIONS
 //
-// Une scène dessinée, pas une photo : on teint le pagne. La bande de
-// craie est tendue, la teinture de boue se pose pan par pan depuis la
-// gauche, et les points de trame apparaissent au rythme.
+// Une scène dessinée, pas une photo : la bande de craie est tendue et
+// se remplit pan par pan depuis la gauche.
 //
 // Rien ne ment : aucun montant n'est touché pendant l'animation. En
 // `prefers-reduced-motion`, la scène s'affiche terminée et fixe. Le
@@ -27,8 +26,8 @@ export default function RemunerationsLoading({ darkMode = true, onSkip = null })
 
       <div className="rw-chargement-contenu">
         <EnCheckBrandMark size={54} />
-        <span className="rw-chargement-eyebrow">Le pagne de boue</span>
-        <h1>On teint le pagne des rémunérations…</h1>
+        <span className="rw-chargement-eyebrow">Rémunérations</span>
+        <h1>Chargement des rémunérations…</h1>
         <p role="status">Chargement des contrats et des montants déjà déclarés.</p>
 
         <div className="rw-tenture" aria-hidden="true">
@@ -84,7 +83,7 @@ export default function RemunerationsLoading({ darkMode = true, onSkip = null })
 
         <p className="rw-chargement-note">
           Une rémunération manquante compte zéro dans le coût salarial : c’est
-          pour cela qu’on ne remplit rien à ta place.
+          pour cela que rien n’est rempli à votre place.
         </p>
       </div>
     </section>

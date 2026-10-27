@@ -34,6 +34,17 @@ import {
 
 const PAGE = readFileSync('src/pages/Remunerations.jsx', 'utf8')
 const CSS = readFileSync('src/pages/Remunerations.css', 'utf8')
+const CHARGEMENT = readFileSync('src/components/RemunerationsLoading.jsx', 'utf8')
+
+/** Le corps d'une règle CSS, à partir de son sélecteur exact (en début de ligne). */
+const regle = (selecteur) => {
+  const propre = selecteur.replace(/\s*\{$/, '')
+  const motif = new RegExp(`(^|\n)${propre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{`)
+  const trouve = motif.exec(CSS)
+  expect(trouve, selecteur).not.toBeNull()
+  const debut = trouve.index + trouve[1].length
+  return CSS.slice(debut, CSS.indexOf('}', debut))
+}
 
 // ── la base simulée ────────────────────────────────────────
 const { etat } = vi.hoisted(() => ({
@@ -427,7 +438,7 @@ describe('6. « Enregistrer » compte de vrais écarts, pas des frappes', () => 
 
     await ecrire(champ, '999')
     expect(hote.querySelector('.rw-barre')).not.toBeNull()
-    expect(texte(hote.querySelector('.rw-barre'))).toContain('1 bande modifiée')
+    expect(texte(hote.querySelector('.rw-barre'))).toContain('1 ligne modifiée')
 
     await ecrire(champ, '250000')
     expect(hote.querySelector('.rw-barre')).toBeNull()
@@ -438,7 +449,7 @@ describe('6. « Enregistrer » compte de vrais écarts, pas des frappes', () => 
     await ecrire(champDe('Kossi ALABI', 'Mensuelle'), '300000')
     await ecrire(champDe('Yao KPODAR', 'Mensuelle'), '350000')
 
-    expect(texte(hote.querySelector('.rw-barre'))).toContain('2 bandes modifiées')
+    expect(texte(hote.querySelector('.rw-barre'))).toContain('2 lignes modifiées')
     expect(hote.querySelector('.rw-barre').textContent).toContain('(2)')
     //  et le rappel du raccourci clavier
     expect(hote.querySelector('.rw-touche')).not.toBeNull()
@@ -549,7 +560,7 @@ describe('7. « Reprendre pour… » ne recopie jamais un salaire par défaut', 
     for (const libelle of ['Base mensuelle', 'Taux horaire', 'Taux journalier']) {
       expect(puce(libelle).getAttribute('aria-pressed'), libelle).toBe('false')
     }
-    expect(modale.textContent).toContain('un salaire ne se recopie pas par accident')
+    expect(modale.textContent).toContain('un salaire ne se recopie pas par défaut')
   })
 
   it('appliquer remplit les bandes choisies, sans rien écrire en base', async () => {
@@ -575,7 +586,7 @@ describe('7. « Reprendre pour… » ne recopie jamais un salaire par défaut', 
     //  …mais pas le salaire de Kossi
     expect(hote.querySelector('[aria-label="Mensuelle de Awa DOSSOU"]').value).toBe('')
     //  et la bande est bien marquée comme modifiée
-    expect(texte(hote.querySelector('.rw-barre'))).toContain('1 bande modifiée')
+    expect(texte(hote.querySelector('.rw-barre'))).toContain('1 ligne modifiée')
   })
 
   it('sans destinataire, rien ne se passe et on le dit', async () => {
@@ -647,5 +658,150 @@ describe('8. le texte reste lisible dans les deux champs', () => {
     const clair = bloc('.rw-page.rw-clair {')
     expect(contraste(jeton(sombre, 'sur-cuivre'), jeton(sombre, 'cuivre'))).toBeGreaterThanOrEqual(4.5)
     expect(contraste(jeton(clair, 'sur-cuivre'), jeton(clair, 'cuivre'))).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+describe('9. le ton reste professionnel', () => {
+  //  Les formules du carnet de croquis n'ont rien à faire dans un outil
+  //  de paie : « le pagne de boue », « on teint le pagne »…
+  const INTERDITS = [/pagne/i, /teint/i, /tiss/i, /\bboue\b/i, /couture/i]
+
+  let hote
+  let racine
+
+  beforeEach(async () => {
+    vi.useFakeTimers()
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem('admin', JSON.stringify({ role: 'super_admin' }))
+    etat.profils = profilsDeBase()
+    etat.ecritures = []
+    etat.misesAJour = []
+    hote = document.createElement('div')
+    document.body.append(hote)
+    racine = createRoot(hote)
+    await act(async () => {
+      racine.render(<MemoryRouter><Remunerations /></MemoryRouter>)
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1600)
+    })
+  })
+
+  afterEach(async () => {
+    if (racine) await act(async () => racine.unmount())
+    hote?.remove()
+    racine = null
+    vi.useRealTimers()
+  })
+
+  it('aucune formule d’atelier dans ce que lit l’utilisateur', () => {
+    const visible = texte(hote)
+    expect(visible.length).toBeGreaterThan(200)
+    for (const interdit of INTERDITS) {
+      expect(visible, String(interdit)).not.toMatch(interdit)
+    }
+  })
+
+  it('ni dans l’écran de chargement', () => {
+    const html = renderToStaticMarkup(<RemunerationsLoading darkMode onSkip={() => {}} />)
+    const vu = html
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&[a-z]+;/g, ' ')
+      .replace(/\s+/g, ' ')
+    for (const interdit of INTERDITS) {
+      expect(vu, String(interdit)).not.toMatch(interdit)
+    }
+    //  il dit ce qu'il fait, sans scène
+    expect(vu).toContain('Chargement des rémunérations')
+  })
+
+  it('l’écran de chargement ne contient plus la formule d’atelier', () => {
+    expect(CHARGEMENT).not.toContain('Le pagne de boue')
+    expect(CHARGEMENT).not.toContain('On teint')
+    expect(PAGE).not.toContain('Le pagne de boue')
+  })
+
+  it('la page dit « ligne » et « salarié », pas « bande »', () => {
+    const visible = texte(hote)
+    expect(visible).not.toMatch(/\bbandes?\b/i)
+    //  mais les classes internes peuvent garder leur nom
+    expect(CSS).toContain('.rw-bande')
+  })
+})
+
+describe('10. le survol ne dégrade jamais la lisibilité', () => {
+  const lireRegle = (selecteur) => regle(selecteur)
+
+  it('survoler une ligne ne repeint plus le fond derrière les textes', () => {
+    //  c'était la cause : le fond de la ligne variait sous les libellés
+    //  de 9 px, et les cases s'y fondaient
+    const survol = lireRegle('.rw-bande:hover')
+    expect(survol).not.toContain('background')
+    expect(survol).toContain('border-bottom-color')
+
+    //  la tranche de gauche, elle, n'a aucun texte : elle peut changer
+    expect(lireRegle('.rw-bande:hover .rw-bande-teinture')).toContain('background')
+  })
+
+  it('survoler une case ne change ni son fond ni la couleur de son texte', () => {
+    const survol = lireRegle('.rw-case:hover')
+    expect(survol).not.toContain('background')
+    //  seuls des traits bougent
+    expect(survol).toContain('border-color')
+
+    //  le texte garde explicitement sa couleur de repos
+    expect(lireRegle('.rw-case:hover .rw-case-champ')).toContain('color: var(--rw-encre)')
+  })
+
+  it('aucun champ n’est dimmé par une opacité', () => {
+    //  à 72 %, le libellé tombait à 2,8:1 en clair
+    expect(CSS).not.toMatch(/\.rw-case\[data-actif='non'\] \{[^}]*opacity/s)
+    expect(regle(".rw-case[data-actif='non']")).toContain('border-style: dashed')
+  })
+
+  it('la case reste un champ : fond distinct de la ligne, dans les deux thèmes', () => {
+    expect(regle('.rw-case')).toContain('background: var(--rw-creux)')
+    //  et les champs natifs suivent le thème de la page
+    expect(regle('.rw-page')).toContain('color-scheme: dark')
+    expect(regle('.rw-page.rw-clair')).toContain('color-scheme: light')
+    //  aucun fond natif ne peut se peindre par-dessus
+    expect(regle('.rw-case-champ')).toContain('appearance: none')
+  })
+
+  it('le texte tient 4,5:1 sur le fond des cases et sur la case du rythme', () => {
+    const luminance = (hex) => {
+      const [r, g, b] = hex.replace('#', '').match(/[0-9a-f]{2}/gi)
+        .map(h => parseInt(h, 16) / 255)
+        .map(c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+    const contraste = (a, b) => {
+      const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
+      return (x + 0.05) / (y + 0.05)
+    }
+    const melange = (a, b, part) => {
+      const [x, y] = [a, b].map(h => h.replace('#', '').match(/[0-9a-f]{2}/gi)
+        .map(v => parseInt(v, 16)))
+      return `#${x.map((v, i) => Math.round(v * part + y[i] * (1 - part))
+        .toString(16).padStart(2, '0')).join('')}`
+    }
+    const jeton = (source, nom) => {
+      const m = source.match(new RegExp(`--rw-${nom}: (#[a-fA-F0-9]{6});`))
+      expect(m, nom).not.toBeNull()
+      return m[1]
+    }
+
+    for (const [selecteur, nom] of [['.rw-page {', 'sombre'], ['.rw-page.rw-clair {', 'clair']]) {
+      const b = regle(selecteur)
+      const creux = jeton(b, 'creux')
+      const teinte = melange(jeton(b, 'cuivre'), creux, 0.06)
+
+      for (const niveau of ['encre', 'douce', 'faible']) {
+        expect(contraste(jeton(b, niveau), creux), `${nom} ${niveau}/creux`)
+          .toBeGreaterThanOrEqual(4.5)
+        expect(contraste(jeton(b, niveau), teinte), `${nom} ${niveau}/case active`)
+          .toBeGreaterThanOrEqual(4.5)
+      }
+    }
   })
 })
