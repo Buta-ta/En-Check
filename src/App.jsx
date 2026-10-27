@@ -53,7 +53,6 @@ import PostePointage from './pages/PostePointage'
 // La page « Pointeuses » : enregistrer une machine ADMS, lire son secret,
 // télécharger `appareils.json` — sans jamais ouvrir Supabase.
 import Pointeuses from './pages/Pointeuses'
-import CoutSalarial from './pages/CoutSalarial'
 import Remunerations from './pages/Remunerations'
 import ConfigRecoFaciale from './pages/ConfigRecoFaciale'
 import FichesPaie from './pages/FichesPaie'
@@ -374,11 +373,12 @@ function App() {
               <Pointeuses />
             </AdminRoute>
           } />
-          <Route path="/cout-salarial" element={
-            <AdminRoute>
-              <CoutSalarial />
-            </AdminRoute>
-          } />
+          {/* Le coût salarial a rejoint les rémunérations : l'ancienne adresse
+              continue de fonctionner, elle ouvre la vue coût. */}
+          <Route
+            path="/cout-salarial"
+            element={<Navigate to="/remunerations?vue=cout" replace />}
+          />
           <Route path="/remunerations" element={
             <AdminRoute>
               <Remunerations />

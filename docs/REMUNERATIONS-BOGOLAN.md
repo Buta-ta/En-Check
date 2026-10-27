@@ -75,6 +75,49 @@ Les accents culturels restent là où ils ne parlent pas à la place des donnée
 le bandeau, le médaillon, la tranche de complétude. Le vocabulaire de
 l'interface, lui, est celui du métier — et il vouvoie.
 
+## Le coût salarial rejoint la page
+
+Deux écrans parlaient de la même personne. Les fusionner n'est pas les empiler :
+c'est **deux vues d'une même page**, avec une seule coque.
+
+| La vue | Ce qu'elle fait |
+| --- | --- |
+| **Contrats** | écrit la base, le rythme, les compléments, les heures prévues |
+| **Coût salarial** | lit la masse, l'heure réelle, les heures au-delà du contrat, la projection |
+
+Ce qui ne bouge pas d'une vue à l'autre : le bandeau bogolan, la bordure
+cousue, le seuil (entreprise, devise, pays, effectif), les raccourcis, la
+bascule clair/sombre — dernier bouton de l'en-tête — et la barre collée en bas.
+**Une seule habitude pour deux lectures.**
+
+La vue coût reprend les données des fonctions de la base
+(`encheck_cout_periode`, `encheck_cout_projeter`, `encheck_mois_pointes`,
+`encheck_cout_controler`) : aucun calcul n'est refait dans le navigateur. Trois
+règles y ont été reprises telles quelles :
+
+1. **l'écran se place sur le dernier mois réellement pointé** — un écran de coût
+   qui affiche 0,00 h trois fois sur quatre passe pour une panne ; le bandeau
+   dit pourquoi ce mois-là, et propose d'aller sur le dernier mois pointé ;
+2. **la projection sépare le certain du variable** — la part contractuelle est
+   sûre, les heures supplémentaires et de nuit dépendent des pointages ;
+3. **ce qui manque est dit** — un salarié sans montant déclaré, une entreprise
+   sans cotisation employeur : le chiffre est annoncé incomplet, avec le chemin
+   pour le compléter (un bouton ramène à la vue contrats).
+
+Et deux choses ont changé, dans l'esprit de la page :
+
+- **le tableau de treize colonnes disparaît ici aussi** : une ligne par salarié,
+  sept chiffres dans une grille de cases (heures, sup., nuit, brut, charges,
+  heure réelle, heure prévue), l'écart en pastille, et la répartition
+  brut / charges en barre ;
+- **la tranche de gauche devient une jauge de poids** : la part de la personne
+  dans la masse, par quart, sans un chiffre.
+
+L'ancienne adresse `/cout-salarial` **redirige** vers
+`/remunerations?vue=cout` : les favoris continuent de marcher. Le verrou de
+module accepte l'une ou l'autre des deux options (`module_remunerations`,
+`module_cout_salarial`) : une page, deux portes d'entrée.
+
 ## Ce qui change dans la page
 
 **Le tableau de treize colonnes disparaît.** C'était le vrai problème : treize
@@ -219,6 +262,21 @@ coût de l'heure non divisé, bascule de thème retirée, barre toujours affich�
 survol qui repeint le fond, case redevenue transparente, opacité réintroduite,
 formule d'atelier réintroduite, couleur de texte changée au survol — chacune
 fait tomber au moins un test.
+
+La fusion a son propre fichier —
+`src/services/__tests__/remunerationsCout.test.jsx`, 24 tests :
+
+- l'ancienne page n'existe plus, l'ancienne adresse redirige, le calcul est
+  bien emporté (les quatre fonctions et le réglage de budget) ;
+- le menu mène aux deux vues, et une seule des deux options de module suffit ;
+- la vue coût se monte : deux vues, quatre mesures, quatre périodes, le mois
+  choisi d'après les pointages ;
+- une ligne par salarié, jamais un tableau : poids dans la tranche, sept
+  cellules, écart du bon côté, rémunération non déclarée annoncée ;
+- la recherche, à sa place habituelle dans la barre de titre ;
+- le budget se contrôle depuis la barre ; sans budget, pas de barre, et ⌘S
+  n'enregistre rien depuis une vue qui ne fait que lire ;
+- le ton et la lisibilité : aucune formule d'atelier, aucun texte dimmé.
 
 Deux sections défendent le ton et la lisibilité au survol :
 

@@ -48,8 +48,9 @@ const ADRESSES = {
   // La coque paie abrite deux modules vendus séparément : elle ne se
   // verrouille que si les deux sont éteints.
   '/paie': ['module_fiches_paie', 'module_config_fiscale'],
-  '/remunerations': 'module_remunerations',
-  '/cout-salarial': 'module_cout_salarial',
+  //  Le coût salarial vit maintenant dans la page des rémunérations :
+  //  l'une ou l'autre des deux options ouvre la page.
+  '/remunerations': ['module_remunerations', 'module_cout_salarial'],
   '/geofencing': 'module_geolocalisation',
   '/carte-temps-reel': 'module_carte_temps_reel',
   '/enrollements-faciaux': 'module_reconnaissance_faciale',

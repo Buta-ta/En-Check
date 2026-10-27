@@ -95,7 +95,7 @@ const MODULES = [
   // La paie
   { key: 'module_fiches_paie', icon: CreditCard, name: 'Fiches de paie', desc: 'Bulletins et variables', groupe: 'La paie' },
   { key: 'module_remunerations', icon: Wallet, name: 'Rémunérations', desc: 'Contrat, base, taux, indemnités', groupe: 'La paie' },
-  { key: 'module_cout_salarial', icon: TrendingUp, name: 'Coût salarial', desc: 'Coût de l’heure et du mois', groupe: 'La paie' },
+  { key: 'module_cout_salarial', icon: TrendingUp, name: 'Coût salarial', desc: 'Coût de l’heure et du mois, dans Rémunérations', groupe: 'La paie' },
   { key: 'module_config_fiscale', icon: Shield, name: 'Configuration fiscale', desc: 'Cotisations et barème du pays', groupe: 'La paie' },
 
   // Les alertes

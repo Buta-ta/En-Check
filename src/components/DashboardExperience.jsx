@@ -258,7 +258,7 @@ export default function DashboardExperience({
       items: [
         { label: 'Heures supplémentaires', icon: Timer, path: '/heures-supplementaires', show: isSuperAdmin || moduleHeuresSup, tabKey: 'HEURES_SUP' },
         { label: 'Rémunérations', icon: Wallet, path: '/remunerations', show: isSuperAdmin || moduleRemunerations },
-        { label: 'Coût salarial', icon: TrendingUp, path: '/cout-salarial', show: isSuperAdmin || moduleCoutSalarial },
+        { label: 'Coût salarial', icon: TrendingUp, path: '/remunerations?vue=cout', show: isSuperAdmin || moduleCoutSalarial },
         { label: 'Paie & fiscalité', icon: Shield, path: '/paie', show: isSuperAdmin || moduleFichesPaie || moduleConfigFiscale },
       ],
     },
@@ -373,7 +373,7 @@ export default function DashboardExperience({
     { id: 'overtime', label: 'Heures supplémentaires', description: 'Consulter les heures déclarées', icon: Timer, path: '/heures-supplementaires', category: 'Paie', show: isSuperAdmin || moduleHeuresSup },
     { id: 'payslips', label: 'Ouvrir les fiches de paie', description: 'Accéder aux bulletins', icon: Wallet, path: '/paie?onglet=fiches', category: 'Paie', show: isSuperAdmin || moduleFichesPaie || moduleConfigFiscale },
     { id: 'remuneration', label: 'Gérer les rémunérations', description: 'Consulter les rémunérations', icon: Wallet, path: '/remunerations', category: 'Paie', show: isSuperAdmin || moduleRemunerations },
-    { id: 'salary-cost', label: 'Voir le coût salarial', description: 'Accéder aux indicateurs de coût', icon: TrendingUp, path: '/cout-salarial', category: 'Paie', show: isSuperAdmin || moduleCoutSalarial },
+    { id: 'salary-cost', label: 'Voir le coût salarial', description: 'Accéder aux indicateurs de coût', icon: TrendingUp, path: '/remunerations?vue=cout', category: 'Paie', show: isSuperAdmin || moduleCoutSalarial },
     { id: 'teams', label: 'Gérer les équipes', description: 'Consulter les équipes et tâches', icon: Users, path: '/equipes', category: 'Outils', show: isSuperAdmin || moduleTaches },
     { id: 'predictions', label: 'Ouvrir les prédictions', description: 'Consulter les prévisions disponibles', icon: Sparkles, path: '/predictions', category: 'Outils', show: isSuperAdmin || modulePredictions },
     { id: 'companies', label: 'Gérer les entreprises', description: 'Accéder aux entreprises', icon: Building2, path: '/entreprises', category: 'Administration', show: Boolean(isSuperAdmin) },
