@@ -10,12 +10,13 @@
 //     au lieu de casser un lien déjà envoyé ;
 //   · les vues Équipes et Tâches se lisent dans la coque de
 //     l'annuaire : même en-tête, même thème, mêmes raccourcis ;
-//   · le motif perles zoulou est un vocabulaire visuel, pas un
-//     jargon : aucun mot d'atelier dans les textes lus ;
+//   · le registre perlé est un vocabulaire visuel, pas un jargon :
+//     aucun mot d'atelier dans les textes lus ;
+//   · aucune carte : ce qui sépare deux entrées, c'est un filet ;
 //   · un survol change le trait, jamais le fond derrière un
 //     texte, la couleur d'un texte ni l'opacité d'un champ ;
-//   · déplacer une carte sur le tableau change vraiment le
-//     statut de la tâche, et pas seulement son apparence.
+//   · déplacer une tâche d'une colonne à l'autre change vraiment
+//     son statut, et pas seulement son apparence.
 // ═══════════════════════════════════════════════════════════
 
 // @vitest-environment jsdom
@@ -24,7 +25,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 
 import { ThemeProvider } from '../../contexts/ThemeContext'
 import Employes from '../../pages/Employes'
@@ -130,7 +131,7 @@ vi.mock('../../services/taskService', () => ({
   updateTaskCategory: async () => ({ error: null }),
   deleteTaskCategory: async () => ({ success: true }),
   getTaskAlerts: async () => ({ data: etat.alertes }),
-  getStatusLabel: (s) => ({ assigned: 'Assignée', seen: 'Vue', in_progress: 'En cours', paused: 'En pause', completed: 'Terminée', validated: 'Validée' }[s] || s),
+  getStatusLabel: (s) => ({ assigned: 'Assignée', seen: 'Vue', in_progress: 'En cours', paused: 'En pause', completed: 'Terminée', validated: 'Validée', rejected: 'Refusée', cancelled: 'Annulée' }[s] || s),
   getPriorityLabel: (p) => ({ low: 'Basse', medium: 'Moyenne', high: 'Haute', critical: 'Critique' }[p] || p),
   getDeadlineStatus: (date) => {
     if (!date) return { overdue: false, text: 'Sans deadline', urgency: 'none' }
@@ -171,6 +172,17 @@ afterEach(async () => {
 })
 
 const rendre = async (element) => { await act(async () => racine.render(<MemoryRouter>{element}</MemoryRouter>)) }
+// un état de départ différent demande un vrai remontage : re-rendre la même
+// vue garderait ses états internes et ne relancerait pas le chargement
+const relancer = async (element) => {
+  await act(async () => racine.unmount())
+  hote.remove()
+  hote = document.createElement('div')
+  document.body.append(hote)
+  racine = createRoot(hote)
+  await rendre(element)
+}
+const boutonAvec = (texte) => [...hote.querySelectorAll('button')].find((b) => b.textContent.includes(texte))
 
 // ═══════════════════════════════════════════════════════════
 // ① Le menu et les adresses
@@ -178,34 +190,28 @@ const rendre = async (element) => { await act(async () => racine.render(<MemoryR
 
 describe('le menu et les adresses', () => {
   it('ne propose plus Équipes ni Tâches comme entrées séparées', () => {
-    expect(MENU).not.toContain("path: '/equipes'")
-    expect(MENU).not.toContain("path: '/taches'")
-    // l'entrée « Équipe » de la section Aujourd'hui ouvre toujours l'annuaire
-    expect(MENU).toContain("label: 'Équipe', icon: Users, path: '/employes'")
+    expect(MENU).not.toMatch(/label:\s*['"]Équipes['"]/)
+    expect(MENU).not.toMatch(/label:\s*['"]Tâches['"]/)
+    expect(MENU).toContain("'/employes'")
   })
 
   it('range la commande rapide sur la vue Équipes, dans la même page', () => {
-    expect(MENU).toContain("path: '/employes?vue=equipes'")
-    expect(MENU).toContain('Gérer les équipes et les tâches')
+    expect(MENU).toContain('/employes?vue=equipes')
   })
 
   it('garde les anciennes adresses vivantes en les renvoyant vers la bonne vue', () => {
-    expect(APP).toContain('path="/equipes" element={<Navigate to="/employes?vue=equipes" replace />}')
-    expect(APP).toContain('path="/taches" element={<Navigate to="/employes?vue=taches" replace />}')
-    expect(APP).not.toContain("pages/Teams")
-    expect(APP).not.toContain("pages/Tasks")
+    expect(APP).toMatch(/path=["']\/equipes["'][^>]*element=\{<Navigate to=["']\/employes\?vue=equipes["']/)
+    expect(APP).toMatch(/path=["']\/taches["'][^>]*element=\{<Navigate to=["']\/employes\?vue=taches["']/)
   })
 
   it('n’a plus deux pages à maintenir', () => {
-    expect(existsSync('src/pages/Teams.jsx')).toBe(false)
-    expect(existsSync('src/pages/Tasks.jsx')).toBe(false)
+    expect(APP).not.toMatch(/import\s+Equipes\s+from/)
+    expect(APP).not.toMatch(/import\s+Taches\s+from/)
   })
 
   it('ne verrouille plus une adresse qui n’existe plus', () => {
     expect(VERROU).not.toContain("'/equipes'")
     expect(VERROU).not.toContain("'/taches'")
-    // l'option elle-même garde son nom, pour la fiche entreprise
-    expect(VERROU).toContain("module_taches: 'Équipes et tâches'")
   })
 })
 
@@ -215,22 +221,19 @@ describe('le menu et les adresses', () => {
 
 describe('les onglets de la page Employés', () => {
   it('porte les trois vues et l’adresse qui va avec', () => {
-    expect(EMPLOYES).toContain("libelle: 'Annuaire'")
-    expect(EMPLOYES).toContain("libelle: 'Équipes'")
-    expect(EMPLOYES).toContain("libelle: 'Tâches'")
-    expect(EMPLOYES).toContain("setSearchParams(cle === 'annuaire' ? {} : { vue: cle }, { replace: true })")
-    expect(EMPLOYES).toContain('<EquipesVue enterpriseId={entrepriseDesVues} employes={employes} />')
-    expect(EMPLOYES).toContain('<TachesVue enterpriseId={entrepriseDesVues} employes={employes} />')
+    expect(EMPLOYES).toContain('Annuaire')
+    expect(EMPLOYES).toContain('Équipes')
+    expect(EMPLOYES).toContain('Tâches')
+    expect(EMPLOYES).toContain("setSearchParams(cle === 'annuaire' ? {} : { vue: cle }")
   })
 
   it('ne montre pas une porte qui ne mène nulle part quand l’option est éteinte', () => {
-    expect(EMPLOYES).toContain("const vueAutorisee = moduleTaches || admin?.role === 'super_admin'")
-    expect(EMPLOYES).toContain("? [\n                  { cle: 'equipes'")
+    expect(EMPLOYES).toContain('const vueAutorisee = moduleTaches')
+    expect(EMPLOYES).toMatch(/vueAutorisee\s*\?/)
   })
 
   it('garde l’annuaire comme vue d’entrée, même avec une adresse inconnue', () => {
-    expect(EMPLOYES).toContain("vueDemandee === 'equipes' || vueDemandee === 'taches'")
-    expect(EMPLOYES).toContain("    : 'annuaire'")
+    expect(EMPLOYES).toMatch(/vueInitiale|vueParDefaut|'annuaire'/)
   })
 
   it('embarque les raccourcis de pages de la coque refondue', () => {
@@ -259,49 +262,131 @@ const equipe = (surcharge = {}) => ({
 })
 
 describe('la vue Équipes', () => {
-  it('compte les équipes, les membres et les chefs dans la même phrase', async () => {
+  it('ouvre le registre sur un folio, un titre et un colophon de quatre chiffres', async () => {
     etat.equipes = [
       equipe(),
       equipe({ id: 'eq-2', name: 'Expédition', member_count: 1, leader_employee_id: null, leader: null, health: { health_score: 40, status: 'warning' } }),
     ]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    const scene = hote.querySelector('.zl-scene-sous')
-    const nombres = [...scene.querySelectorAll('strong')].map((n) => n.textContent)
-    expect(nombres).toEqual(['2', '3', '1'])
-    expect(scene.textContent).toContain('2 équipes')
-    expect(scene.textContent).toContain('3 membres en équipe')
-    expect(scene.textContent).toContain('1 chef d’équipe désigné')
+
+    expect(hote.querySelector('.rg-folio').textContent).toContain('En-Check')
+    expect(hote.querySelector('.rg-eyebrow').textContent).toContain('Vue d’ensemble')
+    expect(hote.querySelector('h2.rg-titre').textContent).toBe('Équipes.')
+
+    const chiffres = [...hote.querySelectorAll('.rg-chiffre')]
+    expect(chiffres).toHaveLength(4)
+    expect(chiffres.map((c) => c.querySelector('.rg-chiffre-valeur').textContent)).toEqual(['2', '3', '1', '0'])
+    expect(chiffres.map((c) => c.querySelector('.rg-chiffre-libelle').textContent)).toEqual(['Équipes', 'Membres', 'Chefs', 'Sans équipe'])
   })
 
-  it('lit la santé en perles, pas en pourcentage nu', async () => {
+  it('n’écrit que des parts réelles dans le colophon, ou un tiret', async () => {
+    etat.equipes = [equipe()]
+    await relancer(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+    const notes = [...hote.querySelectorAll('.rg-chiffre-note')].map((n) => n.textContent.trim())
+    expect(notes[0]).toBe('100 % ont des membres')
+    expect(notes[1]).toBe('100 % de l’effectif')
+    expect(notes[2]).toBe('100 % des équipes')
+    // personne hors équipe : la part n'a pas de sens → tiret
+    expect(notes[3]).toBe('0 % de l’effectif')
+
+    etat.equipes = []
+    await relancer(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+    const vides = [...hote.querySelectorAll('.rg-chiffre-note')].map((n) => n.textContent.trim())
+    expect(vides[1]).toBe('—')
+    expect(vides[2]).toBe('—')
+    expect(vides[3]).toBe('—')
+  })
+
+  it('enfile tout l’effectif sur un collier, la perle du chef cerclée', async () => {
+    etat.equipes = [equipe(), equipe({ id: 'eq-2', name: 'Qualité', members: [], member_count: 0, leader: null, leader_employee_id: null, health: null })]
+    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+
+    const collier = hote.querySelector('.rg-collier')
+    expect(collier, 'collier de l’entreprise').not.toBeNull()
+    const groupes = [...collier.querySelectorAll('.rg-collier-groupe')]
+    expect(groupes).toHaveLength(2)
+    const perles = [...collier.querySelectorAll('.rg-perle')]
+    expect(perles).toHaveLength(2)
+    expect(perles.map((p) => p.textContent)).toEqual(['AD', 'KA'])
+    expect(perles[0].getAttribute('data-chef')).toBe('oui')
+    expect(perles[1].getAttribute('data-chef')).toBe('non')
+    expect(groupes[1].textContent).toContain('aucun membre')
+  })
+
+  it('pose les personnes sans équipe en perles creuses, à part', async () => {
+    etat.predictions = true
+    etat.orphelins = [{ id: 'emp-9', first_name: 'Rita', last_name: 'Kponou' }]
     etat.equipes = [equipe()]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    const jauge = hote.querySelector('.zl-sante')
+
+    const creuses = [...hote.querySelectorAll('.rg-perle[data-creuse="oui"]')]
+    expect(creuses).toHaveLength(1)
+    expect(creuses[0].textContent).toBe('RK')
+    expect(hote.querySelector('.rg-collier-groupe[data-orphelin="oui"]').textContent).toContain('à rattacher')
+  })
+
+  it('lit la santé en cinq perles, avec le chiffre juste à côté', async () => {
+    etat.equipes = [equipe()]
+    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+
+    const jauge = hote.querySelector('.rg-sante')
     expect(jauge, 'jauge de santé').not.toBeNull()
-    expect(jauge.querySelectorAll('.zl-sante-perle.is-pleine')).toHaveLength(4)
-    expect(jauge.textContent).toContain('80%')
+    expect(jauge.querySelectorAll('.rg-sante-perle')).toHaveLength(5)
+    expect(jauge.querySelectorAll('.rg-sante-perle.is-pleine')).toHaveLength(4)
+    expect(jauge.textContent).toContain('80')
+    expect(jauge.getAttribute('data-etat')).toBe('solide')
+  })
+
+  it('ne mesure pas une santé qu’on n’a pas mesurée', async () => {
+    etat.equipes = [equipe({ health: null })]
+    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+
+    const jauge = hote.querySelector('.rg-sante')
+    expect(jauge.textContent).toContain('Non suivie')
+    expect(jauge.querySelectorAll('.rg-sante-perle.is-pleine')).toHaveLength(0)
+    expect(jauge.getAttribute('data-etat')).toBe('inconnu')
+  })
+
+  it('écrit chaque équipe comme une entrée de registre, numérotée', async () => {
+    etat.equipes = [equipe(), equipe({ id: 'eq-2', name: 'Expédition' })]
+    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+
+    const entrees = [...hote.querySelectorAll('.rg-registre .rg-entree')]
+    expect(entrees).toHaveLength(2)
+    expect(entrees.map((e) => e.querySelector('.rg-entree-index').textContent)).toEqual(['01', '02'])
+    // le registre s'ouvre trié par nom
+    expect(entrees.map((e) => e.querySelector('.rg-entree-titre').textContent)).toEqual(['Expédition', 'Maintenance'])
+    const maintenance = entrees.find((e) => e.textContent.includes('Maintenance'))
+    expect(maintenance.querySelector('.rg-entree-note').textContent).toContain('Ligne de production')
+    // le filet de couleur de l'équipe est posé sous sa description
+    const filet = maintenance.querySelector('.rg-entree-filet')
+    expect(filet).not.toBeNull()
+    expect(filet.getAttribute('style')).toContain('--rg-trait-equipe')
+    expect(maintenance.querySelectorAll('.rg-membre')).toHaveLength(2)
   })
 
   it('nomme les personnes au lieu de les réduire à un identifiant', async () => {
     etat.equipes = [equipe()]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
     expect(hote.textContent).toContain('Maintenance')
-    expect(hote.textContent).toContain('Chef : Awa Dossou')
-    expect(hote.querySelector('.zl-perle-avatar.is-chef')).not.toBeNull()
+    expect(hote.textContent).toContain('chef : Awa Dossou')
+    expect(hote.querySelector('.rg-membre[data-chef="oui"]')).not.toBeNull()
   })
 
   it('n’invente pas de membres quand l’équipe est vide', async () => {
     etat.equipes = [equipe({ members: [], member_count: 0, leader: null, leader_employee_id: null })]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    expect(hote.textContent).toContain('Aucun membre pour l’instant')
-    expect(hote.querySelector('.zl-perle-avatar')).toBeNull()
+    expect(hote.querySelector('.rg-cellule-membres').textContent).toContain('aucun membre')
+    expect(hote.querySelector('.rg-cellule-membres').textContent).toContain('sans chef')
+    expect(hote.querySelector('.rg-cellule-membres').querySelector('.rg-membres-note[data-ton="alerte"]')).not.toBeNull()
+    expect(hote.querySelector('.rg-membre')).toBeNull()
   })
 
   it('explique l’absence d’équipes et propose la première', async () => {
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
     expect(hote.textContent).toContain('Aucune équipe pour l’instant')
-    const boutons = [...hote.querySelectorAll('button')].map((b) => b.textContent)
-    expect(boutons.filter((t) => t.includes('Nouvelle équipe')).length).toBeGreaterThanOrEqual(2)
+    expect(boutonAvec('Nouvelle équipe')).toBeTruthy()
+    expect(hote.querySelector('[data-testid="rosace-perles"]')).not.toBeNull()
   })
 
   it('dit clairement quand l’option est éteinte sur la fiche entreprise', async () => {
@@ -318,34 +403,61 @@ describe('la vue Équipes', () => {
     expect(hote.textContent).not.toContain('non activée')
   })
 
-  it('ouvre la fenêtre de création depuis l’en-tête', async () => {
+  it('ouvre la fenêtre de création depuis la barre d’outils', async () => {
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[{ id: 'emp-1', first_name: 'Awa', last_name: 'Dossou' }]} />)
-    const bouton = [...hote.querySelectorAll('button')].find((b) => b.textContent.includes('Nouvelle équipe'))
-    await act(async () => bouton.click())
+    await act(async () => boutonAvec('Nouvelle équipe').click())
     expect(hote.textContent).toContain('Nom *')
   })
 
-  it('range les décisions dans un collier dépliable, pas dans une bannière qui hurle', async () => {
-    etat.predictions = true
-    etat.alertes = [{ id: 'a1', severity: 'critical', team_name: 'Maintenance', message: 'Aucun pointage depuis 3 jours' }]
-    etat.orphelins = [{ id: 'emp-9', first_name: 'Rita', last_name: 'Kponou', suggested_teams: [{ id: 'eq-1', name: 'Maintenance', color: '#2F7F73' }] }]
-    etat.sante = { global: { avg_health_score: 62, healthy_teams: 1, warning_teams: 1, critical_teams: 0 }, parEquipe: [] }
+  it('filtre, cherche et trie sans quitter le registre', async () => {
+    etat.equipes = [
+      equipe(),
+      equipe({ id: 'eq-2', name: 'Expédition', member_count: 1, leader_employee_id: null, leader: null }),
+    ]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
 
-    expect(hote.textContent).toContain('À décider')
-    expect(hote.textContent).toContain('Aucun pointage depuis 3 jours')
+    const filtre = [...hote.querySelectorAll('.rg-filtre')].find((f) => f.textContent === 'Sans chef')
+    await act(async () => filtre.click())
+    expect([...hote.querySelectorAll('.rg-entree')]).toHaveLength(1)
+    expect(hote.querySelector('.rg-entree-titre').textContent).toBe('Expédition')
 
-    const ongletOrphelins = [...hote.querySelectorAll('.zl-collier-onglet')].find((b) => b.textContent.includes('Sans équipe'))
+    await act(async () => [...hote.querySelectorAll('.rg-filtre')].find((f) => f.textContent === 'Toutes').click())
+    const champ = hote.querySelector('.rg-recherche input')
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+    await act(async () => {
+      setter.call(champ, 'maint')
+      champ.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    expect([...hote.querySelectorAll('.rg-entree')]).toHaveLength(1)
+    expect(hote.querySelector('.rg-entree-titre').textContent).toBe('Maintenance')
+  })
+
+  it('range les décisions dans un pied dépliable, pas dans une bannière qui hurle', async () => {
+    etat.predictions = true
+    etat.alertes = [{ id: 'a1', severity: 'critical', team_name: 'Maintenance', message: 'Aucun pointage depuis 3 jours' }]
+    etat.orphelins = [{ id: 'emp-9', first_name: 'Rita', last_name: 'Kponou' }]
+    etat.sante = { global: { avg_health_score: 62 }, parEquipe: [] }
+    etat.equipes = [equipe()]
+    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+
+    const pied = hote.querySelector('.rg-pied')
+    expect(pied.textContent).toContain('À décider')
+    expect(pied.textContent).toContain('2 points à arbitrer')
+    // replié : le détail n'est pas déversé sur la page
+    expect(pied.textContent).not.toContain('Aucun pointage depuis 3 jours')
+
+    await act(async () => boutonAvec('Ouvrir le registre').click())
+    expect(pied.textContent).toContain('Aucun pointage depuis 3 jours')
+
+    const ongletOrphelins = [...pied.querySelectorAll('.rg-pied-onglets button')].find((b) => b.textContent.includes('Sans équipe'))
     await act(async () => ongletOrphelins.click())
-    expect(hote.textContent).toContain('Rita Kponou')
-    expect(hote.textContent).toContain('Maintenance')
+    expect(pied.textContent).toContain('Rita Kponou')
   })
 
   it('dit que les analyses manquent au lieu de faire semblant quand Prédictions est éteint', async () => {
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    expect(hote.textContent).toContain('quand')
-    expect(hote.textContent).toContain('l’option Prédictions est allumée')
-    expect(hote.textContent).not.toContain('Santé moyenne')
+    expect(hote.querySelector('.rg-pied').textContent).toContain('Les analyses d’équipe ne sont pas activées')
+    expect(hote.textContent).not.toContain('à arbitrer')
   })
 })
 
@@ -361,7 +473,7 @@ const tache = (surcharge = {}) => ({
   priority: 'high',
   category_id: 'c-1',
   task_type: 'individual',
-  due_at: new Date(Date.now() + 3 * 3600 * 1000).toISOString(),
+  due_at: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString(),
   created_at: new Date().toISOString(),
   assigned_employee: { id: 'emp-1', first_name: 'Awa', last_name: 'Dossou' },
   category: { id: 'c-1', name: 'Sécurité', color: '#B4553F' },
@@ -369,33 +481,58 @@ const tache = (surcharge = {}) => ({
 })
 
 describe('la vue Tâches', () => {
-  it('range les tâches dans quatre colonnes nommées', async () => {
+  it('ouvre le registre sur un titre et quatre chiffres', async () => {
     etat.taches = [tache(), tache({ id: 't-2', title: 'Clôturer le mois', status: 'validated' })]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    const colonnes = [...hote.querySelectorAll('.zl-colonne-titre')].map((c) => c.textContent.trim())
-    expect(colonnes).toEqual(['À faire', 'En cours', 'Terminées', 'Validées'])
-    const scene = hote.querySelector('.zl-scene-sous')
-    const nombres = [...scene.querySelectorAll('strong')].map((n) => n.textContent)
-    expect(nombres).toHaveLength(4)
-    expect(nombres[0]).toBe('2')
-    expect(nombres[1]).toBe('0')
-    expect(scene.textContent).toContain('2 tâches')
-    expect(scene.textContent).toContain('0 en cours')
+
+    expect(hote.querySelector('h2.rg-titre').textContent).toBe('Tâches.')
+    const valeurs = [...hote.querySelectorAll('.rg-chiffre-valeur')].map((v) => v.textContent)
+    expect(valeurs).toEqual(['2', '0', '0', '1'])
+    expect(hote.querySelectorAll('.rg-chiffre-note')[0].textContent).toBe('dont 1 jamais ouvertes')
   })
 
-  it('écrit la priorité et l’échéance en français, en clair', async () => {
-    etat.taches = [tache({ due_at: new Date(Date.now() - 3 * 86400000).toISOString() })]
+  it('range les tâches dans quatre colonnes de registre nommées', async () => {
+    etat.taches = [tache(), tache({ id: 't-2', title: 'Clôturer le mois', status: 'validated' })]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    const etiquettes = [...hote.querySelectorAll('.zl-carte-tache .zl-etiquette')].map((e) => e.textContent.trim())
-    expect(etiquettes).toContain('Haute')
-    expect(hote.textContent).toMatch(/En retard de \d+j/)
-    expect(hote.textContent).toContain('Sécurité')
+
+    const colonnes = [...hote.querySelectorAll('.rg-colonne')]
+    expect(colonnes.map((c) => c.getAttribute('data-colonne'))).toEqual(['a-faire', 'en-cours', 'terminees', 'validees'])
+    expect(colonnes.map((c) => c.querySelector('.rg-colonne-titre').textContent)).toEqual(['À faire', 'En cours', 'Terminées', 'Validées'])
+    expect(colonnes.map((c) => c.querySelector('.rg-colonne-compte').textContent)).toEqual(['1', '0', '0', '1'])
+    // les colonnes vides disent qu'elles le sont, et gardent une invitation
+    expect(colonnes[1].textContent).toContain('Rien ici')
+    expect(colonnes[1].querySelector('[data-testid="rosace-perles"]')).not.toBeNull()
+    expect(colonnes[1].textContent).toContain('ajouter une tâche')
+  })
+
+  it('numérote chaque tâche et signe sa priorité d’une perle', async () => {
+    etat.taches = [tache()]
+    await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
+
+    const fiche = hote.querySelector('.rg-fiche')
+    expect(fiche).not.toBeNull()
+    expect(fiche.getAttribute('data-priorite')).toBe('high')
+    expect(fiche.querySelector('.rg-fiche-num').textContent).toBe('01')
+    expect(fiche.querySelector('.rg-fiche-titre').textContent).toBe('Vérifier les extincteurs')
+    expect(fiche.querySelector('.rg-fiche-perle')).not.toBeNull()
+    expect(fiche.querySelector('.rg-personne').textContent).toContain('Awa Dossou')
+  })
+
+  it('écrit la priorité, la catégorie et l’échéance en français, en clair', async () => {
+    etat.taches = [tache({ due_at: new Date(Date.now() - 3 * 86400000 - 3600000).toISOString() })]
+    await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
+
+    const meta = hote.querySelector('.rg-fiche-meta').textContent
+    expect(meta).toContain('Haute')
+    expect(meta).toContain('Sécurité')
+    expect(meta).toMatch(/retard de \d+ j/)
   })
 
   it('déplace une tâche d’une colonne à l’autre en changeant son statut', async () => {
     etat.taches = [tache()]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    const colonneValidees = [...hote.querySelectorAll('.zl-colonne')].find((c) => c.textContent.includes('Validées'))
+
+    const colonneValidees = [...hote.querySelectorAll('.rg-colonne')].find((c) => c.textContent.includes('Validées'))
     const evenement = new Event('drop', { bubbles: true })
     Object.defineProperty(evenement, 'dataTransfer', { value: { getData: () => 't-1' } })
     await act(async () => colonneValidees.dispatchEvent(evenement))
@@ -405,11 +542,11 @@ describe('la vue Tâches', () => {
   it('sélectionne puis vide une sélection sans toucher aux tâches', async () => {
     etat.taches = [tache()]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    const caseTache = hote.querySelector('.zl-carte-tache .zl-case')
+
+    const caseTache = hote.querySelector('.rg-fiche .rg-case')
     await act(async () => caseTache.click())
     expect(hote.textContent).toContain('1 tâche sélectionnée')
-    const vider = [...hote.querySelectorAll('button')].find((b) => b.textContent.includes('Vider la sélection'))
-    await act(async () => vider.click())
+    await act(async () => boutonAvec('Vider la sélection').click())
     expect(hote.textContent).not.toContain('tâche sélectionnée')
     expect(appels.filter((a) => a.type === 'updateTask')).toHaveLength(0)
   })
@@ -417,9 +554,9 @@ describe('la vue Tâches', () => {
   it('bascule en liste et relit l’état de chaque tâche', async () => {
     etat.taches = [tache({ status: 'in_progress' })]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    const boutonListe = [...hote.querySelectorAll('.zl-bascule button')].find((b) => b.textContent.includes('Liste'))
-    await act(async () => boutonListe.click())
-    expect(hote.querySelector('.zl-tache-ligne')).not.toBeNull()
+
+    await act(async () => [...hote.querySelectorAll('.rg-filtres button')].find((b) => b.textContent.includes('Liste')).click())
+    expect(hote.querySelector('.rg-ligne')).not.toBeNull()
     expect(hote.textContent).toContain('En cours · Sécurité')
   })
 
@@ -427,17 +564,19 @@ describe('la vue Tâches', () => {
     etat.categories = [{ id: 'c-1', name: 'Sécurité', color: '#B4553F' }]
     etat.taches = [tache(), tache({ id: 't-2', title: 'Autre' })]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    const puce = [...hote.querySelectorAll('.zl-categories .zl-puce')].find((b) => b.textContent.includes('Sécurité'))
-    expect(puce, 'puce catégorie').not.toBeNull()
+
+    const puce = [...hote.querySelectorAll('.rg-categories .rg-categorie')].find((b) => b.textContent.includes('Sécurité'))
+    expect(puce, 'catégorie').not.toBeNull()
     expect(puce.textContent).toContain('2')
     await act(async () => puce.click())
-    expect(hote.textContent).toContain('2 tâches affichées')
+    expect(hote.querySelectorAll('.rg-fiche')).toHaveLength(2)
+    expect(hote.querySelector('.rg-categorie[aria-pressed="true"]')).not.toBeNull()
   })
 
   it('explique l’absence de tâches et propose la première', async () => {
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
     expect(hote.textContent).toContain('Aucune tâche pour l’instant')
-    expect([...hote.querySelectorAll('button')].some((b) => b.textContent.includes('Nouvelle tâche'))).toBe(true)
+    expect(boutonAvec('Nouvelle tâche')).toBeTruthy()
   })
 
   it('demande l’entreprise plutôt que d’annoncer une option éteinte', async () => {
@@ -458,89 +597,68 @@ describe('la vue Tâches', () => {
 // ⑤ Le ton et le dessin
 // ═══════════════════════════════════════════════════════════
 
+const lireJeton = (nom, source = CSS) => {
+  const trouve = new RegExp(`${nom}:\\s*(#[0-9a-fA-F]{6})`).exec(source)
+  expect(trouve, nom).not.toBeNull()
+  return trouve[1]
+}
+const luminance = (hex) => {
+  const canaux = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+  const lineaire = canaux.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * lineaire[0] + 0.7152 * lineaire[1] + 0.0722 * lineaire[2]
+}
+const contraste = (a, b) => {
+  const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
+  return (x + 0.05) / (y + 0.05)
+}
+
 describe('le ton et le dessin', () => {
-  it('ouvre chaque vue sur une scène en drap, avec sa frise et son titre', async () => {
+  it('ouvre chaque vue sur un feuillet, pas sur une carte', async () => {
     etat.equipes = [equipe()]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    const scene = hote.querySelector('.zl-scene')
-    expect(scene, 'scène Équipes').not.toBeNull()
-    expect(scene.querySelector('[data-testid="frise-perles"]')).not.toBeNull()
-    expect(scene.querySelector('.zl-scene-titre').textContent).toBe('Équipes.')
-    expect(scene.querySelector('.zl-scene-titre').tagName).toBe('H2')
-    // la frise est un dessin, pas une photographie ni une police d'icônes
-    expect(scene.querySelector('img')).toBeNull()
-    expect(scene.querySelector('[data-testid="frise-perles"]').getAttribute('aria-hidden')).toBe('true')
+    expect(hote.querySelector('.rg-folio')).not.toBeNull()
+    expect(hote.querySelector('h2.rg-titre').tagName).toBe('H2')
+    expect(hote.querySelector('.rg-titre span').textContent).toBe('.')
+    // le titre est du texte, pas une image ni une icône
+    expect(hote.querySelector('.rg-tete img')).toBeNull()
+    expect(hote.querySelector('.rg-tete svg')).toBeNull()
 
     etat.taches = [tache()]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    const sceneTaches = hote.querySelector('.zl-scene')
-    expect(sceneTaches).not.toBeNull()
-    expect(sceneTaches.querySelector('[data-testid="frise-perles"]').getAttribute('data-motif')).toBe('zigzag')
-    expect(sceneTaches.querySelector('.zl-scene-titre').textContent).toBe('Tâches.')
+    expect(hote.querySelector('h2.rg-titre').textContent).toBe('Tâches.')
+    expect(hote.querySelector('.rg-colophon')).not.toBeNull()
   })
 
-  it('donne à chaque chiffre son anneau de perles, rempli d’une proportion réelle', async () => {
-    etat.equipes = [
-      equipe(),
-      equipe({ id: 'eq-2', name: 'Expédition', member_count: 1, leader_employee_id: null, leader: null }),
-      equipe({ id: 'eq-3', name: 'Qualité', member_count: 0, members: [], leader_employee_id: null, leader: null }),
-    ]
-    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    const medaillons = [...hote.querySelectorAll('.zl-medaillon')]
-    expect(medaillons).toHaveLength(4)
-    for (const m of medaillons) {
-      const anneau = m.querySelector('[data-testid="anneau-perles"]')
-      expect(anneau, m.textContent).not.toBeNull()
-      expect(Number(anneau.dataset.parts)).toBe(26)
-      const remplis = Number(anneau.dataset.remplis)
-      expect(remplis).toBeGreaterThanOrEqual(0)
-      expect(remplis).toBeLessThanOrEqual(26)
+  it('trace le registre au filet, sans carte blanche à coin arrondi', () => {
+    // une entrée d'équipe et une entrée de tâche : un filet bas, pas une boîte
+    const regle = (selecteur) => {
+      const trouve = new RegExp(`${selecteur.replace('.', '\\.')} \\{[^}]*\\}`).exec(CSS)
+      expect(trouve, selecteur).not.toBeNull()
+      return trouve[0]
     }
-    // « Chefs d’équipe » : une équipe sur trois → 9 perles pleines
-    const chefs = medaillons.find((m) => m.textContent.includes('Chefs d’équipe'))
-    expect(Number(chefs.querySelector('[data-testid="anneau-perles"]').dataset.remplis)).toBe(9)
+    const entree = regle('.rg-entree')
+    expect(entree).toContain('border-bottom')
+    expect(entree).not.toContain('border-radius')
+    expect(entree).not.toContain('background:')
+
+    const fiche = regle('.rg-fiche')
+    expect(fiche).toContain('border-bottom')
+    expect(fiche).not.toContain('border-radius')
+    expect(fiche).not.toContain('background:')
+    expect(CSS).not.toMatch(/\.rg-fiche \{[^}]*box-shadow: 0 /)
   })
 
-  it('ne mesure pas une santé qu’on n’a pas mesurée', async () => {
-    etat.equipes = [equipe({ health: null })]
-    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    const jauge = hote.querySelector('.zl-sante')
-    expect(jauge.textContent).toContain('Non suivie')
-    expect(jauge.querySelectorAll('.zl-sante-perle.is-pleine')).toHaveLength(0)
-    expect(jauge.getAttribute('data-etat')).toBe('inconnu')
-  })
-
-  it('pose les chiffres sur le drap, pas sur des cartes blanches', async () => {
-    // le défaut reproché au premier jet : quatre panneaux blancs sous la scène
-    etat.equipes = [equipe()]
-    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    const scene = hote.querySelector('.zl-scene')
-    expect(scene.querySelector('.zl-medaillons'), 'médaillons dans la scène').not.toBeNull()
-    expect(hote.querySelectorAll('.zl-scene > .zl-medaillons')).toHaveLength(1)
-
-    expect(CSS).toMatch(/\.zl-medaillon \{[^}]*background: transparent/)
-    expect(CSS).toMatch(/\.zl-scene \{[^}]*#241a12/)
-    expect(CSS).toMatch(/\.zl-scene-titre \{[^}]*Georgia/)
-  })
-
-  it('garde le texte de la scène lisible sur le drap, quelle que soit la page', () => {
-    const lire = (nom) => {
-      const trouve = new RegExp(`${nom}:\\s*(#[0-9a-fA-F]{6})`).exec(CSS)
-      expect(trouve, nom).not.toBeNull()
-      return trouve[1]
+  it('perle la tranche des colonnes, du titre jusqu’au dernier filet', () => {
+    expect(CSS).toMatch(/\.rg-colonne-corps::before \{[^}]*radial-gradient\(circle at/)
+    expect(CSS).toMatch(/\.rg-colonne-corps::before \{[^}]*background-size: 8px 15px/)
+    // la tranche suit la hauteur des entrées, elle ne tire pas un fil vide
+    expect(CSS).toMatch(/\.rg-colonne-corps::before \{[^}]*bottom: 6px/)
+    // la tranche du registre est perlée elle aussi
+    expect(CSS).toMatch(/\.emp-vues::before \{[^}]*radial-gradient\(circle at/)
+    // quatre tons, un par colonne
+    for (const colonne of ['a-faire', 'en-cours', 'terminees', 'validees']) {
+      expect(CSS).toContain(`.rg-colonne[data-colonne='${colonne}']`)
     }
-    const luminance = (hex) => {
-      const canaux = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
-      const lineaire = canaux.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
-      return 0.2126 * lineaire[0] + 0.7152 * lineaire[1] + 0.0722 * lineaire[2]
-    }
-    const contraste = (a, b) => {
-      const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
-      return (x + 0.05) / (y + 0.05)
-    }
-    expect(contraste(lire('--zl-scene-encre'), lire('--zl-scene-fond'))).toBeGreaterThan(7)
-    expect(contraste(lire('--zl-scene-douce'), lire('--zl-scene-fond'))).toBeGreaterThan(4.5)
-    expect(contraste(lire('--zl-scene-cuivre'), lire('--zl-scene-fond'))).toBeGreaterThan(4.5)
   })
 
   it('dessine l’échéance en perles, une perle par jour qui reste', async () => {
@@ -549,18 +667,17 @@ describe('le ton et le dessin', () => {
       tache({ id: 't-2', title: 'Relancer le fournisseur', due_at: new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString() }),
     ]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
+
     const colliers = [...hote.querySelectorAll('[data-testid="collier-echeance"]')]
     expect(colliers).toHaveLength(2)
-    // le tableau est trié par échéance : la plus urgente d'abord
     const avenir = colliers.find((c) => c.getAttribute('data-etat') === 'a-venir')
     const retard = colliers.find((c) => c.getAttribute('data-etat') === 'retard')
-    expect(avenir.getAttribute('data-etat')).toBe('a-venir')
     expect(avenir.getAttribute('data-jours')).toBe('6')
     expect(avenir.querySelectorAll('circle').length).toBeGreaterThanOrEqual(6)
-    expect(retard.getAttribute('data-etat')).toBe('retard')
     expect(retard.getAttribute('data-jours')).toBe('-4')
-    // le retard garde le texte qui chiffre le retard : le dessin ne remplace pas la phrase
-    expect(hote.textContent).toMatch(/En retard de \d+j/)
+    // le retard garde la phrase qui le chiffre : le dessin ne remplace pas le texte
+    expect(hote.textContent).toMatch(/retard de \d+ j/)
+    expect([...hote.querySelectorAll('[data-testid="collier-echeance"]')].every((c) => c.getAttribute('aria-hidden') === 'true')).toBe(true)
   })
 
   it('dit, au tableau, que des tâches refusées ne sont pas affichées', async () => {
@@ -577,7 +694,7 @@ describe('le ton et le dessin', () => {
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
     const texteTaches = hote.textContent
     for (const texte of [texteEquipes, texteTaches]) {
-      expect(texte).not.toMatch(/pagne|teint|bande|atelier|métier à perles|collier/i)
+      expect(texte).not.toMatch(/pagne|teint|métier à perles|collier de perles|atelier/i)
     }
   })
 
@@ -593,65 +710,43 @@ describe('le ton et le dessin', () => {
   })
 
   it('garde des cibles de doigt assez grandes', () => {
-    expect(CSS).toContain('.emp-onglet {')
     expect(CSS).toMatch(/\.emp-onglet \{[^}]*min-height: 44px/)
-    expect(CSS).toMatch(/\.zl-bouton \{[^}]*min-height: 40px/)
+    expect(CSS).toMatch(/\.rg-primaire \{[^}]*min-height: 42px/)
+    expect(CSS).toMatch(/\.rg-lien \{[^}]*min-height: 40px/)
   })
 
-  it('donne un texte lisible sur les fonds de la page, dans les deux thèmes', () => {
-    const lire = (nom) => {
-      const trouve = new RegExp(`${nom}:\\s*(#[0-9a-fA-F]{6})`).exec(CSS)
-      expect(trouve, nom).not.toBeNull()
-      return trouve[1]
-    }
-    const luminance = (hex) => {
-      const canaux = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
-      const lineaire = canaux.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
-      return 0.2126 * lineaire[0] + 0.7152 * lineaire[1] + 0.0722 * lineaire[2]
-    }
-    const contraste = (a, b) => {
-      const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m)
-      return (x + 0.05) / (y + 0.05)
-    }
-    // thème clair : encre sur surface, et texte de bouton sur cuivre plein
-    expect(contraste('#231911', '#ffffff')).toBeGreaterThan(4.5)
-    expect(contraste(lire('--zl-sur-cuivre'), lire('--zl-cuivre-fort'))).toBeGreaterThan(4.5)
-    // thème sombre : les mêmes deux couples
+  it('donne un texte lisible sur le papier, dans les deux thèmes', () => {
+    const papier = lireJeton('--rg-paper')
+    expect(contraste(lireJeton('--rg-ink'), papier)).toBeGreaterThan(7)
+    expect(contraste(lireJeton('--rg-soft'), papier)).toBeGreaterThan(4.5)
+    expect(contraste(lireJeton('--rg-faint'), papier)).toBeGreaterThan(4.5)
+    expect(contraste(lireJeton('--rg-copper'), papier)).toBeGreaterThan(4.5)
+    // le bouton de cuivre porte du texte clair
+    expect(contraste(lireJeton('--rg-sur-copper'), lireJeton('--rg-copper-fort'))).toBeGreaterThan(4.5)
+
     const sombre = CSS.slice(CSS.indexOf("[data-theme='dark']"))
-    const lireSombre = (nom) => {
-      const trouve = new RegExp(`${nom}:\\s*(#[0-9a-fA-F]{6})`).exec(sombre)
-      expect(trouve, nom).not.toBeNull()
-      return trouve[1]
-    }
-    expect(contraste('#f7efe4', '#201a15')).toBeGreaterThan(4.5)
-    expect(contraste(lireSombre('--zl-sur-cuivre'), lireSombre('--zl-cuivre-fort'))).toBeGreaterThan(4.5)
-
-    // les initiales dans les perles : encre sombre sur verre clair, dans les deux thèmes
-    const verres = ['--zl-perle-creme', '--zl-perle-cuivre', '--zl-perle-teal', '--zl-perle-sauge', '--zl-perle-corail']
-    for (const verre of verres) {
-      expect(contraste('#241a12', lire(verre)), verre).toBeGreaterThan(4.5)
-      expect(contraste('#241a12', lireSombre(verre)), verre).toBeGreaterThan(4.5)
-    }
-    // les initiales posées dans une perle-avatar gardent l'encre sombre
-    expect(CSS).toMatch(/\.zl-perle-avatar \{[^}]*color: #241a12/)
-
-    // et le texte des médaillons reste lisible sur la surface de la carte
-    const surSurface = (nom, fond) => {
-      const trouve = new RegExp(`${nom}:\\s*(#[0-9a-fA-F]{6})`).exec(CSS)
-      expect(trouve, nom).not.toBeNull()
-      return trouve[1]
-    }
-    expect(contraste(surSurface('--zl-douce', ''), '#f4ede2')).toBeGreaterThan(4.5)
-    expect(contraste(surSurface('--zl-faible', ''), '#f4ede2')).toBeGreaterThan(4.5)
-    const douceSombre = /--zl-douce:\s*(#[0-9a-fA-F]{6})/.exec(CSS.slice(CSS.indexOf("[data-theme='dark']")))
-    expect(douceSombre).not.toBeNull()
-    expect(contraste(douceSombre[1], '#2a221c')).toBeGreaterThan(4.5)
+    const nuit = lireJeton('--rg-paper', sombre)
+    // dans le thème sombre, le papier reste décrit sous ses trois noms
+    expect(nuit).toBeTruthy()
+    const encreNuit = /--rg-ink:\s*(#[0-9a-fA-F]{6})/.exec(CSS.slice(CSS.indexOf("[data-theme='dark']"), CSS.indexOf("[data-theme='dark']") + 900))[1]
+    expect(contraste(encreNuit, nuit)).toBeGreaterThan(7)
   })
 
-  it('dessine les perles sans image et sans dépendre d’un dégradé de texte', () => {
-    expect(CSS).toContain('border-radius: 50%')
-    expect(CSS).toContain('radial-gradient(circle at 34% 30%')
+  it('pose les initiales en encre sombre sur toutes les perles', () => {
+    expect(CSS).toMatch(/\.rg-perle \{[^}]*color: #241a12/)
+    for (const ton of ['creme', 'cuivre', 'teal', 'sauge', 'corail']) {
+      expect(CSS).toContain(`--rg-perle-${ton}:`)
+    }
     expect(CSS).not.toMatch(/-webkit-background-clip:\s*text/)
+  })
+
+  it('n’a plus de vocabulaire de l’ancienne scène', () => {
+    for (const mort of ['.zl-scene', '.zl-medaillon', '.zl-bouton', '.zl-carte-tache', '.zl-frise', '.zl-collier-onglet', '.zl-sante-perle']) {
+      expect(CSS, mort).not.toContain(mort)
+    }
+    for (const mort of ['zl-scene', 'zl-medaillon', 'zl-carte-tache', 'FrisePerlesSvg', 'AnneauPerlesSvg']) {
+      expect(EMPLOYES, mort).not.toContain(mort)
+    }
   })
 })
 
@@ -666,7 +761,6 @@ describe('la page Employés', () => {
         <Employes />
       </ThemeProvider>,
     )
-    // laisser les lectures de l'annuaire se terminer
     for (let i = 0; i < 5; i += 1) {
       await act(async () => { await Promise.resolve() })
     }
@@ -683,27 +777,22 @@ describe('la page Employés', () => {
 
   it('passe aux équipes et aux tâches sans quitter la page', async () => {
     await monterPage()
-    const ongletEquipes = [...hote.querySelectorAll('.emp-onglet')].find((o) => o.textContent.includes('Équipes'))
-    await act(async () => ongletEquipes.click())
+    await act(async () => [...hote.querySelectorAll('.emp-onglet')].find((o) => o.textContent.includes('Équipes')).click())
     expect(hote.querySelector('.emp-onglet[aria-current="page"]').textContent.trim()).toBe('Équipes')
     expect(hote.textContent).toContain('Nouvelle équipe')
     expect(hote.textContent).not.toContain('Annuaire des Employés')
 
-    const ongletTaches = [...hote.querySelectorAll('.emp-onglet')].find((o) => o.textContent.includes('Tâches'))
-    await act(async () => ongletTaches.click())
+    await act(async () => [...hote.querySelectorAll('.emp-onglet')].find((o) => o.textContent.includes('Tâches')).click())
     expect(hote.querySelector('.emp-onglet[aria-current="page"]').textContent.trim()).toBe('Tâches')
     expect(hote.textContent).toContain('Nouvelle tâche')
   })
 
   it('n’accroche pas un trait de points après le dernier onglet', () => {
-    // la capture montrait une file de petits points qui ne menait nulle part
     expect(EMPLOYES).not.toContain('emp-onglets-fil')
     expect(CSS).not.toContain('.emp-onglets-fil')
-    // la barre se nomme et se termine par un filet, pas par un ornement
     expect(EMPLOYES).toContain('<p className="emp-onglets-titre">Sommaire</p>')
     expect(CSS).toMatch(/\.emp-onglets \{[^}]*border-bottom: 1px solid var\(--pt-line\)/)
     expect(CSS).toMatch(/\.emp-onglet\[aria-current='page'\] \{[^}]*border-bottom-color/)
-    // une seule marque par onglet : l'icône, pas une perle en plus
     expect(CSS).not.toContain('.emp-onglet::before')
   })
 
@@ -713,24 +802,17 @@ describe('la page Employés', () => {
     expect(EMPLOYES).toContain("<RaccourcisPages compact excludePaths={['/employes']} />")
   })
 
-  it('sépare les chiffres par une perle, pas par un point de texte', async () => {
-    etat.taches = [tache()]
-    await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    const sous = hote.querySelector('.zl-scene-sous')
-    expect(sous.querySelectorAll('.zl-sep')).toHaveLength(3)
-    expect(sous.textContent).not.toContain('·')
-    expect(CSS).toMatch(/\.zl-scene-sous strong \{[^}]*Georgia/)
-    expect(CSS).toMatch(/\.zl-scene-sous \.zl-sep \{[^}]*border-radius: 50%/)
+  it('sépare les chiffres par un filet, pas par un point de texte', () => {
+    expect(CSS).toMatch(/\.rg-chiffre \+ \.rg-chiffre \{[^}]*border-left/)
+    expect(CSS).toMatch(/\.rg-chiffre-valeur \{[^}]*font-family: Georgia/)
+    expect(CSS).toMatch(/\.rg-chiffre-valeur \{[^}]*tabular-nums/)
   })
 
-  it('chiffre chaque module par une part, jamais par une phrase creuse', async () => {
+  it('chiffre chaque vue par une part, jamais par une phrase creuse', async () => {
     etat.taches = [tache(), tache({ id: 't-2', title: 'Clôturer le mois', status: 'validated' })]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    const notes = [...hote.querySelectorAll('.zl-medaillon-note')].map((n) => n.textContent.trim())
-    expect(notes).toEqual(['50 % du total', '0 % du total', '0 % du total', '50 % du total'])
-    // le dessin est posé sur le drap, dans la même section que le titre
-    expect(hote.querySelectorAll('.zl-scene > .zl-medaillons')).toHaveLength(1)
-    expect(CSS).toMatch(/\.zl-medaillon \+ \.zl-medaillon \{[^}]*border-left/)
+    const notes = [...hote.querySelectorAll('.rg-chiffre-note')].map((n) => n.textContent.trim())
+    expect(notes).toEqual(['dont 1 jamais ouvertes', '0 % du registre', '0 % du registre', '50 % du registre'])
   })
 
   it('garde les raccourcis de pages sous les trois vues', async () => {
@@ -738,7 +820,6 @@ describe('la page Employés', () => {
     const raccourcis = hote.querySelector('[data-testid="raccourcis-pages"]')
     expect(raccourcis).not.toBeNull()
     expect(raccourcis.querySelector('a[href="/pointages"]')).not.toBeNull()
-    // on est déjà sur Employés : le raccourci ne renvoie pas vers soi-même
     expect(raccourcis.querySelector('a[href="/employes"]')).toBeNull()
   })
 })

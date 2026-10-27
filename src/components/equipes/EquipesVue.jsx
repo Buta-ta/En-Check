@@ -1,25 +1,26 @@
 // ════════════════════════════════════════════════════════════════════
-// 👥 VUE « ÉQUIPES » — page Employés, motif perles zoulou
+// 👥 VUE « ÉQUIPES » — page Employés, le registre perlé
 //
-// Trois idées tiennent cet écran :
-//   1. une équipe est un FIL : un chef, des membres enfilés dans
-//      l'ordre où ils ont rejoint, un point de couleur pour la
-//      reconnaître ;
-//   2. l'état se lit du premier coup d'œil — cinq perles de santé,
-//      pas un pourcentage à interpréter ;
-//   3. ce qui demande une décision (alertes, personnes sans équipe,
-//      regroupements possibles) est posé en haut, dans un collier
-//      qu'on déplie.
+// L'écran est un registre, pas une planche de cartes :
 //
-// Les fenêtres (créer, membres, leader, supprimer) sont partagées
-// avec le reste de la page : voir EquipesModales.jsx.
+//   1. un feuillet — folio, titre serif, colophon de quatre chiffres ;
+//   2. le collier de l'entreprise — une perle par personne, groupée
+//      par équipe, la perle du chef cerclée, les personnes à
+//      rattacher en creux sur un fil pointillé ;
+//   3. le registre — une entrée par équipe : son rang, son nom, sa
+//      description au filet de couleur, ses membres, sa santé en
+//      cinq perles, ses actions en mots.
+//
+// Aucune carte : ce qui sépare, c'est un filet ; ce qui compte, c'est
+// une perle. Les fenêtres (créer, membres, chef, supprimer) sont
+// partagées : voir EquipesModales.jsx.
 // ════════════════════════════════════════════════════════════════════
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AlertTriangle, Check, Crown, HelpCircle, History,
-  LayoutGrid, Lightbulb, List, Loader2, MoreVertical, Plus, RefreshCw,
-  Search, Sparkles, TrendingUp, UserCog, UserMinus, UserPlus, Users, X,
+  ChevronDown, HelpCircle, History,
+  Loader2, MoreVertical, Plus, RefreshCw,
+  Search, Sparkles, UserCog, UserMinus, UserPlus, Users, X,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -34,15 +35,12 @@ import {
 import {
   TeamModal, MembersModal, DeleteModal, HistoryModal, ShortcutsModal,
 } from './EquipesModales'
-import {
-  AnneauPerlesSvg, FilMembresSvg, FrisePerlesSvg, LosangePerlesSvg,
-  RosacePerlesSvg,
-} from '../zoulou/PerlesZoulouSvg'
+import { RosacePerlesSvg } from '../zoulou/PerlesZoulouSvg'
 import '../zoulou/zoulou.css'
 
 const FILTRES = [
   { key: 'all', label: 'Toutes' },
-  { key: 'with_leader', label: 'Avec chef d’équipe' },
+  { key: 'with_leader', label: 'Avec chef' },
   { key: 'without_leader', label: 'Sans chef' },
   { key: 'empty', label: 'Vides' },
   { key: 'critical', label: 'À surveiller' },
@@ -68,95 +66,208 @@ const initiales = (personne) =>
 const nomComplet = (personne) =>
   [personne?.first_name, personne?.last_name].filter(Boolean).join(' ') || 'Sans nom'
 
-// Les initiales d'une équipe, pour le médaillon : deux mots → deux
-// lettres ; un seul mot → ses deux premières lettres. Jamais vide.
-const cleEquipe = (nom = '') => {
-  const mots = nom.trim().split(/\s+/).filter(Boolean)
-  if (mots.length === 0) return '—'
-  if (mots.length === 1) return mots[0].slice(0, 2).toUpperCase()
-  return `${mots[0][0]}${mots[1][0]}`.toUpperCase()
+// Le ton d'une perle pour une équipe : sa couleur si elle en a une
+// lisible, sinon le cuivre de la maison.
+const TONS_PERLE = ['cuivre', 'teal', 'sauge', 'corail', 'creme']
+const tonEquipe = (equipe, rang) => {
+  const couleur = equipe?.color
+  if (couleur === '#4F9389' || couleur === '#2B6A5F') return 'teal'
+  if (couleur === '#8BA268' || couleur === '#56652A') return 'sauge'
+  if (couleur === '#C8785C' || couleur === '#A2452E') return 'corail'
+  if (couleur === '#E0C9A0') return 'creme'
+  return TONS_PERLE[rang % TONS_PERLE.length]
 }
 
-// Une proportion lisible par un anneau : on ne remplit jamais un
-// cercle sans savoir sur quoi on le remplit.
-const part = (morceau, total, perles = 22) => {
-  if (!total || total <= 0) return 0
-  return Math.round((Math.max(0, morceau) / total) * perles)
-}
-
-function PerleAvatar({ personne, chef = false }) {
+// ── le folio : la marque et le nom du registre ─────────────────────
+function Folio({ droite }) {
   return (
-    <span className={`zl-perle-avatar${chef ? ' is-chef' : ''}`} title={nomComplet(personne)}>
-      {personne?.photo_url
-        ? <img src={personne.photo_url} alt="" />
-        : initiales(personne)}
-    </span>
+    <div className="rg-folio">
+      <p className="rg-marque"><strong>En-Check</strong> · Gestion du personnel</p>
+      <p className="rg-folio-droite">{droite}</p>
+    </div>
   )
 }
 
-function SanteEquipe({ equipe }) {
+// ── le colophon : quatre chiffres, un filet entre chacun ───────────
+function Colophon({ chiffres }) {
+  return (
+    <dl className="rg-colophon">
+      {chiffres.map(({ valeur, libelle, note, ton }) => (
+        <div className="rg-chiffre" key={libelle} data-ton={ton || 'normal'}>
+          <dd className="rg-chiffre-valeur">{valeur}</dd>
+          <dt className="rg-chiffre-libelle">{libelle}</dt>
+          <dd className="rg-chiffre-note">{note}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+// ── le collier de l'entreprise : une perle par personne ────────────
+function CollierEntreprise({ equipes, orphelins }) {
+  return (
+    <section className="rg-bloc" aria-label="Tout l’effectif en une parure">
+      <header className="rg-bloc-tete">
+        <h3 className="rg-bloc-titre">Le collier de l’entreprise</h3>
+        <p className="rg-bloc-note">
+          une perle par personne · la perle du chef est cerclée · les creuses sont à rattacher
+        </p>
+      </header>
+
+      <ul className="rg-collier">
+        {equipes.map((equipe, rang) => {
+          const membres = equipe.members || []
+          const ton = tonEquipe(equipe, rang)
+          return (
+            <li className="rg-collier-groupe" key={equipe.id}>
+              <span className="rg-collier-perles" style={{ '--rg-fil': `var(--rg-perle-${ton})` }}>
+                {membres.slice(0, 10).map((m) => {
+                  const personne = m.employee || m
+                  const chef = (personne?.id || m.employee_id) === equipe.leader_employee_id
+                  return (
+                    <span
+                      key={personne?.id || m.id || m.employee_id}
+                      className="rg-perle"
+                      data-ton={ton}
+                      data-chef={chef ? 'oui' : 'non'}
+                      title={`${nomComplet(personne)}${chef ? ' — chef d’équipe' : ''}`}
+                    >
+                      {initiales(personne)}
+                    </span>
+                  )
+                })}
+                {membres.length > 10 && <span className="rg-collier-note">+{membres.length - 10}</span>}
+                {membres.length === 0 && <span className="rg-collier-note">aucun membre</span>}
+              </span>
+              <span className="rg-collier-nom">{equipe.name}</span>
+              <span className="rg-collier-note">
+                {equipe.member_count ?? membres.length} membre{(equipe.member_count ?? membres.length) > 1 ? 's' : ''}
+                {equipe.leader_employee_id ? '' : ' · sans chef'}
+              </span>
+            </li>
+          )
+        })}
+
+        {orphelins.length > 0 && (
+          <li className="rg-collier-groupe" data-orphelin="oui">
+            <span className="rg-collier-perles" style={{ '--rg-fil': 'var(--rg-corail)' }}>
+              {orphelins.slice(0, 10).map((personne) => (
+                <span
+                  key={personne.id}
+                  className="rg-perle"
+                  data-creuse="oui"
+                  title={`${nomComplet(personne)} — à rattacher`}
+                >
+                  {initiales(personne)}
+                </span>
+              ))}
+              {orphelins.length > 10 && <span className="rg-collier-note">+{orphelins.length - 10}</span>}
+            </span>
+            <span className="rg-collier-nom">Sans équipe</span>
+            <span className="rg-collier-note">à rattacher</span>
+          </li>
+        )}
+      </ul>
+    </section>
+  )
+}
+
+// ── une entrée du registre ─────────────────────────────────────────
+function EntreeEquipe({ equipe, rang, onMembres, onModifier, onRetirer, onChangerChef }) {
+  const [menu, setMenu] = useState(false)
+  const membres = equipe?.members || []
+  const effectif = equipe.member_count ?? membres.length
   const score = Number(equipe?.health?.health_score)
   const suivi = Number.isFinite(score)
   const etat = ETAT_SANTE[equipe?.health?.status] || ETAT_SANTE.healthy
-  const note = suivi ? Math.round(score) : null
-  //  cinq perles : chacune vaut 20 points. Sans mesure, aucune perle
-  //  n'est remplie et l'étiquette le dit — on ne fait pas semblant.
-  const perlesPleines = note === null ? 0 : Math.max(1, Math.ceil(note / 20))
-  const libelle = note === null ? 'Non suivie' : `${note}%`
-  return (
-    <span
-      className="zl-sante"
-      data-etat={note === null ? 'inconnu' : etat.ton}
-      title={note === null ? 'Aucune mesure de santé pour cette équipe' : `Santé de l’équipe : ${etat.libelle}`}
-    >
-      <span className="zl-sante-perles" aria-hidden="true">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <span key={i} className={`zl-sante-perle${i < perlesPleines ? ' is-pleine' : ''}`} />
-        ))}
-      </span>
-      {libelle}
-    </span>
-  )
-}
-
-function CarteEquipe({ equipe, totalMembres, onMembres, onModifier, onRetirer, onChangerChef }) {
-  const [menu, setMenu] = useState(false)
-  const membres = equipe?.members || []
-  const visibles = membres.slice(0, 6)
-  const effectif = equipe.member_count ?? membres.length
-  //  l'anneau dit la part de CETTE équipe dans l'effectif en équipe :
-  //  une échelle réelle, pas un remplissage décoratif
-  const anneau = part(effectif, totalMembres, 22)
-  const partEffectif = totalMembres > 0 ? Math.round((effectif / totalMembres) * 100) : 0
+  const perles = suivi ? Math.min(5, Math.max(0, Math.ceil(Math.round(score) / 20))) : 0
 
   return (
-    <article className="zl-carte">
-      <RosacePerlesSvg className="zl-carte-filigrane" taille={104} ton="teal" />
+    <li className="rg-entree">
+      <span className="rg-entree-index">{String(rang + 1).padStart(2, '0')}</span>
 
-      <div className="zl-carte-tete">
-        <h4 className="zl-carte-titre">
-          <span className="zl-pastille" style={{ background: equipe.color || 'var(--zl-perle-cuivre)' }} aria-hidden="true" />
-          <span>{equipe.name}</span>
+      <div className="rg-cellule">
+        <h4 className="rg-entree-titre">
+          <button type="button" onClick={() => onModifier(equipe)}>{equipe.name}</button>
         </h4>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <SanteEquipe equipe={equipe} />
-          <button
-            type="button"
-            className="zl-menage"
-            aria-label={`Actions pour ${equipe.name}`}
-            aria-expanded={menu}
-            onClick={() => setMenu((v) => !v)}
-          >
-            <MoreVertical size={14} />
-          </button>
-        </div>
+        <p className="rg-entree-note">
+          {equipe.description || 'Sans description — utile pour situer l’équipe.'}
+        </p>
+        <span
+          className="rg-entree-filet"
+          style={{ '--rg-trait-equipe': `var(--rg-perle-${tonEquipe(equipe, rang)})` }}
+          aria-hidden="true"
+        />
+      </div>
+
+      <div className="rg-cellule rg-cellule-membres">
+        <span className="rg-etiquette-champ">
+          Membres <span style={{ letterSpacing: 0, textTransform: 'none', fontWeight: 600 }}>· {effectif}</span>
+        </span>
+        <span className="rg-membres">
+          {membres.slice(0, 6).map((m) => {
+            const personne = m.employee || m
+            const chef = (personne?.id || m.employee_id) === equipe.leader_employee_id
+            return (
+              <span
+                className="rg-membre"
+                key={personne?.id || m.id || m.employee_id}
+                data-chef={chef ? 'oui' : 'non'}
+                title={nomComplet(personne)}
+              >
+                {personne?.photo_url ? <img src={personne.photo_url} alt="" /> : initiales(personne)}
+              </span>
+            )
+          })}
+          {membres.length > 6 && <span className="rg-membres-note">+{membres.length - 6}</span>}
+          {membres.length === 0 && <span className="rg-membres-note">aucun membre</span>}
+          <span className="rg-membres-note" data-ton={equipe.leader_employee_id ? 'normal' : 'alerte'}>
+            {equipe.leader ? `chef : ${nomComplet(equipe.leader)}` : 'sans chef'}
+          </span>
+        </span>
+      </div>
+
+      <div className="rg-cellule rg-cellule-sante">
+        <span className="rg-etiquette-champ">Santé</span>
+        <span
+          className="rg-sante"
+          data-etat={suivi ? etat.ton : 'inconnu'}
+          title={suivi ? `Santé de l’équipe : ${etat.libelle}` : 'Aucune mesure de santé pour cette équipe'}
+        >
+          <span className="rg-sante-perles" aria-hidden="true">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <span key={i} className={`rg-sante-perle${i < perles ? ' is-pleine' : ''}`} />
+            ))}
+          </span>
+          <span className="rg-sante-valeur">
+            {suivi ? <>{Math.round(score)}<span> %</span></> : 'Non suivie'}
+          </span>
+        </span>
+      </div>
+
+      <div className="rg-entree-actions">
+        <button type="button" className="rg-lien" onClick={() => onMembres(equipe)}>
+          <UserPlus size={12} /> Membres
+        </button>
+        <button type="button" className="rg-lien" onClick={() => onModifier(equipe)}>
+          <UserCog size={12} /> Modifier
+        </button>
+        <button
+          type="button"
+          className="rg-lien"
+          aria-label={`Actions pour ${equipe.name}`}
+          aria-expanded={menu}
+          onClick={() => setMenu((v) => !v)}
+        >
+          <MoreVertical size={14} />
+        </button>
         {menu && (
-          <div className="zl-menu">
+          <div className="rg-menu">
             <button type="button" onClick={() => { setMenu(false); onModifier(equipe) }}>
               <UserCog size={13} /> Modifier l’équipe
             </button>
             <button type="button" onClick={() => { setMenu(false); onChangerChef(equipe) }}>
-              <Crown size={13} /> Changer de chef
+              <Users size={13} /> Changer de chef
             </button>
             <button type="button" className="is-danger" onClick={() => { setMenu(false); onRetirer(equipe) }}>
               <UserMinus size={13} /> Supprimer
@@ -164,219 +275,145 @@ function CarteEquipe({ equipe, totalMembres, onMembres, onModifier, onRetirer, o
           </div>
         )}
       </div>
-
-      <div className="zl-carte-medaillon">
-        <span className="zl-carte-medaillon-rond">
-          <AnneauPerlesSvg taille={56} parts={22} remplis={anneau} ton="teal" />
-          <span className="zl-carte-medaillon-cle">{cleEquipe(equipe.name)}</span>
-        </span>
-        <div className="zl-carte-medaillon-texte">
-          <p className="zl-carte-note">
-            {equipe.description || 'Aucune description — utile pour situer l’équipe.'}
-          </p>
-          <span className="zl-meta">
-            <Users size={12} />
-            <strong>{effectif}</strong> membre{effectif > 1 ? 's' : ''}
-            <span aria-hidden="true">·</span>
-            {partEffectif} % des personnes en équipe
-          </span>
-        </div>
-      </div>
-
-      <div className="zl-membres">
-        <FilMembresSvg className="zl-membres-fil" />
-        {visibles.map((m) => (
-          <PerleAvatar
-            key={m.id || m.employee?.id}
-            personne={m.employee}
-            chef={m.employee?.id === equipe.leader_employee_id}
-          />
-        ))}
-        {membres.length > visibles.length && (
-          <span className="zl-perle-plus">+{membres.length - visibles.length}</span>
-        )}
-        {membres.length === 0 && <span className="zl-compte">Aucun membre pour l’instant</span>}
-      </div>
-
-      <div className="zl-carte-pied">
-        <span className="zl-meta">
-          {equipe.leader ? (
-            <>
-              <PerleAvatar personne={equipe.leader} chef />
-              Chef : <strong>{nomComplet(equipe.leader)}</strong>
-            </>
-          ) : (
-            <>
-              <LosangePerlesSvg taille={16} ton="corail" />
-              Sans chef d’équipe
-            </>
-          )}
-        </span>
-        <div className="zl-carte-actions">
-          <button type="button" className="zl-mini" onClick={() => onMembres(equipe)}>
-            <UserPlus size={12} /> Membres
-          </button>
-          <button type="button" className="zl-mini" onClick={() => onModifier(equipe)}>
-            <UserCog size={12} /> Modifier
-          </button>
-        </div>
-      </div>
-    </article>
+    </li>
   )
 }
 
-function LigneEquipe({ equipe, onMembres, onModifier, onRetirer }) {
-  const membres = equipe?.members || []
-  const effectif = equipe.member_count ?? membres.length
-  return (
-    <div className="zl-ligne">
-      <div className="zl-ligne-principal">
-        <span className="zl-pastille" style={{ background: equipe.color || 'var(--zl-perle-cuivre)' }} aria-hidden="true" />
-        <div style={{ minWidth: 0 }}>
-          <p className="zl-ligne-nom">{equipe.name}</p>
-          <p className="zl-ligne-note">{equipe.description || 'Sans description'}</p>
-        </div>
-      </div>
-      <div className="zl-ligne-secondaire">
-        <div className="zl-membres">
-          <FilMembresSvg className="zl-membres-fil" />
-          {membres.slice(0, 4).map((m) => (
-            <PerleAvatar key={m.id || m.employee?.id} personne={m.employee} chef={m.employee?.id === equipe.leader_employee_id} />
-          ))}
-          {membres.length > 4 && <span className="zl-perle-plus">+{membres.length - 4}</span>}
-          {membres.length === 0 && <span className="zl-compte">Aucun membre</span>}
-          {membres.length > 0 && <span className="zl-compte" style={{ marginLeft: 12 }}>{effectif} au total</span>}
-        </div>
-        <SanteEquipe equipe={equipe} />
-      </div>
-      <div className="zl-carte-actions">
-        <button type="button" className="zl-mini" onClick={() => onMembres(equipe)}><UserPlus size={12} /> Membres</button>
-        <button type="button" className="zl-mini" onClick={() => onModifier(equipe)}><UserCog size={12} /> Modifier</button>
-        <button type="button" className="zl-mini" onClick={() => onRetirer(equipe)} aria-label={`Supprimer ${equipe.name}`}><X size={12} /></button>
-      </div>
-    </div>
-  )
-}
-
-function CollierEquipes({
-  alertes, orphelins, suggestions, besoins, santeGlobale,
+// ── le pied : ce qui demande une décision, dépliable ───────────────
+function PiedDecisions({
+  alertes, orphelins, suggestions, besoins, equipes,
   onAjouterOrphelin, onCreerSuggestion, chargement, predictions,
 }) {
+  const [ouvert, setOuvert] = useState(false)
   const [onglet, setOnglet] = useState('alertes')
 
   if (!predictions) {
     return (
-      <div className="zl-note-module">
-        <Sparkles size={15} />
-        <span>
-          Les analyses d’équipe (santé, alertes, regroupements) s’affichent quand
-          l’option Prédictions est allumée sur la fiche de l’entreprise.
-        </span>
-      </div>
+      <footer className="rg-pied">
+        <p className="rg-pied-titre">
+          À décider
+          <span className="rg-pied-texte">
+            Les analyses d’équipe ne sont pas activées : aucune alerte, aucun regroupement
+            proposé. L’option Prédictions s’allume depuis la fiche de l’entreprise.
+          </span>
+        </p>
+      </footer>
     )
   }
 
-  const groupes = {
-    alertes: { titre: 'Alertes', items: alertes, vide: 'Aucune alerte : les équipes tiennent.' },
-    orphelins: { titre: 'Sans équipe', items: orphelins, vide: 'Tout le monde est rattaché à une équipe.' },
-    suggestions: { titre: 'Regroupements', items: suggestions, vide: 'Aucun regroupement évident pour l’instant.' },
-    besoins: { titre: 'Effectifs', items: besoins, vide: 'Les effectifs sont cohérents avec la charge.' },
-  }
-  const choix = [
-    { key: 'alertes', icone: AlertTriangle },
-    { key: 'orphelins', icone: UserMinus },
-    { key: 'suggestions', icone: Lightbulb },
-    { key: 'besoins', icone: TrendingUp },
+  const onglets = [
+    { cle: 'alertes', libelle: 'Alertes', nombre: alertes.length, vide: 'Aucune alerte : rien à signaler.' },
+    { cle: 'orphelins', libelle: 'Sans équipe', nombre: orphelins.length, vide: 'Tout le monde est rattaché à une équipe.' },
+    { cle: 'suggestions', libelle: 'Regroupements', nombre: suggestions.length, vide: 'Aucun regroupement évident.' },
+    { cle: 'besoins', libelle: 'Effectif', nombre: besoins.length, vide: 'Aucun besoin d’effectif détecté.' },
   ]
-  const actif = groupes[onglet]
+  const actif = onglets.find((o) => o.cle === onglet) || onglets[0]
+  const total = onglets.reduce((somme, o) => somme + o.nombre, 0)
 
   return (
-    <section className="zl-collier" aria-label="Ce qui demande une décision">
-      <header className="zl-collier-tete">
-        <h3 className="zl-collier-titre"><Sparkles size={13} /> À décider</h3>
-        {santeGlobale && (
-          <span className="zl-sante" data-etat={santeGlobale.critical_teams > 0 ? 'a-surveiller' : 'solide'}>
-            Santé moyenne <strong>{Math.round(santeGlobale.avg_health_score)}%</strong>
-            <span aria-hidden="true">·</span>
-            {santeGlobale.critical_teams > 0
-              ? `${santeGlobale.critical_teams} critique${santeGlobale.critical_teams > 1 ? 's' : ''}`
-              : `${santeGlobale.healthy_teams} solide${santeGlobale.healthy_teams > 1 ? 's' : ''}`}
+    <footer className="rg-pied">
+      <div className="rg-pied-ligne">
+        <p className="rg-pied-titre">
+          À décider
+          <span className="rg-pied-texte">
+            {chargement
+              ? 'Analyse en cours…'
+              : total === 0
+                ? 'Rien à arbitrer : les équipes tiennent.'
+                : `${total} point${total > 1 ? 's' : ''} à arbitrer`}
           </span>
-        )}
-      </header>
-      <div className="zl-collier-corps">
-        <div className="zl-collier-choix">
-          {choix.map(({ key, icone: Icone }) => (
-            <button
-              key={key}
-              type="button"
-              className="zl-collier-onglet"
-              aria-pressed={onglet === key}
-              onClick={() => setOnglet(key)}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                <Icone size={13} /> {groupes[key].titre}
-              </span>
-              <span className="zl-onglet-nombre">{groupes[key].items?.length || 0}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="zl-collier-liste">
-          {chargement && (
-            <p className="zl-collier-vide">Analyse en cours…</p>
-          )}
-          {!chargement && (actif.items?.length || 0) === 0 && (
-            <p className="zl-collier-vide"><Check size={13} /> {actif.vide}</p>
-          )}
-          {!chargement && onglet === 'alertes' && (alertes || []).map((a) => (
-            <div key={a.id} className="zl-collier-item" data-grave={a.severity === 'critical' ? 'oui' : 'non'}>
-              <div className="zl-collier-item-texte">
-                <p className="zl-collier-item-titre">{a.team_name || 'Équipe'}</p>
-                <p className="zl-collier-item-note">{a.message}</p>
-              </div>
-            </div>
-          ))}
-          {!chargement && onglet === 'orphelins' && (orphelins || []).map((o) => (
-            <div key={o.id} className="zl-collier-item">
-              <div className="zl-collier-item-texte">
-                <p className="zl-collier-item-titre">{nomComplet(o)}</p>
-                <p className="zl-collier-item-note">{o.position || o.department || 'Aucune équipe'}</p>
-              </div>
-              <div className="zl-carte-actions">
-                {(o.suggested_teams || []).slice(0, 2).map((t) => (
-                  <button key={t.id} type="button" className="zl-mini" onClick={() => onAjouterOrphelin(o.id, t.id)}>
-                    <Plus size={11} /> {t.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-          {!chargement && onglet === 'suggestions' && (suggestions || []).map((s) => (
-            <div key={s.id} className="zl-collier-item">
-              <div className="zl-collier-item-texte">
-                <p className="zl-collier-item-titre">{s.name} <span className="zl-etiquette" data-ton="bientot">{s.confidence}%</span></p>
-                <p className="zl-collier-item-note">{s.reason}</p>
-              </div>
-              <button type="button" className="zl-mini" onClick={() => onCreerSuggestion(s)}>
-                <Plus size={11} /> Créer l’équipe
-              </button>
-            </div>
-          ))}
-          {!chargement && onglet === 'besoins' && (besoins || []).map((n) => (
-            <div key={n.team_id} className="zl-collier-item">
-              <div className="zl-collier-item-texte">
-                <p className="zl-collier-item-titre">{n.team_name}</p>
-                <p className="zl-collier-item-note">
-                  {n.current_size} personne{n.current_size > 1 ? 's' : ''} aujourd’hui,
-                  {' '}{n.suggested_hires} de plus suggérée{n.suggested_hires > 1 ? 's' : ''}.
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+        </p>
+        <button
+          type="button"
+          className="rg-lien"
+          aria-expanded={ouvert}
+          onClick={() => setOuvert((v) => !v)}
+        >
+          <Sparkles size={12} /> {ouvert ? 'Refermer' : 'Ouvrir le registre'}
+          <ChevronDown size={13} style={{ transform: ouvert ? 'rotate(180deg)' : 'none' }} />
+        </button>
       </div>
-    </section>
+
+      {ouvert && (
+        <>
+          <div className="rg-pied-onglets" role="group" aria-label="Ce qui demande une décision">
+            {onglets.map((o) => (
+              <button
+                key={o.cle}
+                type="button"
+                className="rg-lien"
+                aria-pressed={onglet === o.cle}
+                onClick={() => setOnglet(o.cle)}
+              >
+                {o.libelle} <span className="rg-categorie-nombre">{o.nombre}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="rg-pied-liste">
+            {actif.nombre === 0 && (
+              <p className="rg-pied-item-note" style={{ padding: '12px 0' }}>{actif.vide}</p>
+            )}
+
+            {onglet === 'alertes' && alertes.map((a) => (
+              <div key={a.id} className="rg-pied-item" data-grave={a.severity === 'critical' ? 'oui' : 'non'}>
+                <div>
+                  <p className="rg-pied-item-titre">{a.team_name || 'Équipe'}</p>
+                  <p className="rg-pied-item-note">{a.message}</p>
+                </div>
+              </div>
+            ))}
+
+            {onglet === 'orphelins' && orphelins.map((o) => (
+              <div key={o.id} className="rg-pied-item">
+                <div>
+                  <p className="rg-pied-item-titre">{nomComplet(o)}</p>
+                  <p className="rg-pied-item-note">{o.position || o.department || 'Aucune équipe'}</p>
+                </div>
+                <div className="rg-pied-item-actions">
+                  <select
+                    className="rg-tri"
+                    aria-label={`Rattacher ${nomComplet(o)} à une équipe`}
+                    value=""
+                    onChange={(e) => { if (e.target.value) onAjouterOrphelin(o.id, e.target.value) }}
+                  >
+                    <option value="">Rattacher à…</option>
+                    {equipes.map((e) => (
+                      <option key={e.id} value={e.id}>{e.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ))}
+
+            {onglet === 'suggestions' && suggestions.map((s) => (
+              <div key={s.id} className="rg-pied-item">
+                <div>
+                  <p className="rg-pied-item-titre">{s.name}</p>
+                  <p className="rg-pied-item-note">{s.reason}</p>
+                </div>
+                <div className="rg-pied-item-actions">
+                  <button type="button" className="rg-lien" onClick={() => onCreerSuggestion(s)}>
+                    Créer cette équipe
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {onglet === 'besoins' && besoins.map((n) => (
+              <div key={n.team_id} className="rg-pied-item">
+                <div>
+                  <p className="rg-pied-item-titre">{n.team_name}</p>
+                  <p className="rg-pied-item-note">
+                    {n.message || `${n.needed || 0} personne(s) à recruter ou à affecter`}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </footer>
   )
 }
 
@@ -387,7 +424,6 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
   const [predictions, setPredictions] = useState(false)
 
   const [equipes, setEquipes] = useState([])
-  const [santeGlobale, setSanteGlobale] = useState(null)
   const [alertes, setAlertes] = useState([])
   const [orphelins, setOrphelins] = useState([])
   const [suggestions, setSuggestions] = useState([])
@@ -401,7 +437,6 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
   const [recherche, setRecherche] = useState('')
   const [filtre, setFiltre] = useState('all')
   const [tri, setTri] = useState('name_asc')
-  const [vue, setVue] = useState('cartes')
 
   const [equipeChoisie, setEquipeChoisie] = useState(null)
   const [disponibles, setDisponibles] = useState([])
@@ -433,7 +468,6 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
           detectPotentialTeams(eid),
           predictStaffingNeeds(eid),
         ])
-        setSanteGlobale(sante.global || null)
         setAlertes(al.data || [])
         setOrphelins(orph.data || [])
         setSuggestions(sugg.data || [])
@@ -610,7 +644,7 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
     } finally {
       setEnregistrement(false)
     }
-  }, [orphelins, equipes, charger])
+  }, [orphelins, equipes, charger, enterpriseId])
 
   const creerSuggestion = useCallback(async (suggestion) => {
     setEnregistrement(true)
@@ -702,17 +736,18 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
   )
   // L'effectif de l'entreprise : celui de l'annuaire s'il est chargé,
   // sinon le plus grand des deux totaux connus. On ne divise jamais
-  // par zéro, et l'écran dit « effectif inconnu » au lieu d'inventer.
+  // par zéro, et l'écran dit « — » au lieu d'inventer.
   const effectifConnu = useMemo(
     () => Math.max(employes.length, totalMembres, 0),
     [employes.length, totalMembres],
   )
+  const pourcent = (morceau, total) => (total > 0 ? `${Math.round((morceau / total) * 100)} %` : '—')
 
   if (raison === 'sansEntreprise') {
     return (
       <div className="emp-vues">
-        <div className="zl-vide">
-          <RosacePerlesSvg taille={76} ton="teal" />
+        <div className="rg-vide">
+          <RosacePerlesSvg taille={52} />
           <h3>Sélectionnez une entreprise</h3>
           <p>
             Les équipes se lisent entreprise par entreprise. Choisissez-la dans
@@ -726,8 +761,8 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
   if (raison === 'sansOption') {
     return (
       <div className="emp-vues">
-        <div className="zl-vide">
-          <RosacePerlesSvg taille={76} ton="cuivre" />
+        <div className="rg-vide">
+          <RosacePerlesSvg taille={52} />
           <h3>Option Équipes non activée</h3>
           <p>
             Cette entreprise n’a pas l’option Équipes et tâches. Un administrateur
@@ -740,150 +775,73 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
   }
 
   return (
-    <div className="emp-vues">
-      {/* ══ LA SCÈNE : la frise, le titre, les actions ══ */}
-      <section className="zl-scene" aria-label="Vue Équipes">
-        <div className="zl-scene-frise">
-          <FrisePerlesSvg hauteur={46} motif="chevrons" />
+    <div className="emp-vues rg-equipes">
+      <Folio droite="Registre des équipes" />
+
+      <header className="rg-tete">
+        <div>
+          <p className="rg-eyebrow">Vue d’ensemble</p>
+          <h2 className="rg-titre">Équipes<span>.</span></h2>
         </div>
+        <Colophon
+          chiffres={[
+            {
+              valeur: equipes.length,
+              libelle: 'Équipes',
+              note: equipes.length > 0
+                ? `${pourcent(equipesAvecMembres, equipes.length)} ont des membres`
+                : 'aucune pour l’instant',
+            },
+            {
+              valeur: totalMembres,
+              libelle: 'Membres',
+              note: effectifConnu > 0
+                ? `${pourcent(totalMembres, effectifConnu)} de l’effectif`
+                : '—',
+            },
+            {
+              valeur: totalChefs,
+              libelle: 'Chefs',
+              note: equipes.length > 0
+                ? `${pourcent(totalChefs, equipes.length)} des équipes`
+                : '—',
+            },
+            {
+              valeur: orphelins.length,
+              libelle: 'Sans équipe',
+              note: effectifConnu > 0
+                ? `${pourcent(orphelins.length, effectifConnu)} de l’effectif`
+                : '—',
+              ton: orphelins.length > 0 ? 'corail' : 'normal',
+            },
+          ]}
+        />
+      </header>
 
-        <div className="zl-scene-corps">
-          <div className="zl-scene-texte">
-            <p className="zl-eyebrow">
-              <LosangePerlesSvg taille={16} ton="cuivre" />
-              Vue d’ensemble
-            </p>
-            <h2 className="zl-scene-titre">Équipes<span>.</span></h2>
-            <p className="zl-scene-sous">
-              <span><strong>{equipes.length}</strong> équipe{equipes.length > 1 ? 's' : ''}</span>
-              <span className="zl-sep" aria-hidden="true" />
-              <span><strong>{totalMembres}</strong> membre{totalMembres > 1 ? 's' : ''} en équipe</span>
-              <span className="zl-sep" aria-hidden="true" />
-              <span><strong>{totalChefs}</strong> chef{totalChefs > 1 ? 's' : ''} d’équipe désigné{totalChefs > 1 ? 's' : ''}</span>
-            </p>
-          </div>
-          <div className="zl-scene-actions">
-            <div className="zl-scene-utilitaires">
-              <button type="button" className="zl-bouton zl-bouton-icone" onClick={() => charger(enterpriseId)}
-                aria-label="Rafraîchir les équipes" title="Rafraîchir (R)">
-                <RefreshCw size={15} />
-              </button>
-              <button type="button" className="zl-bouton zl-bouton-icone"
-                onClick={async () => { await chargerHistorique(); setMontrerHistorique(true) }}
-                aria-label="Historique des équipes" title="Historique">
-                <History size={15} />
-              </button>
-              <button type="button" className="zl-bouton zl-bouton-icone"
-                onClick={() => setMontrerRaccourcis(true)} aria-label="Raccourcis clavier" title="Raccourcis (?)">
-                <HelpCircle size={15} />
-              </button>
-            </div>
-            <button type="button" className="zl-bouton zl-bouton-principal" onClick={ouvrirNouvelleEquipe}>
-              <Plus size={15} /> Nouvelle équipe
-            </button>
-          </div>
-        </div>
-
-        {/* ══ LES MÉDAILLONS : un anneau de perles par chiffre ══ */}
-        <div className="zl-medaillons">
-          <div className="zl-medaillon">
-            <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={62} parts={26} remplis={part(equipesAvecMembres, equipes.length, 26)} ton="cuivre" />
-              <span className="zl-medaillon-cle">{equipes.length}</span>
-            </span>
-            <span className="zl-medaillon-texte">
-              <span className="zl-medaillon-libelle">Équipes</span>
-              <span className="zl-medaillon-note">
-                {equipes.length === 0
-                  ? '—'
-                  : `${Math.round((equipesAvecMembres / equipes.length) * 100)} % ont des membres`}
-              </span>
-            </span>
-          </div>
-
-          <div className="zl-medaillon">
-            <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={62} parts={26} remplis={part(totalMembres, effectifConnu, 26)} ton="teal" />
-              <span className="zl-medaillon-cle">{totalMembres}</span>
-            </span>
-            <span className="zl-medaillon-texte">
-              <span className="zl-medaillon-libelle">Membres</span>
-              <span className="zl-medaillon-note">
-                {effectifConnu > 0
-                  ? `${Math.round((totalMembres / effectifConnu) * 100)} % de l’effectif`
-                  : '—'}
-              </span>
-            </span>
-          </div>
-
-          <div className="zl-medaillon">
-            <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={62} parts={26} remplis={part(totalChefs, equipes.length, 26)} ton="sauge" />
-              <span className="zl-medaillon-cle">{totalChefs}</span>
-            </span>
-            <span className="zl-medaillon-texte">
-              <span className="zl-medaillon-libelle">Chefs d’équipe</span>
-              <span className="zl-medaillon-note">
-                {equipes.length === 0
-                  ? '—'
-                  : `${Math.round((totalChefs / equipes.length) * 100)} % des équipes`}
-              </span>
-            </span>
-          </div>
-
-          <div className="zl-medaillon">
-            <span className="zl-medaillon-rond">
-              <AnneauPerlesSvg taille={62} parts={26} remplis={part(orphelins.length, effectifConnu, 26)} ton="corail" />
-              <span className="zl-medaillon-cle">{orphelins.length}</span>
-            </span>
-            <span className="zl-medaillon-texte">
-              <span className="zl-medaillon-libelle">Sans équipe</span>
-              <span className="zl-medaillon-note" data-ton={orphelins.length > 0 ? 'alerte' : 'ok'}>
-                {effectifConnu > 0
-                  ? `${Math.round((orphelins.length / effectifConnu) * 100)} % de l’effectif`
-                  : '—'}
-              </span>
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <CollierEquipes
-        alertes={alertes}
-        orphelins={orphelins}
-        suggestions={suggestions}
-        besoins={besoins}
-        santeGlobale={santeGlobale}
-        onAjouterOrphelin={ajouterOrphelin}
-        onCreerSuggestion={creerSuggestion}
-        chargement={chargementAnalyses}
-        predictions={predictions}
-      />
-
-      <div className="zl-outils">
-        <label className="zl-recherche">
-          <Search size={16} />
+      <div className="rg-outils">
+        <label className="rg-recherche">
+          <Search size={14} />
           <input
             ref={rechercheRef}
             type="search"
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}
-            placeholder="Rechercher une équipe ou sa description"
+            placeholder="Rechercher une équipe"
             aria-label="Rechercher une équipe"
           />
           {recherche && (
-            <button type="button" className="zl-recherche-effacer" onClick={() => setRecherche('')} aria-label="Effacer la recherche">
-              <X size={13} />
+            <button type="button" className="rg-recherche-effacer" onClick={() => setRecherche('')} aria-label="Effacer la recherche">
+              <X size={12} />
             </button>
           )}
         </label>
 
-        <div className="zl-choix" role="group" aria-label="Filtrer les équipes">
+        <div className="rg-filtres" role="group" aria-label="Filtrer les équipes">
           {FILTRES.map((f) => (
             <button
               key={f.key}
               type="button"
-              className="zl-puce"
+              className="rg-filtre"
               aria-pressed={filtre === f.key}
               onClick={() => setFiltre(f.key)}
             >
@@ -892,68 +850,94 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
           ))}
         </div>
 
-        <select className="zl-select" value={tri} onChange={(e) => setTri(e.target.value)} aria-label="Trier les équipes">
+        <select className="rg-tri" value={tri} onChange={(e) => setTri(e.target.value)} aria-label="Trier les équipes">
           {TRIS.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>
 
-        <div className="zl-bascule" role="group" aria-label="Mode d’affichage">
-          <button type="button" aria-pressed={vue === 'cartes'} onClick={() => setVue('cartes')}>
-            <LayoutGrid size={13} /> Cartes
+        <div className="rg-actions">
+          <button type="button" className="rg-lien" onClick={() => charger(enterpriseId)} title="Rafraîchir (R)">
+            <RefreshCw size={12} /> Rafraîchir
           </button>
-          <button type="button" aria-pressed={vue === 'liste'} onClick={() => setVue('liste')}>
-            <List size={13} /> Liste
+          <button
+            type="button"
+            className="rg-lien"
+            onClick={async () => { await chargerHistorique(); setMontrerHistorique(true) }}
+          >
+            <History size={12} /> Historique
+          </button>
+          <button
+            type="button"
+            className="rg-lien"
+            onClick={() => setMontrerRaccourcis(true)}
+            aria-label="Raccourcis clavier"
+            title="Raccourcis (?)"
+          >
+            <HelpCircle size={13} />
+          </button>
+          <button type="button" className="rg-primaire" onClick={ouvrirNouvelleEquipe}>
+            <Plus size={14} /> Nouvelle équipe
           </button>
         </div>
-        <span className="zl-compte">{equipesAffichees.length} affichée{equipesAffichees.length > 1 ? 's' : ''}</span>
       </div>
 
-      {chargement ? (
-        <div className="zl-chargement" aria-live="polite">
-          <span className="zl-compte"><Loader2 size={14} className="spin" /> Chargement des équipes…</span>
-          <div className="zl-chargement-ligne" />
-          <div className="zl-chargement-ligne" />
-          <div className="zl-chargement-ligne" />
-        </div>
-      ) : equipesAffichees.length === 0 ? (
-        <div className="zl-vide">
-          <Users size={26} />
-          <h3>{equipes.length === 0 ? 'Aucune équipe pour l’instant' : 'Aucune équipe ne correspond'}</h3>
-          <p>
-            {equipes.length === 0
-              ? 'Regroupez les personnes qui travaillent ensemble : le chef d’équipe, puis les membres. Les tâches pourront ensuite être confiées à l’équipe entière.'
-              : 'Élargissez la recherche ou retirez le filtre pour revoir toutes les équipes.'}
+      <CollierEntreprise equipes={equipes} orphelins={orphelins} />
+
+      <section className="rg-bloc" aria-label="Les équipes" style={{ borderBottom: 0 }}>
+        <header className="rg-bloc-tete">
+          <h3 className="rg-bloc-titre">Les équipes</h3>
+          <p className="rg-bloc-note">
+            santé en cinq perles · {equipesAffichees.length} affichée{equipesAffichees.length > 1 ? 's' : ''}
           </p>
-          <button type="button" className="zl-bouton zl-bouton-principal" onClick={ouvrirNouvelleEquipe}>
-            <Plus size={15} /> Nouvelle équipe
-          </button>
-        </div>
-      ) : vue === 'cartes' ? (
-        <div className="zl-grille">
-          {equipesAffichees.map((equipe) => (
-            <CarteEquipe
-              key={equipe.id}
-              equipe={equipe}
-              totalMembres={totalMembres}
-              onMembres={ouvrirMembres}
-              onModifier={ouvrirModification}
-              onRetirer={(t) => { setASupprimer(t); setMontrerSuppression(true) }}
-              onChangerChef={ouvrirModification}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="zl-liste">
-          {equipesAffichees.map((equipe) => (
-            <LigneEquipe
-              key={equipe.id}
-              equipe={equipe}
-              onMembres={ouvrirMembres}
-              onModifier={ouvrirModification}
-              onRetirer={(t) => { setASupprimer(t); setMontrerSuppression(true) }}
-            />
-          ))}
-        </div>
-      )}
+        </header>
+
+        {chargement ? (
+          <div className="rg-chargement" aria-live="polite">
+            <span className="rg-chargement-texte"><Loader2 size={14} className="rg-tourne" /> Chargement des équipes…</span>
+            <div className="rg-chargement-ligne" />
+            <div className="rg-chargement-ligne" />
+            <div className="rg-chargement-ligne" />
+          </div>
+        ) : equipesAffichees.length === 0 ? (
+          <div className="rg-vide">
+            <RosacePerlesSvg taille={52} />
+            <h3>{equipes.length === 0 ? 'Aucune équipe pour l’instant' : 'Aucune équipe ne correspond'}</h3>
+            <p>
+              {equipes.length === 0
+                ? 'Regroupez les personnes qui travaillent ensemble : le chef d’équipe, puis les membres. Les tâches pourront ensuite être confiées à l’équipe entière.'
+                : 'Élargissez la recherche ou retirez le filtre pour revoir toutes les équipes.'}
+            </p>
+            <button type="button" className="rg-primaire" onClick={ouvrirNouvelleEquipe}>
+              <Plus size={14} /> Nouvelle équipe
+            </button>
+          </div>
+        ) : (
+          <ul className="rg-registre">
+            {equipesAffichees.map((equipe, rang) => (
+              <EntreeEquipe
+                key={equipe.id}
+                equipe={equipe}
+                rang={rang}
+                onMembres={ouvrirMembres}
+                onModifier={ouvrirModification}
+                onRetirer={(t) => { setASupprimer(t); setMontrerSuppression(true) }}
+                onChangerChef={ouvrirModification}
+              />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <PiedDecisions
+        alertes={alertes}
+        orphelins={orphelins}
+        suggestions={suggestions}
+        besoins={besoins}
+        onAjouterOrphelin={ajouterOrphelin}
+        onCreerSuggestion={creerSuggestion}
+        chargement={chargementAnalyses}
+        predictions={predictions}
+        equipes={equipes}
+      />
 
       <TeamModal
         isOpen={montrerEquipe}

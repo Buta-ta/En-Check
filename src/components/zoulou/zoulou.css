@@ -1,138 +1,175 @@
 /* ════════════════════════════════════════════════════════════════════
-   PERLES ZOULOU — les vues Équipes et Tâches de la page Employés
+   LES VUES ÉQUIPES ET TÂCHES — le registre perlé
    ────────────────────────────────────────────────────────────────────
-   Une parure zoulou se lit : les perles ne décorent pas, elles disent.
-   Ici, chaque signe porte une information :
+   Une seule idée tient ces deux écrans : un registre de maison, tenu à
+   la main, dont la tranche est perlée. Pas une carte, pas un panneau :
+   des filets, de la typographie et des perles. Ce qui structure la page,
+   c'est le trait et le blanc — pas une boîte blanche posée sur une autre.
 
-     · la FRISE      ouvre la vue, comme le col d'une parure ;
-     · l'ANNEAU      donne une proportion (perles pleines / perles vides) ;
-     · le LOSANGE    marque un repère (puce, onglet, état) ;
-     · la PAMPILLE   ferme un panneau et dit que la liste continue ;
-     · le FIL        sépare deux blocs de lecture.
-
-   Le dessin vit dans PerlesZoulouSvg.jsx ; cette feuille ne pose que
-   la couleur, l'espace et le rythme.
-
-   Règle de survol, tenue sur tous les écrans : un survol change le
-   trait et l'ombre — JAMAIS le fond derrière un texte, la couleur
-   d'un texte, ni l'opacité d'un champ.
+   Règles tenues partout :
+     · aucune carte à ombre ni à coin arrondi pour poser un contenu ;
+     · un filet horizontal ferme chaque bloc, un filet vertical sépare
+       deux colonnes de chiffres ;
+     · les actions secondaires sont des mots soulignés, l'action
+       principale seule est un aplat de cuivre ;
+     · un survol change le trait, jamais le fond derrière un texte, la
+       couleur d'un texte ni l'opacité d'un champ.
    ════════════════════════════════════════════════════════════════════ */
 
 .emp-vues {
-  /* ── la matière ───────────────────────────────────────── */
-  /*  Les cinq teintes de texte et de fond sont écrites en clair,
-      et non empruntées à la coque : ces vues doivent rester
-      lisibles même montées ailleurs, et un test peut alors
-      calculer leur contraste au lieu de le supposer. Elles
-      reprennent exactement la palette de la coque Employés. */
-  --zl-encre: #231911;
-  --zl-douce: #4e3d2e;
-  --zl-faible: #74604c;
-  --zl-surface: #fffdf8;
-  --zl-surface-2: #f4ede2;
-  --zl-creux: #f4ede2;
-  --zl-fond: #faf6f0;
-  --zl-fond-2: #ffffff;
-  --zl-trait: rgba(93, 66, 39, 0.13);
-  --zl-trait-fort: rgba(93, 66, 39, 0.24);
+  /* ── le papier ────────────────────────────────────────── */
+  --rg-paper: #f5f0e6;
+  --rg-ink: #1c140d;
+  --rg-soft: #42342a;
+  --rg-faint: #6b5c44;
+  --rg-hair: rgba(60, 40, 22, 0.16);
+  --rg-hair-fort: rgba(60, 40, 22, 0.32);
+  --rg-voile: rgba(150, 81, 31, 0.08);
 
   /* ── l'action ─────────────────────────────────────────── */
-  --zl-cuivre: #a45c24;
-  --zl-cuivre-fort: #823f14;
-  --zl-sur-cuivre: #ffffff;
-  --zl-cuivre-voile: rgba(164, 92, 36, 0.12);
-  --zl-teal: #1f6b60;
-  --zl-teal-voile: rgba(31, 107, 96, 0.12);
-  --zl-sauge: #55662f;
-  --zl-corail: #a8452f;
-  --zl-corail-fort: #8a3324;
+  --rg-copper: #8f4d1d;
+  --rg-copper-fort: #74400f;
+  --rg-sur-copper: #ffffff;
+
+  /* ── les tons de lecture ──────────────────────────────── */
+  --rg-teal: #2b6a5f;
+  --rg-sauge: #56652a;
+  --rg-corail: #a2452e;
+  --rg-cuivre-texte: #8a5216;
+  --rg-plum: #5f4560;
 
   /* ── le verre des perles ──────────────────────────────── */
-  --zl-perle-creme: #efe1c3;
-  --zl-perle-cuivre: #c08a4d;
-  --zl-perle-teal: #4f9389;
-  --zl-perle-sauge: #8ba268;
-  --zl-perle-corail: #d08b74;
+  --rg-perle-creme: #e0c9a0;
+  --rg-perle-cuivre: #b8823f;
+  --rg-perle-teal: #4f9389;
+  --rg-perle-sauge: #8ba268;
+  --rg-perle-corail: #c8785c;
 
-  /* ── le fil et la trame ───────────────────────────────── */
-  --zl-fil: rgba(93, 66, 39, 0.34);
-  --zl-fil-faible: rgba(93, 66, 39, 0.18);
-  --zl-trame: rgba(93, 66, 39, 0.05);
-  --zl-ombre: 0 10px 26px rgba(48, 32, 18, 0.08);
-  --zl-ombre-forte: 0 18px 44px rgba(48, 32, 18, 0.14);
+  --rg-ombre-douce: 0 18px 40px rgba(48, 32, 18, 0.1);
 
-  --zl-rayon: 20px;
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 0;
   min-width: 0;
-  padding-bottom: 6px;
+  padding: 0 0 10px 54px;
   isolation: isolate;
 }
 
-/* la trame de perles, très pâle, qui donne du grain au fond */
+/* la tranche perlée du registre, à gauche de la page */
 .emp-vues::before {
   content: '';
   position: absolute;
-  inset: -10px -10px 0;
-  z-index: -1;
-  pointer-events: none;
+  top: 118px;
+  bottom: 46px;
+  left: 22px;
+  width: 12px;
   background-image:
-    radial-gradient(circle at 1px 1px, var(--zl-trame) 1px, transparent 1.4px);
-  background-size: 17px 17px;
-  background-position: 4px 6px;
-  border-radius: 26px;
+    radial-gradient(circle at 6px 0, var(--rg-perle-creme) 2.6px, transparent 3px),
+    radial-gradient(circle at 6px 0, var(--rg-perle-cuivre) 2.2px, transparent 2.6px),
+    radial-gradient(circle at 6px 0, var(--rg-perle-teal) 2.4px, transparent 2.8px),
+    radial-gradient(circle at 6px 0, var(--rg-perle-sauge) 2px, transparent 2.4px),
+    linear-gradient(var(--rg-hair), var(--rg-hair));
+  background-size: 12px 52px, 12px 52px, 12px 52px, 12px 52px, 1px 100%;
+  background-position: 0 0, 0 13px, 0 26px, 0 39px, 6px 0;
+  background-repeat: repeat-y, repeat-y, repeat-y, repeat-y, no-repeat;
+  opacity: 0.85;
+  pointer-events: none;
 }
 
-/* ── le thème sombre : les mêmes rôles, le verre plus clair ── */
+/* ── les jetons historiques des fenêtres de travail ───────────
+   Les fenêtres (EquipesModales.jsx, TachesModales.jsx) dessinent
+   leur contenu avec les variables --zl-* : elles restent branchées
+   sur la palette du registre pour ne pas jurer avec lui. */
+.emp-vues {
+  --zl-encre: var(--rg-ink);
+  --zl-douce: var(--rg-soft);
+  --zl-faible: var(--rg-faint);
+  --zl-surface: var(--rg-paper);
+  --zl-creux: rgba(60, 40, 22, 0.045);
+  --zl-fond: var(--rg-paper);
+  --zl-fond-2: var(--rg-paper);
+  --zl-trait: var(--rg-hair);
+  --zl-trait-fort: var(--rg-hair-fort);
+  --zl-cuivre: var(--rg-cuivre-texte);
+  --zl-cuivre-fort: var(--rg-copper-fort);
+  --zl-cuivre-voile: var(--rg-voile);
+  --zl-teal: var(--rg-teal);
+  --zl-teal-voile: rgba(43, 106, 95, 0.1);
+  --zl-corail: var(--rg-corail);
+  --zl-corail-fort: var(--rg-corail);
+  --zl-sur-cuivre: var(--rg-sur-copper);
+  --zl-fil: var(--rg-hair-fort);
+  --zl-perle-creme: var(--rg-perle-creme);
+  --zl-perle-cuivre: var(--rg-perle-cuivre);
+  --zl-perle-teal: var(--rg-perle-teal);
+  --zl-perle-sauge: var(--rg-perle-sauge);
+  --zl-perle-corail: var(--rg-perle-corail);
+}
 
 [data-theme='dark'] .emp-vues {
-  --zl-encre: #f7efe4;
-  --zl-douce: #dfd0be;
-  --zl-faible: #a6937e;
-  --zl-surface: #201a15;
-  --zl-surface-2: #2a221c;
-  --zl-creux: #2a221c;
-  --zl-fond: #15110e;
-  --zl-fond-2: #201a15;
-  --zl-trait: rgba(229, 212, 192, 0.12);
-  --zl-trait-fort: rgba(229, 212, 192, 0.24);
-  --zl-cuivre: #d58d4b;
-  --zl-cuivre-fort: #c57c3c;
-  --zl-sur-cuivre: #241a12;
-  --zl-cuivre-voile: rgba(213, 141, 75, 0.16);
-  --zl-teal: #6fbfae;
-  --zl-teal-voile: rgba(111, 191, 174, 0.16);
-  --zl-sauge: #a8be7e;
-  --zl-corail: #e8917c;
-  --zl-corail-fort: #c96a57;
-  --zl-perle-creme: #f0e2c6;
-  --zl-perle-cuivre: #d69a5c;
-  --zl-perle-teal: #71b9ad;
-  --zl-perle-sauge: #a5bb7d;
-  --zl-perle-corail: #d67c62;
-  --zl-fil: rgba(230, 210, 184, 0.3);
-  --zl-fil-faible: rgba(230, 210, 184, 0.15);
-  --zl-trame: rgba(230, 210, 184, 0.05);
-  --zl-ombre: 0 10px 26px rgba(0, 0, 0, 0.28);
-  --zl-ombre-forte: 0 18px 44px rgba(0, 0, 0, 0.4);
+  --zl-creux: rgba(240, 226, 202, 0.06);
+  --zl-teal-voile: rgba(116, 188, 174, 0.14);
+}
+
+/* la trame du papier : des duites très pâles */
+.emp-vues::after {
+  content: '';
+  position: absolute;
+  inset: 0 -8px 0 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(60, 40, 22, 0.022) 0 3px,
+    transparent 3px 8px
+  );
+}
+
+/* ── le thème sombre : le même papier, la nuit ─────────────── */
+
+[data-theme='dark'] .emp-vues {
+  --rg-paper: #17110b;
+  --rg-ink: #f4ecdf;
+  --rg-soft: #dccdba;
+  --rg-faint: #a6957c;
+  --rg-hair: rgba(240, 226, 202, 0.15);
+  --rg-hair-fort: rgba(240, 226, 202, 0.3);
+  --rg-voile: rgba(213, 141, 75, 0.14);
+  --rg-copper: #d99a58;
+  --rg-copper-fort: #c8873f;
+  --rg-sur-copper: #241a12;
+  --rg-teal: #74bcae;
+  --rg-sauge: #adc081;
+  --rg-corail: #e8927c;
+  --rg-cuivre-texte: #dda368;
+  --rg-plum: #bda0be;
+  --rg-perle-creme: #efe0c2;
+  --rg-perle-cuivre: #c99154;
+  --rg-perle-teal: #6fb9ad;
+  --rg-perle-sauge: #a2bb7c;
+  --rg-perle-corail: #d48163;
+  --rg-ombre-douce: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme='dark'] .emp-vues::after {
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(240, 226, 202, 0.028) 0 3px,
+    transparent 3px 8px
+  );
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   1. LE SOMMAIRE — trois vues, une seule page
+   1. LE SOMMAIRE DE PAGE (barre de vues, hors du registre)
    ═══════════════════════════════════════════════════════════════════ */
 
-/*  Un sommaire, pas une barre d'onglets flottante : une ligne posée
-    sur la page, un filet qui la ferme, et la vue ouverte soulignée
-    au cuivre. Rien à droite — un trait de points qui ne veut rien
-    dire n'a pas sa place ici. */
 .emp-onglets {
   display: flex;
   align-items: center;
   gap: 2px;
   flex-wrap: wrap;
-  margin: 0 0 14px;
+  margin: 0 0 22px;
   padding: 0 0 0 2px;
   border: 0;
   border-bottom: 1px solid var(--pt-line);
@@ -141,11 +178,11 @@
 }
 
 .emp-onglets-titre {
-  margin: 0 14px 0 0;
+  margin: 0 16px 0 0;
   color: var(--pt-muted);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
@@ -165,13 +202,10 @@
   font: inherit;
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.01em;
   cursor: pointer;
   transition: border-color 0.18s ease;
 }
 
-/*  Pas de perle devant l'icône : deux marques pour un seul onglet,
-    c'est une de trop. L'icône dit la vue, le trait dit où l'on est. */
 .emp-onglet svg {
   flex: none;
   color: var(--pt-copper);
@@ -181,33 +215,12 @@
   border-bottom-color: var(--pt-line);
 }
 
-/* la vue ouverte : le trait passe au cuivre et s'épaissit */
 .emp-onglet[aria-current='page'] {
   border-bottom-color: var(--pt-copper-strong);
   color: var(--pt-ink);
 }
 
 .emp-onglet[aria-current='page'] svg {
-  color: var(--pt-copper-strong);
-}
-
-.emp-onglet-nombre {
-  display: inline-flex;
-  min-width: 22px;
-  height: 22px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
-  border: 1px solid var(--pt-line);
-  border-radius: 999px;
-  background: var(--pt-surface-soft);
-  color: var(--pt-ink-soft);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
-.emp-onglet[aria-current='page'] .emp-onglet-nombre {
-  border-color: var(--pt-copper-strong);
   color: var(--pt-copper-strong);
 }
 
@@ -224,1471 +237,1379 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   2. LA SCÈNE — la frise, le titre, les actions, les chiffres
+   2. LE FEUILLET — le folio, le titre, le colophon de chiffres
    ═══════════════════════════════════════════════════════════════════ */
 
-.zl-scene {
-  /*  La scène porte ses propres teintes : elle est toujours en drap
-      espresso, comme la bande perlée qui a servi de référence. Le
-      reste de la vue reste sur la page claire ou sombre — c'est ce
-      contraste qui donne son relief à l'écran. */
-  --zl-scene-fond: #241a12;
-  --zl-scene-encre: #f7ecdb;
-  --zl-scene-douce: #cfb697;
-  --zl-scene-cuivre: #e2a566;
-  --zl-scene-trait: rgba(247, 236, 219, 0.18);
-
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid rgba(20, 12, 6, 0.4);
-  border-radius: 26px;
-  background:
-    radial-gradient(120% 150% at 10% -30%, rgba(213, 141, 75, 0.34), transparent 58%),
-    radial-gradient(90% 120% at 92% 120%, rgba(79, 147, 137, 0.22), transparent 60%),
-    linear-gradient(178deg, #2c1f15, #1a120c 78%);
-  color: var(--zl-scene-encre);
-  box-shadow: 0 24px 54px rgba(30, 18, 8, 0.3);
-  overflow: hidden;
-}
-
-/* la frise vit sur le drap : on lui donne le fil clair, pas celui
-   de la page */
-.zl-scene-frise {
-  position: relative;
-  display: block;
-  border-bottom: 1px solid var(--zl-scene-trait);
-  --zl-fil: rgba(247, 236, 219, 0.3);
-  --zl-fil-faible: rgba(247, 236, 219, 0.12);
-  --zl-creux: rgba(247, 236, 219, 0.13);
-}
-
-.zl-scene-frise svg {
-  display: block;
-  width: 100%;
-}
-
-.zl-scene-corps {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px 24px;
-  flex-wrap: wrap;
-  padding: 22px clamp(16px, 2.6vw, 30px) 24px;
-}
-
-.zl-scene-texte {
-  min-width: 0;
-  flex: 1 1 340px;
-}
-
-.zl-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  margin: 0 0 10px;
-  color: var(--zl-scene-cuivre);
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-}
-
-.zl-eyebrow svg circle {
-  fill: var(--zl-scene-cuivre);
-}
-
-.zl-scene-titre {
-  margin: 0;
-  color: var(--zl-scene-encre);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(36px, 5vw, 56px);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 0.96;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.28);
-}
-
-.zl-scene-titre span {
-  color: var(--zl-scene-cuivre);
-}
-
-/* la ligne de chiffres : le nombre en serif, le mot en petit, et
-   une perle entre deux groupes — jamais un trait de points */
-.zl-scene-sous {
+.rg-folio {
   display: flex;
   align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
   flex-wrap: wrap;
-  gap: 4px 12px;
-  margin: 14px 0 0;
-  color: var(--zl-scene-douce);
-  font-size: 12.5px;
-  line-height: 1.5;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rg-hair);
 }
 
-.zl-scene-sous strong {
-  margin-right: 3px;
-  color: var(--zl-scene-encre);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 17px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-.zl-scene-sous .zl-sep {
-  width: 4px;
-  height: 4px;
-  margin: 0 4px;
-  border-radius: 50%;
-  background: var(--zl-scene-douce);
-  opacity: 0.45;
-}
-
-/* ── les actions ─────────────────────────────────────────────── */
-.zl-scene-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding-top: 4px;
-}
-
-/* les utilitaires (rafraîchir, aide) restent petits et en retrait,
-   séparés des deux actions qui créent quelque chose */
-.zl-scene-utilitaires {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-right: 10px;
-  margin-right: 2px;
-  border-right: 1px solid var(--zl-scene-trait);
-}
-
-.zl-scene-actions .zl-bouton {
-  border-color: rgba(247, 236, 219, 0.22);
-  background: rgba(247, 236, 219, 0.05);
-  color: var(--zl-scene-encre);
-}
-
-.zl-scene-actions .zl-bouton:hover {
-  border-color: var(--zl-scene-cuivre);
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.32);
-}
-
-.zl-scene-actions .zl-bouton-icone {
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
-  min-height: 38px;
-  padding: 0;
-  border-color: rgba(247, 236, 219, 0.18);
-  background: transparent;
-}
-
-.zl-scene-actions .zl-bouton-principal {
-  border-color: #e8ab6c;
-  background: linear-gradient(180deg, #f0bd83, #d58d4b);
-  color: #2a1a0e;
-  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.36);
-}
-
-.zl-scene-actions .zl-bouton-principal:hover {
-  border-color: #f6cd9c;
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.44);
-}
-
-[data-theme='dark'] .zl-scene {
-  border-color: rgba(230, 210, 184, 0.2);
-  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.55);
-}
-
-/* ── les boutons ──────────────────────────────────────── */
-
-.zl-bouton {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 40px;
-  padding: 9px 14px;
-  border: 1px solid var(--zl-trait-fort);
-  border-radius: 12px;
-  background: var(--zl-surface);
-  color: var(--zl-douce);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
-}
-
-.zl-bouton:hover {
-  border-color: var(--zl-cuivre);
-  box-shadow: var(--zl-ombre);
-}
-
-.zl-bouton[disabled] {
-  cursor: progress;
-}
-
-.zl-bouton-principal {
-  border-color: var(--zl-cuivre-fort);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 55%),
-    var(--zl-cuivre-fort);
-  color: var(--zl-sur-cuivre);
-  box-shadow: 0 8px 22px rgba(120, 66, 22, 0.22);
-}
-
-.zl-bouton-principal:hover {
-  border-color: var(--zl-cuivre);
-  box-shadow: 0 12px 28px rgba(120, 66, 22, 0.3);
-}
-
-.zl-bouton-icone {
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  padding: 0;
-  justify-content: center;
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════
-   3. LES MÉDAILLONS — un anneau de perles par chiffre
-   ═══════════════════════════════════════════════════════════════════ */
-
-.zl-medaillons {
-  /*  Les chiffres ne flottent pas au-dessus de la page : ils sont
-      posés sur le drap, dans le prolongement de la frise, comme les
-      médaillons d'une parure. Un filet clair les sépare du titre,
-      un trait vertical sépare les quatre groupes. */
-  position: relative;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
-  gap: 0;
+.rg-marque,
+.rg-folio-droite {
   margin: 0;
-  padding: 20px clamp(16px, 2.6vw, 30px) 24px;
-  border-top: 1px solid var(--zl-scene-trait);
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.14), transparent 46%);
-}
-
-.zl-medaillon {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-  padding: 6px 18px 6px 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-/* le trait qui sépare deux groupes de chiffres */
-.zl-medaillon + .zl-medaillon {
-  padding-left: 20px;
-  border-left: 1px solid var(--zl-scene-trait);
-}
-
-.zl-medaillon-rond {
-  position: relative;
-  display: grid;
-  width: 62px;
-  height: 62px;
-  flex: none;
-  place-items: center;
-}
-
-.zl-medaillon-rond svg {
-  position: absolute;
-  inset: 0;
-}
-
-.zl-medaillon-cle {
-  position: relative;
-  color: var(--zl-scene-encre);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 23px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
-}
-
-.zl-medaillon-texte {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.zl-medaillon-libelle {
-  color: var(--zl-scene-cuivre);
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
+  color: var(--rg-faint);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 
-.zl-medaillon-note {
-  color: var(--zl-scene-encre);
-  font-size: 11.5px;
-  font-weight: 600;
+.rg-marque strong {
+  color: var(--rg-soft);
+  font-weight: 800;
+}
+
+.rg-tete {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 18px 26px;
+  padding: 26px 0 22px;
+  border-bottom: 1.5px solid var(--rg-hair-fort);
+}
+
+.rg-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 6px;
+  color: var(--rg-copper);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.rg-eyebrow::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--rg-copper);
+  box-shadow: 8px 0 0 -0.6px var(--rg-copper), 16px 0 0 -1.2px var(--rg-copper);
+  margin-right: 14px;
+}
+
+.rg-titre {
+  margin: 0;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(38px, 5.2vw, 62px);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+}
+
+.rg-titre span {
+  color: var(--rg-copper);
+}
+
+/* le colophon : quatre chiffres, un filet entre chacun */
+.rg-colophon {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.rg-chiffre {
+  min-width: 118px;
+  padding: 0 20px;
+}
+
+/* un filet sépare deux chiffres, jamais avant le premier */
+.rg-chiffre + .rg-chiffre {
+  border-left: 1px solid var(--rg-hair);
+}
+
+.rg-chiffre:first-child {
+  padding-left: 0;
+}
+
+.rg-chiffre:last-child {
+  padding-right: 0;
+}
+
+.rg-chiffre-valeur {
+  display: block;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 30px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.rg-chiffre[data-ton='corail'] .rg-chiffre-valeur {
+  color: var(--rg-corail);
+}
+
+.rg-chiffre-libelle {
+  display: block;
+  margin-top: 8px;
+  color: var(--rg-faint);
+  font-size: 8.4px;
+  font-weight: 800;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+}
+
+.rg-chiffre-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--rg-soft);
+  font-size: 10.4px;
   line-height: 1.35;
 }
 
-.zl-medaillon-note[data-ton='alerte'] {
-  color: #f0a68c;
-}
-
-.zl-medaillon-note[data-ton='ok'] {
-  color: #a8d3b0;
-}
-
-/*  en deux colonnes, le trait de séparation passe à l'horizontale :
-    un trait vertical au milieu d'une grille donnerait une couture
-    qui ne veut rien dire */
-@media (max-width: 900px) {
-  .zl-medaillon + .zl-medaillon {
-    padding-left: 0;
-    border-left: 0;
-  }
-  .zl-medaillon {
-    padding: 10px 0;
-    border-top: 1px solid var(--zl-scene-trait);
-  }
-  .zl-medaillon:nth-child(2) {
-    border-top: 0;
-  }
-}
-
 /* ═══════════════════════════════════════════════════════════════════
-   5. LE REGISTRE DES DÉCISIONS (« À décider »)
+   3. LA BARRE D'OUTILS — recherche, filtres, tri, actions
    ═══════════════════════════════════════════════════════════════════ */
 
-.zl-collier {
-  border: 1px solid var(--zl-trait);
-  border-radius: var(--zl-rayon);
-  background: var(--zl-surface);
-  box-shadow: var(--zl-ombre);
-  overflow: hidden;
-}
-
-.zl-collier-tete {
-  position: relative;
+.rg-outils {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 10px 18px;
   flex-wrap: wrap;
-  padding: 12px 16px 13px;
-  border-bottom: 1px solid var(--zl-trait);
-  background:
-    linear-gradient(90deg, var(--zl-cuivre-voile), transparent 42%),
-    var(--zl-surface);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rg-hair);
 }
 
-/*  le registre est cousu, pas collé : un rang de perles court
-    sous sa tête, du plus dense au plus espacé */
-.zl-collier-tete::after {
-  content: '';
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 4px;
-  height: 5px;
-  background-image: radial-gradient(circle, var(--zl-perle-cuivre) 1.7px, transparent 2.1px);
-  background-size: 10px 5px;
-  background-repeat: repeat-x;
-  opacity: 0.55;
-}
-
-.zl-collier-titre {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  color: var(--zl-douce);
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.zl-collier-corps {
-  display: grid;
-  grid-template-columns: minmax(0, 230px) minmax(0, 1fr);
-  gap: 14px;
-  padding: 14px;
-}
-
-.zl-collier-choix {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.zl-collier-onglet {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 12px;
-  background: var(--zl-creux);
-  color: var(--zl-douce);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
-}
-
-.zl-collier-onglet:hover {
-  border-color: var(--zl-cuivre);
-}
-
-/* l'onglet choisi : un trait large et une perle pleine */
-.zl-collier-onglet[aria-pressed='true'] {
-  border-color: var(--zl-cuivre);
-  border-left-width: 4px;
-  background: var(--zl-cuivre-voile);
-  color: var(--zl-encre);
-}
-
-.zl-collier-liste {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-  max-height: 250px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.zl-collier-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 11px 13px;
-  border: 1px solid var(--zl-trait);
-  border-left: 3px solid var(--zl-perle-cuivre);
-  border-radius: 11px;
-  background: var(--zl-surface);
-}
-
-.zl-collier-item[data-grave='oui'] {
-  border-left-color: var(--zl-corail);
-}
-
-.zl-collier-item-texte {
-  min-width: 0;
-  flex: 1 1 200px;
-}
-
-.zl-collier-item-titre {
-  margin: 0;
-  color: var(--zl-encre);
-  font-size: 12.5px;
-  font-weight: 750;
-}
-
-.zl-collier-item-note {
-  margin: 4px 0 0;
-  color: var(--zl-faible);
-  font-size: 11.5px;
-  line-height: 1.5;
-}
-
-.zl-collier-vide {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
-  padding: 14px;
-  border: 1px dashed var(--zl-trait-fort);
-  border-radius: 11px;
-  color: var(--zl-faible);
-  font-size: 12px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   6. LA BARRE D'OUTILS
-   ═══════════════════════════════════════════════════════════════════ */
-
-.zl-outils {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.zl-recherche {
+/* la recherche : un trait, pas une boîte */
+.rg-recherche {
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 44px;
-  flex: 1 1 240px;
-  min-width: 180px;
-  padding: 0 12px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 14px;
-  background: var(--zl-surface);
-  color: var(--zl-faible);
-  box-shadow: var(--zl-ombre);
+  flex: 1 1 210px;
+  min-width: 170px;
+  min-height: 40px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--rg-hair-fort);
+  background: transparent;
+  color: var(--rg-faint);
 }
 
-.zl-recherche input {
+.rg-recherche svg {
+  flex: none;
+  color: var(--rg-faint);
+}
+
+.rg-recherche input {
   flex: 1;
   min-width: 0;
+  height: 38px;
   border: 0;
   outline: 0;
   background: transparent;
-  color: var(--zl-encre);
+  color: var(--rg-ink);
   font: inherit;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
-.zl-recherche input::placeholder {
-  color: var(--zl-faible);
+.rg-recherche input::placeholder {
+  color: var(--rg-faint);
 }
 
-.zl-recherche-effacer {
+.rg-recherche-effacer {
   display: inline-flex;
   width: 26px;
   height: 26px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--zl-trait);
-  border-radius: 8px;
-  background: var(--zl-creux);
-  color: var(--zl-faible);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--rg-faint);
   cursor: pointer;
 }
 
-.zl-choix {
+.rg-recherche-effacer:hover {
+  box-shadow: inset 0 0 0 1px var(--rg-hair-fort);
+}
+
+/* les filtres : une perle et un mot, jamais un bouton plein */
+.rg-filtres {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
-.zl-puce {
+.rg-filtre {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 36px;
-  padding: 7px 12px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 999px;
-  background: var(--zl-surface);
-  color: var(--zl-douce);
+  gap: 8px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rg-faint);
   font: inherit;
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 11.4px;
   cursor: pointer;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  transition: color 0.16s ease;
 }
 
-.zl-puce:hover {
-  border-color: var(--zl-cuivre);
-  box-shadow: var(--zl-ombre);
-}
-
-.zl-puce[aria-pressed='true'] {
-  border-color: var(--zl-cuivre);
-  background: var(--zl-cuivre-voile);
-  color: var(--zl-encre);
-}
-
-.zl-puce-perle {
-  width: 9px;
-  height: 9px;
+.rg-filtre::before {
+  content: '';
+  width: 8px;
+  height: 8px;
   flex: none;
+  border: 1px solid var(--rg-copper);
   border-radius: 50%;
-  background: var(--zl-perle-cuivre);
+  background: transparent;
 }
 
-.zl-puce-perle[data-ton='teal'] {
-  background: var(--zl-perle-teal);
+.rg-filtre:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-hair-fort);
 }
 
-.zl-puce-perle[data-ton='sauge'] {
-  background: var(--zl-perle-sauge);
+.rg-filtre[aria-pressed='true'] {
+  color: var(--rg-ink);
+  font-weight: 700;
 }
 
-.zl-puce-perle[data-ton='corail'] {
-  background: var(--zl-perle-corail);
+.rg-filtre[aria-pressed='true']::before {
+  background: var(--rg-copper);
 }
 
-.zl-puce-perle[data-ton='creme'] {
-  background: var(--zl-perle-creme);
-}
-
-.zl-select {
-  min-height: 44px;
-  max-width: 220px;
-  padding: 9px 12px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 14px;
-  background: var(--zl-surface);
-  color: var(--zl-encre);
+/* les sélecteurs : un mot et un chevron, pas un cadre */
+.rg-tri {
+  min-height: 40px;
+  max-width: 168px;
+  padding: 0 20px 0 0;
+  border: 0;
+  border-bottom: 1px solid var(--rg-hair-fort);
+  border-radius: 0;
+  background: transparent;
+  color: var(--rg-soft);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 11.4px;
   cursor: pointer;
-  box-shadow: var(--zl-ombre);
   color-scheme: light;
 }
 
-[data-theme='dark'] .zl-select {
+[data-theme='dark'] .rg-tri {
   color-scheme: dark;
 }
 
-.zl-bascule {
-  display: inline-flex;
-  gap: 3px;
-  padding: 3px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 13px;
-  background: var(--zl-surface);
-  box-shadow: var(--zl-ombre);
+/* les actions */
+.rg-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-left: auto;
 }
 
-.zl-bascule button {
+.rg-lien {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 36px;
-  padding: 7px 11px;
-  border: 1px solid transparent;
-  border-radius: 10px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
   background: transparent;
-  color: var(--zl-faible);
+  color: var(--rg-soft);
+  font: inherit;
+  font-size: 11.4px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--rg-hair-fort);
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+}
+
+.rg-lien:hover {
+  text-decoration-color: var(--rg-copper);
+  box-shadow: none;
+}
+
+.rg-lien[aria-pressed='true'] {
+  color: var(--rg-ink);
+  text-decoration-color: var(--rg-copper);
+}
+
+.rg-primaire {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 20px;
+  border: 1px solid var(--rg-copper-fort);
+  border-radius: 4px;
+  background: var(--rg-copper-fort);
+  color: var(--rg-sur-copper);
   font: inherit;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 750;
+  white-space: nowrap;
   cursor: pointer;
-  transition: border-color 0.16s ease;
+  transition: box-shadow 0.16s ease;
 }
 
-.zl-bascule button:hover {
-  border-color: var(--zl-trait-fort);
+.rg-primaire:hover {
+  box-shadow: 0 10px 22px rgba(90, 50, 15, 0.28);
 }
 
-.zl-bascule button[aria-pressed='true'] {
-  border-color: var(--zl-cuivre);
-  background: var(--zl-cuivre-voile);
-  color: var(--zl-encre);
-}
-
-.zl-compte {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--zl-faible);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
+.rg-primaire[disabled] {
+  cursor: progress;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   7. LES CARTES ÉQUIPE — un médaillon, un fil, une jauge
+   4. LE COLLIER DE L'ENTREPRISE — tout l'effectif en une parure
    ═══════════════════════════════════════════════════════════════════ */
 
-.zl-grille {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
-  gap: 12px;
+.rg-bloc {
+  padding: 22px 0 24px;
+  border-bottom: 1px solid var(--rg-hair);
 }
 
-.zl-carte {
-  position: relative;
+.rg-bloc-tete {
   display: flex;
-  flex-direction: column;
-  gap: 13px;
-  padding: 0 16px 15px;
-  border: 1px solid var(--zl-trait);
-  border-radius: var(--zl-rayon);
-  background: var(--zl-surface);
-  box-shadow: var(--zl-ombre);
-  overflow: hidden;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
 }
 
-/* la bande tissée du haut : trois rangs de perles en quinconce */
-.zl-carte::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 10px;
-  background-image:
-    radial-gradient(circle, var(--zl-perle-cuivre) 2.2px, transparent 2.6px),
-    radial-gradient(circle, var(--zl-perle-teal) 1.7px, transparent 2.1px);
-  background-size: 12px 10px, 12px 10px;
-  background-position: 2px 3px, 8px 6px;
-  background-repeat: repeat-x;
-  opacity: 0.85;
+.rg-bloc-titre {
+  margin: 0;
+  color: var(--rg-soft);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
 }
 
-/* la rosace en filigrane, dans le coin */
-.zl-carte-filigrane {
-  position: absolute;
-  right: -14px;
-  bottom: -14px;
-  opacity: 0.14;
-  pointer-events: none;
+.rg-bloc-note {
+  margin: 0;
+  color: var(--rg-faint);
+  font-size: 10.2px;
 }
 
-.zl-carte:hover {
-  border-color: var(--zl-cuivre);
-  box-shadow: var(--zl-ombre-forte);
-}
-
-.zl-carte-tete {
+.rg-collier {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 0;
   flex-wrap: wrap;
-  padding-top: 16px;
-}
-
-.zl-carte-titre {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
   margin: 0;
-  color: var(--zl-encre);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
+  padding: 0;
+  list-style: none;
 }
 
-.zl-carte-titre span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.rg-collier-groupe {
+  position: relative;
+  padding: 0 34px 0 0;
+  margin-right: 10px;
 }
 
-/* la perle d'identité : la couleur choisie pour l'équipe */
-.zl-pastille {
-  width: 11px;
-  height: 11px;
-  flex: none;
-  border-radius: 50%;
-  background: var(--zl-perle-cuivre);
-  box-shadow: 0 0 0 3px var(--zl-cuivre-voile);
+.rg-collier-groupe + .rg-collier-groupe {
+  padding-left: 30px;
+  border-left: 1px solid var(--rg-hair);
 }
 
-.zl-carte-note {
-  margin: 0;
-  color: var(--zl-faible);
-  font-size: 12px;
-  line-height: 1.55;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* le médaillon de l'équipe : anneau + initiales */
-.zl-carte-medaillon {
+/* le fil du groupe */
+.rg-collier-perles {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
-  min-width: 0;
+  padding-bottom: 2px;
 }
 
-.zl-carte-medaillon-rond {
-  position: relative;
-  display: grid;
-  width: 56px;
-  height: 56px;
-  flex: none;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--zl-surface-2);
-}
-
-.zl-carte-medaillon-rond svg {
+.rg-collier-perles::before {
+  content: '';
   position: absolute;
-  inset: 0;
+  left: 2px;
+  right: 2px;
+  top: 50%;
+  height: 1px;
+  background: var(--rg-fil, var(--rg-hair-fort));
+  opacity: 0.6;
 }
 
-.zl-carte-medaillon-cle {
-  position: relative;
-  color: var(--zl-douce);
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.zl-carte-medaillon-texte {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* le fil de membres */
-.zl-membres {
-  position: relative;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  row-gap: 8px;
-  padding-top: 9px;
-}
-
-.zl-membres-fil {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 18px;
-  pointer-events: none;
-}
-
-.zl-perle-avatar {
+.rg-perle {
   position: relative;
   display: inline-flex;
-  width: 31px;
-  height: 31px;
+  width: 18px;
+  height: 18px;
   align-items: center;
   justify-content: center;
-  margin-right: -7px;
-  border: 2px solid var(--zl-surface);
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-teal) 82%);
+  background: var(--rg-perle-cuivre);
   color: #241a12;
-  font-size: 10px;
+  font-size: 6.6px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.rg-perle[data-ton='cuivre'] { background: var(--rg-perle-cuivre); }
+.rg-perle[data-ton='teal'] { background: var(--rg-perle-teal); }
+.rg-perle[data-ton='sauge'] { background: var(--rg-perle-sauge); }
+.rg-perle[data-ton='corail'] { background: var(--rg-perle-corail); }
+.rg-perle[data-ton='creme'] { background: var(--rg-perle-creme); }
+
+/* le chef : la perle est cerclée */
+.rg-perle[data-chef='oui'] {
+  box-shadow: 0 0 0 2px var(--rg-paper), 0 0 0 3.4px var(--rg-ink);
+}
+
+/* la personne à rattacher : une perle creuse, sur un fil pointillé */
+.rg-perle[data-creuse='oui'] {
+  background: transparent;
+  border: 1px dashed var(--rg-corail);
+  color: var(--rg-corail);
+}
+
+.rg-collier-nom {
+  display: block;
+  margin-top: 10px;
+  color: var(--rg-ink);
+  font-size: 11.6px;
+  font-weight: 700;
+}
+
+.rg-collier-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--rg-faint);
+  font-size: 9.8px;
+}
+
+.rg-collier-groupe[data-orphelin='oui'] .rg-collier-nom {
+  color: var(--rg-corail);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   5. LE REGISTRE DES ÉQUIPES — une entrée par équipe
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-registre {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rg-entree {
+  position: relative;
+  display: grid;
+  grid-template-columns:
+    46px minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 0.8fr) auto;
+  align-items: center;
+  gap: 10px 22px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--rg-hair);
+  transition: box-shadow 0.18s ease;
+}
+
+.rg-entree:hover {
+  box-shadow: inset 3px 0 0 -1px var(--rg-copper);
+}
+
+.rg-entree-index {
+  color: var(--rg-faint);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 14px;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-entree-titre {
+  margin: 0;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.rg-entree-titre button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rg-entree-titre button:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-copper);
+}
+
+.rg-entree-note {
+  margin: 6px 0 0;
+  color: var(--rg-soft);
+  font-size: 11.4px;
+  line-height: 1.45;
+}
+
+/* le filet de couleur de l'équipe, sous sa description */
+.rg-entree-filet {
+  display: block;
+  width: min(280px, 100%);
+  height: 2px;
+  margin-top: 10px;
+  background: var(--rg-trait-equipe, var(--rg-copper));
+  opacity: 0.8;
+}
+
+.rg-cellule {
+  min-width: 0;
+}
+
+.rg-etiquette-champ {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--rg-faint);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+/* les membres : des initiales enfilées */
+.rg-membres {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.rg-membre {
+  display: inline-flex;
+  width: 27px;
+  height: 27px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rg-hair-fort);
+  border-radius: 50%;
+  background: var(--rg-paper);
+  color: var(--rg-soft);
+  font-size: 8.4px;
   font-weight: 800;
   overflow: hidden;
 }
 
-.zl-perle-avatar img {
+.rg-membre[data-chef='oui'] {
+  border: 1.6px solid var(--rg-copper-fort);
+  color: var(--rg-ink);
+}
+
+.rg-membre img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.zl-perle-avatar.is-chef {
-  box-shadow: 0 0 0 2px var(--zl-cuivre), 0 0 0 5px var(--zl-cuivre-voile);
+.rg-membres-note {
+  margin-left: 5px;
+  color: var(--rg-faint);
+  font-size: 9.6px;
 }
 
-.zl-perle-plus {
-  display: inline-flex;
-  min-width: 31px;
-  height: 31px;
+.rg-membres-note[data-ton='alerte'] {
+  color: var(--rg-corail);
+}
+
+/* la santé : cinq perles, ou le mot juste */
+.rg-sante {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  margin-left: 11px;
-  padding: 0 8px;
-  border: 1px solid var(--zl-trait-fort);
-  border-radius: 999px;
-  background: var(--zl-creux);
-  color: var(--zl-douce);
-  font-size: 10.5px;
-  font-weight: 800;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--rg-faint);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
-.zl-carte-pied {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding-top: 11px;
-  border-top: 1px solid var(--zl-trait);
-}
-
-.zl-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  color: var(--zl-faible);
-  font-size: 11.5px;
-}
-
-.zl-meta strong {
-  color: var(--zl-douce);
-  font-weight: 750;
-}
-
-.zl-carte-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.zl-mini {
+.rg-sante-perles {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 32px;
-  padding: 6px 10px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 10px;
-  background: var(--zl-creux);
-  color: var(--zl-douce);
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
-.zl-mini:hover {
-  border-color: var(--zl-cuivre);
-  box-shadow: var(--zl-ombre);
-}
-
-/* ── la jauge de santé : cinq perles enfilées ─────────── */
-
-.zl-sante {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 999px;
-  background: var(--zl-creux);
-  color: var(--zl-douce);
-  font-size: 11px;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.zl-sante-perles {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* le fil qui traverse les cinq perles */
-.zl-sante-perles::before {
-  content: '';
-  position: absolute;
-  left: -1px;
-  right: -1px;
-  top: 50%;
-  height: 1px;
-  background: var(--zl-fil-faible);
-}
-
-.zl-sante-perle {
-  position: relative;
-  width: 8px;
-  height: 8px;
+.rg-sante-perle {
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--rg-hair-fort);
   border-radius: 50%;
-  border: 1px solid var(--zl-trait-fort);
-  background: var(--zl-surface);
-}
-
-.zl-sante-perle.is-pleine {
-  border-color: transparent;
-  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-sauge) 76%);
-}
-
-.zl-sante[data-etat='a-surveiller'] .zl-sante-perle.is-pleine {
-  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-cuivre) 76%);
-}
-
-.zl-sante[data-etat='critique'] .zl-sante-perle.is-pleine {
-  background: radial-gradient(circle at 34% 30%, var(--zl-perle-creme), var(--zl-perle-corail) 76%);
-}
-
-/* ── le menu d'une carte ──────────────────────────────── */
-
-.zl-menage {
-  display: inline-flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--zl-trait);
-  border-radius: 9px;
-  background: var(--zl-creux);
-  color: var(--zl-faible);
-  cursor: pointer;
-  transition: border-color 0.16s ease;
-}
-
-.zl-menage:hover {
-  border-color: var(--zl-cuivre);
-}
-
-.zl-menu {
-  position: absolute;
-  top: 52px;
-  right: 14px;
-  z-index: 30;
-  display: flex;
-  min-width: 176px;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px;
-  border: 1px solid var(--zl-trait-fort);
-  border-radius: 13px;
-  background: var(--zl-surface);
-  box-shadow: var(--zl-ombre-forte);
-}
-
-.zl-menu button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 9px;
-  border: 1px solid transparent;
-  border-radius: 8px;
   background: transparent;
-  color: var(--zl-douce);
+}
+
+.rg-sante-perle.is-pleine {
+  border-color: transparent;
+  background: var(--rg-sante-ton, var(--rg-teal));
+}
+
+.rg-sante[data-etat='critique'] { --rg-sante-ton: var(--rg-corail); }
+.rg-sante[data-etat='a-surveiller'] { --rg-sante-ton: var(--rg-perle-cuivre); }
+.rg-sante[data-etat='solide'] { --rg-sante-ton: var(--rg-teal); }
+
+.rg-sante-valeur {
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15px;
+}
+
+.rg-sante-valeur span {
+  color: var(--rg-faint);
+  font-family: inherit;
+  font-size: 9.4px;
+}
+
+/* les actions d'une entrée : des mots, pas des boutons */
+.rg-entree-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.rg-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  min-width: 190px;
+  flex-direction: column;
+  padding: 8px;
+  border: 1px solid var(--rg-hair-fort);
+  border-radius: 6px;
+  background: var(--rg-paper);
+  box-shadow: var(--rg-ombre-douce);
+}
+
+.rg-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--rg-soft);
   font: inherit;
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 11.6px;
   text-align: left;
   cursor: pointer;
 }
 
-.zl-menu button:hover {
-  border-color: var(--zl-trait);
+.rg-menu button:hover {
+  box-shadow: inset 0 0 0 1px var(--rg-hair-fort);
 }
 
-.zl-menu button.is-danger {
-  color: var(--zl-corail);
+.rg-menu button.is-danger {
+  color: var(--rg-corail);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   8. LA LISTE (vue compacte)
+   6. LES TÂCHES — quatre colonnes de registre
    ═══════════════════════════════════════════════════════════════════ */
 
-.zl-liste {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.zl-ligne {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--zl-trait);
-  border-left: 3px solid var(--zl-perle-cuivre);
-  border-radius: 15px;
-  background: var(--zl-surface);
-  box-shadow: var(--zl-ombre);
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
-}
-
-.zl-ligne:hover {
-  border-color: var(--zl-cuivre);
-  box-shadow: var(--zl-ombre-forte);
-}
-
-.zl-ligne-principal {
+.rg-categories {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.zl-ligne-nom {
-  margin: 0;
-  color: var(--zl-encre);
-  font-size: 13.5px;
-  font-weight: 750;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.zl-ligne-note {
-  margin: 2px 0 0;
-  color: var(--zl-faible);
-  font-size: 11.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.zl-ligne-secondaire {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 10px 24px;
   flex-wrap: wrap;
-  min-width: 0;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rg-hair);
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   9. LES TÂCHES — le métier
-   ═══════════════════════════════════════════════════════════════════ */
-
-.zl-taches {
-  gap: 16px;
-}
-
-.zl-tableau {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  align-items: start;
-}
-
-/* chaque colonne est un métier : la chaîne verticale se voit dans le fond */
-.zl-colonne {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  min-width: 0;
-  padding: 10px 10px 12px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 18px;
-  background:
-    repeating-linear-gradient(90deg, var(--zl-trame) 0 1px, transparent 1px 9px),
-    var(--zl-surface-2);
-}
-
-.zl-colonne[data-survol='oui'] {
-  border-color: var(--zl-cuivre);
-  box-shadow: inset 0 0 0 1px var(--zl-cuivre), var(--zl-ombre);
-}
-
-.zl-colonne-tete {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 2px 2px 9px;
-  border-bottom: 1px solid var(--zl-trait);
-}
-
-.zl-colonne-titre {
-  display: flex;
-  align-items: center;
-  gap: 7px;
+.rg-categories-titre {
   margin: 0;
-  color: var(--zl-douce);
-  font-size: 10.5px;
+  color: var(--rg-soft);
+  font-size: 9px;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 
-.zl-colonne-corps {
-  display: flex;
-  flex-direction: column;
+.rg-categorie {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  min-height: 64px;
-}
-
-/* la carte de tâche : un liseré de perles vertical à gauche */
-.zl-carte-tache {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 12px 11px 10px 18px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 13px;
-  background: var(--zl-surface);
-  box-shadow: var(--zl-ombre);
-  cursor: grab;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
-}
-
-.zl-carte-tache::before {
-  content: '';
-  position: absolute;
-  top: 9px;
-  bottom: 9px;
-  left: 6px;
-  width: 6px;
-  background-image: radial-gradient(circle, var(--zl-perle-cuivre) 2.1px, transparent 2.5px);
-  background-size: 6px 8px;
-  background-repeat: repeat-y;
-  opacity: 0.85;
-}
-
-.zl-carte-tache:hover {
-  border-color: var(--zl-cuivre);
-  box-shadow: var(--zl-ombre-forte);
-}
-
-.zl-carte-tache[data-priorite='critical']::before {
-  background-image: radial-gradient(circle, var(--zl-perle-corail) 2.1px, transparent 2.5px);
-}
-
-.zl-carte-tache[data-priorite='high']::before {
-  background-image: radial-gradient(circle, var(--zl-perle-cuivre) 2.1px, transparent 2.5px);
-}
-
-.zl-carte-tache[data-priorite='medium']::before {
-  background-image: radial-gradient(circle, var(--zl-perle-sauge) 2.1px, transparent 2.5px);
-}
-
-.zl-carte-tache[data-priorite='low']::before {
-  background-image: radial-gradient(circle, var(--zl-perle-teal) 2.1px, transparent 2.5px);
-}
-
-.zl-carte-tache[data-selection='oui'] {
-  border-color: var(--zl-cuivre);
-  box-shadow: inset 0 0 0 1px var(--zl-cuivre), var(--zl-ombre);
-}
-
-.zl-carte-tache-titre {
-  margin: 0;
+  min-height: 36px;
   padding: 0;
   border: 0;
-  background: none;
-  color: var(--zl-encre);
-  font-family: inherit;
-  font-size: 12.8px;
-  font-weight: 700;
-  line-height: 1.42;
-  text-align: left;
+  background: transparent;
+  color: var(--rg-soft);
+  font: inherit;
+  font-size: 11.2px;
   cursor: pointer;
 }
 
-.zl-carte-tache-meta {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
-  color: var(--zl-faible);
-  font-size: 11px;
-}
-
-.zl-etiquette {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 999px;
-  background: var(--zl-creux);
-  color: var(--zl-douce);
-  font-size: 10.5px;
-  font-weight: 750;
-}
-
-.zl-etiquette[data-ton='retard'] {
-  border-color: var(--zl-corail);
-  color: var(--zl-corail);
-}
-
-.zl-etiquette[data-ton='bientot'] {
-  border-color: var(--zl-cuivre);
-  color: var(--zl-cuivre-fort);
-}
-
-/* la case de sélection : une perle qu'on remplit */
-.zl-case {
-  display: inline-flex;
-  width: 22px;
-  height: 22px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--zl-trait-fort);
+.rg-categorie::before {
+  content: '';
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--zl-creux);
-  color: transparent;
-  cursor: pointer;
-  transition: border-color 0.16s ease;
+  background: var(--rg-pastille, var(--rg-perle-cuivre));
 }
 
-.zl-case:hover {
-  border-color: var(--zl-cuivre);
+.rg-categorie[aria-pressed='true'] {
+  color: var(--rg-ink);
+  font-weight: 700;
 }
 
-.zl-case[aria-pressed='true'] {
-  border-color: var(--zl-cuivre-fort);
-  background: var(--zl-cuivre-fort);
-  color: var(--zl-sur-cuivre);
+.rg-categorie:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-hair-fort);
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   10. LA LISTE DES TÂCHES
-   ═══════════════════════════════════════════════════════════════════ */
+.rg-categorie-nombre {
+  color: var(--rg-faint);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
 
-.zl-tache-ligne {
+.rg-categories > .rg-lien:last-child {
+  margin-left: auto;
+}
+
+.rg-colonnes {
   display: grid;
-  grid-template-columns: auto minmax(0, 2fr) minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 14px;
-  background: var(--zl-surface);
-  box-shadow: var(--zl-ombre);
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 26px;
+  padding: 24px 0 8px;
 }
 
-.zl-tache-ligne:hover {
-  border-color: var(--zl-cuivre);
-  box-shadow: var(--zl-ombre-forte);
+.rg-colonne {
+  position: relative;
+  min-width: 0;
+  padding-left: 22px;
 }
 
-.zl-tache-ligne[data-selection='oui'] {
-  border-color: var(--zl-cuivre);
-  box-shadow: inset 0 0 0 1px var(--zl-cuivre);
+/* la tranche perlée de la colonne : elle suit la hauteur des entrées,
+   pas celle de la grille — une colonne courte ne tire pas un fil vide */
+.rg-colonne-corps {
+  position: relative;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   11. CATÉGORIES, SÉLECTION, ÉTATS
-   ═══════════════════════════════════════════════════════════════════ */
-
-.zl-categories {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 12px 14px;
-  border: 1px solid var(--zl-trait);
-  border-radius: var(--zl-rayon);
-  background: var(--zl-surface);
-  box-shadow: var(--zl-ombre);
-}
-
-.zl-categories-titre {
-  margin: 0 6px 0 0;
-  color: var(--zl-faible);
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.zl-selection {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 10px 14px;
-  border: 1px solid var(--zl-cuivre);
-  border-radius: 14px;
-  background: var(--zl-cuivre-voile);
-  color: var(--zl-douce);
-  font-size: 12px;
-  font-weight: 750;
-}
-
-.zl-selection-actions {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.zl-vide::before {
+.rg-colonne-corps::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
-  height: 10px;
+  bottom: 6px;
+  left: -22px;
+  width: 8px;
   background-image:
-    radial-gradient(circle, var(--zl-perle-cuivre) 2.2px, transparent 2.6px),
-    radial-gradient(circle, var(--zl-perle-sauge) 1.7px, transparent 2.1px);
-  background-size: 12px 10px, 12px 10px;
-  background-position: 2px 3px, 8px 6px;
-  background-repeat: repeat-x;
-  opacity: 0.75;
+    radial-gradient(circle at 4px 0, var(--rg-colonne-ton, var(--rg-perle-cuivre)) 2.4px, transparent 2.8px),
+    linear-gradient(var(--rg-hair), var(--rg-hair));
+  background-size: 8px 15px, 1px 100%;
+  background-position: 0 2px, 4px 0;
+  background-repeat: repeat-y, no-repeat;
+  opacity: 0.9;
+  pointer-events: none;
 }
 
-.zl-vide {
+.rg-colonne[data-survol='oui'] {
+  box-shadow: inset 2px 0 0 0 var(--rg-copper);
+}
+
+.rg-colonne[data-colonne='a-faire'] { --rg-colonne-ton: var(--rg-perle-teal); }
+.rg-colonne[data-colonne='en-cours'] { --rg-colonne-ton: var(--rg-perle-cuivre); }
+.rg-colonne[data-colonne='terminees'] { --rg-colonne-ton: var(--rg-perle-sauge); }
+.rg-colonne[data-colonne='validees'] { --rg-colonne-ton: var(--rg-perle-creme); }
+
+.rg-colonne-tete {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0 8px;
+  padding-bottom: 14px;
+  border-bottom: 1.6px solid var(--rg-colonne-ton, var(--rg-copper));
+}
+
+.rg-colonne-titre {
+  margin: 0;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.rg-colonne-compte {
+  color: var(--rg-faint);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-colonne-sous {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  color: var(--rg-faint);
+  font-size: 9.6px;
+}
+
+.rg-colonne-corps {
+  display: flex;
+  flex-direction: column;
+  min-height: 60px;
+}
+
+/* la fiche de tâche : une entrée de registre, jamais une carte */
+.rg-fiche {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 42px 20px 34px;
-  border: 1px dashed var(--zl-trait-fort);
-  border-radius: var(--zl-rayon);
-  background: var(--zl-surface);
-  box-shadow: var(--zl-ombre);
-  text-align: center;
-  overflow: hidden;
+  gap: 8px;
+  padding: 16px 0 14px;
+  border-bottom: 1px solid var(--rg-hair);
+  cursor: grab;
+  transition: box-shadow 0.16s ease;
 }
 
-.zl-vide h3 {
-  margin: 0;
-  color: var(--zl-encre);
+.rg-fiche:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-hair-fort);
+}
+
+.rg-fiche:active {
+  cursor: grabbing;
+}
+
+.rg-fiche[data-selection='oui'] {
+  box-shadow: inset 3px 0 0 0 var(--rg-copper);
+}
+
+.rg-fiche-tete {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+/* la perle de priorité */
+.rg-fiche-perle {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--rg-priorite, var(--rg-perle-cuivre));
+}
+
+.rg-fiche[data-priorite='critical'] { --rg-priorite: var(--rg-corail); }
+.rg-fiche[data-priorite='high'] { --rg-priorite: var(--rg-perle-cuivre); }
+.rg-fiche[data-priorite='medium'] { --rg-priorite: var(--rg-perle-sauge); }
+.rg-fiche[data-priorite='low'] { --rg-priorite: var(--rg-perle-teal); }
+
+.rg-fiche-num {
+  color: var(--rg-faint);
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 19px;
-  font-weight: 600;
+  font-size: 10.5px;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
 }
 
-.zl-vide p {
-  max-width: 440px;
+.rg-fiche-titre {
+  flex: 1;
   margin: 0;
-  color: var(--zl-faible);
-  font-size: 12.5px;
-  line-height: 1.6;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15.4px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
 }
 
-.zl-chargement {
+.rg-fiche-titre:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-copper);
+}
+
+.rg-fiche-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-left: 16px;
+  color: var(--rg-faint);
+  font-size: 9.8px;
+}
+
+.rg-fiche-meta strong {
+  color: var(--rg-corail);
+  font-weight: 700;
+}
+
+.rg-fiche-meta span[data-sep] {
+  opacity: 0.5;
+}
+
+/* l'échéance dessinée */
+.rg-echeance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--rg-faint);
+  font-size: 9.6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-echeance-collier {
+  flex: none;
+  --zl-fil: var(--rg-hair-fort);
+  --zl-perle-teal: var(--rg-perle-teal);
+  --zl-perle-cuivre: var(--rg-perle-cuivre);
+  --zl-perle-corail: var(--rg-perle-corail);
+  --zl-perle-creme: var(--rg-perle-creme);
+  --zl-perle-sauge: var(--rg-perle-sauge);
+}
+
+.rg-echeance[data-ton='retard'] {
+  color: var(--rg-corail);
+  font-weight: 700;
+}
+
+.rg-fiche-pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-left: 16px;
+}
+
+.rg-personne {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--rg-soft);
+  font-size: 9.8px;
+}
+
+.rg-fiche-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rg-fiche-actions .rg-lien {
+  min-height: 32px;
+  font-size: 9.6px;
+  font-weight: 600;
+  color: var(--rg-faint);
+}
+
+/* la case de sélection : une perle qu'on remplit */
+.rg-case {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rg-hair-fort);
+  border-radius: 50%;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  transition: box-shadow 0.16s ease;
+}
+
+.rg-case:hover {
+  box-shadow: 0 0 0 3px var(--rg-voile);
+}
+
+.rg-case[aria-pressed='true'] {
+  border-color: var(--rg-copper-fort);
+  background: var(--rg-copper-fort);
+  color: var(--rg-sur-copper);
+}
+
+/* « ajouter une tâche », au bas de chaque colonne */
+.rg-ajouter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 36px;
+  margin-top: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rg-faint);
+  font: inherit;
+  font-size: 9.8px;
+  cursor: pointer;
+}
+
+.rg-ajouter:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-copper);
+}
+
+/* la colonne vide : une phrase et une rosace creuse */
+.rg-colonne-vide {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 3px;
+  padding: 12px 0 4px;
+  color: var(--rg-faint);
+  font-size: 11px;
 }
 
-.zl-chargement-ligne {
-  height: 76px;
-  border: 1px solid var(--zl-trait);
-  border-radius: 15px;
-  background: linear-gradient(90deg, var(--zl-creux) 25%, var(--zl-surface) 50%, var(--zl-creux) 75%);
-  background-size: 200% 100%;
-  animation: zl-brille 1.4s linear infinite;
-}
-
-@keyframes zl-brille {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
-}
-
-.zl-note-module {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 13px 15px;
-  border: 1px solid var(--zl-trait);
-  border-left: 3px solid var(--zl-perle-teal);
-  border-radius: 14px;
-  background: var(--zl-surface);
-  color: var(--zl-douce);
-  font-size: 12.5px;
-  line-height: 1.6;
+.rg-colonne-vide span:last-child {
+  font-size: 9.6px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   12. RACCOURCIS DE PAGES (bandeau commun à toutes les coques)
+   7. LA VUE LISTE — la même lecture, à plat
    ═══════════════════════════════════════════════════════════════════ */
+
+.rg-liste {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 0;
+}
+
+.rg-ligne {
+  display: grid;
+  grid-template-columns: auto minmax(0, 2fr) minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rg-hair);
+  transition: box-shadow 0.16s ease;
+}
+
+.rg-ligne:hover {
+  box-shadow: inset 3px 0 0 -1px var(--rg-copper);
+}
+
+.rg-ligne[data-selection='oui'] {
+  box-shadow: inset 3px 0 0 0 var(--rg-copper);
+}
+
+.rg-ligne-nom {
+  margin: 0;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15px;
+}
+
+.rg-ligne-note {
+  margin: 3px 0 0;
+  color: var(--rg-faint);
+  font-size: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   8. SÉLECTION, AVERTISSEMENTS, ÉTATS
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-selection {
+  position: sticky;
+  top: 8px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--rg-copper);
+  border-radius: 4px;
+  background: var(--rg-voile);
+  color: var(--rg-ink);
+  font-size: 11.4px;
+  font-weight: 700;
+}
+
+.rg-selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rg-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 12px 0 12px 14px;
+  border-left: 2px solid var(--rg-perle-teal);
+  color: var(--rg-soft);
+  font-size: 11.4px;
+  line-height: 1.55;
+}
+
+.rg-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 46px 0 40px;
+  border-bottom: 1px solid var(--rg-hair);
+}
+
+.rg-vide h3 {
+  margin: 0;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.rg-vide p {
+  max-width: 480px;
+  margin: 0;
+  color: var(--rg-soft);
+  font-size: 11.8px;
+  line-height: 1.6;
+}
+
+.rg-vide .rg-primaire {
+  margin-top: 10px;
+}
+
+.rg-chargement {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 0;
+}
+
+.rg-chargement-ligne {
+  height: 1px;
+  background: var(--rg-hair);
+}
+
+.rg-chargement-texte {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--rg-faint);
+  font-size: 11.4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   9. LE PIED — ce qui demande une décision
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-pied {
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1.5px solid var(--rg-hair-fort);
+}
+
+.rg-pied-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rg-pied-titre {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0;
+  color: var(--rg-corail);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.rg-pied-texte {
+  color: var(--rg-soft);
+  font-size: 11.4px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* les onglets du registre de décisions */
+.rg-pied-onglets {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.rg-pied-liste {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+  border-top: 1px solid var(--rg-hair);
+}
+
+.rg-pied-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rg-hair);
+}
+
+.rg-pied-item-titre {
+  margin: 0;
+  color: var(--rg-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rg-pied-item-note {
+  margin: 3px 0 0;
+  color: var(--rg-faint);
+  font-size: 10.4px;
+}
+
+.rg-pied-item[data-grave='oui'] .rg-pied-item-titre {
+  color: var(--rg-corail);
+}
+
+.rg-pied-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   10. LE MOUVEMENT — les entrées se posent, une fois
+   ═══════════════════════════════════════════════════════════════════ */
+
+@keyframes rg-pose {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+
+.rg-entree,
+.rg-fiche,
+.rg-collier-groupe {
+  animation: rg-pose 0.34s cubic-bezier(0.22, 0.7, 0.3, 1) both;
+}
+
+.rg-entree:nth-child(2) { animation-delay: 0.03s; }
+.rg-entree:nth-child(3) { animation-delay: 0.06s; }
+.rg-entree:nth-child(4) { animation-delay: 0.09s; }
+.rg-entree:nth-child(5) { animation-delay: 0.12s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rg-entree,
+  .rg-fiche,
+  .rg-collier-groupe {
+    animation: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   11. ADAPTATION — on garde la même écriture, plus serrée
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1180px) {
+  .rg-entree {
+    column-gap: 16px;
+  }
+  .rg-colonnes {
+    gap: 0 20px;
+  }
+}
+
+@media (max-width: 960px) {
+  .rg-colonnes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 28px;
+  }
+  .rg-tete {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rg-colophon {
+    flex-wrap: wrap;
+    row-gap: 14px;
+  }
+  .rg-chiffre:first-child {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .emp-vues {
+    padding-left: 30px;
+  }
+  .emp-vues::before {
+    left: 8px;
+    top: 90px;
+  }
+  .rg-entree {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    row-gap: 12px;
+  }
+  .rg-cellule-membres,
+  .rg-cellule-sante {
+    grid-column: 2 / -1;
+  }
+  .rg-entree-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+  .rg-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .rg-colonnes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rg-ligne {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 8px;
+  }
+  .rg-ligne > :nth-child(n + 3) {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .rg-chiffre {
+    min-width: 50%;
+    padding: 0 14px 0 0;
+    border-left: 0;
+  }
+  .rg-chiffre-libelle {
+    letter-spacing: 0.14em;
+  }
+  .rg-titre {
+    font-size: 34px;
+  }
+}
+
+/* ── les raccourcis de pages, en bas de coque ─────────────────────── */
 
 .pointages-afrotech-shell .abs-raccourcis,
 .employes-afrotech .abs-raccourcis {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 6px 0 26px;
+  padding: 18px 0 26px;
 }
 
 .pointages-afrotech-shell .abs-raccourci {
@@ -1719,135 +1640,15 @@
   pointer-events: none;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   13. LE MOUVEMENT — les perles se posent, une fois
-   ═══════════════════════════════════════════════════════════════════ */
-
-@keyframes zl-perle-pose {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.965);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+/* le petit indicateur tournant des chargements */
+@keyframes rg-tourne {
+  to { transform: rotate(360deg); }
 }
 
-.zl-carte,
-.zl-colonne,
-.zl-medaillon,
-.zl-collier {
-  animation: zl-perle-pose 0.42s cubic-bezier(0.22, 0.7, 0.3, 1) both;
+.spin {
+  animation: rg-tourne 0.9s linear infinite;
 }
 
-.zl-grille > .zl-carte:nth-child(2) { animation-delay: 0.04s; }
-.zl-grille > .zl-carte:nth-child(3) { animation-delay: 0.08s; }
-.zl-grille > .zl-carte:nth-child(4) { animation-delay: 0.12s; }
-.zl-grille > .zl-carte:nth-child(5) { animation-delay: 0.16s; }
-.zl-grille > .zl-carte:nth-child(6) { animation-delay: 0.2s; }
-
-@media (prefers-reduced-motion: reduce) {
-  .zl-carte,
-  .zl-colonne,
-  .zl-medaillon,
-  .zl-collier,
-  .zl-chargement-ligne {
-    animation: none;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   14. RESPONSIVE
-   ═══════════════════════════════════════════════════════════════════ */
-
-@media (max-width: 1080px) {
-  .zl-tableau {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 860px) {
-  .zl-collier-corps {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .zl-ligne {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-  }
-  .zl-tache-ligne {
-    grid-template-columns: auto minmax(0, 1fr);
-    row-gap: 6px;
-  }
-  .zl-scene-corps {
-    align-items: flex-start;
-  }
-}
-
-@media (max-width: 640px) {
-  .zl-tableau {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .zl-scene-actions {
-    width: 100%;
-  }
-  .zl-bouton-principal {
-    flex: 1 1 auto;
-    justify-content: center;
-  }
-  .zl-select {
-    max-width: none;
-    flex: 1 1 160px;
-  }
-  .zl-scene-titre {
-    font-size: 32px;
-  }
-}
-
-/* ── l'état vide d'une colonne : une rosace et un mot ─────── */
-
-.zl-colonne-vide {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 16px 10px;
-  border: 1px dashed var(--zl-trait);
-  border-radius: 12px;
-  color: var(--zl-faible);
-  font-size: 11.5px;
-}
-
-/* ── le collier d'échéance ─────────────────────────────────────────── */
-
-.zl-echeance {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.zl-echeance-collier {
-  flex: none;
-  /*  en sombre, le fil doit tenir sur la carte */
-  --zl-fil: rgba(214, 154, 92, 0.5);
-}
-
-.zl-echeance-texte {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  color: var(--zl-faible);
-  font-size: 10.5px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.zl-echeance[data-ton='retard'] .zl-echeance-texte {
-  color: var(--zl-corail);
-}
-
-.zl-echeance[data-ton='bientot'] .zl-echeance-texte {
-  color: var(--zl-cuivre-fort);
+.rg-tourne {
+  animation: rg-tourne 0.9s linear infinite;
 }
