@@ -21,6 +21,8 @@ import { QRCodeSVG } from 'qrcode.react'
 import { X, Download, Share2, Check, Loader2 } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import EnCheckBrandMark from './EnCheckBrandMark'
+import { BandeMotif } from './badge/MotifsBadge'
+import { MOTIFS, estMotif } from './badge/motifs'
 import './BadgeEmploye.css'
 
 const LARGEUR = 300
@@ -37,6 +39,37 @@ const CONTRATS = {
   Intérim: 'Intérim',
   Apprentissage: 'Apprentissage',
   Freelance: 'Freelance',
+}
+
+// ── les teintes proposées, et le réglage retenu ───────────────
+// La première entrée suit l'entreprise ; les autres sont des
+// accents du registre. Le réglage est rangé par employé, sur cet
+// appareil : aucune table n'est modifiée pour un choix d'impression.
+const TEINTES = [
+  { id: 'entreprise', nom: "Couleur de l'entreprise" },
+  { id: '#8f4d1d', nom: 'Cuivre' },
+  { id: '#2b6a5f', nom: 'Teal' },
+  { id: '#56652a', nom: 'Sauge' },
+  { id: '#a2452e', nom: 'Corail' },
+  { id: '#5f4560', nom: 'Prune' },
+  { id: '#2f3542', nom: 'Nuit' },
+  { id: '#b08d2f', nom: 'Or' },
+]
+
+const CLE_REGLAGE = (employeeId) => `encheck:carte:${employeeId || 'sans-identifiant'}`
+
+function lireReglage(employeeId) {
+  try {
+    const brut = window.localStorage.getItem(CLE_REGLAGE(employeeId))
+    if (!brut) return null
+    const objet = JSON.parse(brut)
+    return {
+      couleur: typeof objet?.couleur === 'string' && /^#[0-9a-f]{6}$/i.test(objet.couleur) ? objet.couleur : null,
+      motif: estMotif(objet?.motif) ? objet.motif : null,
+    }
+  } catch {
+    return null
+  }
 }
 
 // ── la couleur de l'entreprise : on la lit, on ne l'invente pas ──
@@ -193,16 +226,12 @@ function stylesDe(palette) {
       letterSpacing: '0.2em',
       opacity: 0.82,
     },
-    perlesBandeau: {
-      position: 'absolute',
-      right: '15px',
-      bottom: '6px',
-      left: '15px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+    bandeMotif: {
+      flex: 'none',
+      height: '10px',
+      overflow: 'hidden',
+      lineHeight: 0,
     },
-    perleBandeau: { display: 'block', width: '2.5px', height: '2.5px', borderRadius: '50%' },
 
     corps: {
       display: 'flex',
@@ -389,7 +418,20 @@ export default function BadgeEmploye({
   const [partage, setPartage] = useState(false)
   const [message, setMessage] = useState('')
 
-  const palette = useMemo(() => paletteDe(primaryColor), [primaryColor])
+  const couleurEntreprise = primaryColor || '#D4AF37'
+  const reglageInitial = useRef(lireReglage(employee?.id))
+  // `null` = la carte suit la couleur de l'entreprise ; une valeur =
+  // la teinte choisie pour cette personne, retenue sur l'appareil.
+  const [couleurChoisie, setCouleurChoisie] = useState(() => reglageInitial.current?.couleur || null)
+  const [motif, setMotif] = useState(() => reglageInitial.current?.motif || 'perles')
+
+  const couleur = couleurChoisie || couleurEntreprise
+  const choisirCouleur = (valeur) => {
+    setCouleurChoisie(String(valeur).toLowerCase() === String(couleurEntreprise).toLowerCase() ? null : valeur)
+  }
+
+  const palette = useMemo(() => paletteDe(couleur), [couleur])
+  const paletteBande = useMemo(() => ({ ...palette, papier: '#f5f0e6' }), [palette])
   const s = useMemo(() => stylesDe(palette), [palette])
 
   const nom = nomCompletDe(employee) || 'Nom à compléter'
@@ -398,6 +440,21 @@ export default function BadgeEmploye({
   const qrValeur = employee?.qr_token || employee?.matricule || ''
   const tailleNom = nom.length > 24 ? 15.5 : nom.length > 18 ? 17.5 : 20
   const reference = employee?.matricule ? `N° ${employee.matricule}` : 'Carte nominative'
+
+  // le choix est retenu sur cet appareil, par employé
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CLE_REGLAGE(employee?.id), JSON.stringify({ couleur: couleurChoisie, motif }))
+    } catch {
+      // stockage refusé : la carte reste utilisable, le choix ne survit pas
+    }
+  }, [couleurChoisie, motif, employee?.id])
+
+  const reglageModifie = Boolean(couleurChoisie) || motif !== 'perles'
+  const revenirAlOrigine = () => {
+    setCouleurChoisie(null)
+    setMotif('perles')
+  }
 
   // la fenêtre se ferme à Échap, et le fond ne défile plus dessous
   useEffect(() => {
@@ -498,7 +555,8 @@ export default function BadgeEmploye({
           </button>
         </header>
 
-        <div className="bge-apercu">
+        <div className="bge-corps">
+          <div className="bge-apercu">
           <div className="bge-echelle">
             <div ref={badgeRef} style={s.carte} data-testid="badge-carte">
               {/* ── l'entreprise ── */}
@@ -522,19 +580,12 @@ export default function BadgeEmploye({
                   </div>
                   <span style={s.marque}>EN-CHECK</span>
                 </div>
-                <div style={s.perlesBandeau} aria-hidden="true">
-                  {Array.from({ length: 36 }).map((_, index) => (
-                    <span
-                      key={index}
-                      style={{
-                        ...s.perleBandeau,
-                        background: index % 2 === 0 ? palette.perleA : palette.perleB,
-                        opacity: index % 3 === 0 ? 1 : 0.6,
-                      }}
-                    />
-                  ))}
-                </div>
               </header>
+
+              {/* la bande tissée : le motif choisi, à la couleur de la carte */}
+              <div style={s.bandeMotif} data-motif={motif} data-testid="badge-bande">
+                <BandeMotif motif={motif} palette={paletteBande} largeur={LARGEUR} hauteur={10} />
+              </div>
 
               {/* ── la personne ── */}
               <div style={s.corps}>
@@ -596,6 +647,70 @@ export default function BadgeEmploye({
               </footer>
             </div>
           </div>
+        </div>
+
+            <aside className="bge-reglages" aria-label="Personnalisation de la carte">
+              <section className="bge-section">
+                <h3 className="bge-section-titre">Couleur</h3>
+                <div className="bge-teintes" role="group" aria-label="Couleur de la carte">
+                  {TEINTES.map((teinte) => {
+                    const valeur = teinte.id === 'entreprise' ? couleurEntreprise : teinte.id
+                    const active = valeur.toLowerCase() === couleur.toLowerCase()
+                    return (
+                      <button
+                        key={teinte.id}
+                        type="button"
+                        className="bge-teinte"
+                        data-actif={active ? 'oui' : undefined}
+                        style={{ '--teinte': valeur }}
+                        aria-label={teinte.nom}
+                        aria-pressed={active}
+                        title={teinte.nom}
+                        onClick={() => choisirCouleur(valeur)}
+                      >
+                        <span className="bge-teinte-point" />
+                      </button>
+                    )
+                  })}
+                  <label className="bge-teinte bge-teinte--libre" title="Autre couleur">
+                    <input
+                      type="color"
+                      value={couleur}
+                      aria-label="Choisir une autre couleur"
+                      onChange={(evenement) => choisirCouleur(evenement.target.value)}
+                    />
+                    <span className="bge-teinte-point" />
+                  </label>
+                </div>
+              </section>
+
+              <section className="bge-section">
+                <h3 className="bge-section-titre">Motif culturel</h3>
+                <div className="bge-motifs" role="group" aria-label="Motif culturel de la carte">
+                  {MOTIFS.map((choix) => (
+                    <button
+                      key={choix.id}
+                      type="button"
+                      className="bge-motif"
+                      aria-pressed={motif === choix.id}
+                      title={choix.detail}
+                      onClick={() => setMotif(choix.id)}
+                    >
+                      <span className="bge-motif-vignette">
+                        <BandeMotif motif={choix.id} palette={paletteBande} largeur={96} hauteur={10} />
+                      </span>
+                      <span className="bge-motif-nom">{choix.nom}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="bge-aide">Le choix est conservé sur cet appareil.</p>
+                {reglageModifie && (
+                  <button type="button" className="bge-lien" onClick={revenirAlOrigine}>
+                    Revenir à la carte d’origine
+                  </button>
+                )}
+              </section>
+            </aside>
         </div>
 
         <div className="bge-actions">

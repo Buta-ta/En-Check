@@ -20,6 +20,8 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BadgeEmploye from '../components/BadgeEmploye'
+import ModaleAccesPortail from '../components/employes/ModaleAccesPortail'
+import ModaleHoraires from '../components/employes/ModaleHoraires'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import EmployesLoadingScreen from '../components/EmployesLoadingScreen'
 import FicheEmployeModal from '../components/FicheEmployeModal'
@@ -152,10 +154,8 @@ export default function Employes() {
 
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [selectedEmployeeForPassword, setSelectedEmployeeForPassword] = useState(null)
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [savingPassword, setSavingPassword] = useState(false)
+  // l'employé dont on prépare l'envoi des horaires
+  const [horairesEmploye, setHorairesEmploye] = useState(null)
 
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -271,8 +271,6 @@ export default function Employes() {
   //                     information, pas un manque : c'est celui-là qu'il
   //                     faut aider.
   //   • une date      → il utilise son accès.
-  const aDejaConnecte = (employe) => !!employe?.last_login_at
-
   const formatDerniereConnexion = (employe) => {
     if (!aUnCompteEmploye(employe)) return null   // pas de compte : rien à dire
     if (!employe?.last_login_at) return 'Jamais connecté'
@@ -292,17 +290,14 @@ export default function Employes() {
 
   const handleOpenPasswordModal = (employee) => {
     setSelectedEmployeeForPassword(employee)
-    setNewPassword('')
-    setConfirmPassword('')
-    setShowNewPassword(false)
     setShowPasswordModal(true)
   }
 
-  const handleSavePassword = async () => {
-    if (!newPassword || newPassword.length < 6) { toast.error('Le mot de passe doit contenir au moins 6 caractères'); return }
-    if (newPassword !== confirmPassword) { toast.error('Les mots de passe ne correspondent pas'); return }
-    const employe = selectedEmployeeForPassword
-    setSavingPassword(true)
+  const enregistrerMotDePasse = async (employe, motDePasse) => {
+    if (!motDePasse || motDePasse.length < 6) {
+      return { ok: false, message: 'Le mot de passe doit contenir au moins 6 caractères.' }
+    }
+    if (!employe) return { ok: false, message: 'Aucun employé sélectionné.' }
     try {
       // ═══════════════════════════════════════════════════════════
       // 06.B.4 — LE MOT DE PASSE EST VÉRIFIÉ PAR SUPABASE, PAS ICI
@@ -318,7 +313,7 @@ export default function Employes() {
       if (employe.user_id) {
         const { data, error } = await supabase.rpc('set_employee_password', {
           p_employee_id: employe.id,
-          p_password: newPassword,
+          p_password: motDePasse,
         })
         if (error) throw error
         if (data && data.ok === false) throw new Error(data.message || 'Refus de la base')
@@ -331,7 +326,7 @@ export default function Employes() {
         const { data, error } = await supabase.rpc('create_employee_auth_user', {
           p_employee_id: employe.id,
           p_email: null,
-          p_password: newPassword,
+          p_password: motDePasse,
         })
         if (error) throw error
         if (data && data.ok === false) throw new Error(data.message || 'Refus de la base')
@@ -349,8 +344,11 @@ export default function Employes() {
 
       setShowPasswordModal(false)
       loadData(admin)
-    } catch (err) { console.error('Erreur accès portail:', err); toast.error(err?.message || 'Erreur lors de la sauvegarde', { duration: 9000 }) }
-    setSavingPassword(false)
+      return { ok: true }
+    } catch (err) {
+      console.error('Erreur accès portail:', err)
+      return { ok: false, message: err?.message || 'La base a refusé l’enregistrement. Réessayez.' }
+    }
   }
 
   const handleTogglePortalAccess = async (employee, enabled) => {
@@ -362,7 +360,12 @@ export default function Employes() {
       if (error) throw error
       toast.success(enabled ? 'Accès portail activé' : 'Accès portail désactivé')
       loadData(admin)
-    } catch (err) { console.error('Erreur:', err); toast.error('Erreur lors de la modification') }
+      return { ok: true }
+    } catch (err) {
+      console.error('Erreur:', err)
+      toast.error('L’accès portail n’a pas pu être modifié')
+      return { ok: false }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -892,18 +895,10 @@ export default function Employes() {
     return employee.enterprises?.module_planning || false
   }
 
+  // Le clic ouvre une fenêtre : le message est montré avant d'être
+  // envoyé, et le navigateur ne peut plus « ne rien faire » en silence.
   const handleShareSchedule = (employee) => {
-    const scheduleData = employee.employee_schedules?.[0]
-    let horaires = 'Non défini'
-    if (scheduleData) {
-      if (scheduleData.use_custom_hours) {
-        horaires = `${scheduleData.custom_start_time?.slice(0, 5) || '--:--'} - ${scheduleData.custom_end_time?.slice(0, 5) || '--:--'}`
-      } else if (scheduleData.work_schedules) {
-        horaires = `${scheduleData.work_schedules.name} (${scheduleData.work_schedules.start_time?.slice(0, 5) || '--:--'} - ${scheduleData.work_schedules.end_time?.slice(0, 5) || '--:--'})`
-      }
-    }
-    const message = `📋 *Horaires de travail*\n\n👤 *${employee.first_name} ${employee.last_name}*\n🆔 Matricule: ${employee.matricule}\n⏰ Horaires: ${horaires}\n\n_Envoyé via En-Check_`
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank')
+    setHorairesEmploye(employee)
   }
 
   const handleEnterpriseChange = async (enterpriseId) => {
@@ -1459,118 +1454,33 @@ export default function Employes() {
           </div>
         )}
 
-        {/* ═══ PASSWORD MODAL ═══ */}
+        {/* ═══ ACCÈS PORTAIL — la fenêtre du registre ═══ */}
         {showPasswordModal && selectedEmployeeForPassword && (
-          <div className="afro-modal-overlay" style={styles.modalOverlay}>
-            <div className="afro-modal-content" style={styles.formModal}>
-              <div style={styles.formModalHeader}>
-                <div style={styles.formModalTitleWrap}>
-                  <div style={{ ...styles.formModalIcon, background: 'rgba(34, 197, 94, 0.12)' }}><Key size={20} color="#22C55E" /></div>
-                  <div>
-                    <h2 style={styles.formModalTitle}>{aUnCompteSupabase(selectedEmployeeForPassword) ? 'Modifier le mot de passe' : (estAncienSysteme(selectedEmployeeForPassword) ? 'Migrer l\'accès portail' : 'Créer l\'accès portail')}</h2>
-                    <span style={styles.formModalSub}>{selectedEmployeeForPassword.first_name} {selectedEmployeeForPassword.last_name}</span>
-                  </div>
-                </div>
-                <button onClick={() => setShowPasswordModal(false)} style={styles.formCloseBtn}><X size={20} /></button>
-              </div>
+          <ModaleAccesPortail
+            employee={selectedEmployeeForPassword}
+            aCompte={aUnCompteEmploye(selectedEmployeeForPassword)}
+            compteSupabase={aUnCompteSupabase(selectedEmployeeForPassword)}
+            ancienSysteme={estAncienSysteme(selectedEmployeeForPassword)}
+            derniereConnexion={formatDerniereConnexion(selectedEmployeeForPassword)}
+            portailActif={Boolean(selectedEmployeeForPassword.employee_portal_enabled)}
+            onEnregistrer={(motDePasse) => enregistrerMotDePasse(selectedEmployeeForPassword, motDePasse)}
+            onBasculerPortail={handleTogglePortalAccess}
+            onClose={() => setShowPasswordModal(false)}
+          />
+        )}
 
-              <div style={styles.formModalBody}>
-                <div style={{ padding: '14px 16px', background: 'rgba(34, 197, 94, 0.06)', border: '1px solid rgba(34, 197, 94, 0.15)', borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <Shield size={20} color="#22C55E" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <div>
-                    <p style={{ color: '#22C55E', fontSize: 13, fontWeight: 600, margin: '0 0 4px 0' }}>Accès Espace Employé</p>
-                    <p style={{ color: '#888', fontSize: 12, margin: 0, lineHeight: 1.5 }}>
-                      L'employé se connectera sur <strong style={{ color: '#22C55E' }}>/employee/login</strong> avec son{' '}
-                      <strong style={{ color: '#FFF' }}>matricule</strong>
-                      {selectedEmployeeForPassword.matricule
-                        ? <> (<strong style={{ color: '#FFF' }}>{selectedEmployeeForPassword.matricule}</strong>)</>
-                        : null}{' '}
-                      — ou son téléphone, ou son email s'il en a un — et ce mot de passe.
-                    </p>
-                  </div>
-                </div>
-
-                {/* 06.B.7 — où en est cet employé ? Visible au moment même
-                    où l'administrateur gère son accès. */}
-                {formatDerniereConnexion(selectedEmployeeForPassword) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Clock size={14} color={aDejaConnecte(selectedEmployeeForPassword) ? '#60A5FA' : '#F59E0B'} />
-                    <span style={{ fontSize: 12, color: '#888' }}>
-                      Dernière connexion :{' '}
-                      <strong style={{ color: aDejaConnecte(selectedEmployeeForPassword) ? '#60A5FA' : '#F59E0B' }}>
-                        {formatDerniereConnexion(selectedEmployeeForPassword)}
-                      </strong>
-                    </span>
-                  </div>
-                )}
-
-                {/* 06.B.8 — AVERTISSEMENT DE MIGRATION
-                    L'employé a déjà un mot de passe qu'il utilise. Celui
-                    qu'on va définir le REMPLACE. S'il n'est pas prévenu,
-                    il est enfermé dehors sans comprendre pourquoi. */}
-                {estAncienSysteme(selectedEmployeeForPassword) && (
-                  <div style={{ padding: '12px 16px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <AlertTriangle size={18} color="#F59E0B" style={{ flexShrink: 0, marginTop: 2 }} />
-                    <span style={{ color: '#F59E0B', fontSize: 12, lineHeight: 1.5 }}>
-                      Cet employé se connecte aujourd'hui avec l'<strong>ancien système</strong>.
-                      Le mot de passe ci-dessous le <strong>remplacera définitivement</strong> :
-                      l'ancien cessera de fonctionner. <strong>Communiquez-lui le nouveau</strong> dès maintenant.
-                    </span>
-                  </div>
-                )}
-
-                {/* 06.B.4 — Avant, un employé sans email ET sans téléphone ne
-                    pouvait pas recevoir d'accès : le bouton restait désactivé.
-                    Ce n'est plus nécessaire — l'identifiant de connexion est
-                    fabriqué à partir du MATRICULE. Le seul vrai prérequis est
-                    donc le matricule. */}
-                {!aUnCompteEmploye(selectedEmployeeForPassword) && !selectedEmployeeForPassword.matricule && (
-                  <div style={{ padding: '12px 16px', background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <AlertTriangle size={18} color="#EF4444" />
-                    <span style={{ color: '#EF4444', fontSize: 12 }}>Cet employé n'a pas de matricule. Renseignez-en un : c'est avec lui qu'il se connectera.</span>
-                  </div>
-                )}
-
-                <div style={styles.formField}>
-                  <label style={styles.formLabel}><Lock size={14} /> Nouveau mot de passe</label>
-                  <div style={styles.pinFieldWrap}>
-                    <input type={showNewPassword ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={styles.formInput} placeholder="Minimum 6 caractères" autoComplete="new-password" />
-                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} style={styles.pinEyeBtn}>{showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
-                  </div>
-                  {newPassword && newPassword.length < 6 && <span style={{ fontSize: 11, color: '#EF4444', marginTop: 4 }}>Le mot de passe doit contenir au moins 6 caractères</span>}
-                </div>
-
-                <div style={styles.formField}>
-                  <label style={styles.formLabel}><Lock size={14} /> Confirmer le mot de passe</label>
-                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={styles.formInput} placeholder="Retaper le mot de passe" autoComplete="new-password" />
-                  {confirmPassword && newPassword && (
-                    <span style={{ fontSize: 12, marginTop: 4, color: confirmPassword === newPassword ? '#22C55E' : '#EF4444', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {confirmPassword === newPassword ? <><UserCheck size={12} /> Les mots de passe correspondent</> : <><UserX size={12} /> Les mots de passe ne correspondent pas</>}
-                    </span>
-                  )}
-                </div>
-
-                {aUnCompteEmploye(selectedEmployeeForPassword) && (
-                  <div style={{ padding: '12px 16px', background: selectedEmployeeForPassword.employee_portal_enabled ? 'rgba(34, 197, 94, 0.06)' : 'rgba(239, 68, 68, 0.06)', border: `1px solid ${selectedEmployeeForPassword.employee_portal_enabled ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'}`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 13, color: selectedEmployeeForPassword.employee_portal_enabled ? '#22C55E' : '#EF4444', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {selectedEmployeeForPassword.employee_portal_enabled ? <><UserCheck size={14} /> Accès portail actif</> : <><UserX size={14} /> Accès portail désactivé</>}
-                    </span>
-                    <button onClick={() => handleTogglePortalAccess(selectedEmployeeForPassword, !selectedEmployeeForPassword.employee_portal_enabled)} style={{ padding: '6px 12px', background: selectedEmployeeForPassword.employee_portal_enabled ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)', border: 'none', borderRadius: 8, color: selectedEmployeeForPassword.employee_portal_enabled ? '#EF4444' : '#22C55E', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      {selectedEmployeeForPassword.employee_portal_enabled ? 'Désactiver' : 'Activer'}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div style={styles.formModalFooter}>
-                <button onClick={() => setShowPasswordModal(false)} style={styles.modalCancelBtn}>Annuler</button>
-                <button onClick={handleSavePassword} disabled={savingPassword || !newPassword || newPassword.length < 6 || newPassword !== confirmPassword || (!aUnCompteEmploye(selectedEmployeeForPassword) && !selectedEmployeeForPassword.matricule)}
-                  style={{ ...styles.modalSaveBtn, background: 'linear-gradient(135deg, #22C55E, #16A34A)', opacity: (savingPassword || !newPassword || newPassword.length < 6 || newPassword !== confirmPassword || (!aUnCompteEmploye(selectedEmployeeForPassword) && !selectedEmployeeForPassword.matricule)) ? 0.5 : 1, cursor: (savingPassword || !newPassword || newPassword.length < 6 || newPassword !== confirmPassword || (!aUnCompteEmploye(selectedEmployeeForPassword) && !selectedEmployeeForPassword.matricule)) ? 'not-allowed' : 'pointer' }}>
-                  {savingPassword ? <span>Enregistrement...</span> : <><Key size={16} />{aUnCompteSupabase(selectedEmployeeForPassword) ? 'Modifier' : (estAncienSysteme(selectedEmployeeForPassword) ? 'Migrer l\'accès' : 'Créer l\'accès')}</>}
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* ═══ ENVOYER LES HORAIRES — on montre avant d'envoyer ═══ */}
+        {horairesEmploye && (
+          <ModaleHoraires
+            employee={horairesEmploye}
+            entrepriseName={horairesEmploye.enterprises?.name || ''}
+            onDefinirHoraires={() => {
+              const cible = horairesEmploye
+              setHorairesEmploye(null)
+              handleOpenSchedule(cible)
+            }}
+            onClose={() => setHorairesEmploye(null)}
+          />
         )}
       </div>
     </>
