@@ -369,6 +369,12 @@
   outline-color: #d99a58;
 }
 
+.bge-bande-svg svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 /* l'échelle ne touche que l'affichage : le nœud exporté garde
    sa taille réelle, c'est html2canvas qui le rend en 3× */
 .bge-echelle {
@@ -529,6 +535,6 @@
   }
   .bge-echelle {
     --bge-echelle: 0.86;
-    height: 430px;
+    height: 448px;
   }
 }

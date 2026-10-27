@@ -159,7 +159,7 @@ describe('la carte de service', () => {
 
   it('annonce la taille réelle du fichier exporté', async () => {
     await rendre()
-    expect(hote.textContent).toContain('900 × 1500 px')
+    expect(hote.textContent).toContain('900 × 1560 px')
   })
 })
 
@@ -167,8 +167,55 @@ describe('la personnalisation de la carte', () => {
   it('part de la couleur de l’entreprise et du motif de perles', async () => {
     await rendre()
     expect(carte().querySelector('header').style.background).toBe('rgb(212, 175, 55)')
-    expect(hote.querySelector('[data-testid="badge-bande"]').getAttribute('data-motif')).toBe('perles')
-    expect(carte().querySelectorAll('svg circle').length).toBeGreaterThan(10)
+    const bande = hote.querySelector('[data-testid="badge-bande"]')
+    expect(bande.getAttribute('data-motif')).toBe('perles')
+    // le motif est celui du bandeau des employés, pas un dessin inventé
+    expect(bande.querySelector('[data-motif]').style.backgroundImage)
+      .toContain('/images/employes-zoulou.webp')
+  })
+
+  it('reprend les images des bandeaux pour les motifs qui en ont', async () => {
+    await rendre()
+    const images = {
+      perles: 'employes-zoulou.webp',
+      'aso-oke': 'heures-aso-oke.svg',
+      bogolan: 'paie-bogolan-haut.webp',
+      ndebele: 'absences-ndebele.webp',
+    }
+    for (const [motif, fichier] of Object.entries(images)) {
+      await act(async () => hote.querySelector(`[data-motif-choix="${motif}"]`).click())
+      const bande = hote.querySelector('[data-testid="badge-bande"]')
+      expect(bande.getAttribute('data-motif')).toBe(motif)
+      expect(bande.querySelector('[data-motif]').style.backgroundImage).toContain(fichier)
+    }
+  })
+
+  it('pose l’image du bandeau comme sur la page : répétée, à la hauteur', async () => {
+    await rendre()
+    const bande = hote.querySelector('[data-testid="badge-bande"] [data-motif="perles"]')
+    expect(bande.style.backgroundRepeat).toBe('repeat-x')
+    expect(bande.style.backgroundPosition).toBe('center')
+    expect(bande.style.backgroundSize).toBe('auto 100%')
+  })
+
+  it('donne un identifiant propre à chaque frise kente', async () => {
+    await rendre()
+    await act(async () => hote.querySelector('[title="Le tissage akan"]').click())
+    // la carte et la vignette du choix dessinent la même frise : deux
+    // motifs distincts, sinon le second remplacerait le premier
+    const identifiants = [...hote.querySelectorAll('pattern')].map((motif) => motif.id)
+    expect(identifiants.length).toBeGreaterThan(1)
+    expect(new Set(identifiants).size).toBe(identifiants.length)
+  })
+
+  it('garde les frises vectorielles pour le kente et le dogon', async () => {
+    await rendre()
+    for (const [motif, titre] of [['kente', 'Le tissage akan'], ['dogon', 'La porte de grenier']]) {
+      await act(async () => hote.querySelector(`[title="${titre}"]`).click())
+      const bande = hote.querySelector('[data-testid="badge-bande"]')
+      expect(bande.getAttribute('data-motif')).toBe(motif)
+      expect(bande.querySelector('svg')).not.toBeNull()
+    }
   })
 
   it('change la couleur de la carte et retient le choix', async () => {
@@ -184,21 +231,20 @@ describe('la personnalisation de la carte', () => {
 
   it('change le motif et le dessine dans la bande', async () => {
     await rendre()
-    const kente = hote.querySelector('[title="Blocs tissés"]')
+    const kente = hote.querySelector('[title="Le tissage akan"]')
     await act(async () => kente.click())
 
     const bande = hote.querySelector('[data-testid="badge-bande"]')
     expect(bande.getAttribute('data-motif')).toBe('kente')
     expect(kente.getAttribute('aria-pressed')).toBe('true')
-    // le kente est fait de blocs, pas de perles
-    expect(bande.querySelectorAll('rect').length).toBeGreaterThan(20)
-    expect(bande.querySelectorAll('circle').length).toBe(0)
+    // la frise kente est vectorielle : un vrai motif, pas une vignette
+    expect(bande.querySelector('svg')).not.toBeNull()
   })
 
   it('revient à la carte d’origine, entreprise et perles', async () => {
     await rendre()
     await act(async () => hote.querySelector('[aria-label="Corail"]').click())
-    await act(async () => hote.querySelector('[title="Grille de cases"]').click())
+    await act(async () => hote.querySelector('[title="La porte de grenier"]').click())
     expect(carte().querySelector('header').style.background).toBe('rgb(162, 69, 46)')
 
     const retour = [...hote.querySelectorAll('button')].find((b) => b.textContent.includes('Revenir à la carte'))
