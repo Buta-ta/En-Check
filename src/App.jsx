@@ -26,7 +26,7 @@ import MyAdminAccount from './pages/MyAdminAccount'
 import Planning from './pages/Planning'
 import Retards from './pages/Retards'
 import Pauses from './pages/Pauses'
-import SystemMessages from './pages/SystemMessages'
+import MessagesSysteme from './pages/MessagesSysteme'
 import Absences from './pages/Absences'
 import HeuresSupplementaires from './pages/HeuresSupplementaires'
 import Prospection from './pages/Prospection'
@@ -62,7 +62,6 @@ import AnalyticsSite from './pages/AnalyticsSite'
 import TaskDetail from './pages/TaskDetail'
 import EmployeeTasks from './pages/employee/EmployeeTasks'
 import Predictions from './pages/Predictions'
-import PushNotifications from './pages/PushNotifications'
 import AiConnectionTest from './pages/AiConnectionTest'
 import AssistantDock from './components/AssistantDock'
 
@@ -301,9 +300,10 @@ function App() {
               <Pauses />
             </AdminRoute>
           } />
+          {/* Les annonces, les push et les courriels ne font plus qu'une page. */}
           <Route path="/system-messages" element={
-            <AdminRoute>
-              <SystemMessages />
+            <AdminRoute requireSuperAdmin>
+              <MessagesSysteme />
             </AdminRoute>
           } />
 
@@ -313,11 +313,7 @@ function App() {
             </AdminRoute>
           } />
 
-          <Route path="/push-notifications" element={
-            <AdminRoute requireSuperAdmin>
-              <PushNotifications />
-            </AdminRoute>
-          } />
+          <Route path="/push-notifications" element={<Navigate to="/system-messages?vue=push" replace />} />
           <Route path="/absences" element={
             <AdminRoute>
               <Absences />

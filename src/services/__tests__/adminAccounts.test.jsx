@@ -161,9 +161,13 @@ it('protects both management routes and exposes the personal account to all admi
     'path="/admins/gestion-existante" element={<AdminRoute requireSuperAdmin>',
   )
   expect(source).toContain(".eq('user_id', session.user.id)")
+  // « Mon compte » a quitté la barre latérale : c'est « Administrateurs »
+  // qui y mène désormais. La route et l'écran restent en place.
   expect(
     readFileSync('src/components/DashboardExperience.jsx', 'utf8'),
-  ).toContain("path: '/mon-compte', show: true")
+  ).not.toContain("'/mon-compte'")
+  expect(source).toContain('path="/mon-compte"')
+  expect(readFileSync('src/pages/AdminAccounts.jsx', 'utf8')).toContain('to="/mon-compte"')
 })
 
 it('provides an own-account form without editable permissions or email', async () => {
