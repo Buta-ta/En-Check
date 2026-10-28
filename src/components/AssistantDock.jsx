@@ -2,7 +2,7 @@ import PageCulturalBand from './PageCulturalBand'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowUp, RotateCcw, Sparkles, X } from 'lucide-react'
+import { ArrowUp, ChevronDown, ChevronUp, RotateCcw, Sparkles, X } from 'lucide-react'
 import { searchSpotlight } from '../services/spotlightService'
 import { supabase } from '../lib/supabase'
 import AssistantAnswer from './AssistantAnswer'
@@ -35,6 +35,19 @@ export function readAssistantContext() {
 }
 
 const readChatScope = () => dialogueScope(readAssistantContext())
+
+// La recherche intelligente se replie sur demande, et son état est retenu :
+// une fois repliée, elle reste repliée d'une page à l'autre. Elle n'est
+// jamais retirée — la pastille du bas la rouvre d'un clic.
+const RECHERCHE_REPLIEE_KEY = 'ec_assistant_recherche_repliee'
+
+const lireRechercheRepliee = () => {
+  try { return localStorage.getItem(RECHERCHE_REPLIEE_KEY) === '1' } catch { return false }
+}
+
+const retenirRechercheRepliee = (repliee) => {
+  try { localStorage.setItem(RECHERCHE_REPLIEE_KEY, repliee ? '1' : '0') } catch { /* stockage refusé : la barre reste utilisable */ }
+}
 
 const readActiveTheme = () => {
   try {
@@ -84,6 +97,7 @@ export default function AssistantDock() {
     chatAbort.current?.abort()
     setMessage('Badge lu. Envoyez la recherche pour consulter les résultats.')
   }, [])
+  const [repliee, setRepliee] = useState(lireRechercheRepliee)
   const [focused, setFocused] = useState(false)
   const [examplesOpen, setExamplesOpen] = useState(false)
   const placeholder = useAssistantExamples(opened || focused || examplesOpen || Boolean(draft))
@@ -390,6 +404,12 @@ export default function AssistantDock() {
     <button type="button" onClick={() => { requestId.current++; setResults([]); setBusy(false); setScanning(true) }}>Scanner un badge</button>
   </nav>
 
+  function replierRecherche(etat) {
+    setRepliee(etat)
+    retenirRechercheRepliee(etat)
+    if (etat) setExamplesOpen(false)
+  }
+
   function chooseExample(example) {
     requestId.current++
     setBusy(false)
@@ -403,21 +423,45 @@ export default function AssistantDock() {
   </div>
 
   return <>
-    <div className="ec-assistant-space" aria-hidden="true" />
+    <div className={`ec-assistant-space${repliee ? ' is-repliee' : ''}`} aria-hidden="true" />
     {createPortal(<>
-      <aside className="ec-assistant-dock" data-theme={theme} aria-label="Assistant En-Check" hidden={opened} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false) }}>
+      <aside className={`ec-assistant-dock${repliee ? ' is-repliee' : ''}`} data-theme={theme} aria-label="Assistant En-Check" hidden={opened} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false) }}>
         <div className="ec-assistant-weave" aria-hidden="true"><PageCulturalBand pathname={location.pathname} placement="compact"/></div>
-        <div className="ec-assistant-label"><span><EnCheckBrandMark size={18} /> ASSISTANT EN-CHECK · ON GÈRE !</span><span>Converser · Vérifier · Comprendre</span></div>
-        <form className="ec-assistant-form" onSubmit={search}>
-          <button ref={launcher} type="button" className="ec-assistant-open" onClick={open} aria-label="Ouvrir l’assistant En-Check" aria-haspopup="dialog"><Sparkles size={20} /></button>
-          <input aria-label="Votre recherche En-Check" placeholder={placeholder} value={draft} maxLength={2000} onChange={e => setDraft(e.target.value)} autoComplete="off" />
-          <button type="submit" className="ec-assistant-send" aria-label="Rechercher"><ArrowUp size={21} /></button>
-        </form>
-        <details className="ec-assistant-examples" onToggle={event => setExamplesOpen(event.currentTarget.open)}>
-          <summary>Exemples à demander</summary>
-          {examples}
-          <p>Choisissez un exemple, adaptez-le, puis envoyez.</p>
-        </details>
+        {repliee ? (
+          <div className="ec-assistant-rangee">
+            <button type="button" className="ec-assistant-rallumer" onClick={() => replierRecherche(false)} aria-expanded="false" aria-controls="ec-assistant-recherche">
+              <Sparkles size={18} aria-hidden="true" />
+              <span>Recherche intelligente</span>
+              <ChevronUp size={16} aria-hidden="true" />
+            </button>
+            <span className="ec-assistant-rangee-note">Repliée — la rouvrir ne perd rien.</span>
+          </div>
+        ) : (
+          <>
+            <div className="ec-assistant-label">
+              <span><EnCheckBrandMark size={18} /> ASSISTANT EN-CHECK · ON GÈRE !</span>
+              <span className="ec-assistant-label-droite">
+                <span className="ec-assistant-label-devise">Converser · Vérifier · Comprendre</span>
+                <button type="button" className="ec-assistant-replier" onClick={() => replierRecherche(true)} aria-expanded="true" aria-controls="ec-assistant-recherche" title="Replier la barre de recherche — elle reste à portée de clic">
+                  <ChevronDown size={15} aria-hidden="true" />
+                  <span>Replier</span>
+                </button>
+              </span>
+            </div>
+            <div id="ec-assistant-recherche">
+              <form className="ec-assistant-form" onSubmit={search}>
+                <button ref={launcher} type="button" className="ec-assistant-open" onClick={open} aria-label="Ouvrir l’assistant En-Check" aria-haspopup="dialog"><Sparkles size={20} /></button>
+                <input aria-label="Votre recherche En-Check" placeholder={placeholder} value={draft} maxLength={2000} onChange={e => setDraft(e.target.value)} autoComplete="off" />
+                <button type="submit" className="ec-assistant-send" aria-label="Rechercher"><ArrowUp size={21} /></button>
+              </form>
+              <details className="ec-assistant-examples" onToggle={event => setExamplesOpen(event.currentTarget.open)}>
+                <summary>Exemples à demander</summary>
+                {examples}
+                <p>Choisissez un exemple, adaptez-le, puis envoyez.</p>
+              </details>
+            </div>
+          </>
+        )}
       </aside>
       <dialog ref={dialog} className="ec-assistant-panel" data-theme={theme} aria-labelledby="ec-assistant-title" onCancel={event => { event.preventDefault(); if (scanning) stopScanning(); else close() }} onClick={event => { if (event.target === dialog.current) close() }}>
         <div className="ec-assistant-weave" aria-hidden="true"><PageCulturalBand pathname={location.pathname} placement="compact"/></div>
