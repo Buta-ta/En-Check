@@ -3013,3 +3013,233 @@
     transform: scale(0.82);
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   COPIER / COLLER UN MODÈLE (Ctrl/⌘+C puis Ctrl/⌘+V sur une case)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Le bouton « Copier » reste visible : une action ne se devine pas au survol */
+.sk-brick-actions {
+  opacity: 1;
+}
+
+.sk-brick-copy {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--sk-border-soft);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sk-text-soft);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.sk-brick-copy:hover {
+  border-color: var(--sk-accent);
+  color: var(--sk-accent);
+}
+
+.sk-brick-copy.is-copie {
+  border-color: rgba(16, 185, 129, 0.65);
+  color: #34D399;
+  background: rgba(16, 185, 129, 0.14);
+}
+
+.sk-brick.is-copie {
+  outline: 2px solid rgba(245, 158, 11, 0.5);
+  outline-offset: 1px;
+}
+
+/* Rappel flottant du modèle copié */
+.sk-copie-bar {
+  position: sticky;
+  top: 8px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--sk-terracotta-border);
+  background: linear-gradient(120deg, rgba(158, 85, 46, 0.96), rgba(122, 75, 42, 0.94));
+  color: #F7F2EB;
+  box-shadow: var(--sk-shadow);
+}
+
+.sk-copie-icone {
+  flex-shrink: 0;
+  color: #FDBA74;
+}
+
+.sk-copie-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sk-copie-texte strong {
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sk-copie-texte span {
+  font-size: 11.5px;
+  color: #E7D6C2;
+}
+
+.sk-copie-texte kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  margin: 0 1px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.22);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.sk-copie-coller {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: none;
+  border-radius: 9px;
+  background: var(--sk-accent);
+  color: #201610;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sk-copie-coller:hover {
+  background: #FBBF24;
+}
+
+.sk-copie-annuler {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  background: transparent;
+  color: #F7F2EB;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sk-copie-annuler:hover {
+  border-color: #F7F2EB;
+}
+
+/* Une fois un modèle copié, les cases s'annoncent comme collables */
+.sk-td-cell.is-collable,
+.sk-day-row.is-collable,
+.sk-cal-cell.is-collable {
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.22);
+}
+
+/* La case survolée : un cadre, rien de plus (aucun texte déplacé) */
+.sk-td-cell.is-cible-collage,
+.sk-day-row.is-cible-collage,
+.sk-cal-cell.is-cible-collage {
+  outline: 2px dashed var(--sk-accent);
+  outline-offset: -3px;
+}
+
+/* Bouton « Coller » posé dans la case */
+.sk-case-coller {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid var(--sk-accent);
+  border-radius: 999px;
+  background: var(--sk-bg-elevated);
+  color: var(--sk-accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+
+.sk-case-coller:hover {
+  background: rgba(245, 158, 11, 0.18);
+}
+
+/* Dans la grille Semaine, la pastille ne s'ouvre qu'au survol ou au focus :
+   elle ne recouvre donc jamais la carte d'horaire au repos. */
+.sk-td-cell .sk-case-coller {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.sk-td-cell:hover .sk-case-coller,
+.sk-td-cell:focus-within .sk-case-coller {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sk-case-coller.is-jour {
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  max-width: 42%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sk-cal-cell {
+  position: relative;
+}
+
+.sk-case-coller.is-mois {
+  position: static;
+  align-self: flex-end;
+  padding: 2px 7px;
+  font-size: 9.5px;
+}
+
+@media (max-width: 640px) {
+  .sk-copie-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sk-copie-texte {
+    flex-basis: 100%;
+    order: 2;
+  }
+
+  .sk-copie-coller {
+    flex: 1;
+    justify-content: center;
+    order: 1;
+  }
+
+  .sk-case-coller.is-mois {
+    display: none;
+  }
+}
