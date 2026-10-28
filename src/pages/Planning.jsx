@@ -68,6 +68,8 @@ import {
 import MotifsAbsenceService, { resoudreMotif } from "../services/motifsAbsenceService";
 import { MOTIFS_PAR_DEFAUT, getMotifConfig } from "../constants/motifsAbsence";
 import ChoixPeriode from "../components/ChoixPeriode";
+import { getTeamsPourPlanning } from "../services/teamService";
+import { equipeParEmploye, estEquipeFormee, nomEquipeDe, SANS_EQUIPE } from "../lib/planningEquipes";
 import "./PlanningAfroTech.css";
 
 const OVERRIDES_STORAGE_KEY = "encheck_planning_day_overrides_v1";
@@ -377,6 +379,11 @@ export default function Planning() {
   const [editingTeam, setEditingTeam] = useState(null);
   const [teamForm, setTeamForm] = useState({ name: "", memberIds: [] });
 
+  // ═══ ÉQUIPES FORMÉES DANS EMPLOYÉS → ÉQUIPES (tables teams / team_members) ═══
+  // Elles ne remplacent pas les équipes locales : elles passent devant.
+  const [equipesFormees, setEquipesFormees] = useState([]);
+  const equipesCleRef = useRef("");
+
   // ═══ DISPONIBILITÉS COLLABORATEURS (aujourd'hui / cette semaine / jour précis) ═══
   const [availability, setAvailability] = useState(() =>
     readStorage(AVAILABILITY_STORAGE_KEY, {})
@@ -548,6 +555,23 @@ export default function Planning() {
         employeesQuery = employeesQuery.eq("enterprise_id", selectedEntreprise);
       const { data: employeesData } = await employeesQuery;
       setEmployees(employeesData || []);
+
+      // Les équipes formées dans Employés → Équipes : ce sont elles que le
+      // filtre du planning propose en premier. Deux requêtes, quel que soit
+      // le nombre d'entreprises ; on ne les relit que si le périmètre change.
+      const idsEquipes = (
+        isSuperAdmin
+          ? selectedEntreprise !== "all"
+            ? [selectedEntreprise]
+            : (entreprisesData || []).map((e) => e.id)
+          : [enterpriseId]
+      ).filter(Boolean);
+      const cleEquipes = idsEquipes.slice().sort().join("|");
+      if (cleEquipes !== equipesCleRef.current) {
+        const { data: equipesData } = await getTeamsPourPlanning(idsEquipes);
+        setEquipesFormees(equipesData || []);
+        equipesCleRef.current = cleEquipes;
+      }
 
       const employeeIds = (employeesData || []).map((e) => e.id);
 
@@ -1019,14 +1043,14 @@ export default function Planning() {
   };
 
   // ═══ CRUD DES ÉQUIPES (création, renommage, affectation des membres) ═══
-  // Une équipe peut être héritée du champ "department" de l'employé ou définie
-  // manuellement depuis En-Check (les collaborateurs sans équipe vont dans "SANS ÉQUIPE").
-  const getEmployeeTeamName = (emp) => {
-    const override = teamAssignments[emp.id];
-    if (override) return override;
-    const dept = (emp?.department || "").trim().toUpperCase();
-    return dept || null;
-  };
+  // Trois sources, dans cet ordre : l'équipe formée dans Employés → Équipes,
+  // l'affectation faite ici même, puis le département de la fiche employé.
+  // Les collaborateurs sans aucune des trois vont dans "SANS ÉQUIPE".
+  const equipesParEmploye = useMemo(() => equipeParEmploye(equipesFormees), [equipesFormees]);
+
+  const getEmployeeTeamName = (emp) =>
+    nomEquipeDe(emp, { equipeParEmploye: equipesParEmploye, affectations: teamAssignments });
+
 
   const openNewTeamModal = () => {
     setEditingTeam(null);
@@ -1967,41 +1991,51 @@ export default function Planning() {
   // ═══ GROUPEMENT DES EMPLOYÉS PAR ÉQUIPE EN-CHECK (TOUTES PLIABLES) ═══
   // Chaque équipe — y compris GARDE & LOGISTIQUE — possède sa propre barre pliable.
   const employeeGroups = useMemo(() => {
-    const groupsMap = new Map();
-    const NO_TEAM = "SANS ÉQUIPE";
+    // Une seule entrée par équipe, quelle que soit la casse du nom : le
+    // groupe « Pharmacie » de la page Équipes et un département
+    // « PHARMACIE » ne doivent pas faire deux barres.
+    const groupesMap = new Map();
 
-    filteredEmployees.forEach((emp) => {
-      const groupTitle = getEmployeeTeamName(emp) || NO_TEAM;
-      if (!groupsMap.has(groupTitle)) groupsMap.set(groupTitle, []);
-      groupsMap.get(groupTitle).push(emp);
-    });
+    const poser = (titre, employe = null) => {
+      const nom = String(titre || "").trim();
+      if (!nom) return null;
+      const cle = nom.toUpperCase();
+      if (!groupesMap.has(cle)) groupesMap.set(cle, { title: nom, employees: [] });
+      const groupe = groupesMap.get(cle);
+      if (employe) groupe.employees.push(employe);
+      return groupe;
+    };
 
-    // Les équipes déclarées dans En-Check apparaissent même si elles sont vides
-    teams.forEach((t) => {
-      const title = String(t).toUpperCase();
-      if (!groupsMap.has(title)) groupsMap.set(title, []);
-    });
+    // 1. Les équipes formées donnent le vrai nom affiché, même vides.
+    equipesFormees.forEach((equipe) => poser(equipe?.name));
+
+    // 2. Les personnes, rangées par équipe effective.
+    filteredEmployees.forEach((emp) => poser(getEmployeeTeamName(emp) || SANS_EQUIPE, emp));
+
+    // 3. Les équipes créées ici (barre « Gérer les équipes »), même vides.
+    teams.forEach((t) => poser(t));
 
     // Ordre d'affichage : GARDE & LOGISTIQUE puis ÉQUIPE OFFICINE & VENTE puis les autres
     const priority = ["GARDE & LOGISTIQUE", "ÉQUIPE OFFICINE & VENTE"];
-    const entries = Array.from(groupsMap.entries());
+    const entries = Array.from(groupesMap.values());
     entries.sort((a, b) => {
-      const ia = priority.indexOf(a[0]);
-      const ib = priority.indexOf(b[0]);
+      const ia = priority.indexOf(a.title);
+      const ib = priority.indexOf(b.title);
       if (ia !== -1 && ib !== -1) return ia - ib;
       if (ia !== -1) return -1;
       if (ib !== -1) return 1;
-      if (a[0] === NO_TEAM) return 1;
-      if (b[0] === NO_TEAM) return -1;
-      return a[0].localeCompare(b[0], "fr");
+      if (a.title === SANS_EQUIPE) return 1;
+      if (b.title === SANS_EQUIPE) return -1;
+      return a.title.localeCompare(b.title, "fr");
     });
 
-    return entries.map(([title, emps]) => ({
+    return entries.map(({ title, employees }) => ({
       title,
-      employees: emps,
+      employees,
       isBannerOnly: false,
+      estFormee: estEquipeFormee(title, equipesFormees),
     }));
-  }, [filteredEmployees, teams, teamAssignments]);
+  }, [filteredEmployees, teams, teamAssignments, equipesFormees, equipesParEmploye]);
 
   // ═══ COLLABORATEURS VISIBLES (groupes dépliés) ET FOCUS (équipe / collaborateur) ═══
   const visibleEmployees = useMemo(
@@ -2014,7 +2048,12 @@ export default function Planning() {
 
   const matchesFocus = (emp) => {
     if (focusFilter.type === "team") {
-      return (getEmployeeTeamName(emp) || "SANS ÉQUIPE") === focusFilter.value;
+      // Comparaison sans la casse : le groupe affiche le nom de l'équipe
+      // formée (« Pharmacie ») alors qu'un département s'écrit « PHARMACIE ».
+      return (
+        (getEmployeeTeamName(emp) || SANS_EQUIPE).toUpperCase() ===
+        String(focusFilter.value || "").toUpperCase()
+      );
     }
     if (focusFilter.type === "employee") {
       return emp.id === focusFilter.value;
@@ -2024,7 +2063,7 @@ export default function Planning() {
 
   const scopedEmployees = useMemo(
     () => visibleEmployees.filter(matchesFocus),
-    [visibleEmployees, focusFilter, teamAssignments]
+    [visibleEmployees, focusFilter, teamAssignments, equipesParEmploye]
   );
 
   // Jours de la période affichée (Semaine = 7 jours, Mois = tout le mois, Jour = 1 jour)
@@ -3212,12 +3251,25 @@ export default function Planning() {
               <option value="all">
                 Toute l&apos;équipe ({visibleEmployees.length})
               </option>
-              <optgroup label="Équipes">
-                {employeeGroups.map((g) => (
-                  <option key={g.title} value={`team:${g.title}`}>
-                    {g.title} ({g.employees.length})
-                  </option>
-                ))}
+              {employeeGroups.some((g) => g.estFormee) && (
+                <optgroup label="Équipes formées · page Équipes">
+                  {employeeGroups
+                    .filter((g) => g.estFormee)
+                    .map((g) => (
+                      <option key={`formee-${g.title}`} value={`team:${g.title}`}>
+                        {g.title} ({g.employees.length})
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+              <optgroup label="Départements et équipes du planning">
+                {employeeGroups
+                  .filter((g) => !g.estFormee)
+                  .map((g) => (
+                    <option key={g.title} value={`team:${g.title}`}>
+                      {g.title} ({g.employees.length})
+                    </option>
+                  ))}
               </optgroup>
               <optgroup label="Collaborateurs">
                 {filteredEmployees.map((emp) => (
@@ -3381,27 +3433,48 @@ export default function Planning() {
                                     <span className="sk-group-count-badge">
                                       {group.employees.length} pers.
                                     </span>
+                                    {group.estFormee && (
+                                      <span
+                                        className="sk-group-badge"
+                                        title="Cette équipe se gère dans Employés → Équipes"
+                                      >
+                                        Équipe formée
+                                      </span>
+                                    )}
                                   </span>
                                   <span
                                     className="sk-group-row-actions"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <button
-                                      type="button"
-                                      className="sk-group-row-btn"
-                                      onClick={() => openEditTeamModal(group.title)}
-                                      title={`Renommer / gérer les membres de ${group.title}`}
-                                    >
-                                      <Edit size={12} /> Gérer
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="sk-group-row-btn is-danger"
-                                      onClick={() => handleDeleteTeam(group.title)}
-                                      title={`Supprimer l'équipe ${group.title}`}
-                                    >
-                                      <Trash2 size={12} /> Supprimer
-                                    </button>
+                                    {group.estFormee ? (
+                                      <button
+                                        type="button"
+                                        className="sk-group-row-btn"
+                                        onClick={() => navigate("/employes?vue=equipes")}
+                                        title={`Ouvrir ${group.title} dans la page Équipes`}
+                                      >
+                                        <Users size={12} /> Voir dans Équipes
+                                      </button>
+                                    ) : (
+                                      <>
+                                        <button
+                                          type="button"
+                                          className="sk-group-row-btn"
+                                          onClick={() => openEditTeamModal(group.title)}
+                                          title={`Renommer / gérer les membres de ${group.title}`}
+                                        >
+                                          <Edit size={12} /> Gérer
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="sk-group-row-btn is-danger"
+                                          onClick={() => handleDeleteTeam(group.title)}
+                                          title={`Supprimer l'équipe ${group.title}`}
+                                        >
+                                          <Trash2 size={12} /> Supprimer
+                                        </button>
+                                      </>
+                                    )}
                                   </span>
                                 </div>
                               </td>
@@ -5631,7 +5704,8 @@ export default function Planning() {
                   {editingTeam ? `Équipe ${editingTeam.name}` : "Nouvelle équipe"}
                 </h2>
                 <span className="sk-modal-sub">
-                  Nommez votre équipe et affectez ses membres
+                  Équipe locale du planning — les équipes officielles se créent dans
+                  Employés → Équipes
                 </span>
               </div>
               <button
@@ -5695,6 +5769,17 @@ export default function Planning() {
             </div>
 
             <div className="sk-modal-foot">
+              <button
+                type="button"
+                className="sk-btn-secondary"
+                onClick={() => {
+                  setShowTeamModal(false);
+                  navigate("/employes?vue=equipes");
+                }}
+                title="Créer et organiser les équipes officielles"
+              >
+                <Users size={14} /> Page Équipes
+              </button>
               <button
                 type="button"
                 className="sk-btn-secondary"

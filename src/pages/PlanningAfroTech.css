@@ -724,6 +724,21 @@
   font-weight: 700;
 }
 
+/* Marque d'une équipe venue de la page Équipes : un filet, pas un fond */
+.sk-group-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px dashed var(--sk-border-strong);
+  border-radius: 999px;
+  color: var(--sk-text-soft);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 /* Actions de la barre d'équipe (Gérer / Supprimer) */
 .sk-group-row-actions {
   display: inline-flex;
