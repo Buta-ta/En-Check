@@ -728,39 +728,72 @@ describe('6. la toile, à la lecture', () => {
 // ═══════════════════════════════════════════════════════════
 
 describe('7. un fond de carte sans clé', () => {
-  it('a quitté les tuiles qui réclamaient une clé', () => {
+  it('n’a plus aucun fournisseur qui réclame une clé', () => {
     expect(CARTE).not.toContain('cartocdn')
     expect(CARTE).not.toContain('carto.com')
     expect(CARTE).not.toContain('api_key')
     expect(CARTE).not.toContain('apikey')
     expect(CARTE).not.toContain('access_token')
-  })
-
-  it('sert les tuiles d’OpenStreetMap, avec leur attribution', () => {
-    expect(CARTE).toContain("const FOND = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'")
-    expect(CARTE).toContain('openstreetmap.org/copyright')
-    expect(CARTE).toContain('Leaflet.tileLayer(FOND')
+    expect(CARTE).not.toContain('maptiler')
+    expect(CARTE).not.toContain('stadiamaps')
     expect(CARTE).not.toContain('unpkg.com')
   })
 
-  it('assombrit les tuiles par la feuille de style, pas par le fournisseur', () => {
-    expect(CARTE_CSS).toContain(".an-carte-cadre[data-fond='osm'][data-sombre='oui'] .leaflet-tile-pane")
-    expect(CARTE_CSS).toContain('filter: invert(1) hue-rotate(180deg)')
-    expect(PAGE).toContain('sombre={darkMode}')
+  it('prend le fond gris d’Esri, clair ou sombre, avec ses étiquettes', () => {
+    expect(CARTE).toContain('World_Dark_Gray_Base')
+    expect(CARTE).toContain('World_Light_Gray_Base')
+    expect(CARTE).toContain('World_Dark_Gray_Reference')
+    expect(CARTE).toContain('World_Light_Gray_Reference')
+    expect(CARTE).toContain('sombre ? FONDS.sombre : FONDS.clair')
+    expect(CARTE).toContain('esri.com')
+  })
+
+  it('garde OpenStreetMap en second, sans clé non plus', () => {
+    expect(CARTE).toContain("url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'")
+    expect(CARTE).toContain('openstreetmap.org/copyright')
+    expect(CARTE).toContain('FONDS.secours')
+  })
+
+  it('essaie un fond, puis l’autre, puis dessine le monde', () => {
+    expect(CARTE).toContain('if (erreurs >= 3 && !abandonne)')
+    expect(CARTE).toContain('essai += 1')
+    expect(CARTE).toContain('if (essai >= 2)')
+    expect(CARTE).toContain('dessinerLeMonde()')
+    expect(CARTE).toContain('data-fond={fond}')
+  })
+
+  it('embarque un monde vectoriel qui ne dépend d’aucun service', () => {
+    expect(CARTE).toContain("const MONDE = '/data/monde-110m.geojson'")
+    expect(CARTE).toContain('Leaflet.geoJSON(donnees')
+    expect(CARTE).toContain("setFond('dessin')")
+    expect(fs.existsSync(path.join(ROOT, 'public/data/monde-110m.geojson'))).toBe(true)
+  })
+
+  it('le monde embarqué est un vrai GeoJSON de côtes', () => {
+    const monde = JSON.parse(lire('public/data/monde-110m.geojson'))
+    expect(monde.type).toBe('FeatureCollection')
+    expect(monde.features.length).toBeGreaterThan(0)
+    expect(JSON.stringify(monde)).toContain('MultiPolygon')
+    // Un monde, pas un caillou : plusieurs milliers de sommets.
+    expect(JSON.stringify(monde).length).toBeGreaterThan(20000)
   })
 
   it('garde ses calques sous la barre de recherche de l’assistant', () => {
     // Sans barrière, les panneaux de Leaflet (z-index 400 à 1000)
-    // passent par-dessus la barre fixée en bas de l'écran.
+    // passent par-dessus la barre fixée en bas de l'écran. `contain`
+    // empêche même la peinture de sortir du cadre.
     expect(CARTE_CSS).toContain('isolation: isolate')
-    expect(CARTE_CSS).toMatch(/\.an-carte-cadre \{[^}]*isolation: isolate;[^}]*z-index: 0;/)
+    expect(CARTE_CSS).toContain('contain: paint')
+    expect(CARTE_CSS).toMatch(/\.an-carte-cadre \{[^}]*z-index: 0;/)
     expect(CARTE_CSS).not.toMatch(/z-index: (1[0-9]{3,}|[2-9][0-9]{2,})/)
+    expect(CARTE_CSS).toContain('.an-carte-cadre .leaflet-tile-pane { z-index: 1; }')
+    expect(CARTE_CSS).toContain('.an-carte-cadre .leaflet-popup-pane { z-index: 6; }')
   })
 
-  it('reste vivante si le fond ne répond pas', () => {
-    expect(CARTE).toContain("couche.on('tileerror'")
+  it('reste vivante si plus aucun fond ne répond', () => {
     expect(CARTE).toContain('an-carte-muette')
     expect(CARTE_CSS).toContain('.an-carte-muette')
+    expect(CARTE).toContain("setFond('aucun')")
     expect(CARTE).toContain('les épingles restent à leur place')
   })
 })

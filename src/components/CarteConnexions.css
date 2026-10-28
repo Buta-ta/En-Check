@@ -17,10 +17,13 @@
   border-radius: 3px;
   background-color: var(--an-creux, #100c0a);
   overflow: hidden;
-  /* La carte tient ses calques à elle : sans cette barrière, les
+  /* La carte tient ses calques à elle : sans ces deux barrières, les
      panneaux de Leaflet (z-index 400 à 1000) passaient par-dessus la
-     barre de l'assistant fixée en bas de l'écran. */
+     barre de recherche fixée en bas de l'écran. `contain: paint` va
+     plus loin que `isolation` : rien ne peut plus être peint hors du
+     cadre, même un contrôle ajouté par une extension de Leaflet. */
   isolation: isolate;
+  contain: paint;
   z-index: 0;
 }
 
@@ -55,13 +58,31 @@
   background-color: #2f2620;
 }
 
-/* ── les tuiles d'OpenStreetMap, retournées pour la nuit ──────
-   Le fournisseur est clair ; c'est la page qui l'assombrit. Le
-   filtre ne touche que le calque des tuiles : les épingles, les
-   amas et les bulles gardent leurs couleurs. */
+/* ── les calques de Leaflet, ramenés à l'échelle de la carte ──
+   Le fournisseur fournit ses propres z-index (200 pour les tuiles,
+   700 pour les bulles, 1000 pour les contrôles). On les réordonne
+   ici, dans l'ordre voulu, pour qu'aucun ne sorte du cadre. */
 
-.an-carte-cadre[data-fond='osm'][data-sombre='oui'] .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.92) saturate(0.55);
+.an-carte-cadre .leaflet-tile-pane { z-index: 1; }
+.an-carte-cadre .leaflet-overlay-pane { z-index: 2; }
+.an-carte-cadre .leaflet-shadow-pane { z-index: 3; }
+.an-carte-cadre .leaflet-marker-pane { z-index: 4; }
+.an-carte-cadre .leaflet-tooltip-pane { z-index: 5; }
+.an-carte-cadre .leaflet-popup-pane { z-index: 6; }
+.an-carte-cadre .leaflet-top,
+.an-carte-cadre .leaflet-bottom { z-index: 7; }
+
+/* ── le monde dessiné ──────────────────────────────────────
+   Quand aucune tuile n'arrive, le GeoJSON embarqué prend la place :
+   les côtes sont tracées à même la carte, les épingles se posent
+   dessus, et la carte ne dépend plus d'un service extérieur. */
+
+.an-carte-cadre[data-fond='dessin'] .leaflet-container {
+  background-color: #0f0c09;
+}
+
+.an-carte-cadre[data-fond='dessin'][data-sombre='non'] .leaflet-container {
+  background-color: #e8ddc6;
 }
 
 .an-carte-cadre[data-sombre='non'] .leaflet-container {

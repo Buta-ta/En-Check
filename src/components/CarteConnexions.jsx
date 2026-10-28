@@ -18,13 +18,47 @@ const OCRE = '#c9773c'
 const OR = '#c9a961'
 
 // ── LE FOND DE CARTE ──────────────────────────────────────
-// OpenStreetMap, servi par openstreetmap.org : pas de clé, pas de
-// compte, pas de quota à déclarer. Les anciennes tuiles sombres de
-// CARTO réclamaient une clé et la carte restait grise.
-// En thème de nuit, c'est la feuille de style qui retourne les
-// tuiles (voir CarteConnexions.css) — le fournisseur ne change pas.
-const FOND = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+// Trois fonds, aucun ne réclame de clé :
+//
+//   1. Esri « Canvas » — le gris clair ou le gris sombre, avec ses
+//      étiquettes dans un second calque. C'est le fond des deux
+//      thèmes : il a l'air d'avoir été dessiné pour la page.
+//   2. OpenStreetMap — le filet de sécurité si Esri ne répond pas.
+//   3. Le monde Dessiné — /data/monde-110m.geojson, une carte
+//      vectorielle embarquée dans l'application. Quand aucune tuile
+//      n'arrive (réseau fermé, machine hors ligne), la carte reste
+//      une carte : les côtes sont tracées, les épingles se posent
+//      dessus, et rien ne dépend d'un service extérieur.
+//
+// Aucun des trois ne demande de compte : une clé d'API manquante ne
+// peut plus vider la carte.
+const FONDS = {
+  sombre: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    libelles:
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+    attribution:
+      'Fonds &copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, &copy; OpenStreetMap',
+    zoomMaximum: 16,
+  },
+  clair: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    libelles:
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+    attribution:
+      'Fonds &copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin, &copy; OpenStreetMap',
+    zoomMaximum: 16,
+  },
+  secours: {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    zoomMaximum: 19,
+  },
+}
+
+const MONDE = '/data/monde-110m.geojson'
+const ZOOM_DESSINE = 6
 
 function CarteConnexions({
   connexions = [],
@@ -41,9 +75,8 @@ function CarteConnexions({
   const epingles = useRef({})
   const [Leaflet, setLeaflet] = useState(null)
   const [pret, setPret] = useState(false)
-  const [fondMuet, setFondMuet] = useState(false)
-  const tuiles = useRef(null)
-  const erreurs = useRef(0)
+  const [fond, setFond] = useState('tuiles')
+  const [mondeDessine, setMondeDessine] = useState(false)
 
   // ── le chargement de Leaflet, une seule fois ──
   useEffect(() => {
@@ -93,32 +126,111 @@ function CarteConnexions({
     }
   }, [Leaflet])
 
-  // ── le fond de carte : OpenStreetMap, sans clé ni compte ──
+  // ── le fond de carte : trois essais, puis le monde dessiné ──
   useEffect(() => {
     if (!Leaflet || !carte.current) return
     const instance = carte.current
 
-    if (tuiles.current) {
-      instance.removeLayer(tuiles.current)
-      tuiles.current = null
+    let abandonne = false
+    let essai = 0
+    let calques = []
+
+    const retirerCalques = () => {
+      calques.forEach((calque) => {
+        try {
+          instance.removeLayer(calque)
+        } catch {
+          // La carte a pu être détruite entre-temps : rien à retirer.
+        }
+      })
+      calques = []
     }
 
-    const couche = Leaflet.tileLayer(FOND, {
-      attribution: ATTRIBUTION,
-      maxZoom: 19,
-      crossOrigin: true,
-    })
+    // Le monde dessiné : un GeoJSON embarqué, tracé à même la carte.
+    const dessinerLeMonde = async () => {
+      try {
+        const reponse = await fetch(MONDE, { cache: 'force-cache' })
+        if (!reponse.ok) throw new Error(`Monde indisponible (${reponse.status})`)
+        const donnees = await reponse.json()
+        if (abandonne) return
 
-    // Si le serveur de tuiles ne répond pas, la carte reste vivante :
-    // les épingles se posent sur le quadrillage, et un mot le dit.
-    couche.on('tileerror', () => {
-      erreurs.current += 1
-      if (erreurs.current === 6) setFondMuet(true)
-    })
+        const trace = Leaflet.geoJSON(donnees, {
+          interactive: false,
+          style: {
+            color: sombre ? '#c9a961' : '#8a6a20',
+            weight: 0.7,
+            fillColor: sombre ? '#241d18' : '#efe5d1',
+            fillOpacity: 1,
+          },
+        }).addTo(instance)
 
-    couche.addTo(instance)
-    tuiles.current = couche
-  }, [Leaflet])
+        calques.push(trace)
+        instance.setMaxZoom(ZOOM_DESSINE)
+        instance.setMinZoom(1)
+        setFond('dessin')
+        setMondeDessine(true)
+      } catch {
+        if (!abandonne) setFond('aucun')
+      }
+    }
+
+    const poser = () => {
+      if (abandonne) return
+      retirerCalques()
+
+      if (essai >= 2) {
+        dessinerLeMonde()
+        return
+      }
+
+      const choix = essai === 0 ? (sombre ? FONDS.sombre : FONDS.clair) : FONDS.secours
+      let erreurs = 0
+
+      const tuiles = Leaflet.tileLayer(choix.url, {
+        attribution: choix.attribution,
+        maxZoom: 19,
+        maxNativeZoom: choix.zoomMaximum || 19,
+        crossOrigin: true,
+      })
+
+      // Trois tuiles manquantes : le fond suivant prend le relais. C'est
+      // ce qui protège la carte d'un fournisseur fermé ou d'une clé
+      // d'API exigée — jamais d'écran gris, jamais de message d'erreur
+      // d'un service tiers au milieu de la page.
+      tuiles.on('tileerror', () => {
+        erreurs += 1
+        if (erreurs >= 3 && !abandonne) {
+          essai += 1
+          poser()
+        }
+      })
+
+      tuiles.addTo(instance)
+      calques.push(tuiles)
+
+      if (choix.libelles) {
+        const etiquettes = Leaflet.tileLayer(choix.libelles, {
+          maxZoom: 19,
+          maxNativeZoom: choix.zoomMaximum || 19,
+          crossOrigin: true,
+          pane: 'shadowPane',
+        })
+        etiquettes.addTo(instance)
+        calques.push(etiquettes)
+      }
+
+      instance.setMaxZoom(19)
+      setFond('tuiles')
+      setMondeDessine(false)
+    }
+
+    poser()
+
+    return () => {
+      abandonne = true
+      retirerCalques()
+    }
+  }, [Leaflet, pret, sombre])
 
   // ── suivre le centre et le zoom décidés par la page ──
   useEffect(() => {
@@ -269,7 +381,12 @@ function CarteConnexions({
   }, [identifiantCible, pret, Leaflet])
 
   return (
-    <div className="an-carte-cadre" data-sombre={sombre ? 'oui' : 'non'} data-fond="osm">
+    <div
+      className="an-carte-cadre"
+      data-sombre={sombre ? 'oui' : 'non'}
+      data-fond={fond}
+      data-monde={mondeDessine ? 'oui' : 'non'}
+    >
       {!pret && (
         <div className="an-carte-attente" role="status">
           <span className="an-carte-attente-chevrons" aria-hidden="true">
@@ -279,9 +396,15 @@ function CarteConnexions({
         </div>
       )}
       <div className="an-carte-toile" ref={conteneur} />
-      {fondMuet && (
+      {fond === 'dessin' && (
         <p className="an-carte-muette" role="status">
-          Le fond de carte n’a pas répondu — les épingles restent à leur place.
+          Les tuiles n’ont pas répondu : le monde est dessiné ici, les épingles
+          restent à leur place.
+        </p>
+      )}
+      {fond === 'aucun' && (
+        <p className="an-carte-muette" role="status">
+          Aucun fond n’a pu être chargé — les épingles restent à leur place.
         </p>
       )}
     </div>
