@@ -57,12 +57,27 @@ Afficher  ▾
 Les équipes formées **vides** apparaissent aussi : une équipe créée mais pas
 encore staffée doit se voir.
 
-### 4. Une seule barre par équipe
+### 4. Une barre par identité, pas par nom
 
-Le regroupement compare les noms **sans la casse** : le groupe `Pharmacie` de la
-page Équipes et un département `PHARMACIE` donnent une seule barre, et le filtre
-retient tout le monde (la comparaison du filtre est elle aussi insensible à la
-casse — sinon des personnes seraient comptées mais pas affichées).
+> **Corrigé au round 48.** La première version regroupait par **nom en
+> majuscules** : l'équipe formée « Équipe de vente » et le département
+> « VENTE » de la fiche employé se retrouvaient dans la même barre, et des
+> non-membres (Boss buta, Koné KOMI) apparaissaient dans l'équipe.
+
+Chaque barre porte désormais une **clé** qui dit d'où elle vient :
+
+| Clé | Origine | Membres |
+| --- | --- | --- |
+| `equipe:<team.id>` | table `teams` / `team_members` | exactement les `team_members` actifs |
+| `departement:<NOM>` | champ `department` de la fiche employé | les personnes de ce département, et elles seules |
+| `locale:<NOM>` | équipe créée depuis le planning (`localStorage`) | affectations locales |
+| `sans` | aucune des trois | « SANS ÉQUIPE » |
+
+Deux barres peuvent donc porter le **même titre** sans fusionner : c'est
+voulu, et c'est signalé dans la liste du filtre (`… · département`,
+`… · équipe du planning`) ainsi que par une marque **en creux** sur la barre.
+Le filtre « Afficher » retient la clé choisie, jamais le nom : sélectionner
+l'équipe de vente affiche ses 3 membres, pas les 5 personnes du département.
 
 ### 5. Ce qui ne se fait pas depuis le planning
 
@@ -82,14 +97,13 @@ Le modal « Gérer les équipes » du dock précise désormais qu'il s'agit d'un
 | `src/services/teamService.js` | `getTeamsPourPlanning` (teams + team_members, toutes entreprises) |
 | `src/pages/Planning.jsx` | chargement, groupement, deux `optgroup`, marque et actions |
 | `src/pages/PlanningAfroTech.css` | `.sk-group-badge` |
-| `src/services/__tests__/planningEquipesFormees.test.js` | 28 tests (module pur + câblage) |
+| `src/services/__tests__/planningEquipesFormees.test.js` | 33 tests (module pur, défaut du round 48, câblage) |
 
 ## Vérifications
 
 ```
-npx vitest run                                                 → 137 fichiers, 1814 tests ✓
+npx vitest run                                                 → 138 fichiers, 1835 tests ✓
 npx vite build                                                 → ✓
 npx eslint src --config eslint.gate.config.js                  → 0 erreur
-npx eslint src/pages/Planning.jsx                              → 9 erreurs / 7 avertissements,
-                                                                  identiques à l'existant
+npx eslint src/pages/Planning.jsx                              → erreurs identiques à l'existant
 ```

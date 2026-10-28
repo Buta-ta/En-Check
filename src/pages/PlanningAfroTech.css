@@ -739,6 +739,13 @@
   white-space: nowrap;
 }
 
+/* La même marque, en creux : département ou équipe du planning */
+.sk-group-badge.is-secondaire {
+  border-style: dotted;
+  color: var(--sk-text-muted);
+  font-weight: 700;
+}
+
 /* Actions de la barre d'équipe (Gérer / Supprimer) */
 .sk-group-row-actions {
   display: inline-flex;

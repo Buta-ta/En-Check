@@ -69,7 +69,12 @@ import MotifsAbsenceService, { resoudreMotif } from "../services/motifsAbsenceSe
 import { MOTIFS_PAR_DEFAUT, getMotifConfig } from "../constants/motifsAbsence";
 import ChoixPeriode from "../components/ChoixPeriode";
 import { getTeamsPourPlanning } from "../services/teamService";
-import { equipeParEmploye, estEquipeFormee, nomEquipeDe, SANS_EQUIPE } from "../lib/planningEquipes";
+import {
+  cleEquipeFormee,
+  equipeParEmploye,
+  groupeDeLEmploye,
+  SANS_EQUIPE,
+} from "../lib/planningEquipes";
 import "./PlanningAfroTech.css";
 
 const OVERRIDES_STORAGE_KEY = "encheck_planning_day_overrides_v1";
@@ -278,6 +283,13 @@ function formatHoursCompact(minutes) {
   if (m === 0) return `${h}h`;
   return `${h}h${String(m).padStart(2, "0")}`;
 }
+
+// Le filtre « Afficher » : toute l'équipe, une barre (ses membres exacts) ou une personne.
+const correspondAuFocus = (employe, focus, membresDuGroupe) => {
+  if (focus?.type === "team") return Boolean(membresDuGroupe?.has(employe?.id));
+  if (focus?.type === "employee") return employe?.id === focus.value;
+  return true;
+};
 
 export default function Planning() {
   const { darkMode, toggleTheme } = useTheme();
@@ -1048,8 +1060,6 @@ export default function Planning() {
   // Les collaborateurs sans aucune des trois vont dans "SANS ÉQUIPE".
   const equipesParEmploye = useMemo(() => equipeParEmploye(equipesFormees), [equipesFormees]);
 
-  const getEmployeeTeamName = (emp) =>
-    nomEquipeDe(emp, { equipeParEmploye: equipesParEmploye, affectations: teamAssignments });
 
 
   const openNewTeamModal = () => {
@@ -1058,12 +1068,20 @@ export default function Planning() {
     setShowTeamModal(true);
   };
 
-  const openEditTeamModal = (title) => {
+  const openEditTeamModal = (cleGroupe, titreGroupe) => {
+    // On repart de la barre elle-même : une équipe locale « RECETTE » ne doit
+    // pas embarquer les personnes d'un département homonyme.
     const members = filteredEmployees
-      .filter((emp) => (getEmployeeTeamName(emp) || "") === title)
+      .filter(
+        (emp) =>
+          groupeDeLEmploye(emp, {
+            equipeParEmploye: equipesParEmploye,
+            affectations: teamAssignments,
+          }).cle === cleGroupe
+      )
       .map((emp) => emp.id);
-    setEditingTeam({ name: title });
-    setTeamForm({ name: title, memberIds: members });
+    setEditingTeam({ name: titreGroupe });
+    setTeamForm({ name: titreGroupe, memberIds: members });
     setShowTeamModal(true);
   };
 
@@ -1280,7 +1298,7 @@ export default function Planning() {
   };
 
   const focusLabel = useMemo(() => {
-    if (focusFilter.type === "team") return focusFilter.value;
+    if (focusFilter.type === "team") return focusFilter.label || focusFilter.value;
     if (focusFilter.type === "employee") {
       const emp = filteredEmployees.find((e) => e.id === focusFilter.value);
       return emp ? `${emp.first_name} ${emp.last_name}` : "Collaborateur";
@@ -1991,49 +2009,74 @@ export default function Planning() {
   // ═══ GROUPEMENT DES EMPLOYÉS PAR ÉQUIPE EN-CHECK (TOUTES PLIABLES) ═══
   // Chaque équipe — y compris GARDE & LOGISTIQUE — possède sa propre barre pliable.
   const employeeGroups = useMemo(() => {
-    // Une seule entrée par équipe, quelle que soit la casse du nom : le
-    // groupe « Pharmacie » de la page Équipes et un département
-    // « PHARMACIE » ne doivent pas faire deux barres.
-    const groupesMap = new Map();
+    // Une barre = une clé stable. Une équipe formée « Équipe de vente » et un
+    // département « ÉQUIPE DE VENTE » font deux barres : seuls les membres de
+    // la table team_members sont dans la première.
+    const annoncees = equipesFormees.map((equipe) => ({
+      cle: cleEquipeFormee(equipe),
+      titre: String(equipe?.name || "").trim(),
+      type: "equipe",
+    }));
 
-    const poser = (titre, employe = null) => {
-      const nom = String(titre || "").trim();
-      if (!nom) return null;
-      const cle = nom.toUpperCase();
-      if (!groupesMap.has(cle)) groupesMap.set(cle, { title: nom, employees: [] });
-      const groupe = groupesMap.get(cle);
-      if (employe) groupe.employees.push(employe);
-      return groupe;
-    };
+    const desEmployes = filteredEmployees.map((emp) => ({
+      groupe: groupeDeLEmploye(emp, {
+        equipeParEmploye: equipesParEmploye,
+        affectations: teamAssignments,
+      }),
+      employe: emp,
+    }));
 
-    // 1. Les équipes formées donnent le vrai nom affiché, même vides.
-    equipesFormees.forEach((equipe) => poser(equipe?.name));
+    const locales = teams.map((nom) => ({
+      cle: `locale:${String(nom || "").trim().toUpperCase()}`,
+      titre: String(nom || "").trim(),
+      type: "locale",
+    }));
 
-    // 2. Les personnes, rangées par équipe effective.
-    filteredEmployees.forEach((emp) => poser(getEmployeeTeamName(emp) || SANS_EQUIPE, emp));
+    const lignes = [
+      ...annoncees.map((groupe) => ({ groupe, employe: null })),
+      ...desEmployes,
+      ...locales.map((groupe) => ({ groupe, employe: null })),
+    ].filter((ligne) => ligne.groupe?.titre && ligne.groupe?.cle);
 
-    // 3. Les équipes créées ici (barre « Gérer les équipes »), même vides.
-    teams.forEach((t) => poser(t));
+    const groupes = lignes.reduce((liste, { groupe, employe }) => {
+      const rang = liste.findIndex((entree) => entree.key === groupe.cle);
+      if (rang === -1) {
+        return [
+          ...liste,
+          {
+            key: groupe.cle,
+            title: groupe.titre,
+            type: groupe.type,
+            employees: employe ? [employe] : [],
+          },
+        ];
+      }
+      if (!employe) return liste;
+      return liste.map((entree, index) =>
+        index === rang ? { ...entree, employees: [...entree.employees, employe] } : entree
+      );
+    }, []);
 
     // Ordre d'affichage : GARDE & LOGISTIQUE puis ÉQUIPE OFFICINE & VENTE puis les autres
     const priority = ["GARDE & LOGISTIQUE", "ÉQUIPE OFFICINE & VENTE"];
-    const entries = Array.from(groupesMap.values());
-    entries.sort((a, b) => {
-      const ia = priority.indexOf(a.title);
-      const ib = priority.indexOf(b.title);
-      if (ia !== -1 && ib !== -1) return ia - ib;
-      if (ia !== -1) return -1;
-      if (ib !== -1) return 1;
-      if (a.title === SANS_EQUIPE) return 1;
-      if (b.title === SANS_EQUIPE) return -1;
-      return a.title.localeCompare(b.title, "fr");
-    });
+    const rangPrioritaire = (groupe) => {
+      const rang = priority.indexOf(groupe.title);
+      if (rang !== -1) return rang;
+      return groupe.title === SANS_EQUIPE ? priority.length + 1 : priority.length;
+    };
 
-    return entries.map(({ title, employees }) => ({
-      title,
-      employees,
+    const tries = [...groupes].sort((a, b) => rangPrioritaire(a) - rangPrioritaire(b));
+
+    // Deux barres du même nom (équipe officielle + département hérité) :
+    // on les signale, sinon on ne sait plus laquelle on regarde.
+    const titres = tries.map((groupe) => groupe.title.toUpperCase());
+
+    return tries.map((groupe) => ({
+      ...groupe,
       isBannerOnly: false,
-      estFormee: estEquipeFormee(title, equipesFormees),
+      estFormee: groupe.type === "equipe",
+      collision:
+        titres.filter((titre) => titre === groupe.title.toUpperCase()).length > 1,
     }));
   }, [filteredEmployees, teams, teamAssignments, equipesFormees, equipesParEmploye]);
 
@@ -2041,25 +2084,21 @@ export default function Planning() {
   const visibleEmployees = useMemo(
     () =>
       employeeGroups
-        .filter((g) => !collapsedGroups[g.title])
+        .filter((g) => !collapsedGroups[g.key])
         .flatMap((g) => g.employees),
     [employeeGroups, collapsedGroups]
   );
 
-  const matchesFocus = (emp) => {
-    if (focusFilter.type === "team") {
-      // Comparaison sans la casse : le groupe affiche le nom de l'équipe
-      // formée (« Pharmacie ») alors qu'un département s'écrit « PHARMACIE ».
-      return (
-        (getEmployeeTeamName(emp) || SANS_EQUIPE).toUpperCase() ===
-        String(focusFilter.value || "").toUpperCase()
-      );
-    }
-    if (focusFilter.type === "employee") {
-      return emp.id === focusFilter.value;
-    }
-    return true;
-  };
+  // Le filtre suit exactement la barre choisie : ses membres, rien de plus.
+  // Une équipe formée ne récupère donc jamais les personnes d'un département
+  // qui porte le même nom.
+  const membresDuGroupeFocalise = useMemo(() => {
+    if (focusFilter.type !== "team") return null;
+    const groupe = employeeGroups.find((g) => g.key === focusFilter.value);
+    return new Set((groupe?.employees || []).map((membre) => membre.id));
+  }, [employeeGroups, focusFilter]);
+
+  const matchesFocus = (emp) => correspondAuFocus(emp, focusFilter, membresDuGroupeFocalise);
 
   const scopedEmployees = useMemo(
     () => visibleEmployees.filter(matchesFocus),
@@ -3242,9 +3281,11 @@ export default function Planning() {
               onChange={(e) => {
                 const v = e.target.value;
                 if (v === "all") setFocusFilter({ type: "all", value: null });
-                else if (v.startsWith("team:"))
-                  setFocusFilter({ type: "team", value: v.slice(5) });
-                else setFocusFilter({ type: "employee", value: v.slice(4) });
+                else if (v.startsWith("team:")) {
+                  const cle = v.slice(5);
+                  const groupe = employeeGroups.find((g) => g.key === cle);
+                  setFocusFilter({ type: "team", value: cle, label: groupe?.title || cle });
+                } else setFocusFilter({ type: "employee", value: v.slice(4) });
               }}
               aria-label="Filtrer l'affichage par équipe ou par collaborateur"
             >
@@ -3256,7 +3297,7 @@ export default function Planning() {
                   {employeeGroups
                     .filter((g) => g.estFormee)
                     .map((g) => (
-                      <option key={`formee-${g.title}`} value={`team:${g.title}`}>
+                      <option key={g.key} value={`team:${g.key}`}>
                         {g.title} ({g.employees.length})
                       </option>
                     ))}
@@ -3266,8 +3307,13 @@ export default function Planning() {
                 {employeeGroups
                   .filter((g) => !g.estFormee)
                   .map((g) => (
-                    <option key={g.title} value={`team:${g.title}`}>
+                    <option key={g.key} value={`team:${g.key}`}>
                       {g.title} ({g.employees.length})
+                      {g.collision
+                        ? g.type === "locale"
+                          ? " · équipe du planning"
+                          : " · département"
+                        : ""}
                     </option>
                   ))}
               </optgroup>
@@ -3402,19 +3448,19 @@ export default function Planning() {
                       employeeGroups
                         .filter((g) => !g.isBannerOnly)
                         .map((group) => {
-                          const isCollapsed = Boolean(collapsedGroups[group.title]);
+                          const isCollapsed = Boolean(collapsedGroups[group.key]);
                           const groupEmployees = group.employees.filter(matchesFocus);
                           if (groupEmployees.length === 0 && focusFilter.type !== "all") {
                             return null;
                           }
                           return [
                             <tr
-                              key={`grp-${group.title}`}
+                              key={`grp-${group.key}`}
                               className="sk-group-row"
                               onClick={() =>
                                 setCollapsedGroups((prev) => ({
                                   ...prev,
-                                  [group.title]: !prev[group.title],
+                                  [group.key]: !prev[group.key],
                                 }))
                               }
                             >
@@ -3433,14 +3479,25 @@ export default function Planning() {
                                     <span className="sk-group-count-badge">
                                       {group.employees.length} pers.
                                     </span>
-                                    {group.estFormee && (
+                                    {group.estFormee ? (
                                       <span
                                         className="sk-group-badge"
                                         title="Cette équipe se gère dans Employés → Équipes"
                                       >
                                         Équipe formée
                                       </span>
-                                    )}
+                                    ) : group.collision ? (
+                                      <span
+                                        className="sk-group-badge is-secondaire"
+                                        title={
+                                          group.type === "locale"
+                                            ? "Équipe créée depuis le planning, pas depuis la page Équipes"
+                                            : "Département de la fiche employé — ce n'est pas une équipe formée"
+                                        }
+                                      >
+                                        {group.type === "locale" ? "Équipe du planning" : "Département"}
+                                      </span>
+                                    ) : null}
                                   </span>
                                   <span
                                     className="sk-group-row-actions"
@@ -3460,7 +3517,7 @@ export default function Planning() {
                                         <button
                                           type="button"
                                           className="sk-group-row-btn"
-                                          onClick={() => openEditTeamModal(group.title)}
+                                          onClick={() => openEditTeamModal(group.key, group.title)}
                                           title={`Renommer / gérer les membres de ${group.title}`}
                                         >
                                           <Edit size={12} /> Gérer

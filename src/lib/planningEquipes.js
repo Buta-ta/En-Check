@@ -13,6 +13,11 @@
 //   2. l'affectation locale du planning (l'ancien geste) ;
 //   3. le département de la fiche employé (l'héritage).
 //
+// Une équipe formée n'est pas un département qui porte le même nom :
+// seuls ses membres en font partie. Deux personnes du département
+// « Équipe de vente » qui ne sont pas dans la table `team_members`
+// restent dans une barre « département », à côté.
+//
 // Rien ici ne touche au réseau ni au DOM : que des listes et des noms.
 // ═══════════════════════════════════════════════════════════
 
@@ -47,7 +52,7 @@ export function equipesDuPlanning(equipes = []) {
 }
 
 /**
- * Table « identifiant d'employé → nom de l'équipe formée ».
+ * Table « identifiant d'employé → équipe formée ».
  * Une personne qui figure dans deux équipes garde la première : on ne
  * la compte pas deux fois dans le planning.
  */
@@ -55,10 +60,18 @@ export function equipeParEmploye(equipes = []) {
   const table = new Map();
   equipesDuPlanning(equipes).forEach((equipe) => {
     equipe.membres.forEach((idEmploye) => {
-      if (!table.has(idEmploye)) table.set(idEmploye, equipe.nom);
+      if (!table.has(idEmploye)) {
+        table.set(idEmploye, { id: equipe.id, nom: equipe.nom, couleur: equipe.couleur });
+      }
     });
   });
   return table;
+}
+
+/** L'équipe formée d'une personne, ou null. */
+export function equipeFormeeDe(employe, table) {
+  if (!table || typeof table.get !== "function") return null;
+  return table.get(employe?.id) || null;
 }
 
 /**
@@ -68,8 +81,8 @@ export function equipeParEmploye(equipes = []) {
 export function nomEquipeDe(employe, { equipeParEmploye: table, affectations } = {}) {
   const id = employe?.id;
 
-  const equipeFormee = table && typeof table.get === "function" ? table.get(id) : null;
-  if (equipeFormee) return equipeFormee;
+  const equipeFormee = equipeFormeeDe(employe, table);
+  if (equipeFormee) return equipeFormee.nom;
 
   const affectation = affectations?.[id];
   if (affectation) return texte(affectation);
@@ -81,6 +94,42 @@ export function nomEquipeDe(employe, { equipeParEmploye: table, affectations } =
 /** Le nom du groupe affiché dans la grille (jamais vide). */
 export function nomDeGroupe(employe, options) {
   return nomEquipeDe(employe, options) || SANS_EQUIPE;
+}
+
+/**
+ * La barre de la grille qui accueille une personne : sa clé (stable,
+ * unique), le titre affiché et sa nature. Une équipe formée et un
+ * département du même nom donnent deux barres différentes — c'est
+ * exactement ce qui évite d'attribuer à une équipe des personnes qui
+ * n'en sont pas membres.
+ */
+export function groupeDeLEmploye(employe, { equipeParEmploye: table, affectations } = {}) {
+  const equipeFormee = equipeFormeeDe(employe, table);
+  if (equipeFormee) {
+    return {
+      cle: `equipe:${equipeFormee.id ?? equipeFormee.nom}`,
+      titre: equipeFormee.nom,
+      type: "equipe",
+    };
+  }
+
+  const affectation = texte(affectations?.[employe?.id]);
+  if (affectation) {
+    return { cle: `locale:${affectation.toUpperCase()}`, titre: affectation, type: "locale" };
+  }
+
+  const departement = texte(employe?.department).toUpperCase();
+  if (departement) {
+    return { cle: `departement:${departement}`, titre: departement, type: "departement" };
+  }
+
+  return { cle: "sans", titre: SANS_EQUIPE, type: "sans" };
+}
+
+/** La clé de barre d'une équipe formée (identique à celle de ses membres). */
+export function cleEquipeFormee(equipe) {
+  const nom = texte(equipe?.name ?? equipe?.nom);
+  return `equipe:${equipe?.id ?? nom}`;
 }
 
 /** Vrai si ce nom d'équipe vient de la page Équipes. */

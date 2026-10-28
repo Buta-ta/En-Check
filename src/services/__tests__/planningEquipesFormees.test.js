@@ -6,7 +6,9 @@
 //   ③ le filtre « Afficher » propose un groupe « Équipes formées » ;
 //   ④ une équipe formée ne se renomme ni ne se supprime depuis le planning —
 //     elle s'ouvre dans la page Équipes ;
-//   ⑤ les équipes formées vides restent visibles, en tête de liste.
+//   ⑤ les équipes formées vides restent visibles, en tête de liste ;
+//   ⑥ — round 48 — une équipe formée, c'est ses MEMBRES : un département
+//     qui porte le même nom fait une barre à part et n'absorbe personne.
 // ═══════════════════════════════════════════════════════════
 
 import { describe, it, expect } from 'vitest'
@@ -15,9 +17,12 @@ import path from 'node:path'
 
 import {
   SANS_EQUIPE,
+  cleEquipeFormee,
+  equipeFormeeDe,
   equipeParEmploye,
   equipesDuPlanning,
   estEquipeFormee,
+  groupeDeLEmploye,
   nomDeGroupe,
   nomEquipeDe,
 } from '../../lib/planningEquipes'
@@ -78,11 +83,13 @@ describe('le planning comprend les équipes de la page Équipes', () => {
   })
 
   it('ne compte jamais deux fois la même personne', () => {
+    // Une personne dans deux équipes : la première gagne, elle ne peut pas
+    // apparaître dans deux barres à la fois.
     const table = equipeParEmploye([
       { id: 't1', name: 'VENTE', members: [{ employee_id: 'e7' }] },
       { id: 't2', name: 'RECETTE', members: [{ employee_id: 'e7' }] },
     ])
-    expect(table.get('e7')).toBe('VENTE')
+    expect(table.get('e7')).toMatchObject({ id: 't1', nom: 'VENTE' })
     expect(table.size).toBe(1)
   })
 })
@@ -145,15 +152,69 @@ describe('reconnaître une équipe formée', () => {
 })
 
 // ───────────────────────────────────────────────────────────
+// 2 bis. « Équipe de vente » n'est pas « ÉQUIPE DE VENTE »
+// ───────────────────────────────────────────────────────────
+
+describe('le défaut du round 48 : des non-membres dans l’équipe formée', () => {
+  // Relevé dans Employés → Équipes : 3 membres.
+  const equipeVente = {
+    id: 'team-vente',
+    name: 'Équipe de vente',
+    members: [{ employee_id: 'hippo' }, { employee_id: 'lulu' }, { employee_id: 'emma' }],
+  };
+  const table = equipeParEmploye([equipeVente]);
+  // Relevé dans le planning : 4 personnes, avec deux intrus portés par le
+  // département « VENTE » de leur fiche.
+  const equipe = [
+    { id: 'boss', first_name: 'Boss', last_name: 'buta', department: 'VENTE' },
+    { id: 'emma', first_name: 'Emma', last_name: 'BAYLE', department: 'VENTE' },
+    { id: 'hippo', first_name: 'Hippo', last_name: 'BIYOKILA', department: 'VENTE' },
+    { id: 'kone', first_name: 'Koné', last_name: 'KOMI', department: 'VENTE' },
+    { id: 'lulu', first_name: 'lulu', last_name: 'lula', department: null },
+  ];
+
+  const barreDe = (emp) => groupeDeLEmploye(emp, { equipeParEmploye: table });
+
+  it('l’équipe formée ne contient que ses trois membres', () => {
+    const membres = equipe.filter((emp) => barreDe(emp).cle === cleEquipeFormee(equipeVente));
+    expect(membres.map((emp) => emp.id)).toEqual(['emma', 'hippo', 'lulu']);
+  });
+
+  it('Boss buta et Koné KOMI gardent une barre à part', () => {
+    expect(barreDe(equipe[0])).toEqual({
+      cle: 'departement:VENTE',
+      titre: 'VENTE',
+      type: 'departement',
+    });
+    expect(barreDe(equipe[3]).cle).toBe('departement:VENTE');
+  });
+
+  it('les quatre ne sont plus comptés dans la même barre', () => {
+    const barres = new Map();
+    equipe.forEach((emp) => {
+      const cle = barreDe(emp).cle;
+      barres.set(cle, (barres.get(cle) || 0) + 1);
+    });
+    expect(barres.get('equipe:team-vente')).toBe(3);
+    expect(barres.get('departement:VENTE')).toBe(2);
+  });
+
+  it('un membre sans département ne tombe pas dans « sans équipe »', () => {
+    expect(equipeFormeeDe(equipe[4], table).nom).toBe('Équipe de vente');
+    expect(barreDe(equipe[4]).titre).toBe('Équipe de vente');
+  });
+})
+
+// ───────────────────────────────────────────────────────────
 // 3. Le câblage dans la page Planning
 // ───────────────────────────────────────────────────────────
 
 describe('le planning lit les vraies équipes', () => {
-  it('importe la lecture et le module d’équipes', () => {
+  it('importe la lecture et les repères de barre', () => {
     expect(planning).toContain('import { getTeamsPourPlanning } from "../services/teamService"')
-    expect(planning).toContain(
-      'import { equipeParEmploye, estEquipeFormee, nomEquipeDe, SANS_EQUIPE } from "../lib/planningEquipes"'
-    )
+    expect(planning).toContain('cleEquipeFormee,')
+    expect(planning).toContain('groupeDeLEmploye,')
+    expect(planning).toContain('SANS_EQUIPE,')
   })
 
   it('charge les équipes au même moment que les employés', () => {
@@ -166,9 +227,11 @@ describe('le planning lit les vraies équipes', () => {
     expect(planning).toContain('equipesCleRef.current = cleEquipes')
   })
 
-  it('le nom d’équipe effectif passe par nomEquipeDe', () => {
+  it('chaque personne est rangée par la clé de son équipe effective', () => {
     expect(planning).toContain('const equipesParEmploye = useMemo(() => equipeParEmploye(equipesFormees)')
-    expect(planning).toContain('nomEquipeDe(emp, { equipeParEmploye: equipesParEmploye, affectations: teamAssignments })')
+    expect(planning).toContain('groupeDeLEmploye(emp, {')
+    expect(planning).toContain('equipeParEmploye: equipesParEmploye,')
+    expect(planning).toContain('affectations: teamAssignments,')
   })
 })
 
@@ -181,23 +244,29 @@ describe('le filtre « Afficher » montre les équipes formées', () => {
   })
 
   it('les équipes formées vides restent visibles', () => {
-    expect(planning).toContain('equipesFormees.forEach((equipe) => poser(equipe?.name))')
-    expect(planning).toContain('const cle = nom.toUpperCase()')
+    expect(planning).toContain('cle: cleEquipeFormee(equipe),')
+    expect(planning).toContain('const annoncees = equipesFormees.map((equipe) => ({')
   })
 
-  it('une seule barre par équipe, quelle que soit la casse', () => {
-    // Le groupe « Pharmacie » et un département « PHARMACIE » ne doivent
-    // pas faire deux en-têtes.
-    expect(planning).toContain('if (!groupesMap.has(cle)) groupesMap.set(cle, { title: nom, employees: [] })')
+  it('une barre par clé : deux équipes ne fusionnent pas', () => {
+    expect(planning).toContain('const rang = liste.findIndex((entree) => entree.key === groupe.cle)')
   })
 })
 
 describe('choisir une équipe formée filtre vraiment ses membres', () => {
-  it('la comparaison ignore la casse du nom', () => {
-    // Le groupe porte le nom de l'équipe (« Pharmacie ») et un département
-    // s'écrit en capitales : sans cette comparaison, des personnes
-    // manqueraient au filtre alors qu'elles sont comptées dans la barre.
-    expect(planning).toContain('String(focusFilter.value || "").toUpperCase()')
+  it('le filtre suit la barre choisie, pas son nom', () => {
+    // Corrigé au round 48 : comparer les noms faisait entrer dans l'équipe
+    // de vente les personnes d'un département homonyme.
+    expect(planning).toContain('const membresDuGroupeFocalise = useMemo(() => {')
+    expect(planning).toContain('return new Set((groupe?.employees || []).map((membre) => membre.id));')
+    expect(planning).toContain('correspondAuFocus(emp, focusFilter, membresDuGroupeFocalise)')
+    expect(planning).not.toContain('String(focusFilter.value || "").toUpperCase()')
+  })
+
+  it('l’option porte la clé de la barre, jamais son seul nom', () => {
+    expect(planning).toContain('value={`team:${g.key}`}')
+    expect(planning).toContain('const groupe = employeeGroups.find((g) => g.key === cle)')
+    expect(planning).toContain('setFocusFilter({ type: "team", value: cle, label: groupe?.title || cle })')
   })
 
   it('le périmètre se recalcule quand les équipes arrivent', () => {
