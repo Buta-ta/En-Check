@@ -790,6 +790,12 @@ describe('7. un fond de carte sans clé', () => {
     expect(CARTE_CSS).toContain('.an-carte-cadre .leaflet-popup-pane { z-index: 6; }')
   })
 
+  it('ne reste pas figée sur un serveur muet', () => {
+    expect(CARTE).toContain("tuiles.on('tileload'")
+    expect(CARTE).toContain('}, 4000)')
+    expect(CARTE).toContain('if (abandonne || tuilesChargees > 0) return')
+  })
+
   it('reste vivante si plus aucun fond ne répond', () => {
     expect(CARTE).toContain('an-carte-muette')
     expect(CARTE_CSS).toContain('.an-carte-muette')
