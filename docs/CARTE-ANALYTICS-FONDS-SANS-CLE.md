@@ -37,6 +37,15 @@ Un message discret, en bas du cadre, dit lequel des trois fonds est affiché
 quand ce n'est pas le premier : « Les tuiles n'ont pas répondu : le monde est
 dessiné ici, les épingles restent à leur place. »
 
+## Un serveur muet n'immobilise pas la carte
+
+Trois `tileerror` font passer au fond suivant. Mais un serveur peut aussi ne
+jamais répondre — requête retenue par un réseau fermé, proxy qui ne rend pas
+la main. Un garde-temps de **quatre secondes** couvre ce cas : sans une seule
+tuile chargée (`tileload`), on passe au fond suivant comme si les tuiles
+avaient échoué. La carte finit donc toujours par s'afficher, même quand
+aucun service extérieur ne répond.
+
 ## La barre de recherche passe devant la carte
 
 Leaflet pose ses panneaux à des `z-index` de 200 à 1000. Sans barrière, ils

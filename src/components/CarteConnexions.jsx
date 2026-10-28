@@ -134,8 +134,17 @@ function CarteConnexions({
     let abandonne = false
     let essai = 0
     let calques = []
+    let minuterie = null
+
+    const arreterMinuterie = () => {
+      if (minuterie) {
+        clearTimeout(minuterie)
+        minuterie = null
+      }
+    }
 
     const retirerCalques = () => {
+      arreterMinuterie()
       calques.forEach((calque) => {
         try {
           instance.removeLayer(calque)
@@ -207,6 +216,20 @@ function CarteConnexions({
 
       tuiles.addTo(instance)
       calques.push(tuiles)
+
+      // Un serveur qui ne répond ni oui ni non ne doit pas figer la carte :
+      // sans une seule tuile chargée au bout de quatre secondes, on passe
+      // au fond suivant comme si les tuiles avaient échoué.
+      let tuilesChargees = 0
+      tuiles.on('tileload', () => {
+        tuilesChargees += 1
+        if (tuilesChargees === 1) arreterMinuterie()
+      })
+      minuterie = setTimeout(() => {
+        if (abandonne || tuilesChargees > 0) return
+        essai += 1
+        poser()
+      }, 4000)
 
       if (choix.libelles) {
         const etiquettes = Leaflet.tileLayer(choix.libelles, {
