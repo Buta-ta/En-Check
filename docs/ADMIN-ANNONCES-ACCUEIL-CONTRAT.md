@@ -1,6 +1,6 @@
 # Annonces d'accueil (app Pointage) — Contrat Admin/API
 
-**Date : 6 novembre 2026** · **Statut : contrat gelé, en attente de GO exécution SQL**
+**Date : 6 novembre 2026** · **Statut : MIGRATION EXÉCUTÉE le 06/11** (migrations Supabase `annonces_accueil_accueil_pointage` + `annonces_accueil_fix_ordre_jsonb_agg`) — RPC de lecture validée en base (ordre, période, entreprise inconnue, garde AAL2, contraintes)
 **Source : rapport de Dev2 (App Pointage) — `docs/PUBLICITES_ACCUEIL_RAPPORT_ADMIN_API.md` (PR #43, fusionnée) du dépôt `Buta-ta/En-Check-App-Pointage`**
 **Rôle : ce document est la réponse livrable de l'équipe Admin/API au rapport §9.**
 
@@ -140,22 +140,23 @@ BEGIN
     'ok', true,
     'entreprise_id', p_enterprise_id::text,
     'publicites', COALESCE((
-      SELECT jsonb_agg(
-        jsonb_build_object(
+      -- Sub-requête imbriquée : ORDER BY interdit directement dans jsonb_agg
+      SELECT jsonb_agg(t.obj) FROM (
+        SELECT jsonb_build_object(
           'id', a.id::text,
           'type', a.type_media,
           'url', 'https://cxggndvhwdolbtyezjde.supabase.co/storage/v1/object/public/annonces-accueil/' || a.media_path,
           'duree_affichage_ms', a.duree_affichage_ms,
           'ordre_publication', a.ordre_publication,
           'updated_at', a.updated_at::text
-        )
+        ) AS obj
+        FROM public.annonces_accueil a
+        WHERE a.enterprise_id = p_enterprise_id
+          AND a.is_active
+          AND (a.debute_le IS NULL OR a.debute_le <= now())
+          AND (a.termine_le IS NULL OR a.termine_le > now())
         ORDER BY a.ordre_publication ASC, a.publie_le ASC NULLS LAST, a.id ASC
-      )
-      FROM public.annonces_accueil a
-      WHERE a.enterprise_id = p_enterprise_id
-        AND a.is_active
-        AND (a.debute_le IS NULL OR a.debute_le <= now())
-        AND (a.termine_le IS NULL OR a.termine_le > now())
+      ) t
     ), '[]'::jsonb)
   ) INTO r;
   RETURN r;
@@ -178,7 +179,7 @@ CREATE OR REPLACE FUNCTION public.encheck_annonce_accueil_mettre_a_jour(
   p_duree_affichage_ms integer, p_ordre_publication integer,
   p_is_active boolean, p_debute_le timestamptz, p_termine_le timestamptz
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE actor uuid; obj record; row_ record; mimes_ok boolean; max_taille bigint;
+DECLARE actor uuid; mime text; taille bigint; row_ record; mimes_ok boolean; max_taille bigint;
 BEGIN
   PERFORM public.encheck_borne_admin_guard();
   SELECT id INTO strict actor FROM public.admins WHERE user_id = auth.uid();
@@ -192,17 +193,19 @@ BEGIN
   THEN RAISE EXCEPTION 'Chemin de média non conforme (attendu : entreprise/annonce/fichier).' USING ERRCODE = '22023'; END IF;
 
   -- Validation serveur du fichier : existence, MIME réel, taille, extension
-  SELECT o.mime_type, o.metadata INTO obj
+  -- storage.objects n'a pas de colonnes mime/size : tout est dans metadata (jsonb)
+  SELECT COALESCE(o.metadata->>'mimetype', o.metadata->>'mime_type') INTO mime
   FROM storage.objects o WHERE o.bucket_id = 'annonces-accueil' AND o.name = p_media_path;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Média introuvable dans le stockage. Téléversez le fichier avant de publier.' USING ERRCODE = 'P0001';
   END IF;
-  IF p_type_media = 'image'   THEN mimes_ok := obj.mime_type IN ('image/jpeg','image/png','image/webp'); max_taille := 524288;
-  ELSIF p_type_media = 'gif'  THEN mimes_ok := obj.mime_type = 'image/gif';                        max_taille := 2097152;
-  ELSIF p_type_media = 'video' THEN mimes_ok := obj.mime_type IN ('video/mp4','video/quicktime');  max_taille := 5242880;
+  taille := COALESCE((SELECT o.metadata->>'size' FROM storage.objects o WHERE o.bucket_id = 'annonces-accueil' AND o.name = p_media_path)::bigint, -1);
+  IF p_type_media = 'image'   THEN mimes_ok := mime IN ('image/jpeg','image/png','image/webp'); max_taille := 524288;
+  ELSIF p_type_media = 'gif'  THEN mimes_ok := mime = 'image/gif';                        max_taille := 2097152;
+  ELSIF p_type_media = 'video' THEN mimes_ok := mime IN ('video/mp4','video/quicktime');  max_taille := 5242880;
   ELSE RAISE EXCEPTION 'Type de média inconnu (image, gif, video).' USING ERRCODE = '22023'; END IF;
   IF NOT mimes_ok THEN RAISE EXCEPTION 'Format du fichier non autorisé pour ce type de média.' USING ERRCODE = '22023'; END IF;
-  IF COALESCE((obj.metadata->>'size')::bigint, -1) > max_taille THEN
+  IF taille > max_taille THEN
     RAISE EXCEPTION 'Fichier trop lourd pour ce type de média.' USING ERRCODE = '22023'; END IF;
   IF (p_type_media = 'image' AND NOT p_media_path ~* '\.(jpe?g|png|webp)$')
      OR (p_type_media = 'gif'   AND NOT p_media_path ~* '\.gif$')
