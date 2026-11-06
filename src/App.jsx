@@ -33,6 +33,7 @@ import Prospection from './pages/Prospection'
 import Devis from './pages/Devis'
 import ConfigGeofencing from './pages/ConfigGeofencing'
 import CarteTempsReel from './pages/CarteTempsReel'
+import AnnoncesAccueil from './pages/AnnoncesAccueil'
 import JoursFeries from './pages/JoursFeries'
 
 // Employee pages
@@ -372,6 +373,11 @@ function App() {
           <Route path="/pointeuses" element={
             <AdminRoute>
               <Pointeuses />
+            </AdminRoute>
+          } />
+          <Route path="/annonces-accueil" element={
+            <AdminRoute requireSuperAdmin>
+              <AnnoncesAccueil />
             </AdminRoute>
           } />
           <Route path="/cout-salarial" element={

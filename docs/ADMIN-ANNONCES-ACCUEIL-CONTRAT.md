@@ -272,11 +272,16 @@ BEGIN
 END $$;
 ```
 
+**`encheck_annonce_accueil_lister(p_enterprise_id)`** — ajoutée avec l'écran Admin (migration `annonces_accueil_lister_admin`) : la table étant verrouillée RLS, l'écran Admin lit TOUTES les annonces de l'entreprise (y compris inactives/expirées) + le journal via ce RPC, avec la même garde AAL2 et le statut calculé côté serveur (`en_ligne` / `programmee` / `expinee` / `inactive`).
+
 ```sql
 REVOKE EXECUTE ON FUNCTION public.encheck_annonce_accueil_mettre_a_jour(uuid,uuid,text,text,integer,integer,boolean,timestamptz,timestamptz) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION public.encheck_annonce_accueil_mettre_a_jour(uuid,uuid,text,text,integer,integer,boolean,timestamptz,timestamptz) TO authenticated;
 REVOKE EXECUTE ON FUNCTION public.encheck_annonce_accueil_supprimer(uuid,uuid) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION public.encheck_annonce_accueil_supprimer(uuid,uuid) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.encheck_annonce_accueil_lister(uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.encheck_annonce_accueil_lister(uuid) FROM anon;
+GRANT  EXECUTE ON FUNCTION public.encheck_annonce_accueil_lister(uuid) TO authenticated;
 ```
 
 ## 8. Cache et invalidation (pour l'app Pointage — complète le §7 du rapport)
@@ -336,7 +341,7 @@ DELETE FROM storage.buckets WHERE id = 'annonces-accueil';
 | Migration de schéma et rollback | ✅ §4 + §11 (à exécuter sur GO) |
 | RPC de lecture + tests inter-entreprises | ✅ §6 + §9 (exécutés en base) |
 | Bucket, politiques Storage, validation d'upload | ✅ §5 + §7 (validation serveur MIME/taille/extension) |
-| Écran Admin avec ordre et durée par média | ✅ §2 (page `/annonces-accueil`, charte Appliqué d'Abomey, défi AAL2) |
+| Écran Admin avec ordre et durée par média | ✅ LIVRÉ (page `/annonces-accueil` + `AnnoncesAccueil.css`, charte Appliqué d'Abomey, défi AAL2, aperçu carrousel, journal, réordonnancement 3 temps) |
 | Médias de test sur entreprise fictive | ✅ §10 |
 | Réponses exemple RPC (0/1/N + vidéo) | §9 (produites pendant la recette) |
 | Doc cache / invalidation | ✅ §8 |
