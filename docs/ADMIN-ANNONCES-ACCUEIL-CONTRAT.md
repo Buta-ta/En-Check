@@ -96,29 +96,30 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('annonces-accueil', 'annonces-accueil', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- Garde : superadmin actif + session AAL2 + chemin {entreprise}/{annonce}/{fichier}
-CREATE OR REPLACE FUNCTION public.encheck_annonce_storage_autorise(p_name text)
+-- Garde : superadmin actif + chemin {entreprise}/{annonce}/{fichier}.
+-- AAL2 est exigé sur les RPC de publication (la porte réelle) et relue à
+-- chaque action dans l'écran Admin ; le dépôt de fichier seul n'expose rien
+-- (un média n'est servi que publié par une RPC AAL2).
+CREATE OR REPLACE FUNCTION public.encheck_annonce_storage_appartient(p_name text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public AS $$
   SELECT auth.uid() IS NOT NULL
     AND EXISTS (SELECT 1 FROM public.admins
                 WHERE user_id = auth.uid() AND is_active AND role = 'super_admin')
-    AND auth.jwt() IS NOT NULL
-    AND auth.jwt()->>'aal' = 'aal2'
     AND cardinality(storage.foldername(p_name)) >= 2
     AND (storage.foldername(p_name))[1] IN (SELECT id::text FROM public.enterprises)
 $$;
 
 DROP POLICY IF EXISTS annonces_accueil_insert ON storage.objects;
 CREATE POLICY annonces_accueil_insert ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_autorise(name));
+  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_appartient(name));
 DROP POLICY IF EXISTS annonces_accueil_update ON storage.objects;
 CREATE POLICY annonces_accueil_update ON storage.objects FOR UPDATE TO authenticated
-  USING (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_autorise(name))
-  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_autorise(name));
+  USING (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_appartient(name))
+  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_appartient(name));
 DROP POLICY IF EXISTS annonces_accueil_delete ON storage.objects;
 CREATE POLICY annonces_accueil_delete ON storage.objects FOR DELETE TO authenticated
-  USING (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_autorise(name));
+  USING (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_appartient(name));
 -- Pas de politique SELECT : lecture via URL publique uniquement (bucket public).
 ```
 
@@ -323,6 +324,7 @@ GRANT  EXECUTE ON FUNCTION public.encheck_annonce_accueil_lister(uuid) TO authen
 DROP FUNCTION IF EXISTS public.encheck_annonce_accueil_supprimer(uuid, uuid);
 DROP FUNCTION IF EXISTS public.encheck_annonce_accueil_mettre_a_jour(uuid, uuid, text, text, integer, integer, boolean, timestamptz, timestamptz);
 DROP FUNCTION IF EXISTS public.encheck_accueil_publicites(uuid);
+DROP FUNCTION IF EXISTS public.encheck_annonce_storage_appartient(text);
 DROP FUNCTION IF EXISTS public.encheck_annonce_storage_autorise(text);
 DROP TRIGGER IF EXISTS annonces_accueil_touch ON public.annonces_accueil;
 DROP FUNCTION IF EXISTS public.encheck_annonce_accueil_touch();

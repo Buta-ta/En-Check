@@ -120,6 +120,16 @@ export default function AnnoncesAccueil() {
   const lock = useRef(false)
   const fileInput = useRef(null)
 
+  // Deuxième barrière, lisible : le défi MFA (ensureMfa) puis une relecture
+  // du niveau de la session. Si la session n'est pas à l'assurance AAL2,
+  // on explique au lieu de laisser le serveur renvoyer un refus opaque.
+  async function securite() {
+    await ensureMfa()
+    const { data: nivAal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (!nivAal || nivAal.currentLevel !== 'aal2')
+      throw new Error('Second facteur requis (AAL2) : votre session n’est pas vérifiée. Si le défi ne s’ouvre pas, vérifiez vos facteurs MFA dans Mon compte → Sécurité.')
+  }
+
   // ── Comptes + entreprises (une seule fois) ──
   const charger = useCallback(async () => {
     const req = ++epoch.current
@@ -157,7 +167,7 @@ export default function AnnoncesAccueil() {
     setAnnonces(null)
     setNotice(null)
     try {
-      await ensureMfa()
+      await securite()
       const data = await accountRpc('encheck_annonce_accueil_lister', { p_enterprise_id: entreprise })
       if (data?.ok !== true)
         throw new Error(data?.raison === 'entreprise_inconnue' ? 'Entreprise inconnue.' : 'Lecture refusée. Vérifiez votre session MFA.')
@@ -267,7 +277,7 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await ensureMfa()
+      await securite()
       const id = enEdition ? enEdition.id : crypto.randomUUID()
       let chemin = enEdition?.media_path
       if (fichier) {
@@ -316,7 +326,7 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await ensureMfa()
+      await securite()
       const res = await accountRpc('encheck_annonce_accueil_mettre_a_jour', {
         p_enterprise_id: entreprise,
         p_id: a.id,
@@ -345,7 +355,7 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await ensureMfa()
+      await securite()
       const res = await accountRpc('encheck_annonce_accueil_supprimer', {
         p_enterprise_id: entreprise,
         p_id: a.id,
@@ -383,7 +393,7 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await ensureMfa()
+      await securite()
       for (const [ligne, ordreCible] of pas) {
         const res = await accountRpc('encheck_annonce_accueil_mettre_a_jour', {
           p_enterprise_id: entreprise,
