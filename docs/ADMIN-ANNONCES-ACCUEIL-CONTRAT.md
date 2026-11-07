@@ -130,6 +130,26 @@ CREATE POLICY annonces_accueil_update ON storage.objects FOR UPDATE TO authentic
 -- Pas de politique SELECT : lecture via URL publique uniquement (bucket public).
 -- Pas de politique DELETE : la suppression du fichier est faite par les RPC
 -- AAL2 (supprimer / mettre_a_jour au remplacement), SECURITY DEFINER.
+
+-- ⚠️ Exonération ciblée des 3 politiques RESTRICTIVE de la plateforme
+-- (cmd=ALL, TO authenticated) — migration
+-- annonces_accueil_exoneration_restrictives. Elles s'appliquaient à TOUS
+-- les buckets et bloquaient le présent bucket quelle que soit la session
+-- (les claims JWT ne sont pas fiables en contexte Storage ici — cf. plus
+-- haut). Pour 'annonces-accueil' seulement, le court-circuit
+-- `bucket_id <> 'annonces-accueil' OR <condition d'origine>` passe sans
+-- évaluer la condition ; tout autre bucket garde le comportement strict.
+-- Sécurité préservée : le dépôt est cloisonné (chemin + 5 Mo + MIME) et
+-- rien n'est visible avant la RPC superadmin AAL2.
+ALTER POLICY encheck_admin_session_restrictive ON storage.objects
+  USING (bucket_id <> 'annonces-accueil' OR public.encheck_admin_channel_allowed())
+  WITH CHECK (bucket_id <> 'annonces-accueil' OR public.encheck_admin_channel_allowed());
+ALTER POLICY encheck_custom_channels ON storage.objects
+  USING (bucket_id <> 'annonces-accueil' OR public.encheck_custom_role_id() IS NULL)
+  WITH CHECK (bucket_id <> 'annonces-accueil' OR public.encheck_custom_role_id() IS NULL);
+ALTER POLICY encheck_mfa_obligation ON storage.objects
+  USING (bucket_id <> 'annonces-accueil' OR public.encheck_mfa_access_allowed())
+  WITH CHECK (bucket_id <> 'annonces-accueil' OR public.encheck_mfa_access_allowed());
 ```
 
 ## 6. RPC de lecture (kiosque / app Pointage)
