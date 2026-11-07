@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowDown, ArrowLeft, ArrowUp, ArrowUpRight, CheckCircle2, Film,
+  ArrowDown, ArrowUp, ArrowUpRight, CheckCircle2, Film,
   Image as ImageIcon, Megaphone, Pause, Pencil, Play, Power,
   RefreshCw, Repeat, SkipBack, SkipForward, Sun, Moon,
   Trash2, Upload, Users,
@@ -120,16 +120,6 @@ export default function AnnoncesAccueil() {
   const lock = useRef(false)
   const fileInput = useRef(null)
 
-  // Deuxième barrière, lisible : le défi MFA (ensureMfa) puis une relecture
-  // du niveau de la session. Si la session n'est pas à l'assurance AAL2,
-  // on explique au lieu de laisser le serveur renvoyer un refus opaque.
-  async function securite() {
-    await ensureMfa()
-    const { data: nivAal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-    if (!nivAal || nivAal.currentLevel !== 'aal2')
-      throw new Error('Second facteur requis (AAL2) : votre session n’est pas vérifiée. Si le défi ne s’ouvre pas, vérifiez vos facteurs MFA dans Mon compte → Sécurité.')
-  }
-
   // ── Comptes + entreprises (une seule fois) ──
   const charger = useCallback(async () => {
     const req = ++epoch.current
@@ -167,7 +157,7 @@ export default function AnnoncesAccueil() {
     setAnnonces(null)
     setNotice(null)
     try {
-      await securite()
+      await ensureMfa()
       const data = await accountRpc('encheck_annonce_accueil_lister', { p_enterprise_id: entreprise })
       if (data?.ok !== true)
         throw new Error(data?.raison === 'entreprise_inconnue' ? 'Entreprise inconnue.' : 'Lecture refusée. Vérifiez votre session MFA.')
@@ -277,7 +267,7 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await securite()
+      await ensureMfa()
       const id = enEdition ? enEdition.id : crypto.randomUUID()
       let chemin = enEdition?.media_path
       if (fichier) {
@@ -289,7 +279,7 @@ export default function AnnoncesAccueil() {
           .from('annonces-accueil')
           .upload(chemin, fichier, { contentType: fichier.type, upsert: true })
         if (errUp)
-          throw new Error('Envoi du fichier refusé : ' + (errUp.message || 'vérifiez le format et le poids du fichier.'))
+          throw new Error('Envoi du fichier refusé : ' + (errUp.message || 'vérifiez le format, le poids et votre session MFA.'))
       }
       const res = await accountRpc('encheck_annonce_accueil_mettre_a_jour', {
         p_enterprise_id: entreprise,
@@ -303,7 +293,10 @@ export default function AnnoncesAccueil() {
         p_termine_le: termineLe ? new Date(termineLe).toISOString() : null,
       })
       if (res?.ok !== true) throw new Error('Publication refusée par le serveur.')
-      // Le fichier remplacé est nettoyé par le RPC (plus de remove côté client).
+      if (enEdition && enEdition.media_path && enEdition.media_path !== chemin)
+        await supabase.storage.from('annonces-accueil')
+          .remove([enEdition.media_path])
+          .catch(() => {})
       setNotice({ ton: 'ok', texte: enEdition ? 'Annonce mise à jour.' : 'Annonce publiée.' })
       viderForm()
       await chargerAnnonces()
@@ -323,7 +316,7 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await securite()
+      await ensureMfa()
       const res = await accountRpc('encheck_annonce_accueil_mettre_a_jour', {
         p_enterprise_id: entreprise,
         p_id: a.id,
@@ -352,13 +345,13 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await securite()
+      await ensureMfa()
       const res = await accountRpc('encheck_annonce_accueil_supprimer', {
         p_enterprise_id: entreprise,
         p_id: a.id,
       })
       if (res?.ok !== true) throw new Error('Suppression refusée par le serveur.')
-      // Le fichier de stockage est supprimé par le RPC (aucun remove client).
+      await supabase.storage.from('annonces-accueil').remove([a.media_path]).catch(() => {})
       setNotice({ ton: 'ok', texte: 'Annonce supprimée.' })
       setConfirmationSuppression(null)
       if (enEdition?.id === a.id) viderForm()
@@ -390,7 +383,7 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await securite()
+      await ensureMfa()
       for (const [ligne, ordreCible] of pas) {
         const res = await accountRpc('encheck_annonce_accueil_mettre_a_jour', {
           p_enterprise_id: entreprise,
@@ -437,21 +430,11 @@ export default function AnnoncesAccueil() {
         <div className="aa-colonne">
           {/* ── La barre de titre ── */}
           <header className="aa-heading">
-            <div className="aa-heading-gauche">
-              <Link
-                className="aa-retour"
-                to="/dashboard"
-                aria-label="Retour au tableau de bord"
-                title="Retour au tableau de bord"
-              >
-                <ArrowLeft size={16} aria-hidden="true" />
-              </Link>
-              <div className="aa-marque">
-                <AbomeyBlasonSvg size={52} />
-                <div className="aa-marque-texte">
-                  <h1>Annonces d’accueil</h1>
-                  <p>Le carrousel média de l’en-tête Pointage</p>
-                </div>
+            <div className="aa-marque">
+              <AbomeyBlasonSvg size={52} />
+              <div className="aa-marque-texte">
+                <h1>Annonces d’accueil</h1>
+                <p>Le carrousel média de l’en-tête Pointage</p>
               </div>
             </div>
             <div className="aa-heading-actions">

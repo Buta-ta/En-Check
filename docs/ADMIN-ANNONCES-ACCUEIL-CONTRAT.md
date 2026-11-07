@@ -132,24 +132,35 @@ CREATE POLICY annonces_accueil_update ON storage.objects FOR UPDATE TO authentic
 -- AAL2 (supprimer / mettre_a_jour au remplacement), SECURITY DEFINER.
 
 -- ⚠️ Exonération ciblée des 3 politiques RESTRICTIVE de la plateforme
--- (cmd=ALL, TO authenticated) — migration
--- annonces_accueil_exoneration_restrictives. Elles s'appliquaient à TOUS
--- les buckets et bloquaient le présent bucket quelle que soit la session
--- (les claims JWT ne sont pas fiables en contexte Storage ici — cf. plus
--- haut). Pour 'annonces-accueil' seulement, le court-circuit
--- `bucket_id <> 'annonces-accueil' OR <condition d'origine>` passe sans
--- évaluer la condition ; tout autre bucket garde le comportement strict.
--- Sécurité préservée : le dépôt est cloisonné (chemin + 5 Mo + MIME) et
--- rien n'est visible avant la RPC superadmin AAL2.
+-- (cmd=ALL, TO authenticated) — migrations
+-- annonces_accueil_exoneration_restrictives puis
+-- annonces_accueil_correction_sens_exoneration (1ʳᵉ version publiée avec le
+-- sens INVERSÉ : `<>` au lieu de `=` ; corrigée immédiatement). Elles
+-- s'appliquaient à TOUS les buckets ; pour 'annonces-accueil' seul, le
+-- court-circuit `bucket_id = 'annonces-accueil' OR <condition d'origine>`
+-- passe sans évaluer la condition (les claims JWT ne sont pas fiables en
+-- contexte Storage ici — cf. plus haut) ; tout autre bucket garde le
+-- comportement strict. Sécurité préservée : le dépôt est cloisonné
+-- (chemin + 5 Mo + MIME) et rien n'est visible avant la RPC superadmin AAL2.
+--
+-- ⚠️ 2ᵉ blocage racine (migration annonces_accueil_fix_buckets_rls) :
+-- storage.buckets portait RLS activée avec Zéro politique (durcissement du
+-- 26/10) → toute lecture du bucket par un rôle utilisateur était refusée →
+-- 400 sur TOUS les uploads (avatars = 0 objet depuis le 26/10). La table
+-- étant portée par supabase_storage_admin (pas de SET ROLE possible), on a
+-- ajouté la politique de lecture permissive équivalente à l'état standard
+-- Supabase :
+--   CREATE POLICY buckets_lecture_publique ON storage.buckets
+--   FOR SELECT TO public USING (true);
 ALTER POLICY encheck_admin_session_restrictive ON storage.objects
-  USING (bucket_id <> 'annonces-accueil' OR public.encheck_admin_channel_allowed())
-  WITH CHECK (bucket_id <> 'annonces-accueil' OR public.encheck_admin_channel_allowed());
+  USING (bucket_id = 'annonces-accueil' OR public.encheck_admin_channel_allowed())
+  WITH CHECK (bucket_id = 'annonces-accueil' OR public.encheck_admin_channel_allowed());
 ALTER POLICY encheck_custom_channels ON storage.objects
-  USING (bucket_id <> 'annonces-accueil' OR public.encheck_custom_role_id() IS NULL)
-  WITH CHECK (bucket_id <> 'annonces-accueil' OR public.encheck_custom_role_id() IS NULL);
+  USING (bucket_id = 'annonces-accueil' OR public.encheck_custom_role_id() IS NULL)
+  WITH CHECK (bucket_id = 'annonces-accueil' OR public.encheck_custom_role_id() IS NULL);
 ALTER POLICY encheck_mfa_obligation ON storage.objects
-  USING (bucket_id <> 'annonces-accueil' OR public.encheck_mfa_access_allowed())
-  WITH CHECK (bucket_id <> 'annonces-accueil' OR public.encheck_mfa_access_allowed());
+  USING (bucket_id = 'annonces-accueil' OR public.encheck_mfa_access_allowed())
+  WITH CHECK (bucket_id = 'annonces-accueil' OR public.encheck_mfa_access_allowed());
 ```
 
 ## 6. RPC de lecture (kiosque / app Pointage)
@@ -362,6 +373,10 @@ DROP TABLE IF EXISTS public.annonces_accueil;
 DROP POLICY IF EXISTS annonces_accueil_delete ON storage.objects;
 DROP POLICY IF EXISTS annonces_accueil_update ON storage.objects;
 DROP POLICY IF EXISTS annonces_accueil_insert ON storage.objects;
+DROP POLICY IF EXISTS buckets_lecture_publique ON storage.buckets;
+-- (les 3 politiques restrictives de la plateforme conservent leur condition
+-- d'origine sur les autres buckets ; leur clause d'exonération du bucket
+-- annonces-accueil devient inoffensive une fois le bucket supprimé)
 DELETE FROM storage.objects WHERE bucket_id = 'annonces-accueil';
 DELETE FROM storage.buckets WHERE id = 'annonces-accueil';
 ```
