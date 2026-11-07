@@ -95,7 +95,7 @@ const MODULES = [
   // La paie
   { key: 'module_fiches_paie', icon: CreditCard, name: 'Fiches de paie', desc: 'Bulletins et variables', groupe: 'La paie' },
   { key: 'module_remunerations', icon: Wallet, name: 'Rémunérations', desc: 'Contrat, base, taux, indemnités', groupe: 'La paie' },
-  { key: 'module_cout_salarial', icon: TrendingUp, name: 'Coût salarial', desc: 'Coût de l’heure et du mois', groupe: 'La paie' },
+  { key: 'module_cout_salarial', icon: TrendingUp, name: 'Coût salarial', desc: 'Coût de l’heure et du mois, dans Rémunérations', groupe: 'La paie' },
   { key: 'module_config_fiscale', icon: Shield, name: 'Configuration fiscale', desc: 'Cotisations et barème du pays', groupe: 'La paie' },
 
   // Les alertes
@@ -502,16 +502,27 @@ export default function Entreprises() {
 
       <div className="en-shell">
         <header className="en-entete">
-          <div className="en-titre-bloc">
-            <KorhogoBlasonSvg size={54} />
-            <div>
-              <span className="en-eyebrow">Le registre des entreprises</span>
-              <h1 className="en-titre">
-                Entreprises<span>.</span>
-              </h1>
-              <p className="en-sous-titre">
-                Chaque fiche réunit une entreprise : ses employés, ses pointages, ses modules.
-              </p>
+          <div className="en-entete-gauche">
+            <button
+              type="button"
+              className="en-retour"
+              onClick={() => navigate('/dashboard')}
+              aria-label="Retour au tableau de bord"
+              title="Retour au tableau de bord"
+            >
+              <ArrowLeft size={16} aria-hidden="true" />
+            </button>
+            <div className="en-titre-bloc">
+              <KorhogoBlasonSvg size={54} />
+              <div>
+                <span className="en-eyebrow">Le registre des entreprises</span>
+                <h1 className="en-titre">
+                  Entreprises<span>.</span>
+                </h1>
+                <p className="en-sous-titre">
+                  Chaque fiche réunit une entreprise : ses employés, ses pointages, ses modules.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -526,10 +537,6 @@ export default function Entreprises() {
               title={darkMode ? 'Thème clair' : 'Thème sombre'}
             >
               {darkMode ? <Moon size={14} /> : <Sun size={14} />}
-            </button>
-            <button type="button" className="en-bouton-creux" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft size={14} />
-              Tableau de bord
             </button>
             <button type="button" className="en-bouton" onClick={handleAdd}>
               <Plus size={15} />

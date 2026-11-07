@@ -1,7 +1,8 @@
 import { it, expect } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { readFileSync, existsSync } from 'node:fs'
-import PageCulturalBand, { culturalMotifForPath } from '../../components/PageCulturalBand'
+import PageCulturalBand from '../../components/PageCulturalBand'
+import { culturalMotifForPath } from '../../components/culturalMotif'
 import PlanningLoadingScreen from '../../components/PlanningLoadingScreen'
 
 it('résout routes, sous-routes, paramètres, alias paie et repli sans faux préfixe', () => {

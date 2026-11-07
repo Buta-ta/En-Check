@@ -192,8 +192,8 @@ export const TABS_CONFIG = {
 
   TACHES: {
     key: 'TACHES',
-    path: '/taches',
-    label: 'Équipes & Tâches',
+    path: '/employes?vue=taches',
+    label: 'Équipes et tâches',
     color: '#F59E0B',
     icon: ClipboardList,
     triggers: {
@@ -259,8 +259,8 @@ export const TABS_CONFIG = {
 
   GEOFENCING: {
     key: 'GEOFENCING',
-    path: '/geofencing',
-    label: 'Geofencing',
+    path: '/geopointage',
+    label: 'Géopointage',
     color: '#10B981',
     icon: MapPin,
     triggers: {

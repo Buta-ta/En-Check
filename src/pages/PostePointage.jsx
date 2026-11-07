@@ -1,107 +1,50 @@
-// src/pages/PostePointage.jsx
+// ═══════════════════════════════════════════════════════════════════
+// 🖥️ LE POSTE DE POINTAGE — l'écran qu'on laisse allumé à l'entrée
 //
-// ═══════════════════════════════════════════════════════════════════
-// 🖥️ LE POSTE DE POINTAGE — l'écran qu'on laisse allumé à l'entrée du site
-// ═══════════════════════════════════════════════════════════════════
 // Une tablette ou un vieil ordinateur, posé à l'entrée, avec un navigateur
-// ouvert sur cette page. L'employé présente son badge devant la caméra : son
-// arrivée ou son départ est enregistré, et l'écran lui confirme en grand.
+// ouvert sur cette adresse. L'employé présente son badge devant la caméra :
+// son arrivée ou son départ est enregistré, et l'écran lui confirme en grand.
 //
 // AUCUNE POINTEUSE N'EST NÉCESSAIRE, ET L'EMPLOYÉ N'INSTALLE RIEN.
 // C'est le quatrième collecteur de la gamme : le téléphone, la pointeuse,
 // l'import de fichier, et maintenant le poste fixe.
 //
-// Le poste s'installe une seule fois : on saisit le code de l'entreprise, et
-// c'est retenu dans la tablette. Ensuite, l'écran est prêt, jour et nuit.
+// Cet écran est la MOITIÉ VISIBLE de « Configuration pointeuse » : c'est la
+// même entreprise, le même appareil, la même mémoire. La page
+// `/configuration-pointeuse` administre le poste ; celle-ci le fait vivre.
+// Les deux partagent leurs fonctions (`src/lib/postePointage.js`), donc les
+// phrases de refus sont les mêmes des deux côtés.
+//
+// Le dessin reprend la toile de Korhogo sur un mur de fumée : une couture de
+// chevrons en haut, le blason peint, l'écru et l'ocre. Rien de clinquant :
+// l'écran reste lisible à deux mètres, en plein soleil comme le soir.
 //
 // Ce que le poste ne fait PAS, volontairement : il ne demande ni photo ni
 // empreinte. C'est un poste de bonne foi, surveillé par les mêmes règles que
 // les autres collecteurs — geste double, pointage hors zone, sortie manquante,
 // absence inhabituelle remontent tous dans la cloche.
+// ═══════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { AlertTriangle, Check, Lock, Undo2 } from 'lucide-react'
+import { KorhogoBlasonNuitSvg } from '../components/KorhogoSvg'
 import { supabase } from '../lib/supabase'
-
-const CLE_POSTE = 'encheck_poste'
-const DELAI_ENTRE_POINTAGES = 60      // secondes : en deçà, on ne repointe pas
-const DUREE_CONFIRMATION = 4000       // millisecondes d'affichage de la confirmation
-
-// ─── Ce que veulent dire les refus du serveur, en langue d'employé ───
-const MESSAGES = {
-  identifiants_incorrects: "Ce badge n'est pas reconnu sur ce poste. Présentez-le à nouveau, ou saisissez votre numéro.",
-  pin_requis: "Ce badge demande un code personnel.",
-  pin_non_configure: "Aucun code personnel n'est configuré pour ce badge. Voyez l'administration.",
-  trop_de_tentatives: "Trop d'essais sur ce poste. Patientez une minute.",
-  entreprise_manquante: "Ce poste n'est plus rattaché à une entreprise active. Voyez l'administration.",
-  code_manquant: "Aucun numéro n'a été saisi.",
-  jeton_invalide: "La session de ce poste a expiré. Représentez le badge.",
-  jeton_d_un_autre_appareil: "Ce badge a été utilisé sur un autre appareil. Représentez-le ici.",
-  jeton_requis: "Ce poste doit être réinstallé. Voyez l'administration.",
-  employe_inconnu_ou_inactif: "Cette fiche employé est inactive. Voyez l'administration.",
-  entreprise_incoherente: "Ce badge appartient à une autre entreprise.",
-  device_id_manquant: "Ce poste n'a pas d'identifiant. Réinstallez-le.",
-  check_type_manquant: "Le geste n'a pas été reconnu. Recommencez.",
-}
-
-function messageDe(raison) {
-  if (!raison) return "Le pointage n'a pas abouti. Recommencez."
-  return MESSAGES[raison] || `Le pointage n'a pas abouti (${raison}). Recommencez.`
-}
-
-// ─── Le nom de l'employé, sans présumer du nom des colonnes ───
-function nomEmploye(e) {
-  if (!e) return 'Employé'
-  const assemble = (a, b) => [a, b].filter(Boolean).join(' ').trim()
-  return (
-    (e.nom_complet || '').trim() ||
-    (e.full_name || '').trim() ||
-    (e.name || '').trim() ||
-    assemble(e.prenom || e.first_name, e.nom || e.last_name) ||
-    e.matricule ||
-    'Employé'
-  )
-}
-
-// ─── Le nom de l'entreprise, sans présumer du nom des colonnes ───
-function nomEntreprise(e) {
-  if (!e) return 'En-Check'
-  return (e.nom || e.name || e.raison_sociale || e.libelle || 'Votre entreprise').trim()
-}
-
-function identifiantEntreprise(e) {
-  return e?.id || e?.enterprise_id || null
-}
-
-// ─── Le sens du geste : l'inverse du dernier pointage de la garde en cours.
-//     Si le dernier pointage était une Entrée (IN) mais remonte à plus de 14 heures
-//     (oubli de dépointage de la veille), on repart proprement sur une nouvelle Entrée (IN).
-function sensSuivant(dernier, maintenant = Date.now()) {
-  if (!dernier) return 'in'
-  const ecartSecondes = ecartDepuis(dernier, maintenant)
-  if (ecartSecondes !== null && ecartSecondes > 14 * 3600) {
-    return 'in'
-  }
-  if (String(dernier.check_type || '').toLowerCase() === 'in') return 'out'
-  return 'in'
-}
-
-//  Les secondes écoulées depuis le dernier geste, ou null si on ne sait pas.
-function ecartDepuis(dernier, maintenant) {
-  if (!dernier) return null
-  const quand = new Date(dernier.check_time || dernier.check_in)
-  if (isNaN(quand)) return null
-  return (maintenant - quand.getTime()) / 1000
-}
-
-function heureCourte(v) {
-  const d = v instanceof Date ? v : new Date(v)
-  if (isNaN(d)) return '--:--'
-  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-}
-
-function dateLongue(d) {
-  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-}
+import {
+  DELAI_ENTRE_POINTAGES,
+  DUREE_CONFIRMATION,
+  SEUIL_ECART_HORLOGE,
+  dateLongue,
+  ecartDepuis,
+  enregistrerPoste,
+  heureCourte,
+  installerPoste,
+  lirePoste,
+  messageDe,
+  nomEmploye,
+  oublierPoste,
+  sensSuivant,
+} from '../lib/postePointage'
+import './PostePointage.css'
 
 // ══════════════════════════════════════════════════════════════════
 export default function PostePointage() {
@@ -110,7 +53,7 @@ export default function PostePointage() {
   const [installationEnCours, setInstallationEnCours] = useState(false)
   const [erreurInstallation, setErreurInstallation] = useState('')
 
-  const [etat, setEtat] = useState('pret')       // pret | travail | confirme | refus
+  const [etat, setEtat] = useState('pret') // pret | travail | confirme | refus
   const [resultat, setResultat] = useState(null) // { sens, employe, heure }
   const [refus, setRefus] = useState('')
   const [saisieOuverte, setSaisieOuverte] = useState(false)
@@ -132,72 +75,40 @@ export default function PostePointage() {
     return () => clearInterval(t)
   }, [])
 
-  // ─── Le poste est-il déjà installé sur cette tablette ? ───
+  // ─── Le poste est-il déjà installé sur cet appareil ? ───
   useEffect(() => {
-    try {
-      const brut = localStorage.getItem(CLE_POSTE)
-      if (brut) {
-        const c = JSON.parse(brut)
-        if (c && c.enterprise_id && c.device_id) {
-          setConfig(c)
-          setAvisHorloge(Number(c.ecart_horloge || 0))
-        }
-      }
-    } catch {
-      /* mémoire illisible : on réinstallera */
+    const deja = lirePoste()
+    if (deja) {
+      setConfig(deja)
+      setAvisHorloge(Number(deja.ecart_horloge || 0))
     }
     setCameraDisponible(
-      typeof navigator !== 'undefined' &&
-        !!navigator.mediaDevices &&
-        !!navigator.mediaDevices.getUserMedia &&
-        (typeof window === 'undefined' ? true : window.isSecureContext !== false),
+      typeof navigator !== 'undefined'
+        && !!navigator.mediaDevices
+        && !!navigator.mediaDevices.getUserMedia
+        && (typeof window === 'undefined' ? true : window.isSecureContext !== false),
     )
   }, [])
 
-  const enregistrerConfig = useCallback((c) => {
+  const retenirConfig = useCallback((c) => {
     setConfig(c)
-    try {
-      localStorage.setItem(CLE_POSTE, JSON.stringify(c))
-    } catch {
-      /* la tablette n'a peut-être pas de mémoire : le poste marchera jusqu'au rechargement */
-    }
+    enregistrerPoste(c)
   }, [])
 
   // ════════════════════════════════════════════════════════════
   //  L'INSTALLATION — une seule fois par appareil
   // ════════════════════════════════════════════════════════════
   const installer = async () => {
-    const valeur = code.trim()
-    if (!valeur) {
-      setErreurInstallation("Saisissez le code de votre entreprise.")
-      return
-    }
     setInstallationEnCours(true)
     setErreurInstallation('')
-    try {
-      const { data, error } = await supabase.rpc('encheck_entreprise_par_code', { p_code: valeur })
-      if (error) throw error
-      const ent = Array.isArray(data) ? data[0] : data
-      const id = identifiantEntreprise(ent)
-      if (!id) {
-        setErreurInstallation("Ce code ne correspond à aucune entreprise active. Vérifiez-le auprès de votre administration.")
-        return
-      }
-      //  Un identifiant d'appareil propre à CETTE tablette : c'est lui qui lie la
-      //  session de chaque employé à ce poste, et pas à un autre appareil.
-      const deviceId = `poste-${String(id).slice(0, 8)}-${Math.random().toString(36).slice(2, 10)}`
-      enregistrerConfig({
-        enterprise_id: id,
-        nom: nomEntreprise(ent),
-        code: valeur,
-        device_id: deviceId,
-        installe_le: new Date().toISOString(),
-      })
-    } catch (e) {
-      setErreurInstallation("La connexion au serveur a échoué. Vérifiez qu'Internet fonctionne, puis réessayez.")
-    } finally {
-      setInstallationEnCours(false)
+    const reponse = await installerPoste(code)
+    setInstallationEnCours(false)
+
+    if (reponse.erreur) {
+      setErreurInstallation(reponse.erreur)
+      return
     }
+    setConfig(reponse.config)
   }
 
   // ════════════════════════════════════════════════════════════
@@ -239,23 +150,21 @@ export default function PostePointage() {
         p_check_type: sens,
         p_method: 'poste',
         p_client_ref: `${appareil}-${employe.id}-${Date.now()}`,
-        p_device_time: avisHorloge > 120 ? null : new Date().toISOString(),
+        p_device_time: avisHorloge > SEUIL_ECART_HORLOGE ? null : new Date().toISOString(),
         p_jeton: jeton,
       })
       if (error) throw error
 
       const rep = data || {}
-      if (rep.ok !== true) {
-        throw new Error(messageDe(rep.reason))
-      }
+      if (rep.ok !== true) throw new Error(messageDe(rep.reason))
 
       //  L'écart d'horloge que le serveur a constaté : s'il est réel, l'écran le
       //  dit, et le poste cesse d'envoyer sa propre heure — pour ne pas fabriquer
       //  une alerte à chaque geste.
       const ecart = Math.abs(Number(rep.ecart_horloge || 0))
-      if (ecart > 120) {
+      if (ecart > SEUIL_ECART_HORLOGE) {
         setAvisHorloge(ecart)
-        if (config) enregistrerConfig({ ...config, ecart_horloge: ecart })
+        if (config) retenirConfig({ ...config, ecart_horloge: ecart })
       }
 
       setResultat({
@@ -266,7 +175,7 @@ export default function PostePointage() {
       })
       setEtat('confirme')
     },
-    [config, avisHorloge, enregistrerConfig],
+    [config, avisHorloge, retenirConfig],
   )
 
   //  L'employé s'est identifié : on enchaîne sur le geste.
@@ -317,17 +226,6 @@ export default function PostePointage() {
     [config, pointer],
   )
 
-  //  Ce que fait la caméra quand elle lit un badge.
-  const badgeLu = useCallback(
-    (texte) => {
-      const valeur = String(texte || '').trim()
-      if (!valeur || enTraitementRef.current) return
-      arreterCamera()
-      identifierEtPointer(valeur, null)
-    },
-    [identifierEtPointer],
-  )
-
   // ════════════════════════════════════════════════════════════
   //  LA CAMÉRA — ouverte quand l'écran attend, fermée sinon
   // ════════════════════════════════════════════════════════════
@@ -342,6 +240,17 @@ export default function PostePointage() {
       /* déjà arrêtée */
     }
   }, [])
+
+  //  Ce que fait la caméra quand elle lit un badge.
+  const badgeLu = useCallback(
+    (texte) => {
+      const valeur = String(texte || '').trim()
+      if (!valeur || enTraitementRef.current) return
+      arreterCamera()
+      identifierEtPointer(valeur, null)
+    },
+    [arreterCamera, identifierEtPointer],
+  )
 
   const demarrerCamera = useCallback(async () => {
     if (scannerRef.current || !cameraDisponible) return
@@ -364,14 +273,14 @@ export default function PostePointage() {
         (texte) => badgeLu(texte),
         () => {},
       )
-    } catch (e) {
+    } catch {
       scannerRef.current = null
       setCameraDisponible(false)
     }
   }, [badgeLu, cameraDisponible])
 
   useEffect(() => {
-    if (!config) return
+    if (!config) return undefined
     if (etat === 'pret' && !replisPin && !saisieOuverte) {
       demarrerCamera()
     } else {
@@ -382,7 +291,7 @@ export default function PostePointage() {
 
   //  La confirmation s'efface toute seule, et l'écran revient au scan.
   useEffect(() => {
-    if (etat !== 'confirme') return
+    if (etat !== 'confirme') return undefined
     if (retourRef.current) clearTimeout(retourRef.current)
     retourRef.current = setTimeout(() => {
       setResultat(null)
@@ -393,13 +302,9 @@ export default function PostePointage() {
     }
   }, [etat])
 
-  const oublierLePoste = () => {
+  const detacherLePoste = () => {
     arreterCamera()
-    try {
-      localStorage.removeItem(CLE_POSTE)
-    } catch {
-      /* rien à faire */
-    }
+    oublierPoste()
     setConfig(null)
     setCode('')
     setReglagesOuverts(false)
@@ -407,43 +312,61 @@ export default function PostePointage() {
     setAvisHorloge(0)
   }
 
+  const revenirAuScan = () => {
+    setRefus('')
+    setReplisPin(null)
+    setCodeSaisi('')
+    setEtat('pret')
+  }
+
   // ════════════════════════════════════════════════════════════
   //  L'INSTALLATION À L'ÉCRAN
   // ════════════════════════════════════════════════════════════
   if (!config) {
     return (
-      <div style={s.page}>
-        <div style={s.carteInstallation}>
-          <div style={s.logoPoste}>🖥️</div>
-          <h1 style={s.titreInstallation}>Poste de pointage</h1>
-          <p style={s.texteInstallation}>
-            Cet appareil va rester allumé à l'entrée. Les employés présenteront leur badge
-            devant la caméra : leur arrivée et leur départ seront enregistrés, sans pointeuse
-            et sans rien installer sur leur téléphone.
+      <div className="pp-page pp-page--installation">
+        <div className="pp-couture" aria-hidden="true" />
+        <div className="pp-installation">
+          <KorhogoBlasonNuitSvg size={64} />
+          <p className="pp-eyebrow">Collecteurs · pointage</p>
+          <h1 className="pp-titre-installation">Poste de pointage</h1>
+          <p className="pp-texte-installation">
+            Cet appareil va rester allumé à l’entrée. Les employés présenteront leur badge devant la
+            caméra : leur arrivée et leur départ seront enregistrés, sans pointeuse et sans rien
+            installer sur leur téléphone.
           </p>
-          <label style={s.etiquette}>Code de l'entreprise</label>
-          <input
-            style={s.champ}
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && installer()}
-            placeholder="ex. ENC-229"
-            autoCapitalize="characters"
-            autoComplete="off"
-            spellCheck={false}
-          />
-          {erreurInstallation && <p style={s.erreurInstallation}>{erreurInstallation}</p>}
+
+          <label className="pp-champ pp-champ-installation">
+            <span className="pp-etiquette">Code de l’entreprise</span>
+            <input
+              type="text"
+              value={code}
+              onChange={(evenement) => setCode(evenement.target.value)}
+              onKeyDown={(evenement) => evenement.key === 'Enter' && installer()}
+              placeholder="ex. ENC-229"
+              autoCapitalize="characters"
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+
+          {erreurInstallation && <p className="pp-erreur" role="alert">{erreurInstallation}</p>}
+
           <button
-            style={{ ...s.boutonPrincipal, opacity: installationEnCours ? 0.6 : 1 }}
+            type="button"
+            className="pp-bouton pp-bouton--large"
             onClick={installer}
             disabled={installationEnCours}
           >
             {installationEnCours ? 'Installation…' : 'Installer ce poste'}
           </button>
-          <p style={s.noteInstallation}>
-            Ce code vous a été remis avec votre accès. Il ne se saisit qu'une fois sur cet appareil.
+
+          <p className="pp-note">
+            Ce code vous a été remis avec votre accès. Il ne se saisit qu’une fois sur cet appareil, et
+            se retrouve dans <strong>Configuration pointeuse</strong>, onglet <em>Poste de pointage</em>.
           </p>
         </div>
+        <div className="pp-couture pp-couture--basse" aria-hidden="true" />
       </div>
     )
   }
@@ -452,91 +375,106 @@ export default function PostePointage() {
   //  L'ÉCRAN DU POSTE
   // ════════════════════════════════════════════════════════════
   return (
-    <div style={s.page}>
-      <header style={s.entete}>
-        <div style={s.enteteGauche}>
-          <span style={s.pastilleEntreprise}>📍</span>
-          <div>
-            <div style={s.nomEntreprise}>{config.nom || 'Poste de pointage'}</div>
-            <div style={s.sousTitre}>{dateLongue(maintenant)}</div>
+    <div className="pp-page">
+      <div className="pp-couture" aria-hidden="true" />
+
+      <header className="pp-entete">
+        <div className="pp-entete-gauche">
+          <KorhogoBlasonNuitSvg size={40} />
+          <div className="pp-entete-textes">
+            <p className="pp-nom-entreprise">{config.nom || 'Poste de pointage'}</p>
+            <p className="pp-sous-titre">{dateLongue(maintenant)}</p>
           </div>
         </div>
-        <div style={s.enteteDroite}>
-          <div style={s.horloge}>
+
+        <div className="pp-entete-droite">
+          <p className="pp-horloge" aria-label="Heure de ce poste">
             {maintenant.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </div>
-          <button style={s.boutonDiscret} onClick={() => setReglagesOuverts((v) => !v)}>
+          </p>
+          <button
+            type="button"
+            className="pp-bouton-discret"
+            aria-expanded={reglagesOuverts}
+            onClick={() => setReglagesOuverts((v) => !v)}
+          >
             Réglages
           </button>
         </div>
       </header>
 
-      {avisHorloge > 120 && (
-        <div style={s.avisHorloge}>
-          ⚠️ L'heure de cet appareil est décalée de {Math.round(avisHorloge / 60)} minute(s) sur celle du
-          serveur. Corrigez l'heure automatique dans les réglages de la tablette : tant que ce n'est pas
-          fait, les employés lisent une heure fausse à l'écran.
-        </div>
+      {avisHorloge > SEUIL_ECART_HORLOGE && (
+        <p className="pp-avis-horloge" role="status">
+          L’heure de cet appareil est décalée de {Math.round(avisHorloge / 60)} minute(s) sur celle du
+          serveur. Corrigez l’heure automatique dans les réglages de la tablette : tant que ce n’est pas
+          fait, les employés lisent une heure fausse à l’écran.
+        </p>
       )}
 
       {reglagesOuverts && (
-        <div style={s.panneauReglages}>
-          <div style={s.ligneReglage}>
-            <strong>Entreprise</strong>
-            <span>{config.nom}</span>
-          </div>
-          <div style={s.ligneReglage}>
-            <strong>Identifiant de ce poste</strong>
-            <code style={s.codeAppareil}>{config.device_id}</code>
-          </div>
-          <div style={s.ligneReglage}>
-            <strong>Installé le</strong>
-            <span>{config.installe_le ? new Date(config.installe_le).toLocaleString('fr-FR') : '—'}</span>
-          </div>
-          <div style={s.actionsReglages}>
-            <button style={s.boutonSecondaire} onClick={() => demarrerCamera()}>
+        <aside className="pp-reglages" aria-label="Réglages de ce poste">
+          <dl className="pp-reglages-fiche">
+            <div>
+              <dt>Entreprise</dt>
+              <dd>{config.nom || '—'}</dd>
+            </div>
+            <div>
+              <dt>Identifiant de ce poste</dt>
+              <dd><code>{config.device_id}</code></dd>
+            </div>
+            <div>
+              <dt>Installé le</dt>
+              <dd>{config.installe_le ? new Date(config.installe_le).toLocaleString('fr-FR') : '—'}</dd>
+            </div>
+          </dl>
+
+          <div className="pp-reglages-gestes">
+            <button type="button" className="pp-bouton-discret" onClick={() => demarrerCamera()}>
               Réessayer la caméra
             </button>
-            <button style={s.boutonDanger} onClick={oublierLePoste}>
-              Changer d'entreprise
+            <button type="button" className="pp-bouton-discret pp-bouton-discret--danger" onClick={detacherLePoste}>
+              Changer d’entreprise
             </button>
           </div>
-          <p style={s.noteReglages}>
-            L'identifiant de ce poste sert à le reconnaître si vous appelez le support. Il ne change pas
+
+          <p className="pp-note pp-note--reglages">
+            L’identifiant de ce poste sert à le reconnaître si vous appelez le support. Il ne change pas
             tant que vous ne réinstallez pas le poste.
           </p>
-        </div>
+        </aside>
       )}
 
-      <main style={s.centre}>
+      <main className="pp-centre">
         {/* ─── La confirmation ─── */}
         {etat === 'confirme' && resultat && (
-          <div style={{ ...s.grandeCarte, borderColor: resultat.sens === 'in' ? '#16A34A' : '#2563EB' }}>
-            <div style={{ ...s.rond, background: resultat.sens === 'in' ? '#16A34A' : '#2563EB' }}>
-              {resultat.sens === 'in' ? '✓' : '↩'}
-            </div>
-            <h2 style={s.nomConfirme}>{nomEmploye(resultat.employe)}</h2>
-            <p style={{ ...s.geste, color: resultat.sens === 'in' ? '#15803D' : '#1D4ED8' }}>
+          <div className="pp-grande-carte" data-etat="confirme" data-sens={resultat.sens}>
+            <span className="pp-rond" aria-hidden="true">
+              {resultat.sens === 'in'
+                ? <Check size={36} strokeWidth={3} />
+                : <Undo2 size={34} strokeWidth={2.6} />}
+            </span>
+            <h2 className="pp-nom-confirme">{nomEmploye(resultat.employe)}</h2>
+            <p className="pp-geste">
               {resultat.deja
                 ? `Vous venez de pointer — ${heureCourte(resultat.heure)}`
                 : `${resultat.sens === 'in' ? 'Arrivée' : 'Départ'} enregistré à ${heureCourte(resultat.heure)}`}
             </p>
             {resultat.suspect && !resultat.deja && (
-              <p style={s.mentionSuspect}>
-                Ce pointage a été marqué pour vérification par le serveur — l'administration en sera informée.
+              <p className="pp-mention-suspect">
+                Ce pointage a été marqué pour vérification par le serveur — l’administration en sera
+                informée.
               </p>
             )}
-            <p style={s.reviendra}>L'écran revient au badge dans un instant…</p>
+            <p className="pp-reviendra">L’écran revient au badge dans un instant…</p>
           </div>
         )}
 
         {/* ─── Le refus ─── */}
         {etat === 'refus' && (
-          <div style={{ ...s.grandeCarte, borderColor: '#DC2626' }}>
-            <div style={{ ...s.rond, background: '#DC2626' }}>!</div>
-            <h2 style={s.nomConfirme}>Pointage non enregistré</h2>
-            <p style={s.messageRefus}>{refus}</p>
-            <button style={s.boutonPrincipal} onClick={() => { setRefus(''); setEtat('pret') }}>
+          <div className="pp-grande-carte" data-etat="refus">
+            <span className="pp-rond" aria-hidden="true"><AlertTriangle size={34} strokeWidth={2.4} /></span>
+            <h2 className="pp-nom-confirme">Pointage non enregistré</h2>
+            <p className="pp-message-refus">{refus}</p>
+            <button type="button" className="pp-bouton pp-bouton--large" onClick={revenirAuScan}>
               Réessayer
             </button>
           </div>
@@ -546,121 +484,134 @@ export default function PostePointage() {
         {(etat === 'pret' || etat === 'travail') && (
           <>
             {etat === 'travail' ? (
-              <div style={s.grandeCarte}>
-                <div style={s.rondTravail}>⏳</div>
-                <h2 style={s.nomConfirme}>Un instant…</h2>
-                <p style={s.consigne}>Votre pointage est en cours d'enregistrement.</p>
+              <div className="pp-grande-carte" data-etat="travail">
+                <span className="pp-rond pp-rond--attente" aria-hidden="true">
+                  <span className="pp-rond-anneau" />
+                </span>
+                <h2 className="pp-nom-confirme">Un instant…</h2>
+                <p className="pp-consigne">Votre pointage est en cours d’enregistrement.</p>
               </div>
             ) : replisPin ? (
-              <div style={s.grandeCarte}>
-                <div style={{ ...s.rond, background: '#0F172A' }}>🔒</div>
-                <h2 style={s.nomConfirme}>Votre code personnel</h2>
-                <p style={s.consigne}>
+              <div className="pp-grande-carte" data-etat="pin">
+                <span className="pp-rond pp-rond--neutre" aria-hidden="true"><Lock size={26} /></span>
+                <h2 className="pp-nom-confirme">Votre code personnel</h2>
+                <p className="pp-consigne">
                   Ce badge demande votre code à quatre chiffres. Saisissez-le, puis validez.
                 </p>
                 <input
-                  style={{ ...s.champ, textAlign: 'center', fontSize: 28, letterSpacing: 10, maxWidth: 260 }}
+                  className="pp-champ-code"
                   value={codeSaisi}
-                  onChange={(e) => setCodeSaisi(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && codeSaisi) {
-                      const n = replisPin.numero
+                  onChange={(evenement) => setCodeSaisi(evenement.target.value.replace(/\D/g, '').slice(0, 8))}
+                  onKeyDown={(evenement) => {
+                    if (evenement.key === 'Enter' && codeSaisi) {
+                      const numero = replisPin.numero
+                      const codePersonnel = codeSaisi
                       setReplisPin(null)
                       setCodeSaisi('')
-                      identifierEtPointer(n, codeSaisi)
+                      identifierEtPointer(numero, codePersonnel)
                     }
                   }}
                   type="password"
                   inputMode="numeric"
                   autoFocus
                   placeholder="••••"
+                  aria-label="Code personnel"
                 />
-                <div style={{ ...s.boutonsLigne, marginTop: 14 }}>
+                <div className="pp-boutons-ligne">
                   <button
-                    style={s.boutonPrincipal}
+                    type="button"
+                    className="pp-bouton"
                     disabled={!codeSaisi}
                     onClick={() => {
-                      const n = replisPin.numero
+                      const numero = replisPin.numero
+                      const codePersonnel = codeSaisi
                       setReplisPin(null)
                       setCodeSaisi('')
-                      identifierEtPointer(n, codeSaisi)
+                      identifierEtPointer(numero, codePersonnel)
                     }}
                   >
                     Valider mon pointage
                   </button>
-                  <button
-                    style={s.boutonSecondaire}
-                    onClick={() => {
-                      setReplisPin(null)
-                      setCodeSaisi('')
-                    }}
-                  >
+                  <button type="button" className="pp-bouton-creux" onClick={revenirAuScan}>
                     Annuler
                   </button>
                 </div>
               </div>
             ) : (
-              <div style={s.blocScan}>
-                <p style={s.consigneGrande}>Présentez votre badge devant la caméra</p>
-                <div style={s.cadreCamera}>
-                  <div id="zone-badge" style={s.zoneCamera} />
+              <div className="pp-scan">
+                <p className="pp-consigne-grande">Présentez votre badge devant la caméra</p>
+
+                <div className="pp-cadre-camera">
+                  <span className="pp-cadre-coin pp-cadre-coin--hg" aria-hidden="true" />
+                  <span className="pp-cadre-coin pp-cadre-coin--hd" aria-hidden="true" />
+                  <span className="pp-cadre-coin pp-cadre-coin--bg" aria-hidden="true" />
+                  <span className="pp-cadre-coin pp-cadre-coin--bd" aria-hidden="true" />
+                  <div id="zone-badge" className="pp-zone-camera" />
                   {!cameraDisponible && (
-                    <div style={s.sansCamera}>
-                      <p style={s.sansCameraTitre}>La caméra n'est pas disponible sur cet appareil.</p>
-                      <p style={s.sansCameraTexte}>
+                    <div className="pp-sans-camera">
+                      <p className="pp-sans-camera-titre">La caméra n’est pas disponible sur cet appareil.</p>
+                      <p className="pp-sans-camera-texte">
                         Utilisez la saisie ci-dessous : votre numéro, puis votre code personnel.
                       </p>
                     </div>
                   )}
                 </div>
-                <p style={s.astuceBadge}>
-                  Le badge est reconnu en une seconde. Le geste enregistré est l'inverse du précédent :
+
+                <p className="pp-astuce">
+                  Le badge est reconnu en une seconde. Le geste enregistré est l’inverse du précédent :
                   arrivée si vous étiez sorti, départ si vous étiez présent.
                 </p>
 
                 {!saisieOuverte ? (
-                  <button style={s.boutonLien} onClick={() => setSaisieOuverte(true)}>
+                  <button type="button" className="pp-lien" onClick={() => setSaisieOuverte(true)}>
                     Pas de badge sous la main ? Saisir mon numéro
                   </button>
                 ) : (
-                  <div style={s.blocSaisie}>
-                    <div style={s.champLigne}>
-                      <input
-                        style={s.champ}
-                        value={numeroSaisi}
-                        onChange={(e) => setNumeroSaisi(e.target.value)}
-                        placeholder="Votre numéro (ex. ENN-0002)"
-                        autoCapitalize="characters"
-                        autoComplete="off"
-                        spellCheck={false}
-                      />
-                      <input
-                        style={s.champ}
-                        value={codeSaisi}
-                        onChange={(e) => setCodeSaisi(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                        placeholder="Votre code personnel"
-                        type="password"
-                        inputMode="numeric"
-                        autoComplete="off"
-                      />
+                  <div className="pp-bloc-saisie">
+                    <div className="pp-saisie-champs">
+                      <label className="pp-champ">
+                        <span className="pp-etiquette">Votre numéro</span>
+                        <input
+                          type="text"
+                          value={numeroSaisi}
+                          onChange={(evenement) => setNumeroSaisi(evenement.target.value)}
+                          placeholder="ex. ENN-0002"
+                          autoCapitalize="characters"
+                          autoComplete="off"
+                          spellCheck={false}
+                        />
+                      </label>
+                      <label className="pp-champ">
+                        <span className="pp-etiquette">Code personnel</span>
+                        <input
+                          type="password"
+                          value={codeSaisi}
+                          onChange={(evenement) => setCodeSaisi(evenement.target.value.replace(/\D/g, '').slice(0, 8))}
+                          placeholder="••••"
+                          inputMode="numeric"
+                          autoComplete="off"
+                        />
+                      </label>
                     </div>
-                    <div style={s.boutonsLigne}>
+                    <div className="pp-boutons-ligne">
                       <button
-                        style={s.boutonPrincipal}
+                        type="button"
+                        className="pp-bouton"
                         disabled={!numeroSaisi}
                         onClick={() => {
-                          const n = numeroSaisi.trim()
-                          const c = codeSaisi
+                          const numero = numeroSaisi.trim()
+                          const codePersonnel = codeSaisi
                           setNumeroSaisi('')
                           setCodeSaisi('')
                           setSaisieOuverte(false)
-                          identifierEtPointer(n, c)
+                          identifierEtPointer(numero, codePersonnel)
                         }}
                       >
                         Pointer
                       </button>
                       <button
-                        style={s.boutonSecondaire}
+                        type="button"
+                        className="pp-bouton-creux"
                         onClick={() => {
                           setSaisieOuverte(false)
                           setNumeroSaisi('')
@@ -670,9 +621,9 @@ export default function PostePointage() {
                         Annuler
                       </button>
                     </div>
-                    <p style={s.noteSaisie}>
+                    <p className="pp-note">
                       Votre numéro figure sur votre badge, sous le code-barres. Le code personnel est
-                      celui que vous utilisez sur l'application.
+                      celui que vous utilisez sur l’application.
                     </p>
                   </div>
                 )}
@@ -682,207 +633,11 @@ export default function PostePointage() {
         )}
       </main>
 
-      <footer style={s.pied}>
+      <footer className="pp-pied">
         <span>En-Check — poste de pointage</span>
-        <span style={s.piedSep}>·</span>
+        <span className="pp-pied-sep" aria-hidden="true">·</span>
         <span>Les pointages de ce poste portent la provenance « poste »</span>
       </footer>
     </div>
   )
-}
-
-// ══════════════════════════════════════════════════════════════════
-const s = {
-  page: {
-    minHeight: '100vh',
-    background: '#0F172A',
-    color: '#F8FAFC',
-    display: 'flex',
-    flexDirection: 'column',
-    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-  },
-  // ── installation ──
-  carteInstallation: {
-    margin: 'auto',
-    background: '#FFFFFF',
-    color: '#0F172A',
-    padding: '34px 30px',
-    borderRadius: 16,
-    width: 'min(460px, 92vw)',
-    boxShadow: '0 24px 60px rgba(0,0,0,.35)',
-    textAlign: 'center',
-  },
-  logoPoste: { fontSize: 34, lineHeight: 1 },
-  titreInstallation: { margin: '10px 0 6px', fontSize: 23, fontWeight: 700 },
-  texteInstallation: { margin: '0 0 22px', fontSize: 14, lineHeight: 1.6, color: '#475569' },
-  etiquette: { display: 'block', textAlign: 'left', fontSize: 12.5, fontWeight: 600, color: '#334155', marginBottom: 6 },
-  champ: {
-    width: '100%',
-    padding: '12px 14px',
-    fontSize: 16,
-    borderRadius: 9,
-    border: '1.5px solid #CBD5E1',
-    outline: 'none',
-    boxSizing: 'border-box',
-    background: '#FFFFFF',
-    color: '#0F172A',
-  },
-  boutonPrincipal: {
-    marginTop: 16,
-    width: '100%',
-    padding: '13px 18px',
-    fontSize: 15.5,
-    fontWeight: 600,
-    color: '#FFFFFF',
-    background: '#0F172A',
-    border: 'none',
-    borderRadius: 10,
-    cursor: 'pointer',
-  },
-  erreurInstallation: {
-    margin: '12px 0 0',
-    padding: '9px 12px',
-    fontSize: 13,
-    color: '#991B1B',
-    background: '#FEF2F2',
-    borderRadius: 8,
-    textAlign: 'left',
-  },
-  noteInstallation: { margin: '14px 0 0', fontSize: 12, color: '#94A3B8', lineHeight: 1.5 },
-  // ── entête ──
-  entete: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '14px 22px',
-    borderBottom: '1px solid rgba(248,250,252,.10)',
-  },
-  enteteGauche: { display: 'flex', alignItems: 'center', gap: 10 },
-  pastilleEntreprise: { fontSize: 18 },
-  nomEntreprise: { fontSize: 16, fontWeight: 700 },
-  sousTitre: { fontSize: 12.5, color: '#94A3B8', textTransform: 'capitalize' },
-  enteteDroite: { display: 'flex', alignItems: 'center', gap: 14 },
-  horloge: { fontSize: 22, fontWeight: 600, fontVariantNumeric: 'tabular-nums', letterSpacing: 1 },
-  boutonDiscret: {
-    background: 'transparent',
-    color: '#94A3B8',
-    border: '1px solid rgba(148,163,184,.4)',
-    borderRadius: 8,
-    padding: '6px 11px',
-    fontSize: 12.5,
-    cursor: 'pointer',
-  },
-  avisHorloge: {
-    margin: '12px 22px 0',
-    padding: '10px 14px',
-    fontSize: 13,
-    lineHeight: 1.5,
-    color: '#FDE68A',
-    background: 'rgba(217,119,6,.16)',
-    border: '1px solid rgba(217,119,6,.45)',
-    borderRadius: 10,
-  },
-  panneauReglages: {
-    margin: '14px 22px 0',
-    padding: '16px 18px',
-    background: 'rgba(248,250,252,.06)',
-    border: '1px solid rgba(248,250,252,.12)',
-    borderRadius: 12,
-    fontSize: 13.5,
-  },
-  ligneReglage: { display: 'flex', gap: 10, marginBottom: 7, alignItems: 'baseline', flexWrap: 'wrap' },
-  codeAppareil: { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12.5, color: '#93C5FD' },
-  actionsReglages: { display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' },
-  boutonSecondaire: {
-    padding: '10px 15px',
-    fontSize: 13.5,
-    color: '#E2E8F0',
-    background: 'transparent',
-    border: '1px solid rgba(226,232,240,.35)',
-    borderRadius: 9,
-    cursor: 'pointer',
-  },
-  boutonDanger: {
-    padding: '10px 15px',
-    fontSize: 13.5,
-    color: '#FECACA',
-    background: 'transparent',
-    border: '1px solid rgba(248,113,113,.5)',
-    borderRadius: 9,
-    cursor: 'pointer',
-  },
-  noteReglages: { margin: '12px 0 0', fontSize: 12, color: '#94A3B8', lineHeight: 1.5 },
-  // ── le centre ──
-  centre: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '18px 22px' },
-  blocScan: { textAlign: 'center', width: '100%', maxWidth: 620 },
-  consigneGrande: { margin: '0 0 16px', fontSize: 19, fontWeight: 600, color: '#E2E8F0' },
-  cadreCamera: {
-    position: 'relative',
-    width: 'min(380px, 84vw)',
-    height: 'min(380px, 84vw)',
-    margin: '0 auto',
-    borderRadius: 18,
-    overflow: 'hidden',
-    background: 'rgba(248,250,252,.05)',
-    border: '2px dashed rgba(148,163,184,.35)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  zoneCamera: { width: '100%', height: '100%' },
-  sansCamera: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  sansCameraTitre: { margin: 0, fontSize: 14.5, fontWeight: 600 },
-  sansCameraTexte: { margin: '8px 0 0', fontSize: 13, color: '#94A3B8', lineHeight: 1.5 },
-  astuceBadge: { margin: '16px 0 0', fontSize: 13, color: '#94A3B8', lineHeight: 1.6 },
-  boutonLien: {
-    marginTop: 18,
-    background: 'transparent',
-    border: 'none',
-    color: '#93C5FD',
-    fontSize: 14,
-    textDecoration: 'underline',
-    cursor: 'pointer',
-  },
-  blocSaisie: { marginTop: 18, maxWidth: 430, marginInline: 'auto' },
-  champLigne: { display: 'grid', gap: 10 },
-  boutonsLigne: { display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' },
-  noteSaisie: { margin: '10px 0 0', fontSize: 12, color: '#94A3B8', lineHeight: 1.5 },
-  // ── les grandes cartes ──
-  grandeCarte: {
-    background: 'rgba(248,250,252,.06)',
-    border: '3px solid rgba(148,163,184,.35)',
-    borderRadius: 18,
-    padding: '30px 26px',
-    textAlign: 'center',
-    width: 'min(540px, 92vw)',
-  },
-  rond: {
-    width: 62,
-    height: 62,
-    borderRadius: '50%',
-    margin: '0 auto 14px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 30,
-    color: '#FFFFFF',
-    fontWeight: 700,
-  },
-  rondTravail: { fontSize: 40, marginBottom: 8 },
-  nomConfirme: { margin: '0 0 8px', fontSize: 24, fontWeight: 700 },
-  geste: { margin: 0, fontSize: 18, fontWeight: 600 },
-  mentionSuspect: { margin: '14px 0 0', fontSize: 12.5, color: '#FCD34D', lineHeight: 1.5 },
-  reviendra: { margin: '18px 0 0', fontSize: 12.5, color: '#94A3B8' },
-  consigne: { margin: 0, fontSize: 14, color: '#CBD5E1', lineHeight: 1.6 },
-  messageRefus: { margin: '0 0 4px', fontSize: 14.5, color: '#FECACA', lineHeight: 1.6 },
-  pied: {
-    padding: '12px 22px 16px',
-    fontSize: 11.5,
-    color: '#64748B',
-    display: 'flex',
-    gap: 8,
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-  },
-  piedSep: { opacity: 0.5 },
 }

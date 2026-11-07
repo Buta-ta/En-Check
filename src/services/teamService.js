@@ -111,6 +111,79 @@ export async function getTeams(enterpriseId, options = {}) {
 }
 
 /**
+ * Les équipes formées, pour plusieurs entreprises d'un coup.
+ *
+ * La page Équipes interroge une entreprise à la fois ; le planning, lui,
+ * peut afficher toutes les entreprises d'un super administrateur. On lit
+ * donc les équipes et leurs membres en deux requêtes, quel que soit le
+ * nombre d'entreprises — et on rend la même forme que `getTeams` :
+ * `members[].employee.id`.
+ *
+ * @param {string[]} enterpriseIds - Identifiants des entreprises à lire
+ * @returns {Promise<{data: Array, error: Error|null}>}
+ */
+export async function getTeamsPourPlanning(enterpriseIds = []) {
+  const ids = (Array.isArray(enterpriseIds) ? enterpriseIds : [enterpriseIds])
+    .filter(Boolean);
+
+  if (ids.length === 0) return { data: [], error: null };
+
+  const { data: teams, error } = await supabase
+    .from('teams')
+    .select(`
+      id,
+      enterprise_id,
+      name,
+      color,
+      leader:leader_employee_id (
+        id,
+        first_name,
+        last_name
+      )
+    `)
+    .in('enterprise_id', ids)
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Erreur getTeamsPourPlanning:', error);
+    return { data: null, error };
+  }
+
+  if (!teams || teams.length === 0) return { data: [], error: null };
+
+  const { data: members, error: membersError } = await supabase
+    .from('team_members')
+    .select('id, team_id, employee_id, is_active, removed_at')
+    .in('team_id', teams.map((team) => team.id))
+    .eq('is_active', true)
+    .is('removed_at', null);
+
+  if (membersError) {
+    // Les équipes restent utiles même sans leurs membres : on ne casse pas
+    // la lecture du planning pour une table secondaire indisponible.
+    console.error('Erreur getTeamsPourPlanning (membres):', membersError);
+    return { data: teams.map((team) => ({ ...team, members: [] })), error: null };
+  }
+
+  const membresParEquipe = (members || []).reduce((acc, membre) => {
+    if (!acc[membre.team_id]) acc[membre.team_id] = [];
+    acc[membre.team_id].push({ ...membre, employee: { id: membre.employee_id } });
+    return acc;
+  }, {});
+
+  return {
+    data: teams.map((team) => ({
+      ...team,
+      members: membresParEquipe[team.id] || [],
+      member_count: (membresParEquipe[team.id] || []).length,
+    })),
+    error: null,
+  };
+}
+
+/**
  * Récupère une équipe par son ID
  * @param {string} teamId - ID de l'équipe
  * @returns {Promise<{data: object, error: Error}>}

@@ -26,7 +26,6 @@ export default function DashboardDesignPreview() {
   const navigate = useNavigate()
   const { darkMode, toggleTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [showAnalytics, setShowAnalytics] = useState(false)
   const [showConflictModal, setShowConflictModal] = useState(false)
   const [selectedConflict, setSelectedConflict] = useState(null)
   const [conflictNote, setConflictNote] = useState('')
@@ -99,8 +98,6 @@ export default function DashboardDesignPreview() {
         markAllAsRead={() => {}}
         handleLogout={() => navigate('/login')}
         handleEnterpriseSwitch={() => {}}
-        showAnalytics={showAnalytics}
-        setShowAnalytics={setShowAnalytics}
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
         tabStates={{

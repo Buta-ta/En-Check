@@ -299,7 +299,7 @@ const useTabAnimations = (admin, enterpriseId, enabledModules = {}) => {
         totalCount: 1,
         highestPriority: 'info',
         color: '#F59E0B',
-        path: '/taches',
+        path: '/employes?vue=taches',
         timestamp: new Date().toISOString(),
       }
     }))

@@ -173,7 +173,7 @@ export function invaliderCacheSeuils(enterpriseId) {
 //    · conservée, jamais supprimée, même当 une donnée réelle arrive après
 //      (`estimation_remplacee_le`) — c'est ce qui permet de MESURER l'erreur.
 //  ⚠️ Ces trois filtres sont lus dans TOUTES les vues qui touchent l'argent :
-//     `payrollService.js`, `Rapports.jsx`, `CoutSalarial`, `HeuresSupplementaires`.
+//     `payrollService.js`, `Rapports.jsx`, `Remunerations` (vue coût), `HeuresSupplementaires`.
 //     Un nouvel écran qui additionne des minutes doit appeler
 //     `filtrerPointagesPayables()` — sinon il remet une heure inventée dans la paie.
 

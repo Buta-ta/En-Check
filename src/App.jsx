@@ -26,13 +26,14 @@ import MyAdminAccount from './pages/MyAdminAccount'
 import Planning from './pages/Planning'
 import Retards from './pages/Retards'
 import Pauses from './pages/Pauses'
-import SystemMessages from './pages/SystemMessages'
+import MessagesSysteme from './pages/MessagesSysteme'
 import Absences from './pages/Absences'
 import HeuresSupplementaires from './pages/HeuresSupplementaires'
 import Prospection from './pages/Prospection'
-import Devis from './pages/Devis'
-import ConfigGeofencing from './pages/ConfigGeofencing'
-import CarteTempsReel from './pages/CarteTempsReel'
+import Geopointage from './pages/Geopointage'
+// La reconnaissance faciale réunit les enrôlements et leurs réglages :
+// une seule page, une seule porte.
+import ReconnaissanceFaciale from './pages/ReconnaissanceFaciale'
 import AnnoncesAccueil from './pages/AnnoncesAccueil'
 import JoursFeries from './pages/JoursFeries'
 
@@ -47,28 +48,21 @@ import EmployeeRoute from './components/EmployeeRoute'
 // écran que l'entreprise n'a pas acheté.
 import VerrouOptions from './components/VerrouOptions'
 
-import GestionEnrolements from './pages/GestionEnrolements'
 // Le poste de pointage : l'écran qu'on laisse allumé à l'entrée du site — la
 // tablette lit le badge de l'employé et enregistre son arrivée ou son départ.
 import PostePointage from './pages/PostePointage'
-// La page « Pointeuses » : enregistrer une machine ADMS, lire son secret,
-// télécharger `appareils.json` — sans jamais ouvrir Supabase.
-import Pointeuses from './pages/Pointeuses'
-import CoutSalarial from './pages/CoutSalarial'
+// La configuration pointeuse réunit les machines ADMS et le poste de
+// pointage : un seul écran pour le matériel de l'entrée.
+import ConfigurationPointeuse from './pages/ConfigurationPointeuse'
 import Remunerations from './pages/Remunerations'
-import ConfigRecoFaciale from './pages/ConfigRecoFaciale'
 import FichesPaie from './pages/FichesPaie'
 import EmployeeFichesPaie from './pages/employee/EmployeeFichesPaie'
 import ConfigurationFiscale from './pages/ConfigurationFiscale'
 import PaieFiscalite from './pages/PaieFiscalite'
-import ConnectionLogs from './pages/ConnectionLogs'
-import ConnectionsMap from './pages/ConnectionsMap'
-import Teams from './pages/Teams'
-import Tasks from './pages/Tasks'
+import AnalyticsSite from './pages/AnalyticsSite'
 import TaskDetail from './pages/TaskDetail'
 import EmployeeTasks from './pages/employee/EmployeeTasks'
 import Predictions from './pages/Predictions'
-import PushNotifications from './pages/PushNotifications'
 import AiConnectionTest from './pages/AiConnectionTest'
 import AssistantDock from './components/AssistantDock'
 
@@ -307,9 +301,10 @@ function App() {
               <Pauses />
             </AdminRoute>
           } />
+          {/* Les annonces, les push et les courriels ne font plus qu'une page. */}
           <Route path="/system-messages" element={
-            <AdminRoute>
-              <SystemMessages />
+            <AdminRoute requireSuperAdmin>
+              <MessagesSysteme />
             </AdminRoute>
           } />
 
@@ -319,11 +314,7 @@ function App() {
             </AdminRoute>
           } />
 
-          <Route path="/push-notifications" element={
-            <AdminRoute requireSuperAdmin>
-              <PushNotifications />
-            </AdminRoute>
-          } />
+          <Route path="/push-notifications" element={<Navigate to="/system-messages?vue=push" replace />} />
           <Route path="/absences" element={
             <AdminRoute>
               <Absences />
@@ -350,29 +341,28 @@ function App() {
             </AdminRoute>
           } />
           <Route path="/configuration-fiscale" element={<Navigate to="/paie" replace />} />
-          <Route path="/geofencing" element={
+          {/* Le plateau et les zones ne font plus qu'un écran : « Géopointage ».
+              Les deux anciennes adresses restent vivantes pour les liens
+              déjà partagés — elles ouvrent la page commune. */}
+          <Route path="/geopointage" element={
             <AdminRoute>
-              <ConfigGeofencing />
+              <Geopointage />
             </AdminRoute>
           } />
-          <Route path="/carte-temps-reel" element={
+          <Route path="/geofencing" element={<Navigate to="/geopointage" replace />} />
+          <Route path="/carte-temps-reel" element={<Navigate to="/geopointage" replace />} />
+          <Route path="/reconnaissance-faciale" element={
             <AdminRoute>
-              <CarteTempsReel />
+              <ReconnaissanceFaciale />
             </AdminRoute>
           } />
-          <Route path="/enrollements-faciaux" element={
+          {/* Les deux anciennes adresses ouvrent la page commune : un
+              signet ou un lien ancien ne tombe pas dans le vide. */}
+          <Route path="/enrollements-faciaux" element={<Navigate to="/reconnaissance-faciale" replace />} />
+          <Route path="/config-reco-faciale" element={<Navigate to="/reconnaissance-faciale" replace />} />
+          <Route path="/configuration-pointeuse" element={
             <AdminRoute>
-              <GestionEnrolements />
-            </AdminRoute>
-          } />
-          <Route path="/config-reco-faciale" element={
-            <AdminRoute>
-              <ConfigRecoFaciale />
-            </AdminRoute>
-          } />
-          <Route path="/pointeuses" element={
-            <AdminRoute>
-              <Pointeuses />
+              <ConfigurationPointeuse />
             </AdminRoute>
           } />
           <Route path="/annonces-accueil" element={
@@ -380,11 +370,16 @@ function App() {
               <AnnoncesAccueil />
             </AdminRoute>
           } />
-          <Route path="/cout-salarial" element={
-            <AdminRoute>
-              <CoutSalarial />
-            </AdminRoute>
-          } />
+          {/* L'ancienne adresse des pointeuses ouvre la page commune.
+              `/poste` reste l'écran de la tablette : il n'est pas un écran
+              d'administration, et une tablette doit pouvoir l'ouvrir seule. */}
+          <Route path="/pointeuses" element={<Navigate to="/configuration-pointeuse" replace />} />
+          {/* Le coût salarial a rejoint les rémunérations : l'ancienne adresse
+              continue de fonctionner, elle ouvre la vue coût. */}
+          <Route
+            path="/cout-salarial"
+            element={<Navigate to="/remunerations?vue=cout" replace />}
+          />
           <Route path="/remunerations" element={
             <AdminRoute>
               <Remunerations />
@@ -401,21 +396,17 @@ function App() {
               <Prospection />
             </AdminRoute>
           } />
-          <Route path="/devis" element={
+          {/* Les devis ont rejoint la prospection : l'ancienne adresse ouvre
+              la page commune sur sa vue devis. */}
+          <Route path="/devis" element={<Navigate to="/prospection?vue=devis" replace />} />
+          {/* Le journal, la carte et les visites ne font plus qu'une page. */}
+          <Route path="/analytics" element={
             <AdminRoute requireSuperAdmin>
-              <Devis />
+              <AnalyticsSite />
             </AdminRoute>
           } />
-          <Route path="/connexions" element={
-            <AdminRoute requireSuperAdmin>
-              <ConnectionLogs />
-            </AdminRoute>
-          } />
-          <Route path="/connexions-map" element={
-            <AdminRoute requireSuperAdmin>
-              <ConnectionsMap />
-            </AdminRoute>
-          } />
+          <Route path="/connexions" element={<Navigate to="/analytics" replace />} />
+          <Route path="/connexions-map" element={<Navigate to="/analytics?vue=carte" replace />} />
 
 
 
@@ -452,17 +443,13 @@ function App() {
             </EmployeeRoute>
           } />
 
-          <Route path="/equipes" element={
-            <AdminRoute>
-              <Teams />
-            </AdminRoute>
-          } />
-
-          <Route path="/taches" element={
-            <AdminRoute>
-              <Tasks />
-            </AdminRoute>
-          } />
+          {/* ═══ ÉQUIPES ET TÂCHES ONT REJOINT L'ANNUAIRE ═══
+              Une seule page porte les trois vues : /employes?vue=equipes
+              et ?vue=taches. Les anciennes adresses restent valables :
+              elles renvoient vers la bonne vue, pour ne casser aucun
+              lien déjà envoyé (favoris, messages, raccourcis). */}
+          <Route path="/equipes" element={<Navigate to="/employes?vue=equipes" replace />} />
+          <Route path="/taches" element={<Navigate to="/employes?vue=taches" replace />} />
 
 
 

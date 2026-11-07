@@ -1,6 +1,11 @@
 // Bibliothèque d'illustrations et de motifs textiles vectoriels africains (Kente, Bogolan, Adinkra, Tama, Cauris)
 
+import { useId } from 'react'
+
 export function KenteWovenTapestrySvg({ className = '' }) {
+  // Deux bandeaux peuvent vivre sur la même page (une frise et un
+  // badge) : l'identifiant du motif est donc propre à chaque rendu.
+  const motifId = `encheck-kente-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
   return (
     <svg
       className={className}
@@ -11,7 +16,7 @@ export function KenteWovenTapestrySvg({ className = '' }) {
       focusable="false"
     >
       <defs>
-        <pattern id="encheck-kente-tapestry" x="0" y="0" width="240" height="28" patternUnits="userSpaceOnUse">
+        <pattern id={motifId} x="0" y="0" width="240" height="28" patternUnits="userSpaceOnUse">
           {/* Fond sombre expresso */}
           <rect width="240" height="28" fill="#1A120C" />
 
@@ -61,7 +66,7 @@ export function KenteWovenTapestrySvg({ className = '' }) {
           <line x1="239" y1="0" x2="239" y2="28" stroke="#E8AE3E" strokeWidth="2" />
         </pattern>
       </defs>
-      <rect width="960" height="28" fill="url(#encheck-kente-tapestry)" />
+      <rect width="960" height="28" fill={`url(#${motifId})`} />
     </svg>
   )
 }

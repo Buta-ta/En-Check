@@ -153,6 +153,57 @@ export function AbomeyBlasonSvg({ size = 52 }) {
   )
 }
 
+
+// ── LE BLASON DE LA PROSPECTION ────────────────────────────
+// Quatre pièces d'appliqué cousues en diagonale, une couture
+// qui les traverse, et un soleil de toile au centre. Il porte
+// l'identité de la page sans reprendre le blason des comptes :
+// même famille, autre pièce.
+export function AbomeyBlasonAppliqueSvg({ size = 56, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 56 56"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect x="0.75" y="0.75" width="54.5" height="54.5" rx="3" fill={INDIGO_NUIT} />
+      <g>
+        {/* les quatre pièces */}
+        <path d="M 4 4 L 28 4 L 4 28 Z" fill={TERRE} />
+        <path d="M 52 4 L 52 28 L 28 4 Z" fill="#3f6b4e" />
+        <path d="M 4 52 L 4 28 L 28 52 Z" fill={INDIGO_CLAIR} />
+        <path d="M 52 52 L 28 52 L 52 28 Z" fill="#9a7529" />
+        {/* la couture qui traverse */}
+        <path d="M 4 4 L 52 52 M 52 4 L 4 52" stroke={IVOIRE} strokeWidth="0.9" strokeDasharray="3 3" strokeOpacity="0.45" />
+        {/* le soleil de toile */}
+        <circle cx="28" cy="28" r="9.5" fill={IVOIRE} />
+        <circle cx="28" cy="28" r="5.4" fill={TERRE} />
+        <circle cx="28" cy="28" r="5.4" fill="none" stroke={FIL} strokeWidth="0.9" strokeDasharray="2 2" />
+        {/* les rayons */}
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
+          <line
+            key={angle}
+            x1={28 + Math.cos((angle * Math.PI) / 180) * 11.4}
+            y1={28 + Math.sin((angle * Math.PI) / 180) * 11.4}
+            x2={28 + Math.cos((angle * Math.PI) / 180) * 14.6}
+            y2={28 + Math.sin((angle * Math.PI) / 180) * 14.6}
+            stroke={IVOIRE}
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeOpacity="0.8"
+          />
+        ))}
+      </g>
+      {/* le cadre cousu */}
+      <rect x="3" y="3" width="50" height="50" rx="2" fill="none" stroke={IVOIRE} strokeWidth="1.1" strokeDasharray="4 3.5" strokeOpacity="0.7" />
+      <rect x="0.75" y="0.75" width="54.5" height="54.5" rx="3" fill="none" stroke={FIL_SOMBRE} strokeWidth="1" />
+    </svg>
+  )
+}
+
 // ── LE COIN COUSU : pièce d'appliqué triangulaire ──────────
 // Posé en haut-gauche ou en bas-droite d'une carte.
 export function AbomeyCoinSvg({ variante = 'terre', coin = 'haut', size = 76 }) {

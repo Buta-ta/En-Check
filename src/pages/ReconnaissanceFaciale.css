@@ -1,0 +1,1901 @@
+/* ═══════════════════════════════════════════════════════════
+   🧶 LE VELOURS KUBA — Reconnaissance faciale
+
+   La page emprunte au velours kuba sa logique de tissage : des
+   losanges qui s'emboîtent, des chevrons qui bordent chaque
+   registre, une trame serrée. Trois matières, trois rôles :
+
+     la terre    les fonds et les panneaux
+     le raphia   les cadres, les liens, les accents
+     l'écru      tout ce qui se lit
+
+   Les couleurs d'ÉTAT (vert, ambre, rouge) restent celles du
+   produit : elles disent des données, pas un décor. Le thème
+   clair retourne la palette (écru / terre) sans changer la
+   structure de la page.
+   ═══════════════════════════════════════════════════════════ */
+
+.rf-page {
+  /* les fonds */
+  --rf-terre: #171009;
+  --rf-terre-2: #1d1510;
+  --rf-panneau: #241a12;
+  --rf-panneau-2: #2b2017;
+  --rf-creux: #120c07;
+
+  /* les matières */
+  --rf-raphia: #c98a4b;
+  --rf-raphia-clair: #e0ad6a;
+  --rf-ecru: #f1e3c8;
+  --rf-ecru-doux: #cdb795;
+  --rf-ecru-faible: #9c8768;
+
+  /* les traits */
+  --rf-ligne: rgba(224, 173, 106, 0.2);
+  --rf-ligne-forte: rgba(224, 173, 106, 0.42);
+
+  /* les états — données, pas décor */
+  --rf-ok: #10b981;
+  --rf-attente: #f59e0b;
+  --rf-alerte: #ef4444;
+  --rf-neutre: #8b8177;
+
+  --rf-ombre: 0 18px 40px rgba(0, 0, 0, 0.45);
+
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--rf-terre);
+  background-image:
+    radial-gradient(120% 70% at 50% -10%, rgba(201, 138, 75, 0.14), transparent 68%),
+    repeating-linear-gradient(0deg, rgba(241, 227, 200, 0.012) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(241, 227, 200, 0.012) 0 1px, transparent 1px 3px);
+  color: var(--rf-ecru);
+  font-family: inherit;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.rf-page.rf-clair {
+  --rf-terre: #f2e7d4;
+  --rf-terre-2: #efe0c8;
+  --rf-panneau: #fbf4e7;
+  --rf-panneau-2: #f6ead6;
+  --rf-creux: #e7d6ba;
+
+  --rf-raphia: #a4652a;
+  --rf-raphia-clair: #8f541f;
+  --rf-ecru: #2b1d10;
+  --rf-ecru-doux: #5c472f;
+  --rf-ecru-faible: #826a4d;
+
+  --rf-ligne: rgba(90, 60, 30, 0.16);
+  --rf-ligne-forte: rgba(90, 60, 30, 0.36);
+
+  --rf-ok: #0f7a5a;
+  --rf-attente: #a86a04;
+  --rf-alerte: #b3261e;
+  --rf-neutre: #7c6b57;
+
+  --rf-ombre: 0 14px 30px rgba(84, 56, 26, 0.16);
+
+  background-image:
+    radial-gradient(120% 70% at 50% -10%, rgba(164, 101, 42, 0.16), transparent 68%),
+    repeating-linear-gradient(0deg, rgba(90, 60, 30, 0.02) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(90, 60, 30, 0.02) 0 1px, transparent 1px 3px);
+}
+
+.rf-page *,
+.rf-page *::before,
+.rf-page *::after {
+  box-sizing: border-box;
+}
+
+.rf-page :focus-visible {
+  outline: 2px solid var(--rf-raphia-clair);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Le velours ne change jamais : le bandeau garde ses pixels. */
+
+/* ── 1. La lisière tissée, sous le bandeau ─────────────────── */
+
+.rf-lisiere {
+  height: 9px;
+  flex: none;
+  background-color: var(--rf-raphia);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='9' viewBox='0 0 16 9'%3E%3Cpath d='M0 7 L4 1.6 L8 7 L12 1.6 L16 7' fill='none' stroke='%23171009' stroke-width='1.7'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: center;
+}
+
+.rf-page.rf-clair .rf-lisiere {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='9' viewBox='0 0 16 9'%3E%3Cpath d='M0 7 L4 1.6 L8 7 L12 1.6 L16 7' fill='none' stroke='%23f2e7d4' stroke-width='1.7'/%3E%3C/svg%3E");
+}
+
+/* ── 2. L'en-tête : le panneau à losanges ──────────────────── */
+
+.rf-entete {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+  padding: 20px clamp(16px, 3vw, 34px) 18px;
+  border-bottom: 1px solid var(--rf-ligne);
+  background-image:
+    linear-gradient(180deg, rgba(201, 138, 75, 0.1), transparent 80%),
+    repeating-linear-gradient(45deg, rgba(224, 173, 106, 0.04) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(-45deg, rgba(224, 173, 106, 0.04) 0 1px, transparent 1px 9px);
+}
+
+.rf-retour {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--rf-ecru-doux);
+  cursor: pointer;
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+
+.rf-retour:hover {
+  border-color: var(--rf-raphia-clair);
+  transform: translateX(-2px);
+}
+
+.rf-titre-bloc {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.rf-eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-titre {
+  margin: 3px 0 2px;
+  font-size: clamp(24px, 3.2vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.05;
+  color: var(--rf-ecru);
+}
+
+.rf-titre span,
+.rf-titre-vue span {
+  color: var(--rf-raphia);
+}
+
+.rf-sous-titre {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--rf-ecru-doux);
+  max-width: 58ch;
+}
+
+.rf-entete-droite {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.rf-pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--rf-ecru-doux);
+  background-color: var(--rf-panneau);
+}
+
+.rf-pastille i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--rf-attente);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+}
+
+.rf-theme {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--rf-ecru-doux);
+  cursor: pointer;
+  transition: border-color 0.16s ease;
+}
+
+.rf-theme:hover {
+  border-color: var(--rf-raphia-clair);
+}
+
+/* ── 3. La coque ──────────────────────────────────────────── */
+
+.rf-coque {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(14px, 2.4vw, 26px) clamp(14px, 3vw, 34px) 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── 4. Le seuil : entreprise + accès rapides ─────────────── */
+
+.rf-seuil {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 13px 16px;
+  border: 1px solid var(--rf-ligne);
+  border-radius: 3px;
+  background-color: var(--rf-terre-2);
+  background-image:
+    repeating-linear-gradient(135deg, rgba(224, 173, 106, 0.035) 0 2px, transparent 2px 8px);
+}
+
+.rf-seuil-entreprise {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 20px;
+  border-right: 1px solid var(--rf-ligne);
+  min-width: 190px;
+}
+
+.rf-seuil-libelle {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-seuil-nom {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--rf-ecru);
+}
+
+.rf-seuil-fait {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--rf-ecru-doux);
+}
+
+.rf-raccourcis {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 340px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.rf-raccourcis > :last-child {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.rf-raccourcis .abs-raccourcis {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--rf-ligne);
+  border-radius: 2px;
+  background-color: var(--rf-creux);
+  scrollbar-width: none;
+}
+
+.rf-raccourcis .abs-raccourcis::-webkit-scrollbar {
+  display: none;
+}
+
+.rf-raccourcis .abs-raccourci {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  border-radius: 1px;
+  background: transparent;
+  color: var(--rf-ecru-doux);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.14s ease;
+}
+
+.rf-raccourcis .abs-raccourci[data-compact='oui'] {
+  padding: 4px 9px;
+}
+
+.rf-raccourcis .abs-raccourci svg {
+  flex: none;
+  opacity: 0.85;
+}
+
+.rf-raccourcis .abs-raccourci:hover {
+  border-color: var(--rf-ligne-forte);
+}
+
+.rf-raccourcis .abs-raccourci[data-actif='oui'] {
+  border-color: var(--rf-raphia);
+  background-color: var(--rf-panneau-2);
+  color: var(--rf-ecru);
+  cursor: default;
+}
+
+/* ── 5. L'avis de la page ─────────────────────────────────── */
+
+.rf-avis {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--rf-ligne);
+  border-left: 3px solid var(--rf-neutre);
+  border-radius: 2px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--rf-ecru-doux);
+  background-color: var(--rf-panneau);
+}
+
+.rf-avis svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.rf-avis[data-ton='ok'] {
+  border-left-color: var(--rf-ok);
+}
+
+.rf-avis[data-ton='ok'] svg {
+  color: var(--rf-ok);
+}
+
+.rf-avis[data-ton='alerte'] {
+  border-left-color: var(--rf-alerte);
+}
+
+.rf-avis[data-ton='alerte'] svg {
+  color: var(--rf-alerte);
+}
+
+/* ── 6. Les registres de chiffres ─────────────────────────── */
+
+.rf-registres {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--rf-ligne);
+  border-radius: 3px;
+  background-color: var(--rf-ligne);
+  overflow: hidden;
+}
+
+.rf-stele {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background-color: var(--rf-panneau);
+}
+
+.rf-stele::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background-color: var(--rf-neutre);
+  opacity: 0.5;
+}
+
+.rf-stele[data-ton='raphia']::after { background-color: var(--rf-raphia); }
+.rf-stele[data-ton='attente']::after { background-color: var(--rf-attente); }
+.rf-stele[data-ton='ok']::after { background-color: var(--rf-ok); }
+.rf-stele[data-ton='alerte']::after { background-color: var(--rf-alerte); }
+
+.rf-stele-marque {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  color: var(--rf-ecru-doux);
+  background-color: var(--rf-terre-2);
+}
+
+.rf-stele[data-ton='raphia'] .rf-stele-marque { color: var(--rf-raphia-clair); }
+.rf-stele[data-ton='attente'] .rf-stele-marque { color: var(--rf-attente); }
+.rf-stele[data-ton='ok'] .rf-stele-marque { color: var(--rf-ok); }
+.rf-stele[data-ton='alerte'] .rf-stele-marque { color: var(--rf-alerte); }
+
+.rf-stele-texte {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.rf-stele-nombre {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--rf-ecru);
+  font-variant-numeric: tabular-nums;
+}
+
+.rf-stele-libelle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rf-ecru-doux);
+}
+
+.rf-stele-note {
+  font-size: 10.5px;
+  color: var(--rf-ecru-faible);
+}
+
+/* ── 7. Le sommaire : deux vues, une page ─────────────────── */
+
+.rf-onglets {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 5px;
+  border: 1px solid var(--rf-ligne);
+  border-radius: 3px;
+  background-color: var(--rf-terre-2);
+}
+
+.rf-onglets-liste {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.rf-onglets-titre {
+  margin: 0 10px 0 8px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-onglet {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--rf-ecru-doux);
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.rf-onglet:hover {
+  border-color: var(--rf-ligne-forte);
+}
+
+.rf-onglet[aria-selected='true'] {
+  border-color: var(--rf-raphia);
+  background-color: var(--rf-panneau-2);
+  color: var(--rf-ecru);
+  box-shadow: inset 0 -2px 0 var(--rf-raphia);
+}
+
+.rf-onglet-nombre {
+  padding: 1px 6px;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 999px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--rf-ecru-doux);
+}
+
+.rf-onglet-point {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--rf-attente);
+}
+
+/* ── 8. La vue : un folio de registre ─────────────────────── */
+
+.rf-vue {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(14px, 2.2vw, 24px);
+  border: 1px solid var(--rf-ligne);
+  border-radius: 3px;
+  background-color: var(--rf-panneau);
+  background-image:
+    radial-gradient(120% 60% at 0% 0%, rgba(201, 138, 75, 0.07), transparent 60%);
+  box-shadow: var(--rf-ombre);
+}
+
+.rf-folio {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 9px;
+  border-bottom: 1px dashed var(--rf-ligne-forte);
+}
+
+.rf-marque {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-marque strong {
+  color: var(--rf-raphia-clair);
+  font-weight: 700;
+}
+
+.rf-folio-droite {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-tete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.rf-titre-vue {
+  margin: 2px 0 0;
+  font-size: clamp(20px, 2.4vw, 26px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--rf-ecru);
+}
+
+.rf-tete-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 3px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--rf-ecru-doux);
+}
+
+.rf-colophon {
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  margin: 0;
+  border: 1px solid var(--rf-ligne);
+  border-radius: 2px;
+  background-color: var(--rf-ligne);
+  overflow: hidden;
+}
+
+.rf-chiffre {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: center;
+  min-width: 84px;
+  padding: 7px 12px;
+  background-color: var(--rf-terre-2);
+  text-align: right;
+}
+
+.rf-chiffre-valeur {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--rf-ecru);
+  font-variant-numeric: tabular-nums;
+}
+
+.rf-chiffre-libelle {
+  margin: 0;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-chiffre[data-ton='ok'] .rf-chiffre-valeur { color: var(--rf-ok); }
+.rf-chiffre[data-ton='attente'] .rf-chiffre-valeur { color: var(--rf-attente); }
+
+/* ── 9. Les outils : recherche, filtres ───────────────────── */
+
+.rf-outils {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border: 1px solid var(--rf-ligne);
+  border-radius: 2px;
+  background-color: var(--rf-terre-2);
+}
+
+.rf-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.rf-etiquette {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-champ-recherche {
+  position: relative;
+  flex: 1 1 230px;
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  height: 34px;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--rf-panneau);
+  color: var(--rf-ecru-faible);
+}
+
+.rf-champ-recherche input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--rf-ecru);
+}
+
+.rf-champ-recherche input::placeholder {
+  color: var(--rf-ecru-faible);
+}
+
+.rf-champ-recherche input:focus {
+  outline: none;
+}
+
+.rf-champ-recherche:focus-within {
+  border-color: var(--rf-raphia);
+}
+
+.rf-champ-select select {
+  height: 34px;
+  min-width: 172px;
+  padding: 0 9px;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--rf-panneau);
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--rf-ecru);
+  cursor: pointer;
+}
+
+.rf-champ-cles {
+  flex: 0 1 auto;
+}
+
+.rf-cles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rf-cle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--rf-panneau);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--rf-ecru-doux);
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.rf-cle:hover {
+  border-color: var(--rf-raphia-clair);
+}
+
+.rf-cle[aria-pressed='true'] {
+  border-color: var(--rf-raphia);
+  box-shadow: inset 0 -2px 0 var(--rf-raphia);
+}
+
+.rf-cle i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--rf-ecru-faible);
+}
+
+.rf-cle i[data-statut='pending'] { background-color: var(--rf-attente); }
+.rf-cle i[data-statut='approved'] { background-color: var(--rf-ok); }
+.rf-cle i[data-statut='rejected'] { background-color: var(--rf-alerte); }
+
+.rf-bouton,
+.rf-bouton-creux {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 15px;
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.rf-bouton {
+  border: 1px solid var(--rf-raphia);
+  background-color: var(--rf-raphia);
+  color: #171009;
+}
+
+.rf-page.rf-clair .rf-bouton {
+  color: #fbf4e7;
+}
+
+.rf-bouton:hover:not(:disabled) {
+  box-shadow: 0 0 0 2px rgba(201, 138, 75, 0.22);
+}
+
+.rf-bouton-creux {
+  border: 1px solid var(--rf-ligne-forte);
+  background-color: transparent;
+  color: var(--rf-ecru-doux);
+}
+
+.rf-bouton-creux:hover:not(:disabled) {
+  border-color: var(--rf-raphia-clair);
+}
+
+.rf-bouton:disabled,
+.rf-bouton-creux:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.rf-bouton--danger {
+  border-color: var(--rf-alerte);
+  background-color: var(--rf-alerte);
+  color: #fff;
+}
+
+.rf-page.rf-clair .rf-bouton--danger {
+  color: #fff;
+}
+
+.rf-actualiser {
+  height: 34px;
+}
+
+.rf-tourne {
+  animation: rf-tourne 1.1s linear infinite;
+}
+
+@keyframes rf-tourne {
+  to { transform: rotate(360deg); }
+}
+
+/* ── 10. Le chargement : les losanges qui s'allument ──────── */
+
+.rf-charge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 40px 20px 34px;
+  border: 1px dashed var(--rf-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--rf-terre-2);
+}
+
+.rf-charge-tresse {
+  display: flex;
+  gap: 7px;
+}
+
+.rf-charge-losange {
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--rf-raphia);
+  transform: rotate(45deg);
+  animation: rf-losange 1.4s ease-in-out infinite;
+}
+
+.rf-charge-losange[data-rang='1'] { animation-delay: 0.14s; }
+.rf-charge-losange[data-rang='2'] { animation-delay: 0.28s; }
+.rf-charge-losange[data-rang='3'] { animation-delay: 0.42s; }
+.rf-charge-losange[data-rang='4'] { animation-delay: 0.56s; }
+
+@keyframes rf-losange {
+  0%, 100% { opacity: 0.35; transform: rotate(45deg) scale(0.86); }
+  45% { opacity: 1; transform: rotate(45deg) scale(1); }
+}
+
+.rf-charge-texte {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--rf-ecru-doux);
+}
+
+.rf-charge-note {
+  font-size: 11px;
+  color: var(--rf-ecru-faible);
+}
+
+/* ── 11. Le vide ──────────────────────────────────────────── */
+
+.rf-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 22px 34px;
+  border: 1px dashed var(--rf-ligne-forte);
+  border-radius: 2px;
+  text-align: center;
+  background-color: var(--rf-terre-2);
+}
+
+.rf-vide-sceau {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 5px;
+  border: 1px solid var(--rf-ligne-forte);
+  color: var(--rf-ecru-doux);
+  transform: rotate(45deg);
+}
+
+.rf-vide-sceau svg {
+  transform: rotate(-45deg);
+}
+
+.rf-vide-titre {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--rf-ecru);
+}
+
+.rf-vide-note {
+  margin: 0;
+  max-width: 54ch;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-champ-vide {
+  margin-top: 8px;
+  text-align: left;
+}
+
+/* ── 12. Le registre des fiches ───────────────────────────── */
+
+.rf-registre {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rf-ligne);
+}
+
+.rf-entree {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 6px;
+  border-bottom: 1px solid var(--rf-ligne);
+  transition: box-shadow 0.16s ease;
+}
+
+.rf-entree:hover {
+  box-shadow: inset 3px 0 0 var(--rf-raphia);
+}
+
+.rf-entree[data-occupee='oui'] {
+  opacity: 0.72;
+}
+
+.rf-entree-index {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--rf-ecru-faible);
+  font-variant-numeric: tabular-nums;
+  border-left: 2px solid var(--rf-ligne-forte);
+  padding-left: 6px;
+}
+
+.rf-entree[data-statut='pending'] .rf-entree-index { border-left-color: var(--rf-attente); }
+.rf-entree[data-statut='approved'] .rf-entree-index { border-left-color: var(--rf-ok); }
+.rf-entree[data-statut='rejected'] .rf-entree-index { border-left-color: var(--rf-alerte); }
+
+.rf-cellule-identite {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.rf-portrait {
+  position: relative;
+  width: 46px;
+  height: 56px;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--rf-creux);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.16s ease;
+}
+
+.rf-portrait:hover {
+  border-color: var(--rf-raphia-clair);
+}
+
+.rf-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.rf-portrait-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--rf-ecru-faible);
+  background-image:
+    repeating-linear-gradient(45deg, rgba(224, 173, 106, 0.09) 0 1px, transparent 1px 6px);
+}
+
+.rf-portrait-loupe {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 1px;
+  background-color: rgba(23, 16, 9, 0.78);
+  color: var(--rf-ecru);
+}
+
+.rf-identite-texte {
+  min-width: 0;
+}
+
+.rf-entree-titre {
+  margin: 0 0 1px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--rf-ecru);
+  overflow-wrap: anywhere;
+}
+
+.rf-entree-meta {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--rf-ecru-doux);
+}
+
+.rf-entree-note {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-entree-motif {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin: 5px 0 0;
+  padding: 4px 8px;
+  border-left: 2px solid var(--rf-alerte);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--rf-ecru-doux);
+  background-color: rgba(239, 68, 68, 0.07);
+}
+
+.rf-entree-motif svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--rf-alerte);
+}
+
+.rf-cellule-etat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rf-sceau {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--rf-neutre);
+  background-color: var(--rf-terre-2);
+}
+
+.rf-sceau[data-ton='ok'] { color: var(--rf-ok); border-color: var(--rf-ok); }
+.rf-sceau[data-ton='attente'] { color: var(--rf-attente); border-color: var(--rf-attente); }
+.rf-sceau[data-ton='alerte'] { color: var(--rf-alerte); border-color: var(--rf-alerte); }
+
+.rf-entree-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.rf-lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--rf-ecru-doux);
+  cursor: pointer;
+  transition: border-color 0.16s ease;
+}
+
+.rf-lien:hover:not(:disabled) {
+  border-color: var(--rf-ligne-forte);
+}
+
+.rf-lien:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.rf-lien--danger {
+  color: var(--rf-alerte);
+}
+
+.rf-lien--danger:hover:not(:disabled) {
+  border-color: var(--rf-alerte);
+}
+
+.rf-note {
+  margin: 0;
+  padding-top: 2px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--rf-ecru-faible);
+  border-top: 1px dashed var(--rf-ligne);
+  padding-top: 10px;
+}
+
+/* ── 13. Les réglages : quatre feuillets tissés ───────────── */
+
+.rf-feuillets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rf-feuillet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 15px 16px 17px;
+  border: 1px solid var(--rf-ligne);
+  border-radius: 2px;
+  background-color: var(--rf-terre-2);
+  background-image:
+    repeating-linear-gradient(135deg, rgba(224, 173, 106, 0.03) 0 2px, transparent 2px 9px);
+}
+
+.rf-feuillet--large {
+  grid-column: 1 / -1;
+}
+
+.rf-feuillet-tete {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--rf-ligne);
+}
+
+.rf-feuillet-marque {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  color: var(--rf-raphia-clair);
+  background-color: var(--rf-panneau);
+}
+
+.rf-feuillet-titre {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--rf-ecru);
+}
+
+.rf-feuillet-note {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-champ-large {
+  width: 100%;
+}
+
+.rf-champ-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rf-valeur {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rf-raphia-clair);
+  font-variant-numeric: tabular-nums;
+}
+
+.rf-feuillet input[type='range'] {
+  width: 100%;
+  height: 22px;
+  margin: 2px 0 0;
+  accent-color: var(--rf-raphia);
+  cursor: pointer;
+}
+
+.rf-bornes {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--rf-ecru-faible);
+  font-variant-numeric: tabular-nums;
+}
+
+.rf-aide {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-interrupteur {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 11px;
+  border-top: 1px solid var(--rf-ligne);
+}
+
+.rf-feuillet-tete + .rf-interrupteur {
+  border-top: none;
+  padding-top: 0;
+}
+
+.rf-interrupteur-texte {
+  min-width: 0;
+}
+
+.rf-interrupteur-titre {
+  margin: 0 0 2px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--rf-ecru);
+}
+
+.rf-interrupteur-note {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--rf-ecru-faible);
+  max-width: 46ch;
+}
+
+.rf-bascule {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.rf-bascule-piste {
+  position: relative;
+  display: block;
+  width: 38px;
+  height: 20px;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--rf-creux);
+  transition: border-color 0.16s ease;
+}
+
+.rf-bascule-pouce {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 1px;
+  background-color: var(--rf-ecru-faible);
+  transform: rotate(0deg);
+  transition: left 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
+}
+
+.rf-bascule[aria-checked='true'] .rf-bascule-piste {
+  border-color: var(--rf-raphia);
+  background-color: rgba(201, 138, 75, 0.2);
+}
+
+.rf-bascule[aria-checked='true'] .rf-bascule-pouce {
+  left: 20px;
+  background-color: var(--rf-raphia-clair);
+  transform: rotate(45deg);
+}
+
+.rf-bascule-etat {
+  min-width: 56px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-compteur {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  overflow: hidden;
+  background-color: var(--rf-panneau);
+}
+
+.rf-compteur button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--rf-ecru-doux);
+  cursor: pointer;
+  transition: box-shadow 0.16s ease;
+}
+
+.rf-compteur button:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--rf-raphia);
+}
+
+.rf-compteur button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.rf-compteur output {
+  min-width: 32px;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--rf-ecru);
+  font-variant-numeric: tabular-nums;
+}
+
+.rf-alerte-inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--rf-alerte);
+  border-radius: 2px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--rf-ecru-doux);
+  background-color: rgba(239, 68, 68, 0.08);
+}
+
+.rf-alerte-inline svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--rf-alerte);
+}
+
+/* ── 14. Le mode de pointage : trois cartes ───────────────── */
+
+.rf-modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rf-mode {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 13px;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--rf-panneau);
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.rf-mode:hover {
+  border-color: var(--rf-raphia-clair);
+}
+
+.rf-mode:focus-within {
+  border-color: var(--rf-raphia);
+  box-shadow: 0 0 0 2px rgba(201, 138, 75, 0.2);
+}
+
+.rf-mode input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
+
+.rf-mode-puce {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin-top: 2px;
+  border: 1px solid var(--rf-ecru-faible);
+  transform: rotate(45deg);
+  transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.rf-mode[data-actif='oui'] {
+  border-color: var(--rf-raphia);
+  box-shadow: inset 0 -2px 0 var(--rf-raphia);
+}
+
+.rf-mode[data-actif='oui'] .rf-mode-puce {
+  border-color: var(--rf-raphia-clair);
+  background-color: var(--rf-raphia);
+}
+
+.rf-mode[data-ton='alerte'][data-actif='oui'] {
+  border-color: var(--rf-alerte);
+  box-shadow: inset 0 -2px 0 var(--rf-alerte);
+}
+
+.rf-mode[data-ton='alerte'][data-actif='oui'] .rf-mode-puce {
+  border-color: var(--rf-alerte);
+  background-color: var(--rf-alerte);
+}
+
+.rf-mode-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.rf-mode-nom {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--rf-ecru);
+}
+
+.rf-mode-note {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--rf-ecru-faible);
+}
+
+/* ── 15. Le pied d'enregistrement ─────────────────────────── */
+
+.rf-enregistrement {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 13px;
+  border-top: 1px solid var(--rf-ligne);
+}
+
+.rf-enregistrement-etat {
+  margin: 0 auto 0 0;
+  font-size: 11.5px;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-enregistrement-etat[data-modifie='oui'] {
+  color: var(--rf-attente);
+  font-weight: 600;
+}
+
+/* ── 16. Le pied de page : le bandeau bas ─────────────────── */
+
+.rf-pied {
+  margin-top: auto;
+  width: 100%;
+}
+
+/* ── 17. Les fenêtres ─────────────────────────────────────── */
+
+.rf-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background-color: rgba(9, 6, 3, 0.72);
+  backdrop-filter: blur(2px);
+  animation: rf-voile 0.16s ease-out;
+}
+
+@keyframes rf-voile {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rf-fenetre {
+  width: min(560px, 100%);
+  max-height: min(86vh, 780px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 3px;
+  background-color: var(--rf-panneau);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+  animation: rf-fenetre 0.18s ease-out;
+}
+
+.rf-fenetre--etroit {
+  width: min(480px, 100%);
+}
+
+@keyframes rf-fenetre {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+
+.rf-fenetre-tete {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px 17px 12px;
+  border-bottom: 1px solid var(--rf-ligne);
+  background-image:
+    repeating-linear-gradient(135deg, rgba(224, 173, 106, 0.05) 0 2px, transparent 2px 8px);
+}
+
+.rf-fenetre-titres {
+  min-width: 0;
+}
+
+.rf-fenetre-titre {
+  margin: 2px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--rf-ecru);
+  overflow-wrap: anywhere;
+}
+
+.rf-fermer {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  margin-left: auto;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--rf-ecru-doux);
+  cursor: pointer;
+  transition: border-color 0.16s ease;
+}
+
+.rf-fermer:hover {
+  border-color: var(--rf-raphia-clair);
+}
+
+.rf-fenetre-corps {
+  padding: 16px 17px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rf-fenetre-pied {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  flex-wrap: wrap;
+  padding: 12px 17px;
+  border-top: 1px solid var(--rf-ligne);
+}
+
+.rf-fenetre-aide {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--rf-ecru-faible);
+}
+
+.rf-fenetre-pied .rf-fenetre-aide {
+  margin-right: auto;
+}
+
+.rf-fenetre-texte {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--rf-ecru-doux);
+}
+
+.rf-photo-cadre {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+  padding: 10px;
+  border: 1px solid var(--rf-ligne);
+  border-radius: 2px;
+  background-color: var(--rf-creux);
+  background-image:
+    repeating-linear-gradient(45deg, rgba(224, 173, 106, 0.05) 0 1px, transparent 1px 8px);
+}
+
+.rf-photo {
+  display: block;
+  max-width: 100%;
+  max-height: 54vh;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  object-fit: contain;
+}
+
+.rf-photo-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 30px 16px;
+  font-size: 12px;
+  color: var(--rf-ecru-faible);
+  text-align: center;
+}
+
+.rf-zone-texte {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--rf-ligne-forte);
+  border-radius: 2px;
+  background-color: var(--rf-panneau-2);
+  font-size: 12.5px;
+  font-family: inherit;
+  line-height: 1.5;
+  color: var(--rf-ecru);
+  resize: vertical;
+}
+
+.rf-zone-texte::placeholder {
+  color: var(--rf-ecru-faible);
+}
+
+.rf-zone-texte:focus {
+  outline: none;
+  border-color: var(--rf-raphia);
+  box-shadow: 0 0 0 2px rgba(201, 138, 75, 0.18);
+}
+
+.rf-zone-texte[aria-invalid='true'] {
+  border-color: var(--rf-alerte);
+}
+
+.rf-erreur {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 2px solid var(--rf-alerte);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--rf-alerte);
+  background-color: rgba(239, 68, 68, 0.09);
+}
+
+/* ── 18. Le responsive ────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .rf-registres {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rf-entree {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    row-gap: 10px;
+  }
+
+  .rf-cellule-etat {
+    grid-column: 2 / 3;
+  }
+
+  .rf-entree-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+    border-top: 1px dashed var(--rf-ligne);
+    padding-top: 8px;
+  }
+}
+
+@media (max-width: 760px) {
+  .rf-seuil-entreprise {
+    border-right: none;
+    padding-right: 0;
+    border-bottom: 1px solid var(--rf-ligne);
+    padding-bottom: 10px;
+    width: 100%;
+  }
+
+  .rf-feuillets {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rf-feuillet--large {
+    grid-column: auto;
+  }
+
+  .rf-modes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rf-tete {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .rf-colophon {
+    width: 100%;
+  }
+
+  .rf-chiffre {
+    flex: 1;
+    text-align: left;
+  }
+
+  .rf-outils {
+    align-items: stretch;
+  }
+
+  .rf-champ-select select,
+  .rf-cle {
+    width: 100%;
+  }
+
+  .rf-champ-select,
+  .rf-champ-cles {
+    flex: 1 1 100%;
+  }
+
+  .rf-cle {
+    justify-content: flex-start;
+  }
+
+  .rf-actualiser {
+    width: 100%;
+  }
+
+  .rf-onglets-liste {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.rf-onglets-titre {
+    display: none;
+  }
+
+  .rf-onglet {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .rf-entete {
+    gap: 11px;
+  }
+
+  .rf-registres {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rf-entree {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .rf-entree-index {
+    display: none;
+  }
+
+  .rf-cellule-etat,
+  .rf-entree-actions {
+    grid-column: 1 / -1;
+  }
+
+  .rf-portrait {
+    width: 42px;
+    height: 52px;
+  }
+
+  .rf-interrupteur {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .rf-voile {
+    padding: 12px;
+  }
+
+  .rf-fenetre {
+    max-height: 92vh;
+  }
+
+  .rf-enregistrement .rf-bouton,
+  .rf-enregistrement .rf-bouton-creux {
+    flex: 1 1 100%;
+  }
+
+  .rf-enregistrement-etat {
+    flex: 1 1 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rf-page *,
+  .rf-page *::before,
+  .rf-page *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

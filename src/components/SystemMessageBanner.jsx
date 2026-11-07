@@ -1,345 +1,124 @@
 // ═══════════════════════════════════════════════════════════
-// 📢 BANDEAU MESSAGES SYSTÈME - AFROFUTURISTE
+// LE BANDEAU DES MESSAGES SYSTÈME
+//
+// Le défaut réparé : ce bandeau peignait ses propres couleurs
+// claires sur des fonds sombres, en style en ligne. En mode clair,
+// « Mises à jour en cours » devenait illisible. Ici, plus une seule
+// couleur en dur : des jetons de thème, et le même dessin le jour
+// et la nuit. Le bouton de fermeture existe sur tous les messages,
+// y compris ceux de priorité haute.
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { AlertTriangle, Info, Wrench, X, Zap, Bell, Megaphone } from 'lucide-react'
+import { AlertTriangle, Bell, Info, Wrench, X, Zap } from 'lucide-react'
 import { estDansPlageHoraire } from '../utils/timezoneUtils'
+import './SystemMessageBanner.css'
+
+const ICONES = {
+  maintenance: Wrench,
+  mise_a_jour: Zap,
+  info: Info,
+  alert: AlertTriangle,
+}
+
+const CLE_SESSION = 'dismissed_messages'
+
+function lireMessagesFermes() {
+  try {
+    const brut = sessionStorage.getItem(CLE_SESSION)
+    return brut ? JSON.parse(brut) : []
+  } catch {
+    return []
+  }
+}
 
 export default function SystemMessageBanner({ userType = 'admins' }) {
   const [messages, setMessages] = useState([])
-  const [dismissedIds, setDismissedIds] = useState([])
+  const [dismissedIds, setDismissedIds] = useState(lireMessagesFermes)
 
   useEffect(() => {
-    // Charger les messages déjà fermés de cette session
-    const dismissed = sessionStorage.getItem('dismissed_messages')
-    if (dismissed) {
-      setDismissedIds(JSON.parse(dismissed))
+    let vivant = true
+
+    const charger = async () => {
+      let requete = supabase
+        .from('messages_systeme')
+        .select('*')
+        .eq('is_active', true)
+
+      requete = userType === 'admins'
+        ? requete.in('cible', ['tous', 'admins'])
+        : requete.in('cible', ['tous', 'employes'])
+
+      const { data } = await requete.order('priorite', { ascending: false })
+      if (!vivant || !data) return
+      setMessages(data.filter((message) => estDansPlageHoraire(message.date_debut, message.date_fin)))
     }
-    
-    fetchActiveMessages()
-    
-    // Real-time subscription
-    const channel = supabase
+
+    charger()
+
+    const canal = supabase
       .channel('system_messages')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'messages_systeme'
-      }, () => {
-        fetchActiveMessages()
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages_systeme' }, charger)
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      vivant = false
+      supabase.removeChannel(canal)
     }
   }, [userType])
 
-  const fetchActiveMessages = async () => {
-    let query = supabase
-      .from('messages_systeme')
-      .select('*')
-      .eq('is_active', true)
-
-    if (userType === 'admins') {
-      query = query.in('cible', ['tous', 'admins'])
-    } else {
-      query = query.in('cible', ['tous', 'employes'])
-    }
-
-    const { data } = await query.order('priorite', { ascending: false })
-    
-    if (data) {
-      const filtered = data.filter(msg => 
-        estDansPlageHoraire(msg.date_debut, msg.date_fin)
-      )
-      setMessages(filtered)
+  const fermer = (id) => {
+    const suites = [...dismissedIds, id]
+    setDismissedIds(suites)
+    try {
+      sessionStorage.setItem(CLE_SESSION, JSON.stringify(suites))
+    } catch {
+      // Un navigateur qui refuse le stockage ne doit pas bloquer le bandeau.
     }
   }
 
-  const dismissMessage = (id) => {
-    const newDismissed = [...dismissedIds, id]
-    setDismissedIds(newDismissed)
-    sessionStorage.setItem('dismissed_messages', JSON.stringify(newDismissed))
-  }
-
-  const visibleMessages = messages.filter(msg => !dismissedIds.includes(msg.id))
-
-  if (visibleMessages.length === 0) return null
-
-  const getIcon = (type) => {
-    switch(type) {
-      case 'maintenance': return <Wrench size={18} />
-      case 'mise_a_jour': return <Zap size={18} />
-      case 'info': return <Info size={18} />
-      case 'alert': return <AlertTriangle size={18} />
-      default: return <Bell size={18} />
-    }
-  }
-
-  const getConfig = (priorite, type) => {
-    // Haute priorité : Rouge/Orange vif
-    if (priorite === 'haute') {
-      return {
-        bg: 'rgba(239, 68, 68, 0.08)',
-        border: 'rgba(239, 68, 68, 0.25)',
-        glow: 'rgba(239, 68, 68, 0.15)',
-        iconBg: 'rgba(239, 68, 68, 0.15)',
-        iconColor: '#EF4444',
-        textColor: '#FCA5A5',
-        titleColor: '#FECACA',
-        accentLine: '#EF4444',
-      }
-    }
-    
-    // Maintenance : Ambre
-    if (type === 'maintenance') {
-      return {
-        bg: 'rgba(245, 158, 11, 0.06)',
-        border: 'rgba(245, 158, 11, 0.2)',
-        glow: 'rgba(245, 158, 11, 0.1)',
-        iconBg: 'rgba(245, 158, 11, 0.12)',
-        iconColor: '#F59E0B',
-        textColor: '#FCD34D',
-        titleColor: '#FDE68A',
-        accentLine: '#F59E0B',
-      }
-    }
-    
-    // Mise à jour : Vert
-    if (type === 'mise_a_jour') {
-      return {
-        bg: 'rgba(16, 185, 129, 0.06)',
-        border: 'rgba(16, 185, 129, 0.2)',
-        glow: 'rgba(16, 185, 129, 0.1)',
-        iconBg: 'rgba(16, 185, 129, 0.12)',
-        iconColor: '#10B981',
-        textColor: '#6EE7B7',
-        titleColor: '#A7F3D0',
-        accentLine: '#10B981',
-      }
-    }
-    
-    // Default / Info : Bleu
-    return {
-      bg: 'rgba(99, 102, 241, 0.06)',
-      border: 'rgba(99, 102, 241, 0.2)',
-      glow: 'rgba(99, 102, 241, 0.1)',
-      iconBg: 'rgba(99, 102, 241, 0.12)',
-      iconColor: '#6366F1',
-      textColor: '#A5B4FC',
-      titleColor: '#C7D2FE',
-      accentLine: '#6366F1',
-    }
-  }
+  const visibles = messages.filter((message) => !dismissedIds.includes(message.id))
+  if (visibles.length === 0) return null
 
   return (
-    <>
-      <style>{`
-        @keyframes slideInDown {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes pulseGlow {
-          0%, 100% {
-            box-shadow: 0 0 20px var(--glow-color);
-          }
-          50% {
-            box-shadow: 0 0 30px var(--glow-color);
-          }
-        }
-        .system-message {
-          animation: slideInDown 0.4s ease forwards;
-        }
-        .system-message.priority-haute {
-          animation: slideInDown 0.4s ease forwards, pulseGlow 3s ease-in-out infinite;
-        }
-        .system-message-dismiss:hover {
-          background: rgba(255, 255, 255, 0.1) !important;
-          color: #FFFFFF !important;
-        }
-        .system-message-icon {
-          animation: none;
-        }
-        .system-message.priority-haute .system-message-icon {
-          animation: pulse 2s ease-in-out infinite;
-        }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-        }
-      `}</style>
-
-      <div style={styles.container}>
-        {visibleMessages.map((msg, index) => {
-          const config = getConfig(msg.priorite, msg.type)
-          
-          return (
-            <div 
-              key={msg.id}
-              className={`system-message ${msg.priorite === 'haute' ? 'priority-haute' : ''}`}
-              style={{
-                ...styles.message,
-                '--glow-color': config.glow,
-                background: config.bg,
-                border: `1px solid ${config.border}`,
-                animationDelay: `${index * 0.1}s`,
-              }}
-            >
-              {/* Accent line */}
-              <div style={{
-                ...styles.accentLine,
-                background: config.accentLine,
-              }}></div>
-
-              {/* Icon */}
-              <div 
-                className="system-message-icon"
-                style={{
-                  ...styles.iconWrap,
-                  background: config.iconBg,
-                  color: config.iconColor,
-                }}
-              >
-                {getIcon(msg.type)}
+    <div className="bandeau-systeme">
+      {visibles.map((message, index) => {
+        const Icone = ICONES[message.type] || Bell
+        return (
+          <article
+            key={message.id}
+            className="bandeau-message"
+            data-type={message.type || 'info'}
+            data-priorite={message.priorite || 'normale'}
+            style={{ animationDelay: `${index * 80}ms` }}
+          >
+            <span className="bandeau-trait" aria-hidden="true" />
+            <span className="bandeau-icone" aria-hidden="true"><Icone size={17} /></span>
+            <div className="bandeau-texte">
+              <div className="bandeau-titre-ligne">
+                <h3 className="bandeau-titre">{message.titre}</h3>
+                {message.priorite === 'haute' && (
+                  <span className="bandeau-urgence">
+                    <AlertTriangle size={11} aria-hidden="true" />
+                    Urgent
+                  </span>
+                )}
               </div>
-
-              {/* Content */}
-              <div style={styles.content}>
-                <div style={styles.header}>
-                  <strong style={{
-                    ...styles.titre,
-                    color: config.titleColor,
-                  }}>
-                    {msg.titre}
-                  </strong>
-                  {msg.priorite === 'haute' && (
-                    <span style={styles.urgentBadge}>
-                      <AlertTriangle size={10} />
-                      Urgent
-                    </span>
-                  )}
-                </div>
-                <p style={{
-                  ...styles.texte,
-                  color: config.textColor,
-                }}>
-                  {msg.message}
-                </p>
-              </div>
-
-              {/* Dismiss button */}
-              {msg.priorite !== 'haute' && (
-                <button
-                  className="system-message-dismiss"
-                  onClick={() => dismissMessage(msg.id)}
-                  style={styles.dismissBtn}
-                  title="Fermer"
-                >
-                  <X size={16} />
-                </button>
-              )}
+              <p className="bandeau-texte-corps">{message.message}</p>
             </div>
-          )
-        })}
-      </div>
-    </>
+            <button
+              type="button"
+              className="bandeau-fermer"
+              onClick={() => fermer(message.id)}
+              aria-label={`Fermer le message : ${message.titre}`}
+              title="Fermer"
+            >
+              <X size={15} aria-hidden="true" />
+            </button>
+          </article>
+        )
+      })}
+    </div>
   )
-}
-
-// ═══════════════════════════════════════════════════════════
-// 🎨 STYLES AFROFUTURISTES
-// ═══════════════════════════════════════════════════════════
-
-const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-    marginBottom: '20px',
-  },
-  message: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '14px',
-    padding: '16px 18px',
-    borderRadius: '16px',
-    position: 'relative',
-    overflow: 'hidden',
-    backdropFilter: 'blur(10px)',
-  },
-  accentLine: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: '3px',
-    borderRadius: '0 2px 2px 0',
-  },
-  iconWrap: {
-    width: '38px',
-    height: '38px',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  content: {
-    flex: 1,
-    minWidth: 0,
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    marginBottom: '4px',
-    flexWrap: 'wrap',
-  },
-  titre: {
-    display: 'block',
-    fontSize: '15px',
-    fontWeight: '700',
-    letterSpacing: '0.3px',
-  },
-  urgentBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-    background: 'rgba(239, 68, 68, 0.2)',
-    color: '#EF4444',
-    fontSize: '10px',
-    fontWeight: '700',
-    padding: '3px 8px',
-    borderRadius: '6px',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-  },
-  texte: {
-    fontSize: '13px',
-    margin: 0,
-    lineHeight: '1.6',
-    opacity: 0.9,
-  },
-  dismissBtn: {
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    borderRadius: '8px',
-    padding: '6px',
-    color: '#666',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    transition: 'all 0.2s ease',
-  },
 }

@@ -17,7 +17,9 @@ export default defineConfig({
       includeAssets: ['favicon.ico', 'pwa-192x192.png', 'pwa-512x512.png'],
       
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // `geojson` : le monde dessiné de la carte doit rester disponible
+        // hors ligne, sinon la carte retombe encore sur un écran vide.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,geojson}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // ✅ 4 Mo
         runtimeCaching: [
           {

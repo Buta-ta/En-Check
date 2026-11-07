@@ -13,7 +13,7 @@ Ajouter un interrupteur permettant à l’employeur d’envoyer automatiquement 
 Le contrat du vérificateur et son garde fiscal sont conservés. Seul son commentaire obsolète est corrigé. Le nouveau service de remise intercepte le refus en erreur métier lisible ; la page traite toutes les erreurs d’envoi.
 
 ## Fonctionnement livré
-- Interrupteur « Envoyer automatiquement après le calcul », visible en Préparation et Fiches calculées, désactivé par défaut.
+- Interrupteur « Envoyer auto les fiches de paie », visible en Préparation et Fiches calculées, désactivé par défaut.
 - Activation limitée à la session, à l’entreprise et à la période courantes. Réinitialisation à chaque changement d’entreprise/période ou rechargement. Pas de préférence globale persistante ni de tâche planifiée en arrière-plan.
 - En mode actif, les boutons deviennent « Calculer et envoyer ». Les explications indiquent que le calcul déclenchera la publication, et qu’un nouveau calcul peut mettre à jour les fiches déjà envoyées.
 - En mode inactif, calcul seul ; les actions d’envoi manuel restent disponibles.

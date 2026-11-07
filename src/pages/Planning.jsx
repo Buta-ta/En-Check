@@ -38,6 +38,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ClipboardCheck,
+  ClipboardCopy,
+  ClipboardPaste,
   Users,
   User,
   Briefcase,
@@ -56,9 +59,22 @@ import {
   FileText,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  decrireModele,
+  libelleModele,
+  paquetDepuisModele,
+  raccourciPressePapiers,
+} from "../lib/planningCopie";
 import MotifsAbsenceService, { resoudreMotif } from "../services/motifsAbsenceService";
 import { MOTIFS_PAR_DEFAUT, getMotifConfig } from "../constants/motifsAbsence";
 import ChoixPeriode from "../components/ChoixPeriode";
+import { getTeamsPourPlanning } from "../services/teamService";
+import {
+  cleEquipeFormee,
+  equipeParEmploye,
+  groupeDeLEmploye,
+  SANS_EQUIPE,
+} from "../lib/planningEquipes";
 import "./PlanningAfroTech.css";
 
 const OVERRIDES_STORAGE_KEY = "encheck_planning_day_overrides_v1";
@@ -268,6 +284,13 @@ function formatHoursCompact(minutes) {
   return `${h}h${String(m).padStart(2, "0")}`;
 }
 
+// Le filtre « Afficher » : toute l'équipe, une barre (ses membres exacts) ou une personne.
+const correspondAuFocus = (employe, focus, membresDuGroupe) => {
+  if (focus?.type === "team") return Boolean(membresDuGroupe?.has(employe?.id));
+  if (focus?.type === "employee") return employe?.id === focus.value;
+  return true;
+};
+
 export default function Planning() {
   const { darkMode, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -291,6 +314,24 @@ export default function Planning() {
 
   // Filtre de focus : totaux et grille liés au groupe ou au collaborateur sélectionné
   const [focusFilter, setFocusFilter] = useState({ type: "all", value: null });
+  // La barre de filtres et de légende se replie : le planning garde la
+  // place pour la grille. Le choix est retenu d'une visite à l'autre.
+  const [legendeOuverte, setLegendeOuverte] = useState(() => {
+    try {
+      return localStorage.getItem("planning_legende_ouverte") !== "false";
+    } catch {
+      return true;
+    }
+  });
+  const basculerLegende = () => {
+    const suite = !legendeOuverte;
+    setLegendeOuverte(suite);
+    try {
+      localStorage.setItem("planning_legende_ouverte", String(suite));
+    } catch {
+      // Un navigateur qui refuse le stockage ne bloque pas le repli.
+    }
+  };
 
   // Vues En-Check : "semaine" (défaut) | "mois" | "jour" | "demandes"
   const [planningView, setPlanningView] = useState("semaine");
@@ -349,6 +390,11 @@ export default function Planning() {
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [editingTeam, setEditingTeam] = useState(null);
   const [teamForm, setTeamForm] = useState({ name: "", memberIds: [] });
+
+  // ═══ ÉQUIPES FORMÉES DANS EMPLOYÉS → ÉQUIPES (tables teams / team_members) ═══
+  // Elles ne remplacent pas les équipes locales : elles passent devant.
+  const [equipesFormees, setEquipesFormees] = useState([]);
+  const equipesCleRef = useRef("");
 
   // ═══ DISPONIBILITÉS COLLABORATEURS (aujourd'hui / cette semaine / jour précis) ═══
   const [availability, setAvailability] = useState(() =>
@@ -521,6 +567,23 @@ export default function Planning() {
         employeesQuery = employeesQuery.eq("enterprise_id", selectedEntreprise);
       const { data: employeesData } = await employeesQuery;
       setEmployees(employeesData || []);
+
+      // Les équipes formées dans Employés → Équipes : ce sont elles que le
+      // filtre du planning propose en premier. Deux requêtes, quel que soit
+      // le nombre d'entreprises ; on ne les relit que si le périmètre change.
+      const idsEquipes = (
+        isSuperAdmin
+          ? selectedEntreprise !== "all"
+            ? [selectedEntreprise]
+            : (entreprisesData || []).map((e) => e.id)
+          : [enterpriseId]
+      ).filter(Boolean);
+      const cleEquipes = idsEquipes.slice().sort().join("|");
+      if (cleEquipes !== equipesCleRef.current) {
+        const { data: equipesData } = await getTeamsPourPlanning(idsEquipes);
+        setEquipesFormees(equipesData || []);
+        equipesCleRef.current = cleEquipes;
+      }
 
       const employeeIds = (employeesData || []).map((e) => e.id);
 
@@ -739,6 +802,27 @@ export default function Planning() {
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
 
+  // ═══ COPIER / COLLER UN MODÈLE ═══
+  // Le modèle copié reste en mémoire de la page : un clic sur « Copier »,
+  // ou Ctrl/⌘+C sur un modèle, puis « Coller » dans une case ou Ctrl/⌘+V.
+  const [modeleCopie, setModeleCopie] = useState(null);
+  const [caseCible, setCaseCible] = useState(null);
+  const modeleActifRef = useRef(null);
+
+  const copierModele = (tpl) => {
+    if (!tpl) return;
+    modeleActifRef.current = tpl;
+    setModeleCopie({ template: tpl, libelle: libelleModele(tpl) });
+    toast.success(
+      `« ${libelleModele(tpl)} » copié — collez-le dans une case (Ctrl+V ou « Coller »).`
+    );
+  };
+
+  const oublierModeleCopie = () => {
+    setModeleCopie(null);
+    setCaseCible(null);
+  };
+
   // ═══ GLISSER-DÉPOSER TACTILE (mobile) : appui long sur un modèle puis touche la case ═══
   const touchTimerRef = useRef(null);
 
@@ -765,7 +849,7 @@ export default function Planning() {
     if (!touchDragPayload) return false;
     const payload = touchDragPayload;
     setDraggedPayload(payload);
-    handleDropOnCell({ preventDefault: () => {}, altKey: false }, emp, dayItem);
+    handleDropOnCell({ preventDefault: () => {}, altKey: false }, emp, dayItem, payload);
     clearTouchDrag();
     return true;
   };
@@ -775,7 +859,7 @@ export default function Planning() {
     if (!touchDragPayload) return false;
     const payload = touchDragPayload;
     setDraggedPayload(payload);
-    handleDropOnCalendarDay({ preventDefault: () => {} }, dateStr);
+    handleDropOnCalendarDay({ preventDefault: () => {} }, dateStr, payload);
     clearTouchDrag();
     return true;
   };
@@ -971,14 +1055,12 @@ export default function Planning() {
   };
 
   // ═══ CRUD DES ÉQUIPES (création, renommage, affectation des membres) ═══
-  // Une équipe peut être héritée du champ "department" de l'employé ou définie
-  // manuellement depuis En-Check (les collaborateurs sans équipe vont dans "SANS ÉQUIPE").
-  const getEmployeeTeamName = (emp) => {
-    const override = teamAssignments[emp.id];
-    if (override) return override;
-    const dept = (emp?.department || "").trim().toUpperCase();
-    return dept || null;
-  };
+  // Trois sources, dans cet ordre : l'équipe formée dans Employés → Équipes,
+  // l'affectation faite ici même, puis le département de la fiche employé.
+  // Les collaborateurs sans aucune des trois vont dans "SANS ÉQUIPE".
+  const equipesParEmploye = useMemo(() => equipeParEmploye(equipesFormees), [equipesFormees]);
+
+
 
   const openNewTeamModal = () => {
     setEditingTeam(null);
@@ -986,12 +1068,20 @@ export default function Planning() {
     setShowTeamModal(true);
   };
 
-  const openEditTeamModal = (title) => {
+  const openEditTeamModal = (cleGroupe, titreGroupe) => {
+    // On repart de la barre elle-même : une équipe locale « RECETTE » ne doit
+    // pas embarquer les personnes d'un département homonyme.
     const members = filteredEmployees
-      .filter((emp) => (getEmployeeTeamName(emp) || "") === title)
+      .filter(
+        (emp) =>
+          groupeDeLEmploye(emp, {
+            equipeParEmploye: equipesParEmploye,
+            affectations: teamAssignments,
+          }).cle === cleGroupe
+      )
       .map((emp) => emp.id);
-    setEditingTeam({ name: title });
-    setTeamForm({ name: title, memberIds: members });
+    setEditingTeam({ name: titreGroupe });
+    setTeamForm({ name: titreGroupe, memberIds: members });
     setShowTeamModal(true);
   };
 
@@ -1065,10 +1155,10 @@ export default function Planning() {
   // ═══ DÉPÔT D'UN MODÈLE SUR UNE CASE DU CALENDRIER MENSUEL ═══
   // Si un collaborateur est ciblé par le focus, le modèle lui est réellement affecté
   // (comme dans la vue Semaine). Sinon il est déposé au niveau de la journée.
-  const handleDropOnCalendarDay = (e, dateStr) => {
+  const handleDropOnCalendarDay = (e, dateStr, payloadExplicite = null) => {
     e.preventDefault();
     setMonthDropDate(null);
-    const payload = draggedPayload || touchDragPayload;
+    const payload = payloadExplicite || draggedPayload || touchDragPayload;
     setDraggedPayload(null);
     setTouchDragPayload(null);
     if (!payload) return;
@@ -1208,7 +1298,7 @@ export default function Planning() {
   };
 
   const focusLabel = useMemo(() => {
-    if (focusFilter.type === "team") return focusFilter.value;
+    if (focusFilter.type === "team") return focusFilter.label || focusFilter.value;
     if (focusFilter.type === "employee") {
       const emp = filteredEmployees.find((e) => e.id === focusFilter.value);
       return emp ? `${emp.first_name} ${emp.last_name}` : "Collaborateur";
@@ -1494,10 +1584,10 @@ export default function Planning() {
     }
   };
 
-  const handleDropOnCell = async (e, targetEmp, targetDay) => {
+  const handleDropOnCell = async (e, targetEmp, targetDay, payloadExplicite = null) => {
     e.preventDefault();
     const duplicateMode = Boolean(e.altKey || e.ctrlKey || e.metaKey || isAltPressed);
-    const payload = draggedPayload;
+    const payload = payloadExplicite || draggedPayload;
     setDropTargetCell(null);
     setDraggedPayload(null);
 
@@ -1675,6 +1765,91 @@ export default function Planning() {
     }
   };
 
+  // Application du modèle copié sur une case (clic « Coller » ou Ctrl/⌘+V)
+  const collerModeleDansCellule = (emp, dayItem) => {
+    if (!modeleCopie) {
+      toast.error("Copiez d'abord un modèle du dock (Ctrl+C ou « Copier »).");
+      return false;
+    }
+    handleDropOnCell(
+      { preventDefault: () => {}, altKey: false },
+      emp,
+      dayItem,
+      paquetDepuisModele(modeleCopie.template)
+    );
+    return true;
+  };
+
+  const collerModeleSurJour = (dateStr) => {
+    if (!modeleCopie) {
+      toast.error("Copiez d'abord un modèle du dock (Ctrl+C ou « Copier »).");
+      return false;
+    }
+    handleDropOnCalendarDay(
+      { preventDefault: () => {} },
+      dateStr,
+      paquetDepuisModele(modeleCopie.template)
+    );
+    return true;
+  };
+
+  // Mémorise la dernière case survolée : c'est elle que Ctrl/⌘+V remplit.
+  const survolerCase = (vue, empId, dateStr, dayNum) => {
+    if (!modeleCopie) return;
+    setCaseCible({ vue, empId, dateStr, dayNum });
+  };
+
+  const collerDansCaseCible = () => {
+    if (!modeleCopie) return;
+    if (!caseCible) {
+      toast.error("Survolez une case du calendrier, puis appuyez sur Ctrl+V.");
+      return;
+    }
+    if (caseCible.vue === "mois") {
+      collerModeleSurJour(caseCible.dateStr);
+      return;
+    }
+    const emp = employees.find((item) => String(item.id) === String(caseCible.empId));
+    if (!emp) return;
+    const journalier = weekDays.find((d) => d.dateStr === caseCible.dateStr) || {
+      dateStr: caseCible.dateStr,
+      dayNum: caseCible.dayNum || dayNumFromDateStr(caseCible.dateStr),
+      labelHeader: caseCible.dateStr,
+    };
+    collerModeleDansCellule(emp, journalier);
+  };
+
+  // ═══ RACCOURCIS CTRL/⌘+C ET CTRL/⌘+V ═══
+  // Pas de tableau de dépendances : les gestionnaires de dépôt sont
+  // recréés à chaque rendu et doivent rester à jour.
+  useEffect(() => {
+    const surTouche = (evenement) => {
+      if (evenement.key === "Escape" && modeleCopie) {
+        oublierModeleCopie();
+        return;
+      }
+      const selection =
+        typeof window.getSelection === "function"
+          ? String(window.getSelection() || "")
+          : "";
+      const action = raccourciPressePapiers(evenement, selection);
+      if (action === "copier") {
+        const modele = modeleActifRef.current;
+        if (!modele) return;
+        evenement.preventDefault();
+        copierModele(modele);
+        return;
+      }
+      if (action === "coller") {
+        if (!modeleCopie) return;
+        evenement.preventDefault();
+        collerDansCaseCible();
+      }
+    };
+    window.addEventListener("keydown", surTouche);
+    return () => window.removeEventListener("keydown", surTouche);
+  });
+
   // Dépôt d'un modèle directement sur la ligne entière d'un employé (affecte toute sa semaine Lun-Ven)
   const handleDropOnEmployeeRow = async (e, targetEmp) => {
     e.preventDefault();
@@ -1834,64 +2009,100 @@ export default function Planning() {
   // ═══ GROUPEMENT DES EMPLOYÉS PAR ÉQUIPE EN-CHECK (TOUTES PLIABLES) ═══
   // Chaque équipe — y compris GARDE & LOGISTIQUE — possède sa propre barre pliable.
   const employeeGroups = useMemo(() => {
-    const groupsMap = new Map();
-    const NO_TEAM = "SANS ÉQUIPE";
+    // Une barre = une clé stable. Une équipe formée « Équipe de vente » et un
+    // département « ÉQUIPE DE VENTE » font deux barres : seuls les membres de
+    // la table team_members sont dans la première.
+    const annoncees = equipesFormees.map((equipe) => ({
+      cle: cleEquipeFormee(equipe),
+      titre: String(equipe?.name || "").trim(),
+      type: "equipe",
+    }));
 
-    filteredEmployees.forEach((emp) => {
-      const groupTitle = getEmployeeTeamName(emp) || NO_TEAM;
-      if (!groupsMap.has(groupTitle)) groupsMap.set(groupTitle, []);
-      groupsMap.get(groupTitle).push(emp);
-    });
+    const desEmployes = filteredEmployees.map((emp) => ({
+      groupe: groupeDeLEmploye(emp, {
+        equipeParEmploye: equipesParEmploye,
+        affectations: teamAssignments,
+      }),
+      employe: emp,
+    }));
 
-    // Les équipes déclarées dans En-Check apparaissent même si elles sont vides
-    teams.forEach((t) => {
-      const title = String(t).toUpperCase();
-      if (!groupsMap.has(title)) groupsMap.set(title, []);
-    });
+    const locales = teams.map((nom) => ({
+      cle: `locale:${String(nom || "").trim().toUpperCase()}`,
+      titre: String(nom || "").trim(),
+      type: "locale",
+    }));
+
+    const lignes = [
+      ...annoncees.map((groupe) => ({ groupe, employe: null })),
+      ...desEmployes,
+      ...locales.map((groupe) => ({ groupe, employe: null })),
+    ].filter((ligne) => ligne.groupe?.titre && ligne.groupe?.cle);
+
+    const groupes = lignes.reduce((liste, { groupe, employe }) => {
+      const rang = liste.findIndex((entree) => entree.key === groupe.cle);
+      if (rang === -1) {
+        return [
+          ...liste,
+          {
+            key: groupe.cle,
+            title: groupe.titre,
+            type: groupe.type,
+            employees: employe ? [employe] : [],
+          },
+        ];
+      }
+      if (!employe) return liste;
+      return liste.map((entree, index) =>
+        index === rang ? { ...entree, employees: [...entree.employees, employe] } : entree
+      );
+    }, []);
 
     // Ordre d'affichage : GARDE & LOGISTIQUE puis ÉQUIPE OFFICINE & VENTE puis les autres
     const priority = ["GARDE & LOGISTIQUE", "ÉQUIPE OFFICINE & VENTE"];
-    const entries = Array.from(groupsMap.entries());
-    entries.sort((a, b) => {
-      const ia = priority.indexOf(a[0]);
-      const ib = priority.indexOf(b[0]);
-      if (ia !== -1 && ib !== -1) return ia - ib;
-      if (ia !== -1) return -1;
-      if (ib !== -1) return 1;
-      if (a[0] === NO_TEAM) return 1;
-      if (b[0] === NO_TEAM) return -1;
-      return a[0].localeCompare(b[0], "fr");
-    });
+    const rangPrioritaire = (groupe) => {
+      const rang = priority.indexOf(groupe.title);
+      if (rang !== -1) return rang;
+      return groupe.title === SANS_EQUIPE ? priority.length + 1 : priority.length;
+    };
 
-    return entries.map(([title, emps]) => ({
-      title,
-      employees: emps,
+    const tries = [...groupes].sort((a, b) => rangPrioritaire(a) - rangPrioritaire(b));
+
+    // Deux barres du même nom (équipe officielle + département hérité) :
+    // on les signale, sinon on ne sait plus laquelle on regarde.
+    const titres = tries.map((groupe) => groupe.title.toUpperCase());
+
+    return tries.map((groupe) => ({
+      ...groupe,
       isBannerOnly: false,
+      estFormee: groupe.type === "equipe",
+      collision:
+        titres.filter((titre) => titre === groupe.title.toUpperCase()).length > 1,
     }));
-  }, [filteredEmployees, teams, teamAssignments]);
+  }, [filteredEmployees, teams, teamAssignments, equipesFormees, equipesParEmploye]);
 
   // ═══ COLLABORATEURS VISIBLES (groupes dépliés) ET FOCUS (équipe / collaborateur) ═══
   const visibleEmployees = useMemo(
     () =>
       employeeGroups
-        .filter((g) => !collapsedGroups[g.title])
+        .filter((g) => !collapsedGroups[g.key])
         .flatMap((g) => g.employees),
     [employeeGroups, collapsedGroups]
   );
 
-  const matchesFocus = (emp) => {
-    if (focusFilter.type === "team") {
-      return (getEmployeeTeamName(emp) || "SANS ÉQUIPE") === focusFilter.value;
-    }
-    if (focusFilter.type === "employee") {
-      return emp.id === focusFilter.value;
-    }
-    return true;
-  };
+  // Le filtre suit exactement la barre choisie : ses membres, rien de plus.
+  // Une équipe formée ne récupère donc jamais les personnes d'un département
+  // qui porte le même nom.
+  const membresDuGroupeFocalise = useMemo(() => {
+    if (focusFilter.type !== "team") return null;
+    const groupe = employeeGroups.find((g) => g.key === focusFilter.value);
+    return new Set((groupe?.employees || []).map((membre) => membre.id));
+  }, [employeeGroups, focusFilter]);
+
+  const matchesFocus = (emp) => correspondAuFocus(emp, focusFilter, membresDuGroupeFocalise);
 
   const scopedEmployees = useMemo(
     () => visibleEmployees.filter(matchesFocus),
-    [visibleEmployees, focusFilter, teamAssignments]
+    [visibleEmployees, focusFilter, teamAssignments, equipesParEmploye]
   );
 
   // Jours de la période affichée (Semaine = 7 jours, Mois = tout le mois, Jour = 1 jour)
@@ -2882,9 +3093,17 @@ export default function Planning() {
                   key={tpl.id}
                   className={`sk-brick ${
                     touchDragPayload?.template?.id === tpl.id ? "is-armed" : ""
+                  } ${
+                    modeleCopie?.template?.id === tpl.id ? "is-copie" : ""
                   }`}
                   style={{ "--brick-color": tpl.color || "#B56235" }}
                   draggable
+                  onMouseEnter={() => {
+                    modeleActifRef.current = tpl;
+                  }}
+                  onFocus={() => {
+                    modeleActifRef.current = tpl;
+                  }}
                   onDragStart={(e) => handleDragStartTemplate(e, tpl)}
                   onDragEnd={() => {
                     setDraggedPayload(null);
@@ -2921,6 +3140,24 @@ export default function Planning() {
                   </div>
 
                   <div className="sk-brick-actions">
+                    <button
+                      type="button"
+                      className={`sk-brick-copy${
+                        modeleCopie?.template?.id === tpl.id ? " is-copie" : ""
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copierModele(tpl);
+                      }}
+                      title="Copier ce modèle (Ctrl+C) puis le coller dans une case du calendrier (Ctrl+V)"
+                      aria-label={`Copier le modèle ${tpl.label}`}
+                    >
+                      {modeleCopie?.template?.id === tpl.id ? (
+                        <ClipboardCheck size={13} />
+                      ) : (
+                        <ClipboardCopy size={13} />
+                      )}
+                    </button>
                     {tpl.isCustom && (
                       <>
                         <button
@@ -2968,8 +3205,66 @@ export default function Planning() {
           )}
         </section>
 
-        {/* BARRE DE FOCUS + LÉGENDE DES COULEURS */}
-        <section className="sk-focus-bar" aria-label="Filtre d'affichage et légende">
+        {/* MODÈLE COPIÉ — rappel permanent tant qu'il attend d'être collé */}
+        {modeleCopie && (
+          <div className="sk-copie-bar" role="status" aria-live="polite">
+            <ClipboardCheck size={16} className="sk-copie-icone" aria-hidden="true" />
+            <span className="sk-copie-texte">
+              <strong>{libelleModele(modeleCopie.template)}</strong>
+              <span>
+                {decrireModele(modeleCopie.template)} — survolez une case, puis{" "}
+                <strong>Coller</strong> ou <kbd>Ctrl</kbd>+<kbd>V</kbd>
+              </span>
+            </span>
+            <button
+              type="button"
+              className="sk-copie-coller"
+              onClick={collerDansCaseCible}
+              title="Coller le modèle dans la case survolée"
+            >
+              <ClipboardPaste size={13} />
+              Coller dans la case
+            </button>
+            <button
+              type="button"
+              className="sk-copie-annuler"
+              onClick={oublierModeleCopie}
+              title="Annuler la copie (Échap)"
+              aria-label="Annuler la copie du modèle"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* BARRE DE FOCUS + LÉGENDE DES COULEURS — pliable */}
+        <section
+          className={`sk-focus-bar${legendeOuverte ? " is-ouverte" : " is-repliee"}`}
+          aria-label="Filtre d'affichage et légende"
+        >
+          <div className="sk-focus-tete">
+            <button
+              type="button"
+              className="sk-focus-toggle"
+              onClick={basculerLegende}
+              aria-expanded={legendeOuverte}
+              aria-controls="sk-focus-corps"
+            >
+              <ChevronDown size={15} className="sk-focus-chevron" aria-hidden="true" />
+              <span className="sk-focus-toggle-titre">
+                {legendeOuverte ? "Replier les filtres et la légende" : "Filtres, équipes et légende"}
+              </span>
+            </button>
+            {!legendeOuverte && (
+              <span className="sk-focus-resume">
+                {scopedEmployees.length} collaborateur(s) · {focusLabel}
+                {focusFilter.type !== "all" ? " · filtre actif" : ""}
+              </span>
+            )}
+          </div>
+
+          {legendeOuverte && (
+            <div className="sk-focus-corps" id="sk-focus-corps">
           <div className="sk-focus-left">
             <span className="sk-focus-label">
               <Users size={13} /> Afficher
@@ -2986,21 +3281,41 @@ export default function Planning() {
               onChange={(e) => {
                 const v = e.target.value;
                 if (v === "all") setFocusFilter({ type: "all", value: null });
-                else if (v.startsWith("team:"))
-                  setFocusFilter({ type: "team", value: v.slice(5) });
-                else setFocusFilter({ type: "employee", value: v.slice(4) });
+                else if (v.startsWith("team:")) {
+                  const cle = v.slice(5);
+                  const groupe = employeeGroups.find((g) => g.key === cle);
+                  setFocusFilter({ type: "team", value: cle, label: groupe?.title || cle });
+                } else setFocusFilter({ type: "employee", value: v.slice(4) });
               }}
               aria-label="Filtrer l'affichage par équipe ou par collaborateur"
             >
               <option value="all">
                 Toute l&apos;équipe ({visibleEmployees.length})
               </option>
-              <optgroup label="Équipes">
-                {employeeGroups.map((g) => (
-                  <option key={g.title} value={`team:${g.title}`}>
-                    {g.title} ({g.employees.length})
-                  </option>
-                ))}
+              {employeeGroups.some((g) => g.estFormee) && (
+                <optgroup label="Équipes formées · page Équipes">
+                  {employeeGroups
+                    .filter((g) => g.estFormee)
+                    .map((g) => (
+                      <option key={g.key} value={`team:${g.key}`}>
+                        {g.title} ({g.employees.length})
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+              <optgroup label="Départements et équipes du planning">
+                {employeeGroups
+                  .filter((g) => !g.estFormee)
+                  .map((g) => (
+                    <option key={g.key} value={`team:${g.key}`}>
+                      {g.title} ({g.employees.length})
+                      {g.collision
+                        ? g.type === "locale"
+                          ? " · équipe du planning"
+                          : " · département"
+                        : ""}
+                    </option>
+                  ))}
               </optgroup>
               <optgroup label="Collaborateurs">
                 {filteredEmployees.map((emp) => (
@@ -3075,6 +3390,8 @@ export default function Planning() {
               </span>
             </span>
           </div>
+            </div>
+          )}
         </section>
 
         {/* 2. VUE SEMAINE (MATRICE EN-CHECK DRAG & DROP) */}
@@ -3131,19 +3448,19 @@ export default function Planning() {
                       employeeGroups
                         .filter((g) => !g.isBannerOnly)
                         .map((group) => {
-                          const isCollapsed = Boolean(collapsedGroups[group.title]);
+                          const isCollapsed = Boolean(collapsedGroups[group.key]);
                           const groupEmployees = group.employees.filter(matchesFocus);
                           if (groupEmployees.length === 0 && focusFilter.type !== "all") {
                             return null;
                           }
                           return [
                             <tr
-                              key={`grp-${group.title}`}
+                              key={`grp-${group.key}`}
                               className="sk-group-row"
                               onClick={() =>
                                 setCollapsedGroups((prev) => ({
                                   ...prev,
-                                  [group.title]: !prev[group.title],
+                                  [group.key]: !prev[group.key],
                                 }))
                               }
                             >
@@ -3162,27 +3479,59 @@ export default function Planning() {
                                     <span className="sk-group-count-badge">
                                       {group.employees.length} pers.
                                     </span>
+                                    {group.estFormee ? (
+                                      <span
+                                        className="sk-group-badge"
+                                        title="Cette équipe se gère dans Employés → Équipes"
+                                      >
+                                        Équipe formée
+                                      </span>
+                                    ) : group.collision ? (
+                                      <span
+                                        className="sk-group-badge is-secondaire"
+                                        title={
+                                          group.type === "locale"
+                                            ? "Équipe créée depuis le planning, pas depuis la page Équipes"
+                                            : "Département de la fiche employé — ce n'est pas une équipe formée"
+                                        }
+                                      >
+                                        {group.type === "locale" ? "Équipe du planning" : "Département"}
+                                      </span>
+                                    ) : null}
                                   </span>
                                   <span
                                     className="sk-group-row-actions"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <button
-                                      type="button"
-                                      className="sk-group-row-btn"
-                                      onClick={() => openEditTeamModal(group.title)}
-                                      title={`Renommer / gérer les membres de ${group.title}`}
-                                    >
-                                      <Edit size={12} /> Gérer
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="sk-group-row-btn is-danger"
-                                      onClick={() => handleDeleteTeam(group.title)}
-                                      title={`Supprimer l'équipe ${group.title}`}
-                                    >
-                                      <Trash2 size={12} /> Supprimer
-                                    </button>
+                                    {group.estFormee ? (
+                                      <button
+                                        type="button"
+                                        className="sk-group-row-btn"
+                                        onClick={() => navigate("/employes?vue=equipes")}
+                                        title={`Ouvrir ${group.title} dans la page Équipes`}
+                                      >
+                                        <Users size={12} /> Voir dans Équipes
+                                      </button>
+                                    ) : (
+                                      <>
+                                        <button
+                                          type="button"
+                                          className="sk-group-row-btn"
+                                          onClick={() => openEditTeamModal(group.key, group.title)}
+                                          title={`Renommer / gérer les membres de ${group.title}`}
+                                        >
+                                          <Edit size={12} /> Gérer
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="sk-group-row-btn is-danger"
+                                          onClick={() => handleDeleteTeam(group.title)}
+                                          title={`Supprimer l'équipe ${group.title}`}
+                                        >
+                                          <Trash2 size={12} /> Supprimer
+                                        </button>
+                                      </>
+                                    )}
                                   </span>
                                 </div>
                               </td>
@@ -3364,10 +3713,22 @@ export default function Planning() {
                                           key={dayItem.dateStr}
                                           className={`sk-td-cell ${
                                             isDropOver ? "is-drop-over" : ""
-                                          } ${touchDragPayload ? "is-touch-armed" : ""}`}
+                                          } ${touchDragPayload ? "is-touch-armed" : ""} ${
+                                            modeleCopie ? "is-collable" : ""
+                                          } ${
+                                            caseCible?.vue === "semaine" &&
+                                            String(caseCible.empId) === String(emp.id) &&
+                                            caseCible.dateStr === dayItem.dateStr
+                                              ? "is-cible-collage"
+                                              : ""
+                                          }`}
                                           onDragOver={(e) => handleDragOverCell(e, emp, dayItem)}
                                           onDragLeave={() => setDropTargetCell(null)}
                                           onDrop={(e) => handleDropOnCell(e, emp, dayItem)}
+                                          onMouseEnter={() =>
+                                            survolerCase("semaine", emp.id, dayItem.dateStr, dayItem.dayNum)
+                                          }
+                                          onMouseLeave={() => setCaseCible(null)}
                                           onClickCapture={(e) => {
                                             if (touchDragPayload) {
                                               e.stopPropagation();
@@ -3377,6 +3738,20 @@ export default function Planning() {
                                           }}
                                         >
                                           <PlanningPayslipBadge entries={payslipEntries([emp], dayItem.dateStr)} />
+                                          {modeleCopie && (
+                                            <button
+                                              type="button"
+                                              className="sk-case-coller"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                collerModeleDansCellule(emp, dayItem);
+                                              }}
+                                              title={`Coller « ${libelleModele(modeleCopie.template)} » sur ${dayItem.dateStr}`}
+                                            >
+                                              <ClipboardPaste size={12} />
+                                              Coller
+                                            </button>
+                                          )}
                                           {/* Infobulle flottante En-Check lors du survol en Drag & Drop */}
                                           {isDropOver && (
                                             <div className="sk-drag-tooltip">
@@ -3793,6 +4168,12 @@ export default function Planning() {
                       key={emp.id}
                       className={`sk-day-row ${isDropOver ? "is-drop-over" : ""} ${
                         touchDragPayload ? "is-touch-armed" : ""
+                      } ${modeleCopie ? "is-collable" : ""} ${
+                        caseCible?.vue === "jour" &&
+                        String(caseCible.empId) === String(emp.id) &&
+                        caseCible.dateStr === dayItem.dateStr
+                          ? "is-cible-collage"
+                          : ""
                       }`}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -3800,6 +4181,8 @@ export default function Planning() {
                       }}
                       onDragLeave={() => setDayDropEmpId(null)}
                       onDrop={(e) => handleDropOnCell(e, emp, dayItem)}
+                      onMouseEnter={() => survolerCase("jour", emp.id, dayItem.dateStr, dayItem.dayNum)}
+                      onMouseLeave={() => setCaseCible(null)}
                       onClickCapture={(e) => {
                         if (touchDragPayload) {
                           e.stopPropagation();
@@ -3875,6 +4258,20 @@ export default function Planning() {
                                 {isDropOver
                                   ? "Déposer ici"
                                   : "+ Ajouter (ou déposer un modèle)"}
+                              </button>
+                            )}
+                            {modeleCopie && (
+                              <button
+                                type="button"
+                                className="sk-case-coller is-jour"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  collerModeleDansCellule(emp, dayItem);
+                                }}
+                                title={`Coller « ${libelleModele(modeleCopie.template)} »`}
+                              >
+                                <ClipboardPaste size={12} />
+                                Coller « {libelleModele(modeleCopie.template)} »
                               </button>
                             )}
                           </div>
@@ -4053,6 +4450,10 @@ export default function Planning() {
                       isToday ? "is-today" : ""
                     } ${isSelected ? "is-selected" : ""} ${
                       touchDragPayload ? "is-touch-armed" : ""
+                    } ${modeleCopie ? "is-collable" : ""} ${
+                      caseCible?.vue === "mois" && caseCible.dateStr === cell.date
+                        ? "is-cible-collage"
+                        : ""
                     }`}
                     style={
                       cell.isHoliday
@@ -4064,6 +4465,8 @@ export default function Planning() {
                       setSelectedCalendarDay(cell);
                       setCalendarDate(new Date(cell.date + "T12:00:00"));
                     }}
+                    onMouseEnter={() => survolerCase("mois", null, cell.date, cellDayNum)}
+                    onMouseLeave={() => setCaseCible(null)}
                     onDoubleClick={() => setPlanningView("jour")}
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -4088,6 +4491,21 @@ export default function Planning() {
                     </div>
 
                     <PlanningPayslipBadge entries={payslipEntries(scopedEmployees, cell.date)} />
+
+                    {modeleCopie && (
+                      <button
+                        type="button"
+                        className="sk-case-coller is-mois"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          collerModeleSurJour(cell.date);
+                        }}
+                        title={`Coller « ${libelleModele(modeleCopie.template)} » sur cette journée`}
+                      >
+                        <ClipboardPaste size={12} />
+                        Coller
+                      </button>
+                    )}
 
                     {cell.isHoliday ? (
                       <div className="sk-cal-holiday">{cell.holiday?.name}</div>
@@ -5343,7 +5761,8 @@ export default function Planning() {
                   {editingTeam ? `Équipe ${editingTeam.name}` : "Nouvelle équipe"}
                 </h2>
                 <span className="sk-modal-sub">
-                  Nommez votre équipe et affectez ses membres
+                  Équipe locale du planning — les équipes officielles se créent dans
+                  Employés → Équipes
                 </span>
               </div>
               <button
@@ -5407,6 +5826,17 @@ export default function Planning() {
             </div>
 
             <div className="sk-modal-foot">
+              <button
+                type="button"
+                className="sk-btn-secondary"
+                onClick={() => {
+                  setShowTeamModal(false);
+                  navigate("/employes?vue=equipes");
+                }}
+                title="Créer et organiser les équipes officielles"
+              >
+                <Users size={14} /> Page Équipes
+              </button>
               <button
                 type="button"
                 className="sk-btn-secondary"

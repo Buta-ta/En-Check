@@ -1,5 +1,4 @@
 import PageCulturalBand from '../components/PageCulturalBand'
-import PlanningPayslipBadge from '../components/PlanningPayslipBadge'
 import PayslipIndicatorStatus from '../components/PayslipIndicatorStatus'
 import useEmployeePayslipIndicators from '../hooks/useEmployeePayslipIndicators'
 // ═══════════════════════════════════════════════════════════
@@ -15,25 +14,48 @@ import {
   Footprints, Users, Plus, ArrowLeft, Search, Edit, Trash2, X, Save,
   Eye, EyeOff, Camera, Upload, QrCode, Clock, Share2, AlertTriangle,
   BarChart2, ChevronDown, ChevronUp, Zap, Activity, ArrowRight, UserPlus,
-  Briefcase, Hash, Mail, Phone, Building2, Shield, Grid3X3, LayoutList,
+  Briefcase, Hash, Mail, Phone, Building2, Shield,
   Key, Lock, UserCheck, UserX, Calendar, Heart, Globe, CreditCard,
-  FileText, Award, User, MapPin, Flag, Baby, Layers, Radio
+  FileText, Award, User, MapPin, Flag, Baby, Layers, Radio, ClipboardList, Network
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BadgeEmploye from '../components/BadgeEmploye'
+import ModaleAccesPortail from '../components/employes/ModaleAccesPortail'
+import ModaleHoraires from '../components/employes/ModaleHoraires'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import EmployesLoadingScreen from '../components/EmployesLoadingScreen'
 import FicheEmployeModal from '../components/FicheEmployeModal'
-import {
-  EmployesAnalyticsCharts,
-  EmployesCulturalHero,
-  EmployesExecutiveKpis,
-  EmployesLiveStatusBanner,
-  EmployesPortraitCard,
-} from '../components/EmployesAfroTechSections'
+import { EmployesCulturalHero } from '../components/EmployesAfroTechSections'
+import EntreeEmploye from '../components/equipes/EntreeEmploye'
+import { Folio, Colophon } from '../components/zoulou/RegistreEntete'
+import { RosacePerlesSvg } from '../components/zoulou/PerlesZoulouSvg'
 import { useTheme } from '../contexts/ThemeContext'
+import RaccourcisPages from '../components/RaccourcisPages'
+import EquipesVue from '../components/equipes/EquipesVue'
+import TachesVue from '../components/taches/TachesVue'
+import '../components/zoulou/zoulou.css'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
 import { formaterHeureLocale, jourLocal } from '../utils/timezoneUtils'
+
+// ── les filtres de l'annuaire, en perles ───────────────────
+// Chacun répond à une question qu'on se pose vraiment devant la
+// liste : qui travaille maintenant, qui n'a pas encore son portail,
+// qui est en CDI… Aucun filtre n'est décoratif.
+const FILTRES_ANNUAIRE = [
+  { key: 'all', label: 'Tout le monde' },
+  { key: 'live_on_duty', label: 'En poste', ton: 'teal' },
+  { key: 'portal_active', label: 'Portail ouvert', ton: 'sauge' },
+  { key: 'portal_migrate', label: 'À migrer', ton: 'corail' },
+  { key: 'contract_CDI', label: 'CDI' },
+  { key: 'contract_CDD', label: 'CDD' },
+  { key: 'contract_other', label: 'Autres contrats' },
+  { key: 'sched_free', label: 'Sans horaire' },
+  { key: 'no_machine_pin', label: 'Sans pointeuse' },
+]
+
+// Une part réelle, ou un tiret quand il n'y a rien à diviser.
+const pourcent = (morceau, total) =>
+  (total > 0 ? `${Math.round((morceau / total) * 100)} %` : '—')
 
 // ═══════════════════════════════════════════════════════════
 // COMPOSANT SECTION REPLIABLE
@@ -109,7 +131,6 @@ export default function Employes() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [selectedEnterpriseFilter, setSelectedEnterpriseFilter] = useState('all')
-  const [viewMode, setViewMode] = useState('grid')
   const { darkMode, toggleTheme } = useTheme()
 
   const [weeklyStats, setWeeklyStats] = useState({})
@@ -127,18 +148,17 @@ export default function Employes() {
   const [showPin, setShowPin] = useState(false)
   const [uploading, setUploading] = useState(false)
 
+  const [moduleTaches, setModuleTaches] = useState(false)
   const [modulePlanning, setModulePlanning] = useState(false)
   const [moduleQRCode, setModuleQRCode] = useState(false)
 
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [selectedEmployeeForPassword, setSelectedEmployeeForPassword] = useState(null)
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [savingPassword, setSavingPassword] = useState(false)
+  // l'employé dont on prépare l'envoi des horaires
+  const [horairesEmploye, setHorairesEmploye] = useState(null)
 
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const fileInputRef = useRef(null)
 
   const joursSemaine = [
@@ -251,8 +271,6 @@ export default function Employes() {
   //                     information, pas un manque : c'est celui-là qu'il
   //                     faut aider.
   //   • une date      → il utilise son accès.
-  const aDejaConnecte = (employe) => !!employe?.last_login_at
-
   const formatDerniereConnexion = (employe) => {
     if (!aUnCompteEmploye(employe)) return null   // pas de compte : rien à dire
     if (!employe?.last_login_at) return 'Jamais connecté'
@@ -272,17 +290,14 @@ export default function Employes() {
 
   const handleOpenPasswordModal = (employee) => {
     setSelectedEmployeeForPassword(employee)
-    setNewPassword('')
-    setConfirmPassword('')
-    setShowNewPassword(false)
     setShowPasswordModal(true)
   }
 
-  const handleSavePassword = async () => {
-    if (!newPassword || newPassword.length < 6) { toast.error('Le mot de passe doit contenir au moins 6 caractères'); return }
-    if (newPassword !== confirmPassword) { toast.error('Les mots de passe ne correspondent pas'); return }
-    const employe = selectedEmployeeForPassword
-    setSavingPassword(true)
+  const enregistrerMotDePasse = async (employe, motDePasse) => {
+    if (!motDePasse || motDePasse.length < 6) {
+      return { ok: false, message: 'Le mot de passe doit contenir au moins 6 caractères.' }
+    }
+    if (!employe) return { ok: false, message: 'Aucun employé sélectionné.' }
     try {
       // ═══════════════════════════════════════════════════════════
       // 06.B.4 — LE MOT DE PASSE EST VÉRIFIÉ PAR SUPABASE, PAS ICI
@@ -298,7 +313,7 @@ export default function Employes() {
       if (employe.user_id) {
         const { data, error } = await supabase.rpc('set_employee_password', {
           p_employee_id: employe.id,
-          p_password: newPassword,
+          p_password: motDePasse,
         })
         if (error) throw error
         if (data && data.ok === false) throw new Error(data.message || 'Refus de la base')
@@ -311,7 +326,7 @@ export default function Employes() {
         const { data, error } = await supabase.rpc('create_employee_auth_user', {
           p_employee_id: employe.id,
           p_email: null,
-          p_password: newPassword,
+          p_password: motDePasse,
         })
         if (error) throw error
         if (data && data.ok === false) throw new Error(data.message || 'Refus de la base')
@@ -329,8 +344,11 @@ export default function Employes() {
 
       setShowPasswordModal(false)
       loadData(admin)
-    } catch (err) { console.error('Erreur accès portail:', err); toast.error(err?.message || 'Erreur lors de la sauvegarde', { duration: 9000 }) }
-    setSavingPassword(false)
+      return { ok: true }
+    } catch (err) {
+      console.error('Erreur accès portail:', err)
+      return { ok: false, message: err?.message || 'La base a refusé l’enregistrement. Réessayez.' }
+    }
   }
 
   const handleTogglePortalAccess = async (employee, enabled) => {
@@ -342,7 +360,12 @@ export default function Employes() {
       if (error) throw error
       toast.success(enabled ? 'Accès portail activé' : 'Accès portail désactivé')
       loadData(admin)
-    } catch (err) { console.error('Erreur:', err); toast.error('Erreur lors de la modification') }
+      return { ok: true }
+    } catch (err) {
+      console.error('Erreur:', err)
+      toast.error('L’accès portail n’a pas pu être modifié')
+      return { ok: false }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -396,12 +419,14 @@ export default function Employes() {
         setEntreprises(entreprisesData || [])
         modulePlanningActif = true
         moduleQRCodeActif = true
+        setModuleTaches(true)
       } else if (targetEnterpriseId) {
         const { data: entrepriseData } = await supabase.from('enterprises').select('*').eq('id', targetEnterpriseId).single()
         setEntreprises(entrepriseData ? [entrepriseData] : [])
         if (entrepriseData) {
           modulePlanningActif = entrepriseData.module_planning || false
           moduleQRCodeActif = entrepriseData.module_qr_scanner || false
+          setModuleTaches(Boolean(entrepriseData.module_taches))
         }
       }
 
@@ -545,13 +570,6 @@ export default function Employes() {
     } catch (err) {
       console.error('Erreur statut live employés:', err)
     }
-  }
-
-  const getHoursColor = (hours) => {
-    if (hours >= 35) return '#10B981'
-    if (hours >= 20) return '#F59E0B'
-    if (hours > 0) return '#EF4444'
-    return '#555'
   }
 
   const hasherPin = async (pin) => {
@@ -877,18 +895,10 @@ export default function Employes() {
     return employee.enterprises?.module_planning || false
   }
 
+  // Le clic ouvre une fenêtre : le message est montré avant d'être
+  // envoyé, et le navigateur ne peut plus « ne rien faire » en silence.
   const handleShareSchedule = (employee) => {
-    const scheduleData = employee.employee_schedules?.[0]
-    let horaires = 'Non défini'
-    if (scheduleData) {
-      if (scheduleData.use_custom_hours) {
-        horaires = `${scheduleData.custom_start_time?.slice(0, 5) || '--:--'} - ${scheduleData.custom_end_time?.slice(0, 5) || '--:--'}`
-      } else if (scheduleData.work_schedules) {
-        horaires = `${scheduleData.work_schedules.name} (${scheduleData.work_schedules.start_time?.slice(0, 5) || '--:--'} - ${scheduleData.work_schedules.end_time?.slice(0, 5) || '--:--'})`
-      }
-    }
-    const message = `📋 *Horaires de travail*\n\n👤 *${employee.first_name} ${employee.last_name}*\n🆔 Matricule: ${employee.matricule}\n⏰ Horaires: ${horaires}\n\n_Envoyé via En-Check_`
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank')
+    setHorairesEmploye(employee)
   }
 
   const handleEnterpriseChange = async (enterpriseId) => {
@@ -903,11 +913,6 @@ export default function Employes() {
   const getContractLabel = (type) => {
     const labels = { CDI: 'CDI', CDD: 'CDD', Stage: 'Stage', Interim: 'Intérim', Apprentissage: 'Apprentissage', Freelance: 'Freelance' }
     return labels[type] || type || ''
-  }
-
-  const getContractColor = (type) => {
-    const colors = { CDI: '#10B981', CDD: '#F59E0B', Stage: '#6366F1', Interim: '#EC4899', Apprentissage: '#14B8A6', Freelance: '#F97316' }
-    return colors[type] || '#888'
   }
 
   const getClassificationLabel = (cls) => {
@@ -990,8 +995,54 @@ export default function Employes() {
 
   const departments = [...new Set(employes.map(e => e.department).filter(Boolean))]
 
+  // ═══════════════════════════════════════════════════════════
+  // LES CHIFFRES DU REGISTRE — annuaire
+  // Tout est compté sur le personnel chargé : jamais une estimation.
+  // ═══════════════════════════════════════════════════════════
+  const suiviPresence = Object.keys(liveStatusByEmployee || {}).length > 0
+  const liveCounts = employes.reduce((compte, employe) => {
+    const etat = liveStatusByEmployee?.[employe.id]?.state
+    if (etat === 'en_poste') compte.enPoste += 1
+    else if (etat === 'en_pause') compte.enPause += 1
+    else if (etat === 'termine') compte.termine += 1
+    else if (etat === 'en_conge') compte.enConge += 1
+    else compte.nonPointe += 1
+    return compte
+  }, { enPoste: 0, enPause: 0, termine: 0, enConge: 0, nonPointe: 0 })
+  const enrollmentCounts = employes.reduce((compte, employe) => {
+    if (aUnCompteEmploye(employe) && employe.employee_portal_enabled) compte.portal += 1
+    if (estAncienSysteme(employe)) compte.toMigrate += 1
+    return compte
+  }, { portal: 0, toMigrate: 0 })
+
   if (loading || !minLoadingDone) {
     return <EmployesLoadingScreen darkMode={darkMode} onSkip={() => setMinLoadingDone(true)} />
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // LA PAGE A TROIS VUES : ANNUAIRE · ÉQUIPES · TÂCHES
+  //
+  // L'annuaire reste la vue d'entrée. Les deux autres vues
+  // remplacent les anciennes pages /equipes et /taches, qui
+  // renvoient maintenant ici (App.jsx). L'adresse porte la vue
+  // (`?vue=equipes`), donc un lien reste partageable et le
+  // bouton « retour » du navigateur fonctionne.
+  //
+  // Si l'option « Équipes et tâches » est éteinte sur la fiche
+  // de l'entreprise, ces deux vues ne sont pas proposées : on
+  // ne montre pas une porte qui ne mène nulle part.
+  // ═══════════════════════════════════════════════════════════
+  const vueDemandee = searchParams.get('vue')
+  const vueAutorisee = moduleTaches || admin?.role === 'super_admin'
+  const vueActive = vueAutorisee && (vueDemandee === 'equipes' || vueDemandee === 'taches')
+    ? vueDemandee
+    : 'annuaire'
+  const entrepriseDesVues = selectedEnterpriseFilter !== 'all'
+    ? selectedEnterpriseFilter
+    : (admin?.selectedEnterprise?.id || admin?.enterprise_id || null)
+
+  const changerVue = (cle) => {
+    setSearchParams(cle === 'annuaire' ? {} : { vue: cle }, { replace: true })
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1006,16 +1057,6 @@ export default function Employes() {
         @keyframes slideUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
         @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
-        @keyframes progressFill { from { width: 0%; } to { width: var(--target-width); } }
-        .afro-emp-card { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important; }
-        .afro-emp-card:hover { transform: translateY(-4px) !important; box-shadow: 0 16px 50px rgba(0,0,0,0.4) !important; border-color: rgba(245, 158, 11, 0.25) !important; }
-        .afro-grid-card { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important; }
-        .afro-grid-card:hover { transform: translateY(-6px) scale(1.02) !important; box-shadow: 0 20px 60px rgba(0,0,0,0.5) !important; border-color: rgba(245, 158, 11, 0.3) !important; }
-        .afro-action-icon { transition: all 0.2s ease !important; }
-        .afro-action-icon:hover { transform: scale(1.15) !important; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3) !important; }
-        .afro-add-btn:hover { transform: translateY(-2px) !important; box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4) !important; }
-        .afro-search:focus-within { border-color: rgba(245, 158, 11, 0.5) !important; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1) !important; }
-        .progress-bar-fill { animation: progressFill 1s ease-out forwards; }
         .afro-modal-overlay { animation: fadeIn 0.3s ease; }
         .afro-modal-content { animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .afro-view-btn:hover { background: rgba(245, 158, 11, 0.15) !important; }
@@ -1037,219 +1078,239 @@ export default function Employes() {
           darkMode={darkMode}
           onToggleTheme={toggleTheme}
           onBackDashboard={() => navigate('/dashboard')}
-          onNavigate={(path) => navigate(path)}
-          onAddEmployee={handleAdd}
+          onAddEmployee={vueActive === 'annuaire' ? handleAdd : undefined}
         />
 
         {/* ═══ MAIN ═══ */}
         <main style={styles.main}>
-          <EmployesExecutiveKpis
-            employes={employesFiltres}
-            liveStatusByEmployee={liveStatusByEmployee}
-            plannings={plannings}
-            categoryFilter={categoryFilter}
-            onCategoryFilterChange={(val) => setCategoryFilter(val)}
-            onFilterSearch={(val) => setSearchTerm(val)}
-          />
+          <div className="emp-barre">
+            <nav className="emp-onglets" aria-label="Vues de la page Employés">
+            <p className="emp-onglets-titre">Sommaire</p>
+            {[
+              { cle: 'annuaire', libelle: 'Annuaire', icone: Users },
+              ...(vueAutorisee
+                ? [
+                  { cle: 'equipes', libelle: 'Équipes', icone: Network },
+                  { cle: 'taches', libelle: 'Tâches', icone: ClipboardList },
+                ]
+                : []),
+            ].map(({ cle, libelle, icone: Icone }) => (
+              <button
+                key={cle}
+                type="button"
+                className="emp-onglet"
+                aria-current={vueActive === cle ? 'page' : undefined}
+                onClick={() => changerVue(cle)}
+              >
+                <Icone size={15} /> {libelle}
+                </button>
+              ))}
+            </nav>
 
-          <div className="employes-middle-showcase">
-            <div className="employes-directory-head-col">
-              <div className="employes-directory-title-row">
-                <h2>Annuaire des Employés</h2>
-                <div className="employes-directory-dots" aria-hidden="true">
-                  <span />
-                  <span className="is-active" />
+            {/* les raccourcis de pages : en haut à droite, jamais en bas */}
+            <div className="emp-barre-raccourcis">
+              <RaccourcisPages compact excludePaths={['/employes']} />
+            </div>
+          </div>
+
+          {vueActive === 'annuaire' && (
+            <div className="emp-vues rg-annuaire">
+              <Folio droite="Registre du personnel" />
+
+              <header className="rg-tete">
+                <div>
+                  <p className="rg-eyebrow">Tout le personnel</p>
+                  <h2 className="rg-titre">Annuaire<span>.</span></h2>
+                </div>
+                <Colophon
+                  chiffres={[
+                    {
+                      valeur: employes.length,
+                      libelle: 'Employés',
+                      note: departments.length > 0
+                        ? `${departments.length} département${departments.length > 1 ? 's' : ''}`
+                        : '—',
+                    },
+                    {
+                      valeur: suiviPresence ? liveCounts.enPoste : '—',
+                      libelle: 'En poste',
+                      note: suiviPresence
+                        ? `${liveCounts.enPause} en pause · ${liveCounts.nonPointe} non pointé${liveCounts.nonPointe > 1 ? 's' : ''}`
+                        : 'pointage non suivi',
+                    },
+                    {
+                      valeur: enrollmentCounts.portal,
+                      libelle: 'Portail',
+                      note: employes.length > 0
+                        ? `${pourcent(enrollmentCounts.portal, employes.length)} de l’effectif`
+                        : '—',
+                    },
+                    {
+                      valeur: enrollmentCounts.toMigrate,
+                      libelle: 'À migrer',
+                      note: enrollmentCounts.toMigrate > 0
+                        ? 'portail à activer'
+                        : '—',
+                      ton: enrollmentCounts.toMigrate > 0 ? 'corail' : 'normal',
+                    },
+                  ]}
+                />
+              </header>
+
+              <div className="rg-outils">
+                <label className="rg-recherche">
+                  <Search size={14} />
+                  <input
+                    type="search"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Rechercher un nom, un matricule, un poste"
+                    aria-label="Rechercher un employé"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      className="rg-recherche-effacer"
+                      onClick={() => setSearchTerm('')}
+                      aria-label="Effacer la recherche"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </label>
+
+                <p className="rg-compte">
+                  {employesFiltres.length} sur {employes.length} affiché{employesFiltres.length > 1 ? 's' : ''}
+                </p>
+
+                <div className="rg-actions">
+                  <button
+                    type="button"
+                    className="rg-lien"
+                    onClick={() => { if (admin) loadData(admin) }}
+                  >
+                    Rafraîchir
+                  </button>
+                  <button type="button" className="rg-primaire" onClick={handleAdd}>
+                    <UserPlus size={14} /> Ajouter un employé
+                  </button>
                 </div>
               </div>
 
-              {/* Toolbar */}
-              <div style={styles.toolbar}>
-                <div className="afro-search" style={styles.searchContainer}>
-                  <Search size={18} color="#888" />
-                  <input type="text" placeholder="Rechercher par nom, matricule, poste, contrat..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={styles.searchInput} />
-                  {(searchTerm || categoryFilter !== 'all') && (
+              <div className="rg-categories" role="group" aria-label="Filtrer l’annuaire">
+                <p className="rg-categories-titre">Filtres</p>
+                {FILTRES_ANNUAIRE.map((filtre) => (
+                  <button
+                    key={filtre.key}
+                    type="button"
+                    className="rg-categorie"
+                    aria-pressed={categoryFilter === filtre.key}
+                    style={filtre.ton ? { '--rg-pastille': `var(--rg-perle-${filtre.ton})` } : undefined}
+                    onClick={() => setCategoryFilter(filtre.key)}
+                  >
+                    {filtre.label}
+                  </button>
+                ))}
+                {(searchTerm || categoryFilter !== 'all') && (
+                  <button
+                    type="button"
+                    className="rg-lien"
+                    onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
+                  >
+                    Tout montrer
+                  </button>
+                )}
+              </div>
+
+              {enrollmentCounts.toMigrate > 0 && (
+                <p className="rg-note" data-ton="corail">
+                  <AlertTriangle size={14} />
+                  <span>
+                    {enrollmentCounts.toMigrate} employé{enrollmentCounts.toMigrate > 1 ? 's' : ''} encore sur
+                    l’ancien portail — ouvrez <strong>Mot de passe</strong> dans leur menu pour activer
+                    leur nouvel accès.
+                  </span>
+                </p>
+              )}
+
+              <PayslipIndicatorStatus status={payslipIndicators} />
+
+              {employesFiltres.length === 0 ? (
+                <div className="rg-vide">
+                  <RosacePerlesSvg taille={52} />
+                  <h3>{employes.length === 0 ? 'Aucun employé pour l’instant' : 'Aucune personne ne correspond'}</h3>
+                  <p>
+                    {employes.length === 0
+                      ? 'Créez la première fiche : le nom, le matricule, le contrat et le poste suffisent pour commencer.'
+                      : 'Élargissez la recherche ou retirez un filtre pour revoir tout le personnel.'}
+                  </p>
+                  {employes.length === 0 ? (
+                    <button type="button" className="rg-primaire" onClick={handleAdd}>
+                      <UserPlus size={14} /> Ajouter un employé
+                    </button>
+                  ) : (
                     <button
-                      onClick={() => {
-                        setSearchTerm('')
-                        setCategoryFilter('all')
-                      }}
-                      style={styles.clearSearch}
-                      title="Réinitialiser les filtres"
+                      type="button"
+                      className="rg-lien"
+                      onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
                     >
-                      <X size={16} />
+                      Tout montrer
                     </button>
                   )}
                 </div>
-                <div style={styles.toolbarRight}>
-                  <div style={styles.viewToggle}>
-                    <button className="afro-view-btn" onClick={() => setViewMode('grid')} style={{ ...styles.viewBtn, ...(viewMode === 'grid' ? styles.viewBtnActive : {}) }} title="Vue Cartes Portrait"><Grid3X3 size={16} /></button>
-                    <button className="afro-view-btn" onClick={() => setViewMode('list')} style={{ ...styles.viewBtn, ...(viewMode === 'list' ? styles.viewBtnActive : {}) }} title="Vue Liste"><LayoutList size={16} /></button>
-                  </div>
-                  <div style={styles.resultCount}>
-                    <span style={styles.resultNumber}>{employesFiltres.length}</span>
-                    <span style={styles.resultText}>résultat{employesFiltres.length > 1 ? 's' : ''}</span>
-                  </div>
-                </div>
-              </div>
+              ) : (
+                <section className="rg-bloc" style={{ borderBottom: 0 }} aria-label="Le personnel">
+                  <header className="rg-bloc-tete">
+                    <h3 className="rg-bloc-titre">Le personnel</h3>
+                    <p className="rg-bloc-note">
+                      {employesFiltres.length} affichée{employesFiltres.length > 1 ? 's' : ''} sur {employes.length}
+                      {' · '}présence, contrat, accès portail
+                    </p>
+                  </header>
 
-              {employes.filter(e => estAncienSysteme(e)).length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 12 }}>
-                  <AlertTriangle size={18} color="#F59E0B" style={{ flexShrink: 0 }} />
-                  <div>
-                    <p style={{ color: '#F59E0B', fontSize: 12, fontWeight: 700, margin: '0 0 2px 0' }}>
-                      {employes.filter(e => estAncienSysteme(e)).length} employé{employes.filter(e => estAncienSysteme(e)).length > 1 ? 's' : ''} à migrer vers le nouveau portail
-                    </p>
-                    <p style={{ color: 'var(--pt-muted)', fontSize: 11, margin: 0 }}>
-                      Cliquez sur « Migrer portail » sur leur carte pour activer leur nouveau mot de passe.
-                    </p>
-                  </div>
-                </div>
+                  <ul className="rg-registre rg-registre-annuaire">
+                    {employesFiltres.map((employee, index) => (
+                      <EntreeEmploye
+                        key={employee.id}
+                        numero={index + 1}
+                        employee={employee}
+                        liveStatus={liveStatusByEmployee[employee.id]}
+                        stats={weeklyStats[employee.id]}
+                        scheduleInfo={getEmployeeScheduleInfo(employee)}
+                        regimeLabel={getScheduleRegimeLabel(employee)}
+                        seniority={calculateSeniority(employee.hire_date)}
+                        derniereConnexion={formatDerniereConnexion(employee)}
+                        contractLabel={employee.contract_type ? getContractLabel(employee.contract_type) : ''}
+                        classificationLabel={employee.classification ? getClassificationLabel(employee.classification) : ''}
+                        portalEnabled={isPortalModuleEnabled(employee) && employee.employee_portal_enabled}
+                        planningEnabled={isModulePlanningEnabled(employee)}
+                        aCompte={aUnCompteEmploye(employee)}
+                        ancienSysteme={estAncienSysteme(employee)}
+                        payslipEntries={payslipIndicators.entriesFor(employee)}
+                        payslipDate={payslipIndicators.date}
+                        onOuvrirFiche={handleEdit}
+                        onBadge={handleShowBadge}
+                        onHoraires={handleOpenSchedule}
+                        onPartagerHoraires={handleShareSchedule}
+                        onPointages={(emp) => navigate(`/pointages?q=${encodeURIComponent(emp.matricule || emp.last_name || '')}`)}
+                        onMotDePasse={handleOpenPasswordModal}
+                        onBasculerPortail={handleTogglePortalAccess}
+                        onSupprimer={initiateDelete}
+                      />
+                    ))}
+                  </ul>
+                </section>
               )}
             </div>
+          )}
 
-            <EmployesAnalyticsCharts
-              employes={employesFiltres}
-              plannings={plannings}
-              onSelectDepartment={(dept) => setSearchTerm(dept)}
-            />
-          </div>
 
-          <PayslipIndicatorStatus status={payslipIndicators}/>
-          {/* ═══ EMPLOYEE LIST ═══ */}
-          {employesFiltres.length === 0 ? (
-            <div style={styles.empty}>
-              <div style={styles.emptyIcon}><Users size={48} color="#F59E0B" /></div>
-              <h3 style={styles.emptyTitle}>Aucun employé trouvé</h3>
-              <p style={styles.emptySubtitle}>{searchTerm ? 'Essayez avec un autre terme de recherche' : 'Commencez par ajouter votre premier employé'}</p>
-              {!searchTerm && <button onClick={handleAdd} className="afro-add-btn" style={styles.emptyAddBtn}><UserPlus size={18} /><span>Ajouter un employé</span></button>}
-            </div>
-          ) : viewMode === 'grid' ? (
-            /* ─── PORTRAIT CARDS VIEW (FIDÈLE À L'IMAGE CHOISIE) ─── */
-            <div className="employes-portrait-grid">
-              {employesFiltres.map((employee) => {
-                const stats = weeklyStats[employee.id]
-                const portalEnabled = isPortalModuleEnabled(employee)
-                return (
-                  <EmployesPortraitCard
-                    key={employee.id}
-                    employee={employee}
-                    payslipEntries={payslipIndicators.entriesFor(employee)}
-                    payslipDate={payslipIndicators.date}
-                    liveStatus={liveStatusByEmployee[employee.id]}
-                    weeklyStats={stats}
-                    scheduleRegimeLabel={getScheduleRegimeLabel(employee)}
-                    portalEnabled={portalEnabled}
-                    hasAccount={aUnCompteEmploye(employee)}
-                    isLegacyAccount={estAncienSysteme(employee)}
-                    canEditPlanning={isModulePlanningEnabled(employee)}
-                    onOpenFiche={handleEdit}
-                    onShowBadge={handleShowBadge}
-                    onOpenSchedule={handleOpenSchedule}
-                    onOpenPointages={(emp) => navigate(`/pointages?q=${encodeURIComponent(emp.matricule || emp.last_name || '')}`)}
-                    onOpenPassword={handleOpenPasswordModal}
-                    onDelete={initiateDelete}
-                  />
-                )
-              })}
-            </div>
-          ) : (
-            /* ─── LIST VIEW ─── */
-            <div style={styles.listView}>
-              {employesFiltres.map((employee, index) => {
-                const stats = weeklyStats[employee.id]
-                const scheduleInfo = getEmployeeScheduleInfo(employee)
-                const portalEnabled = isPortalModuleEnabled(employee)
-                const seniority = calculateSeniority(employee.hire_date)
+          {vueActive === 'equipes' && (
+            <EquipesVue enterpriseId={entrepriseDesVues} employes={employes} />
+          )}
 
-                return (
-                  <div key={employee.id} className="afro-emp-card" style={{ ...styles.listCard, animation: `fadeInUp 0.4s ease ${index * 0.04}s forwards`, opacity: 0 }}>
-                    <div style={styles.listCardLeft}>
-                      <div style={styles.listAvatar}>
-                        {employee.photo_url ? <img src={employee.photo_url} alt="" style={styles.listAvatarImg} /> : <span style={styles.listAvatarInitials}>{employee.first_name?.[0]}{employee.last_name?.[0]}</span>}
-                        {stats && stats.totalSeconds > 0 && <div style={{ ...styles.avatarStatusRing, borderColor: getHoursColor(stats.hours) }}></div>}
-                      </div>
-
-                      <div style={styles.listInfo}>
-                        <PlanningPayslipBadge entries={payslipIndicators.entriesFor(employee)} referenceDate={payslipIndicators.date}/>
-                        <div style={styles.listNameRow}>
-                          <span style={styles.listName}>{employee.first_name} {employee.last_name}</span>
-                          <span style={styles.listMatricule}>{employee.matricule}</span>
-                          <span
-                            title={employee.machine_pin ? `Numéro sur la pointeuse : ${employee.machine_pin}` : 'Aucun numéro sur la pointeuse : les pointages de la machine ne pourront pas lui être rattachés'}
-                            style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 4,
-                              padding: '2px 8px', borderRadius: 6, fontSize: 10,
-                              fontWeight: 800, letterSpacing: '.02em',
-                              background: employee.machine_pin ? 'rgba(20,184,166,.12)' : 'rgba(156,163,175,.15)',
-                              color: employee.machine_pin ? '#0F766E' : '#6B7280',
-                            }}
-                          >
-                            <Radio size={10} />
-                            {employee.machine_pin ? employee.machine_pin : '—'}
-                          </span>
-                          {employee.contract_type && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: `${getContractColor(employee.contract_type)}12`, color: getContractColor(employee.contract_type) }}>
-                              {getContractLabel(employee.contract_type)}
-                            </span>
-                          )}
-                          {aUnCompteEmploye(employee) && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, background: estAncienSysteme(employee) ? 'rgba(245, 158, 11, 0.12)' : (employee.employee_portal_enabled ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)'), color: estAncienSysteme(employee) ? '#F59E0B' : (employee.employee_portal_enabled ? '#22C55E' : '#EF4444') }}>
-                              {estAncienSysteme(employee) ? <AlertTriangle size={10} /> : (employee.employee_portal_enabled ? <UserCheck size={10} /> : <UserX size={10} />)} {estAncienSysteme(employee) ? 'À migrer' : 'Portail'}
-                            </span>
-                          )}
-                        </div>
-
-                        <div style={styles.listMetaRow}>
-                          {employee.position && <span style={styles.listMeta}><Briefcase size={11} />{employee.position}</span>}
-                          {employee.department && <span style={styles.listMeta}><Building2 size={11} />{employee.department}</span>}
-                          {employee.classification && <span style={{ ...styles.listMeta, color: '#818CF8' }}><Award size={11} />{getClassificationLabel(employee.classification)}</span>}
-                          {seniority && <span style={{ ...styles.listMeta, color: '#10B981' }}><Calendar size={11} />{seniority}</span>}
-                          {formatDerniereConnexion(employee) && (
-                            <span style={{ ...styles.listMeta, color: aDejaConnecte(employee) ? '#60A5FA' : '#F59E0B' }}>
-                              <Clock size={11} />{formatDerniereConnexion(employee)}
-                            </span>
-                          )}
-                          {scheduleInfo && <span style={{ ...styles.listMeta, color: '#10B981' }}><Clock size={11} />{scheduleInfo}</span>}
-                          {employee.cnps_number && <span style={{ ...styles.listMeta, color: '#888' }}><Shield size={11} />CNPS: {employee.cnps_number}</span>}
-                          {admin?.role === 'super_admin' && <span style={{ ...styles.listMeta, color: '#F59E0B' }}><Building2 size={11} />{employee.enterprises?.name}</span>}
-                        </div>
-
-                        {stats && (
-                          <div style={styles.listProgressContainer}>
-                            <div style={styles.progressTrackSmall}><div className="progress-bar-fill" style={{ ...styles.progressFillSmall, '--target-width': `${stats.percentage}%`, background: getHoursColor(stats.hours) }}></div></div>
-                            <span style={{ ...styles.listProgressLabel, color: getHoursColor(stats.hours) }}>{stats.label}</span>
-                          </div>
-                        )}
-
-                        <EmployesLiveStatusBanner
-                          liveStatus={liveStatusByEmployee[employee.id]}
-                          scheduleRegimeLabel={getScheduleRegimeLabel(employee)}
-                          onOpenPointages={() => navigate(`/pointages?q=${encodeURIComponent(employee.matricule || employee.last_name || '')}`)}
-                        />
-                      </div>
-                    </div>
-
-                    <div style={styles.listActions}>
-                      {isModulePlanningEnabled(employee) && (
-                        <>
-                          <button className="afro-action-icon" onClick={() => handleOpenSchedule(employee)} style={styles.listActionBtn} title="Horaires"><Clock size={16} color="#10B981" /></button>
-                          <button className="afro-action-icon" onClick={() => handleShareSchedule(employee)} style={styles.listActionBtn} title="WhatsApp"><Share2 size={16} color="#25D366" /></button>
-                        </>
-                      )}
-                      <button className="afro-action-icon" onClick={() => handleShowBadge(employee)} style={styles.listActionBtn} title="Badge QR"><QrCode size={16} color="#F59E0B" /></button>
-                      {portalEnabled && (
-                        <>
-                          <button className="afro-action-icon" onClick={() => handleOpenPasswordModal(employee)} style={{ ...styles.listActionBtn, borderColor: aUnCompteEmploye(employee) ? 'rgba(34, 197, 94, 0.2)' : 'rgba(245, 158, 11, 0.2)' }} title={aUnCompteSupabase(employee) ? 'Modifier mot de passe' : (estAncienSysteme(employee) ? "Migrer vers le nouveau systeme (cree un compte)" : 'Créer accès portail')}><Key size={16} color={aUnCompteEmploye(employee) ? '#22C55E' : '#F59E0B'} /></button>
-                          {aUnCompteEmploye(employee) && <button className="afro-action-icon" onClick={() => handleTogglePortalAccess(employee, !employee.employee_portal_enabled)} style={{ ...styles.listActionBtn, borderColor: employee.employee_portal_enabled ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)' }} title={employee.employee_portal_enabled ? 'Désactiver accès' : 'Activer accès'}>{employee.employee_portal_enabled ? <UserCheck size={16} color="#22C55E" /> : <UserX size={16} color="#EF4444" />}</button>}
-                        </>
-                      )}
-                      <button className="afro-action-icon" onClick={() => handleEdit(employee)} style={styles.listActionBtn} title="Modifier"><Edit size={16} color="#6366F1" /></button>
-                      <button className="afro-action-icon" onClick={() => initiateDelete(employee)} style={{ ...styles.listActionBtn, ...styles.listDeleteBtn }} title="Supprimer"><Trash2 size={16} /></button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+          {vueActive === 'taches' && (
+            <TachesVue enterpriseId={entrepriseDesVues} employes={employes} />
           )}
 
           <div style={styles.footer}>
@@ -1393,118 +1454,33 @@ export default function Employes() {
           </div>
         )}
 
-        {/* ═══ PASSWORD MODAL ═══ */}
+        {/* ═══ ACCÈS PORTAIL — la fenêtre du registre ═══ */}
         {showPasswordModal && selectedEmployeeForPassword && (
-          <div className="afro-modal-overlay" style={styles.modalOverlay}>
-            <div className="afro-modal-content" style={styles.formModal}>
-              <div style={styles.formModalHeader}>
-                <div style={styles.formModalTitleWrap}>
-                  <div style={{ ...styles.formModalIcon, background: 'rgba(34, 197, 94, 0.12)' }}><Key size={20} color="#22C55E" /></div>
-                  <div>
-                    <h2 style={styles.formModalTitle}>{aUnCompteSupabase(selectedEmployeeForPassword) ? 'Modifier le mot de passe' : (estAncienSysteme(selectedEmployeeForPassword) ? 'Migrer l\'accès portail' : 'Créer l\'accès portail')}</h2>
-                    <span style={styles.formModalSub}>{selectedEmployeeForPassword.first_name} {selectedEmployeeForPassword.last_name}</span>
-                  </div>
-                </div>
-                <button onClick={() => setShowPasswordModal(false)} style={styles.formCloseBtn}><X size={20} /></button>
-              </div>
+          <ModaleAccesPortail
+            employee={selectedEmployeeForPassword}
+            aCompte={aUnCompteEmploye(selectedEmployeeForPassword)}
+            compteSupabase={aUnCompteSupabase(selectedEmployeeForPassword)}
+            ancienSysteme={estAncienSysteme(selectedEmployeeForPassword)}
+            derniereConnexion={formatDerniereConnexion(selectedEmployeeForPassword)}
+            portailActif={Boolean(selectedEmployeeForPassword.employee_portal_enabled)}
+            onEnregistrer={(motDePasse) => enregistrerMotDePasse(selectedEmployeeForPassword, motDePasse)}
+            onBasculerPortail={handleTogglePortalAccess}
+            onClose={() => setShowPasswordModal(false)}
+          />
+        )}
 
-              <div style={styles.formModalBody}>
-                <div style={{ padding: '14px 16px', background: 'rgba(34, 197, 94, 0.06)', border: '1px solid rgba(34, 197, 94, 0.15)', borderRadius: 12, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <Shield size={20} color="#22C55E" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <div>
-                    <p style={{ color: '#22C55E', fontSize: 13, fontWeight: 600, margin: '0 0 4px 0' }}>Accès Espace Employé</p>
-                    <p style={{ color: '#888', fontSize: 12, margin: 0, lineHeight: 1.5 }}>
-                      L'employé se connectera sur <strong style={{ color: '#22C55E' }}>/employee/login</strong> avec son{' '}
-                      <strong style={{ color: '#FFF' }}>matricule</strong>
-                      {selectedEmployeeForPassword.matricule
-                        ? <> (<strong style={{ color: '#FFF' }}>{selectedEmployeeForPassword.matricule}</strong>)</>
-                        : null}{' '}
-                      — ou son téléphone, ou son email s'il en a un — et ce mot de passe.
-                    </p>
-                  </div>
-                </div>
-
-                {/* 06.B.7 — où en est cet employé ? Visible au moment même
-                    où l'administrateur gère son accès. */}
-                {formatDerniereConnexion(selectedEmployeeForPassword) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Clock size={14} color={aDejaConnecte(selectedEmployeeForPassword) ? '#60A5FA' : '#F59E0B'} />
-                    <span style={{ fontSize: 12, color: '#888' }}>
-                      Dernière connexion :{' '}
-                      <strong style={{ color: aDejaConnecte(selectedEmployeeForPassword) ? '#60A5FA' : '#F59E0B' }}>
-                        {formatDerniereConnexion(selectedEmployeeForPassword)}
-                      </strong>
-                    </span>
-                  </div>
-                )}
-
-                {/* 06.B.8 — AVERTISSEMENT DE MIGRATION
-                    L'employé a déjà un mot de passe qu'il utilise. Celui
-                    qu'on va définir le REMPLACE. S'il n'est pas prévenu,
-                    il est enfermé dehors sans comprendre pourquoi. */}
-                {estAncienSysteme(selectedEmployeeForPassword) && (
-                  <div style={{ padding: '12px 16px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <AlertTriangle size={18} color="#F59E0B" style={{ flexShrink: 0, marginTop: 2 }} />
-                    <span style={{ color: '#F59E0B', fontSize: 12, lineHeight: 1.5 }}>
-                      Cet employé se connecte aujourd'hui avec l'<strong>ancien système</strong>.
-                      Le mot de passe ci-dessous le <strong>remplacera définitivement</strong> :
-                      l'ancien cessera de fonctionner. <strong>Communiquez-lui le nouveau</strong> dès maintenant.
-                    </span>
-                  </div>
-                )}
-
-                {/* 06.B.4 — Avant, un employé sans email ET sans téléphone ne
-                    pouvait pas recevoir d'accès : le bouton restait désactivé.
-                    Ce n'est plus nécessaire — l'identifiant de connexion est
-                    fabriqué à partir du MATRICULE. Le seul vrai prérequis est
-                    donc le matricule. */}
-                {!aUnCompteEmploye(selectedEmployeeForPassword) && !selectedEmployeeForPassword.matricule && (
-                  <div style={{ padding: '12px 16px', background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <AlertTriangle size={18} color="#EF4444" />
-                    <span style={{ color: '#EF4444', fontSize: 12 }}>Cet employé n'a pas de matricule. Renseignez-en un : c'est avec lui qu'il se connectera.</span>
-                  </div>
-                )}
-
-                <div style={styles.formField}>
-                  <label style={styles.formLabel}><Lock size={14} /> Nouveau mot de passe</label>
-                  <div style={styles.pinFieldWrap}>
-                    <input type={showNewPassword ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={styles.formInput} placeholder="Minimum 6 caractères" autoComplete="new-password" />
-                    <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} style={styles.pinEyeBtn}>{showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
-                  </div>
-                  {newPassword && newPassword.length < 6 && <span style={{ fontSize: 11, color: '#EF4444', marginTop: 4 }}>Le mot de passe doit contenir au moins 6 caractères</span>}
-                </div>
-
-                <div style={styles.formField}>
-                  <label style={styles.formLabel}><Lock size={14} /> Confirmer le mot de passe</label>
-                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} style={styles.formInput} placeholder="Retaper le mot de passe" autoComplete="new-password" />
-                  {confirmPassword && newPassword && (
-                    <span style={{ fontSize: 12, marginTop: 4, color: confirmPassword === newPassword ? '#22C55E' : '#EF4444', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {confirmPassword === newPassword ? <><UserCheck size={12} /> Les mots de passe correspondent</> : <><UserX size={12} /> Les mots de passe ne correspondent pas</>}
-                    </span>
-                  )}
-                </div>
-
-                {aUnCompteEmploye(selectedEmployeeForPassword) && (
-                  <div style={{ padding: '12px 16px', background: selectedEmployeeForPassword.employee_portal_enabled ? 'rgba(34, 197, 94, 0.06)' : 'rgba(239, 68, 68, 0.06)', border: `1px solid ${selectedEmployeeForPassword.employee_portal_enabled ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'}`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 13, color: selectedEmployeeForPassword.employee_portal_enabled ? '#22C55E' : '#EF4444', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {selectedEmployeeForPassword.employee_portal_enabled ? <><UserCheck size={14} /> Accès portail actif</> : <><UserX size={14} /> Accès portail désactivé</>}
-                    </span>
-                    <button onClick={() => handleTogglePortalAccess(selectedEmployeeForPassword, !selectedEmployeeForPassword.employee_portal_enabled)} style={{ padding: '6px 12px', background: selectedEmployeeForPassword.employee_portal_enabled ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)', border: 'none', borderRadius: 8, color: selectedEmployeeForPassword.employee_portal_enabled ? '#EF4444' : '#22C55E', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      {selectedEmployeeForPassword.employee_portal_enabled ? 'Désactiver' : 'Activer'}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div style={styles.formModalFooter}>
-                <button onClick={() => setShowPasswordModal(false)} style={styles.modalCancelBtn}>Annuler</button>
-                <button onClick={handleSavePassword} disabled={savingPassword || !newPassword || newPassword.length < 6 || newPassword !== confirmPassword || (!aUnCompteEmploye(selectedEmployeeForPassword) && !selectedEmployeeForPassword.matricule)}
-                  style={{ ...styles.modalSaveBtn, background: 'linear-gradient(135deg, #22C55E, #16A34A)', opacity: (savingPassword || !newPassword || newPassword.length < 6 || newPassword !== confirmPassword || (!aUnCompteEmploye(selectedEmployeeForPassword) && !selectedEmployeeForPassword.matricule)) ? 0.5 : 1, cursor: (savingPassword || !newPassword || newPassword.length < 6 || newPassword !== confirmPassword || (!aUnCompteEmploye(selectedEmployeeForPassword) && !selectedEmployeeForPassword.matricule)) ? 'not-allowed' : 'pointer' }}>
-                  {savingPassword ? <span>Enregistrement...</span> : <><Key size={16} />{aUnCompteSupabase(selectedEmployeeForPassword) ? 'Modifier' : (estAncienSysteme(selectedEmployeeForPassword) ? 'Migrer l\'accès' : 'Créer l\'accès')}</>}
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* ═══ ENVOYER LES HORAIRES — on montre avant d'envoyer ═══ */}
+        {horairesEmploye && (
+          <ModaleHoraires
+            employee={horairesEmploye}
+            entrepriseName={horairesEmploye.enterprises?.name || ''}
+            onDefinirHoraires={() => {
+              const cible = horairesEmploye
+              setHorairesEmploye(null)
+              handleOpenSchedule(cible)
+            }}
+            onClose={() => setHorairesEmploye(null)}
+          />
         )}
       </div>
     </>

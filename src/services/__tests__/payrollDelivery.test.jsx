@@ -68,6 +68,15 @@ it('le switch expose son état, son effet et le blocage dans un message accessib
   await act(async () => root.render(<PaieDeliveryControl enabled onChange={change} busy/>))
   expect(host.querySelector('input').disabled).toBe(true); expect(host.textContent).toContain('met aussi à jour')
 })
+it('le bouton porte son nom court : « Envoyer auto les fiches de paie »', async () => {
+  await act(async () => root.render(<PaieDeliveryControl enabled onChange={() => {}} busy={false} notice={null}/>))
+  const control = host.querySelector('[role="switch"]')
+  //  le libellé visible et le nom accessible disent la même chose
+  expect(host.querySelector('.pw-delivery-switch strong').textContent).toBe('Envoyer auto les fiches de paie')
+  expect(control.getAttribute('aria-label')).toBe('Envoyer auto les fiches de paie')
+  //  et l'ancienne formule ne traîne plus
+  expect(host.textContent).not.toContain('Envoyer automatiquement')
+})
 it('câblage : désactivé par défaut, périmètre limité, snapshots et verrouillage des formulaires', () => {
   const source = readFileSync('src/pages/FichesPaie.jsx', 'utf8')
   expect(source).toContain('const [autoSendAfterCalculation, setAutoSendAfterCalculation] = useState(false)')

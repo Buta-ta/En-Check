@@ -192,7 +192,7 @@ export default function useRealtimeNotifications(admin) {
         sound: 'task.mp3',
         tag: 'task-assigned-admin',
         autoClose: 6000,
-        onClick: () => navigate('/taches'),
+        onClick: () => navigate('/employes?vue=taches'),
       })
     } catch (err) {
       console.error('Notification tâche:', err)

@@ -1,0 +1,595 @@
+/* ════════════════════════════════════════════════════════════
+   LES FENÊTRES DU REGISTRE — cadre commun
+   ────────────────────────────────────────────────────────────
+   Papier le jour, encre la nuit. Deux filets, un titre serif,
+   aucun dégradé, aucune ombre portée sur une boîte posée sur une
+   autre : la fenêtre n'est pas une carte, c'est une page qu'on
+   ouvre par-dessus la page.
+
+   Le bloc définit ses propres jetons : ces fenêtres vivent en
+   dehors de `.emp-vues`, elles ne peuvent pas hériter de --rg-*.
+   ════════════════════════════════════════════════════════════ */
+
+.rgm-voile {
+  --rgm-papier: #f5f0e6;
+  --rgm-encre: #1c140d;
+  --rgm-douce: #42342a;
+  --rgm-faible: #6b5c44;
+  --rgm-filets: rgba(60, 40, 22, 0.16);
+  --rgm-filets-forts: rgba(60, 40, 22, 0.3);
+  --rgm-voile: rgba(150, 81, 31, 0.06);
+  --rgm-cuivre: #8f4d1d;
+  --rgm-cuivre-fort: #74400f;
+  --rgm-sur-cuivre: #ffffff;
+  --rgm-teal: #2b6a5f;
+  --rgm-sauge: #56652a;
+  --rgm-corail: #a2452e;
+  --rgm-perle-creuse: rgba(60, 40, 22, 0.28);
+
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(22, 15, 9, 0.62);
+  animation: rgm-voile-entre 0.18s ease both;
+}
+
+[data-theme='dark'] .rgm-voile {
+  --rgm-papier: #17110b;
+  --rgm-encre: #f4ecdf;
+  --rgm-douce: #dccdba;
+  --rgm-faible: #a6957c;
+  --rgm-filets: rgba(240, 226, 202, 0.15);
+  --rgm-filets-forts: rgba(240, 226, 202, 0.3);
+  --rgm-voile: rgba(213, 141, 75, 0.1);
+  --rgm-cuivre: #d99a58;
+  --rgm-cuivre-fort: #c8873f;
+  --rgm-sur-cuivre: #241a12;
+  --rgm-teal: #74bcae;
+  --rgm-sauge: #adc081;
+  --rgm-corail: #e8927c;
+  --rgm-perle-creuse: rgba(240, 226, 202, 0.3);
+}
+
+.rgm-fenetre {
+  display: flex;
+  width: min(var(--rgm-largeur, 460px), 100%);
+  max-height: calc(100vh - 40px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--rgm-filets-forts);
+  border-radius: 8px;
+  background: var(--rgm-papier);
+  color: var(--rgm-encre);
+  box-shadow: 0 28px 70px rgba(18, 12, 7, 0.42);
+  animation: rgm-fenetre-entre 0.24s cubic-bezier(0.22, 0.7, 0.3, 1) both;
+}
+
+/* ── l'en-tête ─────────────────────────────────────────────── */
+
+.rgm-entete {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--rgm-filets);
+}
+
+.rgm-entete-texte {
+  min-width: 0;
+}
+
+.rgm-eyebrow {
+  margin: 0 0 5px;
+  color: var(--rgm-faible);
+  font-size: 7.8px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.rgm-titre {
+  margin: 0;
+  color: var(--rgm-encre);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.rgm-sous-titre {
+  margin: 5px 0 0;
+  overflow: hidden;
+  color: var(--rgm-faible);
+  font-size: 10.6px;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rgm-fermer {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--rgm-filets-forts);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--rgm-faible);
+  cursor: pointer;
+  transition: box-shadow 0.16s ease;
+}
+
+.rgm-fermer:hover {
+  box-shadow: inset 0 0 0 1px var(--rgm-filets-forts);
+}
+
+/* ── le corps ──────────────────────────────────────────────── */
+
+.rgm-corps {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+/* une section : un mot en petites capitales, puis son contenu */
+.rgm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.rgm-section-titre {
+  margin: 0;
+  color: var(--rgm-faible);
+  font-size: 7.8px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* ── les notes ─────────────────────────────────────────────── */
+
+.rgm-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--rgm-filets-forts);
+  background: var(--rgm-voile);
+  color: var(--rgm-douce);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.rgm-note svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.rgm-note[data-ton='cuivre'] {
+  border-left-color: var(--rgm-cuivre);
+  color: var(--rgm-douce);
+}
+
+.rgm-note[data-ton='corail'] {
+  border-left-color: var(--rgm-corail);
+  color: var(--rgm-douce);
+}
+
+.rgm-note[data-ton='teal'] {
+  border-left-color: var(--rgm-teal);
+}
+
+.rgm-note strong {
+  color: var(--rgm-encre);
+}
+
+/* ── le registre de valeurs (clé / valeur) ─────────────────── */
+
+.rgm-registre {
+  margin: 0;
+  border-top: 1px solid var(--rgm-filets);
+}
+
+.rgm-ligne {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rgm-filets);
+}
+
+.rgm-cle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--rgm-faible);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.rgm-valeur {
+  overflow: hidden;
+  margin: 0;
+  color: var(--rgm-douce);
+  font-size: 11.4px;
+  font-weight: 600;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rgm-valeur[data-mono='oui'] {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}
+
+.rgm-valeur[data-etat='actif'] {
+  color: var(--rgm-teal);
+}
+
+.rgm-valeur[data-etat='jamais'] {
+  color: var(--rgm-faible);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.rgm-valeur[data-etat='alerte'] {
+  color: var(--rgm-corail);
+}
+
+/* ── les champs ────────────────────────────────────────────── */
+
+.rgm-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rgm-etiquette {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--rgm-faible);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.rgm-saisie-zone {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.rgm-saisie {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 38px 0 11px;
+  border: 1px solid var(--rgm-filets-forts);
+  border-radius: 3px;
+  background: var(--rgm-papier);
+  color: var(--rgm-encre);
+  font: inherit;
+  font-size: 12.4px;
+}
+
+.rgm-saisie::placeholder {
+  color: var(--rgm-faible);
+  opacity: 0.75;
+}
+
+.rgm-saisie:focus {
+  outline: 2px solid var(--rgm-cuivre);
+  outline-offset: -1px;
+}
+
+.rgm-oeil {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--rgm-faible);
+  cursor: pointer;
+}
+
+.rgm-oeil:hover {
+  box-shadow: inset 0 0 0 1px var(--rgm-filets-forts);
+}
+
+.rgm-aide {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--rgm-faible);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.rgm-aide[data-ton='corail'] {
+  color: var(--rgm-corail);
+}
+
+.rgm-aide[data-ton='teal'] {
+  color: var(--rgm-teal);
+}
+
+/* ── le message à envoyer ──────────────────────────────────── */
+
+.rgm-message {
+  max-height: 176px;
+  margin: 0;
+  padding: 12px 14px;
+  overflow-y: auto;
+  border: 1px solid var(--rgm-filets);
+  background: var(--rgm-papier);
+  color: var(--rgm-douce);
+  font-size: 11.2px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.rgm-envois {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rgm-envois .rgm-bouton {
+  min-width: 104px;
+  flex: 1 1 auto;
+  padding: 0 12px;
+}
+
+a.rgm-bouton {
+  box-sizing: border-box;
+  text-decoration: none;
+}
+
+/* ── la bascule d'état (portail) ───────────────────────────── */
+
+.rgm-etat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--rgm-filets);
+  background: var(--rgm-voile);
+}
+
+.rgm-etat-texte {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rgm-etat-titre {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--rgm-douce);
+  font-size: 11.4px;
+  font-weight: 600;
+}
+
+.rgm-etat-note {
+  margin: 0;
+  color: var(--rgm-faible);
+  font-size: 9.8px;
+}
+
+.rgm-bascule {
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 24px;
+  flex: none;
+  align-items: center;
+  padding: 0 3px;
+  border: 1px solid var(--rgm-filets-forts);
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  transition: box-shadow 0.16s ease;
+}
+
+.rgm-bascule::after {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--rgm-perle-creuse);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.rgm-bascule[aria-pressed='true'] {
+  border-color: var(--rgm-teal);
+}
+
+.rgm-bascule[aria-pressed='true']::after {
+  background: var(--rgm-teal);
+  transform: translateX(18px);
+}
+
+.rgm-bascule:hover {
+  box-shadow: inset 0 0 0 1px var(--rgm-filets-forts);
+}
+
+/* ── la perle d'état ───────────────────────────────────────── */
+
+.rgm-perle {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--rgm-teal);
+}
+
+.rgm-perle[data-creuse='oui'] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--rgm-filets-forts);
+}
+
+.rgm-perle[data-ton='corail'] {
+  background: var(--rgm-corail);
+}
+
+/* ── le pied ───────────────────────────────────────────────── */
+
+.rgm-pied {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--rgm-filets);
+  background: var(--rgm-voile);
+}
+
+.rgm-bouton {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12.2px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: box-shadow 0.16s ease;
+}
+
+.rgm-bouton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.rgm-bouton--second {
+  border: 1px solid var(--rgm-filets-forts);
+  background: transparent;
+  color: var(--rgm-douce);
+}
+
+.rgm-bouton--second:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--rgm-filets-forts);
+}
+
+.rgm-bouton--principal {
+  border: 1px solid var(--rgm-cuivre-fort);
+  background: var(--rgm-cuivre);
+  color: var(--rgm-sur-cuivre);
+}
+
+.rgm-bouton--principal:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.32);
+}
+
+.rgm-lien {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rgm-cuivre);
+  font: inherit;
+  font-size: 10.6px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+}
+
+.rgm-fermer:focus-visible,
+.rgm-bouton:focus-visible,
+.rgm-bascule:focus-visible,
+.rgm-oeil:focus-visible,
+.rgm-lien:focus-visible {
+  outline: 2px solid var(--rgm-cuivre);
+  outline-offset: 2px;
+}
+
+/* ── le mouvement ──────────────────────────────────────────── */
+
+@keyframes rgm-tourne {
+  to { transform: rotate(360deg); }
+}
+
+.rgm-tourne {
+  animation: rgm-tourne 0.9s linear infinite;
+}
+
+@keyframes rgm-voile-entre {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rgm-fenetre-entre {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rgm-voile,
+  .rgm-fenetre {
+    animation: none;
+  }
+}
+
+@media (max-width: 460px) {
+  .rgm-voile {
+    padding: 12px;
+  }
+  .rgm-entete {
+    padding: 15px 16px 12px;
+  }
+  .rgm-corps {
+    padding: 14px 16px;
+  }
+  .rgm-pied {
+    padding: 11px 16px;
+  }
+  .rgm-titre {
+    font-size: 19px;
+  }
+}

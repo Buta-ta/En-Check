@@ -9,7 +9,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import {
   Search, ShieldCheck, Users, X,
   Plus, History, Building2, KeyRound, User,
-  Sun, Moon, ArrowUpRight, Lock, UserPlus,
+  Sun, Moon, ArrowUpRight, ArrowLeft, Lock, UserPlus,
   Crown, UserCog, Eye,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -408,11 +408,21 @@ export default function AdminAccounts() {
         <div className="aa-colonne">
           {/* ── La barre de titre ── */}
           <header className="aa-heading">
-            <div className="aa-marque">
-              <AbomeyBlasonSvg size={52} />
-              <div className="aa-marque-texte">
-                <h1>Administrateurs</h1>
-                <p>Gestion des accès</p>
+            <div className="aa-heading-gauche">
+              <Link
+                className="aa-retour"
+                to="/dashboard"
+                aria-label="Retour au tableau de bord"
+                title="Retour au tableau de bord"
+              >
+                <ArrowLeft size={16} aria-hidden="true" />
+              </Link>
+              <div className="aa-marque">
+                <AbomeyBlasonSvg size={52} />
+                <div className="aa-marque-texte">
+                  <h1>Administrateurs</h1>
+                  <p>Gestion des accès</p>
+                </div>
               </div>
             </div>
             <div className="aa-heading-actions">

@@ -48,16 +48,19 @@ const ADRESSES = {
   // La coque paie abrite deux modules vendus séparément : elle ne se
   // verrouille que si les deux sont éteints.
   '/paie': ['module_fiches_paie', 'module_config_fiscale'],
-  '/remunerations': 'module_remunerations',
-  '/cout-salarial': 'module_cout_salarial',
-  '/geofencing': 'module_geolocalisation',
-  '/carte-temps-reel': 'module_carte_temps_reel',
-  '/enrollements-faciaux': 'module_reconnaissance_faciale',
-  '/config-reco-faciale': 'module_reconnaissance_faciale',
-  '/pointeuses': 'module_pointeuses',
+  //  Le coût salarial vit maintenant dans la page des rémunérations :
+  //  l'une ou l'autre des deux options ouvre la page.
+  '/remunerations': ['module_remunerations', 'module_cout_salarial'],
+  // Géopointage réunit le plateau et les zones : l'une ou l'autre
+  // des deux options ouvre la page, elle ne se ferme que si les deux
+  // sont éteintes.
+  '/geopointage': ['module_geolocalisation', 'module_carte_temps_reel'],
+  '/reconnaissance-faciale': 'module_reconnaissance_faciale',
+  // Machines ADMS et poste de pointage font un seul écran : l'une ou
+  // l'autre option ouvre la page. L'écran du poste, lui, n'est pas un
+  // écran d'administration : il ne dépend que de sa propre option.
+  '/configuration-pointeuse': ['module_pointeuses', 'module_poste_pointage'],
   '/poste': 'module_poste_pointage',
-  '/taches': 'module_taches',
-  '/equipes': 'module_taches',
   '/predictions': 'module_predictions',
 }
 

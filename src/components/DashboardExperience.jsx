@@ -16,7 +16,6 @@ import {
   Coffee,
   FileSearch,
   FileText,
-  Globe,
   LayoutDashboard,
   LogOut,
   MapPin,
@@ -28,8 +27,7 @@ import {
   Plus,
   RotateCcw,
   SlidersHorizontal,
-  Radio,
-  Settings,
+  Router,
   Shield,
   ShieldCheck,
   Sparkles,
@@ -37,20 +35,21 @@ import {
   Timer,
   TrendingUp,
   UserCheck,
+  ScanFace,
   UserPlus,
   UserX,
   Users,
   Wallet,
   X,
 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import EnterpriseSwitcher from './EnterpriseSwitcher'
+import SidebarNavigation from './SidebarNavigation'
 import NotificationBell from './NotificationBell'
 import SystemMessageBanner from './SystemMessageBanner'
 import AttendanceHeroImage from './AttendanceHeroImage'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
-import LandingAnalytics from '../pages/LandingAnalytics'
 import { formaterHeureLocale } from '../utils/timezoneUtils'
 import { estPauseReelleEffectuee, formaterTempsPauseEnDirect } from '../services/pausesService'
 import {
@@ -119,25 +118,6 @@ const ALL_TOPBAR_AVAILABLE_IDS = [...TOPBAR_LEFT_AVAILABLE_IDS, ...TOPBAR_RIGHT_
 const DEFAULT_TOPBAR_LEFT_ITEM_IDS = ['enterprise', 'date']
 const DEFAULT_TOPBAR_RIGHT_ITEM_IDS = ['dashboard-customize', 'theme', 'notifications', 'profile']
 
-function DashboardNavItem({ item, isActive, tabState, onSelect }) {
-  const Icon = item.icon
-  const hasNewActivity = Boolean(tabState?.activeTriggers?.length && !tabState.viewed)
-
-  return (
-    <button
-      type="button"
-      className={`sidebar-link${isActive ? ' is-active' : ''}`}
-      aria-current={isActive ? 'page' : undefined}
-      onClick={() => onSelect(item)}
-    >
-      <span className="sidebar-link-icon"><Icon size={16} strokeWidth={1.8} /></span>
-      <span className="sidebar-link-label">{item.label}</span>
-      {item.count > 0 && <span className="sidebar-link-count">{item.count > 99 ? '99+' : item.count}</span>}
-      {!item.count && hasNewActivity && <span className="sidebar-link-dot" aria-label="Nouvelle activité" />}
-    </button>
-  )
-}
-
 export default function DashboardExperience({
   admin,
   entreprises = [],
@@ -180,8 +160,6 @@ export default function DashboardExperience({
   markAllAsRead,
   handleLogout,
   handleEnterpriseSwitch,
-  showAnalytics,
-  setShowAnalytics,
   mobileMenuOpen,
   setMobileMenuOpen,
   tabStates = {},
@@ -259,39 +237,34 @@ export default function DashboardExperience({
       items: [
         { label: 'Heures supplémentaires', icon: Timer, path: '/heures-supplementaires', show: isSuperAdmin || moduleHeuresSup, tabKey: 'HEURES_SUP' },
         { label: 'Rémunérations', icon: Wallet, path: '/remunerations', show: isSuperAdmin || moduleRemunerations },
-        { label: 'Coût salarial', icon: TrendingUp, path: '/cout-salarial', show: isSuperAdmin || moduleCoutSalarial },
         { label: 'Paie & fiscalité', icon: Shield, path: '/paie', show: isSuperAdmin || moduleFichesPaie || moduleConfigFiscale },
       ],
     },
     {
       label: 'Outils',
       items: [
-        { label: 'Équipes & tâches', icon: CalendarDays, path: '/taches', show: isSuperAdmin || moduleTaches, tabKey: 'TACHES' },
-        { label: 'Équipes', icon: Users, path: '/equipes', show: isSuperAdmin || moduleTaches },
         { label: 'Prédictions', icon: Sparkles, path: '/predictions', show: isSuperAdmin || modulePredictions, tabKey: 'PREDICTIONS' },
-        { label: 'Carte en direct', icon: MapPin, path: '/carte-temps-reel', show: isSuperAdmin || moduleCarteTempsReel },
-        { label: 'Zones de pointage', icon: Globe, path: '/geofencing', show: isSuperAdmin || moduleGeofencing, tabKey: 'GEOFENCING' },
-        { label: 'Enrôlements faciaux', icon: UserCheck, path: '/enrollements-faciaux', show: isSuperAdmin || moduleRecoFaciale },
-        { label: 'Configuration faciale', icon: Settings, path: '/config-reco-faciale', show: isSuperAdmin || moduleRecoFaciale },
-        { label: 'Pointeuses ADMS', icon: Radio, path: '/pointeuses', show: isSuperAdmin || modulePointeuses },
+        // Le plateau et les zones sont un seul écran : l'un ou l'autre des
+        // deux modules ouvre « Géopointage ».
+        { label: 'Géopointage', icon: MapPin, path: '/geopointage', show: isSuperAdmin || moduleCarteTempsReel || moduleGeofencing, tabKey: 'GEOFENCING' },
+        // Les enrôlements et leurs réglages sont un seul écran : une seule
+        // entrée pour la reconnaissance faciale.
+        { label: 'Reconnaissance faciale', icon: ScanFace, path: '/reconnaissance-faciale', show: isSuperAdmin || moduleRecoFaciale },
+        // Les machines ADMS et le poste de pointage font un seul écran :
+        // l'une ou l'autre des deux options ouvre « Configuration pointeuse ».
+        { label: 'Configuration pointeuse', icon: Router, path: '/configuration-pointeuse', show: isSuperAdmin || modulePointeuses || modulePostePointage },
         { label: 'Annonces d’accueil', icon: Megaphone, path: '/annonces-accueil', show: isSuperAdmin },
-        { label: 'Poste de pointage', icon: Activity, path: '/poste', show: isSuperAdmin || modulePostePointage },
       ],
     },
     {
       label: 'Administration',
       items: [
         { label: 'Entreprises', icon: Building2, path: '/entreprises', show: isSuperAdmin },
-        { label: 'Mon compte', icon: ShieldCheck, path: '/mon-compte', show: true },
         { label: 'Administrateurs', icon: ShieldCheck, path: '/admins', show: isSuperAdmin },
         { label: 'Messages système', icon: Bell, path: '/system-messages', show: isSuperAdmin },
         { label: 'Prospection', icon: TrendingUp, path: '/prospection', show: isSuperAdmin },
-        { label: 'Devis', icon: FileSearch, path: '/devis', show: isSuperAdmin },
-        { label: 'Journal des connexions', icon: Activity, path: '/connexions', show: isSuperAdmin },
-        { label: 'Carte des connexions', icon: Globe, path: '/connexions-map', show: isSuperAdmin },
-        { label: 'Notifications push', icon: Bell, path: '/push-notifications', show: isSuperAdmin },
         { label: 'Test IA (isolé)', icon: Sparkles, path: '/test-ia', show: isSuperAdmin },
-        { label: 'Analytics du site', icon: TrendingUp, show: isSuperAdmin, action: () => setShowAnalytics((visible) => !visible) },
+        { label: 'Analytics du site', icon: TrendingUp, path: '/analytics', show: isSuperAdmin },
       ],
     },
   ]
@@ -375,8 +348,8 @@ export default function DashboardExperience({
     { id: 'overtime', label: 'Heures supplémentaires', description: 'Consulter les heures déclarées', icon: Timer, path: '/heures-supplementaires', category: 'Paie', show: isSuperAdmin || moduleHeuresSup },
     { id: 'payslips', label: 'Ouvrir les fiches de paie', description: 'Accéder aux bulletins', icon: Wallet, path: '/paie?onglet=fiches', category: 'Paie', show: isSuperAdmin || moduleFichesPaie || moduleConfigFiscale },
     { id: 'remuneration', label: 'Gérer les rémunérations', description: 'Consulter les rémunérations', icon: Wallet, path: '/remunerations', category: 'Paie', show: isSuperAdmin || moduleRemunerations },
-    { id: 'salary-cost', label: 'Voir le coût salarial', description: 'Accéder aux indicateurs de coût', icon: TrendingUp, path: '/cout-salarial', category: 'Paie', show: isSuperAdmin || moduleCoutSalarial },
-    { id: 'teams', label: 'Gérer les équipes', description: 'Consulter les équipes et tâches', icon: Users, path: '/equipes', category: 'Outils', show: isSuperAdmin || moduleTaches },
+    { id: 'salary-cost', label: 'Voir le coût salarial', description: 'Accéder aux indicateurs de coût', icon: TrendingUp, path: '/remunerations?vue=cout', category: 'Paie', show: isSuperAdmin || moduleCoutSalarial },
+    { id: 'teams', label: 'Gérer les équipes et les tâches', description: 'Ouvrir l’annuaire, les équipes et les tâches', icon: Users, path: '/employes?vue=equipes', category: 'Outils', show: isSuperAdmin || moduleTaches },
     { id: 'predictions', label: 'Ouvrir les prédictions', description: 'Consulter les prévisions disponibles', icon: Sparkles, path: '/predictions', category: 'Outils', show: isSuperAdmin || modulePredictions },
     { id: 'companies', label: 'Gérer les entreprises', description: 'Accéder aux entreprises', icon: Building2, path: '/entreprises', category: 'Administration', show: Boolean(isSuperAdmin) },
   ].filter((action) => action.show)
@@ -420,9 +393,9 @@ export default function DashboardExperience({
   const [isTopbarCatalogOpen, setIsTopbarCatalogOpen] = useState(false)
   const [draggedTopbarItemId, setDraggedTopbarItemId] = useState(null)
   const [activityFilter, setActivityFilter] = useState('all')
-  useEffect(() => {
-    if (!retardsOptionActive && activityFilter === 'late') setActivityFilter('all')
-  }, [retardsOptionActive, activityFilter])
+  // L'option « retards » peut être coupée par le module : le filtre retenu
+  // revient alors à « tout », sans passer par un état intermédiaire.
+  const filtreActivite = !retardsOptionActive && activityFilter === 'late' ? 'all' : activityFilter
   const [selectedActivityItem, setSelectedActivityItem] = useState(null)
   const [isForgottenExitModalOpen, setIsForgottenExitModalOpen] = useState(false)
   const [exitTimesById, setExitTimesById] = useState({})
@@ -703,14 +676,33 @@ export default function DashboardExperience({
       )
     }
     if (itemId === 'profile') {
+      // Le bloc entier mène à la page Administrateurs : l'avatar, le nom,
+      // le rôle. Un simple bouton d'avatar ne se voyait pas cliquable.
+      if (!isSuperAdmin) {
+        return (
+          <div className="topbar-admin" title={`${adminName} · ${adminRole}`}>
+            <div className="topbar-avatar">{adminInitials}</div>
+            <div className="topbar-admin-copy">
+              <span className="topbar-admin-name">{adminName}</span>
+              <span className="topbar-admin-role">{adminRole}</span>
+            </div>
+          </div>
+        )
+      }
       return (
-        <div className="topbar-admin" title={`${adminName} · ${adminRole}`}>
-          <div className="topbar-avatar">{adminInitials}</div>
-          <div className="topbar-admin-copy">
+        <Link
+          className="topbar-admin topbar-admin--lien"
+          to="/admins"
+          title={`${adminName} · ${adminRole} — ouvrir la page Administrateurs`}
+          aria-label={`${adminName}, ${adminRole} — ouvrir la page Administrateurs`}
+        >
+          <span className="topbar-avatar">{adminInitials}</span>
+          <span className="topbar-admin-copy">
             <span className="topbar-admin-name">{adminName}</span>
             <span className="topbar-admin-role">{adminRole}</span>
-          </div>
-        </div>
+          </span>
+          <ChevronRight className="topbar-admin-chevron" size={14} aria-hidden="true" />
+        </Link>
       )
     }
     return null
@@ -758,27 +750,15 @@ export default function DashboardExperience({
             </div>
           </div>
 
+          <div className="sidebar-bogolan" aria-hidden="true" />
+
           <div className="dashboard-sidebar-scroll">
-            {navigationSections.map((section) => {
-              const visibleItems = section.items.filter((item) => item.show)
-              if (!visibleItems.length) return null
-              return (
-                <div className="sidebar-nav-group" key={section.label}>
-                  <p className="sidebar-section-label">{section.label}</p>
-                  <nav className="sidebar-nav-list" aria-label={section.label}>
-                    {visibleItems.map((item) => (
-                      <DashboardNavItem
-                        key={item.path || item.label}
-                        item={item}
-                        isActive={Boolean(item.active)}
-                        tabState={item.tabKey ? tabStates[item.tabKey] : null}
-                        onSelect={handleNavigation}
-                      />
-                    ))}
-                  </nav>
-                </div>
-              )
-            })}
+            <SidebarNavigation
+              sections={navigationSections}
+              tabStates={tabStates}
+              onSelect={handleNavigation}
+              idAdministrateur={admin?.id}
+            />
 
             <a
               className="sidebar-portal-link"
@@ -793,12 +773,32 @@ export default function DashboardExperience({
             </a>
           </div>
 
+          <div className="sidebar-bogolan sidebar-bogolan--bas" aria-hidden="true" />
+
           <div className="sidebar-profile">
-            <div className="sidebar-profile-avatar">{adminInitials}</div>
-            <div className="sidebar-profile-copy">
-              <span className="sidebar-profile-name">{adminName}</span>
-              <span className="sidebar-profile-role">{adminRole}</span>
-            </div>
+            {isSuperAdmin ? (
+              <Link
+                className="sidebar-profile-link"
+                to="/admins"
+                title="Ouvrir la page Administrateurs"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span className="sidebar-profile-avatar">{adminInitials}</span>
+                <span className="sidebar-profile-copy">
+                  <span className="sidebar-profile-name">{adminName}</span>
+                  <span className="sidebar-profile-role">{adminRole}</span>
+                </span>
+                <ChevronRight className="sidebar-profile-chevron" size={15} aria-hidden="true" />
+              </Link>
+            ) : (
+              <div className="sidebar-profile-link is-statique">
+                <span className="sidebar-profile-avatar">{adminInitials}</span>
+                <span className="sidebar-profile-copy">
+                  <span className="sidebar-profile-name">{adminName}</span>
+                  <span className="sidebar-profile-role">{adminRole}</span>
+                </span>
+              </div>
+            )}
             <button type="button" className="sidebar-logout" onClick={handleLogout} title="Déconnexion" aria-label="Déconnexion">
               <LogOut size={15} />
             </button>
@@ -838,6 +838,10 @@ export default function DashboardExperience({
               </div>
             </div>
           </header>
+
+          {/* LE BANDEAU DU BOGOLAN — juste après la barre du haut, pleine
+              largeur : la pièce réelle de la page Paie & fiscalité. */}
+          <div className="dashboard-bogolan" aria-hidden="true" />
 
           <main className="dashboard-main">
             {isCustomizing && (
@@ -901,16 +905,6 @@ export default function DashboardExperience({
             )}
 
             {showSystemMessages && <SystemMessageBanner userType="admins" />}
-
-            {isSuperAdmin && showAnalytics && (
-              <section className="dashboard-analytics-panel" aria-label="Analytics de la page d’accueil">
-                <div className="dashboard-analytics-heading">
-                  <span>Analytics de la page d’accueil</span>
-                  <button type="button" className="dashboard-analytics-close" onClick={() => setShowAnalytics(false)}>Fermer</button>
-                </div>
-                <LandingAnalytics />
-              </section>
-            )}
 
             {loadError && (
               <div className="dashboard-error-banner" role="alert">
@@ -1169,9 +1163,9 @@ export default function DashboardExperience({
                         <button
                           type="button"
                           key={filter.id}
-                          className={`dashboard-activity-filter${activityFilter === filter.id ? ' is-active' : ''}`}
+                          className={`dashboard-activity-filter${filtreActivite === filter.id ? ' is-active' : ''}`}
                           onClick={() => setActivityFilter(filter.id)}
-                          aria-pressed={activityFilter === filter.id}
+                          aria-pressed={filtreActivite === filter.id}
                         >
                           {filter.label}
                         </button>
@@ -1181,20 +1175,20 @@ export default function DashboardExperience({
                   </div>
                 </div>
                 {recentActivity.filter((item) => (
-                  activityFilter === 'all'
+                  filtreActivite === 'all'
                     ? true
-                    : activityFilter === 'late'
+                    : filtreActivite === 'late'
                       ? Boolean(item.isLate)
-                      : String(item.type || '').toLowerCase() === activityFilter
+                      : String(item.type || '').toLowerCase() === filtreActivite
                 )).length > 0 ? (
                   <div className="dashboard-activity-list">
                     {recentActivity
                       .filter((item) => (
-                        activityFilter === 'all'
+                        filtreActivite === 'all'
                           ? true
-                          : activityFilter === 'late'
+                          : filtreActivite === 'late'
                             ? Boolean(item.isLate)
-                            : String(item.type || '').toLowerCase() === activityFilter
+                            : String(item.type || '').toLowerCase() === filtreActivite
                       ))
                       .slice(0, 5)
                       .map((item) => {

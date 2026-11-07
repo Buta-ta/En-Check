@@ -702,3 +702,90 @@ body[data-theme="light"] .ec-assistant-panel:not([data-theme="dark"]) {
     display: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LA RECHERCHE INTELLIGENTE SE REPLIE — 2026-10-28
+   Le bandeau du bas occupe 180 px de haut sur chaque page. Le
+   bouton « Replier » le réduit à une pastille ; la pastille le
+   rouvre. Rien n'est retiré : la barre reste dans la page.
+   ═══════════════════════════════════════════════════════════ */
+
+.ec-assistant-space.is-repliee { height: 96px; }
+
+.ec-assistant-dock.is-repliee {
+  width: min(620px, calc(100% - 36px));
+  padding-bottom: 10px;
+}
+
+.ec-assistant-rangee {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 0 2px;
+}
+
+.ec-assistant-rallumer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border: 1.5px solid var(--ec-line);
+  border-radius: 999px;
+  background: var(--ec-surface-soft);
+  color: var(--ec-ink);
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.ec-assistant-rallumer:hover,
+.ec-assistant-rallumer:focus-visible {
+  border-color: var(--ec-copper);
+  box-shadow: 0 0 0 3px var(--ec-copper-soft);
+  outline: none;
+}
+
+.ec-assistant-rangee-note {
+  color: var(--ec-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ec-assistant-label-droite {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ec-assistant-replier {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px 4px 8px;
+  border: 1.2px solid var(--ec-line);
+  border-radius: 999px;
+  background: var(--ec-surface);
+  color: var(--ec-muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ec-assistant-replier:hover,
+.ec-assistant-replier:focus-visible {
+  border-color: var(--ec-copper);
+  box-shadow: 0 0 0 3px var(--ec-copper-soft);
+  outline: none;
+}
+
+@media (max-width: 640px) {
+  .ec-assistant-dock.is-repliee { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+  .ec-assistant-label span.ec-assistant-label-droite { display: inline-flex; }
+  .ec-assistant-label-devise { display: none; }
+  .ec-assistant-replier span { display: none; }
+  .ec-assistant-replier { padding: 5px 8px; }
+}

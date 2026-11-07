@@ -1,0 +1,2033 @@
+/* ════════════════════════════════════════════════════════════════════
+   LES VUES ÉQUIPES ET TÂCHES — le registre perlé
+   ────────────────────────────────────────────────────────────────────
+   Une seule idée tient ces deux écrans : un registre de maison, tenu à
+   la main, dont la tranche est perlée. Pas une carte, pas un panneau :
+   des filets, de la typographie et des perles. Ce qui structure la page,
+   c'est le trait et le blanc — pas une boîte blanche posée sur une autre.
+
+   Règles tenues partout :
+     · aucune carte à ombre ni à coin arrondi pour poser un contenu ;
+     · un filet horizontal ferme chaque bloc, un filet vertical sépare
+       deux colonnes de chiffres ;
+     · les actions secondaires sont des mots soulignés, l'action
+       principale seule est un aplat de cuivre ;
+     · un survol change le trait, jamais le fond derrière un texte, la
+       couleur d'un texte ni l'opacité d'un champ.
+   ════════════════════════════════════════════════════════════════════ */
+
+.emp-vues {
+  /* ── le papier ────────────────────────────────────────── */
+  --rg-paper: #f5f0e6;
+  --rg-ink: #1c140d;
+  --rg-soft: #42342a;
+  --rg-faint: #6b5c44;
+  --rg-hair: rgba(60, 40, 22, 0.16);
+  --rg-hair-fort: rgba(60, 40, 22, 0.32);
+  --rg-voile: rgba(150, 81, 31, 0.08);
+
+  /* ── l'action ─────────────────────────────────────────── */
+  --rg-copper: #8f4d1d;
+  --rg-copper-fort: #74400f;
+  --rg-sur-copper: #ffffff;
+
+  /* ── les tons de lecture ──────────────────────────────── */
+  --rg-teal: #2b6a5f;
+  --rg-sauge: #56652a;
+  --rg-corail: #a2452e;
+  --rg-cuivre-texte: #8a5216;
+  --rg-plum: #5f4560;
+
+  /* ── le verre des perles ──────────────────────────────── */
+  --rg-perle-creme: #e0c9a0;
+  --rg-perle-cuivre: #b8823f;
+  --rg-perle-teal: #4f9389;
+  --rg-perle-sauge: #8ba268;
+  --rg-perle-corail: #c8785c;
+
+  --rg-ombre-douce: 0 18px 40px rgba(48, 32, 18, 0.1);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  padding: 0 0 10px 26px;
+  isolation: isolate;
+}
+
+/* la tranche perlée du registre, à gauche de la page */
+.emp-vues::before {
+  content: '';
+  position: absolute;
+  top: 118px;
+  bottom: 46px;
+  left: 4px;
+  width: 10px;
+  background-image:
+    radial-gradient(circle at 6px 0, var(--rg-perle-creme) 2.6px, transparent 3px),
+    radial-gradient(circle at 6px 0, var(--rg-perle-cuivre) 2.2px, transparent 2.6px),
+    radial-gradient(circle at 6px 0, var(--rg-perle-teal) 2.4px, transparent 2.8px),
+    radial-gradient(circle at 6px 0, var(--rg-perle-sauge) 2px, transparent 2.4px),
+    linear-gradient(var(--rg-hair), var(--rg-hair));
+  background-size: 12px 52px, 12px 52px, 12px 52px, 12px 52px, 1px 100%;
+  background-position: 0 0, 0 13px, 0 26px, 0 39px, 6px 0;
+  background-repeat: repeat-y, repeat-y, repeat-y, repeat-y, no-repeat;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* ── les jetons historiques des fenêtres de travail ───────────
+   Les fenêtres (EquipesModales.jsx, TachesModales.jsx) dessinent
+   leur contenu avec les variables --zl-* : elles restent branchées
+   sur la palette du registre pour ne pas jurer avec lui. */
+.emp-vues {
+  --zl-encre: var(--rg-ink);
+  --zl-douce: var(--rg-soft);
+  --zl-faible: var(--rg-faint);
+  --zl-surface: var(--rg-paper);
+  --zl-creux: rgba(60, 40, 22, 0.045);
+  --zl-fond: var(--rg-paper);
+  --zl-fond-2: var(--rg-paper);
+  --zl-trait: var(--rg-hair);
+  --zl-trait-fort: var(--rg-hair-fort);
+  --zl-cuivre: var(--rg-cuivre-texte);
+  --zl-cuivre-fort: var(--rg-copper-fort);
+  --zl-cuivre-voile: var(--rg-voile);
+  --zl-teal: var(--rg-teal);
+  --zl-teal-voile: rgba(43, 106, 95, 0.1);
+  --zl-corail: var(--rg-corail);
+  --zl-corail-fort: var(--rg-corail);
+  --zl-sur-cuivre: var(--rg-sur-copper);
+  --zl-fil: var(--rg-hair-fort);
+  --zl-perle-creme: var(--rg-perle-creme);
+  --zl-perle-cuivre: var(--rg-perle-cuivre);
+  --zl-perle-teal: var(--rg-perle-teal);
+  --zl-perle-sauge: var(--rg-perle-sauge);
+  --zl-perle-corail: var(--rg-perle-corail);
+}
+
+[data-theme='dark'] .emp-vues {
+  --zl-creux: rgba(240, 226, 202, 0.06);
+  --zl-teal-voile: rgba(116, 188, 174, 0.14);
+}
+
+/* la trame du papier : des duites très pâles */
+.emp-vues::after {
+  content: '';
+  position: absolute;
+  inset: 0 -8px 0 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(60, 40, 22, 0.022) 0 3px,
+    transparent 3px 8px
+  );
+}
+
+/* ── le thème sombre : le même papier, la nuit ─────────────── */
+
+[data-theme='dark'] .emp-vues {
+  --rg-paper: #17110b;
+  --rg-ink: #f4ecdf;
+  --rg-soft: #dccdba;
+  --rg-faint: #a6957c;
+  --rg-hair: rgba(240, 226, 202, 0.15);
+  --rg-hair-fort: rgba(240, 226, 202, 0.3);
+  --rg-voile: rgba(213, 141, 75, 0.14);
+  --rg-copper: #d99a58;
+  --rg-copper-fort: #c8873f;
+  --rg-sur-copper: #241a12;
+  --rg-teal: #74bcae;
+  --rg-sauge: #adc081;
+  --rg-corail: #e8927c;
+  --rg-cuivre-texte: #dda368;
+  --rg-plum: #bda0be;
+  --rg-perle-creme: #efe0c2;
+  --rg-perle-cuivre: #c99154;
+  --rg-perle-teal: #6fb9ad;
+  --rg-perle-sauge: #a2bb7c;
+  --rg-perle-corail: #d48163;
+  --rg-ombre-douce: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme='dark'] .emp-vues::after {
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(240, 226, 202, 0.028) 0 3px,
+    transparent 3px 8px
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   1. LE SOMMAIRE DE PAGE (barre de vues, hors du registre)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.emp-onglets {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  margin: 0 0 22px;
+  padding: 0 0 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--pt-line);
+  background: transparent;
+  box-shadow: none;
+}
+
+.emp-onglets-titre {
+  margin: 0 16px 0 0;
+  color: var(--pt-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.emp-onglet {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-bottom: -1px;
+  padding: 10px 16px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--pt-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.18s ease;
+}
+
+.emp-onglet svg {
+  flex: none;
+  color: var(--pt-copper);
+}
+
+.emp-onglet:hover {
+  border-bottom-color: var(--pt-line);
+}
+
+.emp-onglet[aria-current='page'] {
+  border-bottom-color: var(--pt-copper-strong);
+  color: var(--pt-ink);
+}
+
+.emp-onglet[aria-current='page'] svg {
+  color: var(--pt-copper-strong);
+}
+
+@media (max-width: 560px) {
+  .emp-onglets-titre {
+    display: none;
+  }
+  .emp-onglet {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 10px 8px 11px;
+    font-size: 12px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   2. LE FEUILLET — le folio, le titre, le colophon de chiffres
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-folio {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rg-hair);
+}
+
+.rg-marque,
+.rg-folio-droite {
+  margin: 0;
+  color: var(--rg-faint);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.rg-marque strong {
+  color: var(--rg-soft);
+  font-weight: 800;
+}
+
+.rg-tete {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 18px 26px;
+  padding: 26px 0 22px;
+  border-bottom: 1.5px solid var(--rg-hair-fort);
+}
+
+.rg-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 6px;
+  color: var(--rg-copper);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.rg-eyebrow::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--rg-copper);
+  box-shadow: 8px 0 0 -0.6px var(--rg-copper), 16px 0 0 -1.2px var(--rg-copper);
+  margin-right: 14px;
+}
+
+.rg-titre {
+  margin: 0;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(38px, 5.2vw, 62px);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+}
+
+.rg-titre span {
+  color: var(--rg-copper);
+}
+
+/* le colophon : quatre chiffres, un filet entre chacun */
+.rg-colophon {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.rg-chiffre {
+  min-width: 118px;
+  padding: 0 20px;
+}
+
+/* un filet sépare deux chiffres, jamais avant le premier */
+.rg-chiffre + .rg-chiffre {
+  border-left: 1px solid var(--rg-hair);
+}
+
+.rg-chiffre:first-child {
+  padding-left: 0;
+}
+
+.rg-chiffre:last-child {
+  padding-right: 0;
+}
+
+.rg-chiffre-valeur {
+  display: block;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 30px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.rg-chiffre[data-ton='corail'] .rg-chiffre-valeur {
+  color: var(--rg-corail);
+}
+
+.rg-chiffre-libelle {
+  display: block;
+  margin-top: 8px;
+  color: var(--rg-faint);
+  font-size: 8.4px;
+  font-weight: 800;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+}
+
+.rg-chiffre-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--rg-soft);
+  font-size: 10.4px;
+  line-height: 1.35;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   3. LA BARRE D'OUTILS — recherche, filtres, tri, actions
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-outils {
+  display: flex;
+  align-items: center;
+  gap: 10px 18px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rg-hair);
+}
+
+/* la recherche : un trait, pas une boîte */
+.rg-recherche {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1 1 210px;
+  min-width: 170px;
+  min-height: 40px;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--rg-hair-fort);
+  background: transparent;
+  color: var(--rg-faint);
+}
+
+.rg-recherche svg {
+  flex: none;
+  color: var(--rg-faint);
+}
+
+.rg-recherche input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--rg-ink);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.rg-recherche input::placeholder {
+  color: var(--rg-faint);
+}
+
+.rg-recherche-effacer {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--rg-faint);
+  cursor: pointer;
+}
+
+.rg-recherche-effacer:hover {
+  box-shadow: inset 0 0 0 1px var(--rg-hair-fort);
+}
+
+/* les filtres : une perle et un mot, jamais un bouton plein */
+.rg-filtres {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.rg-filtre {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rg-faint);
+  font: inherit;
+  font-size: 11.4px;
+  cursor: pointer;
+  transition: color 0.16s ease;
+}
+
+.rg-filtre::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border: 1px solid var(--rg-copper);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.rg-filtre:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-hair-fort);
+}
+
+.rg-filtre[aria-pressed='true'] {
+  color: var(--rg-ink);
+  font-weight: 700;
+}
+
+.rg-filtre[aria-pressed='true']::before {
+  background: var(--rg-copper);
+}
+
+/* les sélecteurs : un mot et un chevron, pas un cadre */
+.rg-tri {
+  min-height: 40px;
+  max-width: 168px;
+  padding: 0 20px 0 0;
+  border: 0;
+  border-bottom: 1px solid var(--rg-hair-fort);
+  border-radius: 0;
+  background: transparent;
+  color: var(--rg-soft);
+  font: inherit;
+  font-size: 11.4px;
+  cursor: pointer;
+  color-scheme: light;
+}
+
+[data-theme='dark'] .rg-tri {
+  color-scheme: dark;
+}
+
+/* les actions */
+.rg-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.rg-lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rg-soft);
+  font: inherit;
+  font-size: 11.4px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--rg-hair-fort);
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+}
+
+.rg-lien:hover {
+  text-decoration-color: var(--rg-copper);
+  box-shadow: none;
+}
+
+.rg-lien[aria-pressed='true'] {
+  color: var(--rg-ink);
+  text-decoration-color: var(--rg-copper);
+}
+
+/* l'action d'une entrée que l'on vient chercher : elle est en cuivre */
+.rg-lien[data-fort='oui'] {
+  color: var(--rg-copper);
+  font-weight: 700;
+  text-decoration-color: var(--rg-copper);
+}
+
+.rg-primaire {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 20px;
+  border: 1px solid var(--rg-copper-fort);
+  border-radius: 4px;
+  background: var(--rg-copper-fort);
+  color: var(--rg-sur-copper);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: box-shadow 0.16s ease;
+}
+
+.rg-primaire:hover {
+  box-shadow: 0 10px 22px rgba(90, 50, 15, 0.28);
+}
+
+.rg-primaire[disabled] {
+  cursor: progress;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   4. LE COLLIER DE L'ENTREPRISE — tout l'effectif en une parure
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-bloc {
+  padding: 22px 0 24px;
+  border-bottom: 1px solid var(--rg-hair);
+}
+
+.rg-bloc-tete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.rg-bloc-titre {
+  margin: 0;
+  color: var(--rg-soft);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.rg-bloc-note {
+  margin: 0;
+  color: var(--rg-faint);
+  font-size: 10.2px;
+}
+
+.rg-collier {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rg-collier-groupe {
+  position: relative;
+  padding: 0 34px 0 0;
+  margin-right: 10px;
+}
+
+.rg-collier-groupe + .rg-collier-groupe {
+  padding-left: 30px;
+  border-left: 1px solid var(--rg-hair);
+}
+
+/* le fil du groupe */
+.rg-collier-perles {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 2px;
+}
+
+.rg-collier-perles::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 50%;
+  height: 1px;
+  background: var(--rg-fil, var(--rg-hair-fort));
+  opacity: 0.6;
+}
+
+.rg-perle {
+  position: relative;
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--rg-perle-cuivre);
+  color: #241a12;
+  font-size: 6.6px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.rg-perle[data-ton='cuivre'] { background: var(--rg-perle-cuivre); }
+.rg-perle[data-ton='teal'] { background: var(--rg-perle-teal); }
+.rg-perle[data-ton='sauge'] { background: var(--rg-perle-sauge); }
+.rg-perle[data-ton='corail'] { background: var(--rg-perle-corail); }
+.rg-perle[data-ton='creme'] { background: var(--rg-perle-creme); }
+
+/* le chef : la perle est cerclée */
+.rg-perle[data-chef='oui'] {
+  box-shadow: 0 0 0 2px var(--rg-paper), 0 0 0 3.4px var(--rg-ink);
+}
+
+/* la personne à rattacher : une perle creuse, sur un fil pointillé */
+.rg-perle[data-creuse='oui'] {
+  background: transparent;
+  border: 1px dashed var(--rg-corail);
+  color: var(--rg-corail);
+}
+
+.rg-collier-nom {
+  display: block;
+  margin-top: 10px;
+  color: var(--rg-ink);
+  font-size: 11.6px;
+  font-weight: 700;
+}
+
+.rg-collier-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--rg-faint);
+  font-size: 9.8px;
+}
+
+.rg-collier-groupe[data-orphelin='oui'] .rg-collier-nom {
+  color: var(--rg-corail);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   5. LE REGISTRE DES ÉQUIPES — une entrée par équipe
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-registre {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rg-entree {
+  position: relative;
+  display: grid;
+  grid-template-columns:
+    46px minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 0.8fr) auto;
+  align-items: center;
+  gap: 10px 22px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--rg-hair);
+  transition: box-shadow 0.18s ease;
+}
+
+.rg-entree:hover {
+  box-shadow: inset 3px 0 0 -1px var(--rg-copper);
+}
+
+/* Une entrée dont le menu est ouvert passe devant les suivantes.
+   Sans cela, la ligne du dessous se peint par-dessus le menu : on
+   lit « Fiche » et « Badge » au travers, collés l'un à l'autre. */
+.rg-entree[data-menu='ouvert'] {
+  z-index: 3;
+}
+
+.rg-entree-index {
+  color: var(--rg-faint);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 14px;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-entree-titre {
+  margin: 0;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.rg-entree-titre button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rg-entree-titre button:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-copper);
+}
+
+.rg-entree-note {
+  margin: 6px 0 0;
+  color: var(--rg-soft);
+  font-size: 11.4px;
+  line-height: 1.45;
+}
+
+/* le filet de couleur de l'équipe, sous sa description */
+.rg-entree-filet {
+  display: block;
+  width: min(280px, 100%);
+  height: 2px;
+  margin-top: 10px;
+  background: var(--rg-trait-equipe, var(--rg-copper));
+  opacity: 0.8;
+}
+
+.rg-cellule {
+  min-width: 0;
+}
+
+.rg-etiquette-champ {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--rg-faint);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+/* les membres : des initiales enfilées */
+.rg-membres {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.rg-membre {
+  display: inline-flex;
+  width: 27px;
+  height: 27px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rg-hair-fort);
+  border-radius: 50%;
+  background: var(--rg-paper);
+  color: var(--rg-soft);
+  font-size: 8.4px;
+  font-weight: 800;
+  overflow: hidden;
+}
+
+.rg-membre[data-chef='oui'] {
+  border: 1.6px solid var(--rg-copper-fort);
+  color: var(--rg-ink);
+}
+
+.rg-membre img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rg-membres-note {
+  margin-left: 5px;
+  color: var(--rg-faint);
+  font-size: 9.6px;
+}
+
+.rg-membres-note[data-ton='alerte'] {
+  color: var(--rg-corail);
+}
+
+/* la santé : cinq perles, ou le mot juste */
+.rg-sante {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--rg-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-sante-perles {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rg-sante-perle {
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--rg-hair-fort);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.rg-sante-perle.is-pleine {
+  border-color: transparent;
+  background: var(--rg-sante-ton, var(--rg-teal));
+}
+
+.rg-sante[data-etat='critique'] { --rg-sante-ton: var(--rg-corail); }
+.rg-sante[data-etat='a-surveiller'] { --rg-sante-ton: var(--rg-perle-cuivre); }
+.rg-sante[data-etat='solide'] { --rg-sante-ton: var(--rg-teal); }
+
+.rg-sante-valeur {
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15px;
+}
+
+.rg-sante-valeur span {
+  color: var(--rg-faint);
+  font-family: inherit;
+  font-size: 9.4px;
+}
+
+/* les actions d'une entrée : des mots, pas des boutons */
+.rg-entree-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.rg-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  min-width: 208px;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--rg-hair-fort);
+  border-radius: 5px;
+  /* opaque, toujours : le papier du registre, et un repli explicite
+     si la variable venait à manquer */
+  background-color: #f5f0e6;
+  background-color: var(--rg-paper, #f5f0e6);
+  box-shadow: 0 18px 38px rgba(48, 32, 18, 0.18), 0 1px 0 rgba(48, 32, 18, 0.05);
+}
+
+[data-theme='dark'] .rg-menu {
+  background-color: #17110b;
+  background-color: var(--rg-paper, #17110b);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.rg-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--rg-soft);
+  font: inherit;
+  font-size: 11.6px;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rg-menu button svg {
+  flex: none;
+  color: var(--rg-faint);
+}
+
+/* un filet sépare le geste qui engage du reste */
+.rg-menu-sep {
+  height: 1px;
+  margin: 5px 2px;
+  background: var(--rg-hair);
+}
+
+.rg-menu button:hover {
+  box-shadow: inset 0 0 0 1px var(--rg-hair-fort);
+}
+
+.rg-menu button:focus-visible {
+  outline: 2px solid var(--rg-copper);
+  outline-offset: -2px;
+}
+
+.rg-menu button.is-danger {
+  color: var(--rg-corail);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   6. LES TÂCHES — quatre colonnes de registre
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-categories {
+  display: flex;
+  align-items: center;
+  gap: 10px 24px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rg-hair);
+}
+
+.rg-categories-titre {
+  margin: 0;
+  color: var(--rg-soft);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.rg-categorie {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rg-soft);
+  font: inherit;
+  font-size: 11.2px;
+  cursor: pointer;
+}
+
+.rg-categorie::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rg-pastille, var(--rg-perle-cuivre));
+}
+
+.rg-categorie[aria-pressed='true'] {
+  color: var(--rg-ink);
+  font-weight: 700;
+}
+
+.rg-categorie:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-hair-fort);
+}
+
+.rg-categorie-nombre {
+  color: var(--rg-faint);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-categories > .rg-lien:last-child {
+  margin-left: auto;
+}
+
+.rg-colonnes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 26px;
+  padding: 24px 0 8px;
+}
+
+.rg-colonne {
+  position: relative;
+  min-width: 0;
+  padding-left: 22px;
+}
+
+/* la tranche perlée de la colonne : elle suit la hauteur des entrées,
+   pas celle de la grille — une colonne courte ne tire pas un fil vide */
+.rg-colonne-corps {
+  position: relative;
+}
+
+.rg-colonne-corps::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 6px;
+  left: -22px;
+  width: 8px;
+  background-image:
+    radial-gradient(circle at 4px 0, var(--rg-colonne-ton, var(--rg-perle-cuivre)) 2.4px, transparent 2.8px),
+    linear-gradient(var(--rg-hair), var(--rg-hair));
+  background-size: 8px 15px, 1px 100%;
+  background-position: 0 2px, 4px 0;
+  background-repeat: repeat-y, no-repeat;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.rg-colonne[data-survol='oui'] {
+  box-shadow: inset 2px 0 0 0 var(--rg-copper);
+}
+
+.rg-colonne[data-colonne='a-faire'] { --rg-colonne-ton: var(--rg-perle-teal); }
+.rg-colonne[data-colonne='en-cours'] { --rg-colonne-ton: var(--rg-perle-cuivre); }
+.rg-colonne[data-colonne='terminees'] { --rg-colonne-ton: var(--rg-perle-sauge); }
+.rg-colonne[data-colonne='validees'] { --rg-colonne-ton: var(--rg-perle-creme); }
+
+.rg-colonne-tete {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0 8px;
+  padding-bottom: 14px;
+  border-bottom: 1.6px solid var(--rg-colonne-ton, var(--rg-copper));
+}
+
+.rg-colonne-titre {
+  margin: 0;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.rg-colonne-compte {
+  color: var(--rg-faint);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-colonne-sous {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  color: var(--rg-faint);
+  font-size: 9.6px;
+}
+
+.rg-colonne-corps {
+  display: flex;
+  flex-direction: column;
+  min-height: 60px;
+}
+
+/* la fiche de tâche : une entrée de registre, jamais une carte */
+.rg-fiche {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 0 14px;
+  border-bottom: 1px solid var(--rg-hair);
+  cursor: grab;
+  transition: box-shadow 0.16s ease;
+}
+
+.rg-fiche:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-hair-fort);
+}
+
+.rg-fiche:active {
+  cursor: grabbing;
+}
+
+.rg-fiche[data-selection='oui'] {
+  box-shadow: inset 3px 0 0 0 var(--rg-copper);
+}
+
+.rg-fiche-tete {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+/* la perle de priorité */
+.rg-fiche-perle {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--rg-priorite, var(--rg-perle-cuivre));
+}
+
+.rg-fiche[data-priorite='critical'] { --rg-priorite: var(--rg-corail); }
+.rg-fiche[data-priorite='high'] { --rg-priorite: var(--rg-perle-cuivre); }
+.rg-fiche[data-priorite='medium'] { --rg-priorite: var(--rg-perle-sauge); }
+.rg-fiche[data-priorite='low'] { --rg-priorite: var(--rg-perle-teal); }
+
+.rg-fiche-num {
+  color: var(--rg-faint);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 10.5px;
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-fiche-titre {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15.4px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rg-fiche-titre:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-copper);
+}
+
+.rg-fiche-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-left: 16px;
+  color: var(--rg-faint);
+  font-size: 9.8px;
+}
+
+.rg-fiche-meta strong {
+  color: var(--rg-corail);
+  font-weight: 700;
+}
+
+.rg-fiche-meta span[data-sep] {
+  opacity: 0.5;
+}
+
+/* l'échéance dessinée */
+.rg-echeance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--rg-faint);
+  font-size: 9.6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-echeance-collier {
+  flex: none;
+  --zl-fil: var(--rg-hair-fort);
+  --zl-perle-teal: var(--rg-perle-teal);
+  --zl-perle-cuivre: var(--rg-perle-cuivre);
+  --zl-perle-corail: var(--rg-perle-corail);
+  --zl-perle-creme: var(--rg-perle-creme);
+  --zl-perle-sauge: var(--rg-perle-sauge);
+}
+
+.rg-echeance[data-ton='retard'] {
+  color: var(--rg-corail);
+  font-weight: 700;
+}
+
+.rg-fiche-pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-left: 16px;
+}
+
+.rg-personne {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--rg-soft);
+  font-size: 9.8px;
+}
+
+.rg-fiche-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rg-fiche-actions .rg-lien {
+  min-height: 32px;
+  font-size: 9.6px;
+  font-weight: 600;
+  color: var(--rg-faint);
+}
+
+/* la case de sélection : une perle qu'on remplit */
+.rg-case {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rg-hair-fort);
+  border-radius: 50%;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  transition: box-shadow 0.16s ease;
+}
+
+.rg-case:hover {
+  box-shadow: 0 0 0 3px var(--rg-voile);
+}
+
+.rg-case[aria-pressed='true'] {
+  border-color: var(--rg-copper-fort);
+  background: var(--rg-copper-fort);
+  color: var(--rg-sur-copper);
+}
+
+/* « ajouter une tâche », au bas de chaque colonne */
+.rg-ajouter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: 36px;
+  margin-top: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rg-faint);
+  font: inherit;
+  font-size: 9.8px;
+  cursor: pointer;
+}
+
+.rg-ajouter:hover {
+  box-shadow: inset 0 -1px 0 0 var(--rg-copper);
+}
+
+/* la colonne vide : une phrase et une rosace creuse */
+.rg-colonne-vide {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 0 4px;
+  color: var(--rg-faint);
+  font-size: 11px;
+}
+
+.rg-colonne-vide span:last-child {
+  font-size: 9.6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   7. LA VUE LISTE — la même lecture, à plat
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-liste {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 0;
+}
+
+.rg-ligne {
+  display: grid;
+  grid-template-columns: auto minmax(0, 2fr) minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rg-hair);
+  transition: box-shadow 0.16s ease;
+}
+
+.rg-ligne:hover {
+  box-shadow: inset 3px 0 0 -1px var(--rg-copper);
+}
+
+.rg-ligne[data-selection='oui'] {
+  box-shadow: inset 3px 0 0 0 var(--rg-copper);
+}
+
+.rg-ligne-nom {
+  margin: 0;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15px;
+}
+
+.rg-ligne-note {
+  margin: 3px 0 0;
+  color: var(--rg-faint);
+  font-size: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   8. SÉLECTION, AVERTISSEMENTS, ÉTATS
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-selection {
+  position: sticky;
+  top: 8px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--rg-copper);
+  border-radius: 4px;
+  background: var(--rg-voile);
+  color: var(--rg-ink);
+  font-size: 11.4px;
+  font-weight: 700;
+}
+
+.rg-selection-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rg-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 12px 0 12px 14px;
+  border-left: 2px solid var(--rg-perle-teal);
+  color: var(--rg-soft);
+  font-size: 11.4px;
+  line-height: 1.55;
+}
+
+.rg-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 46px 0 40px;
+  border-bottom: 1px solid var(--rg-hair);
+}
+
+.rg-vide h3 {
+  margin: 0;
+  color: var(--rg-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.rg-vide p {
+  max-width: 480px;
+  margin: 0;
+  color: var(--rg-soft);
+  font-size: 11.8px;
+  line-height: 1.6;
+}
+
+.rg-vide .rg-primaire {
+  margin-top: 10px;
+}
+
+.rg-chargement {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 0;
+}
+
+.rg-chargement-ligne {
+  height: 1px;
+  background: var(--rg-hair);
+}
+
+.rg-chargement-texte {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--rg-faint);
+  font-size: 11.4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   9. LE PIED — ce qui demande une décision
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-pied {
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1.5px solid var(--rg-hair-fort);
+}
+
+.rg-pied-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rg-pied-titre {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0;
+  color: var(--rg-corail);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.rg-pied-texte {
+  color: var(--rg-soft);
+  font-size: 11.4px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* les onglets du registre de décisions */
+.rg-pied-onglets {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.rg-pied-liste {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+  border-top: 1px solid var(--rg-hair);
+}
+
+.rg-pied-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rg-hair);
+}
+
+.rg-pied-item-titre {
+  margin: 0;
+  color: var(--rg-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rg-pied-item-note {
+  margin: 3px 0 0;
+  color: var(--rg-faint);
+  font-size: 10.4px;
+}
+
+.rg-pied-item[data-grave='oui'] .rg-pied-item-titre {
+  color: var(--rg-corail);
+}
+
+.rg-pied-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   10. LE MOUVEMENT — les entrées se posent, une fois
+   ═══════════════════════════════════════════════════════════════════ */
+
+@keyframes rg-pose {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+
+.rg-entree,
+.rg-fiche,
+.rg-collier-groupe {
+  animation: rg-pose 0.34s cubic-bezier(0.22, 0.7, 0.3, 1) both;
+}
+
+.rg-entree:nth-child(2) { animation-delay: 0.03s; }
+.rg-entree:nth-child(3) { animation-delay: 0.06s; }
+.rg-entree:nth-child(4) { animation-delay: 0.09s; }
+.rg-entree:nth-child(5) { animation-delay: 0.12s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rg-entree,
+  .rg-fiche,
+  .rg-collier-groupe {
+    animation: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   11. ADAPTATION — on garde la même écriture, plus serrée
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1180px) {
+  .rg-entree {
+    column-gap: 16px;
+  }
+  .rg-colonnes {
+    gap: 0 20px;
+  }
+}
+
+@media (max-width: 960px) {
+  .rg-colonnes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 28px;
+  }
+  .rg-tete {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rg-colophon {
+    flex-wrap: wrap;
+    row-gap: 14px;
+  }
+  .rg-chiffre:first-child {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .emp-vues {
+    padding-left: 18px;
+  }
+  .emp-vues::before {
+    left: 0;
+    top: 90px;
+  }
+  .rg-entree {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    row-gap: 12px;
+  }
+  .rg-cellule-membres,
+  .rg-cellule-sante {
+    grid-column: 2 / -1;
+  }
+  .rg-entree-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+  .rg-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .rg-colonnes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rg-ligne {
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 8px;
+  }
+  .rg-ligne > :nth-child(n + 3) {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 520px) {
+  .rg-chiffre {
+    min-width: 50%;
+    padding: 0 14px 0 0;
+    border-left: 0;
+  }
+  .rg-chiffre-libelle {
+    letter-spacing: 0.14em;
+  }
+  .rg-titre {
+    font-size: 34px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   12. LA BARRE DU HAUT — les vues à gauche, les raccourcis à droite
+   ═══════════════════════════════════════════════════════════════════ */
+
+.emp-barre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+  flex-wrap: wrap;
+  margin: 0 0 24px;
+  padding: 0;
+  border-bottom: 1px solid var(--pt-line);
+}
+
+/* dans la barre, les onglets n'ont plus de filet à eux */
+.emp-barre .emp-onglets {
+  flex: 1 1 auto;
+  margin: 0;
+  border-bottom: 0;
+}
+
+.emp-barre-raccourcis {
+  display: flex;
+  justify-content: flex-end;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* les raccourcis sont des mots, pas des pastilles : même écriture que
+   les actions du registre — un filet au survol, rien d'autre */
+.emp-barre .abs-raccourcis {
+  display: flex;
+  align-items: center;
+  gap: 2px 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0;
+}
+
+.emp-barre .abs-raccourci {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--pt-ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: box-shadow 0.16s ease;
+}
+
+.emp-barre .abs-raccourci svg {
+  color: var(--pt-muted);
+}
+
+.emp-barre .abs-raccourci:hover {
+  box-shadow: inset 0 -1px 0 0 var(--pt-copper-strong);
+}
+
+.emp-barre .abs-raccourci[aria-current='page'] {
+  color: var(--pt-muted);
+  pointer-events: none;
+}
+
+@media (max-width: 1180px) {
+  .emp-barre {
+    align-items: flex-start;
+  }
+  .emp-barre .abs-raccourcis {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .emp-barre .abs-raccourci {
+    font-size: 10.4px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   13. L'ANNUAIRE — une entrée par personne, comme les équipes
+   ═══════════════════════════════════════════════════════════════════ */
+
+.rg-compte {
+  color: var(--rg-faint);
+  font-size: 10.4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rg-entree-annuaire {
+  grid-template-columns: 40px minmax(0, 1.9fr) minmax(0, 0.95fr) auto;
+  align-items: start;
+  padding: 20px 0;
+  column-gap: 20px;
+}
+
+.rg-cellule-identite {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* le portrait, en pastille de registre : la photo si elle existe,
+   les initiales sinon — jamais un cadre vide */
+.rg-avatar-annuaire {
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rg-hair-fort);
+  border-radius: 50%;
+  background: var(--rg-paper);
+  color: var(--rg-copper);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+.rg-avatar-annuaire img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rg-identite-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rg-identite-texte .rg-entree-titre {
+  font-size: clamp(18px, 1.8vw, 23px);
+  line-height: 1.1;
+}
+
+.rg-annuaire-sous {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+  color: var(--rg-faint);
+  font-size: 9.8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rg-annuaire-matricule {
+  color: var(--rg-soft);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+}
+
+.rg-annuaire-manque {
+  text-transform: none;
+  letter-spacing: 0;
+  font-style: italic;
+}
+
+.rg-identite-texte .rg-entree-note {
+  margin: 0;
+}
+
+/* la ligne d'état : présence, régime, portail */
+.rg-annuaire-etats {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  color: var(--rg-faint);
+  font-size: 10.2px;
+}
+
+.rg-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--rg-soft);
+}
+
+.rg-presence[data-etat='non_pointe'] {
+  color: var(--rg-faint);
+}
+
+.rg-presence-perle {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--rg-perle-cuivre);
+}
+
+.rg-presence-perle[data-ton='teal'] { background: var(--rg-perle-teal); }
+.rg-presence-perle[data-ton='cuivre'] { background: var(--rg-perle-cuivre); }
+.rg-presence-perle[data-ton='sauge'] { background: var(--rg-perle-sauge); }
+.rg-presence-perle[data-ton='creme'] { background: var(--rg-perle-creme); }
+.rg-presence-perle[data-ton='faible'] { background: transparent; box-shadow: inset 0 0 0 1px var(--rg-hair-fort); }
+
+.rg-presence-texte {
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-annuaire-regime {
+  color: var(--rg-faint);
+}
+
+.rg-annuaire-compte {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rg-annuaire-compte[data-etat='migrer'] { color: var(--rg-corail); font-weight: 700; }
+.rg-annuaire-compte[data-etat='ouvert'] { color: var(--rg-teal); }
+.rg-annuaire-compte[data-etat='ferme'] { color: var(--rg-corail); }
+.rg-annuaire-compte[data-etat='aucun'] { color: var(--rg-faint); font-style: italic; }
+
+/* les heures de la semaine : un filet qui se remplit, et son chiffre */
+.rg-annuaire-heures {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: min(260px, 100%);
+  margin-top: 2px;
+}
+
+.rg-jauge {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  background: var(--rg-hair);
+}
+
+.rg-jauge-remplie {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--rg-copper);
+}
+
+.rg-jauge-remplie[data-complet='oui'] {
+  background: var(--rg-teal);
+}
+
+.rg-annuaire-heures-texte {
+  color: var(--rg-faint);
+  font-size: 9.6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* la fiche de paie envoyée : une mention soulignée, pas une pastille */
+.rg-annuaire-paie .sk-payslip-badge {
+  margin: 0;
+  color: var(--rg-teal);
+}
+
+.rg-annuaire-paie .sk-payslip-badge summary {
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--rg-teal);
+  font-size: 10.2px;
+  line-height: 1.4;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--rg-hair-fort);
+}
+
+.rg-annuaire-paie .sk-payslip-badge summary svg {
+  display: none;
+  animation: none;
+}
+
+.rg-annuaire-paie .sk-payslip-badge summary:focus-visible {
+  outline: 2px solid var(--rg-copper);
+  outline-offset: 2px;
+}
+
+.rg-annuaire-paie .sk-payslip-info {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--rg-hair-fort);
+  border-radius: 4px;
+  background: var(--rg-paper);
+  color: var(--rg-soft);
+  font-size: 10.4px;
+  line-height: 1.6;
+}
+
+/* la colonne du jour */
+.rg-cellule-jour {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.rg-annuaire-jour {
+  color: var(--rg-soft);
+  font-size: 11.4px;
+  line-height: 1.4;
+}
+
+.rg-annuaire-jour-note {
+  color: var(--rg-faint);
+  font-size: 9.8px;
+}
+
+/* le menu d'une personne s'ouvre sous ses actions */
+.rg-menu-annuaire {
+  min-width: 224px;
+}
+
+@media (max-width: 520px) {
+  .rg-menu-annuaire {
+    min-width: 196px;
+  }
+}
+
+.rg-note[data-ton='corail'] {
+  border-left-color: var(--rg-perle-corail);
+  color: var(--rg-soft);
+}
+
+@media (max-width: 1080px) {
+  .rg-entree-annuaire {
+    grid-template-columns: 34px minmax(0, 1.6fr) auto;
+  }
+  .rg-cellule-jour {
+    grid-column: 2 / 3;
+    grid-row: 2;
+    margin-top: 10px;
+  }
+}
+
+@media (max-width: 760px) {
+  .rg-entree-annuaire {
+    grid-template-columns: 28px minmax(0, 1fr);
+    row-gap: 10px;
+  }
+  .rg-cellule-identite,
+  .rg-cellule-jour {
+    grid-column: 2 / -1;
+  }
+  .rg-cellule-jour {
+    grid-row: auto;
+    margin-top: 0;
+  }
+  .rg-entree-annuaire .rg-entree-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+  .rg-avatar-annuaire {
+    width: 38px;
+    height: 38px;
+    font-size: 12px;
+  }
+}
+
+/* le petit indicateur tournant des chargements */
+@keyframes rg-tourne {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: rg-tourne 0.9s linear infinite;
+}
+
+.rg-tourne {
+  animation: rg-tourne 0.9s linear infinite;
+}
