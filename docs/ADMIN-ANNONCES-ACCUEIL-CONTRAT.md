@@ -37,7 +37,7 @@ Tous les médias : cadre 16:9, largeur utile ≤ 1600 px, extension cohérente a
 
 **Mécanisme retenu — bucket public « à la publication »** (équivalent sécurité, sans Edge function) :
 
-1. Un fichier n'est téléversé (donc visible) **que lors de la publication** par un superadmin AAL2 (politiques Storage §5).
+1. Le dépôt de fichier passe par le chemin cloisonné `{entreprise}/{annonce-uuid}/{fichier}` (politique Storage §5, sans JWT) — un fichier déposé **n'est visible nulle part avant publication** : seule la RPC AAL2 de superadmin le valide (MIME réel, taille, extension) et l'enregistre.
 2. La RPC de lecture ne le sert que si la ligne est **active ET dans sa période** (heure serveur).
 3. Chemin `{entreprise}/{annonce-uuid}/{fichier}` : **innégociable sans la liste des annonces** (UUID), donc non devinable.
 4. Désactivation = plus servi par la RPC ; suppression = ligne + fichier supprimés.
@@ -96,31 +96,40 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('annonces-accueil', 'annonces-accueil', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- Garde : superadmin actif + chemin {entreprise}/{annonce}/{fichier}.
--- AAL2 est exigé sur les RPC de publication (la porte réelle) et relue à
--- chaque action dans l'écran Admin ; le dépôt de fichier seul n'expose rien
--- (un média n'est servi que publié par une RPC AAL2).
-CREATE OR REPLACE FUNCTION public.encheck_annonce_storage_appartient(p_name text)
+-- Renfort côté serveur du bucket (5 Mo + liste MIME fermée) :
+UPDATE storage.buckets
+SET file_size_limit = 5242880,
+    allowed_mime_types = ARRAY['image/png','image/jpeg','image/webp','image/gif','video/mp4','video/quicktime']
+WHERE id = 'annonces-accueil';
+
+-- ⚠️ Garde SANS JWT (migration annonces_accueil_stockage_sans_jwt) :
+-- dans ce projet, les claims JWT (auth.uid(), auth.jwt()) ne sont pas
+-- fiables en contexte RLS du service Storage — les uploads d'avatars admin
+-- (même dépendance) n'ont jamais fonctionné en production (0 objet).
+-- La garde ne vérifie donc QUE la structure du chemin ; la sécurité réelle
+-- reste la porte AAL2 : un fichier déposé n'est visible nulle part avant
+-- qu'une RPC superadmin AAL2 (mettre_a_jour) ne le valide (MIME réel,
+-- taille, extension) et ne le publie.
+CREATE OR REPLACE FUNCTION public.encheck_annonce_chemin_stockage(p_name text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public AS $$
-  SELECT auth.uid() IS NOT NULL
-    AND EXISTS (SELECT 1 FROM public.admins
-                WHERE user_id = auth.uid() AND is_active AND role = 'super_admin')
-    AND cardinality(storage.foldername(p_name)) >= 2
+  SELECT p_name IS NOT NULL
+    AND cardinality(storage.foldername(p_name)) = 2
     AND (storage.foldername(p_name))[1] IN (SELECT id::text FROM public.enterprises)
+    AND (storage.foldername(p_name))[2] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
 $$;
 
+DROP POLICY IF EXISTS annonces_accueil_delete ON storage.objects;  -- plus aucune suppression côté client
 DROP POLICY IF EXISTS annonces_accueil_insert ON storage.objects;
 CREATE POLICY annonces_accueil_insert ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_appartient(name));
+  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_chemin_stockage(name));
 DROP POLICY IF EXISTS annonces_accueil_update ON storage.objects;
 CREATE POLICY annonces_accueil_update ON storage.objects FOR UPDATE TO authenticated
-  USING (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_appartient(name))
-  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_appartient(name));
-DROP POLICY IF EXISTS annonces_accueil_delete ON storage.objects;
-CREATE POLICY annonces_accueil_delete ON storage.objects FOR DELETE TO authenticated
-  USING (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_appartient(name));
+  USING (bucket_id = 'annonces-accueil' AND public.encheck_annonce_chemin_stockage(name))
+  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_chemin_stockage(name));
 -- Pas de politique SELECT : lecture via URL publique uniquement (bucket public).
+-- Pas de politique DELETE : la suppression du fichier est faite par les RPC
+-- AAL2 (supprimer / mettre_a_jour au remplacement), SECURITY DEFINER.
 ```
 
 ## 6. RPC de lecture (kiosque / app Pointage)
@@ -324,6 +333,7 @@ GRANT  EXECUTE ON FUNCTION public.encheck_annonce_accueil_lister(uuid) TO authen
 DROP FUNCTION IF EXISTS public.encheck_annonce_accueil_supprimer(uuid, uuid);
 DROP FUNCTION IF EXISTS public.encheck_annonce_accueil_mettre_a_jour(uuid, uuid, text, text, integer, integer, boolean, timestamptz, timestamptz);
 DROP FUNCTION IF EXISTS public.encheck_accueil_publicites(uuid);
+DROP FUNCTION IF EXISTS public.encheck_annonce_chemin_stockage(text);
 DROP FUNCTION IF EXISTS public.encheck_annonce_storage_appartient(text);
 DROP FUNCTION IF EXISTS public.encheck_annonce_storage_autorise(text);
 DROP TRIGGER IF EXISTS annonces_accueil_touch ON public.annonces_accueil;

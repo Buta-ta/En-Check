@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowDown, ArrowUp, ArrowUpRight, CheckCircle2, Film,
+  ArrowDown, ArrowLeft, ArrowUp, ArrowUpRight, CheckCircle2, Film,
   Image as ImageIcon, Megaphone, Pause, Pencil, Play, Power,
   RefreshCw, Repeat, SkipBack, SkipForward, Sun, Moon,
   Trash2, Upload, Users,
@@ -289,7 +289,7 @@ export default function AnnoncesAccueil() {
           .from('annonces-accueil')
           .upload(chemin, fichier, { contentType: fichier.type, upsert: true })
         if (errUp)
-          throw new Error('Envoi du fichier refusé : ' + (errUp.message || 'vérifiez le format, le poids et votre session MFA.'))
+          throw new Error('Envoi du fichier refusé : ' + (errUp.message || 'vérifiez le format et le poids du fichier.'))
       }
       const res = await accountRpc('encheck_annonce_accueil_mettre_a_jour', {
         p_enterprise_id: entreprise,
@@ -303,10 +303,7 @@ export default function AnnoncesAccueil() {
         p_termine_le: termineLe ? new Date(termineLe).toISOString() : null,
       })
       if (res?.ok !== true) throw new Error('Publication refusée par le serveur.')
-      if (enEdition && enEdition.media_path && enEdition.media_path !== chemin)
-        await supabase.storage.from('annonces-accueil')
-          .remove([enEdition.media_path])
-          .catch(() => {})
+      // Le fichier remplacé est nettoyé par le RPC (plus de remove côté client).
       setNotice({ ton: 'ok', texte: enEdition ? 'Annonce mise à jour.' : 'Annonce publiée.' })
       viderForm()
       await chargerAnnonces()
@@ -361,7 +358,7 @@ export default function AnnoncesAccueil() {
         p_id: a.id,
       })
       if (res?.ok !== true) throw new Error('Suppression refusée par le serveur.')
-      await supabase.storage.from('annonces-accueil').remove([a.media_path]).catch(() => {})
+      // Le fichier de stockage est supprimé par le RPC (aucun remove client).
       setNotice({ ton: 'ok', texte: 'Annonce supprimée.' })
       setConfirmationSuppression(null)
       if (enEdition?.id === a.id) viderForm()
@@ -440,11 +437,21 @@ export default function AnnoncesAccueil() {
         <div className="aa-colonne">
           {/* ── La barre de titre ── */}
           <header className="aa-heading">
-            <div className="aa-marque">
-              <AbomeyBlasonSvg size={52} />
-              <div className="aa-marque-texte">
-                <h1>Annonces d’accueil</h1>
-                <p>Le carrousel média de l’en-tête Pointage</p>
+            <div className="aa-heading-gauche">
+              <Link
+                className="aa-retour"
+                to="/dashboard"
+                aria-label="Retour au tableau de bord"
+                title="Retour au tableau de bord"
+              >
+                <ArrowLeft size={16} aria-hidden="true" />
+              </Link>
+              <div className="aa-marque">
+                <AbomeyBlasonSvg size={52} />
+                <div className="aa-marque-texte">
+                  <h1>Annonces d’accueil</h1>
+                  <p>Le carrousel média de l’en-tête Pointage</p>
+                </div>
               </div>
             </div>
             <div className="aa-heading-actions">
