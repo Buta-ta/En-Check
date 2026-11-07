@@ -34,6 +34,7 @@ import Geopointage from './pages/Geopointage'
 // La reconnaissance faciale réunit les enrôlements et leurs réglages :
 // une seule page, une seule porte.
 import ReconnaissanceFaciale from './pages/ReconnaissanceFaciale'
+import AnnoncesAccueil from './pages/AnnoncesAccueil'
 import JoursFeries from './pages/JoursFeries'
 
 // Employee pages
@@ -362,6 +363,11 @@ function App() {
           <Route path="/configuration-pointeuse" element={
             <AdminRoute>
               <ConfigurationPointeuse />
+            </AdminRoute>
+          } />
+          <Route path="/annonces-accueil" element={
+            <AdminRoute requireSuperAdmin>
+              <AnnoncesAccueil />
             </AdminRoute>
           } />
           {/* L'ancienne adresse des pointeuses ouvre la page commune.

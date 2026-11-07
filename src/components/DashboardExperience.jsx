@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
   LogOut,
   MapPin,
+  Megaphone,
   Menu,
   Moon,
   MoveDown,
@@ -252,6 +253,7 @@ export default function DashboardExperience({
         // Les machines ADMS et le poste de pointage font un seul écran :
         // l'une ou l'autre des deux options ouvre « Configuration pointeuse ».
         { label: 'Configuration pointeuse', icon: Router, path: '/configuration-pointeuse', show: isSuperAdmin || modulePointeuses || modulePostePointage },
+        { label: 'Annonces d’accueil', icon: Megaphone, path: '/annonces-accueil', show: isSuperAdmin },
       ],
     },
     {

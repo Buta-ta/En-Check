@@ -1,0 +1,465 @@
+/* ═══════════════════════════════════════════════════════════
+   ANNONCES D'ACCUEIL — styles propres à la page
+   (les classes partagées .aa-* viennent de AdminAccounts.css)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Sélecteur d'entreprise ───────────────────────────────── */
+.aa-page .aa-ann-entreprise {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.aa-page .aa-ann-entreprise select {
+  min-width: 240px;
+  flex: 1;
+  max-width: 420px;
+}
+.aa-page .aa-ann-entreprise .aa-recharge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.aa-page .aa-ann-entreprise .aa-recharge:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+/* ── Mesures ──────────────────────────────────────────────── */
+.aa-page .aa-ann-jauge {
+  height: 5px;
+  border-radius: 99px;
+  background: var(--aa-ligne);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.aa-page .aa-ann-jauge > span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--aa-fil);
+  transition: width 0.4s ease, background 0.4s ease;
+}
+.aa-page .aa-ann-jauge > span.est-plein {
+  background: var(--aa-terre);
+}
+
+/* ── Carrousel d'aperçu ───────────────────────────────────── */
+.aa-page .aa-ann-cadre {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--aa-couture);
+  background: var(--aa-panneau);
+  box-shadow: var(--aa-ombre);
+}
+.aa-page .aa-ann-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+.aa-page .aa-ann-slide.is-visible {
+  opacity: 1;
+}
+.aa-page .aa-ann-slide img,
+.aa-page .aa-ann-slide video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.aa-page .aa-ann-vide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--aa-encre-faible);
+  font-size: 13px;
+  text-align: center;
+  padding: 0 24px;
+}
+.aa-page .aa-ann-vide svg {
+  opacity: 0.5;
+}
+.aa-page .aa-ann-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 0;
+  background: var(--aa-terre);
+  animation: aa-ann-progress ligneaire 1s linear forwards;
+}
+@keyframes aa-ann-progress {
+  from { width: 0; }
+  to { width: 100%; }
+}
+.aa-page .aa-ann-compteur {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--aa-ivoire);
+  background: rgba(43, 26, 18, 0.62);
+  backdrop-filter: blur(3px);
+}
+.aa-page .aa-ann-controles {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.aa-page .aa-ann-controles button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 13px;
+}
+.aa-page .aa-ann-controles button.principal {
+  width: 46px;
+  height: 46px;
+}
+
+/* ── Liste des médias ─────────────────────────────────────── */
+.aa-page .aa-ann-media {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px dashed var(--aa-ligne);
+}
+.aa-page .aa-ann-media:last-child {
+  border-bottom: 0;
+}
+.aa-page .aa-ann-vignette {
+  position: relative;
+  width: 96px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--aa-couture);
+  background: var(--aa-panneau);
+}
+.aa-page .aa-ann-vignette img,
+.aa-page .aa-ann-vignette video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.aa-page .aa-ann-vignette .aa-ann-mini-t {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 1px 6px;
+  border-top-right-radius: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--aa-ivoire);
+  background: rgba(43, 26, 18, 0.72);
+}
+.aa-page .aa-ann-media-infos {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aa-page .aa-ann-media-ligne1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.aa-page .aa-ann-ordre-n {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--aa-encre-douce);
+  min-width: 26px;
+  text-align: center;
+  padding: 2px 4px;
+  border-radius: 6px;
+  background: var(--aa-panneau);
+  border: 1px solid var(--aa-ligne);
+}
+.aa-page .aa-ann-puce {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--aa-couture);
+  color: var(--aa-encre-douce);
+}
+.aa-page .aa-ann-puce .aa-ann-pastille {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--aa-encre-faible);
+}
+.aa-page .aa-ann-puce.st-en_ligne { border-color: color-mix(in srgb, var(--aa-ok) 55%, transparent); color: var(--aa-ok); }
+.aa-page .aa-ann-puce.st-en_ligne .aa-ann-pastille { background: var(--aa-ok); }
+.aa-page .aa-ann-puce.st-programmee { border-color: color-mix(in srgb, var(--aa-alerte) 55%, transparent); color: var(--aa-alerte); }
+.aa-page .aa-ann-puce.st-programmee .aa-ann-pastille { background: var(--aa-alerte); }
+.aa-page .aa-ann-puce.st-expinee { opacity: 0.65; }
+.aa-page .aa-ann-puce.st-inactive .aa-ann-pastille { background: transparent; border: 1px solid var(--aa-encre-faible); }
+.aa-page .aa-ann-media-detail {
+  font-size: 12px;
+  color: var(--aa-encre-faible);
+}
+.aa-page .aa-ann-media-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.aa-page .aa-ann-media-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.aa-page .aa-ann-media-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.aa-page .aa-ann-media-actions button.est-danger {
+  color: var(--aa-terre);
+}
+.aa-page .aa-ann-media-actions button.est-confirm {
+  width: auto;
+  padding: 0 12px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--aa-terre);
+  color: var(--aa-ivoire);
+}
+
+/* ── Formulaire d'ajout / édition ─────────────────────────── */
+.aa-page .aa-ann-forme {
+  display: grid;
+  gap: 14px;
+}
+.aa-page .aa-ann-case {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--aa-encre-douce);
+  cursor: pointer;
+}
+.aa-page .aa-ann-case input {
+  accent-color: var(--aa-terre);
+  width: 15px;
+  height: 15px;
+}
+.aa-page .aa-ann-envoi {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.aa-page .aa-ann-attente {
+  font-size: 13px;
+  color: var(--aa-encre-faible);
+  padding: 6px 0;
+  line-height: 1.5;
+}
+.aa-page .aa-ann-forme > .aa-ann-grille-champs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px 18px;
+}
+.aa-page .aa-ann-upload {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1.5px dashed var(--aa-couture-forte);
+  border-radius: 12px;
+  background: var(--aa-champ);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.aa-page .aa-ann-upload:hover {
+  border-color: var(--aa-fil);
+}
+.aa-page .aa-ann-upload input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.aa-page .aa-ann-upload-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--aa-panneau);
+  color: var(--aa-fil);
+}
+.aa-page .aa-ann-upload-texte {
+  font-size: 13px;
+  color: var(--aa-encre-douce);
+}
+.aa-page .aa-ann-upload-texte strong {
+  display: block;
+  color: var(--aa-encre);
+  font-size: 13px;
+}
+.aa-page .aa-ann-upload-texte small {
+  color: var(--aa-encre-faible);
+}
+.aa-page .aa-ann-upload-apercu {
+  width: 150px;
+  aspect-ratio: 16 / 9;
+  flex: none;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--aa-couture);
+  background: var(--aa-panneau);
+}
+.aa-page .aa-ann-upload-apercu img,
+.aa-page .aa-ann-upload-apercu video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.aa-page .aa-ann-regles {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 2px 18px;
+  font-size: 12px;
+  color: var(--aa-encre-douce);
+}
+.aa-page .aa-ann-regles div {
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--aa-ligne);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.aa-page .aa-ann-regles dt {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.aa-page .aa-ann-regles dd {
+  margin: 0;
+  color: var(--aa-encre-faible);
+}
+
+/* ── Notifications ────────────────────────────────────────── */
+.aa-page .aa-ann-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.aa-page .aa-ann-notice svg {
+  flex: none;
+  margin-top: 1px;
+}
+.aa-page .aa-ann-notice.ton-ok {
+  background: color-mix(in srgb, var(--aa-ok) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--aa-ok) 40%, transparent);
+  color: var(--aa-ok);
+}
+.aa-page .aa-ann-notice.ton-alerte {
+  background: color-mix(in srgb, var(--aa-alerte) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--aa-alerte) 40%, transparent);
+  color: var(--aa-alerte);
+}
+
+/* ── Journal ──────────────────────────────────────────────── */
+.aa-page .aa-ann-journal {
+  display: flex;
+  flex-direction: column;
+}
+.aa-page .aa-ann-journal > div {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--aa-ligne);
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.aa-page .aa-ann-journal > div:last-child {
+  border-bottom: 0;
+}
+.aa-page .aa-ann-journal .aa-ann-j-temps {
+  flex: none;
+  width: 128px;
+  font-size: 12px;
+  color: var(--aa-encre-faible);
+}
+.aa-page .aa-ann-journal .aa-ann-j-action {
+  font-weight: 700;
+}
+.aa-page .aa-ann-journal .aa-ann-j-detail {
+  color: var(--aa-encre-faible);
+  font-size: 12px;
+}
+
+/* ── Réduit les animations si le système le demande ───────── */
+@media (prefers-reduced-motion: reduce) {
+  .aa-page .aa-ann-slide {
+    transition: none;
+  }
+  .aa-page .aa-ann-progress {
+    display: none;
+  }
+}
+
+/* ── Étroit ───────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  .aa-page .aa-ann-media {
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+  .aa-page .aa-ann-media-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .aa-page .aa-ann-upload {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .aa-page .aa-ann-upload-apercu {
+    width: 100%;
+  }
+}
