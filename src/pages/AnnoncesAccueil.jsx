@@ -19,7 +19,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowDown, ArrowUp, ArrowUpRight, CheckCircle2, Film,
+  ArrowDown, ArrowLeft, ArrowUp, ArrowUpRight, CheckCircle2, Film,
   Image as ImageIcon, Megaphone, Pause, Pencil, Play, Power,
   RefreshCw, Repeat, SkipBack, SkipForward, Sun, Moon,
   Trash2, Upload, Users,
@@ -41,22 +41,30 @@ const TYPES = {
   image: {
     libelle: 'Image', icone: ImageIcon,
     mimes: ['image/jpeg', 'image/png', 'image/webp'],
+    ext: ['jpg', 'jpeg', 'png', 'webp'],
     max: 512 * 1024, maxKo: '500 Ko', formats: 'JPEG · PNG · WebP',
   },
   gif: {
     libelle: 'GIF', icone: Repeat,
     mimes: ['image/gif'],
+    ext: ['gif'],
     max: 2 * 1024 * 1024, maxKo: '2 Mo', formats: 'GIF animé',
   },
   video: {
     libelle: 'Vidéo', icone: Film,
     mimes: ['video/mp4', 'video/quicktime'],
+    ext: ['mp4', 'mov'],
     max: 5 * 1024 * 1024, maxKo: '5 Mo', formats: 'MP4 · MOV (muette)',
   },
 }
 const MIME_VERS_TYPE = Object.fromEntries(
   Object.entries(TYPES).flatMap(([cle, m]) => m.mimes.map((mime) => [mime, cle])),
 )
+// Extension canonique par MIME réel (le type est dérivé du MIME, jamais choisi à la main)
+const EXT_PAR_MIME = {
+  'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp',
+  'image/gif': '.gif', 'video/mp4': '.mp4', 'video/quicktime': '.mov',
+}
 const DUREE_MIN = 3, DUREE_MAX = 15, MAX_ANNONCES = 8, VIDEO_MAX_S = 30
 const ACCEPT = Object.values(TYPES).flatMap((m) => m.mimes).join(',')
 
@@ -120,6 +128,16 @@ export default function AnnoncesAccueil() {
   const lock = useRef(false)
   const fileInput = useRef(null)
 
+  // Deuxième barrière, lisible : le défi MFA (ensureMfa) puis une relecture
+  // du niveau de la session. Si la session n'est pas à l'assurance AAL2,
+  // on explique au lieu de laisser le serveur renvoyer un refus opaque.
+  async function securite() {
+    await ensureMfa()
+    const { data: nivAal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (!nivAal || nivAal.currentLevel !== 'aal2')
+      throw new Error('Second facteur requis (AAL2) : votre session n’est pas vérifiée. Si le défi ne s’ouvre pas, vérifiez vos facteurs MFA dans Mon compte → Sécurité.')
+  }
+
   // ── Comptes + entreprises (une seule fois) ──
   const charger = useCallback(async () => {
     const req = ++epoch.current
@@ -157,7 +175,7 @@ export default function AnnoncesAccueil() {
     setAnnonces(null)
     setNotice(null)
     try {
-      await ensureMfa()
+      await securite()
       const data = await accountRpc('encheck_annonce_accueil_lister', { p_enterprise_id: entreprise })
       if (data?.ok !== true)
         throw new Error(data?.raison === 'entreprise_inconnue' ? 'Entreprise inconnue.' : 'Lecture refusée. Vérifiez votre session MFA.')
@@ -267,19 +285,26 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await ensureMfa()
+      await securite()
       const id = enEdition ? enEdition.id : crypto.randomUUID()
       let chemin = enEdition?.media_path
       if (fichier) {
-        const base = (fichier.name || 'media')
-          .replace(/[^A-Za-z0-9._-]/g, '-')
-          .slice(0, 100) || 'media'
-        chemin = `${entreprise}/${id}/${base}`
+        // Chemin de stockage : caractères sûrs, troncature qui ne coupe
+        // JAMAIS l'extension, et extension forcée au format réel du fichier
+        // (dérivé du MIME) si le nom du fichier en manque une ou diverge —
+        // le serveur exige une extension cohérente avec le type de média.
+        const brut = (fichier.name || 'media').replace(/[^A-Za-z0-9._-]/g, '-')
+        const iPoint = brut.lastIndexOf('.')
+        const nomPartie = (iPoint > 0 ? brut.slice(0, iPoint) : brut).slice(0, 96) || 'media'
+        const extActuelle = iPoint > 0 ? brut.slice(iPoint).toLowerCase() : ''
+        const extValides = ((TYPES[typeMedia] || {}).ext || []).map((e) => `.${e}`.toLowerCase())
+        const extFinale = extValides.includes(extActuelle) ? brut.slice(iPoint) : (EXT_PAR_MIME[fichier.type] || '')
+        chemin = `${entreprise}/${id}/${nomPartie}${extFinale}`
         const { error: errUp } = await supabase.storage
           .from('annonces-accueil')
           .upload(chemin, fichier, { contentType: fichier.type, upsert: true })
         if (errUp)
-          throw new Error('Envoi du fichier refusé : ' + (errUp.message || 'vérifiez le format, le poids et votre session MFA.'))
+          throw new Error('Envoi du fichier refusé : ' + (errUp.message || 'vérifiez le format et le poids du fichier.'))
       }
       const res = await accountRpc('encheck_annonce_accueil_mettre_a_jour', {
         p_enterprise_id: entreprise,
@@ -293,10 +318,7 @@ export default function AnnoncesAccueil() {
         p_termine_le: termineLe ? new Date(termineLe).toISOString() : null,
       })
       if (res?.ok !== true) throw new Error('Publication refusée par le serveur.')
-      if (enEdition && enEdition.media_path && enEdition.media_path !== chemin)
-        await supabase.storage.from('annonces-accueil')
-          .remove([enEdition.media_path])
-          .catch(() => {})
+      // Le fichier remplacé est nettoyé par le RPC (plus de remove côté client).
       setNotice({ ton: 'ok', texte: enEdition ? 'Annonce mise à jour.' : 'Annonce publiée.' })
       viderForm()
       await chargerAnnonces()
@@ -316,7 +338,7 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await ensureMfa()
+      await securite()
       const res = await accountRpc('encheck_annonce_accueil_mettre_a_jour', {
         p_enterprise_id: entreprise,
         p_id: a.id,
@@ -345,13 +367,13 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await ensureMfa()
+      await securite()
       const res = await accountRpc('encheck_annonce_accueil_supprimer', {
         p_enterprise_id: entreprise,
         p_id: a.id,
       })
       if (res?.ok !== true) throw new Error('Suppression refusée par le serveur.')
-      await supabase.storage.from('annonces-accueil').remove([a.media_path]).catch(() => {})
+      // Le fichier de stockage est supprimé par le RPC (aucun remove client).
       setNotice({ ton: 'ok', texte: 'Annonce supprimée.' })
       setConfirmationSuppression(null)
       if (enEdition?.id === a.id) viderForm()
@@ -383,7 +405,7 @@ export default function AnnoncesAccueil() {
     setBusy(true)
     setNotice(null)
     try {
-      await ensureMfa()
+      await securite()
       for (const [ligne, ordreCible] of pas) {
         const res = await accountRpc('encheck_annonce_accueil_mettre_a_jour', {
           p_enterprise_id: entreprise,
@@ -430,11 +452,21 @@ export default function AnnoncesAccueil() {
         <div className="aa-colonne">
           {/* ── La barre de titre ── */}
           <header className="aa-heading">
-            <div className="aa-marque">
-              <AbomeyBlasonSvg size={52} />
-              <div className="aa-marque-texte">
-                <h1>Annonces d’accueil</h1>
-                <p>Le carrousel média de l’en-tête Pointage</p>
+            <div className="aa-heading-gauche">
+              <Link
+                className="aa-retour"
+                to="/dashboard"
+                aria-label="Retour au tableau de bord"
+                title="Retour au tableau de bord"
+              >
+                <ArrowLeft size={16} aria-hidden="true" />
+              </Link>
+              <div className="aa-marque">
+                <AbomeyBlasonSvg size={52} />
+                <div className="aa-marque-texte">
+                  <h1>Annonces d’accueil</h1>
+                  <p>Le carrousel média de l’en-tête Pointage</p>
+                </div>
               </div>
             </div>
             <div className="aa-heading-actions">
@@ -827,23 +859,28 @@ export default function AnnoncesAccueil() {
                       </>
                     )}
                   </div>
-                  {enLigne.length > 0 && (
-                    <div className="aa-ann-controles">
-                      <button type="button" title="Précédent" aria-label="Précédent" disabled={enLigne.length < 2} onClick={() => setPreviewIndex((i) => (i - 1 + enLigne.length) % enLigne.length)}>
+                  {enLigne.length > 1 && (
+                    <div className="aa-ann-controles" role="group" aria-label="Contrôles de l’aperçu">
+                      <button type="button" onClick={() => setPreviewIndex((i) => (i - 1 + enLigne.length) % enLigne.length)}>
                         <SkipBack size={15} />
+                        <span>Précédent</span>
                       </button>
-                      <button type="button" className="principal" title={lecture ? 'Mettre en pause' : 'Lancer le défilement'} aria-label={lecture ? 'Mettre en pause' : 'Lancer le défilement'} disabled={enLigne.length < 2} onClick={() => setLecture((v) => !v)}>
+                      <button type="button" className="principal" onClick={() => setLecture((v) => !v)}>
                         {lecture ? <Pause size={16} /> : <Play size={16} />}
+                        <span>{lecture ? 'Pause' : 'Lecture'}</span>
                       </button>
-                      <button type="button" title="Suivant" aria-label="Suivant" disabled={enLigne.length < 2} onClick={() => setPreviewIndex((i) => (i + 1) % enLigne.length)}>
+                      <button type="button" onClick={() => setPreviewIndex((i) => (i + 1) % enLigne.length)}>
                         <SkipForward size={15} />
+                        <span>Suivant</span>
                       </button>
                     </div>
                   )}
                   <p className="aa-ann-attente">
-                    {enLigne.length > 1
-                      ? `Défilement automatique de ${Math.round((courantApercu?.duree_affichage_ms || 5000) / 1000)} s par média, fondu entre les médias — comme sur l’app.`
-                      : 'Un seul média : affichage fixe, aucune minuterie (comportement de l’app).'}
+                    {enLigne.length === 0
+                      ? 'Aucune annonce en ligne : l’app affiche la photo par défaut.'
+                      : enLigne.length === 1
+                        ? 'Un seul média : affichage fixe, sans rotation — c’est ce que verra l’app.'
+                        : `Simulation du carrousel de l’app : chaque média s’affiche ${Math.round((courantApercu?.duree_affichage_ms || 5000) / 1000)} s. Utilisez Précédent, Pause et Suivant pour tester la rotation.`}
                   </p>
                 </section>
               )}

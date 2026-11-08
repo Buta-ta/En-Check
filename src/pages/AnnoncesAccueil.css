@@ -126,15 +126,34 @@
 .aa-page .aa-ann-controles button {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 38px;
+  gap: 8px;
   height: 38px;
-  border-radius: 50%;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--aa-couture);
+  background: transparent;
+  color: var(--aa-encre);
   font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+.aa-page .aa-ann-controles button:hover {
+  border-color: var(--aa-fil);
+  background: rgba(201, 169, 97, 0.08);
+  transform: translateY(-1px);
 }
 .aa-page .aa-ann-controles button.principal {
-  width: 46px;
-  height: 46px;
+  border-color: var(--aa-terre);
+  background: var(--aa-terre);
+  color: var(--aa-ivoire);
+}
+.aa-page .aa-ann-controles button.principal:hover {
+  background: var(--aa-terre-chaud);
+  border-color: var(--aa-terre-chaud);
 }
 
 /* ── Liste des médias ─────────────────────────────────────── */
