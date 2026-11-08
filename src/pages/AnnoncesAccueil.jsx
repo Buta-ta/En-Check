@@ -859,23 +859,28 @@ export default function AnnoncesAccueil() {
                       </>
                     )}
                   </div>
-                  {enLigne.length > 0 && (
-                    <div className="aa-ann-controles">
-                      <button type="button" title="Précédent" aria-label="Précédent" disabled={enLigne.length < 2} onClick={() => setPreviewIndex((i) => (i - 1 + enLigne.length) % enLigne.length)}>
+                  {enLigne.length > 1 && (
+                    <div className="aa-ann-controles" role="group" aria-label="Contrôles de l’aperçu">
+                      <button type="button" onClick={() => setPreviewIndex((i) => (i - 1 + enLigne.length) % enLigne.length)}>
                         <SkipBack size={15} />
+                        <span>Précédent</span>
                       </button>
-                      <button type="button" className="principal" title={lecture ? 'Mettre en pause' : 'Lancer le défilement'} aria-label={lecture ? 'Mettre en pause' : 'Lancer le défilement'} disabled={enLigne.length < 2} onClick={() => setLecture((v) => !v)}>
+                      <button type="button" className="principal" onClick={() => setLecture((v) => !v)}>
                         {lecture ? <Pause size={16} /> : <Play size={16} />}
+                        <span>{lecture ? 'Pause' : 'Lecture'}</span>
                       </button>
-                      <button type="button" title="Suivant" aria-label="Suivant" disabled={enLigne.length < 2} onClick={() => setPreviewIndex((i) => (i + 1) % enLigne.length)}>
+                      <button type="button" onClick={() => setPreviewIndex((i) => (i + 1) % enLigne.length)}>
                         <SkipForward size={15} />
+                        <span>Suivant</span>
                       </button>
                     </div>
                   )}
                   <p className="aa-ann-attente">
-                    {enLigne.length > 1
-                      ? `Défilement automatique de ${Math.round((courantApercu?.duree_affichage_ms || 5000) / 1000)} s par média, fondu entre les médias — comme sur l’app.`
-                      : 'Un seul média : affichage fixe, aucune minuterie (comportement de l’app).'}
+                    {enLigne.length === 0
+                      ? 'Aucune annonce en ligne : l’app affiche la photo par défaut.'
+                      : enLigne.length === 1
+                        ? 'Un seul média : affichage fixe, sans rotation — c’est ce que verra l’app.'
+                        : `Simulation du carrousel de l’app : chaque média s’affiche ${Math.round((courantApercu?.duree_affichage_ms || 5000) / 1000)} s. Utilisez Précédent, Pause et Suivant pour tester la rotation.`}
                   </p>
                 </section>
               )}

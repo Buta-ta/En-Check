@@ -37,7 +37,7 @@ Tous les médias : cadre 16:9, largeur utile ≤ 1600 px, extension cohérente a
 
 **Mécanisme retenu — bucket public « à la publication »** (équivalent sécurité, sans Edge function) :
 
-1. Le dépôt de fichier passe par le chemin cloisonné `{entreprise}/{annonce-uuid}/{fichier}` (politique Storage §5, sans JWT) — un fichier déposé **n'est visible nulle part avant publication** : seule la RPC AAL2 de superadmin le valide (MIME réel, taille, extension) et l'enregistre.
+1. Un fichier n'est téléversé (donc visible) **que lors de la publication** par un superadmin AAL2 (politiques Storage §5).
 2. La RPC de lecture ne le sert que si la ligne est **active ET dans sa période** (heure serveur).
 3. Chemin `{entreprise}/{annonce-uuid}/{fichier}` : **innégociable sans la liste des annonces** (UUID), donc non devinable.
 4. Désactivation = plus servi par la RPC ; suppression = ligne + fichier supprimés.
@@ -96,71 +96,30 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('annonces-accueil', 'annonces-accueil', true)
 ON CONFLICT (id) DO UPDATE SET public = true;
 
--- Renfort côté serveur du bucket (5 Mo + liste MIME fermée) :
-UPDATE storage.buckets
-SET file_size_limit = 5242880,
-    allowed_mime_types = ARRAY['image/png','image/jpeg','image/webp','image/gif','video/mp4','video/quicktime']
-WHERE id = 'annonces-accueil';
-
--- ⚠️ Garde SANS JWT (migration annonces_accueil_stockage_sans_jwt) :
--- dans ce projet, les claims JWT (auth.uid(), auth.jwt()) ne sont pas
--- fiables en contexte RLS du service Storage — les uploads d'avatars admin
--- (même dépendance) n'ont jamais fonctionné en production (0 objet).
--- La garde ne vérifie donc QUE la structure du chemin ; la sécurité réelle
--- reste la porte AAL2 : un fichier déposé n'est visible nulle part avant
--- qu'une RPC superadmin AAL2 (mettre_a_jour) ne le valide (MIME réel,
--- taille, extension) et ne le publie.
-CREATE OR REPLACE FUNCTION public.encheck_annonce_chemin_stockage(p_name text)
+-- Garde : superadmin actif + session AAL2 + chemin {entreprise}/{annonce}/{fichier}
+CREATE OR REPLACE FUNCTION public.encheck_annonce_storage_autorise(p_name text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public AS $$
-  SELECT p_name IS NOT NULL
-    AND cardinality(storage.foldername(p_name)) = 2
+  SELECT auth.uid() IS NOT NULL
+    AND EXISTS (SELECT 1 FROM public.admins
+                WHERE user_id = auth.uid() AND is_active AND role = 'super_admin')
+    AND auth.jwt() IS NOT NULL
+    AND auth.jwt()->>'aal' = 'aal2'
+    AND cardinality(storage.foldername(p_name)) >= 2
     AND (storage.foldername(p_name))[1] IN (SELECT id::text FROM public.enterprises)
-    AND (storage.foldername(p_name))[2] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
 $$;
 
-DROP POLICY IF EXISTS annonces_accueil_delete ON storage.objects;  -- plus aucune suppression côté client
 DROP POLICY IF EXISTS annonces_accueil_insert ON storage.objects;
 CREATE POLICY annonces_accueil_insert ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_chemin_stockage(name));
+  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_autorise(name));
 DROP POLICY IF EXISTS annonces_accueil_update ON storage.objects;
 CREATE POLICY annonces_accueil_update ON storage.objects FOR UPDATE TO authenticated
-  USING (bucket_id = 'annonces-accueil' AND public.encheck_annonce_chemin_stockage(name))
-  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_chemin_stockage(name));
+  USING (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_autorise(name))
+  WITH CHECK (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_autorise(name));
+DROP POLICY IF EXISTS annonces_accueil_delete ON storage.objects;
+CREATE POLICY annonces_accueil_delete ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'annonces-accueil' AND public.encheck_annonce_storage_autorise(name));
 -- Pas de politique SELECT : lecture via URL publique uniquement (bucket public).
--- Pas de politique DELETE : la suppression du fichier est faite par les RPC
--- AAL2 (supprimer / mettre_a_jour au remplacement), SECURITY DEFINER.
-
--- ⚠️ Exonération ciblée des 3 politiques RESTRICTIVE de la plateforme
--- (cmd=ALL, TO authenticated) — migrations
--- annonces_accueil_exoneration_restrictives puis
--- annonces_accueil_correction_sens_exoneration (1ʳᵉ version publiée avec le
--- sens INVERSÉ : `<>` au lieu de `=` ; corrigée immédiatement). Elles
--- s'appliquaient à TOUS les buckets ; pour 'annonces-accueil' seul, le
--- court-circuit `bucket_id = 'annonces-accueil' OR <condition d'origine>`
--- passe sans évaluer la condition (les claims JWT ne sont pas fiables en
--- contexte Storage ici — cf. plus haut) ; tout autre bucket garde le
--- comportement strict. Sécurité préservée : le dépôt est cloisonné
--- (chemin + 5 Mo + MIME) et rien n'est visible avant la RPC superadmin AAL2.
---
--- ⚠️ 2ᵉ blocage racine (migration annonces_accueil_fix_buckets_rls) :
--- storage.buckets portait RLS activée avec Zéro politique (durcissement du
--- 26/10) → toute lecture du bucket par un rôle utilisateur était refusée →
--- 400 sur TOUS les uploads (avatars = 0 objet depuis le 26/10). La table
--- étant portée par supabase_storage_admin (pas de SET ROLE possible), on a
--- ajouté la politique de lecture permissive équivalente à l'état standard
--- Supabase :
---   CREATE POLICY buckets_lecture_publique ON storage.buckets
---   FOR SELECT TO public USING (true);
-ALTER POLICY encheck_admin_session_restrictive ON storage.objects
-  USING (bucket_id = 'annonces-accueil' OR public.encheck_admin_channel_allowed())
-  WITH CHECK (bucket_id = 'annonces-accueil' OR public.encheck_admin_channel_allowed());
-ALTER POLICY encheck_custom_channels ON storage.objects
-  USING (bucket_id = 'annonces-accueil' OR public.encheck_custom_role_id() IS NULL)
-  WITH CHECK (bucket_id = 'annonces-accueil' OR public.encheck_custom_role_id() IS NULL);
-ALTER POLICY encheck_mfa_obligation ON storage.objects
-  USING (bucket_id = 'annonces-accueil' OR public.encheck_mfa_access_allowed())
-  WITH CHECK (bucket_id = 'annonces-accueil' OR public.encheck_mfa_access_allowed());
 ```
 
 ## 6. RPC de lecture (kiosque / app Pointage)
@@ -364,8 +323,6 @@ GRANT  EXECUTE ON FUNCTION public.encheck_annonce_accueil_lister(uuid) TO authen
 DROP FUNCTION IF EXISTS public.encheck_annonce_accueil_supprimer(uuid, uuid);
 DROP FUNCTION IF EXISTS public.encheck_annonce_accueil_mettre_a_jour(uuid, uuid, text, text, integer, integer, boolean, timestamptz, timestamptz);
 DROP FUNCTION IF EXISTS public.encheck_accueil_publicites(uuid);
-DROP FUNCTION IF EXISTS public.encheck_annonce_chemin_stockage(text);
-DROP FUNCTION IF EXISTS public.encheck_annonce_storage_appartient(text);
 DROP FUNCTION IF EXISTS public.encheck_annonce_storage_autorise(text);
 DROP TRIGGER IF EXISTS annonces_accueil_touch ON public.annonces_accueil;
 DROP FUNCTION IF EXISTS public.encheck_annonce_accueil_touch();
@@ -373,15 +330,6 @@ DROP TABLE IF EXISTS public.annonces_accueil;
 DROP POLICY IF EXISTS annonces_accueil_delete ON storage.objects;
 DROP POLICY IF EXISTS annonces_accueil_update ON storage.objects;
 DROP POLICY IF EXISTS annonces_accueil_insert ON storage.objects;
-DROP POLICY IF EXISTS buckets_lecture_publique ON storage.buckets;
--- (les 3 politiques restrictives de la plateforme conservent leur condition
--- d'origine sur les autres buckets ; leur clause d'exonération du bucket
--- annonces-accueil devient inoffensive une fois le bucket supprimé)
-DROP POLICY IF EXISTS annonces_accueil_select ON storage.objects;
--- Politique Storage du projet Reconnaissance faciale (retour à l'origine) :
--- ALTER POLICY encheck_face_no_client_update ON storage.objects
---   USING (bucket_id <> 'face-enrollments'::text)
---   WITH CHECK (bucket_id <> 'face-enrollments'::text);
 DELETE FROM storage.objects WHERE bucket_id = 'annonces-accueil';
 DELETE FROM storage.buckets WHERE id = 'annonces-accueil';
 ```
@@ -405,44 +353,3 @@ DELETE FROM storage.buckets WHERE id = 'annonces-accueil';
 3. Page Admin `/annonces-accueil` (React, charte Appliqué d'Abomey, défi MFA AAL2).
 4. Livraison des contrats à Dev2 (ce document + réponses exemple RPC) → branchement app + recette tablette §9.
 5. Nettoyage entreprise fictive + médias de démo.
-
-## 14. Post-mortem du « 400 upload » (08/11) — racine définitive
-
-**Symptôme** : tout upload de média vers `annonces-accueil` → HTTP 400 ; un INSERT
-simple en SQL passait, alors que la requête exacte du service Stockage
-(récupérée via `extensions.pg_stat_statements`) échouait en 42501
-`new row violates row-level security policy for table "objects"`.
-
-**Mécanisme (reproduit minimalement puis résolu sur table de sandbox)** :
-le service insère avec `INSERT ... ON CONFLICT (bucket_id, name COLLATE "C")
-WHERE archived_at IS NULL DO UPDATE`. Le moteur `ON CONFLICT` effectue un
-**balayage SELECT interne (arbiter de conflit** sur l'index
-`idx_objects_current_version`) **soumis à la RLS de lecture**. Or
-`storage.objects` ne disposait d'**aucune politique SELECT permissive** pour le
-bucket `annonces-accueil` (les politiques SELECT existantes couvraient photos,
-documents, attendance-photos, face-enrollments uniquement). Balayage invisible
-par RLS → le chemin upsert échoue systématiquement en 42501 → 400.
-
-**Preuve par reproduction minimale** : table avec une seule politique INSERT
-permissive (`WITH CHECK (true)`) + RLS activée → `INSERT simple` OK,
-`INSERT ... ON CONFLICT (id) DO NOTHING` 42501 ; ajout d'une politique SELECT
-permissive → `ON CONFLICT` OK. Indépendant des politiques INSERT/UPDATE, des
-claims JWT, des rôles et de la cible de conflit.
-
-**Correction** : `CREATE POLICY annonces_accueil_select ON storage.objects
-FOR SELECT TO public USING (bucket_id = 'annonces-accueil')` (même pattern que
-les buckets fonctionnels, ex. `Allow public access 1io9m69_0` pour photos). La
-ligne ne porte que des métadonnées ; le contenu du fichier reste protégé par le
-chemin UUID inguessable (pas d'URL signées — §4).
-
-**Leçons** :
-1. Sur `storage.objects`, un bucket utilisable par des rôles utilisateurs exige
-   **les 4 politiques** (SELECT, INSERT, UPDATE, DELETE si besoin) — la RLS de
-   l'arbiter `ON CONFLICT` rend le SELECT indispensable même « en écriture ».
-2. Un `RAISE` levé dans une expression de politique permissive y est traité
-   comme **faux** (silencieux) — ne jamais utiliser une fonction qui lève dans
-   une condition RLS : la garde définitive `encheck_annonce_chemin_stockage`
-   est une pure fonction booléenne (STABLE, `SECURITY DEFINER`), sans
-   exception.
-3. `pg_stat_statements` (schéma `extensions`) est la source de vérité des
-   requêtes réelles du service — l'upsert exact y était lisible depuis le début.
