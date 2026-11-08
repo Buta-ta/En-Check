@@ -377,6 +377,11 @@ DROP POLICY IF EXISTS buckets_lecture_publique ON storage.buckets;
 -- (les 3 politiques restrictives de la plateforme conservent leur condition
 -- d'origine sur les autres buckets ; leur clause d'exonération du bucket
 -- annonces-accueil devient inoffensive une fois le bucket supprimé)
+DROP POLICY IF EXISTS annonces_accueil_select ON storage.objects;
+-- Politique Storage du projet Reconnaissance faciale (retour à l'origine) :
+-- ALTER POLICY encheck_face_no_client_update ON storage.objects
+--   USING (bucket_id <> 'face-enrollments'::text)
+--   WITH CHECK (bucket_id <> 'face-enrollments'::text);
 DELETE FROM storage.objects WHERE bucket_id = 'annonces-accueil';
 DELETE FROM storage.buckets WHERE id = 'annonces-accueil';
 ```
@@ -400,3 +405,44 @@ DELETE FROM storage.buckets WHERE id = 'annonces-accueil';
 3. Page Admin `/annonces-accueil` (React, charte Appliqué d'Abomey, défi MFA AAL2).
 4. Livraison des contrats à Dev2 (ce document + réponses exemple RPC) → branchement app + recette tablette §9.
 5. Nettoyage entreprise fictive + médias de démo.
+
+## 14. Post-mortem du « 400 upload » (08/11) — racine définitive
+
+**Symptôme** : tout upload de média vers `annonces-accueil` → HTTP 400 ; un INSERT
+simple en SQL passait, alors que la requête exacte du service Stockage
+(récupérée via `extensions.pg_stat_statements`) échouait en 42501
+`new row violates row-level security policy for table "objects"`.
+
+**Mécanisme (reproduit minimalement puis résolu sur table de sandbox)** :
+le service insère avec `INSERT ... ON CONFLICT (bucket_id, name COLLATE "C")
+WHERE archived_at IS NULL DO UPDATE`. Le moteur `ON CONFLICT` effectue un
+**balayage SELECT interne (arbiter de conflit** sur l'index
+`idx_objects_current_version`) **soumis à la RLS de lecture**. Or
+`storage.objects` ne disposait d'**aucune politique SELECT permissive** pour le
+bucket `annonces-accueil` (les politiques SELECT existantes couvraient photos,
+documents, attendance-photos, face-enrollments uniquement). Balayage invisible
+par RLS → le chemin upsert échoue systématiquement en 42501 → 400.
+
+**Preuve par reproduction minimale** : table avec une seule politique INSERT
+permissive (`WITH CHECK (true)`) + RLS activée → `INSERT simple` OK,
+`INSERT ... ON CONFLICT (id) DO NOTHING` 42501 ; ajout d'une politique SELECT
+permissive → `ON CONFLICT` OK. Indépendant des politiques INSERT/UPDATE, des
+claims JWT, des rôles et de la cible de conflit.
+
+**Correction** : `CREATE POLICY annonces_accueil_select ON storage.objects
+FOR SELECT TO public USING (bucket_id = 'annonces-accueil')` (même pattern que
+les buckets fonctionnels, ex. `Allow public access 1io9m69_0` pour photos). La
+ligne ne porte que des métadonnées ; le contenu du fichier reste protégé par le
+chemin UUID inguessable (pas d'URL signées — §4).
+
+**Leçons** :
+1. Sur `storage.objects`, un bucket utilisable par des rôles utilisateurs exige
+   **les 4 politiques** (SELECT, INSERT, UPDATE, DELETE si besoin) — la RLS de
+   l'arbiter `ON CONFLICT` rend le SELECT indispensable même « en écriture ».
+2. Un `RAISE` levé dans une expression de politique permissive y est traité
+   comme **faux** (silencieux) — ne jamais utiliser une fonction qui lève dans
+   une condition RLS : la garde définitive `encheck_annonce_chemin_stockage`
+   est une pure fonction booléenne (STABLE, `SECURITY DEFINER`), sans
+   exception.
+3. `pg_stat_statements` (schéma `extensions`) est la source de vérité des
+   requêtes réelles du service — l'upsert exact y était lisible depuis le début.
