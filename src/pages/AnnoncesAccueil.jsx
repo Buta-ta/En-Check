@@ -41,22 +41,30 @@ const TYPES = {
   image: {
     libelle: 'Image', icone: ImageIcon,
     mimes: ['image/jpeg', 'image/png', 'image/webp'],
+    ext: ['jpg', 'jpeg', 'png', 'webp'],
     max: 512 * 1024, maxKo: '500 Ko', formats: 'JPEG · PNG · WebP',
   },
   gif: {
     libelle: 'GIF', icone: Repeat,
     mimes: ['image/gif'],
+    ext: ['gif'],
     max: 2 * 1024 * 1024, maxKo: '2 Mo', formats: 'GIF animé',
   },
   video: {
     libelle: 'Vidéo', icone: Film,
     mimes: ['video/mp4', 'video/quicktime'],
+    ext: ['mp4', 'mov'],
     max: 5 * 1024 * 1024, maxKo: '5 Mo', formats: 'MP4 · MOV (muette)',
   },
 }
 const MIME_VERS_TYPE = Object.fromEntries(
   Object.entries(TYPES).flatMap(([cle, m]) => m.mimes.map((mime) => [mime, cle])),
 )
+// Extension canonique par MIME réel (le type est dérivé du MIME, jamais choisi à la main)
+const EXT_PAR_MIME = {
+  'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp',
+  'image/gif': '.gif', 'video/mp4': '.mp4', 'video/quicktime': '.mov',
+}
 const DUREE_MIN = 3, DUREE_MAX = 15, MAX_ANNONCES = 8, VIDEO_MAX_S = 30
 const ACCEPT = Object.values(TYPES).flatMap((m) => m.mimes).join(',')
 
@@ -281,10 +289,17 @@ export default function AnnoncesAccueil() {
       const id = enEdition ? enEdition.id : crypto.randomUUID()
       let chemin = enEdition?.media_path
       if (fichier) {
-        const base = (fichier.name || 'media')
-          .replace(/[^A-Za-z0-9._-]/g, '-')
-          .slice(0, 100) || 'media'
-        chemin = `${entreprise}/${id}/${base}`
+        // Chemin de stockage : caractères sûrs, troncature qui ne coupe
+        // JAMAIS l'extension, et extension forcée au format réel du fichier
+        // (dérivé du MIME) si le nom du fichier en manque une ou diverge —
+        // le serveur exige une extension cohérente avec le type de média.
+        const brut = (fichier.name || 'media').replace(/[^A-Za-z0-9._-]/g, '-')
+        const iPoint = brut.lastIndexOf('.')
+        const nomPartie = (iPoint > 0 ? brut.slice(0, iPoint) : brut).slice(0, 96) || 'media'
+        const extActuelle = iPoint > 0 ? brut.slice(iPoint).toLowerCase() : ''
+        const extValides = ((TYPES[typeMedia] || {}).ext || []).map((e) => `.${e}`.toLowerCase())
+        const extFinale = extValides.includes(extActuelle) ? brut.slice(iPoint) : (EXT_PAR_MIME[fichier.type] || '')
+        chemin = `${entreprise}/${id}/${nomPartie}${extFinale}`
         const { error: errUp } = await supabase.storage
           .from('annonces-accueil')
           .upload(chemin, fichier, { contentType: fichier.type, upsert: true })
