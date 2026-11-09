@@ -1,0 +1,71 @@
+/* ── Modale de confirmation (remplace window.confirm) ─────── */
+.aa-modal-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(20, 12, 9, 0.55);
+  backdrop-filter: blur(3px);
+}
+.aa-modal {
+  width: min(480px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  background: var(--aa-carte);
+  color: var(--aa-encre);
+  border: 1px solid var(--aa-couture-forte);
+  border-radius: 14px;
+  box-shadow: var(--aa-ombre);
+  padding: 20px 22px 18px;
+}
+.aa-modal-titre {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.aa-modal-texte {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--aa-encre-douce);
+}
+.aa-modal-champ {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+}
+.aa-modal-champ textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  min-height: 72px;
+  resize: vertical;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--aa-encre);
+  background: var(--aa-champ);
+  border: 1px solid var(--aa-couture);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.aa-modal-champ textarea:focus {
+  outline: 2px solid var(--aa-fil);
+  outline-offset: 1px;
+}
+.aa-modal-champ small {
+  display: block;
+  margin-top: 5px;
+  color: var(--aa-encre-faible);
+  font-weight: 400;
+}
+.aa-modal-pied {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}

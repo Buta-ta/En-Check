@@ -2,6 +2,37 @@ import { useEffect, useRef, useState } from 'react'
 import { accountRpc } from '../services/adminAccounts'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
 import AdminExplication from './AdminExplication'
+import AdminConfirmModal from './AdminConfirmModal'
+
+// Chaque action sur une ligne de la liste passe par une modale
+// de confirmation avec son propre motif : plus besoin de remplir
+// un champ en haut de page, et plus de window.confirm.
+const ACTIONS = {
+  renouveler: {
+    rpc: 'encheck_borne_secret_renouveler',
+    titre: (b) => `Renouveler le secret de ${b.device_id}`,
+    texte:
+      'Le nouveau secret sera présenté une seule fois, puis masqué. Les sessions actuelles de la borne sont invalidées : l’appareil devra être ré-autorisé avec le nouveau secret.',
+    label: 'Renouveler le secret',
+    tonne: 'plein',
+  },
+  revoquer: {
+    rpc: 'encheck_borne_revoquer',
+    titre: (b) => `Révoquer l’accès de ${b.device_id}`,
+    texte:
+      'La borne ne pourra plus se connecter ni synchroniser. La révocation est consignée au journal. Une borne révoquée peut ensuite être supprimée.',
+    label: 'Révoquer la borne',
+    tonne: 'danger',
+  },
+  supprimer: {
+    rpc: 'encheck_borne_supprimer',
+    titre: (b) => `Supprimer définitivement ${b.device_id}`,
+    texte:
+      'La borne, ses sessions et son secret seront définitivement supprimés. La trace de l’intervention reste au journal. Cette action est irréversible.',
+    label: 'Supprimer définitivement',
+    tonne: 'danger',
+  },
+}
 
 export default function AdminBornes({ enterprises = [] }) {
   const [rows, setRows] = useState(null),
@@ -11,6 +42,7 @@ export default function AdminBornes({ enterprises = [] }) {
     [reason, setReason] = useState(''),
     [secret, setSecret] = useState(null),
     [busy, setBusy] = useState(false),
+    [action, setAction] = useState(null),
     [message, setMessage] = useState('')
   const lock = useRef(false)
   const { ensureMfa, challenge } = useAdminMfaCheckpoint()
@@ -66,8 +98,22 @@ export default function AdminBornes({ enterprises = [] }) {
       setBusy(false)
     }
   }
+  function lancerAction(type, borne, motif) {
+    const def = ACTIONS[type]
+    return run(def.rpc, { p_borne_id: borne.id, p_motif: motif }).finally(() =>
+      setAction(null),
+    )
+  }
   if (challenge) return challenge
-  const invalid = busy || reason.trim().length < 5 || reason.length > 500
+  const creationBloquee =
+    busy ||
+    reason.trim().length < 5 ||
+    reason.length > 500 ||
+    !device.trim() ||
+    !enterprise ||
+    days < 1 ||
+    days > 90
+  const def = action ? ACTIONS[action.type] : null
   return (
     <section className="aa-panel aa-workflow">
       <details
@@ -87,33 +133,19 @@ export default function AdminBornes({ enterprises = [] }) {
             téléchargée hors ligne. Le cache doit expirer au plus tard à la date
             renvoyée par le serveur.
           </p>
+          <p>
+            Suppression : une borne encore autorisée (et non expirée) doit
+            d’abord être révoquée. Une fois révoquée ou expirée, elle peut être
+            supprimée définitivement ; la trace reste au journal.
+          </p>
         </AdminExplication>
         <button type="button" disabled={busy} onClick={() => run()}>
           Charger les bornes avec vérification MFA
         </button>
-        <label>
-          Motif de l’intervention
-          <textarea
-            required
-            minLength={5}
-            maxLength={500}
-            value={reason}
-            disabled={busy}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Ex. : installation de la tablette d’accueil"
-          />
-        </label>
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            if (
-              invalid ||
-              !device.trim() ||
-              !enterprise ||
-              days < 1 ||
-              days > 90
-            )
-              return
+            if (creationBloquee) return
             run('encheck_borne_creer', {
               p_device_id: device.trim(),
               p_enterprise_id: enterprise,
@@ -161,10 +193,19 @@ export default function AdminBornes({ enterprises = [] }) {
               onChange={(e) => setDays(Number(e.target.value))}
             />
           </label>
-          <button
-            type="submit"
-            disabled={invalid || !device.trim() || !enterprise}
-          >
+          <label>
+            Motif de l’intervention
+            <textarea
+              required
+              minLength={5}
+              maxLength={500}
+              value={reason}
+              disabled={busy}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ex. : installation de la tablette d’accueil"
+            />
+          </label>
+          <button type="submit" disabled={creationBloquee}>
             Autoriser la borne
           </button>
         </form>
@@ -195,57 +236,58 @@ export default function AdminBornes({ enterprises = [] }) {
         )}
         {rows && (
           <ul>
-            {rows.map((b) => (
-              <li key={b.id}>
-                <strong>{b.device_id}</strong> ·{' '}
-                {enterprises.find((e) => e.id === b.enterprise_id)?.name ||
-                  b.enterprise_id}{' '}
-                ·{' '}
-                {b.revoque_le
-                  ? 'Révoquée'
-                  : new Date(b.expire_le) <= new Date()
-                    ? 'Expirée'
-                    : 'Autorisée'}{' '}
-                · {new Date(b.expire_le).toLocaleString('fr-FR')}
-                <button
-                  disabled={
-                    invalid ||
-                    !!b.revoque_le ||
-                    new Date(b.expire_le) <= new Date()
-                  }
-                  type="button"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `Renouveler le secret de ${b.device_id} et invalider ses sessions actuelles ?`,
-                      )
-                    )
-                      run('encheck_borne_secret_renouveler', {
-                        p_borne_id: b.id,
-                        p_motif: reason.trim(),
-                      })
-                  }}
-                >
-                  Renouveler le secret
-                </button>
-                <button
-                  disabled={invalid || !!b.revoque_le}
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm(`Révoquer l’accès de ${b.device_id} ?`))
-                      run('encheck_borne_revoquer', {
-                        p_borne_id: b.id,
-                        p_motif: reason.trim(),
-                      })
-                  }}
-                >
-                  Révoquer la borne
-                </button>
-              </li>
-            ))}
+            {rows.map((b) => {
+              const expirée = new Date(b.expire_le) <= new Date()
+              return (
+                <li key={b.id}>
+                  <strong>{b.device_id}</strong> ·{' '}
+                  {enterprises.find((e) => e.id === b.enterprise_id)?.name ||
+                    b.enterprise_id}{' '}
+                  ·{' '}
+                  {b.revoque_le
+                    ? `Révoquée le ${new Date(b.revoque_le).toLocaleDateString('fr-FR')}`
+                    : expirée
+                      ? `Expirée le ${new Date(b.expire_le).toLocaleDateString('fr-FR')}`
+                      : `Valable jusqu'au ${new Date(b.expire_le).toLocaleDateString('fr-FR')}`}
+                  <button
+                    disabled={busy || !!b.revoque_le || expirée}
+                    type="button"
+                    onClick={() => setAction({ type: 'renouveler', borne: b })}
+                  >
+                    Renouveler le secret
+                  </button>
+                  <button
+                    disabled={busy || !!b.revoque_le}
+                    type="button"
+                    onClick={() => setAction({ type: 'revoquer', borne: b })}
+                  >
+                    Révoquer la borne
+                  </button>
+                  <button
+                    disabled={busy || (!b.revoque_le && !expirée)}
+                    type="button"
+                    onClick={() => setAction({ type: 'supprimer', borne: b })}
+                  >
+                    Supprimer
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
       </details>
+      {action && def && (
+        <AdminConfirmModal
+          ouvert
+          titre={def.titre(action.borne)}
+          texte={def.texte}
+          actionLabel={def.label}
+          tonne={def.tonne}
+          busy={busy}
+          onFermer={() => setAction(null)}
+          onConfirmer={(motif) => lancerAction(action.type, action.borne, motif)}
+        />
+      )}
     </section>
   )
 }

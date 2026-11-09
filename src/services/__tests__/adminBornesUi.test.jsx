@@ -107,3 +107,96 @@ it('does not echo raw server errors that could contain credentials', async () =>
   expect(host.textContent).not.toContain('SECRET')
   expect(host.textContent).toContain('non confirmée')
 })
+const revokes = {
+  revoque: {
+    id: 'br1',
+    device_id: 'borne-test',
+    enterprise_id: 'ent',
+    expire_le: new Date(Date.now() + 30 * 86400000).toISOString(),
+    revoque_le: new Date(Date.now() - 86400000).toISOString(),
+  },
+  active: {
+    id: 'ba1',
+    device_id: 'borne-active',
+    enterprise_id: 'ent',
+    expire_le: new Date(Date.now() + 30 * 86400000).toISOString(),
+    revoque_le: null,
+  },
+}
+async function loadBornes() {
+  await mount()
+  mock.rpc.mockImplementation(async (name) =>
+    name === 'encheck_bornes_lister'
+      ? { ok: true, bornes: [revokes.revoque, revokes.active] }
+      : { ok: true, borne_id: 'b' },
+  )
+  await act(async () => {
+    [...host.querySelectorAll('button')]
+      .find((b) => b.textContent.includes('Charger les bornes'))
+      .click()
+  })
+}
+it('replaces window.confirm with a styled modal and deletes a revoked borne', async () => {
+  await loadBornes()
+  const boutons = [...host.querySelectorAll('ul button')]
+  const supprimer = boutons.find((b) => b.textContent === 'Supprimer')
+  expect(supprimer.disabled).toBe(false)
+  await act(async () => supprimer.click())
+  const modal = host.querySelector('[role="dialog"]')
+  expect(modal).not.toBeNull()
+  expect(modal.textContent).toContain('Supprimer définitivement borne-test')
+  await act(async () => {
+    const champ = host.querySelector('.aa-modal textarea')
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(
+      champ,
+      'Recette terminée',
+    )
+    champ.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const valider = [...host.querySelectorAll('.aa-modal button')].find(
+    (b) => b.textContent === 'Supprimer définitivement',
+  )
+  expect(valider.disabled).toBe(false)
+  await act(async () => valider.click())
+  expect(mock.rpc).toHaveBeenCalledWith('encheck_borne_supprimer', {
+    p_borne_id: 'br1',
+    p_motif: 'Recette terminée',
+  })
+  expect(host.querySelector('[role="dialog"]')).toBeNull()
+})
+it('blocks deletion of an active borne and allows renewal without the global motif', async () => {
+  await loadBornes()
+  const lignes = host.querySelectorAll('ul li')
+  const boutonsActive = [...lignes[1].querySelectorAll('button')]
+  const supprimerActive = boutonsActive.find(
+    (b) => b.textContent === 'Supprimer',
+  )
+  expect(supprimerActive.disabled).toBe(true)
+  const renouvelerActive = boutonsActive.find(
+    (b) => b.textContent === 'Renouveler le secret',
+  )
+  // Le motif global (textarea du formulaire de création) est vide : le
+  // bouton ne doit plus dépendre de lui.
+  expect(host.querySelector('textarea').value).toBe('')
+  expect(renouvelerActive.disabled).toBe(false)
+  await act(async () => renouvelerActive.click())
+  const modal = host.querySelector('[role="dialog"]')
+  expect(modal.textContent).toContain('Renouveler le secret de borne-active')
+  await act(async () => {
+    const champ = host.querySelector('.aa-modal textarea')
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(
+      champ,
+      'Changement de secret demandé',
+    )
+    champ.dispatchEvent(new Event('input', { bubbles: true }))
+    const valider = host.querySelectorAll('.aa-modal button')
+    for (const b of valider) {
+      if (b.textContent === 'Renouveler le secret') b.click()
+    }
+  })
+  expect(mock.rpc).toHaveBeenCalledWith('encheck_borne_secret_renouveler', {
+    p_borne_id: 'ba1',
+    p_motif: 'Changement de secret demandé',
+  })
+  expect(host.querySelector('[role="dialog"]')).toBeNull()
+})
