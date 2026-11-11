@@ -111,8 +111,22 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('react')) return 'react-vendor'
-            if (id.includes('@supabase')) return 'supabase-vendor'
+            // ⚠️ Le chunk « react-vendor » ne contient QUE react, react-dom et
+            //    scheduler — leur closure complète en prod, sans aucun import
+            //    sortant vers un autre chunk.
+            //    L'ancien `id.includes('react')` aspirait aussi react-router,
+            //    lucide-react et qrcode.react : le chunk réimportait alors
+            //    « vendor » (@remix-run/router) pendant que recharts (vendor)
+            //    réimportait « react-vendor » (react) → BOUCLE d'évaluation
+            //    entre chunks → React non initialisé quand recharts démarre →
+            //    « Cannot read properties of undefined (reading 'forwardRef') »
+            //    à l'ouverture de l'app (réglé 12/11).
+            //    On identifie le paquet par son nom exact (racine de
+            //    node_modules), jamais par sous-chaîne.
+            const m = id.match(/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?(@[^/]+\/)?([^/]+)/)
+            const pkg = m ? `${m[1] || ''}${m[2]}` : ''
+            if (pkg === 'react' || pkg === 'react-dom' || pkg === 'scheduler') return 'react-vendor'
+            if (pkg.startsWith('@supabase')) return 'supabase-vendor'
             return 'vendor'
           }
         }
