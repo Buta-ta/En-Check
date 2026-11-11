@@ -1,0 +1,674 @@
+/* ═══════════════════════════════════════════════════════════
+   📊 CONSOLE KENTE — couche analytique du dashboard
+   Sombre permanent (chaud), accents terracotta/or, bande
+   kente tissée. Indépendante du thème global : la maquette
+   Insighta est foncièrement sombre.
+   ═══════════════════════════════════════════════════════════ */
+
+.dk {
+  --dk-fond: #16100c;
+  --dk-fond-2: #1d1410;
+  --dk-carte: #211814;
+  --dk-ligne: rgba(201, 169, 97, 0.16);
+  --dk-ivoire: #f2e8d5;
+  --dk-texte: #cbb8a0;
+  --dk-muet: #9a8468;
+  --dk-or: #c9a961;
+  --dk-or-clair: #e0c88f;
+  --dk-terre: #c25a2b;
+  --dk-vert: #8fbf87;
+  --dk-rouge: #e0876d;
+
+  position: relative;
+  background:
+    radial-gradient(1100px 500px at 85% -10%, rgba(194, 90, 43, 0.10), transparent 60%),
+    var(--dk-fond);
+  border-top: 1px solid rgba(201, 169, 97, 0.10);
+  border-bottom: 1px solid rgba(201, 169, 97, 0.10);
+  padding: 22px 28px 30px;
+  color: var(--dk-texte);
+  font-size: 14px;
+}
+
+/* ── Bande kente tissée (haut de la console) ── */
+.dk-kente {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--dk-or) 0 26px,
+      var(--dk-terre) 26px 52px,
+      #241812 52px 62px,
+      var(--dk-or-clair) 62px 78px,
+      var(--dk-terre) 78px 96px,
+      #241812 96px 106px,
+      var(--dk-or) 106px 132px
+    );
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* ── En-tête : titre + période + partage ── */
+.dk-entete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin: 10px 0 18px;
+}
+.dk-titre {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--dk-ivoire);
+}
+.dk-soustitre {
+  margin: 5px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dk-muet);
+  font-size: 12.5px;
+}
+.dk-soustitre svg {
+  flex: none;
+}
+.dk-entete-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dk-pilotes {
+  display: inline-flex;
+  background: var(--dk-fond-2);
+  border: 1px solid var(--dk-ligne);
+  border-radius: 999px;
+  padding: 3px;
+}
+.dk-pilote {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--dk-muet);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.dk-pilote:hover {
+  color: var(--dk-ivoire);
+}
+.dk-pilote.est-active {
+  background: linear-gradient(135deg, var(--dk-terre), #a04a22);
+  color: var(--dk-ivoire);
+}
+.dk-bouton-partage {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(201, 169, 97, 0.45);
+  background: rgba(201, 169, 97, 0.08);
+  color: var(--dk-or-clair);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.dk-bouton-partage:hover {
+  background: rgba(201, 169, 97, 0.16);
+  border-color: rgba(201, 169, 97, 0.7);
+}
+
+/* ── Cartes ── */
+.dk-carte {
+  position: relative;
+  background: var(--dk-carte);
+  border: 1px solid var(--dk-ligne);
+  border-radius: 14px;
+  padding: 16px 18px;
+  overflow: hidden;
+}
+.dk-carte-kente {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--dk-or) 0 18px,
+    var(--dk-terre) 18px 36px,
+    #241812 36px 44px,
+    var(--dk-or-clair) 44px 58px,
+    var(--dk-terre) 58px 72px
+  );
+  opacity: 0.85;
+  pointer-events: none;
+}
+.dk-carte-titre {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dk-ivoire);
+  letter-spacing: 0.01em;
+}
+.dk-carte-soustitre {
+  margin: -6px 0 10px;
+  font-size: 12px;
+  color: var(--dk-muet);
+}
+
+/* ── KPI ── */
+.dk-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.dk-kpi .dk-carte-kente {
+  height: 4px;
+}
+.dk-kpi-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--dk-muet);
+}
+.dk-kpi-valeur {
+  display: block;
+  margin-top: 6px;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--dk-ivoire);
+  font-variant-numeric: tabular-nums;
+}
+.dk-kpi-pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.dk-kpi-caption {
+  font-size: 12px;
+  color: var(--dk-muet);
+}
+.dk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.dk-badge--up {
+  color: var(--dk-vert);
+  background: rgba(143, 191, 135, 0.12);
+}
+.dk-badge--down {
+  color: var(--dk-rouge);
+  background: rgba(224, 135, 109, 0.12);
+}
+.dk-badge--neutre {
+  color: var(--dk-muet);
+  background: rgba(201, 169, 97, 0.08);
+}
+
+/* ── Grilles ── */
+.dk-grille-milieu {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1.1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.dk-grille-bas {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 0.9fr;
+  gap: 14px;
+}
+
+/* ── Courbe ── */
+.dk-courbe {
+  width: 100%;
+}
+
+/* ── Santé RH ── */
+.dk-sante-score {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.dk-sante-score div {
+  background: var(--dk-fond-2);
+  border: 1px solid var(--dk-ligne);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dk-sante-nom {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dk-muet);
+}
+.dk-sante-score strong {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--dk-ivoire);
+  font-variant-numeric: tabular-nums;
+}
+.dk-sante-barres {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dk-sante-barre {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(201, 169, 97, 0.10);
+  overflow: hidden;
+}
+.dk-sante-barre span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--dk-terre), var(--dk-or));
+}
+.dk-sante-barre--or span {
+  background: linear-gradient(90deg, var(--dk-or), var(--dk-or-clair));
+}
+
+/* ── Heatmap ── */
+.dk-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dk-heatmap-ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dk-heatmap-label {
+  width: 30px;
+  flex: none;
+  font-size: 11px;
+  color: var(--dk-muet);
+  font-weight: 600;
+}
+.dk-heatmap-cellules {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 3px;
+  flex: 1;
+}
+.dk-heatmap-cellule {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  transition: transform 0.1s;
+}
+.dk-heatmap-cellule:hover {
+  transform: scale(1.35);
+  outline: 1px solid var(--dk-or);
+}
+.dk-heatmap-legende {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--dk-muet);
+}
+.dk-heatmap-chevrons {
+  display: inline-flex;
+  gap: 3px;
+}
+.dk-heatmap-chevrons i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* ── Encart « intelligence » (règles v1) ── */
+.dk-note-ia {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(201, 169, 97, 0.07);
+  border: 1px dashed rgba(201, 169, 97, 0.35);
+  color: var(--dk-ivoire);
+  font-size: 12.5px;
+  line-height: 1.45;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.dk-note-ia svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--dk-or);
+}
+
+/* ── Insight du jour (héro dégradé) ── */
+.dk-carte-hero {
+  background:
+    radial-gradient(600px 220px at 90% 0%, rgba(194, 90, 43, 0.22), transparent 60%),
+    linear-gradient(135deg, #2a1a12 0%, #241812 55%, #1d1410 100%);
+  border-color: rgba(201, 169, 97, 0.30);
+  display: flex;
+  flex-direction: column;
+}
+.dk-hero-puce {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dk-or-clair);
+  background: rgba(201, 169, 97, 0.10);
+  border: 1px solid rgba(201, 169, 97, 0.35);
+  padding: 5px 11px;
+  border-radius: 999px;
+}
+.dk-hero-texte {
+  margin: auto 0 0;
+  padding-top: 14px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--dk-ivoire);
+  font-weight: 500;
+}
+.dk-hero-points {
+  display: flex;
+  gap: 5px;
+  margin-top: 14px;
+}
+.dk-hero-points i {
+  width: 22px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(201, 169, 97, 0.14);
+}
+.dk-hero-points i.est-plein {
+  background: linear-gradient(90deg, var(--dk-terre), var(--dk-or));
+}
+
+/* ── Donut ── */
+.dk-donut {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.dk-donut-graphique {
+  position: relative;
+  width: 150px;
+  flex: none;
+}
+.dk-donut-vide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 150px;
+  color: var(--dk-muet);
+  font-size: 12.5px;
+}
+.dk-donut-centre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.dk-donut-centre strong {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--dk-ivoire);
+}
+.dk-donut-centre span {
+  font-size: 11px;
+  color: var(--dk-muet);
+}
+.dk-donut-legende {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.dk-donut-legende li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--dk-texte);
+  min-width: 0;
+}
+.dk-donut-legende li span:not(.dk-donut-point) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dk-donut-point {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: none;
+}
+.dk-donut-fil {
+  flex: 1;
+  border-bottom: 1px dotted rgba(201, 169, 97, 0.3);
+  min-width: 12px;
+}
+.dk-donut-legende strong {
+  color: var(--dk-ivoire);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Jauge ── */
+.dk-jauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.dk-jauge-graphique {
+  position: relative;
+  width: 150px;
+}
+.dk-jauge-centre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 14px;
+  pointer-events: none;
+}
+.dk-jauge-centre strong {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--dk-ivoire);
+  font-variant-numeric: tabular-nums;
+}
+.dk-jauge-centre span {
+  font-size: 11px;
+  color: var(--dk-muet);
+}
+.dk-jauge-legende {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--dk-muet);
+}
+
+/* ── Squelette de chargement ── */
+.dk-squelette {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+.dk-squelette span {
+  height: 110px;
+  border-radius: 14px;
+  background: linear-gradient(
+    100deg,
+    var(--dk-carte) 40%,
+    #2a1e18 50%,
+    var(--dk-carte) 60%
+  );
+  background-size: 200% 100%;
+  animation: dk-brillance 1.4s ease-in-out infinite;
+}
+.dk-squelette span:nth-child(4) { grid-column: 1 / -1; height: 170px; }
+@keyframes dk-brillance {
+  0% { background-position: 180% 0; }
+  100% { background-position: -80% 0; }
+}
+
+/* ── Modale de rapport ── */
+.dk-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(10, 7, 5, 0.72);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.dk-modal {
+  width: min(620px, 100%);
+  max-height: min(78vh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: #241a14;
+  border: 1px solid rgba(201, 169, 97, 0.4);
+  border-radius: 16px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+.dk-modal-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(201, 169, 97, 0.18);
+}
+.dk-modal-entete h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--dk-ivoire);
+}
+.dk-modal-fermer {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--dk-muet);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+}
+.dk-modal-fermer:hover {
+  color: var(--dk-ivoire);
+  background: rgba(201, 169, 97, 0.1);
+}
+.dk-rapport {
+  margin: 0;
+  padding: 16px 18px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dk-texte);
+}
+.dk-modal-pied {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid rgba(201, 169, 97, 0.18);
+}
+.dk-bouton-secondaire {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(201, 169, 97, 0.25);
+  background: transparent;
+  color: var(--dk-texte);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.dk-bouton-secondaire:hover {
+  color: var(--dk-ivoire);
+  border-color: rgba(201, 169, 97, 0.5);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1280px) {
+  .dk-grille-milieu {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dk-grille-milieu .dk-carte-heatmap {
+    grid-column: 1 / -1;
+  }
+  .dk-grille-bas {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dk-grille-bas .dk-carte-hero {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 860px) {
+  .dk {
+    padding: 18px 16px 24px;
+  }
+  .dk-kpis {
+    grid-template-columns: 1fr;
+  }
+  .dk-grille-milieu,
+  .dk-grille-bas {
+    grid-template-columns: 1fr;
+  }
+  .dk-squelette {
+    grid-template-columns: 1fr;
+  }
+  .dk-squelette span:nth-child(4) {
+    grid-column: auto;
+  }
+}

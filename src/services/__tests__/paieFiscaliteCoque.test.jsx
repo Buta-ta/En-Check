@@ -105,11 +105,35 @@ it('7. une configuration vide ne casse aucune carte', () => {
 
 // ── 3. Les graphiques, sans dépendance nouvelle ──────────────────────
 
-it('9. les graphiques sont tracés à la main, aucune librairie ajoutée', () => {
+it('9. les graphiques paie sont tracés à la main, recharts réservé au dashboard', () => {
+  // Les graphiques PAIE / FISCALITÉ restent dessinés à la main en SVG —
+  // aucune librairie de chart dans leurs fichiers.
+  const IMPORT_CHART = /from\s+['"](recharts|chart\.js|d3[^'"]*|@nivo[^'"]*|apexcharts[^'"]*|victory[^'"]*)['"]/
+  for (const source of [coque, fiscale, graphiques]) {
+    expect(source).not.toMatch(IMPORT_CHART)
+  }
+  // recharts a été introduit pour la console analytique du dashboard
+  // (maquette « Insighta », 11/11). Pour qu'il ne se propage pas au reste
+  // de l'app, seul ce composant est autorisé à l'importer.
+  const importeurs = []
+  const balayer = (chemin) => {
+    for (const entree of fs.readdirSync(path.join(ROOT, chemin), { withFileTypes: true })) {
+      const complet = path.join(chemin, entree.name)
+      if (entree.isDirectory()) { balayer(complet); continue }
+      if (!/\.(jsx?|js)$/.test(entree.name)) continue
+      if (fs.readFileSync(path.join(ROOT, complet), 'utf8').match(IMPORT_CHART)) {
+        importeurs.push(complet)
+      }
+    }
+  }
+  balayer('src')
+  expect(importeurs).toEqual(['src/components/DashboardKenteAnalytics.jsx'])
+  // Et dans package.json, la seule librairie de chart tolérée est recharts,
+  // portée par cette même console analytique.
   const deps = { ...paquet.dependencies, ...paquet.devDependencies }
-  Object.keys(deps).forEach((nom) => {
-    expect(nom).not.toMatch(/recharts|chart\.js|d3|nivo|apexcharts|victory/)
-  })
+  const chartDeps = Object.keys(deps).filter((nom) =>
+    /recharts|chart\.js|^d3|nivo|apexcharts|victory/.test(nom))
+  expect(chartDeps).toEqual(['recharts'])
   expect(graphiques).toContain('<svg')
   expect(graphiques).toContain('<circle')
   expect(graphiques).toContain('<polyline')

@@ -47,6 +47,7 @@ import EnterpriseSwitcher from './EnterpriseSwitcher'
 import SidebarNavigation from './SidebarNavigation'
 import NotificationBell from './NotificationBell'
 import SystemMessageBanner from './SystemMessageBanner'
+import DashboardKenteAnalytics from './DashboardKenteAnalytics'
 import AttendanceHeroImage from './AttendanceHeroImage'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
@@ -142,6 +143,7 @@ export default function DashboardExperience({
   stats,
   recentActivity = [],
   topEntreprises = [],
+  kenteStats,
   conflictsPending = [],
   scheduleRequestsPending = [],
   handleQuickScheduleRequest,
@@ -996,6 +998,15 @@ export default function DashboardExperience({
               </div>
               <div className="dashboard-hero-art"><AttendanceHeroImage /></div>
             </section>
+
+            {kenteStats && (
+              <DashboardKenteAnalytics
+                admin={admin}
+                isSuperAdmin={isSuperAdmin}
+                stats={kenteStats}
+                topEntreprises={topEntreprises}
+              />
+            )}
 
             <section className={`dashboard-kpis${isCustomizing ? ' is-customizing' : ''}`} aria-label="Indicateurs du jour">
               {visibleWidgets.map((widget, index) => {
