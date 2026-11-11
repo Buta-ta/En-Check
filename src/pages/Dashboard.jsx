@@ -996,6 +996,7 @@ export default function Dashboard() {
         stats={stats}
         recentActivity={recentActivity}
         topEntreprises={topEntreprises}
+        kenteStats={stats}
         conflictsPending={conflictsPending}
         scheduleRequestsPending={scheduleRequestsPending}
         handleQuickScheduleRequest={handleQuickScheduleRequest}
