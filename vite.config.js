@@ -12,7 +12,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // ⚠️ 'prompt' (et non 'autoUpdate') : avec autoUpdate, un onglet SPA
+      //    laissé ouvert ne vérifie JAMAIS les mises à jour (le check ne se
+      //    fait que sur chargement de document) → l'app restait « en arrière »
+      //    sur l'ancien bundle, sans aucun signal pour l'utilisateur
+      //    (incident 12/11 : dashboard Kente invisible en prod). En prompt,
+      //    le toast « Nouvelle version disponible » apparaît et l'utilisateur
+      //    décide quand basculer. registerSW.js relance la vérification
+      //    (retour d'onglet + toutes les 2 min) pour les onglets ouverts.
+      registerType: 'prompt',
       
       includeAssets: ['favicon.ico', 'pwa-192x192.png', 'pwa-512x512.png'],
       

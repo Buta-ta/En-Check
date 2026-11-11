@@ -45,6 +45,10 @@ const rootEl = makeEl({ id: 'root' })
 
 globalThis.window = globalThis
 globalThis.self = globalThis
+if (typeof globalThis.addEventListener !== 'function') {
+  globalThis.addEventListener = () => {}
+  globalThis.removeEventListener = () => {}
+}
 const fakeSheet = {
   cssRules: [],
   _data: '',
