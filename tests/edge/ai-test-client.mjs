@@ -48,7 +48,7 @@ test('thrown transport exception is handled without leaking or retrying',async()
 test('route/menu guard and explicit click only (source regression checks)',()=>{
  const app=readFileSync(new URL('../../src/App.jsx',import.meta.url),'utf8')
  assert.match(app, /path="\/test-ia" element=\{\s*<AdminRoute requireSuperAdmin>\s*<AiConnectionTest/)
- const menu=readFileSync(new URL('../../src/components/DashboardExperience.jsx',import.meta.url),'utf8')
+ const menu=readFileSync(new URL('../../src/pages/dashboard/experienceCatalogs.js',import.meta.url),'utf8')
  assert.match(menu,/path: '\/test-ia', show: isSuperAdmin/)
  const page=readFileSync(new URL('../../src/pages/AiConnectionTest.jsx',import.meta.url),'utf8')
  assert.ok(!page.includes('useEffect'))
