@@ -234,6 +234,7 @@ export default function DashboardExperience({
 
   return (
     <div className="encheck-dashboard bento-app" data-theme={darkMode ? 'dark' : 'light'}>
+      <div className="dashboard-bogolan" aria-hidden="true" />
       <DashboardTopbar layout={layout} data={topbarData} />
       <BentoSidebar
         sections={navigationSections}
