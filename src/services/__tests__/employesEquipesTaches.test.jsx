@@ -34,7 +34,7 @@ import TachesVue from '../../components/taches/TachesVue'
 import EntreeEmploye from '../../components/equipes/EntreeEmploye'
 
 const APP = readFileSync('src/App.jsx', 'utf8')
-const MENU = readFileSync('src/components/DashboardExperience.jsx', 'utf8')
+const MENU = (readFileSync('src/pages/dashboard/DashboardExperience.jsx', 'utf8') + readFileSync('src/pages/dashboard/experienceCatalogs.js', 'utf8') + readFileSync('src/pages/dashboard/DashboardTopbar.jsx', 'utf8') + readFileSync('src/pages/dashboard/DashboardPanneaux.jsx', 'utf8') + readFileSync('src/pages/dashboard/DashboardDialogs.jsx', 'utf8'))
 const VERROU = readFileSync('src/components/VerrouOptions.jsx', 'utf8')
 const EMPLOYES = readFileSync('src/pages/Employes.jsx', 'utf8')
 const CSS = readFileSync('src/components/zoulou/zoulou.css', 'utf8')

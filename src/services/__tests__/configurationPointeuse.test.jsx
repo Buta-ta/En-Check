@@ -206,7 +206,7 @@ const POSTE = lire('src/pages/PostePointage.jsx')
 const POSTE_CSS = lire('src/pages/PostePointage.css')
 const LIB = lire('src/lib/postePointage.js')
 const APP = lire('src/App.jsx')
-const MENU = lire('src/components/DashboardExperience.jsx')
+const MENU = (lire('src/pages/dashboard/DashboardExperience.jsx') + lire('src/pages/dashboard/experienceCatalogs.js') + lire('src/pages/dashboard/DashboardTopbar.jsx') + lire('src/pages/dashboard/DashboardPanneaux.jsx') + lire('src/pages/dashboard/DashboardDialogs.jsx'))
 const VERROU = lire('src/components/VerrouOptions.jsx')
 const MOTIFS = lire('src/components/culturalMotif.js')
 

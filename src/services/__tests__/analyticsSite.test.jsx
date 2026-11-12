@@ -141,7 +141,7 @@ const CARTE = lire('src/components/CarteConnexions.jsx')
 const CARTE_CSS = lire('src/components/CarteConnexions.css')
 const LIB = lire('src/lib/analyticsSite.js')
 const APP = lire('src/App.jsx')
-const MENU = lire('src/components/DashboardExperience.jsx')
+const MENU = (lire('src/pages/dashboard/DashboardExperience.jsx') + lire('src/pages/dashboard/experienceCatalogs.js') + lire('src/pages/dashboard/DashboardTopbar.jsx') + lire('src/pages/dashboard/DashboardPanneaux.jsx') + lire('src/pages/dashboard/DashboardDialogs.jsx'))
 const MOTIFS = lire('src/components/culturalMotif.js')
 
 // ── les données ────────────────────────────────────────────

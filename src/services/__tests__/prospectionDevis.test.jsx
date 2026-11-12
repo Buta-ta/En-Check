@@ -137,7 +137,7 @@ const LIB = lire('src/lib/devis.js')
 const DOCS = lire('src/lib/devisDocuments.js')
 const PROSPECTION = lire('src/lib/prospection.js')
 const APP = lire('src/App.jsx')
-const MENU = lire('src/components/DashboardExperience.jsx')
+const MENU = (lire('src/pages/dashboard/DashboardExperience.jsx') + lire('src/pages/dashboard/experienceCatalogs.js') + lire('src/pages/dashboard/DashboardTopbar.jsx') + lire('src/pages/dashboard/DashboardPanneaux.jsx') + lire('src/pages/dashboard/DashboardDialogs.jsx'))
 const MOTIFS = lire('src/components/culturalMotif.js')
 
 // ── les données ────────────────────────────────────────────

@@ -5,7 +5,7 @@ import {
   moveDashboardWidgetByOffset,
   normalizeDashboardWidgetIds,
   removeDashboardWidget,
-} from '../../utils/dashboardWidgets'
+} from '../dashboardWidgets'
 
 describe('dashboard widgets layout helpers', () => {
   it('restaure seulement les widgets disponibles et supprime les doublons', () => {
@@ -48,11 +48,11 @@ describe('dashboard widgets layout helpers', () => {
 import fs from 'node:fs'
 import path from 'node:path'
 
-const ROOT = path.resolve(import.meta.dirname, '../../..')
+const ROOT = path.resolve(import.meta.dirname, '../../../..')
 const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
 
-const dashboardSrc = lire('src/components/DashboardExperience.jsx')
-const pageSrc = lire('src/pages/Dashboard.jsx')
+const dashboardSrc = (lire('src/pages/dashboard/DashboardExperience.jsx') + lire('src/pages/dashboard/experienceCatalogs.js') + lire('src/pages/dashboard/DashboardTopbar.jsx') + lire('src/pages/dashboard/DashboardPanneaux.jsx') + lire('src/pages/dashboard/DashboardDialogs.jsx') + lire('src/pages/dashboard/useDashboardLayout.js'))
+const pageSrc = lire('src/pages/dashboard/index.jsx') + lire('src/pages/dashboard/useDashboardData.js') + lire('src/pages/dashboard/useDashboardLoaders.js') + lire('src/pages/dashboard/useDashboardInteractions.js')
 
 describe('câblage du tableau de bord', () => {
   it('retirer un widget ne peut pas être annulé par un rechargement distant', () => {

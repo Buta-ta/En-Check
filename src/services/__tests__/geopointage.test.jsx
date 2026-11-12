@@ -387,7 +387,7 @@ describe('6. le vocabulaire de gestion', () => {
 // ── 7. La fusion : un écran, une entrée, une adresse ───────
 
 describe('7. la fusion du plateau et des zones', () => {
-  const menu = lire('src/components/DashboardExperience.jsx')
+  const menu = (lire('src/pages/dashboard/DashboardExperience.jsx') + lire('src/pages/dashboard/experienceCatalogs.js') + lire('src/pages/dashboard/DashboardTopbar.jsx') + lire('src/pages/dashboard/DashboardPanneaux.jsx') + lire('src/pages/dashboard/DashboardDialogs.jsx'))
   const routes = lire('src/App.jsx')
   const verrou = lire('src/components/VerrouOptions.jsx')
   const assistant = lire('src/components/AssistantDock.jsx')

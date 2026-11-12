@@ -3,7 +3,8 @@
 //
 //   ① le profil est cliquable, dans la barre du haut comme dans la
 //     barre latérale, et mène à la page Administrateurs ;
-//   ② un bandeau bogolan (la vraie pièce) suit la barre du haut ;
+//   ② le motif kente tissé officiel habille la coque (topbar,
+//     sidebar, titre de page) ;
 //   ③ les pages Administrateurs et Entreprises ont leur flèche de
 //     retour en haut à gauche ;
 //   ④ la barre de filtres du planning se replie, se souvient de son
@@ -18,8 +19,8 @@ import path from 'node:path'
 const ROOT = path.resolve(import.meta.dirname, '../../..')
 const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
 
-const dashboard = lire('src/components/DashboardExperience.jsx')
-const dashboardCss = lire('src/pages/Dashboard.css')
+const dashboard = lire('src/pages/dashboard/DashboardTopbar.jsx') + lire('src/pages/dashboard/DashboardExperience.jsx') + lire('src/pages/dashboard/experienceCatalogs.js') + lire('src/pages/dashboard/BentoSidebar.jsx')
+const dashboardCss = (lire('src/pages/dashboard/sections.css') + lire('src/pages/dashboard/bento.css'))
 const admins = lire('src/pages/AdminAccounts.jsx')
 const adminsCss = lire('src/pages/AdminAccounts.css')
 const entreprises = lire('src/pages/Entreprises.jsx')
@@ -46,15 +47,18 @@ describe('le profil mène à la page Administrateurs', () => {
   })
 })
 
-describe('le bandeau bogolan de la dashboard', () => {
-  it('se pose juste après la barre du haut', () => {
-    expect(dashboard).toMatch(/<\/header>\s*\{?\/?\*?[\s\S]{0,600}dashboard-bogolan/)
-    expect(dashboard).toContain('className="dashboard-bogolan"')
+describe('la bande kente tissée habille la coque', () => {
+  it('orne la barre du haut, la sidebar et le titre de page', () => {
+    expect(dashboard).toContain('className="bento-topbar"')
+    expect(dashboard).toContain('bento-sidebar')
+    expect(dashboard).toContain('className="kente-accent"')
   })
 
-  it('utilise la vraie pièce de la page Paie', () => {
-    expect(dashboardCss).toMatch(/\.dashboard-bogolan\s*\{[\s\S]*paie-bogolan-haut\.webp/)
-    expect(dashboardCss).toMatch(/\.dashboard-bogolan\s*\{[\s\S]*background-repeat:\s*repeat-x/)
+  it('utilise le motif tissé officiel (or / terre / crème / séparateur)', () => {
+    expect(dashboardCss).toMatch(/--kente: repeating-linear-gradient\(90deg,\s*var\(--or\) 0 26px,\s*var\(--terre\) 26px 52px/)
+    expect(dashboardCss).toContain('.bento-topbar::after')
+    expect(dashboardCss).toContain('.bento-sidebar::after')
+    expect(dashboardCss).toContain('.tile::after')
   })
 })
 
