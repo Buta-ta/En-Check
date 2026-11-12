@@ -240,11 +240,11 @@ export default function DashboardExperience({
 
   const navigationSections = [
     {
-      label: 'Aujourd’hui',
+      label: 'Pilotage du jour',
       items: [
         { label: 'Vue d’ensemble', icon: LayoutDashboard, path: '/dashboard', show: true, active: true },
         { label: 'Pointages', icon: Clock, path: '/pointages', show: true, tabKey: 'POINTAGES', count: forgottenExits + conflictCount },
-        { label: 'Équipe', icon: Users, path: '/employes', show: true, tabKey: 'EMPLOYES' },
+        { label: 'Employés', icon: Users, path: '/employes', show: true, tabKey: 'EMPLOYES' },
         { label: 'Planning', icon: Calendar, path: '/planning', show: isSuperAdmin || modulePlanning, tabKey: 'PLANNING', count: scheduleRequestsPending.length },
         { label: 'Absences', icon: CalendarOff, path: '/absences', show: isSuperAdmin || moduleConges, tabKey: 'ABSENCES' },
         { label: 'Retards', icon: Timer, path: '/retards', show: isSuperAdmin || moduleRetards, tabKey: 'RETARDS', count: lateCount },
@@ -254,7 +254,7 @@ export default function DashboardExperience({
       ],
     },
     {
-      label: 'Gestion RH',
+      label: 'Paie & RH',
       items: [
         { label: 'Heures supplémentaires', icon: Timer, path: '/heures-supplementaires', show: isSuperAdmin || moduleHeuresSup, tabKey: 'HEURES_SUP' },
         { label: 'Rémunérations', icon: Wallet, path: '/remunerations', show: isSuperAdmin || moduleRemunerations },
@@ -263,7 +263,7 @@ export default function DashboardExperience({
       ],
     },
     {
-      label: 'Outils',
+      label: 'Terrain & outils',
       items: [
         { label: 'Équipes & tâches', icon: CalendarDays, path: '/taches', show: isSuperAdmin || moduleTaches, tabKey: 'TACHES' },
         { label: 'Équipes', icon: Users, path: '/equipes', show: isSuperAdmin || moduleTaches },
