@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+### `src/components/DashboardExperience.jsx`
+
+```jsx
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -12,10 +15,9 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
-  GripVertical,
   Coffee,
-  FileSearch,
   FileText,
+  GripVertical,
   LayoutDashboard,
   LogOut,
   MapPin,
@@ -26,16 +28,16 @@ import {
   MoveUp,
   Plus,
   RotateCcw,
-  SlidersHorizontal,
   Router,
+  ScanFace,
   Shield,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Sun,
   Timer,
   TrendingUp,
   UserCheck,
-  ScanFace,
   UserPlus,
   UserX,
   Users,
@@ -119,6 +121,576 @@ const ALL_TOPBAR_AVAILABLE_IDS = [...TOPBAR_LEFT_AVAILABLE_IDS, ...TOPBAR_RIGHT_
 const DEFAULT_TOPBAR_LEFT_ITEM_IDS = ['enterprise', 'date']
 const DEFAULT_TOPBAR_RIGHT_ITEM_IDS = ['dashboard-customize', 'theme', 'notifications', 'profile']
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPOSANTS IDENTITAIRES AFRO-MINIMALISTES (Bogolan, Kente Viz & Adinkra)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function AfroBentoSvgDefs() {
+  return (
+    <svg width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }} aria-hidden="true">
+      <defs>
+        {/* Trame géométrique inspirée du Bogolan malien (filigrane subtil) */}
+        <pattern id="encheck-bogolan-filigree" width="48" height="48" patternUnits="userSpaceOnUse">
+          <path
+            d="M0 24 H16 M32 24 H48 M24 0 V16 M24 32 V48 M16 24 L24 16 L32 24 L24 32 Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+          />
+          <circle cx="24" cy="24" r="2" fill="currentColor" />
+          <path d="M6 6 L12 12 M12 6 L6 12 M36 36 L42 42 M42 36 L36 42" stroke="currentColor" strokeWidth="1" />
+        </pattern>
+
+        {/* Hachures géométriques croisées pour les Absents (accessible daltoniens) */}
+        <pattern id="encheck-kente-absent" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="8" stroke="currentColor" strokeWidth="2" opacity="0.45" />
+          <line x1="0" y1="4" x2="8" y2="4" stroke="currentColor" strokeWidth="1" opacity="0.2" />
+        </pattern>
+      </defs>
+    </svg>
+  )
+}
+
+function AdinkraHarmonyGlyph() {
+  return (
+    <svg className="bento-adinkra-glyph" viewBox="0 0 44 44" width="38" height="38" fill="none" aria-hidden="true">
+      <rect x="9" y="9" width="26" height="26" rx="5" stroke="currentColor" strokeWidth="1.5" opacity="0.35" />
+      <rect x="13" y="13" width="18" height="18" rx="3" transform="rotate(45 22 22)" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="22" cy="22" r="4" fill="currentColor" />
+      <circle cx="22" cy="6" r="2" fill="currentColor" opacity="0.6" />
+      <circle cx="22" cy="38" r="2" fill="currentColor" opacity="0.6" />
+      <circle cx="6" cy="22" r="2" fill="currentColor" opacity="0.6" />
+      <circle cx="38" cy="22" r="2" fill="currentColor" opacity="0.6" />
+    </svg>
+  )
+}
+
+function KentePresenceStrip({ total, present, late, leave, absent, loadError, retardsActive }) {
+  const segmentsCount = 24
+  if (loadError || total <= 0) {
+    return (
+      <div className="bento-kente-strip is-empty" aria-hidden="true">
+        {Array.from({ length: segmentsCount }).map((_, idx) => (
+          <span key={idx} className="bento-kente-cell is-muted" />
+        ))}
+      </div>
+    )
+  }
+
+  const effectiveLate = retardsActive ? Math.min(late, present) : 0
+  const onTime = Math.max(0, present - effectiveLate)
+  const safeTotal = Math.max(total, onTime + effectiveLate + leave + absent, 1)
+
+  const onTimeCells = Math.round((onTime / safeTotal) * segmentsCount)
+  const lateCells = effectiveLate > 0 ? Math.max(1, Math.round((effectiveLate / safeTotal) * segmentsCount)) : 0
+  const leaveCells = leave > 0 ? Math.max(1, Math.round((leave / safeTotal) * segmentsCount)) : 0
+
+  const cells = []
+  for (let i = 0; i < segmentsCount; i += 1) {
+    if (i < onTimeCells) cells.push('ontime')
+    else if (i < onTimeCells + lateCells) cells.push('late')
+    else if (i < onTimeCells + lateCells + leaveCells) cells.push('leave')
+    else cells.push('absent')
+  }
+
+  return (
+    <div
+      className="bento-kente-strip"
+      role="img"
+      aria-label={`Trame de présence : ${present} présents, ${leave} en congé, ${absent} sans pointage`}
+    >
+      {cells.map((kind, idx) => (
+        <span key={idx} className={`bento-kente-cell is-${kind}`} />
+      ))}
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM CSS SCOPÉ — AFRO-BENTO AWWWARDS (Light & Dark)
+   ═══════════════════════════════════════════════════════════════════════════ */
+const AFRO_BENTO_STYLES = `
+  .encheck-dashboard.is-afro-bento {
+    --bento-radius-xl: 24px;
+    --bento-radius-lg: 20px;
+    --bento-radius-md: 14px;
+    --bento-radius-pill: 999px;
+    --bento-gap: 16px;
+    --bento-gold: #F59E0B;
+    --bento-gold-soft: rgba(245, 158, 11, 0.14);
+    --bento-emerald: #10B981;
+    --bento-emerald-soft: rgba(16, 185, 129, 0.14);
+    --bento-terracotta: #F97316;
+    --bento-terracotta-soft: rgba(249, 115, 22, 0.14);
+    --bento-crimson: #EF4444;
+    --bento-crimson-soft: rgba(239, 68, 68, 0.14);
+    --bento-indigo: #6366F1;
+    --bento-indigo-soft: rgba(99, 102, 241, 0.15);
+  }
+
+  .encheck-dashboard.is-afro-bento[data-theme="dark"] {
+    --bento-canvas: #09090C;
+    --bento-card: #121216;
+    --bento-card-elevated: #17171D;
+    --bento-card-hover: #1B1B22;
+    --bento-border: rgba(255, 255, 255, 0.075);
+    --bento-border-strong: rgba(245, 158, 11, 0.34);
+    --bento-spotlight: rgba(245, 158, 11, 0.13);
+    --bento-text: #F5F3EF;
+    --bento-text-muted: #9A958E;
+    --bento-text-subtle: #6E6A63;
+    --bento-shadow: 0 18px 40px -20px rgba(0, 0, 0, 0.7);
+    --bento-filigree-opacity: 0.055;
+  }
+
+  .encheck-dashboard.is-afro-bento[data-theme="light"] {
+    --bento-canvas: #F6F3EC;
+    --bento-card: #FFFFFF;
+    --bento-card-elevated: #FAF8F3;
+    --bento-card-hover: #F3EFE6;
+    --bento-border: rgba(38, 30, 20, 0.09);
+    --bento-border-strong: rgba(217, 119, 6, 0.38);
+    --bento-spotlight: rgba(217, 119, 6, 0.09);
+    --bento-text: #181512;
+    --bento-text-muted: #675F56;
+    --bento-text-subtle: #8C8378;
+    --bento-shadow: 0 14px 34px -18px rgba(36, 26, 14, 0.10);
+    --bento-filigree-opacity: 0.045;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-workspace {
+    background: var(--bento-canvas);
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-main {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 20px 24px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--bento-gap);
+  }
+
+  /* ═══ CARTE BENTO UNIVERSELLE + SPOTLIGHT HOVER AWWWARDS ═══ */
+  .encheck-dashboard.is-afro-bento .bento-surface,
+  .encheck-dashboard.is-afro-bento .dashboard-panel,
+  .encheck-dashboard.is-afro-bento .dashboard-kpi {
+    position: relative;
+    background: var(--bento-card);
+    border: 1px solid var(--bento-border);
+    border-radius: var(--bento-radius-lg);
+    box-shadow: var(--bento-shadow);
+    overflow: hidden;
+    transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.22s ease, background-color 0.22s ease;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-surface::before,
+  .encheck-dashboard.is-afro-bento .dashboard-panel::before,
+  .encheck-dashboard.is-afro-bento .dashboard-kpi::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: radial-gradient(
+      480px circle at var(--spot-x, 50%) var(--spot-y, 0%),
+      var(--bento-spotlight),
+      transparent 45%
+    );
+    z-index: 0;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-surface:hover::before,
+  .encheck-dashboard.is-afro-bento .dashboard-panel:hover::before,
+  .encheck-dashboard.is-afro-bento .dashboard-kpi:hover::before {
+    opacity: 1;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-kpi:hover {
+    transform: translateY(-2px);
+    border-color: var(--bento-border-strong);
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-surface > *,
+  .encheck-dashboard.is-afro-bento .dashboard-panel > *,
+  .encheck-dashboard.is-afro-bento .dashboard-kpi > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Chiffres tabulaires stricts (heures, compteurs, %) */
+  .encheck-dashboard.is-afro-bento .dashboard-kpi-value,
+  .encheck-dashboard.is-afro-bento .bento-tabular,
+  .encheck-dashboard.is-afro-bento .dashboard-activity-time,
+  .encheck-dashboard.is-afro-bento .dashboard-company-rate,
+  .encheck-dashboard.is-afro-bento .dashboard-legend-value {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.025em;
+  }
+
+  /* ═══ RUBAN D'ALERTES COMPACTES (évite d'empiler 3 grosses bannières) ═══ */
+  .encheck-dashboard.is-afro-bento .bento-alert-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-alert-strip .dashboard-alert-banner {
+    margin: 0;
+    padding: 12px 16px;
+    border-radius: var(--bento-radius-md);
+    background: var(--bento-card);
+    border: 1px solid var(--bento-border);
+    border-left: 3px solid var(--bento-terracotta);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-alert-strip .dashboard-alert-banner.is-schedule {
+    border-left-color: var(--bento-indigo);
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-alert-strip .dashboard-alert-banner.is-breaks {
+    border-left-color: var(--bento-gold);
+  }
+
+  /* ═══ ÉTAGE 1 : GRILLE BENTO HÉROS (8 col) + PRÉSENCE KENTE (4 col) ═══ */
+  .encheck-dashboard.is-afro-bento .bento-top-stage {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--bento-gap);
+    align-items: stretch;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-hero-card {
+    grid-column: span 8;
+    border-radius: var(--bento-radius-xl);
+    padding: 26px 28px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(200px, 0.85fr);
+    gap: 24px;
+    align-items: center;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-hero-filigree {
+    position: absolute;
+    inset: 0;
+    color: var(--bento-gold);
+    opacity: var(--bento-filigree-opacity);
+    pointer-events: none;
+    mask-image: radial-gradient(circle at 82% 28%, black 10%, transparent 72%);
+    -webkit-mask-image: radial-gradient(circle at 82% 28%, black 10%, transparent 72%);
+    z-index: 0;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-hero-topline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-clock-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px;
+    border-radius: var(--bento-radius-pill);
+    background: var(--bento-gold-soft);
+    color: var(--bento-gold);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-greeting {
+    font-size: clamp(1.65rem, 2.5vw, 2.3rem);
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+    margin: 0 0 8px;
+    color: var(--bento-text);
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-greeting-name {
+    background: linear-gradient(125deg, var(--bento-gold), #FB923C);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-hero-art {
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid var(--bento-border);
+    background: var(--bento-card-elevated);
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-presence-stage-card {
+    grid-column: span 4;
+    border-radius: var(--bento-radius-xl);
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  /* ═══ JAUGE TISSÉE KENTE (24 CELLULES) ═══ */
+  .encheck-dashboard.is-afro-bento .bento-kente-strip {
+    display: grid;
+    grid-template-columns: repeat(24, minmax(0, 1fr));
+    gap: 3px;
+    height: 12px;
+    padding: 2px;
+    border-radius: 8px;
+    background: var(--bento-card-elevated);
+    border: 1px solid var(--bento-border);
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-kente-cell {
+    border-radius: 3px;
+    height: 100%;
+    transition: transform 0.2s ease;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-kente-cell.is-ontime {
+    background: var(--bento-emerald);
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-kente-cell.is-late {
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--bento-gold),
+      var(--bento-gold) 3px,
+      #EA580C 3px,
+      #EA580C 6px
+    );
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-kente-cell.is-leave {
+    background: var(--bento-indigo);
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-kente-cell.is-absent {
+    background: repeating-linear-gradient(
+      45deg,
+      rgba(154, 149, 142, 0.34),
+      rgba(154, 149, 142, 0.34) 2px,
+      transparent 2px,
+      transparent 5px
+    );
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-kente-cell.is-muted {
+    background: rgba(154, 149, 142, 0.16);
+  }
+
+  /* ═══ ÉTAGE 2 : MATRICE BENTO DES KPIS ═══ */
+  .encheck-dashboard.is-afro-bento .dashboard-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--bento-gap);
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-kpi {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 148px;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-kpi:first-child:not(.is-dragging) {
+    background: linear-gradient(
+      155deg,
+      var(--bento-card) 55%,
+      var(--bento-emerald-soft) 100%
+    );
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-kpi-value {
+    font-size: clamp(1.65rem, 2.2vw, 2.1rem);
+    font-weight: 800;
+    line-height: 1.08;
+    color: var(--bento-text);
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-kpi-source {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-top: 8px;
+    padding: 2px 9px;
+    border-radius: var(--bento-radius-pill);
+    font-size: 0.69rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    background: var(--bento-card-elevated);
+    border: 1px solid var(--bento-border);
+    color: var(--bento-text-muted);
+  }
+
+  /* ═══ ÉTAGE 3 & 4 : GRILLES BENTO OPÉRATIONNELLES 12 COLONNES ═══ */
+  .encheck-dashboard.is-afro-bento .bento-ops-grid,
+  .encheck-dashboard.is-afro-bento .bento-bottom-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--bento-gap);
+    align-items: stretch;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-col-5 {
+    grid-column: span 5;
+    padding: 22px 24px;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-col-7 {
+    grid-column: span 7;
+    padding: 22px 24px;
+  }
+
+  /* Filets verticaux Kente dans l'Inbox "À vérifier" */
+  .encheck-dashboard.is-afro-bento .dashboard-review-row {
+    border-radius: var(--bento-radius-md);
+    background: var(--bento-card-elevated);
+    border: 1px solid var(--bento-border);
+    border-left: 3px solid var(--bento-gold);
+    padding: 12px 14px;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-review-row.is-conflict {
+    border-left-color: var(--bento-crimson);
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-review-row.is-schedule {
+    border-left-color: var(--bento-indigo);
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-review-row.is-missing {
+    border-left-color: var(--bento-terracotta);
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-adinkra-glyph {
+    color: var(--bento-gold);
+    margin-bottom: 4px;
+  }
+
+  .encheck-dashboard.is-afro-bento .bento-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: var(--bento-radius-pill);
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: var(--bento-gold-soft);
+    color: var(--bento-gold);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Pilules de filtres façon Bento */
+  .encheck-dashboard.is-afro-bento .dashboard-activity-filters {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: var(--bento-radius-pill);
+    background: var(--bento-card-elevated);
+    border: 1px solid var(--bento-border);
+    gap: 2px;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-activity-filter {
+    border-radius: var(--bento-radius-pill);
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    transition: all 0.18s ease;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-activity-filter.is-active {
+    background: var(--bento-gold);
+    color: #12100E;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-activity-row {
+    border-radius: var(--bento-radius-md);
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-activity-row:hover {
+    background: var(--bento-card-elevated);
+    border-color: var(--bento-border);
+  }
+
+  /* Grille Bento d'actions rapides */
+  .encheck-dashboard.is-afro-bento .dashboard-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-quick-action {
+    border-radius: var(--bento-radius-md);
+    background: var(--bento-card-elevated);
+    border: 1px solid var(--bento-border);
+    padding: 13px 15px;
+    transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+  }
+
+  .encheck-dashboard.is-afro-bento .dashboard-quick-action:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: var(--bento-border-strong);
+    background: var(--bento-card-hover);
+  }
+
+  /* ═══ RESPONSIVE BENTO (Tablette & Mobile) ═══ */
+  @media (max-width: 1180px) {
+    .encheck-dashboard.is-afro-bento .bento-hero-card,
+    .encheck-dashboard.is-afro-bento .bento-presence-stage-card,
+    .encheck-dashboard.is-afro-bento .bento-col-5,
+    .encheck-dashboard.is-afro-bento .bento-col-7 {
+      grid-column: span 12;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .encheck-dashboard.is-afro-bento .dashboard-main {
+      padding: 14px 14px 32px;
+    }
+    .encheck-dashboard.is-afro-bento .bento-hero-card {
+      grid-template-columns: 1fr;
+      padding: 20px;
+    }
+    .encheck-dashboard.is-afro-bento .dashboard-kpis {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 480px) {
+    .encheck-dashboard.is-afro-bento .dashboard-kpis {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .encheck-dashboard.is-afro-bento .bento-surface,
+    .encheck-dashboard.is-afro-bento .dashboard-panel,
+    .encheck-dashboard.is-afro-bento .dashboard-kpi,
+    .encheck-dashboard.is-afro-bento .dashboard-quick-action {
+      transition: none;
+    }
+  }
+`
+
 export default function DashboardExperience({
   admin,
   entreprises = [],
@@ -181,6 +753,9 @@ export default function DashboardExperience({
   showSystemMessages = true,
 }) {
   const navigate = useNavigate()
+  const mainStageRef = useRef(null)
+  const rafSpotlightRef = useRef(null)
+
   const employeeCount = Number(stats?.employes) || 0
   const presentCount = Number(stats?.presentsToday) || 0
   const absentCount = Number(stats?.absentsToday) || 0
@@ -199,14 +774,32 @@ export default function DashboardExperience({
     return () => window.clearInterval(timer)
   }, [activePauses.length])
 
+  useEffect(() => () => {
+    if (rafSpotlightRef.current) window.cancelAnimationFrame(rafSpotlightRef.current)
+  }, [])
+
+  // Effet Spotlight Awwwards à 60 FPS sans aucun re-render React
+  const handleStagePointerMove = useCallback((event) => {
+    const targetCard = event.target.closest?.('.bento-surface, .dashboard-panel, .dashboard-kpi')
+    if (!targetCard) return
+    const clientX = event.clientX
+    const clientY = event.clientY
+    if (rafSpotlightRef.current) window.cancelAnimationFrame(rafSpotlightRef.current)
+    rafSpotlightRef.current = window.requestAnimationFrame(() => {
+      const rect = targetCard.getBoundingClientRect()
+      targetCard.style.setProperty('--spot-x', `${Math.round(clientX - rect.left)}px`)
+      targetCard.style.setProperty('--spot-y', `${Math.round(clientY - rect.top)}px`)
+    })
+  }, [])
+
   const nowMs = currentTime?.getTime ? currentTime.getTime() : liveNowMs
   const presenceRate = employeeCount > 0
     ? Math.max(0, Math.min(100, Math.round((presentCount / employeeCount) * 100)))
     : 0
   const reviewCount = conflictCount + scheduleRequestsPending.length + forgottenExits
-  const metricValue = (value, pad = false) => loadError ? '—' : (pad ? String(value).padStart(2, '0') : value)
-  const metricCaption = (caption) => loadError ? 'Données indisponibles' : caption
-  const metricShare = (value) => loadError ? null : (employeeCount ? Math.min(100, Math.round((value / employeeCount) * 100)) : 0)
+  const metricValue = (value, pad = false) => (loadError ? '—' : (pad ? String(value).padStart(2, '0') : value))
+  const metricCaption = (caption) => (loadError ? 'Données indisponibles' : caption)
+  const metricShare = (value) => (loadError ? null : (employeeCount ? Math.min(100, Math.round((value / employeeCount) * 100)) : 0))
   const adminName = `${admin?.first_name || ''} ${admin?.last_name || ''}`.trim() || 'Administrateur'
   const adminInitials = `${admin?.first_name?.[0] || ''}${admin?.last_name?.[0] || ''}` || 'EC'
   const adminRole = isSuperAdmin ? 'Super administrateur' : (isMultiEntreprise ? 'Administrateur multi-entreprises' : 'Administrateur')
@@ -246,14 +839,8 @@ export default function DashboardExperience({
       label: 'Outils',
       items: [
         { label: 'Prédictions', icon: Sparkles, path: '/predictions', show: isSuperAdmin || modulePredictions, tabKey: 'PREDICTIONS' },
-        // Le plateau et les zones sont un seul écran : l'un ou l'autre des
-        // deux modules ouvre « Géopointage ».
         { label: 'Géopointage', icon: MapPin, path: '/geopointage', show: isSuperAdmin || moduleCarteTempsReel || moduleGeofencing, tabKey: 'GEOFENCING' },
-        // Les enrôlements et leurs réglages sont un seul écran : une seule
-        // entrée pour la reconnaissance faciale.
         { label: 'Reconnaissance faciale', icon: ScanFace, path: '/reconnaissance-faciale', show: isSuperAdmin || moduleRecoFaciale },
-        // Les machines ADMS et le poste de pointage font un seul écran :
-        // l'une ou l'autre des deux options ouvre « Configuration pointeuse ».
         { label: 'Configuration pointeuse', icon: Router, path: '/configuration-pointeuse', show: isSuperAdmin || modulePointeuses || modulePostePointage },
         { label: 'Annonces d’accueil', icon: Megaphone, path: '/annonces-accueil', show: isSuperAdmin },
       ],
@@ -300,7 +887,7 @@ export default function DashboardExperience({
       title: `Conflit à vérifier · ${name}`,
       description: `${reason}${conflict.absences?.start_date ? ` · ${formatDate(conflict.absences.start_date)}` : ''}`,
       actionLabel: canManageConflict ? 'Examiner' : 'Voir',
-      onAction: () => canManageConflict ? openConflictModal(conflict) : navigate('/pointages'),
+      onAction: () => (canManageConflict ? openConflictModal(conflict) : navigate('/pointages')),
     })
   })
   scheduleRequestsPending.slice(0, 1).forEach((request) => {
@@ -395,8 +982,6 @@ export default function DashboardExperience({
   const [isTopbarCatalogOpen, setIsTopbarCatalogOpen] = useState(false)
   const [draggedTopbarItemId, setDraggedTopbarItemId] = useState(null)
   const [activityFilter, setActivityFilter] = useState('all')
-  // L'option « retards » peut être coupée par le module : le filtre retenu
-  // revient alors à « tout », sans passer par un état intermédiaire.
   const filtreActivite = !retardsOptionActive && activityFilter === 'late' ? 'all' : activityFilter
   const [selectedActivityItem, setSelectedActivityItem] = useState(null)
   const [isForgottenExitModalOpen, setIsForgottenExitModalOpen] = useState(false)
@@ -410,6 +995,7 @@ export default function DashboardExperience({
   const [isCustomizingQuickActions, setIsCustomizingQuickActions] = useState(false)
   const [isQuickActionCatalogOpen, setIsQuickActionCatalogOpen] = useState(false)
   const [draggedQuickActionId, setDraggedQuickActionId] = useState(null)
+
   useEffect(() => {
     ;[
       '/images/pointage-loading-pin.jpg',
@@ -426,7 +1012,7 @@ export default function DashboardExperience({
     try {
       window.localStorage.setItem(widgetStorageKey, JSON.stringify(widgetIds))
     } catch {
-      // La personnalisation reste fonctionnelle même si le stockage est bloqué.
+      // Stockage local indisponible
     }
   }, [widgetStorageKey, widgetIds])
 
@@ -434,7 +1020,7 @@ export default function DashboardExperience({
     try {
       window.localStorage.setItem(topbarLeftStorageKey, JSON.stringify(topbarLeftItemIds))
     } catch {
-      // La disposition reste utilisable si le stockage du navigateur est bloqué.
+      // Stockage local indisponible
     }
   }, [topbarLeftStorageKey, topbarLeftItemIds])
 
@@ -442,7 +1028,7 @@ export default function DashboardExperience({
     try {
       window.localStorage.setItem(topbarRightStorageKey, JSON.stringify(topbarRightItemIds))
     } catch {
-      // La disposition reste utilisable si le stockage du navigateur est bloqué.
+      // Stockage local indisponible
     }
   }, [topbarRightStorageKey, topbarRightItemIds])
 
@@ -450,17 +1036,10 @@ export default function DashboardExperience({
     try {
       window.localStorage.setItem(quickActionStorageKey, JSON.stringify(quickActionIds))
     } catch {
-      // La disposition reste utilisable si le stockage du navigateur est bloqué.
+      // Stockage local indisponible
     }
   }, [quickActionStorageKey, quickActionIds])
 
-  //  Les tableaux `availableWidgetIds` / `defaultWidgetIds` / `availableQuickActionIds`
-  //  sont reconstruits à CHAQUE rendu. Les mettre tels quels dans les dépendances
-  //  de l'effet le relançait donc après chaque clic : il relisait les préférences
-  //  distantes — qui ne sont enregistrées qu'après 650 ms de temporisation — et
-  //  réappliquait l'ANCIENNE liste. Le widget qu'on venait de retirer réapparaissait
-  //  aussitôt. D'où : dépendances en signatures texte + chargement une seule fois
-  //  par périmètre, pour qu'une modification locale ne soit plus jamais écrasée.
   const widgetCatalogSignature = availableWidgetIds.join('|')
   const quickActionSignature = availableQuickActionIds.join('|')
   const remotePrefsLoadedRef = useRef('')
@@ -635,6 +1214,8 @@ export default function DashboardExperience({
     })
   }
 
+  const themeLabel = darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'
+
   const renderTopbarElement = (itemId) => {
     if (itemId === 'enterprise') {
       return <div className="topbar-company"><EnterpriseSwitcher admin={admin} onSwitch={handleEnterpriseSwitch} /></div>
@@ -678,8 +1259,6 @@ export default function DashboardExperience({
       )
     }
     if (itemId === 'profile') {
-      // Le bloc entier mène à la page Administrateurs : l'avatar, le nom,
-      // le rôle. Un simple bouton d'avatar ne se voyait pas cliquable.
       if (!isSuperAdmin) {
         return (
           <div className="topbar-admin" title={`${adminName} · ${adminRole}`}>
@@ -729,10 +1308,21 @@ export default function DashboardExperience({
     </div>
   )
 
-  const themeLabel = darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'
+  const filteredActivity = recentActivity.filter((item) => (
+    filtreActivite === 'all'
+      ? true
+      : filtreActivite === 'late'
+        ? Boolean(item.isLate)
+        : String(item.type || '').toLowerCase() === filtreActivite
+  ))
+
+  const hasActiveStatusBanners = conflictCount > 0 || scheduleRequestsPending.length > 0 || realPausesToday.length > 0
 
   return (
-    <div className="encheck-dashboard" data-theme={darkMode ? 'dark' : 'light'}>
+    <div className="encheck-dashboard is-afro-bento" data-theme={darkMode ? 'dark' : 'light'}>
+      <style>{AFRO_BENTO_STYLES}</style>
+      <AfroBentoSvgDefs />
+
       <div className="dashboard-frame">
         {mobileMenuOpen && (
           <button
@@ -841,17 +1431,20 @@ export default function DashboardExperience({
             </div>
           </header>
 
-          {/* LE BANDEAU DU BOGOLAN — juste après la barre du haut, pleine
-              largeur : la pièce réelle de la page Paie & fiscalité. */}
+          {/* LE BANDEAU DU BOGOLAN — signature identitaire En-Check conservée intacte */}
           <div className="dashboard-bogolan" aria-hidden="true" />
 
-          <main className="dashboard-main">
+          <main
+            className="dashboard-main"
+            ref={mainStageRef}
+            onPointerMove={handleStagePointerMove}
+          >
             {isCustomizing && (
-              <div className="dashboard-customize-hint" role="status">
+              <div className="dashboard-customize-hint bento-surface" role="status">
                 <span>
                   {isTopbarCustomizing
                     ? 'Glisse ou utilise les flèches pour organiser l’en-tête et les cartes du tableau.'
-                    : 'Glisse une poignée pour réorganiser les cartes, ou personnalise l’en-tête.'}
+                    : 'Glisse une poignée pour réorganiser les cartes Bento, ou personnalise l’en-tête.'}
                 </span>
                 <div className="dashboard-customize-hint-actions">
                   <button
@@ -908,6 +1501,7 @@ export default function DashboardExperience({
 
             {showSystemMessages && <SystemMessageBanner userType="admins" />}
 
+            {/* VD-01 — État d'erreur honnête (priorité absolue) */}
             {loadError && (
               <div className="dashboard-error-banner" role="alert">
                 <AlertTriangle size={19} />
@@ -919,86 +1513,168 @@ export default function DashboardExperience({
               </div>
             )}
 
-            {conflictCount > 0 && (
-              <div className="dashboard-alert-banner">
-                <ShieldCheck size={18} />
-                <div className="dashboard-alert-banner-copy">
-                  <strong>{conflictCount} conflit{conflictCount > 1 ? 's' : ''} pointage / absence à examiner</strong>
-                  <span>Une présence a été enregistrée pendant une absence déclarée.</span>
-                </div>
-                <button type="button" onClick={() => navigate('/pointages')}>Voir les pointages</button>
-              </div>
-            )}
+            {/* RUBAN D'ALERTES BENTO HORIZONTAL (zéro empilement vertical excessif) */}
+            {hasActiveStatusBanners && (
+              <div className="bento-alert-strip">
+                {conflictCount > 0 && (
+                  <div className="dashboard-alert-banner">
+                    <ShieldCheck size={18} />
+                    <div className="dashboard-alert-banner-copy">
+                      <strong>{conflictCount} conflit{conflictCount > 1 ? 's' : ''} pointage / absence à examiner</strong>
+                      <span>Une présence a été enregistrée pendant une absence déclarée.</span>
+                    </div>
+                    <button type="button" onClick={() => navigate('/pointages')}>Voir les pointages</button>
+                  </div>
+                )}
 
-            {scheduleRequestsPending.length > 0 && (
-              <div className="dashboard-alert-banner is-schedule">
-                <CalendarDays size={18} />
-                <div className="dashboard-alert-banner-copy">
-                  <strong>{scheduleRequestsPending.length} demande{scheduleRequestsPending.length > 1 ? 's' : ''} d’horaire en attente</strong>
-                  <span>Les demandes peuvent être examinées depuis le planning.</span>
-                </div>
-                <button type="button" onClick={() => navigate('/planning')}>Ouvrir le planning</button>
-              </div>
-            )}
+                {scheduleRequestsPending.length > 0 && (
+                  <div className="dashboard-alert-banner is-schedule">
+                    <CalendarDays size={18} />
+                    <div className="dashboard-alert-banner-copy">
+                      <strong>{scheduleRequestsPending.length} demande{scheduleRequestsPending.length > 1 ? 's' : ''} d’horaire en attente</strong>
+                      <span>Les demandes peuvent être examinées depuis le planning.</span>
+                    </div>
+                    <button type="button" onClick={() => navigate('/planning')}>Ouvrir le planning</button>
+                  </div>
+                )}
 
-            {realPausesToday.length > 0 && (
-              <div className="dashboard-alert-banner is-breaks" role="region" aria-label="Pauses en direct et effectuées">
-                <Coffee size={18} />
-                <div className="dashboard-alert-banner-copy">
-                  <strong>
-                    {activePauses.length > 0
-                      ? `⏱️ ${activePauses.length} collaborateur${activePauses.length > 1 ? 's' : ''} en pause réelle en direct`
-                      : `${realPausesToday.length} pause${realPausesToday.length > 1 ? 's' : ''} réelle${realPausesToday.length > 1 ? 's' : ''} effectuée${realPausesToday.length > 1 ? 's' : ''} aujourd’hui (${unplannedPauses.length} hors planning)`}
-                  </strong>
-                  <span>
-                    {(activePauses.length > 0 ? activePauses : realPausesToday).slice(0, 3).map((pa) => (
-                      `${pa.employe} : ⏱️ ${formaterTempsPauseEnDirect(pa, nowMs)}${pa.ouverte ? ` (depuis ${pa.debutHHMM})` : ` (${pa.debutHHMM}→${pa.finHHMM || ''})`}${pa.estNonPlanifiee ? ' [Hors planning]' : ''}`
-                    )).join(' · ')}
-                  </span>
-                </div>
-                <button type="button" onClick={() => navigate('/pauses')}>Voir les pauses</button>
-              </div>
-            )}
-
-            <section className="dashboard-hero">
-              <div className="dashboard-hero-copy">
-                <p className="dashboard-eyebrow"><span className="dashboard-live-dot" /> En-Check · Votre équipe en un coup d’œil</p>
-                <h1 className="dashboard-greeting">{greeting}, <span className="dashboard-greeting-name">{admin?.first_name || 'bienvenue'}</span></h1>
-                <p className="dashboard-subtitle">Voici la présence de votre équipe et les points à vérifier aujourd’hui.</p>
-                <div className="dashboard-hero-meta">
-                  <span className="dashboard-meta-chip"><Building2 size={13} />{selectedEnterpriseName}</span>
-                  <span className="dashboard-meta-chip is-positive"><UserCheck size={13} />{presentCount} ayant pointé aujourd’hui</span>
-                  {realPausesToday.length > 0 && (
-                    <button
-                      type="button"
-                      className="dashboard-meta-chip dashboard-customize-fallback"
-                      onClick={() => navigate('/pauses')}
-                    >
-                      <Coffee size={13} />
-                      <span>
+                {realPausesToday.length > 0 && (
+                  <div className="dashboard-alert-banner is-breaks" role="region" aria-label="Pauses en direct et effectuées">
+                    <Coffee size={18} />
+                    <div className="dashboard-alert-banner-copy">
+                      <strong>
                         {activePauses.length > 0
-                          ? `☕ ${activePauses[0].employe} en pause : ⏱️ ${formaterTempsPauseEnDirect(activePauses[0], nowMs)} (depuis ${activePauses[0].debutHHMM})`
-                          : `${realPausesToday.length} pause${realPausesToday.length > 1 ? 's' : ''} réelle${realPausesToday.length > 1 ? 's' : ''} (${unplannedPauses.length} hors planning)`}
+                          ? `⏱️ ${activePauses.length} collaborateur${activePauses.length > 1 ? 's' : ''} en pause réelle en direct`
+                          : `${realPausesToday.length} pause${realPausesToday.length > 1 ? 's' : ''} réelle${realPausesToday.length > 1 ? 's' : ''} effectuée${realPausesToday.length > 1 ? 's' : ''} aujourd’hui (${unplannedPauses.length} hors planning)`}
+                      </strong>
+                      <span>
+                        {(activePauses.length > 0 ? activePauses : realPausesToday).slice(0, 3).map((pa) => (
+                          `${pa.employe} : ⏱️ ${formaterTempsPauseEnDirect(pa, nowMs)}${pa.ouverte ? ` (depuis ${pa.debutHHMM})` : ` (${pa.debutHHMM}→${pa.finHHMM || ''})`}${pa.estNonPlanifiee ? ' [Hors planning]' : ''}`
+                        )).join(' · ')}
                       </span>
-                    </button>
-                  )}
-                  {todayHoliday && <span className="dashboard-meta-chip"><Calendar size={13} />{todayHoliday.name}</span>}
-                  {conflictCount > 0 && <span className="dashboard-meta-chip is-alert"><AlertTriangle size={13} />{conflictCount} à examiner</span>}
-                  {!hasTopbarCustomizeButton && !isCustomizing && (
-                    <button
-                      type="button"
-                      className="dashboard-meta-chip dashboard-customize-fallback"
-                      onClick={() => setIsCustomizing(true)}
-                    >
-                      <SlidersHorizontal size={13} />
-                      <span>Personnaliser le tableau</span>
-                    </button>
-                  )}
-                </div>
+                    </div>
+                    <button type="button" onClick={() => navigate('/pauses')}>Voir les pauses</button>
+                  </div>
+                )}
               </div>
-              <div className="dashboard-hero-art"><AttendanceHeroImage /></div>
-            </section>
+            )}
 
+            {/* ═══ ÉTAGE BENTO 1 : CARTE HÉROS (8 COL) + POULS PRÉSENCE KENTE (4 COL) ═══ */}
+            <div className="bento-top-stage">
+              <section className="dashboard-hero bento-surface bento-hero-card">
+                <svg className="bento-hero-filigree" width="100%" height="100%" aria-hidden="true">
+                  <rect width="100%" height="100%" fill="url(#encheck-bogolan-filigree)" />
+                </svg>
+
+                <div className="dashboard-hero-copy">
+                  <div className="bento-hero-topline">
+                    <p className="dashboard-eyebrow" style={{ margin: 0 }}>
+                      <span className="dashboard-live-dot" /> En-Check · Votre équipe en un coup d’œil
+                    </p>
+                    <span className="bento-clock-pill" aria-label={`Heure locale ${currentTimeLabel}`}>
+                      <Clock size={12} />
+                      {currentTimeLabel}
+                    </span>
+                  </div>
+
+                  <h1 className="dashboard-greeting">
+                    {greeting}, <span className="dashboard-greeting-name">{admin?.first_name || 'bienvenue'}</span>
+                  </h1>
+                  <p className="dashboard-subtitle">Voici la présence de votre équipe et les points à vérifier aujourd’hui.</p>
+
+                  <div className="dashboard-hero-meta">
+                    <span className="dashboard-meta-chip"><Building2 size={13} />{selectedEnterpriseName}</span>
+                    <span className="dashboard-meta-chip is-positive"><UserCheck size={13} />{presentCount} ayant pointé aujourd’hui</span>
+                    {realPausesToday.length > 0 && (
+                      <button
+                        type="button"
+                        className="dashboard-meta-chip dashboard-customize-fallback"
+                        onClick={() => navigate('/pauses')}
+                      >
+                        <Coffee size={13} />
+                        <span>
+                          {activePauses.length > 0
+                            ? `☕ ${activePauses[0].employe} en pause : ⏱️ ${formaterTempsPauseEnDirect(activePauses[0], nowMs)} (depuis ${activePauses[0].debutHHMM})`
+                            : `${realPausesToday.length} pause${realPausesToday.length > 1 ? 's' : ''} réelle${realPausesToday.length > 1 ? 's' : ''} (${unplannedPauses.length} hors planning)`}
+                        </span>
+                      </button>
+                    )}
+                    {todayHoliday && <span className="dashboard-meta-chip"><Calendar size={13} />{todayHoliday.name}</span>}
+                    {conflictCount > 0 && <span className="dashboard-meta-chip is-alert"><AlertTriangle size={13} />{conflictCount} à examiner</span>}
+                    {!hasTopbarCustomizeButton && !isCustomizing && (
+                      <button
+                        type="button"
+                        className="dashboard-meta-chip dashboard-customize-fallback"
+                        onClick={() => setIsCustomizing(true)}
+                      >
+                        <SlidersHorizontal size={13} />
+                        <span>Personnaliser le tableau</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="dashboard-hero-art">
+                  <AttendanceHeroImage />
+                </div>
+              </section>
+
+              <article className="dashboard-panel dashboard-presence-card bento-presence-stage-card">
+                <div className="dashboard-panel-heading">
+                  <div className="dashboard-panel-title-wrap">
+                    <span className="dashboard-panel-icon"><Activity size={16} /></span>
+                    <div>
+                      <h2 className="dashboard-panel-title">Présence aujourd’hui</h2>
+                      <p className="dashboard-panel-subtitle">Répartition sur {employeeCount} employé{employeeCount === 1 ? '' : 's'}.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="dashboard-presence-summary">
+                  <div className="dashboard-presence-ring" style={{ '--presence-angle': `${(loadError ? 0 : presenceRate) * 3.6}deg` }}>
+                    <div className="dashboard-presence-ring-inner">
+                      <strong className="bento-tabular">{loadError ? '—' : `${presenceRate}%`}</strong>
+                      <span>présence</span>
+                    </div>
+                  </div>
+                  <div className="dashboard-presence-copy">
+                    <strong>{loadError ? 'Données indisponibles' : `${presentCount} sur ${employeeCount} ont pointé`}</strong>
+                    <p>Mis à jour à {currentTimeLabel}</p>
+                  </div>
+                </div>
+
+                {/* Trame tissée Kente 24 segments */}
+                <KentePresenceStrip
+                  total={employeeCount}
+                  present={presentCount}
+                  late={lateCount}
+                  leave={leaveCount}
+                  absent={absentCount}
+                  loadError={Boolean(loadError)}
+                  retardsActive={retardsOptionActive}
+                />
+
+                <div className="dashboard-presence-legend">
+                  <div className="dashboard-legend-row">
+                    <span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--bento-emerald)' }} />
+                    <span>Ayant pointé</span>
+                    <strong className="dashboard-legend-value">{metricValue(presentCount)}</strong>
+                  </div>
+                  <div className="dashboard-legend-row">
+                    <span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--bento-indigo)' }} />
+                    <span>Congés / maladie</span>
+                    <strong className="dashboard-legend-value">{metricValue(leaveCount)}</strong>
+                  </div>
+                  <div className="dashboard-legend-row">
+                    <span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--bento-text-subtle)' }} />
+                    <span>Sans pointage déclaré</span>
+                    <strong className="dashboard-legend-value">{metricValue(absentCount)}</strong>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            {/* ═══ MODULE ANALYTICS KENTE ═══ */}
             {kenteStats && (
               <DashboardKenteAnalytics
                 admin={admin}
@@ -1008,6 +1684,7 @@ export default function DashboardExperience({
               />
             )}
 
+            {/* ═══ ÉTAGE BENTO 2 : MATRICE DES INDICATEURS PERSONNALISABLES ═══ */}
             <section className={`dashboard-kpis${isCustomizing ? ' is-customizing' : ''}`} aria-label="Indicateurs du jour">
               {visibleWidgets.map((widget, index) => {
                 const Icon = widget.icon
@@ -1063,12 +1740,21 @@ export default function DashboardExperience({
               })}
             </section>
 
-            <section className="dashboard-content-grid">
-              <article className="dashboard-panel">
+            {/* ═══ ÉTAGE BENTO 3 : INBOX "À VÉRIFIER" (5 COL) + ACTIVITÉ LIVE (7 COL) ═══ */}
+            <section className="dashboard-content-grid bento-ops-grid">
+              <article className="dashboard-panel bento-col-5">
                 <div className="dashboard-panel-heading">
                   <div className="dashboard-panel-title-wrap">
                     <span className="dashboard-panel-icon"><AlertTriangle size={16} /></span>
-                    <div><h2 className="dashboard-panel-title">À vérifier</h2><p className="dashboard-panel-subtitle">Les situations qui demandent votre attention.</p></div>
+                    <div>
+                      <h2 className="dashboard-panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>À vérifier</span>
+                        {!loadError && reviewItems.length > 0 && (
+                          <span className="bento-count-badge">{reviewItems.length}</span>
+                        )}
+                      </h2>
+                      <p className="dashboard-panel-subtitle">Les situations qui demandent votre attention.</p>
+                    </div>
                   </div>
                   <button type="button" className="dashboard-panel-link" onClick={() => navigate('/pointages')}>Tout voir <ArrowRight size={13} /></button>
                 </div>
@@ -1123,43 +1809,25 @@ export default function DashboardExperience({
                   </div>
                 ) : (
                   <div className="dashboard-empty-state">
-                    <span className="dashboard-empty-state-icon"><CheckCircle2 size={19} /></span>
+                    {loadError ? (
+                      <span className="dashboard-empty-state-icon"><AlertTriangle size={19} /></span>
+                    ) : (
+                      <AdinkraHarmonyGlyph />
+                    )}
                     <strong>{loadError ? 'Activité à recharger' : 'Tout est calme pour le moment'}</strong>
                     <span>{loadError ? 'Réessayez de charger les données avant de conclure.' : 'Aucun conflit, oubli de sortie ou demande d’horaire en attente.'}</span>
                   </div>
                 )}
               </article>
 
-              <article className="dashboard-panel dashboard-presence-card">
+              <article className="dashboard-panel bento-col-7">
                 <div className="dashboard-panel-heading">
                   <div className="dashboard-panel-title-wrap">
                     <span className="dashboard-panel-icon"><Activity size={16} /></span>
-                    <div><h2 className="dashboard-panel-title">Présence aujourd’hui</h2><p className="dashboard-panel-subtitle">Répartition sur {employeeCount} employé{employeeCount === 1 ? '' : 's'}.</p></div>
-                  </div>
-                </div>
-                <div className="dashboard-presence-summary">
-                  <div className="dashboard-presence-ring" style={{ '--presence-angle': `${presenceRate * 3.6}deg` }}>
-                    <div className="dashboard-presence-ring-inner"><strong>{presenceRate}%</strong><span>présence</span></div>
-                  </div>
-                  <div className="dashboard-presence-copy">
-                    <strong>{presentCount} sur {employeeCount} ont pointé</strong>
-                    <p>Mis à jour à {currentTimeLabel}</p>
-                  </div>
-                </div>
-                <div className="dashboard-presence-legend">
-                  <div className="dashboard-legend-row"><span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--good)' }} /><span>Ayant pointé</span><strong className="dashboard-legend-value">{presentCount}</strong></div>
-                  <div className="dashboard-legend-row"><span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--violet)' }} /><span>Congés / maladie</span><strong className="dashboard-legend-value">{leaveCount}</strong></div>
-                  <div className="dashboard-legend-row"><span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--surface-raised)' }} /><span>Sans pointage déclaré</span><strong className="dashboard-legend-value">{absentCount}</strong></div>
-                </div>
-              </article>
-            </section>
-
-            <section className="dashboard-lower-grid">
-              <article className="dashboard-panel">
-                <div className="dashboard-panel-heading">
-                  <div className="dashboard-panel-title-wrap">
-                    <span className="dashboard-panel-icon"><Activity size={16} /></span>
-                    <div><h2 className="dashboard-panel-title">Activité récente</h2><p className="dashboard-panel-subtitle">Les derniers mouvements enregistrés.</p></div>
+                    <div>
+                      <h2 className="dashboard-panel-title">Activité récente</h2>
+                      <p className="dashboard-panel-subtitle">Les derniers mouvements enregistrés.</p>
+                    </div>
                   </div>
                   <div className="dashboard-panel-actions">
                     <div className="dashboard-activity-filters" role="group" aria-label="Filtrer l’activité">
@@ -1167,8 +1835,6 @@ export default function DashboardExperience({
                         { id: 'all', label: 'Tous' },
                         { id: 'in', label: 'Entrées' },
                         { id: 'out', label: 'Sorties' },
-                        //  Sans l'option payante, aucun retard n'est détecté :
-                        //  l'onglet n'a rien à montrer, il ne s'affiche pas.
                         ...(retardsOptionActive ? [{ id: 'late', label: 'Retards' }] : []),
                       ].map((filter) => (
                         <button
@@ -1185,24 +1851,10 @@ export default function DashboardExperience({
                     <button type="button" className="dashboard-panel-link" onClick={() => navigate('/pointages')}>Pointages <ArrowRight size={13} /></button>
                   </div>
                 </div>
-                {recentActivity.filter((item) => (
-                  filtreActivite === 'all'
-                    ? true
-                    : filtreActivite === 'late'
-                      ? Boolean(item.isLate)
-                      : String(item.type || '').toLowerCase() === filtreActivite
-                )).length > 0 ? (
+
+                {filteredActivity.length > 0 ? (
                   <div className="dashboard-activity-list">
-                    {recentActivity
-                      .filter((item) => (
-                        filtreActivite === 'all'
-                          ? true
-                          : filtreActivite === 'late'
-                            ? Boolean(item.isLate)
-                            : String(item.type || '').toLowerCase() === filtreActivite
-                      ))
-                      .slice(0, 5)
-                      .map((item) => {
+                    {filteredActivity.slice(0, 5).map((item) => {
                       const isEntry = String(item.type || '').toLowerCase() === 'in'
                       const Icon = isEntry ? UserCheck : LogOut
                       return (
@@ -1235,7 +1887,9 @@ export default function DashboardExperience({
                                 <Timer size={11} />Retard
                               </span>
                             )}
-                            <span className={`dashboard-type-pill ${isEntry ? 'is-entry' : 'is-exit'}`} style={{ '--pill-color': isEntry ? 'var(--good)' : 'var(--accent-strong)', '--pill-bg': isEntry ? 'var(--good-soft)' : 'var(--accent-soft)' }}><Icon size={11} />{isEntry ? 'Entrée' : 'Sortie'}</span>
+                            <span className={`dashboard-type-pill ${isEntry ? 'is-entry' : 'is-exit'}`} style={{ '--pill-color': isEntry ? 'var(--good)' : 'var(--accent-strong)', '--pill-bg': isEntry ? 'var(--good-soft)' : 'var(--accent-soft)' }}>
+                              <Icon size={11} />{isEntry ? 'Entrée' : 'Sortie'}
+                            </span>
                             <time className="dashboard-activity-time">{formaterHeureLocale(item.time)}</time>
                           </div>
                         </div>
@@ -1250,13 +1904,19 @@ export default function DashboardExperience({
                   </div>
                 )}
               </article>
+            </section>
 
+            {/* ═══ ÉTAGE BENTO 4 : ENTREPRISES / RÉPARTITION (5 COL) + ACCÈS RAPIDES (7 COL) ═══ */}
+            <section className="dashboard-lower-grid bento-bottom-grid">
               {isSuperAdmin ? (
-                <article className="dashboard-panel">
+                <article className="dashboard-panel bento-col-5">
                   <div className="dashboard-panel-heading">
                     <div className="dashboard-panel-title-wrap">
                       <span className="dashboard-panel-icon"><Building2 size={16} /></span>
-                      <div><h2 className="dashboard-panel-title">Entreprises actives</h2><p className="dashboard-panel-subtitle">Taux de présence aujourd’hui.</p></div>
+                      <div>
+                        <h2 className="dashboard-panel-title">Entreprises actives</h2>
+                        <p className="dashboard-panel-subtitle">Taux de présence aujourd’hui.</p>
+                      </div>
                     </div>
                     <button type="button" className="dashboard-panel-link" onClick={() => navigate('/entreprises')}>Gérer <ArrowRight size={13} /></button>
                   </div>
@@ -1277,107 +1937,132 @@ export default function DashboardExperience({
                       ))}
                     </div>
                   ) : (
-                    <div className="dashboard-empty-state"><span className="dashboard-empty-state-icon"><Building2 size={18} /></span><strong>Aucune donnée disponible</strong><span>Les entreprises apparaîtront ici une fois les données chargées.</span></div>
+                    <div className="dashboard-empty-state">
+                      <span className="dashboard-empty-state-icon"><Building2 size={18} /></span>
+                      <strong>Aucune donnée disponible</strong>
+                      <span>Les entreprises apparaîtront ici une fois les données chargées.</span>
+                    </div>
                   )}
                 </article>
               ) : (
-                <article className="dashboard-panel">
+                <article className="dashboard-panel bento-col-5">
                   <div className="dashboard-panel-heading">
                     <div className="dashboard-panel-title-wrap">
                       <span className="dashboard-panel-icon"><TrendingUp size={16} /></span>
-                      <div><h2 className="dashboard-panel-title">Répartition du jour</h2><p className="dashboard-panel-subtitle">Les principaux indicateurs de présence.</p></div>
+                      <div>
+                        <h2 className="dashboard-panel-title">Répartition du jour</h2>
+                        <p className="dashboard-panel-subtitle">Les principaux indicateurs de présence.</p>
+                      </div>
                     </div>
                   </div>
                   <div className="dashboard-distribution-list">
                     {[
-                      { label: 'Ayant pointé', value: presentCount, color: 'var(--good)' },
-                      { label: 'Absents', value: absentCount, color: 'var(--danger)' },
-                      { label: 'Congés / maladie', value: leaveCount, color: 'var(--violet)' },
+                      { label: 'Ayant pointé', value: presentCount, color: 'var(--bento-emerald)' },
+                      { label: 'Absents', value: absentCount, color: 'var(--bento-crimson)' },
+                      { label: 'Congés / maladie', value: leaveCount, color: 'var(--bento-indigo)' },
                     ].map((item) => {
-                      const ratio = employeeCount > 0 ? Math.min((item.value / employeeCount) * 100, 100) : 0
+                      const ratio = !loadError && employeeCount > 0 ? Math.min((item.value / employeeCount) * 100, 100) : 0
                       return (
                         <div key={item.label}>
-                          <div className="dashboard-distribution-label"><span>{item.label}</span><strong>{item.value}</strong></div>
-                          <div className="dashboard-progress-track"><div className="dashboard-progress-fill" style={{ '--progress-color': item.color, width: `${ratio}%` }} /></div>
+                          <div className="dashboard-distribution-label">
+                            <span>{item.label}</span>
+                            <strong className="bento-tabular">{metricValue(item.value)}</strong>
+                          </div>
+                          <div className="dashboard-progress-track">
+                            <div className="dashboard-progress-fill" style={{ '--progress-color': item.color, width: `${ratio}%` }} />
+                          </div>
                         </div>
                       )
                     })}
                   </div>
-                  <div className="dashboard-summary-inline"><span>Taux de présence enregistré</span><strong>{presenceRate}%</strong></div>
+                  <div className="dashboard-summary-inline">
+                    <span>Taux de présence enregistré</span>
+                    <strong className="bento-tabular">{loadError ? '—' : `${presenceRate}%`}</strong>
+                  </div>
                 </article>
               )}
-            </section>
 
-            <section className="dashboard-panel">
-              <div className="dashboard-panel-heading">
-                <div className="dashboard-panel-title-wrap">
-                  <span className="dashboard-panel-icon"><Sparkles size={16} /></span>
-                  <div><h2 className="dashboard-panel-title">Accès rapide</h2><p className="dashboard-panel-subtitle">Les actions courantes, sans parcourir les menus.</p></div>
-                </div>
-                <div className="dashboard-quick-action-tools">
-                  {isCustomizingQuickActions && (
-                    <button type="button" className="dashboard-panel-link" onClick={() => setIsQuickActionCatalogOpen(true)} aria-haspopup="dialog" aria-expanded={isQuickActionCatalogOpen}>
-                      <Plus size={14} /> Ajouter une action
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className={`dashboard-panel-link dashboard-quick-action-edit${isCustomizingQuickActions ? ' is-active' : ''}`}
-                    onClick={() => setIsCustomizingQuickActions((value) => !value)}
-                    aria-pressed={isCustomizingQuickActions}
-                  >
-                    {isCustomizingQuickActions ? <CheckCircle2 size={14} /> : <SlidersHorizontal size={14} />}
-                    {isCustomizingQuickActions ? 'Terminer' : 'Personnaliser'}
-                  </button>
-                </div>
-              </div>
-              {isCustomizingQuickActions && (
-                <div className="dashboard-quick-action-hint" role="status">
-                  Glisse les poignées ou utilise les flèches pour organiser tes actions. Tu peux aussi les retirer ou en ajouter.
-                  <button type="button" onClick={resetQuickActions}><RotateCcw size={12} /> Réinitialiser</button>
-                </div>
-              )}
-              <div className={`dashboard-quick-actions${isCustomizingQuickActions ? ' is-customizing' : ''}`}>
-                {quickActions.map((action, index) => {
-                  const Icon = action.icon
-                  return (
-                    <article
-                      className={`dashboard-quick-action-item${isCustomizingQuickActions ? ' is-editing' : ''}${draggedQuickActionId === action.id ? ' is-dragging' : ''}`}
-                      key={action.id}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={(event) => handleQuickActionDrop(event, action.id)}
-                    >
-                      {isCustomizingQuickActions && (
-                        <div className="quick-action-layout-controls" aria-label={`Contrôles de ${action.label}`}>
-                          <button type="button" className="quick-action-drag-handle" draggable="true" onDragStart={(event) => handleQuickActionDragStart(event, action.id)} onDragEnd={() => setDraggedQuickActionId(null)} aria-label={`Déplacer ${action.label}`} title="Glisser pour déplacer"><GripVertical size={13} /></button>
-                          <button type="button" onClick={() => moveQuickAction(action.id, -1)} disabled={index === 0} aria-label={`Déplacer ${action.label} vers le début`} title="Monter"><MoveUp size={12} /></button>
-                          <button type="button" onClick={() => moveQuickAction(action.id, 1)} disabled={index === quickActions.length - 1} aria-label={`Déplacer ${action.label} vers la fin`} title="Descendre"><MoveDown size={12} /></button>
-                          <button type="button" onClick={() => removeQuickAction(action.id)} aria-label={`Retirer ${action.label}`} title="Retirer des accès rapides"><X size={12} /></button>
-                        </div>
-                      )}
-                      <button type="button" className="dashboard-quick-action" onClick={() => navigate(action.path)} disabled={isCustomizingQuickActions}>
-                        <span className="dashboard-quick-action-icon"><Icon size={15} /></span>
-                        <span className="dashboard-quick-action-copy"><span className="dashboard-quick-action-title">{action.label}</span><span className="dashboard-quick-action-subtitle">{action.description}</span></span>
-                        {!isCustomizingQuickActions && <ChevronRight size={13} />}
+              <article className="dashboard-panel bento-col-7">
+                <div className="dashboard-panel-heading">
+                  <div className="dashboard-panel-title-wrap">
+                    <span className="dashboard-panel-icon"><Sparkles size={16} /></span>
+                    <div>
+                      <h2 className="dashboard-panel-title">Accès rapide</h2>
+                      <p className="dashboard-panel-subtitle">Les actions courantes, sans parcourir les menus.</p>
+                    </div>
+                  </div>
+                  <div className="dashboard-quick-action-tools">
+                    {isCustomizingQuickActions && (
+                      <button type="button" className="dashboard-panel-link" onClick={() => setIsQuickActionCatalogOpen(true)} aria-haspopup="dialog" aria-expanded={isQuickActionCatalogOpen}>
+                        <Plus size={14} /> Ajouter une action
                       </button>
-                    </article>
-                  )
-                })}
-                {quickActions.length === 0 && (
-                  <div className="dashboard-quick-actions-empty">
-                    <Sparkles size={17} />
-                    <span>Aucune action rapide pour le moment. Ajoute celles que tu utilises le plus.</span>
+                    )}
+                    <button
+                      type="button"
+                      className={`dashboard-panel-link dashboard-quick-action-edit${isCustomizingQuickActions ? ' is-active' : ''}`}
+                      onClick={() => setIsCustomizingQuickActions((value) => !value)}
+                      aria-pressed={isCustomizingQuickActions}
+                    >
+                      {isCustomizingQuickActions ? <CheckCircle2 size={14} /> : <SlidersHorizontal size={14} />}
+                      {isCustomizingQuickActions ? 'Terminer' : 'Personnaliser'}
+                    </button>
+                  </div>
+                </div>
+
+                {isCustomizingQuickActions && (
+                  <div className="dashboard-quick-action-hint" role="status">
+                    Glisse les poignées ou utilise les flèches pour organiser tes actions. Tu peux aussi les retirer ou en ajouter.
+                    <button type="button" onClick={resetQuickActions}><RotateCcw size={12} /> Réinitialiser</button>
                   </div>
                 )}
-              </div>
+
+                <div className={`dashboard-quick-actions${isCustomizingQuickActions ? ' is-customizing' : ''}`}>
+                  {quickActions.map((action, index) => {
+                    const Icon = action.icon
+                    return (
+                      <article
+                        className={`dashboard-quick-action-item${isCustomizingQuickActions ? ' is-editing' : ''}${draggedQuickActionId === action.id ? ' is-dragging' : ''}`}
+                        key={action.id}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={(event) => handleQuickActionDrop(event, action.id)}
+                      >
+                        {isCustomizingQuickActions && (
+                          <div className="quick-action-layout-controls" aria-label={`Contrôles de ${action.label}`}>
+                            <button type="button" className="quick-action-drag-handle" draggable="true" onDragStart={(event) => handleQuickActionDragStart(event, action.id)} onDragEnd={() => setDraggedQuickActionId(null)} aria-label={`Déplacer ${action.label}`} title="Glisser pour déplacer"><GripVertical size={13} /></button>
+                            <button type="button" onClick={() => moveQuickAction(action.id, -1)} disabled={index === 0} aria-label={`Déplacer ${action.label} vers le début`} title="Monter"><MoveUp size={12} /></button>
+                            <button type="button" onClick={() => moveQuickAction(action.id, 1)} disabled={index === quickActions.length - 1} aria-label={`Déplacer ${action.label} vers la fin`} title="Descendre"><MoveDown size={12} /></button>
+                            <button type="button" onClick={() => removeQuickAction(action.id)} aria-label={`Retirer ${action.label}`} title="Retirer des accès rapides"><X size={12} /></button>
+                          </div>
+                        )}
+                        <button type="button" className="dashboard-quick-action" onClick={() => navigate(action.path)} disabled={isCustomizingQuickActions}>
+                          <span className="dashboard-quick-action-icon"><Icon size={15} /></span>
+                          <span className="dashboard-quick-action-copy">
+                            <span className="dashboard-quick-action-title">{action.label}</span>
+                            <span className="dashboard-quick-action-subtitle">{action.description}</span>
+                          </span>
+                          {!isCustomizingQuickActions && <ChevronRight size={13} />}
+                        </button>
+                      </article>
+                    )
+                  })}
+                  {quickActions.length === 0 && (
+                    <div className="dashboard-quick-actions-empty">
+                      <Sparkles size={17} />
+                      <span>Aucune action rapide pour le moment. Ajoute celles que tu utilises le plus.</span>
+                    </div>
+                  )}
+                </div>
+              </article>
             </section>
 
-            <footer className="dashboard-footer"><span>EN-CHECK</span> · Système de pointage intelligent · {todayLabel}</footer>
+            <footer className="dashboard-footer">
+              <span>EN-CHECK</span> · Système de pointage intelligent · {todayLabel}
+            </footer>
           </main>
         </div>
       </div>
 
-
+      {/* ═══ MODALES DE PERSONNALISATION & RÉSOLUTION MÉTIER ═══ */}
       {isWidgetCatalogOpen && (
         <div className="dashboard-widget-catalog-overlay" role="presentation" onClick={() => setIsWidgetCatalogOpen(false)}>
           <section
