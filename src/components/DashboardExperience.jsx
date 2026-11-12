@@ -1701,13 +1701,9 @@ export default function DashboardExperience({
     </div>
   )
 }
-```
 
-## CSS à ajouter dans `Dashboard.css`
 
-Les classes existantes restent valides — voici uniquement les **nouvelles** :
 
-```css
 /* ═══ GRILLE BENTO ═══ */
 .bento-grid {
   display: grid;
