@@ -144,7 +144,7 @@ export default function BentoGrid({
         <div className="tile-head">
           <span className="tile-title"><span className="status-dot g" aria-hidden="true" />Présents</span>
         </div>
-        <Sparkline values={serie.slice(-7).map((p) => p.presents)} id="bentoSparkPresent" color="#30d158" />
+        <Sparkline values={serie.slice(-7).map((p) => p.presents)} id="bentoSparkPresent" color="#8fbf87" />
         <div className="kpi-value v-green">{loadError ? '—' : presentCount}</div>
         <span className={`delta ${presenceRate >= 90 ? 'up' : 'flat'}`}>
           {loadError ? 'Données indisponibles' : `${presenceRate} % des ${employeeCount} employés`}

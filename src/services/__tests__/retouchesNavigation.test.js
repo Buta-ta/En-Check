@@ -3,8 +3,8 @@
 //
 //   ① le profil est cliquable, dans la barre du haut comme dans la
 //     barre latérale, et mène à la page Administrateurs ;
-//   ② le motif kente tissé officiel habille la coque (topbar,
-//     sidebar, titre de page) ;
+//   ② le bandeau culturel bogolan (la vraie pièce) suit la barre du
+//     haut, et le motif kente tissé officiel habille la coque ;
 //   ③ les pages Administrateurs et Entreprises ont leur flèche de
 //     retour en haut à gauche ;
 //   ④ la barre de filtres du planning se replie, se souvient de son
@@ -47,8 +47,14 @@ describe('le profil mène à la page Administrateurs', () => {
   })
 })
 
-describe('la bande kente tissée habille la coque', () => {
-  it('orne la barre du haut, la sidebar et le titre de page', () => {
+describe('le bandeau culturel et les motifs En-Check habillent la coque', () => {
+  it('le bandeau bogolan (la vraie pièce) suit la barre du haut, comme avant', () => {
+    expect(dashboard).toContain('className="dashboard-bogolan"')
+    expect(dashboardCss).toMatch(/\.dashboard-bogolan\s*\{[\s\S]*paie-bogolan-haut\.webp/)
+    expect(dashboardCss).toMatch(/\.dashboard-bogolan\s*\{[\s\S]*background-repeat:\s*repeat-x/)
+  })
+
+  it('le motif kente tissé orne la barre du haut, la sidebar, le titre et les tuiles', () => {
     expect(dashboard).toContain('className="bento-topbar"')
     expect(dashboard).toContain('bento-sidebar')
     expect(dashboard).toContain('className="kente-accent"')
@@ -59,6 +65,14 @@ describe('la bande kente tissée habille la coque', () => {
     expect(dashboardCss).toContain('.bento-topbar::after')
     expect(dashboardCss).toContain('.bento-sidebar::after')
     expect(dashboardCss).toContain('.tile::after')
+  })
+
+  it('les couleurs suivent la palette En-Check (or, terre, sauge — pas de néon)', () => {
+    expect(dashboardCss).toMatch(/--or:\s*#c9a961/)
+    expect(dashboardCss).toMatch(/--terre:\s*#c25a2b/)
+    expect(dashboardCss).toMatch(/--green:\s*#8fbf87/)
+    expect(dashboardCss).not.toContain('#30d158')
+    expect(dashboardCss).not.toContain('#ff453a')
   })
 })
 
