@@ -1,10 +1,12 @@
 // ═══════════════════════════════════════════════════════════
-// LA BARRE LATÉRALE PERSONNELLE — les gestes à l'écran
+// LA SIDEBAR BENTO — les gestes à l'écran
 //
-// Ce que ces tests défendent : renommer une page et le retrouver
-// après un rechargement, descendre une page au clavier, créer un
-// groupe, colorer un groupe, rétablir l'ordre d'origine, et ne
-// jamais afficher une page dont le module est éteint.
+// Ce que ces tests défendent : les groupes s'affichent dans
+// l'ordre, une page dont le module est éteint ne s'affiche
+// jamais, la page courante est marquée, le compteur d'attente
+// est visible, le repli en rail se retient par administrateur,
+// le profil super admin mène aux Administrateurs, et la
+// déconnexion reste un vrai bouton annoncé.
 // ═══════════════════════════════════════════════════════════
 
 // @vitest-environment jsdom
@@ -14,15 +16,14 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 
-import SidebarNavigation from '../../components/SidebarNavigation'
-import { cleStockage } from '../../lib/navigationPerso'
+import BentoSidebar from '../../pages/dashboard/BentoSidebar'
 
 const SECTIONS = [
   {
     label: 'Aujourd’hui',
     items: [
       { label: 'Vue d’ensemble', path: '/dashboard', show: true },
-      { label: 'Pointages', path: '/pointages', show: true, count: 3, Icone: null },
+      { label: 'Pointages', path: '/pointages', show: true, count: 3 },
       { label: 'Équipe', path: '/employes', show: true },
       { label: 'Planning', path: '/planning', show: false },
     ],
@@ -39,10 +40,12 @@ const SECTIONS = [
 let hote
 let racine
 const surSelection = vi.fn()
+const surLogout = vi.fn()
 
 beforeEach(() => {
   localStorage.clear()
   surSelection.mockReset()
+  surLogout.mockReset()
   hote = document.createElement('div')
   document.body.appendChild(hote)
   racine = createRoot(hote)
@@ -57,15 +60,21 @@ const laisser = async () => {
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
 }
 
-async function ouvrir() {
+async function ouvrir(chemin = '/pointages', props = {}) {
   await act(async () => {
     racine.render(
-      <MemoryRouter initialEntries={['/pointages']}>
-        <SidebarNavigation
+      <MemoryRouter initialEntries={[chemin]}>
+        <BentoSidebar
           sections={SECTIONS}
           tabStates={{}}
           onSelect={surSelection}
           idAdministrateur="admin-1"
+          handleLogout={surLogout}
+          adminName="Bintou K."
+          adminRole="Super admin"
+          adminInitials="BK"
+          isSuperAdmin
+          {...props}
         />
       </MemoryRouter>,
     )
@@ -73,37 +82,14 @@ async function ouvrir() {
   await laisser()
 }
 
-const bouton = (texte) => [...hote.querySelectorAll('button')].find((element) => element.textContent.trim().includes(texte))
-const libelles = () => [...hote.querySelectorAll('.sidebar-link-label')].map((element) => element.textContent)
-const champsPage = () => [...hote.querySelectorAll('.sn-champ--page')]
-const titresGroupe = () => [...hote.querySelectorAll('.sidebar-section-label')].map((element) => element.textContent.trim())
+const liens = () => [...hote.querySelectorAll('.bento-nav-item')]
+const libelles = () => liens().map((a) => a.querySelector('.nav-label').textContent)
+const titresGroupe = () => [...hote.querySelectorAll('.bento-nav-group-label')].map((e) => e.textContent.trim())
 
-async function cliquer(element) {
-  expect(element, 'le contrôle à cliquer doit exister').toBeTruthy()
-  await act(async () => element.click())
-  await laisser()
-}
-
-async function ecrire(champ, valeur) {
-  expect(champ).toBeTruthy()
-  await act(async () => {
-    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
-    setter.call(champ, valeur)
-    champ.dispatchEvent(new Event('input', { bubbles: true }))
-  })
-  await laisser()
-}
-
-const memoire = () => {
-  const brut = localStorage.getItem(cleStockage('admin-1'))
-  return brut ? JSON.parse(brut) : null
-}
-
-describe('la barre, au repos', () => {
-  it('dessine un groupe coloré par section, dans l’ordre', async () => {
+describe('la navigation', () => {
+  it('dessine les groupes dans l’ordre, avec leurs libellés', async () => {
     await ouvrir()
     expect(titresGroupe()).toEqual(['Aujourd’hui', 'Administration'])
-    expect(hote.querySelectorAll('.sn-groupe-point')).toHaveLength(2)
   })
 
   it('affiche les pages visibles, dans l’ordre du code', async () => {
@@ -116,122 +102,109 @@ describe('la barre, au repos', () => {
     expect(libelles()).not.toContain('Planning')
   })
 
-  it('marque la page courante', async () => {
-    await ouvrir()
-    const actif = hote.querySelector('.sidebar-link.is-active')
-    expect(actif.textContent).toContain('Pointages')
+  it('marque la page courante comme active', async () => {
+    await ouvrir('/pointages')
+    const actif = liens().find((a) => a.classList.contains('is-active'))
+    expect(actif).toBeTruthy()
+    expect(actif.querySelector('.nav-label').textContent).toBe('Pointages')
     expect(actif.getAttribute('aria-current')).toBe('page')
   })
 
   it('prévient la coque quand on choisit une page', async () => {
     await ouvrir()
-    await cliquer([...hote.querySelectorAll('.sidebar-link')].find((element) => element.textContent.includes('Équipe')))
-    expect(surSelection).toHaveBeenCalledTimes(1)
-    expect(surSelection.mock.calls[0][0].path).toBe('/employes')
+    await act(async () => {
+      liens()[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    })
+    expect(surSelection).toHaveBeenCalledWith(expect.objectContaining({ path: '/dashboard' }))
   })
 
   it('affiche le compteur d’une page qui en a un', async () => {
     await ouvrir()
-    expect(hote.querySelector('.sidebar-link-count').textContent).toBe('3')
+    const pointages = liens().find((a) => a.querySelector('.nav-label').textContent === 'Pointages')
+    expect(pointages.querySelector('.bento-nav-badge')).toBeTruthy()
+    expect(pointages.querySelector('.bento-nav-badge').textContent).toBe('3')
+  })
+
+  it('signale l’activité à examiner sur un onglet', async () => {
+    // Le composant reçoit les sections telles que la page les construit ;
+    // ici on vérifie que le point d'activité existe quand l'état le porte.
+    const sectionsAvecTab = [
+      { label: 'A', items: [{ label: 'Pointages', path: '/pointages', show: true, tabKey: 'POINTAGES' }] },
+    ]
+    await act(async () => {
+      racine.render(
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <BentoSidebar
+            sections={sectionsAvecTab}
+            tabStates={{ POINTAGES: { tabKey: 'POINTAGES', viewed: false, activeTriggers: [{ priority: 'medium' }] } }}
+            onSelect={surSelection}
+            idAdministrateur="admin-1"
+          />
+        </MemoryRouter>,
+      )
+    })
+    await laisser()
+    expect(hote.querySelector('.bento-nav-dot')).toBeTruthy()
   })
 })
 
-describe('le mode Personnaliser', () => {
+describe('le repli en rail d’icônes', () => {
   it('s’ouvre et se referme', async () => {
     await ouvrir()
-    await cliquer(bouton('Personnaliser la navigation'))
-    expect(hote.querySelector('.sn-aide')).toBeTruthy()
-    expect(champsPage()).toHaveLength(5)
-    await cliquer(bouton('Terminer'))
-    expect(hote.querySelector('.sn-aide')).toBeNull()
+    const bouton = hote.querySelector('.bento-sidebar-collapse')
+    const sidebar = hote.querySelector('.bento-sidebar')
+    expect(sidebar.classList.contains('is-mini')).toBe(false)
+    await act(async () => bouton.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    expect(sidebar.classList.contains('is-mini')).toBe(true)
+    await act(async () => bouton.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    expect(sidebar.classList.contains('is-mini')).toBe(false)
   })
 
-  it('se referme avec Échap', async () => {
+  it('se retient d’une visite à l’autre, par administrateur', async () => {
     await ouvrir()
-    await cliquer(bouton('Personnaliser la navigation'))
-    await act(async () => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-    })
-    await laisser()
-    expect(hote.querySelector('.sn-aide')).toBeNull()
+    await act(async () => hote.querySelector('.bento-sidebar-collapse').dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    expect(localStorage.getItem('encheck_bento_sidebar_mini_v1:admin-1')).toBe('1')
+
+    await ouvrir()
+    const sidebar = hote.querySelector('.bento-sidebar')
+    expect(sidebar.classList.contains('is-mini')).toBe(true)
   })
 
-  it('renomme une page et retient le nom', async () => {
+  it('annonce le geste au lecteur d’écran', async () => {
     await ouvrir()
-    await cliquer(bouton('Personnaliser la navigation'))
-    await ecrire(champsPage()[1], 'Pointages du matin')
-    expect(champsPage()[1].value).toBe('Pointages du matin')
-    expect(memoire().pages.find((page) => page.cle === '/pointages').libelle).toBe('Pointages du matin')
+    const bouton = hote.querySelector('.bento-sidebar-collapse')
+    expect(bouton.getAttribute('aria-label')).toContain('Replier')
+    expect(bouton.getAttribute('aria-pressed')).toBe('false')
+  })
+})
+
+describe('le pied de sidebar', () => {
+  it('le profil super admin mène à la page Administrateurs', async () => {
+    await ouvrir()
+    const profil = hote.querySelector('a.sidebar-profile-link')
+    expect(profil).toBeTruthy()
+    expect(profil.getAttribute('href')).toBe('/admins')
+    expect(profil.textContent).toContain('Bintou K.')
   })
 
-  it('retrouve le nom après un rechargement', async () => {
-    await ouvrir()
-    await cliquer(bouton('Personnaliser la navigation'))
-    await ecrire(champsPage()[1], 'Pointages du matin')
-
-    act(() => racine.unmount())
-    racine = createRoot(hote)
-    await ouvrir()
-    expect(libelles()).toContain('Pointages du matin')
+  it('le profil simple n’est pas un lien', async () => {
+    await ouvrir('/dashboard', { isSuperAdmin: false, adminRole: 'Administrateur' })
+    expect(hote.querySelector('a.sidebar-profile-link')).toBe(null)
+    expect(hote.querySelector('.sidebar-profile-link.is-statique')).toBeTruthy()
   })
 
-  it('descend une page au clavier et garde l’ordre', async () => {
+  it('garde le lien espace employé', async () => {
     await ouvrir()
-    await cliquer(bouton('Personnaliser la navigation'))
-    const avant = champsPage().map((champ) => champ.value)
-    await cliquer(hote.querySelector('[aria-label="Descendre Vue d’ensemble"]'))
-    const apres = champsPage().map((champ) => champ.value)
-    expect(apres[0]).toBe(avant[1])
-    expect(apres[1]).toBe(avant[0])
+    const portail = hote.querySelector('a.bento-portal-link')
+    expect(portail).toBeTruthy()
+    expect(portail.getAttribute('href')).toBe('/employee/login')
   })
 
-  it('range une page dans un autre groupe par le sélecteur', async () => {
+  it('la déconnexion est un vrai bouton qui rappelle la coque', async () => {
     await ouvrir()
-    await cliquer(bouton('Personnaliser la navigation'))
-    const select = hote.querySelector('.sn-page select')
-    expect(select).toBeTruthy()
-    await act(async () => {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set
-      setter.call(select, 'groupe-2')
-      select.dispatchEvent(new Event('change', { bubbles: true }))
-    })
-    await laisser()
-    expect(memoire().pages.find((page) => page.cle === '/dashboard').groupe).toBe('groupe-2')
-  })
-
-  it('crée un groupe nommé, avec sa couleur', async () => {
-    await ouvrir()
-    await cliquer(bouton('Personnaliser la navigation'))
-    await ecrire(hote.querySelector('[aria-label="Nom du nouveau groupe"]'), 'Mon atelier')
-    await cliquer(hote.querySelector('[aria-label="Couleur du nouveau groupe : Olive"]'))
-    await cliquer(bouton('Créer'))
-    expect(memoire().groupes.map((groupe) => groupe.nom)).toContain('Mon atelier')
-    expect(memoire().groupes.at(-1).couleur).toBe('olive')
-  })
-
-  it('colore un groupe existant', async () => {
-    await ouvrir()
-    await cliquer(bouton('Personnaliser la navigation'))
-    const olive = hote.querySelector('[aria-label="Couleur du groupe Administration : Olive"]')
-    await cliquer(olive)
-    expect(olive.getAttribute('aria-pressed')).toBe('true')
-    expect(memoire().groupes.find((groupe) => groupe.id === 'groupe-2').couleur).toBe('olive')
-  })
-
-  it('rétablit la navigation d’origine', async () => {
-    await ouvrir()
-    await cliquer(bouton('Personnaliser la navigation'))
-    await ecrire(champsPage()[1], 'Pointages du matin')
-    await cliquer(bouton('Rétablir'))
-    expect(champsPage()[1].value).toBe('Pointages')
-    expect(memoire().pages.find((page) => page.cle === '/pointages').libelle).toBe('Pointages')
-  })
-
-  it('annonce les gestes aux lecteurs d’écran', async () => {
-    await ouvrir()
-    await cliquer(bouton('Personnaliser la navigation'))
-    expect(hote.querySelector('.sn-annonce').getAttribute('aria-live')).toBe('polite')
-    await cliquer(hote.querySelector('[aria-label="Descendre Vue d’ensemble"]'))
-    expect(hote.querySelector('.sn-annonce').textContent).toContain('descendue')
+    const bouton = hote.querySelector('.bento-logout')
+    expect(bouton.getAttribute('aria-label')).toBe('Déconnexion')
+    await act(async () => bouton.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+    expect(surLogout).toHaveBeenCalledTimes(1)
   })
 })

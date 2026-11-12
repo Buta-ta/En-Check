@@ -164,7 +164,7 @@ it('protects both management routes and exposes the personal account to all admi
   // « Mon compte » a quitté la barre latérale : c'est « Administrateurs »
   // qui y mène désormais. La route et l'écran restent en place.
   expect(
-    readFileSync('src/components/DashboardExperience.jsx', 'utf8'),
+    (readFileSync('src/pages/dashboard/DashboardExperience.jsx', 'utf8') + readFileSync('src/pages/dashboard/experienceCatalogs.js', 'utf8') + readFileSync('src/pages/dashboard/DashboardTopbar.jsx', 'utf8') + readFileSync('src/pages/dashboard/DashboardPanneaux.jsx', 'utf8') + readFileSync('src/pages/dashboard/DashboardDialogs.jsx', 'utf8')),
   ).not.toContain("'/mon-compte'")
   expect(source).toContain('path="/mon-compte"')
   expect(readFileSync('src/pages/AdminAccounts.jsx', 'utf8')).toContain('to="/mon-compte"')

@@ -15,8 +15,8 @@ import LandingPage from './pages/en-check'
 
 // Admin pages
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import DashboardDesignPreview from './pages/DashboardDesignPreview'
+import Dashboard from './pages/dashboard'
+import DashboardDesignPreview from './pages/dashboard/DashboardDesignPreview'
 import Employes from './pages/Employes'
 import Pointages from './pages/Pointages'
 import Entreprises from './pages/Entreprises'

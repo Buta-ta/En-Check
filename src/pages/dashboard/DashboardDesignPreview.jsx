@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTheme } from '../contexts/ThemeContext'
-import DashboardExperience from '../components/DashboardExperience'
+import { useTheme } from '../../contexts/ThemeContext'
+import DashboardExperience from './DashboardExperience'
 
 const today = new Date()
 const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`

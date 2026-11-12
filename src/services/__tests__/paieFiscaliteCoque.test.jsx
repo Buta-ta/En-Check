@@ -127,7 +127,7 @@ it('9. les graphiques paie sont tracés à la main, recharts réservé au dashbo
     }
   }
   balayer('src')
-  expect(importeurs).toEqual(['src/components/DashboardKenteAnalytics.jsx'])
+  expect(importeurs).toEqual(['src/pages/dashboard/kente/KenteAnalytics.jsx'])
   // Et dans package.json, la seule librairie de chart tolérée est recharts,
   // portée par cette même console analytique.
   const deps = { ...paquet.dependencies, ...paquet.devDependencies }
@@ -220,7 +220,7 @@ it('22. l’ancienne route reste vivante et renvoie sur /paie', () => {
 // ── 7. Les deux arbitrages laissés ouverts ───────────────────────────
 
 it('24. le menu n’a plus qu’une entrée de paie', () => {
-  const menu = lire('src/components/DashboardExperience.jsx')
+  const menu = (lire('src/pages/dashboard/DashboardExperience.jsx') + lire('src/pages/dashboard/experienceCatalogs.js') + lire('src/pages/dashboard/DashboardTopbar.jsx') + lire('src/pages/dashboard/DashboardPanneaux.jsx') + lire('src/pages/dashboard/DashboardDialogs.jsx'))
   expect(menu).toContain("label: 'Paie & fiscalité'")
   expect(menu).toContain("path: '/paie'")
   expect(menu).not.toContain("path: '/configuration-fiscale'")

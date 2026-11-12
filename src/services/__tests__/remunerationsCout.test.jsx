@@ -28,7 +28,7 @@ import Remunerations from '../../pages/Remunerations'
 const PAGE = readFileSync('src/pages/Remunerations.jsx', 'utf8')
 const CSS = readFileSync('src/pages/Remunerations.css', 'utf8')
 const APP = readFileSync('src/App.jsx', 'utf8')
-const DASHBOARD = readFileSync('src/components/DashboardExperience.jsx', 'utf8')
+const DASHBOARD = (readFileSync('src/pages/dashboard/DashboardExperience.jsx', 'utf8') + readFileSync('src/pages/dashboard/experienceCatalogs.js', 'utf8') + readFileSync('src/pages/dashboard/DashboardTopbar.jsx', 'utf8') + readFileSync('src/pages/dashboard/DashboardPanneaux.jsx', 'utf8') + readFileSync('src/pages/dashboard/DashboardDialogs.jsx', 'utf8'))
 const VERROU = readFileSync('src/components/VerrouOptions.jsx', 'utf8')
 
 /** Le corps d'une règle CSS, à partir de son sélecteur exact (en début de ligne). */

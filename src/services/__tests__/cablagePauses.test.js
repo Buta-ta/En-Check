@@ -53,7 +53,7 @@ describe('🔌 Câblage Pauses — app de pointage + migration 000004', () => {
   it('page Pauses + service câblés (App.jsx, navigation Dashboard)', () => {
     expect(existsSync(ROOT + '/src/pages/Pauses.jsx')).toBe(true)
     const app = readFileSync(ROOT + '/src/App.jsx', 'utf8')
-    const dashboardNavigation = readFileSync(ROOT + '/src/components/DashboardExperience.jsx', 'utf8')
+    const dashboardNavigation = (readFileSync((ROOT + '/src/pages/dashboard/DashboardExperience.jsx'), 'utf8') + readFileSync((ROOT + '/src/pages/dashboard/experienceCatalogs.js'), 'utf8') + readFileSync((ROOT + '/src/pages/dashboard/DashboardTopbar.jsx'), 'utf8') + readFileSync((ROOT + '/src/pages/dashboard/DashboardPanneaux.jsx'), 'utf8') + readFileSync((ROOT + '/src/pages/dashboard/DashboardDialogs.jsx'), 'utf8'))
     expect(app).toContain("import Pauses from './pages/Pauses'")
     expect(app).toContain('path="/pauses"')
     // accès sans module (pas de gate option) — l'arbitre statue
@@ -63,8 +63,8 @@ describe('🔌 Câblage Pauses — app de pointage + migration 000004', () => {
   it('timer dynamique des pauses réelles câblé en direct sur Pauses, Dashboard et Pointages', () => {
     const pausesPage = readFileSync(ROOT + '/src/pages/Pauses.jsx', 'utf8')
     const pausesSections = readFileSync(ROOT + '/src/components/PausesAfroTechSections.jsx', 'utf8')
-    const dashboardPage = readFileSync(ROOT + '/src/pages/Dashboard.jsx', 'utf8')
-    const dashboardExp = readFileSync(ROOT + '/src/components/DashboardExperience.jsx', 'utf8')
+    const dashboardPage = (readFileSync((ROOT + '/src/pages/dashboard/index.jsx'), 'utf8') + readFileSync((ROOT + '/src/pages/dashboard/useDashboardData.js'), 'utf8') + readFileSync((ROOT + '/src/pages/dashboard/useDashboardLoaders.js'), 'utf8'))
+    const dashboardExp = (readFileSync((ROOT + '/src/pages/dashboard/DashboardExperience.jsx'), 'utf8') + readFileSync((ROOT + '/src/pages/dashboard/experienceCatalogs.js'), 'utf8') + readFileSync((ROOT + '/src/pages/dashboard/DashboardTopbar.jsx'), 'utf8') + readFileSync((ROOT + '/src/pages/dashboard/DashboardPanneaux.jsx'), 'utf8') + readFileSync((ROOT + '/src/pages/dashboard/DashboardDialogs.jsx'), 'utf8'))
     const pointagesPage = readFileSync(ROOT + '/src/pages/Pointages.jsx', 'utf8')
     const pointagesSections = readFileSync(ROOT + '/src/components/PointagesAfroTechSections.jsx', 'utf8')
 

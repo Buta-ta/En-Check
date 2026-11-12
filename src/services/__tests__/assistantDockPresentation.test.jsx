@@ -42,7 +42,7 @@ describe('Barre assistant — interface, sans modèle externe', () => {
     expect(app).toContain('<Route path="/search" element={<Navigate to="/dashboard?assistant=1" replace />} />')
     expect(app).not.toContain("import SpotlightSearch")
     expect(existsSync(new URL('../../pages/SpotlightSearch.jsx', import.meta.url))).toBe(false)
-    const dashboard = readFileSync(new URL('../../components/DashboardExperience.jsx', import.meta.url), 'utf8')
+    const dashboard = (readFileSync(new URL('../../pages/dashboard/DashboardExperience.jsx', import.meta.url), 'utf8') + readFileSync(new URL('../../pages/dashboard/experienceCatalogs.js', import.meta.url), 'utf8') + readFileSync(new URL('../../pages/dashboard/DashboardTopbar.jsx', import.meta.url), 'utf8') + readFileSync(new URL('../../pages/dashboard/DashboardPanneaux.jsx', import.meta.url), 'utf8') + readFileSync(new URL('../../pages/dashboard/DashboardDialogs.jsx', import.meta.url), 'utf8'))
     expect(dashboard).not.toContain('SpotlightFAB')
   })
   it('propose des exemples reconnus par le moteur existant', () => {
