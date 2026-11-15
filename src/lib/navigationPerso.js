@@ -219,6 +219,63 @@ export function effacerNavigation(stockage, idAdmin) {
   }
 }
 
+// ── Les préférences d'affichage (hors structure) ──
+// Les groupes repliés et le mode rail ne touchent pas au modèle des
+// pages : ils vivent dans des clés séparées, par administrateur.
+
+export function cleReplis(idAdmin) {
+  return `encheck_navigation_repli_v1:${idAdmin || 'administrateur'}`
+}
+
+/** Les groupes repliés, neufs et connus seulement. */
+export function chargerReplis(stockage, idAdmin, idsGroupes = []) {
+  const cible = stockageSur(stockage)
+  if (!cible) return []
+  try {
+    const lu = JSON.parse(cible.getItem(cleReplis(idAdmin)))
+    const connus = new Set(Array.isArray(idsGroupes) ? idsGroupes : [])
+    return Array.isArray(lu) ? lu.filter((id) => typeof id === 'string' && (connus.size === 0 || connus.has(id))) : []
+  } catch {
+    return []
+  }
+}
+
+export function sauvegarderReplis(stockage, idAdmin, replis) {
+  const cible = stockageSur(stockage)
+  if (!cible) return false
+  try {
+    cible.setItem(cleReplis(idAdmin), JSON.stringify(Array.isArray(replis) ? replis : []))
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function cleRail(idAdmin) {
+  return `encheck_navigation_rail_v1:${idAdmin || 'administrateur'}`
+}
+
+export function chargerRail(stockage, idAdmin) {
+  const cible = stockageSur(stockage)
+  if (!cible) return false
+  try {
+    return cible.getItem(cleRail(idAdmin)) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function sauvegarderRail(stockage, idAdmin, actif) {
+  const cible = stockageSur(stockage)
+  if (!cible) return false
+  try {
+    cible.setItem(cleRail(idAdmin), actif ? '1' : '0')
+    return true
+  } catch {
+    return false
+  }
+}
+
 // ── Les gestes ──
 
 function remplacerGroupes(modele, groupes) {
