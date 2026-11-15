@@ -19,7 +19,11 @@
 // Administration).
 // ═══════════════════════════════════════════════════════════
 
-export const VERSION_MODELE = 2
+// v3 (15/10) : la barre passe au modèle 2 niveaux de la maquette —
+// six rubriques (Accueil, Équipe, Temps de travail, Paie, Rapports,
+// Réglages) avec leurs sous-éléments. Les personnalisations v2
+// (cinq groupes « par intention ») sont réinitialisées une seule fois.
+export const VERSION_MODELE = 3
 
 // Les cinq teintes de la planche : cuivre, terre, olive, ambre, ardoise.
 // Elles remplacent l'ancienne palette indigo : le bogolan se lit en
@@ -80,6 +84,11 @@ export function modeleParDefaut(sections = []) {
       id,
       nom: String(section.label || `Groupe ${groupes.length + 1}`),
       couleur: couleur.id,
+      // L'identité de la rubrique (rail) et son icône viennent du code,
+      // pas du stockage : renommer le groupe ne lui fait pas perdre
+      // son icône.
+      rubrique: String(section.id || id),
+      icone: section.icon || null,
     })
     items.forEach((item) => {
       if (pages.some((page) => page.cle === item.path)) return
@@ -122,10 +131,15 @@ export function fusionnerModele(modele, sections = []) {
   groupesSource.forEach((groupe) => {
     if (!groupe || !estTexte(groupe.id) || idsVus.has(groupe.id)) return
     idsVus.add(groupe.id)
+    const defautGroupe = defaut.groupes.find((candidat) => candidat.id === groupe.id)
     groupes.push({
       id: groupe.id,
       nom: estTexte(groupe.nom) ? groupe.nom.trim() : `Groupe ${groupes.length + 1}`,
       couleur: TEINTE_PAR_ID.has(groupe.couleur) ? groupe.couleur : COULEURS_GROUPES[groupes.length % COULEURS_GROUPES.length].id,
+      rubrique: estTexte(groupe.rubrique) ? groupe.rubrique : (defautGroupe?.rubrique || groupe.id),
+      // L'icône est portée par la rubrique du code (composant non
+      // sérialisable) : elle vient toujours du modèle d'origine.
+      icone: defautGroupe?.icone || null,
     })
   })
 

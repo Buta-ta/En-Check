@@ -3,7 +3,6 @@ import {
   Activity,
   AlertTriangle,
   ArrowRight,
-  BarChart3,
   Bell,
   Building2,
   Calendar,
@@ -14,7 +13,6 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight,
   Clock,
   GripVertical,
   Coffee,
@@ -30,6 +28,7 @@ import {
   MoveUp,
   Plus,
   RotateCcw,
+  Settings,
   SlidersHorizontal,
   Router,
   Shield,
@@ -46,10 +45,10 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import EnterpriseSwitcher from './EnterpriseSwitcher'
 import SidebarNavigation from './SidebarNavigation'
-import RailTooltip from './RailTooltip'
+import SidebarRail, { ContenuMenuProfil } from './SidebarRail'
 import { chargerRail, sauvegarderRail } from '../lib/navigationPerso'
 import NotificationBell from './NotificationBell'
 import SystemMessageBanner from './SystemMessageBanner'
@@ -186,6 +185,7 @@ export default function DashboardExperience({
   showSystemMessages = true,
 }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const employeeCount = Number(stats?.employes) || 0
   const presentCount = Number(stats?.presentsToday) || 0
   const absentCount = Number(stats?.absentsToday) || 0
@@ -195,33 +195,21 @@ export default function DashboardExperience({
   const conflictCount = conflictsPending.length || Number(stats?.conflitsPending) || 0
   const [liveNowMs, setLiveNowMs] = useState(() => Date.now())
 
-  // Le rail « icônes seules » : retenu par administrateur, appliqué
-  // sur desktop uniquement (le tiroir mobile reste toujours déplié).
-  const [sidebarRail, setSidebarRail] = useState(() => chargerRail(null, admin?.id))
+  // Le panneau de la barre : replié = il ne reste que le rail d'icônes.
+  // L'état est retenu par administrateur (le tiroir mobile, lui,
+  // reste toujours déplié : le rail est masqué sur petit écran).
+  const [panneauReplie, setPanneauReplie] = useState(() => chargerRail(null, admin?.id))
   useEffect(() => {
-    sauvegarderRail(null, admin?.id, sidebarRail)
-  }, [sidebarRail, admin?.id])
-  const [estDesktop, setEstDesktop] = useState(() => window.matchMedia?.('(min-width: 941px)')?.matches ?? true)
-  useEffect(() => {
-    if (typeof window.matchMedia !== 'function') return undefined
-    const requete = window.matchMedia('(min-width: 941px)')
-    const surChangement = (evenement) => setEstDesktop(evenement.matches)
-    requete.addEventListener('change', surChangement)
-    return () => requete.removeEventListener('change', surChangement)
-  }, [])
-  const railActif = sidebarRail && estDesktop
+    sauvegarderRail(null, admin?.id, panneauReplie)
+  }, [panneauReplie, admin?.id])
 
-  // Survol/focus du lien « Espace employé » pour son tooltip en rail.
-  const [survolPortail, setSurvolPortail] = useState(false)
-  const refPortail = useRef(null)
-
-  // Le menu du profil se ferme au clic hors du bloc ou sur Échap.
+  // Le menu du profil se ferme au clic hors des pieds de navigation
+  // (le menu vit dans le rail OU dans le tiroir mobile) ou sur Échap.
   const [menuProfilOuvert, setMenuProfilOuvert] = useState(false)
-  const refProfil = useRef(null)
   useEffect(() => {
     if (!menuProfilOuvert) return undefined
     const fermerSiExterieur = (evenement) => {
-      if (!refProfil.current?.contains(evenement.target)) setMenuProfilOuvert(false)
+      if (!evenement.target?.closest?.('.ec-nav-pied')) setMenuProfilOuvert(false)
     }
     const surTouche = (evenement) => {
       if (evenement.key === 'Escape') setMenuProfilOuvert(false)
@@ -233,6 +221,16 @@ export default function DashboardExperience({
       window.removeEventListener('keydown', surTouche)
     }
   }, [menuProfilOuvert])
+
+  // Une icône du rail rouvre le panneau et amène sa rubrique en vue.
+  const allerVersSection = (rubriqueId) => {
+    if (panneauReplie) setPanneauReplie(false)
+    // Le temps que la largeur du panneau retrouve sa place.
+    window.setTimeout(() => {
+      const cible = document.querySelector(`.sidebar-nav-group[data-rubrique="${rubriqueId}"]`)
+      if (cible) cible.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 230)
+  }
   const realPausesToday = pausesToday.filter((pa) => estPauseReelleEffectuee(pa))
   const activePauses = realPausesToday.filter((pa) => pa?.ouverte)
   const unplannedPauses = realPausesToday.filter((pa) => pa?.estNonPlanifiee)
@@ -262,26 +260,46 @@ export default function DashboardExperience({
     ? 'Bonjour'
     : currentTime?.getHours() < 18 ? 'Bon après-midi' : 'Bonsoir'
 
-  // La barre est organisée par INTENTION, pas par technique : le quotidien,
-  // l'argent, la vision globale et l'anticipation, le matériel
-  // pointeuse/portail, et la plateforme. Les cinq teintes bogolan tombent
-  // une par groupe (cuivre, terre, olive, ambre, ardoise).
+  // La barre suit le modèle 2 niveaux de la maquette : six rubriques
+  // (une icône par rubrique sur le rail), leurs sous-éléments dans le
+  // panneau. Tout ce qui est matériel, plateforme ou configuration vit
+  // sous Réglages — le quotidien reste en tête. Les teintes bogolan
+  // tournent par rubrique (cuivre, terre, olive, ambre, ardoise, cuivre).
   const navigationSections = [
     {
-      label: 'Aujourd’hui',
+      id: 'accueil',
+      label: 'Accueil',
+      icon: LayoutDashboard,
       items: [
-        { label: 'Vue d’ensemble', icon: LayoutDashboard, path: '/dashboard', show: true, active: true },
-        { label: 'Pointages', icon: Clock, path: '/pointages', show: true, tabKey: 'POINTAGES', count: forgottenExits + conflictCount },
-        { label: 'Équipe', icon: Users, path: '/employes', show: true, tabKey: 'EMPLOYES' },
+        { label: 'Vue d’ensemble', icon: LayoutDashboard, path: '/dashboard', show: true },
+      ],
+    },
+    {
+      id: 'equipe',
+      label: 'Équipe',
+      icon: Users,
+      items: [
+        { label: 'Employés', icon: Users, path: '/employes', show: true, tabKey: 'EMPLOYES' },
         { label: 'Planning', icon: Calendar, path: '/planning', show: isSuperAdmin || modulePlanning, tabKey: 'PLANNING', count: scheduleRequestsPending.length },
         { label: 'Absences', icon: CalendarOff, path: '/absences', show: isSuperAdmin || moduleConges, tabKey: 'ABSENCES' },
+        { label: 'Annonces d’accueil', icon: Megaphone, path: '/annonces-accueil', show: isSuperAdmin },
+      ],
+    },
+    {
+      id: 'temps',
+      label: 'Temps de travail',
+      icon: Clock,
+      items: [
+        { label: 'Pointages', icon: Clock, path: '/pointages', show: true, tabKey: 'POINTAGES', count: forgottenExits + conflictCount },
         { label: 'Retards', icon: Timer, path: '/retards', show: isSuperAdmin || moduleRetards, tabKey: 'RETARDS', count: lateCount },
         { label: 'Pauses', icon: Coffee, path: '/pauses', show: true, count: activePauses.length },
         { label: 'Jours fériés', icon: CalendarDays, path: '/jours-feries', show: true, tabKey: 'JOURS_FERIES' },
       ],
     },
     {
+      id: 'paie',
       label: 'Paie',
+      icon: Wallet,
       items: [
         { label: 'Heures supplémentaires', icon: Timer, path: '/heures-supplementaires', show: isSuperAdmin || moduleHeuresSup, tabKey: 'HEURES_SUP' },
         { label: 'Rémunérations', icon: Wallet, path: '/remunerations', show: isSuperAdmin || moduleRemunerations },
@@ -289,14 +307,18 @@ export default function DashboardExperience({
       ],
     },
     {
-      label: 'Rapports & prédictions',
+      id: 'rapports',
+      label: 'Rapports',
+      icon: FileText,
       items: [
         { label: 'Rapports', icon: FileText, path: '/rapports', show: true },
         { label: 'Prédictions', icon: Sparkles, path: '/predictions', show: isSuperAdmin || modulePredictions, tabKey: 'PREDICTIONS' },
       ],
     },
     {
-      label: 'Pointeuse & portail',
+      id: 'reglages',
+      label: 'Réglages',
+      icon: Settings,
       items: [
         // Les machines ADMS et le poste de pointage font un seul écran :
         // l'une ou l'autre des deux options ouvre « Configuration pointeuse ».
@@ -307,12 +329,6 @@ export default function DashboardExperience({
         // Les enrôlements et leurs réglages sont un seul écran : une seule
         // entrée pour la reconnaissance faciale.
         { label: 'Reconnaissance faciale', icon: ScanFace, path: '/reconnaissance-faciale', show: isSuperAdmin || moduleRecoFaciale },
-        { label: 'Annonces d’accueil', icon: Megaphone, path: '/annonces-accueil', show: isSuperAdmin },
-      ],
-    },
-    {
-      label: 'Administration',
-      items: [
         { label: 'Entreprises', icon: Building2, path: '/entreprises', show: isSuperAdmin },
         { label: 'Administrateurs', icon: ShieldCheck, path: '/admins', show: isSuperAdmin },
         { label: 'Messages système', icon: Bell, path: '/system-messages', show: isSuperAdmin },
@@ -666,7 +682,13 @@ export default function DashboardExperience({
 
   const renderTopbarElement = (itemId) => {
     if (itemId === 'enterprise') {
-      return <div className="topbar-company"><EnterpriseSwitcher admin={admin} onSwitch={handleEnterpriseSwitch} /></div>
+      /* Le choix d'entreprise vit dans l'en-tête du panneau de navigation :
+         ici, simple rappel de l'entreprise affichée. */
+      return (
+        <div className="topbar-company">
+          <span className="dashboard-meta-chip"><Building2 size={13} />{selectedEnterpriseName}</span>
+        </div>
+      )
     }
     if (itemId === 'date') return <span className="topbar-date">{todayLabel}</span>
     if (itemId === 'dashboard-customize') {
@@ -765,119 +787,112 @@ export default function DashboardExperience({
           />
         )}
 
-        <aside className={`dashboard-sidebar${mobileMenuOpen ? ' is-open' : ''}${railActif ? ' is-rail' : ''}`} aria-label="Navigation principale">
-          <div className="sidebar-brand">
-            <EnCheckBrandMark className="sidebar-brand-mark" size={42} />
-            <div className="sidebar-brand-copy">
-              <span className="sidebar-brand-wordmark">En-Check</span>
-              <span className="sidebar-brand-tagline">On gère !</span>
-            </div>
-            <button
-              type="button"
-              className="sidebar-rail-toggle"
-              aria-label={sidebarRail ? 'Déplier la barre de navigation' : 'Réduire la barre de navigation en icônes'}
-              aria-pressed={sidebarRail}
-              title={sidebarRail ? 'Déplier la barre' : 'Barre en icônes'}
-              onClick={() => setSidebarRail((valeur) => !valeur)}
-            >
-              {railActif ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}
-            </button>
-          </div>
+        {/* La barre au modèle 2 niveaux : un rail d'icônes permanent,
+            et un panneau (contexte d'entreprise + rubriques et leurs
+            sous-éléments) qui se replie pour ne laisser que le rail.
+            Sur petit écran, le rail disparaît : c'est le tiroir. */}
+        <aside className={`dashboard-sidebar${mobileMenuOpen ? ' is-open' : ''}${panneauReplie ? ' is-repliee' : ''}`} aria-label="Navigation principale">
+          <SidebarRail
+            sections={navigationSections}
+            cheminActif={pathname}
+            panneauReplie={panneauReplie}
+            onBasculerPanneau={() => setPanneauReplie((valeur) => !valeur)}
+            onRubrique={allerVersSection}
+            profil={{ nom: adminName, initiales: adminInitials, role: adminRole }}
+            menuProfilOuvert={menuProfilOuvert}
+            surMenuProfil={(ouvert) => setMenuProfilOuvert(ouvert)}
+            surDeconnexion={handleLogout}
+          />
 
-          <div className="sidebar-bogolan" aria-hidden="true" />
+          <div className="nav-panel">
+            <div className="nav-panel-inner">
+              <header className="nav-panel-tete">
+                <div className="nav-panel-marque">
+                  <EnCheckBrandMark className="nav-panel-logo" size={30} />
+                  <div className="nav-panel-marque-copy">
+                    <span className="nav-panel-marque-nom">En-Check</span>
+                    <span className="nav-panel-marque-slogan">On gère !</span>
+                  </div>
+                </div>
 
-          <div className="dashboard-sidebar-scroll">
-            <SidebarNavigation
-              sections={navigationSections}
-              tabStates={tabStates}
-              onSelect={handleNavigation}
-              idAdministrateur={admin?.id}
-              rail={railActif}
-            />
+                <div className="nav-panel-contexte">
+                  <EnterpriseSwitcher admin={admin} onSwitch={handleEnterpriseSwitch} />
+                </div>
 
-            <a
-              ref={refPortail}
-              className="sidebar-portal-link"
-              href="/employee/login"
-              target="_blank"
-              rel="noreferrer"
-              aria-label={railActif ? 'Espace employé (nouvel onglet)' : undefined}
-              onMouseEnter={() => setSurvolPortail(true)}
-              onMouseLeave={() => setSurvolPortail(false)}
-              onFocus={() => setSurvolPortail(true)}
-              onBlur={() => setSurvolPortail(false)}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <Users size={16} />
-              <span>Espace employé</span>
-              <ArrowRight size={14} />
-            </a>
-            {railActif && <RailTooltip texte="Espace employé" actif={survolPortail} ancre={refPortail} />}
-          </div>
-
-          <div className="sidebar-bogolan sidebar-bogolan--bas" aria-hidden="true" />
-
-          <div className="sidebar-profile" ref={refProfil}>
-            {isSuperAdmin ? (
-              <button
-                type="button"
-                className="sidebar-profile-link"
-                aria-haspopup="menu"
-                aria-expanded={menuProfilOuvert}
-                title={`${adminName} · ${adminRole} — menu du profil`}
-                aria-label={`Menu du profil de ${adminName}`}
-                onClick={() => setMenuProfilOuvert((valeur) => !valeur)}
-              >
-                <span className="sidebar-profile-avatar">{adminInitials}</span>
-                <span className="sidebar-profile-copy">
-                  <span className="sidebar-profile-name">{adminName}</span>
-                  <span className="sidebar-profile-role">{adminRole}</span>
-                </span>
-                <ChevronDown className="sidebar-profile-chevron" size={14} aria-hidden="true" />
-              </button>
-            ) : (
-              <div className="sidebar-profile-link is-statique">
-                <span className="sidebar-profile-avatar">{adminInitials}</span>
-                <span className="sidebar-profile-copy">
-                  <span className="sidebar-profile-name">{adminName}</span>
-                  <span className="sidebar-profile-role">{adminRole}</span>
-                </span>
-              </div>
-            )}
-            {isSuperAdmin && menuProfilOuvert && (
-              <div className="sidebar-profile-menu" role="menu" aria-label="Actions du profil">
-                <Link
-                  role="menuitem"
-                  className="sidebar-profile-menu-item"
-                  to="/admins"
-                  onClick={() => { setMenuProfilOuvert(false); setMobileMenuOpen(false) }}
-                >
-                  <UserCheck size={14} aria-hidden="true" />
-                  Profil & administrateurs
-                </Link>
-                <Link
-                  role="menuitem"
-                  className="sidebar-profile-menu-item"
-                  to="/analytics"
-                  onClick={() => { setMenuProfilOuvert(false); setMobileMenuOpen(false) }}
-                >
-                  <BarChart3 size={14} aria-hidden="true" />
-                  Analytics du site
-                </Link>
                 <button
                   type="button"
-                  role="menuitem"
-                  className="sidebar-profile-menu-item sidebar-profile-menu-item--danger"
-                  onClick={() => { setMenuProfilOuvert(false); handleLogout() }}
+                  className="nav-panel-plier"
+                  aria-label="Réduire la barre de navigation en icônes"
+                  title="Barre en icônes"
+                  onClick={() => setPanneauReplie(true)}
                 >
-                  <LogOut size={14} aria-hidden="true" />
-                  Déconnexion
+                  <ChevronsLeft size={15} />
                 </button>
+              </header>
+
+              <div className="nav-panel-corps">
+                <SidebarNavigation
+                  sections={navigationSections}
+                  tabStates={tabStates}
+                  onSelect={handleNavigation}
+                  idAdministrateur={admin?.id}
+                />
               </div>
-            )}
-            <button type="button" className="sidebar-logout" onClick={handleLogout} title="Déconnexion" aria-label="Déconnexion">
-              <LogOut size={15} />
-            </button>
+
+              <footer className="nav-panel-pied ec-nav-pied">
+                <a
+                  className="sidebar-portal-link"
+                  href="/employee/login"
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Users size={16} />
+                  <span>Espace employé</span>
+                  <ArrowRight size={14} />
+                </a>
+
+                <div className="sidebar-profile">
+                  {isSuperAdmin ? (
+                    <button
+                      type="button"
+                      className="sidebar-profile-link"
+                      aria-haspopup="menu"
+                      aria-expanded={menuProfilOuvert}
+                      title={`${adminName} · ${adminRole} — menu du profil`}
+                      aria-label={`Menu du profil de ${adminName}`}
+                      onClick={() => setMenuProfilOuvert((valeur) => !valeur)}
+                    >
+                      <span className="sidebar-profile-avatar">{adminInitials}</span>
+                      <span className="sidebar-profile-copy">
+                        <span className="sidebar-profile-name">{adminName}</span>
+                        <span className="sidebar-profile-role">{adminRole}</span>
+                      </span>
+                      <ChevronDown className="sidebar-profile-chevron" size={14} aria-hidden="true" />
+                    </button>
+                  ) : (
+                    <div className="sidebar-profile-link is-statique">
+                      <span className="sidebar-profile-avatar">{adminInitials}</span>
+                      <span className="sidebar-profile-copy">
+                        <span className="sidebar-profile-name">{adminName}</span>
+                        <span className="sidebar-profile-role">{adminRole}</span>
+                      </span>
+                    </div>
+                  )}
+                  {isSuperAdmin && menuProfilOuvert && (
+                    <div className="sidebar-profile-menu" role="menu" aria-label="Actions du profil">
+                      <ContenuMenuProfil
+                        surChoix={() => { setMenuProfilOuvert(false); setMobileMenuOpen(false) }}
+                        surDeconnexion={() => { setMenuProfilOuvert(false); handleLogout() }}
+                      />
+                    </div>
+                  )}
+                  <button type="button" className="sidebar-logout" onClick={handleLogout} title="Déconnexion" aria-label="Déconnexion">
+                    <LogOut size={15} />
+                  </button>
+                </div>
+              </footer>
+            </div>
           </div>
         </aside>
 

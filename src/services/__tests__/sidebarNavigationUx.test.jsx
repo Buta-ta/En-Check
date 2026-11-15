@@ -7,10 +7,11 @@
 //    retenu par administrateur (clé _repli_v1) ;
 // 2. le filtre réduit la barre aux pages qui correspondent
 //    (accents et casse ignorés), sans jamais masquer le vide ;
-// 3. le rail « icônes seules » (desktop) : libellé redevient
-//    un tooltip au survol, aria-label au clavier, filtre et
-//    replis inappliqués pour ne jamais faire disparaître
-//    une icône.
+// 3. le rail d'icônes (colonne permanente, desktop) : une icône
+//    par rubrique, libellé en tooltip au survol et en aria-label
+//    au clavier, état actif de la rubrique courante, point quand
+//    la rubrique a des éléments à traiter, et le menu du profil
+//    sous l'avatar (portail).
 // ═══════════════════════════════════════════════════════════
 
 // @vitest-environment jsdom
@@ -21,10 +22,12 @@ import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 
 import SidebarNavigation from '../../components/SidebarNavigation'
-import { cleReplis, chargerReplis, sauvegarderReplis } from '../../lib/navigationPerso'
+import SidebarRail from '../../components/SidebarRail'
+import { cleReplis, chargerReplis } from '../../lib/navigationPerso'
 
 const SECTIONS = [
   {
+    id: 'auj',
     label: 'Aujourd’hui',
     items: [
       { label: 'Vue d’ensemble', path: '/dashboard', show: true },
@@ -34,6 +37,7 @@ const SECTIONS = [
     ],
   },
   {
+    id: 'admin',
     label: 'Administration',
     items: [
       { label: 'Entreprises', path: '/entreprises', show: true },
@@ -214,34 +218,95 @@ describe('le filtre de navigation', () => {
   })
 })
 
-describe('le rail « icônes seules » (desktop)', () => {
-  it('chaque bouton porte le libellé en aria-label pour le clavier', async () => {
-    await ouvrir({ rail: true })
-    const lien = [...hote.querySelectorAll('.sidebar-link')].find((element) => element.textContent.includes('Vue d’ensemble'))
-    expect(lien.getAttribute('aria-label')).toBe('Vue d’ensemble')
+describe('le rail d’icônes (colonne permanente, desktop)', () => {
+  let surRubrique
+  let surMenuProfil
+  let surDeconnexion
+
+  beforeEach(() => {
+    surRubrique = vi.fn()
+    surMenuProfil = vi.fn()
+    surDeconnexion = vi.fn()
+  })
+
+  async function ouvrirRail(props = {}) {
+    await act(async () => {
+      racine.render(
+        <MemoryRouter initialEntries={['/pointages']}>
+          <SidebarRail
+            sections={SECTIONS}
+            cheminActif="/pointages"
+            onRubrique={surRubrique}
+            surMenuProfil={surMenuProfil}
+            surDeconnexion={surDeconnexion}
+            profil={{ nom: 'Awa Diarra', initiales: 'AD', role: 'admin' }}
+            {...props}
+          />
+        </MemoryRouter>,
+      )
+    })
+    await laisser()
+  }
+
+  const iconeRubrique = (nom) => [...hote.querySelectorAll('.nav-rail-item')]
+    .find((element) => element.getAttribute('aria-label') === nom)
+
+  it('une icône par rubrique, le libellé passe en aria-label', async () => {
+    await ouvrirRail()
+    expect(iconeRubrique('Aujourd’hui')).toBeTruthy()
+    expect(iconeRubrique('Administration')).toBeTruthy()
+    // Une rubrique sans élément visible n’apparaît pas.
+    expect(hote.querySelectorAll('.nav-rail-list .nav-rail-item')).toHaveLength(2)
+  })
+
+  it('la rubrique de la page courante est active, pas les autres', async () => {
+    await ouvrirRail()
+    expect(iconeRubrique('Aujourd’hui').classList.contains('is-active')).toBe(true)
+    expect(iconeRubrique('Administration').classList.contains('is-active')).toBe(false)
+  })
+
+  it('un point signale la rubrique qui a des éléments à traiter', async () => {
+    await ouvrirRail()
+    // « Aujourd’hui » a Pointages avec un compteur de 3.
+    expect(iconeRubrique('Aujourd’hui').querySelector('.nav-rail-dot')).toBeTruthy()
+    expect(iconeRubrique('Administration').querySelector('.nav-rail-dot')).toBeNull()
+  })
+
+  it('cliquer une rubrique ouvre le panneau sur elle', async () => {
+    await ouvrirRail()
+    await cliquer(iconeRubrique('Administration'))
+    expect(surRubrique).toHaveBeenCalledWith('admin')
   })
 
   it('le libellé devient un tooltip au survol, puis disparaît', async () => {
-    await ouvrir({ rail: true })
-    const lien = [...hote.querySelectorAll('.sidebar-link')].find((element) => element.textContent.includes('Pointages'))
+    await ouvrirRail()
+    const cible = iconeRubrique('Aujourd’hui')
     expect(document.querySelector('.sn-rail-tooltip')).toBeNull()
-    await survoler(lien)
+    await survoler(cible)
     const tooltip = document.querySelector('.sn-rail-tooltip')
     expect(tooltip).toBeTruthy()
-    expect(tooltip.textContent).toBe('Pointages')
-    await quitter(lien)
+    expect(tooltip.textContent).toBe('Aujourd’hui')
+    await quitter(cible)
     expect(document.querySelector('.sn-rail-tooltip')).toBeNull()
   })
 
-  it('le filtre ne masque jamais une icône en rail', async () => {
-    await ouvrir({ rail: true })
-    await ecrire(champFiltre(), 'point')
-    expect(libelles()).toEqual(['Vue d’ensemble', 'Pointages', 'Équipe', 'Entreprises', 'Messages système'])
+  it('replié, le rail propose de déplier le panneau', async () => {
+    const surBascule = vi.fn()
+    await ouvrirRail({ panneauReplie: true, onBasculerPanneau: surBascule })
+    const bascule = hote.querySelector('.nav-rail-bascule')
+    expect(bascule).toBeTruthy()
+    await cliquer(bascule)
+    expect(surBascule).toHaveBeenCalledTimes(1)
   })
 
-  it('un groupe replié reste déplié en rail', async () => {
-    sauvegarderReplis(null, 'admin-1', ['groupe-1'])
-    await ouvrir({ rail: true })
-    expect(libelles()).toContain('Vue d’ensemble')
+  it('le menu du profil s’ouvre sous l’avatar (portail) et déconnecte', async () => {
+    await ouvrirRail({ menuProfilOuvert: true })
+    const menu = document.querySelector('.sidebar-profile-menu.is-portail')
+    expect(menu).toBeTruthy()
+    expect(menu.textContent).toContain('Profil & administrateurs')
+    expect(menu.textContent).toContain('Déconnexion')
+    const deconnexion = [...menu.querySelectorAll('button')].find((element) => element.textContent.includes('Déconnexion'))
+    await cliquer(deconnexion)
+    expect(surDeconnexion).toHaveBeenCalledTimes(1)
   })
 })

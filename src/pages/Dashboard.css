@@ -19,11 +19,15 @@
   --danger-soft: rgba(185, 78, 69, 0.12);
   --violet: #76618f;
   --violet-soft: rgba(118, 97, 143, 0.12);
-  --sidebar: #292621;
-  --sidebar-ink: #f5f0e7;
-  --sidebar-muted: #b6aea1;
-  --sidebar-line: rgba(255, 255, 255, 0.1);
-  --sidebar-active: #e3a457;
+  --sidebar: #fcfaf5;
+  --sidebar-ink: #2c2925;
+  --sidebar-muted: #6f675a;
+  --sidebar-line: rgba(44, 41, 37, 0.12);
+  --sidebar-active: #a95c2d;
+  --sidebar-fill: rgba(185, 113, 59, 0.14);
+  --sidebar-hover: rgba(44, 41, 37, 0.055);
+  --trame: rgba(44, 41, 37, 0.05);
+  --trame-2: rgba(44, 41, 37, 0.032);
   --shadow: 0 12px 34px rgba(65, 48, 31, 0.07);
   --shadow-sm: 0 3px 12px rgba(65, 48, 31, 0.05);
 
@@ -62,6 +66,10 @@
   --sidebar-muted: #c4b49b;
   --sidebar-line: rgba(240, 228, 203, 0.12);
   --sidebar-active: #c1743c;
+  --sidebar-fill: rgba(193, 116, 60, 0.2);
+  --sidebar-hover: rgba(240, 228, 203, 0.07);
+  --trame: rgba(240, 228, 203, 0.04);
+  --trame-2: rgba(240, 228, 203, 0.026);
   --shadow: 0 14px 40px rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 3px 14px rgba(0, 0, 0, 0.14);
   color-scheme: dark;
@@ -90,256 +98,325 @@
 .dashboard-frame {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 252px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
 }
 
+/* ══════════════ LA BARRE AU MODÈLE 2 NIVEAUX ══════════════
+   La maquette : deux cartes flottantes sur le fond du tableau.
+   Un rail d'icônes permanent (58 px) et un panneau (254 px) qui
+   se replie sur sa largeur — replié, il ne reste que le rail.
+   La trame tissée du bogolan vit sur le panneau, discrètement. */
 .dashboard-sidebar {
   position: sticky;
   top: 0;
   z-index: 60;
   display: flex;
-  flex-direction: column;
-  width: 252px;
+  flex-direction: row;
+  align-items: stretch;
+  width: auto;
   height: 100vh;
   height: 100dvh;
-  padding: 22px 14px 14px;
+  padding: 10px;
   overflow: hidden;
-  background: var(--sidebar);
+  background: transparent;
   color: var(--sidebar-ink);
-  border-right: 1px solid var(--sidebar-line);
   isolation: isolate;
 }
 
-.dashboard-sidebar::before {
+/* ── LE RAIL (icônes) : la carte permanente ── */
+.nav-rail {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 58px;
+  flex: 0 0 58px;
+  padding: 12px 0 10px;
+  border: 1px solid var(--sidebar-line);
+  border-radius: 16px;
+  background: var(--sidebar);
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-rail-marque {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding: 0 0 8px;
+}
+
+.nav-rail-logo {
+  width: 30px;
+  height: 30px;
+  overflow: visible;
+  filter: drop-shadow(0 4px 10px rgba(139, 105, 20, 0.25));
+}
+
+.nav-rail-bascule {
+  display: grid;
+  width: 30px;
+  height: 26px;
+  flex: 0 0 26px;
+  margin-bottom: 6px;
+  place-items: center;
+  color: var(--sidebar-muted);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease;
+}
+
+.nav-rail-bascule:hover { color: var(--sidebar-ink); background: var(--sidebar-hover); }
+
+.nav-rail-list {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.nav-rail-item {
+  position: relative;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  color: var(--sidebar-muted);
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease;
+}
+
+.nav-rail-item:hover { color: var(--sidebar-ink); background: var(--sidebar-hover); }
+
+/* La rubrique de la page courante tient sa place, même replié. */
+.nav-rail-item.is-active {
+  color: var(--sidebar-active);
+  background: var(--sidebar-fill);
+}
+
+/* Point « éléments à traiter » dans la rubrique. */
+.nav-rail-dot {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sidebar-active);
+  box-shadow: 0 0 0 2px var(--sidebar);
+}
+
+.nav-rail-pied {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--sidebar-line);
+}
+
+.nav-rail-avatar {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  margin-top: 6px;
+  place-items: center;
+  color: #fff6e8;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sidebar-active), #8a4a24);
+  border: 2px solid var(--sidebar);
+  box-shadow: 0 0 0 1px var(--sidebar-active);
+  cursor: pointer;
+  transition: box-shadow 140ms ease;
+}
+
+.nav-rail-avatar:hover,
+.nav-rail-avatar.is-ouvert { box-shadow: 0 0 0 2px var(--sidebar-active); }
+
+.nav-rail-deconnexion { color: var(--sidebar-muted); }
+
+/* ── LE PANNEAU (contexte + rubriques) : la carte développée ── */
+.nav-panel {
+  position: relative;
+  z-index: 1;
+  width: 254px;
+  flex: 0 0 254px;
+  margin-left: 10px;
+  overflow: hidden;
+  border: 1px solid var(--sidebar-line);
+  border-radius: 16px;
+  background: var(--sidebar);
+  box-shadow: var(--shadow-sm);
+  transition: width 200ms ease, flex-basis 200ms ease;
+}
+
+.dashboard-sidebar.is-repliee .nav-panel {
+  width: 0;
+  flex-basis: 0;
+  margin-left: 0;
+  border-width: 0;
+  box-shadow: none;
+}
+
+.nav-panel-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 254px;
+  height: 100%;
+}
+
+/* La trame du bogolan : fils serrés très pâles, en haut du panneau —
+   assez pour dire « tissé », pas assez pour gêner la lecture. */
+.nav-panel-inner::before {
   position: absolute;
   inset: 0;
   z-index: 0;
   content: "";
   pointer-events: none;
-  opacity: 0.55;
-  /* La trame du bogolan : fils serrés, puis deux rangs de chevrons très
-     pâles — assez pour dire « tissé », pas assez pour gêner la lecture. */
   background-image:
-    repeating-linear-gradient(90deg, rgba(240, 228, 203, 0.035) 0 1px, transparent 1px 7px),
-    repeating-linear-gradient(0deg, rgba(240, 228, 203, 0.028) 0 1px, transparent 1px 7px);
+    repeating-linear-gradient(90deg, var(--trame) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, var(--trame-2) 0 1px, transparent 1px 7px);
   background-size: 7px 7px, 7px 7px;
-  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.7) 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 45%, transparent 85%);
 }
 
-/* ── LE VRAI BANDEAU DU BOGOLAN ──
-   Ce ne sont pas des formes redessinées : ce sont les deux pièces de la
-   page Paie & fiscalité (`paie-bogolan-haut.webp`, `paie-bogolan-bas.webp`),
-   posées en haut et en bas de la barre, pleine largeur. */
-.sidebar-bogolan {
+/* En-tête de contexte : la marque (mobile), l'entreprise active
+   (avec son sélecteur) et la bascule de repli. */
+.nav-panel-tete {
   position: relative;
   z-index: 1;
-  height: 58px;
-  flex: 0 0 58px;
-  margin: 2px -16px 14px;
-  background-image: url('/images/paie-bogolan-haut.webp');
-  background-repeat: repeat-x;
-  background-position: center;
-  background-size: auto 58px;
-  border-top: 1px solid rgba(240, 228, 203, 0.16);
-  border-bottom: 1px solid rgba(240, 228, 203, 0.16);
-  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
-}
-
-.sidebar-bogolan--bas {
-  height: 26px;
-  flex: 0 0 26px;
-  margin: 12px -16px 10px;
-  background-image: url('/images/paie-bogolan-bas.webp');
-  background-size: auto 26px;
-  border-top: 0;
-  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
-  opacity: 0.9;
-}
-
-.sidebar-brand,
-.dashboard-sidebar-scroll,
-.sidebar-profile { position: relative; z-index: 1; }
-
-.sidebar-brand {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'marque plier'
+    'contexte contexte';
+  gap: 8px 6px;
   align-items: center;
-  gap: 11px;
-  padding: 0 9px 10px;
+  padding: 14px 12px 10px;
 }
 
-.sidebar-brand-mark {
-  display: block;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
-  overflow: visible;
-  filter: drop-shadow(0 6px 14px rgba(139, 105, 20, 0.28));
-}
+.nav-panel-contexte { grid-area: contexte; }
 
-.sidebar-brand-copy { display: grid; flex: 1; gap: 4px; min-width: 0; }
-
-/* Bascule « barre en icônes » (mode rail, desktop) */
-.sidebar-rail-toggle {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  place-items: center;
-  color: #c4b49b;
-  border: 1px solid rgba(240, 228, 203, 0.2);
-  border-radius: 8px;
-  background: rgba(240, 228, 203, 0.05);
-  cursor: pointer;
-  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
-}
-
-.sidebar-rail-toggle:hover { border-color: rgba(193, 116, 60, 0.7); color: #f0e4cb; }
-.sidebar-rail-toggle[aria-pressed='true'] { border-color: rgba(193, 116, 60, 0.85); background: rgba(193, 116, 60, 0.18); color: #f8e2c8; }
-.sidebar-brand-wordmark {
-  display: block;
-  color: var(--sidebar-ink);
-  font-size: 18px;
-  font-weight: 790;
-  letter-spacing: -0.055em;
-  line-height: 1;
-}
-.sidebar-brand-tagline {
-  display: block;
-  color: #c9a961;
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.sidebar-section-label {
-  padding: 0 12px;
-  margin: 8px 0 8px;
-  color: #9a9184;
-  font-size: 9.5px;
-  font-weight: 750;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.dashboard-sidebar-scroll {
-  min-height: 0;
-  flex: 1;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
-}
-
-.dashboard-sidebar-scroll::-webkit-scrollbar { width: 5px; }
-.dashboard-sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(193, 116, 60, 0.4); border-radius: 99px; }
-.dashboard-sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(193, 116, 60, 0.6); }
-
-.sidebar-nav-group + .sidebar-nav-group { margin-top: 18px; }
-
-.sidebar-nav-list {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.sidebar-link {
-  position: relative;
-  display: flex;
+/* Le sélecteur d'entreprise vit dans l'en-tête de contexte. */
+.nav-panel-contexte .switcher-container { min-width: 0; }
+.nav-panel-contexte .switcher-trigger,
+.nav-panel-contexte .switcher-single {
   width: 100%;
-  min-height: 40px;
+  padding: 7px 10px;
+  border-radius: 10px;
+}
+
+/* Le menu déroulant ne doit pas dépasser du panneau (254 px). */
+.nav-panel-contexte .switcher-dropdown {
+  left: -8px;
+  right: -8px;
+  width: auto;
+  min-width: 0;
+}
+
+.nav-panel-marque {
+  grid-area: marque;
+  display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
-  color: var(--sidebar-muted);
-  text-align: left;
-  border: 1px solid transparent;
-  border-radius: 11px;
-  background: transparent;
-  cursor: pointer;
-  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
-}
-
-.sidebar-link:hover {
-  color: var(--sidebar-ink);
-  background: rgba(255, 255, 255, 0.065);
-  transform: translateX(2px);
-}
-
-.sidebar-link.is-active {
-  color: #fff8ed;
-  border-color: rgba(227, 164, 87, 0.2);
-  background: linear-gradient(100deg, rgba(227, 164, 87, 0.2), rgba(227, 164, 87, 0.065));
-  box-shadow: inset 3px 0 0 var(--sidebar-active);
-}
-
-.sidebar-link-icon {
-  display: grid;
-  width: 20px;
-  flex: 0 0 20px;
-  place-items: center;
-  color: inherit;
-}
-
-.sidebar-link-label {
   min-width: 0;
+}
+
+.nav-panel-logo { width: 30px; height: 30px; flex: 0 0 30px; overflow: visible; }
+
+.nav-panel-marque-copy { display: grid; gap: 3px; min-width: 0; }
+
+.nav-panel-marque-nom {
+  color: var(--sidebar-ink);
+  font-size: 16px;
+  font-weight: 790;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.nav-panel-marque-slogan { color: #c9a961; font-size: 10px; font-weight: 600; }
+
+.nav-panel-contexte {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.nav-panel-plier {
+  grid-area: plier;
+  display: grid;
+  width: 28px;
+  height: 30px;
+  flex: 0 0 28px;
+  place-items: center;
+  color: var(--sidebar-muted);
+  border: 1px solid var(--sidebar-line);
+  border-radius: 8px;
+  background: var(--sidebar-hover);
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+
+.nav-panel-plier:hover { color: var(--sidebar-ink); border-color: var(--sidebar-active); }
+
+.nav-panel-corps {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
   flex: 1;
-  overflow: hidden;
-  font-size: 12.5px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 4px 12px 8px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sidebar-line) transparent;
 }
 
-.sidebar-link-count {
-  min-width: 21px;
-  padding: 2px 7px;
-  color: #241a10;
-  font-size: 10px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  border-radius: 999px;
-  background: #e6aa61;
-}
+.nav-panel-corps::-webkit-scrollbar { width: 5px; }
+.nav-panel-corps::-webkit-scrollbar-thumb { background: var(--sidebar-line); border-radius: 99px; }
 
-.sidebar-link-dot {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 50%;
-  background: #e6aa61;
-  box-shadow: 0 0 0 4px rgba(230, 170, 97, 0.14);
-}
-
+/* Pied du panneau : l'espace employé et le profil. Sur desktop ces
+   rôles sont dans le rail — le pied ne sert que au tiroir mobile. */
+.nav-panel-pied { display: none; }
+/* ── Pied du panneau (tiroir mobile) : espace employé + profil ── */
 .sidebar-portal-link {
   position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 16px 4px 12px;
-  padding: 11px 12px;
-  color: #e7cda9;
+  margin: 0 4px 10px;
+  padding: 10px 12px;
+  color: var(--sidebar-ink);
   font-size: 11px;
   text-decoration: none;
-  border: 1px solid rgba(193, 116, 60, 0.32);
+  border: 1px solid var(--sidebar-line);
   border-radius: 11px;
-  background: rgba(193, 116, 60, 0.09);
+  background: var(--sidebar-hover);
   transition: border-color 160ms ease, background-color 160ms ease;
 }
 
-.sidebar-portal-link:hover { border-color: rgba(216, 161, 60, 0.7); background: rgba(193, 116, 60, 0.14); }
+.sidebar-portal-link:hover { border-color: var(--sidebar-active); background: var(--sidebar-fill); }
 .sidebar-portal-link span { flex: 1; font-size: 11px; font-weight: 680; }
-.sidebar-portal-link svg:last-child { transition: transform 160ms ease; }
+.sidebar-portal-link svg:first-child { color: var(--sidebar-muted); }
+.sidebar-portal-link svg:last-child { color: var(--sidebar-muted); transition: transform 160ms ease; }
 .sidebar-portal-link:hover svg:last-child { transform: translateX(3px); }
 
 .sidebar-profile {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
-  padding: 10px 2px 0;
-  border-top: 1px solid rgba(240, 228, 203, 0.12);
+  margin-top: 4px;
+  padding: 8px 2px 0;
+  border-top: 1px solid var(--sidebar-line);
 }
 
 .sidebar-profile-link {
@@ -360,31 +437,35 @@
   transition: border-color 160ms ease, transform 160ms ease;
 }
 
-.sidebar-profile-link:hover {
-  border-color: rgba(193, 116, 60, 0.6);
-  transform: translateX(1px);
-}
-
+.sidebar-profile-link:hover { border-color: var(--sidebar-line); transform: translateX(1px); }
 .sidebar-profile-link.is-statique { cursor: default; }
 .sidebar-profile-link.is-statique:hover { border-color: transparent; transform: none; }
-.sidebar-profile-link[aria-expanded='true'] { border-color: rgba(193, 116, 60, 0.6); background: rgba(193, 116, 60, 0.08); }
-.sidebar-profile-chevron { transition: transform 180ms ease; }
+.sidebar-profile-link[aria-expanded='true'] { border-color: var(--sidebar-line); background: var(--sidebar-hover); }
 .sidebar-profile-link[aria-expanded='true'] .sidebar-profile-chevron { transform: rotate(180deg); }
 
-/* Le menu du profil s'ouvre au-dessus du bloc (ou à droite en rail) */
+/* Le menu du profil : au-dessus du bloc dans le tiroir mobile… */
 .sidebar-profile-menu {
   position: absolute;
   left: 8px;
   right: 8px;
-  bottom: calc(100% + 10px);
+  bottom: calc(100% + 8px);
   z-index: 120;
   display: grid;
   gap: 2px;
   padding: 6px;
-  border: 1px solid rgba(201, 169, 97, 0.28);
+  border: 1px solid var(--line);
   border-radius: 12px;
-  background: #2a231b;
-  box-shadow: 0 18px 40px rgba(10, 6, 2, 0.5);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+/* …et, sur desktop, en portail fixe à droite de l'avatar du rail. */
+.sidebar-profile-menu.is-portail {
+  position: fixed;
+  width: 218px;
+  left: auto;
+  right: auto;
+  bottom: auto;
 }
 
 .sidebar-profile-menu-item {
@@ -392,7 +473,7 @@
   align-items: center;
   gap: 9px;
   padding: 8px 10px;
-  color: #e7d8bf;
+  color: var(--ink);
   font-size: 11.5px;
   font-weight: 620;
   text-align: left;
@@ -404,13 +485,16 @@
   transition: background-color 140ms ease;
 }
 
-.sidebar-profile-menu-item:hover { background: rgba(240, 228, 203, 0.08); color: #fff6e8; }
-.sidebar-profile-menu-item--danger { color: #e6a08d; }
-.sidebar-profile-menu-item--danger:hover { background: rgba(230, 160, 141, 0.12); }
+.sidebar-profile-menu-item:hover { background: var(--surface-soft); }
+.sidebar-profile-menu-item svg { color: var(--muted); flex: 0 0 auto; }
+.sidebar-profile-menu-item--danger { color: var(--danger); }
+.sidebar-profile-menu-item--danger svg { color: var(--danger); }
+.sidebar-profile-menu-item--danger:hover { background: var(--danger-soft); }
 
 .sidebar-profile-chevron {
   flex: 0 0 auto;
-  color: #c9a961;
+  color: var(--sidebar-muted);
+  transition: transform 180ms ease;
 }
 
 .sidebar-profile-avatar,
@@ -434,14 +518,14 @@
   height: 34px;
   flex: 0 0 34px;
   place-items: center;
-  color: #e39a8f;
-  border: 1px solid rgba(227, 154, 143, 0.2);
+  color: var(--danger);
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgba(227, 154, 143, 0.08);
+  background: transparent;
   cursor: pointer;
   transition: background-color 160ms ease;
 }
-.sidebar-logout:hover { background: rgba(227, 154, 143, 0.16); }
+.sidebar-logout:hover { background: var(--danger-soft); }
 
 .dashboard-workspace {
   min-width: 0;
@@ -838,8 +922,6 @@
 .encheck-dashboard[data-theme="light"] .notif-cat-btn:hover { background: var(--surface-soft) !important; }
 
 @media (max-width: 1160px) {
-  .dashboard-frame { grid-template-columns: 224px minmax(0, 1fr); }
-  .dashboard-sidebar { width: 224px; }
   .dashboard-content-grid { grid-template-columns: 1fr; }
   .dashboard-lower-grid { grid-template-columns: minmax(0, 1fr) minmax(270px, 0.85fr); }
   .dashboard-customize-button span,
@@ -865,7 +947,21 @@
     box-shadow: 16px 0 45px rgba(0, 0, 0, 0.22);
   }
   .dashboard-sidebar.is-open { transform: translateX(0); }
-  .sidebar-rail-toggle { display: none; } /* le tiroir mobile reste toujours déplié */
+  /* Le rail est un concept desktop : en tiroir, le panneau occupe
+     tout le tiroir, sans cartes flottantes. */
+  .dashboard-sidebar { padding: 0; background: var(--sidebar); border-right: 1px solid var(--sidebar-line); }
+  .nav-rail { display: none; }
+  .nav-panel {
+    width: 100%;
+    flex: 0 0 auto;
+    margin-left: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .nav-panel-inner { width: 100%; }
+  .nav-panel-plier { display: none; }
+  .nav-panel-pied { display: block; padding: 4px 14px 12px; }
   .dashboard-mobile-overlay {
     position: fixed;
     inset: 0;
@@ -1129,65 +1225,3 @@ svg.is-loading .en-check-brand-circle {
   .dashboard-conflict-facts { grid-template-columns: 1fr; }
 }
 
-/* ══════════════ MODE RAIL — la coque (desktop uniquement) ══════════════
-   La barre se réduit à ~78 px : marque + bascule empilées, bandes
-   bogolan masquées, liens en icônes (tooltips), profil réduit à
-   l'avatar, menu du profil ouvert vers la droite. */
-@media (min-width: 941px) {
-  .dashboard-sidebar.is-rail {
-    width: 78px;
-    padding: 18px 12px 12px;
-    overflow: visible;
-  }
-
-  .dashboard-sidebar.is-rail .sidebar-brand {
-    flex-direction: column;
-    gap: 9px;
-    padding: 0 0 12px;
-  }
-
-  .dashboard-sidebar.is-rail .sidebar-brand-mark {
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
-  }
-
-  .dashboard-sidebar.is-rail .sidebar-brand-copy,
-  .dashboard-sidebar.is-rail .sidebar-bogolan { display: none; }
-
-  .dashboard-sidebar.is-rail .sidebar-portal-link {
-    justify-content: center;
-    padding: 10px;
-    margin: 12px 0 10px;
-  }
-
-  .dashboard-sidebar.is-rail .sidebar-portal-link svg:last-child { display: none; }
-
-  /* Le libellé « Espace employé » devient un tooltip (portail) */
-  .dashboard-sidebar.is-rail .sidebar-portal-link span { display: none; }
-
-  .dashboard-sidebar.is-rail .sidebar-profile {
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(240, 228, 203, 0.12);
-  }
-
-  .dashboard-sidebar.is-rail .sidebar-profile-link {
-    justify-content: center;
-    padding: 4px;
-  }
-
-  .dashboard-sidebar.is-rail .sidebar-profile-copy,
-  .dashboard-sidebar.is-rail .sidebar-profile-chevron { display: none; }
-
-  /* Le menu du profil s'ouvre vers la droite de l'avatar */
-  .dashboard-sidebar.is-rail .sidebar-profile-menu {
-    left: calc(100% + 10px);
-    right: auto;
-    bottom: 0;
-    top: auto;
-    width: 210px;
-  }
-}
