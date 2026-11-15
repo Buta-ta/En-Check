@@ -9,7 +9,7 @@
 // la logique, ce fichier ne fait que la dessiner.
 // ═══════════════════════════════════════════════════════════
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   ChevronDown,
@@ -46,7 +46,6 @@ import {
   supprimerGroupe,
   teinteRgba,
 } from '../lib/navigationPerso'
-import RailTooltip from './RailTooltip'
 import './SidebarNavigation.css'
 
 function signatureSections(sections) {
@@ -59,38 +58,27 @@ function teinteVersRgba(teinte, alpha) {
   return teinteRgba(teinte, alpha)
 }
 
-function NavItem({ page, item, cheminActif, tabState, onSelect, rail = false }) {
+function NavItem({ page, item, cheminActif, tabState, onSelect }) {
   const Icon = item?.icon
   const actif = Boolean(item?.active) || item?.path === cheminActif
   const activiteNeuve = Boolean(tabState?.activeTriggers?.length && !tabState.viewed)
-  const [survole, setSurvole] = useState(false)
-  const refAncre = useRef(null)
   return (
-    <>
-      <button
-        ref={refAncre}
-        type="button"
-        className={`sidebar-link${actif ? ' is-active' : ''}`}
-        style={{
-          '--teinte-page': page.teinte,
-          '--teinte-page-fond': teinteVersRgba(page.teinte, 0.18),
-          '--teinte-page-trait': teinteVersRgba(page.teinte, 0.42),
-        }}
-        aria-current={actif ? 'page' : undefined}
-        aria-label={rail ? page.libelle : undefined}
-        onMouseEnter={() => setSurvole(true)}
-        onMouseLeave={() => setSurvole(false)}
-        onFocus={() => setSurvole(true)}
-        onBlur={() => setSurvole(false)}
-        onClick={() => onSelect(item)}
-      >
-        <span className="sidebar-link-icon">{Icon ? <Icon size={16} strokeWidth={1.8} /> : null}</span>
-        <span className="sidebar-link-label">{page.libelle}</span>
-        {item?.count > 0 && <span className="sidebar-link-count">{item.count > 99 ? '99+' : item.count}</span>}
-        {!item?.count && activiteNeuve && <span className="sidebar-link-dot" aria-label="Nouvelle activité" />}
-      </button>
-      {rail && <RailTooltip texte={page.libelle} actif={survole} ancre={refAncre} />}
-    </>
+    <button
+      type="button"
+      className={`sidebar-link${actif ? ' is-active' : ''}`}
+      style={{
+        '--teinte-page': page.teinte,
+        '--teinte-page-fond': teinteVersRgba(page.teinte, 0.18),
+        '--teinte-page-trait': teinteVersRgba(page.teinte, 0.42),
+      }}
+      aria-current={actif ? 'page' : undefined}
+      onClick={() => onSelect(item)}
+    >
+      <span className="sidebar-link-icon">{Icon ? <Icon size={16} strokeWidth={1.8} /> : null}</span>
+      <span className="sidebar-link-label">{page.libelle}</span>
+      {item?.count > 0 && <span className="sidebar-link-count">{item.count > 99 ? '99+' : item.count}</span>}
+      {!item?.count && activiteNeuve && <span className="sidebar-link-dot" aria-label="Nouvelle activité" />}
+    </button>
   )
 }
 
@@ -113,7 +101,7 @@ function Pastilles({ valeur, surChoix, prefixe }) {
   )
 }
 
-export default function SidebarNavigation({ sections = [], tabStates = {}, onSelect, idAdministrateur, rail = false }) {
+export default function SidebarNavigation({ sections = [], tabStates = {}, onSelect, idAdministrateur }) {
   const { pathname } = useLocation()
   const signature = signatureSections(sections)
   const index = useMemo(() => indexerPages(sections), [signature]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -141,9 +129,7 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
   }, [replis, idAdministrateur])
 
   // ── Filtre de navigation (accents et casse ignorés) ──
-  // Inappliqué en rail : le champ est masqué, un filtre résiduel
-  // ferait disparaître des icônes sans qu'on puisse le voir.
-  const filtreActif = !rail && filtre.trim().length > 0
+  const filtreActif = filtre.trim().length > 0
   const sansAccents = (texte) => String(texte || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
   const correspondFiltre = (libelle) => !filtreActif || sansAccents(libelle).includes(sansAccents(filtre))
   const basculerGroupe = (groupeId) => setReplis((courant) => (
@@ -230,25 +216,6 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
           )}
         </div>
       )}
-      <div className="sn-outils">
-        <button
-          type="button"
-          className="sn-bascule"
-          aria-pressed={personnalisation}
-          aria-expanded={personnalisation}
-          onClick={() => (personnalisation ? terminer() : setPersonnalisation(true))}
-        >
-          <SlidersHorizontal size={13} />
-          <span>{personnalisation ? 'Terminer' : 'Personnaliser la navigation'}</span>
-        </button>
-        {personnalisation && (
-          <button type="button" className="sn-retablir" onClick={retablir}>
-            <RotateCcw size={12} />
-            <span>Rétablir</span>
-          </button>
-        )}
-      </div>
-
       {personnalisation && (
         <p className="sn-aide">
           Glisse une page pour la ranger, clique son nom pour le changer, choisis sa couleur.
@@ -265,15 +232,15 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
           ? pages.filter((page) => correspondFiltre(page.libelle))
           : pages
         if (filtreActif && !personnalisation && pagesAffichees.length === 0) return null
-        // En rail, le chevron est masqué : tout reste déplié pour que
-        // chaque page garde son icône accessible.
-        const replie = !rail && !personnalisation && !filtreActif && replis.includes(groupe.id)
+        const replie = !personnalisation && !filtreActif && replis.includes(groupe.id)
         const totalGroupe = pages.reduce((somme, page) => somme + (Number(page.item?.count) || 0), 0)
         const groupeCible = cible?.groupe === groupe.id
+        const IconeRubrique = groupe.icone || null
         return (
           <section
             className={`sidebar-nav-group${groupeCible ? ' est-cible' : ''}`}
             key={groupe.id}
+            data-rubrique={groupe.rubrique || undefined}
             style={{
               '--groupe-teinte': groupe.teinte,
               '--groupe-fond': teinteRgba(groupe.teinte, 0.16),
@@ -341,6 +308,11 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
             ) : (
               <p className={`sidebar-section-label${replie ? ' est-repliee' : ''}`}>
                 <span className="sn-groupe-point" aria-hidden="true" />
+                {IconeRubrique ? (
+                  <span className="sidebar-section-icon" aria-hidden="true">
+                    <IconeRubrique size={14} strokeWidth={1.8} />
+                  </span>
+                ) : null}
                 <span className="sidebar-section-name">{groupe.nom}</span>
                 {replie && totalGroupe > 0 && (
                   <span className="sidebar-section-count" title="Éléments à traiter dans ce groupe">{totalGroupe}</span>
@@ -375,7 +347,6 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
                       cheminActif={pathname}
                       tabState={page.item?.tabKey ? tabStates[page.item.tabKey] : null}
                       onSelect={onSelect}
-                      rail={rail}
                     />
                   )
                 }
@@ -496,6 +467,27 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
           </div>
         </div>
       )}
+
+      {/* Action secondaire, en bas du panneau : la personnalisation ne
+          concurrence plus la navigation. */}
+      <div className="sn-outils">
+        <button
+          type="button"
+          className="sn-bascule"
+          aria-pressed={personnalisation}
+          aria-expanded={personnalisation}
+          onClick={() => (personnalisation ? terminer() : setPersonnalisation(true))}
+        >
+          <SlidersHorizontal size={13} />
+          <span>{personnalisation ? 'Terminer' : 'Personnaliser la navigation'}</span>
+        </button>
+        {personnalisation && (
+          <button type="button" className="sn-retablir" onClick={retablir}>
+            <RotateCcw size={12} />
+            <span>Rétablir</span>
+          </button>
+        )}
+      </div>
 
       <p className="sn-annonce" role="status" aria-live="polite">{annonce}</p>
     </nav>
