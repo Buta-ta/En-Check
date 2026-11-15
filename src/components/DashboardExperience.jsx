@@ -217,6 +217,10 @@ export default function DashboardExperience({
     ? 'Bonjour'
     : currentTime?.getHours() < 18 ? 'Bon après-midi' : 'Bonsoir'
 
+  // La barre est organisée par INTENTION, pas par technique : le quotidien,
+  // l'argent, la vision globale et l'anticipation, le matériel
+  // pointeuse/portail, et la plateforme. Les cinq teintes bogolan tombent
+  // une par groupe (cuivre, terre, olive, ambre, ardoise).
   const navigationSections = [
     {
       label: 'Aujourd’hui',
@@ -228,12 +232,11 @@ export default function DashboardExperience({
         { label: 'Absences', icon: CalendarOff, path: '/absences', show: isSuperAdmin || moduleConges, tabKey: 'ABSENCES' },
         { label: 'Retards', icon: Timer, path: '/retards', show: isSuperAdmin || moduleRetards, tabKey: 'RETARDS', count: lateCount },
         { label: 'Pauses', icon: Coffee, path: '/pauses', show: true, count: activePauses.length },
-        { label: 'Rapports', icon: FileText, path: '/rapports', show: true },
         { label: 'Jours fériés', icon: CalendarDays, path: '/jours-feries', show: true, tabKey: 'JOURS_FERIES' },
       ],
     },
     {
-      label: 'Gestion RH',
+      label: 'Paie',
       items: [
         { label: 'Heures supplémentaires', icon: Timer, path: '/heures-supplementaires', show: isSuperAdmin || moduleHeuresSup, tabKey: 'HEURES_SUP' },
         { label: 'Rémunérations', icon: Wallet, path: '/remunerations', show: isSuperAdmin || moduleRemunerations },
@@ -241,18 +244,24 @@ export default function DashboardExperience({
       ],
     },
     {
-      label: 'Outils',
+      label: 'Rapports & prédictions',
       items: [
+        { label: 'Rapports', icon: FileText, path: '/rapports', show: true },
         { label: 'Prédictions', icon: Sparkles, path: '/predictions', show: isSuperAdmin || modulePredictions, tabKey: 'PREDICTIONS' },
+      ],
+    },
+    {
+      label: 'Pointeuse & portail',
+      items: [
+        // Les machines ADMS et le poste de pointage font un seul écran :
+        // l'une ou l'autre des deux options ouvre « Configuration pointeuse ».
+        { label: 'Configuration pointeuse', icon: Router, path: '/configuration-pointeuse', show: isSuperAdmin || modulePointeuses || modulePostePointage },
         // Le plateau et les zones sont un seul écran : l'un ou l'autre des
         // deux modules ouvre « Géopointage ».
         { label: 'Géopointage', icon: MapPin, path: '/geopointage', show: isSuperAdmin || moduleCarteTempsReel || moduleGeofencing, tabKey: 'GEOFENCING' },
         // Les enrôlements et leurs réglages sont un seul écran : une seule
         // entrée pour la reconnaissance faciale.
         { label: 'Reconnaissance faciale', icon: ScanFace, path: '/reconnaissance-faciale', show: isSuperAdmin || moduleRecoFaciale },
-        // Les machines ADMS et le poste de pointage font un seul écran :
-        // l'une ou l'autre des deux options ouvre « Configuration pointeuse ».
-        { label: 'Configuration pointeuse', icon: Router, path: '/configuration-pointeuse', show: isSuperAdmin || modulePointeuses || modulePostePointage },
         { label: 'Annonces d’accueil', icon: Megaphone, path: '/annonces-accueil', show: isSuperAdmin },
       ],
     },
@@ -263,8 +272,9 @@ export default function DashboardExperience({
         { label: 'Administrateurs', icon: ShieldCheck, path: '/admins', show: isSuperAdmin },
         { label: 'Messages système', icon: Bell, path: '/system-messages', show: isSuperAdmin },
         { label: 'Prospection', icon: TrendingUp, path: '/prospection', show: isSuperAdmin },
-        { label: 'Test IA (isolé)', icon: Sparkles, path: '/test-ia', show: isSuperAdmin },
         { label: 'Analytics du site', icon: TrendingUp, path: '/analytics', show: isSuperAdmin },
+        // Page de développement : en dernier, jamais devant les outils réels.
+        { label: 'Test IA (isolé)', icon: Sparkles, path: '/test-ia', show: isSuperAdmin },
       ],
     },
   ]

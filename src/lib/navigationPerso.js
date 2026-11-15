@@ -10,9 +10,16 @@
 // Rien n'est inventé : une page qui n'existe pas dans les sections
 // fournies est ignorée, une page nouvelle y apparaît d'elle-même,
 // et un enregistrement abîmé est écarté sans casser la barre.
+//
+// VERSION_MODELE : chaque restructuration de la barre par défaut
+// bat la version — tout le monde repart alors de la nouvelle
+// structure d'origine (comme un « Rétablir »), au prochain
+// chargement. v2 = réorganisation par intention (Aujourd’hui /
+// Paie / Rapports & prédictions / Pointeuse & portail /
+// Administration).
 // ═══════════════════════════════════════════════════════════
 
-export const VERSION_MODELE = 1
+export const VERSION_MODELE = 2
 
 // Les cinq teintes de la planche : cuivre, terre, olive, ambre, ardoise.
 // Elles remplacent l'ancienne palette indigo : le bogolan se lit en
