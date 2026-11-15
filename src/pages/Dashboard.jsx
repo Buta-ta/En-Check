@@ -1,54 +1,325 @@
+import { findMissingExitEntries } from '../services/missingExits'
 // ═══════════════════════════════════════════════════════════
-// TABLEAU DE BORD — CHARGEURS DE DONNÉES
-// Chargement des conflits, par entreprise, vue globale
-// super-admin, alertes générées, demandes d'horaire, jours
-// fériés, pauses du jour (+ temps réel). Ne garde aucun état :
-// il reçoit les setters.
+// 📊 PAGE DASHBOARD AFROFUTURISTE ENRICHI
+// Avec conflits absence/pointage intégrés + Notifications + ANIMATIONS
 // ═══════════════════════════════════════════════════════════
-import { useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+
+import { useState, useEffect, useMemo } from 'react'
+import { supabase } from '../lib/supabase'
+import { useTheme } from '../contexts/ThemeContext'
+import DashboardExperience from '../components/DashboardExperience'
+import EnCheckBrandMark from '../components/EnCheckBrandMark'
+import { useNavigate } from 'react-router-dom'
+import useNotifications from '../hooks/useNotifications'
+import HolidayService from '../services/holidayService'
+import FeatureService, { FEATURES } from '../services/featureService'
+import useRealtimeNotifications from '../hooks/useRealtimeNotifications'
+import NotificationPermissionPrompt from '../components/NotificationPermissionPrompt'
+
+// ✅ NOUVEAUX IMPORTS POUR ANIMATIONS
+import useTabAnimations from '../hooks/useTabAnimations'
+
+
+
+
 import {
-  AlertTriangle, Calendar, CalendarDays, CalendarOff, CheckCircle2, Clock,
-  ShieldCheck, UserX,
+  Building2,
+  Users,
+  Clock,
+  Coffee,
+  LogOut,
+  Plus,
+  ChevronRight,
+  Shield,
+  FileText,
+  Calendar,
+  CalendarOff,
+  CalendarDays,
+  AlertTriangle,
+  Menu,
+  X,
+  Zap,
+  Activity,
+  ArrowRight,
+  UserCheck,
+  UserX,
+  Timer,
+  Camera,
+  BellRing,
+  CheckCircle2,
+  LogIn,
+  LogOut as LogOutIcon,
+  ShieldCheck,
+  Ban,
+  TrendingUp,
+  FileSearch,
+  Users2,
+  MapPin,
+  Settings,
+  Wallet,
+  ClipboardList,
+  UsersRound,
+  Sparkles,
+  Bell,
+  Volume2,
+  VolumeX,
+  Globe,
+  Radio,
 } from 'lucide-react'
-import FeatureService, { FEATURES } from '../../services/featureService'
-import HolidayService from '../../services/holidayService'
-import { findMissingExitEntries } from '../../services/missingExits'
-import { compterRetardsDuJour } from '../../services/hoursCalculator'
-import { construirePauses, estPauseReelleEffectuee } from '../../services/pausesService'
-import { formaterHeureLocale } from '../../utils/timezoneUtils'
+import { formaterHeureLocale, minutesDepuisMinuit, jourLocal } from '../utils/timezoneUtils'
+import { compterRetardsDuJour } from '../services/hoursCalculator'
+import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
 
-// Les requêtes sont triées du pointage le plus récent au plus ancien : le
-// premier enregistrement de chaque personne est son état courant du jour.
-function derniersPointagesParEmploye(rows = []) {
-  const derniers = new Map()
-  for (const row of rows) {
-    if (!row?.employee_id || derniers.has(row.employee_id)) continue
-    derniers.set(row.employee_id, {
-      id: row.employee_id,
-      employee_id: row.employee_id,
-      enterprise_id: row.enterprise_id,
-      employee: row.employees || null,
-      type: String(row.check_type || '').toLowerCase(),
-      time: row.check_time,
-      photoUrl: row.employees?.photo_url || null,
-      matricule: row.employees?.matricule || '',
-      isAutoClosed: Boolean(row.is_auto_closed),
-    })
-  }
-  return [...derniers.values()]
-}
+export { compterRetardsDuJour }
 
-export function useDashboardLoaders(ctx) {
+export default function Dashboard() {
+  const [admin, setAdmin] = useState(null)
+  const [entreprises, setEntreprises] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  const [modulePlanning, setModulePlanning] = useState(false)
+  const [moduleRetards, setModuleRetards] = useState(false)
+  //  Option payante « Retards », lue ENTREPRISE PAR ENTREPRISE : un super admin
+  //  qui voit toutes les entreprises ne doit pas voir les retards de celles qui
+  //  n'ont pas souscrit.
+  const [retardsOptionActive, setRetardsOptionActive] = useState(false)
+  const [moduleConges, setModuleConges] = useState(false)
+  const [moduleHeuresSup, setModuleHeuresSup] = useState(false)
+  const [moduleGeofencing, setModuleGeofencing] = useState(false)
+  const [moduleCarteTempsReel, setModuleCarteTempsReel] = useState(false)
+  const [moduleRecoFaciale, setModuleRecoFaciale] = useState(false)
+  const [moduleFichesPaie, setModuleFichesPaie] = useState(false)
+  const [moduleTaches, setModuleTaches] = useState(false)
+  const [modulePredictions, setModulePredictions] = useState(false)
+  // 💼 Les options payantes ajoutées après les modules historiques : chacune
+  //    commande un écran à elle (ou un canal d'alerte), et chacune s'allume
+  //    entreprise par entreprise depuis la fiche de l'entreprise.
+  const [modulePointeuses, setModulePointeuses] = useState(false)
+  const [modulePostePointage, setModulePostePointage] = useState(false)
+  const [moduleRemunerations, setModuleRemunerations] = useState(false)
+  const [moduleCoutSalarial, setModuleCoutSalarial] = useState(false)
+  const [moduleConfigFiscale, setModuleConfigFiscale] = useState(false)
+  const [moduleAlertesTelephone, setModuleAlertesTelephone] = useState(false)
+  const [moduleAlertesCourrier, setModuleAlertesCourrier] = useState(false)
+
+  const [stats, setStats] = useState({
+    entreprises: 0, employes: 0, pointages: 0, presentsToday: 0,
+    absentsToday: 0, congesToday: 0, retardsToday: 0, photosToday: 0,
+    oublisSortie: 0, tauxPresence: 0, conflitsPending: 0,
+  })
+
+  const [recentActivity, setRecentActivity] = useState([])
+  const [alerts, setAlerts] = useState([])
+  const [topEntreprises, setTopEntreprises] = useState([])
+
+  const [conflictsPending, setConflictsPending] = useState([])
+  const [showConflictModal, setShowConflictModal] = useState(false)
+  const [selectedConflict, setSelectedConflict] = useState(null)
+  const [conflictNote, setConflictNote] = useState('')
+  const [resolvingConflict, setResolvingConflict] = useState(false)
+  const [conflictEmployees, setConflictEmployees] = useState({})
+
+  const [scheduleRequestsPending, setScheduleRequestsPending] = useState([])
+  const [processingScheduleRequestId, setProcessingScheduleRequestId] = useState(null)
+  const [forgottenExitItems, setForgottenExitItems] = useState([])
+  const [savingForgottenExitId, setSavingForgottenExitId] = useState(null)
+  const [pausesToday, setPausesToday] = useState([])
+  const [todayHoliday, setTodayHoliday] = useState(null)
+
+  const navigate = useNavigate()
+  const { darkMode, toggleTheme } = useTheme()
+  const today = jourLocal(new Date()) || new Date().toISOString().split('T')[0]
+
+  // ═══ NOTIFICATIONS HOOK ═══
   const {
-    admin, today, navigate, setStats, setRecentActivity, setLiveEmployees, setAlerts,
-    setTopEntreprises, setConflictsPending, setScheduleRequestsPending,
-    setForgottenExitItems, setPausesToday, setTodayHoliday,
-    setModulePlanning, setModuleRetards, setModuleConges,
-    setModuleGeofencing, setModuleCarteTempsReel, setModuleRecoFaciale,
-    setModuleTaches, setModulePredictions, setModuleFichesPaie,
-    setRetardsOptionActive,
-  } = ctx
+    notifications,
+    unreadCount,
+    hasHighPriority,
+    markAsRead,
+    markAllAsRead,
+    refresh: refreshNotifications,
+  } = useNotifications(admin)
+  useRealtimeNotifications(admin)
+
+  // ✅ Mémoriser l'objet des modules activés pour éviter que `setCurrentTime`
+  //    (appelé chaque seconde) ne déclenche en boucle `useTabAnimations`.
+  const enabledModulesForTabs = useMemo(() => ({
+    moduleConges,
+    modulePlanning,
+    moduleTaches,
+    moduleGeofencing,
+    moduleRetards,
+    moduleHeuresSup,
+    moduleFichesPaie,
+    modulePredictions
+  }), [
+    moduleConges,
+    modulePlanning,
+    moduleTaches,
+    moduleGeofencing,
+    moduleRetards,
+    moduleHeuresSup,
+    moduleFichesPaie,
+    modulePredictions
+  ])
+
+  const {
+    tabStates,
+    isCalculating,
+    markTabAsViewed,
+    clearTab,
+    refreshAllTriggers,
+  } = useTabAnimations(
+    admin,
+    admin?.selectedEnterprise?.id || admin?.enterprise_id,
+    enabledModulesForTabs
+  )
+
+  // ═══ HANDLER : Marquer onglet comme vu ═══
+  const handleTabClick = (tabKey) => {
+    if (tabKey) {
+      markTabAsViewed(tabKey)
+    }
+  }
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const adminData = localStorage.getItem('admin')
+    if (!adminData) { navigate('/login'); return }
+    const parsedAdmin = JSON.parse(adminData)
+    setAdmin(parsedAdmin)
+    loadData(parsedAdmin)
+  }, [navigate])
+
+  const loadData = async (adminData) => {
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const isSuperAdmin = adminData.role === 'super_admin'
+      const selectedEnterprise = adminData.selectedEnterprise
+      const enterpriseId = selectedEnterprise?.id || adminData.enterprise_id
+
+      if (isSuperAdmin) {
+        const { data: entreprisesData, error: entErr } = await supabase
+          .from('enterprises')
+          .select('*, employees(count)')
+          .eq('is_active', true)
+          .order('name')
+        if (entErr) throw entErr
+        const list = entreprisesData || []
+        setEntreprises(list)
+
+        // Synchroniser la liste des entreprises dans admin + localStorage
+        // pour que le sélecteur d'entreprise (EnterpriseSwitcher) et les
+        // onglets (Config Fiscale, Fiches de Paie, etc.) y aient toujours accès.
+        const lastId =
+          (adminData.id && localStorage.getItem(`last_enterprise_id_${adminData.id}`)) ||
+          localStorage.getItem('last_enterprise_id')
+        const resolvedSelected =
+          (selectedEnterprise?.id && list.find(e => e.id === selectedEnterprise.id)) ||
+          (lastId && list.find(e => e.id === lastId)) ||
+          selectedEnterprise ||
+          null
+
+        const syncedAdmin = {
+          ...adminData,
+          entreprises: list,
+          selectedEnterprise: resolvedSelected,
+          isMultiEntreprise: list.length > 1,
+        }
+        setAdmin(syncedAdmin)
+        localStorage.setItem('admin', JSON.stringify(syncedAdmin))
+
+        if (resolvedSelected) {
+          await loadSingleEnterpriseDashboard(resolvedSelected.id, list.length, true)
+        } else {
+          await loadGlobalSuperAdminDashboard(list)
+          setModulePlanning(true)
+          setModuleRetards(true)
+          setModuleConges(true)
+          setModuleHeuresSup(true)
+          setModuleGeofencing(true)
+          setModuleCarteTempsReel(true)
+          setModuleRecoFaciale(true)
+          setModuleFichesPaie(true)
+          setModuleTaches(true)
+          setModulePredictions(true)
+          setModulePointeuses(true)
+          setModulePostePointage(true)
+          setModuleRemunerations(true)
+          setModuleCoutSalarial(true)
+          setModuleConfigFiscale(true)
+          setModuleAlertesTelephone(true)
+          setModuleAlertesCourrier(true)
+        }
+      } else {
+        if (enterpriseId) {
+          const { data: entrepriseData, error: entErr } = await supabase
+            .from('enterprises').select('*').eq('id', enterpriseId).single()
+          if (entErr) throw entErr
+
+          if (entrepriseData) {
+            setAdmin(prev => ({
+              ...prev,
+              enterprise_name: entrepriseData.name,
+              selectedEnterprise: { ...prev?.selectedEnterprise, name: entrepriseData.name },
+            }))
+            setModulePlanning(entrepriseData.module_planning || false)
+            setModuleRetards(entrepriseData.module_retards || false)
+            setModuleConges(entrepriseData.module_conges || false)
+            setModuleGeofencing(entrepriseData.module_geolocalisation || false)
+            setModuleHeuresSup(entrepriseData.module_heures_supplementaires || false)
+            setModuleCarteTempsReel(entrepriseData.module_carte_temps_reel || false)
+            setModuleRecoFaciale(entrepriseData.module_reconnaissance_faciale || false)
+            setModuleTaches(entrepriseData.module_taches || false)
+            setModulePredictions(entrepriseData.module_predictions || false)
+            setModulePointeuses(entrepriseData.module_pointeuses || false)
+            setModulePostePointage(entrepriseData.module_poste_pointage || false)
+            setModuleRemunerations(entrepriseData.module_remunerations || false)
+            setModuleCoutSalarial(entrepriseData.module_cout_salarial || false)
+            setModuleConfigFiscale(entrepriseData.module_config_fiscale || false)
+            setModuleAlertesTelephone(entrepriseData.module_alertes_telephone || false)
+            setModuleAlertesCourrier(entrepriseData.module_alertes_courrier || false)
+            const hasFichesPaie = await FeatureService.hasFeature(enterpriseId, FEATURES.FICHES_PAIE)
+            setModuleFichesPaie(hasFichesPaie)
+          }
+          await loadSingleEnterpriseDashboard(enterpriseId, adminData.entreprises?.length || 1, false)
+        }
+      }
+    } catch (error) {
+      console.error('Erreur chargement dashboard:', error)
+      const message = error?.message || 'Impossible de charger les données du tableau de bord'
+      setLoadError(message)
+      // ═══════════════════════════════════════════════════════════════════
+      // VD-01 — ÉTAT D'ERREUR HONNÊTE (anti-dashboard menteur)
+      // ═══════════════════════════════════════════════════════════════════
+      // POURQUOI : en cas d'échec réseau ou d'exception, les compteurs
+      // restent à zéro. Afficher « Aucune alerte critique — La journée se
+      // déroule normalement » produirait une fausse tranquillité. On
+      // remplace donc explicitement la liste d'alertes par une alerte
+      // d'erreur critique avec bouton « Réessayer ».
+      setAlerts([
+        {
+          type: 'error',
+          icon: AlertTriangle,
+          color: '#EF4444',
+          title: 'Impossible de charger les données',
+          subtitle: 'Une erreur est survenue lors de la récupération de l’activité du jour.',
+          action: 'Réessayer',
+          actionFn: () => loadData(adminData),
+        },
+      ])
+    }
+    setLoading(false)
+  }
+
   const loadConflicts = async (targetId) => {
     try {
       let conflictQuery = supabase
@@ -150,13 +421,6 @@ export function useDashboardLoaders(ctx) {
     const retardsToday = retardsOptionActive
       ? compterRetardsDuJour(retardEntries, empSchedData, defSchedData, today)
       : 0
-    const derniersPointages = derniersPointagesParEmploye(attendancesToday).map((entry) => ({
-      ...entry,
-      isLate: retardsOptionActive && entry.type === 'in'
-        ? compterRetardsDuJour([attendancesToday.find((row) => row.employee_id === entry.employee_id)], empSchedData, defSchedData, today) > 0
-        : false,
-    }))
-    setLiveEmployees(derniersPointages)
     const tauxPresence = employesData.length > 0 ? Math.round((presentsToday / employesData.length) * 100) : 0
 
     const conflictsData = await loadConflicts(enterpriseId)
@@ -280,13 +544,6 @@ export function useDashboardLoaders(ctx) {
       defSchedData,
       today
     )
-    const derniersPointages = derniersPointagesParEmploye(attendancesToday).map((entry) => ({
-      ...entry,
-      isLate: entry.type === 'in' && retardsAutorises(entry.enterprise_id)
-        ? compterRetardsDuJour([attendancesToday.find((row) => row.employee_id === entry.employee_id)], empSchedData, defSchedData, today) > 0
-        : false,
-    }))
-    setLiveEmployees(derniersPointages)
     const tauxPresence = totalEmployes > 0 ? Math.round((presentsToday / totalEmployes) * 100) : 0
 
     const conflictsData = await loadConflicts(null)
@@ -440,6 +697,113 @@ export function useDashboardLoaders(ctx) {
     setAlerts(generatedAlerts)
   }
 
+  const canManageConflict = ['admin', 'manager', 'super_admin'].includes(admin?.role)
+
+  const openConflictModal = (conflict) => {
+    setSelectedConflict(conflict)
+    setConflictNote('')
+    setShowConflictModal(true)
+  }
+
+  const resolveConflict = async (action) => {
+    if (!selectedConflict) return
+    setResolvingConflict(true)
+    try {
+      const conflictId = selectedConflict.id
+      const absenceId = selectedConflict.absence_id
+
+      if (action === 'kept_absence') {
+        const { error } = await supabase.from('attendance_conflicts').update({ status: 'resolved', resolution_action: 'kept_absence', notes: conflictNote || 'Absence maintenue malgré le pointage', resolved_by: admin.id, resolved_at: new Date().toISOString() }).eq('id', conflictId)
+        if (error) throw error
+      } else if (action === 'cancelled_absence') {
+        const { error: delError } = await supabase.from('absences').delete().eq('id', absenceId)
+        if (delError) throw delError
+        const { error } = await supabase.from('attendance_conflicts').update({ status: 'resolved', resolution_action: 'cancelled_absence', notes: conflictNote || 'Absence annulée suite au pointage', resolved_by: admin.id, resolved_at: new Date().toISOString() }).eq('id', conflictId)
+        if (error) throw error
+      } else if (action === 'ignored_conflict') {
+        const { error } = await supabase.from('attendance_conflicts').update({ status: 'ignored', resolution_action: 'ignored_conflict', notes: conflictNote || 'Conflit ignoré', resolved_by: admin.id, resolved_at: new Date().toISOString() }).eq('id', conflictId)
+        if (error) throw error
+      }
+
+      setShowConflictModal(false)
+      setSelectedConflict(null)
+      setConflictNote('')
+      loadData(admin)
+      refreshNotifications()
+    } catch (error) {
+      console.error('Erreur résolution:', error)
+    }
+    setResolvingConflict(false)
+  }
+
+  const handleQuickScheduleRequest = async (request, decision) => {
+    if (!request?.id || !admin || !['approved', 'rejected'].includes(decision)) return
+    setProcessingScheduleRequestId(request.id)
+    try {
+      if (decision === 'approved') {
+        const payload = {
+          employee_id: request.employee_id,
+          schedule_id: request.use_custom_hours ? null : request.requested_schedule_id || null,
+          use_custom_hours: Boolean(request.use_custom_hours),
+          custom_start_time: request.use_custom_hours ? request.requested_start_time : null,
+          custom_end_time: request.use_custom_hours ? request.requested_end_time : null,
+          custom_break_start: request.use_custom_hours && request.requested_has_break ? request.requested_break_start : null,
+          custom_break_end: request.use_custom_hours && request.requested_has_break ? request.requested_break_end : null,
+          custom_has_break: request.use_custom_hours ? Boolean(request.requested_has_break) : true,
+          custom_work_days: request.use_custom_hours ? request.requested_work_days : null,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        }
+        const { error: scheduleError } = await supabase
+          .from('employee_schedules')
+          .upsert(payload, { onConflict: 'employee_id' })
+        if (scheduleError) throw scheduleError
+      }
+
+      const { error: requestError } = await supabase
+        .from('schedule_change_requests')
+        .update({
+          status: decision,
+          admin_comment: decision === 'approved' ? 'Approuvée depuis le Dashboard' : 'Refusée depuis le Dashboard',
+          reviewed_by: admin.id,
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', request.id)
+
+      if (requestError) throw requestError
+      await loadData(admin)
+      refreshNotifications()
+    } catch (error) {
+      console.error('Erreur traitement rapide demande horaire:', error)
+    } finally {
+      setProcessingScheduleRequestId(null)
+    }
+  }
+
+  const confirmForgottenExit = async (item, exitTimeStr = '18:00') => {
+    if (!item?.employee_id || !item?.enterprise_id) return false
+    setSavingForgottenExitId(item.id)
+    try {
+      const checkTimeIso = new Date(`${today}T${exitTimeStr || '18:00'}:00`).toISOString()
+      const { error } = await supabase.from('attendances').insert({
+        employee_id: item.employee_id,
+        enterprise_id: item.enterprise_id,
+        check_type: 'out',
+        check_time: checkTimeIso,
+      })
+      if (error) throw error
+      await loadData(admin)
+      refreshNotifications()
+      return true
+    } catch (error) {
+      console.error('Erreur régularisation sortie manquante:', error)
+      return false
+    } finally {
+      setSavingForgottenExitId(null)
+    }
+  }
+
   const loadScheduleRequests = async (targetId) => {
     try {
       let query = supabase
@@ -562,33 +926,15 @@ export function useDashboardLoaders(ctx) {
   useEffect(() => {
     if (!admin) return undefined
     const targetEnterpriseId = admin.selectedEnterprise?.id || admin.enterprise_id || null
-    const refreshLiveEmployees = async () => {
-      const startOfDay = new Date(`${today}T00:00:00`).toISOString()
-      const endOfDay = new Date(`${today}T23:59:59`).toISOString()
-      let query = supabase.from('attendances')
-        .select('id, employee_id, enterprise_id, check_time, check_type, is_auto_closed, employees (id, first_name, last_name, matricule, photo_url)')
-        .gte('check_time', startOfDay).lte('check_time', endOfDay)
-        .order('check_time', { ascending: false })
-      if (targetEnterpriseId) query = query.eq('enterprise_id', targetEnterpriseId)
-      const { data, error } = await query
-      if (error) return
-      setLiveEmployees((previous) => {
-        const previousLate = new Map(previous.map((entry) => [entry.employee_id, entry.isLate]))
-        return derniersPointagesParEmploye(data || []).map((entry) => ({
-          ...entry,
-          isLate: previousLate.get(entry.employee_id) || false,
-        }))
-      })
-    }
     const channel = supabase
-      .channel('dashboard_live_presence')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'encheck_pauses' }, () => {
-        loadDashboardPauses(targetEnterpriseId)
-      })
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'attendances',
-        ...(targetEnterpriseId ? { filter: `enterprise_id=eq.${targetEnterpriseId}` } : {}),
-      }, refreshLiveEmployees)
+      .channel('dashboard_pauses_live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'encheck_pauses' },
+        () => {
+          loadDashboardPauses(targetEnterpriseId)
+        }
+      )
       .subscribe()
 
     return () => {
@@ -596,11 +942,96 @@ export function useDashboardLoaders(ctx) {
     }
   }, [admin])
 
-  return {
-    loadSingleEnterpriseDashboard,
-    loadGlobalSuperAdminDashboard,
-    loadScheduleRequests,
-    loadTodayHoliday,
-    loadDashboardPauses,
+  const handleLogout = () => {
+    localStorage.removeItem('admin')
+    localStorage.removeItem('last_enterprise_id')
+    navigate('/login')
   }
+
+  const handleEnterpriseSwitch = () => window.location.reload()
+
+  const isSuperAdmin = admin?.role === 'super_admin'
+  const isMultiEntreprise = admin?.isMultiEntreprise || (admin?.entreprises?.length > 1)
+
+  if (loading) {
+    return (
+      <div className="encheck-dashboard dashboard-loading" data-theme={darkMode ? 'dark' : 'light'} role="status" aria-live="polite">
+        <div className="dashboard-loading-brand">
+          <EnCheckBrandMark className="dashboard-loading-mark" size={48} loading />
+          <div className="dashboard-loading-copy">
+            <strong>En-Check</strong>
+            <span>On gère !</span>
+          </div>
+        </div>
+        <p>Préparation de votre tableau de bord…</p>
+        <span className="dashboard-loading-track"><span /></span>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <NotificationPermissionPrompt userType="admin" />
+      <DashboardExperience
+        admin={admin}
+        entreprises={entreprises}
+        isSuperAdmin={isSuperAdmin}
+        isMultiEntreprise={isMultiEntreprise}
+        modulePlanning={modulePlanning}
+        moduleRetards={moduleRetards}
+        retardsOptionActive={retardsOptionActive}
+        moduleConges={moduleConges}
+        moduleHeuresSup={moduleHeuresSup}
+        moduleGeofencing={moduleGeofencing}
+        moduleCarteTempsReel={moduleCarteTempsReel}
+        moduleRecoFaciale={moduleRecoFaciale}
+        moduleFichesPaie={moduleFichesPaie}
+        moduleTaches={moduleTaches}
+        modulePredictions={modulePredictions}
+        modulePointeuses={modulePointeuses}
+        modulePostePointage={modulePostePointage}
+        moduleRemunerations={moduleRemunerations}
+        moduleCoutSalarial={moduleCoutSalarial}
+        moduleConfigFiscale={moduleConfigFiscale}
+        stats={stats}
+        recentActivity={recentActivity}
+        topEntreprises={topEntreprises}
+        kenteStats={stats}
+        conflictsPending={conflictsPending}
+        scheduleRequestsPending={scheduleRequestsPending}
+        handleQuickScheduleRequest={handleQuickScheduleRequest}
+        processingScheduleRequestId={processingScheduleRequestId}
+        forgottenExitItems={forgottenExitItems}
+        confirmForgottenExit={confirmForgottenExit}
+        savingForgottenExitId={savingForgottenExitId}
+        pausesToday={pausesToday}
+        todayHoliday={todayHoliday}
+        currentTime={currentTime}
+        loadError={loadError}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        hasHighPriority={hasHighPriority}
+        markAsRead={markAsRead}
+        markAllAsRead={markAllAsRead}
+        handleLogout={handleLogout}
+        handleEnterpriseSwitch={handleEnterpriseSwitch}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+        tabStates={tabStates}
+        markTabAsViewed={markTabAsViewed}
+        canManageConflict={canManageConflict}
+        openConflictModal={openConflictModal}
+        showConflictModal={showConflictModal}
+        setShowConflictModal={setShowConflictModal}
+        selectedConflict={selectedConflict}
+        conflictNote={conflictNote}
+        setConflictNote={setConflictNote}
+        resolvingConflict={resolvingConflict}
+        resolveConflict={resolveConflict}
+        retryLoad={() => admin && loadData(admin)}
+        darkMode={darkMode}
+        toggleTheme={toggleTheme}
+      />
+    </>
+  )
 }
