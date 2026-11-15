@@ -107,8 +107,7 @@ const TOPBAR_LEFT_CATALOG = [
   { id: 'date', label: 'Date du jour', description: 'Afficher la date courante.', icon: CalendarDays, region: 'left' },
 ]
 const TOPBAR_RIGHT_CATALOG = [
-  { id: 'dashboard-customize', label: 'Personnaliser le tableau', description: 'Réorganiser les widgets KPI et l’en-tête.', icon: SlidersHorizontal, region: 'right' },
-  { id: 'add-widget', label: 'Ajouter un widget', description: 'Ajouter un KPI au tableau.', icon: Plus, region: 'right' },
+  { id: 'dashboard-customize', label: 'Personnaliser le tableau', description: 'Réorganiser l’en-tête et les actions rapides.', icon: SlidersHorizontal, region: 'right' },
   { id: 'theme', label: 'Thème clair / sombre', description: 'Changer l’apparence du tableau.', icon: Moon, region: 'right' },
   { id: 'notifications', label: 'Notifications', description: 'Consulter les notifications.', icon: Bell, region: 'right' },
   { id: 'profile', label: 'Profil administrateur', description: 'Voir le compte connecté.', icon: Users, region: 'right' },
@@ -377,8 +376,6 @@ export default function DashboardExperience({
   const widgetStorageKey = `encheck_dashboard_widgets_v1:${admin?.id || 'preview'}:${admin?.selectedEnterprise?.id || admin?.enterprise_id || 'all'}`
   const [widgetIds, setWidgetIds] = useState(() => readDashboardWidgetLayout(widgetStorageKey, availableWidgetIds, defaultWidgetIds))
   const [isCustomizing, setIsCustomizing] = useState(false)
-  const [isWidgetCatalogOpen, setIsWidgetCatalogOpen] = useState(false)
-  const [draggedWidgetId, setDraggedWidgetId] = useState(null)
 
   const topbarLeftCatalog = TOPBAR_LEFT_CATALOG
   const topbarRightCatalog = TOPBAR_RIGHT_CATALOG
@@ -515,10 +512,6 @@ export default function DashboardExperience({
     return () => window.clearTimeout(timer)
   }, [admin?.id, enterpriseScopeKey, widgetIds, topbarLeftItemIds, topbarRightItemIds, quickActionIds])
 
-  const visibleWidgets = widgetIds
-    .map((id) => availableWidgets.find((widget) => widget.id === id))
-    .filter(Boolean)
-  const unaddedWidgets = availableWidgets.filter((widget) => !widgetIds.includes(widget.id))
   const allTopbarCatalog = [...topbarLeftCatalog, ...topbarRightCatalog]
   const visibleTopbarLeftItems = topbarLeftItemIds
     .map((id) => allTopbarCatalog.find((item) => item.id === id))
@@ -535,24 +528,6 @@ export default function DashboardExperience({
     .filter(Boolean)
   const unaddedQuickActions = quickActionCatalog.filter((action) => !quickActionIds.includes(action.id))
 
-  const handleWidgetDragStart = (event, widgetId) => {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', widgetId)
-    setDraggedWidgetId(widgetId)
-  }
-  const handleWidgetDrop = (event, targetId) => {
-    event.preventDefault()
-    const sourceId = event.dataTransfer.getData('text/plain') || draggedWidgetId
-    if (sourceId) setWidgetIds((current) => moveDashboardWidget(current, sourceId, targetId))
-    setDraggedWidgetId(null)
-  }
-  const addWidget = (widgetId) => {
-    setWidgetIds((current) => addDashboardWidget(current, widgetId))
-    setIsCustomizing(true)
-    setIsWidgetCatalogOpen(false)
-  }
-  const removeWidget = (widgetId) => setWidgetIds((current) => removeDashboardWidget(current, widgetId))
-  const moveWidget = (widgetId, offset) => setWidgetIds((current) => moveDashboardWidgetByOffset(current, widgetId, offset))
   const resetWidgets = () => setWidgetIds(defaultWidgetIds)
 
   const addTopbarItem = (item) => {
@@ -652,13 +627,6 @@ export default function DashboardExperience({
         >
           {isCustomizing ? <CheckCircle2 size={15} /> : <SlidersHorizontal size={15} />}
           <span>{isCustomizing ? 'Terminer' : 'Personnaliser le tableau'}</span>
-        </button>
-      )
-    }
-    if (itemId === 'add-widget') {
-      return (
-        <button type="button" className="dashboard-add-widget-button" aria-label="Ajouter un widget" onClick={() => setIsWidgetCatalogOpen(true)} aria-haspopup="dialog" aria-expanded={isWidgetCatalogOpen}>
-          <Plus size={15} /><span>Ajouter un widget</span>
         </button>
       )
     }
@@ -850,19 +818,10 @@ export default function DashboardExperience({
               <div className="dashboard-customize-hint" role="status">
                 <span>
                   {isTopbarCustomizing
-                    ? 'Glisse ou utilise les flèches pour organiser l’en-tête et les cartes du tableau.'
-                    : 'Glisse une poignée pour réorganiser les cartes, ou personnalise l’en-tête.'}
+                    ? 'Glisse ou utilise les flèches pour organiser l’en-tête et les actions rapides.'
+                    : 'Personnalise l’en-tête et les actions rapides du tableau.'}
                 </span>
                 <div className="dashboard-customize-hint-actions">
-                  <button
-                    type="button"
-                    onClick={() => setIsWidgetCatalogOpen(true)}
-                    aria-haspopup="dialog"
-                    aria-expanded={isWidgetCatalogOpen}
-                  >
-                    <Plus size={13} />
-                    <span>Ajouter un widget</span>
-                  </button>
                   <button
                     type="button"
                     className={`dashboard-customize-header-button${isTopbarCustomizing ? ' is-active' : ''}`}
@@ -1007,61 +966,6 @@ export default function DashboardExperience({
                 topEntreprises={topEntreprises}
               />
             )}
-
-            <section className={`dashboard-kpis${isCustomizing ? ' is-customizing' : ''}`} aria-label="Indicateurs du jour">
-              {visibleWidgets.map((widget, index) => {
-                const Icon = widget.icon
-                return (
-                  <article
-                    className={`dashboard-kpi dashboard-kpi--${widget.tone}${draggedWidgetId === widget.id ? ' is-dragging' : ''}`}
-                    key={widget.id}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => handleWidgetDrop(event, widget.id)}
-                  >
-                    <div className="dashboard-kpi-top">
-                      <span className="dashboard-kpi-label">{widget.label}</span>
-                      {!isCustomizing ? (
-                        <span className="dashboard-kpi-icon"><Icon size={16} /></span>
-                      ) : (
-                        <div className="dashboard-widget-controls" aria-label={`Contrôles de ${widget.label}`}>
-                          <button
-                            type="button"
-                            className="dashboard-widget-drag-handle"
-                            draggable="true"
-                            onDragStart={(event) => handleWidgetDragStart(event, widget.id)}
-                            onDragEnd={() => setDraggedWidgetId(null)}
-                            aria-label={`Déplacer ${widget.label}`}
-                            title="Faire glisser pour déplacer"
-                          >
-                            <GripVertical size={14} />
-                          </button>
-                          <button type="button" onClick={() => moveWidget(widget.id, -1)} disabled={index === 0} aria-label={`Déplacer ${widget.label} vers le début`} title="Monter"><MoveUp size={13} /></button>
-                          <button type="button" onClick={() => moveWidget(widget.id, 1)} disabled={index === visibleWidgets.length - 1} aria-label={`Déplacer ${widget.label} vers la fin`} title="Descendre"><MoveDown size={13} /></button>
-                          <button type="button" onClick={() => removeWidget(widget.id)} disabled={visibleWidgets.length === 1} aria-label={`Retirer ${widget.label}`} title={visibleWidgets.length === 1 ? 'Conservez au moins un widget' : 'Retirer du tableau'}><X size={13} /></button>
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="dashboard-kpi-content"
-                      onClick={() => widget.path && navigate(widget.path)}
-                      disabled={isCustomizing || !widget.path}
-                      aria-label={`Ouvrir ${widget.label}`}
-                    >
-                      <strong className="dashboard-kpi-value">{widget.value}</strong>
-                      {typeof widget.progress === 'number' && (
-                        <span className="dashboard-kpi-progress" aria-hidden="true">
-                          <span style={{ width: `${Math.max(0, Math.min(100, widget.progress))}%` }} />
-                        </span>
-                      )}
-                      <span className="dashboard-kpi-caption">{widget.caption}</span>
-                      {!isCustomizing && <ArrowRight className="dashboard-kpi-arrow" size={14} aria-hidden="true" />}
-                    </button>
-                    <span className="dashboard-kpi-source">{widget.sourceLabel}</span>
-                  </article>
-                )
-              })}
-            </section>
 
             <section className="dashboard-content-grid">
               <article className="dashboard-panel">
@@ -1377,54 +1281,6 @@ export default function DashboardExperience({
         </div>
       </div>
 
-
-      {isWidgetCatalogOpen && (
-        <div className="dashboard-widget-catalog-overlay" role="presentation" onClick={() => setIsWidgetCatalogOpen(false)}>
-          <section
-            className="dashboard-widget-catalog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="dashboard-widget-catalog-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <header className="dashboard-widget-catalog-header">
-              <div>
-                <span className="dashboard-eyebrow">En-Check · Tableau personnel</span>
-                <h2 id="dashboard-widget-catalog-title">Ajouter un widget</h2>
-                <p>Choisis tes indicateurs. Seules les données réellement chargées par tes modules sont proposées.</p>
-              </div>
-              <button type="button" className="dashboard-widget-catalog-close" onClick={() => setIsWidgetCatalogOpen(false)} aria-label="Fermer la liste des widgets"><X size={17} /></button>
-            </header>
-            <div className="dashboard-widget-catalog-body">
-              {unaddedWidgets.length > 0 ? (
-                <div className="dashboard-widget-catalog-grid">
-                  {unaddedWidgets.map((widget) => {
-                    const Icon = widget.icon
-                    return (
-                      <article className={`dashboard-widget-choice dashboard-kpi--${widget.tone}`} key={widget.id}>
-                        <span className="dashboard-widget-choice-icon"><Icon size={16} /></span>
-                        <div className="dashboard-widget-choice-copy">
-                          <strong>{widget.label}</strong>
-                          <span>{widget.description}</span>
-                          <small>{widget.sourceLabel}</small>
-                        </div>
-                        <button type="button" onClick={() => addWidget(widget.id)} aria-label={`Ajouter ${widget.label}`}><Plus size={15} /><span>Ajouter</span></button>
-                      </article>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="dashboard-widget-catalog-empty">
-                  <CheckCircle2 size={22} />
-                  <strong>Tous les indicateurs disponibles sont déjà sur ton tableau.</strong>
-                  <span>Tu peux les réorganiser ou retirer ceux dont tu n’as pas besoin.</span>
-                </div>
-              )}
-              <p className="dashboard-widget-storage-note">Ta disposition est enregistrée sur cet appareil et pour ce compte.</p>
-            </div>
-          </section>
-        </div>
-      )}
 
       {isTopbarCatalogOpen && (
         <div className="dashboard-widget-catalog-overlay" role="presentation" onClick={() => setIsTopbarCatalogOpen(false)}>
