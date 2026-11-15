@@ -213,7 +213,6 @@ export default function DashboardExperience({
   const todayLabel = currentTime?.toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   }) || new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  const currentTimeLabel = currentTime?.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) || '--:--'
   const greeting = currentTime?.getHours() < 12
     ? 'Bonjour'
     : currentTime?.getHours() < 18 ? 'Bon après-midi' : 'Bonsoir'
@@ -1032,29 +1031,6 @@ export default function DashboardExperience({
                     <span>{loadError ? 'Réessayez de charger les données avant de conclure.' : 'Aucun conflit, oubli de sortie ou demande d’horaire en attente.'}</span>
                   </div>
                 )}
-              </article>
-
-              <article className="dashboard-panel dashboard-presence-card">
-                <div className="dashboard-panel-heading">
-                  <div className="dashboard-panel-title-wrap">
-                    <span className="dashboard-panel-icon"><Activity size={16} /></span>
-                    <div><h2 className="dashboard-panel-title">Présence aujourd’hui</h2><p className="dashboard-panel-subtitle">Répartition sur {employeeCount} employé{employeeCount === 1 ? '' : 's'}.</p></div>
-                  </div>
-                </div>
-                <div className="dashboard-presence-summary">
-                  <div className="dashboard-presence-ring" style={{ '--presence-angle': `${presenceRate * 3.6}deg` }}>
-                    <div className="dashboard-presence-ring-inner"><strong>{presenceRate}%</strong><span>présence</span></div>
-                  </div>
-                  <div className="dashboard-presence-copy">
-                    <strong>{presentCount} sur {employeeCount} ont pointé</strong>
-                    <p>Mis à jour à {currentTimeLabel}</p>
-                  </div>
-                </div>
-                <div className="dashboard-presence-legend">
-                  <div className="dashboard-legend-row"><span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--good)' }} /><span>Ayant pointé</span><strong className="dashboard-legend-value">{presentCount}</strong></div>
-                  <div className="dashboard-legend-row"><span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--violet)' }} /><span>Congés / maladie</span><strong className="dashboard-legend-value">{leaveCount}</strong></div>
-                  <div className="dashboard-legend-row"><span className="dashboard-legend-dot" style={{ '--legend-color': 'var(--surface-raised)' }} /><span>Sans pointage déclaré</span><strong className="dashboard-legend-value">{absentCount}</strong></div>
-                </div>
               </article>
             </section>
 
