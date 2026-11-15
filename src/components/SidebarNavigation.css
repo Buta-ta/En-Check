@@ -21,6 +21,87 @@
   padding-bottom: 6px;
 }
 
+/* ── le filtre de navigation ── */
+.sn-filtre {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 2px 10px;
+  padding: 7px 9px;
+  border: 1px solid rgba(240, 228, 203, 0.18);
+  border-radius: 9px;
+  background: rgba(14, 10, 8, 0.4);
+  color: #8f8272;
+  transition: border-color 160ms ease;
+}
+
+.sn-filtre:focus-within { border-color: rgba(193, 116, 60, 0.6); }
+
+.sn-filtre input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  color: #f0e4cb;
+  font: inherit;
+  font-size: 11px;
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.sn-filtre input::placeholder { color: #8f8272; }
+
+.sn-filtre-effacer {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  color: #b7a68f;
+  border: none;
+  border-radius: 5px;
+  background: rgba(240, 228, 203, 0.1);
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.sn-filtre-effacer:hover { color: #f0e4cb; background: rgba(240, 228, 203, 0.2); }
+
+/* ── le chevron de repli de groupe ── */
+.sn-chevron {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  place-items: center;
+  color: #b7a68f;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.sn-chevron:hover { color: #f0e4cb; background: rgba(240, 228, 203, 0.08); }
+.sn-chevron svg { transition: transform 180ms ease; }
+.sidebar-section-label.est-repliee .sn-chevron svg { transform: rotate(-90deg); }
+
+/* Badge additionné d'un groupe replié */
+.sidebar-section-count {
+  min-width: 18px;
+  padding: 1px 6px;
+  color: #241a10;
+  font-size: 9.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  border-radius: 999px;
+  background: var(--groupe-teinte, #c1743c);
+}
+
+.sn-vide--filtre { margin: 10px 6px; text-align: center; }
+
 /* ── la bascule « Personnaliser » ── */
 .sn-outils {
   display: flex;
@@ -97,6 +178,14 @@
   font-weight: 750;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.dashboard-sidebar .sidebar-section-label .sidebar-section-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sn-groupe-point {
@@ -405,6 +494,81 @@
 }
 
 .sn-annonce:empty { display: none; }
+
+/* ══════════════ MODE RAIL (desktop uniquement) ══════════════
+   La barre se réduit à ses icônes : les libellés redeviennent
+   des tooltips au survol, les groupes deviennent de simples
+   filets, et les contrôles (filtre, personnaliser, aide)
+   disparaissent — on déplie pour les retrouver. */
+@media (min-width: 941px) {
+  .dashboard-sidebar.is-rail .sn-filtre,
+  .dashboard-sidebar.is-rail .sn-outils,
+  .dashboard-sidebar.is-rail .sn-aide,
+  .dashboard-sidebar.is-rail .sn-nouveau,
+  .dashboard-sidebar.is-rail .sn-annonce,
+  .dashboard-sidebar.is-rail .sidebar-section-label { display: none; }
+
+  .dashboard-sidebar.is-rail .sidebar-nav-group + .sidebar-nav-group {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(240, 228, 203, 0.14);
+  }
+
+  .dashboard-sidebar.is-rail .sidebar-nav-list { gap: 6px; }
+
+  .dashboard-sidebar.is-rail .sidebar-link {
+    justify-content: center;
+    gap: 0;
+    padding: 8px;
+  }
+
+  .dashboard-sidebar.is-rail .sidebar-link:hover { transform: none; }
+
+  /* Le libellé n'occupe plus de place : le bouton porte l'aria-label
+     au clavier et le libellé redevient un tooltip au survol. */
+  .dashboard-sidebar.is-rail .sidebar-link-label { display: none; }
+  .dashboard-sidebar.is-rail .sidebar-link-count { display: none; }
+
+  /* Le point « nouvelle activité » part dans le coin de l'icône */
+  .dashboard-sidebar.is-rail .sidebar-link-dot {
+    position: absolute;
+    top: 7px;
+    right: 9px;
+  }
+
+  /* L'encoche d'actif est remplacée par la teinte du fond elle-même */
+  .dashboard-sidebar.is-rail .sidebar-link.is-active::before { display: none; }
+  .dashboard-sidebar.is-rail .sidebar-link.is-active {
+    background: var(--teinte-page-fond, rgba(193, 116, 60, 0.18));
+  }
+}
+
+/* Le libellé du mode rail : rendu en portail (hors de la barre,
+   jamais rogné par son défilement), à droite de l'icône. */
+.sn-rail-tooltip {
+  position: fixed;
+  z-index: 3000;
+  padding: 6px 10px;
+  color: #241a10;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  border-radius: 8px;
+  background: #f5efe2;
+  box-shadow: 0 10px 28px rgba(10, 6, 2, 0.5);
+  pointer-events: none;
+  transform: translate(0, -50%);
+  animation: sn-rail-tooltip-apparition 140ms ease;
+}
+
+@keyframes sn-rail-tooltip-apparition {
+  from { opacity: 0; transform: translate(-4px, -50%); }
+  to { opacity: 1; transform: translate(0, -50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sn-rail-tooltip { animation: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .sn-bascule,

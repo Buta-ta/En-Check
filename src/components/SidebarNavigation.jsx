@@ -9,7 +9,7 @@
 // la logique, ce fichier ne fait que la dessiner.
 // ═══════════════════════════════════════════════════════════
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   ChevronDown,
@@ -18,8 +18,10 @@ import {
   MoveUp,
   Plus,
   RotateCcw,
+  Search,
   SlidersHorizontal,
   Trash2,
+  X,
 } from 'lucide-react'
 import {
   COULEURS_GROUPES,
@@ -28,6 +30,7 @@ import {
   changerCouleurPage,
   changerGroupePage,
   chargerNavigation,
+  chargerReplis,
   deplacerGroupe,
   deplacerPage,
   deplacerPageCran,
@@ -39,9 +42,11 @@ import {
   renommerGroupe,
   renommerPage,
   sauvegarderNavigation,
+  sauvegarderReplis,
   supprimerGroupe,
   teinteRgba,
 } from '../lib/navigationPerso'
+import RailTooltip from './RailTooltip'
 import './SidebarNavigation.css'
 
 function signatureSections(sections) {
@@ -54,27 +59,38 @@ function teinteVersRgba(teinte, alpha) {
   return teinteRgba(teinte, alpha)
 }
 
-function NavItem({ page, item, cheminActif, tabState, onSelect }) {
+function NavItem({ page, item, cheminActif, tabState, onSelect, rail = false }) {
   const Icon = item?.icon
   const actif = Boolean(item?.active) || item?.path === cheminActif
   const activiteNeuve = Boolean(tabState?.activeTriggers?.length && !tabState.viewed)
+  const [survole, setSurvole] = useState(false)
+  const refAncre = useRef(null)
   return (
-    <button
-      type="button"
-      className={`sidebar-link${actif ? ' is-active' : ''}`}
-      style={{
-        '--teinte-page': page.teinte,
-        '--teinte-page-fond': teinteVersRgba(page.teinte, 0.18),
-        '--teinte-page-trait': teinteVersRgba(page.teinte, 0.42),
-      }}
-      aria-current={actif ? 'page' : undefined}
-      onClick={() => onSelect(item)}
-    >
-      <span className="sidebar-link-icon">{Icon ? <Icon size={16} strokeWidth={1.8} /> : null}</span>
-      <span className="sidebar-link-label">{page.libelle}</span>
-      {item?.count > 0 && <span className="sidebar-link-count">{item.count > 99 ? '99+' : item.count}</span>}
-      {!item?.count && activiteNeuve && <span className="sidebar-link-dot" aria-label="Nouvelle activité" />}
-    </button>
+    <>
+      <button
+        ref={refAncre}
+        type="button"
+        className={`sidebar-link${actif ? ' is-active' : ''}`}
+        style={{
+          '--teinte-page': page.teinte,
+          '--teinte-page-fond': teinteVersRgba(page.teinte, 0.18),
+          '--teinte-page-trait': teinteVersRgba(page.teinte, 0.42),
+        }}
+        aria-current={actif ? 'page' : undefined}
+        aria-label={rail ? page.libelle : undefined}
+        onMouseEnter={() => setSurvole(true)}
+        onMouseLeave={() => setSurvole(false)}
+        onFocus={() => setSurvole(true)}
+        onBlur={() => setSurvole(false)}
+        onClick={() => onSelect(item)}
+      >
+        <span className="sidebar-link-icon">{Icon ? <Icon size={16} strokeWidth={1.8} /> : null}</span>
+        <span className="sidebar-link-label">{page.libelle}</span>
+        {item?.count > 0 && <span className="sidebar-link-count">{item.count > 99 ? '99+' : item.count}</span>}
+        {!item?.count && activiteNeuve && <span className="sidebar-link-dot" aria-label="Nouvelle activité" />}
+      </button>
+      {rail && <RailTooltip texte={page.libelle} actif={survole} ancre={refAncre} />}
+    </>
   )
 }
 
@@ -97,7 +113,7 @@ function Pastilles({ valeur, surChoix, prefixe }) {
   )
 }
 
-export default function SidebarNavigation({ sections = [], tabStates = {}, onSelect, idAdministrateur }) {
+export default function SidebarNavigation({ sections = [], tabStates = {}, onSelect, idAdministrateur, rail = false }) {
   const { pathname } = useLocation()
   const signature = signatureSections(sections)
   const index = useMemo(() => indexerPages(sections), [signature]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -109,6 +125,8 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
   const [nomNouveauGroupe, setNomNouveauGroupe] = useState('')
   const [couleurNouveauGroupe, setCouleurNouveauGroupe] = useState('cuivre')
   const [annonce, setAnnonce] = useState('')
+  const [filtre, setFiltre] = useState('')
+  const [replis, setReplis] = useState(() => chargerReplis(null, idAdministrateur))
 
   // Les pages et les groupes du code peuvent changer (module éteint,
   // nouvelle page) : on rapproche sans jamais perdre l'ordre choisi.
@@ -117,6 +135,20 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
   useEffect(() => {
     sauvegarderNavigation(null, idAdministrateur, modele)
   }, [modele, idAdministrateur])
+
+  useEffect(() => {
+    sauvegarderReplis(null, idAdministrateur, replis)
+  }, [replis, idAdministrateur])
+
+  // ── Filtre de navigation (accents et casse ignorés) ──
+  // Inappliqué en rail : le champ est masqué, un filtre résiduel
+  // ferait disparaître des icônes sans qu'on puisse le voir.
+  const filtreActif = !rail && filtre.trim().length > 0
+  const sansAccents = (texte) => String(texte || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  const correspondFiltre = (libelle) => !filtreActif || sansAccents(libelle).includes(sansAccents(filtre))
+  const basculerGroupe = (groupeId) => setReplis((courant) => (
+    courant.includes(groupeId) ? courant.filter((id) => id !== groupeId) : [...courant, groupeId]
+  ))
 
   useEffect(() => {
     if (!personnalisation) return undefined
@@ -181,6 +213,23 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
 
   return (
     <nav className="sidebar-navigation" aria-label="Navigation principale">
+      {!personnalisation && (
+        <div className="sn-filtre" role="search">
+          <Search size={13} aria-hidden="true" />
+          <input
+            type="text"
+            value={filtre}
+            placeholder="Filtrer la navigation"
+            aria-label="Filtrer la navigation"
+            onChange={(evenement) => setFiltre(evenement.target.value)}
+          />
+          {filtre && (
+            <button type="button" className="sn-filtre-effacer" aria-label="Effacer le filtre" onClick={() => setFiltre('')}>
+              <X size={11} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      )}
       <div className="sn-outils">
         <button
           type="button"
@@ -210,6 +259,16 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
         // Un groupe vide ne s'affiche qu'en personnalisation : on le voit
         // pour y glisser une page, il ne prend pas de place sinon.
         if (!personnalisation && pages.length === 0) return null
+        // Le filtre force les groupes dépliés et ne garde que les pages
+        // qui correspondent ; le repli manuel ne s'applique pas alors.
+        const pagesAffichees = filtreActif && !personnalisation
+          ? pages.filter((page) => correspondFiltre(page.libelle))
+          : pages
+        if (filtreActif && !personnalisation && pagesAffichees.length === 0) return null
+        // En rail, le chevron est masqué : tout reste déplié pour que
+        // chaque page garde son icône accessible.
+        const replie = !rail && !personnalisation && !filtreActif && replis.includes(groupe.id)
+        const totalGroupe = pages.reduce((somme, page) => somme + (Number(page.item?.count) || 0), 0)
         const groupeCible = cible?.groupe === groupe.id
         return (
           <section
@@ -280,18 +339,33 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
                 </span>
               </div>
             ) : (
-              <p className="sidebar-section-label">
+              <p className={`sidebar-section-label${replie ? ' est-repliee' : ''}`}>
                 <span className="sn-groupe-point" aria-hidden="true" />
-                <span>{groupe.nom}</span>
+                <span className="sidebar-section-name">{groupe.nom}</span>
+                {replie && totalGroupe > 0 && (
+                  <span className="sidebar-section-count" title="Éléments à traiter dans ce groupe">{totalGroupe}</span>
+                )}
+                {!filtreActif && (
+                  <button
+                    type="button"
+                    className="sn-chevron"
+                    aria-expanded={!replie}
+                    aria-label={replie ? `Déplier le groupe ${groupe.nom}` : `Replier le groupe ${groupe.nom}`}
+                    onClick={() => basculerGroupe(groupe.id)}
+                  >
+                    <ChevronDown size={13} aria-hidden="true" />
+                  </button>
+                )}
               </p>
             )}
 
+            {replie ? null : (
             <div className="sidebar-nav-list">
-              {pages.length === 0 && (
+              {pagesAffichees.length === 0 && (
                 <p className="sn-vide">{personnalisation ? 'Groupe vide — glisse une page ici.' : 'Aucune page visible.'}</p>
               )}
 
-              {pages.map((page) => {
+              {pagesAffichees.map((page) => {
                 if (!personnalisation) {
                   return (
                     <NavItem
@@ -301,6 +375,7 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
                       cheminActif={pathname}
                       tabState={page.item?.tabKey ? tabStates[page.item.tabKey] : null}
                       onSelect={onSelect}
+                      rail={rail}
                     />
                   )
                 }
@@ -375,9 +450,16 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
                 )
               })}
             </div>
+            )}
           </section>
         )
       })}
+
+      {filtreActif && !personnalisation && (
+        blocs.every(({ pages }) => !pages.some((page) => correspondFiltre(page.libelle))) ? (
+          <p className="sn-vide sn-vide--filtre">Aucune page ne correspond à « {filtre.trim()} ».</p>
+        ) : null
+      )}
 
       {personnalisation && (
         <div className="sn-nouveau">

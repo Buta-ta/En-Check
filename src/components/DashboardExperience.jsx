@@ -3,6 +3,7 @@ import {
   Activity,
   AlertTriangle,
   ArrowRight,
+  BarChart3,
   Bell,
   Building2,
   Calendar,
@@ -10,7 +11,10 @@ import {
   CalendarOff,
   Camera,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Clock,
   GripVertical,
   Coffee,
@@ -45,6 +49,8 @@ import {
 import { Link, useNavigate } from 'react-router-dom'
 import EnterpriseSwitcher from './EnterpriseSwitcher'
 import SidebarNavigation from './SidebarNavigation'
+import RailTooltip from './RailTooltip'
+import { chargerRail, sauvegarderRail } from '../lib/navigationPerso'
 import NotificationBell from './NotificationBell'
 import SystemMessageBanner from './SystemMessageBanner'
 import DashboardKenteAnalytics from './DashboardKenteAnalytics'
@@ -188,6 +194,45 @@ export default function DashboardExperience({
   const forgottenExits = Number(stats?.oublisSortie) || 0
   const conflictCount = conflictsPending.length || Number(stats?.conflitsPending) || 0
   const [liveNowMs, setLiveNowMs] = useState(() => Date.now())
+
+  // Le rail « icônes seules » : retenu par administrateur, appliqué
+  // sur desktop uniquement (le tiroir mobile reste toujours déplié).
+  const [sidebarRail, setSidebarRail] = useState(() => chargerRail(null, admin?.id))
+  useEffect(() => {
+    sauvegarderRail(null, admin?.id, sidebarRail)
+  }, [sidebarRail, admin?.id])
+  const [estDesktop, setEstDesktop] = useState(() => window.matchMedia?.('(min-width: 941px)')?.matches ?? true)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined
+    const requete = window.matchMedia('(min-width: 941px)')
+    const surChangement = (evenement) => setEstDesktop(evenement.matches)
+    requete.addEventListener('change', surChangement)
+    return () => requete.removeEventListener('change', surChangement)
+  }, [])
+  const railActif = sidebarRail && estDesktop
+
+  // Survol/focus du lien « Espace employé » pour son tooltip en rail.
+  const [survolPortail, setSurvolPortail] = useState(false)
+  const refPortail = useRef(null)
+
+  // Le menu du profil se ferme au clic hors du bloc ou sur Échap.
+  const [menuProfilOuvert, setMenuProfilOuvert] = useState(false)
+  const refProfil = useRef(null)
+  useEffect(() => {
+    if (!menuProfilOuvert) return undefined
+    const fermerSiExterieur = (evenement) => {
+      if (!refProfil.current?.contains(evenement.target)) setMenuProfilOuvert(false)
+    }
+    const surTouche = (evenement) => {
+      if (evenement.key === 'Escape') setMenuProfilOuvert(false)
+    }
+    document.addEventListener('mousedown', fermerSiExterieur)
+    window.addEventListener('keydown', surTouche)
+    return () => {
+      document.removeEventListener('mousedown', fermerSiExterieur)
+      window.removeEventListener('keydown', surTouche)
+    }
+  }, [menuProfilOuvert])
   const realPausesToday = pausesToday.filter((pa) => estPauseReelleEffectuee(pa))
   const activePauses = realPausesToday.filter((pa) => pa?.ouverte)
   const unplannedPauses = realPausesToday.filter((pa) => pa?.estNonPlanifiee)
@@ -720,13 +765,23 @@ export default function DashboardExperience({
           />
         )}
 
-        <aside className={`dashboard-sidebar${mobileMenuOpen ? ' is-open' : ''}`} aria-label="Navigation principale">
+        <aside className={`dashboard-sidebar${mobileMenuOpen ? ' is-open' : ''}${railActif ? ' is-rail' : ''}`} aria-label="Navigation principale">
           <div className="sidebar-brand">
             <EnCheckBrandMark className="sidebar-brand-mark" size={42} />
             <div className="sidebar-brand-copy">
               <span className="sidebar-brand-wordmark">En-Check</span>
               <span className="sidebar-brand-tagline">On gère !</span>
             </div>
+            <button
+              type="button"
+              className="sidebar-rail-toggle"
+              aria-label={sidebarRail ? 'Déplier la barre de navigation' : 'Réduire la barre de navigation en icônes'}
+              aria-pressed={sidebarRail}
+              title={sidebarRail ? 'Déplier la barre' : 'Barre en icônes'}
+              onClick={() => setSidebarRail((valeur) => !valeur)}
+            >
+              {railActif ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}
+            </button>
           </div>
 
           <div className="sidebar-bogolan" aria-hidden="true" />
@@ -737,38 +792,49 @@ export default function DashboardExperience({
               tabStates={tabStates}
               onSelect={handleNavigation}
               idAdministrateur={admin?.id}
+              rail={railActif}
             />
 
             <a
+              ref={refPortail}
               className="sidebar-portal-link"
               href="/employee/login"
               target="_blank"
               rel="noreferrer"
+              aria-label={railActif ? 'Espace employé (nouvel onglet)' : undefined}
+              onMouseEnter={() => setSurvolPortail(true)}
+              onMouseLeave={() => setSurvolPortail(false)}
+              onFocus={() => setSurvolPortail(true)}
+              onBlur={() => setSurvolPortail(false)}
               onClick={() => setMobileMenuOpen(false)}
             >
               <Users size={16} />
               <span>Espace employé</span>
               <ArrowRight size={14} />
             </a>
+            {railActif && <RailTooltip texte="Espace employé" actif={survolPortail} ancre={refPortail} />}
           </div>
 
           <div className="sidebar-bogolan sidebar-bogolan--bas" aria-hidden="true" />
 
-          <div className="sidebar-profile">
+          <div className="sidebar-profile" ref={refProfil}>
             {isSuperAdmin ? (
-              <Link
+              <button
+                type="button"
                 className="sidebar-profile-link"
-                to="/admins"
-                title="Ouvrir la page Administrateurs"
-                onClick={() => setMobileMenuOpen(false)}
+                aria-haspopup="menu"
+                aria-expanded={menuProfilOuvert}
+                title={`${adminName} · ${adminRole} — menu du profil`}
+                aria-label={`Menu du profil de ${adminName}`}
+                onClick={() => setMenuProfilOuvert((valeur) => !valeur)}
               >
                 <span className="sidebar-profile-avatar">{adminInitials}</span>
                 <span className="sidebar-profile-copy">
                   <span className="sidebar-profile-name">{adminName}</span>
                   <span className="sidebar-profile-role">{adminRole}</span>
                 </span>
-                <ChevronRight className="sidebar-profile-chevron" size={15} aria-hidden="true" />
-              </Link>
+                <ChevronDown className="sidebar-profile-chevron" size={14} aria-hidden="true" />
+              </button>
             ) : (
               <div className="sidebar-profile-link is-statique">
                 <span className="sidebar-profile-avatar">{adminInitials}</span>
@@ -776,6 +842,37 @@ export default function DashboardExperience({
                   <span className="sidebar-profile-name">{adminName}</span>
                   <span className="sidebar-profile-role">{adminRole}</span>
                 </span>
+              </div>
+            )}
+            {isSuperAdmin && menuProfilOuvert && (
+              <div className="sidebar-profile-menu" role="menu" aria-label="Actions du profil">
+                <Link
+                  role="menuitem"
+                  className="sidebar-profile-menu-item"
+                  to="/admins"
+                  onClick={() => { setMenuProfilOuvert(false); setMobileMenuOpen(false) }}
+                >
+                  <UserCheck size={14} aria-hidden="true" />
+                  Profil & administrateurs
+                </Link>
+                <Link
+                  role="menuitem"
+                  className="sidebar-profile-menu-item"
+                  to="/analytics"
+                  onClick={() => { setMenuProfilOuvert(false); setMobileMenuOpen(false) }}
+                >
+                  <BarChart3 size={14} aria-hidden="true" />
+                  Analytics du site
+                </Link>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="sidebar-profile-menu-item sidebar-profile-menu-item--danger"
+                  onClick={() => { setMenuProfilOuvert(false); handleLogout() }}
+                >
+                  <LogOut size={14} aria-hidden="true" />
+                  Déconnexion
+                </button>
               </div>
             )}
             <button type="button" className="sidebar-logout" onClick={handleLogout} title="Déconnexion" aria-label="Déconnexion">
