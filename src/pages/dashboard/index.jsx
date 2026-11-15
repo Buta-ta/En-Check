@@ -19,7 +19,7 @@ export default function Dashboard() {
     moduleHeuresSup, moduleGeofencing, moduleCarteTempsReel,
     moduleRecoFaciale, moduleFichesPaie, moduleTaches, modulePredictions,
     modulePointeuses, modulePostePointage, moduleRemunerations,
-    moduleCoutSalarial, moduleConfigFiscale, stats, recentActivity,
+    moduleCoutSalarial, moduleConfigFiscale, stats, recentActivity, liveEmployees,
     topEntreprises, conflictsPending, scheduleRequestsPending,
     processingScheduleRequestId, forgottenExitItems, savingForgottenExitId,
     pausesToday, todayHoliday, currentTime, notifications, unreadCount,
@@ -84,6 +84,7 @@ export default function Dashboard() {
         moduleConfigFiscale={moduleConfigFiscale}
         stats={stats}
         recentActivity={recentActivity}
+        liveEmployees={liveEmployees}
         topEntreprises={topEntreprises}
         kenteStats={stats}
         conflictsPending={conflictsPending}

@@ -56,6 +56,7 @@ export function useDashboardData() {
   })
 
   const [recentActivity, setRecentActivity] = useState([])
+  const [liveEmployees, setLiveEmployees] = useState([])
   const [alerts, setAlerts] = useState([])
   const [topEntreprises, setTopEntreprises] = useState([])
 
@@ -260,7 +261,7 @@ export function useDashboardData() {
     loadSingleEnterpriseDashboard,
     loadGlobalSuperAdminDashboard,
   } = useDashboardLoaders({
-    admin, today, navigate, setStats, setRecentActivity, setAlerts,
+    admin, today, navigate, setStats, setRecentActivity, setLiveEmployees, setAlerts,
     setTopEntreprises, setConflictsPending, setScheduleRequestsPending,
     setForgottenExitItems, setPausesToday, setTodayHoliday,
     setModulePlanning, setModuleRetards, setModuleConges,
@@ -287,7 +288,7 @@ export function useDashboardData() {
     modulePointeuses, modulePostePointage, moduleRemunerations,
     moduleCoutSalarial, moduleConfigFiscale,
     moduleAlertesTelephone, moduleAlertesCourrier,
-    stats, recentActivity, alerts, topEntreprises, conflictsPending,
+    stats, recentActivity, liveEmployees, alerts, topEntreprises, conflictsPending,
     scheduleRequestsPending, forgottenExitItems,
     showConflictModal, setShowConflictModal, selectedConflict,
     setSelectedConflict, conflictNote, setConflictNote,

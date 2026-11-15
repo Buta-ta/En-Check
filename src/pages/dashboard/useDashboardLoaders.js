@@ -18,9 +18,30 @@ import { compterRetardsDuJour } from '../../services/hoursCalculator'
 import { construirePauses, estPauseReelleEffectuee } from '../../services/pausesService'
 import { formaterHeureLocale } from '../../utils/timezoneUtils'
 
+// Les requêtes sont triées du pointage le plus récent au plus ancien : le
+// premier enregistrement de chaque personne est son état courant du jour.
+function derniersPointagesParEmploye(rows = []) {
+  const derniers = new Map()
+  for (const row of rows) {
+    if (!row?.employee_id || derniers.has(row.employee_id)) continue
+    derniers.set(row.employee_id, {
+      id: row.employee_id,
+      employee_id: row.employee_id,
+      enterprise_id: row.enterprise_id,
+      employee: row.employees || null,
+      type: String(row.check_type || '').toLowerCase(),
+      time: row.check_time,
+      photoUrl: row.employees?.photo_url || null,
+      matricule: row.employees?.matricule || '',
+      isAutoClosed: Boolean(row.is_auto_closed),
+    })
+  }
+  return [...derniers.values()]
+}
+
 export function useDashboardLoaders(ctx) {
   const {
-    admin, today, navigate, setStats, setRecentActivity, setAlerts,
+    admin, today, navigate, setStats, setRecentActivity, setLiveEmployees, setAlerts,
     setTopEntreprises, setConflictsPending, setScheduleRequestsPending,
     setForgottenExitItems, setPausesToday, setTodayHoliday,
     setModulePlanning, setModuleRetards, setModuleConges,
@@ -129,6 +150,13 @@ export function useDashboardLoaders(ctx) {
     const retardsToday = retardsOptionActive
       ? compterRetardsDuJour(retardEntries, empSchedData, defSchedData, today)
       : 0
+    const derniersPointages = derniersPointagesParEmploye(attendancesToday).map((entry) => ({
+      ...entry,
+      isLate: retardsOptionActive && entry.type === 'in'
+        ? compterRetardsDuJour([attendancesToday.find((row) => row.employee_id === entry.employee_id)], empSchedData, defSchedData, today) > 0
+        : false,
+    }))
+    setLiveEmployees(derniersPointages)
     const tauxPresence = employesData.length > 0 ? Math.round((presentsToday / employesData.length) * 100) : 0
 
     const conflictsData = await loadConflicts(enterpriseId)
@@ -252,6 +280,13 @@ export function useDashboardLoaders(ctx) {
       defSchedData,
       today
     )
+    const derniersPointages = derniersPointagesParEmploye(attendancesToday).map((entry) => ({
+      ...entry,
+      isLate: entry.type === 'in' && retardsAutorises(entry.enterprise_id)
+        ? compterRetardsDuJour([attendancesToday.find((row) => row.employee_id === entry.employee_id)], empSchedData, defSchedData, today) > 0
+        : false,
+    }))
+    setLiveEmployees(derniersPointages)
     const tauxPresence = totalEmployes > 0 ? Math.round((presentsToday / totalEmployes) * 100) : 0
 
     const conflictsData = await loadConflicts(null)
@@ -527,15 +562,33 @@ export function useDashboardLoaders(ctx) {
   useEffect(() => {
     if (!admin) return undefined
     const targetEnterpriseId = admin.selectedEnterprise?.id || admin.enterprise_id || null
+    const refreshLiveEmployees = async () => {
+      const startOfDay = new Date(`${today}T00:00:00`).toISOString()
+      const endOfDay = new Date(`${today}T23:59:59`).toISOString()
+      let query = supabase.from('attendances')
+        .select('id, employee_id, enterprise_id, check_time, check_type, is_auto_closed, employees (id, first_name, last_name, matricule, photo_url)')
+        .gte('check_time', startOfDay).lte('check_time', endOfDay)
+        .order('check_time', { ascending: false })
+      if (targetEnterpriseId) query = query.eq('enterprise_id', targetEnterpriseId)
+      const { data, error } = await query
+      if (error) return
+      setLiveEmployees((previous) => {
+        const previousLate = new Map(previous.map((entry) => [entry.employee_id, entry.isLate]))
+        return derniersPointagesParEmploye(data || []).map((entry) => ({
+          ...entry,
+          isLate: previousLate.get(entry.employee_id) || false,
+        }))
+      })
+    }
     const channel = supabase
-      .channel('dashboard_pauses_live')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'encheck_pauses' },
-        () => {
-          loadDashboardPauses(targetEnterpriseId)
-        }
-      )
+      .channel('dashboard_live_presence')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'encheck_pauses' }, () => {
+        loadDashboardPauses(targetEnterpriseId)
+      })
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'attendances',
+        ...(targetEnterpriseId ? { filter: `enterprise_id=eq.${targetEnterpriseId}` } : {}),
+      }, refreshLiveEmployees)
       .subscribe()
 
     return () => {
