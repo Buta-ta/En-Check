@@ -293,7 +293,9 @@
    (avec son sélecteur) et la bascule de repli. */
 .nav-panel-tete {
   position: relative;
-  z-index: 1;
+  /* Au-dessus du corps (z-index 1) : le dropdown du sélecteur
+     d'entreprise doit flotter sur la navigation, pas dessous. */
+  z-index: 2;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
@@ -957,6 +959,16 @@
     margin-left: 0;
     border: 0;
     border-radius: 0;
+    box-shadow: none;
+  }
+  /* Le repli est un état desktop (persistance par administrateur) :
+     sans cette surcharge, un panneau replié sur ordinateur ferait
+     ouvrir le tiroir mobile vide. */
+  .dashboard-sidebar.is-repliee .nav-panel {
+    width: 100%;
+    flex-basis: auto;
+    margin-left: 0;
+    border-width: 0;
     box-shadow: none;
   }
   .nav-panel-inner { width: 100%; }
