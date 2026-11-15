@@ -83,6 +83,12 @@ export default function DashboardDesignPreview() {
           { id: 'punch-3', type: 'in', time: new Date(Date.now() - 26 * 60_000).toISOString(), employee: { first_name: 'Mireille', last_name: 'Ahouansou', matricule: 'KOR-014' }, hasPhoto: true },
           { id: 'punch-4', type: 'in', time: new Date(Date.now() - 37 * 60_000).toISOString(), employee: { first_name: 'Simon', last_name: 'Dossou', matricule: 'KOR-026' }, hasPhoto: false },
         ]}
+        liveEmployees={[
+          { id: 'preview-employee-1', employee_id: 'preview-employee-1', type: 'in', time: new Date(Date.now() - 3 * 60 * 60_000).toISOString(), employee: { id: 'preview-employee-1', first_name: 'Paule', last_name: 'Hountondji', matricule: 'KOR-008', photo_url: '/images/dashboard-attendance.jpg' }, photoUrl: '/images/dashboard-attendance.jpg' },
+          { id: 'preview-employee-2', employee_id: 'preview-employee-2', type: 'in', time: new Date(Date.now() - 2 * 60 * 60_000).toISOString(), employee: { id: 'preview-employee-2', first_name: 'Mireille', last_name: 'Ahouansou', matricule: 'KOR-014', photo_url: '/images/dashboard-attendance.jpg' }, photoUrl: '/images/dashboard-attendance.jpg' },
+          { id: 'preview-employee-3', employee_id: 'preview-employee-3', type: 'in', time: new Date(Date.now() - 90 * 60_000).toISOString(), employee: { id: 'preview-employee-3', first_name: 'Simon', last_name: 'Dossou', matricule: 'KOR-026' } },
+        ]}
+        pausesToday={[{ employe_id: 'preview-employee-3', statut: 'reelle', source: 'pointee', ouverte: true, debutHHMM: '10:24' }]}
         topEntreprises={[]}
         conflictsPending={demoConflicts}
         scheduleRequestsPending={[

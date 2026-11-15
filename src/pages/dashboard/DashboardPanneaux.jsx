@@ -22,12 +22,13 @@ function initiales(employee) {
 
 export default function DashboardPanneaux({ layout, data }) {
   const { activityFilter, setActivityFilter } = layout
-  const { recentActivity = [], retardsOptionActive = false, loadError, activePauses = [] } = data
+  const { recentActivity = [], liveEmployees, retardsOptionActive = false, loadError, activePauses = [] } = data
+  const source = Array.isArray(liveEmployees) ? liveEmployees : recentActivity
 
   // L'état de chaque collaborateur vient des pointages réels du jour
   // (dernier pointage) et des pauses réellement ouvertes.
   const etats = new Map()
-  for (const item of recentActivity) {
+  for (const item of source) {
     const id = item.employee_id || item.employee?.id
     if (!id) continue
     etats.set(id, {
@@ -35,13 +36,13 @@ export default function DashboardPanneaux({ layout, data }) {
       employee: item.employee,
       lastType: String(item.type || '').toLowerCase(),
       lastTime: item.time,
-      photoUrl: item.photoUrl,
+      photoUrl: item.employee?.photo_url || item.photoUrl,
       isLate: Boolean(item.isLate),
       matricule: item.employee?.matricule,
     })
   }
   for (const pause of activePauses) {
-    const id = pause.employee_id
+    const id = pause.employe_id || pause.employee_id
     if (id && etats.has(id)) etats.get(id).enPause = true
   }
   const lignes = [...etats.values()].sort(

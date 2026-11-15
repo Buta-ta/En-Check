@@ -80,6 +80,7 @@ export default function DashboardExperience({
   moduleConfigFiscale,
   stats,
   recentActivity = [],
+  liveEmployees = [],
   topEntreprises = [],
   conflictsPending = [],
   scheduleRequestsPending = [],
@@ -120,6 +121,7 @@ export default function DashboardExperience({
   const navigate = useNavigate()
   const employeeCount = Number(stats?.employes) || 0
   const presentCount = Number(stats?.presentsToday) || 0
+  const livePresentCount = liveEmployees.filter((employee) => String(employee.type || '').toLowerCase() === 'in').length
   const lateCount = Number(stats?.retardsToday) || 0
   const forgottenExits = Number(stats?.oublisSortie) || 0
   const conflictCount = conflictsPending.length || Number(stats?.conflitsPending) || 0
@@ -329,23 +331,14 @@ export default function DashboardExperience({
   const dateLongue = baseDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const paysLibelle = PAYS_FR[admin?.selectedEnterprise?.country_code] || ''
 
-  const presentsAvatars = useMemo(() => {
-    const vus = new Set()
-    const liste = []
-    for (const item of recentActivity) {
-      const id = item.employee_id || item.employee?.id
-      if (!id || vus.has(id)) continue
-      if (String(item.type || '').toLowerCase() !== 'in') continue
-      vus.add(id)
-      liste.push({
-        id,
-        photo: item.photoUrl,
-        nom: `${item.employee?.first_name || ''} ${item.employee?.last_name || ''}`.trim(),
-      })
-      if (liste.length >= 4) break
-    }
-    return liste
-  }, [recentActivity])
+  const presentsAvatars = useMemo(() => liveEmployees
+    .filter((item) => String(item.type || '').toLowerCase() === 'in')
+    .slice(0, 4)
+    .map((item) => ({
+      id: item.employee_id || item.id,
+      photo: item.employee?.photo_url || item.photoUrl,
+      nom: `${item.employee?.first_name || ''} ${item.employee?.last_name || ''}`.trim(),
+    })), [liveEmployees])
 
   // ═══ MISE EN ROUTE (4 étapes pilotées par les données réelles) ═══
   const etapesMiseEnRoute = [
@@ -373,7 +366,7 @@ export default function DashboardExperience({
     setConflictNote, resolvingConflict, resolveConflict,
   }
   const panneauxData = {
-    recentActivity, retardsOptionActive, loadError, activePauses,
+    recentActivity, liveEmployees, retardsOptionActive, loadError, activePauses,
   }
 
   const lignesAverifier = [
@@ -475,7 +468,7 @@ export default function DashboardExperience({
           <div className="mq-hero-overlay" aria-hidden="true" />
           <div className="mq-hero-presents">
             <span>
-              <b>{loadError ? '—' : presentCount}</b> présent{presentCount > 1 ? 's' : ''}
+              <b>{loadError ? '—' : livePresentCount}</b> présent{livePresentCount > 1 ? 's' : ''}
             </span>
             <span className="mq-hero-avatars">
               {presentsAvatars.map((p) => (p.photo
