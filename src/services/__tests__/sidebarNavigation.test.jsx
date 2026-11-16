@@ -32,6 +32,9 @@ const SECTIONS = [
     items: [
       { label: 'Entreprises', path: '/entreprises', show: true },
       { label: 'Messages système', path: '/system-messages', show: true },
+      // L'entrée « Personnalisation » : sans chemin, elle ne fait pas
+      // partie du modèle de navigation.
+      { label: 'Personnalisation', show: true, rubrique: 'groupe-2' },
     ],
   },
 ]
@@ -100,10 +103,11 @@ const memoire = () => {
 }
 
 describe('la barre, au repos', () => {
-  it('dessine un groupe coloré par section, dans l’ordre', async () => {
+  it('dessine les sections, dans l’ordre, sans points colorés', async () => {
     await ouvrir()
     expect(titresGroupe()).toEqual(['Aujourd’hui', 'Administration'])
-    expect(hote.querySelectorAll('.sn-groupe-point')).toHaveLength(2)
+    // Design pro : plus de pastille colorée devant le nom de rubrique.
+    expect(hote.querySelectorAll('.sn-groupe-point')).toHaveLength(0)
   })
 
   it('affiche les pages visibles, dans l’ordre du code', async () => {
@@ -139,6 +143,7 @@ describe('la barre, au repos', () => {
 describe('le mode Personnaliser', () => {
   it('s’ouvre et se referme', async () => {
     await ouvrir()
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     expect(hote.querySelector('.sn-aide')).toBeTruthy()
     expect(champsPage()).toHaveLength(5)
@@ -148,6 +153,7 @@ describe('le mode Personnaliser', () => {
 
   it('se referme avec Échap', async () => {
     await ouvrir()
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
@@ -158,6 +164,7 @@ describe('le mode Personnaliser', () => {
 
   it('renomme une page et retient le nom', async () => {
     await ouvrir()
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     await ecrire(champsPage()[1], 'Pointages du matin')
     expect(champsPage()[1].value).toBe('Pointages du matin')
@@ -166,6 +173,7 @@ describe('le mode Personnaliser', () => {
 
   it('retrouve le nom après un rechargement', async () => {
     await ouvrir()
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     await ecrire(champsPage()[1], 'Pointages du matin')
 
@@ -177,6 +185,7 @@ describe('le mode Personnaliser', () => {
 
   it('descend une page au clavier et garde l’ordre', async () => {
     await ouvrir()
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     const avant = champsPage().map((champ) => champ.value)
     await cliquer(hote.querySelector('[aria-label="Descendre Vue d’ensemble"]'))
@@ -187,6 +196,7 @@ describe('le mode Personnaliser', () => {
 
   it('range une page dans un autre groupe par le sélecteur', async () => {
     await ouvrir()
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     const select = hote.querySelector('.sn-page select')
     expect(select).toBeTruthy()
@@ -201,6 +211,7 @@ describe('le mode Personnaliser', () => {
 
   it('crée un groupe nommé, avec sa couleur', async () => {
     await ouvrir()
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     await ecrire(hote.querySelector('[aria-label="Nom du nouveau groupe"]'), 'Mon atelier')
     await cliquer(hote.querySelector('[aria-label="Couleur du nouveau groupe : Olive"]'))
@@ -211,6 +222,7 @@ describe('le mode Personnaliser', () => {
 
   it('colore un groupe existant', async () => {
     await ouvrir()
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     const olive = hote.querySelector('[aria-label="Couleur du groupe Administration : Olive"]')
     await cliquer(olive)
@@ -220,6 +232,7 @@ describe('le mode Personnaliser', () => {
 
   it('rétablit la navigation d’origine', async () => {
     await ouvrir()
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     await ecrire(champsPage()[1], 'Pointages du matin')
     await cliquer(bouton('Rétablir'))
@@ -229,9 +242,48 @@ describe('le mode Personnaliser', () => {
 
   it('annonce les gestes aux lecteurs d’écran', async () => {
     await ouvrir()
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     expect(hote.querySelector('.sn-annonce').getAttribute('aria-live')).toBe('polite')
     await cliquer(hote.querySelector('[aria-label="Descendre Vue d’ensemble"]'))
     expect(hote.querySelector('.sn-annonce').textContent).toContain('descendue')
+  })
+})
+
+describe('le point d’entrée unique « Personnalisation »', () => {
+  it('vit en fin de rubrique et ouvre le panneau des modes', async () => {
+    await ouvrir()
+    const entree = bouton('Personnalisation')
+    expect(entree).toBeTruthy()
+    expect(entree.getAttribute('aria-expanded')).toBe('false')
+    expect(hote.querySelector('.sn-personnalisation-panneau')).toBeNull()
+    await cliquer(entree)
+    expect(entree.getAttribute('aria-expanded')).toBe('true')
+    const lignes = [...hote.querySelectorAll('.sn-personnalisation-ligne')].map((ligne) => ligne.textContent)
+    expect(lignes.some((texte) => texte.includes('Personnaliser le tableau'))).toBe(true)
+    expect(lignes.some((texte) => texte.includes('Personnaliser les actions'))).toBe(true)
+    expect(lignes.some((texte) => texte.includes('Personnaliser les cartes'))).toBe(true)
+    expect(lignes.some((texte) => texte.includes('Personnaliser la navigation'))).toBe(true)
+  })
+
+  it('se referme avec Échap, sans ouvrir de mode', async () => {
+    await ouvrir()
+    await cliquer(bouton('Personnalisation'))
+    expect(hote.querySelector('.sn-personnalisation-panneau')).toBeTruthy()
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    })
+    await laisser()
+    expect(hote.querySelector('.sn-personnalisation-panneau')).toBeNull()
+    expect(hote.querySelector('.sn-aide')).toBeNull()
+  })
+
+  it('disparaît pendant le mode Personnaliser', async () => {
+    await ouvrir()
+    await cliquer(bouton('Personnalisation'))
+    await cliquer(bouton('Personnaliser la navigation'))
+    expect(hote.querySelector('.sn-personnalisation-bouton')).toBeNull()
+    await cliquer(bouton('Terminer'))
+    expect(hote.querySelector('.sn-personnalisation-bouton')).toBeTruthy()
   })
 })

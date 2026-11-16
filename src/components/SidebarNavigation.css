@@ -241,67 +241,151 @@
 .sn-vide--filtre { text-align: center; }
 
 /* ── Les actions secondaires, en pied de panneau ── */
-.sn-outils {
+/* ── Le point d'entrée unique « Personnalisation » ──
+   Une ligne comme les autres pages, en fin de rubrique ; elle ouvre
+   un panneau avec les quatre personnalisations. */
+.sn-personnalisation { position: relative; }
+
+.sn-personnalisation-bouton { color: var(--sidebar-muted); }
+.sn-personnalisation-bouton:hover { color: var(--sidebar-ink); }
+.sn-personnalisation-bouton.is-active {
+  color: var(--sidebar-active);
+  background: var(--teinte-page-fond, var(--sidebar-fill));
+}
+.sn-personnalisation-bouton.is-active .sidebar-link-icon { color: var(--sidebar-active); }
+
+.sn-personnalisation-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.sn-personnalisation-chev {
+  flex: 0 0 auto;
+  color: var(--sidebar-muted);
+  transition: transform 160ms ease;
+}
+.sn-personnalisation-chev.est-ouvert { transform: rotate(180deg); }
+
+.sn-personnalisation-panneau {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  /* En bas du panneau : la section « Réglages » de la personnalisation. */
-  margin-top: auto;
-  padding: 10px 2px 2px;
-  border-top: 1px solid var(--sidebar-line);
-}
-
-.sn-outils-titre {
-  margin: 0 2px;
-  color: var(--sidebar-muted);
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.sn-outils-grille {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.sn-bascule,
-.sn-retablir {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 9px;
-  color: var(--sidebar-muted);
-  font-size: 10.5px;
-  font-weight: 700;
+  gap: 3px;
+  margin: 4px 2px 8px 26px;
+  padding: 6px;
   border: 1px solid var(--sidebar-line);
-  border-radius: 9px;
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(20, 12, 6, 0.10);
+  animation: sn-panneau-entree 140ms ease;
+}
+
+@keyframes sn-panneau-entree {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sn-personnalisation-ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  color: var(--sidebar-ink);
+  font-size: 11px;
+  font-weight: 640;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: transparent;
   cursor: pointer;
-  transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
 }
-
-.sn-bascule { justify-content: center; }
-.sn-bascule--large { grid-column: 1 / -1; }
-.sn-bascule:hover,
-.sn-retablir:hover { border-color: var(--sidebar-active); color: var(--sidebar-ink); }
-.sn-bascule:active,
-.sn-retablir:active { transform: translateY(1px); }
-
-.sn-bascule[aria-pressed='true'],
-.sn-bascule.is-active {
+.sn-personnalisation-ligne:hover { background: var(--sidebar-hover); }
+.sn-personnalisation-ligne.is-active {
   color: var(--sidebar-ink);
   border-color: var(--sidebar-active);
   background: var(--sidebar-fill);
 }
+.sn-personnalisation-ligne svg { flex: 0 0 auto; color: var(--sidebar-muted); }
+.sn-personnalisation-ligne.is-active svg { color: var(--sidebar-active); }
+
+.sn-personnalisation-texte {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+.sn-personnalisation-titre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sn-personnalisation-soustitre {
+  color: var(--sidebar-muted);
+  font-size: 9.5px;
+  font-weight: 500;
+}
+.sn-personnalisation-etat {
+  flex: 0 0 auto;
+  color: var(--sidebar-active);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── La barre du mode Personnaliser (aide + Terminer + Rétablir) ── */
+.sn-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 2px 6px;
+  padding: 7px 9px;
+  border: 1px solid var(--sidebar-active);
+  border-radius: 11px;
+  background: var(--sidebar-fill);
+}
 
 .sn-aide {
-  margin: 10px 6px 0;
-  color: var(--sidebar-muted);
-  font-size: 10.5px;
-  line-height: 1.45;
+  margin: 0;
+  min-width: 0;
+  color: var(--sidebar-ink);
+  font-size: 10px;
+  line-height: 1.4;
 }
+
+.sn-mode-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 5px;
+}
+
+.sn-mode-terminer,
+.sn-retablir {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  color: var(--sidebar-ink);
+  font-size: 10px;
+  font-weight: 750;
+  border: 1px solid var(--sidebar-line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+.sn-mode-terminer:hover,
+.sn-retablir:hover { border-color: var(--sidebar-active); }
+.sn-mode-terminer:active,
+.sn-retablir:active { transform: translateY(1px); }
+.sn-mode-terminer svg { color: var(--sidebar-active); }
 
 /* ══════════════ LE MODE PERSONNALISER ══════════════ */
 
@@ -564,7 +648,8 @@
 @media (prefers-reduced-motion: reduce) {
   .sn-rail-tooltip { animation: none; }
   .sn-chevron svg { transition: none; }
+  .sn-personnalisation-panneau { animation: none; }
   .dashboard-sidebar .sidebar-link,
-  .sn-bascule,
+  .sn-personnalisation-ligne,
   .sn-retablir { transition: none; }
 }
