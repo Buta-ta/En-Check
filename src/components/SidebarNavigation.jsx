@@ -22,6 +22,7 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Trash2,
   X,
   Zap,
@@ -109,13 +110,16 @@ export default function SidebarNavigation({
   tabStates = {},
   onSelect,
   idAdministrateur,
-  // Les personnalisations du tableau et des actions rapides vivent ici
-  // (plus de bouton dans la barre du haut) ; leur état est porté par
-  // le tableau de bord, la sidebar ne fait que le basculer.
+  // Les personnalisations du tableau, des actions rapides et des cartes
+  // vivent ici (plus de bouton « Personnaliser » dans la barre du haut
+  // ni dans les panneaux) ; leur état est porté par le tableau de bord,
+  // la sidebar ne fait que le basculer.
   tableauActif = false,
   surBasculerTableau = () => {},
   actionsActif = false,
   surBasculerActions = () => {},
+  cartesActif = false,
+  surBasculerCartes = () => {},
 }) {
   const { pathname } = useLocation()
   const signature = signatureSections(sections)
@@ -130,6 +134,9 @@ export default function SidebarNavigation({
   const [annonce, setAnnonce] = useState('')
   const [filtre, setFiltre] = useState('')
   const [replis, setReplis] = useState(() => chargerReplis(null, idAdministrateur))
+  // Le panneau du point d'entrée « Personnalisation » (un seul bouton,
+  // dans une rubrique) : il ouvre les quatre personnalisations.
+  const [panneauOuvert, setPanneauOuvert] = useState(false)
 
   // Les pages et les groupes du code peuvent changer (module éteint,
   // nouvelle page) : on rapproche sans jamais perdre l'ordre choisi.
@@ -163,6 +170,18 @@ export default function SidebarNavigation({
     window.addEventListener('keydown', surTouche)
     return () => window.removeEventListener('keydown', surTouche)
   }, [personnalisation])
+
+  // Échap referme aussi le panneau « Personnalisation ».
+  useEffect(() => {
+    if (!panneauOuvert) return undefined
+    const surTouche = (evenement) => {
+      if (evenement.key === 'Escape') setPanneauOuvert(false)
+    }
+    window.addEventListener('keydown', surTouche)
+    return () => window.removeEventListener('keydown', surTouche)
+  }, [panneauOuvert])
+
+  const unModeActif = tableauActif || actionsActif || cartesActif || personnalisation
 
   const blocs = useMemo(() => pagesParGroupe(modeleAffiche, index), [modeleAffiche, index])
 
@@ -214,7 +233,23 @@ export default function SidebarNavigation({
 
   return (
     <nav className="sidebar-navigation" aria-label="Navigation principale">
-      {!personnalisation && (
+      {personnalisation ? (
+        <div className="sn-mode">
+          <p className="sn-aide">
+            Glisse une page pour la ranger, clique son nom pour le changer, choisis sa couleur.
+          </p>
+          <div className="sn-mode-actions">
+            <button type="button" className="sn-mode-terminer" onClick={terminer}>
+              <CheckCircle2 size={12} aria-hidden="true" />
+              <span>Terminer</span>
+            </button>
+            <button type="button" className="sn-retablir" onClick={retablir}>
+              <RotateCcw size={12} aria-hidden="true" />
+              <span>Rétablir</span>
+            </button>
+          </div>
+        </div>
+      ) : (
         <div className="sn-filtre" role="search">
           <Search size={13} aria-hidden="true" />
           <input
@@ -231,11 +266,6 @@ export default function SidebarNavigation({
           )}
         </div>
       )}
-      {personnalisation && (
-        <p className="sn-aide">
-          Glisse une page pour la ranger, clique son nom pour le changer, choisis sa couleur.
-        </p>
-      )}
 
       {blocs.map(({ groupe, pages }) => {
         // Un groupe vide ne s'affiche qu'en personnalisation : on le voit
@@ -251,6 +281,13 @@ export default function SidebarNavigation({
         const totalGroupe = pages.reduce((somme, page) => somme + (Number(page.item?.count) || 0), 0)
         const groupeCible = cible?.groupe === groupe.id
         const IconeRubrique = groupe.icone || null
+        // Entrées spéciales (sans chemin) : elles ne font pas partie du
+        // modèle de navigation (ni renommables ni déplaçables) et se
+        // fixent en fin de rubrique. Chaque entrée déclare sa rubrique
+        // d'attachement (le « rubrique » du groupe, stable au renommer).
+        const itemsSpeciaux = sections
+          .flatMap((s) => s.items || [])
+          .filter((it) => it && !it.path && it.rubrique === groupe.rubrique)
         return (
           <section
             className={`sidebar-nav-group${groupeCible ? ' est-cible' : ''}`}
@@ -322,7 +359,6 @@ export default function SidebarNavigation({
               </div>
             ) : (
               <p className={`sidebar-section-label${replie ? ' est-repliee' : ''}`}>
-                <span className="sn-groupe-point" aria-hidden="true" />
                 {IconeRubrique ? (
                   <span className="sidebar-section-icon" aria-hidden="true">
                     <IconeRubrique size={14} strokeWidth={1.8} />
@@ -435,6 +471,86 @@ export default function SidebarNavigation({
                   </div>
                 )
               })}
+
+              {!personnalisation && !filtreActif && itemsSpeciaux.map((item) => {
+                const IconeSpecial = item.icon || SlidersHorizontal
+                return (
+                  <div className="sn-personnalisation" key={`special-${groupe.id}-${item.label}`}>
+                    <button
+                      type="button"
+                      className={`sidebar-link sn-personnalisation-bouton${unModeActif ? ' is-active' : ''}`}
+                      aria-expanded={panneauOuvert}
+                      aria-haspopup="true"
+                      onClick={() => setPanneauOuvert((ouvert) => !ouvert)}
+                    >
+                      <span className="sidebar-link-icon">
+                        <IconeSpecial size={16} strokeWidth={1.8} />
+                      </span>
+                      <span className="sn-personnalisation-label">{item.label}</span>
+                      <ChevronDown
+                        className={`sn-personnalisation-chev${panneauOuvert ? ' est-ouvert' : ''}`}
+                        size={13}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    {panneauOuvert && (
+                      <div className="sn-personnalisation-panneau" role="group" aria-label={`${item.label} : choisir un mode`}>
+                        <button
+                          type="button"
+                          className={`sn-personnalisation-ligne${tableauActif ? ' is-active' : ''}`}
+                          aria-pressed={tableauActif}
+                          onClick={() => { setPanneauOuvert(false); surBasculerTableau() }}
+                        >
+                          {tableauActif ? <CheckCircle2 size={13} aria-hidden="true" /> : <LayoutGrid size={13} aria-hidden="true" />}
+                          <span className="sn-personnalisation-texte">
+                            <span className="sn-personnalisation-titre">Personnaliser le tableau</span>
+                            <span className="sn-personnalisation-soustitre">Widgets et en-tête</span>
+                          </span>
+                          {tableauActif && <span className="sn-personnalisation-etat">Actif</span>}
+                        </button>
+                        <button
+                          type="button"
+                          className={`sn-personnalisation-ligne${actionsActif ? ' is-active' : ''}`}
+                          aria-pressed={actionsActif}
+                          onClick={() => { setPanneauOuvert(false); surBasculerActions() }}
+                        >
+                          {actionsActif ? <CheckCircle2 size={13} aria-hidden="true" /> : <Zap size={13} aria-hidden="true" />}
+                          <span className="sn-personnalisation-texte">
+                            <span className="sn-personnalisation-titre">Personnaliser les actions</span>
+                            <span className="sn-personnalisation-soustitre">Raccourcis de la barre</span>
+                          </span>
+                          {actionsActif && <span className="sn-personnalisation-etat">Actif</span>}
+                        </button>
+                        <button
+                          type="button"
+                          className={`sn-personnalisation-ligne${cartesActif ? ' is-active' : ''}`}
+                          aria-pressed={cartesActif}
+                          onClick={() => { setPanneauOuvert(false); surBasculerCartes() }}
+                        >
+                          {cartesActif ? <CheckCircle2 size={13} aria-hidden="true" /> : <Sparkles size={13} aria-hidden="true" />}
+                          <span className="sn-personnalisation-texte">
+                            <span className="sn-personnalisation-titre">Personnaliser les cartes</span>
+                            <span className="sn-personnalisation-soustitre">Vue d’ensemble</span>
+                          </span>
+                          {cartesActif && <span className="sn-personnalisation-etat">Actif</span>}
+                        </button>
+                        <button
+                          type="button"
+                          className={`sn-personnalisation-ligne${personnalisation ? ' is-active' : ''}`}
+                          aria-pressed={personnalisation}
+                          onClick={() => { setPanneauOuvert(false); setPersonnalisation(true) }}
+                        >
+                          <SlidersHorizontal size={13} aria-hidden="true" />
+                          <span className="sn-personnalisation-texte">
+                            <span className="sn-personnalisation-titre">Personnaliser la navigation</span>
+                            <span className="sn-personnalisation-soustitre">Pages et groupes de la sidebar</span>
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
             )}
           </section>
@@ -482,49 +598,6 @@ export default function SidebarNavigation({
           </div>
         </div>
       )}
-
-      {/* Les personnalisations, regroupées en bas du panneau (section
-          Réglages de la sidebar) : plus aucun bouton « Personnaliser »
-          dans la barre du haut ni dans les panneaux du tableau. */}
-      <div className="sn-outils">
-        <p className="sn-outils-titre">Personnalisation</p>
-        <div className="sn-outils-grille">
-          <button
-            type="button"
-            className={`sn-bascule${tableauActif ? ' is-active' : ''}`}
-            aria-pressed={tableauActif}
-            onClick={surBasculerTableau}
-          >
-            {tableauActif ? <CheckCircle2 size={13} /> : <LayoutGrid size={13} />}
-            <span>{tableauActif ? 'Terminer le tableau' : 'Personnaliser le tableau'}</span>
-          </button>
-          <button
-            type="button"
-            className={`sn-bascule${actionsActif ? ' is-active' : ''}`}
-            aria-pressed={actionsActif}
-            onClick={surBasculerActions}
-          >
-            {actionsActif ? <CheckCircle2 size={13} /> : <Zap size={13} />}
-            <span>{actionsActif ? 'Terminer les actions' : 'Personnaliser les actions'}</span>
-          </button>
-          <button
-            type="button"
-            className="sn-bascule sn-bascule--large"
-            aria-pressed={personnalisation}
-            aria-expanded={personnalisation}
-            onClick={() => (personnalisation ? terminer() : setPersonnalisation(true))}
-          >
-            {personnalisation ? <CheckCircle2 size={13} /> : <SlidersHorizontal size={13} />}
-            <span>{personnalisation ? 'Terminer' : 'Personnaliser la navigation'}</span>
-          </button>
-          {personnalisation && (
-            <button type="button" className="sn-retablir" onClick={retablir}>
-              <RotateCcw size={12} />
-              <span>Rétablir</span>
-            </button>
-          )}
-        </div>
-      </div>
 
       <p className="sn-annonce" role="status" aria-live="polite">{annonce}</p>
     </nav>

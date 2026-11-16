@@ -42,6 +42,8 @@ const SECTIONS = [
     items: [
       { label: 'Entreprises', path: '/entreprises', show: true },
       { label: 'Messages système', path: '/system-messages', show: true },
+      // L'entrée « Personnalisation » : sans chemin, hors du modèle.
+      { label: 'Personnalisation', show: true, rubrique: 'admin' },
     ],
   },
 ]
@@ -170,6 +172,7 @@ describe('les groupes repliables (accordeon)', () => {
     await cliquer(chevron('Aujourd’hui'))
     expect(libelles()).toEqual(['Entreprises', 'Messages système'])
 
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     // Le chevron disparaît et les pages reviennent pour être rangeables.
     expect(hote.querySelector('.sn-chevron')).toBeNull()
@@ -213,6 +216,10 @@ describe('le filtre de navigation', () => {
   it('le filtre n’est pas appliqué en mode Personnaliser', async () => {
     await ouvrir()
     await ecrire(champFiltre(), 'point')
+    // L'entrée Personnalisation se masque pendant le filtrage :
+    // on efface le filtre avant d'ouvrir le mode.
+    await cliquer(hote.querySelector('[aria-label="Effacer le filtre"]'))
+    await cliquer(bouton('Personnalisation'))
     await cliquer(bouton('Personnaliser la navigation'))
     expect(hote.querySelectorAll('.sn-champ--page')).toHaveLength(5)
   })

@@ -47,7 +47,6 @@ import {
   Plus,
   RotateCcw,
   Share2,
-  SlidersHorizontal,
   Sparkles,
   X,
 } from 'lucide-react'
@@ -242,8 +241,14 @@ export default function DashboardKenteAnalytics({
   isSuperAdmin,
   stats = {},
   topEntreprises = [],
+  // Le mode de personnalisation des cartes est piloté par la sidebar
+  // (point d'entrée unique « Personnalisation »), plus par ce rapport.
+  kenteCustomise = false,
+  surBasculerKente = () => {},
 }) {
   const [jours, setJours] = useState(30)
+  // La case de la heatmap survolée (lecture dynamique jour × heure).
+  const [survolHeat, setSurvolHeat] = useState(null)
   const [donnees, setDonnees] = useState(null)
   const [echec, setEchec] = useState(false)
   const [chargement, setChargement] = useState(true)
@@ -251,9 +256,15 @@ export default function DashboardKenteAnalytics({
   const [copie, setCopie] = useState(false)
 
   // ── Personnalisation : disposition des 9 cartes (3 zones) ──
-  const [isKenteCustomizing, setIsKenteCustomizing] = useState(false)
+  // L'état est porté par le tableau de bord (sidebar) : ici on ne fait
+  // que le refléter. En quittant le mode, la modale « Ajouter une carte »
+  // se referme d'elle-même.
+  const isKenteCustomizing = kenteCustomise
   const [catalogueOuvert, setCatalogueOuvert] = useState(false)
   const [carteDraquee, setCarteDraquee] = useState(null)
+  useEffect(() => {
+    if (!isKenteCustomizing) setCatalogueOuvert(false)
+  }, [isKenteCustomizing])
 
   const scopeId = isSuperAdmin
     ? admin?.selectedEnterprise?.id || null
@@ -370,13 +381,6 @@ export default function DashboardKenteAnalytics({
     ...CATALOGUE_MILIEU.filter((c) => !milieuIds.includes(c.id)),
     ...CATALOGUE_BAS.filter((c) => !basIds.includes(c.id)),
   ]
-
-  const basculerKenteCustomize = () => {
-    setIsKenteCustomizing((valeur) => {
-      if (valeur) setCatalogueOuvert(false)
-      return !valeur
-    })
-  }
 
   // ── Données de la synthèse ────────────────────────────────
   useEffect(() => {
@@ -737,17 +741,23 @@ export default function DashboardKenteAnalytics({
       corps: (
         <>
           <h3 className="dk-carte-titre">Présence par jour et heure</h3>
-          <div className="dk-heatmap" role="img" aria-label="Heatmap des pointages par jour de semaine et heure">
+          <div
+            className="dk-heatmap"
+            role="img"
+            aria-label="Heatmap des pointages par jour de semaine et heure"
+            onMouseLeave={() => setSurvolHeat(null)}
+          >
             {Array.isArray(heatmap) &&
               heatmap.map((ligne, j) => (
-                <div className="dk-heatmap-ligne" key={j}>
+                <div className={`dk-heatmap-ligne${survolHeat?.j === j ? ' is-survolee' : ''}`} key={j}>
                   <span className="dk-heatmap-label">{JOURS_SEMAINE[j]}</span>
                   <div className="dk-heatmap-cellules">
                     {ligne.map((v, h) => (
                       <span
                         key={h}
-                        className="dk-heatmap-cellule"
+                        className={`dk-heatmap-cellule${survolHeat?.j === j && survolHeat?.h === h ? ' is-survolee' : ''}`}
                         title={`${JOURS_SEMAINE[j]} ${h} h — ${v} pointage${v > 1 ? 's' : ''}`}
+                        onMouseEnter={() => setSurvolHeat({ j, h })}
                         style={{ background: couleurCellule(v, maxHeat) }}
                       />
                     ))}
@@ -759,7 +769,11 @@ export default function DashboardKenteAnalytics({
             <span className="dk-heatmap-chevrons" aria-hidden="true">
               <i className="dk-heat-0" /><i className="dk-heat-1" /><i className="dk-heat-2" /><i className="dk-heat-3" /><i className="dk-heat-4" />
             </span>
-            <span>moins → plus de pointages</span>
+            <span className="dk-heatmap-lecture">
+              {survolHeat && Array.isArray(heatmap) && heatmap[survolHeat.j]?.[survolHeat.h] !== undefined
+                ? `${JOURS_SEMAINE[survolHeat.j]} · ${survolHeat.h} h — ${heatmap[survolHeat.j][survolHeat.h]} pointage${heatmap[survolHeat.j][survolHeat.h] > 1 ? 's' : ''}`
+                : 'moins → plus de pointages'}
+            </span>
           </div>
           {prevision && (
             <p className="dk-note-ia">
@@ -917,19 +931,22 @@ export default function DashboardKenteAnalytics({
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className={`dk-bouton-icone${isKenteCustomizing ? ' est-active' : ''}`}
-            onClick={basculerKenteCustomize}
-            aria-pressed={isKenteCustomizing}
-            aria-label={isKenteCustomizing ? 'Terminer la personnalisation des cartes' : 'Personnaliser les cartes'}
-            title={isKenteCustomizing ? 'Terminer la personnalisation' : 'Personnaliser : réordonner, masquer, réajouter les cartes'}
-          >
-            {isKenteCustomizing ? <CheckCircle2 size={15} /> : <SlidersHorizontal size={15} />}
-            <span>{isKenteCustomizing ? 'Terminer' : 'Personnaliser'}</span>
-          </button>
+          {/* La personnalisation des cartes s'ouvre depuis la sidebar
+              (point d'entrée unique « Personnalisation ») ; en mode actif,
+              ne restent que les commandes du mode. */}
           {isKenteCustomizing && (
             <>
+              <button
+                type="button"
+                className="dk-bouton-icone est-active"
+                onClick={() => surBasculerKente()}
+                aria-pressed="true"
+                aria-label="Terminer la personnalisation des cartes"
+                title="Terminer la personnalisation"
+              >
+                <CheckCircle2 size={15} />
+                <span>Terminer</span>
+              </button>
               <button
                 type="button"
                 className="dk-bouton-icone"

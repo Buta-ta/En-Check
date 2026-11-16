@@ -346,7 +346,11 @@ export default function DashboardExperience({
         { label: 'Messages système', icon: Bell, path: '/system-messages', show: isSuperAdmin },
         { label: 'Prospection', icon: TrendingUp, path: '/prospection', show: isSuperAdmin },
         { label: 'Analytics du site', icon: TrendingUp, path: '/analytics', show: isSuperAdmin },
-        // Page de développement : en dernier, jamais devant les outils réels.
+        // Point d'entrée unique de toutes les personnalisations (tableau,
+        // actions, cartes, navigation). Sans chemin : il ne fait pas partie
+        // du modèle de navigation et se fixe en fin de rubrique.
+        { label: 'Personnalisation', icon: SlidersHorizontal, show: true, rubrique: 'reglages' },
+        // Page de développement : gardée au bas de la rubrique.
         { label: 'Test IA (isolé)', icon: Sparkles, path: '/test-ia', show: isSuperAdmin },
       ],
     },
@@ -458,6 +462,9 @@ export default function DashboardExperience({
   const widgetStorageKey = `encheck_dashboard_widgets_v1:${admin?.id || 'preview'}:${admin?.selectedEnterprise?.id || admin?.enterprise_id || 'all'}`
   const [widgetIds, setWidgetIds] = useState(() => readDashboardWidgetLayout(widgetStorageKey, availableWidgetIds, defaultWidgetIds))
   const [isCustomizing, setIsCustomizing] = useState(false)
+  // La personnalisation des cartes kente est pilotée depuis la sidebar
+  // (point d'entrée unique « Personnalisation »), plus depuis le rapport.
+  const [kenteActif, setKenteActif] = useState(false)
 
   const topbarLeftCatalog = TOPBAR_LEFT_CATALOG
   const topbarRightCatalog = TOPBAR_RIGHT_CATALOG
@@ -836,6 +843,8 @@ export default function DashboardExperience({
                   surBasculerTableau={toggleDashboardCustomize}
                   actionsActif={isCustomizingQuickActions}
                   surBasculerActions={() => setIsCustomizingQuickActions((valeur) => !valeur)}
+                  cartesActif={kenteActif}
+                  surBasculerCartes={() => setKenteActif((valeur) => !valeur)}
                 />
               </div>
 
@@ -1075,6 +1084,8 @@ export default function DashboardExperience({
                 isSuperAdmin={isSuperAdmin}
                 stats={kenteStats}
                 topEntreprises={topEntreprises}
+                kenteCustomise={kenteActif}
+                surBasculerKente={() => setKenteActif((valeur) => !valeur)}
               />
             )}
 
