@@ -12,8 +12,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
+  CheckCircle2,
   ChevronDown,
   GripVertical,
+  LayoutGrid,
   MoveDown,
   MoveUp,
   Plus,
@@ -22,6 +24,7 @@ import {
   SlidersHorizontal,
   Trash2,
   X,
+  Zap,
 } from 'lucide-react'
 import {
   COULEURS_GROUPES,
@@ -101,7 +104,19 @@ function Pastilles({ valeur, surChoix, prefixe }) {
   )
 }
 
-export default function SidebarNavigation({ sections = [], tabStates = {}, onSelect, idAdministrateur }) {
+export default function SidebarNavigation({
+  sections = [],
+  tabStates = {},
+  onSelect,
+  idAdministrateur,
+  // Les personnalisations du tableau et des actions rapides vivent ici
+  // (plus de bouton dans la barre du haut) ; leur état est porté par
+  // le tableau de bord, la sidebar ne fait que le basculer.
+  tableauActif = false,
+  surBasculerTableau = () => {},
+  actionsActif = false,
+  surBasculerActions = () => {},
+}) {
   const { pathname } = useLocation()
   const signature = signatureSections(sections)
   const index = useMemo(() => indexerPages(sections), [signature]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -468,25 +483,47 @@ export default function SidebarNavigation({ sections = [], tabStates = {}, onSel
         </div>
       )}
 
-      {/* Action secondaire, en bas du panneau : la personnalisation ne
-          concurrence plus la navigation. */}
+      {/* Les personnalisations, regroupées en bas du panneau (section
+          Réglages de la sidebar) : plus aucun bouton « Personnaliser »
+          dans la barre du haut ni dans les panneaux du tableau. */}
       <div className="sn-outils">
-        <button
-          type="button"
-          className="sn-bascule"
-          aria-pressed={personnalisation}
-          aria-expanded={personnalisation}
-          onClick={() => (personnalisation ? terminer() : setPersonnalisation(true))}
-        >
-          <SlidersHorizontal size={13} />
-          <span>{personnalisation ? 'Terminer' : 'Personnaliser la navigation'}</span>
-        </button>
-        {personnalisation && (
-          <button type="button" className="sn-retablir" onClick={retablir}>
-            <RotateCcw size={12} />
-            <span>Rétablir</span>
+        <p className="sn-outils-titre">Personnalisation</p>
+        <div className="sn-outils-grille">
+          <button
+            type="button"
+            className={`sn-bascule${tableauActif ? ' is-active' : ''}`}
+            aria-pressed={tableauActif}
+            onClick={surBasculerTableau}
+          >
+            {tableauActif ? <CheckCircle2 size={13} /> : <LayoutGrid size={13} />}
+            <span>{tableauActif ? 'Terminer le tableau' : 'Personnaliser le tableau'}</span>
           </button>
-        )}
+          <button
+            type="button"
+            className={`sn-bascule${actionsActif ? ' is-active' : ''}`}
+            aria-pressed={actionsActif}
+            onClick={surBasculerActions}
+          >
+            {actionsActif ? <CheckCircle2 size={13} /> : <Zap size={13} />}
+            <span>{actionsActif ? 'Terminer les actions' : 'Personnaliser les actions'}</span>
+          </button>
+          <button
+            type="button"
+            className="sn-bascule sn-bascule--large"
+            aria-pressed={personnalisation}
+            aria-expanded={personnalisation}
+            onClick={() => (personnalisation ? terminer() : setPersonnalisation(true))}
+          >
+            {personnalisation ? <CheckCircle2 size={13} /> : <SlidersHorizontal size={13} />}
+            <span>{personnalisation ? 'Terminer' : 'Personnaliser la navigation'}</span>
+          </button>
+          {personnalisation && (
+            <button type="button" className="sn-retablir" onClick={retablir}>
+              <RotateCcw size={12} />
+              <span>Rétablir</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <p className="sn-annonce" role="status" aria-live="polite">{annonce}</p>

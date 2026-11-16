@@ -566,7 +566,6 @@ export default function DashboardKenteAnalytics({
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => actions.drop(event, id)}
     >
-      <div className="dk-carte-kente" aria-hidden="true" />
       {controlesCarte(actions, zone, id, contenu.label)}
       {contenu.corps}
     </article>

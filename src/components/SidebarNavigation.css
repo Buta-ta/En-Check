@@ -243,13 +243,28 @@
 /* ── Les actions secondaires, en pied de panneau ── */
 .sn-outils {
   display: flex;
-  gap: 6px;
-  /* En bas du panneau, loin de la navigation courante. */
+  flex-direction: column;
+  gap: 7px;
+  /* En bas du panneau : la section « Réglages » de la personnalisation. */
   margin-top: auto;
   padding: 10px 2px 2px;
   border-top: 1px solid var(--sidebar-line);
 }
 
+.sn-outils-titre {
+  margin: 0 2px;
+  color: var(--sidebar-muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sn-outils-grille {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
 
 .sn-bascule,
 .sn-retablir {
@@ -267,13 +282,15 @@
   transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
 }
 
-.sn-bascule { flex: 1; justify-content: center; }
+.sn-bascule { justify-content: center; }
+.sn-bascule--large { grid-column: 1 / -1; }
 .sn-bascule:hover,
 .sn-retablir:hover { border-color: var(--sidebar-active); color: var(--sidebar-ink); }
 .sn-bascule:active,
 .sn-retablir:active { transform: translateY(1px); }
 
-.sn-bascule[aria-pressed='true'] {
+.sn-bascule[aria-pressed='true'],
+.sn-bascule.is-active {
   color: var(--sidebar-ink);
   border-color: var(--sidebar-active);
   background: var(--sidebar-fill);
