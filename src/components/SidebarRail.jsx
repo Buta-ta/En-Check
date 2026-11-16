@@ -192,7 +192,9 @@ export default function SidebarRail({
           aria-label={`Menu du profil de ${profil.nom || "l'administrateur"}`}
           onClick={() => surMenuProfil(!menuProfilOuvert)}
         >
-          {profil.initiales || 'EC'}
+          {profil.photo
+            ? <img className="profil-avatar-photo" src={profil.photo} alt="" />
+            : (profil.initiales || 'EC')}
         </button>
 
         <button

@@ -1,12 +1,10 @@
 /* ═══════════════════════════════════════════════════════════
-   CONSOLE KENTE — vue d'ensemble analytique (v2, dual-thème)
+   CONSOLE KENTE — vue d'ensemble analytique (v3, dual-thème)
    ───────────────────────────────────────────────────────────
-   Suit le thème de la page : en clair (défaut) les cartes
-   s'appuient sur la palette « papier chaud » du dashboard
-   (surface ivoire, encre café, accents or foncé/terracotta) ;
-   en sombre elles reprennent le fond chaud nuit avec or/terre.
-   Le tissé kente (or / terre / crème / séparateur) reste la
-   signature des deux modes.
+   Les cartes suivent le langage visuel standard du dashboard
+   (surface, lignes, encre, accent du thème) : le tissé kente
+   n'est plus sur les cartes, la signature culturelle reste
+   sur le bandeau sous la barre du haut.
    ═══════════════════════════════════════════════════════════ */
 
 .dk {
@@ -18,8 +16,9 @@
   --dk-ink: var(--ink);
   --dk-texte: var(--ink-soft);
   --dk-muet: var(--muted);
-  --dk-or: #a97e2f;
-  --dk-or-clair: #c9a961;
+  /* Accent = celui du dashboard, pour rester harmonisé. */
+  --dk-or: var(--accent);
+  --dk-or-clair: var(--accent-strong);
   --dk-terre: var(--accent);
   --dk-terre-2: var(--accent-strong);
   --dk-vert: var(--good);
@@ -27,7 +26,7 @@
   --dk-axe: var(--muted);
   --dk-tooltip-fond: var(--surface);
   --dk-tooltip-ligne: var(--line);
-  --dk-jauge-fond: rgba(169, 126, 47, 0.12);
+  --dk-jauge-fond: var(--accent-soft);
   --dk-ombre: var(--shadow);
   --dk-ombre-hover: var(--shadow-sm);
   --dk-veil: rgba(60, 45, 30, 0.4);
@@ -36,17 +35,6 @@
   --dk-heat-2: rgba(181, 119, 49, 0.5);
   --dk-heat-3: rgba(191, 113, 59, 0.74);
   --dk-heat-4: #a95c2d;
-  --dk-kente-opacite: 0.7;
-  --dk-kente-tissu: repeating-linear-gradient(
-    90deg,
-    #c9a961 0 26px,
-    #a04a22 26px 52px,
-    #241812 52px 62px,
-    #e0c88f 62px 78px,
-    #a04a22 78px 96px,
-    #241812 96px 106px,
-    #c9a961 106px 132px
-  );
 
   position: relative;
   margin: 2px 0 20px;
@@ -55,34 +43,33 @@
   line-height: 1.45;
 }
 
-/* ── Mode SOMBRE : fond chaud nuit, or/terre plus lumineux ── */
+/* ── Mode SOMBRE : mêmes variables standard que le dashboard ── */
 .encheck-dashboard[data-theme="dark"] .dk {
-  --dk-carte: #262119;
-  --dk-carte-2: #2f2920;
-  --dk-ligne: rgba(201, 169, 97, 0.15);
-  --dk-ligne-2: rgba(201, 169, 97, 0.36);
-  --dk-ink: #f2e8d5;
-  --dk-texte: #cbb8a0;
-  --dk-muet: #9a8468;
-  --dk-or: #c9a961;
-  --dk-or-clair: #e0c88f;
-  --dk-terre: #d1653a;
-  --dk-terre-2: #a04a22;
-  --dk-vert: #8fbf87;
-  --dk-rouge: #e0876d;
-  --dk-axe: #9a8468;
-  --dk-tooltip-fond: #241813;
-  --dk-tooltip-ligne: rgba(201, 169, 97, 0.25);
-  --dk-jauge-fond: rgba(201, 169, 97, 0.12);
-  --dk-ombre: 0 14px 34px rgba(0, 0, 0, 0.32);
-  --dk-ombre-hover: 0 6px 18px rgba(0, 0, 0, 0.28);
+  --dk-carte: var(--surface);
+  --dk-carte-2: var(--surface-soft);
+  --dk-ligne: var(--line);
+  --dk-ligne-2: color-mix(in srgb, var(--accent) 34%, var(--line));
+  --dk-ink: var(--ink);
+  --dk-texte: var(--ink-soft);
+  --dk-muet: var(--muted);
+  --dk-or: var(--accent);
+  --dk-or-clair: var(--accent-strong);
+  --dk-terre: var(--accent);
+  --dk-terre-2: var(--accent-strong);
+  --dk-vert: var(--good);
+  --dk-rouge: var(--danger);
+  --dk-axe: var(--muted);
+  --dk-tooltip-fond: var(--surface);
+  --dk-tooltip-ligne: var(--line);
+  --dk-jauge-fond: var(--accent-soft);
+  --dk-ombre: var(--shadow);
+  --dk-ombre-hover: var(--shadow-sm);
   --dk-veil: rgba(10, 6, 2, 0.62);
   --dk-heat-0: rgba(201, 169, 97, 0.07);
   --dk-heat-1: rgba(192, 90, 43, 0.3);
   --dk-heat-2: rgba(192, 90, 43, 0.55);
   --dk-heat-3: rgba(214, 118, 60, 0.82);
   --dk-heat-4: #eba35c;
-  --dk-kente-opacite: 0.9;
 }
 
 .dk:focus-within {
@@ -252,18 +239,6 @@
   border-color: var(--dk-ligne-2);
   box-shadow: var(--dk-ombre-hover), var(--dk-ombre);
   transform: translateY(-2px);
-}
-/* Tissé kente officiel en tête de carte */
-.dk-carte-kente {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: var(--dk-kente-tissu);
-  background-size: 132px 3px;
-  opacity: var(--dk-kente-opacite);
-  pointer-events: none;
 }
 .dk-carte-titre {
   margin: 0 0 10px;
@@ -620,9 +595,7 @@
   width: 64px;
   height: 3px;
   border-radius: 2px;
-  background: var(--dk-kente-tissu);
-  background-size: 132px 3px;
-  opacity: var(--dk-kente-opacite);
+  background: linear-gradient(90deg, var(--dk-or), var(--dk-or-clair));
 }
 
 /* ── Donut de présence ── */

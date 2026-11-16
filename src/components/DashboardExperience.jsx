@@ -112,7 +112,8 @@ const TOPBAR_LEFT_CATALOG = [
   { id: 'date', label: 'Date du jour', description: 'Afficher la date courante.', icon: CalendarDays, region: 'left' },
 ]
 const TOPBAR_RIGHT_CATALOG = [
-  { id: 'dashboard-customize', label: 'Personnaliser le tableau', description: 'Réorganiser l’en-tête et les actions rapides.', icon: SlidersHorizontal, region: 'right' },
+  // « Personnaliser le tableau » n'est plus un élément de la barre :
+  // la personnalisation vit dans la section Réglages de la sidebar.
   { id: 'theme', label: 'Thème clair / sombre', description: 'Changer l’apparence du tableau.', icon: Moon, region: 'right' },
   { id: 'notifications', label: 'Notifications', description: 'Consulter les notifications.', icon: Bell, region: 'right' },
   { id: 'profile', label: 'Profil administrateur', description: 'Voir le compte connecté.', icon: Users, region: 'right' },
@@ -121,7 +122,7 @@ const TOPBAR_LEFT_AVAILABLE_IDS = TOPBAR_LEFT_CATALOG.map((item) => item.id)
 const TOPBAR_RIGHT_AVAILABLE_IDS = TOPBAR_RIGHT_CATALOG.map((item) => item.id)
 const ALL_TOPBAR_AVAILABLE_IDS = [...TOPBAR_LEFT_AVAILABLE_IDS, ...TOPBAR_RIGHT_AVAILABLE_IDS]
 const DEFAULT_TOPBAR_LEFT_ITEM_IDS = ['enterprise', 'date']
-const DEFAULT_TOPBAR_RIGHT_ITEM_IDS = ['dashboard-customize', 'theme', 'notifications', 'profile']
+const DEFAULT_TOPBAR_RIGHT_ITEM_IDS = ['theme', 'notifications', 'profile']
 
 export default function DashboardExperience({
   admin,
@@ -252,7 +253,18 @@ export default function DashboardExperience({
   const adminName = `${admin?.first_name || ''} ${admin?.last_name || ''}`.trim() || 'Administrateur'
   const adminInitials = `${admin?.first_name?.[0] || ''}${admin?.last_name?.[0] || ''}` || 'EC'
   const adminRole = isSuperAdmin ? 'Super administrateur' : (isMultiEntreprise ? 'Administrateur multi-entreprises' : 'Administrateur')
+  // La vraie photo de profil quand elle existe, sinon les initiales.
+  const adminPhoto = admin?.photo_url || ''
+  const adminAvatarContenu = adminPhoto
+    ? <img className="profil-avatar-photo" src={adminPhoto} alt="" />
+    : adminInitials
   const selectedEnterpriseName = admin?.selectedEnterprise?.name || admin?.enterprise_name || 'Toutes les entreprises'
+  const selectedEnterpriseLogo = admin?.selectedEnterprise?.logo_url || ''
+  // La chip « entreprise » affiche le vrai logo quand il existe, sinon
+  // l'icône générique.
+  const entrepriseChipIcon = selectedEnterpriseLogo
+    ? <img className="dashboard-meta-logo" src={selectedEnterpriseLogo} alt="" />
+    : <Building2 size={13} />
   const todayLabel = currentTime?.toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   }) || new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -592,7 +604,6 @@ export default function DashboardExperience({
   const unaddedTopbarItems = allTopbarCatalog.filter((item) =>
     !topbarLeftItemIds.includes(item.id) && !topbarRightItemIds.includes(item.id),
   )
-  const hasTopbarCustomizeButton = topbarLeftItemIds.includes('dashboard-customize') || topbarRightItemIds.includes('dashboard-customize')
   const quickActions = quickActionIds
     .map((id) => quickActionCatalog.find((action) => action.id === id))
     .filter(Boolean)
@@ -686,26 +697,11 @@ export default function DashboardExperience({
          ici, simple rappel de l'entreprise affichée. */
       return (
         <div className="topbar-company">
-          <span className="dashboard-meta-chip"><Building2 size={13} />{selectedEnterpriseName}</span>
+          <span className="dashboard-meta-chip">{entrepriseChipIcon}{selectedEnterpriseName}</span>
         </div>
       )
     }
     if (itemId === 'date') return <span className="topbar-date">{todayLabel}</span>
-    if (itemId === 'dashboard-customize') {
-      return (
-        <button
-          type="button"
-          className={`dashboard-customize-button${isCustomizing ? ' is-active' : ''}`}
-          onClick={toggleDashboardCustomize}
-          aria-pressed={isCustomizing}
-          aria-label={isCustomizing ? 'Terminer la personnalisation du tableau' : 'Personnaliser le tableau'}
-          title={isCustomizing ? 'Terminer la personnalisation' : 'Personnaliser le tableau'}
-        >
-          {isCustomizing ? <CheckCircle2 size={15} /> : <SlidersHorizontal size={15} />}
-          <span>{isCustomizing ? 'Terminer' : 'Personnaliser le tableau'}</span>
-        </button>
-      )
-    }
     if (itemId === 'theme') {
       return (
         <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={themeLabel} aria-pressed={darkMode} title={themeLabel}>
@@ -727,7 +723,7 @@ export default function DashboardExperience({
       if (!isSuperAdmin) {
         return (
           <div className="topbar-admin" title={`${adminName} · ${adminRole}`}>
-            <div className="topbar-avatar">{adminInitials}</div>
+            <div className="topbar-avatar">{adminAvatarContenu}</div>
             <div className="topbar-admin-copy">
               <span className="topbar-admin-name">{adminName}</span>
               <span className="topbar-admin-role">{adminRole}</span>
@@ -742,12 +738,12 @@ export default function DashboardExperience({
           title={`${adminName} · ${adminRole} — ouvrir la page Administrateurs`}
           aria-label={`${adminName}, ${adminRole} — ouvrir la page Administrateurs`}
         >
-          <span className="topbar-avatar">{adminInitials}</span>
+          <span className="topbar-avatar">{adminAvatarContenu}</span>
           <span className="topbar-admin-copy">
             <span className="topbar-admin-name">{adminName}</span>
             <span className="topbar-admin-role">{adminRole}</span>
           </span>
-          <ChevronRight className="topbar-admin-chevron" size={14} aria-hidden="true" />
+          <ChevronRight className="topbar-admin-chevron" size={12} aria-hidden="true" />
         </Link>
       )
     }
@@ -798,7 +794,7 @@ export default function DashboardExperience({
             panneauReplie={panneauReplie}
             onBasculerPanneau={() => setPanneauReplie((valeur) => !valeur)}
             onRubrique={allerVersSection}
-            profil={{ nom: adminName, initiales: adminInitials, role: adminRole }}
+            profil={{ nom: adminName, initiales: adminInitials, role: adminRole, photo: adminPhoto }}
             menuProfilOuvert={menuProfilOuvert}
             surMenuProfil={(ouvert) => setMenuProfilOuvert(ouvert)}
             surDeconnexion={handleLogout}
@@ -836,6 +832,10 @@ export default function DashboardExperience({
                   tabStates={tabStates}
                   onSelect={handleNavigation}
                   idAdministrateur={admin?.id}
+                  tableauActif={isCustomizing}
+                  surBasculerTableau={toggleDashboardCustomize}
+                  actionsActif={isCustomizingQuickActions}
+                  surBasculerActions={() => setIsCustomizingQuickActions((valeur) => !valeur)}
                 />
               </div>
 
@@ -863,7 +863,7 @@ export default function DashboardExperience({
                       aria-label={`Menu du profil de ${adminName}`}
                       onClick={() => setMenuProfilOuvert((valeur) => !valeur)}
                     >
-                      <span className="sidebar-profile-avatar">{adminInitials}</span>
+                      <span className="sidebar-profile-avatar">{adminAvatarContenu}</span>
                       <span className="sidebar-profile-copy">
                         <span className="sidebar-profile-name">{adminName}</span>
                         <span className="sidebar-profile-role">{adminRole}</span>
@@ -872,7 +872,7 @@ export default function DashboardExperience({
                     </button>
                   ) : (
                     <div className="sidebar-profile-link is-statique">
-                      <span className="sidebar-profile-avatar">{adminInitials}</span>
+                      <span className="sidebar-profile-avatar">{adminAvatarContenu}</span>
                       <span className="sidebar-profile-copy">
                         <span className="sidebar-profile-name">{adminName}</span>
                         <span className="sidebar-profile-role">{adminRole}</span>
@@ -1046,7 +1046,7 @@ export default function DashboardExperience({
                 <h1 className="dashboard-greeting">{greeting}, <span className="dashboard-greeting-name">{admin?.first_name || 'bienvenue'}</span></h1>
                 <p className="dashboard-subtitle">Voici la présence de votre équipe et les points à vérifier aujourd’hui.</p>
                 <div className="dashboard-hero-meta">
-                  <span className="dashboard-meta-chip"><Building2 size={13} />{selectedEnterpriseName}</span>
+                  <span className="dashboard-meta-chip">{entrepriseChipIcon}{selectedEnterpriseName}</span>
                   <span className="dashboard-meta-chip is-positive"><UserCheck size={13} />{presentCount} ayant pointé aujourd’hui</span>
                   {realPausesToday.length > 0 && (
                     <button
@@ -1064,16 +1064,6 @@ export default function DashboardExperience({
                   )}
                   {todayHoliday && <span className="dashboard-meta-chip"><Calendar size={13} />{todayHoliday.name}</span>}
                   {conflictCount > 0 && <span className="dashboard-meta-chip is-alert"><AlertTriangle size={13} />{conflictCount} à examiner</span>}
-                  {!hasTopbarCustomizeButton && !isCustomizing && (
-                    <button
-                      type="button"
-                      className="dashboard-meta-chip dashboard-customize-fallback"
-                      onClick={() => setIsCustomizing(true)}
-                    >
-                      <SlidersHorizontal size={13} />
-                      <span>Personnaliser le tableau</span>
-                    </button>
-                  )}
                 </div>
               </div>
               <div className="dashboard-hero-art"><AttendanceHeroImage /></div>
@@ -1317,20 +1307,14 @@ export default function DashboardExperience({
                   <div><h2 className="dashboard-panel-title">Accès rapide</h2><p className="dashboard-panel-subtitle">Les actions courantes, sans parcourir les menus.</p></div>
                 </div>
                 <div className="dashboard-quick-action-tools">
+                  {/* La personnalisation des actions rapides vit dans la
+                      section Réglages de la sidebar ; ici ne reste que
+                      l'ajout, visible uniquement en mode personnalisation. */}
                   {isCustomizingQuickActions && (
                     <button type="button" className="dashboard-panel-link" onClick={() => setIsQuickActionCatalogOpen(true)} aria-haspopup="dialog" aria-expanded={isQuickActionCatalogOpen}>
                       <Plus size={14} /> Ajouter une action
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className={`dashboard-panel-link dashboard-quick-action-edit${isCustomizingQuickActions ? ' is-active' : ''}`}
-                    onClick={() => setIsCustomizingQuickActions((value) => !value)}
-                    aria-pressed={isCustomizingQuickActions}
-                  >
-                    {isCustomizingQuickActions ? <CheckCircle2 size={14} /> : <SlidersHorizontal size={14} />}
-                    {isCustomizingQuickActions ? 'Terminer' : 'Personnaliser'}
-                  </button>
                 </div>
               </div>
               {isCustomizingQuickActions && (
