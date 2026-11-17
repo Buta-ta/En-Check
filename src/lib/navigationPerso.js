@@ -23,7 +23,14 @@
 // six rubriques (Accueil, Équipe, Temps de travail, Paie, Rapports,
 // Réglages) avec leurs sous-éléments. Les personnalisations v2
 // (cinq groupes « par intention ») sont réinitialisées une seule fois.
-export const VERSION_MODELE = 3
+//
+// v4 (post-PR #219) : septième rubrique « En-Check interne » (super admin) —
+// les outils de la plateforme (Entreprises, Administrateurs, Messages
+// système, Prospection, Analytics du site, Test IA) quittent Réglages
+// pour ne plus se mélanger au réglage du produit du client. Une
+// restructuration bat la version : tout le monde repart de la
+// nouvelle structure d'origine, une seule fois.
+export const VERSION_MODELE = 4
 
 // Les cinq teintes de la planche : cuivre, terre, olive, ambre, ardoise.
 // Elles remplacent l'ancienne palette indigo : le bogolan se lit en
