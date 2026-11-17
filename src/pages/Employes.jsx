@@ -17,7 +17,10 @@ import {
   Coffee, CalendarX,
   Briefcase, Hash, Mail, Phone, Building2, Shield,
   Key, Lock, UserCheck, UserX, Calendar, Heart, Globe, CreditCard,
-  FileText, Award, User, MapPin, Flag, Baby, Layers, Radio, ClipboardList, Network
+  FileText, Award, User, MapPin, Flag, Baby, Layers, Radio, ClipboardList, Network,
+  LayoutDashboard, CalendarDays, CalendarOff, Timer, Wallet, Sparkles, Settings,
+  Cpu, TrendingUp, Megaphone, Router, ScanFace, ShieldCheck, Bell, LogOut,
+  Moon, Sun,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BadgeEmploye from '../components/BadgeEmploye'
@@ -28,10 +31,12 @@ import EmployesLoadingScreen from '../components/EmployesLoadingScreen'
 import FicheEmployeModal from '../components/FicheEmployeModal'
 import EntreeEmploye from '../components/equipes/EntreeEmploye'
 import { useTheme } from '../contexts/ThemeContext'
-import RaccourcisPages from '../components/RaccourcisPages'
+import SidebarNavigation from '../components/SidebarNavigation'
+import EnterpriseSwitcher from '../components/EnterpriseSwitcher'
 import EquipesVue from '../components/equipes/EquipesVue'
 import TachesVue from '../components/taches/TachesVue'
 import '../components/zoulou/zoulou.css'
+import '../pages/Dashboard.css'
 import './EmployesRefonte.css'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
 import { formaterHeureLocale, jourLocal, minutesDepuisMinuit } from '../utils/timezoneUtils'
@@ -124,6 +129,9 @@ export default function Employes() {
   const payslipIndicators = useEmployeePayslipIndicators(employes)
   const [entreprises, setEntreprises] = useState([])
   const [plannings, setPlannings] = useState([])
+  // Le bouton du titre déclenche la création dans la vue affichée.
+  const [signalCreationEquipe, setSignalCreationEquipe] = useState(0)
+  const [signalCreationTache, setSignalCreationTache] = useState(0)
   const [loading, setLoading] = useState(true)
   const [minLoadingDone, setMinLoadingDone] = useState(true)
   const [liveStatusByEmployee, setLiveStatusByEmployee] = useState({})
@@ -991,6 +999,107 @@ export default function Employes() {
   }
 
   // ═══════════════════════════════════════════════════════════
+  // LA SIDEBAR — la même navigation que le tableau de bord :
+  // mêmes entrées, mêmes rubriques, mêmes garde-fous par module,
+  // et la même personnalisation (renommage, couleurs, ordre)
+  // conservée par administrateur.
+  // ═══════════════════════════════════════════════════════════
+  const entrepriseActive = (() => {
+    if (selectedEnterpriseFilter !== 'all') {
+      return entreprises.find((e) => e.id === selectedEnterpriseFilter) || null
+    }
+    const idCible = admin?.selectedEnterprise?.id || admin?.enterprise_id
+    return entreprises.find((e) => e.id === idCible) || entreprises[0] || null
+  })()
+
+  const moduleActif = (champ) =>
+    admin?.role === 'super_admin' || Boolean(entrepriseActive?.[champ])
+
+  const sectionsNav = [
+    {
+      id: 'accueil',
+      label: 'Accueil',
+      icon: LayoutDashboard,
+      items: [
+        { label: 'Vue d’ensemble', icon: LayoutDashboard, path: '/dashboard', show: true },
+      ],
+    },
+    {
+      id: 'equipe',
+      label: 'Équipe',
+      icon: Users,
+      items: [
+        { label: 'Employés', icon: Users, path: '/employes', show: true },
+        { label: 'Planning', icon: Calendar, path: '/planning', show: moduleActif('module_planning') },
+        { label: 'Absences', icon: CalendarOff, path: '/absences', show: moduleActif('module_conges') },
+        { label: 'Annonces d’accueil', icon: Megaphone, path: '/annonces-accueil', show: admin?.role === 'super_admin' },
+      ],
+    },
+    {
+      id: 'temps',
+      label: 'Temps de travail',
+      icon: Clock,
+      items: [
+        { label: 'Pointages', icon: Clock, path: '/pointages', show: true },
+        { label: 'Retards', icon: Timer, path: '/retards', show: moduleActif('module_retards') },
+        { label: 'Pauses', icon: Coffee, path: '/pauses', show: true },
+        { label: 'Jours fériés', icon: CalendarDays, path: '/jours-feries', show: true },
+      ],
+    },
+    {
+      id: 'paie',
+      label: 'Paie',
+      icon: Wallet,
+      items: [
+        { label: 'Heures supplémentaires', icon: Timer, path: '/heures-supplementaires', show: moduleActif('module_heures_supplementaires') },
+        { label: 'Rémunérations', icon: Wallet, path: '/remunerations', show: moduleActif('module_remunerations') },
+        { label: 'Paie & fiscalité', icon: Shield, path: '/paie', show: moduleActif('module_fiches_paie') || moduleActif('module_config_fiscale') },
+      ],
+    },
+    {
+      id: 'rapports',
+      label: 'Rapports',
+      icon: FileText,
+      items: [
+        { label: 'Rapports', icon: FileText, path: '/rapports', show: true },
+        { label: 'Prédictions', icon: Sparkles, path: '/predictions', show: moduleActif('module_predictions') },
+      ],
+    },
+    {
+      id: 'reglages',
+      label: 'Réglages',
+      icon: Settings,
+      items: [
+        { label: 'Configuration pointeuse', icon: Router, path: '/configuration-pointeuse', show: moduleActif('module_pointeuses') || moduleActif('module_poste_pointage') },
+        { label: 'Géopointage', icon: MapPin, path: '/geopointage', show: moduleActif('module_carte_temps_reel') || moduleActif('module_geolocalisation') },
+        { label: 'Reconnaissance faciale', icon: ScanFace, path: '/reconnaissance-faciale', show: moduleActif('module_reconnaissance_faciale') },
+      ],
+    },
+    // L'intérieur de la maison ne s'ouvre qu'au super admin.
+    ...(admin?.role === 'super_admin' ? [{
+      id: 'interne',
+      label: 'En-Check interne',
+      icon: Cpu,
+      items: [
+        { label: 'Entreprises', icon: Building2, path: '/entreprises', show: true },
+        { label: 'Administrateurs', icon: ShieldCheck, path: '/admins', show: true },
+        { label: 'Messages système', icon: Bell, path: '/system-messages', show: true },
+        { label: 'Prospection', icon: TrendingUp, path: '/prospection', show: true },
+        { label: 'Analytics du site', icon: TrendingUp, path: '/analytics', show: true },
+      ],
+    }] : []),
+  ]
+
+  const surNavigation = (item) => { if (item?.path) navigate(item.path) }
+  const deconnexion = () => {
+    localStorage.removeItem('admin')
+    localStorage.removeItem('last_enterprise_id')
+    navigate('/login')
+  }
+
+  const nomAdmin = admin?.name || admin?.email || 'Administrateur'
+
+  // ═══════════════════════════════════════════════════════════
   // RENDU
   // ═══════════════════════════════════════════════════════════
 
@@ -1016,8 +1125,61 @@ export default function Employes() {
       <div className="pointages-afrotech-shell" data-theme={darkMode ? 'dark' : 'light'} style={styles.container}>
         <PageCulturalBand pathname="/employes" />
 
+        <div className="empv2-layout">
+        <aside className="dashboard-sidebar empv2-sidebar" aria-label="Navigation principale">
+          <div className="nav-panel">
+            <div className="nav-panel-inner">
+              <header className="nav-panel-tete">
+                <div className="nav-panel-marque">
+                  <EnCheckBrandMark className="nav-panel-logo" size={30} />
+                  <div className="nav-panel-marque-copy">
+                    <span className="nav-panel-marque-nom">En-Check</span>
+                    <span className="nav-panel-marque-slogan">On gère !</span>
+                  </div>
+                </div>
+                <div className="nav-panel-contexte">
+                  <EnterpriseSwitcher admin={admin} onSwitch={() => window.location.reload()} />
+                </div>
+              </header>
+
+              <div className="nav-panel-corps">
+                <SidebarNavigation
+                  sections={sectionsNav}
+                  onSelect={surNavigation}
+                  idAdministrateur={admin?.id}
+                />
+              </div>
+
+              <footer className="nav-panel-pied ec-nav-pied">
+                <a
+                  className="sidebar-portal-link"
+                  href="/employee/login"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Users size={16} />
+                  <span>Espace employé</span>
+                  <ArrowRight size={14} />
+                </a>
+                <div className="sidebar-profile">
+                  <div className="sidebar-profile-link is-statique">
+                    <span className="sidebar-profile-avatar">{(nomAdmin || 'A')[0].toUpperCase()}</span>
+                    <span className="sidebar-profile-copy">
+                      <span className="sidebar-profile-name">{nomAdmin}</span>
+                      <span className="sidebar-profile-role">{admin?.role === 'super_admin' ? 'Super admin' : 'Administrateur'}</span>
+                    </span>
+                  </div>
+                  <button type="button" className="sidebar-logout" onClick={deconnexion} title="Déconnexion" aria-label="Déconnexion">
+                    <LogOut size={15} />
+                  </button>
+                </div>
+              </footer>
+            </div>
+          </div>
+        </aside>
+
         {/* ═══ MAIN ═══ */}
-        <main style={styles.main}>
+        <main className="empv2-main" style={styles.main}>
           {/* la ligne de titre : Employés · le compte — la recherche
               et l'ajout, à droite */}
           <div className="empv2-tete">
@@ -1029,8 +1191,8 @@ export default function Employes() {
                 </span>
               )}
             </h1>
-            {vueActive === null && (
-              <div className="empv2-tete-actions">
+            <div className="empv2-tete-actions">
+              {vueActive === null && (
                 <label className="empv2-recherche">
                   <Search size={14} />
                   <input
@@ -1051,11 +1213,33 @@ export default function Employes() {
                     </button>
                   )}
                 </label>
+              )}
+              {vueActive === 'equipes' && (
+                <button type="button" className="empv2-nouvel" onClick={() => setSignalCreationEquipe((n) => n + 1)}>
+                  <Plus size={14} /> Nouvelle équipe
+                </button>
+              )}
+              {vueActive === 'taches' && (
+                <button type="button" className="empv2-nouvel" onClick={() => setSignalCreationTache((n) => n + 1)}>
+                  <Plus size={14} /> Nouvelle tâche
+                </button>
+              )}
+              {vueActive === null && (
                 <button type="button" className="empv2-nouvel" onClick={handleAdd}>
                   <UserPlus size={14} /> Nouvel employé
                 </button>
-              </div>
-            )}
+              )}
+              <button
+                type="button"
+                className="empv2-theme"
+                onClick={toggleTheme}
+                title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+                aria-pressed={darkMode}
+              >
+                {darkMode ? <Sun size={13} /> : <Moon size={13} />}
+                <span>{darkMode ? 'Clair' : 'Sombre'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Les deux vues optionnelles. L'annuaire n'est plus un
@@ -1080,10 +1264,6 @@ export default function Employes() {
                 ))}
               </nav>
             )}
-            {/* les raccourcis de pages : en haut à droite, jamais en bas */}
-            <div className="empv2-raccourcis">
-              <RaccourcisPages compact excludePaths={['/employes']} />
-            </div>
           </div>
 
           {vueActive === null && (
@@ -1217,11 +1397,11 @@ export default function Employes() {
           )}
 
           {vueActive === 'equipes' && (
-            <EquipesVue enterpriseId={entrepriseDesVues} employes={employes} />
+            <EquipesVue enterpriseId={entrepriseDesVues} employes={employes} signalCreation={signalCreationEquipe} />
           )}
 
           {vueActive === 'taches' && (
-            <TachesVue enterpriseId={entrepriseDesVues} employes={employes} />
+            <TachesVue enterpriseId={entrepriseDesVues} employes={employes} signalCreation={signalCreationTache} />
           )}
 
           <div style={styles.footer}>
@@ -1229,6 +1409,7 @@ export default function Employes() {
             <p style={styles.footerText}><EnCheckBrandMark size={18} />EN-CHECK • On gère ! • Gestion du Personnel</p>
           </div>
         </main>
+        </div>
         <PageCulturalBand pathname="/employes" placement="bottom"/>
 
         {/* ═══════════ MODALS ═══════════ */}

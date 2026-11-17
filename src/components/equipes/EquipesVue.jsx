@@ -1,24 +1,24 @@
-// ════════════════════════════════════════════════════════════════════
-// 👥 VUE « ÉQUIPES » — page Employés, le registre perlé
+// ════════════════════════════════════════════════════════════════
+// 👥 VUE « ÉQUIPES » — page Employés
 //
-// L'écran est un registre, pas une planche de cartes :
+// L'écran se lit en trois plans :
 //
-//   1. un feuillet — folio, titre serif, colophon de quatre chiffres ;
-//   2. le collier de l'entreprise — une perle par personne, groupée
-//      par équipe, la perle du chef cerclée, les personnes à
-//      rattacher en creux sur un fil pointillé ;
-//   3. le registre — une entrée par équipe : son rang, son nom, sa
-//      description au filet de couleur, ses membres, sa santé en
-//      cinq perles, ses actions en mots.
+//   1. quatre chiffres comptés sur les équipes chargées ;
+//   2. les équipes en cartes, à bordure colorée : le nom, la
+//      pastille de santé, la pile d'avatars (le chef couronné),
+//      le pied qui compte ;
+//   3. un rail à droite : les personnes à rattacher, la
+//      répartition de la santé ; et le pied « À décider »,
+//      replié par défaut.
 //
-// Aucune carte : ce qui sépare, c'est un filet ; ce qui compte, c'est
-// une perle. Les fenêtres (créer, membres, chef, supprimer) sont
-// partagées : voir EquipesModales.jsx.
-// ════════════════════════════════════════════════════════════════════
+// Mêmes tokens, même police, même thème que le reste de la page.
+// Les fenêtres (créer, membres, chef, supprimer) sont partagées :
+// voir EquipesModales.jsx.
+// ════════════════════════════════════════════════════════════════
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ChevronDown, HelpCircle, History,
+  ChevronDown, Crown, HelpCircle, History,
   Loader2, MoreVertical, Plus, RefreshCw,
   Search, Sparkles, UserCog, UserMinus, UserPlus, Users, X,
 } from 'lucide-react'
@@ -35,9 +35,7 @@ import {
 import {
   TeamModal, MembersModal, DeleteModal, HistoryModal, ShortcutsModal,
 } from './EquipesModales'
-import { RosacePerlesSvg } from '../zoulou/PerlesZoulouSvg'
-import { Folio, Colophon } from '../zoulou/RegistreEntete'
-import '../zoulou/zoulou.css'
+import '../../pages/EmployesRefonte.css'
 
 const FILTRES = [
   { key: 'all', label: 'Toutes' },
@@ -69,98 +67,18 @@ const nomComplet = (personne) =>
 
 // Le ton d'une perle pour une équipe : sa couleur si elle en a une
 // lisible, sinon le cuivre de la maison.
-const TONS_PERLE = ['cuivre', 'teal', 'sauge', 'corail', 'creme']
-const tonEquipe = (equipe, rang) => {
-  const couleur = equipe?.color
-  if (couleur === '#4F9389' || couleur === '#2B6A5F') return 'teal'
-  if (couleur === '#8BA268' || couleur === '#56652A') return 'sauge'
-  if (couleur === '#C8785C' || couleur === '#A2452E') return 'corail'
-  if (couleur === '#E0C9A0') return 'creme'
-  return TONS_PERLE[rang % TONS_PERLE.length]
-}
-
-// ── le collier de l'entreprise : une perle par personne ────────────
-function CollierEntreprise({ equipes, orphelins }) {
-  return (
-    <section className="rg-bloc" aria-label="Tout l’effectif en une parure">
-      <header className="rg-bloc-tete">
-        <h3 className="rg-bloc-titre">Le collier de l’entreprise</h3>
-        <p className="rg-bloc-note">
-          une perle par personne · la perle du chef est cerclée · les creuses sont à rattacher
-        </p>
-      </header>
-
-      <ul className="rg-collier">
-        {equipes.map((equipe, rang) => {
-          const membres = equipe.members || []
-          const ton = tonEquipe(equipe, rang)
-          return (
-            <li className="rg-collier-groupe" key={equipe.id}>
-              <span className="rg-collier-perles" style={{ '--rg-fil': `var(--rg-perle-${ton})` }}>
-                {membres.slice(0, 10).map((m) => {
-                  const personne = m.employee || m
-                  const chef = (personne?.id || m.employee_id) === equipe.leader_employee_id
-                  return (
-                    <span
-                      key={personne?.id || m.id || m.employee_id}
-                      className="rg-perle"
-                      data-ton={ton}
-                      data-chef={chef ? 'oui' : 'non'}
-                      title={`${nomComplet(personne)}${chef ? ' — chef d’équipe' : ''}`}
-                    >
-                      {initiales(personne)}
-                    </span>
-                  )
-                })}
-                {membres.length > 10 && <span className="rg-collier-note">+{membres.length - 10}</span>}
-                {membres.length === 0 && <span className="rg-collier-note">aucun membre</span>}
-              </span>
-              <span className="rg-collier-nom">{equipe.name}</span>
-              <span className="rg-collier-note">
-                {equipe.member_count ?? membres.length} membre{(equipe.member_count ?? membres.length) > 1 ? 's' : ''}
-                {equipe.leader_employee_id ? '' : ' · sans chef'}
-              </span>
-            </li>
-          )
-        })}
-
-        {orphelins.length > 0 && (
-          <li className="rg-collier-groupe" data-orphelin="oui">
-            <span className="rg-collier-perles" style={{ '--rg-fil': 'var(--rg-corail)' }}>
-              {orphelins.slice(0, 10).map((personne) => (
-                <span
-                  key={personne.id}
-                  className="rg-perle"
-                  data-creuse="oui"
-                  title={`${nomComplet(personne)} — à rattacher`}
-                >
-                  {initiales(personne)}
-                </span>
-              ))}
-              {orphelins.length > 10 && <span className="rg-collier-note">+{orphelins.length - 10}</span>}
-            </span>
-            <span className="rg-collier-nom">Sans équipe</span>
-            <span className="rg-collier-note">à rattacher</span>
-          </li>
-        )}
-      </ul>
-    </section>
-  )
-}
-
-// ── une entrée du registre ─────────────────────────────────────────
-function EntreeEquipe({ equipe, rang, onMembres, onModifier, onRetirer, onChangerChef }) {
+// ── la carte d'équipe : trait de couleur, nom, santé, membres ──
+function CarteEquipe({ equipe, onMembres, onModifier, onRetirer, onChangerChef }) {
   const [menu, setMenu] = useState(false)
   const actionsRef = useRef(null)
   const membres = equipe?.members || []
   const effectif = equipe.member_count ?? membres.length
   const score = Number(equipe?.health?.health_score)
   const suivi = Number.isFinite(score)
-  const etat = ETAT_SANTE[equipe?.health?.status] || ETAT_SANTE.healthy
-  const perles = suivi ? Math.min(5, Math.max(0, Math.ceil(Math.round(score) / 20))) : 0
+  const etat = suivi ? (ETAT_SANTE[equipe?.health?.status] || ETAT_SANTE.healthy) : null
 
   // même règle que dans l'annuaire : le menu se referme au clic
-  // ailleurs et à Échap, et sa ligne passe devant les suivantes
+  // ailleurs et à Échap, et sa carte passe devant les suivantes
   useEffect(() => {
     if (!menu) return undefined
     const surPointeur = (evenement) => {
@@ -178,101 +96,205 @@ function EntreeEquipe({ equipe, rang, onMembres, onModifier, onRetirer, onChange
   }, [menu])
 
   return (
-    <li className="rg-entree" data-menu={menu ? 'ouvert' : undefined}>
-      <span className="rg-entree-index">{String(rang + 1).padStart(2, '0')}</span>
+    <article className="eqv2-carte" data-menu={menu ? 'ouvert' : undefined}>
+      <span
+        className="eqv2-carte-trait"
+        style={{ background: equipe.color || '#c9a961' }}
+        aria-hidden="true"
+      />
+      <div className="eqv2-carte-corps">
+        <div className="eqv2-carte-tete">
+          <h4 className="eqv2-carte-nom">
+            <button type="button" onClick={() => onModifier(equipe)}>{equipe.name}</button>
+          </h4>
+          <span className={`eqv2-sante-badge eqv2-sante-badge--${etat ? etat.ton : 'inconnue'}`}>
+            {etat ? etat.libelle : 'Non suivie'}
+          </span>
+          <span className="eqv2-carte-menu-wrap" ref={actionsRef}>
+            <button
+              type="button"
+              className="eqv2-plus"
+              aria-label={`Actions pour ${equipe.name}`}
+              aria-expanded={menu}
+              aria-haspopup="true"
+              onClick={() => setMenu((v) => !v)}
+            >
+              <MoreVertical size={14} />
+            </button>
+            {menu && (
+              <div className="empv2-menu" role="group" aria-label={`Actions pour ${equipe.name}`}>
+                <button type="button" onClick={() => { setMenu(false); onModifier(equipe) }}>
+                  <UserCog size={13} /> Modifier l’équipe
+                </button>
+                <button type="button" onClick={() => { setMenu(false); onMembres(equipe) }}>
+                  <UserPlus size={13} /> Gérer les membres
+                </button>
+                <button type="button" onClick={() => { setMenu(false); onChangerChef(equipe) }}>
+                  <Users size={13} /> Changer de chef
+                </button>
+                <span className="empv2-menu-sep" aria-hidden="true" />
+                <button type="button" className="is-danger" onClick={() => { setMenu(false); onRetirer(equipe) }}>
+                  <UserMinus size={13} /> Supprimer
+                </button>
+              </div>
+            )}
+          </span>
+        </div>
 
-      <div className="rg-cellule">
-        <h4 className="rg-entree-titre">
-          <button type="button" onClick={() => onModifier(equipe)}>{equipe.name}</button>
-        </h4>
-        <p className="rg-entree-note">
+        <p className="eqv2-carte-note">
           {equipe.description || 'Sans description — utile pour situer l’équipe.'}
         </p>
-        <span
-          className="rg-entree-filet"
-          style={{ '--rg-trait-equipe': `var(--rg-perle-${tonEquipe(equipe, rang)})` }}
-          aria-hidden="true"
-        />
-      </div>
 
-      <div className="rg-cellule rg-cellule-membres">
-        <span className="rg-etiquette-champ">
-          Membres <span style={{ letterSpacing: 0, textTransform: 'none', fontWeight: 600 }}>· {effectif}</span>
-        </span>
-        <span className="rg-membres">
-          {membres.slice(0, 6).map((m) => {
+        <div className="eqv2-avatars" aria-label={`Membres de ${equipe.name}`}>
+          {membres.slice(0, 5).map((m) => {
             const personne = m.employee || m
             const chef = (personne?.id || m.employee_id) === equipe.leader_employee_id
             return (
               <span
-                className="rg-membre"
+                className="eqv2-avatar"
                 key={personne?.id || m.id || m.employee_id}
                 data-chef={chef ? 'oui' : 'non'}
-                title={nomComplet(personne)}
+                title={`${nomComplet(personne)}${chef ? ' — chef d’équipe' : ''}`}
               >
-                {personne?.photo_url ? <img src={personne.photo_url} alt="" /> : initiales(personne)}
+                {chef && <Crown size={10} className="eqv2-couronne" aria-hidden="true" />}
+                {personne?.photo_url
+                  ? <img src={personne.photo_url} alt="" />
+                  : initiales(personne)}
               </span>
             )
           })}
-          {membres.length > 6 && <span className="rg-membres-note">+{membres.length - 6}</span>}
-          {membres.length === 0 && <span className="rg-membres-note">aucun membre</span>}
-          <span className="rg-membres-note" data-ton={equipe.leader_employee_id ? 'normal' : 'alerte'}>
+          {membres.length > 5 && <span className="eqv2-avatars-note">+{membres.length - 5}</span>}
+        </div>
+
+        <p className="eqv2-carte-pied">
+          <span>{effectif} membre{effectif > 1 ? 's' : ''}</span>
+          <span className={equipe.leader ? undefined : 'eqv2-carte-sanschef'}>
             {equipe.leader ? `chef : ${nomComplet(equipe.leader)}` : 'sans chef'}
           </span>
-        </span>
+        </p>
       </div>
+    </article>
+  )
+}
 
-      <div className="rg-cellule rg-cellule-sante">
-        <span className="rg-etiquette-champ">Santé</span>
-        <span
-          className="rg-sante"
-          data-etat={suivi ? etat.ton : 'inconnu'}
-          title={suivi ? `Santé de l’équipe : ${etat.libelle}` : 'Aucune mesure de santé pour cette équipe'}
-        >
-          <span className="rg-sante-perles" aria-hidden="true">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <span key={i} className={`rg-sante-perle${i < perles ? ' is-pleine' : ''}`} />
-            ))}
-          </span>
-          <span className="rg-sante-valeur">
-            {suivi ? <>{Math.round(score)}<span> %</span></> : 'Non suivie'}
-          </span>
-        </span>
-      </div>
+// ── le rail « À rattacher » : les personnes sans équipe ─────────
+function RattacherPanel({ orphelins, equipes, onRattacher }) {
+  const [menuOuvert, setMenuOuvert] = useState(null)
+  const menuRef = useRef(null)
 
-      <div className="rg-entree-actions" ref={actionsRef}>
-        <button
-          type="button"
-          className="rg-lien"
-          aria-label={`Actions pour ${equipe.name}`}
-          aria-expanded={menu}
-          aria-haspopup="true"
-          onClick={() => setMenu((v) => !v)}
-        >
-          <MoreVertical size={14} />
-        </button>
-        <button type="button" className="rg-lien" onClick={() => onModifier(equipe)}>
-          <UserCog size={12} /> Modifier
-        </button>
-        <button type="button" className="rg-lien" data-fort="oui" onClick={() => onMembres(equipe)}>
-          <UserPlus size={12} /> Membres
-        </button>
-        {menu && (
-          <div className="rg-menu" role="group" aria-label={`Actions pour ${equipe.name}`}>
-            <button type="button" onClick={() => { setMenu(false); onModifier(equipe) }}>
-              <UserCog size={13} /> Modifier l’équipe
-            </button>
-            <button type="button" onClick={() => { setMenu(false); onChangerChef(equipe) }}>
-              <Users size={13} /> Changer de chef
-            </button>
-            <span className="rg-menu-sep" aria-hidden="true" />
-            <button type="button" className="is-danger" onClick={() => { setMenu(false); onRetirer(equipe) }}>
-              <UserMinus size={13} /> Supprimer
-            </button>
-          </div>
-        )}
-      </div>
-    </li>
+  // le menu d'une ligne se referme au clic ailleurs ou à Échap
+  useEffect(() => {
+    if (menuOuvert === null) return undefined
+    const surPointeur = (evenement) => {
+      if (!menuRef.current?.contains(evenement.target)) setMenuOuvert(null)
+    }
+    const surTouche = (evenement) => {
+      if (evenement.key === 'Escape') setMenuOuvert(null)
+    }
+    document.addEventListener('pointerdown', surPointeur)
+    document.addEventListener('keydown', surTouche)
+    return () => {
+      document.removeEventListener('pointerdown', surPointeur)
+      document.removeEventListener('keydown', surTouche)
+    }
+  }, [menuOuvert])
+
+  return (
+    <section className="eqv2-panneau" aria-label="À rattacher">
+      <h3 className="eqv2-panneau-titre">À rattacher</h3>
+      {orphelins.length === 0 ? (
+        <p className="eqv2-panneau-vide">Tout le monde est rattaché à une équipe.</p>
+      ) : (
+        <ul className="eqv2-rattacher-liste">
+          {orphelins.slice(0, 6).map((o) => (
+            <li className="eqv2-rattacher-ligne" key={o.id}>
+              <span className="eqv2-avatar" aria-hidden="true">
+                {o.photo_url ? <img src={o.photo_url} alt="" /> : initiales(o)}
+              </span>
+              <span className="eqv2-rattacher-info">
+                <strong>{nomComplet(o)}</strong>
+                <small>{[o.position, o.department].filter(Boolean).join(' · ') || 'Fiche à compléter'}</small>
+              </span>
+              <span className="eqv2-rattacher-actions" ref={menuOuvert === o.id ? menuRef : null}>
+                <button
+                  type="button"
+                  className="eqv2-btn-mini"
+                  aria-expanded={menuOuvert === o.id}
+                  onClick={() => setMenuOuvert(menuOuvert === o.id ? null : o.id)}
+                >
+                  Rattacher →
+                </button>
+                {menuOuvert === o.id && (
+                  <div className="empv2-menu eqv2-menu-rattacher" role="group" aria-label={`Rattacher ${nomComplet(o)}`}>
+                    {equipes.length === 0 && (
+                      <p className="eqv2-panneau-vide">Créez d’abord une équipe.</p>
+                    )}
+                    {equipes.map((e) => (
+                      <button
+                        key={e.id}
+                        type="button"
+                        onClick={() => { setMenuOuvert(null); onRattacher(o.id, e.id) }}
+                      >
+                        <span className="eqv2-menu-pastille" style={{ background: e.color || 'var(--empv2-or)' }} aria-hidden="true" />
+                        {e.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+// ── le rail « Santé des équipes » : la répartition, en barres ──
+function SantePanel({ equipes, predictions }) {
+  const parTon = { solide: 0, 'a-surveiller': 0, critique: 0 }
+  let suivies = 0
+  equipes.forEach((e) => {
+    const score = Number(e?.health?.health_score)
+    if (!Number.isFinite(score)) return
+    suivies += 1
+    const ton = ETAT_SANTE[e.health.status]?.ton || 'solide'
+    parTon[ton] += 1
+  })
+
+  const lignes = [
+    { ton: 'solide', libelle: 'Solides' },
+    { ton: 'a-surveiller', libelle: 'À surveiller' },
+    { ton: 'critique', libelle: 'Critiques' },
+  ]
+
+  return (
+    <section className="eqv2-panneau" aria-label="Santé des équipes">
+      <h3 className="eqv2-panneau-titre">Santé des équipes</h3>
+      {!predictions || suivies === 0 ? (
+        <p className="eqv2-panneau-vide">
+          La santé des équipes n’est pas mesurée
+          {predictions ? '' : ' : l’option Prédictions est désactivée sur cette entreprise'}.
+        </p>
+      ) : (
+        <ul className="eqv2-sante-liste">
+          {lignes.map(({ ton, libelle }) => (
+            <li className="eqv2-sante-ligne" key={ton} data-ton={ton}>
+              <span className="eqv2-sante-haut">
+                <span>{libelle}</span>
+                <strong>{parTon[ton]}</strong>
+              </span>
+              <span className="eqv2-sante-jauge" aria-hidden="true">
+                <span
+                  className="eqv2-sante-remplie"
+                  style={{ width: `${equipes.length > 0 ? Math.round((parTon[ton] / equipes.length) * 100) : 0}%` }}
+                />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 
@@ -286,10 +308,10 @@ function PiedDecisions({
 
   if (!predictions) {
     return (
-      <footer className="rg-pied">
-        <p className="rg-pied-titre">
+      <footer className="empv2-pied">
+        <p className="empv2-pied-titre">
           À décider
-          <span className="rg-pied-texte">
+          <span className="empv2-pied-texte">
             Les analyses d’équipe ne sont pas activées : aucune alerte, aucun regroupement
             proposé. L’option Prédictions s’allume depuis la fiche de l’entreprise.
           </span>
@@ -308,11 +330,11 @@ function PiedDecisions({
   const total = onglets.reduce((somme, o) => somme + o.nombre, 0)
 
   return (
-    <footer className="rg-pied">
-      <div className="rg-pied-ligne">
-        <p className="rg-pied-titre">
+    <footer className="empv2-pied">
+      <div className="empv2-pied-ligne">
+        <p className="empv2-pied-titre">
           À décider
-          <span className="rg-pied-texte">
+          <span className="empv2-pied-texte">
             {chargement
               ? 'Analyse en cours…'
               : total === 0
@@ -322,7 +344,7 @@ function PiedDecisions({
         </p>
         <button
           type="button"
-          className="rg-lien"
+          className="empv2-lien"
           aria-expanded={ouvert}
           onClick={() => setOuvert((v) => !v)}
         >
@@ -333,43 +355,43 @@ function PiedDecisions({
 
       {ouvert && (
         <>
-          <div className="rg-pied-onglets" role="group" aria-label="Ce qui demande une décision">
+          <div className="empv2-pied-onglets" role="group" aria-label="Ce qui demande une décision">
             {onglets.map((o) => (
               <button
                 key={o.cle}
                 type="button"
-                className="rg-lien"
+                className="empv2-lien"
                 aria-pressed={onglet === o.cle}
                 onClick={() => setOnglet(o.cle)}
               >
-                {o.libelle} <span className="rg-categorie-nombre">{o.nombre}</span>
+                {o.libelle} <span className="empv2-pied-nombre">{o.nombre}</span>
               </button>
             ))}
           </div>
 
-          <div className="rg-pied-liste">
+          <div className="empv2-pied-liste">
             {actif.nombre === 0 && (
-              <p className="rg-pied-item-note" style={{ padding: '12px 0' }}>{actif.vide}</p>
+              <p className="empv2-pied-item-note" style={{ padding: '12px 0' }}>{actif.vide}</p>
             )}
 
             {onglet === 'alertes' && alertes.map((a) => (
-              <div key={a.id} className="rg-pied-item" data-grave={a.severity === 'critical' ? 'oui' : 'non'}>
+              <div key={a.id} className="empv2-pied-item" data-grave={a.severity === 'critical' ? 'oui' : 'non'}>
                 <div>
-                  <p className="rg-pied-item-titre">{a.team_name || 'Équipe'}</p>
-                  <p className="rg-pied-item-note">{a.message}</p>
+                  <p className="empv2-pied-item-titre">{a.team_name || 'Équipe'}</p>
+                  <p className="empv2-pied-item-note">{a.message}</p>
                 </div>
               </div>
             ))}
 
             {onglet === 'orphelins' && orphelins.map((o) => (
-              <div key={o.id} className="rg-pied-item">
+              <div key={o.id} className="empv2-pied-item">
                 <div>
-                  <p className="rg-pied-item-titre">{nomComplet(o)}</p>
-                  <p className="rg-pied-item-note">{o.position || o.department || 'Aucune équipe'}</p>
+                  <p className="empv2-pied-item-titre">{nomComplet(o)}</p>
+                  <p className="empv2-pied-item-note">{o.position || o.department || 'Aucune équipe'}</p>
                 </div>
-                <div className="rg-pied-item-actions">
+                <div className="empv2-pied-item-actions">
                   <select
-                    className="rg-tri"
+                    className="empv2-tri"
                     aria-label={`Rattacher ${nomComplet(o)} à une équipe`}
                     value=""
                     onChange={(e) => { if (e.target.value) onAjouterOrphelin(o.id, e.target.value) }}
@@ -384,13 +406,13 @@ function PiedDecisions({
             ))}
 
             {onglet === 'suggestions' && suggestions.map((s) => (
-              <div key={s.id} className="rg-pied-item">
+              <div key={s.id} className="empv2-pied-item">
                 <div>
-                  <p className="rg-pied-item-titre">{s.name}</p>
-                  <p className="rg-pied-item-note">{s.reason}</p>
+                  <p className="empv2-pied-item-titre">{s.name}</p>
+                  <p className="empv2-pied-item-note">{s.reason}</p>
                 </div>
-                <div className="rg-pied-item-actions">
-                  <button type="button" className="rg-lien" onClick={() => onCreerSuggestion(s)}>
+                <div className="empv2-pied-item-actions">
+                  <button type="button" className="empv2-lien" onClick={() => onCreerSuggestion(s)}>
                     Créer cette équipe
                   </button>
                 </div>
@@ -398,10 +420,10 @@ function PiedDecisions({
             ))}
 
             {onglet === 'besoins' && besoins.map((n) => (
-              <div key={n.team_id} className="rg-pied-item">
+              <div key={n.team_id} className="empv2-pied-item">
                 <div>
-                  <p className="rg-pied-item-titre">{n.team_name}</p>
-                  <p className="rg-pied-item-note">
+                  <p className="empv2-pied-item-titre">{n.team_name}</p>
+                  <p className="empv2-pied-item-note">
                     {n.message || `${n.needed || 0} personne(s) à recruter ou à affecter`}
                   </p>
                 </div>
@@ -414,7 +436,7 @@ function PiedDecisions({
   )
 }
 
-export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = [] }) {
+export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = [], signalCreation = 0 }) {
   const [admin, setAdmin] = useState(null)
   const [enterpriseId, setEnterpriseId] = useState(enterpriseIdProp || null)
   const [raison, setRaison] = useState('ok')
@@ -668,6 +690,15 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
     setHistorique(data || [])
   }, [enterpriseId])
 
+  // Le bouton « Nouvelle équipe » vit dans la ligne de titre de la
+  // page : le signal monte, la vue ouvre sa fenêtre.
+  useEffect(() => {
+    if (signalCreation > 0) {
+      setEquipeChoisie(null)
+      setMontrerEquipe(true)
+    }
+  }, [signalCreation])
+
   useEffect(() => {
     const surTouche = (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return
@@ -742,13 +773,12 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
 
   if (raison === 'sansEntreprise') {
     return (
-      <div className="emp-vues">
-        <div className="rg-vide">
-          <RosacePerlesSvg taille={52} />
+      <div className="emp-vues eqv2">
+        <div className="eqv2-vide">
           <h3>Sélectionnez une entreprise</h3>
           <p>
             Les équipes se lisent entreprise par entreprise. Choisissez-la dans
-            l’en-tête de la page, puis revenez sur cet onglet.
+            la sidebar, puis revenez sur cet onglet.
           </p>
         </div>
       </div>
@@ -757,9 +787,8 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
 
   if (raison === 'sansOption') {
     return (
-      <div className="emp-vues">
-        <div className="rg-vide">
-          <RosacePerlesSvg taille={52} />
+      <div className="emp-vues eqv2">
+        <div className="eqv2-vide">
           <h3>Option Équipes non activée</h3>
           <p>
             Cette entreprise n’a pas l’option Équipes et tâches. Un administrateur
@@ -771,74 +800,55 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
     )
   }
 
+  const sansChef = equipes.length - totalChefs
+
   return (
-    <div className="emp-vues rg-equipes">
-      <Folio droite="Registre des équipes" />
-
-      <header className="rg-tete">
-        <div>
-          <p className="rg-eyebrow">Vue d’ensemble</p>
-          <h2 className="rg-titre">Équipes<span>.</span></h2>
+    <div className="emp-vues eqv2">
+      {/* le bandeau de chiffres : compté sur les équipes chargées */}
+      <div className="eqv2-kpis" aria-label="Chiffres des équipes">
+        <div className="empv2-kpi">
+          <div className="empv2-kpi-haut"><strong>{equipes.length}</strong></div>
+          <span className="empv2-kpi-libelle">Équipes</span>
         </div>
-        <Colophon
-          chiffres={[
-            {
-              valeur: equipes.length,
-              libelle: 'Équipes',
-              note: equipes.length > 0
-                ? `${pourcent(equipesAvecMembres, equipes.length)} ont des membres`
-                : 'aucune pour l’instant',
-            },
-            {
-              valeur: totalMembres,
-              libelle: 'Membres',
-              note: effectifConnu > 0
-                ? `${pourcent(totalMembres, effectifConnu)} de l’effectif`
-                : '—',
-            },
-            {
-              valeur: totalChefs,
-              libelle: 'Chefs',
-              note: equipes.length > 0
-                ? `${pourcent(totalChefs, equipes.length)} des équipes`
-                : '—',
-            },
-            {
-              valeur: orphelins.length,
-              libelle: 'Sans équipe',
-              note: effectifConnu > 0
-                ? `${pourcent(orphelins.length, effectifConnu)} de l’effectif`
-                : '—',
-              ton: orphelins.length > 0 ? 'corail' : 'normal',
-            },
-          ]}
-        />
-      </header>
+        <div className="empv2-kpi">
+          <div className="empv2-kpi-haut"><strong>{totalMembres}</strong></div>
+          <span className="empv2-kpi-libelle">Membres</span>
+        </div>
+        <div className="empv2-kpi">
+          <div className="empv2-kpi-haut"><strong>{sansChef}</strong></div>
+          <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--orange" aria-hidden="true" />Sans chef</span>
+        </div>
+        <div className="empv2-kpi">
+          <div className="empv2-kpi-haut"><strong>{orphelins.length}</strong></div>
+          <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--or" aria-hidden="true" />À rattacher</span>
+        </div>
+      </div>
 
-      <div className="rg-outils">
-        <label className="rg-recherche">
+      {/* la barre d'outils : chercher, filtrer, trier, rafraîchir */}
+      <div className="eqv2-outils">
+        <label className="empv2-recherche eqv2-recherche">
           <Search size={14} />
           <input
             ref={rechercheRef}
             type="search"
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}
-            placeholder="Rechercher une équipe"
+            placeholder="Rechercher une équipe..."
             aria-label="Rechercher une équipe"
           />
           {recherche && (
-            <button type="button" className="rg-recherche-effacer" onClick={() => setRecherche('')} aria-label="Effacer la recherche">
+            <button type="button" className="empv2-recherche-effacer" onClick={() => setRecherche('')} aria-label="Effacer la recherche">
               <X size={12} />
             </button>
           )}
         </label>
 
-        <div className="rg-filtres" role="group" aria-label="Filtrer les équipes">
+        <div className="eqv2-filtres" role="group" aria-label="Filtrer les équipes">
           {FILTRES.map((f) => (
             <button
               key={f.key}
               type="button"
-              className="rg-filtre"
+              className="eqv2-filtre"
               aria-pressed={filtre === f.key}
               onClick={() => setFiltre(f.key)}
             >
@@ -847,82 +857,73 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
           ))}
         </div>
 
-        <select className="rg-tri" value={tri} onChange={(e) => setTri(e.target.value)} aria-label="Trier les équipes">
+        <select className="eqv2-tri" value={tri} onChange={(e) => setTri(e.target.value)} aria-label="Trier les équipes">
           {TRIS.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>
 
-        <div className="rg-actions">
-          <button type="button" className="rg-lien" onClick={() => charger(enterpriseId)} title="Rafraîchir (R)">
+        <span className="empv2-liens">
+          <button type="button" className="empv2-lien" onClick={() => charger(enterpriseId)} title="Rafraîchir (R)">
             <RefreshCw size={12} /> Rafraîchir
           </button>
           <button
             type="button"
-            className="rg-lien"
+            className="empv2-lien"
             onClick={async () => { await chargerHistorique(); setMontrerHistorique(true) }}
           >
             <History size={12} /> Historique
           </button>
           <button
             type="button"
-            className="rg-lien"
+            className="empv2-lien"
             onClick={() => setMontrerRaccourcis(true)}
             aria-label="Raccourcis clavier"
             title="Raccourcis (?)"
           >
             <HelpCircle size={13} />
           </button>
-          <button type="button" className="rg-primaire" onClick={ouvrirNouvelleEquipe}>
-            <Plus size={14} /> Nouvelle équipe
-          </button>
-        </div>
+        </span>
       </div>
 
-      <CollierEntreprise equipes={equipes} orphelins={orphelins} />
+      {/* les cartes, à gauche ; le rail des décisions, à droite */}
+      <div className="eqv2-corps">
+        <div className="eqv2-collonne">
+          {chargement ? (
+            <div className="eqv2-chargement" aria-live="polite">
+              <span className="eqv2-chargement-texte"><Loader2 size={14} className="eqv2-tourne" /> Chargement des équipes…</span>
+            </div>
+          ) : equipesAffichees.length === 0 ? (
+            <div className="eqv2-vide">
+              <h3>{equipes.length === 0 ? 'Aucune équipe pour l’instant' : 'Aucune équipe ne correspond'}</h3>
+              <p>
+                {equipes.length === 0
+                  ? 'Regroupez les personnes qui travaillent ensemble : le chef d’équipe, puis les membres. Les tâches pourront ensuite être confiées à l’équipe entière.'
+                  : 'Élargissez la recherche ou retirez le filtre pour revoir toutes les équipes.'}
+              </p>
+              <button type="button" className="empv2-nouvel" onClick={ouvrirNouvelleEquipe}>
+                <Plus size={14} /> Nouvelle équipe
+              </button>
+            </div>
+          ) : (
+            <div className="eqv2-grille" aria-label="Les équipes">
+              {equipesAffichees.map((equipe) => (
+                <CarteEquipe
+                  key={equipe.id}
+                  equipe={equipe}
+                  onMembres={ouvrirMembres}
+                  onModifier={ouvrirModification}
+                  onRetirer={(t) => { setASupprimer(t); setMontrerSuppression(true) }}
+                  onChangerChef={ouvrirModification}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-      <section className="rg-bloc" aria-label="Les équipes" style={{ borderBottom: 0 }}>
-        <header className="rg-bloc-tete">
-          <h3 className="rg-bloc-titre">Les équipes</h3>
-          <p className="rg-bloc-note">
-            santé en cinq perles · {equipesAffichees.length} affichée{equipesAffichees.length > 1 ? 's' : ''}
-          </p>
-        </header>
-
-        {chargement ? (
-          <div className="rg-chargement" aria-live="polite">
-            <span className="rg-chargement-texte"><Loader2 size={14} className="rg-tourne" /> Chargement des équipes…</span>
-            <div className="rg-chargement-ligne" />
-            <div className="rg-chargement-ligne" />
-            <div className="rg-chargement-ligne" />
-          </div>
-        ) : equipesAffichees.length === 0 ? (
-          <div className="rg-vide">
-            <RosacePerlesSvg taille={52} />
-            <h3>{equipes.length === 0 ? 'Aucune équipe pour l’instant' : 'Aucune équipe ne correspond'}</h3>
-            <p>
-              {equipes.length === 0
-                ? 'Regroupez les personnes qui travaillent ensemble : le chef d’équipe, puis les membres. Les tâches pourront ensuite être confiées à l’équipe entière.'
-                : 'Élargissez la recherche ou retirez le filtre pour revoir toutes les équipes.'}
-            </p>
-            <button type="button" className="rg-primaire" onClick={ouvrirNouvelleEquipe}>
-              <Plus size={14} /> Nouvelle équipe
-            </button>
-          </div>
-        ) : (
-          <ul className="rg-registre">
-            {equipesAffichees.map((equipe, rang) => (
-              <EntreeEquipe
-                key={equipe.id}
-                equipe={equipe}
-                rang={rang}
-                onMembres={ouvrirMembres}
-                onModifier={ouvrirModification}
-                onRetirer={(t) => { setASupprimer(t); setMontrerSuppression(true) }}
-                onChangerChef={ouvrirModification}
-              />
-            ))}
-          </ul>
-        )}
-      </section>
+        <div className="eqv2-rais">
+          <RattacherPanel orphelins={orphelins} equipes={equipes} onRattacher={ajouterOrphelin} />
+          <SantePanel equipes={equipes} predictions={predictions} />
+        </div>
+      </div>
 
       <PiedDecisions
         alertes={alertes}

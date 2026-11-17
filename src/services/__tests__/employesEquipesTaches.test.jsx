@@ -10,9 +10,9 @@
 //     au lieu de casser un lien déjà envoyé ;
 //   · les vues Équipes et Tâches se lisent dans la coque de
 //     l'annuaire : même en-tête, même thème, mêmes raccourcis ;
-//   · le registre perlé est un vocabulaire visuel, pas un jargon :
-//     aucun mot d'atelier dans les textes lus ;
-//   · aucune carte : ce qui sépare deux entrées, c'est un filet ;
+//   · la vue Équipes est en cartes à bordure colorée, comme dans
+//     la maquette : quatre chiffres, un rail, un pied replié ;
+//   · aucun jargon d'atelier dans les textes lus ;
 //   · un survol change le trait, jamais le fond derrière un
 //     texte, la couleur d'un texte ni l'opacité d'un champ ;
 //   · déplacer une tâche d'une colonne à l'autre change vraiment
@@ -238,8 +238,9 @@ describe('les onglets de la page Employés', () => {
     expect(EMPLOYES).toMatch(/vueActive === null && \(/)
   })
 
-  it('embarque les raccourcis de pages de la coque refondue', () => {
-    expect(EMPLOYES).toContain("<RaccourcisPages compact excludePaths={['/employes']} />")
+  it('ne porte plus la bande de raccourcis de pages : la sidebar est la navigation', () => {
+    expect(EMPLOYES).not.toContain('RaccourcisPages')
+    expect(EMPLOYES).not.toContain('empv2-raccourcis')
   })
 })
 
@@ -502,174 +503,146 @@ const equipe = (surcharge = {}) => ({
 })
 
 describe('la vue Équipes', () => {
-  it('ouvre le registre sur un folio, un titre et un colophon de quatre chiffres', async () => {
+  it('pose quatre chiffres, comptés sur les équipes chargées', async () => {
     etat.equipes = [
       equipe(),
       equipe({ id: 'eq-2', name: 'Expédition', member_count: 1, leader_employee_id: null, leader: null, health: { health_score: 40, status: 'warning' } }),
     ]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
 
-    expect(hote.querySelector('.rg-folio').textContent).toContain('En-Check')
-    expect(hote.querySelector('.rg-eyebrow').textContent).toContain('Vue d’ensemble')
-    expect(hote.querySelector('h2.rg-titre').textContent).toBe('Équipes.')
-
-    const chiffres = [...hote.querySelectorAll('.rg-chiffre')]
-    expect(chiffres).toHaveLength(4)
-    expect(chiffres.map((c) => c.querySelector('.rg-chiffre-valeur').textContent)).toEqual(['2', '3', '1', '0'])
-    expect(chiffres.map((c) => c.querySelector('.rg-chiffre-libelle').textContent)).toEqual(['Équipes', 'Membres', 'Chefs', 'Sans équipe'])
+    const kpis = [...hote.querySelectorAll('.eqv2-kpis .empv2-kpi')]
+    expect(kpis).toHaveLength(4)
+    expect(kpis.map((k) => k.querySelector('strong').textContent)).toEqual(['2', '3', '1', '0'])
+    expect(kpis.map((k) => k.querySelector('.empv2-kpi-libelle').textContent)).toEqual(['Équipes', 'Membres', 'Sans chef', 'À rattacher'])
   })
 
-  it('n’écrit que des parts réelles dans le colophon, ou un tiret', async () => {
-    etat.equipes = [equipe()]
-    await relancer(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    const notes = [...hote.querySelectorAll('.rg-chiffre-note')].map((n) => n.textContent.trim())
-    expect(notes[0]).toBe('100 % ont des membres')
-    expect(notes[1]).toBe('100 % de l’effectif')
-    expect(notes[2]).toBe('100 % des équipes')
-    // personne hors équipe : la part n'a pas de sens → tiret
-    expect(notes[3]).toBe('0 % de l’effectif')
-
-    etat.equipes = []
-    await relancer(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    const vides = [...hote.querySelectorAll('.rg-chiffre-note')].map((n) => n.textContent.trim())
-    expect(vides[1]).toBe('—')
-    expect(vides[2]).toBe('—')
-    expect(vides[3]).toBe('—')
-  })
-
-  it('enfile tout l’effectif sur un collier, la perle du chef cerclée', async () => {
-    etat.equipes = [equipe(), equipe({ id: 'eq-2', name: 'Qualité', members: [], member_count: 0, leader: null, leader_employee_id: null, health: null })]
+  it('empile cinq avatars, le chef couronné, et compte le reste', async () => {
+    const membres = Array.from({ length: 8 }, (_, i) => ({
+      id: `m${i + 1}`,
+      employee: { id: i === 0 ? 'emp-1' : `emp-x${i}`, first_name: 'Membre', last_name: `Huit${i}` },
+    }))
+    etat.equipes = [equipe({ members: membres, member_count: 8 })]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
 
-    const collier = hote.querySelector('.rg-collier')
-    expect(collier, 'collier de l’entreprise').not.toBeNull()
-    const groupes = [...collier.querySelectorAll('.rg-collier-groupe')]
-    expect(groupes).toHaveLength(2)
-    const perles = [...collier.querySelectorAll('.rg-perle')]
-    expect(perles).toHaveLength(2)
-    expect(perles.map((p) => p.textContent)).toEqual(['AD', 'KA'])
-    expect(perles[0].getAttribute('data-chef')).toBe('oui')
-    expect(perles[1].getAttribute('data-chef')).toBe('non')
-    expect(groupes[1].textContent).toContain('aucun membre')
+    const pile = [...hote.querySelectorAll('.eqv2-avatars .eqv2-avatar')]
+    expect(pile).toHaveLength(5) // cinq affichés, le reste est compté
+    expect(pile[0].getAttribute('data-chef')).toBe('oui')
+    expect(hote.querySelector('.eqv2-couronne')).not.toBeNull()
+    expect(hote.querySelector('.eqv2-avatars-note').textContent).toBe('+3')
   })
 
-  it('pose les personnes sans équipe en perles creuses, à part', async () => {
+  it('liste les personnes sans équipe dans le rail, chacune avec son bouton', async () => {
     etat.predictions = true
-    etat.orphelins = [{ id: 'emp-9', first_name: 'Rita', last_name: 'Kponou' }]
+    etat.orphelins = [{ id: 'emp-9', first_name: 'Rita', last_name: 'Kponou', position: 'Cuisinière' }]
     etat.equipes = [equipe()]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
 
-    const creuses = [...hote.querySelectorAll('.rg-perle[data-creuse="oui"]')]
-    expect(creuses).toHaveLength(1)
-    expect(creuses[0].textContent).toBe('RK')
-    expect(hote.querySelector('.rg-collier-groupe[data-orphelin="oui"]').textContent).toContain('à rattacher')
+    const lignes = [...hote.querySelectorAll('.eqv2-rattacher-ligne')]
+    expect(lignes).toHaveLength(1)
+    expect(lignes[0].querySelector('strong').textContent).toBe('Rita Kponou')
+    expect(lignes[0].textContent).toContain('Cuisinière')
+
+    await act(async () => hote.querySelector('.eqv2-btn-mini').click())
+    const menu = hote.querySelector('.eqv2-menu-rattacher')
+    expect(menu).not.toBeNull()
+    expect(menu.textContent).toContain('Maintenance')
+    expect(menu.querySelector('.eqv2-menu-pastille')).not.toBeNull()
+
+    etat.orphelins = []
+    await relancer(<EquipesVue enterpriseId="ent-1" employes={[]} />)
+    expect(hote.textContent).toContain('Tout le monde est rattaché à une équipe.')
   })
 
-  it('lit la santé en cinq perles, avec le chiffre juste à côté', async () => {
-    etat.equipes = [equipe()]
+  it('lit la santé de chaque équipe en pastille tonnée', async () => {
+    etat.equipes = [
+      equipe(),
+      equipe({ id: 'eq-2', name: 'Expédition', health: { health_score: 40, status: 'warning' } }),
+    ]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-
-    const jauge = hote.querySelector('.rg-sante')
-    expect(jauge, 'jauge de santé').not.toBeNull()
-    expect(jauge.querySelectorAll('.rg-sante-perle')).toHaveLength(5)
-    expect(jauge.querySelectorAll('.rg-sante-perle.is-pleine')).toHaveLength(4)
-    expect(jauge.textContent).toContain('80')
-    expect(jauge.getAttribute('data-etat')).toBe('solide')
+    expect(hote.querySelector('.eqv2-sante-badge--solide').textContent).toBe('Solide')
+    expect(hote.querySelector('.eqv2-sante-badge--a-surveiller').textContent).toBe('À surveiller')
   })
 
   it('ne mesure pas une santé qu’on n’a pas mesurée', async () => {
     etat.equipes = [equipe({ health: null })]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-
-    const jauge = hote.querySelector('.rg-sante')
-    expect(jauge.textContent).toContain('Non suivie')
-    expect(jauge.querySelectorAll('.rg-sante-perle.is-pleine')).toHaveLength(0)
-    expect(jauge.getAttribute('data-etat')).toBe('inconnu')
+    expect(hote.querySelector('.eqv2-sante-badge--inconnue').textContent).toBe('Non suivie')
   })
 
-  it('écrit chaque équipe comme une entrée de registre, numérotée', async () => {
+  it('pose chaque équipe en carte à trait coloré, sa note, son pied compté', async () => {
     etat.equipes = [equipe(), equipe({ id: 'eq-2', name: 'Expédition' })]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
 
-    const entrees = [...hote.querySelectorAll('.rg-registre .rg-entree')]
-    expect(entrees).toHaveLength(2)
-    expect(entrees.map((e) => e.querySelector('.rg-entree-index').textContent)).toEqual(['01', '02'])
-    // le registre s'ouvre trié par nom
-    expect(entrees.map((e) => e.querySelector('.rg-entree-titre').textContent)).toEqual(['Expédition', 'Maintenance'])
-    const maintenance = entrees.find((e) => e.textContent.includes('Maintenance'))
-    expect(maintenance.querySelector('.rg-entree-note').textContent).toContain('Ligne de production')
-    // le filet de couleur de l'équipe est posé sous sa description
-    const filet = maintenance.querySelector('.rg-entree-filet')
-    expect(filet).not.toBeNull()
-    expect(filet.getAttribute('style')).toContain('--rg-trait-equipe')
-    expect(maintenance.querySelectorAll('.rg-membre')).toHaveLength(2)
+    const cartes = [...hote.querySelectorAll('.eqv2-carte')]
+    expect(cartes).toHaveLength(2)
+    // la vue s'ouvre triée par nom
+    expect(cartes.map((c) => c.querySelector('.eqv2-carte-nom').textContent)).toEqual(['Expédition', 'Maintenance'])
+    const maintenance = cartes.find((c) => c.textContent.includes('Maintenance'))
+    // le trait de couleur de l'équipe couronne la carte
+    const trait = maintenance.querySelector('.eqv2-carte-trait')
+    expect(trait.getAttribute('style')).toContain('rgb(47, 127, 115)')
+    expect(maintenance.querySelector('.eqv2-carte-note').textContent).toContain('Ligne de production')
+    expect(maintenance.querySelector('.eqv2-carte-pied').textContent).toContain('2 membres')
   })
 
-  it('nomme les personnes au lieu de les réduire à un identifiant', async () => {
+  it('nomme le chef dans le pied de la carte', async () => {
     etat.equipes = [equipe()]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    expect(hote.textContent).toContain('Maintenance')
-    expect(hote.textContent).toContain('chef : Awa Dossou')
-    expect(hote.querySelector('.rg-membre[data-chef="oui"]')).not.toBeNull()
+    expect(hote.querySelector('.eqv2-carte-pied').textContent).toContain('chef : Awa Dossou')
+    expect(hote.querySelector('.eqv2-avatar[data-chef="oui"]')).not.toBeNull()
   })
 
-  it('n’invente pas de membres quand l’équipe est vide', async () => {
+  it('compte zéro et dit « sans chef » quand l’équipe est vide', async () => {
     etat.equipes = [equipe({ members: [], member_count: 0, leader: null, leader_employee_id: null })]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    expect(hote.querySelector('.rg-cellule-membres').textContent).toContain('aucun membre')
-    expect(hote.querySelector('.rg-cellule-membres').textContent).toContain('sans chef')
-    expect(hote.querySelector('.rg-cellule-membres').querySelector('.rg-membres-note[data-ton="alerte"]')).not.toBeNull()
-    expect(hote.querySelector('.rg-membre')).toBeNull()
+    const pied = hote.querySelector('.eqv2-carte-pied')
+    expect(pied.textContent).toContain('0 membre')
+    expect(pied.querySelector('.eqv2-carte-sanschef').textContent).toBe('sans chef')
+    expect(hote.querySelector('.eqv2-avatar')).toBeNull()
   })
 
   it('explique l’absence d’équipes et propose la première', async () => {
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    expect(hote.textContent).toContain('Aucune équipe pour l’instant')
+    expect(hote.querySelector('.eqv2-vide').textContent).toContain('Aucune équipe pour l’instant')
     expect(boutonAvec('Nouvelle équipe')).toBeTruthy()
-    expect(hote.querySelector('[data-testid="rosace-perles"]')).not.toBeNull()
   })
 
-  it('dit clairement quand l’option est éteinte sur la fiche entreprise', async () => {
-    etat.equipeAutorisee = false
-    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    expect(hote.textContent).toContain('Option Équipes non activée')
-    expect(hote.textContent).toContain('l’annuaire reste disponible')
-  })
-
-  it('demande l’entreprise quand aucune n’est sélectionnée', async () => {
-    localStorage.setItem('admin', JSON.stringify({ id: 'adm', role: 'super_admin' }))
-    await rendre(<EquipesVue enterpriseId={null} employes={[]} />)
-    expect(hote.textContent).toContain('Sélectionnez une entreprise')
-    expect(hote.textContent).not.toContain('non activée')
-  })
-
-  it('ouvre la fenêtre de création depuis la barre d’outils', async () => {
-    await rendre(<EquipesVue enterpriseId="ent-1" employes={[{ id: 'emp-1', first_name: 'Awa', last_name: 'Dossou' }]} />)
-    await act(async () => boutonAvec('Nouvelle équipe').click())
+  it('le bouton « Nouvelle équipe » de la page ouvre la fenêtre de création', async () => {
+    await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} signalCreation={1} />)
     expect(hote.textContent).toContain('Nom *')
   })
 
-  it('filtre, cherche et trie sans quitter le registre', async () => {
+  it('filtre, cherche et trie sans quitter la vue', async () => {
     etat.equipes = [
       equipe(),
       equipe({ id: 'eq-2', name: 'Expédition', member_count: 1, leader_employee_id: null, leader: null }),
     ]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
 
-    const filtre = [...hote.querySelectorAll('.rg-filtre')].find((f) => f.textContent === 'Sans chef')
+    const filtre = [...hote.querySelectorAll('.eqv2-filtre')].find((f) => f.textContent === 'Sans chef')
     await act(async () => filtre.click())
-    expect([...hote.querySelectorAll('.rg-entree')]).toHaveLength(1)
-    expect(hote.querySelector('.rg-entree-titre').textContent).toBe('Expédition')
+    expect([...hote.querySelectorAll('.eqv2-carte')]).toHaveLength(1)
+    expect(hote.querySelector('.eqv2-carte-nom').textContent).toBe('Expédition')
 
-    await act(async () => [...hote.querySelectorAll('.rg-filtre')].find((f) => f.textContent === 'Toutes').click())
-    const champ = hote.querySelector('.rg-recherche input')
+    // le tri par effectif remet l'équipe la plus grande en premier
+    await act(async () => [...hote.querySelectorAll('.eqv2-filtre')].find((f) => f.textContent === 'Toutes').click())
+    const tri = hote.querySelector('.eqv2-tri')
+    const triSetter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value').set
+    await act(async () => {
+      triSetter.call(tri, 'members_desc')
+      tri.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(hote.querySelector('.eqv2-carte-nom').textContent).toBe('Maintenance')
+
+    // la recherche retrouve par nom
+    const champ = hote.querySelector('.eqv2-recherche input')
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
     await act(async () => {
       setter.call(champ, 'maint')
       champ.dispatchEvent(new Event('input', { bubbles: true }))
     })
-    expect([...hote.querySelectorAll('.rg-entree')]).toHaveLength(1)
-    expect(hote.querySelector('.rg-entree-titre').textContent).toBe('Maintenance')
+    expect([...hote.querySelectorAll('.eqv2-carte')]).toHaveLength(1)
+    expect(hote.querySelector('.eqv2-carte-nom').textContent).toBe('Maintenance')
   })
 
   it('range les décisions dans un pied dépliable, pas dans une bannière qui hurle', async () => {
@@ -680,7 +653,7 @@ describe('la vue Équipes', () => {
     etat.equipes = [equipe()]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
 
-    const pied = hote.querySelector('.rg-pied')
+    const pied = hote.querySelector('.empv2-pied')
     expect(pied.textContent).toContain('À décider')
     expect(pied.textContent).toContain('2 points à arbitrer')
     // replié : le détail n'est pas déversé sur la page
@@ -689,14 +662,14 @@ describe('la vue Équipes', () => {
     await act(async () => boutonAvec('Ouvrir le registre').click())
     expect(pied.textContent).toContain('Aucun pointage depuis 3 jours')
 
-    const ongletOrphelins = [...pied.querySelectorAll('.rg-pied-onglets button')].find((b) => b.textContent.includes('Sans équipe'))
+    const ongletOrphelins = [...pied.querySelectorAll('.empv2-pied-onglets button')].find((b) => b.textContent.includes('Sans équipe'))
     await act(async () => ongletOrphelins.click())
     expect(pied.textContent).toContain('Rita Kponou')
   })
 
   it('dit que les analyses manquent au lieu de faire semblant quand Prédictions est éteint', async () => {
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    expect(hote.querySelector('.rg-pied').textContent).toContain('Les analyses d’équipe ne sont pas activées')
+    expect(hote.querySelector('.empv2-pied').textContent).toContain('Les analyses d’équipe ne sont pas activées')
     expect(hote.textContent).not.toContain('à arbitrer')
   })
 })
@@ -721,58 +694,65 @@ const tache = (surcharge = {}) => ({
 })
 
 describe('la vue Tâches', () => {
-  it('ouvre le registre sur un titre et quatre chiffres', async () => {
+  it('pose quatre chiffres, comptés sur les tâches chargées', async () => {
     etat.taches = [tache(), tache({ id: 't-2', title: 'Clôturer le mois', status: 'validated' })]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
 
-    expect(hote.querySelector('h2.rg-titre').textContent).toBe('Tâches.')
-    const valeurs = [...hote.querySelectorAll('.rg-chiffre-valeur')].map((v) => v.textContent)
-    expect(valeurs).toEqual(['2', '0', '0', '1'])
-    expect(hote.querySelectorAll('.rg-chiffre-note')[0].textContent).toBe('dont 1 jamais ouvertes')
+    const kpis = [...hote.querySelectorAll('.tqv2-kpis .empv2-kpi')]
+    expect(kpis).toHaveLength(4)
+    expect(kpis.map((k) => k.querySelector('strong').textContent)).toEqual(['2', '0', '0', '1'])
+    expect(kpis.map((k) => k.querySelector('.empv2-kpi-libelle').textContent)).toEqual(['Tâches', 'En cours', 'En retard', 'Terminées'])
   })
 
-  it('range les tâches dans quatre colonnes de registre nommées', async () => {
+  it('range les tâches dans quatre colonnes nommées, chacune tonnée', async () => {
     etat.taches = [tache(), tache({ id: 't-2', title: 'Clôturer le mois', status: 'validated' })]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
 
-    const colonnes = [...hote.querySelectorAll('.rg-colonne')]
+    const colonnes = [...hote.querySelectorAll('.tqv2-colonne')]
     expect(colonnes.map((c) => c.getAttribute('data-colonne'))).toEqual(['a-faire', 'en-cours', 'terminees', 'validees'])
-    expect(colonnes.map((c) => c.querySelector('.rg-colonne-titre').textContent)).toEqual(['À faire', 'En cours', 'Terminées', 'Validées'])
-    expect(colonnes.map((c) => c.querySelector('.rg-colonne-compte').textContent)).toEqual(['1', '0', '0', '1'])
-    // les colonnes vides disent qu'elles le sont, et gardent une invitation
-    expect(colonnes[1].textContent).toContain('Rien ici')
-    expect(colonnes[1].querySelector('[data-testid="rosace-perles"]')).not.toBeNull()
-    expect(colonnes[1].textContent).toContain('ajouter une tâche')
+    expect(colonnes.map((c) => c.querySelector('.tqv2-colonne-titre').textContent)).toEqual(['À faire', 'En cours', 'Terminées', 'Validées'])
+    expect(colonnes.map((c) => c.querySelector('.tqv2-colonne-compte').textContent)).toEqual(['1', '0', '0', '1'])
+    // la colonne vide dit qu'elle l'est
+    expect(colonnes[1].querySelector('.tqv2-colonne-vide').textContent).toContain('Rien ici')
   })
 
-  it('numérote chaque tâche et signe sa priorité d’une perle', async () => {
+  it('pose chaque tâche en carte, priorité en pastille tonnée', async () => {
     etat.taches = [tache()]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
 
-    const fiche = hote.querySelector('.rg-fiche')
+    const fiche = hote.querySelector('.tqv2-fiche')
     expect(fiche).not.toBeNull()
     expect(fiche.getAttribute('data-priorite')).toBe('high')
-    expect(fiche.querySelector('.rg-fiche-num').textContent).toBe('01')
-    expect(fiche.querySelector('.rg-fiche-titre').textContent).toBe('Vérifier les extincteurs')
-    expect(fiche.querySelector('.rg-fiche-perle')).not.toBeNull()
-    expect(fiche.querySelector('.rg-personne').textContent).toContain('Awa Dossou')
+    expect(fiche.querySelector('.tqv2-fiche-titre').textContent).toBe('Vérifier les extincteurs')
+    expect(fiche.querySelector('.tqv2-priorite--haute').textContent).toBe('Haute')
+    expect(fiche.querySelector('.tqv2-personne').textContent).toContain('Awa Dossou')
+    expect(fiche.querySelector('.tqv2-avatar')).not.toBeNull()
   })
 
-  it('écrit la priorité, la catégorie et l’échéance en français, en clair', async () => {
-    etat.taches = [tache({ due_at: new Date(Date.now() - 3 * 86400000 - 3600000).toISOString() })]
+  it('écrit l’échéance en date courte et chiffre le retard en jours', async () => {
+    etat.taches = [
+      tache({ due_at: new Date(Date.now() + 6 * 86400000).toISOString() }),
+      tache({ id: 't-2', title: 'Relancer le fournisseur', due_at: new Date(Date.now() - 4 * 86400000).toISOString() }),
+    ]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
 
-    const meta = hote.querySelector('.rg-fiche-meta').textContent
-    expect(meta).toContain('Haute')
-    expect(meta).toContain('Sécurité')
-    expect(meta).toMatch(/retard de \d+ j/)
+    const dates = [...hote.querySelectorAll('.tqv2-fiche-date')]
+    expect(dates).toHaveLength(2)
+    // le retard est chiffré en jours, et non masqué
+    const retard = dates.find((d) => d.querySelector('.tqv2-retard'))
+    expect(retard).not.toBeNull()
+    expect(retard.textContent).toMatch(/retard de \d+ j/)
+    // l'autre échéance porte sa date courte, sans retard
+    expect(dates.find((d) => !d.querySelector('.tqv2-retard')).textContent).toMatch(/\d{2} \w{3}/)
+    // plus de collier : le texte suffit
+    expect(hote.querySelector('[data-testid="collier-echeance"]')).toBeNull()
   })
 
   it('déplace une tâche d’une colonne à l’autre en changeant son statut', async () => {
     etat.taches = [tache()]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
 
-    const colonneValidees = [...hote.querySelectorAll('.rg-colonne')].find((c) => c.textContent.includes('Validées'))
+    const colonneValidees = [...hote.querySelectorAll('.tqv2-colonne')].find((c) => c.textContent.includes('Validées'))
     const evenement = new Event('drop', { bubbles: true })
     Object.defineProperty(evenement, 'dataTransfer', { value: { getData: () => 't-1' } })
     await act(async () => colonneValidees.dispatchEvent(evenement))
@@ -783,39 +763,37 @@ describe('la vue Tâches', () => {
     etat.taches = [tache()]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
 
-    const caseTache = hote.querySelector('.rg-fiche .rg-case')
+    const caseTache = hote.querySelector('.tqv2-fiche .tqv2-case')
     await act(async () => caseTache.click())
     expect(hote.textContent).toContain('1 tâche sélectionnée')
+    // la carte sélectionnée est cerclée d'or
+    expect(hote.querySelector('.tqv2-fiche[data-selection="oui"]')).not.toBeNull()
     await act(async () => boutonAvec('Vider la sélection').click())
     expect(hote.textContent).not.toContain('tâche sélectionnée')
     expect(appels.filter((a) => a.type === 'updateTask')).toHaveLength(0)
   })
 
-  it('bascule en liste et relit l’état de chaque tâche', async () => {
-    etat.taches = [tache({ status: 'in_progress' })]
-    await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-
-    await act(async () => [...hote.querySelectorAll('.rg-filtres button')].find((b) => b.textContent.includes('Liste')).click())
-    expect(hote.querySelector('.rg-ligne')).not.toBeNull()
-    expect(hote.textContent).toContain('En cours · Sécurité')
+  it('le bouton « Nouvelle tâche » de la page ouvre la fenêtre de création', async () => {
+    await rendre(<TachesVue enterpriseId="ent-1" employes={[]} signalCreation={1} />)
+    expect(hote.textContent).toContain('Titre *')
   })
 
-  it('affiche les catégories avec leur effectif et permet de filtrer', async () => {
+  it('affiche les catégories en pastilles avec leur effectif, et permet de filtrer', async () => {
     etat.categories = [{ id: 'c-1', name: 'Sécurité', color: '#B4553F' }]
     etat.taches = [tache(), tache({ id: 't-2', title: 'Autre' })]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
 
-    const puce = [...hote.querySelectorAll('.rg-categories .rg-categorie')].find((b) => b.textContent.includes('Sécurité'))
+    const puce = [...hote.querySelectorAll('.tqv2-categorie')].find((b) => b.textContent.includes('Sécurité'))
     expect(puce, 'catégorie').not.toBeNull()
     expect(puce.textContent).toContain('2')
     await act(async () => puce.click())
-    expect(hote.querySelectorAll('.rg-fiche')).toHaveLength(2)
-    expect(hote.querySelector('.rg-categorie[aria-pressed="true"]')).not.toBeNull()
+    expect(hote.querySelectorAll('.tqv2-fiche')).toHaveLength(2)
+    expect(hote.querySelector('.tqv2-categorie[aria-pressed="true"]')).not.toBeNull()
   })
 
   it('explique l’absence de tâches et propose la première', async () => {
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    expect(hote.textContent).toContain('Aucune tâche pour l’instant')
+    expect(hote.querySelector('.tqv2-vide').textContent).toContain('Aucune tâche pour l’instant')
     expect(boutonAvec('Nouvelle tâche')).toBeTruthy()
   })
 
@@ -833,10 +811,6 @@ describe('la vue Tâches', () => {
   })
 })
 
-// ═══════════════════════════════════════════════════════════
-// ⑤ Le ton et le dessin
-// ═══════════════════════════════════════════════════════════
-
 const lireJeton = (nom, source = CSS) => {
   const trouve = new RegExp(`${nom}:\\s*(#[0-9a-fA-F]{6})`).exec(source)
   expect(trouve, nom).not.toBeNull()
@@ -853,72 +827,70 @@ const contraste = (a, b) => {
 }
 
 describe('le ton et le dessin', () => {
-  it('ouvre chaque vue sur un feuillet, pas sur une carte', async () => {
+  it('pose chaque vue sur la même trame : chiffres, outils, contenu', async () => {
     etat.equipes = [equipe()]
     await rendre(<EquipesVue enterpriseId="ent-1" employes={[]} />)
-    expect(hote.querySelector('.rg-folio')).not.toBeNull()
-    expect(hote.querySelector('h2.rg-titre').tagName).toBe('H2')
-    expect(hote.querySelector('.rg-titre span').textContent).toBe('.')
-    // le titre est du texte, pas une image ni une icône
-    expect(hote.querySelector('.rg-tete img')).toBeNull()
-    expect(hote.querySelector('.rg-tete svg')).toBeNull()
+    expect(hote.querySelector('.eqv2-kpis')).not.toBeNull()
+    expect(hote.querySelector('.eqv2-outils')).not.toBeNull()
+    expect(hote.querySelector('.eqv2-grille')).not.toBeNull()
+    expect(hote.querySelector('.rg-folio')).toBeNull()
 
     etat.taches = [tache()]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    expect(hote.querySelector('h2.rg-titre').textContent).toBe('Tâches.')
-    expect(hote.querySelector('.rg-colophon')).not.toBeNull()
+    expect(hote.querySelector('.tqv2-kpis')).not.toBeNull()
+    expect(hote.querySelector('.tqv2-outils')).not.toBeNull()
+    expect(hote.querySelector('.tqv2-colonnes')).not.toBeNull()
+    expect(hote.querySelector('.rg-colophon')).toBeNull()
   })
 
-  it('trace le registre au filet, sans carte blanche à coin arrondi', () => {
-    // une entrée d'équipe et une entrée de tâche : un filet bas, pas une boîte
+  it('pose chaque fiche en carte, comme la maquette, et cerne la sélection d’or', () => {
     const regle = (selecteur) => {
-      const trouve = new RegExp(`${selecteur.replace('.', '\\.')} \\{[^}]*\\}`).exec(CSS)
+      const trouve = new RegExp(`${selecteur.replace('.', '\\.')} \\{[^}]*\\}`).exec(REFONTE_CSS)
       expect(trouve, selecteur).not.toBeNull()
       return trouve[0]
     }
-    const entree = regle('.rg-entree')
-    expect(entree).toContain('border-bottom')
-    expect(entree).not.toContain('border-radius')
-    expect(entree).not.toContain('background:')
+    const carteEquipe = regle('.eqv2-carte')
+    expect(carteEquipe).toContain('border-radius: 16px')
+    expect(carteEquipe).toContain('background:')
 
-    const fiche = regle('.rg-fiche')
-    expect(fiche).toContain('border-bottom')
-    expect(fiche).not.toContain('border-radius')
-    expect(fiche).not.toContain('background:')
-    expect(CSS).not.toMatch(/\.rg-fiche \{[^}]*box-shadow: 0 /)
+    const carteTache = regle('.tqv2-fiche')
+    expect(carteTache).toContain('border-radius: 14px')
+    expect(carteTache).toContain('background: var(--rg-paper)')
+
+    // la sélection : une bordure or, pas un fond qui change
+    const selection = /\.tqv2-fiche\[data-selection='oui'\] \{[^}]*\}/.exec(REFONTE_CSS)
+    expect(selection, 'sélection dorée').not.toBeNull()
+    expect(selection[0]).toContain('--empv2-or')
   })
 
-  it('perle la tranche des colonnes, du titre jusqu’au dernier filet', () => {
-    expect(CSS).toMatch(/\.rg-colonne-corps::before \{[^}]*radial-gradient\(circle at/)
-    expect(CSS).toMatch(/\.rg-colonne-corps::before \{[^}]*background-size: 8px 15px/)
-    // la tranche suit la hauteur des entrées, elle ne tire pas un fil vide
-    expect(CSS).toMatch(/\.rg-colonne-corps::before \{[^}]*bottom: 6px/)
-    // la tranche du registre est perlée elle aussi
-    expect(CSS).toMatch(/\.emp-vues::before \{[^}]*radial-gradient\(circle at/)
-    // quatre tons, un par colonne
-    for (const colonne of ['a-faire', 'en-cours', 'terminees', 'validees']) {
-      expect(CSS).toContain(`.rg-colonne[data-colonne='${colonne}']`)
+
+  it('tonne les quatre colonnes du tableau, du teal au blanc', () => {
+    // quatre tons, un par colonne, chacun porteur de son compte
+    for (const ton of ['teal', 'or', 'vert', 'blanc']) {
+      expect(REFONTE_CSS).toContain(`.tqv2-colonne[data-ton='${ton}'] .tqv2-colonne-compte`)
     }
+    // la colonne survolée pendant le glissement se cerne d'or
+    expect(REFONTE_CSS).toMatch(/\.tqv2-colonne\[data-survol='oui'\] \{[^}]*--empv2-or/)
   })
 
-  it('dessine l’échéance en perles, une perle par jour qui reste', async () => {
+
+  it('écrit l’échéance en date courte et chiffre le retard, sans dessin', async () => {
     etat.taches = [
       tache({ id: 't-1', due_at: new Date(Date.now() + 6 * 24 * 3600 * 1000).toISOString() }),
       tache({ id: 't-2', title: 'Relancer le fournisseur', due_at: new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString() }),
     ]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
 
-    const colliers = [...hote.querySelectorAll('[data-testid="collier-echeance"]')]
-    expect(colliers).toHaveLength(2)
-    const avenir = colliers.find((c) => c.getAttribute('data-etat') === 'a-venir')
-    const retard = colliers.find((c) => c.getAttribute('data-etat') === 'retard')
-    expect(avenir.getAttribute('data-jours')).toBe('6')
-    expect(avenir.querySelectorAll('circle').length).toBeGreaterThanOrEqual(6)
-    expect(retard.getAttribute('data-jours')).toBe('-4')
-    // le retard garde la phrase qui le chiffre : le dessin ne remplace pas le texte
+    const dates = [...hote.querySelectorAll('.tqv2-fiche-date')]
+    expect(dates).toHaveLength(2)
+    // la date courte porte jour et mois
+    expect(dates[0].textContent).toMatch(/\d{2} \w{3}/)
+    // le retard garde la phrase qui le chiffre : le texte ne se cache pas
     expect(hote.textContent).toMatch(/retard de \d+ j/)
-    expect([...hote.querySelectorAll('[data-testid="collier-echeance"]')].every((c) => c.getAttribute('aria-hidden') === 'true')).toBe(true)
+    // plus de collier de perles
+    expect(hote.querySelector('[data-testid="collier-echeance"]')).toBeNull()
   })
+
 
   it('dit, au tableau, que des tâches refusées ne sont pas affichées', async () => {
     etat.taches = [tache(), tache({ id: 't-2', title: 'Reprise à faire', status: 'rejected' })]
@@ -1046,12 +1018,55 @@ describe('la page Employés', () => {
     expect(REFONTE_CSS).toMatch(/\.empv2-onglet\[aria-current='page'\] \{[^}]*background: var\(--empv2-or\)/)
   })
 
-  it('ne met qu’une seule bande de raccourcis de pages sur la page', () => {
-    // l'ancien en-tête culturel n'existe plus : une seule bande de
-    // raccourcis, celle de la barre du haut
-    expect(EMPLOYES).not.toContain('pointages-quick-nav')
-    expect(EMPLOYES).not.toContain('EmployesCulturalHero')
-    expect(EMPLOYES).toContain("<RaccourcisPages compact excludePaths={['/employes']} />")
+  it('affiche la sidebar de la coque, avec la vraie navigation de l’application', async () => {
+    // la sidebar détecte la page active via l'adresse : on la monte
+    // sur /employes, comme dans l'application (le helper monte sur /)
+    await act(async () => racine.unmount())
+    hote.remove()
+    hote = document.createElement('div')
+    document.body.append(hote)
+    racine = createRoot(hote)
+    await act(async () => {
+      racine.render(
+        <MemoryRouter initialEntries={['/employes']}>
+          <ThemeProvider>
+            <Employes />
+          </ThemeProvider>
+        </MemoryRouter>,
+      )
+    })
+    for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
+    const sidebar = hote.querySelector('.empv2-sidebar')
+    expect(sidebar, 'la sidebar de la page').not.toBeNull()
+    // la marque, le menu, et l'entrée active
+    expect(sidebar.querySelector('.nav-panel-marque-nom').textContent).toBe('En-Check')
+    expect(sidebar.querySelector('.sidebar-navigation')).not.toBeNull()
+    const liens = [...sidebar.querySelectorAll('.sidebar-link')].map((l) => l.textContent.trim())
+    expect(liens).toContain('Employés')
+    expect(liens).toContain('Pointages')
+    expect(sidebar.querySelector('.sidebar-link.is-active')?.textContent).toContain('Employés')
+  })
+
+  it('pose le bouton clair / sombre dans la ligne de titre', async () => {
+    await monterPage()
+    const theme = hote.querySelector('button.empv2-theme')
+    expect(theme, 'bouton clair/sombre').not.toBeNull()
+    expect(theme.textContent).toMatch(/Clair|Sombre/)
+    const avant = theme.textContent
+    await act(async () => theme.click())
+    expect(theme.textContent).not.toBe(avant)
+  })
+
+  it('propose dans la ligne de titre l’action de la vue affichée', async () => {
+    await monterPage()
+    expect(boutonAvec('Nouvel employé')).toBeTruthy()
+
+    await act(async () => [...hote.querySelectorAll('.empv2-onglet')].find((o) => o.textContent.includes('Équipes')).click())
+    expect(boutonAvec('Nouvelle équipe')).toBeTruthy()
+    expect(hote.querySelector('button.empv2-nouvel')?.textContent).not.toContain('Nouvel employé')
+
+    await act(async () => [...hote.querySelectorAll('.empv2-onglet')].find((o) => o.textContent.includes('Tâches')).click())
+    expect(boutonAvec('Nouvelle tâche')).toBeTruthy()
   })
 
   it('sépare les chiffres par un filet, pas par un point de texte', () => {
@@ -1060,32 +1075,22 @@ describe('la page Employés', () => {
     expect(CSS).toMatch(/\.rg-chiffre-valeur \{[^}]*tabular-nums/)
   })
 
-  it('chiffre chaque vue par une part, jamais par une phrase creuse', async () => {
+  it('chiffre chaque vue par des nombres comptés, jamais par une phrase creuse', async () => {
     etat.taches = [tache(), tache({ id: 't-2', title: 'Clôturer le mois', status: 'validated' })]
     await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
-    const notes = [...hote.querySelectorAll('.rg-chiffre-note')].map((n) => n.textContent.trim())
-    expect(notes).toEqual(['dont 1 jamais ouvertes', '0 % du registre', '0 % du registre', '50 % du registre'])
+    const kpis = [...hote.querySelectorAll('.tqv2-kpis .empv2-kpi')]
+    expect(kpis).toHaveLength(4)
+    for (const kpi of kpis) {
+      // un chiffre qui est un chiffre, une étiquette qui est une étiquette
+      expect(kpi.querySelector('strong').textContent).toMatch(/^\d+$/)
+      expect(kpi.querySelector('.empv2-kpi-libelle').textContent.trim()).not.toBe('')
+    }
   })
 
-  it('garde les raccourcis de pages en haut à droite, jamais en bas', async () => {
+  it('ne met aucune bande de raccourcis sur la page, ni en haut ni en bas', async () => {
     await monterPage()
-    const raccourcis = hote.querySelector('[data-testid="raccourcis-pages"]')
-    expect(raccourcis).not.toBeNull()
-    expect(raccourcis.querySelector('a[href="/pointages"]')).not.toBeNull()
-    expect(raccourcis.querySelector('a[href="/employes"]')).toBeNull()
-
-    // ils vivent dans la barre du haut, avec les onglets
-    const barre = hote.querySelector('.empv2-tetes')
-    expect(barre).not.toBeNull()
-    expect(barre.querySelector('[data-testid="raccourcis-pages"]')).not.toBeNull()
-    expect(barre.querySelector('.empv2-onglets')).not.toBeNull()
-
-    // et avant le contenu de la vue, pas après
-    const vue = hote.querySelector('.empv2-annuaire')
-    expect(vue).not.toBeNull()
-    expect(barre.compareDocumentPosition(vue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    // aucun second bandeau de raccourcis plus bas
-    expect(hote.querySelectorAll('[data-testid="raccourcis-pages"]')).toHaveLength(1)
+    expect(hote.querySelector('[data-testid="raccourcis-pages"]')).toBeNull()
+    expect(hote.querySelector('.empv2-raccourcis')).toBeNull()
   })
 
   it('n’a plus de cartes de chiffres ni de portraits à la place du registre', () => {
@@ -1097,13 +1102,14 @@ describe('la page Employés', () => {
     expect(EMPLOYES).not.toContain('employes-framed-card')
   })
 
-  it('tient tous les raccourcis dans la barre haute, entre les onglets et la liste', () => {
-    const barre = EMPLOYES.indexOf('<div className="empv2-raccourcis">')
-    const liste = EMPLOYES.indexOf('<div className="empv2-annuaire">')
-    expect(barre).toBeGreaterThan(0)
-    expect(liste).toBeGreaterThan(barre)
-    // plus aucun raccourci après les vues
-    const apresVues = EMPLOYES.indexOf('<RaccourcisPages', liste)
-    expect(apresVues).toBe(-1)
+  it('la sidebar précède le contenu, et le menu reste celui de la coque', () => {
+    const sidebar = EMPLOYES.indexOf('<aside className="dashboard-sidebar empv2-sidebar"')
+    const contenu = EMPLOYES.indexOf('<main className="empv2-main"')
+    expect(sidebar).toBeGreaterThan(0)
+    expect(contenu).toBeGreaterThan(sidebar)
+    // les mêmes rubriques que le tableau de bord
+    expect(EMPLOYES).toContain("label: 'Accueil'")
+    expect(EMPLOYES).toContain("label: 'Temps de travail'")
+    expect(EMPLOYES).toContain("label: 'En-Check interne'")
   })
 })

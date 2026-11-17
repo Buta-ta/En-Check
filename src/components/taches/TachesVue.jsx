@@ -1,24 +1,27 @@
-// ════════════════════════════════════════════════════════════════════
-// ✅ VUE « TÂCHES » — page Employés, le registre perlé
+// ════════════════════════════════════════════════════════════════
+// ✅ VUE « TÂCHES » — page Employés
 //
-// Le travail se lit comme un registre de maison ouvert sur quatre
-// colonnes : à faire, en cours, terminées, validées. Chaque colonne a
-// sa tranche perlée ; chaque tâche est une entrée, pas une carte :
-// une perle de priorité, un numéro, un titre serif, une échéance
-// dessinée en collier.
+// Le travail se lit en trois plans, comme dans la maquette :
 //
-// On déplace une entrée d'une tranche à l'autre pour changer son état.
-// La vue Liste donne la même matière à plat, pour balayer et cocher.
+//   1. quatre chiffres comptés sur les tâches chargées ;
+//   2. une barre d'outils (recherche, état, priorité, tri,
+//      « + Nouvelle tâche » doré) et les catégories en pastilles ;
+//   3. un tableau à quatre colonnes — à faire, en cours, terminées,
+//      validées — où chaque tâche est une carte : titre, pastille
+//      de priorité, échéance, personne. Glisser une carte d'une
+//      colonne à l'autre change son statut, pas son apparence.
 //
-// Les fenêtres (tâche, catégorie, suppression) sont partagées : voir
-// TachesModales.jsx ; les dessins perlés : PerlesZoulouSvg.jsx.
-// ════════════════════════════════════════════════════════════════════
+// Mêmes tokens, même police, même thème que le reste de la page.
+// Les fenêtres (tâche, catégorie, suppression) sont partagées :
+// voir TachesModales.jsx.
+// ════════════════════════════════════════════════════════════════
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  AlertTriangle, Check, ChevronDown, HelpCircle, Info,
-  Loader2, Pencil, Plus, RefreshCw, Search, Sparkles, Tag, Trash2, X,
+  AlertTriangle, CalendarDays, Check, CheckCircle2, ChevronDown,
+  Clock3, HelpCircle, Info, ListTodo, Loader2, Pencil, Plus,
+  RefreshCw, Search, Sparkles, Tag, Trash2, X,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -32,15 +35,13 @@ import { getTeams } from '../../services/teamService'
 import {
   CategoryModal, TaskModal, DeleteModal, ShortcutsModal,
 } from './TachesModales'
-import { CollierEcheanceSvg, RosacePerlesSvg } from '../zoulou/PerlesZoulouSvg'
-import { Folio, Colophon } from '../zoulou/RegistreEntete'
-import '../zoulou/zoulou.css'
+import '../../pages/EmployesRefonte.css'
 
 const COLONNES = [
   { cle: 'a-faire', titre: 'À faire', sous: 'pas encore commencées', statuts: ['assigned', 'seen'], cible: 'assigned', ton: 'teal' },
-  { cle: 'en-cours', titre: 'En cours', sous: 'entre les mains', statuts: ['in_progress', 'paused'], cible: 'in_progress', ton: 'cuivre' },
-  { cle: 'terminees', titre: 'Terminées', sous: 'à valider', statuts: ['completed'], cible: 'completed', ton: 'sauge' },
-  { cle: 'validees', titre: 'Validées', sous: 'closes', statuts: ['validated'], cible: 'validated', ton: 'creme' },
+  { cle: 'en-cours', titre: 'En cours', sous: 'entre les mains', statuts: ['in_progress', 'paused'], cible: 'in_progress', ton: 'or' },
+  { cle: 'terminees', titre: 'Terminées', sous: 'à valider', statuts: ['completed'], cible: 'completed', ton: 'vert' },
+  { cle: 'validees', titre: 'Validées', sous: 'closes', statuts: ['validated'], cible: 'validated', ton: 'blanc' },
 ]
 
 const FILTRES_STATUT = [
@@ -67,6 +68,14 @@ const TRIS = [
   { key: 'title_asc', label: 'Titre (A → Z)' },
 ]
 
+// Le ton de la pastille, clé par clé de priorité du service.
+const TON_PRIORITE = {
+  critical: 'critique',
+  high: 'haute',
+  medium: 'moyenne',
+  low: 'basse',
+}
+
 const initiales = (personne) =>
   `${personne?.first_name?.[0] || ''}${personne?.last_name?.[0] || ''}`.toUpperCase()
 
@@ -87,52 +96,32 @@ const joursRestants = (valeur) => {
   return Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
 }
 
-// ── l'échéance, dessinée : une perle par jour qui reste ────────────
-function Echeance({ tache, compact = false }) {
-  const echeance = getDeadlineStatus(tache?.due_at)
-  const jours = joursRestants(tache?.due_at)
-  if (!tache?.due_at || jours === null) return null
-  const retard = Boolean(echeance?.overdue)
-  return (
-    <span
-      className="rg-echeance rg-echeance-collier"
-      data-ton={retard ? 'retard' : 'normal'}
-      title={`Échéance : ${dateCourte(tache.due_at)}`}
-    >
-      <CollierEcheanceSvg jours={jours} enRetard={retard} />
-      {!compact && (
-        <span>
-          {retard
-            ? <>retard de {Math.abs(jours)} j</>
-            : jours === 0
-              ? 'aujourd’hui'
-              : <>{jours} j restant{jours > 1 ? 's' : ''}</>}
-        </span>
-      )}
-    </span>
-  )
-}
-
 // ── la personne, en pastille et en nom ────────────────────────────
-function Personne({ personne }) {
-  if (!personne) return <span className="rg-personne">Non assignée</span>
+function Personne({ personne, equipe }) {
+  if (!personne) return <span className="tqv2-personne-none">Non assignée</span>
   return (
-    <span className="rg-personne">
-      <span className="rg-membre" title={nomComplet(personne)} aria-hidden="true">
+    <span className="tqv2-personne">
+      <span className="tqv2-avatar" aria-hidden="true">
         {personne.photo_url ? <img src={personne.photo_url} alt="" /> : initiales(personne)}
       </span>
-      {nomComplet(personne)}
+      <span className="tqv2-personne-nom">
+        {nomComplet(personne)}
+        {equipe ? <small> · {equipe}</small> : ''}
+      </span>
     </span>
   )
 }
 
-// ── une entrée de tâche ───────────────────────────────────────────
-function FicheTache({ tache, numero, selection, onBasculer, onOuvrir, onModifier, onSupprimer }) {
-  const categorie = tache.category
-  const retour = tache.status === 'rejected' || tache.status === 'cancelled'
+// ── la carte de tâche ─────────────────────────────────────────────
+function CarteTache({ tache, selection, equipe, onBasculer, onOuvrir, onModifier, onSupprimer }) {
+  const echeance = tache.due_at ? getDeadlineStatus(tache.due_at) : null
+  const jours = joursRestants(tache?.due_at)
+  const retard = Boolean(echeance?.overdue)
+  const ton = TON_PRIORITE[tache.priority] || 'moyenne'
+
   return (
     <article
-      className="rg-fiche"
+      className="tqv2-fiche"
       data-priorite={tache.priority || 'medium'}
       data-selection={selection ? 'oui' : 'non'}
       draggable
@@ -141,15 +130,13 @@ function FicheTache({ tache, numero, selection, onBasculer, onOuvrir, onModifier
         e.dataTransfer.effectAllowed = 'move'
       }}
     >
-      <div className="rg-fiche-tete">
-        <span className="rg-fiche-perle" aria-hidden="true" />
-        <span className="rg-fiche-num">{String(numero).padStart(2, '0')}</span>
-        <button type="button" className="rg-fiche-titre" onClick={() => onOuvrir(tache.id)}>
+      <div className="tqv2-fiche-tete">
+        <button type="button" className="tqv2-fiche-titre" onClick={() => onOuvrir(tache.id)}>
           {tache.title}
         </button>
         <button
           type="button"
-          className="rg-case"
+          className="tqv2-case"
           aria-pressed={selection}
           aria-label={selection ? 'Retirer de la sélection' : 'Sélectionner la tâche'}
           onClick={() => onBasculer(tache.id)}
@@ -158,32 +145,28 @@ function FicheTache({ tache, numero, selection, onBasculer, onOuvrir, onModifier
         </button>
       </div>
 
-      <div className="rg-fiche-meta">
-        {retour
-          ? <strong>{getStatusLabel(tache.status)}</strong>
-          : <strong style={{ color: 'var(--rg-soft)' }}>{getPriorityLabel(tache.priority)}</strong>}
-        {categorie && (
-          <>
-            <span data-sep aria-hidden="true">·</span>
-            <span>{categorie.name}</span>
-          </>
+      <div className="tqv2-fiche-meta">
+        <span className={`tqv2-priorite tqv2-priorite--${ton}`}>
+          {getPriorityLabel(tache.priority)}
+        </span>
+        {tache.due_at && (
+          <span className={`tqv2-fiche-date${retard ? ' tqv2-fiche-date--retard' : ''}`}>
+            <CalendarDays size={12} aria-hidden="true" />
+            <span>{dateCourte(tache.due_at)}</span>
+            {retard && jours !== null && (
+              <strong className="tqv2-retard">retard de {Math.abs(jours)} j</strong>
+            )}
+          </span>
         )}
-        <span data-sep aria-hidden="true">·</span>
-        <Echeance tache={tache} />
       </div>
 
-      <div className="rg-fiche-pied">
-        <Personne personne={tache.assigned_employee} />
-        <span className="rg-fiche-actions">
-          <button type="button" className="rg-lien" onClick={() => onModifier(tache)}>
-            <Pencil size={10} /> Modifier
+      <div className="tqv2-fiche-pied">
+        <Personne personne={tache.assigned_employee} equipe={tache.team?.name} />
+        <span className="tqv2-fiche-actions">
+          <button type="button" className="tqv2-action" onClick={() => onModifier(tache)} aria-label={`Modifier ${tache.title}`}>
+            <Pencil size={11} />
           </button>
-          <button
-            type="button"
-            className="rg-lien"
-            onClick={() => onSupprimer(tache)}
-            aria-label={`Supprimer ${tache.title}`}
-          >
+          <button type="button" className="tqv2-action" onClick={() => onSupprimer(tache)} aria-label={`Supprimer ${tache.title}`}>
             <Trash2 size={11} />
           </button>
         </span>
@@ -192,7 +175,7 @@ function FicheTache({ tache, numero, selection, onBasculer, onOuvrir, onModifier
   )
 }
 
-export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [] }) {
+export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [], signalCreation = 0 }) {
   const navigate = useNavigate()
   const [admin, setAdmin] = useState(null)
   const [enterpriseId, setEnterpriseId] = useState(enterpriseIdProp || null)
@@ -213,7 +196,6 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
   const [filtrePriorite, setFiltrePriorite] = useState('')
   const [filtreCategorie, setFiltreCategorie] = useState('')
   const [tri, setTri] = useState('due_asc')
-  const [vue, setVue] = useState('tableau')
   const [selection, setSelection] = useState([])
   const [colonneSurvolee, setColonneSurvolee] = useState(null)
 
@@ -295,6 +277,15 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
     setCategorieEditee(null)
     setMontrerCategorie(true)
   }, [])
+
+  // Le bouton « Nouvelle tâche » vit dans la ligne de titre de la
+  // page : le signal monte, la vue ouvre sa fenêtre.
+  useEffect(() => {
+    if (signalCreation > 0) {
+      setTacheEditee(null)
+      setMontrerTache(true)
+    }
+  }, [signalCreation])
 
   useEffect(() => {
     const surTouche = (e) => {
@@ -488,23 +479,14 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
     return compte
   }, [taches])
 
-  const pourcent = (morceau, total) => (total > 0 ? `${Math.round((morceau / total) * 100)} %` : '—')
-
-  // Le numéro d'une tâche : son rang dans l'ordre du registre complet.
-  const numeroDe = useCallback(
-    (tache) => taches.findIndex((t) => t.id === tache.id) + 1,
-    [taches],
-  )
-
   if (raison === 'sansEntreprise') {
     return (
-      <div className="emp-vues">
-        <div className="rg-vide">
-          <RosacePerlesSvg taille={52} ton="teal" />
+      <div className="emp-vues tqv2">
+        <div className="tqv2-vide">
           <h3>Sélectionnez une entreprise</h3>
           <p>
             Les tâches se lisent entreprise par entreprise. Choisissez-la dans
-            l’en-tête de la page, puis revenez sur cet onglet.
+            la sidebar, puis revenez sur cet onglet.
           </p>
         </div>
       </div>
@@ -513,9 +495,8 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
 
   if (raison === 'sansOption') {
     return (
-      <div className="emp-vues">
-        <div className="rg-vide">
-          <RosacePerlesSvg taille={52} ton="cuivre" />
+      <div className="emp-vues tqv2">
+        <div className="tqv2-vide">
           <h3>Option Équipes et tâches non activée</h3>
           <p>
             Cette entreprise n’a pas l’option Équipes et tâches. Un administrateur
@@ -528,143 +509,128 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
   }
 
   return (
-    <div className="emp-vues rg-taches">
-      <Folio droite="Registre des tâches" />
-
-      <header className="rg-tete">
-        <div>
-          <p className="rg-eyebrow">Le travail en cours</p>
-          <h2 className="rg-titre">Tâches<span>.</span></h2>
+    <div className="emp-vues tqv2">
+      {/* le bandeau de chiffres : compté sur les tâches chargées */}
+      <div className="tqv2-kpis" aria-label="Chiffres des tâches">
+        <div className="empv2-kpi">
+          <div className="empv2-kpi-haut">
+            <strong>{chiffres.total}</strong>
+            <ListTodo size={15} aria-hidden="true" />
+          </div>
+          <span className="empv2-kpi-libelle">Tâches</span>
         </div>
-        <Colophon
-          chiffres={[
-            {
-              valeur: chiffres.total,
-              libelle: 'Tâches',
-              note: chiffres.total > 0
-                ? `dont ${chiffres.aFaire} jamais ouvertes`
-                : 'aucune pour l’instant',
-            },
-            {
-              valeur: chiffres.enCours,
-              libelle: 'En cours',
-              note: `${pourcent(chiffres.enCours, chiffres.total)} du registre`,
-            },
-            {
-              valeur: chiffres.retard,
-              libelle: 'En retard',
-              note: `${pourcent(chiffres.retard, chiffres.total)} du registre`,
-              ton: chiffres.retard > 0 ? 'corail' : 'normal',
-            },
-            {
-              valeur: chiffres.terminees,
-              libelle: 'Terminées',
-              note: `${pourcent(chiffres.terminees, chiffres.total)} du registre`,
-            },
-          ]}
-        />
-      </header>
+        <div className="empv2-kpi">
+          <div className="empv2-kpi-haut">
+            <strong>{chiffres.enCours}</strong>
+            <Clock3 size={15} aria-hidden="true" />
+          </div>
+          <span className="empv2-kpi-libelle">En cours</span>
+        </div>
+        <div className="empv2-kpi">
+          <div className="empv2-kpi-haut">
+            <strong>{chiffres.retard}</strong>
+            <AlertTriangle size={15} aria-hidden="true" />
+          </div>
+          <span className="empv2-kpi-libelle"><i className={`empv2-point ${chiffres.retard > 0 ? 'empv2-point--orange' : 'empv2-point--or'}`} aria-hidden="true" />En retard</span>
+        </div>
+        <div className="empv2-kpi">
+          <div className="empv2-kpi-haut">
+            <strong>{chiffres.terminees}</strong>
+            <CheckCircle2 size={15} aria-hidden="true" />
+          </div>
+          <span className="empv2-kpi-libelle">Terminées</span>
+        </div>
+      </div>
 
-      <div className="rg-outils">
-        <label className="rg-recherche">
+      {/* la barre d'outils : chercher, filtrer, trier, créer */}
+      <div className="tqv2-outils">
+        <label className="empv2-recherche tqv2-recherche">
           <Search size={14} />
           <input
             ref={rechercheRef}
             type="search"
             value={recherche}
             onChange={(e) => setRecherche(e.target.value)}
-            placeholder="Rechercher une tâche"
+            placeholder="Rechercher une tâche..."
             aria-label="Rechercher une tâche"
           />
           {recherche && (
-            <button type="button" className="rg-recherche-effacer" onClick={() => setRecherche('')} aria-label="Effacer la recherche">
+            <button type="button" className="empv2-recherche-effacer" onClick={() => setRecherche('')} aria-label="Effacer la recherche">
               <X size={12} />
             </button>
           )}
         </label>
 
-        <select className="rg-tri" value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)} aria-label="Filtrer par état">
+        <select className="tqv2-select" value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)} aria-label="Filtrer par état">
           {FILTRES_STATUT.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
         </select>
-        <select className="rg-tri" value={filtrePriorite} onChange={(e) => setFiltrePriorite(e.target.value)} aria-label="Filtrer par priorité">
+        <select className="tqv2-select" value={filtrePriorite} onChange={(e) => setFiltrePriorite(e.target.value)} aria-label="Filtrer par priorité">
           {FILTRES_PRIORITE.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
         </select>
-        <select className="rg-tri" value={tri} onChange={(e) => setTri(e.target.value)} aria-label="Trier les tâches">
+        <select className="tqv2-select" value={tri} onChange={(e) => setTri(e.target.value)} aria-label="Trier les tâches">
           {TRIS.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>
 
-        <div className="rg-filtres" role="group" aria-label="Mode d’affichage">
-          <button type="button" className="rg-filtre" aria-pressed={vue === 'tableau'} onClick={() => setVue('tableau')}>
-            Tableau
-          </button>
-          <button type="button" className="rg-filtre" aria-pressed={vue === 'liste'} onClick={() => setVue('liste')}>
-            Liste
-          </button>
-        </div>
-
-        <div className="rg-actions">
-          <button type="button" className="rg-lien" onClick={() => charger(enterpriseId)} title="Rafraîchir (R)">
+        <span className="tqv2-actions">
+          <button type="button" className="empv2-lien" onClick={() => charger(enterpriseId)} title="Rafraîchir (R)">
             <RefreshCw size={12} /> Rafraîchir
           </button>
           <button
             type="button"
-            className="rg-lien"
+            className="empv2-lien"
             onClick={() => setMontrerRaccourcis(true)}
             aria-label="Raccourcis clavier"
             title="Raccourcis (?)"
           >
             <HelpCircle size={13} />
           </button>
-          <button type="button" className="rg-lien" onClick={ouvrirNouvelleCategorie}>
+          <button type="button" className="empv2-lien" onClick={ouvrirNouvelleCategorie}>
             <Tag size={12} /> Catégorie
           </button>
-          <button type="button" className="rg-primaire" onClick={ouvrirNouvelleTache}>
+          <button type="button" className="empv2-nouvel" onClick={ouvrirNouvelleTache}>
             <Plus size={14} /> Nouvelle tâche
           </button>
-        </div>
+        </span>
       </div>
 
-      <div className="rg-categories" role="group" aria-label="Catégories de tâches">
-        <p className="rg-categories-titre">Catégories</p>
-        {categories.length === 0 && (
-          <span className="rg-categorie-nombre">aucune catégorie pour l’instant</span>
-        )}
-        {categories.map((categorie) => (
-          <span key={categorie.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <button
-              type="button"
-              className="rg-categorie"
-              style={{ '--rg-pastille': categorie.color || undefined }}
-              aria-pressed={filtreCategorie === categorie.id}
-              onClick={() => setFiltreCategorie(filtreCategorie === categorie.id ? '' : categorie.id)}
-            >
-              {categorie.name}
-              <span className="rg-categorie-nombre">{compteParCategorie[categorie.id] || 0}</span>
-            </button>
-            <button
-              type="button"
-              className="rg-lien"
-              style={{ minHeight: 32, padding: 0 }}
-              aria-label={`Modifier la catégorie ${categorie.name}`}
-              onClick={() => { setCategorieEditee(categorie); setMontrerCategorie(true) }}
-            >
-              <Pencil size={11} />
-            </button>
-          </span>
-        ))}
-        <button type="button" className="rg-lien" onClick={ouvrirNouvelleCategorie}>
-          <Plus size={12} /> Nouvelle catégorie
-        </button>
-      </div>
+      {/* les catégories en pastilles, quand il y en a */}
+      {categories.length > 0 && (
+        <div className="tqv2-categories" role="group" aria-label="Catégories de tâches">
+          <p className="tqv2-categories-titre">Catégories</p>
+          {categories.map((categorie) => (
+            <span key={categorie.id} className="tqv2-categorie-groupe">
+              <button
+                type="button"
+                className="tqv2-categorie"
+                style={{ '--tqv2-pastille': categorie.color || undefined }}
+                aria-pressed={filtreCategorie === categorie.id}
+                onClick={() => setFiltreCategorie(filtreCategorie === categorie.id ? '' : categorie.id)}
+              >
+                <i className="tqv2-pastille" aria-hidden="true" />
+                {categorie.name}
+                <span className="tqv2-categorie-nombre">{compteParCategorie[categorie.id] || 0}</span>
+              </button>
+              <button
+                type="button"
+                className="tqv2-action"
+                aria-label={`Modifier la catégorie ${categorie.name}`}
+                onClick={() => { setCategorieEditee(categorie); setMontrerCategorie(true) }}
+              >
+                <Pencil size={11} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {selection.length > 0 && (
-        <div className="rg-selection">
+        <div className="tqv2-selection">
           <span>{selection.length} tâche{selection.length > 1 ? 's' : ''} sélectionnée{selection.length > 1 ? 's' : ''}</span>
-          <div className="rg-selection-actions">
-            <button type="button" className="rg-lien" onClick={() => setSelection([])}>
+          <div className="tqv2-selection-actions">
+            <button type="button" className="empv2-lien" onClick={() => setSelection([])}>
               <X size={12} /> Vider la sélection
             </button>
-            <button type="button" className="rg-lien" onClick={supprimerSelection} disabled={enregistrement}>
+            <button type="button" className="empv2-lien" onClick={supprimerSelection} disabled={enregistrement}>
               <Trash2 size={12} /> Supprimer
             </button>
           </div>
@@ -672,32 +638,29 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
       )}
 
       {chargement ? (
-        <div className="rg-chargement" aria-live="polite">
-          <span className="rg-chargement-texte"><Loader2 size={14} className="rg-tourne" /> Chargement des tâches…</span>
-          <div className="rg-chargement-ligne" />
-          <div className="rg-chargement-ligne" />
-          <div className="rg-chargement-ligne" />
+        <div className="tqv2-chargement" aria-live="polite">
+          <span className="tqv2-chargement-texte"><Loader2 size={14} className="tqv2-tourne" /> Chargement des tâches…</span>
         </div>
       ) : tachesFiltrees.length === 0 ? (
-        <div className="rg-vide">
-          <RosacePerlesSvg taille={52} ton={taches.length === 0 ? 'cuivre' : 'teal'} />
+        <div className="tqv2-vide">
           <h3>{taches.length === 0 ? 'Aucune tâche pour l’instant' : 'Aucune tâche ne correspond'}</h3>
           <p>
             {taches.length === 0
               ? 'Une tâche, c’est une personne, une échéance et une preuve si besoin. Créez la première : elle apparaîtra dans la colonne « À faire ».'
               : 'Élargissez la recherche ou retirez un filtre pour revoir toutes les tâches.'}
           </p>
-          <button type="button" className="rg-primaire" onClick={ouvrirNouvelleTache}>
+          <button type="button" className="empv2-nouvel" onClick={ouvrirNouvelleTache}>
             <Plus size={14} /> Nouvelle tâche
           </button>
         </div>
-      ) : vue === 'tableau' ? (
-        <div className="rg-colonnes">
+      ) : (
+        <div className="tqv2-colonnes">
           {COLONNES.map((colonne) => (
             <section
               key={colonne.cle}
-              className="rg-colonne"
+              className="tqv2-colonne"
               data-colonne={colonne.cle}
+              data-ton={colonne.ton}
               data-survol={colonneSurvolee === colonne.cle ? 'oui' : 'non'}
               onDragOver={(e) => { e.preventDefault(); setColonneSurvolee(colonne.cle) }}
               onDragLeave={() => setColonneSurvolee((actuelle) => (actuelle === colonne.cle ? null : actuelle))}
@@ -707,19 +670,18 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
                 if (id) changerStatut(id, colonne.cible)
               }}
             >
-              <header className="rg-colonne-tete">
-                <h4 className="rg-colonne-titre">{colonne.titre}</h4>
-                <span className="rg-colonne-compte">{parStatut[colonne.cle].length}</span>
-                <p className="rg-colonne-sous">{colonne.sous}</p>
+              <header className="tqv2-colonne-tete">
+                <h4 className="tqv2-colonne-titre">{colonne.titre}</h4>
+                <span className="tqv2-colonne-compte">{parStatut[colonne.cle].length}</span>
               </header>
 
-              <div className="rg-colonne-corps">
+              <div className="tqv2-colonne-corps">
                 {parStatut[colonne.cle].map((tache) => (
-                  <FicheTache
+                  <CarteTache
                     key={tache.id}
                     tache={tache}
-                    numero={numeroDe(tache)}
                     selection={selection.includes(tache.id)}
+                    equipe={tache.team?.name}
                     onBasculer={basculerSelection}
                     onOuvrir={(id) => navigate(`/taches/${id}`)}
                     onModifier={(t) => { setTacheEditee(t); setMontrerTache(true) }}
@@ -728,79 +690,30 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
                 ))}
 
                 {parStatut[colonne.cle].length === 0 && (
-                  <div className="rg-colonne-vide">
-                    <RosacePerlesSvg taille={38} ton={colonne.ton} />
-                    <span>Rien ici.</span>
-                    <span>{colonne.sous}</span>
-                  </div>
+                  <div className="tqv2-colonne-vide">Rien ici.</div>
                 )}
-
-                <button type="button" className="rg-ajouter" onClick={ouvrirNouvelleTache}>
-                  <Plus size={11} /> ajouter une tâche
-                </button>
               </div>
             </section>
           ))}
         </div>
-      ) : (
-        <div className="rg-liste">
-          {tachesFiltrees.map((tache) => (
-            <div key={tache.id} className="rg-ligne" data-selection={selection.includes(tache.id) ? 'oui' : 'non'}>
-              <button
-                type="button"
-                className="rg-case"
-                aria-pressed={selection.includes(tache.id)}
-                aria-label={selection.includes(tache.id) ? 'Retirer de la sélection' : 'Sélectionner la tâche'}
-                onClick={() => basculerSelection(tache.id)}
-              >
-                <Check size={11} />
-              </button>
-
-              <div style={{ minWidth: 0 }}>
-                <p className="rg-ligne-nom">{tache.title}</p>
-                <p className="rg-ligne-note">
-                  {getStatusLabel(tache.status)}
-                  {tache.team?.name ? ` · ${tache.team.name}` : ''}
-                  {tache.category?.name ? ` · ${tache.category.name}` : ''}
-                </p>
-              </div>
-
-              <Personne personne={tache.assigned_employee} />
-              <Echeance tache={tache} />
-
-              <span className="rg-fiche-actions">
-                <button type="button" className="rg-lien" onClick={() => navigate(`/taches/${tache.id}`)}>
-                  Ouvrir
-                </button>
-                <button
-                  type="button"
-                  className="rg-lien"
-                  onClick={() => { setTacheEditee(tache); setMontrerTache(true) }}
-                  aria-label={`Modifier ${tache.title}`}
-                >
-                  <Pencil size={11} />
-                </button>
-              </span>
-            </div>
-          ))}
-        </div>
       )}
 
-      {vue === 'tableau' && horsCircuit > 0 && (
-        <p className="rg-note">
+      {horsCircuit > 0 && (
+        <p className="tqv2-note">
           <Info size={14} />
           <span>
             {horsCircuit} tâche{horsCircuit > 1 ? 's' : ''} refusée{horsCircuit > 1 ? 's' : ''} ou annulée{horsCircuit > 1 ? 's' : ''}
-            {' '}ne figure{horsCircuit > 1 ? 'nt' : ''} pas au tableau : passez en liste pour les revoir.
+            {' '}ne figure{horsCircuit > 1 ? 'nt' : ''} pas au tableau.
           </span>
         </p>
       )}
 
-      <footer className="rg-pied">
-        <div className="rg-pied-ligne">
-          <p className="rg-pied-titre">
+      {/* le pied : ce qui demande un regard, replié par défaut */}
+      <footer className="empv2-pied">
+        <div className="empv2-pied-ligne">
+          <p className="empv2-pied-titre">
             À décider
-            <span className="rg-pied-texte">
+            <span className="empv2-pied-texte">
               {!predictions
                 ? 'Les analyses de tâches ne sont pas activées : aucune alerte calculée.'
                 : alertes.length === 0
@@ -811,30 +724,30 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
           {predictions && alertes.length > 0 && (
             <button
               type="button"
-              className="rg-lien"
+              className="empv2-lien"
               aria-expanded={montrerAlertes}
               onClick={() => setMontrerAlertes((v) => !v)}
             >
-              <Sparkles size={12} /> {montrerAlertes ? 'Refermer' : 'Ouvrir le registre'}
+              <Sparkles size={12} /> {montrerAlertes ? 'Refermer' : 'Ouvrir'}
               <ChevronDown size={13} style={{ transform: montrerAlertes ? 'rotate(180deg)' : 'none' }} />
             </button>
           )}
         </div>
 
         {predictions && montrerAlertes && alertes.length > 0 && (
-          <div className="rg-pied-liste">
+          <div className="empv2-pied-liste">
             {alertes.map((a) => (
-              <div key={a.id} className="rg-pied-item" data-grave={a.severity === 'critical' ? 'oui' : 'non'}>
+              <div key={a.id} className="empv2-pied-item" data-grave={a.severity === 'critical' ? 'oui' : 'non'}>
                 <div>
-                  <p className="rg-pied-item-titre">
+                  <p className="empv2-pied-item-titre">
                     {a.severity === 'critical' && <AlertTriangle size={11} style={{ marginRight: 6 }} />}
                     {a.task_title || 'Tâche'}
                   </p>
-                  <p className="rg-pied-item-note">{a.message}</p>
+                  <p className="empv2-pied-item-note">{a.message}</p>
                 </div>
                 {a.task_id && (
-                  <div className="rg-pied-item-actions">
-                    <button type="button" className="rg-lien" onClick={() => navigate(`/taches/${a.task_id}`)}>
+                  <div className="empv2-pied-item-actions">
+                    <button type="button" className="empv2-lien" onClick={() => navigate(`/taches/${a.task_id}`)}>
                       Ouvrir la tâche
                     </button>
                   </div>
