@@ -223,14 +223,19 @@ function notePrevision({ heatmap, jours }) {
 function noteSante({ sante, serie }) {
   if (!sante) return null
   const { assiduite, regularite } = sante
-  if (assiduite >= 85 && regularite >= 70) {
+  // Moins de 3 jours d'activité : aucune valeur calculable — pas de note.
+  if (assiduite == null && regularite == null) return null
+  if (assiduite >= 85 && regularite != null && regularite >= 70) {
     return `Assiduité saine (${assiduite} %) et activité régulière sur la semaine glissante : la présence tient ses niveaux.`
   }
   if (assiduite < 70) {
     return `Assiduité en retrait : ${assiduite} % des effectifs ont pointé sur la semaine glissante.`
   }
-  if (regularite < 55) {
+  if (regularite != null && regularite < 55) {
     return `Activité irrégulière : l’effectif présent fluctue fortement d’un jour à l’autre (régularité ${regularite} %).`
+  }
+  if (regularite == null) {
+    return `Assiduité ${assiduite} % sur la semaine glissante — pas encore assez de jours d’activité pour juger la régularité.`
   }
   return `Assiduité ${assiduite} %, régularité ${regularite} % — surveiller les jours les plus calmes du calendrier.`
 }
@@ -519,7 +524,7 @@ export default function DashboardKenteAnalytics({
       '',
       'Tendance',
       `- Pointages 7 jours : ${tendances?.entrees_7j ?? '—'} (semaine précédente : ${tendances?.entrees_7j_prev ?? '—'}${deltaSemaine !== null ? ` → ${formatDelta(deltaSemaine)}` : ''})`,
-      `- Assiduité : ${sante?.assiduite ?? '—'} % · Régularité : ${sante?.regularite ?? '—'} %`,
+      `- Assiduité : ${sante?.assiduite != null ? `${sante.assiduite} %` : '—'} · Régularité : ${sante?.regularite != null ? `${sante.regularite} %` : '—'}`,
       '',
       'Bornes',
       `- ${bornes?.actives ?? '—'} borne(s) active(s) sur ${bornes?.total ?? '—'}`,
@@ -737,11 +742,11 @@ export default function DashboardKenteAnalytics({
               <div className="dk-sante-score">
                 <div>
                   <span className="dk-sante-nom">Assiduité</span>
-                  <strong>{sante ? `${sante.assiduite} %` : '—'}</strong>
+                  <strong>{sante?.assiduite != null ? `${sante.assiduite} %` : '—'}</strong>
                 </div>
                 <div>
                   <span className="dk-sante-nom">Régularité</span>
-                  <strong>{sante ? `${sante.regularite} %` : '—'}</strong>
+                  <strong>{sante?.regularite != null ? `${sante.regularite} %` : '—'}</strong>
                 </div>
               </div>
               <div className="dk-sante-barres">

@@ -40,3 +40,33 @@ export function libelleSansPointage(depassee, singulier = false) {
   if (depassee) return singulier ? 'absent' : 'absents'
   return singulier ? 'pas encore pointé' : 'pas encore pointés'
 }
+
+/**
+ * Bannière « N ayant pointé aujourd’hui » : liste des employés ayant
+ * pointé (dédoublonnés par id), prêts à être affichés en profils.
+ *
+ * Les pointages arrivent déjà triés du plus récent au plus ancien ;
+ * l'ordre d'apparition est conservé (le plus récent pointe en tête).
+ * La photo du pointage du jour prime sur la photo du profil : c'est
+ * le visage qui s'est réellement présenté à la borne aujourd'hui.
+ */
+export function construirePresentsAujourdhui(attendances = []) {
+  const vus = new Set()
+  const presents = []
+  for (const a of attendances || []) {
+    const id = a?.employee_id
+    if (!id || vus.has(id)) continue
+    vus.add(id)
+    const e = a?.employees || {}
+    const photoPointage = a?.pointages_photos?.[0]?.photo_url
+    presents.push({
+      id,
+      prenom: e.first_name || '',
+      nom: e.last_name || '',
+      nomComplet: [e.first_name, e.last_name].filter(Boolean).join(' ').trim(),
+      matricule: e.matricule,
+      photo: photoPointage || e.photo_url || null,
+    })
+  }
+  return presents
+}

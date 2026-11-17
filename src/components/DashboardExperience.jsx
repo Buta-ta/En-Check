@@ -60,6 +60,7 @@ import AttendanceHeroImage from './AttendanceHeroImage'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
 import { formaterHeureLocale } from '../utils/timezoneUtils'
+import { initialesDe } from '../utils/initiales'
 import { estPauseReelleEffectuee, formaterTempsPauseEnDirect } from '../services/pausesService'
 import {
   loadRemoteDashboardPreferences,
@@ -193,6 +194,10 @@ export default function DashboardExperience({
   const { pathname } = useLocation()
   const employeeCount = Number(stats?.employes) || 0
   const presentCount = Number(stats?.presentsToday) || 0
+  // Profils des employés ayant pointé aujourd’hui (photo du pointage du
+  // jour en priorité, sinon photo de profil). Sert à la bannière hero.
+  const presentsAujourdhui = Array.isArray(stats?.presentsAujourdhui) ? stats.presentsAujourdhui : []
+  const presentsAffiches = presentsAujourdhui.slice(0, 5)
   const absentCount = Number(stats?.absentsToday) || 0
   const leaveCount = Number(stats?.congesToday) || 0
   const lateCount = Number(stats?.retardsToday) || 0
@@ -212,6 +217,19 @@ export default function DashboardExperience({
   useEffect(() => {
     sauvegarderRail(null, admin?.id, panneauReplie)
   }, [panneauReplie, admin?.id])
+  const sidebarRef = useRef(null)
+  // Un clic sur le vide (hors de la barre, desktop) rabat le panneau
+  // pour ne laisser que le rail. Le tiroir mobile a sa propre logique :
+  // sous 940 px, le rail est masqué et ce geste n'existe pas.
+  useEffect(() => {
+    if (panneauReplie) return undefined
+    if (typeof window === 'undefined' || window.innerWidth <= 940) return undefined
+    const clicHorsBarre = (evenement) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(evenement.target)) setPanneauReplie(true)
+    }
+    document.addEventListener('mousedown', clicHorsBarre)
+    return () => document.removeEventListener('mousedown', clicHorsBarre)
+  }, [panneauReplie])
 
   // Le menu du profil se ferme au clic hors des pieds de navigation
   // (le menu vit dans le rail OU dans le tiroir mobile) ou sur Échap.
@@ -824,7 +842,7 @@ export default function DashboardExperience({
             et un panneau (contexte d'entreprise + rubriques et leurs
             sous-éléments) qui se replie pour ne laisser que le rail.
             Sur petit écran, le rail disparaît : c'est le tiroir. */}
-        <aside className={`dashboard-sidebar${mobileMenuOpen ? ' is-open' : ''}${panneauReplie ? ' is-repliee' : ''}`} aria-label="Navigation principale">
+        <aside ref={sidebarRef} className={`dashboard-sidebar${mobileMenuOpen ? ' is-open' : ''}${panneauReplie ? ' is-repliee' : ''}`} aria-label="Navigation principale">
           <SidebarRail
             sections={navigationSections}
             cheminActif={pathname}
@@ -1086,7 +1104,23 @@ export default function DashboardExperience({
                 <p className="dashboard-subtitle">Voici la présence de votre équipe et les points à vérifier aujourd’hui.</p>
                 <div className="dashboard-hero-meta">
                   <span className="dashboard-meta-chip">{entrepriseChipIcon}{selectedEnterpriseName}</span>
-                  <span className="dashboard-meta-chip is-positive"><UserCheck size={13} />{presentCount} ayant pointé aujourd’hui</span>
+                  <span className="dashboard-meta-chip is-positive">
+                    {presentsAffiches.length > 0 && (
+                      <span className="dashboard-hero-avatars" aria-hidden="true">
+                        {presentsAffiches.map((p) => (
+                          <span key={p.id} className="dashboard-hero-avatar">
+                            {p.photo
+                              ? <img src={p.photo} alt="" loading="lazy" />
+                              : <span className="dashboard-hero-avatar-initiales">{initialesDe(p.prenom, p.nom)}</span>}
+                          </span>
+                        ))}
+                        {presentsAujourdhui.length > 5 && (
+                          <span className="dashboard-hero-avatar dashboard-hero-avatar-plus">+{presentsAujourdhui.length - 5}</span>
+                        )}
+                      </span>
+                    )}
+                    <UserCheck size={13} />{presentCount} ayant pointé aujourd’hui
+                  </span>
                   {realPausesToday.length > 0 && (
                     <button
                       type="button"
