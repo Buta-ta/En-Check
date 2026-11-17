@@ -80,6 +80,7 @@ export default function EntreeEmploye({
   payslipEntries = [],
   payslipDate = null,
   onOuvrirFiche,
+  onOuvrirPage,
   onBadge,
   onHoraires,
   onPartagerHoraires,
@@ -127,7 +128,7 @@ export default function EntreeEmploye({
 
         <div className="rg-identite-texte">
           <h4 className="rg-entree-titre">
-            <button type="button" onClick={() => onOuvrirFiche(employee)}>{nomComplet(employee)}</button>
+            <button type="button" onClick={() => (onOuvrirPage || onOuvrirFiche)(employee)} title="Ouvrir la fiche">{nomComplet(employee)}</button>
           </h4>
 
           <p className="rg-annuaire-sous">
@@ -190,7 +191,7 @@ export default function EntreeEmploye({
 
       <div className="rg-entree-actions" ref={actionsRef}>
         <button type="button" className="rg-lien" onClick={() => onOuvrirFiche(employee)}>
-          <UserCog size={12} /> Fiche
+          <UserCog size={12} /> Modifier
         </button>
         <button type="button" className="rg-lien" onClick={() => onBadge(employee)}>
           <BadgeCheck size={12} /> Badge

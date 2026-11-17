@@ -1289,6 +1289,7 @@ export default function Employes() {
                         payslipEntries={payslipIndicators.entriesFor(employee)}
                         payslipDate={payslipIndicators.date}
                         onOuvrirFiche={handleEdit}
+                        onOuvrirPage={(emp) => navigate(`/employes/${emp.id}`)}
                         onBadge={handleShowBadge}
                         onHoraires={handleOpenSchedule}
                         onPartagerHoraires={handleShareSchedule}
