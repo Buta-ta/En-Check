@@ -164,6 +164,7 @@ export default function DashboardExperience({
   loadError,
   notifications = [],
   unreadCount = 0,
+  actionCount = 0,
   hasHighPriority = false,
   markAsRead,
   markAllAsRead,
@@ -711,7 +712,12 @@ export default function DashboardExperience({
          ici, simple rappel de l'entreprise affichée. */
       return (
         <div className="topbar-company">
-          <span className="dashboard-meta-chip">{entrepriseChipIcon}{selectedEnterpriseName}</span>
+          {/* Chip étiquetée : on lit « Entreprise : EN-NOUS », pas juste un
+              nom flottant qu'on devine. */}
+          <span className="dashboard-meta-chip chip-entreprise">
+            <span className="chip-entreprise-label" aria-hidden="true">Entreprise</span>
+            {entrepriseChipIcon}{selectedEnterpriseName}
+          </span>
         </div>
       )
     }
@@ -727,7 +733,7 @@ export default function DashboardExperience({
     if (itemId === 'notifications') {
       return (
         <div className="topbar-icon-button">
-          <NotificationBell notifications={notifications} unreadCount={unreadCount} hasHighPriority={hasHighPriority} markAsRead={markAsRead} markAllAsRead={markAllAsRead} />
+          <NotificationBell notifications={notifications} unreadCount={unreadCount} actionCount={actionCount} hasHighPriority={hasHighPriority} markAsRead={markAsRead} markAllAsRead={markAllAsRead} />
         </div>
       )
     }

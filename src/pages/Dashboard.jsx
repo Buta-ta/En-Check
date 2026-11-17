@@ -137,6 +137,7 @@ export default function Dashboard() {
   const {
     notifications,
     unreadCount,
+    actionCount,
     hasHighPriority,
     markAsRead,
     markAllAsRead,
@@ -1010,6 +1011,7 @@ export default function Dashboard() {
         loadError={loadError}
         notifications={notifications}
         unreadCount={unreadCount}
+        actionCount={actionCount}
         hasHighPriority={hasHighPriority}
         markAsRead={markAsRead}
         markAllAsRead={markAllAsRead}

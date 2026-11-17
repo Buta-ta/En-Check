@@ -738,6 +738,20 @@
 .dashboard-subtitle { max-width: 460px; margin: 9px 0 0; color: var(--muted); font-size: 12px; }
 .dashboard-hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 19px; }
 .dashboard-meta-chip { display: inline-flex; min-height: 29px; align-items: center; gap: 7px; padding: 5px 10px; color: var(--ink-soft); font-size: 10px; font-weight: 600; border: 1px solid var(--line); border-radius: 99px; background: color-mix(in srgb, var(--surface) 86%, transparent); }
+/* Chip « Entreprise » de la barre du haut : une étiquette muette mais lisible
+   (petit majuscule atténué + séparateur) pour ne plus deviner ce que porte
+   la pastille. */
+.chip-entreprise { gap: 8px; }
+.chip-entreprise-label {
+  padding-right: 8px;
+  margin-right: 1px;
+  color: var(--ink-faint, color-mix(in srgb, var(--ink-soft) 55%, transparent));
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  border-right: 1px solid var(--line);
+}
 /* Le logo de l'entreprise active remplace l'icône générique quand il existe. */
 .dashboard-meta-logo { width: 17px; height: 17px; flex: 0 0 17px; object-fit: cover; border-radius: 5px; border: 1px solid var(--line); background: var(--surface); }
 .dashboard-meta-chip.is-positive { color: var(--good); border-color: color-mix(in srgb, var(--good) 22%, var(--line)); background: var(--good-soft); }

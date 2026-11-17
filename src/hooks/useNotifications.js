@@ -9,10 +9,65 @@ const POLLING_INTERVAL = 60000
 const DEFAULT_TITLE = 'En-Check | Administration'
 const DEBUG_NOTIFS = import.meta.env.DEV
 
+// ─────────────────────────────────────────────────────────────
+// LE CENTRE D'ACTION — P1
+//
+// Règle : la cloche ne doit pas être une archive, c'est un comptoir.
+//  — agrégée : une ligne par niveau de gravité, pas une ligne par
+//    alerte (cinq lignes valent mieux que cinquante) ;
+//  — plafonnée : rien au-delà de LIMITE_LIGNE_CLOCHE à l'écran ;
+//  — le compteur = les éléments NON RÉSOLUS (actionnable), pas les
+//    « non lues » : une alerte lue est une alerte qui a été vue,
+//    un conflit reste un conflit tant qu'il est `pending` en base ;
+//  — une action par ligne : chaque ligne mène à SA page, un clic.
+// ─────────────────────────────────────────────────────────────
+const LIMITE_LIGNE_CLOCHE = 30
+
+/**
+ * Agrège les alertes classiques par gravité : une seule ligne par
+ * niveau, jamais une ligne par alerte. Les signaux d'assiduité sont
+ * exclus ici (chaque signal porte une personne et un détail propre).
+ * Exporté pour les tests.
+ */
+export function agregerAlertesParGravite(alertes = []) {
+  const parGravite = {}
+  for (const a of alertes) {
+    if (!a || !a.id || a.lu || a.type === 'assiduite_signal') continue
+    const gravite = a.gravite === 'critique' ? 'critique' : a.gravite === 'attention' ? 'attention' : 'info'
+    const groupe = (parGravite[gravite] ||= { gravite, ids: [], noms: [], count: 0, quand: null })
+    groupe.ids.push(a.id)
+    groupe.count += 1
+    if (a.employe && !groupe.noms.includes(a.employe)) groupe.noms.push(a.employe)
+    if (a.quand && (!groupe.quand || new Date(a.quand) > new Date(groupe.quand))) groupe.quand = a.quand
+  }
+  const ordre = { critique: 0, attention: 1, info: 2 }
+  return Object.values(parGravite).sort((a, b) => ordre[a.gravite] - ordre[b.gravite])
+}
+
+/** Libellé « N noms… +k » pour une ligne agrégée (2 noms max). */
+export function libelleNoms(noms = [], plus = 2) {
+  const visibles = noms.slice(0, plus)
+  return visibles.join(', ') + (noms.length > plus ? ` … +${noms.length - plus}` : '')
+}
+
+/** Les identifiants d'alertes de base contenus dans une clé de cloche. */
+function idsAlertesDeClef(key) {
+  if (typeof key !== 'string') return []
+  if (key.startsWith('alertes_grp_')) {
+    // clé : alertes_grp_<gravite>_<id1>_<id2>…
+    const reste = key.slice('alertes_grp_'.length)
+    const tiret = reste.indexOf('_')
+    return tiret > 0 ? reste.slice(tiret + 1).split('_').filter(Boolean) : []
+  }
+  if (key.startsWith('alerte_')) return [key.slice(7)]
+  return []
+}
+
 export default function useNotifications(admin) {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [actionCount, setActionCount] = useState(0)
 
   const intervalRef = useRef(null)
   const titleIntervalRef = useRef(null)
@@ -86,11 +141,13 @@ export default function useNotifications(admin) {
     const readKeys = getReadKeys()
     readKeys[key] = Date.now()
 
-    //  Une alerte de pointage lue ici est aussi marquée lue en base
-    if (typeof key === 'string' && key.startsWith('alerte_')) {
-      supabase.rpc('encheck_alertes_marquer', { p_ids: [key.slice(7)] }).then(() => {}, () => {})
+    //  Une alerte de pointage lue ici est aussi marquée lue en base — y
+    //  compris les alertes contenues dans une ligne agrégée (`alertes_grp_`).
+    const idsAlertes = idsAlertesDeClef(key)
+    if (idsAlertes.length > 0) {
+      supabase.rpc('encheck_alertes_marquer', { p_ids: idsAlertes }).then(() => {}, () => {})
     }
-    
+
     if (adminParams.id) {
       localStorage.setItem(`notif_read_${adminParams.id}`, JSON.stringify(readKeys))
     }
@@ -98,15 +155,19 @@ export default function useNotifications(admin) {
     setNotifications(prev => {
       const updated = prev.map(n => n.key === key ? { ...n, read: true } : n)
       const newUnreadCount = updated.filter(n => !n.read).length
-      const hasHighPrio = updated.some(n => !n.read && n.priority === 'high')
+      //  Marquer « lu » ne résout rien : un conflit `pending` ou une sortie
+      //  présumée non validée restent dans le compteur d'action.
+      const newActionCount = updated.filter(n => n.actionnable).length
+      const hasHighPrio = updated.some(n => n.actionnable && n.priority === 'high')
 
       setUnreadCount(newUnreadCount)
+      setActionCount(newActionCount)
 
-      if (hasHighPrio && newUnreadCount > 0) {
-        startTitleBlink(newUnreadCount)
+      if (hasHighPrio && newActionCount > 0) {
+        startTitleBlink(newActionCount)
       } else {
         stopTitleBlink()
-        updateDocumentTitle(newUnreadCount, false)
+        updateDocumentTitle(newActionCount, false)
       }
 
       return updated
@@ -119,26 +180,34 @@ export default function useNotifications(admin) {
 
       //  Les alertes de pointage lues ici sont aussi marquées lues en base
       const idsAlertes = prev
-        .filter(n => typeof n.key === 'string' && n.key.startsWith('alerte_'))
-        .map(n => n.key.slice(7))
+        .flatMap(n => idsAlertesDeClef(n.key))
       if (idsAlertes.length > 0) {
         supabase.rpc('encheck_alertes_marquer', { p_ids: idsAlertes }).then(() => {}, () => {})
       }
       prev.forEach(n => {
         readKeys[n.key] = Date.now()
       })
-      
+
       if (adminParams.id) {
         localStorage.setItem(`notif_read_${adminParams.id}`, JSON.stringify(readKeys))
       }
 
+      const newActionCount = prev.filter(n => n.actionnable).length
+      const hasHighPrio = prev.some(n => n.actionnable && n.priority === 'high')
+
       setUnreadCount(0)
-      stopTitleBlink()
-      updateDocumentTitle(0, false)
+      setActionCount(newActionCount)
+
+      if (hasHighPrio && newActionCount > 0) {
+        startTitleBlink(newActionCount)
+      } else {
+        stopTitleBlink()
+        updateDocumentTitle(newActionCount, false)
+      }
 
       return prev.map(n => ({ ...n, read: true }))
     })
-  }, [adminParams.id, getReadKeys, stopTitleBlink, updateDocumentTitle])
+  }, [adminParams.id, getReadKeys, startTitleBlink, stopTitleBlink, updateDocumentTitle])
 
   // ✅ LES ALERTES QUI COMPTENT PARTENT SUR LE TÉLÉPHONE — une seule fois par alerte.
   //    `critique` et `attention` partent ; `info` reste dans la cloche. Un patron qui
@@ -268,14 +337,15 @@ export default function useNotifications(admin) {
           })
           if (errAlertes) throw errAlertes
 
-          ;(alertes || []).forEach(a => {
-            // ═══ Signaux d'assiduité ═══
-            if (a.type === 'assiduite_signal') {
+          // ═══ Signaux d'assiduité — un par personne, détail propre (max 5) ═══
+          ;(alertes || []).filter(a => a?.type === 'assiduite_signal' && !a.lu).slice(0, 5)
+            .forEach(a => {
               allNotifs.push({
                 key: `alerte_${a.id}`,
                 type: 'alerte',
                 priority: GRAVITE_PRIORITE[a.gravite] || 'low',
                 category: 'assiduite',
+                actionnable: true,
                 title: a.titre,
                 subtitle: a.detail || a.employe || 'Signal d\'assiduité',
                 icon: 'activity',
@@ -283,24 +353,30 @@ export default function useNotifications(admin) {
                 path: '/pointages',
                 timestamp: a.quand,
               })
-            }
-            // ═══ Alertes classiques ═══
-            else {
-              allNotifs.push({
-                key: `alerte_${a.id}`,
-                type: 'alerte',
-                priority: GRAVITE_PRIORITE[a.gravite] || 'low',
-                category: 'pointages',
-                title: a.titre,
-                subtitle: [a.employe, a.appareil, a.detail].filter(Boolean).join(' · ') || 'Pointage',
-                icon: 'clock',
-                color: GRAVITE_COULEUR[a.gravite] || '#3B82F6',
-                path: '/pointages',
-                timestamp: a.quand,
-              })
-            }
-          })
-          log('alertes du serveur:', (alertes || []).length)
+            })
+
+          // ═══ Alertes classiques — UNE ligne par niveau de gravité ═══
+          for (const g of agregerAlertesParGravite(alertes)) {
+            const estUrgente = g.gravite === 'critique'
+            allNotifs.push({
+              key: `alertes_grp_${g.gravite}_${g.ids.sort().join('_')}`,
+              type: 'alerte',
+              priority: GRAVITE_PRIORITE[g.gravite] || 'low',
+              category: 'pointages',
+              actionnable: g.gravite !== 'info',
+              title: estUrgente
+                ? `Urgent — ${g.count} anomalie${g.count > 1 ? 's' : ''} de pointage`
+                : `${g.count} anomalie${g.count > 1 ? 's' : ''} de pointage à examiner`,
+              subtitle: libelleNoms(g.noms) || 'Ouvrir les pointages pour examiner',
+              count: g.count,
+              alerteIds: g.ids,
+              icon: 'clock',
+              color: GRAVITE_COULEUR[g.gravite] || '#3B82F6',
+              path: '/pointages',
+              timestamp: g.quand || new Date().toISOString(),
+            })
+          }
+          log('alertes du serveur:', (alertes || []).length, '→', agregerAlertesParGravite(alertes).length, 'ligne(s) agrégée(s)')
 
           // ③ l'envoi sur le téléphone
           await pousserSurLeTelephone(alertes || [], GRAVITE_SEVERITE)
@@ -334,20 +410,28 @@ export default function useNotifications(admin) {
           const { data, error } = await query
           if (error) throw error
 
-          ;(data || []).forEach(c => {
+          // ═══ UNE seule ligne, jamais une par conflit ═══
+          // Le conflit reste « non résolu » tant qu'il est `pending` en
+          // base : le lire ici ne le fait pas disparaître du compteur.
+          if ((data || []).length > 0) {
+            const noms = (data || [])
+              .map(c => `${c.employees?.first_name || ''} ${c.employees?.last_name || ''}`.trim())
+              .filter(Boolean)
             allNotifs.push({
-              key: `conflict_${c.id}`,
+              key: `conflits_grp_${(data || []).map(c => c.id).sort().join('_')}`,
               type: 'conflict',
               priority: 'high',
               category: 'pointages',
-              title: 'Conflit absence/pointage',
-              subtitle: `${c.employees?.first_name || ''} ${c.employees?.last_name || ''} — ${c.absences?.reason || 'absence'}`,
+              actionnable: true,
+              title: `${data.length} conflit${data.length > 1 ? 's' : ''} absence/pointage à résoudre`,
+              subtitle: libelleNoms(noms) || 'Pointage effectué pendant une absence déclarée',
+              count: data.length,
               icon: 'shield',
               color: '#F97316',
               path: '/pointages',
-              timestamp: c.created_at,
+              timestamp: data[0]?.created_at,
             })
-          })
+          }
 
           log('conflicts loaded:', (data || []).length)
         } catch (e) {
@@ -446,6 +530,9 @@ export default function useNotifications(admin) {
                 type: 'warning',
                 priority: 'medium',
                 category: 'pointages',
+                // Résumé d'un fait déjà accompli — information, pas un élément
+                // « non résolu » : ne compte pas dans le compteur d'action.
+                actionnable: false,
                 title: `${retardsAvecNom.length} retard${retardsAvecNom.length > 1 ? 's' : ''} aujourd'hui`,
                 subtitle: 'Employés avec planning ayant pointé en retard',
                 icon: 'alert',
@@ -499,6 +586,7 @@ export default function useNotifications(admin) {
               type: 'warning',
               priority: 'medium',
               category: 'pointages',
+              actionnable: true, // attend une validation humaine : non résolu
               title: `${data.length} sortie${data.length > 1 ? 's' : ''} présumée${data.length > 1 ? 's' : ''}`,
               //  L'ancien libellé (« auto-fermés à minuit ») était FAUX : la
               //  fermeture dépend de `auto_close_time` entreprise + des seuils, pas
@@ -543,11 +631,13 @@ export default function useNotifications(admin) {
               type: 'action',
               priority: 'medium',
               category: 'rh',
+              actionnable: true, // demande en attente d'une décision : non résolue
               title: `${data.length} demande${data.length > 1 ? 's' : ''} de congé en attente`,
               subtitle:
-                data.slice(0, 2)
-                  .map(c => `${c.employees?.first_name || ''} ${c.employees?.last_name || ''}`)
-                  .join(', ') + (data.length > 2 ? ` ... +${data.length - 2}` : ''),
+                libelleNoms(
+                  data.map(c => `${c.employees?.first_name || ''} ${c.employees?.last_name || ''}`.trim())
+                    .filter(Boolean)
+                ) || 'Décider dans les absences',
               icon: 'calendar',
               color: '#8B5CF6',
               path: '/absences',
@@ -596,16 +686,12 @@ export default function useNotifications(admin) {
               })
             }
 
-            const subtitle =
-              scheduleRequests
-                .slice(0, 2)
-                .map(r => {
-                  const emp = employeesMap[r.employee_id]
-                  return `${emp?.first_name || ''} ${emp?.last_name || ''}`.trim()
-                })
-                .filter(Boolean)
-                .join(', ') +
-              (scheduleRequests.length > 2 ? ` ... +${scheduleRequests.length - 2}` : '')
+            const noms = scheduleRequests
+              .map(r => {
+                const emp = employeesMap[r.employee_id]
+                return `${emp?.first_name || ''} ${emp?.last_name || ''}`.trim()
+              })
+              .filter(Boolean)
 
             const requestIdsKey = scheduleRequests
               .map(r => r.id)
@@ -617,8 +703,9 @@ export default function useNotifications(admin) {
               type: 'action',
               priority: 'high',
               category: 'planning',
+              actionnable: true, // demande en attente d'une décision : non résolue
               title: `${scheduleRequests.length} demande${scheduleRequests.length > 1 ? 's' : ''} de modification d'horaires`,
-              subtitle: subtitle || 'Des employés souhaitent modifier leur planning',
+              subtitle: libelleNoms(noms) || 'Des employés souhaitent modifier leur planning',
               icon: 'calendar',
               color: '#6366F1',
               path: '/planning',
@@ -654,6 +741,9 @@ export default function useNotifications(admin) {
               type: 'info',
               priority: 'low',
               category: 'commercial',
+              // Rappel commercial — un autre domaine que la présence : visible,
+              // filtrable, mais ne gonfle pas le compteur d'action de la cloche.
+              actionnable: false,
               title: `${data.length} prospect${data.length > 1 ? 's' : ''} à relancer`,
               subtitle: data.slice(0, 2).map(p => p.company_name).join(', ') + (data.length > 2 ? '...' : ''),
               icon: 'trending',
@@ -688,6 +778,8 @@ export default function useNotifications(admin) {
               type: 'info',
               priority: 'low',
               category: 'commercial',
+              // Rappel commercial — visible, mais pas dans le compteur d'action.
+              actionnable: false,
               title: `${data.length} devis sans réponse depuis 14j+`,
               subtitle: data.slice(0, 2).map(d => d.numero).join(', ') + (data.length > 2 ? '...' : ''),
               icon: 'file',
@@ -726,10 +818,15 @@ export default function useNotifications(admin) {
       })
 
       const newUnreadCount = enriched.filter(n => !n.read).length
-      const hasHighPrio = enriched.some(n => !n.read && n.priority === 'high')
+      // LE COMPTEUR DE LA CLOCHE = les éléments NON RÉSOLUS, pas les non lues.
+      // Une ligne agrégée reste comptée tant que son objet existe en base
+      // (conflit `pending`, sortie présumée non validée, demande en attente,
+      // alerte non lue) — la cocher « lu » ne la fait pas disparaître.
+      const newActionCount = enriched.filter(n => n.actionnable).length
+      const hasHighPrio = enriched.some(n => n.actionnable && n.priority === 'high')
 
       log('✅ Notifications enrichies:', enriched.length)
-      log('newUnreadCount:', newUnreadCount)
+      log('newUnreadCount:', newUnreadCount, '· newActionCount:', newActionCount)
       log('hasHighPrio:', hasHighPrio)
 
       // ✅ Utiliser setState avec fonction pour éviter re-renders inutiles
@@ -746,12 +843,13 @@ export default function useNotifications(admin) {
       })
 
       setUnreadCount(newUnreadCount)
+      setActionCount(newActionCount)
 
-      if (hasHighPrio && newUnreadCount > 0) {
-        startTitleBlink(newUnreadCount)
+      if (hasHighPrio && newActionCount > 0) {
+        startTitleBlink(newActionCount)
       } else {
         stopTitleBlink()
-        updateDocumentTitle(newUnreadCount, hasHighPrio)
+        updateDocumentTitle(newActionCount, hasHighPrio)
       }
 
     } catch (error) {
@@ -807,6 +905,9 @@ export default function useNotifications(admin) {
   return {
     notifications,
     unreadCount,
+    // Le compteur affiché = les éléments NON RÉSOLUS (actionnable), pas les
+    // « non lues ». Une ligne reste comptée tant que son objet existe en base.
+    actionCount,
     loading,
     markAsRead,
     markAllAsRead,
@@ -814,6 +915,6 @@ export default function useNotifications(admin) {
       lastFetchParamsRef.current = null
       fetchNotifications()
     }, [fetchNotifications]),
-    hasHighPriority: notifications.some(n => !n.read && n.priority === 'high'),
+    hasHighPriority: notifications.some(n => n.actionnable && n.priority === 'high'),
   }
 }
