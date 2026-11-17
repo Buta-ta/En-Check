@@ -1,0 +1,42 @@
+// ═══════════════════════════════════════════════════════════
+// VÉRITÉ DE L'ÉTAT DE PRÉSENCE — « pas encore pointé » ≠ « absent »
+//
+// Règle du dictionnaire de données : le mot « absent » ne doit
+// jamais apparaître avant la fin du poste. Tant que la fin du
+// poste (auto_close_time de l'entreprise, sinon 18 h, à l'heure
+// locale de l'entreprise) n'est pas dépassée, un salarié sans
+// pointage est « pas encore pointé » — une absence
+// d'information, pas une accusation.
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * La fin du poste est-elle dépassée ?
+ * Seuil : auto_close_time de l'entreprise (sinon 18:00), évalué
+ * dans le fuseau de l'entreprise (sinon fuseau local du navigateur).
+ */
+export function finPosteDepassee(entreprise = {}) {
+  const [fh, fm] = String(entreprise.auto_close_time || '18:00')
+    .split(':')
+    .map((n) => Number(n) || 0)
+  const seuil = fh * 60 + fm
+  try {
+    const parts = new Intl.DateTimeFormat('fr-FR', {
+      timeZone: entreprise.timezone || undefined,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date())
+    const h = Number(parts.find((p) => p.type === 'hour')?.value) || 0
+    const m = Number(parts.find((p) => p.type === 'minute')?.value) || 0
+    return h * 60 + m >= seuil
+  } catch {
+    const d = new Date()
+    return d.getHours() * 60 + d.getMinutes() >= seuil
+  }
+}
+
+/** Libellé honnête du contingent « sans pointage ni congé ». */
+export function libelleSansPointage(depassee, singulier = false) {
+  if (depassee) return singulier ? 'absent' : 'absents'
+  return singulier ? 'pas encore pointé' : 'pas encore pointés'
+}

@@ -61,6 +61,11 @@ import {
   loadRemoteDashboardPreferences,
   saveRemoteDashboardPreferences,
 } from '../services/dashboardPreferencesService'
+import { nettoyerTexte } from '../lib/nettoyageTexte'
+import {
+  finPosteDepassee as finPosteDepasseeEntreprise,
+  libelleSansPointage,
+} from '../lib/etatPresence'
 import './DashboardKenteAnalytics.css'
 
 const JOURS_OPTIONS = [7, 30, 90]
@@ -94,6 +99,10 @@ const IDS_BAS = CATALOGUE_BAS.map((c) => c.id)
 
 function pctDelta(actuel, precedent) {
   if (!precedent || precedent <= 0) return null
+  // Règle du dictionnaire de données : sous 30 événements dans la
+  // période, un pourcentage est du bruit, pas une tendance. On n'en
+  // montre pas — les valeurs absolues restent lisibles ailleurs.
+  if (Math.max(actuel || 0, precedent) < 30) return null
   return Math.round(((actuel - precedent) / precedent) * 100)
 }
 
@@ -102,9 +111,9 @@ function formatDelta(delta) {
   return `${delta > 0 ? '+' : ''}${delta} %`
 }
 
-function BadgeTendance({ delta, neutre = false }) {
+function BadgeTendance({ delta, neutre = false, texte = 'MàJ' }) {
   if (delta === null || delta === undefined || neutre) {
-    return <span className="dk-badge dk-badge--neutre">{neutre ? 'MàJ' : '—'}</span>
+    return <span className="dk-badge dk-badge--neutre">{neutre ? texte : '—'}</span>
   }
   const positif = delta > 0
   return (
@@ -272,6 +281,18 @@ export default function DashboardKenteAnalytics({
   const fuseau = admin?.selectedEnterprise?.timezone || null
   const scopeCle = `${scopeId || 'global'}|${fuseau || 'utc'}`
   const scopeNom = admin?.selectedEnterprise?.name || (isSuperAdmin ? 'Toutes les entreprises' : admin?.enterprise_name || '')
+
+  // ── Vérité de l'état « pas encore pointé » vs « absent » ──
+  // Tant que la fin du poste n'est pas dépassée (heure locale de
+  // l'entreprise, seuil auto_close_time sinon 18 h), un salarié sans
+  // pointage est « pas encore pointé ». Le mot « absent » n'apparaît
+  // qu'après la fin du poste : avant, c'est une absence
+  // d'information, pas une accusation.
+  const finPosteDepassee = useMemo(
+    () => finPosteDepasseeEntreprise(admin?.selectedEnterprise),
+    [admin?.selectedEnterprise?.auto_close_time, fuseau]
+  )
+  const libelleAbsence = libelleSansPointage(finPosteDepassee)
 
   const clePere = `${admin?.id || 'preview'}:${scopeId || 'all'}`
   const cleKpi = `encheck_dashboard_kente_v1:kpi:${clePere}`
@@ -456,7 +477,7 @@ export default function DashboardKenteAnalytics({
   const donneesDonut = useMemo(() => {
     if (scopeId === null && topEntreprises?.length) {
       const top = topEntreprises.slice(0, 5).map((e, i) => ({
-        name: e.name,
+        name: nettoyerTexte(e.name),
         value: e.presentsToday || 0,
         color: PALETTE_KENTE[i % PALETTE_KENTE.length],
       }))
@@ -466,21 +487,21 @@ export default function DashboardKenteAnalytics({
       if (reste > 0) top.push({ name: 'Autres', value: reste, color: PALETTE_KENTE[5] })
       return {
         titre: 'Présence par entreprise',
-        sousTitre: 'Présents aujourd’hui par entreprise.',
+        sousTitre: 'Présents aujourd’hui — toutes les entreprises.',
         donnees: top,
       }
     }
     const parts = [
       { name: 'Présents', value: stats.presentsToday || 0, color: PALETTE_KENTE[0] },
-      { name: 'Absents', value: stats.absentsToday || 0, color: PALETTE_KENTE[1] },
+      { name: finPosteDepassee ? 'Absents' : 'Pas encore pointés', value: stats.absentsToday || 0, color: PALETTE_KENTE[1] },
       { name: 'En congé', value: stats.congesToday || 0, color: PALETTE_KENTE[4] },
     ].filter((p) => p.value > 0)
     return {
       titre: 'Présence aujourd’hui',
-      sousTitre: `Répartition sur ${stats.employes || 0} employé${(stats.employes || 0) > 1 ? 's' : ''}.`,
+      sousTitre: `Répartition sur ${stats.employes || 0} employé${(stats.employes || 0) > 1 ? 's' : ''} — aujourd’hui.`,
       donnees: parts,
     }
-  }, [scopeId, topEntreprises, stats])
+  }, [scopeId, topEntreprises, stats, finPosteDepassee])
   const totalDonut = donneesDonut.donnees.reduce((a, p) => a + p.value, 0)
 
   // Rapport partageable (texte brut)
@@ -578,17 +599,22 @@ export default function DashboardKenteAnalytics({
   // Contenus des cartes KPI
   const carteKpi = (id) => {
     if (id === 'presents') {
+      const effectif = Number(stats.employes) || 0
       return {
         label: 'Présents aujourd’hui',
         corps: (
           <>
             <span className="dk-kpi-label">Présents aujourd’hui</span>
-            <strong className="dk-kpi-valeur">{stats.presentsToday ?? '—'}</strong>
+            <strong className="dk-kpi-valeur">{effectif ? (stats.presentsToday ?? 0) : '—'}</strong>
             <div className="dk-kpi-pied">
               <span className="dk-kpi-caption">
-                {stats.retardsToday ?? 0} retards · {stats.absentsToday ?? 0} absents
+                {effectif
+                  ? `sur ${effectif} · ${stats.retardsToday ?? 0} retards · ${stats.absentsToday ?? 0} ${libelleAbsence}`
+                  : 'Aucun employé actif'}
               </span>
-              <BadgeTendance delta={deltaSemaine} />
+              {/* Le jour en cours ne se compare pas à des journées complètes :
+                  aucun %, juste l'état du moment. */}
+              <BadgeTendance delta={null} neutre texte="jour en cours" />
             </div>
           </>
         ),
@@ -602,8 +628,8 @@ export default function DashboardKenteAnalytics({
             <span className="dk-kpi-label">Pointages du jour</span>
             <strong className="dk-kpi-valeur">{entreesJour}</strong>
             <div className="dk-kpi-pied">
-              <span className="dk-kpi-caption">moyenne 7 j : {moy7}/jour</span>
-              <BadgeTendance delta={deltaSemaine} />
+              <span className="dk-kpi-caption">moyenne 7 j : {moy7}/jour · {scopeNom || 'toutes entreprises'}</span>
+              <BadgeTendance delta={null} neutre texte="jour en cours" />
             </div>
           </>
         ),
@@ -706,15 +732,16 @@ export default function DashboardKenteAnalytics({
         corps: (
           <>
             <h3 className="dk-carte-titre">Santé RH</h3>
+            <p className="dk-carte-soustitre">Semaine glissante · {scopeNom || 'toutes les entreprises'}</p>
             <div className="dk-sante">
               <div className="dk-sante-score">
                 <div>
                   <span className="dk-sante-nom">Assiduité</span>
-                  <strong>{sante ? sante.assiduite : '—'}</strong>
+                  <strong>{sante ? `${sante.assiduite} %` : '—'}</strong>
                 </div>
                 <div>
                   <span className="dk-sante-nom">Régularité</span>
-                  <strong>{sante ? sante.regularite : '—'}</strong>
+                  <strong>{sante ? `${sante.regularite} %` : '—'}</strong>
                 </div>
               </div>
               <div className="dk-sante-barres">
@@ -891,14 +918,14 @@ export default function DashboardKenteAnalytics({
                 </RadialBarChart>
               </ResponsiveContainer>
               <div className="dk-jauge-centre">
-                <strong>{stats.tauxPresence ?? '—'}%</strong>
+                <strong>{Number(stats.employes) ? `${stats.tauxPresence ?? 0} %` : '—'}</strong>
                 <span>aujourd’hui</span>
               </div>
             </div>
             <p className="dk-jauge-legende">
-              {stats.presentsToday ?? 0} présent{Number(stats.presentsToday ?? 0) > 1 ? 's' : ''} sur{' '}
-              {stats.employes ?? 0} employé{Number(stats.employes ?? 0) > 1 ? 's' : ''} actif
-              {Number(stats.employes ?? 0) > 1 ? 's' : ''}.
+              {Number(stats.employes)
+                ? `${stats.presentsToday ?? 0} présent${Number(stats.presentsToday ?? 0) > 1 ? 's' : ''} sur ${stats.employes} employé${Number(stats.employes) > 1 ? 's' : ''} actif${Number(stats.employes) > 1 ? 's' : ''}.`
+                : 'Aucun employé actif — le taux s’activera au premier effectif.'}
             </p>
           </div>
         </>
@@ -914,7 +941,7 @@ export default function DashboardKenteAnalytics({
           <h2 className="dk-titre">Vue d’ensemble</h2>
           <p className="dk-soustitre">
             <Calendar size={13} />
-            {JOURS_FR[jours]} · {scopeNom || 'Toutes les entreprises'}
+            {scopeNom || 'Toutes les entreprises'} · analyse {JOURS_FR[jours]}
           </p>
         </div>
         <div className="dk-entete-actions">
