@@ -117,7 +117,7 @@ export default function Employee360() {
       const get = (type) => parts.find((p) => p.type === type)?.value
       const dateDuJour = `${get('year')}-${get('month')}-${get('day')}`
       const debutMois = `${dateDuJour.slice(0, 8)}01`
-      const anneeDebut = `${dateDuJour.slice(0, 5)}01`
+      const anneeDebut = `${dateDuJour.slice(0, 4)}-01-01`
       // Fenêtre du fil d'activité : le mois si besoin, sinon 14 jours.
       const moins13 = new Date(Date.now() - 13 * 86400000)
       const parts13 = new Intl.DateTimeFormat('en-CA', {
@@ -139,6 +139,9 @@ export default function Employee360() {
 
       const debutAnneeInstante = heureLocaleVersUTC(anneeDebut, 0, 0, 0, fuseau)
       const finInstante = heureLocaleVersUTC(dateDuJour, 23, 59, 59, fuseau)
+      // Garde-fou : un filtre invalide enverrait la chaîne « null » à
+      // PostgREST et casserait toute la requête — on échoue proprement.
+      if (!debutAnneeInstante || !finInstante) throw new Error('Période de lecture invalide')
 
       const [attRes, absRes, pausesRes, affectRes, grillesRes, seuilsRes, feriesRes, heuresRes, tachesRes] = await Promise.all([
         // L'année entière, colonnes « strictes » : le fil en garde la
