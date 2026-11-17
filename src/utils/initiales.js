@@ -18,4 +18,16 @@ export function initialesDe(prenom, nom) {
   return `${a.charAt(0)}${b.charAt(0)}`.toUpperCase()
 }
 
+/**
+ * « Hippo BIYOKILA » → « HB ». Pour les contexts où seul le nom
+ * complet est disponible (bannières de pauses) : initiale du premier
+ * mot + initiale du dernier mot.
+ */
+export function initialesDepuisNom(nomComplet) {
+  const mots = String(nomComplet || '').trim().split(/\s+/).filter(Boolean)
+  if (mots.length === 0) return '?'
+  if (mots.length === 1) return mots[0].charAt(0).toUpperCase()
+  return `${mots[0].charAt(0)}${mots[mots.length - 1].charAt(0)}`.toUpperCase()
+}
+
 export default initialesDe

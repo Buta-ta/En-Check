@@ -4,7 +4,7 @@ import { findMissingExitEntries } from '../services/missingExits'
 // Avec conflits absence/pointage intégrés + Notifications + ANIMATIONS
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
 import DashboardExperience from '../components/DashboardExperience'
@@ -876,7 +876,10 @@ export default function Dashboard() {
         if (!a?.employee_id) continue
         if (a.employees) empById.set(a.employee_id, a.employees)
       }
-      for (const row of directRes?.data || []) {
+      // Les lignes du joint direct (et, si un jour l'RPC ajoute le join,
+      // les lignes RPC) peuvent porter employees (photo de profil) pour
+      // un employé qui n'a pas pointé aujourd'hui.
+      for (const row of [...(directRes?.data || []), ...(rpcRes?.data || [])]) {
         const empId = row?.employee_id || row?.employe_id
         if (empId && row?.employees && !empById.has(empId)) {
           empById.set(empId, row.employees)
@@ -913,11 +916,28 @@ export default function Dashboard() {
             ...p,
             employe: p.employe || `${emp?.first_name || ''} ${emp?.last_name || ''}`.trim() || 'Employé',
             matricule: p.matricule || emp?.matricule || '',
+            photo: emp?.photo_url || null,
             debutHHMM: p.debutISO ? formaterHeureLocale(p.debutISO) : p.debutHHMM,
             finHHMM: p.finISO ? formaterHeureLocale(p.finISO) : p.finHHMM,
             estNonPlanifiee: !planned,
           }
         })
+
+      // L'RPC encheck_pauses_lire retourne l'employé à plat, SANS photo :
+      // on rattrape les photos de profil manquantes en une seule requête.
+      const idsSansPhoto = [...new Set(
+        enriched.filter((p) => !p.photo && p.employe_id).map((p) => p.employe_id)
+      )]
+      if (idsSansPhoto.length > 0) {
+        const { data: photosEmp } = await supabase
+          .from('employees')
+          .select('id, photo_url')
+          .in('id', idsSansPhoto)
+        const photoParId = new Map((photosEmp || []).map((e) => [e.id, e.photo_url || null]))
+        for (const p of enriched) {
+          if (!p.photo && p.employe_id) p.photo = photoParId.get(p.employe_id) || null
+        }
+      }
 
       setPausesToday(enriched)
     } catch (err) {
@@ -925,6 +945,43 @@ export default function Dashboard() {
       setPausesToday([])
     }
   }
+
+  // Le chip « N ayant pointé aujourd'hui » de la bannière se met à jour
+  // SANS recharger la page : à chaque pointage du jour (entrée ou sortie),
+  // on relit seulement les pointages du jour — même mécanique que la
+  // bannière des pauses (canal dashboard_pauses_live). Le décompte
+  // d'absents suit pour rester cohérent (effectif − présents − congés).
+  const refreshPresenceLive = useCallback(async (adminData) => {
+    const estSuper = adminData?.role === 'super_admin'
+    const entId = adminData?.selectedEnterprise?.id
+      || (estSuper ? null : adminData?.enterprise_id)
+      || null
+    if (!estSuper && !entId) return
+    try {
+      const todayLocal = jourLocal(new Date()) || new Date().toISOString().split('T')[0]
+      const startOfDay = new Date(`${todayLocal}T00:00:00`).toISOString()
+      const endOfDay = new Date(`${todayLocal}T23:59:59`).toISOString()
+      let requete = supabase
+        .from('attendances')
+        .select('id, employee_id, check_time, employees (id, first_name, last_name, matricule, photo_url), pointages_photos (id, photo_url)')
+        .gte('check_time', startOfDay)
+        .lte('check_time', endOfDay)
+        .order('check_time', { ascending: false })
+      if (entId) requete = requete.eq('enterprise_id', entId)
+      const res = await requete
+      if (res.error) throw res.error
+      const presents = construirePresentsAujourdhui(res.data || [])
+      const nb = presents.length
+      setStats((prev) => ({
+        ...prev,
+        presentsToday: nb,
+        presentsAujourdhui: presents,
+        absentsToday: Math.max((Number(prev.employes) || 0) - nb - (Number(prev.congesToday) || 0), 0),
+      }))
+    } catch (err) {
+      console.error('Erreur présence temps réel:', err)
+    }
+  }, [])
 
   useEffect(() => {
     if (!admin) return undefined
@@ -944,6 +1001,43 @@ export default function Dashboard() {
       supabase.removeChannel(channel)
     }
   }, [admin])
+
+  // Pointages en direct : canal sur `attendances`. Seuls les événements
+  // touchant une ligne du jour déclenchent une relecture (debounce 1,2 s
+  // pour regrouper les rafales entrée/sortie).
+  useEffect(() => {
+    if (!admin) return undefined
+    const estSuper = admin.role === 'super_admin'
+    const entId = admin.selectedEnterprise?.id || (estSuper ? null : admin.enterprise_id) || null
+    if (!estSuper && !entId) return undefined
+    let minute = null
+    const demander = () => {
+      if (minute) return
+      minute = setTimeout(() => {
+        minute = null
+        refreshPresenceLive(admin)
+      }, 1200)
+    }
+    const estDuJour = (enregistrement) => {
+      if (!enregistrement?.check_time) return false
+      return jourLocal(new Date(enregistrement.check_time)) === (jourLocal(new Date()) || new Date().toISOString().split('T')[0])
+    }
+    const channel = supabase
+      .channel('dashboard_presence_live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'attendances' },
+        (evenement) => {
+          if (estDuJour(evenement?.new) || estDuJour(evenement?.old)) demander()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      if (minute) clearTimeout(minute)
+      supabase.removeChannel(channel)
+    }
+  }, [admin, refreshPresenceLive])
 
   const handleLogout = () => {
     localStorage.removeItem('admin')

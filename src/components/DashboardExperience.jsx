@@ -60,7 +60,7 @@ import AttendanceHeroImage from './AttendanceHeroImage'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
 import { formaterHeureLocale } from '../utils/timezoneUtils'
-import { initialesDe } from '../utils/initiales'
+import { initialesDe, initialesDepuisNom } from '../utils/initiales'
 import { estPauseReelleEffectuee, formaterTempsPauseEnDirect } from '../services/pausesService'
 import {
   loadRemoteDashboardPreferences,
@@ -1087,10 +1087,17 @@ export default function DashboardExperience({
                       ? `⏱️ ${activePauses.length} collaborateur${activePauses.length > 1 ? 's' : ''} en pause réelle en direct`
                       : `${realPausesToday.length} pause${realPausesToday.length > 1 ? 's' : ''} réelle${realPausesToday.length > 1 ? 's' : ''} effectuée${realPausesToday.length > 1 ? 's' : ''} aujourd’hui (${unplannedPauses.length} hors planning)`}
                   </strong>
-                  <span>
-                    {(activePauses.length > 0 ? activePauses : realPausesToday).slice(0, 3).map((pa) => (
-                      `${pa.employe} : ⏱️ ${formaterTempsPauseEnDirect(pa, nowMs)}${pa.ouverte ? ` (depuis ${pa.debutHHMM})` : ` (${pa.debutHHMM}→${pa.finHHMM || ''})`}${pa.estNonPlanifiee ? ' [Hors planning]' : ''}`
-                    )).join(' · ')}
+                  <span className="dashboard-alert-lignes">
+                    {(activePauses.length > 0 ? activePauses : realPausesToday).slice(0, 3).map((pa, i) => (
+                      <span key={`${pa.id || pa.employe_id || i}`} className="dashboard-alert-ligne">
+                        <span className="dashboard-pause-avatar" aria-hidden="true">
+                          {pa.photo
+                            ? <img src={pa.photo} alt="" loading="lazy" />
+                            : <span className="dashboard-pause-avatar-initiales">{initialesDepuisNom(pa.employe)}</span>}
+                        </span>
+                        {`${pa.employe} : ⏱️ ${formaterTempsPauseEnDirect(pa, nowMs)}${pa.ouverte ? ` (depuis ${pa.debutHHMM})` : ` (${pa.debutHHMM}→${pa.finHHMM || ''})`}${pa.estNonPlanifiee ? ' [Hors planning]' : ''}`}
+                      </span>
+                    ))}
                   </span>
                 </div>
                 <button type="button" onClick={() => navigate('/pauses')}>Voir les pauses</button>
@@ -1105,7 +1112,14 @@ export default function DashboardExperience({
                 <div className="dashboard-hero-meta">
                   <span className="dashboard-meta-chip">{entrepriseChipIcon}{selectedEnterpriseName}</span>
                   <span className="dashboard-meta-chip is-positive">
-                    {presentsAffiches.length > 0 && (
+                    {presentsAujourdhui.length === 1 && (
+                      <span className="dashboard-hero-avatar dashboard-hero-avatar--grande" aria-hidden="true">
+                        {presentsAujourdhui[0].photo
+                          ? <img src={presentsAujourdhui[0].photo} alt="" loading="lazy" />
+                          : <span className="dashboard-hero-avatar-initiales">{initialesDe(presentsAujourdhui[0].prenom, presentsAujourdhui[0].nom)}</span>}
+                      </span>
+                    )}
+                    {presentsAujourdhui.length >= 2 && (
                       <span className="dashboard-hero-avatars" aria-hidden="true">
                         {presentsAffiches.map((p) => (
                           <span key={p.id} className="dashboard-hero-avatar">
@@ -1119,7 +1133,10 @@ export default function DashboardExperience({
                         )}
                       </span>
                     )}
-                    <UserCheck size={13} />{presentCount} ayant pointé aujourd’hui
+                    <UserCheck size={13} />
+                    {presentsAujourdhui.length === 1 && presentsAujourdhui[0].nomComplet
+                      ? `${presentsAujourdhui[0].nomComplet} a pointé aujourd’hui`
+                      : `${presentCount} ayant pointé aujourd’hui`}
                   </span>
                   {realPausesToday.length > 0 && (
                     <button
@@ -1127,6 +1144,13 @@ export default function DashboardExperience({
                       className="dashboard-meta-chip dashboard-customize-fallback"
                       onClick={() => navigate('/pauses')}
                     >
+                      {activePauses.length > 0 && (
+                        <span className="dashboard-pause-avatar" aria-hidden="true">
+                          {activePauses[0].photo
+                            ? <img src={activePauses[0].photo} alt="" loading="lazy" />
+                            : <span className="dashboard-pause-avatar-initiales">{initialesDepuisNom(activePauses[0].employe)}</span>}
+                        </span>
+                      )}
                       <Coffee size={13} />
                       <span>
                         {activePauses.length > 0
