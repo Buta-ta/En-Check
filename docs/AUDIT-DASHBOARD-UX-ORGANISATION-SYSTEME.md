@@ -10,38 +10,85 @@
 
 ---
 
-## 0. Périmètre, et une réserve de traçabilité
+## 0. Périmètre, commit lu, et erratum
 
-**Ce qui a été examiné** : six captures du dossier Drive « Examen du dashboard »,
-datées du 17 novembre 2026 — vue du haut, vue du bas, barre latérale dépliée
-(haut et bas), notifications ouvertes.
+### 0.1 Commit lu
 
-**Ce que je n'ai pas vu** : mobile, tablette, mode clair, état de chargement,
-état d'erreur, état hors ligne, premier lancement, compte à zéro employé, rôle
-autre que super-administrateur. Ces états comptent autant que la vue de
-référence — j'y reviens au §6.
+**Version 2 de cette section.** La version 1 affirmait que trois libellés vus
+sur les captures n'existaient pas dans le dépôt, et en concluait qu'il fallait
+« retrouver la branche ». **C'était faux, et la recommandation qui en découlait
+était infondée.** L'erratum est conservé ici plutôt que supprimé : un document
+de référence qui efface ses erreurs ne vaut rien.
 
-**La réserve, et elle est sérieuse.** Trois libellés visibles sur les captures
-n'existent pas dans le code de ce dépôt :
-
-| Libellé vu sur la capture | Présent dans `src/` ? |
+| Libellé vu sur la capture | Réalité vérifiée |
 | --- | --- |
-| « INSIGHT DU JOUR » | **non** |
-| « Santé RH » | **non** |
-| « Présence par jour et heure » | **non** |
+| « Santé RH » | `src/components/DashboardKenteAnalytics.jsx:83`, `:705`, `:708` |
+| « Présence par jour et heure » | `src/components/DashboardKenteAnalytics.jsx:84`, `:743` |
+| « INSIGHT DU JOUR » | `src/components/DashboardKenteAnalytics.jsx:87`, `:506`, `:793` — écrit « Insight du jour », mis en majuscules par le CSS |
 
-À l'inverse, « Taux de présence », « Entreprises actives » et « Accès rapide »
-existent bien (`src/components/DashboardExperience.jsx`).
+Ce fichier est importé (`DashboardExperience.jsx:55`) et monté (`:1082`). Il est
+sur le dépôt depuis le 11 novembre 2026, soit **six jours avant la rédaction de
+la version 1 de cet audit**.
 
-**Conclusion : les captures ne représentent pas l'état de `main`.** Les travaux
-UX ont été faits ailleurs — autre branche, ou autre outil. Ce n'est pas un
-détail : c'est exactement le défaut que le registre du dossier « IA ANALYSE »
-interdit. **Tant que ces écrans ne sont pas dans une branche de ce dépôt, ils ne
-peuvent être ni revus, ni testés, ni validés.** Première action, avant toute
-correction : retrouver la branche et l'ouvrir en PR.
+**Les deux causes de l'erreur, et elles sont instructives :**
 
-L'audit qui suit porte donc sur **ce que les captures montrent**, et sur ce que
-le code de ce dépôt permet de vérifier du comportement.
+1. **Recherche littérale sur un texte transformé par le style.** Le code écrit
+   `Insight du jour` ; c'est la feuille de style qui crie en majuscules. Chercher
+   `INSIGHT DU JOUR` ne renvoie rien — et l'on conclut que ça n'existe pas.
+2. **Copie de travail en retard.** Les deux autres libellés auraient dû être
+   trouvés. La branche d'audit était figée sur un commit antérieur à leur
+   apparition, alors que `main` avait avancé. L'audit a donc lu **un dépôt de
+   neuf jours en croyant lire `main`**.
+
+**La règle qui en sort, et elle s'applique à tous les documents d'analyse de ce
+dépôt : tout audit commence par « j'ai lu le commit `xxxxxxx`, daté du … ».**
+Sans cette ligne, aucun constat n'est rattachable à rien.
+
+### 0.2 Ce que cette version a effectivement lu
+
+| | |
+| --- | --- |
+| Branche | `arena/234c8657-en-check`, alignée sur `origin/main` |
+| Commit | **`237ef6e`** — « Merge pull request #222 », 17 novembre 2026 |
+| Fichiers vérifiés | `DashboardExperience.jsx`, `DashboardKenteAnalytics.jsx`, `Dashboard.jsx`, `Dashboard.css`, `SidebarNavigation.jsx`, `AssistantDock.jsx` |
+| Captures | six, dossier Drive « Examen du dashboard », 17 novembre 2026 |
+
+### 0.3 Une limite de méthode assumée
+
+**Une partie des constats repose sur des mesures d'écran et des données de
+production** — les « −75 % », les 50 notifications, les 2 × 250 px, le nombre
+d'entreprises. Aucune n'est reproductible depuis le code seul. Ces constats-là
+sont **sur parole** : ils décrivent ce qu'un utilisateur voit, et ils ne valent
+que tant que la donnée n'a pas changé. Les constats vérifiables, eux, portent un
+chemin de fichier et une ligne.
+
+### 0.4 Ce qui a changé depuis la version 1 — et qui compte
+
+`main` a avancé, et **la vague 1 de ce document a déjà commencé**, sur un autre
+chantier que le mien :
+
+| Fichier | Rôle |
+| --- | --- |
+| `src/lib/etatPresence.js` | `finPosteDepassee()`, `libelleSansPointage()` — « pas encore pointé » ≠ « absent » |
+| `src/lib/nettoyageTexte.js` | retire U+FFFD et les caractères invisibles des noms |
+| `src/utils/initiales.js` | initiales robustes pour les avatars |
+| `src/services/__tests__/veritePresence.test.js` | 125 lignes qui défendent ces règles |
+| `supabase/migrations/…_dashboard_synthese_sante_echantillon.sql` | marge d'échantillon sur la synthèse |
+
+**Conséquence pour cet audit :** les points A1 (« absent » avant la fin du
+poste) et C6 (caractères cassés) ne sont plus « à faire » — ils sont **en
+cours de résolution**. Je les laisse décrits, avec leur statut mis à jour au
+§13, plutôt que de les retirer : la vérification finale appartient au fondateur,
+pas à l'auteur du correctif.
+
+**Et un point de vigilance immédiat** : `src/lib/etatPresence.js` est utilisé par
+le dashboard. Il **n'est pas utilisé par la page Pointage** — vérifié, zéro
+occurrence dans `Pointages.jsx` et `PointagesAfroTechSections.jsx`. La page qui
+sert à constater les présences est donc celle qui applique le moins la règle de
+vérité. C'est l'objet du document suivant, `AUDIT-PAGE-POINTAGE.md`.
+
+L'audit qui suit porte sur **ce que les captures montrent**, et sur ce que le
+code de ce dépôt permet de vérifier du comportement.
 
 ---
 
@@ -91,6 +138,12 @@ Un produit professionnel peut être lent, dense, moche. Il ne peut pas **affirme
 ce qu'il ne sait pas**. C'est le seul défaut qui coûte un client.
 
 ### A1. « Absent » est une conclusion, pas une donnée
+
+> **Statut au 17 novembre, commit `237ef6e` : en cours de résolution.**
+> `src/lib/etatPresence.js` fournit `finPosteDepassee()` et
+> `libelleSansPointage()`, et `Dashboard.jsx` l'importe. Les tests
+> `veritePresence.test.js` (125 lignes) défendent la règle. **Reste à vérifier à
+> l'usage, et à étendre à la page Pointage, qui ne l'utilise pas.**
 
 **Constaté.** Le dashboard affiche « 0 retards · 6 absents » et un donut
 « Absents 100 % » à 10 h 46 du matin, un jour où **personne n'a jamais pointé
@@ -419,6 +472,10 @@ graves.
 
 ### C6. Un défaut d'encodage dans les noms
 
+> **Statut au 17 novembre, commit `237ef6e` : en cours de résolution.**
+> `src/lib/nettoyageTexte.js` retire U+FFFD et les caractères invisibles ; le
+> test correspondant existe. À vérifier sur les noms réels déjà en base.
+
 **Constaté.** Les titres affichent un caractère de remplacement : « ya Ya � »,
 « RECETTE A � », « Emma BAYLE � ».
 
@@ -687,8 +744,13 @@ attente. Ce n'est pas un engagement (§0).
 
 | Chantier | État | Preuve | Confirmation |
 | --- | --- | --- | --- |
-| Traçabilité des captures (retrouver la branche) | à faire | — | — |
-| Vague 1 — vérité de la donnée | à faire | — | — |
+| Traçabilité des captures | **résolu** — le fichier est sur `main` | `DashboardKenteAnalytics.jsx`, commit `237ef6e` | — |
+| Vague 1 — A1 « absent » après la fin de poste | **en cours** — module livré, dashboard branché | `src/lib/etatPresence.js`, `veritePresence.test.js` | — |
+| Vague 1 — C6 nettoyage des noms | **en cours** — module livré | `src/lib/nettoyageTexte.js`, test | — |
+| Vague 1 — A2 jour partiel / jour complet | à faire | — | — |
+| Vague 1 — A3 pourcentages sous 30 événements | à faire | — | — |
+| Vague 1 — A4 dénominateurs nommés | à faire | — | — |
+| Vague 1 — A8 trois états de données | à faire | — | — |
 | Vague 2 — organisation | à faire | — | — |
 | Vague 3 — système | à faire | — | — |
 | Vague 4 — rôles | à faire | — | — |
@@ -697,6 +759,16 @@ attente. Ce n'est pas un engagement (§0).
 **Aucune ligne ne passera à « résolu et validé » sans réalisation constatée et
 confirmation explicite du fondateur.** Une capture d'écran, un écran beau ou un
 avis favorable ne constituent pas une preuve de réalisation.
+
+**« En cours » a un sens précis ici** : le code et ses tests existent et passent
+sur `main`. Cela ne prouve pas que l'écran se comporte correctement avec des
+données réelles — cela se vérifie à l'usage, et c'est le fondateur qui le
+confirme.
+
+**Et une conséquence à ne pas manquer** : `etatPresence.js` n'est pas utilisé par
+la page Pointage (zéro occurrence vérifiée). La règle de vérité existe donc dans
+le dashboard et **pas dans l'écran qui sert à constater les présences**. Voir
+`docs/AUDIT-PAGE-POINTAGE.md`.
 
 ---
 
