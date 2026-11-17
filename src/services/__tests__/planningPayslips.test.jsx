@@ -111,8 +111,8 @@ it('les billets sont câblés aux vues passeport/groupée/liste et aux deux vues
   expect(readFileSync('src/components/PointagesAfroTechSections.jsx','utf8')).toContain('<PlanningPayslipBadge entries={p.payslipEntries || []}')
   const employes = readFileSync('src/pages/Employes.jsx','utf8')
   expect(employes).toContain('useEmployeePayslipIndicators(employes)')
-  expect(employes).toContain('payslipEntries={payslipIndicators.entriesFor(employee)}')
-  expect(employes).toContain('payslipDate={payslipIndicators.date}')
-  // l'annuaire porte le billet dans chaque entrée de registre
-  expect(readFileSync('src/components/equipes/EntreeEmploye.jsx','utf8')).toContain('<PlanningPayslipBadge entries={payslipEntries} referenceDate={payslipDate}')
+  // refonte bento 17/11 : la carte ne porte plus le billet — l'annuaire
+  // affiche le statut global dans sa barre d'outils
+  expect(employes).toContain('<PayslipIndicatorStatus status={payslipIndicators} />')
+  expect(readFileSync('src/components/equipes/EntreeEmploye.jsx','utf8')).not.toContain('PlanningPayslipBadge')
 })

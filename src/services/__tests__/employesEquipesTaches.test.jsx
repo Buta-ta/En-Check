@@ -38,6 +38,7 @@ const MENU = readFileSync('src/components/DashboardExperience.jsx', 'utf8')
 const VERROU = readFileSync('src/components/VerrouOptions.jsx', 'utf8')
 const EMPLOYES = readFileSync('src/pages/Employes.jsx', 'utf8')
 const CSS = readFileSync('src/components/zoulou/zoulou.css', 'utf8')
+const REFONTE_CSS = readFileSync('src/pages/EmployesRefonte.css', 'utf8')
 
 // ── la base simulée : la page Employés lit beaucoup, on répond vide ──
 vi.mock('../../lib/supabase', () => {
@@ -221,20 +222,20 @@ describe('le menu et les adresses', () => {
 // ═══════════════════════════════════════════════════════════
 
 describe('les onglets de la page Employés', () => {
-  it('porte les trois vues et l’adresse qui va avec', () => {
-    expect(EMPLOYES).toContain('Annuaire')
-    expect(EMPLOYES).toContain('Équipes')
-    expect(EMPLOYES).toContain('Tâches')
-    expect(EMPLOYES).toContain("setSearchParams(cle === 'annuaire' ? {} : { vue: cle }")
+  it('ne porte plus l’onglet « Annuaire » : la liste est la page', () => {
+    expect(EMPLOYES).not.toMatch(/libelle:\s*['"]Annuaire['"]/)
+    expect(EMPLOYES).toContain("libelle: 'Équipes'")
+    expect(EMPLOYES).toContain("libelle: 'Tâches'")
   })
 
   it('ne montre pas une porte qui ne mène nulle part quand l’option est éteinte', () => {
-    expect(EMPLOYES).toContain('const vueAutorisee = moduleTaches')
-    expect(EMPLOYES).toMatch(/vueAutorisee\s*\?/)
+    expect(EMPLOYES).toContain("const vueAutorisee = moduleTaches || admin?.role === 'super_admin'")
+    expect(EMPLOYES).toMatch(/\{vueAutorisee && \(/)
   })
 
-  it('garde l’annuaire comme vue d’entrée, même avec une adresse inconnue', () => {
-    expect(EMPLOYES).toMatch(/vueInitiale|vueParDefaut|'annuaire'/)
+  it('rabat sur la liste quand on re-clique l’onglet actif, et reste sur la liste avec une adresse inconnue', () => {
+    expect(EMPLOYES).toContain('setSearchParams(cle === vueActive ? {} : { vue: cle }')
+    expect(EMPLOYES).toMatch(/vueActive === null && \(/)
   })
 
   it('embarque les raccourcis de pages de la coque refondue', () => {
@@ -243,7 +244,7 @@ describe('les onglets de la page Employés', () => {
 })
 
 // ═══════════════════════════════════════════════════════════
-// ② bis La vue Annuaire — même registre que les deux autres
+// ② bis La vue Annuaire — la page elle-même, refonte bento// ② bis La vue Annuaire — même registre que les deux autres
 // ═══════════════════════════════════════════════════════════
 
 const personne = (surcharge = {}) => ({
@@ -267,26 +268,20 @@ const personne = (surcharge = {}) => ({
 const rendreEntree = async (props = {}) => {
   const actions = {
     onOuvrirFiche: vi.fn(),
+    onOuvrirPage: vi.fn(),
     onBadge: vi.fn(),
     onHoraires: vi.fn(),
     onPartagerHoraires: vi.fn(),
     onPointages: vi.fn(),
     onMotDePasse: vi.fn(),
-    onBasculerPortail: vi.fn(),
+    onBasulerPortail: vi.fn(),
     onSupprimer: vi.fn(),
   }
   await rendre(
     <EntreeEmploye
       employee={personne()}
-      numero={1}
       liveStatus={{ state: 'en_poste', entryHHMM: '08:12' }}
-      stats={{ totalSeconds: 3600, percentage: 80, label: '32 h sur 40 h' }}
-      scheduleInfo="08:00 → 17:00"
-      regimeLabel="Horaire d’entreprise"
-      seniority="4 ans 6m"
-      derniereConnexion="Connexion il y a 2 j"
       contractLabel="CDI"
-      classificationLabel="Employé"
       portalEnabled
       planningEnabled
       aCompte
@@ -299,7 +294,7 @@ const rendreEntree = async (props = {}) => {
 }
 
 describe('la vue Annuaire', () => {
-  it('ouvre sur un feuillet, un titre serif et un colophon de quatre chiffres', async () => {
+  it('compte cinq chiffres sur la bande, et n’invente pas de présence', async () => {
     await rendre(
       <ThemeProvider>
         <Employes />
@@ -307,17 +302,13 @@ describe('la vue Annuaire', () => {
     )
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
 
-    expect(hote.querySelector('.rg-folio').textContent).toContain('Registre du personnel')
-    expect(hote.querySelector('.rg-eyebrow').textContent).toContain('Tout le personnel')
-    expect(hote.querySelector('h2.rg-titre').textContent).toBe('Annuaire.')
-
-    const chiffres = [...hote.querySelectorAll('.rg-chiffre')]
-    expect(chiffres).toHaveLength(4)
-    expect(chiffres.map((c) => c.querySelector('.rg-chiffre-libelle').textContent))
-      .toEqual(['Employés', 'En poste', 'Portail', 'À migrer'])
+    const kpis = [...hote.querySelectorAll('.empv2-kpi')]
+    expect(kpis).toHaveLength(5)
+    expect(kpis.map((k) => k.querySelector('span').textContent)).toEqual(
+      ['Effectif', 'En poste', 'En pause', 'Retards ce jour', 'Absents'],
+    )
     // rien à compter : un tiret, pas un zéro inventé pour la présence
-    expect(chiffres[1].querySelector('.rg-chiffre-valeur').textContent).toBe('—')
-    expect(chiffres[1].querySelector('.rg-chiffre-note').textContent).toBe('pointage non suivi')
+    expect(kpis.map((k) => k.querySelector('strong').textContent)).toEqual(['0', '—', '—', '—', '—'])
   })
 
   it('explique l’annuaire vide et propose la première fiche', async () => {
@@ -327,112 +318,171 @@ describe('la vue Annuaire', () => {
       </ThemeProvider>,
     )
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
+    expect(hote.querySelector('.empv2-vide')).not.toBeNull()
     expect(hote.textContent).toContain('Aucun employé pour l’instant')
-    expect(hote.querySelector('[data-testid="rosace-perles"]')).not.toBeNull()
     expect(boutonAvec('Ajouter un employé')).toBeTruthy()
   })
 
-  it('range une personne en entrée de registre numérotée', async () => {
+  it('filtre l’état de la journée d’abord, et sait tout montrer', async () => {
+    await rendre(
+      <ThemeProvider>
+        <Employes />
+      </ThemeProvider>,
+    )
+    for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
+
+    const enPoste = [...hote.querySelectorAll('.empv2-filtre')].find((f) => f.textContent === 'En poste')
+    await act(async () => enPoste.click())
+    expect(enPoste.getAttribute('aria-pressed')).toBe('true')
+
+    // « Tout montrer » apparaît tant qu’un filtre est posé
+    const toutMontrer = [...hote.querySelectorAll('.empv2-filtre')].find((f) => f.textContent === 'Tout montrer')
+    expect(toutMontrer).toBeTruthy()
+    await act(async () => toutMontrer.click())
+    expect(hote.querySelector('.empv2-filtre[aria-pressed="true"]').textContent).toBe('Tous')
+  })
+
+  it('la carte porte la photo ou les initiales, le nom en serif, le matricule et le contrat', async () => {
     await rendreEntree()
-    const entree = hote.querySelector('.rg-entree-annuaire')
-    expect(entree).not.toBeNull()
-    expect(entree.querySelector('.rg-entree-index').textContent).toBe('01')
-    expect(entree.querySelector('.rg-entree-titre').textContent).toBe('Awa Dossou')
-    expect(entree.querySelector('.rg-avatar-annuaire').textContent).toBe('AD')
-    expect(entree.textContent).toContain('EMP-001')
-    expect(entree.textContent).toContain('CDI')
-    expect(entree.textContent).toContain('Technicienne de ligne')
-    expect(entree.textContent).toContain('Maintenance')
+    const carte = hote.querySelector('.empv2-entree')
+    expect(carte).not.toBeNull()
+    expect(carte.querySelector('.empv2-entree-initiales').textContent).toBe('AD')
+    expect(carte.querySelector('.empv2-entree-nom').textContent).toBe('Awa Dossou')
+    expect(carte.querySelector('.empv2-entree-sous').textContent).toContain('EMP-001')
+    expect(carte.querySelector('.empv2-entree-sous').textContent).toContain('CDI')
+    expect(carte.querySelector('.empv2-entree-poste').textContent).toBe('Technicienne de ligne · Maintenance')
   })
 
-  it('lit la présence et les heures de la semaine, sans les inventer', async () => {
+  it('signale l’état du jour sur la photo, avec l’heure donnée par la pointeuse', async () => {
     await rendreEntree()
-    const presence = hote.querySelector('.rg-presence')
-    expect(presence.getAttribute('data-etat')).toBe('en_poste')
-    expect(presence.textContent).toContain('En poste · 08:12')
-    expect(hote.querySelector('.rg-annuaire-heures-texte').textContent).toBe('32 h sur 40 h')
-    expect(hote.querySelector('.rg-jauge-remplie').getAttribute('style')).toContain('80%')
-
-    await relancer(<EntreeEmploye employee={personne()} numero={2} />)
-    expect(hote.querySelector('.rg-presence').textContent).toContain('Non pointé')
-    expect(hote.querySelector('.rg-annuaire-heures')).toBeNull()
+    const badge = hote.querySelector('.empv2-entree-badge')
+    expect(badge.classList.contains('empv2-entree-badge--en_poste')).toBe(true)
+    expect(badge.textContent).toContain('En poste')
+    expect(badge.textContent).toContain('08:12')
+    expect(hote.querySelector('.empv2-entree').getAttribute('data-presence')).toBe('en_poste')
   })
 
-  it('dit quand il n’y a pas de numéro de pointeuse, au lieu de laisser un blanc', async () => {
-    await rendreEntree({ employee: personne({ machine_pin: '' }) })
-    expect(hote.textContent).toContain('aucun numéro de pointage')
+  it('n’invente pas un état quand le pointage est absent', async () => {
+    await relancer(<EntreeEmploye employee={personne()} onOuvrirPage={vi.fn()} />)
+    const badge = hote.querySelector('.empv2-entree-badge')
+    expect(badge.textContent).toContain('Non pointé')
+    expect(hote.querySelector('.empv2-entree').getAttribute('data-presence')).toBe('non_pointe')
   })
 
-  it('ouvre la fiche d’un clic sur le nom, le badge d’un clic sur Badge', async () => {
-    const actions = await rendreEntree()
-    await act(async () => hote.querySelector('.rg-entree-titre button').click())
-    expect(actions.onOuvrirFiche).toHaveBeenCalledWith(expect.objectContaining({ id: 'emp-1' }))
-
-    await act(async () => boutonAvec('Badge').click())
-    expect(actions.onBadge).toHaveBeenCalledTimes(1)
+  it('écrit le retard du jour en minutes, tant que la personne n’a pas pointé', async () => {
+    await relancer(
+      <EntreeEmploye employee={personne()} liveStatus={{ state: 'non_pointe', retardMinutes: 12 }} onOuvrirPage={vi.fn()} />,
+    )
+    const badge = hote.querySelector('.empv2-entree-badge')
+    expect(badge.textContent).toContain('Retard · 12 min')
+    expect(hote.querySelector('.empv2-entree').getAttribute('data-presence')).toBe('retard')
   })
 
-  it('garde les autres gestes dans un menu, pas sur la ligne', async () => {
-    const actions = await rendreEntree()
-    const menuBouton = hote.querySelector('.rg-entree-actions button[aria-expanded]')
-    expect(menuBouton.getAttribute('aria-expanded')).toBe('false')
-    await act(async () => menuBouton.click())
-    expect(menuBouton.getAttribute('aria-expanded')).toBe('true')
-    const menu = hote.querySelector('.rg-menu-annuaire')
-    expect(menu.textContent).toContain('Horaires')
-    expect(menu.textContent).toContain('Voir les pointages')
-    expect(menu.textContent).toContain('Mot de passe')
-    expect(menu.textContent).toContain('Supprimer la fiche')
-
-    await act(async () => [...menu.querySelectorAll('button')].find((b) => b.textContent.includes('Horaires')).click())
-    expect(actions.onHoraires).toHaveBeenCalledTimes(1)
-    expect(hote.querySelector('.rg-menu-annuaire')).toBeNull()
+  it('écrit « Absent » quand l’absence du jour est déclarée', async () => {
+    await relancer(
+      <EntreeEmploye employee={personne()} liveStatus={{ state: 'en_conge' }} onOuvrirPage={vi.fn()} />,
+    )
+    const badge = hote.querySelector('.empv2-entree-badge')
+    expect(badge.textContent).toContain('Absent')
+    expect(hote.querySelector('.empv2-entree').getAttribute('data-presence')).toBe('absent')
   })
 
-  it('pose le menu sur un papier opaque, au-dessus de la ligne suivante', async () => {
+  it('montre le numéro pour la joindre, ou un mot clair sinon', async () => {
+    await rendreEntree({ employee: personne({ phone: '+229 97 00 00 00' }) })
+    expect(hote.querySelector('.empv2-entree-contact').textContent).toContain('+229 97 00 00 00')
+
+    await relancer(<EntreeEmploye employee={personne()} onOuvrirPage={vi.fn()} />)
+    expect(hote.querySelector('.empv2-entree-contact').textContent).toContain('Sans numéro')
+  })
+
+  it('pose le statut du portail en un mot', async () => {
+    const etat = () => hote.querySelector('.empv2-entree-portail')
+
     await rendreEntree()
-    const ligne = hote.querySelector('.rg-entree-annuaire')
-    const menuBouton = hote.querySelector('.rg-entree-actions button[aria-expanded]')
-    expect(ligne.getAttribute('data-menu')).toBeNull()
-    await act(async () => menuBouton.click())
-    // la ligne ouverte monte : sans cela, le texte du dessous se peint dessus
-    expect(ligne.getAttribute('data-menu')).toBe('ouvert')
+    expect(etat().getAttribute('data-etat')).toBe('ouvert')
+    expect(etat().textContent).toContain('Portail')
 
-    const opaque = CSS.match(/\.rg-menu \{([^}]*)\}/)[1]
-    expect(opaque).toMatch(/background-color: var\(--rg-paper, #[0-9a-f]{6}\)/)
-    const ouvert = CSS.match(/\.rg-entree\[data-menu='ouvert'\] \{([^}]*)\}/)[1]
-    expect(ouvert).toMatch(/z-index:\s*\d+/)
-  })
+    await relancer(<EntreeEmploye employee={personne()} portalEnabled={false} aCompte onOuvrirPage={vi.fn()} />)
+    expect(etat().getAttribute('data-etat')).toBe('ferme')
+    expect(etat().textContent).toContain('Portail fermé')
 
-  it('referme le menu d’un clic ailleurs ou d’un Échap', async () => {
-    await rendreEntree()
-    const menuBouton = hote.querySelector('.rg-entree-actions button[aria-expanded]')
-    await act(async () => menuBouton.click())
-    expect(hote.querySelector('.rg-menu-annuaire')).not.toBeNull()
-
-    await act(async () => {
-      document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
-    })
-    expect(hote.querySelector('.rg-menu-annuaire')).toBeNull()
-
-    await act(async () => menuBouton.click())
-    expect(hote.querySelector('.rg-menu-annuaire')).not.toBeNull()
-    await act(async () => {
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-    })
-    expect(hote.querySelector('.rg-menu-annuaire')).toBeNull()
+    await relancer(<EntreeEmploye employee={personne()} aCompte={false} onOuvrirPage={vi.fn()} />)
+    expect(etat().getAttribute('data-etat')).toBe('aucun')
+    expect(etat().textContent).toContain('Sans compte')
   })
 
   it('signale un portail à migrer sans attendre qu’on ouvre le menu', async () => {
     await rendreEntree({ ancienSysteme: true, portalEnabled: false })
-    const compte = hote.querySelector('.rg-annuaire-compte')
+    const compte = hote.querySelector('.empv2-entree-portail')
     expect(compte.getAttribute('data-etat')).toBe('migrer')
-    expect(compte.textContent).toContain('portail à migrer')
+    expect(compte.textContent).toContain('À migrer')
+  })
+
+  it('ouvre la fiche d’un clic sur le nom, et aussi sur Fiche', async () => {
+    const actions = await rendreEntree()
+    await act(async () => hote.querySelector('.empv2-entree-nom button').click())
+    expect(actions.onOuvrirPage).toHaveBeenCalledWith(expect.objectContaining({ id: 'emp-1' }))
+
+    await act(async () => boutonAvec('Fiche').click())
+    expect(actions.onOuvrirPage).toHaveBeenCalledTimes(2)
+  })
+
+  it('garde les autres gestes dans un menu, pas sur la carte', async () => {
+    const actions = await rendreEntree()
+    const menuBouton = hote.querySelector('.empv2-entree-plus')
+    expect(menuBouton.getAttribute('aria-expanded')).toBe('false')
+    await act(async () => menuBouton.click())
+    expect(menuBouton.getAttribute('aria-expanded')).toBe('true')
+    const menu = hote.querySelector('.empv2-menu')
+    expect(menu.textContent).toContain('Badge QR')
+    expect(menu.textContent).toContain('Horaires')
+    expect(menu.textContent).toContain('Envoyer les horaires')
+    expect(menu.textContent).toContain('Voir les pointages')
+    expect(menu.textContent).toContain('Mot de passe')
+    expect(menu.textContent).toContain('Fermer le portail')
+    expect(menu.textContent).toContain('Supprimer la fiche')
+
+    await act(async () => [...menu.querySelectorAll('button')].find((b) => b.textContent.includes('Horaires')).click())
+    expect(actions.onHoraires).toHaveBeenCalledTimes(1)
+    expect(hote.querySelector('.empv2-menu')).toBeNull()
+  })
+
+  it('pose le menu sur un papier opaque, au-dessus de la carte suivante', async () => {
+    await rendreEntree()
+    const carte = hote.querySelector('.empv2-entree')
+    const menuBouton = hote.querySelector('.empv2-entree-plus')
+    expect(carte.getAttribute('data-menu')).toBeNull()
+    await act(async () => menuBouton.click())
+    // la carte ouverte monte : sans cela, le texte du dessous se peint dessus
+    expect(carte.getAttribute('data-menu')).toBe('ouvert')
+
+    const menu = REFONTE_CSS.match(/\.empv2-menu \{([^}]*)\}/)[1]
+    expect(menu).toMatch(/background: color-mix/)
+    expect(menu).toMatch(/z-index:\s*\d+/)
+  })
+
+  it('referme le menu d’un clic ailleurs ou d’un Échap', async () => {
+    await rendreEntree()
+    const menuBouton = hote.querySelector('.empv2-entree-plus')
+    await act(async () => menuBouton.click())
+    expect(hote.querySelector('.empv2-menu')).not.toBeNull()
+
+    await act(async () => {
+      document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    })
+    expect(hote.querySelector('.empv2-menu')).toBeNull()
+
+    await act(async () => menuBouton.click())
+    expect(hote.querySelector('.empv2-menu')).not.toBeNull()
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    })
+    expect(hote.querySelector('.empv2-menu')).toBeNull()
   })
 })
 
 // ═══════════════════════════════════════════════════════════
-// ③ La vue Équipes
+// ③ La vue Équipes// ③ La vue Équipes
 // ═══════════════════════════════════════════════════════════
 
 const equipe = (surcharge = {}) => ({
@@ -956,41 +1006,51 @@ describe('la page Employés', () => {
     }
   }
 
-  it('ouvre l’annuaire et montre les trois vues dans la même barre', async () => {
+  it('ouvre la liste — pas d’onglet « Annuaire » — et les deux vues optionnelles dans la même barre', async () => {
     await monterPage()
-    const onglets = [...hote.querySelectorAll('.emp-onglet')].map((o) => o.textContent.trim())
-    expect(onglets).toEqual(['Annuaire', 'Équipes', 'Tâches'])
-    const actif = hote.querySelector('.emp-onglet[aria-current="page"]')
-    expect(actif.textContent.trim()).toBe('Annuaire')
-    // l'annuaire s'ouvre sur le même feuillet que les deux autres vues
-    expect(hote.querySelector('h2.rg-titre').textContent).toBe('Annuaire.')
-    expect(hote.querySelector('.rg-folio').textContent).toContain('En-Check')
+    const onglets = [...hote.querySelectorAll('.empv2-onglet')].map((o) => o.textContent.trim())
+    expect(onglets).toEqual(['Équipes', 'Tâches'])
+    // la liste est la page : elle est ouverte sans qu'on ait cliqué
+    expect(hote.querySelector('.empv2-onglet[aria-current="page"]')).toBeNull()
+    expect(hote.querySelector('.empv2-annuaire')).not.toBeNull()
+    expect(hote.querySelector('.empv2-vide')).not.toBeNull()
+
+    // le titre porte le compte, comme sur la maquette
+    const titre = hote.querySelector('h1.empv2-titre')
+    expect(titre).not.toBeNull()
+    expect(titre.textContent).toContain('Employés')
+    expect(titre.querySelector('.empv2-titre-compte').textContent).toContain('0 personne')
   })
 
-  it('passe aux équipes et aux tâches sans quitter la page', async () => {
+  it('passe aux équipes et aux tâches sans quitter la page, et re-cliquer rabat sur la liste', async () => {
     await monterPage()
-    await act(async () => [...hote.querySelectorAll('.emp-onglet')].find((o) => o.textContent.includes('Équipes')).click())
-    expect(hote.querySelector('.emp-onglet[aria-current="page"]').textContent.trim()).toBe('Équipes')
+    await act(async () => [...hote.querySelectorAll('.empv2-onglet')].find((o) => o.textContent.includes('Équipes')).click())
+    expect(hote.querySelector('.empv2-onglet[aria-current="page"]').textContent.trim()).toBe('Équipes')
     expect(hote.textContent).toContain('Nouvelle équipe')
-    expect(hote.querySelector('.rg-annuaire')).toBeNull()
+    expect(hote.querySelector('.empv2-annuaire')).toBeNull()
 
-    await act(async () => [...hote.querySelectorAll('.emp-onglet')].find((o) => o.textContent.includes('Tâches')).click())
-    expect(hote.querySelector('.emp-onglet[aria-current="page"]').textContent.trim()).toBe('Tâches')
+    // re-cliquer l’onglet actif rabat sur la liste
+    await act(async () => hote.querySelector('.empv2-onglet[aria-current="page"]').click())
+    expect(hote.querySelectorAll('.empv2-onglet[aria-current="page"]')).toHaveLength(0)
+    expect(hote.querySelector('.empv2-annuaire')).not.toBeNull()
+
+    await act(async () => [...hote.querySelectorAll('.empv2-onglet')].find((o) => o.textContent.includes('Tâches')).click())
+    expect(hote.querySelector('.empv2-onglet[aria-current="page"]').textContent.trim()).toBe('Tâches')
     expect(hote.textContent).toContain('Nouvelle tâche')
   })
 
-  it('n’accroche pas un trait de points après le dernier onglet', () => {
+  it('pose les onglets en pastilles, sans titre ni trait de points', () => {
     expect(EMPLOYES).not.toContain('emp-onglets-fil')
-    expect(CSS).not.toContain('.emp-onglets-fil')
-    expect(EMPLOYES).toContain('<p className="emp-onglets-titre">Sommaire</p>')
-    expect(CSS).toMatch(/\.emp-onglets \{[^}]*border-bottom: 1px solid var\(--pt-line\)/)
-    expect(CSS).toMatch(/\.emp-onglet\[aria-current='page'\] \{[^}]*border-bottom-color/)
-    expect(CSS).not.toContain('.emp-onglet::before')
+    expect(EMPLOYES).not.toContain('emp-onglets-titre')
+    expect(EMPLOYES).not.toContain('Sommaire')
+    expect(REFONTE_CSS).toMatch(/\.empv2-onglet\[aria-current='page'\] \{[^}]*background: var\(--empv2-or\)/)
   })
 
   it('ne met qu’une seule bande de raccourcis de pages sur la page', () => {
-    const enTete = readFileSync('src/components/EmployesAfroTechSections.jsx', 'utf8')
-    expect(enTete).not.toContain('pointages-quick-nav')
+    // l'ancien en-tête culturel n'existe plus : une seule bande de
+    // raccourcis, celle de la barre du haut
+    expect(EMPLOYES).not.toContain('pointages-quick-nav')
+    expect(EMPLOYES).not.toContain('EmployesCulturalHero')
     expect(EMPLOYES).toContain("<RaccourcisPages compact excludePaths={['/employes']} />")
   })
 
@@ -1015,13 +1075,13 @@ describe('la page Employés', () => {
     expect(raccourcis.querySelector('a[href="/employes"]')).toBeNull()
 
     // ils vivent dans la barre du haut, avec les onglets
-    const barre = hote.querySelector('.emp-barre')
+    const barre = hote.querySelector('.empv2-tetes')
     expect(barre).not.toBeNull()
     expect(barre.querySelector('[data-testid="raccourcis-pages"]')).not.toBeNull()
-    expect(barre.querySelector('.emp-onglets')).not.toBeNull()
+    expect(barre.querySelector('.empv2-onglets')).not.toBeNull()
 
     // et avant le contenu de la vue, pas après
-    const vue = hote.querySelector('.rg-annuaire')
+    const vue = hote.querySelector('.empv2-annuaire')
     expect(vue).not.toBeNull()
     expect(barre.compareDocumentPosition(vue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // aucun second bandeau de raccourcis plus bas
@@ -1033,18 +1093,17 @@ describe('la page Employés', () => {
     expect(EMPLOYES).not.toContain('EmployesPortraitCard')
     expect(EMPLOYES).not.toContain('EmployesExecutiveKpis')
     expect(EMPLOYES).not.toContain('EmployesAnalyticsCharts')
-    const sections = readFileSync('src/components/EmployesAfroTechSections.jsx', 'utf8')
-    expect(sections).not.toContain('EmployesExecutiveKpis')
-    expect(sections).not.toContain('employes-framed-card')
+    expect(EMPLOYES).not.toContain('EmployesExecutiveKpis')
+    expect(EMPLOYES).not.toContain('employes-framed-card')
   })
 
-  it('tient tous les raccourcis dans la barre haute, entre les onglets et le registre', () => {
-    const barre = EMPLOYES.indexOf('<div className="emp-barre-raccourcis">')
-    const registre = EMPLOYES.indexOf('<div className="emp-vues rg-annuaire">')
+  it('tient tous les raccourcis dans la barre haute, entre les onglets et la liste', () => {
+    const barre = EMPLOYES.indexOf('<div className="empv2-raccourcis">')
+    const liste = EMPLOYES.indexOf('<div className="empv2-annuaire">')
     expect(barre).toBeGreaterThan(0)
-    expect(registre).toBeGreaterThan(barre)
+    expect(liste).toBeGreaterThan(barre)
     // plus aucun raccourci après les vues
-    const apresVues = EMPLOYES.indexOf('<RaccourcisPages', registre)
+    const apresVues = EMPLOYES.indexOf('<RaccourcisPages', liste)
     expect(apresVues).toBe(-1)
   })
 })
