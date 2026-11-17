@@ -1,17 +1,20 @@
 // ═══════════════════════════════════════════════════════════
-// 👤 FICHE EMPLOYÉ 360° — /employes/:id
+// 👤 FICHE EMPLOYÉE — /employes/:id — REFONTE BENTO (17/11)
 //
-// Une page = une personne. La maquette de référence : bento
-// sombre centré sur le profil, carrousel pour feuilleter les
-// collègues, activité récente en temps réel à droite.
+// Une page = une personne. Maquette validée le 17/11 :
+// bento sombre kente, portrait héro + contact en vue
+// (WhatsApp / Appeler), activité, salaire, rythme, présence,
+// fil d'activité et tâches.
 //
 // Règles de la maison :
-//  · aucune donnée inventée : ce qui manque s'affiche « — » ou
-//    « non renseigné », jamais un 0 qui ferait foi ;
+//  · aucune donnée inventée : ce qui manque s'affiche « — »,
+//    jamais un 0 qui ferait foi ;
 //  · les dates et heures se jugent au fuseau de l'entreprise ;
 //  · le mot « absent » n'existe qu'après la fin du poste (P0) ;
 //  · la modale de l'annuaire reste le GESTE MODIFIER ; cette
-//    page est le GESTE CONSULTER.
+//    page est le GESTE CONSULTER ;
+//  · les graphiques sont des barres CSS à la main (recharts
+//    reste réservé à la console analytique du dashboard).
 // ═══════════════════════════════════════════════════════════
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -20,28 +23,38 @@ import { supabase } from '../lib/supabase'
 import PageCulturalBand from '../components/PageCulturalBand'
 import FicheEmployeModal from '../components/FicheEmployeModal'
 import BadgeEmploye from '../components/BadgeEmploye'
+import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
 import {
-  ArrowLeft, Briefcase, ChevronLeft, ChevronRight, Coffee, Clock,
-  LogIn, LogOut, QrCode, UserCog, UserRound, CalendarRange,
-  IdCard, AlertTriangle, ListTodo,
+  AlertTriangle, ArrowLeft, CalendarRange, ChevronLeft, ChevronRight,
+  Clock, Coffee, Globe, IdCard, LogIn, LogOut, Mail, Phone, QrCode,
+  Timer, UserCog, UserRound,
 } from 'lucide-react'
 import {
-  formaterHeureLocaleShort, heureLocaleVersUTC, jourLocal, libelleFuseau,
+  formaterHeureLocaleShort, heureLocaleVersUTC, jourLocal,
 } from '../utils/timezoneUtils'
 import { initialesDe } from '../utils/initiales'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
 import { __internal, calculateEmployeeHours } from '../services/hoursCalculator'
+import { chargerBulletinsPeriode } from '../services/paiementBulletins'
 import { chargerSeuilsPointage } from '../services/seuilsPointage'
 import HolidayService from '../services/holidayService'
 import { finPosteDepassee } from '../lib/etatPresence'
 import {
+  abreviationDevise,
+  chipsJoursTravailles,
   construireFilActivite,
+  echelleNice,
   etatPresenceDuJour,
   grillePresenceMois,
   joursAbsencesPeriode,
+  joursAnciennete,
   joursPointesDuMois,
   joursPrevusDepuisPlans,
   libelleAnciennete,
+  libelleMontant,
+  libelleMontantCourt,
+  lienAppel,
+  lienWhatsApp,
   listeJoursInclusifs,
   pourcentageSiEchantillon,
   retardDuJour,
@@ -50,13 +63,21 @@ import {
   secondesVersHeures,
   serieBarresAnnee,
   serieBarresMois,
+  serieSalaireAnnee,
+  tendanceSalaire,
   totalSecondesSerie,
+  totalSalaireAnnee,
 } from '../lib/employee360'
 import '../components/zoulou/zoulou.css'
 import './Employee360.css'
 
+const MOIS_AXE = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc']
 const MOIS_COMPLETS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
-const JOURS_COURTS = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam']
+
+// Le tracé des barres : hauteur du plot et du rang des étiquettes,
+// en accord exact avec les variables de Employee360.css.
+const H_PLOT = 140
+const H_LIB = 18
 
 const TYPE_FIL = {
   entree: { icone: LogIn, libelleCourt: 'Entrée' },
@@ -66,11 +87,10 @@ const TYPE_FIL = {
   absence: { icone: CalendarRange, libelleCourt: 'Congé' },
 }
 
-function libelleDateLiseuse(dateISO) {
-  // « jeu. 15 oct. » — l'étiquette du jour.
-  const [a, m, j] = String(dateISO).split('-').map(Number)
-  const d = new Date(Date.UTC(a, m - 1, j))
-  return `${JOURS_COURTS[d.getUTCDay()]}. ${j} ${MOIS_COMPLETS[m - 1].slice(0, 3)}.`
+function courtJour(jourISO) {
+  const [a, m, j] = String(jourISO || '').split('-').map(Number)
+  if (!a || !m || !j) return jourISO || ''
+  return `${j} ${MOIS_COMPLETS[m - 1].slice(0, 3)}`
 }
 
 function libelleDureePauses(minutes) {
@@ -80,6 +100,62 @@ function libelleDureePauses(minutes) {
   if (h && m) return `${h} h ${String(m).padStart(2, '0')}`
   if (h) return `${h} h`
   return `${m} min`
+}
+
+/** La pastille WhatsApp — lucide n'en a pas. */
+function WhatsAppGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" focusable="false">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+    </svg>
+  )
+}
+
+/**
+ * Un graphe en barres dessiné à la main : axe gradué, trame, pic
+ * étiqueté. `colonnes` = [{ cle, col, valeur|null, estPic, tag,
+ * estAujourdhui }] ; `echelle` = echelleNice(valeurMax).
+ */
+function GrapheBarres({ colonnes, echelle, libelleGraduation, ariaLabel, fine = false }) {
+  return (
+    <div className={`e360-chart${fine ? ' e360-chart--fine' : ''}`}>
+      <div className="e360-chart-grads" aria-hidden="true">
+        {echelle.graduations.map((g) => (
+          <span key={`g-${g}`} style={{ bottom: `calc(${H_LIB}px + ${H_PLOT * (g / echelle.plafond)}px)` }}>
+            {libelleGraduation(g)}
+          </span>
+        ))}
+      </div>
+      <div className="e360-chart-plot">
+        <div className="e360-chart-lignes" aria-hidden="true">
+          {echelle.graduations.slice(1).map((g) => (
+            <span key={`l-${g}`} style={{ bottom: `${(g / echelle.plafond) * 100}%` }} />
+          ))}
+        </div>
+        <div className="e360-chart-barres" role="img" aria-label={ariaLabel}>
+          {colonnes.map((c) => {
+            const hauteur = c.valeur == null ? 0 : Math.max(2, (c.valeur / echelle.plafond) * 100)
+            return (
+              <div key={c.cle} className={`e360-col${c.estAujourdhui ? ' is-aujourdhui' : ''}`}>
+                <div className="e360-piste">
+                  {c.valeur != null && (
+                    <span
+                      className={`e360-bar${c.estPic ? ' is-pic' : ''}`}
+                      style={{ height: `${hauteur}%` }}
+                    />
+                  )}
+                  {c.estPic && (
+                    <span className="e360-tag" style={{ bottom: `calc(${hauteur}% + 5px)` }}>{c.tag}</span>
+                  )}
+                </div>
+                <span className="e360-col-lib">{c.col}</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function Employee360() {
@@ -116,7 +192,7 @@ export default function Employee360() {
       }).formatToParts(maintenant)
       const get = (type) => parts.find((p) => p.type === type)?.value
       const dateDuJour = `${get('year')}-${get('month')}-${get('day')}`
-      const debutMois = `${dateDuJour.slice(0, 8)}01`
+      const debutMois = `${dateDuJour.slice(0, 7)}-01`
       const anneeDebut = `${dateDuJour.slice(0, 4)}-01-01`
       // Fenêtre du fil d'activité : le mois si besoin, sinon 14 jours.
       const moins13 = new Date(Date.now() - 13 * 86400000)
@@ -143,7 +219,7 @@ export default function Employee360() {
       // PostgREST et casserait toute la requête — on échoue proprement.
       if (!debutAnneeInstante || !finInstante) throw new Error('Période de lecture invalide')
 
-      const [attRes, absRes, pausesRes, affectRes, grillesRes, seuilsRes, feriesRes, heuresRes, tachesRes] = await Promise.all([
+      const [attRes, absRes, pausesRes, affectRes, grillesRes, seuilsRes, feriesRes, heuresRes, bulletinsRes, tachesRes] = await Promise.all([
         // L'année entière, colonnes « strictes » : le fil en garde la
         // fenêtre, l'activité détaillée en garde l'historique.
         supabase
@@ -178,9 +254,18 @@ export default function Employee360() {
         chargerSeuilsPointage(ent.id),
         Promise.resolve(HolidayService.getHolidaysForRange(ent.id, anneeDebut, dateDuJour).catch(() => [])),
         // L'histoire de l'argent (heures sup, valorisation) ne se charge
-        // QUE si le module le mérite — sinon aucune donnée inventée.
+        // QUE si un module le mérite — sinon aucune donnée inventée.
         modules.heuresSup || modules.fichesPaie
           ? Promise.resolve(calculateEmployeeHours(emp.id, ent.id).catch(() => null))
+          : Promise.resolve(null),
+        // L'histoire du salaire : les bulletins bruts de l'année.
+        modules.fichesPaie
+          ? Promise.resolve(chargerBulletinsPeriode({
+            enterpriseId: ent.id,
+            dateDebut: anneeDebut,
+            dateFin: dateDuJour,
+            employeeIds: [emp.id],
+          }).catch(() => null))
           : Promise.resolve(null),
         modules.taches
           ? supabase
@@ -221,8 +306,7 @@ export default function Employee360() {
       // Le fil d'activité ne montre que sa fenêtre (14 jours ou le mois).
       const attsFenetre = attsAsc.filter((a) => jourLocal(a.check_time, fuseau) >= debutFil)
       // L'état du JOUR se juge sur les pointages du jour — pas sur
-      // toute la fenêtre du fil (un pointage d'hier ne dit rien
-      // sur aujourd'hui).
+      // toute la fenêtre du fil.
       const attsDuJour = attsAsc.filter((a) => jourLocal(a.check_time, fuseau) === dateDuJour)
       const firstIn = attsDuJour.find((a) => String(a.check_type || '').toLowerCase() === 'in') || null
       const lastPunch = attsDuJour.length > 0 ? attsDuJour[attsDuJour.length - 1] : null
@@ -262,10 +346,9 @@ export default function Employee360() {
         return acc + (Number(p.dureeMinutes) || 0)
       }, 0)
 
-      // ── PR ② : le rythme de l'année (barres + KPIs) ─────────
-      // Chaque journée est résolue avec le même resolveur que la
-      // page Pointages : un seul source pour les barres ET les
-      // totaux affichés — les deux ne peuvent pas diverger.
+      // Le rythme de l'année (barres + retards) — chaque journée est
+      // résolue avec le même resolveur que la page Pointages : un seul
+      // source pour les barres ET les totaux affichés.
       const attsParJour = {}
       for (const a of attsAnnee) {
         const j = jourLocal(a.check_time, fuseau)
@@ -280,8 +363,7 @@ export default function Employee360() {
           return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
         }
         // Le resolveur rattache la garde de nuit de la veille et la
-        // sortie du matin suivant : on lui passe le jour + les deux
-        // jours voisins, pas l'année entière.
+        // sortie du matin suivant : jour + les deux jours voisins.
         const fenetreAtts = [
           ...(attsParJour[voisin(-1)] || []),
           ...(attsParJour[jour] || []),
@@ -338,13 +420,14 @@ export default function Employee360() {
         grilleMois,
         fil,
         moisLabel: `${MOIS_COMPLETS[Number(dateDuJour.slice(5, 7)) - 1]} ${dateDuJour.slice(0, 4)}`,
-        // PR ②
         anneeDebut,
         anneeLabel: dateDuJour.slice(0, 4),
         retsParJour,
         retardMois,
         retardAnnee,
         heuresEmp: heuresRes,
+        bulletins: bulletinsRes?.bulletins || [],
+        devise: ent?.currency || 'XAF',
         taches,
         rythme,
         modules,
@@ -419,9 +502,7 @@ export default function Employee360() {
       }, 1200)
     }
     const toucheLaFiche = (enregistrement) =>
-      Boolean(enregistrement) && (
-        enregistrement.employee_id === employee.id
-      )
+      Boolean(enregistrement) && enregistrement.employee_id === employee.id
     const canal = supabase
       .channel(`employee360_${employee.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendances' }, (ev) => {
@@ -458,11 +539,18 @@ export default function Employee360() {
     return Array.from({ length: Math.min(largeur, n) }, (_, i) => employesEnt[(debut + i) % n])
   }, [employesEnt, indexActif])
 
+  // ── profil & contact ───────────────────────────────────────
   const nomComplet = [employee?.first_name, employee?.last_name].filter(Boolean).join(' ') || 'Sans nom'
   const anciennete = employee?.hire_date ? libelleAnciennete(employee.hire_date) : null
+  const ancienneteJours = employee?.hire_date ? joursAnciennete(employee.hire_date) : null
+  const lienWa = employee?.phone ? lienWhatsApp(employee.phone) : null
+  const lienTel = employee?.phone ? lienAppel(employee.phone) : null
+  const texteEchelon = employee?.echelon
+    ? (/echelon/i.test(String(employee.echelon)) ? employee.echelon : `Échelon ${employee.echelon}`)
+    : null
   const d = donnees
 
-  // ── PR ② : ce que la carte « Activité » affiche ─────────────
+  // ── Activité : série, échelle, pic ─────────────────────────
   const serieBarres = d
     ? (periode === 'mois'
       ? serieBarresMois(d.retsParJour, d.dateDuJour)
@@ -470,6 +558,19 @@ export default function Employee360() {
     : []
   const heuresTravaillees = totalSecondesSerie(serieBarres)
   const aAuMoinsUneBarre = serieBarres.some((c) => c.heures != null)
+  const picHeures = serieBarres.reduce(
+    (acc, c) => (c.heures != null && (!acc || c.heures > acc.heures) ? c : acc), null)
+  const maxHeures = picHeures ? picHeures.heures : 0
+  const echelleHeures = echelleNice(maxHeures, 4)
+  const colonnesHeures = aAuMoinsUneBarre ? serieBarres.map((c, i) => ({
+    cle: `b${i}`,
+    col: periode === 'mois' ? (c.numero % 3 === 1 ? String(c.numero) : '') : MOIS_AXE[(c.mois || c.numero) - 1] || c.libelle,
+    valeur: c.heures,
+    estPic: picHeures != null && c.heures != null && picHeures.heures === c.heures
+      && (c.mois || c.numero) === (picHeures.mois || picHeures.numero),
+    tag: secondesVersHeures(c.heures * 3600),
+    estAujourdhui: c.estAujourdhui === true,
+  })) : []
   const retardPeriode = d ? (periode === 'mois' ? d.retardMois : d.retardAnnee) : null
   const absencesPeriode = d ? (periode === 'mois' ? d.absencesMois : d.absencesAnnee) : 0
   const heuSup = (() => {
@@ -481,15 +582,38 @@ export default function Employee360() {
     }
     return __internal.parseDurationToHours(d.heuresEmp.thisYear?.overtime || '0h00')
   })()
-  const tauxMajor = periode === 'mois' ? (d?.heuresEmp?.thisMonth?.overtime_normal?.rate ?? null) : null
-  const brutEstime = (periode === 'mois' && d?.modules?.fichesPaie && d?.heuresEmp?.valorization)
-    ? d.heuresEmp.valorization
-    : null
-  // Le tracé des barres, à la main (la maison : recharts reste au dashboard).
-  const maxSecondes = serieBarres.reduce(
-    (acc, c) => (c.heures != null ? Math.max(acc, c.heures * 3600) : acc), 0)
-  const picBarre = serieBarres.reduce(
-    (acc, c) => (c.heures != null && (!acc || c.heures > acc.heures) ? c : acc), null)
+
+  // ── Salaire : bulletins bruts de l'année ───────────────────
+  const serieSalaire = d && d.modules.fichesPaie ? serieSalaireAnnee(d.bulletins, d.dateDuJour) : []
+  const totalSalaire = d && d.modules.fichesPaie ? totalSalaireAnnee(d.bulletins, d.dateDuJour) : null
+  const tendance = d && d.modules.fichesPaie ? tendanceSalaire(d.bulletins, d.dateDuJour) : null
+  const aAuMoinsUnBulletin = serieSalaire.some((c) => c.montant != null)
+  const picSalaire = serieSalaire.reduce(
+    (acc, c) => (c.montant != null && (!acc || c.montant > acc.montant) ? c : acc), null)
+  const echelleSalaire = echelleNice(picSalaire ? picSalaire.montant : 0, 4)
+  const colonnesSalaire = aAuMoinsUnBulletin ? serieSalaire.map((c) => ({
+    cle: `m${c.mois}`,
+    col: MOIS_AXE[c.mois - 1],
+    valeur: c.montant,
+    estPic: picSalaire != null && c.mois === picSalaire.mois,
+    tag: `${libelleMontant(picSalaire ? picSalaire.montant : 0, abreviationDevise(d?.devise))}`,
+  })) : []
+
+  // ── Rythme : chips des jours travaillés ────────────────────
+  const chipsJours = d?.rythme?.defini ? chipsJoursTravailles(d.rythme.joursListe) : []
+
+  // ── Activité récente : liste plate, 8 événements max ───────
+  const filPlat = useMemo(() => {
+    const tous = []
+    for (const g of d?.fil || []) {
+      for (const e of g.entrees) tous.push({ ...e, jourGroupe: g.libelle })
+    }
+    return tous.slice(0, 8)
+  }, [d])
+
+  const pastilleTache = (statut) => ['completed', 'validated'].includes(statut)
+    ? 'fait'
+    : ['in_progress', 'paused'].includes(statut) ? 'encours' : 'attente'
 
   if (!admin) {
     return null
@@ -501,56 +625,47 @@ export default function Employee360() {
         {/* ─────────────── TÊTE ─────────────── */}
         <header className="e360-tete">
           <div className="e360-tete-gauche">
-            <button type="button" className="e360-retour" onClick={() => navigate('/employes')}>
-              <ArrowLeft size={15} /> Annuaire
+            <button type="button" className="e360-retour" onClick={() => navigate('/employes')} aria-label="Retour à l'annuaire">
+              <ArrowLeft size={18} />
             </button>
-            <div className="e360-identite">
-              <h1 className="e360-nom">{nomComplet}</h1>
-              <p className="e360-sous">
-                {employee?.matricule && <span className="e360-sous-matricule">N° {employee.matricule}</span>}
-                {entreprise?.name || 'Entreprise'}
-                {employee?.position && <span> · {employee.position}</span>}
-              </p>
-            </div>
+            <h1 className="e360-titre">Fiche employée</h1>
           </div>
 
-          <div className="e360-tete-droite">
-            {employesEnt.length > 1 && (
-              <div className="e360-carrousel" role="group" aria-label="Feuilleter les employés">
-                <button type="button" onClick={() => allerA(indexActif - 1)} aria-label="Employé précédent">
-                  <ChevronLeft size={16} />
-                </button>
-                <div className="e360-carrousel-avatars">
-                  {fenetre.map((e, i) => (
-                    <button
-                      key={e.id}
-                      type="button"
-                      className={`e360-carrousel-avatar${e.id === employee?.id ? ' is-actif' : ''}`}
-                      onClick={() => allerA(indexActif - Math.floor(fenetre.length / 2) + i)}
-                      aria-label={`Ouvrir la fiche de ${[e.first_name, e.last_name].join(' ')}`}
-                    >
-                      {e.photo_url
-                        ? <img src={e.photo_url} alt="" />
-                        : initialesDe(e.first_name, e.last_name)}
-                    </button>
-                  ))}
-                </div>
-                <button type="button" onClick={() => allerA(indexActif + 1)} aria-label="Employé suivant">
-                  <ChevronRight size={16} />
-                </button>
+          {employesEnt.length > 1 && (
+            <div className="e360-carrousel" role="group" aria-label="Feuilleter les employés">
+              <button type="button" onClick={() => allerA(indexActif - 1)} aria-label="Employé précédent">
+                <ChevronLeft size={16} />
+              </button>
+              <div className="e360-carrousel-avatars">
+                {fenetre.map((e, i) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    className={`e360-carrousel-avatar${e.id === employee?.id ? ' is-actif' : ''}`}
+                    onClick={() => allerA(indexActif - Math.floor(fenetre.length / 2) + i)}
+                    aria-label={`Ouvrir la fiche de ${[e.first_name, e.last_name].join(' ')}`}
+                  >
+                    {e.photo_url
+                      ? <img src={e.photo_url} alt="" />
+                      : initialesDe(e.first_name, e.last_name)}
+                  </button>
+                ))}
               </div>
-            )}
-
-            <div className="e360-actions">
-              {employee?.qr_token && (
-                <button type="button" className="e360-bouton" onClick={() => setBadgeOuvert(true)}>
-                  <QrCode size={14} /> Badge QR
-                </button>
-              )}
-              <button type="button" className="e360-bouton is-primaire" onClick={() => setModalFiche(true)}>
-                <UserCog size={14} /> Modifier
+              <button type="button" onClick={() => allerA(indexActif + 1)} aria-label="Employé suivant">
+                <ChevronRight size={16} />
               </button>
             </div>
+          )}
+
+          <div className="e360-actions">
+            <button type="button" className="e360-bouton" onClick={() => setModalFiche(true)}>
+              <UserCog size={14} /> Modifier
+            </button>
+            {employee?.qr_token && (
+              <button type="button" className="e360-bouton is-primaire" onClick={() => setBadgeOuvert(true)}>
+                <QrCode size={14} /> Badge QR
+              </button>
+            )}
           </div>
         </header>
 
@@ -574,177 +689,285 @@ export default function Employee360() {
 
         {!chargement && !erreur && d && (
           <div className="e360-grille">
-            {/* ── Colonne 1 : profil + accès ── */}
-            <div className="e360-colonne">
-              <section className="e360-carte e360-carte-profil" aria-label="Profil">
-                <div className="e360-profil-photo">
+            {/* ═══ Colonne 1 — portrait, contact, accès ═══ */}
+            <div className="e360-col">
+              <section className="e360-carte e360-carte-portrait" aria-label="Profil">
+                <div className="e360-portrait">
                   {employee?.photo_url
                     ? <img src={employee.photo_url} alt={`Photo de ${nomComplet}`} />
-                    : <span className="e360-profil-initiales" aria-hidden="true">{initialesDe(employee?.first_name, employee?.last_name)}</span>}
-                  <span className={`e360-perle e360-perle--${d.etat.state}`} aria-hidden="true" />
+                    : <span className="e360-portrait-initiales" aria-hidden="true">{initialesDe(employee?.first_name, employee?.last_name)}</span>}
+                  <span className={`e360-badge-etat e360-badge-etat--${d.etat.state}`}>
+                    <i aria-hidden="true" />
+                    {d.etat.libelle.toUpperCase()}
+                    {d.etat.state === 'en_poste' && d.etat.entreeHHMM && ` · ${d.etat.entreeHHMM}`}
+                    {d.etat.state === 'en_pause' && d.etat.activePause?.debutISO
+                      && ` · ${formaterHeureLocaleShort(d.etat.activePause.debutISO, d.fuseau) || '—'}`}
+                  </span>
+                  {anciennete && <span className="e360-chip-haut">{anciennete}</span>}
                 </div>
-
-                <p className={`e360-statut e360-statut--${d.etat.state}`}>
-                  <strong>{d.etat.libelle}</strong>
-                  {d.etat.state === 'en_poste' && d.etat.entreeHHMM && <span> · depuis {d.etat.entreeHHMM}</span>}
-                  {d.etat.state === 'en_pause' && d.etat.activePause?.debutISO
-                    && <span> · depuis {formaterHeureLocaleShort(d.etat.activePause.debutISO, d.fuseau) || '—'}</span>}
-                  {d.etat.state === 'termine' && d.etat.entreeHHMM && d.etat.sortieHHMM
-                    && <span> · {d.etat.entreeHHMM} → {d.etat.sortieHHMM}</span>}
-                </p>
-
-                <h2 className="e360-profil-nom">{nomComplet}</h2>
-                <p className="e360-profil-poste">
-                  {employee?.position || 'Poste non renseigné'}
-                  {employee?.department && <span> · {employee.department}</span>}
-                </p>
-
-                <div className="e360-pills">
-                  {employee?.matricule && <span className="e360-pill"><IdCard size={12} /> {employee.matricule}</span>}
-                  {anciennete && <span className="e360-pill"><Clock size={12} /> {anciennete}</span>}
-                  {employee?.contract_type && <span className="e360-pill"><Briefcase size={12} /> {employee.contract_type}</span>}
-                  {employee?.classification && <span className="e360-pill">{employee.classification}</span>}
+                <div className="e360-portrait-corps">
+                  <h2 className="e360-nom">{nomComplet}</h2>
+                  <p className="e360-poste">
+                    {employee?.position || 'Poste non renseigné'}
+                    {employee?.department && ` · ${employee.department}`}
+                  </p>
                 </div>
               </section>
+
+              {(employee?.phone || employee?.email) && (
+                <section className="e360-carte e360-carte-contact" aria-label="Contact">
+                  {employee?.phone && (
+                    <div className="e360-contact-numero">
+                      <Phone size={16} />
+                      <strong>{employee.phone}</strong>
+                    </div>
+                  )}
+                  <div className="e360-contact-boutons">
+                    {lienWa && (
+                      <a className="e360-contact-btn e360-contact-wa" href={lienWa} target="_blank" rel="noreferrer">
+                        <WhatsAppGlyph /> WhatsApp
+                      </a>
+                    )}
+                    {lienTel && (
+                      <a className="e360-contact-btn e360-contact-tel" href={lienTel}>
+                        <Phone size={14} /> Appeler
+                      </a>
+                    )}
+                    {employee?.email && !employee?.phone && (
+                      <a className="e360-contact-btn e360-contact-tel" href={`mailto:${employee.email}`}>
+                        <Mail size={14} /> Écrire
+                      </a>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              <div className="e360-paire-stats">
+                <section className="e360-carte e360-stat" aria-label="Ancienneté en jours">
+                  <strong>{ancienneteJours != null ? new Intl.NumberFormat('fr-FR').format(ancienneteJours) : '—'}</strong>
+                  <span>jours dans l'entreprise</span>
+                </section>
+                <section className="e360-carte e360-stat" aria-label="Jours pointés ce mois">
+                  <strong>{d.joursPointes}</strong>
+                  <span>jours pointés ce mois</span>
+                </section>
+              </div>
 
               <section className="e360-carte" aria-label="Profil et accès">
                 <h3 className="e360-carte-titre">Profil &amp; accès</h3>
-                <dl className="e360-fiche-liste">
-                  <div>
-                    <dt>Contrat</dt>
-                    <dd>
+                <ul className="e360-liste">
+                  <li>
+                    <span className="e360-liste-icone"><UserCog size={14} /></span>
+                    <span className="e360-liste-lib">
                       {employee?.contract_type || '—'}
-                      {employee?.contract_end_date && <span> · jusqu’au {String(employee.contract_end_date).slice(0, 10)}</span>}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Échelon</dt>
-                    <dd>{employee?.echelon || '—'}</dd>
-                  </div>
-                  <div>
-                    <dt>N° pointeuse</dt>
-                    <dd>{employee?.machine_pin ? <strong>{employee.machine_pin}</strong> : 'Non attribué'}</dd>
-                  </div>
-                  <div>
-                    <dt>Portail employé</dt>
-                    <dd>
-                      {!employee?.user_id && 'Pas de compte'}
-                      {employee?.user_id && (employee.employee_portal_enabled ? 'Ouvert' : 'Fermé')}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Dernière connexion</dt>
-                    <dd>
+                      {texteEchelon && ` · ${texteEchelon}`}
+                    </span>
+                  </li>
+                  <li>
+                    <span className="e360-liste-icone"><IdCard size={14} /></span>
+                    <span className="e360-liste-lib">N° pointeuse</span>
+                    <span className="e360-liste-val">{employee?.machine_pin || 'Non attribué'}</span>
+                  </li>
+                  <li>
+                    <span className="e360-liste-icone"><Globe size={14} /></span>
+                    <span className="e360-liste-lib">Portail</span>
+                    <span className={`e360-liste-val${employee?.user_id && !employee.employee_portal_enabled ? ' is-muet' : ''}`}>
+                      {!employee?.user_id ? 'Pas de compte' : employee.employee_portal_enabled ? <em className="is-ok">ouvert</em> : 'fermé'}
+                    </span>
+                  </li>
+                  <li>
+                    <span className="e360-liste-icone"><Clock size={14} /></span>
+                    <span className="e360-liste-lib">Dernière connexion</span>
+                    <span className="e360-liste-val">
                       {employee?.last_login_at
-                        ? new Date(employee.last_login_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+                        ? new Date(employee.last_login_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
                         : 'Jamais'}
-                    </dd>
+                    </span>
+                  </li>
+                  {employee?.email && (
+                    <li>
+                      <span className="e360-liste-icone"><Mail size={14} /></span>
+                      <span className="e360-liste-val e360-liste-email">{employee.email}</span>
+                    </li>
+                  )}
+                </ul>
+              </section>
+            </div>
+
+            {/* ═══ Colonne 2 — activité, salaire, rythme ═══ */}
+            <div className="e360-col">
+              <section className="e360-carte" aria-label="Activité sur la période">
+                <h3 className="e360-carte-titre">
+                  Activité
+                  <span className="e360-seg" role="group" aria-label="Période de l'activité">
+                    <button type="button" className={periode === 'mois' ? 'is-active' : ''} onClick={() => setPeriode('mois')}>Mois</button>
+                    <button type="button" className={periode === 'annee' ? 'is-active' : ''} onClick={() => setPeriode('annee')}>Année</button>
+                  </span>
+                </h3>
+
+                <div className={`e360-kpis${d.modules.heuresSup ? '' : ' e360-kpis--3'}`}>
+                  <div className="e360-kpi">
+                    <strong>{secondesVersHeures(heuresTravaillees)}</strong>
+                    <span>heures</span>
                   </div>
-                  <div>
-                    <dt>Contact</dt>
-                    <dd>
-                      {[employee?.phone, employee?.email].filter(Boolean).join(' · ') || '—'}
-                    </dd>
+                  {d.modules.heuresSup && (
+                    <div className="e360-kpi">
+                      <strong>{heuSup != null ? secondesVersHeures(heuSup * 3600) : '—'}</strong>
+                      <span>sup</span>
+                    </div>
+                  )}
+                  <div className="e360-kpi">
+                    <strong>{retardPeriode?.ignored_no_schedule ? '—' : `${retardPeriode?.count ?? 0}`}</strong>
+                    <span>{retardPeriode?.ignored_no_schedule ? 'pas de référence' : 'retards'}</span>
                   </div>
-                </dl>
+                  <div className="e360-kpi">
+                    <strong>{`${absencesPeriode} j`}</strong>
+                    <span>d'absence</span>
+                  </div>
+                </div>
+
+                {aAuMoinsUneBarre ? (
+                  <GrapheBarres
+                    colonnes={colonnesHeures}
+                    echelle={echelleHeures}
+                    libelleGraduation={(g) => `${g}`}
+                    ariaLabel={
+                      `Heures travaillées ${periode === 'mois' ? 'par jour' : 'par mois'} — pic : ${picHeures ? secondesVersHeures(picHeures.heures * 3600) : '—'}`
+                    }
+                  />
+                ) : (
+                  <p className="e360-vide">
+                    {`Aucun pointage ${periode === 'mois' ? 'ce mois-ci' : `en ${d.anneeLabel}`}.`}
+                  </p>
+                )}
               </section>
 
+              {d.modules.fichesPaie && (
+                <section className="e360-carte" aria-label="Salaire de l'année">
+                  <h3 className="e360-carte-titre">
+                    Salaire
+                    {tendance && (
+                      <span
+                        className={`e360-badge-tendance${tendance.pct >= 0 ? ' is-pos' : ' is-neg'}`}
+                        title={tendance.comparaison}
+                      >
+                        {tendance.pct >= 0 ? '+' : ''}{tendance.pct} %
+                      </span>
+                    )}
+                  </h3>
+                  <p className="e360-sous-titre">
+                    {`Jan–Déc · ${totalSalaire != null ? libelleMontant(totalSalaire, d.devise) : 'aucun bulletin'}`}
+                  </p>
+                  {aAuMoinsUnBulletin ? (
+                    <GrapheBarres
+                      colonnes={colonnesSalaire}
+                      echelle={echelleSalaire}
+                      libelleGraduation={(g) => libelleMontantCourt(g)}
+                      ariaLabel={`Salaire brut mensuel ${d.anneeLabel} — pic : ${picSalaire ? libelleMontant(picSalaire.montant, d.devise) : '—'}`}
+                      fine
+                    />
+                  ) : (
+                    <p className="e360-vide">Aucun bulletin cette année.</p>
+                  )}
+                </section>
+              )}
+
               <section className="e360-carte" aria-label="Rythme et régularité">
-                <h3 className="e360-carte-titre">
-                  Rythme &amp; régularité
-                  <span className="e360-periode">en vigueur</span>
-                </h3>
+                <h3 className="e360-carte-titre">Rythme &amp; régularité</h3>
                 {d.rythme.defini ? (
-                  <dl className="e360-fiche-liste">
-                    <div>
-                      <dt>Jours travaillés</dt>
-                      <dd>{d.rythme.jours || '—'}</dd>
-                    </div>
-                    <div>
-                      <dt>Journée</dt>
-                      <dd>{d.rythme.journee}</dd>
-                    </div>
-                    <div>
-                      <dt>Pause</dt>
-                      <dd>{d.rythme.pause || 'Aucune'}</dd>
-                    </div>
-                    <div>
-                      <dt>Tolérance retard</dt>
-                      <dd>{d.rythme.tolerance ? `${d.rythme.tolerance} min` : '—'}</dd>
-                    </div>
-                    {d.rythme.perso && (
-                      <div>
-                        <dt>Planning</dt>
-                        <dd>Personnalisé</dd>
+                  <>
+                    {chipsJours.length > 0 && (
+                      <div className="e360-chips-jours">
+                        {chipsJours.map((j) => (
+                          <span key={j} className="e360-chip-jour">{j}</span>
+                        ))}
                       </div>
                     )}
-                  </dl>
+                    <ul className="e360-infos">
+                      <li>
+                        <span className="e360-info-icone"><Clock size={14} /></span>
+                        <span className="e360-info-texte">
+                          <span className="e360-info-principal">{d.rythme.journee}</span>
+                          <span className="e360-info-sous">Horaires de travail</span>
+                        </span>
+                      </li>
+                      <li>
+                        <span className="e360-info-icone"><Coffee size={14} /></span>
+                        <span className="e360-info-texte">
+                          <span className="e360-info-principal">
+                            {d.rythme.pauseMinutes ? `Pause ${d.rythme.pauseMinutes} min` : 'Aucune pause'}
+                          </span>
+                          <span className="e360-info-sous">{d.rythme.pause || '—'}</span>
+                        </span>
+                      </li>
+                      <li>
+                        <span className="e360-info-icone"><Timer size={14} /></span>
+                        <span className="e360-info-texte">
+                          <span className="e360-info-principal">
+                            {d.rythme.tolerance ? `Tolérance ${d.rythme.tolerance} min` : 'Tolérance non définie'}
+                          </span>
+                          <span className="e360-info-sous">Avant retard</span>
+                        </span>
+                      </li>
+                    </ul>
+                  </>
                 ) : (
-                  <p className="e360-vide">Aucun horaire de référence n’est déclaré.</p>
+                  <p className="e360-vide">Aucun horaire de référence n'est déclaré.</p>
                 )}
               </section>
             </div>
 
-            {/* ── Colonne 2 : aujourd'hui + mois ── */}
-            <div className="e360-colonne">
+            {/* ═══ Colonne 3 — aujourd'hui, présence, citation ═══ */}
+            <div className="e360-col">
               <section className="e360-carte" aria-label="Aujourd'hui">
-                <h3 className="e360-carte-titre">
-                  Aujourd’hui
-                  <span className="e360-periode">{libelleDateLiseuse(d.dateDuJour)} · {libelleFuseau(d.fuseau)}</span>
-                </h3>
-
-                <div className="e360-jour">
-                  <div className="e360-jour-ligne">
-                    <LogIn size={15} />
-                    <span>Entrée</span>
-                    <strong>{d.etat.entreeHHMM || '—'}</strong>
-                  </div>
-                  <div className="e360-jour-ligne">
-                    <LogOut size={15} />
-                    <span>Sortie</span>
-                    <strong>{d.etat.sortieHHMM || '—'}</strong>
-                  </div>
-                  <div className="e360-jour-ligne">
-                    <Coffee size={15} />
-                    <span>Pauses</span>
-                    <strong>
+                <h3 className="e360-carte-titre">Aujourd'hui</h3>
+                <ul className="e360-liste">
+                  <li>
+                    <span className="e360-liste-icone"><LogIn size={14} /></span>
+                    <span className="e360-liste-lib">Entrée</span>
+                    <span className="e360-liste-val">{d.etat.entreeHHMM || '—'}</span>
+                  </li>
+                  <li>
+                    <span className="e360-liste-icone"><LogOut size={14} /></span>
+                    <span className="e360-liste-lib">Sortie</span>
+                    <span className="e360-liste-val">{d.etat.sortieHHMM || '—'}</span>
+                  </li>
+                  <li>
+                    <span className="e360-liste-icone"><Coffee size={14} /></span>
+                    <span className="e360-liste-lib">Pauses</span>
+                    <span className="e360-liste-val">
                       {d.pausesDuJourCount === 0
                         ? 'Aucune'
-                        : `${d.pausesDuJourCount} pause${d.pausesDuJourCount > 1 ? 's' : ''}`
-                          + (libelleDureePauses(d.dureePausesDuJour) ? ` · ${libelleDureePauses(d.dureePausesDuJour)}` : '')}
-                    </strong>
-                  </div>
-                  <div className={`e360-jour-ligne${d.retard ? ' is-alerte' : ''}`}>
-                    <AlertTriangle size={15} />
-                    <span>Retard</span>
-                    <strong>
-                      {!d.aPlanDuJour && 'Aucun horaire de référence'}
+                        : `${d.pausesDuJourCount} · ${libelleDureePauses(d.dureePausesDuJour) || 'en cours'}`}
+                    </span>
+                  </li>
+                  <li className={d.retard ? 'is-alerte' : ''}>
+                    <span className="e360-liste-icone"><AlertTriangle size={14} /></span>
+                    <span className="e360-liste-lib">Retard</span>
+                    <span className="e360-liste-val">
+                      {!d.aPlanDuJour && 'Pas de référence'}
                       {d.aPlanDuJour && d.retard === null && (d.etat.entreeHHMM ? 'Aucun' : '—')}
-                      {d.retard !== null && `${d.retard} min de retard`}
-                    </strong>
-                  </div>
-                </div>
+                      {d.retard !== null && `${d.retard} min`}
+                    </span>
+                  </li>
+                </ul>
               </section>
 
               <section className="e360-carte" aria-label="Présence du mois">
-                <h3 className="e360-carte-titre">
-                  Présence du mois
-                  <span className="e360-periode">{d.moisLabel}</span>
-                </h3>
-
+                <h3 className="e360-carte-titre">Présence du mois</h3>
                 {(d.joursPointes > 0 || d.joursPrevus > 0) ? (
                   <>
-                    <div className="e360-tiles">
-                      <div className="e360-tile">
+                    <div className="e360-tiles3">
+                      <div className="e360-tile3">
                         <strong>{d.joursPointes}</strong>
-                        <span>jour{d.joursPointes > 1 ? 's' : ''} pointé{d.joursPointes > 1 ? 's' : ''}</span>
+                        <span>pointés</span>
                       </div>
-                      <div className="e360-tile">
+                      <div className="e360-tile3">
                         <strong>{d.joursPrevus > 0 ? d.joursPrevus : '—'}</strong>
-                        <span>jour{d.joursPrevus > 1 ? 's' : ''} prévu{d.joursPrevus > 1 ? 's' : ''}</span>
+                        <span>prévus</span>
                       </div>
-                      <div className="e360-tile">
-                        <strong>{d.presencePct != null ? `${d.presencePct} %` : '—'}</strong>
+                      <div className="e360-tile3">
+                        <strong className="is-or">{d.presencePct != null ? `${d.presencePct} %` : '—'}</strong>
                         <span>taux de présence</span>
                       </div>
                     </div>
@@ -754,12 +977,16 @@ export default function Employee360() {
                         <span
                           key={c.jour}
                           className={`e360-case e360-case--${c.etat}`}
-                          title={`${c.numero} — ${c.etat === 'pointe' ? 'pointé' : c.etat === 'prevu' ? 'prévu, non pointé' : c.etat === 'avenir' ? 'à venir' : 'hors planning'}`}
-                        />
+                          title={`${c.numero} — ${c.etat === 'pointe' ? 'présent' : c.etat === 'prevu' ? 'prévu, non pointé' : c.etat === 'avenir' ? 'à venir' : 'non planifié'}`}
+                        >
+                          {c.numero}
+                        </span>
                       ))}
                     </div>
                     <p className="e360-legende">
-                      <i className="e360-legende-point" /> pointé · <i className="e360-legende-prevu" /> prévu non pointé · <i className="e360-legende-avenir" /> à venir
+                      <span><i className="e360-leg-1" aria-hidden="true" /> Présent</span>
+                      <span><i className="e360-leg-2" aria-hidden="true" /> Absent</span>
+                      <span><i className="e360-leg-3" aria-hidden="true" /> Non planifié</span>
                     </p>
                     {d.presencePct == null && d.joursPrevus > 0 && (
                       <p className="e360-note">Moins de 15 jours prévus : le taux se lit en jours, pas en pourcentage.</p>
@@ -773,183 +1000,83 @@ export default function Employee360() {
                 )}
               </section>
 
-              <section className="e360-carte" aria-label="Activité sur la période">
-                <h3 className="e360-carte-titre">
-                  Activité
-                  <span className="e360-titre-droite">
-                    <span className="e360-periode">{periode === 'mois' ? d.moisLabel : d.anneeLabel}</span>
-                    <span className="e360-seg" role="group" aria-label="Période de l’activité">
-                      <button
-                        type="button"
-                        className={periode === 'mois' ? 'is-active' : ''}
-                        onClick={() => setPeriode('mois')}
-                      >
-                        Mois
-                      </button>
-                      <button
-                        type="button"
-                        className={periode === 'annee' ? 'is-active' : ''}
-                        onClick={() => setPeriode('annee')}
-                      >
-                        Année
-                      </button>
-                    </span>
-                  </span>
-                </h3>
-
-                <div className="e360-tiles e360-tiles--actif">
-                  <div className="e360-tile">
-                    <strong>{secondesVersHeures(heuresTravaillees)}</strong>
-                    <span>heures travaillées</span>
-                  </div>
-                  {d.modules.heuresSup && (
-                    <div className="e360-tile">
-                      <strong>{heuSup != null ? secondesVersHeures(heuSup * 3600) : '—'}</strong>
-                      <span>{`heures sup${tauxMajor ? ` · majorées +${tauxMajor} %` : ''}`}</span>
-                    </div>
-                  )}
-                  <div className="e360-tile">
-                    <strong>
-                      {retardPeriode?.ignored_no_schedule
-                        ? '—'
-                        : `${retardPeriode?.count ?? 0} retard${(retardPeriode?.count ?? 0) > 1 ? 's' : ''}`}
-                    </strong>
-                    <span>{retardPeriode?.ignored_no_schedule ? 'aucun horaire de référence' : 'retards sur la période'}</span>
-                  </div>
-                  <div className="e360-tile">
-                    <strong>{absencesPeriode} jour{absencesPeriode > 1 ? 's' : ''}</strong>
-                    <span>d’absence</span>
-                  </div>
-                  {brutEstime && (
-                    <div className="e360-tile is-brut">
-                      <strong>{new Intl.NumberFormat('fr-FR').format(brutEstime.total_gross)}</strong>
-                      <span>{`brut estimé · ${brutEstime.currency}`}</span>
-                    </div>
-                  )}
-                </div>
-
-                {aAuMoinsUneBarre ? (
-                  <>
-                    {/* Le tracé est dessiné à la main : la maison réserve
-                        recharts à la console analytique du dashboard. */}
-                    <div
-                      className="e360-barchart"
-                      role="img"
-                      aria-label={
-                        `Heures travaillées ${periode === 'mois' ? 'par jour' : 'par mois'}`
-                        + ` — pic : ${secondesVersHeures(picBarre.heures * 3600)}`
-                      }
-                    >
-                      {serieBarres.map((c) => (
-                        <div
-                          key={c.libelle}
-                          className={`e360-bar-col${c.estAujourdhui ? ' est-aujourdhui' : ''}${c.heures == null ? ' est-vides' : ''}`}
-                          title={
-                            c.heures == null
-                              ? `${periode === 'mois' ? `${c.libelle} ${d.moisLabel}` : `${c.libelle} ${d.anneeLabel}`} — aucun pointage`
-                              : `${periode === 'mois' ? `${c.libelle} ${d.moisLabel}` : `${c.libelle} ${d.anneeLabel}`} — ${secondesVersHeures(c.heures * 3600)} travaillées`
-                          }
-                        >
-                          <div className="e360-bar-piste">
-                            {c.heures != null && (
-                              <div
-                                className="e360-bar"
-                                style={{ height: `${Math.max(3, (c.heures * 3600 / maxSecondes) * 100)}%` }}
-                              />
-                            )}
-                          </div>
-                          <span className="e360-bar-lib">
-                            {periode === 'mois' ? (c.numero % 3 === 1 ? c.libelle : '') : c.libelle}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="e360-note">
-                      {`Heures travaillées ${periode === 'mois' ? 'par jour' : 'par mois'}`}
-                      {` — le plus chargé : ${secondesVersHeures(picBarre.heures * 3600)}${picBarre.estAujourdhui ? ' (aujourd’hui)' : picBarre.aVenir ? ' (à venir)' : periode === 'mois' ? ` (le ${picBarre.libelle})` : ` (${picBarre.libelle})`}`}
-                    </p>
-                  </>
-                ) : (
-                  <p className="e360-vide">
-                    {`Aucun pointage ${periode === 'mois' ? 'ce mois-ci' : `en ${d.anneeLabel}`}.`}
-                  </p>
-                )}
-              </section>
+              <figure className="e360-carte e360-carte-citation">
+                <span className="e360-citation-glyphe" aria-hidden="true">“</span>
+                <blockquote>Des équipes engagées bâtissent des entreprises plus fortes.</blockquote>
+                <figcaption>En-Check</figcaption>
+              </figure>
             </div>
 
-            {/* ── Colonne 3 : activité récente ── */}
-            <div className="e360-colonne">
-              <section className="e360-carte e360-carte-activite" aria-label="Activité récente">
+            {/* ═══ Colonne 4 — activité récente, tâches, promo ═══ */}
+            <div className="e360-col">
+              <section className="e360-carte" aria-label="Activité récente">
                 <h3 className="e360-carte-titre">
                   Activité récente
-                  <span className="e360-periode">14 derniers jours</span>
+                  <a className="e360-voir-tout" href="#" onClick={(e) => { e.preventDefault(); navigate('/pointages') }}>Voir tout →</a>
                 </h3>
 
-                {d.fil.length > 0 ? (
-                  <ol className="e360-fil">
-                    {d.fil.map((groupe) => (
-                      <li key={groupe.jour} className="e360-fil-groupe">
-                        <h4>{groupe.libelle}</h4>
-                        {groupe.entrees.map((e) => {
-                          const spec = TYPE_FIL[e.type] || TYPE_FIL.absence
-                          const Icone = spec.icone
-                          return (
-                            <div key={e.id} className={`e360-fil-entree e360-fil-entree--${e.type}`}>
-                              <span className="e360-fil-icone" aria-hidden="true"><Icone size={13} /></span>
-                              <span className="e360-fil-libelle">
-                                {e.libelle}
-                                {e.periode && <em> {e.periode}</em>}
-                              </span>
-                              {e.heure && <time className="e360-fil-heure">{e.heure}</time>}
-                            </div>
-                          )
-                        })}
-                      </li>
-                    ))}
-                  </ol>
+                {filPlat.length > 0 ? (
+                  <ul className="e360-fil">
+                    {filPlat.map((e) => {
+                      const spec = TYPE_FIL[e.type] || TYPE_FIL.absence
+                      const Icone = spec.icone
+                      return (
+                        <li key={e.id} className={`e360-fil-item e360-fil-item--${e.type}`}>
+                          <span className="e360-fil-bulle" aria-hidden="true"><Icone size={13} /></span>
+                          <span className="e360-fil-texte">
+                            <span className="e360-fil-titre">{spec.libelleCourt}</span>
+                            <span className="e360-fil-sous">
+                              {e.type === 'absence'
+                                ? `${e.jourGroupe}${e.periode ? ` · ${e.periode}` : ''}`
+                                : `${e.jourGroupe} à ${e.heure || '—'}`}
+                            </span>
+                          </span>
+                          <time className="e360-fil-heure">{e.heure || courtJour(e.jour)}</time>
+                        </li>
+                      )
+                    })}
+                  </ul>
                 ) : (
-                  <p className="e360-vide">Aucune activité enregistrée sur les 14 derniers jours.</p>
+                  <p className="e360-vide">Aucune activité sur les 14 derniers jours.</p>
                 )}
               </section>
 
               {d.modules.taches && (
                 <section className="e360-carte" aria-label="Tâches">
                   <h3 className="e360-carte-titre">
-                    <span className="e360-titre-icone"><ListTodo size={15} /> Tâches</span>
-                    <span className="e360-periode">{d.moisLabel}</span>
+                    Tâches
+                    <a className="e360-voir-tout" href="#" onClick={(e) => { e.preventDefault(); navigate('/taches') }}>Voir tout →</a>
                   </h3>
                   {d.taches.aucune ? (
                     <p className="e360-vide">Aucune tâche attribuée.</p>
+                  ) : d.taches.prochaines.length === 0 ? (
+                    <p className="e360-vide">
+                      {`Rien d'échéant — ${d.taches.enCours} en cours, ${d.taches.terminees} terminée${d.taches.terminees > 1 ? 's' : ''} ce mois.`}
+                    </p>
                   ) : (
-                    <>
-                      <div className="e360-tiles e360-tiles--3">
-                        <div className="e360-tile">
-                          <strong>{d.taches.enCours}</strong>
-                          <span>en cours</span>
-                        </div>
-                        <div className="e360-tile">
-                          <strong>{d.taches.aVenirCount}</strong>
-                          <span>à faire</span>
-                        </div>
-                        <div className="e360-tile">
-                          <strong>{d.taches.terminees}</strong>
-                          <span>terminées ce mois</span>
-                        </div>
-                      </div>
-                      {d.taches.prochaines.length > 0 && (
-                        <ul className="e360-taches-liste">
-                          {d.taches.prochaines.map((t) => (
-                            <li key={t.id}>
-                              <span className="e360-taches-titre">{t.titre}</span>
-                              <time>{libelleDateLiseuse(t.echeance)}</time>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </>
+                    <ul className="e360-taches">
+                      {d.taches.prochaines.map((t) => (
+                        <li key={t.id} className={`e360-tache e360-tache--${pastilleTache(t.statut)}`}>
+                          <i aria-hidden="true" />
+                          <span className="e360-tache-texte">
+                            <span className="e360-tache-titre">{t.titre}</span>
+                            <span className="e360-tache-sous">
+                              {t.echeance === d.dateDuJour
+                                ? 'Aujourd’hui'
+                                : new Date(`${t.echeance}T00:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </section>
               )}
+
+              <section className="e360-carte e360-carte-promo" aria-label="En-Check">
+                <KenteWovenTapestrySvg className="e360-promo-motif" />
+                <p className="e360-promo-texte">Nos talents font avancer l'Afrique</p>
+              </section>
             </div>
           </div>
         )}
@@ -994,4 +1121,3 @@ export default function Employee360() {
     </div>
   )
 }
-

@@ -349,14 +349,21 @@ export function rythmePlanning({ plan = null, tolerance = null, perso = false })
   const end = plan?.end_time ? String(plan.end_time).slice(0, 5) : null
   if (!start || !end) return { defini: false }
   const aPause = plan?.has_break !== false && plan?.break_start && plan?.break_end
+  const joursListe = (Array.isArray(plan?.work_days) ? plan.work_days : [])
+    .map(Number).filter((j) => j >= 1 && j <= 7).sort((a, b) => a - b)
+  const pauseMinutes = aPause
+    ? minutesEntreHeures(String(plan.break_start).slice(0, 5), String(plan.break_end).slice(0, 5))
+    : null
   return {
     defini: true,
     perso: Boolean(perso),
     jours: libelleJoursSemaine(plan?.work_days),
+    joursListe,
     journee: `${start} → ${end}`,
     pause: aPause
       ? `${String(plan.break_start).slice(0, 5)} – ${String(plan.break_end).slice(0, 5)}`
       : null,
+    pauseMinutes,
     tolerance: Number(tolerance) > 0 ? Number(tolerance) : null,
   }
 }
@@ -458,8 +465,192 @@ export function resumerTaches(taches, dateDuJour, debutPeriode) {
     enCours,
     terminees,
     aVenirCount: aVenir.length,
-    prochaines: aVenir.slice(0, 3).map((t) => ({ id: t.id, titre: t.title, echeance: String(t.due_at).slice(0, 10) })),
+    prochaines: aVenir.slice(0, 3).map((t) => ({ id: t.id, titre: t.title, statut: t.status, echeance: String(t.due_at).slice(0, 10) })),
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// REFONTE BENTO (17/11) — ancienneté, contact, salaire, axes
+// ─────────────────────────────────────────────────────────────
+
+/** Ancienneté en jours entiers depuis hire_date (null si inconnu). */
+export function joursAnciennete(dateEmbauche, reference = new Date()) {
+  if (!dateEmbauche) return null
+  const embauche = new Date(`${String(dateEmbauche).slice(0, 10)}T00:00:00Z`)
+  if (Number.isNaN(embauche.getTime())) return null
+  const ref = new Date(`${reference.toISOString().slice(0, 10)}T00:00:00Z`)
+  const jours = Math.floor((ref.getTime() - embauche.getTime()) / 86400000)
+  return jours >= 0 ? jours : null
+}
+
+/** « +229 97 48 21 33 » → « +22997482133 » — null si trop court. */
+export function normaliserTelephone(telephone) {
+  const brut = String(telephone || '').trim()
+  if (!brut) return null
+  const signe = brut.startsWith('+') ? '+' : ''
+  const chiffres = signe ? brut.slice(1).replace(/\D/g, '') : brut.replace(/\D/g, '')
+  if (chiffres.length < 6) return null
+  return `${signe}${chiffres}`
+}
+
+/** Lien WhatsApp (wa.me) — null sans numéro exploitable. */
+export function lienWhatsApp(telephone) {
+  const n = normaliserTelephone(telephone)
+  return n ? `https://wa.me/${n.replace(/^\+/, '')}` : null
+}
+
+/** Lien d'appel natif (tel:) — null sans numéro exploitable. */
+export function lienAppel(telephone) {
+  const n = normaliserTelephone(telephone)
+  return n ? `tel:${n}` : null
+}
+
+/** Minutes entre deux heures « HH:MM » (une coupure peut franchir minuit). */
+export function minutesEntreHeures(debut, fin) {
+  const [h1, m1] = String(debut || '').split(':').map(Number)
+  const [h2, m2] = String(fin || '').split(':').map(Number)
+  if ([h1, m1, h2, m2].some((x) => !Number.isFinite(x))) return null
+  const delta = (h2 * 60 + m2) - (h1 * 60 + m1)
+  const d = (delta + 1440) % 1440
+  return d > 0 ? d : null
+}
+
+const JOURS_COURTS_CHIPS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+/** work_days [1..7] → chips « Lun », « Mar »… (ordre lundi → dimanche). */
+export function chipsJoursTravailles(jours) {
+  const liste = (Array.isArray(jours) ? jours : [])
+    .map(Number).filter((j) => j >= 1 && j <= 7).sort((a, b) => a - b)
+  return [...new Set(liste)].map((j) => JOURS_COURTS_CHIPS[j - 1])
+}
+
+/**
+ * Les 12 mois de l'année en cours, un montant par mois (brut du bulletin
+ * le plus récent du mois — null si aucun bulletin : un mois sans bulletin
+ * n'est PAS un mois à zéro).
+ */
+export function serieSalaireAnnee(bulletins, dateDuJour) {
+  const annee = Number(String(dateDuJour || '').slice(0, 4))
+  const moisActuel = Number(String(dateDuJour || '').slice(5, 7))
+  if (!annee) return []
+  const parMois = {}
+  for (const b of bulletins || []) {
+    const ps = String(b?.period_start || '')
+    if (Number(ps.slice(0, 4)) !== annee) continue
+    const m = Number(ps.slice(5, 7))
+    if (m < 1 || m > 12) continue
+    const montant = Number(b.gross_salary)
+    if (!Number.isFinite(montant)) continue
+    const precedent = parMois[m]
+    if (!precedent || String(b.period_end || '') >= String(precedent.period_end || '')) {
+      parMois[m] = { montant, period_end: b.period_end || '' }
+    }
+  }
+  return Array.from({ length: 12 }, (_, i) => {
+    const m = i + 1
+    return {
+      mois: m,
+      libelle: MOIS_COURTS[i],
+      montant: parMois[m] ? parMois[m].montant : null,
+      aVenir: m > moisActuel,
+    }
+  })
+}
+
+/** Total brut de l'année — null si aucun bulletin (pas un 0). */
+export function totalSalaireAnnee(bulletins, dateDuJour) {
+  const annee = String(dateDuJour || '').slice(0, 4)
+  let total = 0
+  let trouve = false
+  for (const b of bulletins || []) {
+    const ps = String(b?.period_start || '')
+    if (!ps || ps.slice(0, 4) !== annee) continue
+    const montant = Number(b.gross_salary)
+    if (!Number.isFinite(montant)) continue
+    total += montant
+    trouve = true
+  }
+  return trouve ? total : null
+}
+
+/**
+ * Variation du dernier mois COMPLET sur le précédent — comparer un mois
+ * partiel, c'est mentir. null si l'un des deux mois est inconnu.
+ */
+export function tendanceSalaire(bulletins, dateDuJour) {
+  const parts = String(dateDuJour || '').split('-').map(Number)
+  if (parts.length !== 3) return null
+  const [a, m] = parts
+  const totalDuMois = (an, mo) => {
+    let total = 0
+    let trouve = false
+    const cle = `${String(an).padStart(4, '0')}-${String(mo).padStart(2, '0')}`
+    for (const b of bulletins || []) {
+      const ps = String(b?.period_start || '')
+      if (ps.slice(0, 7) !== cle) continue
+      const montant = Number(b.gross_salary)
+      if (!Number.isFinite(montant)) continue
+      total += montant
+      trouve = true
+    }
+    return trouve ? total : null
+  }
+  const [an1, mo1] = m > 1 ? [a, m - 1] : [a - 1, 12]
+  const [an2, mo2] = mo1 > 1 ? [an1, mo1 - 1] : [an1 - 1, 12]
+  const t1 = totalDuMois(an1, mo1)
+  const t2 = totalDuMois(an2, mo2)
+  if (t1 == null || t2 == null || t2 <= 0) return null
+  return { pct: Math.round(((t1 - t2) / t2) * 100), comparaison: `${MOIS_COURTS[mo1 - 1]} vs ${MOIS_COURTS[mo2 - 1]}` }
+}
+
+/**
+ * Une échelle lisible pour un graphe : plafond et gradations « nice »
+ * (1, 2, 2,5, 5 × 10^n) — le pic ne dépasse jamais le cadre.
+ */
+export function echelleNice(valeurMax, graduations = 4) {
+  const v = Math.max(0, Number(valeurMax) || 0)
+  const brut = v / graduations
+  if (brut <= 0) {
+    return { plafond: graduations, pas: 1, graduations: Array.from({ length: graduations + 1 }, (_, i) => i) }
+  }
+  const puissance = Math.pow(10, Math.floor(Math.log10(brut)))
+  const base = brut / puissance
+  const nice = base <= 1 ? 1 : base <= 2 ? 2 : base <= 2.5 ? 2.5 : base <= 5 ? 5 : 10
+  const pas = nice * puissance
+  return {
+    plafond: pas * graduations,
+    pas,
+    graduations: Array.from({ length: graduations + 1 }, (_, i) => pas * i),
+  }
+}
+
+/** « FCFA » → « F », « EUR » → « € »… (l'abréviation des étiquettes). */
+export function abreviationDevise(devise) {
+  const d = String(devise || '').trim().toUpperCase()
+  if (['FCFA', 'XOF', 'CFA', 'XAF'].includes(d)) return 'F'
+  if (d === 'EUR') return '€'
+  if (d === 'USD') return '$'
+  if (d === 'GBP') return '£'
+  if (d === 'MAD') return 'DH'
+  return d
+}
+
+/** 155000, « FCFA » → « 155 000 FCFA ». */
+export function libelleMontant(valeur, devise) {
+  const v = Number(valeur)
+  if (!Number.isFinite(v)) return '—'
+  const fmt = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(v)
+  const d = String(devise || '').trim()
+  return d ? `${fmt} ${d}` : fmt
+}
+
+/** 150000 → « 150K » (l'axe du graphe salarial). */
+export function libelleMontantCourt(valeur) {
+  const v = Number(valeur)
+  if (!Number.isFinite(v)) return '—'
+  if (v >= 1000 && v % 1000 === 0) return `${v / 1000}K`
+  if (v >= 1000) return `${(v / 1000).toFixed(1).replace('.', ',')}K`
+  return `${v}`
 }
 
 export default libelleAnciennete
