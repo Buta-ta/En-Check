@@ -20,6 +20,14 @@ import {
   pourcentageSiEchantillon,
   retardDuJour,
   grillePresenceMois,
+  libelleJoursSemaine,
+  secondesVersHeures,
+  rythmePlanning,
+  serieBarresMois,
+  serieBarresAnnee,
+  totalSecondesSerie,
+  joursAbsencesPeriode,
+  resumerTaches,
 } from '../../lib/employee360'
 
 describe('listeJoursInclusifs — itération de dates locales', () => {
@@ -238,5 +246,161 @@ describe('grillePresenceMois — une case par jour, un état par case', () => {
   it('mois court (février 2026) et date nulle', () => {
     expect(grillePresenceMois({ dateDuJour: '2026-02-28', joursPointes: [], plansParJour: {} }).cases).toHaveLength(28)
     expect(grillePresenceMois({ dateDuJour: null, joursPointes: [], plansParJour: {} }).cases).toEqual([])
+  })
+})
+
+
+describe('libelleJoursSemaine — les jours travaillés, lisibles', () => {
+  it('« du lundi au vendredi », « tous les jours », du lundi au samedi', () => {
+    expect(libelleJoursSemaine([1, 2, 3, 4, 5])).toBe('du lundi au vendredi')
+    expect(libelleJoursSemaine([1, 2, 3, 4, 5, 6, 7])).toBe('tous les jours')
+    expect(libelleJoursSemaine([1, 2, 3, 4, 5, 6])).toBe('du lundi au samedi')
+  })
+
+  it('liste nominative sinon, null si rien, tolère le désordre et les valeurs inconnues', () => {
+    expect(libelleJoursSemaine([3, 1])).toBe('lundi, mercredi')
+    expect(libelleJoursSemaine([0, 9, 'x'])).toBeNull()
+    expect(libelleJoursSemaine(null)).toBeNull()
+    expect(libelleJoursSemaine('1,2')).toBeNull()
+  })
+})
+
+describe('secondesVersHeures — le format du moteur', () => {
+  it('arrondit et forme « HhMM »', () => {
+    expect(secondesVersHeures(0)).toBe('0h00')
+    expect(secondesVersHeures(3600)).toBe('1h00')
+    expect(secondesVersHeures(8 * 3600 + 5 * 60 + 30)).toBe('8h05')
+    expect(secondesVersHeures(-50)).toBe('0h00')
+    expect(secondesVersHeures(null)).toBe('0h00')
+  })
+})
+
+describe('rythmePlanning — le rythme depuis le plan du jour', () => {
+  const plan = {
+    start_time: '08:00:00', end_time: '17:00:00',
+    has_break: true, break_start: '12:30:00', break_end: '13:15:00',
+    work_days: [1, 2, 3, 4, 5],
+  }
+
+  it('lit la journée, la pause, les jours et la tolérance', () => {
+    const r = rythmePlanning({ plan, tolerance: 15 })
+    expect(r.defini).toBe(true)
+    expect(r.journee).toBe('08:00 → 17:00')
+    expect(r.pause).toBe('12:30 – 13:15')
+    expect(r.jours).toBe('du lundi au vendredi')
+    expect(r.tolerance).toBe(15)
+    expect(r.perso).toBe(false)
+  })
+
+  it('pas de planning → defini: false (on ne devine pas)', () => {
+    expect(rythmePlanning({ plan: null }).defini).toBe(false)
+    expect(rythmePlanning({ plan: { start_time: '08:00:00' } }).defini).toBe(false)
+  })
+
+  it('sans pause déclarée, « pause: null » ; tolérance nulle ou absente → null', () => {
+    const r = rythmePlanning({ plan: { ...plan, has_break: false, break_start: null, break_end: null }, tolerance: 0 })
+    expect(r.pause).toBeNull()
+    expect(r.tolerance).toBeNull()
+  })
+})
+
+describe('serieBarresMois / serieBarresAnnee — barres sans invention', () => {
+  const P = (iso, heures, pointe = true) => ({ [iso]: { secondes: heures * 3600, pointe } })
+
+  it('mois : un jour par case, jusqu’à aujourd’hui, null sans pointage', () => {
+    const serie = serieBarresMois({
+      '2026-11-01': { secondes: 8 * 3600, pointe: true },
+      '2026-11-02': { secondes: 0, pointe: false },
+      '2026-11-03': { secondes: 9.5 * 3600, pointe: true },
+    }, '2026-11-03')
+    expect(serie).toHaveLength(3)
+    expect(serie[0]).toMatchObject({ numero: 1, libelle: '1', heures: 8, estAujourdhui: false })
+    expect(serie[1].heures).toBeNull() // jour sans AUCUN pointage : pas de barre
+    expect(serie[2]).toMatchObject({ heures: 9.5, estAujourdhui: true })
+  })
+
+  it('mois : les jours à venir n’apparaissent pas', () => {
+    expect(serieBarresMois({}, '2026-11-15')).toHaveLength(15)
+    expect(serieBarresMois({}, '2026-02-10')).toHaveLength(10)
+  })
+
+  it('année : 12 mois, total par mois, null si mois sans pointage, aVenir au-delà', () => {
+    const serie = serieBarresAnnee({
+      '2026-03-10': { secondes: 8 * 3600, pointe: true },
+      '2026-03-11': { secondes: 4 * 3600, pointe: true },
+      '2026-11-01': { secondes: 6 * 3600, pointe: true },
+      '2026-12-01': { secondes: 100 * 3600, pointe: true }, // futur : compté dans le mois, mais aVenir
+    }, '2026-11-15')
+    expect(serie).toHaveLength(12)
+    const mars = serie.find((c) => c.mois === 3)
+    expect(mars.heures).toBeCloseTo(12, 5)
+    expect(serie.find((c) => c.mois === 6).heures).toBeNull()
+    expect(serie.find((c) => c.mois === 11).aVenir).toBe(false)
+    expect(serie.find((c) => c.mois === 12).aVenir).toBe(true)
+  })
+
+  it('totalSecondesSerie : les null ne comptent pas', () => {
+    const serie = serieBarresMois({
+      '2026-11-01': { secondes: 8 * 3600, pointe: true },
+      '2026-11-02': { secondes: 0, pointe: false },
+    }, '2026-11-02')
+    expect(totalSecondesSerie(serie)).toBe(8 * 3600)
+    expect(totalSecondesSerie([])).toBe(0)
+  })
+})
+
+describe('joursAbsencesPeriode — jours distincts couverts', () => {
+  it('compte les jours du chevauchement avec la période', () => {
+    const abs = [{ start_date: '2026-11-05', end_date: '2026-11-07' }]
+    expect(joursAbsencesPeriode(abs, '2026-11-01', '2026-11-30')).toBe(3)
+    expect(joursAbsencesPeriode(abs, '2026-11-06', '2026-11-30')).toBe(2)
+    expect(joursAbsencesPeriode(abs, '2026-11-10', '2026-11-30')).toBe(0)
+  })
+
+  it('un jour couvert deux fois (deux congés) ne compte qu’une fois', () => {
+    const abs = [
+      { start_date: '2026-11-05', end_date: '2026-11-06' },
+      { start_date: '2026-11-06', end_date: '2026-11-08' },
+    ]
+    expect(joursAbsencesPeriode(abs, '2026-11-01', '2026-11-30')).toBe(4)
+  })
+
+  it('absence à un seul jour, sans end_date', () => {
+    expect(joursAbsencesPeriode([{ start_date: '2026-11-12' }], '2026-11-01', '2026-11-30')).toBe(1)
+    expect(joursAbsencesPeriode([], '2026-11-01', '2026-11-30')).toBe(0)
+  })
+})
+
+describe('resumerTaches — le compte des tâches attribuées', () => {
+  const T = (o) => ({ id: o.id, title: o.titre, status: o.statut, due_at: o.due, completed_at: o.termine || null, validated_at: null })
+
+  it('aucune tâche → aucune: true', () => {
+    expect(resumerTaches([], '2026-11-15', '2026-11-01').aucune).toBe(true)
+  })
+
+  it('en cours = in_progress + paused ; à faire = échéance future non clôturée', () => {
+    const taches = [
+      T({ id: 1, titre: 'A', statut: 'in_progress', due: '2026-11-20' }),
+      T({ id: 2, titre: 'B', statut: 'paused', due: '2026-11-25' }),
+      T({ id: 3, titre: 'C', statut: 'assigned', due: '2026-11-22' }),
+      T({ id: 4, titre: 'D', statut: 'in_progress', due: '2026-10-01' }), // échéance passée
+      T({ id: 5, titre: 'E', statut: 'completed', due: '2026-11-30', termine: '2026-11-10T10:00:00Z' }), // clôturée : hors « à faire »
+    ]
+    const r = resumerTaches(taches, '2026-11-15', '2026-11-01')
+    expect(r.aucune).toBe(false)
+    expect(r.enCours).toBe(3) // A (in_progress) + B (paused) + D (in_progress)
+    expect(r.aVenirCount).toBe(3)
+    expect(r.prochaines.map((t) => t.titre)).toEqual(['A', 'C', 'B']) // triées par échéance
+    expect(r.prochaines[0].echeance).toBe('2026-11-20')
+  })
+
+  it('terminées : sur la période, via completed_at OU validated_at', () => {
+    const taches = [
+      { id: 1, title: 'A', status: 'completed', due_at: null, completed_at: '2026-11-10T10:00:00Z', validated_at: null },
+      { id: 2, title: 'B', status: 'validated', due_at: null, completed_at: '2026-09-02T10:00:00Z', validated_at: '2026-11-12T10:00:00Z' },
+      { id: 3, title: 'C', status: 'validated', due_at: null, completed_at: '2026-09-02T10:00:00Z', validated_at: '2026-09-12T10:00:00Z' },
+      { id: 4, title: 'D', status: 'rejected', due_at: null, completed_at: '2026-11-09T10:00:00Z', validated_at: null },
+    ]
+    expect(resumerTaches(taches, '2026-11-15', '2026-11-01').terminees).toBe(2) // A + B (validation du mois)
   })
 })

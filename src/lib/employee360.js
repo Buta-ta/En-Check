@@ -304,4 +304,162 @@ export function grillePresenceMois({
   return { cases, totalCases: cases.length }
 }
 
+// ─────────────────────────────────────────────────────────────
+// PR ② — activité détaillée, rythme & régularité, tâches
+// ─────────────────────────────────────────────────────────────
+
+const JOURS_SEMAINE = {
+  1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi',
+  5: 'vendredi', 6: 'samedi', 7: 'dimanche',
+}
+
+/**
+ * Les jours travaillés, lisibles — les mêmes règles que la
+ * fenêtre de planning (ModaleHoraires) : « du lundi au
+ * vendredi », « tous les jours », ou la liste nominative.
+ * null si rien n'est déclaré.
+ */
+export function libelleJoursSemaine(jours) {
+  const liste = (Array.isArray(jours) ? jours : [])
+    .map(Number)
+    .filter((jour) => JOURS_SEMAINE[jour])
+    .sort((a, b) => a - b)
+  if (liste.length === 0) return null
+  if (liste.length === 7) return 'tous les jours'
+  if (liste.length === 5 && [1, 2, 3, 4, 5].every((jour) => liste.includes(jour))) return 'du lundi au vendredi'
+  if (liste.length === 6 && [1, 2, 3, 4, 5, 6].every((jour) => liste.includes(jour))) return 'du lundi au samedi'
+  return liste.map((jour) => JOURS_SEMAINE[jour]).join(', ')
+}
+
+/** « 8h05 » à partir de secondes — le même format que le moteur. */
+export function secondesVersHeures(secondes) {
+  const s = Math.max(0, Math.round(Number(secondes) || 0))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  return `${h}h${String(m).padStart(2, '0')}`
+}
+
+/**
+ * Le rythme de l'employé depuis son plan du jour (celui que
+ * construitPlanningsParJour a retenu). « defini: false » si
+ * aucun horaire de référence — on ne devine pas.
+ */
+export function rythmePlanning({ plan = null, tolerance = null, perso = false }) {
+  const start = plan?.start_time ? String(plan.start_time).slice(0, 5) : null
+  const end = plan?.end_time ? String(plan.end_time).slice(0, 5) : null
+  if (!start || !end) return { defini: false }
+  const aPause = plan?.has_break !== false && plan?.break_start && plan?.break_end
+  return {
+    defini: true,
+    perso: Boolean(perso),
+    jours: libelleJoursSemaine(plan?.work_days),
+    journee: `${start} → ${end}`,
+    pause: aPause
+      ? `${String(plan.break_start).slice(0, 5)} – ${String(plan.break_end).slice(0, 5)}`
+      : null,
+    tolerance: Number(tolerance) > 0 ? Number(tolerance) : null,
+  }
+}
+
+/**
+ * Barres du mois : une case par jour écoulé, `heures` en heures
+ * (nombre) — null si le jour n'a AUCUN pointage (pas de barre :
+ * « pas de données », pas un 0 qui ferait foi).
+ */
+export function serieBarresMois(secondesParJour, dateDuJour) {
+  const [annee, mois, jourNum] = String(dateDuJour || '').split('-').map(Number)
+  if (!annee || !mois) return []
+  const joursDansLeMois = new Date(Date.UTC(annee, mois, 0)).getUTCDate()
+  const cases = []
+  for (let j = 1; j <= Math.min(joursDansLeMois, jourNum); j += 1) {
+    const iso = `${dateDuJour.slice(0, 8)}${String(j).padStart(2, '0')}`
+    const entree = secondesParJour?.[iso]
+    cases.push({
+      numero: j,
+      libelle: String(j),
+      heures: entree?.pointe ? Math.max(0, Number(entree.secondes) || 0) / 3600 : null,
+      estAujourdhui: j === jourNum,
+    })
+  }
+  return cases
+}
+
+/**
+ * Barres de l'année : une case par mois (12), même règle —
+ * un mois sans le moindre pointage vaut null, pas 0.
+ */
+export function serieBarresAnnee(secondesParJour, dateDuJour) {
+  const annee = Number(String(dateDuJour || '').slice(0, 4))
+  const moisActuel = Number(String(dateDuJour || '').slice(5, 7))
+  if (!annee) return []
+  return Array.from({ length: 12 }, (_, i) => {
+    const m = i + 1
+    const joursDansLeMois = new Date(Date.UTC(annee, m, 0)).getUTCDate()
+    let secondes = 0
+    let pointe = false
+    for (let j = 1; j <= joursDansLeMois; j += 1) {
+      const iso = `${String(annee)}-${String(m).padStart(2, '0')}-${String(j).padStart(2, '0')}`
+      const e = secondesParJour?.[iso]
+      if (e?.pointe) { pointe = true; secondes += Math.max(0, Number(e.secondes) || 0) }
+    }
+    return { mois: m, libelle: MOIS_COURTS[i], heures: pointe ? secondes / 3600 : null, aVenir: m > moisActuel }
+  })
+}
+
+/** Total en secondes d'une série de barres (les null ne comptent pas). */
+export function totalSecondesSerie(serie) {
+  return (serie || []).reduce((acc, c) => acc + (c.heures != null ? c.heures * 3600 : 0), 0)
+}
+
+/**
+ * Jours distincts de [debut, fin] couverts par au moins un
+ * congé — deux congés qui se chevauchent ne comptent qu'une
+ * fois le même jour.
+ */
+export function joursAbsencesPeriode(absences, debut, fin) {
+  const couverts = new Set()
+  for (const a of absences || []) {
+    if (!a?.start_date) continue
+    const finAbs = a.end_date || a.start_date
+    const d = a.start_date < debut ? debut : a.start_date
+    const f = finAbs > fin ? fin : finAbs
+    if (f < d) continue
+    for (const jour of listeJoursInclusifs(d, f)) couverts.add(jour)
+  }
+  return couverts.size
+}
+
+const TACHES_TERMINEES = ['completed', 'validated']
+const TACHES_CLOTURES = ['completed', 'validated', 'rejected', 'cancelled']
+
+/**
+ * Le compte des tâches attribuées : en cours, terminées sur la
+ * période, à faire (échéance future non clôturée) + les trois
+ * prochaines échéances. Rien d'inventé : `aucune: true` quand
+ * la table ne connaît pas une seule tâche pour cet employé.
+ */
+export function resumerTaches(taches, dateDuJour, debutPeriode) {
+  const liste = taches || []
+  const dansPeriode = (instante) => {
+    if (!instante) return false
+    const le = String(instante).slice(0, 10)
+    return le >= debutPeriode && le <= dateDuJour
+  }
+  const enCours = liste.filter((t) => ['in_progress', 'paused'].includes(t.status)).length
+  const terminees = liste.filter((t) =>
+    TACHES_TERMINEES.includes(t.status)
+    && (dansPeriode(t.completed_at) || dansPeriode(t.validated_at))
+  ).length
+  const aVenir = liste
+    .filter((t) => t?.due_at && String(t.due_at).slice(0, 10) >= dateDuJour && !TACHES_CLOTURES.includes(t.status))
+    .sort((a, b) => String(a.due_at).localeCompare(String(b.due_at)))
+  return {
+    aucune: liste.length === 0,
+    enCours,
+    terminees,
+    aVenirCount: aVenir.length,
+    prochaines: aVenir.slice(0, 3).map((t) => ({ id: t.id, titre: t.title, echeance: String(t.due_at).slice(0, 10) })),
+  }
+}
+
 export default libelleAnciennete
