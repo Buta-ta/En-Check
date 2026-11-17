@@ -373,8 +373,10 @@ export default function DashboardExperience({
         { label: 'Messages système', icon: Bell, path: '/system-messages', show: true },
         { label: 'Prospection', icon: TrendingUp, path: '/prospection', show: true },
         { label: 'Analytics du site', icon: TrendingUp, path: '/analytics', show: true },
-        // Page de développement : gardée au bas de la rubrique.
-        { label: 'Test IA (isolé)', icon: Sparkles, path: '/test-ia', show: true },
+        // Page de développement : gardée au bas de la rubrique. La garde
+        // est portée par la rubrique (super admin) ET répétée ici — c'est
+        // ce double cran que contrôle le test de régression source.
+        { label: 'Test IA (isolé)', icon: Sparkles, path: '/test-ia', show: isSuperAdmin },
       ],
     }] : []),
   ]
