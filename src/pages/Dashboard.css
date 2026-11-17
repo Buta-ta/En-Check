@@ -756,14 +756,25 @@
 .dashboard-meta-logo { width: 17px; height: 17px; flex: 0 0 17px; object-fit: cover; border-radius: 5px; border: 1px solid var(--line); background: var(--surface); }
 .dashboard-meta-chip.is-positive { color: var(--good); border-color: color-mix(in srgb, var(--good) 22%, var(--line)); background: var(--good-soft); }
 .dashboard-meta-chip.is-alert { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 25%, var(--line)); background: var(--warning-soft); }
-/* Pile de profils dans la chip « N ayant pointé aujourd’hui ». Photo du
-   pointage du jour en priorité, sinon initiales. Empilement compact. */
+/* Profils dans la chip « N ayant pointé aujourd’hui ». Photo du pointage
+   du jour en priorité, sinon initiales. Un seul présent : profil grand
+   + son nom ; plusieurs : pile compacte. */
 .dashboard-hero-avatars { display: inline-flex; align-items: center; }
-.dashboard-hero-avatar { position: relative; width: 18px; height: 18px; margin-left: -6px; border-radius: 50%; overflow: hidden; background: var(--surface); border: 1.5px solid color-mix(in srgb, var(--good) 32%, var(--line)); display: inline-flex; align-items: center; justify-content: center; }
+.dashboard-hero-avatar { position: relative; width: 28px; height: 28px; margin-left: -10px; border-radius: 50%; overflow: hidden; background: var(--surface); border: 2px solid color-mix(in srgb, var(--good) 32%, var(--line)); display: inline-flex; align-items: center; justify-content: center; }
 .dashboard-hero-avatar:first-child { margin-left: 0; }
 .dashboard-hero-avatar > img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.dashboard-hero-avatar-initiales { font-size: 7px; font-weight: 700; letter-spacing: 0.3px; color: var(--ink-soft); }
-.dashboard-hero-avatar-plus { font-size: 7px; font-weight: 700; color: var(--ink-soft); background: color-mix(in srgb, var(--surface) 94%, transparent); }
+.dashboard-hero-avatar-initiales { font-size: 10px; font-weight: 700; letter-spacing: 0.3px; color: var(--ink-soft); }
+.dashboard-hero-avatar-plus { font-size: 9px; font-weight: 700; color: var(--ink-soft); background: color-mix(in srgb, var(--surface) 94%, transparent); }
+.dashboard-hero-avatar--grande { width: 34px; height: 34px; margin-left: 0; }
+.dashboard-hero-avatar--grande .dashboard-hero-avatar-initiales { font-size: 12px; }
+/* Profil dans les affichages de pause (bannière + chip bannière) :
+   la photo du profil, sinon les initiales du nom. */
+.dashboard-pause-avatar { width: 20px; height: 20px; flex: 0 0 20px; border-radius: 50%; overflow: hidden; border: 1.5px solid var(--line); background: var(--surface); display: inline-flex; align-items: center; justify-content: center; }
+.dashboard-pause-avatar > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dashboard-pause-avatar-initiales { font-size: 8px; font-weight: 700; color: var(--ink-soft); }
+.dashboard-alert-lignes { display: flex; flex-direction: column; gap: 3px; }
+/* Spécificité : `.dashboard-alert-banner-copy span` force `display: block`. */
+.dashboard-alert-banner-copy .dashboard-alert-ligne { display: inline-flex; align-items: center; gap: 6px; }
 .dashboard-hero-avatars > :nth-child(1) { z-index: 7; }
 .dashboard-hero-avatars > :nth-child(2) { z-index: 6; }
 .dashboard-hero-avatars > :nth-child(3) { z-index: 5; }
@@ -1051,6 +1062,9 @@
   .dashboard-eyebrow { max-width: 210px; font-size: 8px; }
   .dashboard-subtitle { max-width: 240px; font-size: 10px; }
   .dashboard-meta-chip { min-height: 26px; padding: 4px 8px; font-size: 8px; }
+  .dashboard-hero-avatar { width: 24px; height: 24px; margin-left: -8px; }
+  .dashboard-hero-avatar--grande { width: 27px; height: 27px; }
+  .dashboard-pause-avatar { width: 18px; height: 18px; flex-basis: 18px; }
   .dashboard-panel-title { font-size: 12px; }
   .dashboard-review-row { gap: 8px; padding: 8px; }
   .dashboard-review-icon { width: 30px; height: 30px; flex-basis: 30px; }
