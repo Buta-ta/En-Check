@@ -756,6 +756,20 @@
 .dashboard-meta-logo { width: 17px; height: 17px; flex: 0 0 17px; object-fit: cover; border-radius: 5px; border: 1px solid var(--line); background: var(--surface); }
 .dashboard-meta-chip.is-positive { color: var(--good); border-color: color-mix(in srgb, var(--good) 22%, var(--line)); background: var(--good-soft); }
 .dashboard-meta-chip.is-alert { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 25%, var(--line)); background: var(--warning-soft); }
+/* Pile de profils dans la chip « N ayant pointé aujourd’hui ». Photo du
+   pointage du jour en priorité, sinon initiales. Empilement compact. */
+.dashboard-hero-avatars { display: inline-flex; align-items: center; }
+.dashboard-hero-avatar { position: relative; width: 18px; height: 18px; margin-left: -6px; border-radius: 50%; overflow: hidden; background: var(--surface); border: 1.5px solid color-mix(in srgb, var(--good) 32%, var(--line)); display: inline-flex; align-items: center; justify-content: center; }
+.dashboard-hero-avatar:first-child { margin-left: 0; }
+.dashboard-hero-avatar > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dashboard-hero-avatar-initiales { font-size: 7px; font-weight: 700; letter-spacing: 0.3px; color: var(--ink-soft); }
+.dashboard-hero-avatar-plus { font-size: 7px; font-weight: 700; color: var(--ink-soft); background: color-mix(in srgb, var(--surface) 94%, transparent); }
+.dashboard-hero-avatars > :nth-child(1) { z-index: 7; }
+.dashboard-hero-avatars > :nth-child(2) { z-index: 6; }
+.dashboard-hero-avatars > :nth-child(3) { z-index: 5; }
+.dashboard-hero-avatars > :nth-child(4) { z-index: 4; }
+.dashboard-hero-avatars > :nth-child(5) { z-index: 3; }
+.dashboard-hero-avatars > :nth-child(6) { z-index: 2; }
 .dashboard-hero-art { position: relative; z-index: 0; display: flex; width: min(34%, 320px); min-width: 200px; align-self: stretch; align-items: center; justify-content: center; margin: -18px 0 -23px; }
 .attendance-illustration { display: block; width: 100%; max-width: 340px; overflow: visible; animation: dashboard-art-float 5s ease-in-out infinite; }
 .attendance-photo {

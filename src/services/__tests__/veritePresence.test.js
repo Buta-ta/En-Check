@@ -10,7 +10,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { nettoyerTexte } from '../../lib/nettoyageTexte'
-import { finPosteDepassee, libelleSansPointage } from '../../lib/etatPresence'
+import { construirePresentsAujourdhui, finPosteDepassee, libelleSansPointage } from '../../lib/etatPresence'
 
 describe('nettoyageTexte — garde d’affichage des noms', () => {
   it('retire le caractère de remplacement U+FFFD d’un nom', () => {
@@ -63,5 +63,63 @@ describe('finPosteDepassee — « absent » seulement après la fin du poste', (
     expect(libelleSansPointage(false, true)).toBe('pas encore pointé')
     expect(libelleSansPointage(true)).toBe('absents')
     expect(libelleSansPointage(true, true)).toBe('absent')
+  })
+})
+
+describe('construirePresentsAujourdhui — profils de la bannière hero', () => {
+  const pointage = (id, { first_name = '', last_name = '', photo_url = null, photoPointage = null } = {}) => ({
+    employee_id: id,
+    employees: { first_name, last_name, matricule: `M-${id}`, photo_url },
+    pointages_photos: photoPointage ? [{ id: `p-${id}`, photo_url: photoPointage }] : [],
+  })
+
+  it('dédoublonne par employé : deux pointages du jour = un profil', () => {
+    const presents = construirePresentsAujourdhui([
+      pointage('e1', { first_name: 'Awa', last_name: 'Kone' }),
+      pointage('e1', { first_name: 'Awa', last_name: 'Kone' }),
+      pointage('e2', { first_name: 'Ibrahim', last_name: 'Diop' }),
+    ])
+    expect(presents).toHaveLength(2)
+    expect(presents.map((p) => p.id)).toEqual(['e1', 'e2'])
+  })
+
+  it('conserve l’ordre des pointages (le plus récent d’abord)', () => {
+    const presents = construirePresentsAujourdhui([
+      pointage('e3', { first_name: 'Zina' }),
+      pointage('e1', { first_name: 'Awa' }),
+      pointage('e2', { first_name: 'Ibrahim' }),
+    ])
+    expect(presents.map((p) => p.id)).toEqual(['e3', 'e1', 'e2'])
+  })
+
+  it('la photo du pointage du jour prime sur la photo du profil', () => {
+    const presents = construirePresentsAujourdhui([
+      pointage('e1', { photo_url: 'https://cdn/profil.jpg', photoPointage: 'https://cdn/pointage.jpg' }),
+    ])
+    expect(presents[0].photo).toBe('https://cdn/pointage.jpg')
+  })
+
+  it('sans photo de pointage : la photo du profil, sinon null', () => {
+    const presents = construirePresentsAujourdhui([
+      pointage('e1', { photo_url: 'https://cdn/profil.jpg' }),
+      pointage('e2', {}),
+    ])
+    expect(presents[0].photo).toBe('https://cdn/profil.jpg')
+    expect(presents[1].photo).toBeNull()
+  })
+
+  it('compose nomComplet et tolère un employé sans nom', () => {
+    const presents = construirePresentsAujourdhui([
+      pointage('e1', { first_name: 'Awa', last_name: 'Kone' }),
+      pointage('e2', {}),
+    ])
+    expect(presents[0].nomComplet).toBe('Awa Kone')
+    expect(presents[1].nomComplet).toBe('')
+  })
+
+  it('ignore les pointages sans employé et accepte l’entrée vide', () => {
+    expect(construirePresentsAujourdhui([])).toEqual([])
+    expect(construirePresentsAujourdhui(null)).toEqual([])
+    expect(construirePresentsAujourdhui([{ employees: {} }])).toEqual([])
   })
 })

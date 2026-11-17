@@ -69,6 +69,7 @@ import {
 import { formaterHeureLocale, minutesDepuisMinuit, jourLocal } from '../utils/timezoneUtils'
 import { compterRetardsDuJour } from '../services/hoursCalculator'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
+import { construirePresentsAujourdhui } from '../lib/etatPresence'
 
 export { compterRetardsDuJour }
 
@@ -109,6 +110,7 @@ export default function Dashboard() {
     entreprises: 0, employes: 0, pointages: 0, presentsToday: 0,
     absentsToday: 0, congesToday: 0, retardsToday: 0, photosToday: 0,
     oublisSortie: 0, tauxPresence: 0, conflitsPending: 0,
+    presentsAujourdhui: [],
   })
 
   const [recentActivity, setRecentActivity] = useState([])
@@ -431,7 +433,7 @@ export default function Dashboard() {
     const todayHolidayData = await loadTodayHoliday(enterpriseId)
     await loadDashboardPauses(enterpriseId, attendancesToday, empSchedData, defSchedData)
 
-    setStats({ entreprises: entreprisesCount, employes: employesData.length, pointages: pointagesTotalRes.count || 0, presentsToday, absentsToday, congesToday, retardsToday, photosToday, oublisSortie, tauxPresence, conflitsPending })
+    setStats({ entreprises: entreprisesCount, employes: employesData.length, pointages: pointagesTotalRes.count || 0, presentsToday, absentsToday, congesToday, retardsToday, photosToday, oublisSortie, tauxPresence, conflitsPending, presentsAujourdhui: construirePresentsAujourdhui(attendancesToday) })
 
     setRecentActivity(recentData.map(item => {
       const isEntry = String(item.check_type || '').toLowerCase() === 'in'
@@ -553,7 +555,7 @@ export default function Dashboard() {
     setTodayHoliday(null)
     await loadDashboardPauses(null, attendancesToday, empSchedData, defSchedData)
 
-    setStats({ entreprises: entreprisesData.length || 0, employes: totalEmployes, pointages: pointagesTotalRes.count || 0, presentsToday, absentsToday, congesToday, retardsToday, photosToday, oublisSortie, tauxPresence, conflitsPending })
+    setStats({ entreprises: entreprisesData.length || 0, employes: totalEmployes, pointages: pointagesTotalRes.count || 0, presentsToday, absentsToday, congesToday, retardsToday, photosToday, oublisSortie, tauxPresence, conflitsPending, presentsAujourdhui: construirePresentsAujourdhui(attendancesToday) })
 
     setRecentActivity(recentData.map(item => {
       const isEntry = String(item.check_type || '').toLowerCase() === 'in'
