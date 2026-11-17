@@ -28,6 +28,19 @@ import {
   totalSecondesSerie,
   joursAbsencesPeriode,
   resumerTaches,
+  joursAnciennete,
+  normaliserTelephone,
+  lienWhatsApp,
+  lienAppel,
+  minutesEntreHeures,
+  chipsJoursTravailles,
+  serieSalaireAnnee,
+  totalSalaireAnnee,
+  tendanceSalaire,
+  echelleNice,
+  abreviationDevise,
+  libelleMontant,
+  libelleMontantCourt,
 } from '../../lib/employee360'
 
 describe('listeJoursInclusifs — itération de dates locales', () => {
@@ -402,5 +415,246 @@ describe('resumerTaches — le compte des tâches attribuées', () => {
       { id: 4, title: 'D', status: 'rejected', due_at: null, completed_at: '2026-11-09T10:00:00Z', validated_at: null },
     ]
     expect(resumerTaches(taches, '2026-11-15', '2026-11-01').terminees).toBe(2) // A + B (validation du mois)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────
+// REFONTE BENTO (17/11) — anciennete, contact, salaire, axes
+// ─────────────────────────────────────────────────────────────
+
+describe('joursAnciennete — des jours entiers, jamais negatifs', () => {
+  it('compte les jours depuis hire_date', () => {
+    expect(joursAnciennete('2026-10-15', new Date('2026-10-18T12:00:00Z'))).toBe(3)
+  })
+
+  it('null si hire_date inconnu ou invalide', () => {
+    expect(joursAnciennete(null, new Date('2026-10-18T12:00:00Z'))).toBeNull()
+    expect(joursAnciennete('demain', new Date('2026-10-18T12:00:00Z'))).toBeNull()
+  })
+
+  it('null si hire_date apres la reference (jamais de jour negatif)', () => {
+    expect(joursAnciennete('2026-11-01', new Date('2026-10-18T12:00:00Z'))).toBeNull()
+  })
+})
+
+describe('normaliserTelephone / liens de contact', () => {
+  it('garde le signe plus et les chiffres', () => {
+    expect(normaliserTelephone('+229 97 48 21 33')).toBe('+22997482133')
+    expect(normaliserTelephone('22997482133')).toBe('22997482133')
+    expect(normaliserTelephone('097482133 ')).toBe('097482133')
+  })
+
+  it('null sans numero exploitable', () => {
+    expect(normaliserTelephone('')).toBeNull()
+    expect(normaliserTelephone(null)).toBeNull()
+    expect(normaliserTelephone('+123')).toBeNull()
+  })
+
+  it('construit wa.me sans le signe plus', () => {
+    expect(lienWhatsApp('+229 97 48 21 33')).toBe('https://wa.me/22997482133')
+    expect(lienWhatsApp('pas un numero')).toBeNull()
+  })
+
+  it('construit le lien tel: avec le signe plus', () => {
+    expect(lienAppel('+229 97 48 21 33')).toBe('tel:+22997482133')
+    expect(lienAppel(null)).toBeNull()
+  })
+})
+
+describe('minutesEntreHeures — la pause, meme apres minuit', () => {
+  it('compte les minutes d une coupure classique', () => {
+    expect(minutesEntreHeures('12:30', '13:15')).toBe(45)
+  })
+
+  it('franchit minuit sans negatif', () => {
+    expect(minutesEntreHeures('23:30', '00:30')).toBe(60)
+  })
+
+  it('null sur des heures illisibles ou duree nulle', () => {
+    expect(minutesEntreHeures('12:30', '12:30')).toBeNull()
+    expect(minutesEntreHeures('xx', '12:30')).toBeNull()
+  })
+})
+
+describe('chipsJoursTravailles — work_days en chips lues', () => {
+  it('transforme [1,2,3,4,5] en Lun..Ven', () => {
+    expect(chipsJoursTravailles([1, 2, 3, 4, 5])).toEqual(['Lun', 'Mar', 'Mer', 'Jeu', 'Ven'])
+  })
+
+  it('trie, dedouble, ignore le hors-borne', () => {
+    expect(chipsJoursTravailles([5, 1, 1, 9, 0])).toEqual(['Lun', 'Ven'])
+    expect(chipsJoursTravailles(null)).toEqual([])
+  })
+})
+
+describe('serieSalaireAnnee — un bulletin par mois, jamais de zero invente', () => {
+  const bulletins = [
+    { period_start: '2026-01-01', period_end: '2026-01-31', gross_salary: 150000 },
+    { period_start: '2026-02-01', period_end: '2026-02-28', gross_salary: 155000 },
+    { period_start: '2026-11-01', period_end: '2026-11-30', gross_salary: 160000 },
+  ]
+
+  it('aligne les 12 mois sur la date du jour', () => {
+    const serie = serieSalaireAnnee(bulletins, '2026-11-15')
+    expect(serie).toHaveLength(12)
+    expect(serie[0]).toMatchObject({ mois: 1, montant: 150000, aVenir: false })
+    expect(serie[11].montant).toBeNull()
+    expect(serie[11].aVenir).toBe(true)
+  })
+
+  it('un mois sans bulletin vaut null (pas un 0)', () => {
+    const serie = serieSalaireAnnee(bulletins, '2026-11-15')
+    expect(serie[2].montant).toBeNull() // mars
+    expect(serie[10].montant).toBe(160000) // novembre
+  })
+
+  it('plusieurs bulletins sur un mois : le plus recent gagne', () => {
+    const serie = serieSalaireAnnee([
+      { period_start: '2026-03-01', period_end: '2026-03-31', gross_salary: 100 },
+      { period_start: '2026-03-01', period_end: '2026-03-15', gross_salary: 200 },
+    ], '2026-11-15')
+    expect(serie[2].montant).toBe(100)
+  })
+
+  it('ignore les bulletins des autres annees', () => {
+    const serie = serieSalaireAnnee(
+      [{ period_start: '2025-11-01', period_end: '2025-11-30', gross_salary: 999999 }],
+      '2026-11-15')
+    expect(serie.every((c) => c.montant === null)).toBe(true)
+  })
+})
+
+describe('totalSalaireAnnee — le brut de l annee, ou null', () => {
+  it('somme les bruts de l annee en cours', () => {
+    expect(totalSalaireAnnee([
+      { period_start: '2026-01-01', period_end: '2026-01-31', gross_salary: 100000 },
+      { period_start: '2026-02-01', period_end: '2026-02-28', gross_salary: 155000 },
+    ], '2026-11-15')).toBe(255000)
+  })
+
+  it('null sans bulletin (jamais un 0 qui ferait foi)', () => {
+    expect(totalSalaireAnnee([], '2026-11-15')).toBeNull()
+    expect(totalSalaireAnnee(
+      [{ period_start: '2025-01-01', period_end: '2025-01-31', gross_salary: 100000 }],
+      '2026-11-15')).toBeNull()
+  })
+})
+
+describe('tendanceSalaire — deux mois COMPLETS seulement', () => {
+  it('compare le dernier mois complet au precedent', () => {
+    const t = tendanceSalaire([
+      { period_start: '2026-09-01', period_end: '2026-09-30', gross_salary: 100000 },
+      { period_start: '2026-10-01', period_end: '2026-10-31', gross_salary: 112000 },
+    ], '2026-11-15')
+    expect(t).toMatchObject({ pct: 12, comparaison: 'oct. vs sept.' })
+  })
+
+  it('null si un des deux mois manque', () => {
+    expect(tendanceSalaire(
+      [{ period_start: '2026-10-01', period_end: '2026-10-31', gross_salary: 100000 }],
+      '2026-11-15')).toBeNull()
+  })
+
+  it('null si le mois de base est nul (pas de division par zero)', () => {
+    expect(tendanceSalaire([
+      { period_start: '2026-09-01', period_end: '2026-09-30', gross_salary: 0 },
+      { period_start: '2026-10-01', period_end: '2026-10-31', gross_salary: 100000 },
+    ], '2026-11-15')).toBeNull()
+  })
+
+  it('decembre en reference : compare novembre et octobre de l annee courante', () => {
+    const t = tendanceSalaire([
+      { period_start: '2026-10-01', period_end: '2026-10-31', gross_salary: 100000 },
+      { period_start: '2026-11-01', period_end: '2026-11-30', gross_salary: 80000 },
+    ], '2026-12-10')
+    expect(t.pct).toBe(-20)
+  })
+})
+
+describe('echelleNice — un plafond lisible qui contient le pic', () => {
+  it('monte a 200 pour un pic a 175', () => {
+    const e = echelleNice(175, 4)
+    expect(e.plafond).toBe(200)
+    expect(e.graduations).toEqual([0, 50, 100, 150, 200])
+    expect(e.plafond).toBeGreaterThanOrEqual(175)
+  })
+
+  it('monte a 200K pour un pic a 155000', () => {
+    const e = echelleNice(155000, 4)
+    expect(e.plafond).toBe(200000)
+    expect(e.graduations[4]).toBe(200000)
+  })
+
+  it('reste lisible sur les petits nombres', () => {
+    const e = echelleNice(3, 4)
+    expect(e.plafond).toBeGreaterThanOrEqual(3)
+    expect(e.graduations).toHaveLength(5)
+  })
+
+  it('sans pic : une echelle de secours, pas un zero diviseur', () => {
+    const e = echelleNice(0, 4)
+    expect(e.plafond).toBeGreaterThan(0)
+    expect(e.graduations).toHaveLength(5)
+  })
+})
+
+describe('libelles de montants — l unite sur chaque chiffre (P0)', () => {
+  it('libelleMontant garde la devise en clair', () => {
+    // fr-FR separe par une espace etroite insécable (U+202F) : on
+    // compare au format du moteur lui-meme, pas a une espace dure.
+    const n1745 = new Intl.NumberFormat('fr-FR').format(1745000)
+    const n155 = new Intl.NumberFormat('fr-FR').format(155000)
+    expect(libelleMontant(1745000, 'FCFA')).toBe(`${n1745} FCFA`)
+    expect(libelleMontant(155000, 'EUR')).toBe(`${n155} EUR`)
+    expect(libelleMontant(123)).toBe('123')
+    expect(libelleMontant('nan', 'FCFA')).toBe('—')
+  })
+
+  it('libelleMontantCourt abridge pour l axe', () => {
+    expect(libelleMontantCourt(150000)).toBe('150K')
+    expect(libelleMontantCourt(50000)).toBe('50K')
+    expect(libelleMontantCourt(1250)).toBe('1,3K')
+    expect(libelleMontantCourt(900)).toBe('900')
+  })
+
+  it('abreviationDevise raccourcit les couronnes de la region', () => {
+    expect(abreviationDevise('FCFA')).toBe('F')
+    expect(abreviationDevise('XOF')).toBe('F')
+    expect(abreviationDevise('EUR')).toBe('€')
+    expect(abreviationDevise('MAD')).toBe('DH')
+    expect(abreviationDevise('BRL')).toBe('BRL')
+  })
+})
+
+describe('rythmePlanning — chips de jours + duree de pause', () => {
+  const plan = {
+    start_time: '08:00:00', end_time: '17:00:00',
+    work_days: [1, 2, 3, 4, 5],
+    has_break: true, break_start: '12:30:00', break_end: '13:15:00',
+  }
+
+  it('ajoute joursListe et pauseMinutes aux champs existants', () => {
+    const r = rythmePlanning({ plan, tolerance: 15, perso: false })
+    expect(r.defini).toBe(true)
+    expect(r.joursListe).toEqual([1, 2, 3, 4, 5])
+    expect(r.pauseMinutes).toBe(45)
+    expect(r.journee).toBe('08:00 → 17:00')
+  })
+
+  it('sans pause declaree : pauseMinutes null', () => {
+    const r = rythmePlanning({ plan: { ...plan, has_break: false }, tolerance: null, perso: true })
+    expect(r.pauseMinutes).toBeNull()
+    expect(r.joursListe).toEqual([1, 2, 3, 4, 5])
+  })
+})
+
+describe('resumerTaches — le statut rejoint les echeances', () => {
+  it('expose le statut de chaque prochaine echeance', () => {
+    const r = resumerTaches([
+      { id: 1, title: 'A', status: 'in_progress', due_at: '2026-11-20T09:00:00Z', completed_at: null, validated_at: null },
+      { id: 2, title: 'B', status: 'assigned', due_at: '2026-11-25T09:00:00Z', completed_at: null, validated_at: null },
+    ], '2026-11-15', '2026-11-01')
+    expect(r.prochaines.map((t) => t.statut)).toEqual(['in_progress', 'assigned'])
+    expect(r.aVenirCount).toBe(2)
   })
 })
