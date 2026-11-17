@@ -18,6 +18,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import DashboardDesignPreview from './pages/DashboardDesignPreview'
 import Employes from './pages/Employes'
+import Employee360 from './pages/Employee360'
 import Pointages from './pages/Pointages'
 import Entreprises from './pages/Entreprises'
 import Rapports from './pages/Rapports'
@@ -266,6 +267,11 @@ function App() {
           <Route path="/employes" element={
             <AdminRoute>
               <Employes />
+            </AdminRoute>
+          } />
+          <Route path="/employes/:id" element={
+            <AdminRoute>
+              <Employee360 />
             </AdminRoute>
           } />
           <Route path="/pointages" element={
