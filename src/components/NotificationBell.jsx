@@ -85,9 +85,14 @@ function pageDeNotification(notification) {
   }
 }
 
+const LIMITE_AFFICHAGE = 30
+
 export default function NotificationBell({
   notifications = [],
   unreadCount = 0,
+  // Le compteur de la pastille = les éléments NON RÉSOLUS (actionnable).
+  // Les « non lues » restent visibles dans l'en-tête du panneau.
+  actionCount = 0,
   hasHighPriority = false,
   markAsRead,
   markAllAsRead,
@@ -101,7 +106,8 @@ export default function NotificationBell({
   const clocheRef = useRef(null)
   const navigate = useNavigate()
 
-  const urgente = hasHighPriority || unreadCount >= 3
+  // L'urgence suit les éléments NON RÉSOLUS, pas les simples non-lues.
+  const urgente = hasHighPriority || actionCount >= 3
 
   useEffect(() => {
     if (!ouvert) return undefined
@@ -124,8 +130,11 @@ export default function NotificationBell({
     ? notifications
     : notifications.filter((notification) => notification.category === categorieActive)
 
+  // Les pastilles des onglets comptent les éléments NON RÉSOLUS par
+  // catégorie — un objet « lu » mais toujours `pending` en base compte
+  // encore, c'est lui le signal utile.
   const compteurs = notifications.reduce((accumulateur, notification) => {
-    if (!notification.read) {
+    if (notification.actionnable) {
       accumulateur[notification.category] = (accumulateur[notification.category] || 0) + 1
     }
     return accumulateur
@@ -169,16 +178,17 @@ export default function NotificationBell({
       <button
         ref={clocheRef}
         type="button"
-        className={`cloche-bouton${ouvert ? ' est-ouvert' : ''}${unreadCount > 0 ? ' a-des-non-lues' : ''}${urgente ? ' est-urgente' : ''}`}
-        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} non lues` : 'Notifications'}
+        className={`cloche-bouton${ouvert ? ' est-ouvert' : ''}${actionCount > 0 ? ' a-des-non-lues' : ''}${urgente ? ' est-urgente' : ''}`}
+        aria-label={actionCount > 0 ? `À traiter, ${actionCount} élément${actionCount > 1 ? 's' : ''} non résolu${actionCount > 1 ? 's' : ''}` : 'Notifications'}
         aria-expanded={ouvert}
         aria-haspopup="dialog"
         onClick={() => setOuvert((valeur) => !valeur)}
       >
         <Bell size={20} aria-hidden="true" />
-        {unreadCount > 0 && (
+        {/* La pastille compte les éléments NON RÉSOLUS, pas les non lues. */}
+        {actionCount > 0 && (
           <span className={`cloche-pastille${urgente ? ' est-urgente' : ''}`} aria-hidden="true">
-            {unreadCount > 99 ? '99+' : unreadCount}
+            {actionCount > 99 ? '99+' : actionCount}
           </span>
         )}
       </button>
@@ -190,9 +200,11 @@ export default function NotificationBell({
             <div className="cloche-tete-texte">
               <h2>Notifications</h2>
               <p>
-                {unreadCount > 0
-                  ? `${unreadCount} non lue${unreadCount > 1 ? 's' : ''}`
-                  : 'Tout est lu'}
+                {actionCount > 0
+                  ? `${actionCount} à traiter`
+                  : unreadCount > 0
+                    ? `${unreadCount} non lue${unreadCount > 1 ? 's' : ''} — rien à traiter`
+                    : 'Tout est traité'}
               </p>
             </div>
             <div className="cloche-tete-actions">
@@ -210,7 +222,7 @@ export default function NotificationBell({
 
           <div className="cloche-onglets">
             {Object.entries(CATEGORIES).map(([cle, libelle]) => {
-              const nombre = cle === 'all' ? unreadCount : (compteurs[cle] || 0)
+              const nombre = cle === 'all' ? actionCount : (compteurs[cle] || 0)
               return (
                 <button
                   key={cle}
@@ -234,39 +246,55 @@ export default function NotificationBell({
                 <span>{categorieActive === 'all' ? 'Tout est en ordre.' : 'Dans cette catégorie.'}</span>
               </div>
             ) : (
-              filtrees.map((notification) => {
-                const { libelle, Icone } = pageDeNotification(notification)
-                return (
-                  <button
-                    key={notification.key}
-                    type="button"
-                    className={`cloche-item${notification.read ? '' : ' est-non-lue'}`}
-                    style={{ '--notif-teinte': notification.color || '#c1743c' }}
-                    onClick={() => ouvrirNotification(notification)}
-                  >
-                    <span className="cloche-item-medaillon" aria-hidden="true"><Icone size={18} /></span>
-                    <span className="cloche-item-corps">
-                      <span className="cloche-item-titre">{notification.title}</span>
-                      <span className="cloche-item-texte">{notification.subtitle}</span>
-                      <span className="cloche-item-pied">
-                        {libelle && (
-                          <span className="cloche-page">
-                            <span className="cloche-page-point" aria-hidden="true" />
-                            {libelle}
-                          </span>
-                        )}
-                        <span className="cloche-item-temps">{temps(notification.timestamp)}</span>
+              <>
+                {filtrees.slice(0, LIMITE_AFFICHAGE).map((notification) => {
+                  const { libelle, Icone } = pageDeNotification(notification)
+                  return (
+                    <button
+                      key={notification.key}
+                      type="button"
+                      className={`cloche-item${notification.read ? '' : ' est-non-lue'}`}
+                      style={{ '--notif-teinte': notification.color || '#c1743c' }}
+                      onClick={() => ouvrirNotification(notification)}
+                    >
+                      <span className="cloche-item-medaillon" aria-hidden="true"><Icone size={18} /></span>
+                      <span className="cloche-item-corps">
+                        <span className="cloche-item-titre">
+                          {notification.count > 1 && (
+                            <span className="cloche-item-compteur" aria-label={`${notification.count} éléments regroupés`}>
+                              ×{notification.count}
+                            </span>
+                          )}
+                          {notification.title}
+                        </span>
+                        <span className="cloche-item-texte">{notification.subtitle}</span>
+                        <span className="cloche-item-pied">
+                          {libelle && (
+                            <span className="cloche-page">
+                              <span className="cloche-page-point" aria-hidden="true" />
+                              {libelle}
+                            </span>
+                          )}
+                          <span className="cloche-item-temps">{temps(notification.timestamp)}</span>
+                        </span>
                       </span>
-                    </span>
-                    <ChevronRight size={15} className="cloche-item-chevron" aria-hidden="true" />
-                  </button>
-                )
-              })
+                      <ChevronRight size={15} className="cloche-item-chevron" aria-hidden="true" />
+                    </button>
+                  )
+                })}
+                {filtrees.length > LIMITE_AFFICHAGE && (
+                  <p className="cloche-liste-plafond">
+                    + {filtrees.length - LIMITE_AFFICHAGE} autre{filtrees.length - LIMITE_AFFICHAGE > 1 ? 's' : ''} dans la page liée
+                  </p>
+                )}
+              </>
             )}
           </div>
 
           <footer className="cloche-pied">
-            {notifications.length} notification{notifications.length > 1 ? 's' : ''}
+            {filtrees.length > 0
+              ? `${filtrees.length} ligne${filtrees.length > 1 ? 's' : ''} · ${actionCount} à traiter`
+              : 'Aucune notification'}
             {notifications.length > 0 ? ' · actualisation auto' : ''}
           </footer>
         </div>

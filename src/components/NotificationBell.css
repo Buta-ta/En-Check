@@ -271,6 +271,33 @@
 
 .cloche-item.est-non-lue .cloche-item-titre { font-weight: 750; }
 
+/* Pastille « ×N » d'une ligne agrégée : on voit d'un coup d'œil combien
+   d'éléments sont regroupés derrière la ligne. */
+.cloche-item-compteur {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 16px;
+  margin-right: 6px;
+  padding: 0 5px;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  background: var(--notif-teinte, var(--cloche-accent));
+  border-radius: 6px;
+  vertical-align: 1px;
+}
+
+/* Plafond de la liste : au-delà de 30 lignes, on pointe vers la page liée. */
+.cloche-liste-plafond {
+  margin: 4px 0 2px;
+  padding: 8px 14px;
+  color: var(--cloche-faible);
+  font-size: 10.5px;
+  text-align: center;
+}
+
 .cloche-item-texte {
   display: -webkit-box;
   overflow: hidden;

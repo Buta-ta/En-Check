@@ -50,6 +50,8 @@ import EnterpriseSwitcher from './EnterpriseSwitcher'
 import SidebarNavigation from './SidebarNavigation'
 import SidebarRail, { ContenuMenuProfil } from './SidebarRail'
 import { chargerRail, sauvegarderRail } from '../lib/navigationPerso'
+import { nettoyerTexte } from '../lib/nettoyageTexte'
+import { finPosteDepassee } from '../lib/etatPresence'
 import NotificationBell from './NotificationBell'
 import SystemMessageBanner from './SystemMessageBanner'
 import DashboardKenteAnalytics from './DashboardKenteAnalytics'
@@ -162,6 +164,7 @@ export default function DashboardExperience({
   loadError,
   notifications = [],
   unreadCount = 0,
+  actionCount = 0,
   hasHighPriority = false,
   markAsRead,
   markAllAsRead,
@@ -194,6 +197,11 @@ export default function DashboardExperience({
   const lateCount = Number(stats?.retardsToday) || 0
   const forgottenExits = Number(stats?.oublisSortie) || 0
   const conflictCount = conflictsPending.length || Number(stats?.conflitsPending) || 0
+  // « Absent » n'apparaît qu'après la fin du poste (heure locale de
+  // l'entreprise, seuil auto_close_time sinon 18 h) : avant, un salarié
+  // sans pointage est « pas encore pointé », pas une accusation.
+  const finPoste = finPosteDepassee(admin?.selectedEnterprise)
+  const libelleAbsents = finPoste ? 'Absents' : 'Pas encore pointés'
   const [liveNowMs, setLiveNowMs] = useState(() => Date.now())
 
   // Le panneau de la barre : replié = il ne reste que le rail d'icônes.
@@ -445,7 +453,7 @@ export default function DashboardExperience({
     { id: 'present', label: 'Ayant pointé aujourd’hui', description: 'Membres de l’équipe ayant pointé.', icon: UserCheck, value: loadError ? '—' : `${presentCount} / ${employeeCount}`, caption: metricCaption(`${presenceRate}% de l’équipe`), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Pointages', path: '/pointages?status=present' },
     { id: 'review', label: 'À traiter', description: 'Conflits, demandes et sorties à vérifier.', icon: ShieldCheck, value: metricValue(reviewCount, true), caption: metricCaption('Situations à examiner'), tone: 'review', progress: metricShare(reviewCount), sourceLabel: 'Activité', path: '/pointages' },
     { id: 'late', label: 'Retards', description: 'Arrivées après l’horaire prévu.', icon: Timer, value: metricValue(lateCount, true), caption: metricCaption('Retards du jour'), tone: 'late', progress: metricShare(lateCount), sourceLabel: 'Retards', path: isSuperAdmin || moduleRetards ? '/retards' : '/pointages?status=present', available: retardsOptionActive },
-    { id: 'absence', label: 'Absents', description: 'Membres sans pointage ni congé déclaré.', icon: UserX, value: metricValue(absentCount, true), caption: metricCaption('Sans pointage déclaré'), tone: 'absent', progress: metricShare(absentCount), sourceLabel: 'Pointages', path: '/pointages?status=absent' },
+    { id: 'absence', label: libelleAbsents, description: finPoste ? 'Membres sans pointage ni congé déclaré, fin de poste dépassée.' : 'Membres sans pointage ni congé déclaré — le poste n’est pas terminé.', icon: UserX, value: metricValue(absentCount, true), caption: metricCaption(finPoste ? 'Sans pointage déclaré' : 'Poste non terminé'), tone: 'absent', progress: metricShare(absentCount), sourceLabel: 'Pointages', path: '/pointages?status=absent' },
     { id: 'leaves', label: 'Congés / maladie', description: 'Absences autorisées aujourd’hui.', icon: CalendarOff, value: metricValue(leaveCount, true), caption: metricCaption('Congés ou maladie'), tone: 'leave', progress: metricShare(leaveCount), sourceLabel: 'Absences', path: '/absences', available: isSuperAdmin || moduleConges },
     { id: 'presence-rate', label: 'Taux de pointage', description: 'Part de l’équipe ayant pointé aujourd’hui.', icon: TrendingUp, value: metricValue(`${presenceRate}%`), caption: metricCaption('Taux du jour'), tone: 'present', progress: loadError ? null : presenceRate, sourceLabel: 'Rapports', path: '/rapports' },
     { id: 'punches', label: 'Pointages enregistrés', description: 'Entrées et sorties du jour.', icon: Clock, value: metricValue(Number(stats?.pointages) || 0), caption: metricCaption('Pointages aujourd’hui'), tone: 'neutral', sourceLabel: 'Pointages', path: '/pointages' },
@@ -704,7 +712,12 @@ export default function DashboardExperience({
          ici, simple rappel de l'entreprise affichée. */
       return (
         <div className="topbar-company">
-          <span className="dashboard-meta-chip">{entrepriseChipIcon}{selectedEnterpriseName}</span>
+          {/* Chip étiquetée : on lit « Entreprise : EN-NOUS », pas juste un
+              nom flottant qu'on devine. */}
+          <span className="dashboard-meta-chip chip-entreprise">
+            <span className="chip-entreprise-label" aria-hidden="true">Entreprise</span>
+            {entrepriseChipIcon}{selectedEnterpriseName}
+          </span>
         </div>
       )
     }
@@ -720,7 +733,7 @@ export default function DashboardExperience({
     if (itemId === 'notifications') {
       return (
         <div className="topbar-icon-button">
-          <NotificationBell notifications={notifications} unreadCount={unreadCount} hasHighPriority={hasHighPriority} markAsRead={markAsRead} markAllAsRead={markAllAsRead} />
+          <NotificationBell notifications={notifications} unreadCount={unreadCount} actionCount={actionCount} hasHighPriority={hasHighPriority} markAsRead={markAsRead} markAllAsRead={markAllAsRead} />
         </div>
       )
     }
@@ -1259,25 +1272,28 @@ export default function DashboardExperience({
                   <div className="dashboard-panel-heading">
                     <div className="dashboard-panel-title-wrap">
                       <span className="dashboard-panel-icon"><Building2 size={16} /></span>
-                      <div><h2 className="dashboard-panel-title">Entreprises actives</h2><p className="dashboard-panel-subtitle">Taux de présence aujourd’hui.</p></div>
+                      <div><h2 className="dashboard-panel-title">Entreprises actives</h2><p className="dashboard-panel-subtitle">Toutes les entreprises · aujourd’hui.</p></div>
                     </div>
                     <button type="button" className="dashboard-panel-link" onClick={() => navigate('/entreprises')}>Gérer <ArrowRight size={13} /></button>
                   </div>
                   {topEntreprises.length > 0 ? (
                     <div className="dashboard-company-list">
-                      {topEntreprises.slice(0, 4).map((enterprise, index) => (
-                        <div className="dashboard-company-row" key={enterprise.id}>
-                          <span className="dashboard-company-rank">{index + 1}</span>
-                          <span className="dashboard-company-logo">
-                            {enterprise.logo_url ? <img src={enterprise.logo_url} alt="" /> : <Building2 size={15} />}
-                          </span>
-                          <span className="dashboard-company-copy">
-                            <span className="dashboard-company-name">{enterprise.name}</span>
-                            <span className="dashboard-company-meta">{enterprise.presentsToday}/{enterprise.employeesCount} ont pointé</span>
-                          </span>
-                          <strong className="dashboard-company-rate">{enterprise.tauxPresence}%</strong>
-                        </div>
-                      ))}
+                      {topEntreprises.slice(0, 4).map((enterprise, index) => {
+                        const effectif = Number(enterprise.employeesCount) || 0
+                        return (
+                          <div className="dashboard-company-row" key={enterprise.id}>
+                            <span className="dashboard-company-rank">{index + 1}</span>
+                            <span className="dashboard-company-logo">
+                              {enterprise.logo_url ? <img src={enterprise.logo_url} alt="" /> : <Building2 size={15} />}
+                            </span>
+                            <span className="dashboard-company-copy">
+                              <span className="dashboard-company-name">{nettoyerTexte(enterprise.name)}</span>
+                              <span className="dashboard-company-meta">{effectif ? `${enterprise.presentsToday}/${effectif} ont pointé` : 'Aucun employé actif'}</span>
+                            </span>
+                            <strong className="dashboard-company-rate">{effectif ? `${enterprise.tauxPresence}%` : '—'}</strong>
+                          </div>
+                        )
+                      })}
                     </div>
                   ) : (
                     <div className="dashboard-empty-state"><span className="dashboard-empty-state-icon"><Building2 size={18} /></span><strong>Aucune donnée disponible</strong><span>Les entreprises apparaîtront ici une fois les données chargées.</span></div>
@@ -1294,7 +1310,7 @@ export default function DashboardExperience({
                   <div className="dashboard-distribution-list">
                     {[
                       { label: 'Ayant pointé', value: presentCount, color: 'var(--good)' },
-                      { label: 'Absents', value: absentCount, color: 'var(--danger)' },
+                      { label: libelleAbsents, value: absentCount, color: 'var(--danger)' },
                       { label: 'Congés / maladie', value: leaveCount, color: 'var(--violet)' },
                     ].map((item) => {
                       const ratio = employeeCount > 0 ? Math.min((item.value / employeeCount) * 100, 100) : 0
@@ -1306,7 +1322,7 @@ export default function DashboardExperience({
                       )
                     })}
                   </div>
-                  <div className="dashboard-summary-inline"><span>Taux de présence enregistré</span><strong>{presenceRate}%</strong></div>
+                  <div className="dashboard-summary-inline"><span>Taux de présence enregistré</span><strong>{employeeCount > 0 ? `${presenceRate}%` : '—'}</strong></div>
                 </article>
               )}
             </section>
