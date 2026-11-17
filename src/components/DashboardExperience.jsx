@@ -11,6 +11,7 @@ import {
   Camera,
   CheckCircle2,
   ChevronDown,
+  Cpu,
   ChevronRight,
   ChevronsLeft,
   Clock,
@@ -280,11 +281,14 @@ export default function DashboardExperience({
     ? 'Bonjour'
     : currentTime?.getHours() < 18 ? 'Bon après-midi' : 'Bonsoir'
 
-  // La barre suit le modèle 2 niveaux de la maquette : six rubriques
+  // La barre suit le modèle 2 niveaux de la maquette : rubriques
   // (une icône par rubrique sur le rail), leurs sous-éléments dans le
-  // panneau. Tout ce qui est matériel, plateforme ou configuration vit
-  // sous Réglages — le quotidien reste en tête. Les teintes bogolan
-  // tournent par rubrique (cuivre, terre, olive, ambre, ardoise, cuivre).
+  // panneau. Le quotidien du client reste en tête ; la configuration
+  // du produit vit sous Réglages ; les outils de LA PLATEFORME
+  // (super admin) vivent sous « En-Check interne » — rien de
+  // l'intérieur de la maison ne se mélange au quotidien du client.
+  // Les teintes bogolan tournent par rubrique (cuivre, terre, olive,
+  // ambre, ardoise, cuivre, terre).
   const navigationSections = [
     {
       id: 'accueil',
@@ -349,19 +353,30 @@ export default function DashboardExperience({
         // Les enrôlements et leurs réglages sont un seul écran : une seule
         // entrée pour la reconnaissance faciale.
         { label: 'Reconnaissance faciale', icon: ScanFace, path: '/reconnaissance-faciale', show: isSuperAdmin || moduleRecoFaciale },
-        { label: 'Entreprises', icon: Building2, path: '/entreprises', show: isSuperAdmin },
-        { label: 'Administrateurs', icon: ShieldCheck, path: '/admins', show: isSuperAdmin },
-        { label: 'Messages système', icon: Bell, path: '/system-messages', show: isSuperAdmin },
-        { label: 'Prospection', icon: TrendingUp, path: '/prospection', show: isSuperAdmin },
-        { label: 'Analytics du site', icon: TrendingUp, path: '/analytics', show: isSuperAdmin },
         // Point d'entrée unique de toutes les personnalisations (tableau,
         // actions, cartes, navigation). Sans chemin : il ne fait pas partie
         // du modèle de navigation et se fixe en fin de rubrique.
         { label: 'Personnalisation', icon: SlidersHorizontal, show: true, rubrique: 'reglages' },
-        // Page de développement : gardée au bas de la rubrique.
-        { label: 'Test IA (isolé)', icon: Sparkles, path: '/test-ia', show: isSuperAdmin },
       ],
     },
+    // L'intérieur de la maison : le portefeuille, les comptes, les
+    // messages de la plateforme, la vente et les outils de
+    // développement. Visible seulement au super admin — pour un
+    // client, En-Check se règle, elle ne s'ouvre pas.
+    ...(isSuperAdmin ? [{
+      id: 'interne',
+      label: 'En-Check interne',
+      icon: Cpu,
+      items: [
+        { label: 'Entreprises', icon: Building2, path: '/entreprises', show: true },
+        { label: 'Administrateurs', icon: ShieldCheck, path: '/admins', show: true },
+        { label: 'Messages système', icon: Bell, path: '/system-messages', show: true },
+        { label: 'Prospection', icon: TrendingUp, path: '/prospection', show: true },
+        { label: 'Analytics du site', icon: TrendingUp, path: '/analytics', show: true },
+        // Page de développement : gardée au bas de la rubrique.
+        { label: 'Test IA (isolé)', icon: Sparkles, path: '/test-ia', show: true },
+      ],
+    }] : []),
   ]
 
   const handleNavigation = (item) => {
