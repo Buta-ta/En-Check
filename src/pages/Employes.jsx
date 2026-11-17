@@ -14,6 +14,7 @@ import {
   Footprints, Users, Plus, ArrowLeft, Search, Edit, Trash2, X, Save,
   Eye, EyeOff, Camera, Upload, QrCode, Clock, Share2, AlertTriangle,
   BarChart2, ChevronDown, ChevronUp, Zap, Activity, ArrowRight, UserPlus,
+  Coffee, CalendarX,
   Briefcase, Hash, Mail, Phone, Building2, Shield,
   Key, Lock, UserCheck, UserX, Calendar, Heart, Globe, CreditCard,
   FileText, Award, User, MapPin, Flag, Baby, Layers, Radio, ClipboardList, Network
@@ -25,32 +26,30 @@ import ModaleHoraires from '../components/employes/ModaleHoraires'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import EmployesLoadingScreen from '../components/EmployesLoadingScreen'
 import FicheEmployeModal from '../components/FicheEmployeModal'
-import { EmployesCulturalHero } from '../components/EmployesAfroTechSections'
 import EntreeEmploye from '../components/equipes/EntreeEmploye'
-import { Folio, Colophon } from '../components/zoulou/RegistreEntete'
-import { RosacePerlesSvg } from '../components/zoulou/PerlesZoulouSvg'
 import { useTheme } from '../contexts/ThemeContext'
 import RaccourcisPages from '../components/RaccourcisPages'
 import EquipesVue from '../components/equipes/EquipesVue'
 import TachesVue from '../components/taches/TachesVue'
 import '../components/zoulou/zoulou.css'
+import './EmployesRefonte.css'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
-import { formaterHeureLocale, jourLocal } from '../utils/timezoneUtils'
+import { formaterHeureLocale, jourLocal, minutesDepuisMinuit } from '../utils/timezoneUtils'
 
-// ── les filtres de l'annuaire, en perles ───────────────────
-// Chacun répond à une question qu'on se pose vraiment devant la
-// liste : qui travaille maintenant, qui n'a pas encore son portail,
-// qui est en CDI… Aucun filtre n'est décoratif.
+// Les filtres de la refonte : l'état de la journée d'abord —
+// devant la liste, c'est la présence qui compte — puis le compte
+// portail. Chacun correspond à un état réellement mesuré.
+// Dix minutes de tolérance avant de parler de retard : une arrivée à
+// 08:05 pour un poste qui commence à 08:00 n'est pas un retard.
+const RETARD_TOLERANCE_MINUTES = 10
+
 const FILTRES_ANNUAIRE = [
-  { key: 'all', label: 'Tout le monde' },
-  { key: 'live_on_duty', label: 'En poste', ton: 'teal' },
-  { key: 'portal_active', label: 'Portail ouvert', ton: 'sauge' },
-  { key: 'portal_migrate', label: 'À migrer', ton: 'corail' },
-  { key: 'contract_CDI', label: 'CDI' },
-  { key: 'contract_CDD', label: 'CDD' },
-  { key: 'contract_other', label: 'Autres contrats' },
-  { key: 'sched_free', label: 'Sans horaire' },
-  { key: 'no_machine_pin', label: 'Sans pointeuse' },
+  { key: 'all', label: 'Tous' },
+  { key: 'live_en_poste', label: 'En poste', pastille: '#3ddc84' },
+  { key: 'live_en_pause', label: 'En pause', pastille: '#c9a961' },
+  { key: 'live_retard', label: 'Retard', pastille: '#d98a4a' },
+  { key: 'live_absent', label: 'Absent', pastille: '#d97f8f' },
+  { key: 'sans_compte', label: 'Sans compte', pastille: '#8d7f68' },
 ]
 
 // Une part réelle, ou un tiret quand il n'y a rien à diviser.
@@ -133,7 +132,6 @@ export default function Employes() {
   const [selectedEnterpriseFilter, setSelectedEnterpriseFilter] = useState('all')
   const { darkMode, toggleTheme } = useTheme()
 
-  const [weeklyStats, setWeeklyStats] = useState({})
 
   const [showModal, setShowModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -405,7 +403,6 @@ export default function Employes() {
           return { ...emp, employee_schedules: schedule ? [schedule] : [] }
         })
 
-        await calculateWeeklyStats(employeeIds, targetEnterpriseId)
         await loadTodayLiveEmployeeStatus(employesAvecHoraires, targetEnterpriseId)
       }
 
@@ -448,39 +445,6 @@ export default function Employes() {
       }
     } catch (error) { console.error('Erreur chargement:', error) }
     setLoading(false)
-  }
-
-  const calculateWeeklyStats = async (employeeIds, enterpriseId) => {
-    const now = new Date()
-    const day = now.getDay()
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1)
-    const monday = new Date(now.setDate(diff))
-    monday.setHours(0, 0, 0, 0)
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-    sunday.setHours(23, 59, 59, 999)
-
-    const { data: attendances } = await supabase
-      .from('attendances')
-      .select('employee_id, check_time, check_type')
-      .in('employee_id', employeeIds)
-      .gte('check_time', monday.toISOString())
-      .lte('check_time', sunday.toISOString())
-      .order('check_time', { ascending: true })
-
-    const stats = {}
-    employeeIds.forEach(empId => {
-      const empPoints = (attendances || []).filter(a => a.employee_id === empId)
-      let totalSeconds = 0, lastIn = null
-      empPoints.forEach(pt => {
-        if (pt.check_type === 'in') lastIn = new Date(pt.check_time)
-        else if (pt.check_type === 'out' && lastIn) { totalSeconds += (new Date(pt.check_time) - lastIn) / 1000; lastIn = null }
-      })
-      const hours = Math.floor(totalSeconds / 3600)
-      const minutes = Math.floor((totalSeconds % 3600) / 60)
-      stats[empId] = { totalSeconds, hours, minutes, label: `${hours}h ${minutes}m`, percentage: Math.min((hours / 40) * 100, 100) }
-    })
-    setWeeklyStats(stats)
   }
 
   const loadTodayLiveEmployeeStatus = async (employesList, targetEnterpriseId) => {
@@ -546,6 +510,27 @@ export default function Employes() {
 
         const activePause = empPauses.find((pa) => pa.ouverte) || null
         const firstIn = empAtts.find((a) => String(a.check_type || '').toLowerCase() === 'in') || null
+
+        // Le départ prévu, au fuseau de l'entreprise. Sans horaire connu,
+        // il n'y a pas de retard à mesurer — on n'invente pas un référent.
+        const departHHMM = sched?.use_custom_hours ? sched.custom_start_time
+          : (sched?.schedule_id ? sched.work_schedules?.start_time : null)
+        const departMinutes = departHHMM && /^\d{2}:\d{2}/.test(departHHMM)
+          ? Number(departHHMM.slice(0, 2)) * 60 + Number(departHHMM.slice(3, 5))
+          : null
+        let retardMinutes = null
+        if (departMinutes !== null) {
+          const maintenant = minutesDepuisMinuit(new Date().toISOString())
+          if (firstIn) {
+            const arrivee = minutesDepuisMinuit(firstIn.check_time)
+            if (arrivee !== null && arrivee - departMinutes >= RETARD_TOLERANCE_MINUTES) {
+              retardMinutes = arrivee - departMinutes
+            }
+          } else if (maintenant - departMinutes >= RETARD_TOLERANCE_MINUTES) {
+            // pas encore pointé, et le poste a démarré : on compte les minutes
+            retardMinutes = maintenant - departMinutes
+          }
+        }
         const lastPunch = empAtts.length > 0 ? empAtts[empAtts.length - 1] : null
         const lastOut = lastPunch && String(lastPunch.check_type || '').toLowerCase() === 'out' ? lastPunch : null
 
@@ -563,6 +548,7 @@ export default function Employes() {
           pausesCount: empPauses.length,
           unplannedPausesCount: empPauses.filter((pa) => pa.estNonPlanifiee).length,
           totalPauseMinutes: empPauses.reduce((acc, pa) => acc + (Number(pa.dureeMinutes) || 0), 0),
+          retardMinutes,
         }
       }
 
@@ -874,22 +860,6 @@ export default function Employes() {
     }
   }
 
-  const getEmployeeScheduleInfo = (employee) => {
-    const entreprise = employee.enterprises
-    const moduleActif = admin?.role === 'super_admin' || entreprise?.module_planning
-    if (!moduleActif) return null
-    const scheduleData = employee.employee_schedules?.[0]
-    if (!scheduleData) return 'Non défini'
-    if (scheduleData.use_custom_hours) {
-      const start = scheduleData.custom_start_time?.slice(0, 5) || '--:--'
-      const end = scheduleData.custom_end_time?.slice(0, 5) || '--:--'
-      return `${start} - ${end}`
-    }
-    if (scheduleData.schedule_id && scheduleData.work_schedules) return scheduleData.work_schedules.name
-    if (scheduleData.schedule_id) return 'Planning attribué'
-    return 'Non défini'
-  }
-
   const isModulePlanningEnabled = (employee) => {
     if (admin?.role === 'super_admin') return true
     return employee.enterprises?.module_planning || false
@@ -915,50 +885,21 @@ export default function Employes() {
     return labels[type] || type || ''
   }
 
-  const getClassificationLabel = (cls) => {
-    const labels = { cadre: 'Cadre', agent_maitrise: 'Agent de maîtrise', employe: 'Employé', ouvrier: 'Ouvrier', stagiaire: 'Stagiaire' }
-    return labels[cls] || cls || ''
-  }
-
-  const calculateSeniority = (hireDate) => {
-    if (!hireDate) return null
-    const hire = new Date(hireDate)
-    const now = new Date()
-    const years = now.getFullYear() - hire.getFullYear()
-    const months = now.getMonth() - hire.getMonth()
-    if (years > 0) return `${years} an${years > 1 ? 's' : ''}${months > 0 ? ` ${months}m` : ''}`
-    if (months > 0) return `${months} mois`
-    return 'Nouveau'
-  }
-
   // ═══════════════════════════════════════════════════════════
   // FILTRAGE
   // ═══════════════════════════════════════════════════════════
-
-  const hasDefaultPlanByEnterprise = new Set(
-    (plannings || []).filter((pl) => pl.is_default && pl.is_active !== false).map((pl) => pl.enterprise_id)
-  )
 
   const employesFiltres = employes.filter(emp => {
     if (selectedEnterpriseFilter !== 'all' && emp.enterprise_id !== selectedEnterpriseFilter) {
       return false
     }
     if (categoryFilter !== 'all') {
-      const sched = emp.employee_schedules?.[0]
-      const hasPersonal = Boolean(sched && (sched.use_custom_hours || sched.schedule_id))
-      const hasGeneral = !hasPersonal && emp.enterprises?.module_planning !== false && hasDefaultPlanByEnterprise.has(emp.enterprise_id)
-      const st = liveStatusByEmployee[emp.id]
-      if (categoryFilter === 'portal_active' && !(emp.employee_portal_enabled && aUnCompteEmploye(emp))) return false
-      if (categoryFilter === 'portal_migrate' && !estAncienSysteme(emp)) return false
-      if (categoryFilter === 'machine_pin' && !emp.machine_pin) return false
-      if (categoryFilter === 'no_machine_pin' && emp.machine_pin) return false
-      if (categoryFilter === 'sched_personal' && !hasPersonal) return false
-      if (categoryFilter === 'sched_general' && !hasGeneral) return false
-      if (categoryFilter === 'sched_free' && (hasPersonal || hasGeneral)) return false
-      if (categoryFilter === 'contract_CDI' && emp.contract_type !== 'CDI') return false
-      if (categoryFilter === 'contract_CDD' && emp.contract_type !== 'CDD') return false
-      if (categoryFilter === 'contract_other' && (!emp.contract_type || emp.contract_type === 'CDI' || emp.contract_type === 'CDD')) return false
-      if (categoryFilter === 'live_on_duty' && !(st?.state === 'en_poste' || st?.state === 'en_pause' || st?.state === 'termine')) return false
+      const statut = liveStatusByEmployee[emp.id]
+      if (categoryFilter === 'live_en_poste' && statut?.state !== 'en_poste') return false
+      if (categoryFilter === 'live_en_pause' && statut?.state !== 'en_pause') return false
+      if (categoryFilter === 'live_retard' && (statut?.retardMinutes ?? null) === null) return false
+      if (categoryFilter === 'live_absent' && statut?.state !== 'en_conge') return false
+      if (categoryFilter === 'sans_compte' && aUnCompteEmploye(emp)) return false
     }
     const search = searchTerm.toLowerCase()
     if (!search) return true
@@ -993,7 +934,6 @@ export default function Employes() {
     return 'Planning non disponible dans En-Check'
   }
 
-  const departments = [...new Set(employes.map(e => e.department).filter(Boolean))]
 
   // ═══════════════════════════════════════════════════════════
   // LES CHIFFRES DU REGISTRE — annuaire
@@ -1001,14 +941,16 @@ export default function Employes() {
   // ═══════════════════════════════════════════════════════════
   const suiviPresence = Object.keys(liveStatusByEmployee || {}).length > 0
   const liveCounts = employes.reduce((compte, employe) => {
-    const etat = liveStatusByEmployee?.[employe.id]?.state
+    const statut = liveStatusByEmployee?.[employe.id]
+    const etat = statut?.state
     if (etat === 'en_poste') compte.enPoste += 1
     else if (etat === 'en_pause') compte.enPause += 1
     else if (etat === 'termine') compte.termine += 1
     else if (etat === 'en_conge') compte.enConge += 1
     else compte.nonPointe += 1
+    if (statut?.retardMinutes != null) compte.retards += 1
     return compte
-  }, { enPoste: 0, enPause: 0, termine: 0, enConge: 0, nonPointe: 0 })
+  }, { enPoste: 0, enPause: 0, termine: 0, enConge: 0, nonPointe: 0, retards: 0 })
   const enrollmentCounts = employes.reduce((compte, employe) => {
     if (aUnCompteEmploye(employe) && employe.employee_portal_enabled) compte.portal += 1
     if (estAncienSysteme(employe)) compte.toMigrate += 1
@@ -1034,15 +976,18 @@ export default function Employes() {
   // ═══════════════════════════════════════════════════════════
   const vueDemandee = searchParams.get('vue')
   const vueAutorisee = moduleTaches || admin?.role === 'super_admin'
+  // L'annuaire n'est plus un onglet : c'est la page elle-même.
+  // vueActive = 'equipes' | 'taches' | null (null = la liste).
   const vueActive = vueAutorisee && (vueDemandee === 'equipes' || vueDemandee === 'taches')
     ? vueDemandee
-    : 'annuaire'
+    : null
   const entrepriseDesVues = selectedEnterpriseFilter !== 'all'
     ? selectedEnterpriseFilter
     : (admin?.selectedEnterprise?.id || admin?.enterprise_id || null)
 
   const changerVue = (cle) => {
-    setSearchParams(cle === 'annuaire' ? {} : { vue: cle }, { replace: true })
+    // Re-cliquer l'onglet actif rabat sur la liste.
+    setSearchParams(cle === vueActive ? {} : { vue: cle }, { replace: true })
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1069,108 +1014,36 @@ export default function Employes() {
       `}</style>
 
       <div className="pointages-afrotech-shell" data-theme={darkMode ? 'dark' : 'light'} style={styles.container}>
-        <EmployesCulturalHero
-          totalCount={employesFiltres.length}
-          departmentsCount={departments.length}
-          entreprises={entreprises}
-          selectedEnterpriseId={selectedEnterpriseFilter}
-          onSelectEnterprise={(val) => setSelectedEnterpriseFilter(val)}
-          darkMode={darkMode}
-          onToggleTheme={toggleTheme}
-          onBackDashboard={() => navigate('/dashboard')}
-          onAddEmployee={vueActive === 'annuaire' ? handleAdd : undefined}
-        />
+        <PageCulturalBand pathname="/employes" />
 
         {/* ═══ MAIN ═══ */}
         <main style={styles.main}>
-          <div className="emp-barre">
-            <nav className="emp-onglets" aria-label="Vues de la page Employés">
-            <p className="emp-onglets-titre">Sommaire</p>
-            {[
-              { cle: 'annuaire', libelle: 'Annuaire', icone: Users },
-              ...(vueAutorisee
-                ? [
-                  { cle: 'equipes', libelle: 'Équipes', icone: Network },
-                  { cle: 'taches', libelle: 'Tâches', icone: ClipboardList },
-                ]
-                : []),
-            ].map(({ cle, libelle, icone: Icone }) => (
-              <button
-                key={cle}
-                type="button"
-                className="emp-onglet"
-                aria-current={vueActive === cle ? 'page' : undefined}
-                onClick={() => changerVue(cle)}
-              >
-                <Icone size={15} /> {libelle}
-                </button>
-              ))}
-            </nav>
-
-            {/* les raccourcis de pages : en haut à droite, jamais en bas */}
-            <div className="emp-barre-raccourcis">
-              <RaccourcisPages compact excludePaths={['/employes']} />
-            </div>
-          </div>
-
-          {vueActive === 'annuaire' && (
-            <div className="emp-vues rg-annuaire">
-              <Folio droite="Registre du personnel" />
-
-              <header className="rg-tete">
-                <div>
-                  <p className="rg-eyebrow">Tout le personnel</p>
-                  <h2 className="rg-titre">Annuaire<span>.</span></h2>
-                </div>
-                <Colophon
-                  chiffres={[
-                    {
-                      valeur: employes.length,
-                      libelle: 'Employés',
-                      note: departments.length > 0
-                        ? `${departments.length} département${departments.length > 1 ? 's' : ''}`
-                        : '—',
-                    },
-                    {
-                      valeur: suiviPresence ? liveCounts.enPoste : '—',
-                      libelle: 'En poste',
-                      note: suiviPresence
-                        ? `${liveCounts.enPause} en pause · ${liveCounts.nonPointe} non pointé${liveCounts.nonPointe > 1 ? 's' : ''}`
-                        : 'pointage non suivi',
-                    },
-                    {
-                      valeur: enrollmentCounts.portal,
-                      libelle: 'Portail',
-                      note: employes.length > 0
-                        ? `${pourcent(enrollmentCounts.portal, employes.length)} de l’effectif`
-                        : '—',
-                    },
-                    {
-                      valeur: enrollmentCounts.toMigrate,
-                      libelle: 'À migrer',
-                      note: enrollmentCounts.toMigrate > 0
-                        ? 'portail à activer'
-                        : '—',
-                      ton: enrollmentCounts.toMigrate > 0 ? 'corail' : 'normal',
-                    },
-                  ]}
-                />
-              </header>
-
-              <div className="rg-outils">
-                <label className="rg-recherche">
+          {/* la ligne de titre : Employés · le compte — la recherche
+              et l'ajout, à droite */}
+          <div className="empv2-tete">
+            <h1 className="empv2-titre">
+              Employés
+              {vueActive === null && (
+                <span className="empv2-titre-compte">
+                  {employes.length} personne{employes.length > 1 ? 's' : ''}
+                </span>
+              )}
+            </h1>
+            {vueActive === null && (
+              <div className="empv2-tete-actions">
+                <label className="empv2-recherche">
                   <Search size={14} />
                   <input
                     type="search"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Rechercher un nom, un matricule, un poste"
+                    placeholder="Rechercher un nom, un matricule, un poste..."
                     aria-label="Rechercher un employé"
                   />
                   {searchTerm && (
                     <button
                       type="button"
-                      className="rg-recherche-effacer"
+                      className="empv2-recherche-effacer"
                       onClick={() => setSearchTerm('')}
                       aria-label="Effacer la recherche"
                     >
@@ -1178,34 +1051,92 @@ export default function Employes() {
                     </button>
                   )}
                 </label>
+                <button type="button" className="empv2-nouvel" onClick={handleAdd}>
+                  <UserPlus size={14} /> Nouvel employé
+                </button>
+              </div>
+            )}
+          </div>
 
-                <p className="rg-compte">
-                  {employesFiltres.length} sur {employes.length} affiché{employesFiltres.length > 1 ? 's' : ''}
-                </p>
-
-                <div className="rg-actions">
+          {/* Les deux vues optionnelles. L'annuaire n'est plus un
+              onglet : c'est la page — re-cliquer l'onglet actif
+              rabat sur la liste. */}
+          <div className="empv2-tetes">
+            {vueAutorisee && (
+              <nav className="empv2-onglets" aria-label="Vues de la page Employés">
+                {[
+                  { cle: 'equipes', libelle: 'Équipes', icone: Network },
+                  { cle: 'taches', libelle: 'Tâches', icone: ClipboardList },
+                ].map(({ cle, libelle, icone: Icone }) => (
                   <button
+                    key={cle}
                     type="button"
-                    className="rg-lien"
-                    onClick={() => { if (admin) loadData(admin) }}
+                    className="empv2-onglet"
+                    aria-current={vueActive === cle ? 'page' : undefined}
+                    onClick={() => changerVue(cle)}
                   >
-                    Rafraîchir
+                    <Icone size={14} /> {libelle}
                   </button>
-                  <button type="button" className="rg-primaire" onClick={handleAdd}>
-                    <UserPlus size={14} /> Ajouter un employé
-                  </button>
+                ))}
+              </nav>
+            )}
+            {/* les raccourcis de pages : en haut à droite, jamais en bas */}
+            <div className="empv2-raccourcis">
+              <RaccourcisPages compact excludePaths={['/employes']} />
+            </div>
+          </div>
+
+          {vueActive === null && (
+            <div className="empv2-annuaire">
+              {/* le bandeau de chiffres : tout est compté sur le
+                  personnel chargé, jamais une estimation */}
+              <div className="empv2-kpis" aria-label="Chiffres du personnel">
+                <div className="empv2-kpi">
+                  <div className="empv2-kpi-haut">
+                    <strong>{employes.length}</strong>
+                    <Users size={15} aria-hidden="true" />
+                  </div>
+                  <span className="empv2-kpi-libelle">Effectif</span>
+                </div>
+                <div className="empv2-kpi">
+                  <div className="empv2-kpi-haut">
+                    <strong>{suiviPresence ? liveCounts.enPoste : '—'}</strong>
+                    <Briefcase size={15} aria-hidden="true" />
+                  </div>
+                  <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--vert" aria-hidden="true" />En poste</span>
+                </div>
+                <div className="empv2-kpi">
+                  <div className="empv2-kpi-haut">
+                    <strong>{suiviPresence ? liveCounts.enPause : '—'}</strong>
+                    <Coffee size={15} aria-hidden="true" />
+                  </div>
+                  <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--or" aria-hidden="true" />En pause</span>
+                </div>
+                <div className="empv2-kpi">
+                  <div className="empv2-kpi-haut">
+                    <strong>{suiviPresence ? liveCounts.retards : '—'}</strong>
+                    <Clock size={15} aria-hidden="true" />
+                  </div>
+                  <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--orange" aria-hidden="true" />Retards ce jour</span>
+                </div>
+                <div className="empv2-kpi">
+                  <div className="empv2-kpi-haut">
+                    <strong>{suiviPresence ? liveCounts.enConge : '—'}</strong>
+                    <CalendarX size={15} aria-hidden="true" />
+                  </div>
+                  <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--rose" aria-hidden="true" />Absents</span>
                 </div>
               </div>
 
-              <div className="rg-categories" role="group" aria-label="Filtrer l’annuaire">
-                <p className="rg-categories-titre">Filtres</p>
+              {/* les filtres : l'état de la journée d'abord */}
+              <div className="empv2-filtres" role="group" aria-label="Filtrer l'annuaire">
                 {FILTRES_ANNUAIRE.map((filtre) => (
                   <button
                     key={filtre.key}
                     type="button"
-                    className="rg-categorie"
+                    className="empv2-filtre"
                     aria-pressed={categoryFilter === filtre.key}
-                    style={filtre.ton ? { '--rg-pastille': `var(--rg-perle-${filtre.ton})` } : undefined}
+                    style={filtre.pastille ? { '--empv2-pastille': filtre.pastille } : undefined}
                     onClick={() => setCategoryFilter(filtre.key)}
                   >
                     {filtre.label}
@@ -1214,7 +1145,7 @@ export default function Employes() {
                 {(searchTerm || categoryFilter !== 'all') && (
                   <button
                     type="button"
-                    className="rg-lien"
+                    className="empv2-filtre empv2-filtre--effacer"
                     onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
                   >
                     Tout montrer
@@ -1223,11 +1154,11 @@ export default function Employes() {
               </div>
 
               {enrollmentCounts.toMigrate > 0 && (
-                <p className="rg-note" data-ton="corail">
+                <p className="empv2-alerte">
                   <AlertTriangle size={14} />
                   <span>
                     {enrollmentCounts.toMigrate} employé{enrollmentCounts.toMigrate > 1 ? 's' : ''} encore sur
-                    l’ancien portail — ouvrez <strong>Mot de passe</strong> dans leur menu pour activer
+                    l'ancien portail — ouvrez <strong>Mot de passe</strong> dans leur menu pour activer
                     leur nouvel accès.
                   </span>
                 </p>
@@ -1236,22 +1167,21 @@ export default function Employes() {
               <PayslipIndicatorStatus status={payslipIndicators} />
 
               {employesFiltres.length === 0 ? (
-                <div className="rg-vide">
-                  <RosacePerlesSvg taille={52} />
+                <div className="empv2-vide">
                   <h3>{employes.length === 0 ? 'Aucun employé pour l’instant' : 'Aucune personne ne correspond'}</h3>
                   <p>
                     {employes.length === 0
-                      ? 'Créez la première fiche : le nom, le matricule, le contrat et le poste suffisent pour commencer.'
+                      ? 'Créez la première fiche : le nom, le matricule et le poste suffisent pour commencer.'
                       : 'Élargissez la recherche ou retirez un filtre pour revoir tout le personnel.'}
                   </p>
                   {employes.length === 0 ? (
-                    <button type="button" className="rg-primaire" onClick={handleAdd}>
+                    <button type="button" className="empv2-primaire" onClick={handleAdd}>
                       <UserPlus size={14} /> Ajouter un employé
                     </button>
                   ) : (
                     <button
                       type="button"
-                      className="rg-lien"
+                      className="empv2-rafraichir"
                       onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
                     >
                       Tout montrer
@@ -1259,52 +1189,32 @@ export default function Employes() {
                   )}
                 </div>
               ) : (
-                <section className="rg-bloc" style={{ borderBottom: 0 }} aria-label="Le personnel">
-                  <header className="rg-bloc-tete">
-                    <h3 className="rg-bloc-titre">Le personnel</h3>
-                    <p className="rg-bloc-note">
-                      {employesFiltres.length} affichée{employesFiltres.length > 1 ? 's' : ''} sur {employes.length}
-                      {' · '}présence, contrat, accès portail
-                    </p>
-                  </header>
-
-                  <ul className="rg-registre rg-registre-annuaire">
-                    {employesFiltres.map((employee, index) => (
-                      <EntreeEmploye
-                        key={employee.id}
-                        numero={index + 1}
-                        employee={employee}
-                        liveStatus={liveStatusByEmployee[employee.id]}
-                        stats={weeklyStats[employee.id]}
-                        scheduleInfo={getEmployeeScheduleInfo(employee)}
-                        regimeLabel={getScheduleRegimeLabel(employee)}
-                        seniority={calculateSeniority(employee.hire_date)}
-                        derniereConnexion={formatDerniereConnexion(employee)}
-                        contractLabel={employee.contract_type ? getContractLabel(employee.contract_type) : ''}
-                        classificationLabel={employee.classification ? getClassificationLabel(employee.classification) : ''}
-                        portalEnabled={isPortalModuleEnabled(employee) && employee.employee_portal_enabled}
-                        planningEnabled={isModulePlanningEnabled(employee)}
-                        aCompte={aUnCompteEmploye(employee)}
-                        ancienSysteme={estAncienSysteme(employee)}
-                        payslipEntries={payslipIndicators.entriesFor(employee)}
-                        payslipDate={payslipIndicators.date}
-                        onOuvrirFiche={handleEdit}
-                        onOuvrirPage={(emp) => navigate(`/employes/${emp.id}`)}
-                        onBadge={handleShowBadge}
-                        onHoraires={handleOpenSchedule}
-                        onPartagerHoraires={handleShareSchedule}
-                        onPointages={(emp) => navigate(`/pointages?q=${encodeURIComponent(emp.matricule || emp.last_name || '')}`)}
-                        onMotDePasse={handleOpenPasswordModal}
-                        onBasculerPortail={handleTogglePortalAccess}
-                        onSupprimer={initiateDelete}
-                      />
-                    ))}
-                  </ul>
-                </section>
+                <div className="empv2-grille" aria-label="Le personnel">
+                  {employesFiltres.map((employee) => (
+                    <EntreeEmploye
+                      key={employee.id}
+                      employee={employee}
+                      liveStatus={liveStatusByEmployee[employee.id]}
+                      contractLabel={employee.contract_type ? getContractLabel(employee.contract_type) : ''}
+                      portalEnabled={isPortalModuleEnabled(employee) && employee.employee_portal_enabled}
+                      planningEnabled={isModulePlanningEnabled(employee)}
+                      aCompte={aUnCompteEmploye(employee)}
+                      ancienSysteme={estAncienSysteme(employee)}
+                      onOuvrirFiche={handleEdit}
+                      onOuvrirPage={(emp) => navigate(`/employes/${emp.id}`)}
+                      onBadge={handleShowBadge}
+                      onHoraires={handleOpenSchedule}
+                      onPartagerHoraires={handleShareSchedule}
+                      onPointages={(emp) => navigate(`/pointages?q=${encodeURIComponent(emp.matricule || emp.last_name || '')}`)}
+                      onMotDePasse={handleOpenPasswordModal}
+                      onBasculerPortail={handleTogglePortalAccess}
+                      onSupprimer={initiateDelete}
+                    />
+                  ))}
+                </div>
               )}
             </div>
           )}
-
 
           {vueActive === 'equipes' && (
             <EquipesVue enterpriseId={entrepriseDesVues} employes={employes} />

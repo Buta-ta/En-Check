@@ -1,24 +1,24 @@
 // ═══════════════════════════════════════════════════════════
-// 📇 L'ANNUAIRE — une entrée de registre par personne
+// 📇 L'ANNUAIRE — une carte par personne (refonte bento 17/11)
 //
-// L'annuaire ne range plus les gens dans des cartes : chaque personne
-// est une entrée, numérotée, posée sur un filet. Une entrée dit, dans
-// cet ordre :
+// La carte, sur une seule ligne, dans l'ordre de la maquette :
+//   · la photo (ou les initiales), à gauche ;
+//   · le badge d'état du jour (en poste, en pause, retard, absent) ;
+//   · le nom en serif, le matricule · contrat, le poste · service ;
+//   · le pied : le numéro pour la joindre, le statut du portail,
+//     et « Fiche → ».
 //
-//   · qui (le nom en serif, le matricule, le contrat) ;
-//   · quoi (poste, département, classification, ancienneté) ;
-//   · où elle en est aujourd'hui (présence, heure de la journée) ;
-//   · ce qu'on peut faire (fiche, badge, et le menu des autres gestes).
+// Tout le reste vit dans le menu (⋮) : modifier, badge QR,
+// horaires, pointages, portail, suppression.
 //
-// Aucune information n'est inventée : une donnée absente disparaît,
-// une présence inconnue s'écrit « Non pointé ».
+// Aucune donnée n'est inventée : un champ absent disparaît,
+// un pointage absent s'écrit « Non pointé ».
 // ═══════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState } from 'react'
-import PlanningPayslipBadge from '../PlanningPayslipBadge'
 import {
   BadgeCheck, CalendarClock, Clock3, Key, MoreVertical,
-  Nfc, Share2, Trash2, UserCheck, UserCog, UserX,
+  Nfc, Phone, Share2, Trash2, UserCog,
 } from 'lucide-react'
 
 const initiales = (personne) =>
@@ -27,58 +27,33 @@ const initiales = (personne) =>
 const nomComplet = (personne) =>
   [personne?.first_name, personne?.last_name].filter(Boolean).join(' ') || 'Sans nom'
 
-// L'état de présence, dans les mots de la maison. Le ton de la perle
-// suit l'état ; l'heure ne s'affiche que si la pointeuse l'a donnée.
-const PRESENCE = {
-  en_poste: { libelle: 'En poste', ton: 'teal' },
-  en_pause: { libelle: 'En pause', ton: 'cuivre' },
-  termine: { libelle: 'Pointage terminé', ton: 'sauge' },
-  en_conge: { libelle: 'En congé', ton: 'creme' },
-  non_pointe: { libelle: 'Non pointé', ton: 'faible' },
+// Le mot du badge, et sa couleur, selon ce que le jour a montré.
+// L'absence déclarée du jour s'écrit « Absent » ; le retard est
+// remplacé par « En poste » dès que la personne pointe.
+const conceptDe = (presence, retardMinutes) => {
+  if (presence === 'en_poste') return 'en_poste'
+  if (presence === 'en_pause') return 'en_pause'
+  if (presence === 'en_conge') return 'absent'
+  if (presence === 'termine') return 'termine'
+  if (retardMinutes != null) return 'retard'
+  return 'non_pointe'
 }
 
 function heureDe(valeur) {
-  if (!valeur) return ''
+  if (!valeur) return null
   const date = new Date(valeur)
   if (Number.isNaN(date.getTime())) return String(valeur)
   return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
-function LignePresence({ liveStatus }) {
-  const etat = liveStatus?.state || 'non_pointe'
-  const fiche = PRESENCE[etat] || PRESENCE.non_pointe
-  return (
-    <span className="rg-presence" data-etat={etat}>
-      <span className="rg-presence-perle" data-ton={fiche.ton} aria-hidden="true" />
-      <span className="rg-presence-texte">
-        {fiche.libelle}
-        {etat === 'en_poste' && liveStatus?.entryHHMM ? ` · ${liveStatus.entryHHMM}` : ''}
-        {etat === 'en_pause' && liveStatus?.activePause ? ' · hors poste' : ''}
-        {etat === 'termine'
-          ? ` · ${heureDe(liveStatus?.entryTime) || liveStatus?.entryHHMM || '—'} → ${heureDe(liveStatus?.exitTime) || liveStatus?.exitHHMM || '—'}`
-          : ''}
-      </span>
-    </span>
-  )
-}
-
 export default function EntreeEmploye({
   employee,
-  numero,
   liveStatus,
-  stats,
-  scheduleInfo,
-  regimeLabel,
-  seniority,
-  derniereConnexion,
   contractLabel,
-  classificationLabel,
   portalEnabled,
   planningEnabled,
   aCompte,
   ancienSysteme,
-  payslipEntries = [],
-  payslipDate = null,
   onOuvrirFiche,
   onOuvrirPage,
   onBadge,
@@ -86,15 +61,33 @@ export default function EntreeEmploye({
   onPartagerHoraires,
   onPointages,
   onMotDePasse,
-  onBasculerPortail,
+  onBasulerPortail,
   onSupprimer,
 }) {
   const [menu, setMenu] = useState(false)
   const actionsRef = useRef(null)
-  const presence = liveStatus?.state || 'non_pointe'
 
-  // Le menu se referme dès qu'on clique ailleurs ou qu'on appuie sur
-  // Échap : sinon il reste posé sur la ligne suivante.
+  const presence = liveStatus?.state || 'non_pointe'
+  const retardMinutes = liveStatus?.retardMinutes ?? null
+  const concept = conceptDe(presence, retardMinutes)
+
+  const badgeLibelle = (() => {
+    if (concept === 'en_poste') {
+      return liveStatus?.entryHHMM ? `En poste · ${liveStatus.entryHHMM}` : 'En poste'
+    }
+    if (concept === 'en_pause') return 'En pause'
+    if (concept === 'absent') return 'Absent'
+    if (concept === 'termine') {
+      const debut = heureDe(liveStatus?.entryTime) || liveStatus?.entryHHMM || null
+      const fin = heureDe(liveStatus?.exitTime) || liveStatus?.exitHHMM || null
+      return debut && fin ? `Terminé · ${debut} → ${fin}` : 'Terminé'
+    }
+    if (concept === 'retard') return `Retard · ${retardMinutes} min`
+    return 'Non pointé'
+  })()
+
+  // Le menu se referme dès qu'on clique ailleurs ou qu'on appuie
+  // sur Échap : sinon il reste posé sur la carte suivante.
   useEffect(() => {
     if (!menu) return undefined
     const surPointeur = (evenement) => {
@@ -111,134 +104,106 @@ export default function EntreeEmploye({
     }
   }, [menu])
 
+  const ouvrirFiche = () => (onOuvrirPage || onOuvrirFiche)(employee)
+
+  const portailEtat = !aCompte
+    ? 'aucun'
+    : ancienSysteme ? 'migrer'
+      : portalEnabled ? 'ouvert' : 'ferme'
+
   return (
-    <li
-      className="rg-entree rg-entree-annuaire"
-      data-presence={presence}
-      data-menu={menu ? 'ouvert' : undefined}
-    >
-      <span className="rg-entree-index">{String(numero).padStart(2, '0')}</span>
+    <article className="empv2-entree" data-presence={concept} data-menu={menu ? 'ouvert' : undefined}>
+      <div className="empv2-entree-photo">
+        {employee.photo_url
+          ? <img src={employee.photo_url} alt="" />
+          : <span className="empv2-entree-initiales" aria-hidden="true">{initiales(employee)}</span>}
+      </div>
 
-      <div className="rg-cellule rg-cellule-identite">
-        <span className="rg-avatar-annuaire" aria-hidden="true">
-          {employee.photo_url
-            ? <img src={employee.photo_url} alt="" />
-            : initiales(employee)}
-        </span>
+      <div className="empv2-entree-corps">
+        <div className="empv2-entree-tete">
+          <span className={`empv2-entree-badge empv2-entree-badge--${concept}`}>
+            <i aria-hidden="true" />
+            {badgeLibelle}
+          </span>
+          <div className="empv2-entree-menu-wrap" ref={actionsRef}>
+            <button
+              type="button"
+              className="empv2-entree-plus"
+              aria-label={`Autres actions pour ${nomComplet(employee)}`}
+              aria-expanded={menu}
+              aria-haspopup="true"
+              onClick={() => setMenu((v) => !v)}
+            >
+              <MoreVertical size={14} />
+            </button>
 
-        <div className="rg-identite-texte">
-          <h4 className="rg-entree-titre">
-            <button type="button" onClick={() => (onOuvrirPage || onOuvrirFiche)(employee)} title="Ouvrir la fiche">{nomComplet(employee)}</button>
-          </h4>
-
-          <p className="rg-annuaire-sous">
-            {employee.matricule && <span className="rg-annuaire-matricule">{employee.matricule}</span>}
-            {contractLabel && <span>{contractLabel}</span>}
-            {employee.machine_pin && <span>pointeuse {employee.machine_pin}</span>}
-            {!employee.machine_pin && <span className="rg-annuaire-manque">aucun numéro de pointage</span>}
-          </p>
-
-          <p className="rg-entree-note">
-            {[employee.position, employee.department, classificationLabel, seniority]
-              .filter(Boolean)
-              .join(' · ') || 'Fiche à compléter : ni poste, ni département.'}
-          </p>
-
-          <div className="rg-annuaire-etats">
-            <LignePresence liveStatus={liveStatus} />
-            {regimeLabel && <span className="rg-annuaire-regime">{regimeLabel}</span>}
-            {aCompte && (
-              <span className="rg-annuaire-compte" data-etat={ancienSysteme ? 'migrer' : (portalEnabled ? 'ouvert' : 'ferme')}>
-                {ancienSysteme
-                  ? <><UserX size={10} /> portail à migrer</>
-                  : portalEnabled
-                    ? <><UserCheck size={10} /> portail ouvert</>
-                    : <><UserX size={10} /> portail fermé</>}
-              </span>
-            )}
-            {!aCompte && <span className="rg-annuaire-compte" data-etat="aucun">pas de compte</span>}
-            {payslipEntries.length > 0 && (
-              <span className="rg-annuaire-paie">
-                <PlanningPayslipBadge entries={payslipEntries} referenceDate={payslipDate} />
-              </span>
+            {menu && (
+              <div className="empv2-menu" role="group" aria-label={`Autres actions pour ${nomComplet(employee)}`}>
+                <button type="button" onClick={() => { setMenu(false); onOuvrirFiche(employee) }}>
+                  <UserCog size={13} /> Modifier la fiche
+                </button>
+                <button type="button" onClick={() => { setMenu(false); onBadge(employee) }}>
+                  <BadgeCheck size={13} /> Badge QR
+                </button>
+                {planningEnabled && (
+                  <>
+                    <button type="button" onClick={() => { setMenu(false); onHoraires(employee) }}>
+                      <CalendarClock size={13} /> Horaires
+                    </button>
+                    <button type="button" onClick={() => { setMenu(false); onPartagerHoraires(employee) }}>
+                      <Share2 size={13} /> Envoyer les horaires
+                    </button>
+                  </>
+                )}
+                <button type="button" onClick={() => { setMenu(false); onPointages(employee) }}>
+                  <Clock3 size={13} /> Voir les pointages
+                </button>
+                {portalEnabled && (
+                  <button type="button" onClick={() => { setMenu(false); onMotDePasse(employee) }}>
+                    <Key size={13} /> {aCompte ? 'Mot de passe' : 'Créer l’accès portail'}
+                  </button>
+                )}
+                {aCompte && (
+                  <button type="button" onClick={() => { setMenu(false); onBasulerPortail(employee, !portalEnabled) }}>
+                    <Nfc size={13} /> {portalEnabled ? 'Fermer le portail' : 'Ouvrir le portail'}
+                  </button>
+                )}
+                <span className="empv2-menu-sep" aria-hidden="true" />
+                <button type="button" className="is-danger" onClick={() => { setMenu(false); onSupprimer(employee) }}>
+                  <Trash2 size={13} /> Supprimer la fiche
+                </button>
+              </div>
             )}
           </div>
+        </div>
 
-          {stats && stats.totalSeconds > 0 && (
-            <span className="rg-annuaire-heures">
-              <span className="rg-jauge" aria-hidden="true">
-                <span
-                  className="rg-jauge-remplie"
-                  style={{ width: `${Math.min(100, Math.max(0, stats.percentage || 0))}%` }}
-                  data-complet={stats.percentage >= 100 ? 'oui' : 'non'}
-                />
-              </span>
-              <span className="rg-annuaire-heures-texte">{stats.label}</span>
-            </span>
-          )}
+        <h4 className="empv2-entree-nom">
+          <button type="button" onClick={ouvrirFiche} title="Ouvrir la fiche">{nomComplet(employee)}</button>
+        </h4>
+        <p className="empv2-entree-sous">
+          {employee.matricule && <span className="empv2-entree-matricule">{employee.matricule}</span>}
+          {contractLabel && <span>{contractLabel}</span>}
+        </p>
+        <p className="empv2-entree-poste">
+          {[employee.position, employee.department].filter(Boolean).join(' · ')
+            || 'Fiche à compléter : ni poste, ni service.'}
+        </p>
+
+        <div className="empv2-entree-pied">
+          <span className="empv2-entree-contact">
+            {employee.phone
+              ? <><Phone size={12} aria-hidden="true" />{employee.phone}</>
+              : <span className="empv2-muet">Sans numéro</span>}
+          </span>
+          <span className="empv2-entree-portail" data-etat={portailEtat}>
+            {portailEtat === 'ouvert' ? 'Portail' : portailEtat === 'ferme' ? 'Portail fermé' : portailEtat === 'migrer' ? 'À migrer' : 'Sans compte'}
+          </span>
+          <button type="button" className="empv2-btn-fiche" onClick={ouvrirFiche}>
+            Fiche →
+          </button>
         </div>
       </div>
 
-      <div className="rg-cellule rg-cellule-jour">
-        <span className="rg-etiquette-champ">Aujourd’hui</span>
-        <span className="rg-annuaire-jour">
-          {scheduleInfo || 'Aucun horaire du jour'}
-        </span>
-        {derniereConnexion && (
-          <span className="rg-annuaire-jour-note">{derniereConnexion}</span>
-        )}
-      </div>
-
-      <div className="rg-entree-actions" ref={actionsRef}>
-        <button type="button" className="rg-lien" onClick={() => onOuvrirFiche(employee)}>
-          <UserCog size={12} /> Modifier
-        </button>
-        <button type="button" className="rg-lien" onClick={() => onBadge(employee)}>
-          <BadgeCheck size={12} /> Badge
-        </button>
-        <button
-          type="button"
-          className="rg-lien"
-          aria-label={`Autres actions pour ${nomComplet(employee)}`}
-          aria-expanded={menu}
-          aria-haspopup="true"
-          onClick={() => setMenu((v) => !v)}
-        >
-          <MoreVertical size={14} />
-        </button>
-
-        {menu && (
-          <div className="rg-menu rg-menu-annuaire" role="group" aria-label={`Autres actions pour ${nomComplet(employee)}`}>
-            {planningEnabled && (
-              <>
-                <button type="button" onClick={() => { setMenu(false); onHoraires(employee) }}>
-                  <CalendarClock size={13} /> Horaires
-                </button>
-                <button type="button" onClick={() => { setMenu(false); onPartagerHoraires(employee) }}>
-                  <Share2 size={13} /> Envoyer les horaires
-                </button>
-              </>
-            )}
-            <button type="button" onClick={() => { setMenu(false); onPointages(employee) }}>
-              <Clock3 size={13} /> Voir les pointages
-            </button>
-            {portalEnabled && (
-              <button type="button" onClick={() => { setMenu(false); onMotDePasse(employee) }}>
-                <Key size={13} /> {aCompte ? 'Mot de passe' : 'Créer l’accès portail'}
-              </button>
-            )}
-            {aCompte && (
-              <button type="button" onClick={() => { setMenu(false); onBasculerPortail(employee, !portalEnabled) }}>
-                <Nfc size={13} /> {portalEnabled ? 'Fermer le portail' : 'Ouvrir le portail'}
-              </button>
-            )}
-            <span className="rg-menu-sep" aria-hidden="true" />
-            <button type="button" className="is-danger" onClick={() => { setMenu(false); onSupprimer(employee) }}>
-              <Trash2 size={13} /> Supprimer la fiche
-            </button>
-          </div>
-        )}
-      </div>
-    </li>
+    </article>
   )
 }
