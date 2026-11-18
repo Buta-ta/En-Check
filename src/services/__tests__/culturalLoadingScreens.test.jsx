@@ -33,9 +33,14 @@ it('la scène validée dispose de calques distincts et d’un repli sans mouveme
   expect(css).toContain('.abs-loading-layers { display: none; }')
 })
 it('les pages réutilisent les mêmes bandeaux et le chargement Absences reste lié au chargement réel', () => {
-  for (const name of ['Pointages','Pauses','Employes']) {
+  for (const name of ['Pointages','Pauses']) {
     expect(readFileSync(`src/pages/${name}.jsx`,'utf8')).toContain(`pathname="/${name.toLowerCase()}" placement="bottom"`)
   }
+  // D-003 (charte) — une seule bande de motif par page :
+  // Employés (redeviné en peau D) garde le bandeau du haut, jamais deux.
+  const employes = readFileSync('src/pages/Employes.jsx','utf8')
+  expect(employes).toContain('pathname="/employes"')
+  expect(employes).not.toContain('placement="bottom"')
   const source=readFileSync('src/pages/Absences.jsx','utf8')
   expect(source).toContain('if (!accessChecked || loading)')
   expect(source).toContain('<AbsencesLoadingScreen darkMode={darkMode} checkingAccess={!accessChecked}/>')

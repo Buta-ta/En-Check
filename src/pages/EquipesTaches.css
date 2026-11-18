@@ -1,0 +1,1161 @@
+/* ═══════════════════════════════════════════════════════════
+   ONGLETS ÉQUIPES & TÂCHES — habillage « pré-charthe », conservé
+   tel quel le temps de leur rétro (D-025, fiche Employés §8).
+   Ils seront réhabillés en peau D dans la même PR B, puis ce
+   fichier supprimé. Ne rien mélanger ici : la page Employés
+   (annuaire) est dans EmployesRefonte.css, en tokens de charte.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── les tokens de la page, jour et nuit ─────────────────── */
+
+.empv2-tete,
+.empv2-tetes,
+.empv2-annuaire,
+.empv2-main {
+  --rg-paper: #f5f0e6;
+  --rg-ink: #1c140d;
+  --rg-soft: #42342a;
+  --rg-faint: #6b5c44;
+  --rg-hair: rgba(60, 40, 22, 0.16);
+  --rg-hair-fort: rgba(60, 40, 22, 0.32);
+  --rg-voile: rgba(150, 81, 31, 0.08);
+  --empv2-or: #c9a961;
+  --empv2-vert: #3ddc84;
+  --empv2-orange: #d98a4a;
+  --empv2-rose: #d97f8f;
+  --rg-corail: #a2452e;
+}
+
+[data-theme='dark'] .empv2-tete,
+[data-theme='dark'] .empv2-tetes,
+[data-theme='dark'] .empv2-annuaire,
+[data-theme='dark'] .empv2-main {
+  --rg-paper: #17110b;
+  --rg-ink: #f4ecdf;
+  --rg-soft: #dccdba;
+  --rg-faint: #a6957c;
+  --rg-hair: rgba(240, 226, 202, 0.15);
+  --rg-hair-fort: rgba(240, 226, 202, 0.3);
+  --rg-voile: rgba(213, 141, 75, 0.14);
+  --rg-corail: #e08a6a;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   L'ONGLET ÉQUIPES — maquette « onglet-equipes-refonte »
+   Quatre chiffres, une barre d'outils, des cartes à bordure
+   colorée en deux colonnes, un rail à droite (à rattacher,
+   santé). Le pied « À décider » reste, replié par défaut.
+   ═══════════════════════════════════════════════════════════ */
+
+.eqv2 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* quatre chiffres ici, pas cinq */
+.eqv2 .empv2-kpis {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* les points de couleur des libellés */
+.empv2-point {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: baseline;
+}
+.empv2-point--or { background: var(--empv2-or); }
+.empv2-point--orange { background: var(--empv2-orange); }
+
+/* ── la barre d'outils ──────────────────────────────────── */
+
+.eqv2-outils {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.eqv2-recherche {
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+.eqv2-filtres {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.eqv2-filtre {
+  border: 1px solid var(--rg-hair);
+  background: transparent;
+  color: var(--rg-soft);
+  border-radius: 999px;
+  padding: 6px 12px;
+  min-height: 34px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.eqv2-filtre:hover {
+  border-color: var(--rg-hair-fort);
+}
+.eqv2-filtre[aria-pressed='true'] {
+  background: var(--rg-ink);
+  border-color: var(--rg-ink);
+  color: var(--rg-paper);
+}
+
+.eqv2-tri,
+.empv2-tri {
+  background: transparent;
+  border: 1px solid var(--rg-hair);
+  border-radius: 10px;
+  padding: 7px 10px;
+  min-height: 36px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--rg-ink);
+  cursor: pointer;
+}
+.eqv2-tri:hover,
+.empv2-tri:hover {
+  border-color: var(--rg-hair-fort);
+}
+
+.empv2-liens {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.empv2-lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--rg-hair);
+  background: transparent;
+  color: var(--rg-soft);
+  border-radius: 999px;
+  padding: 6px 12px;
+  min-height: 32px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.empv2-lien:hover {
+  border-color: var(--rg-hair-fort);
+}
+
+/* ── l'écorce : cartes à gauche, rail à droite ──────────── */
+
+.eqv2-corps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+
+.eqv2-collonne {
+  min-width: 0;
+}
+
+.eqv2-grille {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* ── la carte d'équipe ───────────────────────────────────── */
+
+.eqv2-carte {
+  position: relative;
+  background: color-mix(in srgb, var(--rg-ink) 5%, var(--rg-paper));
+  border: 1px solid var(--rg-hair);
+  border-radius: 16px;
+  transition: border-color 0.18s ease;
+}
+.eqv2-carte:hover {
+  border-color: var(--rg-hair-fort);
+}
+
+.eqv2-carte-trait {
+  height: 3px;
+  border-radius: 16px 16px 0 0;
+}
+
+.eqv2-carte-corps {
+  padding: 14px 16px 13px;
+}
+
+.eqv2-carte-tete {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.eqv2-carte-nom {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--rg-ink);
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.eqv2-carte-nom:hover {
+  border-color: var(--rg-hair-fort);
+}
+
+.eqv2-sante-badge {
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.eqv2-sante-badge--solide {
+  color: #1f7a4d;
+  background: rgba(61, 220, 132, 0.13);
+  border-color: rgba(61, 220, 132, 0.35);
+}
+.eqv2-sante-badge--a-surveiller {
+  color: #a36217;
+  background: rgba(217, 138, 74, 0.15);
+  border-color: rgba(217, 138, 74, 0.4);
+}
+.eqv2-sante-badge--critique {
+  color: #b0433f;
+  background: rgba(217, 127, 143, 0.16);
+  border-color: rgba(217, 127, 143, 0.42);
+}
+.eqv2-sante-badge--inconnue {
+  color: var(--rg-faint);
+  background: transparent;
+  border-color: var(--rg-hair);
+}
+
+[data-theme='dark'] .eqv2-sante-badge--solide { color: #5fe3a1; }
+[data-theme='dark'] .eqv2-sante-badge--a-surveiller { color: #e6a568; }
+[data-theme='dark'] .eqv2-sante-badge--critique { color: #e78e9c; }
+
+.eqv2-carte-menu-wrap {
+  position: relative;
+  margin-left: auto;
+}
+
+.eqv2-plus {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--rg-hair);
+  background: transparent;
+  color: var(--rg-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.eqv2-plus:hover {
+  border-color: var(--rg-hair-fort);
+}
+
+.eqv2-carte-note {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--rg-faint);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eqv2-avatars {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.eqv2-avatar {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--rg-paper);
+  background: var(--rg-voile);
+  color: #241a12;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.eqv2-avatar + .eqv2-avatar {
+  margin-left: -8px;
+}
+.eqv2-avatar[data-chef='oui'] {
+  box-shadow: 0 0 0 2px var(--empv2-or);
+}
+.eqv2-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.eqv2-couronne {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  z-index: 3;
+  color: var(--empv2-or);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
+
+.eqv2-avatars-note {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rg-faint);
+}
+
+.eqv2-carte-pied {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rg-hair);
+  font-size: 12.5px;
+  color: var(--rg-soft);
+}
+.eqv2-carte-pied strong {
+  color: var(--rg-ink);
+  font-weight: 650;
+}
+.eqv2-carte-sanschef {
+  color: var(--rg-faint);
+}
+
+/* ── le rail de droite ───────────────────────────────────── */
+
+.eqv2-rais {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.eqv2-panneau {
+  background: color-mix(in srgb, var(--rg-ink) 5%, var(--rg-paper));
+  border: 1px solid var(--rg-hair);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.eqv2-panneau-titre {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--rg-faint);
+}
+
+.eqv2-panneau-vide {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--rg-faint);
+}
+
+.eqv2-rattacher-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.eqv2-rattacher-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+.eqv2-rattacher-ligne + .eqv2-rattacher-ligne {
+  border-top: 1px solid var(--rg-hair);
+}
+
+.eqv2-rattacher-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.eqv2-rattacher-info strong {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--rg-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.eqv2-rattacher-info small {
+  font-size: 12px;
+  color: var(--rg-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eqv2-rattacher-actions {
+  margin-left: auto;
+  position: relative;
+}
+
+.eqv2-btn-mini {
+  border: 1px solid var(--rg-hair);
+  background: transparent;
+  color: var(--rg-ink);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.eqv2-btn-mini:hover {
+  border-color: var(--rg-hair-fort);
+  background: var(--rg-voile);
+}
+
+.eqv2-menu-rattacher {
+  min-width: 190px;
+}
+.eqv2-menu-pastille {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: baseline;
+}
+
+/* la santé, en barres tonnées */
+.eqv2-sante-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eqv2-sante-haut {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12.5px;
+  color: var(--rg-soft);
+}
+.eqv2-sante-haut strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rg-ink);
+}
+
+.eqv2-sante-jauge {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--rg-hair);
+  overflow: hidden;
+  margin-top: 5px;
+}
+.eqv2-sante-remplie {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+.eqv2-sante-ligne[data-ton='solide'] .eqv2-sante-remplie { background: var(--empv2-vert); }
+.eqv2-sante-ligne[data-ton='a-surveiller'] .eqv2-sante-remplie { background: var(--empv2-orange); }
+.eqv2-sante-ligne[data-ton='critique'] .eqv2-sante-remplie { background: var(--empv2-rose); }
+
+/* nuit : l'avatar reste lisible, les initiales passent en crème */
+[data-theme='dark'] .eqv2-avatar,
+[data-theme='dark'] .tqv2-avatar {
+  background: rgba(240, 226, 202, 0.22);
+  color: #f4ecdf;
+}
+
+/* ── les états vides et le chargement ────────────────────── */
+
+.eqv2-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  border: 1px dashed var(--rg-hair-fort);
+  border-radius: 16px;
+  padding: 44px 24px;
+}
+.eqv2-vide h3 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--rg-ink);
+}
+.eqv2-vide p {
+  margin: 0 0 10px;
+  max-width: 400px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--rg-faint);
+}
+
+.eqv2-chargement {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+.eqv2-chargement-texte {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--rg-faint);
+}
+.eqv2-tourne {
+  animation: eqv2-tourner 0.9s linear infinite;
+}
+@keyframes eqv2-tourner {
+  to { transform: rotate(360deg); }
+}
+
+/* ── le pied « À décider », replié ───────────────────────── */
+
+.empv2-pied {
+  background: color-mix(in srgb, var(--rg-ink) 5%, var(--rg-paper));
+  border: 1px solid var(--rg-hair);
+  border-radius: 16px;
+  padding: 13px 16px;
+}
+
+.empv2-pied-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.empv2-pied-titre {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rg-ink);
+}
+
+.empv2-pied-texte {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--rg-faint);
+}
+
+.empv2-pied-onglets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.empv2-pied-nombre {
+  background: var(--rg-voile);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.empv2-pied-liste {
+  margin-top: 12px;
+  border-top: 1px solid var(--rg-hair);
+  padding-top: 4px;
+}
+
+.empv2-pied-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.empv2-pied-item + .empv2-pied-item {
+  border-top: 1px solid var(--rg-hair);
+}
+.empv2-pied-item-titre {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--rg-ink);
+}
+.empv2-pied-item[data-grave='oui'] .empv2-pied-item-titre {
+  color: var(--rg-corail);
+}
+.empv2-pied-item-note {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--rg-faint);
+}
+.empv2-pied-item-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── responsive de l'onglet Équipes ──────────────────────── */
+
+@media (max-width: 1200px) {
+  .eqv2-corps {
+    grid-template-columns: 1fr;
+  }
+  .eqv2-rais {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .eqv2-rais > * {
+    flex: 1 1 280px;
+  }
+}
+
+@media (max-width: 900px) {
+  .eqv2-grille {
+    grid-template-columns: 1fr;
+  }
+  .empv2-liens {
+    margin-left: 0;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   L'ONGLET TÂCHES — maquette « onglet-taches-refonte »
+   Quatre chiffres, barre d'outils, pastilles de catégories,
+   kanban à quatre colonnes (à faire, en cours, terminées,
+   validées), cartes : titre, priorité, échéance, personne.
+   ═══════════════════════════════════════════════════════════ */
+
+.tqv2 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tqv2-kpis {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* ── la barre d'outils ──────────────────────────────────── */
+
+.tqv2-outils {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tqv2-recherche {
+  flex: 1 1 200px;
+  max-width: 300px;
+}
+
+.tqv2-select {
+  background: transparent;
+  border: 1px solid var(--rg-hair);
+  border-radius: 10px;
+  padding: 7px 10px;
+  min-height: 36px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--rg-ink);
+  cursor: pointer;
+}
+.tqv2-select:hover {
+  border-color: var(--rg-hair-fort);
+}
+
+.tqv2-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ── les catégories, en pastilles ───────────────────────── */
+
+.tqv2-categories {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tqv2-categories-titre {
+  margin: 0 2px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--rg-faint);
+}
+
+.tqv2-categorie-groupe {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.tqv2-categorie {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--rg-hair);
+  background: transparent;
+  color: var(--rg-soft);
+  border-radius: 999px;
+  padding: 5px 12px;
+  min-height: 32px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.tqv2-categorie:hover {
+  border-color: var(--rg-hair-fort);
+}
+.tqv2-categorie[aria-pressed='true'] {
+  background: var(--rg-ink);
+  border-color: var(--rg-ink);
+  color: var(--rg-paper);
+}
+
+.tqv2-pastille {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--tqv2-pastille, var(--empv2-or));
+  display: inline-block;
+}
+
+.tqv2-categorie-nombre {
+  background: var(--rg-voile);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.tqv2-categorie[aria-pressed='true'] .tqv2-categorie-nombre {
+  background: color-mix(in srgb, var(--rg-paper) 22%, var(--rg-ink));
+}
+
+/* ── la sélection ───────────────────────────────────────── */
+
+.tqv2-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--rg-voile);
+  border: 1px solid var(--rg-hair);
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rg-ink);
+}
+
+.tqv2-selection-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── le kanban : quatre colonnes ─────────────────────────── */
+
+.tqv2-colonnes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.tqv2-colonne {
+  background: color-mix(in srgb, var(--rg-ink) 4%, var(--rg-paper));
+  border: 1px solid var(--rg-hair);
+  border-radius: 16px;
+  padding: 12px;
+  min-width: 0;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.tqv2-colonne[data-survol='oui'] {
+  border-color: var(--empv2-or);
+  background: color-mix(in srgb, var(--empv2-or) 7%, var(--rg-paper));
+}
+
+.tqv2-colonne-tete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px 10px;
+}
+
+.tqv2-colonne-titre {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rg-ink);
+}
+
+.tqv2-colonne-compte {
+  margin-left: auto;
+  min-width: 24px;
+  text-align: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.tqv2-colonne[data-ton='teal'] .tqv2-colonne-compte {
+  background: rgba(47, 127, 115, 0.14);
+  color: #2f7f73;
+}
+.tqv2-colonne[data-ton='or'] .tqv2-colonne-compte {
+  background: rgba(201, 169, 97, 0.18);
+  color: #8a6d2f;
+}
+.tqv2-colonne[data-ton='vert'] .tqv2-colonne-compte {
+  background: rgba(61, 220, 132, 0.14);
+  color: #1f7a4d;
+}
+.tqv2-colonne[data-ton='blanc'] .tqv2-colonne-compte {
+  background: var(--rg-voile);
+  color: var(--rg-soft);
+}
+[data-theme='dark'] .tqv2-colonne[data-ton='teal'] .tqv2-colonne-compte { color: #63b3a6; }
+[data-theme='dark'] .tqv2-colonne[data-ton='or'] .tqv2-colonne-compte { color: #e0c07f; }
+[data-theme='dark'] .tqv2-colonne[data-ton='vert'] .tqv2-colonne-compte { color: #5fe3a1; }
+
+.tqv2-colonne-corps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 60px;
+}
+
+.tqv2-colonne-vide {
+  border: 1px dashed var(--rg-hair-fort);
+  border-radius: 12px;
+  padding: 22px 12px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--rg-faint);
+}
+
+/* ── la carte de tâche ───────────────────────────────────── */
+
+.tqv2-fiche {
+  background: var(--rg-paper);
+  border: 1px solid var(--rg-hair);
+  border-radius: 14px;
+  padding: 12px 13px 11px;
+  cursor: grab;
+  transition: border-color 0.15s ease;
+}
+.tqv2-fiche:hover {
+  border-color: var(--rg-hair-fort);
+}
+.tqv2-fiche[data-selection='oui'] {
+  border: 2px solid var(--empv2-or);
+  padding: 11px 12px 10px;
+}
+
+.tqv2-fiche-tete {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.tqv2-fiche-titre {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--rg-ink);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.tqv2-case {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 1.5px solid var(--rg-hair-fort);
+  background: transparent;
+  color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.tqv2-fiche:hover .tqv2-case,
+.tqv2-case[aria-pressed='true'],
+.tqv2-case:focus-visible {
+  opacity: 1;
+}
+.tqv2-case[aria-pressed='true'] {
+  background: var(--empv2-or);
+  border-color: var(--empv2-or);
+  color: #241812;
+}
+
+.tqv2-fiche-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+}
+
+.tqv2-priorite {
+  border-radius: 999px;
+  padding: 2.5px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.tqv2-priorite--critique {
+  color: #b0433f;
+  background: rgba(217, 127, 143, 0.16);
+  border-color: rgba(217, 127, 143, 0.42);
+}
+.tqv2-priorite--haute {
+  color: #a36217;
+  background: rgba(217, 138, 74, 0.15);
+  border-color: rgba(217, 138, 74, 0.4);
+}
+.tqv2-priorite--moyenne {
+  color: #8a6d2f;
+  background: rgba(201, 169, 97, 0.16);
+  border-color: rgba(201, 169, 97, 0.4);
+}
+.tqv2-priorite--basse {
+  color: var(--rg-faint);
+  background: transparent;
+  border-color: var(--rg-hair);
+}
+[data-theme='dark'] .tqv2-priorite--critique { color: #e78e9c; }
+[data-theme='dark'] .tqv2-priorite--haute { color: #e6a568; }
+[data-theme='dark'] .tqv2-priorite--moyenne { color: #e0c07f; }
+
+.tqv2-fiche-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rg-soft);
+}
+.tqv2-fiche-date--retard {
+  color: var(--rg-corail);
+}
+.tqv2-retard {
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.tqv2-fiche-pied {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 11px;
+  padding-top: 9px;
+  border-top: 1px solid var(--rg-hair);
+  min-width: 0;
+}
+
+.tqv2-personne {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--rg-soft);
+}
+.tqv2-personne-nom {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tqv2-personne-nom small {
+  font-weight: 500;
+  color: var(--rg-faint);
+}
+.tqv2-personne-none {
+  font-size: 12.5px;
+  font-style: italic;
+  color: var(--rg-faint);
+}
+
+.tqv2-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--rg-voile);
+  color: #241a12;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+.tqv2-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.tqv2-fiche-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.tqv2-fiche:hover .tqv2-fiche-actions,
+.tqv2-fiche-actions:focus-within {
+  opacity: 1;
+}
+
+.tqv2-action {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid var(--rg-hair);
+  background: transparent;
+  color: var(--rg-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.tqv2-action:hover {
+  border-color: var(--rg-hair-fort);
+}
+
+/* ── les états vides, le chargement, la note ─────────────── */
+
+.tqv2-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  border: 1px dashed var(--rg-hair-fort);
+  border-radius: 16px;
+  padding: 44px 24px;
+}
+.tqv2-vide h3 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--rg-ink);
+}
+.tqv2-vide p {
+  margin: 0 0 10px;
+  max-width: 420px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--rg-faint);
+}
+
+.tqv2-chargement {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+}
+.tqv2-chargement-texte {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--rg-faint);
+}
+.tqv2-tourne {
+  animation: eqv2-tourner 0.9s linear infinite;
+}
+
+.tqv2-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--rg-faint);
+}
+
+/* ── responsive de l'onglet Tâches ───────────────────────── */
+
+@media (max-width: 1200px) {
+  .tqv2-colonnes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .tqv2-colonnes {
+    grid-template-columns: 1fr;
+  }
+  .tqv2-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
