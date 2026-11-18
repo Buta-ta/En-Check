@@ -58,5 +58,14 @@ jobs:
       - name: Porte de lint (no-undef, règles des hooks) — ce qui casse à l'exécution
         run: npx eslint src --config eslint.gate.config.js
 
+      # La charte (registre identite/DECISIONS-ENTERINEES.md) : rapport non
+      # bloquant tant que le dépôt n'est pas page par page conforme — voir
+      # identite/conformite.md. Elle devient --strict bloquante quand la
+      # dernière page sera redevinée : une porte rouge le premier jour
+      # resterait rouge pour toujours, alors on la monte page par page.
+      - name: Contrôle de charte (rapport non bloquant)
+        run: |
+          npm run charte:ci || true
+
       - name: Construction du bundle de production (Vite Build)
         run: npm run build

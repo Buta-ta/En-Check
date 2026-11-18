@@ -69,7 +69,7 @@ function NavItem({ page, item, cheminActif, tabState, onSelect }) {
   return (
     <button
       type="button"
-      className={`sidebar-link${actif ? ' is-active' : ''}`}
+      className={`sidebar-link${actif ? ' is-active' : ''}${page?.teinte ? ' sn-a-teinte' : ''}`}
       style={{
         '--teinte-page': page.teinte,
         '--teinte-page-fond': teinteVersRgba(page.teinte, 0.18),

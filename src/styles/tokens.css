@@ -1,0 +1,188 @@
+/* ═══════════════════════════════════════════════════════════
+   EN-CHECK · TOKENS — la charte en variables
+   ───────────────────────────────────────────────────────────
+   Seuls les fichiers src/index.css, src/styles/charte.css et
+   ce fichier ont le droit de contenir des valeurs en dur
+   (contrôle C1). Toute autre feuille écrit var(--charte-…).
+
+   Décisions : palette B (D-001) · IBM Plex auto-hébergées
+   (D-006) · peau D brut adouci (D-016) · mesures (D-013).
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Polices (D-006) — auto-hébergées, aucune police tierce (C6) ── */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-sans-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-sans-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-sans-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/ibm-plex-mono-700.woff2') format('woff2');
+}
+
+:root {
+  /* ── Palette B · thème clair (D-001) ──
+     Les paires texte/fond tiennent toutes ≥ 4,5:1 (contrôle C2) :
+     blanc cassé sur argile 4,64 · encre sur surface 12,71. */
+  --charte-sable: #F3E9DA;      /* le fond d'écran (canvas) */
+  --charte-surface: #FBF4E9;    /* les cartes et panneaux */
+  --charte-surface2: #EADCC7;   /* les surfaces secondaires, états désactivés */
+  --charte-bordure: #D8C6AC;    /* le filet fin (1 px) */
+  --charte-encre: #2A1708;      /* l'encre : contours 2 px, titres, texte fort */
+  --charte-douce: #6B4A32;      /* le texte doux, les légendes */
+  --charte-aplat: #A26537;      /* l'argile remplie : la seule action principale */
+  --charte-texte: #7E4A26;      /* l'argile écrite : liens, secondaires, mots */
+  --charte-blanc: #FFFDF7;      /* le blanc cassé : texte sur argile */
+  --charte-espresso: #2A1708;   /* l'espresso fixe : la barre latérale (D-018), clair et sombre */
+
+  /* Barre latérale (D-018) — la barre est espresso dans les deux thèmes :
+     ces valeurs ne s'inversent PAS avec le thème. */
+  --charte-barre: #2A1708;           /* le fond espresso */
+  --charte-barre-ink: #F3E9DA;       /* les libellés (sable clair sur espresso, 11,37:1) */
+  --charte-barre-muet: #B99B7B;      /* les icônes au repos */
+  --charte-barre-ligne: rgba(243, 233, 218, 0.16); /* les filets */
+  --charte-barre-hover: rgba(251, 244, 233, 0.08); /* le survol */
+  --charte-barre-actif: #FBF4E9;     /* l'item actif : l'ivoire */
+  --charte-barre-actif-texte: #2A1708; /* texte et icône sur l'ivoire */
+  --charte-barre-compteur: rgba(251, 244, 233, 0.16);  /* compteur sur espresso */
+  --charte-barre-compteur-actif: rgba(42, 23, 8, 0.10); /* compteur sur ivoire */
+  --charte-barre-point: #D3A24B;     /* le point « à traiter » : lisible sur espresso, les deux thèmes */
+
+  /* États (succès / alerte / erreur) — mots obligatoires, jamais couleur seule (C7) */
+  --charte-succes: #3F6B4C;
+  --charte-alerte: #8A5A14;
+  --charte-erreur: #9B2C2C;
+
+  /* Les cinq teintes de statut fixes (D-018) — points 8 px de la barre */
+  --charte-statut-present: #3F6B4C;   /* présent, à l'heure */
+  --charte-statut-cours: #A26537;     /* en cours, en pause */
+  --charte-statut-retard: #8A5A14;    /* en retard — toujours accompagné du mot */
+  --charte-statut-absent: #9B2C2C;    /* absent — après fin de poste uniquement */
+  --charte-statut-neutre: #6B4A32;    /* hors poste, inconnu */
+
+  /* Boutons — les 7 états du kit v1.3 (D-016) */
+  --charte-btn-repos: #A26537;
+  --charte-btn-survol: #8C5A2A;
+  --charte-btn-actif: #7E4A26;
+  --charte-btn-desactive: #EADCC7;
+  --charte-btn-desactive-texte: #6B4A32;
+  --charte-btn-danger: #9B2C2C;
+  --charte-btn-lien: #7E4A26;
+
+  /* ── Polices (D-006) ── */
+  --charte-police: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --charte-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* ── Typo (D-013) — trois tailles, point final ── */
+  --charte-taille-titre: 20px;   /* h1 · 700 */
+  --charte-taille-corps: 14px;   /* le corps · 400 */
+  --charte-taille-micro: 11px;   /* légendes, badges, badges · 400 */
+  --charte-taille-bouton: 9.5px; /* les boutons, capitales · 700 */
+
+  /* ── Espacements (D-013) — 4 à 48 ── */
+  --charte-espace-1: 4px;
+  --charte-espace-2: 8px;
+  --charte-espace-3: 12px;
+  --charte-espace-4: 16px;
+  --charte-espace-5: 24px;
+  --charte-espace-6: 32px;
+  --charte-espace-7: 48px;
+
+  /* ── Rayons (D-016) — {6, 8, 11, 12, 999}, point final ── */
+  --charte-rayon-champ: 6px;     /* champs, boutons, cartes de tableau */
+  --charte-rayon-carte: 8px;     /* messages, cartes, modales */
+  --charte-rayon-badge: 11px;    /* tampons */
+  --charte-rayon-tuile: 12px;    /* tuiles bento */
+  --charte-rayon-pilule: 999px;  /* pilules */
+
+  /* ── Peau D (D-016) ── */
+  --charte-trait: 2px;                     /* contour des objets actifs */
+  --charte-ombre-dure: 3px 3px 0 0 var(--charte-encre); /* blur = 0 (C9) */
+  --charte-duree: 200ms;                   /* D-013 : tout en 200 ms ease-out */
+  --charte-easing: ease-out;
+
+  /* Bandeau de motif (D-003) */
+  --charte-bande-hauteur: 76px;
+  --charte-bande-mobile: 60px;
+  --charte-bande-bordure: 1px;
+  --charte-bande-marge: 10px;
+
+  /* Tableau (kit v1.3) */
+  --charte-tableau-ligne: 34px;
+  --charte-tableau-pages: 25;
+
+  /* Modales (D-020) */
+  --charte-modale-petite: 420px;
+  --charte-modale-moyenne: 560px;
+  --charte-modale-large: 760px;
+  --charte-modale-voile: rgba(42, 23, 8, 0.44); /* voile espresso 44 % */
+}
+
+/* ── Palette B · thème sombre (D-005 : un seul bouton, deux états) ──
+   Ancres : fond #1C1109 · surface #2A1B10. Les remplissages argile et
+   espresso restent identiques : l'argile se lit sur le sombre, c'est sa
+   densité. Le « blanc » devient le sable clair (texte sur remplissage). */
+[data-theme='dark'] {
+  --charte-sable: #1C1109;
+  --charte-surface: #2A1B10;
+  --charte-surface2: #382718;
+  --charte-bordure: #4A3624;
+  --charte-encre: #F3E9DA;   /* l'encre s'inverse : encre sombre → sable clair */
+  --charte-douce: #C9B49A;
+  --charte-aplat: #A26537;   /* inchangé */
+  --charte-texte: #D8A468;   /* l'argile écrite, éclaircie pour le sombre */
+  --charte-blanc: #FBF4E9;
+
+  --charte-succes: #7FB08D;
+  --charte-alerte: #D3A24B;
+  --charte-erreur: #D96B6B;
+
+  --charte-statut-present: #7FB08D;
+  --charte-statut-cours: #C98A4B;
+  --charte-statut-retard: #D3A24B;
+  --charte-statut-absent: #D96B6B;
+  --charte-statut-neutre: #8A7358;
+
+  --charte-btn-repos: #A26537;
+  --charte-btn-survol: #B07241;
+  --charte-btn-actif: #8C5A2A;
+  --charte-btn-desactive: #382718;
+  --charte-btn-desactive-texte: #8A7358;
+  --charte-btn-danger: #D96B6B;
+  --charte-btn-lien: #D8A468;
+
+  --charte-ombre-dure: 3px 3px 0 0 rgba(0, 0, 0, 0.55);
+}

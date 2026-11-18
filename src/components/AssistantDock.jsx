@@ -56,13 +56,18 @@ const readActiveTheme = () => {
       if (domTheme === 'light' || domTheme === 'dark') return domTheme
     }
     if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem('encheck_admin_dark_mode_v2')
-      if (saved === 'false') return 'light'
+      /* D-005 : encheck.theme = clair / sombre, clair par défaut. */
+      const saved = localStorage.getItem('encheck.theme')
+      if (saved === 'clair' || saved === 'sombre') {
+        return saved === 'clair' ? 'light' : 'dark'
+      }
+      const legacy = localStorage.getItem('encheck_admin_dark_mode_v2')
+      if (legacy === 'false') return 'light'
     }
   } catch {
-    // Default to dark mode
+    // Thème clair par défaut (D-005)
   }
-  return 'dark'
+  return 'light'
 }
 
 export default function AssistantDock() {

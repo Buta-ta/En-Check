@@ -25,12 +25,13 @@
   gap: 7px;
   padding: 7px 9px;
   border: 1px solid var(--sidebar-line);
-  border-radius: 10px;
+  border-radius: var(--charte-rayon-carte);
   background: var(--sidebar-hover);
   transition: border-color 160ms ease;
 }
 
-.sn-filtre:focus-within { border-color: var(--sidebar-active); }
+/* D-018 : l'espresso sur espresso ne se verrait pas — le focus est ivoire. */
+.sn-filtre:focus-within { border-color: var(--sidebar-focus); }
 .sn-filtre > svg { flex: 0 0 auto; color: var(--sidebar-muted); }
 
 .sn-filtre input {
@@ -169,7 +170,7 @@
   color: var(--sidebar-ink);
   text-align: left;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--charte-rayon-carte);
   background: transparent;
   cursor: pointer;
   transition: background-color 140ms ease, color 140ms ease;
@@ -177,10 +178,16 @@
 
 .dashboard-sidebar .sidebar-link:hover { background: var(--sidebar-hover); }
 
-/* L'état actif : un fond contrasté, sur toute la ligne. */
+/* L'état actif (D-018) : fond ivoire, texte et icône espresso, sur toute la ligne. */
 .dashboard-sidebar .sidebar-link.is-active {
-  color: var(--sidebar-ink);
-  background: var(--teinte-page-fond, var(--sidebar-fill));
+  color: var(--sidebar-active);
+  background: var(--sidebar-fill);
+}
+
+/* La teinte personnalisée (mode Personnaliser) passe au trait gauche :
+   le fond actif reste ivoire (D-018), la teinte se lit sur le bord. */
+.dashboard-sidebar .sidebar-link.is-active.sn-a-teinte {
+  box-shadow: inset 2px 0 0 0 var(--teinte-page-trait);
 }
 
 .dashboard-sidebar .sidebar-link.is-active .sidebar-link-icon { color: var(--sidebar-active); }
@@ -207,25 +214,30 @@
   white-space: nowrap;
 }
 
+/* Le compteur (D-018) : le chiffre est la donnée — la teinte ne fait que porter. */
 .sidebar-link-count {
   min-width: 20px;
   padding: 1px 6px;
-  color: #241a10;
+  color: var(--charte-espresso);
   font-size: 10px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   text-align: center;
   border-radius: 999px;
-  background: var(--teinte-page, #e6aa61);
+  background: var(--teinte-page, var(--charte-aplat));
+}
+.dashboard-sidebar .sidebar-link.is-active .sidebar-link-count {
+  color: var(--sidebar-active);
 }
 
+/* Le point d'activité (D-018) : 8 px, teinte fixe lisible sur espresso. */
 .sidebar-link-dot {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
   border-radius: 50%;
-  background: var(--teinte-page, #e6aa61);
-  box-shadow: 0 0 0 3px var(--teinte-page-fond, transparent);
+  background: var(--sidebar-point);
+  box-shadow: 0 0 0 3px var(--sidebar);
 }
 
 .sn-vide {
@@ -235,7 +247,7 @@
   font-size: 9.5px;
   line-height: 1.5;
   border: 1px dashed var(--sidebar-line);
-  border-radius: 7px;
+  border-radius: var(--charte-rayon-champ);
 }
 
 .sn-vide--filtre { text-align: center; }
@@ -248,9 +260,10 @@
 
 .sn-personnalisation-bouton { color: var(--sidebar-muted); }
 .sn-personnalisation-bouton:hover { color: var(--sidebar-ink); }
+/* D-018 : même ivoire que les pages actives. */
 .sn-personnalisation-bouton.is-active {
   color: var(--sidebar-active);
-  background: var(--teinte-page-fond, var(--sidebar-fill));
+  background: var(--sidebar-fill);
 }
 .sn-personnalisation-bouton.is-active .sidebar-link-icon { color: var(--sidebar-active); }
 

@@ -14,7 +14,7 @@ import {
 
 it('offers exactly four real routes and toggles the persisted global theme', async () => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
-  localStorage.setItem('encheck_admin_dark_mode_v2', 'false')
+  localStorage.setItem('encheck.theme', 'clair')
   const host = document.createElement('div')
   document.body.append(host)
   const root = createRoot(host)
@@ -39,7 +39,7 @@ it('offers exactly four real routes and toggles the persisted global theme', asy
     ).toEqual(['/pointages', '/planning', '/employes', '/paie'])
     await act(async () => host.querySelector('button').click())
     expect(document.documentElement.dataset.theme).toBe('dark')
-    expect(localStorage.getItem('encheck_admin_dark_mode_v2')).toBe('true')
+    expect(localStorage.getItem('encheck.theme')).toBe('sombre')
     expect(host.querySelector('button').textContent).toBe('Mode clair')
     await act(async () => host.querySelector('button').click())
     expect(document.documentElement.dataset.theme).toBe('light')
