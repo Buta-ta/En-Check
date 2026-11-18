@@ -107,3 +107,25 @@ Matricules, heures, minutes : **IBM Plex Mono**, chiffres tabulaires (D-006).
 - [ ] 2 captures 1440 px (clair + sombre)
 - [ ] Aucune décision contournée silencieusement
 - [ ] Signé : agent En-Check — Date : 19/11/2026
+
+## 10. Leçon de la régression du 18/11 (fix en prod, `aece9b0` → prod)
+
+La page est partie en prod cassée : bande Zoulou tronquée, sidebar invisible,
+moitié droite sombre, message écrasé sur 50 px. Trois causes, toutes
+structurelles — aucune n'avait passé les gates :
+
+| # | Cause | Correction |
+|---|---|---|
+| 1 | **Collision de nom de classe** : la coque de page portait `empv2-page`, classe déjà utilisée par les boutons de pagination (`display: inline-flex; height: 28px`). La coque entier est devenue une boîte inline resserrée : la bande (`width: 100%`, `flex-shrink: 0`) l'a occupée en entier, la grille a déborder à droite sur le fond du `body`. | La coque s'appelle **`empv2-coque`**, les boutons de pagination **`empv2-pagbtn`**. Règle : **une classe = un élément** ; les classes de page (`empv2-coque`, `empv2-layout`, `empv2-main`, `empv2-sidebar`) ne servent qu'à la page. |
+| 2 | **Variables de la barre manquantes** : cette page n'est pas dans `.encheck-dashboard`, qui est le seul endroit qui définit `--sidebar-*`. Sans elles, `.nav-panel` est transparente et son texte (encre foncée) est illisible sur le fond sombre. | `--sidebar-*` sont posées sur `.empv2-coque` (mêmes liaisons que le dashboard, tokens `--charte-barre*`, D-018). |
+| 3 | **Échappements littéraux** : `aujourd\u2019hui` affiché tel quel dans les tuiles (le JSX contient le texte brut, pas une chaîne JS échappée). | L'apostrophe réelle (`aujourd'hui`), jamais `\u2019` en dur. |
+
+Le canvas de la coque est `var(--charte-sable)` avec `!important` : il bat le
+canvas `pt-canvas` du shell `.pointages-afrotech-shell` (importé via
+l'écran de chargement), qui n'existe qu'en clair et n'a pas de
+`data-theme` posé sur cette coque.
+
+Preuves : `docs/regression-employes.png` (prod cassée, capture utilisateur),
+`docs/verify-base.png` (le même bug reproduit en harnais),
+`docs/verify-fixed.png` (corrigé, 1456 px, thème sombre).
+

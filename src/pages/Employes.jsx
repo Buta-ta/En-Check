@@ -1069,7 +1069,7 @@ export default function Employes() {
   return (
     <>
 
-      <div className="pointages-afrotech-shell empv2-page">
+      <div className="pointages-afrotech-shell empv2-coque">
         <PageCulturalBand pathname="/employes" />
 
         <div className="empv2-layout">
@@ -1210,15 +1210,15 @@ export default function Employes() {
                 </div>
                 <div className="ch-tuile-repere">
                   <div className="ch-tuile-repere-ligne">
-                    <span className="ch-tuile-valeur">{suiviPresence ? liveCounts.enPoste + liveCounts.enPause : '\u2014'}</span>
-                    <span className="ch-tuile-repere">aujourd\u2019hui</span>
+                    <span className="ch-tuile-valeur">{suiviPresence ? liveCounts.enPoste + liveCounts.enPause : '—'}</span>
+                    <span className="ch-tuile-repere">aujourd’hui</span>
                   </div>
                   <span className="ch-tuile-legende">Présents (en poste ou en pause)</span>
                 </div>
                 <div className="ch-tuile-repere">
                   <div className="ch-tuile-repere-ligne">
-                    <span className="ch-tuile-valeur">{suiviPresence ? liveCounts.retards : '\u2014'}</span>
-                    <span className="ch-tuile-repere">aujourd\u2019hui</span>
+                    <span className="ch-tuile-valeur">{suiviPresence ? liveCounts.retards : '—'}</span>
+                    <span className="ch-tuile-repere">aujourd’hui</span>
                   </div>
                   <span className="ch-tuile-legende">Retards — le mot est écrit, jamais un point seul</span>
                 </div>
@@ -1330,7 +1330,7 @@ export default function Employes() {
                         <span className="empv2-pagination-boutons">
                           <button
                             type="button"
-                            className="empv2-page"
+                            className="empv2-pagbtn"
                             disabled={pageAnnuaireCourante <= 1}
                             onClick={() => setPageAnnuaire(pageAnnuaireCourante - 1)}
                           >
@@ -1338,7 +1338,7 @@ export default function Employes() {
                           </button>
                           <button
                             type="button"
-                            className="empv2-page"
+                            className="empv2-pagbtn"
                             disabled={pageAnnuaireCourante >= nbPagesAnnuaire}
                             onClick={() => setPageAnnuaire(pageAnnuaireCourante + 1)}
                           >
