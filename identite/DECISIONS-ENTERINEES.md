@@ -46,12 +46,17 @@ On n'efface jamais l'ancienne : on la déclare remplacée.
 | D-017 | Trois formes par objet — dix-huit formes en tout, une emploi chacune | entérinée | « garde ces 3 formes. Je les valide et il faut absolument entériner ça » | 18/11/2026 |
 | D-018 | Barre latérale : espresso conservé (clair comme sombre), kente sous le logo, item actif ivoire, 5 teintes de statut fixes | entérinée (voir note) | « je valide » (tableau du registre) | 18/11/2026 |
 | D-019 | Périmètre : chaque page, chaque modale, dashboard en premier ; ordre dessin → validation → code → remesure | entérinée | « je veux cette nouvelle identité dans chaque page, chaque modale » | 18/11/2026 |
-| D-020 | La modale : carte 420 / 560 / 760 px, voile espresso 44 %, deux boutons au plus, fermeture clavier | proposée | — (planche 27) | 18/11/2026 |
-| D-021 | Exception d'ordre : la page Employés (et ses onglets) est redevinée avant le dashboard | entérinée | « commence par Employés car tu étais déjà dessus (c'est une exception) » | 18/11/2026 |
+| D-020 | La modale : carte 420 / 560 / 760 px, voile espresso 44 %, deux boutons au plus, fermeture clavier | **entérinée** | « je valide tout » (planche 27 vue) | 18/11/2026 |
+| D-021 | Exception d'ordre : la page Employés (et ses onglets) est redevinée avant le dashboard | entérinée | « commence par la page Employés car tu étais déjà dessus » (phrase rapportée par le fondateur) | 18/11/2026 |
 
 **Note D-018** : le tableau du registre dit « entérinée — je valide », le journal
 de la même page dit « proposée ». Le tableau fait foi (règle du document). Si le
 fondateur dit le contraire, une D-0xx remplacera cette note.
+
+**Correction du 18/11** — D-020 était restée « proposée » alors que le fondateur
+avait validé la planche 27 (« je valide tout »). Elle est entérinée. Et les écarts
+d'écrans ne prennent plus de numéro `D-0xx` : ils sont numérotés `DÉR-01`…, parce
+qu'une dérogation n'est pas une décision et ne doit pas décaler la série.
 
 ## La peau, chiffrée (D-016)
 
