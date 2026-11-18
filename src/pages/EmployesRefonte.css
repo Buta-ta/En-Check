@@ -7,18 +7,52 @@
    mesure passent par les tokens (contrôle C1).
    ═══════════════════════════════════════════════════════════ */
 
-/* ── LA COQUE : la même barre que le tableau de bord ─────── */
+/* ── LA COQUE : la même barre que le tableau de bord ───────
+   Les variables de la barre (D-018) sont posées ici, car cette
+   page n'est pas dans .encheck-dashboard où Dashboard.css les
+   définit — sans elles, la carte de la barre est transparente. */
+
+.empv2-coque {
+  display: block;
+  min-height: 100vh;
+  /* Le canvas de charte suit le thème (D-005). !important : bat le
+     canvas pt-canvas du shell .pointages-afrotech-shell (importé via
+     l'écran de chargement), qui serait figé en clair. */
+  background: var(--charte-sable) !important;
+  --sidebar: var(--charte-barre);
+  --sidebar-ink: var(--charte-barre-ink);
+  --sidebar-muted: var(--charte-barre-muet);
+  --sidebar-line: var(--charte-barre-ligne);
+  --sidebar-active: var(--charte-barre-actif-texte);
+  --sidebar-fill: var(--charte-barre-actif);
+  --sidebar-hover: var(--charte-barre-hover);
+  --sidebar-focus: var(--charte-barre-actif);
+  --sidebar-point: var(--charte-barre-point);
+  --sidebar-count: var(--charte-barre-compteur);
+  --sidebar-count-actif: var(--charte-barre-compteur-actif);
+  --shadow-sm: 3px 3px 0 0 var(--charte-espresso);
+}
 
 .empv2-layout {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  min-height: 100vh;
-  background: var(--charte-sable);
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  position: relative;
+}
+
+.empv2-sidebar { flex: 0 0 auto; }
+
+/* sans le rail d'icônes, le panneau colle à gauche */
+.empv2-sidebar .nav-panel { margin-left: 0; }
+
+@media (max-width: 1020px) {
+  .empv2-sidebar { display: none; }
 }
 
 /* ── LE MAIN ─────────────────────────────────────────────── */
 
 .empv2-main {
+  flex: 1 1 auto;
   min-width: 0;
   padding: var(--charte-espace-5) var(--charte-espace-6) var(--charte-espace-7);
   color: var(--charte-encre);
@@ -308,7 +342,7 @@
 
 .empv2-pagination-boutons { display: flex; gap: var(--charte-espace-2); }
 
-.empv2-page {
+.empv2-pagbtn {
   display: inline-flex;
   align-items: center;
   gap: var(--charte-espace-1);
@@ -323,8 +357,8 @@
   cursor: pointer;
   transition: border-color var(--charte-duree) var(--charte-easing);
 }
-.empv2-page:hover:not(:disabled) { border-color: var(--charte-encre); }
-.empv2-page:disabled {
+.empv2-pagbtn:hover:not(:disabled) { border-color: var(--charte-encre); }
+.empv2-pagbtn:disabled {
   color: var(--charte-douce);
   cursor: default;
   opacity: 0.5;
