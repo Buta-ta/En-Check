@@ -58,6 +58,7 @@ import SystemMessageBanner from './SystemMessageBanner'
 import DashboardKenteAnalytics from './DashboardKenteAnalytics'
 import AttendanceHeroImage from './AttendanceHeroImage'
 import EnCheckBrandMark from './EnCheckBrandMark'
+import { KenteWovenTapestrySvg } from './AfroCulturalSvg'
 import PhotoSignee from './PhotoSignee'
 import { formaterHeureLocale } from '../utils/timezoneUtils'
 import { initialesDe, initialesDepuisNom } from '../utils/initiales'
@@ -868,6 +869,11 @@ export default function DashboardExperience({
 
                 <div className="nav-panel-contexte">
                   <EnterpriseSwitcher admin={admin} onSwitch={handleEnterpriseSwitch} />
+                </div>
+
+                {/* D-018 — le kente sous le logo : 28 px, sans texte dessus. */}
+                <div className="nav-panel-kente" aria-hidden="true">
+                  <KenteWovenTapestrySvg />
                 </div>
 
                 <button

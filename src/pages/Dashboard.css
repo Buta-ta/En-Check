@@ -19,13 +19,18 @@
   --danger-soft: rgba(185, 78, 69, 0.12);
   --violet: #76618f;
   --violet-soft: rgba(118, 97, 143, 0.12);
-  --sidebar: #fcfaf5;
-  --sidebar-ink: #2c2925;
-  --sidebar-muted: #6f675a;
-  --sidebar-line: rgba(44, 41, 37, 0.12);
-  --sidebar-active: #a95c2d;
-  --sidebar-fill: rgba(185, 113, 59, 0.14);
-  --sidebar-hover: rgba(44, 41, 37, 0.055);
+  /* D-018 — la barre est espresso dans les deux thèmes, item actif ivoire. */
+  --sidebar: var(--charte-barre);
+  --sidebar-ink: var(--charte-barre-ink);
+  --sidebar-muted: var(--charte-barre-muet);
+  --sidebar-line: var(--charte-barre-ligne);
+  --sidebar-active: var(--charte-barre-actif-texte);
+  --sidebar-fill: var(--charte-barre-actif);
+  --sidebar-hover: var(--charte-barre-hover);
+  --sidebar-focus: var(--charte-barre-actif);
+  --sidebar-point: var(--charte-barre-point);
+  --sidebar-count: var(--charte-barre-compteur);
+  --sidebar-count-actif: var(--charte-barre-compteur-actif);
   --shadow: 0 12px 34px rgba(65, 48, 31, 0.07);
   --shadow-sm: 0 3px 12px rgba(65, 48, 31, 0.05);
 
@@ -59,13 +64,18 @@
   --danger-soft: rgba(226, 139, 128, 0.14);
   --violet: #b8a0d0;
   --violet-soft: rgba(184, 160, 208, 0.14);
-  --sidebar: #1b1410;
-  --sidebar-ink: #f0e4cb;
-  --sidebar-muted: #c4b49b;
-  --sidebar-line: rgba(240, 228, 203, 0.12);
-  --sidebar-active: #c1743c;
-  --sidebar-fill: rgba(193, 116, 60, 0.2);
-  --sidebar-hover: rgba(240, 228, 203, 0.07);
+  /* D-018 — identique au thème clair : l'espresso ne s'inverse pas. */
+  --sidebar: var(--charte-barre);
+  --sidebar-ink: var(--charte-barre-ink);
+  --sidebar-muted: var(--charte-barre-muet);
+  --sidebar-line: var(--charte-barre-ligne);
+  --sidebar-active: var(--charte-barre-actif-texte);
+  --sidebar-fill: var(--charte-barre-actif);
+  --sidebar-hover: var(--charte-barre-hover);
+  --sidebar-focus: var(--charte-barre-actif);
+  --sidebar-point: var(--charte-barre-point);
+  --sidebar-count: var(--charte-barre-compteur);
+  --sidebar-count-actif: var(--charte-barre-compteur-actif);
   --shadow: 0 14px 40px rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 3px 14px rgba(0, 0, 0, 0.14);
   color-scheme: dark;
@@ -129,7 +139,8 @@
   flex: 0 0 58px;
   padding: 12px 0 10px;
   border: 1px solid var(--sidebar-line);
-  border-radius: 16px;
+  /* D-018 : la carte de la barre, rayon de la charte (6 px). */
+  border-radius: var(--charte-rayon-champ);
   background: var(--sidebar);
   box-shadow: var(--shadow-sm);
 }
@@ -179,7 +190,7 @@
   place-items: center;
   color: var(--sidebar-muted);
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--charte-rayon-carte);
   background: transparent;
   cursor: pointer;
   transition: color 140ms ease, background-color 140ms ease;
@@ -193,15 +204,15 @@
   background: var(--sidebar-fill);
 }
 
-/* Point « éléments à traiter » dans la rubrique. */
+/* Point « éléments à traiter » dans la rubrique — 8 px, teinte fixe (D-018). */
 .nav-rail-dot {
   position: absolute;
   top: 6px;
   right: 7px;
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--sidebar-active);
+  background: var(--sidebar-point);
   box-shadow: 0 0 0 2px var(--sidebar);
 }
 
@@ -215,26 +226,27 @@
   border-top: 1px solid var(--sidebar-line);
 }
 
+/* D-018 : l'argile pleine, l'ivoire en anneau — lisible sur l'espresso. */
 .nav-rail-avatar {
   display: grid;
   width: 32px;
   height: 32px;
   margin-top: 6px;
   place-items: center;
-  color: #fff6e8;
+  color: var(--charte-blanc);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.02em;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--sidebar-active), #8a4a24);
+  background: var(--charte-aplat);
   border: 2px solid var(--sidebar);
-  box-shadow: 0 0 0 1px var(--sidebar-active);
+  box-shadow: 0 0 0 1px var(--sidebar-focus);
   cursor: pointer;
   transition: box-shadow 140ms ease;
 }
 
 .nav-rail-avatar:hover,
-.nav-rail-avatar.is-ouvert { box-shadow: 0 0 0 2px var(--sidebar-active); }
+.nav-rail-avatar.is-ouvert { box-shadow: 0 0 0 2px var(--sidebar-focus); }
 
 .nav-rail-deconnexion { color: var(--sidebar-muted); }
 
@@ -247,7 +259,8 @@
   margin-left: 10px;
   overflow: hidden;
   border: 1px solid var(--sidebar-line);
-  border-radius: 16px;
+  /* D-018 : rayon de la charte (6 px), comme le rail. */
+  border-radius: var(--charte-rayon-champ);
   background: var(--sidebar);
   box-shadow: var(--shadow-sm);
   transition: width 200ms ease, flex-basis 200ms ease;
@@ -280,7 +293,8 @@
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     'marque plier'
-    'contexte contexte';
+    'contexte contexte'
+    'kente kente';
   gap: 8px 6px;
   align-items: center;
   padding: 14px 12px 10px;

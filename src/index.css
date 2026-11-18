@@ -2,6 +2,10 @@
    🎨 EN-CHECK ADMIN - STYLES GLOBAUX
    ═══════════════════════════════════════════════════════════ */
 
+/* La charte : les tokens d'abord, puis les dix-huit formes (D-017). */
+@import './styles/tokens.css';
+@import './styles/charte.css';
+
 * {
   margin: 0;
   padding: 0;
@@ -9,7 +13,8 @@
 }
 
 :root {
-  --encheck-font-ui: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  /* D-006 : IBM Plex Sans pour l'interface, auto-hébergée (tokens.css). */
+  --encheck-font-ui: var(--charte-police);
   /* Couleurs Sable & Or */
   --sable-clair: #E5D4C0;
   --sable-dore: #C4A574;
@@ -32,8 +37,10 @@
 
 body {
   font-family: var(--encheck-font-ui);
-  background-color: var(--sable-clair);
-  color: var(--brun-profond);
+  /* Palette B (D-001) : le canvas est le sable, l'encre est le texte.
+     Le thème sombre inverse ces deux tokens (tokens.css). */
+  background-color: var(--charte-sable);
+  color: var(--charte-encre);
   min-height: 100vh;
 }
 

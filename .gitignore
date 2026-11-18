@@ -33,3 +33,5 @@ dev-dist/
 backups/
 essai-adms/config.json
 !essai-adms/config.example.json
+# Copies locales du dossier Drive (la source est sur Google Drive)
+/google_drive/

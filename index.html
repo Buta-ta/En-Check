@@ -3,12 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+
+    <!-- D-005 — anti-clignotement : le thème est posé avant le premier rendu.
+         encheck.theme = 'clair' | 'sombre', clair par défaut ; l'ancien
+         choix (encheck_admin_dark_mode_v2) est migré une fois. -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem('encheck.theme');
+          var sombre = saved === 'sombre';
+          if (saved !== 'clair' && saved !== 'sombre') {
+            var legacy = localStorage.getItem('encheck_admin_dark_mode_v2');
+            sombre = legacy !== null && legacy !== 'false';
+          }
+          document.documentElement.dataset.theme = sombre ? 'dark' : 'light';
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
     
     <!-- ✅ VIEWPORT CORRIGÉ (sans user-scalable=no) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#3D2B1F" />
+    <meta name="theme-color" content="#2A1708" />
     <meta name="description" content="En-Check - Gestion de pointage intelligente pour entreprises" />
     
     <!-- iOS Support -->

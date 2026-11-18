@@ -1,0 +1,425 @@
+/* ═══════════════════════════════════════════════════════════
+   EN-CHECK · CHARTE — les dix-huit formes (D-017) en peau D
+   ───────────────────────────────────────────────────────────
+   Six objets, trois formes chacun, une forme = un emploi.
+   « Trois formes par objet, c'est le maximum. »
+   Les valeurs de couleur et de mesure viennent de tokens.css :
+   ici il n'y a que de la structure (contrôles C1, C9, C10).
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─────────────── 1 · BOUTON — Pleine / Contour / Inverse ─────────────── */
+
+/* Pleine : la seule action principale de l'écran (une par écran). */
+.ch-btn-pleine {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--charte-espace-2);
+  height: 36px;
+  padding: 0 var(--charte-espace-5);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-btn-repos);
+  color: var(--charte-blanc);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+.ch-btn-pleine:hover:not(:disabled) { background: var(--charte-btn-survol); }
+.ch-btn-pleine:active:not(:disabled) {
+  background: var(--charte-btn-actif);
+  transform: translate(1px, 1px);
+}
+.ch-btn-pleine:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+.ch-btn-pleine:disabled {
+  background: var(--charte-btn-desactive);
+  border-color: transparent;
+  color: var(--charte-btn-desactive-texte);
+  cursor: default;
+  box-shadow: none;
+}
+
+/* Contour : l'action secondaire. Jamais deux pleines sur un écran. */
+.ch-btn-contour {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--charte-espace-2);
+  height: 36px;
+  padding: 0 var(--charte-espace-5);
+  border: var(--charte-trait) solid var(--charte-aplat);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-btn-lien);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing),
+    color var(--charte-duree) var(--charte-easing);
+}
+.ch-btn-contour:hover:not(:disabled) { background: var(--charte-surface2); }
+.ch-btn-contour:active:not(:disabled) { color: var(--charte-encre); }
+.ch-btn-contour:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+.ch-btn-contour:disabled {
+  background: var(--charte-surface2);
+  border-color: var(--charte-bordure);
+  color: var(--charte-btn-desactive-texte);
+  cursor: default;
+}
+
+/* Inverse : ce qui engage (espresso). Rouge uniquement si irréversible. */
+.ch-btn-inverse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--charte-espace-2);
+  height: 36px;
+  padding: 0 var(--charte-espace-5);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-encre);
+  color: var(--charte-sable);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity var(--charte-duree) var(--charte-easing);
+}
+.ch-btn-inverse:hover:not(:disabled) { opacity: 0.92; }
+.ch-btn-inverse:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+.ch-btn-inverse:disabled {
+  background: var(--charte-btn-desactive);
+  color: var(--charte-btn-desactive-texte);
+  border-color: transparent;
+  cursor: default;
+}
+/* La danger : le rouge, et uniquement pour l'irréversible. */
+.ch-btn-inverse.ch-btn-danger { background: var(--charte-btn-danger); border-color: var(--charte-encre); }
+
+/* ─────────────── 2 · CHAMP — Cadre / Souligné / Étiquette fixe ─────────────── */
+
+/* Cadre : le formulaire. h40 · rayon 6 · focus 2 px · le mot d'erreur dessous. */
+.ch-champ-cadre {
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--charte-espace-3);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-corps);
+  transition: border-color var(--charte-duree) var(--charte-easing);
+}
+.ch-champ-cadre:focus {
+  outline: none;
+  border: var(--charte-trait) solid var(--charte-encre);
+}
+.ch-champ-cadre:disabled {
+  background: var(--charte-surface2);
+  color: var(--charte-douce);
+  cursor: default;
+}
+.ch-champ-cadre.ch-champ-erreur { border: var(--charte-trait) solid var(--charte-erreur); }
+.ch-champ-mot-erreur {
+  margin-top: var(--charte-espace-1);
+  color: var(--charte-erreur);
+  font-size: var(--charte-taille-micro);
+}
+
+/* Souligné : la saisie en ligne (un seul champ sur une ligne). */
+.ch-champ-souligne {
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--charte-espace-1);
+  border: 0;
+  border-bottom: var(--charte-trait) solid var(--charte-bordure);
+  background: transparent;
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-corps);
+  transition: border-color var(--charte-duree) var(--charte-easing);
+}
+.ch-champ-souligne:focus {
+  outline: none;
+  border-bottom-color: var(--charte-encre);
+}
+
+/* Étiquette fixe : la grille de réglages. L'étiquette reste au-dessus,
+   remplie ou vide — jamais de texte flottant. */
+.ch-champ-etiquette { display: grid; gap: var(--charte-espace-1); }
+.ch-champ-etiquette .ch-champ-etiquette-label {
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  letter-spacing: 0.4px;
+}
+
+/* ─────────────── 3 · BADGE — Pilule / Tampon / Onglet ───────────────
+   h20 · le mot est la donnée (C7) : jamais une couleur seule. */
+
+/* Pilule : le statut courant (celui qui peut changer). */
+.ch-badge-pilule {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  height: 20px;
+  padding: 0 var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ch-badge-pilule .ch-badge-point {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--charte-statut-neutre);
+}
+
+/* Tampon : le statut figé. Le seul badge qui porte un contour 2 px. */
+.ch-badge-tampon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  min-height: 20px;
+  padding: 0 var(--charte-espace-2);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-badge);
+  background: transparent;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Onglet : le statut provisoire (en attente, en cours). */
+.ch-badge-onglet {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  min-height: 20px;
+  padding: 0 var(--charte-espace-2);
+  border: 1px solid var(--charte-aplat);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface2);
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Les mots de statut obligatoires (C7) — la couleur s'ajoute au mot,
+   jamais l'inverse. */
+.ch-statut-present { color: var(--charte-succes); }
+.ch-statut-cours { color: var(--charte-texte); }
+.ch-statut-retard { color: var(--charte-alerte); }
+.ch-statut-absent { color: var(--charte-erreur); }
+.ch-statut-present .ch-badge-point { background: var(--charte-statut-present); }
+.ch-statut-cours .ch-badge-point { background: var(--charte-statut-cours); }
+.ch-statut-retard .ch-badge-point { background: var(--charte-statut-retard); }
+.ch-statut-absent .ch-badge-point { background: var(--charte-statut-absent); }
+
+/* ─────────────── 4 · MESSAGE — Carte / Bandeau / Fiche ─────────────── */
+
+/* Carte : l'erreur bloquante. Une phrase complète, jamais une barre. */
+.ch-message-carte {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--charte-erreur);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+}
+
+/* Bandeau : le succès fugace. */
+.ch-message-bandeau {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2) var(--charte-espace-4);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-succes);
+  color: var(--charte-blanc);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+}
+
+/* Fiche : l'alerte datée. */
+.ch-message-fiche {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4);
+  border: 1px solid var(--charte-alerte);
+  border-left: var(--charte-trait) solid var(--charte-alerte);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+}
+
+/* ─────────────── 5 · TABLEAU — Grille / Filets / Tampon ───────────────
+   Lignes 34 px · pas de zébrures · une action par ligne · 25 lignes/page. */
+
+.ch-tableau { width: 100%; border-collapse: collapse; font-size: var(--charte-taille-corps); color: var(--charte-encre); }
+.ch-tableau th {
+  height: var(--charte-tableau-ligne);
+  padding: 0 var(--charte-espace-3);
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface2);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-align: left;
+  text-transform: uppercase;
+}
+.ch-tableau td {
+  height: var(--charte-tableau-ligne);
+  padding: 0 var(--charte-espace-3);
+  border-bottom: 1px solid var(--charte-bordure);
+}
+
+/* Grille : le contrôle et la paie — les filets des deux sens. */
+.ch-tableau-grille th, .ch-tableau-grille td { border: 1px solid var(--charte-bordure); }
+.ch-tableau-grille th { border-color: var(--charte-encre); }
+
+/* Filets : les listes longues — horizontales uniquement, sans zébrures. */
+.ch-tableau-filets th { border-bottom: var(--charte-trait) solid var(--charte-encre); }
+.ch-tableau-filets td { border-bottom: 1px solid var(--charte-bordure); }
+.ch-tableau-filets tbody tr:last-child td { border-bottom: 0; }
+
+/* La numérotation mono : matricules, heures, montants (D-006). */
+.ch-mono {
+  font-family: var(--charte-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────── 6 · TUILE — Chiffre / Chiffre + repère / Bandeau ───────────────
+   Rayon 12 · padding 24 (tuile bento : grille 12 colonnes, 6 max — D-014). */
+
+.ch-tuile-chiffre {
+  display: grid;
+  align-content: start;
+  gap: var(--charte-espace-1);
+  padding: var(--charte-espace-5);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--charte-surface);
+}
+.ch-tuile-chiffre .ch-tuile-valeur {
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-encre);
+}
+.ch-tuile-chiffre .ch-tuile-legende {
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+}
+
+/* Chiffre + repère : le chiffre porte sa période ou son unité. */
+.ch-tuile-repere {
+  display: grid;
+  align-content: start;
+  gap: var(--charte-espace-1);
+  padding: var(--charte-espace-5);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--charte-surface);
+}
+.ch-tuile-repere .ch-tuile-repere-ligne {
+  display: flex;
+  align-items: baseline;
+  gap: var(--charte-espace-2);
+}
+.ch-tuile-repere .ch-tuile-valeur {
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-encre);
+}
+.ch-tuile-repere .ch-tuile-repere {
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+}
+.ch-tuile-repere .ch-tuile-legende {
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+}
+
+/* Bandeau : la tuile de section, pleine largeur. */
+.ch-tuile-bandeau {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-4);
+  padding: var(--charte-espace-3) var(--charte-espace-5);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface2);
+}
+
+/* ─────────────── LA CARTE (l'enveloppe commune) ───────────────
+   Rayon 8 · padding 16 — la modale est une carte (D-020). */
+
+.ch-carte {
+  padding: var(--charte-espace-4);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+}
+
+/* L'objet actif porte le contour 2 px espresso (C11). */
+.ch-actif {
+  border: var(--charte-trait) solid var(--charte-encre);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* ─────────────── LA BARRE LATÉRALE — D-018, la plus avancée ───────────────
+   Espresso clair comme sombre · kente sous le logo · item actif ivoire
+   · points de statut 8 px sur les cinq teintes fixes.
+   Le fond espresso et les états vivent dans Dashboard.css et
+   SidebarNavigation.css (là où les sélecteurs sont définis) ; ici ne
+   figure que la nouvelle pièce : le kente sous le logo. */
+
+/* Le kente sous le logo : 28 px, bordure 1 px, pas de texte dessus. */
+.nav-panel-kente {
+  grid-area: kente;
+  height: 28px;
+  margin: var(--charte-bande-marge) 0 0;
+  overflow: hidden;
+  border: var(--charte-bande-bordure) solid var(--sidebar-line);
+  border-radius: var(--charte-rayon-champ);
+}
+.nav-panel-kente svg { display: block; width: 100%; height: 100%; }
