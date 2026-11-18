@@ -1,0 +1,308 @@
+/* ═══════════════════════════════════════════════════════════
+   MAQUETTES — la colle de mise en page, rien d'autre.
+
+   Règle : ce fichier ne contient AUCUNE couleur en dur. Tout
+   passe par les jetons de src/styles/tokens.css, et tout ce qui
+   est un objet du kit vient de src/styles/charte.css (.ch-*).
+
+   Ce qu'on y trouve, et qui n'appartient pas au produit :
+   · .mq-*  : la coque de la maquette (barre latérale, colonne) ;
+   · .mq-tuile / .mq-filet : les deux pièces en cours de décision
+     (D-022 : trois surfaces, contour lisible en sombre).
+   ═══════════════════════════════════════════════════════════ */
+
+* { box-sizing: border-box; }
+
+.mq-body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--charte-sable);
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-corps);
+  -webkit-font-smoothing: antialiased;
+
+  /* D-022 (à valider) — le filet doit se voir dans les deux thèmes.
+     En clair : la bordure de la palette. En sombre : le sable à 16 %. */
+  --mq-filet: var(--charte-bordure);
+  --mq-surface-2: var(--charte-surface2);
+}
+
+[data-theme='dark'] .mq-body,
+[data-theme='dark'] body {
+  --mq-filet: rgba(243, 233, 218, 0.16);
+}
+
+[data-theme='dark'] {
+  --mq-filet: rgba(243, 233, 218, 0.16);
+}
+
+/* ── La coque ─────────────────────────────────────────────── */
+
+.mq-shell {
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .mq-shell { grid-template-columns: 1fr; }
+  .mq-barre { display: none; }
+}
+
+/* ── La barre (D-018) ─────────────────────────────────────── */
+
+.mq-barre {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-4);
+  padding: var(--charte-espace-4) var(--charte-espace-3);
+  background: var(--charte-barre);
+  color: var(--charte-barre-ink);
+}
+
+.mq-marque { display: flex; align-items: center; gap: 10px; padding: 0 6px; }
+.mq-marque-logo {
+  width: 30px; height: 30px; border-radius: 999px;
+  background: var(--charte-barre-actif);
+  color: var(--charte-barre-actif-texte);
+  display: grid; place-items: center;
+  font-weight: 700; font-size: 13px;
+}
+.mq-marque-nom { font-weight: 700; font-size: 15px; line-height: 1.1; display: block; }
+.mq-marque-slogan { font-size: 11px; color: var(--charte-barre-muet); }
+
+.mq-kente {
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid var(--charte-barre-ligne);
+  background-image: url('/public/images/employes-zoulou.webp');
+  background-size: auto 28px;
+  background-repeat: repeat-x;
+  background-position: center;
+}
+
+.mq-contexte {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--charte-barre-ligne);
+  border-radius: var(--charte-rayon-champ);
+  font-size: 11px;
+}
+.mq-contexte-nom { font-weight: 700; flex: 1; }
+.mq-compteur {
+  min-width: 20px; height: 20px; padding: 0 6px;
+  border-radius: 999px;
+  background: var(--charte-barre-compteur);
+  color: var(--charte-barre-ink);
+  font-size: 10px; font-weight: 700;
+  display: grid; place-items: center;
+}
+
+.mq-recherche {
+  display: flex; align-items: center; gap: 8px;
+  height: 32px; padding: 0 10px;
+  border: 1px solid var(--charte-barre-ligne);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-barre-muet);
+  font-size: 11px;
+}
+
+.mq-nav { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.mq-groupe {
+  margin: var(--charte-espace-4) 0 var(--charte-espace-1);
+  padding: 0 8px;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 1.2px;
+  color: var(--charte-barre-muet);
+}
+.mq-lien {
+  display: flex; align-items: center; gap: 10px;
+  height: 32px; padding: 0 10px;
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-barre-ink);
+  font-size: 12.5px;
+  text-decoration: none;
+}
+.mq-lien svg { flex: none; opacity: .8; }
+.mq-lien--actif {
+  background: var(--charte-barre-actif);
+  color: var(--charte-barre-actif-texte);
+  font-weight: 600;
+}
+.mq-lien--actif svg { opacity: 1; }
+.mq-point {
+  margin-left: auto;
+  width: 8px; height: 8px; border-radius: 999px;
+  background: var(--charte-barre-point);
+}
+
+/* ── La colonne ───────────────────────────────────────────── */
+
+.mq-main { min-width: 0; display: flex; flex-direction: column; }
+
+/* La bande (D-003) : hauteur native, dans le contenu, jamais au-dessus de la barre. */
+.mq-bande {
+  height: 76px;
+  background-image: url('/public/images/employes-zoulou.webp');
+  background-size: auto 76px;
+  background-repeat: repeat-x;
+  background-position: center;
+  border-bottom: 1px solid var(--mq-filet);
+  flex: none;
+}
+
+.mq-page {
+  padding: var(--charte-espace-6) var(--charte-espace-6) var(--charte-espace-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-5);
+  max-width: 1240px;
+  width: 100%;
+}
+
+/* ── L'en-tête de page ────────────────────────────────────── */
+
+.mq-tete {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--charte-espace-4); flex-wrap: wrap;
+}
+.mq-titre { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.2; }
+.mq-titre span { color: var(--charte-douce); font-weight: 400; margin-left: 8px; font-size: 13px; }
+.mq-actions { display: flex; align-items: center; gap: var(--charte-espace-2); }
+
+.mq-theme {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 10px;
+  border: 1px solid var(--mq-filet);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-family: inherit; font-size: 11px; font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Les tuiles (D-022 — le chiffre est l'objet, pas le cadre) ── */
+
+.mq-tuiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--charte-espace-4);
+}
+@media (max-width: 1000px) { .mq-tuiles { grid-template-columns: 1fr; } }
+
+.mq-tuile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 96px;
+  padding: var(--charte-espace-4) var(--charte-espace-5);
+  background: var(--mq-surface-2);
+  border: 1px solid var(--mq-filet);
+  border-radius: var(--charte-rayon-tuile);
+}
+.mq-tuile-chiffre {
+  font-size: 30px; font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.mq-tuile-label { font-size: 11px; color: var(--charte-douce); }
+.mq-tuile-note {
+  margin-top: 2px; font-size: 10.5px; color: var(--charte-douce); opacity: .9;
+}
+
+/* ── Les filtres ──────────────────────────────────────────── */
+
+.mq-filtres { display: flex; gap: var(--charte-espace-2); flex-wrap: wrap; align-items: center; }
+.mq-filtre {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 12px;
+  border: 1px solid var(--mq-filet);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--charte-encre);
+  font-family: inherit; font-size: 11.5px;
+  cursor: pointer;
+}
+.mq-filtre--actif {
+  border-color: var(--charte-encre);
+  background: var(--charte-surface);
+  font-weight: 600;
+}
+.mq-puce { width: 8px; height: 8px; border-radius: 999px; flex: none; }
+
+/* ── Le tableau ───────────────────────────────────────────── */
+
+.mq-tableau { border: 1px solid var(--mq-filet); border-radius: var(--charte-rayon-carte); overflow: hidden; }
+.mq-tableau table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mq-tableau thead th {
+  height: 34px;
+  padding: 0 var(--charte-espace-4);
+  background: var(--mq-surface-2);
+  border-bottom: 1px solid var(--mq-filet);
+  font-size: 9.5px; font-weight: 700; letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+  text-align: left;
+  white-space: nowrap;
+}
+.mq-tableau tbody td {
+  height: 44px;
+  padding: 0 var(--charte-espace-4);
+  border-bottom: 1px solid var(--mq-filet);
+  vertical-align: middle;
+}
+.mq-tableau tbody tr:last-child td { border-bottom: 0; }
+.mq-tableau tbody tr:hover { background: color-mix(in srgb, var(--mq-surface-2) 55%, transparent); }
+.mq-num { font-variant-numeric: tabular-nums; text-align: right; }
+
+.mq-employe { display: flex; align-items: center; gap: 10px; }
+.mq-initiales {
+  width: 26px; height: 26px; flex: none;
+  border-radius: 6px;
+  display: grid; place-items: center;
+  background: var(--mq-surface-2);
+  border: 1px solid var(--mq-filet);
+  font-size: 9.5px; font-weight: 700; letter-spacing: .5px;
+  color: var(--charte-douce);
+}
+.mq-employe-nom { font-weight: 600; line-height: 1.2; }
+.mq-employe-id { font-family: var(--charte-mono); font-size: 10px; color: var(--charte-douce); }
+
+.mq-statut {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px;
+}
+.mq-statut i { width: 8px; height: 8px; border-radius: 999px; flex: none; display: block; }
+
+.mq-menu {
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
+  border: 1px solid var(--mq-filet);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--charte-douce);
+  cursor: pointer;
+  font-size: 14px; line-height: 1;
+}
+.mq-menu:hover { background: var(--mq-surface-2); }
+
+.mq-pied-tableau {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px var(--charte-espace-4);
+  border-top: 1px solid var(--mq-filet);
+  font-size: 11px; color: var(--charte-douce);
+}
+
+/* ── La bande de notes de la maquette (hors produit) ───────── */
+
+.mq-note {
+  border-left: 3px solid var(--charte-aplat);
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  background: var(--mq-surface-2);
+  border-radius: 0 var(--charte-rayon-carte) var(--charte-rayon-carte) 0;
+  font-size: 11.5px; color: var(--charte-douce); line-height: 1.6;
+}
+.mq-note strong { color: var(--charte-encre); }

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquettes — En-Check</title>
+<link rel="stylesheet" href="/src/styles/tokens.css">
+<link rel="stylesheet" href="/src/styles/charte.css">
+<link rel="stylesheet" href="/maquettes/maquette.css">
+<style>
+  .cat { max-width: 980px; margin: 0 auto; padding: 40px 24px 80px; display: flex; flex-direction: column; gap: 24px; }
+  .cat h1 { margin: 0; font-size: 20px; font-weight: 700; }
+  .cat p { margin: 0; max-width: 720px; line-height: 1.65; color: var(--charte-douce); }
+  .cat h2 { margin: 8px 0 0; font-size: 11px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--charte-texte); }
+  .cat-liste { display: flex; flex-direction: column; gap: 8px; }
+  .cat-ligne {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--mq-filet);
+    border-radius: var(--charte-rayon-carte);
+    background: var(--charte-surface);
+    text-decoration: none; color: inherit;
+  }
+  .cat-ligne:hover { background: var(--mq-surface-2); }
+  .cat-nom { font-weight: 600; }
+  .cat-rang { font-family: var(--charte-mono); font-size: 10.5px; color: var(--charte-douce); width: 28px; }
+  .cat-etat { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; }
+  .cat-etat--fait { color: var(--charte-succes); }
+  .cat-etat--encours { color: var(--charte-alerte); }
+  .cat-etat--afaire { color: var(--charte-douce); }
+  table.regles { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.regles th, table.regles td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--mq-filet); vertical-align: top; }
+  table.regles th { font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--charte-douce); font-weight: 700; }
+  .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .carte-note { padding: 16px; border: 1px solid var(--mq-filet); border-radius: var(--charte-rayon-carte); background: var(--mq-surface-2); font-size: 12.5px; line-height: 1.7; }
+  .carte-note strong { display: block; margin-bottom: 6px; }
+  @media (max-width: 760px) { .deux { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="mq-body">
+<div class="cat">
+
+  <div>
+    <p style="font-size:11px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--charte-texte)">En-Check · atelier</p>
+    <h1>Les maquettes</h1>
+  </div>
+
+  <p>
+    Une maquette se regarde, se corrige, puis se valide. Tant qu'elle n'est pas validée, aucune ligne de
+    produit n'est écrite. Chaque maquette charge <strong>les vrais</strong> <code>tokens.css</code> et
+    <code>charte.css</code> : ce que tu vois ici est exactement ce que l'agent devra produire — pas une
+    image à imiter.
+  </p>
+
+  <h2>Les pages, dans l'ordre (D-019 + D-021)</h2>
+  <div class="cat-liste">
+    <a class="cat-ligne" href="/maquettes/employes.html">
+      <span class="cat-rang">01</span>
+      <span class="cat-nom">Employés</span>
+      <span class="cat-etat cat-etat--encours">en maquette</span>
+    </a>
+    <div class="cat-ligne">
+      <span class="cat-rang">02</span>
+      <span class="cat-nom">Dashboard</span>
+      <span class="cat-etat cat-etat--afaire">à faire</span>
+    </div>
+    <div class="cat-ligne">
+      <span class="cat-rang">03</span>
+      <span class="cat-nom">Pointages</span>
+      <span class="cat-etat cat-etat--afaire">à faire</span>
+    </div>
+    <div class="cat-ligne">
+      <span class="cat-rang">04</span>
+      <span class="cat-nom">Absences · Planning · Paie</span>
+      <span class="cat-etat cat-etat--afaire">à faire</span>
+    </div>
+    <div class="cat-ligne">
+      <span class="cat-rang">05</span>
+      <span class="cat-nom">Modales</span>
+      <span class="cat-etat cat-etat--afaire">à faire</span>
+    </div>
+  </div>
+
+  <h2>Si tu m'envoies une image (Dribbble, Awwwards)</h2>
+  <div class="deux">
+    <div class="carte-note">
+      <strong>Ce qu'on lui prend</strong>
+      La structure : combien de colonnes, où est l'action, quelle densité, quel rythme vertical,
+      comment l'information se hiérarchise. C'est la partie qui se transpose.
+    </div>
+    <div class="carte-note">
+      <strong>Ce qu'on ne lui prend jamais</strong>
+      Ses couleurs (D-001), ses polices (D-006), ses rayons et ses ombres (D-016). Une maquette
+      Dribbble est une <em>idée de disposition</em>, pas une palette.
+    </div>
+  </div>
+  <p>
+    Je te répondrai toujours de la même façon : ce que je prends, ce que je refuse, et pourquoi —
+    la même table que pour les tendances. Une seule règle d'arbitrage : est-ce que ça aide quelqu'un
+    de fatigué, à 18 h, à faire son travail sans se tromper ?
+  </p>
+
+  <h2>Ce que la maquette Employés met en jeu</h2>
+  <table class="regles">
+    <thead>
+      <tr><th>Règle</th><th>Formulation mesurable</th><th>Pourquoi</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Trois surfaces</strong></td>
+        <td>fond · carte · surface 2. Une tuile ne prend jamais la surface de son parent.</td>
+        <td>Sur la page actuelle, tout est du même brun : les blocs se dissolvent.</td>
+      </tr>
+      <tr>
+        <td><strong>Filet lisible</strong></td>
+        <td>En sombre, le filet devient le sable à 16 % (≥ 1,8 : 1 avec sa surface).</td>
+        <td>Un contour espresso sur espresso est invisible : « brut adouci » perd sa signature la nuit.</td>
+      </tr>
+      <tr>
+        <td><strong>Une tuile = un chiffre</strong></td>
+        <td>Chiffre ≥ 28 px, légende 11 px dessous, 96 px de haut, aucun libellé dans un cadre.</td>
+        <td>Une tuile de 140 px pour un chiffre de 24 est conforme et illisible.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:11.5px">
+    Détail technique : ce fichier et les maquettes sont servis par <code>maquettes/serve.py</code>, qui
+    remappe <code>/fonts/</code> vers <code>public/fonts/</code> — sinon les polices Plex ne se chargent pas
+    hors de Vite.
+  </p>
+
+</div>
+</body>
+</html>
