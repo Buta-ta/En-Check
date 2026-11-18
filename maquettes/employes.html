@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Maquette — Employés · En-Check</title>
-<!-- Les VRAIS fichiers du produit : la maquette ne peut pas dériver de la charte. -->
+<title>Maquette v2 — Employés · En-Check</title>
 <link rel="stylesheet" href="/src/styles/tokens.css">
 <link rel="stylesheet" href="/src/styles/charte.css">
 <link rel="stylesheet" href="/maquettes/maquette.css">
+<link rel="stylesheet" href="/maquettes/employes-v2.css">
 </head>
-<body class="mq-body">
+<body class="mq2-body">
 
-<div class="mq-shell">
+<div class="mq2">
 
   <!-- ═══ LA BARRE (D-018) ═══ -->
   <aside class="mq-barre">
@@ -22,26 +22,21 @@
         <span class="mq-marque-slogan">On gère !</span>
       </span>
     </div>
-
     <div class="mq-kente" aria-hidden="true"></div>
-
     <div class="mq-contexte">
       <span class="mq-contexte-nom">EN-NOUS</span>
       <span class="mq-compteur">4</span>
     </div>
-
     <div class="mq-recherche">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 L14 14"/></svg>
       Filtrer la navigation
     </div>
-
     <nav class="mq-nav">
       <div class="mq-groupe">ACCUEIL</div>
       <a class="mq-lien" href="#">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="1.5" width="5" height="5" rx="1"/><rect x="9.5" y="1.5" width="5" height="5" rx="1"/><rect x="1.5" y="9.5" width="5" height="5" rx="1"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg>
         Vue d'ensemble
       </a>
-
       <div class="mq-groupe">ÉQUIPE</div>
       <a class="mq-lien mq-lien--actif" href="#" aria-current="page">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1.5 14c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/><circle cx="12" cy="5.5" r="2"/><path d="M11 10.2c2 .2 3.5 1.6 3.5 3.8"/></svg>
@@ -60,25 +55,21 @@
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h12v8H2z"/><path d="M5 13h6"/></svg>
         Annonces d'accueil
       </a>
-
       <div class="mq-groupe">TEMPS DE TRAVAIL</div>
       <a class="mq-lien" href="#">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.5V8l2.5 1.5"/></svg>
         Pointages
       </a>
-
       <div class="mq-groupe">PAIE</div>
       <a class="mq-lien" href="#">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/><path d="M1.5 7h13"/></svg>
         Bulletins
       </a>
-
       <div class="mq-groupe">RAPPORTS</div>
       <a class="mq-lien" href="#">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13V7M8 13V3M13 13v-4"/></svg>
         Voir les rapports
       </a>
-
       <div class="mq-groupe">RÉGLAGES</div>
       <a class="mq-lien" href="#">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6L11 5M5 11l-1.4 1.4"/></svg>
@@ -88,20 +79,46 @@
   </aside>
 
   <!-- ═══ LA COLONNE ═══ -->
-  <div class="mq-main">
+  <div class="mq2-col">
 
-    <!-- D-003 : une seule bande, dans le contenu, hauteur native -->
-    <div class="mq-bande" role="presentation"></div>
+    <!-- La barre d'outils : elle n'existait pas sur cette page -->
+    <div class="mq2-top">
+      <span class="mq2-top-titre">Employés</span>
 
-    <div class="mq-page">
+      <label class="mq2-recherche-top">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 L14 14"/></svg>
+        <input type="search" placeholder="Recherche rapide…" style="border:0;background:transparent;outline:none;color:inherit;font-family:inherit;font-size:12px;width:100%">
+      </label>
 
-      <!-- En-tête : un titre, un compte, UNE action -->
-      <div class="mq-tete">
-        <h1 class="mq-titre">Employés <span>6 employés</span></h1>
-        <div class="mq-actions">
-          <button class="mq-theme" id="bascule" type="button">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.2 3.2l1 1M11.8 11.8l1 1M12.8 3.2l-1 1M4.2 11.8l-1 1"/></svg>
-            <span id="bascule-texte">Sombre</span>
+      <button class="mq2-ico" type="button" id="bascule" title="Basculer le thème">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.2 3.2l1 1M11.8 11.8l1 1M12.8 3.2l-1 1M4.2 11.8l-1 1"/></svg>
+      </button>
+      <button class="mq2-ico" type="button" title="Notifications">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6.5a4 4 0 0 1 8 0c0 3 1.2 4 1.2 4H2.8S4 9.5 4 6.5z"/><path d="M6.5 13a1.7 1.7 0 0 0 3 0"/></svg>
+      </button>
+
+      <div class="mq2-avatars" aria-label="Administrateurs">
+        <span>HB</span><span>EB</span><span>HH</span><span class="mq2-plus">+10</span>
+      </div>
+    </div>
+
+    <div class="mq2-corps">
+
+      <!-- En-tête : le titre, la période, UNE action pleine -->
+      <div class="mq2-tete">
+        <div class="mq2-tete-copy">
+          <h1 class="mq2-titre">Employés</h1>
+          <p class="mq2-sous">6 personnes au registre · 2 sans accès · 2 fiches à compléter</p>
+        </div>
+        <div class="mq2-tete-actions">
+          <button class="mq2-selecteur" type="button">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="12" rx="1.5"/><path d="M1.5 6h13M5 1.5v2M11 1.5v2"/></svg>
+            01 – 30 nov. 2026
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
+          </button>
+          <button class="ch-btn-contour" type="button">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 11V2.5M5 5.5 8 2.5l3 3"/><path d="M2.5 10v3.5h11V10"/></svg>
+            EXPORTER
           </button>
           <button class="ch-btn-pleine" type="button">
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
@@ -110,46 +127,159 @@
         </div>
       </div>
 
-      <!-- Trois tuiles : le chiffre est l'objet, pas le cadre -->
-      <div class="mq-tuiles">
-        <div class="mq-tuile">
-          <span class="mq-tuile-chiffre">6</span>
-          <span class="mq-tuile-label">Effectif au registre</span>
-          <span class="mq-tuile-note">dont 2 sans accès</span>
+      <!-- Trois cartes à anatomie interne -->
+      <div class="mq2-grille">
+
+        <div class="mq2-carte">
+          <div class="mq2-carte-tete">
+            <span class="mq2-carte-titre">Effectif</span>
+            <button class="mq2-kebab" type="button" aria-label="Options">⋮</button>
+          </div>
+          <div class="mq2-lignes">
+            <div class="mq2-ligne mq2-ligne--a">
+              <span class="mq2-ligne-val">3</span>
+              <span class="mq2-ligne-lab">CDI au registre</span>
+            </div>
+            <div class="mq2-ligne mq2-ligne--b">
+              <span class="mq2-ligne-val">3</span>
+              <span class="mq2-ligne-lab">fiches à compléter</span>
+            </div>
+          </div>
         </div>
-        <div class="mq-tuile">
-          <span class="mq-tuile-chiffre">0</span>
-          <span class="mq-tuile-label">Présents · en poste ou en pause</span>
-          <span class="mq-tuile-note">personne n'a pointé aujourd'hui</span>
+
+        <div class="mq2-carte">
+          <div class="mq2-carte-tete">
+            <span class="mq2-carte-titre">Présence du jour</span>
+            <button class="mq2-kebab" type="button" aria-label="Options">⋮</button>
+          </div>
+          <div class="mq2-pct">
+            <span class="mq2-pct-val">0 %</span>
+            <span class="mq2-pct-note" style="color:var(--charte-douce)">personne n'a pointé</span>
+          </div>
+          <div class="mq2-barre">
+            <i style="width:0;background:var(--charte-statut-present)"></i>
+            <i style="width:100%;background:var(--charte-statut-neutre);opacity:.55"></i>
+          </div>
+          <div class="mq2-legende">
+            <span><i style="background:var(--charte-statut-present)"></i>En poste 0</span>
+            <span><i style="background:var(--charte-statut-cours)"></i>En pause 0</span>
+            <span><i style="background:var(--charte-statut-neutre)"></i>Non pointé 6</span>
+          </div>
         </div>
-        <div class="mq-tuile">
-          <span class="mq-tuile-chiffre">0</span>
-          <span class="mq-tuile-label">Retards aujourd'hui</span>
-          <span class="mq-tuile-note">le mot est écrit, jamais un point seul</span>
+
+        <div class="mq2-carte">
+          <div class="mq2-carte-tete">
+            <span class="mq2-carte-titre">Accès au portail</span>
+            <button class="mq2-kebab" type="button" aria-label="Options">⋮</button>
+          </div>
+          <div class="mq2-donut">
+            <svg width="76" height="76" viewBox="0 0 76 76" role="img" aria-label="4 comptes actifs, 2 sans accès">
+              <circle cx="38" cy="38" r="29" fill="none" stroke="var(--charte-surface2)" stroke-width="9"/>
+              <circle cx="38" cy="38" r="29" fill="none" stroke="var(--charte-aplat)" stroke-width="9"
+                      stroke-dasharray="121.5 182.2" stroke-linecap="butt" transform="rotate(-90 38 38)"/>
+            </svg>
+            <div class="mq2-donut-legend" style="flex:1">
+              <div><i style="background:var(--charte-aplat)"></i>Compte actif <b>4</b></div>
+              <div><i style="background:var(--charte-surface2)"></i>Ancien portail <b>2</b></div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Les filtres : le mot, et une teinte fixe -->
-      <div class="mq-filtres">
-        <button class="mq-filtre mq-filtre--actif" type="button">Tous</button>
-        <button class="mq-filtre" type="button"><i class="mq-puce" style="background:var(--charte-statut-present)"></i>En poste</button>
-        <button class="mq-filtre" type="button"><i class="mq-puce" style="background:var(--charte-statut-cours)"></i>En pause</button>
-        <button class="mq-filtre" type="button"><i class="mq-puce" style="background:var(--charte-statut-retard)"></i>Retard</button>
-        <button class="mq-filtre" type="button"><i class="mq-puce" style="background:var(--charte-statut-absent)"></i>Absent</button>
-        <button class="mq-filtre" type="button"><i class="mq-puce" style="background:var(--charte-statut-neutre)"></i>Sans compte</button>
+      <!-- Deux blocs : la fiche à compléter, les contrats -->
+      <div class="mq2-grille mq2-grille--deux">
+
+        <div class="mq2-carte">
+          <div class="mq2-carte-tete">
+            <span class="mq2-carte-titre">Fiches à compléter</span>
+            <button class="mq2-kebab" type="button" aria-label="Options">⋮</button>
+          </div>
+          <div class="mq2-liste">
+            <div class="mq2-liste-ligne">
+              <span class="mq2-liste-nom">Hippo BIYOKILA</span>
+              <span class="mq2-segments">
+                <i style="width:25%;background:var(--charte-statut-present)"></i>
+                <i style="width:25%;background:var(--charte-statut-present)"></i>
+                <i style="width:25%;background:var(--charte-statut-present)"></i>
+                <i style="width:25%;background:var(--charte-surface2)"></i>
+              </span>
+              <span class="mq2-liste-val">3/4</span>
+            </div>
+            <div class="mq2-liste-ligne">
+              <span class="mq2-liste-nom">Emma BAYLE</span>
+              <span class="mq2-segments">
+                <i style="width:25%;background:var(--charte-statut-present)"></i>
+                <i style="width:25%;background:var(--charte-statut-present)"></i>
+                <i style="width:25%;background:var(--charte-statut-present)"></i>
+                <i style="width:25%;background:var(--charte-surface2)"></i>
+              </span>
+              <span class="mq2-liste-val">3/4</span>
+            </div>
+            <div class="mq2-liste-ligne">
+              <span class="mq2-liste-nom">Hector H</span>
+              <span class="mq2-segments">
+                <i style="width:25%;background:var(--charte-statut-retard)"></i>
+                <i style="width:25%;background:var(--charte-statut-retard)"></i>
+                <i style="width:25%;background:var(--charte-surface2)"></i>
+                <i style="width:25%;background:var(--charte-surface2)"></i>
+              </span>
+              <span class="mq2-liste-val">2/4</span>
+            </div>
+            <div class="mq2-liste-ligne">
+              <span class="mq2-liste-nom">Ya Ya</span>
+              <span class="mq2-segments">
+                <i style="width:25%;background:var(--charte-statut-retard)"></i>
+                <i style="width:25%;background:var(--charte-statut-retard)"></i>
+                <i style="width:25%;background:var(--charte-surface2)"></i>
+                <i style="width:25%;background:var(--charte-surface2)"></i>
+              </span>
+              <span class="mq2-liste-val">2/4</span>
+            </div>
+          </div>
+          <div class="mq2-echelle"><span>poste</span><span>service</span><span>contrat</span><span>compte</span></div>
+          <div class="mq2-legende">
+            <span><i style="background:var(--charte-statut-present)"></i>complet</span>
+            <span><i style="background:var(--charte-statut-retard)"></i>manque un champ obligatoire</span>
+          </div>
+        </div>
+
+        <div class="mq2-carte">
+          <div class="mq2-carte-tete">
+            <span class="mq2-carte-titre">Contrats par type</span>
+            <button class="mq2-kebab" type="button" aria-label="Options">⋮</button>
+          </div>
+          <svg width="100%" height="120" viewBox="0 0 300 120" preserveAspectRatio="none" role="img" aria-label="3 CDI, 0 CDD, 3 sans contrat">
+            <line x1="0" y1="100" x2="300" y2="100" stroke="var(--v2-filet)" stroke-width="1"/>
+            <rect x="24" y="25" width="52" height="75" rx="4" fill="var(--charte-aplat)"/>
+            <rect x="124" y="100" width="52" height="0" rx="4" fill="var(--charte-surface2)"/>
+            <rect x="224" y="25" width="52" height="75" rx="4" fill="var(--charte-surface2)"/>
+          </svg>
+          <div class="mq2-legende" style="justify-content:space-between">
+            <span>CDI · 3</span><span>CDD · 0</span><span>Sans contrat · 3</span>
+          </div>
+        </div>
       </div>
 
-      <!-- Le message : fiche, pas bandeau (une alerte datée qui reste) -->
-      <div class="ch-message-fiche">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" style="flex:none;margin-top:1px"><path d="M8 2.5 14.5 13.5h-13z"/><path d="M8 6.5v3M8 11.4v.2"/></svg>
-        <span><strong>2 employés</strong> encore sur l'ancien portail — ouvrez <strong>Mot de passe</strong> dans leur menu pour activer leur nouvel accès.</span>
-      </div>
+      <!-- Le tableau : le cœur de la page -->
+      <div class="mq2-bloc">
+        <div class="mq2-bloc-tete">
+          <span class="mq2-bloc-titre">Tous les employés</span>
+          <label class="mq2-outil mq2-outil--saisie">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 L14 14"/></svg>
+            <input type="search" placeholder="Rechercher un employé">
+          </label>
+          <button class="mq2-outil" type="button">Statut <span style="opacity:.6">▾</span></button>
+          <button class="mq2-outil" type="button">Contrat <span style="opacity:.6">▾</span></button>
+          <button class="mq2-outil" type="button">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 11V2.5M5 5.5 8 2.5l3 3"/><path d="M2.5 10v3.5h11V10"/></svg>
+            Exporter
+          </button>
+        </div>
 
-      <!-- L'annuaire : tableau filets, 25 lignes par page -->
-      <div class="mq-tableau">
-        <table>
+        <table class="mq2-table">
           <thead>
             <tr>
+              <th style="width:36px"><input class="mq2-case" type="checkbox" aria-label="Tout sélectionner"></th>
               <th>Employé</th>
               <th>Poste · Service</th>
               <th>Contrat</th>
@@ -159,92 +289,135 @@
           </thead>
           <tbody>
             <tr>
+              <td><input class="mq2-case" type="checkbox" aria-label="Sélectionner Hippo Biyokila"></td>
               <td>
-                <div class="mq-employe">
-                  <span class="mq-initiales">HB</span>
-                  <span><span class="mq-employe-nom">Hippo BIYOKILA</span><br><span class="mq-employe-id">ENN-0002</span></span>
+                <div class="mq2-personne">
+                  <span class="mq2-avatar"><img src="/public/images/employes-loading-badge.jpg" alt=""></span>
+                  <span><span class="mq2-nom">Hippo BIYOKILA</span><br><span class="mq2-mail">ENN-0002 · h.biyokila@en-nous.bj</span></span>
                 </div>
               </td>
               <td>Associé · Informatique Choque</td>
               <td>CDI</td>
-              <td><span class="mq-statut"><i style="background:var(--charte-statut-present)"></i>En poste · 07h58</span></td>
-              <td style="text-align:right"><button class="mq-menu" type="button" aria-label="Actions">⋮</button></td>
+              <td><span class="mq2-pilule mq2-pilule--ok"><i style="background:var(--charte-statut-present)"></i>En poste · 07h58</span></td>
+              <td>
+                <div class="mq2-actions">
+                  <button class="mq2-act" type="button" title="Ouvrir la fiche">◉</button>
+                  <button class="mq2-act" type="button" title="Plus d'actions">⋮</button>
+                </div>
+              </td>
             </tr>
             <tr>
+              <td><input class="mq2-case" type="checkbox" aria-label="Sélectionner Emma Bayle"></td>
               <td>
-                <div class="mq-employe">
-                  <span class="mq-initiales">EB</span>
-                  <span><span class="mq-employe-nom">Emma BAYLE</span><br><span class="mq-employe-id">ENN-0001</span></span>
+                <div class="mq2-personne">
+                  <span class="mq2-avatar">EB</span>
+                  <span><span class="mq2-nom">Emma BAYLE</span><br><span class="mq2-mail">ENN-0001 · e.bayle@en-nous.bj</span></span>
                 </div>
               </td>
               <td>Associée · Informatique Choque</td>
               <td>—</td>
-              <td><span class="mq-statut"><i style="background:var(--charte-statut-retard)"></i>Retard · 12 min</span></td>
-              <td style="text-align:right"><button class="mq-menu" type="button" aria-label="Actions">⋮</button></td>
-            </tr>
-            <tr>
+              <td><span class="mq2-pilule mq2-pilule--att"><i style="background:var(--charte-statut-retard)"></i>Retard · 12 min</span></td>
               <td>
-                <div class="mq-employe">
-                  <span class="mq-initiales">HH</span>
-                  <span><span class="mq-employe-nom">Hector H</span><br><span class="mq-employe-id">ENN-0005</span></span>
+                <div class="mq2-actions">
+                  <button class="mq2-act" type="button" title="Ouvrir la fiche">◉</button>
+                  <button class="mq2-act" type="button" title="Plus d'actions">⋮</button>
                 </div>
               </td>
-              <td>Fiche à compléter : ni poste, ni service</td>
-              <td>CDI</td>
-              <td><span class="mq-statut"><i style="background:var(--charte-statut-absent)"></i>Absent</span></td>
-              <td style="text-align:right"><button class="mq-menu" type="button" aria-label="Actions">⋮</button></td>
             </tr>
             <tr>
+              <td><input class="mq2-case" type="checkbox" aria-label="Sélectionner Hector H"></td>
               <td>
-                <div class="mq-employe">
-                  <span class="mq-initiales">YY</span>
-                  <span><span class="mq-employe-nom">Ya Ya</span><br><span class="mq-employe-id">ENN-0006</span></span>
+                <div class="mq2-personne">
+                  <span class="mq2-avatar">HH</span>
+                  <span><span class="mq2-nom">Hector H</span><br><span class="mq2-mail">ENN-0005 · sans e-mail</span></span>
                 </div>
               </td>
-              <td>Fiche à compléter : ni poste, ni service</td>
+              <td style="color:var(--charte-douce)">Fiche à compléter : ni poste, ni service</td>
               <td>CDI</td>
-              <td><span class="mq-statut"><i style="background:var(--charte-statut-neutre)"></i>Non pointé</span></td>
-              <td style="text-align:right"><button class="mq-menu" type="button" aria-label="Actions">⋮</button></td>
+              <td><span class="mq2-pilule mq2-pilule--ko"><i style="background:var(--charte-statut-absent)"></i>Absent</span></td>
+              <td>
+                <div class="mq2-actions">
+                  <button class="mq2-act" type="button" title="Ouvrir la fiche">◉</button>
+                  <button class="mq2-act" type="button" title="Plus d'actions">⋮</button>
+                </div>
+              </td>
             </tr>
             <tr>
+              <td><input class="mq2-case" type="checkbox" aria-label="Sélectionner Ya Ya"></td>
               <td>
-                <div class="mq-employe">
-                  <span class="mq-initiales">RA</span>
-                  <span><span class="mq-employe-nom">RECETTE A</span><br><span class="mq-employe-id">ENN-0001</span></span>
+                <div class="mq2-personne">
+                  <span class="mq2-avatar">YY</span>
+                  <span><span class="mq2-nom">Ya Ya</span><br><span class="mq2-mail">ENN-0006 · sans e-mail</span></span>
+                </div>
+              </td>
+              <td style="color:var(--charte-douce)">Fiche à compléter : ni poste, ni service</td>
+              <td>CDI</td>
+              <td><span class="mq2-pilule mq2-pilule--nu"><i style="background:var(--charte-statut-neutre)"></i>Non pointé</span></td>
+              <td>
+                <div class="mq2-actions">
+                  <button class="mq2-act" type="button" title="Ouvrir la fiche">◉</button>
+                  <button class="mq2-act" type="button" title="Plus d'actions">⋮</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><input class="mq2-case" type="checkbox" aria-label="Sélectionner Recette A"></td>
+              <td>
+                <div class="mq2-personne">
+                  <span class="mq2-avatar">RA</span>
+                  <span><span class="mq2-nom">RECETTE A</span><br><span class="mq2-mail">ENN-0001 · recette</span></span>
                 </div>
               </td>
               <td>Recette · Recette</td>
               <td>—</td>
-              <td><span class="mq-statut"><i style="background:var(--charte-statut-cours)"></i>En pause · 12h04</span></td>
-              <td style="text-align:right"><button class="mq-menu" type="button" aria-label="Actions">⋮</button></td>
+              <td><span class="mq2-pilule mq2-pilule--att"><i style="background:var(--charte-statut-cours)"></i>En pause · 12h04</span></td>
+              <td>
+                <div class="mq2-actions">
+                  <button class="mq2-act" type="button" title="Ouvrir la fiche">◉</button>
+                  <button class="mq2-act" type="button" title="Plus d'actions">⋮</button>
+                </div>
+              </td>
             </tr>
             <tr>
+              <td><input class="mq2-case" type="checkbox" aria-label="Sélectionner Recette B"></td>
               <td>
-                <div class="mq-employe">
-                  <span class="mq-initiales">RB</span>
-                  <span><span class="mq-employe-nom">RECETTE B</span><br><span class="mq-employe-id">ENN-0002</span></span>
+                <div class="mq2-personne">
+                  <span class="mq2-avatar">RB</span>
+                  <span><span class="mq2-nom">RECETTE B</span><br><span class="mq2-mail">ENN-0002 · recette</span></span>
                 </div>
               </td>
               <td>Recette · Recette</td>
               <td>—</td>
-              <td><span class="mq-statut"><i style="background:var(--charte-statut-neutre)"></i>Non pointé</span></td>
-              <td style="text-align:right"><button class="mq-menu" type="button" aria-label="Actions">⋮</button></td>
+              <td><span class="mq2-pilule mq2-pilule--nu"><i style="background:var(--charte-statut-neutre)"></i>Non pointé</span></td>
+              <td>
+                <div class="mq2-actions">
+                  <button class="mq2-act" type="button" title="Ouvrir la fiche">◉</button>
+                  <button class="mq2-act" type="button" title="Plus d'actions">⋮</button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
-        <div class="mq-pied-tableau">
-          <span>1–6 sur 6</span>
-          <span>25 lignes par page</span>
+
+        <div class="mq2-pied">
+          <span>6 employés · 25 par page</span>
+          <span style="margin-left:auto;display:flex;gap:6px">
+            <button class="mq2-act" type="button" title="Page précédente" disabled>‹</button>
+            <button class="mq2-act" type="button" title="Page suivante">›</button>
+          </span>
         </div>
       </div>
 
-      <!-- Hors produit : ce que cette maquette met en jeu -->
-      <div class="mq-note">
-        <strong>Ce que la maquette tranche (D-022) :</strong> trois surfaces distinctes
-        (fond · carte · surface 2) où les tuiles prennent la surface 2 et non celle de la page ;
-        un filet lisible en sombre (sable à 16 %) puisqu'un contour espresso sur espresso
-        ne se voit plus ; et une tuile dont le chiffre est l'objet — 30 px, légende 11 px
-        dessous, 96 px de haut, aucun libellé enfermé dans un cadre.
+      <div class="mq2-note">
+        <strong>Ce que j'ai pris de ta référence :</strong> la barre d'outils du haut (recherche, notifications, avatars) ;
+        les trois cartes à anatomie interne (deux lignes teintées, un pourcentage sur barre, un anneau) ;
+        les barres segmentées ; et surtout le tableau — cases à cocher, avatar, nom + identifiant, statut en pilule,
+        deux actions par ligne, barre d'outils et pied de tableau.
+        <br><strong>Ce que je n'ai pas pris :</strong> son violet, ses ombres douces, ses rayons de 14-16 px et
+        ses photos de banque d'images — la palette (D-001), la peau (D-016) et les polices (D-006) sont entérinées.
+        <br><strong>Trois arbitrages t'attendent :</strong> le titre est à 24 px ici (D-013 dit 20) ; « EXPORTER » est en
+        contour parce que la page n'a droit qu'à <em>une</em> action pleine, et c'est « NOUVEL EMPLOYÉ » ; le mot
+        « annuaire » a disparu — le bloc s'appelle « Tous les employés ».
       </div>
 
     </div>
@@ -253,20 +426,14 @@
 
 <script>
   const racine = document.documentElement;
-  const bouton = document.getElementById('bascule');
-  const texte = document.getElementById('bascule-texte');
-  function peindre(theme) {
-    racine.setAttribute('data-theme', theme);
-    texte.textContent = theme === 'dark' ? 'Clair' : 'Sombre';
-  }
-  bouton.addEventListener('click', () => {
+  document.getElementById('bascule').addEventListener('click', () => {
     const suivant = racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    peindre(suivant);
+    racine.setAttribute('data-theme', suivant);
     try { localStorage.setItem('maquette.theme', suivant); } catch (e) {}
   });
   let depart = 'light';
   try { depart = localStorage.getItem('maquette.theme') || 'light'; } catch (e) {}
-  peindre(depart);
+  racine.setAttribute('data-theme', depart);
 </script>
 </body>
 </html>
