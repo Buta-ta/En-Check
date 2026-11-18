@@ -39,6 +39,7 @@ const VERROU = readFileSync('src/components/VerrouOptions.jsx', 'utf8')
 const EMPLOYES = readFileSync('src/pages/Employes.jsx', 'utf8')
 const CSS = readFileSync('src/components/zoulou/zoulou.css', 'utf8')
 const REFONTE_CSS = readFileSync('src/pages/EmployesRefonte.css', 'utf8')
+const EQT_CSS = readFileSync('src/pages/EquipesTaches.css', 'utf8')
 
 // ── la base simulée : la page Employés lit beaucoup, on répond vide ──
 vi.mock('../../lib/supabase', () => {
@@ -295,7 +296,7 @@ const rendreEntree = async (props = {}) => {
 }
 
 describe('la vue Annuaire', () => {
-  it('compte cinq chiffres sur la bande, et n’invente pas de présence', async () => {
+  it('pose trois tuiles chiffre + repère, et n’invente pas de présence', async () => {
     await rendre(
       <ThemeProvider>
         <Employes />
@@ -303,13 +304,14 @@ describe('la vue Annuaire', () => {
     )
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
 
-    const kpis = [...hote.querySelectorAll('.empv2-kpi')]
-    expect(kpis).toHaveLength(5)
-    expect(kpis.map((k) => k.querySelector('span').textContent)).toEqual(
-      ['Effectif', 'En poste', 'En pause', 'Retards ce jour', 'Absents'],
+    const tuiles = [...hote.querySelectorAll('.empv2-tuiles > .ch-tuile-repere')]
+    expect(tuiles).toHaveLength(3)
+    // le repère : le chiffre porte sa période ou son unité (D-017)
+    expect(tuiles.map((t) => t.querySelector('.ch-tuile-legende').textContent)).toEqual(
+      ['Effectif au registre', 'Présents (en poste ou en pause)', 'Retards — le mot est écrit, jamais un point seul'],
     )
     // rien à compter : un tiret, pas un zéro inventé pour la présence
-    expect(kpis.map((k) => k.querySelector('strong').textContent)).toEqual(['0', '—', '—', '—', '—'])
+    expect(tuiles.map((t) => t.querySelector('.ch-tuile-valeur').textContent)).toEqual(['0', '—', '—'])
   })
 
   it('explique l’annuaire vide et propose la première fiche', async () => {
@@ -321,7 +323,7 @@ describe('la vue Annuaire', () => {
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
     expect(hote.querySelector('.empv2-vide')).not.toBeNull()
     expect(hote.textContent).toContain('Aucun employé pour l’instant')
-    expect(boutonAvec('Ajouter un employé')).toBeTruthy()
+    expect(boutonAvec('Nouvel employé')).toBeTruthy()
   })
 
   it('filtre l’état de la journée d’abord, et sait tout montrer', async () => {
@@ -458,7 +460,7 @@ describe('la vue Annuaire', () => {
     expect(carte.getAttribute('data-menu')).toBe('ouvert')
 
     const menu = REFONTE_CSS.match(/\.empv2-menu \{([^}]*)\}/)[1]
-    expect(menu).toMatch(/background: color-mix/)
+    expect(menu).toMatch(/background: var\(--charte-surface\)/)
     expect(menu).toMatch(/z-index:\s*\d+/)
   })
 
@@ -845,7 +847,7 @@ describe('le ton et le dessin', () => {
 
   it('pose chaque fiche en carte, comme la maquette, et cerne la sélection d’or', () => {
     const regle = (selecteur) => {
-      const trouve = new RegExp(`${selecteur.replace('.', '\\.')} \\{[^}]*\\}`).exec(REFONTE_CSS)
+      const trouve = new RegExp(`${selecteur.replace('.', '\\.')} \\{[^}]*\\}`).exec(EQT_CSS)
       expect(trouve, selecteur).not.toBeNull()
       return trouve[0]
     }
@@ -858,7 +860,7 @@ describe('le ton et le dessin', () => {
     expect(carteTache).toContain('background: var(--rg-paper)')
 
     // la sélection : une bordure or, pas un fond qui change
-    const selection = /\.tqv2-fiche\[data-selection='oui'\] \{[^}]*\}/.exec(REFONTE_CSS)
+    const selection = /\.tqv2-fiche\[data-selection='oui'\] \{[^}]*\}/.exec(EQT_CSS)
     expect(selection, 'sélection dorée').not.toBeNull()
     expect(selection[0]).toContain('--empv2-or')
   })
@@ -867,10 +869,10 @@ describe('le ton et le dessin', () => {
   it('tonne les quatre colonnes du tableau, du teal au blanc', () => {
     // quatre tons, un par colonne, chacun porteur de son compte
     for (const ton of ['teal', 'or', 'vert', 'blanc']) {
-      expect(REFONTE_CSS).toContain(`.tqv2-colonne[data-ton='${ton}'] .tqv2-colonne-compte`)
+      expect(EQT_CSS).toContain(`.tqv2-colonne[data-ton='${ton}'] .tqv2-colonne-compte`)
     }
     // la colonne survolée pendant le glissement se cerne d'or
-    expect(REFONTE_CSS).toMatch(/\.tqv2-colonne\[data-survol='oui'\] \{[^}]*--empv2-or/)
+    expect(EQT_CSS).toMatch(/\.tqv2-colonne\[data-survol='oui'\] \{[^}]*--empv2-or/)
   })
 
 
@@ -991,7 +993,7 @@ describe('la page Employés', () => {
     const titre = hote.querySelector('h1.empv2-titre')
     expect(titre).not.toBeNull()
     expect(titre.textContent).toContain('Employés')
-    expect(titre.querySelector('.empv2-titre-compte').textContent).toContain('0 personne')
+    expect(titre.querySelector('.empv2-titre-compte').textContent).toContain('0 employé')
   })
 
   it('passe aux équipes et aux tâches sans quitter la page, et re-cliquer rabat sur la liste', async () => {
@@ -1015,7 +1017,8 @@ describe('la page Employés', () => {
     expect(EMPLOYES).not.toContain('emp-onglets-fil')
     expect(EMPLOYES).not.toContain('emp-onglets-titre')
     expect(EMPLOYES).not.toContain('Sommaire')
-    expect(REFONTE_CSS).toMatch(/\.empv2-onglet\[aria-current='page'\] \{[^}]*background: var\(--empv2-or\)/)
+    // l'onglet actif porte le contour 2 px espresso (D-016), pas un fond or
+    expect(REFONTE_CSS).toMatch(/\.empv2-onglet\[aria-current='page'\] \{[^}]*border: var\(--charte-trait\) solid var\(--charte-encre\)/)
   })
 
   it('affiche la sidebar de la coque, avec la vraie navigation de l’application', async () => {

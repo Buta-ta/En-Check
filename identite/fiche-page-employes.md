@@ -35,7 +35,7 @@ jamais un point de couleur seul (C7, veto).
 
 | Objet | Forme retenue | Où / pourquoi |
 |---|---|---|
-| Bouton | Pleine (1×) « NOUVEL EMPLOYÉ » + Contour « IMPORTER » | 1 action de poids maximal (D-013) |
+| Bouton | Pleine (1×) « NOUVEL EMPLOYÉ » — aucune secondaire sur la vue principale ; état vide : contour « Tout montrer » | 1 action de poids maximal (D-013) |
 | Champ | Cadre | la recherche |
 | Badge | Pilule — statut courant (Présent / Retard / Absent · le mot + la durée) | statut changeable |
 | Badge | Tampon — statut figé (Sorti, Férié) | seul le tampon porte un statut figé (D-017) |
