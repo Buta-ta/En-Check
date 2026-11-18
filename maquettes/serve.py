@@ -11,7 +11,6 @@ Usage : python3 maquettes/serve.py [port]
 """
 import http.server
 import os
-import socketserver
 import sys
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -44,7 +43,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         sys.stderr.write("%s\n" % (fmt % args))
 
 
-socketserver.TCPServer.allow_reuse_address = True
-with socketserver.TCPServer(("0.0.0.0", PORT), Handler) as httpd:
-    print(f"maquettes : http://0.0.0.0:{PORT}/maquettes/", flush=True)
-    httpd.serve_forever()
+class Serveur(http.server.ThreadingHTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+
+if __name__ == "__main__":
+    with Serveur(("0.0.0.0", PORT), Handler) as httpd:
+        print(f"maquettes prêtes sur 0.0.0.0:{PORT} — /maquettes/", flush=True)
+        httpd.serve_forever()
