@@ -120,11 +120,13 @@ export default function LigneAnnuaire({
         </span>
       </td>
       <td className="empv2-ligne-poste">
-        {[employee.position, employee.department].filter(Boolean).join(' . ')
-          || 'Fiche à compléter : ni poste, ni service.'}
-      </td>
-      <td className="empv2-ligne-poste">
-        {contractLabel || <span className="ch-mono">—</span>}
+        <span className="empv2-ligne-intitule">
+          {[employee.position, employee.department].filter(Boolean).join(' . ')
+            || 'Fiche à compléter : ni poste, ni service.'}
+        </span>
+        <span className="empv2-ligne-contrat">
+          {contractLabel || 'contrat non renseigné'}
+        </span>
       </td>
       <td>
         <span className={`${badgeForme} ${classeStatut}`} data-concept={concept}>

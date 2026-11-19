@@ -296,6 +296,28 @@ const rendreEntree = async (props = {}) => {
 }
 
 describe('la vue Annuaire', () => {
+  it('garde quatre colonnes : le contrat se lit sous le poste', () => {
+    // ce que l'écran montre, colonne par colonne
+    expect(EMPLOYES).toContain('<th scope="col">Employé</th>')
+    expect(EMPLOYES).toContain('<th scope="col">Poste · service</th>')
+    expect(EMPLOYES).toContain('<th scope="col">Statut du jour</th>')
+    expect(EMPLOYES).not.toContain('<th scope="col">Contrat</th>')
+
+    // et la ligne : le contrat n'a plus sa propre case, il vit sous le poste
+    const LIGNE = readFileSync('src/components/equipes/LigneAnnuaire.jsx', 'utf8')
+    const debutPoste = LIGNE.indexOf('<td className="empv2-ligne-poste">')
+    const cellulePoste = LIGNE.slice(debutPoste, LIGNE.indexOf('</td>', debutPoste))
+    expect(cellulePoste).toContain('empv2-ligne-intitule')
+    expect(cellulePoste).toContain('empv2-ligne-contrat')
+    expect(cellulePoste).toContain('contrat non renseigné')
+
+    // et la forme retenue : pilule pleine, fond teinté de sa propre couleur, sans contour
+    const REFONTE = readFileSync('src/pages/EmployesRefonte.css', 'utf8')
+    const pilule = REFONTE.slice(REFONTE.indexOf('.empv2-ligne .ch-badge-pilule'))
+    expect(pilule).toContain('border-color: transparent')
+    expect(pilule).toContain('color-mix(in srgb, currentColor')
+  })
+
   it('pose les trois cartes de la composition validée, et n’invente pas de présence', async () => {
     await rendre(
       <ThemeProvider>

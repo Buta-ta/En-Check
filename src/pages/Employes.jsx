@@ -1787,7 +1787,6 @@ export default function Employes() {
                         <tr>
                           <th scope="col">Employé</th>
                           <th scope="col">Poste · service</th>
-                          <th scope="col">Contrat</th>
                           <th scope="col">Statut du jour</th>
                           <th scope="col"><span className="visually-hidden">Actions</span></th>
                         </tr>
