@@ -1326,8 +1326,15 @@ export default function Employes() {
       const service = employe?.department || employe?.position || 'Sans service'
       parService.set(service, (parService.get(service) || 0) + montant)
     })
+    const compter = new Map()
+    remunerations.forEach((profil) => {
+      if (coutMensuelDe(profil) <= 0) return
+      const employe = employes.find((e) => e.id === profil.employee_id)
+      const service = employe?.department || employe?.position || 'Sans service'
+      compter.set(service, (compter.get(service) || 0) + 1)
+    })
     const lignes = [...parService.entries()]
-      .map(([service, montant]) => ({ service, montant }))
+      .map(([service, montant]) => ({ service, montant, personnes: compter.get(service) || 0 }))
       .sort((a, b) => b.montant - a.montant)
       .slice(0, 6)
     return { total, lignes, max: lignes[0]?.montant || 0, nbProfils: remunerations.length }
@@ -1687,7 +1694,7 @@ export default function Employes() {
                     <div className="empv3-pistes">
                       {/* la règle des jours, au-dessus des pistes */}
                       <div className="empv3-piste empv3-piste--regle">
-                        <span className="empv3-piste-identite" />
+                        <span aria-hidden="true" />
                         {semaineAffichee.map((jour) => (
                           <span
                             key={`regle-${jour.iso}`}
@@ -1763,12 +1770,28 @@ export default function Employes() {
                       })}
                     </div>
 
-                    <div className="empv3-legende empv3-legende--etats">
-                      <span><i className="empv3-legende-pastille empv3-legende-pastille--pointe" />Pointé</span>
-                      <span><i className="empv3-legende-pastille empv3-legende-pastille--retard" />Retard</span>
-                      <span><i className="empv3-legende-pastille empv3-legende-pastille--conge" />Absence</span>
-                      <span><i className="empv3-legende-pastille empv3-legende-pastille--avenir" />À venir</span>
-                      <span><i className="empv3-legende-pastille empv3-legende-pastille--rien" />Rien</span>
+                    <div className="empv3-legende-etats" aria-label="Ce que veulent dire les cases">
+                      <span className="empv3-legende-intro">Comment lire</span>
+                      <span className="empv3-legende-item">
+                        <i className="empv3-case empv3-case--pointe"><b aria-hidden="true">✓</b></i>
+                        Pointé
+                      </span>
+                      <span className="empv3-legende-item">
+                        <i className="empv3-case empv3-case--retard"><b className="empv3-case-plus" aria-hidden="true">+12</b></i>
+                        Retard
+                      </span>
+                      <span className="empv3-legende-item">
+                        <i className="empv3-case empv3-case--conge" />
+                        Absence
+                      </span>
+                      <span className="empv3-legende-item">
+                        <i className="empv3-case empv3-case--avenir" />
+                        À venir
+                      </span>
+                      <span className="empv3-legende-item">
+                        <i className="empv3-case empv3-case--rien" />
+                        Rien pointé
+                      </span>
                     </div>
                 </div>
 
@@ -1801,7 +1824,12 @@ export default function Employes() {
                       >
                         {masseSalariale.lignes.map((ligne, index) => (
                           <div className="empv3-rang-ligne" key={ligne.service}>
-                            <span className="empv3-rang-mot" title={ligne.service}>{ligne.service}</span>
+                            <span className="empv3-rang-mot" title={ligne.service}>
+                              {ligne.service}
+                              <small className="empv3-rang-detail">
+                                {ligne.personnes} pers. · {Math.round((ligne.montant / masseSalariale.total) * 100)} %
+                              </small>
+                            </span>
                             <span className="empv3-rang-piste">
                               <span
                                 className={`empv3-rang-barre${index === 0 ? ' is-forte' : ''}`}

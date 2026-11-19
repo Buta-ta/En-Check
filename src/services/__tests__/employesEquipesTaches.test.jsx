@@ -382,8 +382,10 @@ describe('la vue Annuaire', () => {
     )
 
     // aucune personne : donc aucune ligne, et aucun état inventé
-    expect(planning.querySelectorAll('.empv3-semaine-ligne')).toHaveLength(0)
-    expect(planning.querySelectorAll('.empv3-case')).toHaveLength(0)
+    // (les échantillons de la légende ne comptent pas : ils vivent hors des pistes)
+    const pistes = planning.querySelector('.empv3-pistes')
+    expect(pistes.querySelectorAll('.empv3-piste:not(.empv3-piste--regle)')).toHaveLength(0)
+    expect(pistes.querySelectorAll('.empv3-case')).toHaveLength(0)
 
     // et à droite, la masse salariale : sans profils de paie, le mot le dit
     const masse = planning.querySelectorAll('.empv3-carte')[1]
@@ -1077,6 +1079,36 @@ describe('la page Employés', () => {
       await act(async () => { await Promise.resolve() })
     }
   }
+
+  it('la légende montre les vraies cases, pas des points de 7 px', () => {
+    // l'échantillon réutilise la classe de la grille : même forme, même motif
+    expect(EMPLOYES).toContain('empv3-legende-item')
+    expect(EMPLOYES).toContain('empv3-legende-intro')
+    expect(EMPLOYES).toMatch(/empv3-legende-item[\s\S]{0,120}empv3-case empv3-case--pointe/)
+    expect(EMPLOYES).toMatch(/empv3-legende-item[\s\S]{0,120}empv3-case empv3-case--conge/)
+    // les cinq états sont nommés en clair
+    for (const mot of ['Pointé', 'Retard', 'Absence', 'À venir', 'Rien pointé']) {
+      expect(EMPLOYES).toContain(mot)
+    }
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_EMP).toMatch(/\.empv3-legende-item \.empv3-case \{[\s\S]{0,160}width: 26px/)
+  })
+
+  it('la ligne d’en-tête du planning ne porte plus de case fantôme', () => {
+    const regle = EMPLOYES.slice(
+      EMPLOYES.indexOf('empv3-piste empv3-piste--regle'),
+      EMPLOYES.indexOf('empv3-piste empv3-piste--regle') + 260,
+    )
+    expect(regle).not.toContain('empv3-piste-identite')
+  })
+
+  it('la masse salariale dit son effectif et sa part, et ne prend plus la hauteur du planning', () => {
+    expect(EMPLOYES).toContain('empv3-rang-detail')
+    expect(EMPLOYES).toContain('pers. ·')
+    expect(EMPLOYES).toContain('personnes: compter.get(service) || 0')
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_EMP).toMatch(/\.empv3-grille-planning \{ align-items: start; \}/)
+  })
 
   it('le planning suit le modèle B : une piste par personne, photo et état écrit', () => {
     expect(EMPLOYES).toContain('empv3-piste-identite')
