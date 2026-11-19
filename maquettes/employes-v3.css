@@ -27,178 +27,272 @@
 }
 
 /* Le cadre général : la « fenêtre » de la référence */
+/* Deux cartes flottantes + la carte du contenu — le modèle du dashboard. */
 .mq3-cadre {
-  display: grid;
-  grid-template-columns: 236px minmax(0, 1fr);
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
   min-height: calc(100vh - 44px);
+}
+@media (max-width: 1000px) {
+  .mq3-cadre { display: block; }
+  .mq3-barre { display: none; }
+}
+
+/* ── La barre latérale — le modèle du dashboard, bords arrondis ──
+   Deux cartes : le rail de 58 px (permanent) et le panneau de 254 px
+   (rabattable). Rayon 12 px sur les deux — demande du fondateur. */
+
+.mq3-barre {
+  position: sticky;
+  top: 10px;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  height: calc(100vh - 20px);
+  align-self: flex-start;
+  flex: none;
+}
+
+/* ── Le rail ────────────────────────────────────────────── */
+
+.mq3-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 58px;
+  flex: 0 0 58px;
+  padding: 12px 0 10px;
+  border: 1px solid var(--charte-barre-ligne);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--charte-barre);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.mq3-rail-logo { display: grid; place-items: center; padding-bottom: 8px; }
+
+.mq3-rail-btn {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  margin-bottom: 4px;
+  color: var(--charte-barre-muet);
+  border: 0;
+  border-radius: var(--charte-rayon-carte);
+  background: transparent;
+  cursor: pointer;
+  transition: color .14s ease, background-color .14s ease;
+}
+.mq3-rail-btn:hover { color: var(--charte-barre-ink); background: var(--charte-barre-hover); }
+.mq3-rail-btn.is-actif { color: var(--charte-barre-actif-texte); background: var(--charte-barre-actif); }
+.mq3-rail-btn.is-actif:hover { color: var(--charte-barre-actif-texte); }
+
+.mq3-rail-pied {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--charte-barre-ligne);
+}
+
+.mq3-rail-avatar {
+  width: 30px; height: 30px;
+  padding: 0;
+  margin: 4px 0;
+  overflow: hidden;
+  border: 2px solid var(--charte-sable);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface2);
+  cursor: pointer;
+}
+.mq3-rail-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ── Le panneau ─────────────────────────────────────────── */
+
+.mq3-panneau {
+  width: 254px;
+  flex: 0 0 254px;
+  overflow: hidden;
+  border: 1px solid var(--charte-barre-ligne);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--charte-barre);
+  box-shadow: var(--charte-ombre-dure);
+  transition: width .22s ease, flex-basis .22s ease, opacity .18s ease;
+}
+.mq3-panneau-inner {
+  display: flex;
+  flex-direction: column;
+  width: 254px;
+  height: 100%;
+  padding: 14px 12px 10px;
+}
+
+.mq3-panneau-tete {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.mq3-panneau-marque { display: flex; align-items: center; gap: 10px; min-width: 0; margin-right: auto; }
+.mq3-panneau-nom {
+  color: var(--charte-barre-ink);
+  font-size: 16px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1;
+}
+.mq3-panneau-slogan { color: var(--charte-barre-point); font-size: 10px; font-weight: 600; }
+
+.mq3-panneau-plier {
+  display: grid;
+  width: 28px; height: 30px;
+  place-items: center;
+  color: var(--charte-barre-muet);
+  border: 1px solid var(--charte-barre-ligne);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-barre-hover);
+  cursor: pointer;
+}
+.mq3-panneau-plier:hover { color: var(--charte-barre-ink); }
+
+/* Le sélecteur d'entreprise */
+.mq3-entreprise {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--charte-barre-ligne);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-barre-hover);
+  cursor: pointer;
+}
+.mq3-entreprise-ico {
+  display: grid; place-items: center;
+  width: 28px; height: 28px; flex: none;
+  color: var(--charte-blanc);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-aplat);
+}
+.mq3-entreprise-copy { display: grid; gap: 1px; min-width: 0; margin-right: auto; }
+.mq3-entreprise-sur {
+  font-size: 8.5px; font-weight: 700; letter-spacing: 1.1px;
+  color: var(--charte-barre-muet);
+}
+.mq3-entreprise-nom { font-size: 11px; font-weight: 700; color: var(--charte-barre-ink); }
+.mq3-entreprise-chev { display: grid; color: var(--charte-barre-muet); }
+.mq3-entreprise-badge {
+  display: grid; place-items: center;
+  min-width: 24px; height: 24px; padding: 0 6px;
+  font-size: 11px; font-weight: 700;
+  color: var(--charte-espresso);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-barre-point);
+}
+
+/* La bande kente de D-018 — 22 px, aucun texte dessus */
+.mq3-kente {
+  display: block;
+  width: 100%;
+  height: 22px;
+  margin: 12px 0;
+  border-radius: 4px;
+}
+
+/* Le filtre */
+.mq3-filtre {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--charte-barre-ligne);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-barre-hover);
+  color: var(--charte-barre-muet);
+}
+.mq3-filtre input {
+  width: 100%;
+  border: 0; outline: none; background: transparent;
+  font-family: inherit; font-size: 11.5px;
+  color: var(--charte-barre-ink);
+}
+.mq3-filtre input::placeholder { color: var(--charte-barre-muet); }
+
+/* Les rubriques */
+.mq3-sections { margin-top: 4px; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.mq3-section + .mq3-section { margin-top: 14px; }
+
+.mq3-section-tete {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 2px;
+  color: var(--charte-barre-muet);
+  cursor: pointer;
+}
+.mq3-section-ico { display: grid; color: var(--charte-barre-muet); }
+.mq3-section-nom {
+  margin-right: auto;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--charte-barre-muet);
+}
+.mq3-section-chev { display: grid; color: var(--charte-barre-muet); }
+.mq3-section.is-ferme .mq3-section-nom,
+.mq3-section.is-ferme .mq3-section-ico { color: color-mix(in srgb, var(--charte-barre-ink) 62%, transparent); }
+
+.mq3-section-corps {
+  display: grid;
+  gap: 2px;
+  margin: 6px 0 0 10px;
+  padding-left: 8px;
+  border-left: 1px solid var(--charte-barre-ligne);
+}
+
+.mq3-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 34px;
+  padding: 0 10px;
+  color: color-mix(in srgb, var(--charte-barre-ink) 88%, transparent);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: var(--charte-rayon-carte);
+}
+.mq3-item svg { flex: none; opacity: .8; }
+.mq3-item:hover { background: var(--charte-barre-hover); color: var(--charte-barre-ink); }
+.mq3-item.is-actif,
+.mq3-item.is-actif:hover {
+  color: var(--charte-barre-actif-texte);
+  background: var(--charte-barre-actif);
+  font-weight: 700;
+}
+.mq3-item.is-actif svg { opacity: 1; }
+
+/* ── Rabattu : il ne reste que le rail ──────────────────── */
+
+body.mq3-reduite .mq3-panneau {
+  width: 0;
+  flex-basis: 0;
+  border-width: 0;
+  opacity: 0;
+  box-shadow: none;
+}
+
+/* ── La colonne ─────────────────────────────────────────── */
+
+.mq3-page {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--v3-surface);
   border: 1px solid var(--v3-filet);
   border-radius: var(--charte-rayon-tuile);
   box-shadow: var(--charte-ombre-dure);
   overflow: hidden;
 }
-@media (max-width: 1000px) { .mq3-cadre { grid-template-columns: 1fr; } .mq3-barre { display: none; } }
-
-/* ── La barre latérale — bento, rabattable ──────────────── */
-
-.mq3-barre {
-  background: var(--charte-barre);
-  color: var(--charte-barre-ink);
-  padding: 14px 12px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
-  align-content: start;
-  border-right: 1px solid var(--v3-filet);
-  overflow: hidden;
-}
-
-/* Une tuile : c'est la forme bento du kit (D-017) */
-.mq3-tuile {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  min-height: 58px;
-  padding: 10px;
-  border: 1px solid var(--charte-barre-ligne);
-  border-radius: var(--charte-rayon-carte);
-  background: var(--charte-barre-hover);
-  color: var(--charte-barre-ink);
-  text-decoration: none;
-  font-size: 10.5px;
-  font-weight: 500;
-  line-height: 1.25;
-  min-width: 0;
-}
-.mq3-tuile svg { flex: none; color: var(--charte-barre-muet); }
-.mq3-tuile:hover { background: color-mix(in srgb, var(--charte-barre-ink) 13%, transparent); }
-.mq3-tuile:hover svg { color: var(--charte-barre-ink); }
-.mq3-tuile .mq3-lab { display: block; overflow: hidden; text-overflow: ellipsis; }
-
-/* Les tuiles qui prennent les deux colonnes */
-.mq3-tuile--large {
-  grid-column: 1 / -1;
-  flex-direction: row;
-  align-items: center;
-  min-height: 40px;
-}
-
-/* La tuile active : ivoire sur espresso, la forme de D-018 */
-.mq3-tuile--actif,
-.mq3-tuile--actif:hover {
-  background: var(--charte-barre-actif);
-  border-color: var(--charte-barre-actif);
-  color: var(--charte-barre-actif-texte);
-  font-weight: 600;
-}
-.mq3-tuile--actif svg { color: var(--charte-barre-actif-texte); }
-
-/* La tuile de marque : sans fond, elle ouvre le bento */
-.mq3-tuile--marque {
-  grid-column: 1 / -1;
-  flex-direction: row;
-  align-items: center;
-  gap: 9px;
-  min-height: 0;
-  padding: 2px 2px 10px;
-  border: 0;
-  background: transparent;
-}
-.mq3-lab--titre { font-size: 17px; font-weight: 700; }
-.mq3-lab-pousse { margin-left: auto; }
-
-.mq3-logo {
-  width: 26px; height: 26px; border-radius: 7px;
-  background: var(--charte-aplat); color: var(--charte-blanc);
-  display: grid; place-items: center; font-weight: 700; font-size: 12px;
-  flex: none;
-}
-.mq3-marque-avatar {
-  width: 26px; height: 26px; border-radius: 999px;
-  background: var(--charte-surface2); color: var(--charte-texte);
-  display: grid; place-items: center; font-size: 9.5px; font-weight: 700;
-  flex: none;
-}
-
-.mq3-groupe {
-  grid-column: 1 / -1;
-  margin: 12px 2px 1px;
-  font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
-  color: var(--charte-barre-muet);
-}
-
-/* La tuile d'annonce, en pied de bento */
-.mq3-annonce {
-  grid-column: 1 / -1;
-  margin-top: 12px;
-  padding: 12px;
-  border: 1px solid var(--charte-barre-ligne);
-  border-radius: var(--charte-rayon-carte);
-  background: color-mix(in srgb, var(--charte-barre-ink) 6%, transparent);
-  display: flex; flex-direction: column; gap: 8px;
-}
-.mq3-annonce-tete { display: flex; gap: 8px; align-items: center; }
-.mq3-annonce-ico {
-  width: 26px; height: 26px; border-radius: 7px;
-  background: var(--charte-aplat); color: var(--charte-blanc);
-  display: grid; place-items: center; flex: none;
-}
-.mq3-annonce-titre { font-size: 11.5px; font-weight: 700; }
-.mq3-annonce-sous { font-size: 10px; color: var(--charte-barre-muet); line-height: 1.4; }
-.mq3-annonce-lien { font-size: 10.5px; color: var(--charte-barre-point); font-weight: 600; }
-.mq3-annonce-pied { display: flex; align-items: center; gap: 6px; font-size: 9.5px; color: var(--charte-barre-muet); }
-.mq3-annonce-pied span {
-  width: 18px; height: 18px; border-radius: 999px;
-  background: var(--charte-barre-compteur); color: var(--charte-barre-ink);
-  display: grid; place-items: center; font-size: 8px; font-weight: 700;
-  margin-left: -6px;
-}
-.mq3-annonce-pied span:first-of-type { margin-left: 0; }
-
-/* Le taquet de réduction, en bas du bento */
-.mq3-reduire {
-  grid-column: 1 / -1;
-  margin-top: 8px;
-  display: flex; align-items: center; gap: 8px;
-  height: 30px; padding: 0 9px;
-  border: 1px dashed var(--charte-barre-ligne);
-  border-radius: var(--charte-rayon-champ);
-  background: transparent;
-  color: var(--charte-barre-muet);
-  font-family: inherit; font-size: 10px; font-weight: 600;
-  cursor: pointer;
-  transition: color .16s ease;
-}
-.mq3-reduire:hover { color: var(--charte-barre-ink); }
-
-/* ── L'état rabattu : un rail d'icônes de 74 px ─────────── */
-
-.mq3-cadre { transition: grid-template-columns .24s cubic-bezier(.4, 0, .2, 1); }
-
-body.mq3-reduite .mq3-cadre { grid-template-columns: 74px minmax(0, 1fr); }
-body.mq3-reduite .mq3-barre { grid-template-columns: 1fr; padding: 14px 11px; }
-body.mq3-reduite .mq3-tuile {
-  align-items: center; justify-content: center;
-  padding: 0; min-height: 42px;
-}
-body.mq3-reduite .mq3-tuile--large { justify-content: center; }
-body.mq3-reduite .mq3-tuile--marque { padding: 2px 0 10px; }
-body.mq3-reduite .mq3-lab,
-body.mq3-reduite .mq3-marque-avatar,
-body.mq3-reduite .mq3-annonce { display: none; }
-
-/* Les groupes deviennent de simples filets, pour garder la lecture */
-body.mq3-reduite .mq3-groupe {
-  height: 1px; margin: 8px 4px;
-  font-size: 0; color: transparent;
-  background: var(--charte-barre-ligne);
-}
-body.mq3-reduite .mq3-reduire { justify-content: center; padding: 0; }
-body.mq3-reduite .mq3-reduire svg { transform: rotate(180deg); }
-
-/* ── La colonne ─────────────────────────────────────────── */
-
-.mq3-col { min-width: 0; display: flex; flex-direction: column; }
 
 /* Barre du haut */
 .mq3-top {

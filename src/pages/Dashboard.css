@@ -139,8 +139,9 @@
   flex: 0 0 58px;
   padding: 12px 0 10px;
   border: 1px solid var(--sidebar-line);
-  /* D-018 : la carte de la barre, rayon de la charte (6 px). */
-  border-radius: var(--charte-rayon-champ);
+  /* D-018 : la carte de la barre. Bords arrondis au rayon de la tuile
+     (12 px) — demande du fondateur du 08/11, capture dashboard validée. */
+  border-radius: var(--charte-rayon-tuile);
   background: var(--sidebar);
   box-shadow: var(--shadow-sm);
 }
@@ -259,8 +260,8 @@
   margin-left: 10px;
   overflow: hidden;
   border: 1px solid var(--sidebar-line);
-  /* D-018 : rayon de la charte (6 px), comme le rail. */
-  border-radius: var(--charte-rayon-champ);
+  /* D-018 : le même rayon que le rail — les deux cartes se répondent. */
+  border-radius: var(--charte-rayon-tuile);
   background: var(--sidebar);
   box-shadow: var(--shadow-sm);
   transition: width 200ms ease, flex-basis 200ms ease;
