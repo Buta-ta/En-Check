@@ -371,6 +371,22 @@ describe('la vue Annuaire', () => {
     expect(planning.textContent).not.toMatch(/Meeting|Schedule|Events|Today|Present/)
   })
 
+  it('met le rôle sous le nom, et montre le média quand il existe', () => {
+    // le rôle sous le nom, jamais un poste inventé
+    expect(EMPLOYES).toContain('empv3-semaine-poste')
+    expect(EMPLOYES).toContain('poste non renseigné')
+
+    // la vignette : image ou vidéo, et le type lu sur le bon champ de la base
+    expect(EMPLOYES).toContain('empv3-annonce-vignette')
+    expect(EMPLOYES).toContain("annonce.type === 'video'")
+    expect(EMPLOYES).not.toContain('annonce.type_media')
+    // pas de média : pas de cadre vide
+    expect(EMPLOYES).toMatch(/annonce\.url && \(/)
+
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_EMP).toMatch(/\.empv3-annonce-vignette[\s\S]{0,220}object-fit: cover/)
+  })
+
   it('explique l’annuaire vide et propose la première fiche', async () => {
     await rendre(
       <ThemeProvider>

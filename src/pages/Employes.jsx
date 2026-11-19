@@ -1587,7 +1587,13 @@ export default function Employes() {
                           <span className="empv3-avatar" aria-hidden="true">
                             {(employee.first_name || '?')[0]}{(employee.last_name || '')[0] || ''}
                           </span>
-                          <span className="empv3-semaine-qui">{nomCompletDe(employee)}</span>
+                          <span className="empv3-semaine-textes">
+                            <span className="empv3-semaine-qui">{nomCompletDe(employee)}</span>
+                            <span className="empv3-semaine-poste">
+                              {[employee.position, employee.department].filter(Boolean).join(' · ')
+                                || 'poste non renseigné'}
+                            </span>
+                          </span>
                         </span>
                         {jours.map((jour, index) => (
                           <span
@@ -1622,27 +1628,38 @@ export default function Employes() {
                     <div className="empv3-annonces">
                       {annoncesEnLigne.map((annonce, index) => (
                         <article key={annonce.id} className={`empv3-annonce empv3-annonce--${index % 3}`}>
-                          <strong>
-                            {annonce.type_media === 'video' ? 'Vidéo d’accueil' : 'Image d’accueil'}
-                          </strong>
-                          <p>
-                            Diffusée sur l’écran d’accueil
-                            {annonce.duree_affichage_ms
-                              ? ` · ${Math.round(Number(annonce.duree_affichage_ms) / 1000)} s`
-                              : ''}
-                          </p>
-                          <div className="empv3-annonce-chips">
-                            <span>
-                              {annonce.debute_le
-                                ? new Date(annonce.debute_le).toLocaleDateString('fr-FR')
-                                : 'sans début'}
+                          {annonce.url && (
+                            <span className="empv3-annonce-vignette">
+                              {annonce.type === 'video' ? (
+                                <video src={annonce.url} muted playsInline preload="metadata" aria-hidden="true" />
+                              ) : (
+                                <img src={annonce.url} alt="" loading="lazy" />
+                              )}
                             </span>
-                            <span>
-                              {annonce.termine_le
-                                ? new Date(annonce.termine_le).toLocaleDateString('fr-FR')
-                                : 'sans fin'}
-                            </span>
-                          </div>
+                          )}
+                          <span className="empv3-annonce-texte">
+                            <strong>
+                              {annonce.type === 'video' ? 'Vidéo d’accueil' : 'Image d’accueil'}
+                            </strong>
+                            <p>
+                              Diffusée sur l’écran d’accueil
+                              {annonce.duree_affichage_ms
+                                ? ` · ${Math.round(Number(annonce.duree_affichage_ms) / 1000)} s`
+                                : ''}
+                            </p>
+                            <div className="empv3-annonce-chips">
+                              <span>
+                                {annonce.debute_le
+                                  ? new Date(annonce.debute_le).toLocaleDateString('fr-FR')
+                                  : 'sans début'}
+                              </span>
+                              <span>
+                                {annonce.termine_le
+                                  ? new Date(annonce.termine_le).toLocaleDateString('fr-FR')
+                                  : 'sans fin'}
+                              </span>
+                            </div>
+                          </span>
                         </article>
                       ))}
                     </div>

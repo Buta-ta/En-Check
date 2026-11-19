@@ -740,7 +740,7 @@
 .empv3-semaine-tete,
 .empv3-semaine-ligne {
   display: grid;
-  grid-template-columns: 148px repeat(7, minmax(0, 1fr));
+  grid-template-columns: 176px repeat(7, minmax(0, 1fr));
   align-items: center;
   gap: 6px;
 }
@@ -753,10 +753,24 @@
   font-size: 10.5px;
   color: var(--charte-encre);
 }
+.empv3-semaine-textes {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
 .empv3-semaine-qui {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Le rôle, sous le nom — 9 px : il informe, il ne concurrence pas le nom. */
+.empv3-semaine-poste {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  color: var(--charte-douce);
 }
 
 .empv3-semaine-nom .empv3-avatar {
@@ -811,12 +825,35 @@
 .empv3-annonces { display: flex; flex-direction: column; gap: 8px; }
 
 .empv3-annonce {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
   padding: 10px 12px;
   border-radius: var(--charte-rayon-carte);
   border: 1px solid transparent;
+}
+.empv3-annonce-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+/* La vignette du média : carrée, l'image remplit, rien ne déborde. */
+.empv3-annonce-vignette {
+  display: block;
+  width: 54px;
+  height: 54px;
+  overflow: hidden;
+  border-radius: var(--charte-rayon-champ);
+  border: 1px solid var(--charte-bordure);
+  background: var(--charte-surface2);
+}
+.empv3-annonce-vignette img,
+.empv3-annonce-vignette video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .empv3-annonce--0 {
   background: color-mix(in srgb, var(--charte-aplat) 12%, transparent);
