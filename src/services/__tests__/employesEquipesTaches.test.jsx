@@ -1078,6 +1078,33 @@ describe('la page Employés', () => {
     }
   }
 
+  it('le planning suit le modèle B : une piste par personne, photo et état écrit', () => {
+    expect(EMPLOYES).toContain('empv3-piste-identite')
+    expect(EMPLOYES).toContain('empv3-avatar--piste')
+    // la photo est affichée quand elle existe, les initiales sinon
+    expect(EMPLOYES).toMatch(/employee\.photo_url\s*\n?\s*\?\s*<img/)
+    // chaque état a un mot : la couleur ne parle jamais seule
+    expect(EMPLOYES).toContain('empv3-etat--')
+    expect(EMPLOYES).toContain("'En poste'")
+    expect(EMPLOYES).toContain("etat: 'retard'")
+    expect(EMPLOYES).toContain("etat: jour.futur ? 'avenir' : 'rien'")
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_EMP).toContain('.empv3-legende-pastille--retard')
+    expect(CSS_EMP).toMatch(/\.empv3-piste \{[\s\S]{0,140}grid-template-columns: 216px repeat\(7/)
+  })
+
+  it('les quatre cartes de chiffres agissent au clic', () => {
+    // plus une seule carte inerte : chacune filtre la liste et y amène l'écran
+    const cartes = EMPLOYES.split('empv3-kpi--agissante').length - 1
+    expect(cartes).toBe(4) // une par carte de chiffres
+    expect(EMPLOYES).toContain("filtrerParLaCarte('live_en_poste')")
+    expect(EMPLOYES).toContain('montrerLesSansCompte')
+    expect(EMPLOYES).toContain('montrerLesRetards')
+    expect(EMPLOYES).toContain('scrollIntoView({ behavior: \'smooth\'')
+    // chaque carte annonce ce qu'elle fait
+    expect(EMPLOYES).toContain('empv3-kpi-action')
+  })
+
   it('les chiffres portent leur source : étincelle des présences, écart en pastille', () => {
     // l'étincelle ne se dessine que sur une série réelle, jamais sur une invention
     const ETINCELLE = readFileSync('src/components/equipes/Etincelle.jsx', 'utf8')
