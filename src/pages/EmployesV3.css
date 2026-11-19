@@ -1907,3 +1907,138 @@
 .empv2-annuaire { display: flex; flex-direction: column; gap: 22px; }
 .empv3-grille-planning { gap: 20px; }
 .empv3-cartes--quatre { gap: 18px; }
+
+/* ═══════════════════════════════════════════════════════════
+   LA LÉGENDE SE LIT — et la masse salariale cesse de trôner
+   Sa critique du 19/11 : « la légende des états n'est pas
+   compréhensible, ni lisible » et « la masse salariale est trop
+   grande alors qu'il n'y a pas beaucoup d'information ».
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1 · la légende montre la vraie case, pas un point de 7 px ── */
+
+.empv3-legende-etats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 4px;
+  padding: 11px 13px;
+  border: var(--charte-trait) solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-carte);
+  background: color-mix(in srgb, var(--charte-surface2) 45%, var(--charte-surface));
+}
+
+.empv3-legende-intro {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+.empv3-legende-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--charte-encre);
+}
+
+/* l'échantillon est une vraie case, en petit — la même forme que dans la grille */
+.empv3-legende-item .empv3-case {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 20px;
+  border-radius: var(--charte-rayon-champ);
+  border: var(--charte-trait) solid var(--charte-bordure);
+  background: var(--charte-surface2);
+  font-size: 8px;
+  font-weight: 800;
+  font-style: normal;
+  line-height: 1;
+}
+.empv3-legende-item .empv3-case--pointe {
+  background: var(--charte-aplat);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+.empv3-legende-item .empv3-case--retard {
+  position: relative;
+  background:
+    linear-gradient(135deg, transparent 46%, var(--charte-attention) 46%, var(--charte-attention) 54%, transparent 54%),
+    var(--charte-aplat);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+.empv3-legende-item .empv3-case--conge {
+  background:
+    repeating-linear-gradient(45deg,
+      var(--charte-erreur) 0 3px,
+      color-mix(in srgb, var(--charte-erreur) 62%, var(--charte-surface)) 3px 6px);
+  border-color: var(--charte-erreur);
+}
+.empv3-legende-item .empv3-case--avenir {
+  background: transparent;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--charte-douce) 55%, transparent);
+}
+.empv3-legende-item .empv3-case-plus {
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  font-size: 6.5px;
+}
+
+/* ── 2 · la masse salariale : la place que méritent deux lignes ── */
+
+/* le bloc de droite ne garde pas la hauteur du planning : il se contente
+   de ce qu'il contient, et l'espace restant reste de l'air, pas une carte vide */
+.empv3-grille-planning { align-items: start; }
+
+.empv2-annuaire .empv3-masse {
+  font-size: 30px;
+  letter-spacing: -1px;
+  margin: 4px 0 2px;
+}
+
+.empv3-rang { gap: 9px; margin: 12px 0 10px; }
+.empv3-rang-piste { height: 16px; }
+.empv3-rang-ligne { gap: 9px; }
+
+/* le libellé du service gagne sa deuxième ligne : effectif et part */
+.empv3-rang-mot {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.empv3-rang-detail {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--charte-douce);
+  font-variant-numeric: tabular-nums;
+}
+
+.empv3-rang-montant { font-size: 11.5px; }
+
+/* la note de bas de carte respire moins large */
+.empv2-annuaire .empv3-carte .empv3-legende {
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.45;
+  max-width: 46ch;
+}
+
+@media (max-width: 820px) {
+  .empv3-legende-etats { gap: 6px 12px; padding: 9px 10px; }
+  .empv3-legende-item { font-size: 10.5px; gap: 6px; }
+  .empv3-legende-item .empv3-case { width: 22px; height: 17px; font-size: 7px; }
+  .empv2-annuaire .empv3-masse { font-size: 26px; }
+}
