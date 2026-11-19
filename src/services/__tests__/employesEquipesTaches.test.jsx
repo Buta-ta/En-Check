@@ -296,26 +296,32 @@ const rendreEntree = async (props = {}) => {
 }
 
 describe('la vue Annuaire', () => {
-  it('garde quatre colonnes : le contrat se lit sous le poste', () => {
-    // ce que l'écran montre, colonne par colonne
-    expect(EMPLOYES).toContain('<th scope="col">Employé</th>')
-    expect(EMPLOYES).toContain('<th scope="col">Poste · service</th>')
-    expect(EMPLOYES).toContain('<th scope="col">Statut du jour</th>')
-    expect(EMPLOYES).not.toContain('<th scope="col">Contrat</th>')
+  it('pose une carte par personne, avec ses contacts et son état', () => {
+    // plus de tableau : une galerie de cartes
+    expect(EMPLOYES).toContain('<CarteEmploye')
+    expect(EMPLOYES).not.toContain('ch-tableau-filets')
+    expect(EMPLOYES).toContain('empv3-fiches')
 
-    // et la ligne : le contrat n'a plus sa propre case, il vit sous le poste
-    const LIGNE = readFileSync('src/components/equipes/LigneAnnuaire.jsx', 'utf8')
-    const debutPoste = LIGNE.indexOf('<td className="empv2-ligne-poste">')
-    const cellulePoste = LIGNE.slice(debutPoste, LIGNE.indexOf('</td>', debutPoste))
-    expect(cellulePoste).toContain('empv2-ligne-intitule')
-    expect(cellulePoste).toContain('empv2-ligne-contrat')
-    expect(cellulePoste).toContain('contrat non renseigné')
+    // ce que la carte porte
+    const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
+    expect(CARTE).toContain('empv3-fiche-nom')
+    expect(CARTE).toContain('empv3-fiche-poste')
+    expect(CARTE).toContain('empv3-fiche-contrat')
+    expect(CARTE).toContain('contrat non renseigné')
+    // le numéro WhatsApp et l'email, chacun avec son icône
+    expect(CARTE).toContain('MessageCircle')
+    expect(CARTE).toContain('employee.phone')
+    expect(CARTE).toContain('Mail')
+    expect(CARTE).toContain('employee.email')
+    // et quand il n'y a ni l'un ni l'autre, le mot le dit
+    expect(CARTE).toContain('Aucun contact renseigné')
+    // l'état du jour reste une pilule, avec son mot
+    expect(CARTE).toContain('ch-badge-pilule')
+    expect(CARTE).toContain('En poste')
 
-    // et la forme retenue : pilule pleine, fond teinté de sa propre couleur, sans contour
-    const REFONTE = readFileSync('src/pages/EmployesRefonte.css', 'utf8')
-    const pilule = REFONTE.slice(REFONTE.indexOf('.empv2-ligne .ch-badge-pilule'))
-    expect(pilule).toContain('border-color: transparent')
-    expect(pilule).toContain('color-mix(in srgb, currentColor')
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_EMP).toMatch(/\.empv3-fiches \{[\s\S]{0,120}grid-template-columns: repeat\(3/)
+    expect(CSS_EMP).toContain('.empv3-fiche-pastille--en_poste')
   })
 
   it('pose les trois cartes de la composition validée, et n’invente pas de présence', async () => {
@@ -361,11 +367,16 @@ describe('la vue Annuaire', () => {
     expect(planning.querySelectorAll('.empv3-semaine-ligne')).toHaveLength(0)
     expect(planning.querySelectorAll('.empv3-case')).toHaveLength(0)
 
-    // les annonces : rien de lisible ici, donc le mot le dit
-    const annonces = planning.querySelectorAll('.empv3-carte')[1]
-    expect(annonces.querySelector('.empv3-carte-titre').textContent).toBe('Annonces d’accueil')
-    expect(annonces.querySelectorAll('.empv3-annonce')).toHaveLength(0)
-    expect(annonces.textContent).toMatch(/n’ont pas pu être lues|Aucune annonce en ligne/)
+    // et à droite, la masse salariale : sans profils de paie, le mot le dit
+    const masse = planning.querySelectorAll('.empv3-carte')[1]
+    expect(masse.querySelector('.empv3-carte-titre').textContent).toBe('Masse salariale')
+    expect(masse.querySelectorAll('.empv3-annonce')).toHaveLength(0)
+    expect(masse.textContent).toMatch(/n’ont pas pu être lues|Aucune rémunération renseignée/)
+
+    // les barres : la case est là, la barre aussi — et le calcul est testé à part
+    expect(EMPLOYES).toContain("from '../utils/barresSemaine'")
+    expect(EMPLOYES).toContain('empv3-barre')
+    expect(EMPLOYES).toContain('gridColumn:')
 
     // et aucun mot anglais ne s'est glissé dans les deux blocs
     expect(planning.textContent).not.toMatch(/Meeting|Schedule|Events|Today|Present/)
@@ -376,15 +387,11 @@ describe('la vue Annuaire', () => {
     expect(EMPLOYES).toContain('empv3-semaine-poste')
     expect(EMPLOYES).toContain('poste non renseigné')
 
-    // la vignette : image ou vidéo, et le type lu sur le bon champ de la base
-    expect(EMPLOYES).toContain('empv3-annonce-vignette')
-    expect(EMPLOYES).toContain("annonce.type === 'video'")
-    expect(EMPLOYES).not.toContain('annonce.type_media')
-    // pas de média : pas de cadre vide
-    expect(EMPLOYES).toMatch(/annonce\.url && \(/)
-
-    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
-    expect(CSS_EMP).toMatch(/\.empv3-annonce-vignette[\s\S]{0,220}object-fit: cover/)
+    // plus d'annonces d'accueil sur cette page : la masse salariale les remplace
+    expect(EMPLOYES).not.toContain('empv3-annonce')
+    expect(EMPLOYES).not.toContain('encheck_annonce_accueil_lister')
+    expect(EMPLOYES).toContain('Masse salariale')
+    expect(EMPLOYES).toContain("from('employee_payroll_profiles')")
   })
 
   it('explique l’annuaire vide et propose la première fiche', async () => {

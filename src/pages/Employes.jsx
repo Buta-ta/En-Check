@@ -8,7 +8,6 @@ import useEmployeePayslipIndicators from '../hooks/useEmployeePayslipIndicators'
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { accountRpc } from '../services/adminAccounts'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Footprints, Users, Plus, ArrowLeft, Search, Edit, Trash2, X, Save,
@@ -28,8 +27,10 @@ import ModaleAccesPortail from '../components/employes/ModaleAccesPortail'
 import ModaleHoraires from '../components/employes/ModaleHoraires'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import EmployesLoadingScreen from '../components/EmployesLoadingScreen'
+import { grouperAbsences } from '../utils/barresSemaine'
+import CurrencyService from '../services/currencyService'
 import FicheEmployeModal from '../components/FicheEmployeModal'
-import LigneAnnuaire from '../components/equipes/LigneAnnuaire'
+import CarteEmploye from '../components/equipes/CarteEmploye'
 import { useTheme } from '../contexts/ThemeContext'
 import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
 import EnterpriseSwitcher from '../components/EnterpriseSwitcher'
@@ -96,7 +97,7 @@ export default function Employes() {
   // donnée inventée si le serveur ne répond pas.
   const [semainePointages, setSemainePointages] = useState(null)
   const [semaineAbsences, setSemaineAbsences] = useState([])
-  const [annoncesAccueil, setAnnoncesAccueil] = useState(null)
+  const [remunerations, setRemunerations] = useState(null)
 
   // La moyenne des présents sur les 30 derniers jours, jour par jour.
   // Une seule requête, silencieuse en cas d'échec : on n'affiche rien.
@@ -185,17 +186,22 @@ export default function Employes() {
     return () => { annule = true }
   }, [employes])
 
-  // Le fil des annonces d'accueil — la même fonction que la page dédiée.
+  // La masse salariale : les profils de rémunération de l'entreprise.
+  // Lecture silencieuse — sans profils, l'écran écrit qu'il n'en a pas.
   useEffect(() => {
     let annule = false
     const lire = async () => {
       try {
         const entreprise = admin?.enterprise_id
-        if (!entreprise) { if (!annule) setAnnoncesAccueil(null); return }
-        const data = await accountRpc('encheck_annonce_accueil_lister', { p_enterprise_id: entreprise })
-        if (!annule) setAnnoncesAccueil(data?.ok === true ? (data.annonces || []) : null)
+        if (!entreprise) { if (!annule) setRemunerations(null); return }
+        const { data, error } = await supabase
+          .from('employee_payroll_profiles')
+          .select('employee_id, salary_type, base_salary, hourly_rate, daily_rate, contract_hours_per_month, contract_days_per_month, transport_allowance, housing_allowance, fixed_bonus, is_active')
+          .eq('enterprise_id', entreprise)
+        if (error) throw error
+        if (!annule) setRemunerations((data || []).filter((p) => p.is_active !== false))
       } catch {
-        if (!annule) setAnnoncesAccueil(null)
+        if (!annule) setRemunerations(null)
       }
     }
     lire()
@@ -1041,8 +1047,8 @@ export default function Employes() {
     return compte
   }, { portal: 0, toMigrate: 0 })
 
-  // L'annuaire se lit par pages de 25 lignes (kit v1.3).
-  const TAILLE_PAGE_ANNUAIRE = 25
+  // L'annuaire se lit par pages de 9 cartes — trois rangées de trois.
+  const TAILLE_PAGE_ANNUAIRE = 9
   const [pageAnnuaire, setPageAnnuaire] = useState(1)
   useEffect(() => { setPageAnnuaire(1) }, [searchTerm, categoryFilter, selectedEnterpriseFilter])
   const nbPagesAnnuaire = Math.max(1, Math.ceil(employesFiltres.length / TAILLE_PAGE_ANNUAIRE))
@@ -1260,9 +1266,8 @@ export default function Employes() {
 
   // Une ligne = une personne, sept cases. Trois états, jamais devinés :
   // absence connue, pointage connu, ou rien.
-  const lignesPlanning = employes.slice(0, 6).map((employee) => ({
-    employee,
-    jours: semaineAffichee.map((jour) => {
+  const lignesPlanning = employes.slice(0, 6).map((employee) => {
+    const jours = semaineAffichee.map((jour) => {
       const absence = semaineAbsences.find(
         (a) => a.employee_id === employee.id
           && String(a.start_date || '').slice(0, 10) <= jour.iso
@@ -1271,12 +1276,53 @@ export default function Employes() {
       if (absence) return { etat: 'conge', mot: absence.reason || 'Congé' }
       if (semainePointages?.get(employee.id)?.has(jour.iso)) return { etat: 'pointe', mot: 'Pointé' }
       return { etat: 'rien', mot: jour.futur ? 'À venir' : 'Rien ce jour' }
-    }),
-  }))
+    })
+    // Une absence de trois jours est une barre, pas trois cases.
+    return { employee, jours, barres: grouperAbsences(jours) }
+  })
 
-  const annoncesEnLigne = (annoncesAccueil || [])
-    .filter((annonce) => annonce.statut === 'en_ligne')
-    .slice(0, 3)
+  // ── la masse salariale ──────────────────────────────────
+  // Le coût mensuel d'une personne = sa base (salaire mensuel, ou taux
+  // horaire × heures, ou taux journalier × jours) plus ses indemnités.
+  // On ne convertit rien : ce qui n'est pas chiffré en base ne compte pas.
+  const coutMensuelDe = (profil) => {
+    const n = (v) => Number(v) || 0
+    const fixe = profil.salary_type === 'hourly'
+      ? n(profil.hourly_rate) * n(profil.contract_hours_per_month)
+      : profil.salary_type === 'daily'
+        ? n(profil.daily_rate) * n(profil.contract_days_per_month)
+        : n(profil.base_salary)
+    return fixe + n(profil.transport_allowance) + n(profil.housing_allowance) + n(profil.fixed_bonus)
+  }
+
+  const devise = (() => {
+    const id = selectedEnterpriseFilter !== 'all'
+      ? selectedEnterpriseFilter
+      : admin?.enterprise_id
+    const ent = entreprises.find((e) => e.id === id) || entreprises[0] || null
+    return CurrencyService.resolveCurrency({ enterprise: ent }) || null
+  })()
+
+  const masseSalariale = (() => {
+    if (!remunerations) return null
+    let total = 0
+    const parService = new Map()
+    remunerations.forEach((profil) => {
+      const montant = coutMensuelDe(profil)
+      if (montant <= 0) return
+      total += montant
+      const employe = employes.find((e) => e.id === profil.employee_id)
+      const service = employe?.department || employe?.position || 'Sans service'
+      parService.set(service, (parService.get(service) || 0) + montant)
+    })
+    const lignes = [...parService.entries()]
+      .map(([service, montant]) => ({ service, montant }))
+      .sort((a, b) => b.montant - a.montant)
+      .slice(0, 6)
+    return { total, lignes, max: lignes[0]?.montant || 0, nbProfils: remunerations.length }
+  })()
+
+  const montant = (valeur) => CurrencyService.format(valeur, devise)
 
   // L'export : ce que l'écran montre, à l'identique.
   const exporterCsv = () => {
@@ -1581,7 +1627,7 @@ export default function Employes() {
                       ))}
                     </div>
 
-                    {lignesPlanning.map(({ employee, jours }) => (
+                    {lignesPlanning.map(({ employee, jours, barres }) => (
                       <div className="empv3-semaine-ligne" key={employee.id}>
                         <span className="empv3-semaine-nom">
                           <span className="empv3-avatar" aria-hidden="true">
@@ -1595,13 +1641,30 @@ export default function Employes() {
                             </span>
                           </span>
                         </span>
-                        {jours.map((jour, index) => (
+                        {jours.map((jour, index) => {
+                          // une case couverte par une barre n'est pas relue deux fois
+                          const couvert = barres.some((b) => index > b.debut && index <= b.fin)
+                          return (
+                            <span
+                              key={`${employee.id}-${index}`}
+                              className={`empv3-case empv3-case--${jour.etat}`}
+                              title={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
+                              aria-label={couvert
+                                ? undefined
+                                : `${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
+                              aria-hidden={couvert ? 'true' : undefined}
+                            />
+                          )
+                        })}
+                        {barres.map((barre) => (
                           <span
-                            key={`${employee.id}-${index}`}
-                            className={`empv3-case empv3-case--${jour.etat}`}
-                            title={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
-                            aria-label={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
-                          />
+                            key={`${employee.id}-barre-${barre.debut}`}
+                            className="empv3-barre"
+                            style={{ gridColumn: `${barre.debut + 2} / ${barre.fin + 3}` }}
+                            title={`${semaineAffichee[barre.debut].nom} ${semaineAffichee[barre.debut].num} → ${semaineAffichee[barre.fin].nom} ${semaineAffichee[barre.fin].num} — ${barre.mot}`}
+                          >
+                            <span className="empv3-barre-mot">{barre.mot}</span>
+                          </span>
                         ))}
                       </div>
                     ))}
@@ -1616,53 +1679,55 @@ export default function Employes() {
 
                 <div className="empv3-carte">
                   <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Annonces d’accueil</span>
-                    <span className="empv3-carte-total">{annoncesEnLigne.length}</span>
+                    <span className="empv3-carte-titre">Masse salariale</span>
+                    <span className="empv3-carte-total">par mois</span>
                   </div>
 
-                  {annoncesAccueil === null ? (
-                    <p className="empv3-legende">Les annonces n’ont pas pu être lues.</p>
-                  ) : annoncesEnLigne.length === 0 ? (
-                    <p className="empv3-legende">Aucune annonce en ligne pour l’instant.</p>
+                  {masseSalariale === null ? (
+                    <p className="empv3-legende">Les rémunérations n’ont pas pu être lues.</p>
+                  ) : masseSalariale.nbProfils === 0 ? (
+                    <p className="empv3-legende">
+                      Aucune rémunération renseignée : la masse ne peut pas être calculée.
+                    </p>
+                  ) : masseSalariale.total === 0 ? (
+                    <p className="empv3-legende">
+                      Aucun montant chiffré dans les profils de paie : rien à additionner.
+                    </p>
                   ) : (
-                    <div className="empv3-annonces">
-                      {annoncesEnLigne.map((annonce, index) => (
-                        <article key={annonce.id} className={`empv3-annonce empv3-annonce--${index % 3}`}>
-                          {annonce.url && (
-                            <span className="empv3-annonce-vignette">
-                              {annonce.type === 'video' ? (
-                                <video src={annonce.url} muted playsInline preload="metadata" aria-hidden="true" />
-                              ) : (
-                                <img src={annonce.url} alt="" loading="lazy" />
-                              )}
-                            </span>
-                          )}
-                          <span className="empv3-annonce-texte">
-                            <strong>
-                              {annonce.type === 'video' ? 'Vidéo d’accueil' : 'Image d’accueil'}
-                            </strong>
-                            <p>
-                              Diffusée sur l’écran d’accueil
-                              {annonce.duree_affichage_ms
-                                ? ` · ${Math.round(Number(annonce.duree_affichage_ms) / 1000)} s`
-                                : ''}
-                            </p>
-                            <div className="empv3-annonce-chips">
-                              <span>
-                                {annonce.debute_le
-                                  ? new Date(annonce.debute_le).toLocaleDateString('fr-FR')
-                                  : 'sans début'}
-                              </span>
-                              <span>
-                                {annonce.termine_le
-                                  ? new Date(annonce.termine_le).toLocaleDateString('fr-FR')
-                                  : 'sans fin'}
-                              </span>
-                            </div>
+                    <>
+                      <p className="empv3-masse">{montant(masseSalariale.total)}</p>
+
+                      <div
+                        className="empv3-histogramme"
+                        role="img"
+                        aria-label={`Coût mensuel par service : ${masseSalariale.lignes
+                          .map((l) => `${l.service} ${montant(l.montant)}`)
+                          .join(', ')}`}
+                      >
+                        {masseSalariale.lignes.map((ligne, index) => (
+                          <span className="empv3-colonne" key={ligne.service}>
+                            <span
+                              className={`empv3-colonne-barre${index === 0 ? ' is-forte' : ''}`}
+                              style={{
+                                height: `${Math.max(
+                                  8,
+                                  Math.round((ligne.montant / masseSalariale.max) * 100),
+                                )}%`,
+                              }}
+                              title={`${ligne.service} — ${montant(ligne.montant)}`}
+                            />
+                            <span className="empv3-colonne-mot">{ligne.service}</span>
                           </span>
-                        </article>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+
+                      <p className="empv3-legende">
+                        Coût mensuel par service — salaire de base et indemnités fixes.
+                        {masseSalariale.nbProfils < employes.length
+                          ? ` ${employes.length - masseSalariale.nbProfils} personne(s) sans profil de paie.`
+                          : ''}
+                      </p>
+                    </>
                   )}
                 </div>
               </div>
@@ -1796,21 +1861,11 @@ export default function Employes() {
                 </div>
               ) : (
                 <>
-                  {/* l'annuaire : tableau filets, lignes 34 px, pas de
-                      zébrures, une action par ligne, 25 lignes par page */}
-                  <div className="empv2-tableau" aria-label="Le personnel">
-                    <table className="ch-tableau ch-tableau-filets">
-                      <thead>
-                        <tr>
-                          <th scope="col">Employé</th>
-                          <th scope="col">Poste · service</th>
-                          <th scope="col">Statut du jour</th>
-                          <th scope="col"><span className="visually-hidden">Actions</span></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {employesPageAnnuaire.map((employee) => (
-                          <LigneAnnuaire
+                  {/* l'annuaire : une carte par personne — visage, poste,
+                      contrat, contacts, état du jour, 9 cartes par page */}
+                  <div className="empv3-fiches" aria-label="Le personnel">
+                    {employesPageAnnuaire.map((employee) => (
+                          <CarteEmploye
                             key={employee.id}
                             employee={employee}
                             liveStatus={liveStatusByEmployee[employee.id]}
@@ -1818,7 +1873,6 @@ export default function Employes() {
                             portalEnabled={isPortalModuleEnabled(employee) && employee.employee_portal_enabled}
                             planningEnabled={isModulePlanningEnabled(employee)}
                             aCompte={aUnCompteEmploye(employee)}
-                            ancienSysteme={estAncienSysteme(employee)}
                             onOuvrirFiche={handleEdit}
                             onOuvrirPage={(emp) => navigate(`/employes/${emp.id}`)}
                             onBadge={handleShowBadge}
@@ -1830,11 +1884,9 @@ export default function Employes() {
                             onSupprimer={initiateDelete}
                           />
                         ))}
-                      </tbody>
-                    </table>
                     {nbPagesAnnuaire > 1 && (
                       <div className="empv2-pagination">
-                        <span className="ch-mono">{plageAnnuaire} sur {employesFiltres.length} — 25 par page</span>
+                        <span className="ch-mono">{plageAnnuaire} sur {employesFiltres.length} — 9 par page</span>
                         <span className="empv2-pagination-boutons">
                           <button
                             type="button"
