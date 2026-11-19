@@ -322,10 +322,10 @@ describe('la vue Annuaire', () => {
 
     // ce que la carte porte
     const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
-    expect(CARTE).toContain('empv3-fiche-nom')
-    expect(CARTE).toContain('empv3-fiche-poste')
+    expect(CARTE).toContain('empv3-pro-nom')
+    expect(CARTE).toContain('empv3-pro-poste')
     // le contrat est une pastille pleine, plus un mot posé sous le nom
-    expect(CARTE).toContain('empv3-fiche-chip--contrat')
+    expect(CARTE).toContain('empv3-pro-chip--contrat')
     expect(CARTE).toContain('contrat à compléter')
     // le numéro WhatsApp et l'email, chacun avec son icône
     expect(CARTE).toContain('MessageCircle')
@@ -1081,67 +1081,34 @@ describe('la page Employés', () => {
     }
   }
 
-  it('la carte employé est un portrait : bandeau bogolan, photo, pastilles', () => {
-    const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
-    const BANDEAU = readFileSync('src/components/equipes/BandeauBogolan.jsx', 'utf8')
-
-    // le motif est dessiné, pas une image
-    // le bogolan se lit par bandes : losanges pleins, créneaux, grille
-    expect(BANDEAU).toContain('bande 1')
-    expect(BANDEAU).toContain('bande 2')
-    expect(BANDEAU).toContain('bande 3')
-    expect(BANDEAU).toContain('escalier(')
-    // et il reste dense : le masque ne commence à baisser qu'au tiers
-    expect(BANDEAU).toMatch(/offset="0\.34" stopColor="#fff" stopOpacity="1"/)
-
-    expect(BANDEAU).toContain('<pattern')
-    expect(BANDEAU).toContain('<mask')
-    expect(BANDEAU).not.toContain('.webp')
-    expect(BANDEAU).not.toContain('.png')
-    expect(CARTE).toContain('BandeauBogolan')
-    expect(CARTE).toContain('empv3-fiche-bandeau')
-
-    // la photo est un bouton : elle invite à compléter quand elle manque
-    expect(CARTE).toContain('empv3-fiche-avatar--vide')
-    expect(CARTE).toContain("Ajouter une photo pour")
-
-    // les cinq informations attendues d'une carte professionnelle
-    for (const morceau of ['matricule', 'Portail actif', 'Sans compte', 'Depuis ']) {
-      expect(CARTE).toContain(morceau)
-    }
-    // l'ancienneté ne s'invente pas : sans date, rien
-    expect(CARTE).toContain('function ancienneteDe')
-    expect(CARTE).toContain("if (!valeur) return null")
-
-    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
-    // la composition de la maquette : photo et nom côte à côte, sur le bandeau
-    expect(CSS_EMP).toMatch(/\.empv3-fiche-tete--portrait \{[\s\S]{0,200}display: flex/)
-    expect(CSS_EMP).toContain('.empv3-fiche-bandeau {')
-    // le bandeau est DANS l'en-tête : la photo se pose dessus, pas au-dessus
-    expect(CARTE).toMatch(/empv3-fiche-tete--portrait[\s\S]{0,200}empv3-fiche-bandeau/)
-    // l'état ne s'affiche qu'une fois : plus de pastille dans l'en-tête
-    const entete = CARTE.slice(CARTE.indexOf('empv3-fiche-tete--portrait'), CARTE.indexOf('empv3-fiche-chips'))
-    expect(entete).not.toMatch(/className="empv3-fiche-etat"/)
-  })
-
-  it('chaque classe de la carte a bien sa règle : plus de texte brut', () => {
-    // faute du 19/11 : les pastilles s'affichaient collées, sans style,
-    // parce que leur CSS avait disparu avec l'ancien bloc
+  it('la carte est le modèle C : la vraie image bogolan en galon, rien derrière le texte', () => {
     const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
     const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
-    const classes = new Set()
-    for (const m of CARTE.matchAll(/className="([^"{}]+)"/g)) {
-      m[1].split(/\s+/).filter(Boolean).forEach((c) => classes.add(c))
-    }
-    // on ignore les jetons de la charte, qui viennent d'ailleurs
-    const orphelines = [...classes].filter(
-      (c) => !c.startsWith('ch-') && !c.startsWith('empv2-') && c !== 'empv3-fiche',
-    ).filter((c) => !CSS_EMP.includes(`.${c}`) && !CSS_EMP.includes(c))
-    expect(orphelines).toEqual([])
-    // et les trois pastilles vraiment attendues sur la maquette
-    for (const c of ['empv3-fiche-chip--contrat', 'empv3-fiche-chip--actif', 'empv3-fiche-chips']) {
-      expect(CSS_EMP).toContain(`.${c}`)
-    }
+
+    // le galon est la VRAIE image du dépôt — pas un SVG improvisé
+    expect(CARTE).toContain('empv3-pro-galon')
+    expect(CSS_EMP).toMatch(/\.empv3-pro-galon \{[\s\S]{0,240}paie-bogolan-haut\.webp/)
+    expect(CSS_EMP).toMatch(/\.empv3-pro-galon \{[\s\S]{0,300}height: 17px/)
+    // le SVG inventé ne revient pas
+    expect(() => readFileSync('src/components/equipes/BandeauBogolan.jsx')).toThrow()
+
+    // la composition de la maquette : photo, nom, poste, état sur une ligne
+    expect(CARTE).toContain('empv3-pro-tete')
+    expect(CARTE).toContain('empv3-pro-avatar')
+    expect(CARTE).toContain('empv3-pro-identite')
+    expect(CARTE).toContain('empv3-pro-etat')
+    // les quatre pastilles
+    expect(CARTE).toContain('empv3-pro-chip--contrat')
+    expect(CARTE).toContain('Portail actif')
+    expect(CARTE).toContain('Sans compte')
+    // le rond « + photo » quand la photo manque
+    expect(CARTE).toContain('empv3-pro-avatar--vide')
+    expect(CARTE).toContain('Ajouter une photo pour')
+
+    // la photo est à GAUCHE, le texte à droite : une seule rangée
+    expect(CSS_EMP).toMatch(/\.empv3-pro-tete \{[\s\S]{0,140}display: flex/)
+    // et le galon fait 17 px : il ne peut pas passer derrière 4 lignes de texte
+    expect(CSS_EMP).not.toMatch(/\.empv3-pro-galon \{[\s\S]{0,200}height: 9[0-9]px/)
   })
 
   it('la recherche est large, explicite et effaçable', () => {

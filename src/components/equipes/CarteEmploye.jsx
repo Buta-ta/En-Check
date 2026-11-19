@@ -3,7 +3,6 @@ import {
   BadgeCheck, CalendarClock, Clock3, Hash, Key, Mail, MessageCircle, MoreVertical,
   Nfc, Plus, Share2, Trash2, UserCog,
 } from 'lucide-react'
-import BandeauBogolan from './BandeauBogolan'
 
 // ───────────────────────────────────────────────────────────
 // 🪪 LA CARTE D'UN EMPLOYÉ
@@ -29,23 +28,6 @@ const conceptDe = (presence, retardMinutes) => {
   if (presence === 'termine') return 'termine'
   if (retardMinutes != null) return 'retard'
   return 'non_pointe'
-}
-
-// « 2 ans 4 mois » se lit ; « 28 » ne dit rien. On n'affiche rien si la
-// date manque : une case vide vaut mieux qu'une ancienneté inventée.
-function ancienneteDe(valeur) {
-  if (!valeur) return null
-  const debut = new Date(valeur)
-  if (Number.isNaN(debut.getTime())) return null
-  const maintenant = new Date()
-  let mois = (maintenant.getFullYear() - debut.getFullYear()) * 12
-    + (maintenant.getMonth() - debut.getMonth())
-  if (maintenant.getDate() < debut.getDate()) mois -= 1
-  if (mois < 0) return null
-  const ans = Math.floor(mois / 12)
-  const reste = mois % 12
-  if (ans === 0) return `${reste} mois`
-  return reste === 0 ? `${ans} an${ans > 1 ? 's' : ''}` : `${ans} an${ans > 1 ? 's' : ''} ${reste} mois`
 }
 
 function heureDe(valeur) {
@@ -130,27 +112,27 @@ export default function CarteEmploye({
   const telephone = employee.phone ? String(employee.phone).trim() : ''
   const courriel = employee.email ? String(employee.email).trim() : ''
 
-  const anciennete = ancienneteDe(employee.hire_date)
   const aUnePhoto = Boolean(employee.photo_url)
 
   return (
     <article
-      className="empv3-fiche empv3-fiche--portrait"
+      className="empv3-fiche empv3-fiche--portrait empv3-pro"
       data-presence={concept}
       tabIndex={0}
       onClick={() => ouvrirFiche()}
       onKeyDown={(e) => { if (e.key === 'Enter') ouvrirFiche() }}
     >
-      {/* Le bandeau porte la photo ET le nom, côte à côte : c'est la
-          composition de la maquette validée — pas une pile. */}
-      <header className="empv3-fiche-tete empv3-fiche-tete--portrait">
-        <span className="empv3-fiche-bandeau" aria-hidden="true">
-          <BandeauBogolan hauteur={112} />
-        </span>
+      {/* ── le galon ─────────────────────────────────────────
+          La vraie image bogolan du dépôt, répétée horizontalement
+          sur 16 px. Elle est POSÉE en haut, jamais derrière le
+          texte : c'est ce qui manquait aux deux essais. */}
+      <span className="empv3-pro-galon" aria-hidden="true" />
 
+      {/* ── l'identité : photo, nom, poste, état ───────────── */}
+      <header className="empv3-pro-tete">
         <button
           type="button"
-          className={`empv3-fiche-avatar empv3-fiche-avatar--portrait${aUnePhoto ? '' : ' empv3-fiche-avatar--vide'}`}
+          className={`empv3-pro-avatar${aUnePhoto ? '' : ' empv3-pro-avatar--vide'}`}
           aria-label={aUnePhoto
             ? `Changer la photo de ${nomComplet(employee)}`
             : `Ajouter une photo pour ${nomComplet(employee)}`}
@@ -160,65 +142,56 @@ export default function CarteEmploye({
             else ouvrirFiche()
           }}
         >
-          {aUnePhoto
-            ? <img src={employee.photo_url} alt="" />
-            : <Plus size={20} aria-hidden="true" />}
-          <i className={`empv3-fiche-pastille empv3-fiche-pastille--${concept}`} aria-hidden="true" />
+          {aUnePhoto ? <img src={employee.photo_url} alt="" /> : <Plus size={18} aria-hidden="true" />}
         </button>
 
-        <span className="empv3-fiche-identite empv3-fiche-identite--portrait">
-          <strong className="empv3-fiche-nom">{nomComplet(employee)}</strong>
-          <span className="empv3-fiche-poste">
+        <span className="empv3-pro-identite">
+          <strong className="empv3-pro-nom">{nomComplet(employee)}</strong>
+          <span className="empv3-pro-poste">
             {poste || 'Fiche à compléter : ni poste, ni service.'}
           </span>
         </span>
-      </header>
 
-      <div className="empv3-fiche-etat-ligne">
-        <span className={`${badgeForme} ${classeStatut}`} data-concept={concept}>
+        <span className={`${badgeForme} ${classeStatut} empv3-pro-etat`} data-concept={concept}>
           {badgeForme === 'ch-badge-pilule' && <i className="ch-badge-point" aria-hidden="true" />}
           {badgeMot}
         </span>
-      </div>
+      </header>
 
-      {/* les cinq informations d'une carte professionnelle, en pastilles */}
-      <div className="empv3-fiche-chips">
-        <span className="empv3-fiche-chip empv3-fiche-chip--contrat">
+      <span className="empv3-pro-filets" aria-hidden="true" />
+
+      {/* ── les cinq pastilles ─────────────────────────────── */}
+      <div className="empv3-pro-chips">
+        <span className="empv3-pro-chip empv3-pro-chip--contrat">
           {contractLabel || 'contrat à compléter'}
         </span>
-        {employee.matricule ? (
-          <span className="empv3-fiche-chip">
-            <Hash size={10} aria-hidden="true" />
-            {employee.matricule}
-          </span>
-        ) : (
-          <span className="empv3-fiche-chip empv3-fiche-chip--vide">matricule à compléter</span>
-        )}
-        {employee.contract_type && anciennete ? (
-          <span className="empv3-fiche-chip">Depuis {new Date(employee.hire_date).getFullYear()}</span>
-        ) : null}
-        <span className={`empv3-fiche-chip${aCompte ? ' empv3-fiche-chip--actif' : ''}`}>
+        <span className={`empv3-pro-chip${employee.matricule ? '' : ' empv3-pro-chip--vide'}`}>
+          {employee.matricule ? `# ${employee.matricule}` : 'matricule à compléter'}
+        </span>
+        <span className={`empv3-pro-chip${employee.hire_date ? '' : ' empv3-pro-chip--vide'}`}>
+          {employee.hire_date ? `Depuis ${new Date(employee.hire_date).getFullYear()}` : 'depuis à compléter'}
+        </span>
+        <span className={`empv3-pro-chip${aCompte ? ' empv3-pro-chip--actif' : ''}`}>
           {aCompte ? 'Portail actif' : 'Sans compte'}
         </span>
       </div>
 
-      <div className="empv3-fiche-contacts empv3-fiche-contacts--portrait">
+      {/* ── les contacts ───────────────────────────────────── */}
+      <div className="empv3-pro-contacts">
         {telephone ? (
-          <span className="empv3-fiche-contact">
+          <span className="empv3-pro-contact">
             <MessageCircle size={13} aria-hidden="true" />
             <span>{telephone}</span>
           </span>
         ) : null}
         {courriel ? (
-          <span className="empv3-fiche-contact">
+          <span className="empv3-pro-contact">
             <Mail size={13} aria-hidden="true" />
             <span>{courriel}</span>
           </span>
         ) : null}
         {!telephone && !courriel ? (
-          <span className="empv3-fiche-contact empv3-fiche-contact--vide">
-            Aucun contact renseigné
-          </span>
+          <span className="empv3-pro-contact empv3-pro-contact--vide">Aucun contact renseigné</span>
         ) : null}
       </div>
 
