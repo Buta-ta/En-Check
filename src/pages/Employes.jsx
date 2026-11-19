@@ -2037,6 +2037,12 @@ export default function Employes() {
                     {employesFiltres.length} sur {employes.length}
                   </small>
                 </span>
+                {/* la borne se plante au milieu de la ligne, entre le titre
+                    et la recherche : elle ne recouvre plus rien */}
+                <span className="empv3-borne empv3-borne--entete">
+                  <BornePointage taille={150} />
+                </span>
+              </div>
                 <label className="empv3-recherche">
                   <Search size={15} aria-hidden="true" />
                   <input
@@ -2058,12 +2064,7 @@ export default function Employes() {
                   )}
                 </label>
 
-                {/* la borne se plante au milieu de la ligne, entre le titre
-                    et la recherche : elle ne recouvre plus rien */}
-                <span className="empv3-borne empv3-borne--entete">
-                  <BornePointage taille={112} />
-                </span>
-              </div>
+
 
               <div className="empv2-filtres" role="group" aria-label="Filtrer la liste">
                 {FILTRES_ANNUAIRE.map((filtre) => (
@@ -2192,6 +2193,13 @@ export default function Employes() {
             <TachesVue enterpriseId={entrepriseDesVues} employes={employes} signalCreation={signalCreationTache} />
           )}
 
+          {/* la seconde pancarte ferme le chemin — elle doit être DANS le
+              parcours, sinon le chemin n'a rien à atteindre (sa capture du 23/11) */}
+          {vueActive === null && (
+            <footer className="empv3-pancarte">
+              <PancarteEnseigne taille={96} compact />
+            </footer>
+          )}
         </main>
         </div>
         </div>
