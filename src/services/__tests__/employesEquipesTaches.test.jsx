@@ -1635,3 +1635,13 @@ describe('la page Employés', () => {
     expect(EMPLOYES).toContain("label: 'En-Check interne'")
   })
 })
+
+describe('la feuille de style de la page Employés est saine', () => {
+  it('ses accolades s’équilibrent (un « } » orphelin a cassé le build une fois)', () => {
+    const css = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    const sansCommentaires = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/url\([^)]*\)/g, '')
+    const ouvrantes = (sansCommentaires.match(/{/g) || []).length
+    const fermantes = (sansCommentaires.match(/}/g) || []).length
+    expect(fermantes).toBe(ouvrantes)
+  })
+})
