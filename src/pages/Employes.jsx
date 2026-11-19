@@ -2058,9 +2058,10 @@ export default function Employes() {
                   )}
                 </label>
 
-                {/* la borne se plante ici, au milieu de l'espace libre */}
+                {/* la borne se plante au milieu de la ligne, entre le titre
+                    et la recherche : elle ne recouvre plus rien */}
                 <span className="empv3-borne empv3-borne--entete">
-                  <BornePointage taille={76} />
+                  <BornePointage taille={112} />
                 </span>
               </div>
 

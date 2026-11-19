@@ -1,38 +1,56 @@
 // ═══════════════════════════════════════════════════════════
-// 🕗 LA BORNE DE POINTAGE
+// 🕗 LA BORNE DE POINTAGE — forme « colonne », comme les vraies
 //
-// Sa demande du 22/11 : « dessine mieux cette borne […] dans la borne
-// tu mets une empreinte digitale avec un écran disant "Et
-// maintenant…" ». Et : « grossis les un peu ».
+// Sa demande du 22/11 : « fais une borne avec cette forme » (une
+// colonne sur socle, écran en haut) et « l'empreinte digitale est mal
+// faite ».
 //
-// Le texte de l'écran est du VRAI HTML, pas du dessin : il se lit à
-// toutes les tailles, il se sélectionne, et il grossit avec la
-// préférence du système. Le reste est en SVG.
+// La forme : un fût vertical, un écran carré en haut, un pied plus
+// large que le fût. Tout en HTML pour le cadre, en SVG pour la seule
+// empreinte.
+//
+// L'empreinte : des demi-elliipses concentriques, calculées par
+// formule — pas des courbes tracées à la main, qui donnaient des arcs
+// de travers.
 // ═══════════════════════════════════════════════════════════
+
+/** une empreinte propre : des demi-ellipses concentriques + la boucle */
+export function EmpreinteDigitale({ className = '' }) {
+  const arcs = [26, 21, 16, 11]
+  return (
+    <svg className={className} viewBox="0 0 64 44" aria-hidden="true" focusable="false">
+      <g fill="none" stroke="currentColor" strokeLinecap="round">
+        {arcs.map((r, i) => (
+          <path
+            key={i}
+            d={`M ${32 - r} 34 A ${r} ${r * 0.86} 0 0 1 ${32 + r} 34`}
+            strokeWidth={i === 0 ? 3.2 : 3}
+          />
+        ))}
+        {/* la boucle du centre, ouverte vers le bas */}
+        <path d="M 27 34 A 5 5.6 0 0 1 37 34" strokeWidth={3} />
+      </g>
+    </svg>
+  )
+}
 
 export default function BornePointage({ taille = 96, className = '' }) {
   return (
     <div className={`borne ${className}`.trim()} style={{ '--borne-taille': `${taille}px` }}>
-      <div className="borne-machine">
-        {/* l'écran : « Et maintenant… » */}
-        <span className="borne-ecran">Et maintenant…</span>
+      {/* le fût : toute la colonne */}
+      <div className="borne-fut">
+        {/* l'écran, en haut du fût */}
+        <div className="borne-ecran">
+          <span className="borne-ecran-mot">Et maintenant…</span>
+          <EmpreinteDigitale className="borne-empreinte" />
+        </div>
 
-        {/* le capteur d'empreinte, sous l'écran */}
-        <svg className="borne-empreinte" viewBox="0 0 40 30" aria-hidden="true" focusable="false">
-          <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M11 22 C7.5 17.5 7.5 11 12 7.5 C16.5 4 24 4 28.5 8 C32.5 11.6 33 18 30 22.6" />
-            <path d="M15 23.5 C12.5 19.6 12.8 14.4 16.2 11.8 C19.6 9.2 24.6 9.6 27 13 C29 15.9 29 20 26.6 23.4" />
-            <path d="M19 24.6 C17.6 21.6 17.8 17.6 20 15.8 C22.2 14 25 14.6 26.2 17 C27.2 19 26.8 21.9 25.2 24" />
-            <path d="M22.4 25.4 C21.9 23.3 22.3 20.8 23.6 19.8 C24.8 18.9 25.8 19.7 26 21.2" />
-          </g>
-        </svg>
+        {/* le corps du fût, avec son liseré */}
+        <span className="borne-corps" aria-hidden="true" />
       </div>
 
-      {/* le pied de la borne : un mât, puis un socle */}
-      <span className="borne-mat" aria-hidden="true" />
-      <span className="borne-socle" aria-hidden="true" />
-      <span className="borne-ombre" aria-hidden="true" />
-
+      {/* le pied, plus large que le fût */}
+      <span className="borne-pied" aria-hidden="true" />
       <span className="borne-mot">Borne de pointage</span>
     </div>
   )
