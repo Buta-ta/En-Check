@@ -122,17 +122,22 @@ export default function CarteEmploye({
       onClick={() => ouvrirFiche()}
       onKeyDown={(e) => { if (e.key === 'Enter') ouvrirFiche() }}
     >
-      {/* ── le galon ─────────────────────────────────────────
-          La vraie image bogolan du dépôt, répétée horizontalement
-          sur 16 px. Elle est POSÉE en haut, jamais derrière le
-          texte : c'est ce qui manquait aux deux essais. */}
-      <span className="empv3-pro-galon" aria-hidden="true" />
+      {/* ── LE PANNEAU BOGOLAN ──────────────────────────────
+          Sa maquette du 20/11 : le motif est une COLONNE pleine à
+          gauche, 78 px, sur toute la hauteur — la vraie image du
+          dépôt, tournée verticalement. La photo est posée dessus.
+          Le reste de la carte est du papier : rien derrière le
+          texte, jamais. */}
+      <div className="empv3-d">
+        <aside className="empv3-d-panneau" aria-hidden="true">
+          <span className="empv3-d-tissu" />
+        </aside>
 
-      {/* ── l'identité : photo, nom, poste, état ───────────── */}
-      <header className="empv3-pro-tete">
+        {/* La photo est POSÉE sur le tissu, comme sur la maquette. Elle reste
+            un bouton : hors de l'aside décoratif, elle garde son nom accessible. */}
         <button
           type="button"
-          className={`empv3-pro-avatar${aUnePhoto ? '' : ' empv3-pro-avatar--vide'}`}
+          className={`empv3-d-avatar${aUnePhoto ? '' : ' empv3-d-avatar--vide'}`}
           aria-label={aUnePhoto
             ? `Changer la photo de ${nomComplet(employee)}`
             : `Ajouter une photo pour ${nomComplet(employee)}`}
@@ -142,57 +147,57 @@ export default function CarteEmploye({
             else ouvrirFiche()
           }}
         >
-          {aUnePhoto ? <img src={employee.photo_url} alt="" /> : <Plus size={18} aria-hidden="true" />}
+          {aUnePhoto ? <img src={employee.photo_url} alt="" /> : <Plus size={20} aria-hidden="true" />}
         </button>
 
-        <span className="empv3-pro-identite">
-          <strong className="empv3-pro-nom">{nomComplet(employee)}</strong>
-          <span className="empv3-pro-poste">
-            {poste || 'Fiche à compléter : ni poste, ni service.'}
-          </span>
-        </span>
+        <div className="empv3-d-corps">
+          <header className="empv3-d-tete">
+            <strong className="empv3-d-nom">{nomComplet(employee)}</strong>
+            <span className="empv3-d-poste">
+              {poste || 'Fiche à compléter : ni poste, ni service.'}
+            </span>
+          </header>
 
-        <span className={`${badgeForme} ${classeStatut} empv3-pro-etat`} data-concept={concept}>
-          {badgeForme === 'ch-badge-pilule' && <i className="ch-badge-point" aria-hidden="true" />}
-          {badgeMot}
-        </span>
-      </header>
+          <div className="empv3-d-etat">
+            <span className={`${badgeForme} ${classeStatut}`} data-concept={concept}>
+              {badgeForme === 'ch-badge-pilule' && <i className="ch-badge-point" aria-hidden="true" />}
+              {badgeMot}
+            </span>
+          </div>
 
-      <span className="empv3-pro-filets" aria-hidden="true" />
+          <div className="empv3-d-chips">
+            <span className="empv3-d-chip empv3-d-chip--contrat">
+              {contractLabel || 'contrat à compléter'}
+            </span>
+            <span className={`empv3-d-chip${employee.matricule ? '' : ' empv3-d-chip--vide'}`}>
+              {employee.matricule ? `# ${employee.matricule}` : 'matricule à compléter'}
+            </span>
+            <span className={`empv3-d-chip${employee.hire_date ? '' : ' empv3-d-chip--vide'}`}>
+              {employee.hire_date ? `Depuis ${new Date(employee.hire_date).getFullYear()}` : 'depuis à compléter'}
+            </span>
+            <span className={`empv3-d-chip${aCompte ? ' empv3-d-chip--actif' : ''}`}>
+              {aCompte ? 'Portail actif' : 'Sans compte'}
+            </span>
+          </div>
 
-      {/* ── les cinq pastilles ─────────────────────────────── */}
-      <div className="empv3-pro-chips">
-        <span className="empv3-pro-chip empv3-pro-chip--contrat">
-          {contractLabel || 'contrat à compléter'}
-        </span>
-        <span className={`empv3-pro-chip${employee.matricule ? '' : ' empv3-pro-chip--vide'}`}>
-          {employee.matricule ? `# ${employee.matricule}` : 'matricule à compléter'}
-        </span>
-        <span className={`empv3-pro-chip${employee.hire_date ? '' : ' empv3-pro-chip--vide'}`}>
-          {employee.hire_date ? `Depuis ${new Date(employee.hire_date).getFullYear()}` : 'depuis à compléter'}
-        </span>
-        <span className={`empv3-pro-chip${aCompte ? ' empv3-pro-chip--actif' : ''}`}>
-          {aCompte ? 'Portail actif' : 'Sans compte'}
-        </span>
-      </div>
-
-      {/* ── les contacts ───────────────────────────────────── */}
-      <div className="empv3-pro-contacts">
-        {telephone ? (
-          <span className="empv3-pro-contact">
-            <MessageCircle size={13} aria-hidden="true" />
-            <span>{telephone}</span>
-          </span>
-        ) : null}
-        {courriel ? (
-          <span className="empv3-pro-contact">
-            <Mail size={13} aria-hidden="true" />
-            <span>{courriel}</span>
-          </span>
-        ) : null}
-        {!telephone && !courriel ? (
-          <span className="empv3-pro-contact empv3-pro-contact--vide">Aucun contact renseigné</span>
-        ) : null}
+          <div className="empv3-d-contacts">
+            {telephone ? (
+              <span className="empv3-d-contact">
+                <MessageCircle size={13} aria-hidden="true" />
+                <span>{telephone}</span>
+              </span>
+            ) : null}
+            {courriel ? (
+              <span className="empv3-d-contact">
+                <Mail size={13} aria-hidden="true" />
+                <span>{courriel}</span>
+              </span>
+            ) : null}
+            {!telephone && !courriel ? (
+              <span className="empv3-d-contact empv3-d-contact--vide">Aucun contact renseigné</span>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <footer className="empv3-fiche-pied" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
