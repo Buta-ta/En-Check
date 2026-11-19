@@ -3023,3 +3023,150 @@
   .empv3-d-tissu { background-size: 56px auto; }
   .empv3-d-avatar { width: 40px; height: 40px; top: 10px; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   CARTE D — CORRECTIONS DU 20/11
+   Ses quatre remarques, mesurées :
+     1. la photo est DANS le flux, collée au nom : elle recouvre
+        le poste et l'état. Elle doit flotter à droite, et n'être
+        qu'un visage — pas un buste.
+     2. le menu ⋮ s'ouvre DANS la carte alors qu'elle est en
+        `overflow: hidden` : l'effet est nul, on ne voit rien.
+     3. les contacts sont muets : il veut des boutons d'appel et
+        de mail visibles, avec leurs icônes.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1 · la photo sort du flux, à droite, et se découpe proprement ── */
+
+.empv3-d { position: relative; }
+
+.empv3-d-avatar {
+  position: absolute;
+  top: 14px;
+  left: auto;
+  right: 14px;
+  transform: none;
+  width: 56px;
+  height: 56px;
+  z-index: 2;
+}
+.empv3-d-avatar:hover { transform: translateY(-2px); }
+
+/* le visage, pas le buste : on recadre sur le haut de la photo */
+.empv3-d-avatar img {
+  object-position: center 22%;
+  object-fit: cover;
+  transform: scale(1.18);
+}
+
+/* le texte s'arrête avant la photo : jamais de recouvrement */
+.empv3-d-tete { padding-right: 66px; }
+.empv3-d-etat { padding-right: 66px; }
+
+/* ── 2 · le menu s'ouvre HORS de la carte ───────────────────── */
+
+.empv3-fiche.empv3-pro { overflow: visible; }
+
+/* le galon et le corps gardent leurs coins : ce sont eux qui doivent
+   être coupés, pas la carte qui doit couper le menu */
+.empv3-d { border-radius: inherit; overflow: hidden; }
+.empv3-fiche.empv3-pro .empv3-fiche-pied {
+  border-radius: 0 0 var(--charte-rayon-carte) var(--charte-rayon-carte);
+}
+
+/* le menu remonte au-dessus du bouton quand il n'y a pas de place dessous */
+.empv2-ligne-menu-wrap { position: relative; }
+.empv3-fiche.empv3-pro .empv2-menu {
+  z-index: 90;
+  min-width: 200px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* ── 3 · les contacts deviennent deux vrais boutons ─────────── */
+
+.empv3-d-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.empv3-d-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 90ms ease, box-shadow 90ms ease, background 90ms ease;
+}
+.empv3-d-action:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--charte-encre);
+}
+.empv3-d-action:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--charte-encre);
+}
+.empv3-d-action:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-aplat);
+  outline-offset: 2px;
+}
+
+/* appeler / WhatsApp : plein, en vert de succès — c'est LE geste utile */
+.empv3-d-action--appel {
+  background: var(--charte-succes);
+  border-color: var(--charte-succes);
+  color: var(--charte-blanc);
+}
+.empv3-d-action--appel:hover { box-shadow: 3px 3px 0 color-mix(in srgb, var(--charte-succes) 55%, var(--charte-encre)); }
+
+/* écrire : contour, plus discret mais lisible */
+.empv3-d-action--mail { background: var(--charte-surface); }
+
+/* le numéro reste lisible à côté de l'icône */
+.empv3-d-action-tel {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.empv3-d-contact--vide {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 4px;
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--charte-douce);
+}
+
+@media (max-width: 820px) {
+  .empv3-d-avatar { width: 46px; height: 46px; top: 11px; right: 11px; }
+  .empv3-d-tete, .empv3-d-etat { padding-right: 56px; }
+  .empv3-d-action { height: 30px; font-size: 11px; padding: 0 10px; }
+  .empv3-d-action-tel { display: none; }
+}
+
+/* ── La carte collée à gauche, sur sa capture ──────────────────
+   Le rail est en `position: sticky` dans un conteneur flex : la marge
+   gauche du `main` (42 px) s'ajoutait donc au rail déjà présent, et la
+   page partait à droite. Ici, c'est le rail qui tient la marge. */
+@media (min-width: 821px) {
+  .empv2-layout { padding-left: 0; }
+  .empv2-main { padding-left: var(--charte-espace-5); }
+  .nav3-colonne { min-width: 0; }
+}

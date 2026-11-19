@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   BadgeCheck, CalendarClock, Clock3, Hash, Key, Mail, MessageCircle, MoreVertical,
-  Nfc, Plus, Share2, Trash2, UserCog,
+  Nfc, Phone, Plus, Share2, Trash2, UserCog,
 } from 'lucide-react'
 
 // ───────────────────────────────────────────────────────────
@@ -59,6 +59,31 @@ export default function CarteEmploye({
   const concept = conceptDe(presence, retardMinutes)
   const [menu, setMenu] = useState(false)
   const menuRef = useRef(null)
+  const boutonRef = useRef(null)
+  const [positionMenu, setPositionMenu] = useState(null)
+
+  // Le menu sort de la carte : `position: fixed` calculé sur le bouton.
+  // Sinon `overflow: hidden` le rogne et on ne voit rien — son symptôme
+  // exact du 20/11 : « ça s'ouvre dans la carte, on ne voit rien ».
+  const placerMenu = () => {
+    const bouton = boutonRef.current
+    if (!bouton) return
+    const r = bouton.getBoundingClientRect()
+    const largeur = 210
+    const placeDessous = window.innerHeight - r.bottom > 300
+    setPositionMenu({
+      top: placeDessous ? r.bottom + 6 : Math.max(8, r.top - 6),
+      left: Math.max(8, Math.min(window.innerWidth - largeur - 8, r.right - largeur)),
+      dessous: placeDessous,
+      largeur,
+    })
+  }
+
+  const basculerMenu = () => {
+    if (menu) { setMenu(false); return }
+    placerMenu()
+    setMenu(true)
+  }
 
   // Le menu se referme dès qu’on clique ailleurs ou qu’on appuie sur Échap.
   useEffect(() => {
@@ -182,19 +207,46 @@ export default function CarteEmploye({
 
           <div className="empv3-d-contacts">
             {telephone ? (
-              <span className="empv3-d-contact">
+              <a
+                className="empv3-d-action empv3-d-action--appel"
+                href={`tel:${String(telephone).replace(/[^\d+]/g, '')}`}
+                onClick={(e) => e.stopPropagation()}
+                aria-label={`Appeler ${nomComplet(employee)} au ${telephone}`}
+              >
+                <Phone size={13} aria-hidden="true" />
+                Appeler
+                <span className="empv3-d-action-tel">{telephone}</span>
+              </a>
+            ) : null}
+            {telephone ? (
+              <a
+                className="empv3-d-action empv3-d-action--mail"
+                href={`https://wa.me/${String(telephone).replace(/[^\d]/g, '')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                aria-label={`Écrire sur WhatsApp à ${nomComplet(employee)}`}
+              >
                 <MessageCircle size={13} aria-hidden="true" />
-                <span>{telephone}</span>
-              </span>
+                WhatsApp
+              </a>
             ) : null}
             {courriel ? (
-              <span className="empv3-d-contact">
+              <a
+                className="empv3-d-action empv3-d-action--mail"
+                href={`mailto:${courriel}`}
+                onClick={(e) => e.stopPropagation()}
+                aria-label={`Écrire un e-mail à ${nomComplet(employee)}`}
+              >
                 <Mail size={13} aria-hidden="true" />
-                <span>{courriel}</span>
-              </span>
+                E-mail
+              </a>
             ) : null}
             {!telephone && !courriel ? (
-              <span className="empv3-d-contact empv3-d-contact--vide">Aucun contact renseigné</span>
+              <span className="empv3-d-contact--vide">
+                <Mail size={13} aria-hidden="true" />
+                Aucun contact renseigné
+              </span>
             ) : null}
           </div>
         </div>
@@ -212,12 +264,25 @@ export default function CarteEmploye({
             className="empv2-ligne-menu"
             aria-label={`Autres actions pour ${nomComplet(employee)}`}
             aria-expanded={menu}
-            onClick={() => setMenu((v) => !v)}
+            ref={boutonRef}
+            onClick={basculerMenu}
           >
             <MoreVertical size={14} />
           </button>
           {menu && (
-            <span className="empv2-menu" role="group" aria-label={`Autres actions pour ${nomComplet(employee)}`}>
+            <span
+              className="empv2-menu empv2-menu--flottant"
+              role="group"
+              aria-label={`Autres actions pour ${nomComplet(employee)}`}
+              style={positionMenu ? {
+                position: 'fixed',
+                top: positionMenu.dessous ? `${positionMenu.top}px` : 'auto',
+                bottom: positionMenu.dessous ? 'auto' : `${window.innerHeight - positionMenu.top}px`,
+                left: `${positionMenu.left}px`,
+                right: 'auto',
+                width: `${positionMenu.largeur}px`,
+              } : undefined}
+            >
               <button type="button" onClick={() => { setMenu(false); onOuvrirFiche(employee) }}>
                 <UserCog size={13} /> Modifier la fiche
               </button>

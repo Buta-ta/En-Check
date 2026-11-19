@@ -1106,6 +1106,31 @@ describe('la page Employés', () => {
     expect(CSS_EMP).toMatch(/\.empv3-d-tissu \{[\s\S]{0,300}repeat-y/)
   })
 
+  it('la photo ne recouvre rien, le menu sort de la carte, les contacts sont des boutons', () => {
+    const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+
+    // 1 · la photo flotte à droite et ne mange plus le texte
+    expect(CSS_EMP).toMatch(/\.empv3-d-avatar \{[\s\S]{0,220}position: absolute/)
+    expect(CSS_EMP).toMatch(/\.empv3-d-tete \{ padding-right: 66px; \}/)
+    // et elle montre le visage, pas le buste
+    expect(CSS_EMP).toMatch(/\.empv3-d-avatar img \{[\s\S]{0,200}object-position: center 22%/)
+
+    // 2 · le menu sort de la carte : position fixe calculée, plus d'absolute rogné
+    expect(CARTE).toContain('empv2-menu--flottant')
+    expect(CARTE).toContain("position: 'fixed'")
+    expect(CARTE).toContain('getBoundingClientRect')
+    expect(CSS_EMP).toMatch(/\.empv3-fiche\.empv3-pro \{ overflow: visible; \}/)
+
+    // 3 · les contacts sont des boutons d'action, avec leurs icônes
+    expect(CARTE).toContain('empv3-d-action--appel')
+    expect(CARTE).toContain('href={`tel:')
+    expect(CARTE).toContain('https://wa.me/')
+    expect(CARTE).toContain('href={`mailto:')
+    expect(CARTE).toContain('<Phone size={13}')
+    expect(CSS_EMP).toMatch(/\.empv3-d-action--appel \{[\s\S]{0,120}background: var\(--charte-succes\)/)
+  })
+
   it('la recherche est large, explicite et effaçable', () => {
     expect(EMPLOYES).toContain('empv3-recherche')
     expect(EMPLOYES).toContain('empv3-recherche-effacer')
