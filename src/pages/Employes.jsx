@@ -29,7 +29,9 @@ import ModaleHoraires from '../components/employes/ModaleHoraires'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import EmployesLoadingScreen from '../components/EmployesLoadingScreen'
 import FicheEmployeModal from '../components/FicheEmployeModal'
+import LigneAnnuaire from '../components/equipes/LigneAnnuaire'
 import { useTheme } from '../contexts/ThemeContext'
+import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
 import SidebarNavigation from '../components/SidebarNavigation'
 import EnterpriseSwitcher from '../components/EnterpriseSwitcher'
 import EquipesVue from '../components/equipes/EquipesVue'
@@ -37,7 +39,7 @@ import TachesVue from '../components/taches/TachesVue'
 import '../components/zoulou/zoulou.css'
 import '../pages/Dashboard.css'
 import './EmployesRefonte.css'
-import './EmployesV3.css'
+import './EquipesTaches.css'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
 import { formaterHeureLocale, jourLocal, minutesDepuisMinuit } from '../utils/timezoneUtils'
 
@@ -50,11 +52,11 @@ const RETARD_TOLERANCE_MINUTES = 10
 
 const FILTRES_ANNUAIRE = [
   { key: 'all', label: 'Tous' },
-  { key: 'live_en_poste', label: 'En poste' },
-  { key: 'live_en_pause', label: 'En pause' },
-  { key: 'live_retard', label: 'Retard' },
-  { key: 'live_absent', label: 'Absent' },
-  { key: 'sans_compte', label: 'Sans compte' },
+  { key: 'live_en_poste', label: 'En poste', classe: 'empv2-filtre--poste' },
+  { key: 'live_en_pause', label: 'En pause', classe: 'empv2-filtre--pause' },
+  { key: 'live_retard', label: 'Retard', classe: 'empv2-filtre--retard' },
+  { key: 'live_absent', label: 'Absent', classe: 'empv2-filtre--absent' },
+  { key: 'sans_compte', label: 'Sans compte', classe: 'empv2-filtre--migrer' },
 ]
 
 // Une part réelle, ou un tiret quand il n'y a rien à diviser.
@@ -100,59 +102,6 @@ const pourcent = (morceau, total) =>
 // COMPOSANT SECTION REPLIABLE
 // ═══════════════════════════════════════════════════════════
 
-function CollapsibleSection({ title, icon: Icon, iconColor = '#F59E0B', defaultOpen = false, children, badge }) {
-  const [open, setOpen] = useState(defaultOpen)
-
-  return (
-    <div style={{
-      borderRadius: 14,
-      border: '1px solid var(--pt-line)',
-      background: 'var(--pt-surface-soft)',
-      overflow: 'hidden',
-    }}>
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 10,
-          padding: '14px 16px',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: `${iconColor}18`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Icon size={15} color={iconColor} />
-          </div>
-          <span style={{ color: 'var(--pt-ink)', fontSize: 13, fontWeight: 700 }}>{title}</span>
-          {badge && (
-            <span style={{
-              fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
-              background: 'rgba(245,158,11,0.12)', color: '#F59E0B',
-            }}>{badge}</span>
-          )}
-        </div>
-        <div style={{ color: 'var(--pt-muted)', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-          <ChevronDown size={18} />
-        </div>
-      </button>
-      {open && (
-        <div style={{ padding: '0 16px 16px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {children}
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ═══════════════════════════════════════════════════════════
 // PAGE PRINCIPALE
@@ -1000,6 +949,20 @@ export default function Employes() {
     return compte
   }, { portal: 0, toMigrate: 0 })
 
+  // L'annuaire se lit par pages de 25 lignes (kit v1.3).
+  const TAILLE_PAGE_ANNUAIRE = 25
+  const [pageAnnuaire, setPageAnnuaire] = useState(1)
+  useEffect(() => { setPageAnnuaire(1) }, [searchTerm, categoryFilter, selectedEnterpriseFilter])
+  const nbPagesAnnuaire = Math.max(1, Math.ceil(employesFiltres.length / TAILLE_PAGE_ANNUAIRE))
+  const pageAnnuaireCourante = Math.min(pageAnnuaire, nbPagesAnnuaire)
+  const employesPageAnnuaire = employesFiltres.slice(
+    (pageAnnuaireCourante - 1) * TAILLE_PAGE_ANNUAIRE,
+    pageAnnuaireCourante * TAILLE_PAGE_ANNUAIRE
+  )
+  const plageAnnuaire = employesFiltres.length === 0
+    ? '0'
+    : `${(pageAnnuaireCourante - 1) * TAILLE_PAGE_ANNUAIRE + 1}\u2013${Math.min(pageAnnuaireCourante * TAILLE_PAGE_ANNUAIRE, employesFiltres.length)}`
+
   if (loading || !minLoadingDone) {
     return <EmployesLoadingScreen darkMode={darkMode} onSkip={() => setMinLoadingDone(true)} />
   }
@@ -1211,24 +1174,8 @@ export default function Employes() {
 
   return (
     <>
-      <style>{`
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
-        .afro-modal-overlay { animation: fadeIn 0.3s ease; }
-        .afro-modal-content { animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .afro-view-btn:hover { background: rgba(245, 158, 11, 0.15) !important; }
-        .afro-back-btn:hover { background: rgba(245, 158, 11, 0.2) !important; border-color: rgba(245, 158, 11, 0.4) !important; }
-        @media (max-width: 768px) { .desktop-only { display: none !important; } .mobile-stack { flex-direction: column !important; } .mobile-full { width: 100% !important; } }
-        @media (min-width: 769px) { .mobile-only { display: none !important; } }
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #0A0A0F; } ::-webkit-scrollbar-thumb { background: #F59E0B; border-radius: 3px; }
-        select option { background: #141423; color: #E5E5E5; }
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
-      `}</style>
 
-      <div className="pointages-afrotech-shell" data-theme={darkMode ? 'dark' : 'light'} style={styles.container}>
+      <div className="pointages-afrotech-shell empv2-coque">
         <PageCulturalBand pathname="/employes" />
 
         <div className="empv2-layout">
@@ -1245,6 +1192,11 @@ export default function Employes() {
                 </div>
                 <div className="nav-panel-contexte">
                   <EnterpriseSwitcher admin={admin} onSwitch={() => window.location.reload()} />
+                </div>
+
+                {/* D-018 — le kente sous le logo : 28 px, sans texte dessus. */}
+                <div className="nav-panel-kente" aria-hidden="true">
+                  <KenteWovenTapestrySvg />
                 </div>
               </header>
 
@@ -1285,17 +1237,15 @@ export default function Employes() {
         </aside>
 
         {/* ═══ MAIN ═══ */}
-        <main className="empv2-main" style={styles.main}>
-          {/* la ligne de titre : Employés · le compte — la recherche
-              et l'ajout, à droite */}
-          <div className="empv3-tete">
-            <h1 className="empv2-titre empv3-bonjour">
-              {vueActive === null
-                ? 'Employés'
-                : (vueActive === 'equipes' ? 'Équipes' : 'Tâches')}
+        <main className="empv2-main">
+          {/* la ligne de titre : Employés · le compte — l'action, à droite.
+              Une seule action de poids maximal par écran (D-013). */}
+          <div className="empv2-tete">
+            <h1 className="empv2-titre">
+              Employés
               {vueActive === null && (
                 <span className="empv2-titre-compte">
-                  {employes.length} personne{employes.length > 1 ? 's' : ''}
+                  {employes.length} employé{employes.length > 1 ? 's' : ''}
                 </span>
               )}
               <span className="empv3-sous">
@@ -1304,34 +1254,20 @@ export default function Employes() {
                   : 'La page Employés, vue par vue'}
               </span>
             </h1>
-
-            <div className="empv3-actions">
-              {vueActive === null && (
-                <>
-                  <span className="empv3-chip">
-                    <CalendarDays size={12} aria-hidden="true" />
-                    {jourEnClair}
-                  </span>
-                  <button type="button" className="empv3-btn" onClick={exporterCsv}>
-                    <FileText size={13} aria-hidden="true" />
-                    Exporter
-                  </button>
-                </>
-              )}
-
+            <div className="empv2-tete-actions">
               {vueActive === 'equipes' && (
-                <button type="button" className="empv3-btn empv3-btn--plein" onClick={() => setSignalCreationEquipe((n) => n + 1)}>
-                  <Plus size={14} aria-hidden="true" /> Nouvelle équipe
+                <button type="button" className="ch-btn-pleine" onClick={() => setSignalCreationEquipe((n) => n + 1)}>
+                  <Plus size={13} aria-hidden="true" /> Nouvelle équipe
                 </button>
               )}
               {vueActive === 'taches' && (
-                <button type="button" className="empv3-btn empv3-btn--plein" onClick={() => setSignalCreationTache((n) => n + 1)}>
-                  <Plus size={14} aria-hidden="true" /> Nouvelle tâche
+                <button type="button" className="ch-btn-pleine" onClick={() => setSignalCreationTache((n) => n + 1)}>
+                  <Plus size={13} aria-hidden="true" /> Nouvelle tâche
                 </button>
               )}
               {vueActive === null && (
-                <button type="button" className="empv3-btn empv3-btn--plein" onClick={handleAdd}>
-                  <UserPlus size={14} aria-hidden="true" /> Nouvel employé
+                <button type="button" className="ch-btn-pleine" onClick={handleAdd}>
+                  <UserPlus size={13} aria-hidden="true" /> Nouvel employé
                 </button>
               )}
 
@@ -1342,7 +1278,7 @@ export default function Employes() {
                 title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
                 aria-pressed={darkMode}
               >
-                {darkMode ? <Sun size={13} /> : <Moon size={13} />}
+                {darkMode ? <Sun size={13} aria-hidden="true" /> : <Moon size={13} aria-hidden="true" />}
                 <span>{darkMode ? 'Clair' : 'Sombre'}</span>
               </button>
             </div>
@@ -1365,7 +1301,7 @@ export default function Employes() {
                     aria-current={vueActive === cle ? 'page' : undefined}
                     onClick={() => changerVue(cle)}
                   >
-                    <Icone size={14} /> {libelle}
+                    <Icone size={13} aria-hidden="true" /> {libelle}
                   </button>
                 ))}
               </nav>
@@ -1374,329 +1310,158 @@ export default function Employes() {
 
           {vueActive === null && (
             <div className="empv2-annuaire">
-              {/* les trois cartes : l'anatomie de la référence validée */}
-              <div className="empv3-cartes">
-
-                {/* 1. L'effectif */}
-                <div className="empv3-carte">
-                  <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Effectif total</span>
-                    <span className="empv3-carte-total">{employes.length}</span>
+              {/* les chiffres du jour : trois tuiles, le chiffre porte sa période.
+                  Tout est compté sur le personnel chargé, jamais une estimation. */}
+              <div className="empv2-tuiles" aria-label="Chiffres du personnel">
+                <div className="ch-tuile-repere">
+                  <div className="ch-tuile-repere-ligne">
+                    <span className="ch-tuile-valeur">{employes.length}</span>
+                    <span className="ch-tuile-repere">enregistrés</span>
                   </div>
-                  <div className="empv3-lignes">
-                    <div className="empv3-ligne empv3-ligne--ok">
-                      <b>{suiviPresence ? liveCounts.enPoste : '—'}</b>
-                      <span className="empv3-ligne-lab">En poste</span>
-                    </div>
-                    <div className="empv3-ligne empv3-ligne--att">
-                      <b>{suiviPresence ? liveCounts.enConge : '—'}</b>
-                      <span className="empv3-ligne-lab">Absents aujourd’hui</span>
-                    </div>
-                  </div>
+                  <span className="ch-tuile-legende">Effectif au registre</span>
                 </div>
-
-                {/* 2. L'assiduité du jour */}
-                <div className="empv3-carte">
-                  <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Assiduité du jour</span>
+                <div className="ch-tuile-repere">
+                  <div className="ch-tuile-repere-ligne">
+                    <span className="ch-tuile-valeur">{suiviPresence ? liveCounts.enPoste + liveCounts.enPause : '—'}</span>
+                    <span className="ch-tuile-repere">aujourd’hui</span>
                   </div>
-                  <div>
-                    <span className="empv3-pct">{tauxPresence === null ? '—' : `${tauxPresence} %`}</span>
-                    <span className="empv3-pct-note">
-                      {tauxPresence === null ? 'relevés en cours de chargement' : `sur ${employes.length} personne${employes.length > 1 ? 's' : ''}`}
-                    </span>
-                  </div>
-                  <div className="empv3-empilee" role="img" aria-label={`En poste ${enPoste}, en pause ${enPause}, absents ${absents}`}>
-                    <i style={{ width: `${partEnPoste}%`, background: 'var(--charte-aplat)' }} />
-                    <i style={{ width: `${partEnPause}%`, background: 'var(--charte-alerte)' }} />
-                    <i style={{ width: `${partAbsents}%`, background: 'var(--charte-statut-neutre)' }} />
-                  </div>
-                  <div className="empv3-legende">
-                    <span><i style={{ background: 'var(--charte-aplat)' }} />En poste · {suiviPresence ? enPoste : '—'}</span>
-                    <span><i style={{ background: 'var(--charte-alerte)' }} />En pause · {suiviPresence ? enPause : '—'}</span>
-                    <span><i style={{ background: 'var(--charte-statut-neutre)' }} />Absents · {suiviPresence ? absents : '—'}</span>
-                  </div>
+                  <span className="ch-tuile-legende">Présents (en poste ou en pause)</span>
                 </div>
-
-                {/* 3. L'accès au portail */}
-                <div className="empv3-carte">
-                  <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Accès au portail</span>
-                    <span className="empv3-carte-total">{actifsPortail}/{employes.length}</span>
+                <div className="ch-tuile-repere">
+                  <div className="ch-tuile-repere-ligne">
+                    <span className="ch-tuile-valeur">{suiviPresence ? liveCounts.retards : '—'}</span>
+                    <span className="ch-tuile-repere">aujourd’hui</span>
                   </div>
-                  <div className="empv3-anneau">
-                    <div className="empv3-anneau-svg">
-                      <svg width="86" height="86" viewBox="0 0 86 86" role="img" aria-label={`${actifsPortail} comptes actifs sur ${employes.length}`}>
-                        <circle cx="43" cy="43" r="33" fill="none" stroke="var(--charte-surface2)" strokeWidth="10" />
-                        <circle
-                          cx="43" cy="43" r="33" fill="none"
-                          stroke="var(--charte-aplat)" strokeWidth="10"
-                          strokeDasharray={`${perimetreAnneau * partPortail} ${perimetreAnneau}`}
-                          strokeLinecap="butt"
-                          transform="rotate(-90 43 43)"
-                        />
-                      </svg>
-                      <div className="empv3-anneau-centre">
-                        <span className="empv3-anneau-val">{actifsPortail}</span>
-                        <span className="empv3-anneau-lab">au total {employes.length}</span>
-                      </div>
-                    </div>
-                    <div className="empv3-appareils">
-                      <div>
-                        <i style={{ background: 'var(--charte-aplat)' }} />
-                        <b>{actifsPortail}</b>
-                        <span>Compte actif</span>
-                      </div>
-                      <div>
-                        <i style={{ background: 'var(--charte-surface2)' }} />
-                        <b>{Math.max(employes.length - actifsPortail, 0)}</b>
-                        <span>À activer</span>
-                      </div>
-                    </div>
-                  </div>
+                  <span className="ch-tuile-legende">Retards — le mot est écrit, jamais un point seul</span>
                 </div>
               </div>
 
-              {/* les deux grands blocs */}
-              <div className="empv3-deux">
-
-                {/* Les fiches incomplètes, morceau par morceau */}
-                <div className="empv3-carte">
-                  <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Fiches à compléter</span>
-                    <span className="empv3-carte-total">{fichesIncompletes.length}</span>
-                  </div>
-                  {fichesIncompletes.length === 0 ? (
-                    <p className="empv3-legende">Toutes les fiches sont complètes : poste, service, contrat et accès au portail.</p>
-                  ) : (
-                    <div className="empv3-perf-lignes">
-                      {fichesIncompletes.map(({ employee, morceaux, remplis }) => (
-                        <div className="empv3-perf-ligne" key={employee.id}>
-                          <span className="empv3-perf-nom">{nomCompletDe(employee)}</span>
-                          <span className="empv3-perf-bar">
-                            {morceaux.map((m) => (
-                              <i
-                                key={m.mot}
-                                title={`${m.mot} : ${m.ok ? 'renseigné' : 'manquant'}`}
-                                style={{
-                                  width: '25%',
-                                  background: m.ok ? 'var(--charte-aplat)' : 'var(--charte-surface2)',
-                                }}
-                              />
-                            ))}
-                          </span>
-                          <span className="empv3-perf-total">{remplis}/4</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="empv3-legende" style={{ marginTop: 'auto' }}>
-                    <span><i style={{ background: 'var(--charte-aplat)' }} />Renseigné</span>
-                    <span><i style={{ background: 'var(--charte-surface2)' }} />Manquant</span>
-                  </div>
-                </div>
-
-                {/* Les contrats, comptés */}
-                <div className="empv3-carte">
-                  <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Contrats par type</span>
-                  </div>
-                  {contratsParType.length === 0 ? (
-                    <p className="empv3-legende">Aucun contrat renseigné pour l’instant.</p>
-                  ) : (
-                    <div className="empv3-perf-lignes">
-                      {contratsParType.map(({ mot, nombre }) => (
-                        <div className="empv3-barre-ligne" key={mot}>
-                          <span>{mot}</span>
-                          <span className="empv3-barre-piste">
-                            <i style={{ width: `${maxContrat > 0 ? (nombre / maxContrat) * 100 : 0}%` }} />
-                          </span>
-                          <span className="empv3-barre-val">{nombre}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              {/* les filtres : l'état de la journée d'abord, des pilules
+                  où le mot est la donnée (C7) */}
+              <div className="empv2-filtres" role="group" aria-label="Filtrer l'annuaire">
+                {FILTRES_ANNUAIRE.map((filtre) => (
+                  <button
+                    key={filtre.key}
+                    type="button"
+                    className={`empv2-filtre ${filtre.classe || ''}`}
+                    aria-pressed={categoryFilter === filtre.key}
+                    onClick={() => setCategoryFilter(filtre.key)}
+                  >
+                    {filtre.classe && <i className="ch-badge-point" aria-hidden="true" />}
+                    {filtre.label}
+                  </button>
+                ))}
+                {(searchTerm || categoryFilter !== 'all') && (
+                  <button
+                    type="button"
+                    className="empv2-filtre"
+                    onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
+                  >
+                    Tout montrer
+                  </button>
+                )}
               </div>
 
               {enrollmentCounts.toMigrate > 0 && (
-                <p className="empv2-alerte">
-                  <AlertTriangle size={14} />
+                <div className="ch-message-fiche" role="status">
+                  <AlertTriangle size={15} aria-hidden="true" />
                   <span>
                     {enrollmentCounts.toMigrate} employé{enrollmentCounts.toMigrate > 1 ? 's' : ''} encore sur
                     l'ancien portail — ouvrez <strong>Mot de passe</strong> dans leur menu pour activer
                     leur nouvel accès.
                   </span>
-                </p>
+                </div>
               )}
 
               <PayslipIndicatorStatus status={payslipIndicators} />
 
-                <div className="empv3-bloc">
-                  <div className="empv3-bloc-tete">
-                    <span className="empv3-bloc-titre">Tous les employés</span>
-
-                    <label className="empv3-saisie">
-                      <Search size={12} aria-hidden="true" />
-                      <input
-                        type="search"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Rechercher un nom, un matricule…"
-                        aria-label="Rechercher un employé"
-                      />
-                      {searchTerm && (
-                        <button
-                          type="button"
-                          className="empv3-act"
-                          onClick={() => setSearchTerm('')}
-                          aria-label="Effacer la recherche"
-                        >
-                          <X size={11} />
-                        </button>
-                      )}
-                    </label>
-
-                    {FILTRES_ANNUAIRE.map((filtre) => (
-                      <button
-                        key={filtre.key}
-                        type="button"
-                        className="empv3-outil"
-                        aria-pressed={categoryFilter === filtre.key}
-                        onClick={() => setCategoryFilter(filtre.key)}
-                      >
-                        {filtre.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {employesFiltres.length === 0 ? (
-                    <div className="empv2-vide">
-                      <h3>{employes.length === 0 ? 'Aucun employé pour l’instant' : 'Aucune personne ne correspond'}</h3>
-                      <p>
-                        {employes.length === 0
-                          ? 'Créez la première fiche : le nom, le matricule et le poste suffisent pour commencer.'
-                          : 'Élargissez la recherche ou retirez un filtre pour revoir tout le personnel.'}
-                      </p>
-                      {employes.length === 0 ? (
-                        <button type="button" className="empv2-primaire" onClick={handleAdd}>
-                          <UserPlus size={14} /> Ajouter un employé
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="empv2-rafraichir"
-                          onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
-                        >
-                          Tout montrer
-                        </button>
-                      )}
-                    </div>
+              {employesFiltres.length === 0 ? (
+                <div className="empv2-vide">
+                  <h3>{employes.length === 0 ? 'Aucun employé pour l’instant' : 'Aucune personne ne correspond'}</h3>
+                  <p>
+                    {employes.length === 0
+                      ? 'Créez la première fiche : le nom, le matricule et le poste suffisent pour commencer.'
+                      : 'Élargissez la recherche ou retirez un filtre pour revoir tout le personnel.'}
+                  </p>
+                  {employes.length === 0 ? (
+                    <button type="button" className="ch-btn-pleine" onClick={handleAdd}>
+                      <UserPlus size={13} aria-hidden="true" /> Nouvel employé
+                    </button>
                   ) : (
-                  <table className="empv3-table">
-                    <thead>
-                      <tr>
-                        <th>Matricule</th>
-                        <th>Employé</th>
-                        <th>Poste</th>
-                        <th>Service</th>
-                        <th>Contrat</th>
-                        <th>Statut</th>
-                        <th style={{ textAlign: 'right' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {employesFiltres.map((employee) => {
-                        const statut = statutDuJour(liveStatusByEmployee[employee.id])
-                        const portailOuvert = isPortalModuleEnabled(employee) && employee.employee_portal_enabled
-                        return (
-                          <tr key={employee.id}>
-                            <td className="empv3-matricule">{employee.matricule || '—'}</td>
-
-                            <td>
-                              <div className="empv3-personne">
-                                <span className="empv3-avatar">
-                                  {employee.photo_url
-                                    ? <img src={employee.photo_url} alt="" />
-                                    : initialesDe(employee)}
-                                </span>
-                                <span className="empv3-nom">
-                                  <strong>{nomCompletDe(employee)}</strong>
-                                  <small>{employee.email || 'Sans e-mail'}</small>
-                                </span>
-                              </div>
-                            </td>
-
-                            <td>{employee.position || '—'}</td>
-
-                            <td>
-                              {employee.department
-                                ? <span className="empv3-dept">{employee.department}</span>
-                                : '—'}
-                            </td>
-
-                            <td>{employee.contract_type ? getContractLabel(employee.contract_type) : '—'}</td>
-
-                            <td>
-                              <span className={`empv3-pilule empv3-pilule--${statut.ton}`}>
-                                <i style={{
-                                  background: statut.ton === 'ok' ? 'var(--charte-succes)'
-                                    : statut.ton === 'att' ? 'var(--charte-alerte)'
-                                      : statut.ton === 'non' ? 'var(--charte-erreur)'
-                                        : 'var(--charte-statut-neutre)',
-                                }} />
-                                {statut.mot}
-                              </span>
-                            </td>
-
-                            <td>
-                              <div className="empv3-actions">
-                                <button
-                                  type="button"
-                                  className="empv3-act"
-                                  title="Ouvrir la fiche"
-                                  aria-label={`Ouvrir la fiche de ${nomCompletDe(employee)}`}
-                                  onClick={() => navigate(`/employes/${employee.id}`)}
-                                >
-                                  <Eye size={13} />
-                                </button>
-
-                                <details className="empv3-menu">
-                                  <summary aria-label={`Autres actions pour ${nomCompletDe(employee)}`}>⋮</summary>
-                                  <div className="empv3-menu-liste">
-                                    <button type="button" onClick={() => handleEdit(employee)}>
-                                      <Edit size={12} /> Modifier la fiche
-                                    </button>
-                                    <button type="button" onClick={() => handleShowBadge(employee)}>
-                                      <QrCode size={12} /> Badge QR
-                                    </button>
-                                    <button type="button" onClick={() => navigate(`/pointages?q=${encodeURIComponent(employee.matricule || employee.last_name || '')}`)}>
-                                      <Clock size={12} /> Voir les pointages
-                                    </button>
-                                    {isModulePlanningEnabled(employee) && (
-                                      <button type="button" onClick={() => handleShareSchedule(employee)}>
-                                        <Share2 size={12} /> Envoyer les horaires
-                                      </button>
-                                    )}
-                                    {portailOuvert && (
-                                      <button type="button" onClick={() => handleOpenPasswordModal(employee)}>
-                                        <Key size={12} /> Mot de passe
-                                      </button>
-                                    )}
-                                    <button type="button" onClick={() => initiateDelete(employee)}>
-                                      <Trash2 size={12} /> Supprimer la fiche
-                                    </button>
-                                  </div>
-                                </details>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                    <button
+                      type="button"
+                      className="ch-btn-contour"
+                      onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
+                    >
+                      Tout montrer
+                    </button>
                   )}
                 </div>
+              ) : (
+                <>
+                  {/* l'annuaire : tableau filets, lignes 34 px, pas de
+                      zébrures, une action par ligne, 25 lignes par page */}
+                  <div className="empv2-tableau" aria-label="Le personnel">
+                    <table className="ch-tableau ch-tableau-filets">
+                      <thead>
+                        <tr>
+                          <th scope="col">Employé</th>
+                          <th scope="col">Poste · service</th>
+                          <th scope="col">Contrat</th>
+                          <th scope="col">Statut du jour</th>
+                          <th scope="col"><span className="visually-hidden">Actions</span></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {employesPageAnnuaire.map((employee) => (
+                          <LigneAnnuaire
+                            key={employee.id}
+                            employee={employee}
+                            liveStatus={liveStatusByEmployee[employee.id]}
+                            contractLabel={employee.contract_type ? getContractLabel(employee.contract_type) : ''}
+                            portalEnabled={isPortalModuleEnabled(employee) && employee.employee_portal_enabled}
+                            planningEnabled={isModulePlanningEnabled(employee)}
+                            aCompte={aUnCompteEmploye(employee)}
+                            ancienSysteme={estAncienSysteme(employee)}
+                            onOuvrirFiche={handleEdit}
+                            onOuvrirPage={(emp) => navigate(`/employes/${emp.id}`)}
+                            onBadge={handleShowBadge}
+                            onHoraires={handleOpenSchedule}
+                            onPartagerHoraires={handleShareSchedule}
+                            onPointages={(emp) => navigate(`/pointages?q=${encodeURIComponent(emp.matricule || emp.last_name || '')}`)}
+                            onMotDePasse={handleOpenPasswordModal}
+                            onBasulerPortail={handleTogglePortalAccess}
+                            onSupprimer={initiateDelete}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                    {nbPagesAnnuaire > 1 && (
+                      <div className="empv2-pagination">
+                        <span className="ch-mono">{plageAnnuaire} sur {employesFiltres.length} — 25 par page</span>
+                        <span className="empv2-pagination-boutons">
+                          <button
+                            type="button"
+                            className="empv2-pagbtn"
+                            disabled={pageAnnuaireCourante <= 1}
+                            onClick={() => setPageAnnuaire(pageAnnuaireCourante - 1)}
+                          >
+                            ← Précédent
+                          </button>
+                          <button
+                            type="button"
+                            className="empv2-pagbtn"
+                            disabled={pageAnnuaireCourante >= nbPagesAnnuaire}
+                            onClick={() => setPageAnnuaire(pageAnnuaireCourante + 1)}
+                          >
+                            Suivant →
+                          </button>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -1708,26 +1473,28 @@ export default function Employes() {
             <TachesVue enterpriseId={entrepriseDesVues} employes={employes} signalCreation={signalCreationTache} />
           )}
 
-          <div style={styles.footer}>
-            <div style={styles.footerLine}></div>
-            <p style={styles.footerText}><EnCheckBrandMark size={18} />EN-CHECK • On gère ! • Gestion du Personnel</p>
+          <div className="empv2-pied">
+            <EnCheckBrandMark size={16} />
+            <span>EN-CHECK · On gère ! · Gestion du Personnel</span>
           </div>
         </main>
         </div>
-        <PageCulturalBand pathname="/employes" placement="bottom"/>
+        {/* D-003 — une seule bande de motif par page : le bandeau du haut. */}
 
         {/* ═══════════ MODALS ═══════════ */}
 
         {/* ─── DELETE CONFIRM ─── */}
         {showDeleteModal && employeeToDelete && (
-          <div className="afro-modal-overlay" style={styles.modalOverlay}>
-            <div className="afro-modal-content" style={styles.confirmModal}>
-              <div style={styles.modalIconWrap}><AlertTriangle size={28} color="#EF4444" /></div>
-              <h3 style={styles.modalTitle}>Confirmer la suppression</h3>
-              <p style={styles.modalText}>Voulez-vous vraiment supprimer <strong style={{ color: '#F59E0B' }}>{employeeToDelete.first_name} {employeeToDelete.last_name}</strong> ?<br />Cette action est irréversible.</p>
-              <div style={styles.modalBtns}>
-                <button onClick={() => setShowDeleteModal(false)} style={styles.modalCancelBtn}>Annuler</button>
-                <button onClick={confirmDelete} style={styles.modalDeleteBtn}><Trash2 size={16} /> Supprimer</button>
+<div className="empv2-voile">
+            <div className="empv2-modale empv2-modale--petite" role="dialog" aria-modal="true" aria-labelledby="titre-supp">
+              <div className="empv2-modale-corps empv2-modale-corps--centre">
+                <AlertTriangle size={26} aria-hidden="true" className="empv2-icone-erreur" />
+                <h3 id="titre-supp" className="empv2-modale-titre">Confirmer la suppression</h3>
+                <p>Voulez-vous vraiment supprimer <strong>{employeeToDelete.first_name} {employeeToDelete.last_name}</strong> ?<br />Cette action est irréversible.</p>
+              </div>
+              <div className="empv2-modale-pied">
+                <button type="button" className="ch-btn-contour" onClick={() => setShowDeleteModal(false)}>Annuler</button>
+                <button type="button" className="ch-btn-inverse ch-btn-danger" onClick={confirmDelete}><Trash2 size={14} aria-hidden="true" /> Supprimer</button>
               </div>
             </div>
           </div>
@@ -1772,42 +1539,49 @@ export default function Employes() {
 
         {/* ─── SCHEDULE MODAL ─── */}
         {showScheduleModal && selectedEmployeeForSchedule && (
-          <div className="afro-modal-overlay" style={styles.modalOverlay}>
-            <div className="afro-modal-content" style={styles.formModal}>
-              <div style={styles.formModalHeader}>
-                <div style={styles.formModalTitleWrap}>
-                  <div style={{ ...styles.formModalIcon, background: 'rgba(16,185,129,0.12)' }}><Clock size={20} color="#10B981" /></div>
-                  <div>
-                    <h2 style={styles.formModalTitle}>Horaires de {selectedEmployeeForSchedule.first_name}</h2>
-                    <span style={styles.formModalSub}>Définir le planning de travail</span>
-                  </div>
-                </div>
-                <button onClick={() => setShowScheduleModal(false)} style={styles.formCloseBtn}><X size={20} /></button>
+          <div className="empv2-voile">
+            <div className="empv2-modale" role="dialog" aria-modal="true" aria-labelledby="titre-horaires">
+              <div className="empv2-modale-tete">
+                <h2 id="titre-horaires" className="empv2-modale-titre">Horaires de {selectedEmployeeForSchedule.first_name}</h2>
+                <button type="button" className="empv2-modale-fermer" onClick={() => setShowScheduleModal(false)} aria-label="Fermer">
+                  <X size={15} />
+                </button>
               </div>
 
-              <div style={styles.formModalBody}>
-                <div style={styles.scheduleChoiceWrap}>
-                  <label style={{ ...styles.scheduleOption, borderColor: !scheduleFormData.use_custom_hours ? 'rgba(245, 158, 11, 0.5)' : 'rgba(255,255,255,0.06)', background: !scheduleFormData.use_custom_hours ? 'rgba(245, 158, 11, 0.05)' : 'transparent' }}>
-                    <input type="radio" name="scheduleType" checked={!scheduleFormData.use_custom_hours} onChange={() => setScheduleFormData({ ...scheduleFormData, use_custom_hours: false })} style={styles.radioInput} />
-                    <div><span style={styles.scheduleOptionTitle}>Planning existant</span><span style={styles.scheduleOptionDesc}>Utiliser un planning prédéfini</span></div>
+              <div className="empv2-modale-corps">
+                <div className="empv2-choix" role="radiogroup" aria-label="Type d'horaires">
+                  <label className="empv2-choix-option" aria-pressed={!scheduleFormData.use_custom_hours}>
+                    <input
+                      type="radio"
+                      name="scheduleType"
+                      checked={!scheduleFormData.use_custom_hours}
+                      onChange={() => setScheduleFormData({ ...scheduleFormData, use_custom_hours: false })}
+                    />
+                    <span><strong>Planning existant</strong><span>Utiliser un planning prédéfini</span></span>
                   </label>
-                  <label style={{ ...styles.scheduleOption, borderColor: scheduleFormData.use_custom_hours ? 'rgba(245, 158, 11, 0.5)' : 'rgba(255,255,255,0.06)', background: scheduleFormData.use_custom_hours ? 'rgba(245, 158, 11, 0.05)' : 'transparent' }}>
-                    <input type="radio" name="scheduleType" checked={scheduleFormData.use_custom_hours} onChange={() => setScheduleFormData({ ...scheduleFormData, use_custom_hours: true })} style={styles.radioInput} />
-                    <div><span style={styles.scheduleOptionTitle}>Personnalisé</span><span style={styles.scheduleOptionDesc}>Horaires sur mesure</span></div>
+                  <label className="empv2-choix-option" aria-pressed={scheduleFormData.use_custom_hours}>
+                    <input
+                      type="radio"
+                      name="scheduleType"
+                      checked={scheduleFormData.use_custom_hours}
+                      onChange={() => setScheduleFormData({ ...scheduleFormData, use_custom_hours: true })}
+                    />
+                    <span><strong>Personnalisé</strong><span>Horaires sur mesure</span></span>
                   </label>
                 </div>
 
                 {!scheduleFormData.use_custom_hours && (
-                  <div style={styles.formField}>
-                    <label style={styles.formLabel}>Sélectionner un planning</label>
-                    {plannings.filter(p => p.enterprise_id === selectedEmployeeForSchedule.enterprise_id).length === 0 && (
-                      <div style={{ padding: 12, background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.15)', borderRadius: 10, color: '#F59E0B', fontSize: 12, marginBottom: 8 }}>
-                        ⚠️ Aucun planning trouvé pour cette entreprise.
+                  <div className="empv2-champ">
+                    <label htmlFor="select-planning">Sélectionner un planning</label>
+                    {plannings.filter((pl) => pl.enterprise_id === selectedEmployeeForSchedule.enterprise_id).length === 0 && (
+                      <div className="ch-message-fiche" role="status">
+                        <AlertTriangle size={14} aria-hidden="true" />
+                        <span>Aucun planning trouvé pour cette entreprise.</span>
                       </div>
                     )}
-                    <select value={scheduleFormData.schedule_id} onChange={(e) => setScheduleFormData({ ...scheduleFormData, schedule_id: e.target.value })} style={styles.formSelect}>
+                    <select id="select-planning" className="ch-champ-cadre" value={scheduleFormData.schedule_id} onChange={(e) => setScheduleFormData({ ...scheduleFormData, schedule_id: e.target.value })}>
                       <option value="">-- Aucun planning --</option>
-                      {plannings.filter(p => p.enterprise_id === selectedEmployeeForSchedule.enterprise_id).map((planning) => (
+                      {plannings.filter((pl) => pl.enterprise_id === selectedEmployeeForSchedule.enterprise_id).map((planning) => (
                         <option key={planning.id} value={planning.id}>{planning.name} ({planning.start_time?.slice(0, 5)} - {planning.end_time?.slice(0, 5)}){planning.is_default ? ' ★' : ''}</option>
                       ))}
                     </select>
@@ -1816,25 +1590,49 @@ export default function Employes() {
 
                 {scheduleFormData.use_custom_hours && (
                   <>
-                    <div style={styles.formRow}>
-                      <div style={styles.formField}><label style={styles.formLabel}>Arrivée</label><input type="time" value={scheduleFormData.custom_start_time} onChange={(e) => setScheduleFormData({ ...scheduleFormData, custom_start_time: e.target.value })} style={styles.formInput} /></div>
-                      <div style={styles.formField}><label style={styles.formLabel}>Départ</label><input type="time" value={scheduleFormData.custom_end_time} onChange={(e) => setScheduleFormData({ ...scheduleFormData, custom_end_time: e.target.value })} style={styles.formInput} /></div>
+                    <div className="empv2-champ--double">
+                      <div className="empv2-champ">
+                        <label htmlFor="horaires-arrivee">Arrivée</label>
+                        <input id="horaires-arrivee" type="time" className="ch-champ-cadre" value={scheduleFormData.custom_start_time} onChange={(e) => setScheduleFormData({ ...scheduleFormData, custom_start_time: e.target.value })} />
+                      </div>
+                      <div className="empv2-champ">
+                        <label htmlFor="horaires-depart">Départ</label>
+                        <input id="horaires-depart" type="time" className="ch-champ-cadre" value={scheduleFormData.custom_end_time} onChange={(e) => setScheduleFormData({ ...scheduleFormData, custom_end_time: e.target.value })} />
+                      </div>
                     </div>
-                    <label style={styles.checkboxWrap}>
-                      <input type="checkbox" checked={scheduleFormData.custom_has_break} onChange={(e) => setScheduleFormData({ ...scheduleFormData, custom_has_break: e.target.checked })} style={styles.checkboxInput} />
-                      <span style={styles.checkboxText}>Pause déjeuner</span>
+                    <label className="empv2-choix-option">
+                      <input
+                        type="checkbox"
+                        checked={scheduleFormData.custom_has_break}
+                        onChange={(e) => setScheduleFormData({ ...scheduleFormData, custom_has_break: e.target.checked })}
+                      />
+                      <span><strong>Pause déjeuner</strong></span>
                     </label>
                     {scheduleFormData.custom_has_break && (
-                      <div style={styles.formRow}>
-                        <div style={styles.formField}><label style={styles.formLabel}>Début pause</label><input type="time" value={scheduleFormData.custom_break_start} onChange={(e) => setScheduleFormData({ ...scheduleFormData, custom_break_start: e.target.value })} style={styles.formInput} /></div>
-                        <div style={styles.formField}><label style={styles.formLabel}>Fin pause</label><input type="time" value={scheduleFormData.custom_break_end} onChange={(e) => setScheduleFormData({ ...scheduleFormData, custom_break_end: e.target.value })} style={styles.formInput} /></div>
+                      <div className="empv2-champ--double">
+                        <div className="empv2-champ">
+                          <label htmlFor="horaires-pause-debut">Début pause</label>
+                          <input id="horaires-pause-debut" type="time" className="ch-champ-cadre" value={scheduleFormData.custom_break_start} onChange={(e) => setScheduleFormData({ ...scheduleFormData, custom_break_start: e.target.value })} />
+                        </div>
+                        <div className="empv2-champ">
+                          <label htmlFor="horaires-pause-fin">Fin pause</label>
+                          <input id="horaires-pause-fin" type="time" className="ch-champ-cadre" value={scheduleFormData.custom_break_end} onChange={(e) => setScheduleFormData({ ...scheduleFormData, custom_break_end: e.target.value })} />
+                        </div>
                       </div>
                     )}
-                    <div style={styles.formField}>
-                      <label style={styles.formLabel}>Jours de travail</label>
-                      <div style={styles.daysRow}>
+                    <div className="empv2-champ">
+                      <label>Jours de travail</label>
+                      <div className="empv2-jours" role="group" aria-label="Jours de travail">
                         {joursSemaine.map((jour) => (
-                          <button key={jour.id} type="button" onClick={() => toggleJourTravail(jour.id)} style={{ ...styles.dayChip, ...(scheduleFormData.custom_work_days.includes(jour.id) ? styles.dayChipActive : {}) }}>{jour.court}</button>
+                          <button
+                            key={jour.id}
+                            type="button"
+                            className="empv2-jour"
+                            aria-pressed={scheduleFormData.custom_work_days.includes(jour.id)}
+                            onClick={() => toggleJourTravail(jour.id)}
+                          >
+                            {jour.court}
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -1842,9 +1640,9 @@ export default function Employes() {
                 )}
               </div>
 
-              <div style={styles.formModalFooter}>
-                <button onClick={() => setShowScheduleModal(false)} style={styles.modalCancelBtn}>Annuler</button>
-                <button onClick={handleSaveSchedule} style={styles.modalSaveBtn}><Save size={16} /> Enregistrer</button>
+              <div className="empv2-modale-pied">
+                <button type="button" className="ch-btn-contour" onClick={() => setShowScheduleModal(false)}>Annuler</button>
+                <button type="button" className="ch-btn-pleine" onClick={handleSaveSchedule}><Save size={14} aria-hidden="true" /> Enregistrer</button>
               </div>
             </div>
           </div>
@@ -1885,133 +1683,3 @@ export default function Employes() {
 
 // ═══════════════════════════════════════════════════════════
 // 🎨 STYLES
-// ═══════════════════════════════════════════════════════════
-
-const styles = {
-  container: { minHeight: '100vh', background: 'var(--pt-canvas)', position: 'relative', overflow: 'hidden' },
-  bgPattern: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 0 },
-  bgOrb1: { position: 'fixed', top: '-20%', right: '-8%', width: 500, height: 500, borderRadius: '50%', pointerEvents: 'none', zIndex: 0 },
-  bgOrb2: { position: 'fixed', bottom: '-25%', left: '-12%', width: 600, height: 600, borderRadius: '50%', pointerEvents: 'none', zIndex: 0 },
-  loadingContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 24, background: 'var(--pt-canvas)' },
-  loadingPulse: { animation: 'float 2s ease-in-out infinite' },
-  loadingText: { color: 'var(--pt-muted)', fontSize: 16, letterSpacing: 2 },
-  loadingBar: { width: 200, height: 2, background: 'rgba(245,158,11,0.1)', borderRadius: 2, overflow: 'hidden' },
-  loadingBarFill: { width: '40%', height: '100%', background: 'linear-gradient(90deg, #F59E0B, #D97706)', borderRadius: 2, animation: 'shimmer 1.5s infinite', backgroundSize: '200% 100%' },
-  header: { background: 'var(--pt-surface)', borderBottom: '1px solid var(--pt-line)', position: 'sticky', top: 0, zIndex: 100 },
-  headerInner: { maxWidth: 1400, margin: '0 auto', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  headerLeft: { display: 'flex', alignItems: 'center', gap: 12 },
-  backBtn: { background: 'var(--pt-surface-soft)', border: '1px solid var(--pt-line)', borderRadius: 10, padding: 8, color: 'var(--pt-copper-strong)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
-  logoMark: { width: 38, height: 38, borderRadius: 10, background: 'var(--pt-copper-soft)', border: '1px solid var(--pt-line)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: 'var(--pt-ink)', fontSize: 18, fontWeight: 700, letterSpacing: 3, margin: 0, lineHeight: 1.2 },
-  headerSub: { color: 'var(--pt-copper-strong)', fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', fontWeight: 500 },
-  addBtnHeader: { display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #C87B3E, #9C5321)', color: '#FFF', padding: '10px 20px', borderRadius: 12, border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.3s ease', letterSpacing: 0.5 },
-  main: { padding: 20, maxWidth: 1400, margin: '0 auto', position: 'relative', zIndex: 1 },
-  summaryStrip: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, background: 'var(--pt-surface)', borderRadius: 16, border: '1px solid var(--pt-line)', padding: '16px 24px', marginBottom: 20, flexWrap: 'wrap' },
-  summaryCard: { display: 'flex', alignItems: 'center', gap: 12, padding: '4px 20px', flex: '1 1 auto', justifyContent: 'center', minWidth: 100 },
-  summaryDivider: { width: 1, height: 32, background: 'var(--pt-line)' },
-  summaryIcon: { width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  summaryInfo: { display: 'flex', flexDirection: 'column' },
-  summaryNumber: { color: 'var(--pt-ink)', fontSize: 22, fontWeight: 700, lineHeight: 1 },
-  summaryLabel: { color: 'var(--pt-muted)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 },
-  toolbar: { display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' },
-  searchContainer: { flex: '1 1 280px', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--pt-surface)', border: '1px solid var(--pt-line)', padding: '12px 16px', borderRadius: 14, transition: 'all 0.3s ease' },
-  searchInput: { flex: 1, border: 'none', outline: 'none', fontSize: 14, background: 'transparent', color: 'var(--pt-ink)', fontFamily: 'inherit' },
-  clearSearch: { background: 'var(--pt-surface-soft)', border: 'none', borderRadius: 6, padding: 4, cursor: 'pointer', color: 'var(--pt-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  toolbarRight: { display: 'flex', alignItems: 'center', gap: 12 },
-  viewToggle: { display: 'flex', gap: 2, background: 'var(--pt-surface)', borderRadius: 10, padding: 3, border: '1px solid var(--pt-line)' },
-  viewBtn: { background: 'transparent', border: 'none', borderRadius: 8, padding: '8px 10px', color: 'var(--pt-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
-  viewBtnActive: { background: 'var(--pt-copper-soft)', color: 'var(--pt-copper-strong)' },
-  resultCount: { display: 'flex', alignItems: 'baseline', gap: 6 },
-  resultNumber: { color: 'var(--pt-copper-strong)', fontSize: 20, fontWeight: 700 },
-  resultText: { color: 'var(--pt-muted)', fontSize: 12 },
-  empty: { textAlign: 'center', padding: '80px 20px', background: 'var(--pt-surface)', borderRadius: 24, border: '1px solid var(--pt-line)' },
-  emptyIcon: { width: 80, height: 80, borderRadius: 20, background: 'var(--pt-copper-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px auto' },
-  emptyTitle: { color: 'var(--pt-ink)', fontSize: 20, fontWeight: 600, margin: '0 0 8px 0' },
-  emptySubtitle: { color: 'var(--pt-muted)', fontSize: 14, margin: '0 0 24px 0' },
-  emptyAddBtn: { display: 'inline-flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #C87B3E, #9C5321)', color: '#FFF', padding: '12px 24px', borderRadius: 12, border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.3s ease' },
-  gridView: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 14 },
-  gridCard: { background: 'var(--pt-surface)', borderRadius: 20, border: '1px solid var(--pt-line)', padding: '24px 20px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, position: 'relative', overflow: 'hidden' },
-  cardGlowLine: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, rgba(213, 141, 75, 0.45), transparent)' },
-  gridAvatarSection: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
-  gridAvatar: { width: 64, height: 64, borderRadius: 18, background: 'var(--pt-surface-soft)', border: '2px solid var(--pt-copper)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  gridAvatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
-  gridAvatarInitials: { color: 'var(--pt-copper-strong)', fontWeight: 700, fontSize: 20, letterSpacing: 2 },
-  gridName: { color: 'var(--pt-ink)', fontSize: 16, fontWeight: 700, margin: 0, textAlign: 'center' },
-  gridMatricule: { color: 'var(--pt-copper-strong)', fontSize: 12, fontWeight: 700, letterSpacing: 1 },
-  gridInfoSection: { display: 'flex', flexDirection: 'column', gap: 6, width: '100%' },
-  gridInfoRow: { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--pt-muted)', fontSize: 12 },
-  gridProgress: { width: '100%', padding: 12, background: 'var(--pt-surface-soft)', borderRadius: 10 },
-  gridProgressHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  gridProgressLabel: { color: 'var(--pt-muted)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 },
-  gridProgressValue: { fontSize: 14, fontWeight: 700, fontFamily: "'SF Mono', 'Fira Code', monospace" },
-  progressTrack: { width: '100%', height: 4, background: 'var(--pt-line)', borderRadius: 2, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 2, width: 'var(--target-width)' },
-  gridActions: { display: 'flex', gap: 6, width: '100%', justifyContent: 'center', paddingTop: 8, borderTop: '1px solid var(--pt-line)', flexWrap: 'wrap' },
-  gridActionBtn: { border: 'none', borderRadius: 10, padding: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
-  listView: { display: 'flex', flexDirection: 'column', gap: 8 },
-  listCard: { background: 'var(--pt-surface)', borderRadius: 16, border: '1px solid var(--pt-line)', padding: 'clamp(12px, 3vw, 18px)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
-  listCardLeft: { display: 'flex', alignItems: 'center', gap: 14, flex: '1 1 300px', minWidth: 0 },
-  listAvatar: { width: 48, height: 48, borderRadius: 14, background: 'var(--pt-surface-soft)', border: '2px solid var(--pt-copper)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, position: 'relative' },
-  listAvatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
-  listAvatarInitials: { color: 'var(--pt-copper-strong)', fontWeight: 700, fontSize: 15, letterSpacing: 1 },
-  avatarStatusRing: { position: 'absolute', inset: -3, borderRadius: 16, border: '2px solid', pointerEvents: 'none' },
-  listInfo: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 },
-  listNameRow: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  listName: { color: 'var(--pt-ink)', fontWeight: 700, fontSize: 15 },
-  listMatricule: { color: 'var(--pt-copper-strong)', fontSize: 11, fontWeight: 700, letterSpacing: 0.5, background: 'var(--pt-copper-soft)', padding: '2px 8px', borderRadius: 6 },
-  listMetaRow: { display: 'flex', flexWrap: 'wrap', gap: 8 },
-  listMeta: { display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--pt-muted)', fontSize: 12 },
-  listProgressContainer: { display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, maxWidth: 200 },
-  progressTrackSmall: { flex: 1, height: 3, background: 'var(--pt-line)', borderRadius: 2, overflow: 'hidden' },
-  progressFillSmall: { height: '100%', borderRadius: 2, width: 'var(--target-width)' },
-  listProgressLabel: { fontSize: 11, fontWeight: 700, fontFamily: "'SF Mono', 'Fira Code', monospace", whiteSpace: 'nowrap' },
-  listActions: { display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' },
-  listActionBtn: { background: 'var(--pt-surface-soft)', border: '1px solid var(--pt-line)', borderRadius: 10, padding: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', color: 'var(--pt-ink-soft)' },
-  listDeleteBtn: { borderColor: 'rgba(239, 68, 68, 0.25)', color: '#EF4444' },
-  footer: { marginTop: 48, paddingBottom: 24 },
-  footerLine: { height: 1, background: 'linear-gradient(90deg, transparent, rgba(213, 141, 75, 0.3), transparent)', marginBottom: 20 },
-  footerText: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--pt-muted)', fontSize: 12, letterSpacing: 2 },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 12, 9, 0.72)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 1000 },
-  confirmModal: { background: 'var(--pt-surface)', border: '1px solid var(--pt-line)', borderRadius: 24, width: '100%', maxWidth: 420, padding: 'clamp(24px, 5vw, 36px)', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' },
-  modalIconWrap: { width: 64, height: 64, borderRadius: 18, background: 'rgba(239, 68, 68, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto' },
-  modalTitle: { fontSize: 20, fontWeight: 700, color: 'var(--pt-ink)', marginBottom: 12 },
-  modalText: { color: 'var(--pt-muted)', marginBottom: 28, lineHeight: 1.6, fontSize: 14 },
-  modalBtns: { display: 'flex', gap: 12 },
-  modalCancelBtn: { flex: 1, padding: 14, background: 'var(--pt-surface-soft)', border: '1px solid var(--pt-line)', color: 'var(--pt-ink)', borderRadius: 14, fontWeight: 600, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s ease', fontFamily: 'inherit' },
-  modalDeleteBtn: { flex: 1, padding: 14, background: 'linear-gradient(135deg, #EF4444, #B91C1C)', color: '#FFF', border: 'none', borderRadius: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s ease', fontFamily: 'inherit' },
-  formModal: { background: 'var(--pt-surface)', border: '1px solid var(--pt-line)', borderRadius: 24, width: '100%', maxWidth: 560, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 80px rgba(0,0,0,0.6)' },
-  formModalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid var(--pt-line)', flexShrink: 0 },
-  formModalTitleWrap: { display: 'flex', alignItems: 'center', gap: 14 },
-  formModalIcon: { width: 42, height: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  formModalTitle: { color: 'var(--pt-ink)', fontSize: 18, fontWeight: 700, margin: 0 },
-  formModalSub: { color: 'var(--pt-muted)', fontSize: 12, marginTop: 2, display: 'block' },
-  formCloseBtn: { background: 'var(--pt-surface-soft)', border: '1px solid var(--pt-line)', borderRadius: 10, padding: 8, color: 'var(--pt-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
-  formModalBody: { padding: 24, overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 },
-  formModalFooter: { display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 24px', borderTop: '1px solid var(--pt-line)', flexShrink: 0 },
-  modalSaveBtn: { display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: 'linear-gradient(135deg, #C87B3E, #9C5321)', color: '#FFF', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s ease', fontFamily: 'inherit' },
-  photoUploadSection: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 8 },
-  photoUploadCircle: { width: 90, height: 90, borderRadius: 20, background: 'var(--pt-copper-soft)', border: '2px dashed var(--pt-copper)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'all 0.2s ease' },
-  photoUploadImg: { width: '100%', height: '100%', objectFit: 'cover' },
-  photoUploadPlaceholder: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 },
-  photoUploadOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', padding: 6, display: 'flex', justifyContent: 'center' },
-  photoRemoveBtn: { display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: '#EF4444', fontSize: 12, cursor: 'pointer', fontWeight: 600 },
-  formField: { display: 'flex', flexDirection: 'column', gap: 6 },
-  formRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
-  formLabel: { fontSize: 12, fontWeight: 600, color: 'var(--pt-muted)', display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
-  formHint: { fontSize: 10, color: 'var(--pt-muted)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 },
-  formInput: { padding: '12px 14px', border: '1px solid var(--pt-line)', borderRadius: 12, fontSize: 14, outline: 'none', transition: 'border-color 0.2s', width: '100%', boxSizing: 'border-box', background: 'var(--pt-surface-soft)', color: 'var(--pt-ink)', fontFamily: 'inherit' },
-  formSelect: { padding: '12px 14px', border: '1px solid var(--pt-line)', borderRadius: 12, fontSize: 14, outline: 'none', background: 'var(--pt-surface-soft)', color: 'var(--pt-ink)', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', cursor: 'pointer' },
-  pinFieldWrap: { position: 'relative', display: 'flex', alignItems: 'center' },
-  pinEyeBtn: { position: 'absolute', right: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pt-muted)', display: 'flex', alignItems: 'center' },
-  scheduleChoiceWrap: { display: 'flex', flexDirection: 'column', gap: 8 },
-  scheduleOption: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: 16, borderRadius: 14, border: '1px solid var(--pt-line)', cursor: 'pointer', transition: 'all 0.2s ease' },
-  radioInput: { width: 18, height: 18, accentColor: '#F59E0B', marginTop: 2, flexShrink: 0 },
-  scheduleOptionTitle: { display: 'block', fontWeight: 600, color: 'var(--pt-ink)', fontSize: 14 },
-  scheduleOptionDesc: { display: 'block', fontSize: 12, color: 'var(--pt-muted)', marginTop: 2 },
-  checkboxWrap: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 12, background: 'var(--pt-surface-soft)', cursor: 'pointer' },
-  checkboxInput: { width: 18, height: 18, accentColor: '#F59E0B' },
-  checkboxText: { color: 'var(--pt-ink)', fontSize: 14, fontWeight: 500 },
-  daysRow: { display: 'flex', gap: 6, flexWrap: 'wrap' },
-  dayChip: { padding: '10px 14px', border: '1px solid var(--pt-line)', borderRadius: 10, background: 'var(--pt-surface-soft)', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--pt-muted)', transition: 'all 0.2s ease' },
-  dayChipActive: { background: 'linear-gradient(135deg, #C87B3E, #9C5321)', borderColor: '#C87B3E', color: '#FFF' },
-}

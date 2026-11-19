@@ -1,71 +1,36 @@
 /* ═══════════════════════════════════════════════════════════
-   PAGE EMPLOYÉS — REFONTE BENTO (17/11)
-   Maquette validée : annuaire = la page (pas d'onglet « Annuaire »),
-   onglets Équipes/Tâches sous le titre, bande de 5 chiffres à
-   icônes, pastilles de filtre, cartes horizontales (photo à
-   gauche). Même design system que la fiche : tokens zoulou,
-   or kente, serif, coins 16-18px.
+   PAGE EMPLOYÉS — peau D (brut adouci), fiche identite/fiche-
+   page-employes.md. Squelette planche 25 : bande Zoulou →
+   titre + sous-titre → une action → 3 tuiles → message →
+   filtres → annuaire en tableau filets, 25 lignes/page.
+   Ici il n'y a que de la structure : toute couleur et toute
+   mesure passent par les tokens (contrôle C1).
    ═══════════════════════════════════════════════════════════ */
 
-/* ── les tokens de la page, jour et nuit ─────────────────── */
+/* ── LA COQUE : la même barre que le tableau de bord ───────
+   Les variables de la barre (D-018) sont posées ici, car cette
+   page n'est pas dans .encheck-dashboard où Dashboard.css les
+   définit — sans elles, la carte de la barre est transparente. */
 
-.empv2-tete,
-.empv2-tetes,
-.empv2-annuaire,
-.empv2-main {
-  --rg-paper: #f5f0e6;
-  --rg-ink: #1c140d;
-  --rg-soft: #42342a;
-  --rg-faint: #6b5c44;
-  --rg-hair: rgba(60, 40, 22, 0.16);
-  --rg-hair-fort: rgba(60, 40, 22, 0.32);
-  --rg-voile: rgba(150, 81, 31, 0.08);
-  --empv2-or: #c9a961;
-  --empv2-vert: #3ddc84;
-  --empv2-orange: #d98a4a;
-  --empv2-rose: #d97f8f;
-  --rg-corail: #a2452e;
-}
-
-[data-theme='dark'] .empv2-tete,
-[data-theme='dark'] .empv2-tetes,
-[data-theme='dark'] .empv2-annuaire,
-[data-theme='dark'] .empv2-main {
-  --rg-paper: #17110b;
-  --rg-ink: #f4ecdf;
-  --rg-soft: #dccdba;
-  --rg-faint: #a6957c;
-  --rg-hair: rgba(240, 226, 202, 0.15);
-  --rg-hair-fort: rgba(240, 226, 202, 0.3);
-  --rg-voile: rgba(213, 141, 75, 0.14);
-  --rg-corail: #e08a6a;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   LA SIDEBAR — la même navigation que le tableau de bord
-   (tokens repris de Dashboard.css, pour une identité commune)
-   ═══════════════════════════════════════════════════════════ */
-
-.pointages-afrotech-shell {
-  --sidebar: #fcfaf5;
-  --sidebar-ink: #2c2925;
-  --sidebar-muted: #6f675a;
-  --sidebar-line: rgba(44, 41, 37, 0.12);
-  --sidebar-active: #a95c2d;
-  --sidebar-fill: rgba(185, 113, 59, 0.14);
-  --sidebar-hover: rgba(44, 41, 37, 0.055);
-  --shadow-sm: 0 3px 12px rgba(65, 48, 31, 0.05);
-}
-
-.pointages-afrotech-shell[data-theme='dark'] {
-  --sidebar: #1b1410;
-  --sidebar-ink: #f0e4cb;
-  --sidebar-muted: #c4b49b;
-  --sidebar-line: rgba(240, 228, 203, 0.12);
-  --sidebar-active: #c1743c;
-  --sidebar-fill: rgba(193, 116, 60, 0.2);
-  --sidebar-hover: rgba(240, 228, 203, 0.07);
-  --shadow-sm: 0 3px 14px rgba(0, 0, 0, 0.14);
+.empv2-coque {
+  display: block;
+  min-height: 100vh;
+  /* Le canvas de charte suit le thème (D-005). !important : bat le
+     canvas pt-canvas du shell .pointages-afrotech-shell (importé via
+     l'écran de chargement), qui serait figé en clair. */
+  background: var(--charte-sable) !important;
+  --sidebar: var(--charte-barre);
+  --sidebar-ink: var(--charte-barre-ink);
+  --sidebar-muted: var(--charte-barre-muet);
+  --sidebar-line: var(--charte-barre-ligne);
+  --sidebar-active: var(--charte-barre-actif-texte);
+  --sidebar-fill: var(--charte-barre-actif);
+  --sidebar-hover: var(--charte-barre-hover);
+  --sidebar-focus: var(--charte-barre-actif);
+  --sidebar-point: var(--charte-barre-point);
+  --sidebar-count: var(--charte-barre-compteur);
+  --sidebar-count-actif: var(--charte-barre-compteur-actif);
+  --shadow-sm: 3px 3px 0 0 var(--charte-espresso);
 }
 
 .empv2-layout {
@@ -73,1934 +38,504 @@
   align-items: flex-start;
   width: 100%;
   position: relative;
-  z-index: 1;
 }
 
-.empv2-sidebar {
-  flex: 0 0 auto;
-}
+.empv2-sidebar { flex: 0 0 auto; }
 
 /* sans le rail d'icônes, le panneau colle à gauche */
-.empv2-sidebar .nav-panel {
-  margin-left: 0;
-  height: 100%;
+.empv2-sidebar .nav-panel { margin-left: 0; }
+
+@media (max-width: 1020px) {
+  .empv2-sidebar { display: none; }
 }
+
+/* ── LE MAIN ─────────────────────────────────────────────── */
 
 .empv2-main {
   flex: 1 1 auto;
   min-width: 0;
+  padding: var(--charte-espace-5) var(--charte-espace-6) var(--charte-espace-7);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
 }
 
-@media (max-width: 1020px) {
-  .empv2-sidebar {
-    display: none;
-  }
+@media (max-width: 1100px) {
+  .empv2-main { padding: var(--charte-espace-4) var(--charte-espace-4) var(--charte-espace-6); }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   LA LIGNE DE TITRE — Employés · le compte | recherche + ajout
-   ═══════════════════════════════════════════════════════════ */
+/* ── LA LIGNE DE TITRE : le titre, le compte, l'action ───── */
 
 .empv2-tete {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--charte-espace-4);
   flex-wrap: wrap;
-  margin: 4px 0 18px;
+  margin-bottom: var(--charte-espace-5);
 }
 
 .empv2-titre {
   margin: 0;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 34px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  color: var(--rg-ink);
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  min-width: 0;
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0;
 }
 
 .empv2-titre-compte {
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--rg-faint);
-  border-left: 1px solid var(--rg-hair-fort);
-  padding-left: 16px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  margin-left: var(--charte-espace-2);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-corps);
+  font-weight: 400;
 }
 
 .empv2-tete-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex: 1 1 auto;
-  justify-content: flex-end;
-  min-width: 0;
+  gap: var(--charte-espace-2);
+  flex-wrap: wrap;
 }
 
-.empv2-recherche {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  flex: 0 1 420px;
-  min-width: 220px;
-  padding: 9px 14px;
-  border: 1px solid var(--rg-hair);
-  border-radius: 12px;
-  background: var(--rg-paper);
-  color: var(--rg-faint);
-  transition: border-color 0.15s ease;
-}
-
-.empv2-recherche:focus-within {
-  border-color: var(--empv2-or);
-}
-
-.empv2-recherche input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--rg-ink);
-  font-size: 13.5px;
-  font-family: inherit;
-}
-
-.empv2-recherche input::placeholder {
-  color: var(--rg-faint);
-}
-
-.empv2-recherche-effacer {
-  border: 0;
-  background: transparent;
-  color: var(--rg-faint);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  padding: 2px;
-}
-
-.empv2-recherche-effacer:hover {
-  color: var(--rg-ink);
-}
-
-.empv2-nouvel {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-radius: 12px;
-  border: 1px solid var(--empv2-or);
-  background: var(--empv2-or);
-  color: #241a12;
-  font-size: 13.5px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: filter 0.15s ease;
-}
-
-.empv2-nouvel:hover {
-  filter: brightness(1.07);
-}
-
-/* le bouton clair / sombre — même écriture que les autres commandes */
+/* Le bouton clair/sombre (D-005) : une icône, un bord, rien d'autre. */
 .empv2-theme {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--rg-hair);
-  background: transparent;
-  color: var(--rg-soft);
-  font-size: 12.5px;
+  gap: var(--charte-espace-1);
+  height: 36px;
+  padding: 0 var(--charte-espace-3);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
   font-weight: 600;
   cursor: pointer;
-  white-space: nowrap;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  transition: border-color var(--charte-duree) var(--charte-easing);
 }
+.empv2-theme:hover { border-color: var(--charte-encre); }
 
-.empv2-theme:hover {
-  border-color: var(--rg-hair-fort);
-  color: var(--rg-ink);
-  background: var(--rg-voile);
-}
-
-/* ═══════════════════════════════════════════════════════════
-   LES ONGLETS — Équipes / Tâches, sous le titre
-   ═══════════════════════════════════════════════════════════ */
-
-.empv2-tetes {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin: 0 0 18px;
-}
+/* ── LES ONGLETS DE VUE : Équipes · Tâches ─────────────────
+   Ce sont des vues de la page, pas des statuts : la forme
+   « onglet » de badge (statut provisoire) ne s'applique pas.
+   L'onglet actif porte le contour 2 px (C11). */
 
 .empv2-onglets {
-  display: inline-flex;
-  gap: 8px;
-  flex: 1 1 auto;
-  min-width: 0;
+  display: flex;
+  gap: var(--charte-espace-2);
+  margin-bottom: var(--charte-espace-5);
 }
 
 .empv2-onglet {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 8px 18px;
-  border-radius: 999px;
-  border: 1px solid var(--rg-hair);
-  background: transparent;
-  color: var(--rg-faint);
-  font-size: 13px;
+  gap: var(--charte-espace-1);
+  height: 32px;
+  padding: 0 var(--charte-espace-3);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
   font-weight: 600;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-
-.empv2-onglet:hover {
-  color: var(--rg-ink);
-  border-color: var(--rg-hair-fort);
-}
-
-.empv2-onglet[aria-current='page'] {
-  background: var(--empv2-or);
-  border-color: var(--empv2-or);
-  color: #241a12;
-}
-
-.empv2-raccourcis {
-  display: flex;
-  flex: 0 1 auto;
-  justify-content: flex-end;
-  min-width: 0;
-}
-
-/* les raccourcis de pages (RaccourcisPages) : des mots, pas des
-   pastilles — même écriture que le reste de la barre */
-.empv2-tetes .abs-raccourcis {
-  display: flex;
-  align-items: center;
-  gap: 2px 14px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  margin: 0;
-  padding: 0;
-}
-
-.empv2-tetes .abs-raccourci {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-height: 36px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--rg-faint);
-  font-size: 11px;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: box-shadow 0.16s ease, color 0.16s ease;
-}
-
-.empv2-tetes .abs-raccourci svg {
-  opacity: 0.8;
-}
-
-.empv2-tetes .abs-raccourci:hover {
-  color: var(--rg-ink);
-  box-shadow: inset 0 -1px 0 0 var(--empv2-or);
-}
-
-.empv2-tetes .abs-raccourci[aria-current='page'] {
-  color: var(--rg-faint);
-  pointer-events: none;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   L'ANNUAIRE — la page elle-même
-   ═══════════════════════════════════════════════════════════ */
-
-.empv2-annuaire {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-/* ── le bandeau de chiffres ───────────────────────────────── */
-
-.empv2-kpis {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
-}
-
-.empv2-kpi {
-  background: color-mix(in srgb, var(--rg-ink) 5%, var(--rg-paper));
-  border: 1px solid var(--rg-hair);
-  border-radius: 14px;
-  padding: 15px 16px 13px;
-  min-width: 0;
-}
-
-.empv2-kpi-haut {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.empv2-kpi-haut strong {
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 30px;
-  font-weight: 600;
-  color: var(--rg-ink);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.empv2-kpi-haut svg {
-  color: var(--rg-faint);
-  opacity: 0.75;
-  flex: none;
-}
-
-.empv2-kpi-libelle {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 9px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 1.4px;
   text-transform: uppercase;
-  color: var(--rg-faint);
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  transition: border-color var(--charte-duree) var(--charte-easing),
+    color var(--charte-duree) var(--charte-easing);
+}
+.empv2-onglet:hover { border-color: var(--charte-encre); color: var(--charte-encre); }
+.empv2-onglet[aria-current='page'] {
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-weight: 700;
 }
 
-.empv2-point {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  display: inline-block;
-  flex: none;
+/* ── LES TUILES : chiffre + repère (le chiffre porte sa période) ── */
+
+.empv2-tuiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--charte-espace-3);
+  margin-bottom: var(--charte-espace-5);
 }
 
-.empv2-point--vert {
-  background: var(--empv2-vert);
-}
+@media (max-width: 860px) { .empv2-tuiles { grid-template-columns: 1fr; } }
 
-.empv2-point--or {
-  background: var(--empv2-or);
-}
-
-.empv2-point--orange {
-  background: var(--empv2-orange);
-}
-
-.empv2-point--rose {
-  background: var(--empv2-rose);
-}
-
-/* ── les pastilles de filtre ──────────────────────────────── */
+/* ── LES FILTRES : des pilules de statut, le mot est la donnée ── */
 
 .empv2-filtres {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--charte-espace-2);
   flex-wrap: wrap;
+  margin-bottom: var(--charte-espace-4);
 }
 
+/* Une pilule est un bouton : h20 au repos, le contour 2 px quand elle est posée. */
 .empv2-filtre {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 15px;
-  border-radius: 999px;
-  border: 1px solid var(--rg-hair);
-  background: transparent;
-  color: var(--rg-soft);
-  font-size: 12.5px;
+  gap: var(--charte-espace-1);
+  min-height: 24px;
+  padding: 0 var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
   font-weight: 600;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-
-.empv2-filtre::before {
-  content: '';
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--empv2-pastille, var(--rg-faint));
-}
-
-.empv2-filtre[aria-pressed='true'] {
-  background: var(--empv2-or);
-  border-color: var(--empv2-or);
-  color: #241a12;
-}
-
-.empv2-filtre[aria-pressed='true']::before {
-  background: #241a12;
-}
-
-.empv2-filtre:hover {
-  color: var(--rg-ink);
-  border-color: var(--rg-hair-fort);
-}
-
-.empv2-filtre--effacer {
-  border-style: dashed;
-}
-
-/* ── l'alerte migration ───────────────────────────────────── */
-
-.empv2-alerte {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin: 0;
-  padding: 11px 14px;
-  border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--rg-corail, #a2452e) 45%, transparent);
-  background: color-mix(in srgb, var(--rg-corail, #a2452e) 8%, transparent);
-  font-size: 12.5px;
-  color: var(--rg-soft);
-  line-height: 1.45;
-}
-
-.empv2-alerte svg {
-  flex: none;
-  margin-top: 2px;
-  color: var(--rg-corail, #a2452e);
-}
-
-/* ── l'état vide ──────────────────────────────────────────── */
-
-.empv2-vide {
-  border: 1px dashed var(--rg-hair-fort);
-  border-radius: 18px;
-  padding: 44px 24px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.empv2-vide h3 {
-  margin: 0;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 19px;
-  font-weight: 600;
-  color: var(--rg-ink);
-}
-
-.empv2-vide p {
-  margin: 0;
-  font-size: 13px;
-  color: var(--rg-faint);
-  max-width: 420px;
-  line-height: 1.5;
-}
-
-.empv2-vide .empv2-nouvel {
-  margin-top: 8px;
-}
-
-/* ── la grille des cartes ─────────────────────────────────── */
-
-.empv2-grille {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 14px;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   LA CARTE EMPLOYÉ — photo à gauche, contenu à droite
-   ═══════════════════════════════════════════════════════════ */
-
-.empv2-entree {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  background: color-mix(in srgb, var(--rg-ink) 5%, var(--rg-paper));
-  border: 1px solid var(--rg-hair);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 22px rgba(48, 32, 18, 0.08);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.empv2-entree:hover {
-  border-color: color-mix(in srgb, var(--empv2-or) 65%, var(--rg-hair));
-}
-
-.empv2-entree[data-menu='ouvert'] {
-  z-index: 30;
-  border-color: color-mix(in srgb, var(--empv2-or) 65%, var(--rg-hair));
-}
-
-[data-theme='dark'] .empv2-entree {
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
-}
-
-/* la photo, à gauche */
-.empv2-entree-photo {
-  flex: 0 0 96px;
-  width: 96px;
-  background: var(--rg-voile);
-}
-
-.empv2-entree-photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 20%;
-  display: block;
-}
-
-.empv2-entree-initiales {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  font-size: 30px;
-  font-family: Georgia, 'Times New Roman', serif;
-  color: var(--rg-faint);
-  background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--empv2-or) 16%, transparent), transparent 70%);
-}
-
-/* le contenu, à droite */
-.empv2-entree-corps {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  padding: 11px 13px 12px 14px;
-}
-
-.empv2-entree-tete {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 7px;
-}
-
-/* le badge d'état, en haut à gauche */
-.empv2-entree-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(12, 9, 6, 0.55);
-  border: 1px solid rgba(240, 226, 202, 0.1);
-  color: #f4ecdf;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
   white-space: nowrap;
-  max-width: calc(100% - 36px);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: border-color var(--charte-duree) var(--charte-easing);
+}
+.empv2-filtre .ch-badge-point {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--charte-statut-neutre);
+}
+.empv2-filtre--poste .ch-badge-point { background: var(--charte-statut-present); }
+.empv2-filtre--pause .ch-badge-point { background: var(--charte-statut-cours); }
+.empv2-filtre--retard .ch-badge-point { background: var(--charte-statut-retard); }
+.empv2-filtre--absent .ch-badge-point { background: var(--charte-statut-absent); }
+.empv2-filtre--migrer .ch-badge-point { background: var(--charte-statut-cours); }
+.empv2-filtre:hover { border-color: var(--charte-encre); }
+.empv2-filtre[aria-pressed='true'] {
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface2);
+  color: var(--charte-encre);
 }
 
-.empv2-entree-badge i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex: none;
-  background: #8d7f68;
+/* ── L'ANNUAIRE : tableau filets, 25 lignes/page ─────────── */
+
+.empv2-tableau {
+  overflow-x: auto;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
 }
 
-.empv2-entree-badge--en_poste i {
-  background: var(--empv2-vert);
-  box-shadow: 0 0 7px rgba(61, 220, 132, 0.8);
+.empv2-tableau .ch-tableau { min-width: 720px; }
+
+/* La ligne : un clic ouvre la fiche, c'est la seule action de la ligne. */
+.empv2-ligne { cursor: pointer; }
+.empv2-ligne:hover td { background: var(--charte-surface2); }
+.empv2-ligne:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: -2px;
 }
 
-.empv2-entree-badge--en_pause i {
-  background: var(--empv2-or);
-  box-shadow: 0 0 7px rgba(201, 169, 97, 0.8);
+/* L'employé : la photo (ou les initiales), le nom, le matricule. */
+.empv2-ligne-employe {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  min-width: 0;
 }
 
-.empv2-entree-badge--retard i {
-  background: var(--empv2-orange);
-  box-shadow: 0 0 7px rgba(217, 138, 74, 0.8);
-}
-
-.empv2-entree-badge--absent i {
-  background: #a99f92;
-}
-
-.empv2-entree-badge--termine i {
-  background: #9a8f7d;
-}
-
-.empv2-entree-badge--non_pointe i {
-  background: #8d7f68;
-}
-
-/* le ⋮, en haut à droite */
-.empv2-entree-menu-wrap {
-  position: relative;
-  flex: none;
-}
-
-.empv2-entree-plus {
+.empv2-ligne-photo {
+  display: grid;
   width: 28px;
   height: 28px;
-  border-radius: 9px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--rg-faint);
+  flex: 0 0 28px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface2);
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+}
+.empv2-ligne-photo img { width: 100%; height: 100%; object-fit: cover; }
+
+.empv2-ligne-nom {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+}
+.empv2-ligne-nom strong {
+  overflow: hidden;
+  font-size: var(--charte-taille-corps);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.empv2-ligne-nom .ch-mono {
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+}
+
+.empv2-ligne-poste {
+  color: var(--charte-douce);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Le badge de la ligne : le mot + la durée, jamais la couleur seule (C7). */
+.empv2-ligne .ch-badge-pilule { font-variant-numeric: tabular-nums; }
+
+/* Le menu (⋮) : le seul contrôle de la ligne, les actions secondaires
+   vivent à l'intérieur — jamais de troisième bouton sur la ligne. */
+.empv2-ligne-menu-wrap { position: relative; display: inline-block; }
+.empv2-ligne-menu {
   display: grid;
   place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  color: var(--charte-douce);
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  transition: border-color var(--charte-duree) var(--charte-easing);
 }
-
-.empv2-entree-plus:hover {
-  color: var(--rg-ink);
-  border-color: var(--rg-hair);
-  background: var(--rg-voile);
+.empv2-ligne-menu:hover { border-color: var(--charte-encre); color: var(--charte-encre); }
+.empv2-ligne-menu[aria-expanded='true'] {
+  border: var(--charte-trait) solid var(--charte-encre);
+  color: var(--charte-encre);
 }
-
-/* le nom en serif */
-.empv2-entree-nom {
-  margin: 0;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 18.5px;
-  line-height: 1.15;
-  font-weight: 600;
-  color: var(--rg-ink);
-  overflow-wrap: anywhere;
-}
-
-.empv2-entree-nom button {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-.empv2-entree-nom button:hover {
-  color: var(--empv2-or);
-}
-
-.empv2-entree-sous {
-  display: flex;
-  gap: 8px;
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--rg-faint);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.empv2-entree-matricule {
-  font-weight: 600;
-}
-
-.empv2-entree-matricule + span::before {
-  content: '·';
-  margin-right: 8px;
-}
-
-.empv2-entree-poste {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: var(--rg-faint);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* le pied : le numéro | le portail | Fiche */
-.empv2-entree-pied {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: auto;
-  padding-top: 9px;
-}
-
-.empv2-entree-contact {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  color: var(--rg-faint);
-  font-variant-numeric: tabular-nums;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-  flex: 1;
-}
-
-.empv2-muet {
-  color: var(--rg-faint);
-  font-style: italic;
-}
-
-.empv2-entree-portail {
-  flex: none;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  padding: 4px 9px;
-  border-radius: 999px;
-  border: 1px solid var(--rg-hair);
-  color: var(--rg-faint);
-  white-space: nowrap;
-}
-
-.empv2-entree-portail[data-etat='ouvert'] {
-  color: var(--empv2-vert);
-  border-color: color-mix(in srgb, var(--empv2-vert) 45%, transparent);
-  background: color-mix(in srgb, var(--empv2-vert) 8%, transparent);
-}
-
-.empv2-entree-portail[data-etat='migrer'] {
-  color: var(--rg-corail, #a2452e);
-  border-color: color-mix(in srgb, var(--rg-corail, #a2452e) 45%, transparent);
-}
-
-.empv2-btn-fiche {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--rg-hair-fort);
-  background: transparent;
-  color: var(--rg-ink);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
-}
-
-.empv2-btn-fiche:hover {
-  border-color: var(--empv2-or);
-  color: var(--empv2-or);
-}
-
-/* ── le menu (⋮) ──────────────────────────────────────────── */
 
 .empv2-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + var(--charte-espace-1));
   right: 0;
-  z-index: 40;
-  min-width: 216px;
-  background: color-mix(in srgb, var(--rg-ink) 7%, var(--rg-paper));
-  border: 1px solid var(--rg-hair-fort);
-  border-radius: 14px;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.3);
+  z-index: 30;
+  min-width: 180px;
+  padding: var(--charte-espace-1);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  box-shadow: var(--charte-ombre-dure);
 }
-
 .empv2-menu button {
   display: flex;
+  width: 100%;
   align-items: center;
-  gap: 9px;
-  padding: 9px 11px;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-1) var(--charte-espace-2);
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--charte-rayon-champ);
   background: transparent;
-  color: var(--rg-soft);
-  font-size: 13px;
-  font-family: inherit;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
   text-align: left;
   cursor: pointer;
 }
+.empv2-menu button:hover { background: var(--charte-surface2); }
+.empv2-menu button[data-danger='oui'] { color: var(--charte-erreur); }
 
-.empv2-menu button:hover {
-  background: var(--rg-voile);
-  color: var(--rg-ink);
-}
+/* ── LA PAGINATION : 25 lignes par page, le mot et le chiffre ── */
 
-.empv2-menu button.is-danger {
-  color: var(--rg-corail, #a2452e);
-}
-
-.empv2-menu button.is-danger:hover {
-  background: color-mix(in srgb, var(--rg-corail, #a2452e) 12%, transparent);
-  color: var(--rg-corail, #a2452e);
-}
-
-.empv2-menu-sep {
-  height: 1px;
-  background: var(--rg-hair);
-  margin: 5px 8px;
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   L'ONGLET ÉQUIPES — maquette « onglet-equipes-refonte »
-   Quatre chiffres, une barre d'outils, des cartes à bordure
-   colorée en deux colonnes, un rail à droite (à rattacher,
-   santé). Le pied « À décider » reste, replié par défaut.
-   ═══════════════════════════════════════════════════════════ */
-
-.eqv2 {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-/* quatre chiffres ici, pas cinq */
-.eqv2 .empv2-kpis {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-/* les points de couleur des libellés */
-.empv2-point {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 6px;
-  vertical-align: baseline;
-}
-.empv2-point--or { background: var(--empv2-or); }
-.empv2-point--orange { background: var(--empv2-orange); }
-
-/* ── la barre d'outils ──────────────────────────────────── */
-
-.eqv2-outils {
+.empv2-pagination {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border-top: 1px solid var(--charte-bordure);
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
 }
 
-.eqv2-recherche {
-  flex: 1 1 220px;
-  max-width: 320px;
-}
+.empv2-pagination-boutons { display: flex; gap: var(--charte-espace-2); }
 
-.eqv2-filtres {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.eqv2-filtre {
-  border: 1px solid var(--rg-hair);
-  background: transparent;
-  color: var(--rg-soft);
-  border-radius: 999px;
-  padding: 6px 12px;
-  min-height: 34px;
-  font-size: 12.5px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-}
-.eqv2-filtre:hover {
-  border-color: var(--rg-hair-fort);
-}
-.eqv2-filtre[aria-pressed='true'] {
-  background: var(--rg-ink);
-  border-color: var(--rg-ink);
-  color: var(--rg-paper);
-}
-
-.eqv2-tri,
-.empv2-tri {
-  background: transparent;
-  border: 1px solid var(--rg-hair);
-  border-radius: 10px;
-  padding: 7px 10px;
-  min-height: 36px;
-  font-size: 13px;
-  font-family: inherit;
-  color: var(--rg-ink);
-  cursor: pointer;
-}
-.eqv2-tri:hover,
-.empv2-tri:hover {
-  border-color: var(--rg-hair-fort);
-}
-
-.empv2-liens {
-  display: flex;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.empv2-lien {
+.empv2-pagbtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border: 1px solid var(--rg-hair);
-  background: transparent;
-  color: var(--rg-soft);
-  border-radius: 999px;
-  padding: 6px 12px;
-  min-height: 32px;
-  font-size: 12.5px;
+  gap: var(--charte-espace-1);
+  height: 28px;
+  padding: 0 var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
   font-weight: 600;
-  font-family: inherit;
   cursor: pointer;
+  transition: border-color var(--charte-duree) var(--charte-easing);
 }
-.empv2-lien:hover {
-  border-color: var(--rg-hair-fort);
+.empv2-pagbtn:hover:not(:disabled) { border-color: var(--charte-encre); }
+.empv2-pagbtn:disabled {
+  color: var(--charte-douce);
+  cursor: default;
+  opacity: 0.5;
 }
 
-/* ── l'écorce : cartes à gauche, rail à droite ──────────── */
+/* ── L'ÉTAT VIDE : une phrase, une illustration, une action ── */
 
-.eqv2-corps {
+.empv2-vide {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 16px;
-  align-items: start;
+  justify-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-7) var(--charte-espace-5);
+  border: 1px dashed var(--charte-bordure);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  text-align: center;
+}
+.empv2-vide h3 {
+  margin: 0;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+}
+.empv2-vide p {
+  max-width: 420px;
+  margin: 0 0 var(--charte-espace-2);
+  color: var(--charte-douce);
 }
 
-.eqv2-collonne {
-  min-width: 0;
-}
+/* ── LES MODALES : cartes de la charte, voile espresso 44 % (D-020) ── */
 
-.eqv2-grille {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-/* ── la carte d'équipe ───────────────────────────────────── */
-
-.eqv2-carte {
-  position: relative;
-  background: color-mix(in srgb, var(--rg-ink) 5%, var(--rg-paper));
-  border: 1px solid var(--rg-hair);
-  border-radius: 16px;
-  transition: border-color 0.18s ease;
-}
-.eqv2-carte:hover {
-  border-color: var(--rg-hair-fort);
-}
-
-.eqv2-carte-trait {
-  height: 3px;
-  border-radius: 16px 16px 0 0;
-}
-
-.eqv2-carte-corps {
-  padding: 14px 16px 13px;
-}
-
-.eqv2-carte-tete {
+.empv2-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
   display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.eqv2-carte-nom {
-  border: none;
-  background: none;
-  padding: 0;
-  font-family: inherit;
-  font-size: 17px;
-  font-weight: 650;
-  color: var(--rg-ink);
-  cursor: pointer;
-  text-align: left;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.eqv2-carte-nom:hover {
-  border-color: var(--rg-hair-fort);
-}
-
-.eqv2-sante-badge {
-  border-radius: 999px;
-  padding: 3px 9px;
-  font-size: 11.5px;
-  font-weight: 650;
-  white-space: nowrap;
-  border: 1px solid transparent;
-}
-.eqv2-sante-badge--solide {
-  color: #1f7a4d;
-  background: rgba(61, 220, 132, 0.13);
-  border-color: rgba(61, 220, 132, 0.35);
-}
-.eqv2-sante-badge--a-surveiller {
-  color: #a36217;
-  background: rgba(217, 138, 74, 0.15);
-  border-color: rgba(217, 138, 74, 0.4);
-}
-.eqv2-sante-badge--critique {
-  color: #b0433f;
-  background: rgba(217, 127, 143, 0.16);
-  border-color: rgba(217, 127, 143, 0.42);
-}
-.eqv2-sante-badge--inconnue {
-  color: var(--rg-faint);
-  background: transparent;
-  border-color: var(--rg-hair);
-}
-
-[data-theme='dark'] .eqv2-sante-badge--solide { color: #5fe3a1; }
-[data-theme='dark'] .eqv2-sante-badge--a-surveiller { color: #e6a568; }
-[data-theme='dark'] .eqv2-sante-badge--critique { color: #e78e9c; }
-
-.eqv2-carte-menu-wrap {
-  position: relative;
-  margin-left: auto;
-}
-
-.eqv2-plus {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 1px solid var(--rg-hair);
-  background: transparent;
-  color: var(--rg-soft);
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  padding: var(--charte-espace-4);
+  background: var(--charte-modale-voile);
+  animation: empv2-voile 200ms ease-out;
 }
-.eqv2-plus:hover {
-  border-color: var(--rg-hair-fort);
-}
+@keyframes empv2-voile { from { opacity: 0; } to { opacity: 1; } }
 
-.eqv2-carte-note {
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--rg-faint);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.empv2-modale {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  width: 100%;
+  max-width: var(--charte-modale-moyenne);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  box-shadow: var(--charte-ombre-dure);
+  animation: empv2-modale 200ms ease-out;
 }
+.empv2-modale--petite { max-width: var(--charte-modale-petite); }
+@keyframes empv2-modale { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
-.eqv2-avatars {
+.empv2-modale-tete {
   display: flex;
   align-items: center;
-  margin-top: 10px;
+  justify-content: space-between;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4);
+  border-bottom: 1px solid var(--charte-bordure);
 }
-
-.eqv2-avatar {
-  position: relative;
+.empv2-modale-titre {
+  margin: 0;
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
+}
+.empv2-modale-fermer {
+  display: grid;
+  place-items: center;
   width: 28px;
   height: 28px;
-  border-radius: 50%;
-  border: 2px solid var(--rg-paper);
-  background: var(--rg-voile);
-  color: #241a12;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10.5px;
-  font-weight: 700;
-}
-.eqv2-avatar + .eqv2-avatar {
-  margin-left: -8px;
-}
-.eqv2-avatar[data-chef='oui'] {
-  box-shadow: 0 0 0 2px var(--empv2-or);
-}
-.eqv2-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-.eqv2-couronne {
-  position: absolute;
-  top: -4px;
-  right: -5px;
-  z-index: 3;
-  color: var(--empv2-or);
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
-}
-
-.eqv2-avatars-note {
-  margin-left: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--rg-faint);
-}
-
-.eqv2-carte-pied {
-  display: flex;
-  gap: 16px;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--rg-hair);
-  font-size: 12.5px;
-  color: var(--rg-soft);
-}
-.eqv2-carte-pied strong {
-  color: var(--rg-ink);
-  font-weight: 650;
-}
-.eqv2-carte-sanschef {
-  color: var(--rg-faint);
-}
-
-/* ── le rail de droite ───────────────────────────────────── */
-
-.eqv2-rais {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
-
-.eqv2-panneau {
-  background: color-mix(in srgb, var(--rg-ink) 5%, var(--rg-paper));
-  border: 1px solid var(--rg-hair);
-  border-radius: 16px;
-  padding: 14px 16px;
-}
-
-.eqv2-panneau-titre {
-  margin: 0 0 10px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--rg-faint);
-}
-
-.eqv2-panneau-vide {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--rg-faint);
-}
-
-.eqv2-rattacher-liste {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.eqv2-rattacher-ligne {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-}
-.eqv2-rattacher-ligne + .eqv2-rattacher-ligne {
-  border-top: 1px solid var(--rg-hair);
-}
-
-.eqv2-rattacher-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.eqv2-rattacher-info strong {
-  font-size: 13.5px;
-  font-weight: 650;
-  color: var(--rg-ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.eqv2-rattacher-info small {
-  font-size: 12px;
-  color: var(--rg-faint);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.eqv2-rattacher-actions {
-  margin-left: auto;
-  position: relative;
-}
-
-.eqv2-btn-mini {
-  border: 1px solid var(--rg-hair);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
   background: transparent;
-  color: var(--rg-ink);
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 650;
-  font-family: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.eqv2-btn-mini:hover {
-  border-color: var(--rg-hair-fort);
-  background: var(--rg-voile);
-}
-
-.eqv2-menu-rattacher {
-  min-width: 190px;
-}
-.eqv2-menu-pastille {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 8px;
-  vertical-align: baseline;
-}
-
-/* la santé, en barres tonnées */
-.eqv2-sante-liste {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.eqv2-sante-haut {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: 12.5px;
-  color: var(--rg-soft);
-}
-.eqv2-sante-haut strong {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--rg-ink);
-}
-
-.eqv2-sante-jauge {
-  display: block;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--rg-hair);
-  overflow: hidden;
-  margin-top: 5px;
-}
-.eqv2-sante-remplie {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-}
-.eqv2-sante-ligne[data-ton='solide'] .eqv2-sante-remplie { background: var(--empv2-vert); }
-.eqv2-sante-ligne[data-ton='a-surveiller'] .eqv2-sante-remplie { background: var(--empv2-orange); }
-.eqv2-sante-ligne[data-ton='critique'] .eqv2-sante-remplie { background: var(--empv2-rose); }
-
-/* nuit : l'avatar reste lisible, les initiales passent en crème */
-[data-theme='dark'] .eqv2-avatar,
-[data-theme='dark'] .tqv2-avatar {
-  background: rgba(240, 226, 202, 0.22);
-  color: #f4ecdf;
-}
-
-/* ── les états vides et le chargement ────────────────────── */
-
-.eqv2-vide {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  text-align: center;
-  border: 1px dashed var(--rg-hair-fort);
-  border-radius: 16px;
-  padding: 44px 24px;
-}
-.eqv2-vide h3 {
-  margin: 0;
-  font-family: inherit;
-  font-size: 18px;
-  font-weight: 650;
-  color: var(--rg-ink);
-}
-.eqv2-vide p {
-  margin: 0 0 10px;
-  max-width: 400px;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--rg-faint);
-}
-
-.eqv2-chargement {
-  display: flex;
-  justify-content: center;
-  padding: 40px 0;
-}
-.eqv2-chargement-texte {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13.5px;
-  color: var(--rg-faint);
-}
-.eqv2-tourne {
-  animation: eqv2-tourner 0.9s linear infinite;
-}
-@keyframes eqv2-tourner {
-  to { transform: rotate(360deg); }
-}
-
-/* ── le pied « À décider », replié ───────────────────────── */
-
-.empv2-pied {
-  background: color-mix(in srgb, var(--rg-ink) 5%, var(--rg-paper));
-  border: 1px solid var(--rg-hair);
-  border-radius: 16px;
-  padding: 13px 16px;
-}
-
-.empv2-pied-ligne {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.empv2-pied-titre {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--rg-ink);
-}
-
-.empv2-pied-texte {
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--rg-faint);
-}
-
-.empv2-pied-onglets {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-
-.empv2-pied-nombre {
-  background: var(--rg-voile);
-  border-radius: 999px;
-  padding: 1px 7px;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.empv2-pied-liste {
-  margin-top: 12px;
-  border-top: 1px solid var(--rg-hair);
-  padding-top: 4px;
-}
-
-.empv2-pied-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-}
-.empv2-pied-item + .empv2-pied-item {
-  border-top: 1px solid var(--rg-hair);
-}
-.empv2-pied-item-titre {
-  margin: 0;
-  font-size: 13.5px;
-  font-weight: 650;
-  color: var(--rg-ink);
-}
-.empv2-pied-item[data-grave='oui'] .empv2-pied-item-titre {
-  color: var(--rg-corail);
-}
-.empv2-pied-item-note {
-  margin: 2px 0 0;
-  font-size: 12.5px;
-  color: var(--rg-faint);
-}
-.empv2-pied-item-actions {
-  margin-left: auto;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-/* ── responsive de l'onglet Équipes ──────────────────────── */
-
-@media (max-width: 1200px) {
-  .eqv2-corps {
-    grid-template-columns: 1fr;
-  }
-  .eqv2-rais {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-  .eqv2-rais > * {
-    flex: 1 1 280px;
-  }
-}
-
-@media (max-width: 900px) {
-  .eqv2-grille {
-    grid-template-columns: 1fr;
-  }
-  .empv2-liens {
-    margin-left: 0;
-  }
-}
-
-
-/* ═══════════════════════════════════════════════════════════
-   L'ONGLET TÂCHES — maquette « onglet-taches-refonte »
-   Quatre chiffres, barre d'outils, pastilles de catégories,
-   kanban à quatre colonnes (à faire, en cours, terminées,
-   validées), cartes : titre, priorité, échéance, personne.
-   ═══════════════════════════════════════════════════════════ */
-
-.tqv2 {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.tqv2-kpis {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-/* ── la barre d'outils ──────────────────────────────────── */
-
-.tqv2-outils {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.tqv2-recherche {
-  flex: 1 1 200px;
-  max-width: 300px;
-}
-
-.tqv2-select {
-  background: transparent;
-  border: 1px solid var(--rg-hair);
-  border-radius: 10px;
-  padding: 7px 10px;
-  min-height: 36px;
-  font-size: 13px;
-  font-family: inherit;
-  color: var(--rg-ink);
+  color: var(--charte-douce);
   cursor: pointer;
 }
-.tqv2-select:hover {
-  border-color: var(--rg-hair-fort);
-}
+.empv2-modale-fermer:hover { border-color: var(--charte-encre); color: var(--charte-encre); }
 
-.tqv2-actions {
+.empv2-modale-corps {
+  padding: var(--charte-espace-4);
+  overflow-y: auto;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
+  flex-direction: column;
+  gap: var(--charte-espace-3);
+  font-size: var(--charte-taille-corps);
 }
 
-/* ── les catégories, en pastilles ───────────────────────── */
-
-.tqv2-categories {
+.empv2-modale-pied {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  border-top: 1px solid var(--charte-bordure);
 }
 
-.tqv2-categories-titre {
-  margin: 0 2px 0 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--rg-faint);
-}
-
-.tqv2-categorie-groupe {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.tqv2-categorie {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid var(--rg-hair);
-  background: transparent;
-  color: var(--rg-soft);
-  border-radius: 999px;
-  padding: 5px 12px;
-  min-height: 32px;
-  font-size: 12.5px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-}
-.tqv2-categorie:hover {
-  border-color: var(--rg-hair-fort);
-}
-.tqv2-categorie[aria-pressed='true'] {
-  background: var(--rg-ink);
-  border-color: var(--rg-ink);
-  color: var(--rg-paper);
-}
-
-.tqv2-pastille {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--tqv2-pastille, var(--empv2-or));
-  display: inline-block;
-}
-
-.tqv2-categorie-nombre {
-  background: var(--rg-voile);
-  border-radius: 999px;
-  padding: 1px 7px;
-  font-size: 11px;
-  font-weight: 700;
-}
-.tqv2-categorie[aria-pressed='true'] .tqv2-categorie-nombre {
-  background: color-mix(in srgb, var(--rg-paper) 22%, var(--rg-ink));
-}
-
-/* ── la sélection ───────────────────────────────────────── */
-
-.tqv2-selection {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  background: var(--rg-voile);
-  border: 1px solid var(--rg-hair);
-  border-radius: 12px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--rg-ink);
-}
-
-.tqv2-selection-actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* ── le kanban : quatre colonnes ─────────────────────────── */
-
-.tqv2-colonnes {
+/* Le champ de formulaire, étiquette fixe (grille de réglages). */
+.empv2-champ {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  align-items: start;
+  gap: var(--charte-espace-1);
+}
+.empv2-champ label {
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.empv2-champ .ch-champ-cadre { height: 36px; font-size: var(--charte-taille-corps); }
+.empv2-champ--double {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--charte-espace-3);
 }
 
-.tqv2-colonne {
-  background: color-mix(in srgb, var(--rg-ink) 4%, var(--rg-paper));
-  border: 1px solid var(--rg-hair);
-  border-radius: 16px;
-  padding: 12px;
-  min-width: 0;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-.tqv2-colonne[data-survol='oui'] {
-  border-color: var(--empv2-or);
-  background: color-mix(in srgb, var(--empv2-or) 7%, var(--rg-paper));
-}
-
-.tqv2-colonne-tete {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 4px 10px;
-}
-
-.tqv2-colonne-titre {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--rg-ink);
-}
-
-.tqv2-colonne-compte {
-  margin-left: auto;
-  min-width: 24px;
-  text-align: center;
-  border-radius: 999px;
-  padding: 2px 8px;
-  font-size: 12px;
-  font-weight: 700;
-}
-.tqv2-colonne[data-ton='teal'] .tqv2-colonne-compte {
-  background: rgba(47, 127, 115, 0.14);
-  color: #2f7f73;
-}
-.tqv2-colonne[data-ton='or'] .tqv2-colonne-compte {
-  background: rgba(201, 169, 97, 0.18);
-  color: #8a6d2f;
-}
-.tqv2-colonne[data-ton='vert'] .tqv2-colonne-compte {
-  background: rgba(61, 220, 132, 0.14);
-  color: #1f7a4d;
-}
-.tqv2-colonne[data-ton='blanc'] .tqv2-colonne-compte {
-  background: var(--rg-voile);
-  color: var(--rg-soft);
-}
-[data-theme='dark'] .tqv2-colonne[data-ton='teal'] .tqv2-colonne-compte { color: #63b3a6; }
-[data-theme='dark'] .tqv2-colonne[data-ton='or'] .tqv2-colonne-compte { color: #e0c07f; }
-[data-theme='dark'] .tqv2-colonne[data-ton='vert'] .tqv2-colonne-compte { color: #5fe3a1; }
-
-.tqv2-colonne-corps {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 60px;
-}
-
-.tqv2-colonne-vide {
-  border: 1px dashed var(--rg-hair-fort);
-  border-radius: 12px;
-  padding: 22px 12px;
-  text-align: center;
-  font-size: 12.5px;
-  color: var(--rg-faint);
-}
-
-/* ── la carte de tâche ───────────────────────────────────── */
-
-.tqv2-fiche {
-  background: var(--rg-paper);
-  border: 1px solid var(--rg-hair);
-  border-radius: 14px;
-  padding: 12px 13px 11px;
-  cursor: grab;
-  transition: border-color 0.15s ease;
-}
-.tqv2-fiche:hover {
-  border-color: var(--rg-hair-fort);
-}
-.tqv2-fiche[data-selection='oui'] {
-  border: 2px solid var(--empv2-or);
-  padding: 11px 12px 10px;
-}
-
-.tqv2-fiche-tete {
+/* Les choix (radio) du planning : des cartes cliquables, une seule posée. */
+.empv2-choix { display: grid; gap: var(--charte-espace-2); }
+.empv2-choix-option {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-}
-
-.tqv2-fiche-titre {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  background: none;
-  padding: 0;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 1.35;
-  color: var(--rg-ink);
-  text-align: left;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-3);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
   cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  transition: border-color var(--charte-duree) var(--charte-easing);
 }
+.empv2-choix-option:hover { border-color: var(--charte-encre); }
+.empv2-choix-option[aria-pressed='true'] {
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface2);
+}
+.empv2-choix-option strong { display: block; font-size: var(--charte-taille-corps); font-weight: 600; }
+.empv2-choix-option span { display: block; color: var(--charte-douce); font-size: var(--charte-taille-micro); margin-top: 2px; }
+.empv2-choix-option input { margin-top: var(--charte-espace-1); accent-color: var(--charte-aplat); }
 
-.tqv2-case {
-  flex: 0 0 auto;
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  border: 1.5px solid var(--rg-hair-fort);
-  background: transparent;
-  color: transparent;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
-.tqv2-fiche:hover .tqv2-case,
-.tqv2-case[aria-pressed='true'],
-.tqv2-case:focus-visible {
-  opacity: 1;
-}
-.tqv2-case[aria-pressed='true'] {
-  background: var(--empv2-or);
-  border-color: var(--empv2-or);
-  color: #241812;
-}
-
-.tqv2-fiche-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 9px;
-}
-
-.tqv2-priorite {
-  border-radius: 999px;
-  padding: 2.5px 9px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  border: 1px solid transparent;
-  white-space: nowrap;
-}
-.tqv2-priorite--critique {
-  color: #b0433f;
-  background: rgba(217, 127, 143, 0.16);
-  border-color: rgba(217, 127, 143, 0.42);
-}
-.tqv2-priorite--haute {
-  color: #a36217;
-  background: rgba(217, 138, 74, 0.15);
-  border-color: rgba(217, 138, 74, 0.4);
-}
-.tqv2-priorite--moyenne {
-  color: #8a6d2f;
-  background: rgba(201, 169, 97, 0.16);
-  border-color: rgba(201, 169, 97, 0.4);
-}
-.tqv2-priorite--basse {
-  color: var(--rg-faint);
-  background: transparent;
-  border-color: var(--rg-hair);
-}
-[data-theme='dark'] .tqv2-priorite--critique { color: #e78e9c; }
-[data-theme='dark'] .tqv2-priorite--haute { color: #e6a568; }
-[data-theme='dark'] .tqv2-priorite--moyenne { color: #e0c07f; }
-
-.tqv2-fiche-date {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
+/* Les jours de travail : des pastilles, la posée porte le contour 2 px. */
+.empv2-jours { display: flex; gap: var(--charte-espace-1); flex-wrap: wrap; }
+.empv2-jour {
+  height: 28px;
+  padding: 0 var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
   font-weight: 600;
-  color: var(--rg-soft);
-}
-.tqv2-fiche-date--retard {
-  color: var(--rg-corail);
-}
-.tqv2-retard {
-  font-weight: 700;
-  margin-left: 2px;
-}
-
-.tqv2-fiche-pied {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 11px;
-  padding-top: 9px;
-  border-top: 1px solid var(--rg-hair);
-  min-width: 0;
-}
-
-.tqv2-personne {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--rg-soft);
-}
-.tqv2-personne-nom {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.tqv2-personne-nom small {
-  font-weight: 500;
-  color: var(--rg-faint);
-}
-.tqv2-personne-none {
-  font-size: 12.5px;
-  font-style: italic;
-  color: var(--rg-faint);
-}
-
-.tqv2-avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--rg-voile);
-  color: #241a12;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9px;
-  font-weight: 700;
-  flex: 0 0 auto;
-}
-.tqv2-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-}
-
-.tqv2-fiche-actions {
-  margin-left: auto;
-  display: flex;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
-.tqv2-fiche:hover .tqv2-fiche-actions,
-.tqv2-fiche-actions:focus-within {
-  opacity: 1;
-}
-
-.tqv2-action {
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  border: 1px solid var(--rg-hair);
-  background: transparent;
-  color: var(--rg-soft);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
 }
-.tqv2-action:hover {
-  border-color: var(--rg-hair-fort);
+.empv2-jour[aria-pressed='true'] {
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface2);
+  color: var(--charte-encre);
 }
 
-/* ── les états vides, le chargement, la note ─────────────── */
+/* ── LE PIED DE PAGE ─────────────────────────────────────── */
 
-.tqv2-vide {
+.empv2-pied {
+  margin-top: var(--charte-espace-7);
+  padding-top: var(--charte-espace-3);
+  border-top: 1px solid var(--charte-bordure);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  text-align: center;
-  border: 1px dashed var(--rg-hair-fort);
-  border-radius: 16px;
-  padding: 44px 24px;
-}
-.tqv2-vide h3 {
-  margin: 0;
-  font-family: inherit;
-  font-size: 18px;
-  font-weight: 650;
-  color: var(--rg-ink);
-}
-.tqv2-vide p {
-  margin: 0 0 10px;
-  max-width: 420px;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--rg-faint);
+  gap: var(--charte-espace-2);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  letter-spacing: 0.6px;
 }
 
-.tqv2-chargement {
-  display: flex;
-  justify-content: center;
-  padding: 40px 0;
-}
-.tqv2-chargement-texte {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13.5px;
-  color: var(--rg-faint);
-}
-.tqv2-tourne {
-  animation: eqv2-tourner 0.9s linear infinite;
-}
-
-.tqv2-note {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--rg-faint);
-}
-
-/* ── responsive de l'onglet Tâches ───────────────────────── */
-
-@media (max-width: 1200px) {
-  .tqv2-colonnes {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .tqv2-colonnes {
-    grid-template-columns: 1fr;
-  }
-  .tqv2-actions {
-    margin-left: 0;
-    width: 100%;
-    justify-content: flex-end;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════
-   RESPONSIVE
-   ═══════════════════════════════════════════════════════════ */
-
-@media (max-width: 1200px) {
-  .empv2-kpis {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 860px) {
-  .empv2-kpis {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .empv2-titre {
-    font-size: 28px;
-  }
-}
-
-@media (max-width: 560px) {
-  .empv2-entree-photo {
-    flex-basis: 84px;
-    width: 84px;
-  }
-}
+/* La modale de confirmation : un centre aligné, l'icône à l'erreur. */
+.empv2-modale-corps--centre { align-items: center; text-align: center; }
+.empv2-icone-erreur { color: var(--charte-erreur); }
