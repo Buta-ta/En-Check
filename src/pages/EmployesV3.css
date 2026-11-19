@@ -1,0 +1,507 @@
+/* ═══════════════════════════════════════════════════════════
+   PAGE EMPLOYÉS — la composition validée (maquette v3), en français.
+   D-022 : la composition d'une référence fournie prime sur l'interprétation.
+   Aucune couleur en dur : uniquement les jetons de tokens.css (C1).
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* ── L'en-tête ──────────────────────────────────────────── */
+
+.empv3-tete {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.empv3-bonjour {
+  margin: 0;
+  margin-right: auto;
+  font-family: var(--charte-police);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--charte-encre);
+}
+
+.empv3-sous {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--charte-douce);
+}
+
+.empv3-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.empv3-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.empv3-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px;
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.empv3-btn:hover { background: var(--charte-surface2); }
+
+.empv3-btn--plein {
+  background: var(--charte-aplat);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+.empv3-btn--plein:hover { background: var(--charte-texte); }
+
+/* ── Les trois cartes ───────────────────────────────────── */
+
+.empv3-cartes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 1100px) { .empv3-cartes { grid-template-columns: 1fr; } }
+
+.empv3-carte {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--charte-surface);
+}
+
+.empv3-carte-tete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.empv3-carte-titre {
+  margin-right: auto;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+.empv3-carte-total {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--charte-encre);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Les deux lignes teintées (anatomie de la référence) */
+.empv3-lignes { display: flex; flex-direction: column; gap: 6px; }
+
+.empv3-ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: var(--charte-rayon-champ);
+  font-size: 11px;
+}
+.empv3-ligne--ok { background: color-mix(in srgb, var(--charte-succes) 11%, transparent); }
+.empv3-ligne--att { background: color-mix(in srgb, var(--charte-alerte) 13%, transparent); }
+.empv3-ligne b {
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-encre);
+}
+.empv3-ligne-lab {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--charte-encre);
+}
+
+/* La grande jauge */
+.empv3-pct {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-encre);
+}
+.empv3-pct-note { margin-left: 6px; font-size: 9.5px; color: var(--charte-douce); }
+
+.empv3-empilee {
+  display: flex;
+  height: 7px;
+  overflow: hidden;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface2);
+}
+.empv3-empilee i { display: block; height: 100%; }
+
+.empv3-legende {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 9.5px;
+  color: var(--charte-douce);
+}
+.empv3-legende span { display: inline-flex; align-items: center; gap: 5px; }
+.empv3-legende i {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--charte-rayon-pilule);
+}
+
+/* L'anneau */
+.empv3-anneau { display: flex; align-items: center; gap: 14px; }
+.empv3-anneau-svg { position: relative; flex: none; }
+.empv3-anneau-centre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+.empv3-anneau-val {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-encre);
+}
+.empv3-anneau-lab { font-size: 8.5px; color: var(--charte-douce); }
+
+.empv3-appareils { display: flex; flex-direction: column; gap: 7px; flex: 1; font-size: 10.5px; }
+.empv3-appareils div { display: flex; align-items: center; gap: 7px; }
+.empv3-appareils i { display: block; width: 3px; height: 11px; border-radius: 2px; }
+.empv3-appareils b { font-weight: 700; margin-right: 2px; }
+.empv3-appareils span { color: var(--charte-douce); }
+
+/* ── Les deux grands blocs ──────────────────────────────── */
+
+.empv3-deux {
+  display: grid;
+  grid-template-columns: 1.06fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 1100px) { .empv3-deux { grid-template-columns: 1fr; } }
+
+/* Les barres à quatre segments, une par personne */
+.empv3-perf-lignes { display: flex; flex-direction: column; gap: 9px; }
+
+.empv3-perf-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--charte-encre);
+}
+.empv3-perf-nom {
+  width: 104px;
+  flex: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.empv3-perf-bar { flex: 1; display: flex; gap: 2px; height: 12px; }
+.empv3-perf-bar i { display: block; height: 100%; border-radius: 3px; }
+.empv3-perf-total {
+  flex: none;
+  width: 34px;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--charte-douce);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Les barres horizontales par contrat */
+.empv3-barre-ligne {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--charte-encre);
+}
+.empv3-barre-piste {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--charte-surface2);
+}
+.empv3-barre-piste i { display: block; height: 100%; border-radius: 3px; background: var(--charte-aplat); }
+.empv3-barre-val {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-douce);
+}
+
+/* ── Le tableau ─────────────────────────────────────────── */
+
+.empv3-bloc {
+  overflow: hidden;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--charte-surface);
+}
+
+.empv3-bloc-tete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--charte-bordure);
+}
+
+.empv3-bloc-titre {
+  margin-right: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+
+.empv3-outil {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.empv3-outil:hover { background: var(--charte-surface2); }
+.empv3-outil[aria-pressed='true'] {
+  border-color: var(--charte-encre);
+  background: var(--charte-surface2);
+  font-weight: 600;
+}
+
+.empv3-saisie {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 200px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-douce);
+}
+.empv3-saisie input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 10.5px;
+  color: var(--charte-encre);
+}
+.empv3-saisie input::placeholder { color: var(--charte-douce); }
+
+.empv3-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+
+.empv3-table th {
+  height: 34px;
+  padding: 0 12px;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+  background: color-mix(in srgb, var(--charte-surface2) 42%, transparent);
+  border-bottom: 1px solid var(--charte-bordure);
+}
+
+.empv3-table td {
+  height: 46px;
+  padding: 0 12px;
+  vertical-align: middle;
+  white-space: nowrap;
+  color: var(--charte-encre);
+  border-bottom: 1px solid var(--charte-bordure);
+}
+.empv3-table tbody tr:last-child td { border-bottom: 0; }
+.empv3-table tbody tr:hover { background: color-mix(in srgb, var(--charte-surface2) 34%, transparent); }
+
+.empv3-matricule { font-variant-numeric: tabular-nums; color: var(--charte-douce); }
+
+.empv3-personne { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
+.empv3-avatar {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  overflow: hidden;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface2);
+  color: var(--charte-texte);
+  font-size: 9px;
+  font-weight: 700;
+}
+.empv3-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.empv3-nom { display: grid; gap: 1px; min-width: 0; }
+.empv3-nom strong { font-weight: 600; color: var(--charte-encre); }
+.empv3-nom small {
+  font-size: 9.5px;
+  color: var(--charte-douce);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empv3-dept {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  font-size: 10px;
+  color: var(--charte-encre);
+}
+
+.empv3-pilule {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--charte-rayon-pilule);
+  font-size: 10px;
+  font-weight: 600;
+}
+.empv3-pilule i { display: block; width: 6px; height: 6px; border-radius: var(--charte-rayon-pilule); }
+
+.empv3-pilule--ok { color: var(--charte-succes); border: 1px solid color-mix(in srgb, var(--charte-succes) 40%, transparent); }
+.empv3-pilule--att { color: var(--charte-alerte); border: 1px solid color-mix(in srgb, var(--charte-alerte) 40%, transparent); }
+.empv3-pilule--non { color: var(--charte-erreur); border: 1px solid color-mix(in srgb, var(--charte-erreur) 40%, transparent); }
+.empv3-pilule--doux { color: var(--charte-douce); border: 1px solid var(--charte-bordure); }
+
+.empv3-act {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-douce);
+  cursor: pointer;
+}
+.empv3-act:hover { color: var(--charte-encre); background: var(--charte-surface2); }
+
+.empv3-actions { display: inline-flex; align-items: center; gap: 5px; justify-content: flex-end; }
+
+/* Le menu de ligne, sans état React : <details> */
+.empv3-menu { position: relative; }
+.empv3-menu > summary {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  list-style: none;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-douce);
+  cursor: pointer;
+}
+.empv3-menu > summary::-webkit-details-marker { display: none; }
+.empv3-menu > summary:hover { color: var(--charte-encre); background: var(--charte-surface2); }
+
+.empv3-menu-liste {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  z-index: 40;
+  display: grid;
+  min-width: 176px;
+  padding: 6px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  box-shadow: var(--charte-ombre-dure);
+}
+.empv3-menu-liste button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.empv3-menu-liste button:hover { background: var(--charte-surface2); }
+
+.empv3-vide {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  padding: 28px 16px;
+}
+.empv3-vide h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--charte-encre); }
+.empv3-vide p { margin: 0; font-size: 11px; color: var(--charte-douce); }
+
+@media (max-width: 720px) {
+  .empv3-table th:nth-child(4),
+  .empv3-table td:nth-child(4),
+  .empv3-table th:nth-child(5),
+  .empv3-table td:nth-child(5) { display: none; }
+}

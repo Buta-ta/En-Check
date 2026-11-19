@@ -29,7 +29,6 @@ import ModaleHoraires from '../components/employes/ModaleHoraires'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import EmployesLoadingScreen from '../components/EmployesLoadingScreen'
 import FicheEmployeModal from '../components/FicheEmployeModal'
-import EntreeEmploye from '../components/equipes/EntreeEmploye'
 import { useTheme } from '../contexts/ThemeContext'
 import SidebarNavigation from '../components/SidebarNavigation'
 import EnterpriseSwitcher from '../components/EnterpriseSwitcher'
@@ -38,6 +37,7 @@ import TachesVue from '../components/taches/TachesVue'
 import '../components/zoulou/zoulou.css'
 import '../pages/Dashboard.css'
 import './EmployesRefonte.css'
+import './EmployesV3.css'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
 import { formaterHeureLocale, jourLocal, minutesDepuisMinuit } from '../utils/timezoneUtils'
 
@@ -50,14 +50,49 @@ const RETARD_TOLERANCE_MINUTES = 10
 
 const FILTRES_ANNUAIRE = [
   { key: 'all', label: 'Tous' },
-  { key: 'live_en_poste', label: 'En poste', pastille: '#3ddc84' },
-  { key: 'live_en_pause', label: 'En pause', pastille: '#c9a961' },
-  { key: 'live_retard', label: 'Retard', pastille: '#d98a4a' },
-  { key: 'live_absent', label: 'Absent', pastille: '#d97f8f' },
-  { key: 'sans_compte', label: 'Sans compte', pastille: '#8d7f68' },
+  { key: 'live_en_poste', label: 'En poste' },
+  { key: 'live_en_pause', label: 'En pause' },
+  { key: 'live_retard', label: 'Retard' },
+  { key: 'live_absent', label: 'Absent' },
+  { key: 'sans_compte', label: 'Sans compte' },
 ]
 
 // Une part réelle, ou un tiret quand il n'y a rien à diviser.
+// Le statut du jour, dit avec un mot — jamais la couleur seule (D-009).
+function statutDuJour(statut) {
+  if (!statut) return { mot: 'Non pointé', ton: 'doux' }
+  if (statut.state === 'en_poste' && statut.retardMinutes > 0) {
+    return { mot: `En retard · ${statut.retardMinutes} min`, ton: 'att' }
+  }
+  switch (statut.state) {
+    case 'en_poste': return { mot: 'En poste', ton: 'ok' }
+    case 'en_pause': return { mot: 'En pause', ton: 'att' }
+    case 'en_conge': return { mot: 'Absent', ton: 'non' }
+    case 'termine': return { mot: 'Parti', ton: 'doux' }
+    default: return { mot: 'Non pointé', ton: 'doux' }
+  }
+}
+
+// Les quatre morceaux d'une fiche complète — l'anatomie de la page.
+function morceauxDeFiche(employee, aCompte) {
+  return [
+    { mot: 'Poste', ok: Boolean(employee.position) },
+    { mot: 'Service', ok: Boolean(employee.department) },
+    { mot: 'Contrat', ok: Boolean(employee.contract_type) },
+    { mot: 'Portail', ok: Boolean(aCompte) },
+  ]
+}
+
+function initialesDe(employee) {
+  const a = (employee.first_name || '').trim()[0] || ''
+  const b = (employee.last_name || '').trim()[0] || ''
+  return `${a}${b}`.toUpperCase() || '?'
+}
+
+function nomCompletDe(employee) {
+  return [employee.first_name, employee.last_name].filter(Boolean).join(' ') || 'Sans nom'
+}
+
 const pourcent = (morceau, total) =>
   (total > 0 ? `${Math.round((morceau / total) * 100)} %` : '—')
 
@@ -1099,6 +1134,77 @@ export default function Employes() {
 
   const nomAdmin = admin?.name || admin?.email || 'Administrateur'
 
+  // ── les chiffres de la page : tout est compté, rien n'est estimé ──
+  const prenomAdmin = nomAdmin.includes('@') ? nomAdmin.split('@')[0] : nomAdmin.split(' ')[0]
+  const jourEnClair = (() => {
+    const texte = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
+    return texte.charAt(0).toUpperCase() + texte.slice(1)
+  })()
+
+  const effectif = employes.length
+  const enPoste = suiviPresence ? liveCounts.enPoste : 0
+  const enPause = suiviPresence ? liveCounts.enPause : 0
+  const absents = suiviPresence ? liveCounts.enConge : 0
+  const tauxPresence = suiviPresence && effectif > 0
+    ? Math.round(((enPoste + enPause) / effectif) * 100)
+    : null
+  const partEnPoste = effectif > 0 ? (enPoste / effectif) * 100 : 0
+  const partEnPause = effectif > 0 ? (enPause / effectif) * 100 : 0
+  const partAbsents = effectif > 0 ? (absents / effectif) * 100 : 0
+
+  const actifsPortail = employes.filter((e) => aUnCompteEmploye(e)).length
+  const partPortail = effectif > 0 ? actifsPortail / effectif : 0
+  const perimetreAnneau = 2 * Math.PI * 33
+
+  // Les contrats, comptés par libellé.
+  const contratsParType = (() => {
+    const compte = new Map()
+    employes.forEach((e) => {
+      const mot = e.contract_type ? getContractLabel(e.contract_type) : 'Sans contrat renseigné'
+      compte.set(mot, (compte.get(mot) || 0) + 1)
+    })
+    return [...compte.entries()]
+      .map(([mot, nombre]) => ({ mot, nombre }))
+      .sort((a, b) => b.nombre - a.nombre)
+      .slice(0, 5)
+  })()
+  const maxContrat = contratsParType.reduce((m, c) => Math.max(m, c.nombre), 0)
+
+  // Les fiches incomplètes : on montre d'abord les plus trouées.
+  const fichesIncompletes = employes
+    .map((e) => {
+      const morceaux = morceauxDeFiche(e, aUnCompteEmploye(e))
+      return { employee: e, morceaux, remplis: morceaux.filter((m) => m.ok).length }
+    })
+    .filter((f) => f.remplis < 4)
+    .sort((a, b) => a.remplis - b.remplis)
+    .slice(0, 5)
+
+  // L'export : ce que l'écran montre, à l'identique.
+  const exporterCsv = () => {
+    const entetes = ['Matricule', 'Nom', 'E-mail', 'Poste', 'Service', 'Contrat', 'Portail']
+    const lignes = employesFiltres.map((e) => [
+      e.matricule || '',
+      nomCompletDe(e),
+      e.email || '',
+      e.position || '',
+      e.department || '',
+      e.contract_type ? getContractLabel(e.contract_type) : '',
+      aUnCompteEmploye(e) ? 'Actif' : 'À activer',
+    ])
+    const csv = [entetes, ...lignes]
+      .map((ligne) => ligne.map((cellule) => `"${String(cellule).replace(/"/g, '""')}"`).join(';'))
+      .join('\r\n')
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const lien = document.createElement('a')
+    lien.href = url
+    lien.download = `employes-${new Date().toISOString().slice(0, 10)}.csv`
+    lien.click()
+    URL.revokeObjectURL(url)
+    toast.success(`${employesFiltres.length} ligne${employesFiltres.length > 1 ? 's' : ''} exportée${employesFiltres.length > 1 ? 's' : ''}`)
+  }
+
   // ═══════════════════════════════════════════════════════════
   // RENDU
   // ═══════════════════════════════════════════════════════════
@@ -1182,53 +1288,53 @@ export default function Employes() {
         <main className="empv2-main" style={styles.main}>
           {/* la ligne de titre : Employés · le compte — la recherche
               et l'ajout, à droite */}
-          <div className="empv2-tete">
-            <h1 className="empv2-titre">
-              Employés
+          <div className="empv3-tete">
+            <h1 className="empv2-titre empv3-bonjour">
+              {vueActive === null
+                ? 'Employés'
+                : (vueActive === 'equipes' ? 'Équipes' : 'Tâches')}
               {vueActive === null && (
                 <span className="empv2-titre-compte">
                   {employes.length} personne{employes.length > 1 ? 's' : ''}
                 </span>
               )}
+              <span className="empv3-sous">
+                {vueActive === null
+                  ? `Bonjour, ${prenomAdmin} · ${jourEnClair}`
+                  : 'La page Employés, vue par vue'}
+              </span>
             </h1>
-            <div className="empv2-tete-actions">
+
+            <div className="empv3-actions">
               {vueActive === null && (
-                <label className="empv2-recherche">
-                  <Search size={14} />
-                  <input
-                    type="search"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Rechercher un nom, un matricule, un poste..."
-                    aria-label="Rechercher un employé"
-                  />
-                  {searchTerm && (
-                    <button
-                      type="button"
-                      className="empv2-recherche-effacer"
-                      onClick={() => setSearchTerm('')}
-                      aria-label="Effacer la recherche"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </label>
+                <>
+                  <span className="empv3-chip">
+                    <CalendarDays size={12} aria-hidden="true" />
+                    {jourEnClair}
+                  </span>
+                  <button type="button" className="empv3-btn" onClick={exporterCsv}>
+                    <FileText size={13} aria-hidden="true" />
+                    Exporter
+                  </button>
+                </>
               )}
+
               {vueActive === 'equipes' && (
-                <button type="button" className="empv2-nouvel" onClick={() => setSignalCreationEquipe((n) => n + 1)}>
-                  <Plus size={14} /> Nouvelle équipe
+                <button type="button" className="empv3-btn empv3-btn--plein" onClick={() => setSignalCreationEquipe((n) => n + 1)}>
+                  <Plus size={14} aria-hidden="true" /> Nouvelle équipe
                 </button>
               )}
               {vueActive === 'taches' && (
-                <button type="button" className="empv2-nouvel" onClick={() => setSignalCreationTache((n) => n + 1)}>
-                  <Plus size={14} /> Nouvelle tâche
+                <button type="button" className="empv3-btn empv3-btn--plein" onClick={() => setSignalCreationTache((n) => n + 1)}>
+                  <Plus size={14} aria-hidden="true" /> Nouvelle tâche
                 </button>
               )}
               {vueActive === null && (
-                <button type="button" className="empv2-nouvel" onClick={handleAdd}>
-                  <UserPlus size={14} /> Nouvel employé
+                <button type="button" className="empv3-btn empv3-btn--plein" onClick={handleAdd}>
+                  <UserPlus size={14} aria-hidden="true" /> Nouvel employé
                 </button>
               )}
+
               <button
                 type="button"
                 className="empv2-theme"
@@ -1268,69 +1374,149 @@ export default function Employes() {
 
           {vueActive === null && (
             <div className="empv2-annuaire">
-              {/* le bandeau de chiffres : tout est compté sur le
-                  personnel chargé, jamais une estimation */}
-              <div className="empv2-kpis" aria-label="Chiffres du personnel">
-                <div className="empv2-kpi">
-                  <div className="empv2-kpi-haut">
-                    <strong>{employes.length}</strong>
-                    <Users size={15} aria-hidden="true" />
+              {/* les trois cartes : l'anatomie de la référence validée */}
+              <div className="empv3-cartes">
+
+                {/* 1. L'effectif */}
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Effectif total</span>
+                    <span className="empv3-carte-total">{employes.length}</span>
                   </div>
-                  <span className="empv2-kpi-libelle">Effectif</span>
+                  <div className="empv3-lignes">
+                    <div className="empv3-ligne empv3-ligne--ok">
+                      <b>{suiviPresence ? liveCounts.enPoste : '—'}</b>
+                      <span className="empv3-ligne-lab">En poste</span>
+                    </div>
+                    <div className="empv3-ligne empv3-ligne--att">
+                      <b>{suiviPresence ? liveCounts.enConge : '—'}</b>
+                      <span className="empv3-ligne-lab">Absents aujourd’hui</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="empv2-kpi">
-                  <div className="empv2-kpi-haut">
-                    <strong>{suiviPresence ? liveCounts.enPoste : '—'}</strong>
-                    <Briefcase size={15} aria-hidden="true" />
+
+                {/* 2. L'assiduité du jour */}
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Assiduité du jour</span>
                   </div>
-                  <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--vert" aria-hidden="true" />En poste</span>
+                  <div>
+                    <span className="empv3-pct">{tauxPresence === null ? '—' : `${tauxPresence} %`}</span>
+                    <span className="empv3-pct-note">
+                      {tauxPresence === null ? 'relevés en cours de chargement' : `sur ${employes.length} personne${employes.length > 1 ? 's' : ''}`}
+                    </span>
+                  </div>
+                  <div className="empv3-empilee" role="img" aria-label={`En poste ${enPoste}, en pause ${enPause}, absents ${absents}`}>
+                    <i style={{ width: `${partEnPoste}%`, background: 'var(--charte-aplat)' }} />
+                    <i style={{ width: `${partEnPause}%`, background: 'var(--charte-alerte)' }} />
+                    <i style={{ width: `${partAbsents}%`, background: 'var(--charte-statut-neutre)' }} />
+                  </div>
+                  <div className="empv3-legende">
+                    <span><i style={{ background: 'var(--charte-aplat)' }} />En poste · {suiviPresence ? enPoste : '—'}</span>
+                    <span><i style={{ background: 'var(--charte-alerte)' }} />En pause · {suiviPresence ? enPause : '—'}</span>
+                    <span><i style={{ background: 'var(--charte-statut-neutre)' }} />Absents · {suiviPresence ? absents : '—'}</span>
+                  </div>
                 </div>
-                <div className="empv2-kpi">
-                  <div className="empv2-kpi-haut">
-                    <strong>{suiviPresence ? liveCounts.enPause : '—'}</strong>
-                    <Coffee size={15} aria-hidden="true" />
+
+                {/* 3. L'accès au portail */}
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Accès au portail</span>
+                    <span className="empv3-carte-total">{actifsPortail}/{employes.length}</span>
                   </div>
-                  <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--or" aria-hidden="true" />En pause</span>
-                </div>
-                <div className="empv2-kpi">
-                  <div className="empv2-kpi-haut">
-                    <strong>{suiviPresence ? liveCounts.retards : '—'}</strong>
-                    <Clock size={15} aria-hidden="true" />
+                  <div className="empv3-anneau">
+                    <div className="empv3-anneau-svg">
+                      <svg width="86" height="86" viewBox="0 0 86 86" role="img" aria-label={`${actifsPortail} comptes actifs sur ${employes.length}`}>
+                        <circle cx="43" cy="43" r="33" fill="none" stroke="var(--charte-surface2)" strokeWidth="10" />
+                        <circle
+                          cx="43" cy="43" r="33" fill="none"
+                          stroke="var(--charte-aplat)" strokeWidth="10"
+                          strokeDasharray={`${perimetreAnneau * partPortail} ${perimetreAnneau}`}
+                          strokeLinecap="butt"
+                          transform="rotate(-90 43 43)"
+                        />
+                      </svg>
+                      <div className="empv3-anneau-centre">
+                        <span className="empv3-anneau-val">{actifsPortail}</span>
+                        <span className="empv3-anneau-lab">au total {employes.length}</span>
+                      </div>
+                    </div>
+                    <div className="empv3-appareils">
+                      <div>
+                        <i style={{ background: 'var(--charte-aplat)' }} />
+                        <b>{actifsPortail}</b>
+                        <span>Compte actif</span>
+                      </div>
+                      <div>
+                        <i style={{ background: 'var(--charte-surface2)' }} />
+                        <b>{Math.max(employes.length - actifsPortail, 0)}</b>
+                        <span>À activer</span>
+                      </div>
+                    </div>
                   </div>
-                  <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--orange" aria-hidden="true" />Retards ce jour</span>
-                </div>
-                <div className="empv2-kpi">
-                  <div className="empv2-kpi-haut">
-                    <strong>{suiviPresence ? liveCounts.enConge : '—'}</strong>
-                    <CalendarX size={15} aria-hidden="true" />
-                  </div>
-                  <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--rose" aria-hidden="true" />Absents</span>
                 </div>
               </div>
 
-              {/* les filtres : l'état de la journée d'abord */}
-              <div className="empv2-filtres" role="group" aria-label="Filtrer l'annuaire">
-                {FILTRES_ANNUAIRE.map((filtre) => (
-                  <button
-                    key={filtre.key}
-                    type="button"
-                    className="empv2-filtre"
-                    aria-pressed={categoryFilter === filtre.key}
-                    style={filtre.pastille ? { '--empv2-pastille': filtre.pastille } : undefined}
-                    onClick={() => setCategoryFilter(filtre.key)}
-                  >
-                    {filtre.label}
-                  </button>
-                ))}
-                {(searchTerm || categoryFilter !== 'all') && (
-                  <button
-                    type="button"
-                    className="empv2-filtre empv2-filtre--effacer"
-                    onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
-                  >
-                    Tout montrer
-                  </button>
-                )}
+              {/* les deux grands blocs */}
+              <div className="empv3-deux">
+
+                {/* Les fiches incomplètes, morceau par morceau */}
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Fiches à compléter</span>
+                    <span className="empv3-carte-total">{fichesIncompletes.length}</span>
+                  </div>
+                  {fichesIncompletes.length === 0 ? (
+                    <p className="empv3-legende">Toutes les fiches sont complètes : poste, service, contrat et accès au portail.</p>
+                  ) : (
+                    <div className="empv3-perf-lignes">
+                      {fichesIncompletes.map(({ employee, morceaux, remplis }) => (
+                        <div className="empv3-perf-ligne" key={employee.id}>
+                          <span className="empv3-perf-nom">{nomCompletDe(employee)}</span>
+                          <span className="empv3-perf-bar">
+                            {morceaux.map((m) => (
+                              <i
+                                key={m.mot}
+                                title={`${m.mot} : ${m.ok ? 'renseigné' : 'manquant'}`}
+                                style={{
+                                  width: '25%',
+                                  background: m.ok ? 'var(--charte-aplat)' : 'var(--charte-surface2)',
+                                }}
+                              />
+                            ))}
+                          </span>
+                          <span className="empv3-perf-total">{remplis}/4</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="empv3-legende" style={{ marginTop: 'auto' }}>
+                    <span><i style={{ background: 'var(--charte-aplat)' }} />Renseigné</span>
+                    <span><i style={{ background: 'var(--charte-surface2)' }} />Manquant</span>
+                  </div>
+                </div>
+
+                {/* Les contrats, comptés */}
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Contrats par type</span>
+                  </div>
+                  {contratsParType.length === 0 ? (
+                    <p className="empv3-legende">Aucun contrat renseigné pour l’instant.</p>
+                  ) : (
+                    <div className="empv3-perf-lignes">
+                      {contratsParType.map(({ mot, nombre }) => (
+                        <div className="empv3-barre-ligne" key={mot}>
+                          <span>{mot}</span>
+                          <span className="empv3-barre-piste">
+                            <i style={{ width: `${maxContrat > 0 ? (nombre / maxContrat) * 100 : 0}%` }} />
+                          </span>
+                          <span className="empv3-barre-val">{nombre}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {enrollmentCounts.toMigrate > 0 && (
@@ -1346,53 +1532,171 @@ export default function Employes() {
 
               <PayslipIndicatorStatus status={payslipIndicators} />
 
-              {employesFiltres.length === 0 ? (
-                <div className="empv2-vide">
-                  <h3>{employes.length === 0 ? 'Aucun employé pour l’instant' : 'Aucune personne ne correspond'}</h3>
-                  <p>
-                    {employes.length === 0
-                      ? 'Créez la première fiche : le nom, le matricule et le poste suffisent pour commencer.'
-                      : 'Élargissez la recherche ou retirez un filtre pour revoir tout le personnel.'}
-                  </p>
-                  {employes.length === 0 ? (
-                    <button type="button" className="empv2-primaire" onClick={handleAdd}>
-                      <UserPlus size={14} /> Ajouter un employé
-                    </button>
+                <div className="empv3-bloc">
+                  <div className="empv3-bloc-tete">
+                    <span className="empv3-bloc-titre">Tous les employés</span>
+
+                    <label className="empv3-saisie">
+                      <Search size={12} aria-hidden="true" />
+                      <input
+                        type="search"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Rechercher un nom, un matricule…"
+                        aria-label="Rechercher un employé"
+                      />
+                      {searchTerm && (
+                        <button
+                          type="button"
+                          className="empv3-act"
+                          onClick={() => setSearchTerm('')}
+                          aria-label="Effacer la recherche"
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
+                    </label>
+
+                    {FILTRES_ANNUAIRE.map((filtre) => (
+                      <button
+                        key={filtre.key}
+                        type="button"
+                        className="empv3-outil"
+                        aria-pressed={categoryFilter === filtre.key}
+                        onClick={() => setCategoryFilter(filtre.key)}
+                      >
+                        {filtre.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {employesFiltres.length === 0 ? (
+                    <div className="empv2-vide">
+                      <h3>{employes.length === 0 ? 'Aucun employé pour l’instant' : 'Aucune personne ne correspond'}</h3>
+                      <p>
+                        {employes.length === 0
+                          ? 'Créez la première fiche : le nom, le matricule et le poste suffisent pour commencer.'
+                          : 'Élargissez la recherche ou retirez un filtre pour revoir tout le personnel.'}
+                      </p>
+                      {employes.length === 0 ? (
+                        <button type="button" className="empv2-primaire" onClick={handleAdd}>
+                          <UserPlus size={14} /> Ajouter un employé
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="empv2-rafraichir"
+                          onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
+                        >
+                          Tout montrer
+                        </button>
+                      )}
+                    </div>
                   ) : (
-                    <button
-                      type="button"
-                      className="empv2-rafraichir"
-                      onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
-                    >
-                      Tout montrer
-                    </button>
+                  <table className="empv3-table">
+                    <thead>
+                      <tr>
+                        <th>Matricule</th>
+                        <th>Employé</th>
+                        <th>Poste</th>
+                        <th>Service</th>
+                        <th>Contrat</th>
+                        <th>Statut</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employesFiltres.map((employee) => {
+                        const statut = statutDuJour(liveStatusByEmployee[employee.id])
+                        const portailOuvert = isPortalModuleEnabled(employee) && employee.employee_portal_enabled
+                        return (
+                          <tr key={employee.id}>
+                            <td className="empv3-matricule">{employee.matricule || '—'}</td>
+
+                            <td>
+                              <div className="empv3-personne">
+                                <span className="empv3-avatar">
+                                  {employee.photo_url
+                                    ? <img src={employee.photo_url} alt="" />
+                                    : initialesDe(employee)}
+                                </span>
+                                <span className="empv3-nom">
+                                  <strong>{nomCompletDe(employee)}</strong>
+                                  <small>{employee.email || 'Sans e-mail'}</small>
+                                </span>
+                              </div>
+                            </td>
+
+                            <td>{employee.position || '—'}</td>
+
+                            <td>
+                              {employee.department
+                                ? <span className="empv3-dept">{employee.department}</span>
+                                : '—'}
+                            </td>
+
+                            <td>{employee.contract_type ? getContractLabel(employee.contract_type) : '—'}</td>
+
+                            <td>
+                              <span className={`empv3-pilule empv3-pilule--${statut.ton}`}>
+                                <i style={{
+                                  background: statut.ton === 'ok' ? 'var(--charte-succes)'
+                                    : statut.ton === 'att' ? 'var(--charte-alerte)'
+                                      : statut.ton === 'non' ? 'var(--charte-erreur)'
+                                        : 'var(--charte-statut-neutre)',
+                                }} />
+                                {statut.mot}
+                              </span>
+                            </td>
+
+                            <td>
+                              <div className="empv3-actions">
+                                <button
+                                  type="button"
+                                  className="empv3-act"
+                                  title="Ouvrir la fiche"
+                                  aria-label={`Ouvrir la fiche de ${nomCompletDe(employee)}`}
+                                  onClick={() => navigate(`/employes/${employee.id}`)}
+                                >
+                                  <Eye size={13} />
+                                </button>
+
+                                <details className="empv3-menu">
+                                  <summary aria-label={`Autres actions pour ${nomCompletDe(employee)}`}>⋮</summary>
+                                  <div className="empv3-menu-liste">
+                                    <button type="button" onClick={() => handleEdit(employee)}>
+                                      <Edit size={12} /> Modifier la fiche
+                                    </button>
+                                    <button type="button" onClick={() => handleShowBadge(employee)}>
+                                      <QrCode size={12} /> Badge QR
+                                    </button>
+                                    <button type="button" onClick={() => navigate(`/pointages?q=${encodeURIComponent(employee.matricule || employee.last_name || '')}`)}>
+                                      <Clock size={12} /> Voir les pointages
+                                    </button>
+                                    {isModulePlanningEnabled(employee) && (
+                                      <button type="button" onClick={() => handleShareSchedule(employee)}>
+                                        <Share2 size={12} /> Envoyer les horaires
+                                      </button>
+                                    )}
+                                    {portailOuvert && (
+                                      <button type="button" onClick={() => handleOpenPasswordModal(employee)}>
+                                        <Key size={12} /> Mot de passe
+                                      </button>
+                                    )}
+                                    <button type="button" onClick={() => initiateDelete(employee)}>
+                                      <Trash2 size={12} /> Supprimer la fiche
+                                    </button>
+                                  </div>
+                                </details>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                   )}
                 </div>
-              ) : (
-                <div className="empv2-grille" aria-label="Le personnel">
-                  {employesFiltres.map((employee) => (
-                    <EntreeEmploye
-                      key={employee.id}
-                      employee={employee}
-                      liveStatus={liveStatusByEmployee[employee.id]}
-                      contractLabel={employee.contract_type ? getContractLabel(employee.contract_type) : ''}
-                      portalEnabled={isPortalModuleEnabled(employee) && employee.employee_portal_enabled}
-                      planningEnabled={isModulePlanningEnabled(employee)}
-                      aCompte={aUnCompteEmploye(employee)}
-                      ancienSysteme={estAncienSysteme(employee)}
-                      onOuvrirFiche={handleEdit}
-                      onOuvrirPage={(emp) => navigate(`/employes/${emp.id}`)}
-                      onBadge={handleShowBadge}
-                      onHoraires={handleOpenSchedule}
-                      onPartagerHoraires={handleShareSchedule}
-                      onPointages={(emp) => navigate(`/pointages?q=${encodeURIComponent(emp.matricule || emp.last_name || '')}`)}
-                      onMotDePasse={handleOpenPasswordModal}
-                      onBasculerPortail={handleTogglePortalAccess}
-                      onSupprimer={initiateDelete}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
           )}
 

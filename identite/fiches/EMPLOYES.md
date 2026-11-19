@@ -215,3 +215,33 @@ Dans ta PR : 2 captures (clair + sombre, 1440 px), la sortie brute de
 | 08/11/2026 | Maquette v3 validée par le fondateur : « je valide ». D-022 consignée. |
 | 08/11/2026 | Bords de la barre latérale arrondis à 12 px dans le produit (`src/pages/Dashboard.css`). |
 | 08/11/2026 | Cette fiche ouverte. Trois points en attente (§7) — ils bloquent la passation. |
+| 08/11/2026 | **La page est codée** (le fondateur : « code le toi. Mais attention, la page doit être en français »). Voir §12 pour les écarts assumés. |
+
+---
+
+## 12. Ce qui a été livré (08/11/2026)
+
+| Fichier | Ce qu'il porte |
+|---|---|
+| `src/pages/Employes.jsx` | l'en-tête, les trois cartes, les deux blocs, le tableau, l'export CSV |
+| `src/pages/EmployesV3.css` | toutes les formes `empv3-*`, aucune couleur en dur |
+| `src/services/__tests__/employesEquipesTaches.test.jsx` | les tests mis au nouveau contrat (trois cartes, filtres de la barre d'outils) |
+
+**Mesures du jour :** `npx vite build` ✓ · `npx vitest run` → **1 929 tests passés, 0 échec** (5 fichiers en erreur de
+collecte, **sans rapport** : paie, motifs d'absence, notifications — déjà rouges avant cette page) ·
+`npm run charte` → C2, C6 verts ; C1 **4 707** valeurs en dur (contre 4 712 : −5, les pastilles retirées) ;
+C9 et C10 **inchangés**. La page n'ajoute **aucune** violation.
+
+### Les écarts entre la maquette et la page, dits franchement
+
+| # | La maquette | La page livrée | Pourquoi |
+|---|---|---|---|
+| 1 | Chiffre d'affaires, appareils utilisés | **Effectif, assiduité, accès au portail** | ces deux blocs de la référence n'ont **aucune donnée** dans le produit : les afficher aurait été un chiffre inventé à l'écran |
+| 2 | cases à cocher en tête de ligne | **absentes** | aucune action de masse n'existe : une case qui ne fait rien est un mensonge |
+| 3 | deux boutons pleins (Inviter, Exporter) | **un seul** (« Nouvel employé »), « Exporter » en contour | D-013 : une seule action de poids maximal |
+| 4 | périodes 01–15 sept. | **la date du jour**, en pastille | aucune série historique n'est disponible |
+| 5 | filtres « Tous les statuts / Tous les postes » | **les six filtres d'état** qui existaient déjà | ils sont branchés sur les données réelles de présence |
+| 6 | tailles 22 / 20 / 12 / 11,5 / 9,5 | **identiques** | la maquette validée fait foi ; D-013 en prévoit trois — **point §7 toujours ouvert** |
+
+Le bloc « Tous les employés » remplace la grille de cartes ; chaque ligne garde ses actions
+(fiche, badge, pointages, horaires, mot de passe, suppression) dans le menu `⋮`.

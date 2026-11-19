@@ -295,7 +295,7 @@ const rendreEntree = async (props = {}) => {
 }
 
 describe('la vue Annuaire', () => {
-  it('compte cinq chiffres sur la bande, et n’invente pas de présence', async () => {
+  it('compte trois cartes — la composition validée — et n’invente pas de présence', async () => {
     await rendre(
       <ThemeProvider>
         <Employes />
@@ -303,13 +303,17 @@ describe('la vue Annuaire', () => {
     )
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
 
-    const kpis = [...hote.querySelectorAll('.empv2-kpi')]
-    expect(kpis).toHaveLength(5)
-    expect(kpis.map((k) => k.querySelector('span').textContent)).toEqual(
-      ['Effectif', 'En poste', 'En pause', 'Retards ce jour', 'Absents'],
+    const cartes = [...hote.querySelectorAll('.empv3-carte')]
+    // trois cartes de tête, puis les deux blocs (fiches à compléter, contrats)
+    expect(cartes.length).toBeGreaterThanOrEqual(5)
+    expect(cartes.slice(0, 3).map((c) => c.querySelector('.empv3-carte-titre').textContent)).toEqual(
+      ['Effectif total', 'Assiduité du jour', 'Accès au portail'],
     )
+
     // rien à compter : un tiret, pas un zéro inventé pour la présence
-    expect(kpis.map((k) => k.querySelector('strong').textContent)).toEqual(['0', '—', '—', '—', '—'])
+    const chiffres = [...cartes[0].querySelectorAll('.empv3-ligne b')].map((b) => b.textContent)
+    expect(chiffres).toEqual(['—', '—'])
+    expect(cartes[1].querySelector('.empv3-pct').textContent).toBe('—')
   })
 
   it('explique l’annuaire vide et propose la première fiche', async () => {
@@ -332,15 +336,14 @@ describe('la vue Annuaire', () => {
     )
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
 
-    const enPoste = [...hote.querySelectorAll('.empv2-filtre')].find((f) => f.textContent === 'En poste')
+    // les filtres vivent dans la barre d'outils du tableau
+    const enPoste = [...hote.querySelectorAll('.empv3-outil')].find((f) => f.textContent === 'En poste')
     await act(async () => enPoste.click())
     expect(enPoste.getAttribute('aria-pressed')).toBe('true')
 
-    // « Tout montrer » apparaît tant qu’un filtre est posé
-    const toutMontrer = [...hote.querySelectorAll('.empv2-filtre')].find((f) => f.textContent === 'Tout montrer')
-    expect(toutMontrer).toBeTruthy()
-    await act(async () => toutMontrer.click())
-    expect(hote.querySelector('.empv2-filtre[aria-pressed="true"]').textContent).toBe('Tous')
+    const tous = [...hote.querySelectorAll('.empv3-outil')].find((f) => f.textContent === 'Tous')
+    await act(async () => tous.click())
+    expect(hote.querySelector('.empv3-outil[aria-pressed="true"]').textContent).toBe('Tous')
   })
 
   it('la carte porte la photo ou les initiales, le nom en serif, le matricule et le contrat', async () => {
