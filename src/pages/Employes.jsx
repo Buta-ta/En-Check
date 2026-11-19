@@ -1,4 +1,3 @@
-import PageCulturalBand from '../components/PageCulturalBand'
 import PayslipIndicatorStatus from '../components/PayslipIndicatorStatus'
 import useEmployeePayslipIndicators from '../hooks/useEmployeePayslipIndicators'
 // ═══════════════════════════════════════════════════════════
@@ -1155,9 +1154,9 @@ export default function Employes() {
   return (
     <>
 
+      {/* Le bandeau de motif est retiré de cette page — demande du fondateur
+          du 08/11 : « enlève le bandeau motif culturel de la page ». */}
       <div className="pointages-afrotech-shell empv2-coque">
-        <PageCulturalBand pathname="/employes" />
-
         <div className="empv2-layout">
         <aside className="dashboard-sidebar empv2-sidebar" aria-label="Navigation principale">
           <div className="nav-panel">
