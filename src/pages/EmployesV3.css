@@ -3625,3 +3625,124 @@
 
 /* la liste doit laisser passer la borne qui dépasse de sa ligne */
 .empv3-liste-tete { position: relative; }
+
+/* ═══════════════════════════════════════════════════════════
+   LA PANCARTE DU HAUT — le cahier de pointage, « Avant… »
+   (sa demande du 22/11)
+   ═══════════════════════════════════════════════════════════ */
+
+.pancarte-cahier {
+  display: grid;
+  place-items: center;
+  width: 62%;
+  max-width: 62px;
+}
+
+.pancarte-cahier svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* le mot du cahier, en vrai texte : il se lit et il grandit */
+.pancarte-mot {
+  font-family: 'Caveat', 'Segoe Script', cursive;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--charte-encre);
+}
+
+.pancarte--compacte .pancarte-mot { font-size: 17px; }
+
+/* le carré du cahier est un peu plus haut que celui du pied */
+.pancarte--cahier .pancarte-panneau { padding-top: 10px; }
+
+/* ═══════════════════════════════════════════════════════════
+   LA BORNE — plus grande, avec son écran et son empreinte
+   ═══════════════════════════════════════════════════════════ */
+
+.borne {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--borne-taille);
+}
+
+.borne-machine {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 8px 9px;
+  border: 3px solid var(--charte-encre);
+  border-radius: 10px;
+  background: var(--charte-surface);
+  box-shadow: 3px 3px 0 var(--charte-encre);
+}
+
+/* l'écran de la borne — « Et maintenant… » */
+.borne-ecran {
+  display: block;
+  width: 100%;
+  padding: 4px 5px;
+  border: 2px solid var(--charte-encre);
+  border-radius: 5px;
+  background: var(--charte-encre);
+  color: var(--charte-surface);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  letter-spacing: -0.1px;
+}
+
+.borne-empreinte {
+  display: block;
+  width: 52%;
+  height: auto;
+  color: var(--charte-aplat);
+}
+
+/* le mât, le socle, l'ombre au sol */
+.borne-mat {
+  display: block;
+  width: 8px;
+  height: 30px;
+  background: var(--charte-encre);
+}
+
+.borne-socle {
+  display: block;
+  width: 62%;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--charte-encre);
+}
+
+.borne-ombre {
+  display: block;
+  width: 92%;
+  height: 7px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--charte-aplat) 24%, transparent);
+}
+
+.borne-mot {
+  margin-top: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .borne-ecran { font-size: 8.5px; }
+  .borne-mot { font-size: 8px; }
+}

@@ -1195,8 +1195,10 @@ describe('la page Employés', () => {
     // des traces de pied HUMAIN : une plante, un talon, CINQ orteils
     expect(CHEMIN).toContain('ORTEILS')
     expect(CHEMIN).toContain('TracePied')
-    const cinqOrteils = CHEMIN.match(/\{ cx: [\d.-]+, cy: [\d.-]+, r: [\d.]+ \}/g)
+    const cinqOrteils = CHEMIN.match(/\{ cx: [\d.-]+, cy: [\d.-]+, rx: [\d.]+, ry: [\d.]+ \}/g)
     expect(cinqOrteils).toHaveLength(5)
+    // et il les a voulus plus GROS : l'échelle de la trace est montée
+    expect(CHEMIN).toMatch(/const ECHELLE = 1\.35/)
     // le chemin descend de la pancarte et va jusqu'au pied de page
     expect(CHEMIN).toContain("document.querySelector('.empv3-parcours')")
     expect(EMPLOYES).toContain('empv3-parcours')
@@ -1219,10 +1221,10 @@ describe('la page Employés', () => {
     // il ne prend aucun clic
     expect(CHEMIN).toContain('aria-hidden')
 
-    // la borne : écran, empreinte, tige, socle
+    // la borne : écran, empreinte, mât, socle
     expect(BORNE).toContain('borne ')
     expect(BORNE).toContain('Borne de pointage')
-    expect(BORNE).toContain('<rect')
+    expect(BORNE).toContain('borne-empreinte')
 
     expect(EMPLOYES).toContain('empv3-chemin')
     expect(EMPLOYES).toContain('CheminEmpreintes')
@@ -1232,6 +1234,34 @@ describe('la page Employés', () => {
     expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,220}pointer-events: none/)
     expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,260}z-index: 0/)
     expect(CSS_EMP).toMatch(/\.empv2-annuaire \{ position: relative; z-index: 1; \}/)
+  })
+
+  it('la borne affiche « Et maintenant… » avec une empreinte, et la pancarte un cahier « Avant… »', () => {
+    const BORNE = readFileSync('src/components/parcours/BornePointage.jsx', 'utf8')
+    const PANCARTE = readFileSync('src/components/parcours/PancarteEnseigne.jsx', 'utf8')
+
+    // l'écran de la borne, en vrai texte
+    expect(BORNE).toContain('borne-ecran')
+    expect(BORNE).toContain('Et maintenant…')
+    // une empreinte digitale : des arcs concentriques
+    expect(BORNE).toContain('borne-empreinte')
+    const arcs = BORNE.match(/<path d="M1[0-9] |<path d="M2[0-9] /g)
+    expect(arcs && arcs.length).toBeGreaterThanOrEqual(3)
+    // un mât, un socle, une ombre
+    expect(BORNE).toContain('borne-mat')
+    expect(BORNE).toContain('borne-socle')
+
+    // la pancarte du haut : un cahier avec une coche et le mot « Avant… »
+    expect(PANCARTE).toContain('CahierDePointage')
+    expect(PANCARTE).toContain('pancarte-cahier')
+    expect(PANCARTE).toContain('Avant…')
+    expect(PANCARTE).toContain("motif = 'pied'")
+    expect(EMPLOYES).toMatch(/PancarteEnseigne taille=\{104\} motif="cahier"/)
+
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    // l'écran est un écran : fond sombre, texte clair
+    expect(CSS_EMP).toMatch(/\.borne-ecran \{[\s\S]{0,300}background: var\(--charte-encre\)/)
+    expect(CSS_EMP).toMatch(/\.pancarte-mot \{[\s\S]{0,200}font-family: 'Caveat'/)
   })
 
   it('l’état ne s’affiche qu’une fois, et les cartes d’une rangée ont la même hauteur', () => {

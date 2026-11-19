@@ -1555,8 +1555,8 @@ export default function Employes() {
           <header className="empv3-entete">
             <span className="empv3-entete-bandeau" aria-hidden="true" />
             {/* la pancarte plante ses racines dans l'en-tête, au milieu */}
-            <span className="empv3-entete-pancarte" aria-hidden="true">
-              <PancarteEnseigne taille={88} />
+            <span className="empv3-entete-pancarte">
+              <PancarteEnseigne taille={104} motif="cahier" />
             </span>
             <div className="empv3-entete-corps">
             <div className="empv3-entete-gauche">
@@ -2060,7 +2060,7 @@ export default function Employes() {
 
                 {/* la borne se plante ici, au milieu de l'espace libre */}
                 <span className="empv3-borne empv3-borne--entete">
-                  <BornePointage taille={44} />
+                  <BornePointage taille={76} />
                 </span>
               </div>
 
