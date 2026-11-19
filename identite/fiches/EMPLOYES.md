@@ -268,10 +268,10 @@ ombres restent les nôtres).
 |---|---|---|---|
 | 1 | la coque : rail à icônes + colonne à pastilles | **livré** | `.nav3-rail`, `.nav3-colonne`, `.nav3-haut`, `.nav3-pastille` |
 | 2 | quatre cartes de chiffres | **livré** | `.empv3-cartes` + `.empv3-kpi` : Effectif, Présents, Accès au portail, Retards |
-| 3 | « Meeting Scheduling » : la grille de la semaine | **livré** | `.empv3-grille-planning` → `.empv3-semaine` : `lun.`→`dim.`, une ligne par personne, cases `pointé / absence / rien` |
-| 4 | « Feature Events » : les cartes teintées | **livré** | `.empv3-annonces` : les annonces d'accueil **en ligne**, trois tons |
-| 5 | « Employee List » : le tableau et ses colonnes | **en discussion** | le tableau existe (`main`) ; la composition des colonnes n'est pas tranchée |
-| 6 | les pilules Active / Inactive | **en discussion** | le statut du jour existe ; sa forme (pilule ou angle 8 px) n'est pas tranchée |
+| 3 | « Meeting Scheduling » : la grille de la semaine | **livré, enrichi** | `.empv3-grille-planning` → `.empv3-semaine` : `lun.`→`dim.`, une ligne par personne (nom **+ rôle sous le nom**), cases `pointé / absence / rien` |
+| 4 | « Feature Events » : les cartes teintées | **livré, enrichi** | `.empv3-annonces` : les annonces d'accueil **en ligne**, trois tons, **vignette du média** (image, ou première image de la vidéo) |
+| 5 | « Employee List » : le tableau et ses colonnes | **livré** | 4 colonnes : Employé · Poste · service · Statut du jour ; **le contrat s'écrit sous le poste** |
+| 6 | les pilules Active / Inactive | **livré** | **pilule pleine, sans contour**, fond teinté de sa propre couleur à 10 % ; mot + point portent le sens |
 | 7 | le titre à ~40 px | **refusé le 19/11** | D-013 : titre à 20 px — la page est plus « sage » que la référence, c'est assumé |
 | 8 | les rayons 12–20 px | **refusé** | D-016 : rayons {6, 8, 11, 12, 999} |
 | 9 | les ombres douces | **refusé** | D-016 : ombre dure 3 px, flou 0 |
@@ -279,3 +279,20 @@ ombres restent les nôtres).
 
 Deux règles tenues dans les blocs 3 et 4, et qui valent pour la suite : **aucun état sans donnée**
 (une case vide n'est jamais verte par défaut) et **aucun mot anglais** à l'écran.
+
+### Décisions du 08/11 sur les éléments 3 à 6
+
+| Question posée | Sa réponse | Ce que ça a changé |
+|---|---|---|
+| colonnes du tableau | « fusionner Contrat dans Poste · service » | 5 → **4 colonnes** ; le contrat en taille micro sous l'intitulé |
+| forme du statut | « Pilule arrondie (rayon 999) » | `border-color: transparent` + `color-mix(… currentColor 10 % …)` |
+| la grille, ensuite | « Le rôle sous le nom » | `.empv3-semaine-poste`, 9 px, encre douce, « poste non renseigné » si vide |
+| les annonces, ensuite | « Une vignette de l'image » | `.empv3-annonce-vignette`, 54 px, `object-fit: cover`, rien si `url` manque |
+
+**Erreur corrigée ce jour** : la lecture du type de média passait par `annonce.type_media`, champ inexistant ;
+la page Annonces d'accueil lit `annonce.type`. Toute vidéo se serait annoncée comme « Image d'accueil ».
+Le test interdit désormais ce champ (`not.toContain('annonce.type_media')`).
+
+**Restent ouverts** : le hachurage des samedis et dimanches, les barres d'absence qui traversent plusieurs
+jours, l'éventuelle troisième semaine de la grille, et le sélecteur d'entreprise (la variable
+`selectedEnterpriseFilter` existe dans `Employes.jsx` **sans aucun contrôle à l'écran**).
