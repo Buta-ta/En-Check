@@ -19,7 +19,7 @@ import {
   FileText, Award, User, MapPin, Flag, Baby, Layers, Radio, ClipboardList, Network,
   LayoutDashboard, CalendarDays, CalendarOff, Timer, Wallet, Sparkles, Settings,
   Cpu, TrendingUp, Megaphone, Router, ScanFace, ShieldCheck, Bell, LogOut,
-  Moon, Sun,
+  Moon, Sun, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import BadgeEmploye from '../components/BadgeEmploye'
@@ -31,6 +31,7 @@ import { grouperAbsences } from '../utils/barresSemaine'
 import CurrencyService from '../services/currencyService'
 import FicheEmployeModal from '../components/FicheEmployeModal'
 import CarteEmploye from '../components/equipes/CarteEmploye'
+import Etincelle from '../components/equipes/Etincelle'
 import { useTheme } from '../contexts/ThemeContext'
 import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
 import EquipesVue from '../components/equipes/EquipesVue'
@@ -83,6 +84,10 @@ export default function Employes() {
   // La moyenne des présents sur 30 jours : elle seule permet un écart honnête.
   // Pas de donnée → pas d'écart affiché (jamais un chiffre inventé).
   const [moyennePresents30j, setMoyennePresents30j] = useState(null)
+  // La série des présences des quatorze derniers jours — pour l'étincelle.
+  const [seriePresents, setSeriePresents] = useState(null)
+  // 0 = cette semaine ; -1 = la précédente. On ne va jamais dans le futur.
+  const [decalageSemaine, setDecalageSemaine] = useState(0)
   // La semaine et le fil d'annonces : deux lectures silencieuses, aucune
   // donnée inventée si le serveur ne répond pas.
   const [semainePointages, setSemainePointages] = useState(null)
@@ -114,6 +119,15 @@ export default function Employes() {
           jours.get(jour).add(pointage.employee_id)
         })
         const valeurs = [...jours.values()].map((ensemble) => ensemble.size)
+        // Les quatorze derniers jours, dans l'ordre, zéros compris :
+        // un jour sans pointage est un zéro, pas un trou dans la courbe.
+        const serie = []
+        for (let i = 13; i >= 0; i -= 1) {
+          const jour = new Date(fin.getTime() - i * 24 * 3600 * 1000)
+          const cle = jour.toISOString().slice(0, 10)
+          serie.push(jours.has(cle) ? jours.get(cle).size : 0)
+        }
+        if (!annule) setSeriePresents(serie)
         if (!valeurs.length) { if (!annule) setMoyennePresents30j(null); return }
         const moyenne = valeurs.reduce((somme, v) => somme + v, 0) / valeurs.length
         if (!annule) setMoyennePresents30j(moyenne)
@@ -136,7 +150,7 @@ export default function Employes() {
         const maintenant = new Date()
         const lundi = new Date(maintenant)
         const decalage = (maintenant.getDay() + 6) % 7
-        lundi.setDate(maintenant.getDate() - decalage)
+        lundi.setDate(maintenant.getDate() - decalage + decalageSemaine * 7)
         lundi.setHours(0, 0, 0, 0)
         const dimanche = new Date(lundi)
         dimanche.setDate(lundi.getDate() + 6)
@@ -174,7 +188,7 @@ export default function Employes() {
     }
     lire()
     return () => { annule = true }
-  }, [employes])
+  }, [employes, decalageSemaine])
 
   // La masse salariale : les profils de rémunération des entreprises
   // réellement chargées — pas seulement celle de l'administrateur, sinon
@@ -1211,7 +1225,7 @@ export default function Employes() {
   const semaineAffichee = (() => {
     const maintenant = new Date()
     const lundi = new Date(maintenant)
-    lundi.setDate(maintenant.getDate() - ((maintenant.getDay() + 6) % 7))
+    lundi.setDate(maintenant.getDate() - ((maintenant.getDay() + 6) % 7) + decalageSemaine * 7)
     lundi.setHours(0, 0, 0, 0)
     const noms = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']
     return Array.from({ length: 7 }, (_, i) => {
@@ -1225,6 +1239,14 @@ export default function Employes() {
         aujourdhui: jour.toDateString() === maintenant.toDateString(),
       }
     })
+  })()
+
+  const libelleSemaine = (() => {
+    if (decalageSemaine === 0) return 'Cette semaine'
+    const premier = semaineAffichee[0]
+    const dernier = semaineAffichee[6]
+    const court = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    return `Semaine du ${court(premier.iso)} au ${court(dernier.iso)}`
   })()
 
   // Une ligne = une personne, sept cases. Trois états, jamais devinés :
@@ -1499,8 +1521,10 @@ export default function Employes() {
                     </span>
                     <span className="empv3-carte-titre">Effectif total</span>
                   </div>
-                  <div className="empv3-kpi-chiffre">{employes.length}</div>
-                  <div className="empv3-kpi-pied">au registre</div>
+                  <div className="empv3-kpi-ligne">
+                    <span className="empv3-kpi-chiffre">{employes.length}</span>
+                  </div>
+                  <div className="empv3-kpi-pied">Collaborateurs dans l’entreprise</div>
                 </div>
 
                 <div className="empv3-carte empv3-kpi">
@@ -1510,19 +1534,24 @@ export default function Employes() {
                     </span>
                     <span className="empv3-carte-titre">Présents</span>
                   </div>
-                  <div className="empv3-kpi-chiffre">{suiviPresence ? presentsDuJour : '—'}</div>
-                  <div className="empv3-kpi-pied">
-                    {ecartPresents === null ? (
-                      'en poste ou en pause, aujourd’hui'
-                    ) : (
-                      <>
-                        <span className={ecartPresents >= 0 ? 'empv3-ecart empv3-ecart--haut' : 'empv3-ecart empv3-ecart--bas'}>
-                          {ecartPresents >= 0 ? '↗' : '↘'} {Math.abs(ecartPresents)} %
-                        </span>
-                        <span className="empv3-kpi-note">vs 30 jours</span>
-                      </>
+                  <div className="empv3-kpi-ligne">
+                    <span className="empv3-kpi-chiffre">{suiviPresence ? presentsDuJour : '—'}</span>
+                    {ecartPresents !== null && (
+                      <span className={ecartPresents >= 0 ? 'empv3-ecart empv3-ecart--haut' : 'empv3-ecart empv3-ecart--bas'}>
+                        {ecartPresents >= 0 ? '↗' : '↘'} {Math.abs(ecartPresents)} %
+                      </span>
                     )}
                   </div>
+                  <div className="empv3-kpi-pied">
+                    {ecartPresents === null
+                      ? 'pointés aujourd’hui'
+                      : 'par rapport à la moyenne des 30 jours'}
+                  </div>
+                  {seriePresents && (
+                    <span className="empv3-kpi-etincelle">
+                      <Etincelle valeurs={seriePresents} />
+                    </span>
+                  )}
                 </div>
 
                 <div className="empv3-carte empv3-kpi">
@@ -1532,7 +1561,9 @@ export default function Employes() {
                     </span>
                     <span className="empv3-carte-titre">Accès au portail</span>
                   </div>
-                  <div className="empv3-kpi-chiffre">{actifsPortail}</div>
+                  <div className="empv3-kpi-ligne">
+                    <span className="empv3-kpi-chiffre">{actifsPortail}</span>
+                  </div>
                   <div className="empv3-kpi-pied">
                     comptes actifs sur {employes.length}
                     <span className="empv3-kpi-note"> · {Math.max(employes.length - actifsPortail, 0)} à activer</span>
@@ -1546,8 +1577,10 @@ export default function Employes() {
                     </span>
                     <span className="empv3-carte-titre">Retards</span>
                   </div>
-                  <div className="empv3-kpi-chiffre">{suiviPresence ? liveCounts.retards : '—'}</div>
-                  <div className="empv3-kpi-pied">ce jour — le mot est écrit</div>
+                  <div className="empv3-kpi-ligne">
+                    <span className="empv3-kpi-chiffre">{suiviPresence ? liveCounts.retards : '—'}</span>
+                  </div>
+                  <div className="empv3-kpi-pied">arrivées après l’heure, aujourd’hui</div>
                 </div>
               </div>
 
@@ -1557,8 +1590,33 @@ export default function Employes() {
                 <div className="empv3-carte">
                   <div className="empv3-carte-tete">
                     <span className="empv3-carte-titre">Planning de la semaine</span>
-                    <span className="empv3-carte-total">
-                      {semainePointages === null ? '—' : `${employes.slice(0, 6).length} personne${employes.length > 1 ? 's' : ''}`}
+                    <span className="empv3-semaine-commande">
+                      <button
+                        type="button"
+                        className="empv3-fleche"
+                        aria-label="La semaine précédente"
+                        onClick={() => setDecalageSemaine((n) => n - 1)}
+                      >
+                        <ChevronLeft size={13} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="empv3-chip empv3-chip--bouton"
+                        aria-label={`Afficher la semaine du ${semaineAffichee[0].num} : ${libelleSemaine}`}
+                        onClick={() => setDecalageSemaine(0)}
+                        title="Revenir à la semaine en cours"
+                      >
+                        {libelleSemaine}
+                      </button>
+                      <button
+                        type="button"
+                        className="empv3-fleche"
+                        aria-label="La semaine suivante"
+                        disabled={decalageSemaine >= 0}
+                        onClick={() => setDecalageSemaine((n) => Math.min(0, n + 1))}
+                      >
+                        <ChevronRight size={13} aria-hidden="true" />
+                      </button>
                     </span>
                   </div>
 
@@ -1647,26 +1705,28 @@ export default function Employes() {
                       <p className="empv3-masse">{montant(masseSalariale.total)}</p>
 
                       <div
-                        className="empv3-histogramme"
+                        className="empv3-rang"
                         role="img"
                         aria-label={`Coût mensuel par service : ${masseSalariale.lignes
-                          .map((l) => `${l.service} ${montant(l.montant)}`)
-                          .join(', ')}`}
+                          .map((l) => `${l.service}, ${montant(l.montant)}`)
+                          .join(' ; ')}`}
                       >
                         {masseSalariale.lignes.map((ligne, index) => (
-                          <span className="empv3-colonne" key={ligne.service}>
-                            <span
-                              className={`empv3-colonne-barre${index === 0 ? ' is-forte' : ''}`}
-                              style={{
-                                height: `${Math.max(
-                                  8,
-                                  Math.round((ligne.montant / masseSalariale.max) * 100),
-                                )}%`,
-                              }}
-                              title={`${ligne.service} — ${montant(ligne.montant)}`}
-                            />
-                            <span className="empv3-colonne-mot">{ligne.service}</span>
-                          </span>
+                          <div className="empv3-rang-ligne" key={ligne.service}>
+                            <span className="empv3-rang-mot" title={ligne.service}>{ligne.service}</span>
+                            <span className="empv3-rang-piste">
+                              <span
+                                className={`empv3-rang-barre${index === 0 ? ' is-forte' : ''}`}
+                                style={{
+                                  width: `${Math.max(
+                                    4,
+                                    Math.round((ligne.montant / masseSalariale.max) * 100),
+                                  )}%`,
+                                }}
+                              />
+                            </span>
+                            <span className="empv3-rang-montant">{montant(ligne.montant)}</span>
+                          </div>
                         ))}
                       </div>
 
