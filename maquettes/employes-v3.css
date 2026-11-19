@@ -334,7 +334,7 @@ body.mq3-reduite .mq3-panneau {
 .mq3-corps { padding: 18px 20px 26px; display: flex; flex-direction: column; gap: 14px; }
 
 .mq3-tete { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.mq3-salut { margin: 0; font-size: 19px; font-weight: 700; margin-right: auto; }
+.mq3-salut { margin: 0; font-size: 20px; font-weight: 700; margin-right: auto; }
 .mq3-actions { display: flex; align-items: center; gap: 8px; }
 
 .mq3-periode {
