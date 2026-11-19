@@ -296,3 +296,40 @@ Le test interdit désormais ce champ (`not.toContain('annonce.type_media')`).
 **Restent ouverts** : le hachurage des samedis et dimanches, les barres d'absence qui traversent plusieurs
 jours, l'éventuelle troisième semaine de la grille, et le sélecteur d'entreprise (la variable
 `selectedEnterpriseFilter` existe dans `Employes.jsx` **sans aucun contrôle à l'écran**).
+
+### Le 08/11 — la maquette générée, validée, puis codée
+
+Le 08/11, sur sa demande, la page est passée par **une maquette d'image générée**, pas par une référence
+externe : « tu vas me générer une maquette image de la page, je valide celle que je voudrais que tu
+reproduise à l'identique et tu codes ». Deux propositions ont été faites ; il a retenu la seconde
+(`maquettes/employes-v5.png`).
+
+Ses deux demandes, citées :
+
+> « enlève les annonces d'accueil, je veux une graphique sur le coût total des salaires »
+> « je veux là où on voit la liste des employés d'afficher les employés en card (sorte de badge) avec
+> leur nom, poste, contrat, numéro Whatsapp + email si existant, état (en pause, en congé, en poste etc) »
+
+Ce qui change dans la page :
+
+| Avant | Après |
+|---|---|
+| carte « Annonces d'accueil » (3 cartes tintées, vignette) | carte **« Masse salariale »** : total du mois + histogramme par service |
+| tableau de 4 colonnes (`LigneAnnuaire`) | **galerie de cartes** (`CarteEmploye`), 3 par rangée, 9 par page |
+| statut seul dans la ligne | carte : initiales + pastille d'état, nom, poste · service, **contrat**, **WhatsApp**, **email**, puis la pilule d'état et ⋮ |
+
+**D'où vient la masse salariale, exactement** : table `employee_payroll_profiles`, une ligne par personne.
+Coût mensuel = base (`base_salary`, ou `hourly_rate × contract_hours_per_month`, ou
+`daily_rate × contract_days_per_month`) + `transport_allowance` + `housing_allowance` + `fixed_bonus`.
+Les profils `is_active = false` sont ignorés. La devise vient de `CurrencyService.resolveCurrency` sur
+l'entreprise — aucun franc inventé, aucun montant sans unité.
+
+**Écarts assumés avec la maquette, dits franchement** :
+
+| Dans la maquette | Dans la page | Pourquoi |
+|---|---|---|
+| trois pilules `en poste / en pause / en congé` sur **chaque** carte | **une seule** pilule, celle de la personne | afficher les trois états à la fois serait un mensonge sur chaque ligne |
+| histogramme « lun. → dim. » | par **service** (6 premiers, le plus coûteux en espresso) | il n'existe pas d'historique mensuel des salaires : un axe de dates aurait été inventé |
+| chiffres d'exemple (1222, 2103, 305 %) | nos chiffres réels, ou un tiret | un chiffre d'exemple à l'écran est un chiffre faux |
+| titre ~56 px | 20 px (D-013) | sa coque est plus sage que la référence, il l'a demandé |
+| rayons 18–20 px, ombres douces | rayons {6, 8, 11, 12, 999}, ombre dure 3 px (D-016) | la peau D ne bouge pas sans décision |

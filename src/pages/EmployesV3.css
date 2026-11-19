@@ -842,66 +842,183 @@
 }
 .empv3-case--rien { background: var(--charte-surface2); }
 
-/* Le fil des annonces : trois cartes teintées, comme la maquette */
-.empv3-annonces { display: flex; flex-direction: column; gap: 8px; }
+/* ── La masse salariale : un chiffre, un histogramme, une légende ── */
 
-.empv3-annonce {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--charte-rayon-carte);
-  border: 1px solid transparent;
+.empv3-masse {
+  margin: 2px 0 6px;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1.05;
+  color: var(--charte-encre);
+  font-variant-numeric: tabular-nums;
 }
-.empv3-annonce-texte {
+
+.empv3-histogramme {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  align-items: flex-end;
+  gap: 8px;
+  height: 150px;
+  padding-top: 6px;
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
 }
-/* La vignette du média : carrée, l'image remplit, rien ne déborde. */
-.empv3-annonce-vignette {
-  display: block;
-  width: 54px;
-  height: 54px;
-  overflow: hidden;
-  border-radius: var(--charte-rayon-champ);
-  border: 1px solid var(--charte-bordure);
-  background: var(--charte-surface2);
-}
-.empv3-annonce-vignette img,
-.empv3-annonce-vignette video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.empv3-annonce--0 {
-  background: color-mix(in srgb, var(--charte-aplat) 12%, transparent);
-  border-color: color-mix(in srgb, var(--charte-aplat) 30%, transparent);
-}
-.empv3-annonce--1 {
-  background: color-mix(in srgb, var(--charte-succes) 12%, transparent);
-  border-color: color-mix(in srgb, var(--charte-succes) 30%, transparent);
-}
-.empv3-annonce--2 {
-  background: color-mix(in srgb, var(--charte-alerte) 12%, transparent);
-  border-color: color-mix(in srgb, var(--charte-alerte) 30%, transparent);
-}
-.empv3-annonce strong { font-size: 11px; font-weight: 700; color: var(--charte-encre); }
-.empv3-annonce p { margin: 0; font-size: 10px; color: var(--charte-douce); line-height: 1.4; }
 
-.empv3-annonce-chips { display: flex; gap: 6px; margin-top: 2px; }
-.empv3-annonce-chips span {
-  display: inline-flex;
+.empv3-colonne {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  flex-direction: column;
+  justify-content: flex-end;
   align-items: center;
-  height: 20px;
-  padding: 0 8px;
-  border-radius: var(--charte-rayon-pilule);
-  background: var(--charte-surface);
-  border: 1px solid var(--charte-bordure);
+  gap: 6px;
+}
+
+.empv3-colonne-barre {
+  width: 100%;
+  max-width: 44px;
+  border-radius: var(--charte-rayon-champ) var(--charte-rayon-champ) 0 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-bottom: 0;
+  background: var(--charte-aplat);
+}
+.empv3-colonne-barre.is-forte { background: var(--charte-encre); }
+
+.empv3-colonne-mot {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 9px;
   font-weight: 600;
   color: var(--charte-douce);
-  font-variant-numeric: tabular-nums;
+  transform: translateY(16px);
+}
+.empv3-histogramme { margin-bottom: 18px; }
+
+/* ── Les cartes d'employés : trois par rangée ── */
+
+.empv3-fiches {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 1180px) { .empv3-fiches { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .empv3-fiches { grid-template-columns: 1fr; } }
+
+/* la pagination ne prend pas une case de la grille : elle passe dessous */
+.empv3-fiches .empv2-pagination { grid-column: 1 / -1; }
+
+.empv3-fiche {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--charte-surface);
+  box-shadow: var(--charte-ombre-dure);
+  cursor: pointer;
+  transition: transform var(--charte-duree) var(--charte-easing);
+}
+/* une carte sur deux prend le sable plus dense : le rythme sans la zébrure */
+.empv3-fiche:nth-child(3n + 2) { background: var(--charte-surface2); }
+.empv3-fiche:hover { transform: translate(-2px, -2px); }
+.empv3-fiche:focus-visible { outline: 2px solid var(--charte-texte); outline-offset: 2px; }
+
+.empv3-fiche-tete { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+.empv3-fiche-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  overflow: visible;
+  border-radius: var(--charte-rayon-pilule);
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface2);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+.empv3-fiche-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--charte-rayon-pilule);
+  object-fit: cover;
+}
+
+/* la pastille d'état, posée sur le coin de l'avatar */
+.empv3-fiche-pastille {
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--charte-rayon-pilule);
+  border: 2px solid var(--charte-surface);
+  background: var(--charte-statut-neutre);
+}
+.empv3-fiche-pastille--en_poste { background: var(--charte-statut-present); }
+.empv3-fiche-pastille--en_pause { background: var(--charte-statut-cours); }
+.empv3-fiche-pastille--retard { background: var(--charte-statut-retard); }
+.empv3-fiche-pastille--absent { background: var(--charte-statut-absent); }
+
+.empv3-fiche-identite { display: flex; flex-direction: column; min-width: 0; }
+.empv3-fiche-nom {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+.empv3-fiche-poste {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: var(--charte-douce);
+}
+
+.empv3-fiche-contrat {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: var(--charte-rayon-pilule);
+  border: 1px solid var(--charte-bordure);
+  background: var(--charte-surface);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+.empv3-fiche-contacts { display: flex; flex-direction: column; gap: 4px; }
+.empv3-fiche-contact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 10px;
+  color: var(--charte-encre);
+}
+.empv3-fiche-contact > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.empv3-fiche-contact svg { flex: none; color: var(--charte-douce); }
+.empv3-fiche-contact--vide { color: var(--charte-douce); font-style: italic; }
+
+.empv3-fiche-pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--charte-bordure);
 }
