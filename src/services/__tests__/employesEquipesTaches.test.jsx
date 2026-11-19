@@ -322,10 +322,10 @@ describe('la vue Annuaire', () => {
 
     // ce que la carte porte
     const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
-    expect(CARTE).toContain('empv3-pro-nom')
-    expect(CARTE).toContain('empv3-pro-poste')
+    expect(CARTE).toContain('empv3-d-nom')
+    expect(CARTE).toContain('empv3-d-poste')
     // le contrat est une pastille pleine, plus un mot posé sous le nom
-    expect(CARTE).toContain('empv3-pro-chip--contrat')
+    expect(CARTE).toContain('empv3-d-chip--contrat')
     expect(CARTE).toContain('contrat à compléter')
     // le numéro WhatsApp et l'email, chacun avec son icône
     expect(CARTE).toContain('MessageCircle')
@@ -1081,34 +1081,29 @@ describe('la page Employés', () => {
     }
   }
 
-  it('la carte est le modèle C : la vraie image bogolan en galon, rien derrière le texte', () => {
+  it('la carte est le modèle D : panneau bogolan latéral, photo posée dessus', () => {
     const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
     const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
 
-    // le galon est la VRAIE image du dépôt — pas un SVG improvisé
-    expect(CARTE).toContain('empv3-pro-galon')
-    expect(CSS_EMP).toMatch(/\.empv3-pro-galon \{[\s\S]{0,240}paie-bogolan-haut\.webp/)
-    expect(CSS_EMP).toMatch(/\.empv3-pro-galon \{[\s\S]{0,300}height: 17px/)
-    // le SVG inventé ne revient pas
-    expect(() => readFileSync('src/components/equipes/BandeauBogolan.jsx')).toThrow()
+    // le tissu est la VRAIE image, tournée à la verticale, et il existe
+    expect(CSS_EMP).toMatch(/\.empv3-d-tissu \{[\s\S]{0,260}bogolan-vertical\.webp/)
+    expect(() => readFileSync('public/images/bogolan-vertical.webp')).not.toThrow()
 
-    // la composition de la maquette : photo, nom, poste, état sur une ligne
-    expect(CARTE).toContain('empv3-pro-tete')
-    expect(CARTE).toContain('empv3-pro-avatar')
-    expect(CARTE).toContain('empv3-pro-identite')
-    expect(CARTE).toContain('empv3-pro-etat')
-    // les quatre pastilles
-    expect(CARTE).toContain('empv3-pro-chip--contrat')
-    expect(CARTE).toContain('Portail actif')
-    expect(CARTE).toContain('Sans compte')
-    // le rond « + photo » quand la photo manque
-    expect(CARTE).toContain('empv3-pro-avatar--vide')
-    expect(CARTE).toContain('Ajouter une photo pour')
-
-    // la photo est à GAUCHE, le texte à droite : une seule rangée
-    expect(CSS_EMP).toMatch(/\.empv3-pro-tete \{[\s\S]{0,140}display: flex/)
-    // et le galon fait 17 px : il ne peut pas passer derrière 4 lignes de texte
-    expect(CSS_EMP).not.toMatch(/\.empv3-pro-galon \{[\s\S]{0,200}height: 9[0-9]px/)
+    // la structure : une colonne de tissu, un corps de papier
+    expect(CARTE).toContain('empv3-d-panneau')
+    expect(CARTE).toContain('empv3-d-tissu')
+    expect(CARTE).toContain('empv3-d-corps')
+    // la photo vit DANS le panneau, pas dans le corps
+    const panneau = CARTE.slice(CARTE.indexOf('empv3-d-panneau'), CARTE.indexOf('empv3-d-corps'))
+    expect(panneau).toContain('empv3-d-avatar')
+    // le corps porte nom, état, pastilles, contacts
+    for (const morceau of ['empv3-d-nom', 'empv3-d-poste', 'empv3-d-etat', 'empv3-d-chips', 'empv3-d-contacts']) {
+      expect(CARTE).toContain(morceau)
+    }
+    // la grille : 78 px de tissu puis le papier
+    expect(CSS_EMP).toMatch(/\.empv3-d \{[\s\S]{0,120}grid-template-columns: 78px minmax\(0, 1fr\)/)
+    // le tissu ne se répète QUE verticalement : il ne s'étire pas en travers
+    expect(CSS_EMP).toMatch(/\.empv3-d-tissu \{[\s\S]{0,300}repeat-y/)
   })
 
   it('la recherche est large, explicite et effaçable', () => {
