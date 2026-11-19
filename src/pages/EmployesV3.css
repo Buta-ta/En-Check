@@ -2515,3 +2515,86 @@
     padding-right: 14px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LES PASTILLES ET LES CONTACTS — rétablis
+   Faute du 19/11 : en retirant l'ancien bloc (155 lignes), j'ai
+   emporté le style des pastilles. Elles s'affichaient en texte
+   brut collé : « contrat à compléter#REC-0002Sans compte ».
+   Un test vérifie désormais que chaque classe du composant a
+   bien sa règle dans la feuille.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-fiche-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.empv3-fiche-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1.5px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  line-height: 1.4;
+  color: var(--charte-encre);
+  white-space: nowrap;
+}
+
+.empv3-fiche-chip--contrat {
+  background: var(--charte-encre);
+  border-color: var(--charte-encre);
+  color: var(--charte-surface);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.empv3-fiche-chip--actif {
+  border-color: color-mix(in srgb, var(--charte-succes) 60%, transparent);
+  background: color-mix(in srgb, var(--charte-succes) 12%, transparent);
+  color: var(--charte-succes);
+  font-weight: 700;
+}
+
+.empv3-fiche-chip--vide {
+  border-style: dashed;
+  color: var(--charte-douce);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.empv3-fiche-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--charte-texte);
+}
+.empv3-fiche-contact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.empv3-fiche-contact > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.empv3-fiche-contact--vide {
+  font-style: italic;
+  color: var(--charte-douce);
+}
+
+/* sur grand écran, les deux contacts tiennent côte à côte */
+@media (min-width: 700px) {
+  .empv3-fiche-contacts--portrait { flex-direction: row; flex-wrap: wrap; gap: 4px 16px; }
+}

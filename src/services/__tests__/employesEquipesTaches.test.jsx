@@ -1124,6 +1124,26 @@ describe('la page Employés', () => {
     expect(entete).not.toMatch(/className="empv3-fiche-etat"/)
   })
 
+  it('chaque classe de la carte a bien sa règle : plus de texte brut', () => {
+    // faute du 19/11 : les pastilles s'affichaient collées, sans style,
+    // parce que leur CSS avait disparu avec l'ancien bloc
+    const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    const classes = new Set()
+    for (const m of CARTE.matchAll(/className="([^"{}]+)"/g)) {
+      m[1].split(/\s+/).filter(Boolean).forEach((c) => classes.add(c))
+    }
+    // on ignore les jetons de la charte, qui viennent d'ailleurs
+    const orphelines = [...classes].filter(
+      (c) => !c.startsWith('ch-') && !c.startsWith('empv2-') && c !== 'empv3-fiche',
+    ).filter((c) => !CSS_EMP.includes(`.${c}`) && !CSS_EMP.includes(c))
+    expect(orphelines).toEqual([])
+    // et les trois pastilles vraiment attendues sur la maquette
+    for (const c of ['empv3-fiche-chip--contrat', 'empv3-fiche-chip--actif', 'empv3-fiche-chips']) {
+      expect(CSS_EMP).toContain(`.${c}`)
+    }
+  })
+
   it('la recherche est large, explicite et effaçable', () => {
     expect(EMPLOYES).toContain('empv3-recherche')
     expect(EMPLOYES).toContain('empv3-recherche-effacer')
