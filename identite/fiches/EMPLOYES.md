@@ -245,3 +245,15 @@ C9 et C10 **inchangés**. La page n'ajoute **aucune** violation.
 
 Le bloc « Tous les employés » remplace la grille de cartes ; chaque ligne garde ses actions
 (fiche, badge, pointages, horaires, mot de passe, suppression) dans le menu `⋮`.
+
+### Correction du 08/11 — la collision avec `main`
+
+`main` avait avancé entre-temps : la page Employés y avait été refaite par **une autre IA**
+(PR #232 « annuaire en peau D, tableau filets 25 lignes/page ») puis réparée (PR #233 : coque
+`empv2-coque`, variables de la barre, échappements). Ma branche partait d'avant.
+
+**Résolution retenue** : la coque et le tableau de `main` sont **conservés** (ils sont réparés, le
+tableau est paginé à 25 lignes et `LigneAnnuaire` porte les actions) ; la **composition validée**
+vient par-dessus — les trois cartes remplacent les trois tuiles, les deux blocs sont ajoutés, la
+recherche (qui n'avait plus de champ) revient dans la barre d'outils, et l'en-tête reçoit la date
+et l'export. Rien de leur travail n'est jeté.
