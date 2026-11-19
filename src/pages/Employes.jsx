@@ -64,6 +64,16 @@ const FILTRES_ANNUAIRE = [
 
 // Une part réelle, ou un tiret quand il n'y a rien à diviser.
 
+// Un retard se dit en heures et minutes, jamais en minutes seules :
+// « 523 min » ne veut rien dire, « 8 h 43 » se lit.
+function dureeEnHeuresEtMinutes(minutes) {
+  const total = Math.max(0, Math.round(Number(minutes) || 0))
+  if (total < 60) return `${total} min`
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, '0')}`
+}
+
 function nomCompletDe(employee) {
   return [employee.first_name, employee.last_name].filter(Boolean).join(' ') || 'Sans nom'
 }
@@ -1333,7 +1343,12 @@ export default function Employes() {
       if (semainePointages?.get(employee.id)?.has(jour.iso)) {
         const retard = liveStatusByEmployee?.[employee.id]
         if (jour.aujourdhui && retard?.retardMinutes) {
-          return { etat: 'retard', mot: `Retard de ${retard.retardMinutes} min`, minutes: retard.retardMinutes }
+          return {
+            etat: 'retard',
+            mot: `Retard de ${dureeEnHeuresEtMinutes(retard.retardMinutes)}`,
+            minutes: retard.retardMinutes,
+            court: dureeEnHeuresEtMinutes(retard.retardMinutes),
+          }
         }
         return { etat: 'pointe', mot: 'Pointé' }
       }
@@ -1804,7 +1819,7 @@ export default function Employes() {
                                     <span className="empv3-case-marque" aria-hidden="true">✓</span>
                                   )}
                                   {jour.etat === 'retard' && (
-                                    <span className="empv3-case-plus" aria-hidden="true">+{jour.minutes}</span>
+                                    <span className="empv3-case-plus" aria-hidden="true">+{jour.court}</span>
                                   )}
                                 </span>
                               )
@@ -1832,7 +1847,7 @@ export default function Employes() {
                         Pointé
                       </span>
                       <span className="empv3-legende-item">
-                        <i className="empv3-case empv3-case--retard"><b className="empv3-case-plus" aria-hidden="true">+12</b></i>
+                        <i className="empv3-case empv3-case--retard"><b className="empv3-case-plus" aria-hidden="true">+42 min</b></i>
                         Retard
                       </span>
                       <span className="empv3-legende-item">
@@ -1850,6 +1865,7 @@ export default function Employes() {
                     </div>
                 </div>
 
+                <div className="empv3-colonne-droite">
                 <div className="empv3-carte">
                   <div className="empv3-carte-tete">
                     <span className="empv3-carte-titre">Masse salariale</span>
@@ -1984,6 +2000,7 @@ export default function Employes() {
                   <p className="empv3-legende">
                     Tâches terminées ou validées sur le total de l’équipe.
                   </p>
+                </div>
                 </div>
               </div>
 
