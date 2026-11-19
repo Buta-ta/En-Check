@@ -1221,6 +1221,26 @@ export default function Employes() {
 
   const actifsPortail = employes.filter((e) => aUnCompteEmploye(e)).length
 
+  // ── les cartes de chiffres agissent ─────────────────────
+  // Chaque carte applique un filtre à la liste, puis y amène l'écran.
+  // On ne promet pas une page qu'on n'ouvre pas.
+  const allerALaListe = () => {
+    const cible = document.querySelector('.empv2-filtres')
+    if (cible?.scrollIntoView) cible.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  const filtrerParLaCarte = (cle) => {
+    setCategoryFilter((actuel) => (actuel === cle ? 'all' : cle))
+    allerALaListe()
+  }
+  const montrerLesSansCompte = () => {
+    setCategoryFilter((actuel) => (actuel === 'sans_compte' ? 'all' : 'sans_compte'))
+    allerALaListe()
+  }
+  const montrerLesRetards = () => {
+    setCategoryFilter((actuel) => (actuel === 'live_retard' ? 'all' : 'live_retard'))
+    allerALaListe()
+  }
+
   // La semaine en cours, découpée en sept jours.
   const semaineAffichee = (() => {
     const maintenant = new Date()
@@ -1259,8 +1279,14 @@ export default function Employes() {
           && String(a.end_date || '').slice(0, 10) >= jour.iso,
       )
       if (absence) return { etat: 'conge', mot: absence.reason || 'Congé' }
-      if (semainePointages?.get(employee.id)?.has(jour.iso)) return { etat: 'pointe', mot: 'Pointé' }
-      return { etat: 'rien', mot: jour.futur ? 'À venir' : 'Rien ce jour' }
+      if (semainePointages?.get(employee.id)?.has(jour.iso)) {
+        const retard = liveStatusByEmployee?.[employee.id]
+        if (jour.aujourdhui && retard?.retardMinutes) {
+          return { etat: 'retard', mot: `Retard de ${retard.retardMinutes} min`, minutes: retard.retardMinutes }
+        }
+        return { etat: 'pointe', mot: 'Pointé' }
+      }
+      return { etat: jour.futur ? 'avenir' : 'rien', mot: jour.futur ? 'À venir' : 'Rien ce jour' }
     })
     // Une absence de trois jours est une barre, pas trois cases.
     return { employee, jours, barres: grouperAbsences(jours) }
@@ -1514,7 +1540,12 @@ export default function Employes() {
                   L'écart ne s'affiche que là où il est mesuré. */}
               <div className="empv3-cartes empv3-cartes--quatre">
 
-                <div className="empv3-carte empv3-kpi">
+                <button
+                  type="button"
+                  className={`empv3-carte empv3-kpi empv3-kpi--agissante${categoryFilter === 'all' ? '' : ''}`}
+                  onClick={() => { setCategoryFilter('all'); allerALaListe() }}
+                  aria-label={`Effectif total : ${employes.length} collaborateurs — voir toute la liste`}
+                >
                   <div className="empv3-kpi-tete">
                     <span className="empv3-kpi-ico" data-ton="argile">
                       <Users size={16} aria-hidden="true" />
@@ -1525,9 +1556,16 @@ export default function Employes() {
                     <span className="empv3-kpi-chiffre">{employes.length}</span>
                   </div>
                   <div className="empv3-kpi-pied">Collaborateurs dans l’entreprise</div>
-                </div>
+                  <span className="empv3-kpi-action">Voir la liste <ArrowRight size={10} aria-hidden="true" /></span>
+                </button>
 
-                <div className="empv3-carte empv3-kpi">
+                <button
+                  type="button"
+                  className={`empv3-carte empv3-kpi empv3-kpi--agissante${categoryFilter === 'live_en_poste' ? ' empv3-kpi--active' : ''}`}
+                  onClick={() => filtrerParLaCarte('live_en_poste')}
+                  aria-pressed={categoryFilter === 'live_en_poste'}
+                  aria-label={`Présents : ${presentsDuJour} — filtrer la liste sur les personnes en poste`}
+                >
                   <div className="empv3-kpi-tete">
                     <span className="empv3-kpi-ico" data-ton="succes">
                       <Briefcase size={16} aria-hidden="true" />
@@ -1547,14 +1585,24 @@ export default function Employes() {
                       ? 'pointés aujourd’hui'
                       : 'par rapport à la moyenne des 30 jours'}
                   </div>
+                  <span className="empv3-kpi-action">
+                    {categoryFilter === 'live_en_poste' ? 'Filtre posé' : 'Filtrer'}
+                    <ArrowRight size={10} aria-hidden="true" />
+                  </span>
                   {seriePresents && (
                     <span className="empv3-kpi-etincelle">
                       <Etincelle valeurs={seriePresents} />
                     </span>
                   )}
-                </div>
+                </button>
 
-                <div className="empv3-carte empv3-kpi">
+                <button
+                  type="button"
+                  className={`empv3-carte empv3-kpi empv3-kpi--agissante${categoryFilter === 'sans_compte' ? ' empv3-kpi--active' : ''}`}
+                  onClick={montrerLesSansCompte}
+                  aria-pressed={categoryFilter === 'sans_compte'}
+                  aria-label={`Accès au portail : ${actifsPortail} comptes actifs sur ${employes.length} — montrer les personnes sans compte`}
+                >
                   <div className="empv3-kpi-tete">
                     <span className="empv3-kpi-ico" data-ton="texte">
                       <Key size={16} aria-hidden="true" />
@@ -1568,9 +1616,21 @@ export default function Employes() {
                     comptes actifs sur {employes.length}
                     <span className="empv3-kpi-note"> · {Math.max(employes.length - actifsPortail, 0)} à activer</span>
                   </div>
-                </div>
+                  <span className="empv3-kpi-action">
+                    {Math.max(employes.length - actifsPortail, 0) === 0
+                      ? 'Tous activés'
+                      : categoryFilter === 'sans_compte' ? 'Filtre posé' : 'Voir les sans-compte'}
+                    <ArrowRight size={10} aria-hidden="true" />
+                  </span>
+                </button>
 
-                <div className="empv3-carte empv3-kpi">
+                <button
+                  type="button"
+                  className={`empv3-carte empv3-kpi empv3-kpi--agissante${categoryFilter === 'live_retard' ? ' empv3-kpi--active' : ''}`}
+                  onClick={montrerLesRetards}
+                  aria-pressed={categoryFilter === 'live_retard'}
+                  aria-label={`Retards : ${liveCounts.retards} — filtrer la liste sur les retards`}
+                >
                   <div className="empv3-kpi-tete">
                     <span className="empv3-kpi-ico" data-ton="alerte">
                       <Clock size={16} aria-hidden="true" />
@@ -1581,7 +1641,11 @@ export default function Employes() {
                     <span className="empv3-kpi-chiffre">{suiviPresence ? liveCounts.retards : '—'}</span>
                   </div>
                   <div className="empv3-kpi-pied">arrivées après l’heure, aujourd’hui</div>
-                </div>
+                  <span className="empv3-kpi-action">
+                    {categoryFilter === 'live_retard' ? 'Filtre posé' : 'Voir les retards'}
+                    <ArrowRight size={10} aria-hidden="true" />
+                  </span>
+                </button>
               </div>
 
               {/* les deux blocs du milieu — planning de la semaine, annonces */}
@@ -1620,68 +1684,92 @@ export default function Employes() {
                     </span>
                   </div>
 
-                  <div className="empv3-semaine">
-                    <div className="empv3-semaine-tete">
-                      <span className="empv3-semaine-nom" />
-                      {semaineAffichee.map((jour) => (
-                        <span
-                          key={jour.iso}
-                          className={`empv3-jour${jour.aujourdhui ? ' is-aujourdhui' : ''}`}
-                        >
-                          {jour.nom}
-                          <b>{jour.num}</b>
-                        </span>
-                      ))}
-                    </div>
-
-                    {lignesPlanning.map(({ employee, jours, barres }) => (
-                      <div className="empv3-semaine-ligne" key={employee.id}>
-                        <span className="empv3-semaine-nom">
-                          <span className="empv3-avatar" aria-hidden="true">
-                            {(employee.first_name || '?')[0]}{(employee.last_name || '')[0] || ''}
-                          </span>
-                          <span className="empv3-semaine-textes">
-                            <span className="empv3-semaine-qui">{nomCompletDe(employee)}</span>
-                            <span className="empv3-semaine-poste">
-                              {[employee.position, employee.department].filter(Boolean).join(' · ')
-                                || 'poste non renseigné'}
-                            </span>
-                          </span>
-                        </span>
-                        {jours.map((jour, index) => {
-                          // une case couverte par une barre n'est pas relue deux fois
-                          const couvert = barres.some((b) => index > b.debut && index <= b.fin)
-                          return (
-                            <span
-                              key={`${employee.id}-${index}`}
-                              className={`empv3-case empv3-case--${jour.etat}`}
-                              title={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
-                              aria-label={couvert
-                                ? undefined
-                                : `${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
-                              aria-hidden={couvert ? 'true' : undefined}
-                            />
-                          )
-                        })}
-                        {barres.map((barre) => (
+                    <div className="empv3-pistes">
+                      {/* la règle des jours, au-dessus des pistes */}
+                      <div className="empv3-piste empv3-piste--regle">
+                        <span className="empv3-piste-identite" />
+                        {semaineAffichee.map((jour) => (
                           <span
-                            key={`${employee.id}-barre-${barre.debut}`}
-                            className="empv3-barre"
-                            style={{ gridColumn: `${barre.debut + 2} / ${barre.fin + 3}` }}
-                            title={`${semaineAffichee[barre.debut].nom} ${semaineAffichee[barre.debut].num} → ${semaineAffichee[barre.fin].nom} ${semaineAffichee[barre.fin].num} — ${barre.mot}`}
+                            key={`regle-${jour.iso}`}
+                            className={`empv3-jour${jour.aujourdhui ? ' is-aujourdhui' : ''}`}
                           >
-                            <span className="empv3-barre-mot">{barre.mot}</span>
+                            {jour.nom}
+                            <b>{jour.num}</b>
                           </span>
                         ))}
                       </div>
-                    ))}
-                  </div>
 
-                  <div className="empv3-legende">
-                    <span><i style={{ background: 'var(--charte-aplat)' }} />Pointé</span>
-                    <span><i style={{ background: 'var(--charte-alerte)' }} />Absence</span>
-                    <span><i style={{ background: 'var(--charte-surface2)' }} />Rien</span>
-                  </div>
+                      {lignesPlanning.map(({ employee, jours, barres }) => {
+                        const presence = liveStatusByEmployee?.[employee.id]
+                        const motEtat = presence?.state === 'en_poste' ? 'En poste'
+                          : presence?.state === 'en_pause' ? 'En pause'
+                          : presence?.state === 'en_conge' ? 'Absent'
+                          : presence?.state === 'termine' ? 'Parti'
+                          : null
+                        return (
+                          <div className="empv3-piste" key={employee.id}>
+                            <span className="empv3-piste-identite">
+                              <span className="empv3-avatar empv3-avatar--piste">
+                                {employee.photo_url
+                                  ? <img src={employee.photo_url} alt="" loading="lazy" />
+                                  : `${(employee.first_name || '?')[0]}${(employee.last_name || '')[0] || ''}`}
+                              </span>
+                              <span className="empv3-semaine-textes">
+                                <span className="empv3-semaine-qui">{nomCompletDe(employee)}</span>
+                                <span className="empv3-semaine-poste">
+                                  {[employee.position, employee.department].filter(Boolean).join(' · ')
+                                    || 'poste non renseigné'}
+                                </span>
+                              </span>
+                              {motEtat && (
+                                <span className={`empv3-etat empv3-etat--${presence.state}`}>{motEtat}</span>
+                              )}
+                            </span>
+
+                            {jours.map((jour, index) => {
+                              const couvert = barres.some((b) => index > b.debut && index <= b.fin)
+                              return (
+                                <span
+                                  key={`${employee.id}-${index}`}
+                                  className={`empv3-case empv3-case--${jour.etat}`}
+                                  title={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
+                                  aria-label={couvert
+                                    ? undefined
+                                    : `${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
+                                  aria-hidden={couvert ? 'true' : undefined}
+                                >
+                                  {jour.etat === 'pointe' && (
+                                    <span className="empv3-case-marque" aria-hidden="true">✓</span>
+                                  )}
+                                  {jour.etat === 'retard' && (
+                                    <span className="empv3-case-plus" aria-hidden="true">+{jour.minutes}</span>
+                                  )}
+                                </span>
+                              )
+                            })}
+
+                            {barres.map((barre) => (
+                              <span
+                                key={`${employee.id}-barre-${barre.debut}`}
+                                className="empv3-barre"
+                                style={{ gridColumn: `${barre.debut + 2} / ${barre.fin + 3}` }}
+                                title={`${semaineAffichee[barre.debut].nom} ${semaineAffichee[barre.debut].num} → ${semaineAffichee[barre.fin].nom} ${semaineAffichee[barre.fin].num} — ${barre.mot}`}
+                              >
+                                <span className="empv3-barre-mot">{barre.mot}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div className="empv3-legende empv3-legende--etats">
+                      <span><i className="empv3-legende-pastille empv3-legende-pastille--pointe" />Pointé</span>
+                      <span><i className="empv3-legende-pastille empv3-legende-pastille--retard" />Retard</span>
+                      <span><i className="empv3-legende-pastille empv3-legende-pastille--conge" />Absence</span>
+                      <span><i className="empv3-legende-pastille empv3-legende-pastille--avenir" />À venir</span>
+                      <span><i className="empv3-legende-pastille empv3-legende-pastille--rien" />Rien</span>
+                    </div>
                 </div>
 
                 <div className="empv3-carte">

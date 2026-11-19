@@ -1668,3 +1668,242 @@
     }
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LE PLANNING EN PISTES — modèle B validé le 19/11
+   Une piste par personne : la photo et le nom à gauche, les
+   sept jours à droite. Chaque état a sa forme, pas seulement
+   sa couleur : coche, barre oblique, hachures, tirets.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-pistes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.empv3-piste {
+  display: grid;
+  grid-template-columns: 216px repeat(7, minmax(0, 1fr));
+  align-items: center;
+  gap: 7px;
+}
+
+.empv3-piste--regle {
+  align-items: end;
+  padding-bottom: 2px;
+}
+
+/* ── l'identité : une vraie photo, un nom, un état écrit ── */
+
+.empv3-piste-identite {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 5px 8px 5px 5px;
+  border: var(--charte-trait) solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+}
+
+.empv3-avatar--piste {
+  width: 34px;
+  height: 34px;
+  font-size: 11px;
+  border: var(--charte-trait) solid var(--charte-encre);
+}
+
+.empv3-etat {
+  margin-left: auto;
+  flex: none;
+  padding: 2px 7px;
+  border-radius: var(--charte-rayon-pilule);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.empv3-etat--en_poste { background: var(--charte-succes); color: var(--charte-blanc); }
+.empv3-etat--en_pause { background: var(--charte-attention); color: var(--charte-encre); }
+.empv3-etat--en_conge { background: var(--charte-erreur); color: var(--charte-blanc); }
+.empv3-etat--termine { background: var(--charte-surface2); color: var(--charte-douce); }
+
+/* ── les cases : quatre états lisibles à la forme ── */
+
+.empv2-annuaire .empv3-piste .empv3-case {
+  display: grid;
+  place-items: center;
+  height: 34px;
+  border-radius: var(--charte-rayon-champ);
+  border: var(--charte-trait) solid var(--charte-bordure);
+  background: var(--charte-surface2);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.empv2-annuaire .empv3-piste .empv3-case--pointe {
+  background: var(--charte-aplat);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+
+/* le retard : la même barre, plus une oblique et les minutes */
+.empv2-annuaire .empv3-piste .empv3-case--retard {
+  position: relative;
+  background:
+    linear-gradient(135deg, transparent 46%, var(--charte-attention) 46%, var(--charte-attention) 54%, transparent 54%),
+    var(--charte-aplat);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+.empv3-case-plus {
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  font-size: 8px;
+  font-weight: 800;
+  color: var(--charte-surface);
+}
+
+/* l'absence : hachures rouges, la couleur ne parle jamais seule (D-009) */
+.empv2-annuaire .empv3-piste .empv3-case--conge {
+  background:
+    repeating-linear-gradient(45deg,
+      var(--charte-erreur) 0 4px,
+      color-mix(in srgb, var(--charte-erreur) 62%, var(--charte-surface)) 4px 8px);
+  border-color: var(--charte-erreur);
+}
+
+/* à venir : pointillés, rien de rempli */
+.empv2-annuaire .empv3-piste .empv3-case--avenir {
+  background: transparent;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--charte-douce) 55%, transparent);
+}
+
+.empv3-case-marque { font-size: 10px; line-height: 1; }
+
+/* ── la barre d'absence qui traverse plusieurs jours ── */
+
+.empv2-annuaire .empv3-piste .empv3-barre {
+  display: grid;
+  place-items: center;
+  height: 34px;
+  border-radius: var(--charte-rayon-champ);
+  border: var(--charte-trait) solid var(--charte-erreur);
+  background:
+    repeating-linear-gradient(45deg,
+      var(--charte-erreur) 0 5px,
+      color-mix(in srgb, var(--charte-erreur) 78%, var(--charte-encre)) 5px 10px);
+  color: var(--charte-blanc);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* ── la légende : cinq états, chacun avec sa forme ── */
+
+.empv3-legende--etats {
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px dashed color-mix(in srgb, var(--charte-douce) 40%, transparent);
+  gap: 14px;
+}
+
+.empv3-legende-pastille {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface2);
+}
+.empv3-legende-pastille--pointe { background: var(--charte-aplat); }
+.empv3-legende-pastille--retard {
+  background:
+    linear-gradient(135deg, transparent 44%, var(--charte-attention) 44%, var(--charte-attention) 56%, transparent 56%),
+    var(--charte-aplat);
+}
+.empv3-legende-pastille--conge {
+  border-color: var(--charte-erreur);
+  background: repeating-linear-gradient(45deg, var(--charte-erreur) 0 3px, color-mix(in srgb, var(--charte-erreur) 62%, var(--charte-surface)) 3px 6px);
+}
+.empv3-legende-pastille--avenir {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--charte-douce);
+}
+.empv3-legende-pastille--rien { background: var(--charte-surface2); }
+
+@media (max-width: 1100px) {
+  .empv3-piste { grid-template-columns: 180px repeat(7, minmax(0, 1fr)); }
+  .empv3-etat { display: none; }
+}
+@media (max-width: 820px) {
+  .empv3-pistes { gap: 8px; }
+  .empv3-piste { grid-template-columns: 150px repeat(7, minmax(0, 1fr)); gap: 5px; }
+  .empv3-avatar--piste { width: 28px; height: 28px; font-size: 9px; }
+  .empv2-annuaire .empv3-piste .empv3-case,
+  .empv2-annuaire .empv3-piste .empv3-barre { height: 28px; }
+  .empv3-case-plus { font-size: 7px; }
+}
+@media (max-width: 700px) {
+  /* sur téléphone, la piste défile : mieux vaut faire glisser que d'écraser sept jours */
+  .empv3-pistes { overflow-x: auto; padding-bottom: 6px; }
+  .empv3-piste { min-width: 560px; grid-template-columns: 132px repeat(7, minmax(0, 1fr)); }
+  .empv3-piste .empv3-semaine-poste { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LES CARTES SE CLIQUENT — et l'espace respire
+   « rien n'est dynamique quand je clique dessus » : chaque
+   carte de chiffres devient un bouton qui agit sur la liste.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-kpi--agissante {
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: transform 90ms ease, box-shadow 90ms ease;
+}
+.empv3-kpi--agissante:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--charte-encre);
+}
+.empv3-kpi--agissante:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--charte-encre);
+}
+.empv3-kpi--agissante:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-aplat);
+  outline-offset: 3px;
+}
+.empv3-kpi--active {
+  background: color-mix(in srgb, var(--charte-aplat) 10%, var(--charte-surface));
+  box-shadow: 3px 3px 0 var(--charte-aplat);
+}
+
+.empv3-kpi-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--charte-aplat);
+}
+.empv3-kpi--agissante:hover .empv3-kpi-action { text-decoration: underline; }
+
+/* les blocs respirent : plus de 14 px entre deux sections */
+.empv2-annuaire { display: flex; flex-direction: column; gap: 22px; }
+.empv3-grille-planning { gap: 20px; }
+.empv3-cartes--quatre { gap: 18px; }
