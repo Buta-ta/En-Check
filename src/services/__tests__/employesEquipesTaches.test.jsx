@@ -1080,6 +1080,42 @@ describe('la page Employés', () => {
     }
   }
 
+  it('les jours sont calculés en heure de l’entreprise, jamais en UTC', () => {
+    // le bug du 19/11 : un pointage du 19 à 00 h 30 locale tombait sur le 18
+    expect(EMPLOYES).toContain('const iso = jourLocal(jour)')
+    expect(EMPLOYES).toContain('obtenirDateDuJour()')
+    expect(EMPLOYES).toContain('const cle = jourLocal(jour)')
+    expect(EMPLOYES).toContain('jourLocal(dimanche)')
+    // plus aucune date de la semaine tirée de toISOString
+    const semaine = EMPLOYES.slice(EMPLOYES.indexOf('const semaineAffichee'), EMPLOYES.indexOf('const semaineAffichee') + 900)
+    expect(semaine).not.toContain('toISOString')
+    // un jour passé sans pointage est nommé, pas laissé vide
+    expect(EMPLOYES).toContain("'Non pointé'")
+  })
+
+  it('les états du planning s’expliquent au survol, en bulle lisible', () => {
+    expect(EMPLOYES).toContain('data-infobulle=')
+    // plus de `title` du navigateur sur les cases : il arrive trop tard et coupe
+    const caseBloc = EMPLOYES.slice(EMPLOYES.indexOf('empv3-case empv3-case--${jour.etat}'), EMPLOYES.indexOf('empv3-case empv3-case--${jour.etat}') + 200)
+    expect(caseBloc).not.toContain('title=')
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_EMP).toContain('[data-infobulle]::after')
+    expect(CSS_EMP).toMatch(/content: attr\(data-infobulle\)/)
+  })
+
+  it('la carte des tâches par équipe vit sous la masse salariale, avec les photos', () => {
+    expect(EMPLOYES).toContain('empv3-carte--taches')
+    expect(EMPLOYES).toContain('Tâches par équipe')
+    expect(EMPLOYES).toContain('getTasks(entrepriseDesVues')
+    expect(EMPLOYES).toContain('getTeams(entrepriseDesVues, { includeMembers: true })')
+    // les visages des membres, en pile, avec le surplus compté
+    expect(EMPLOYES).toContain('empv3-avatar--pile')
+    expect(EMPLOYES).toContain('empv3-equipe-avatars')
+    expect(EMPLOYES).toMatch(/membre\.photo_url/)
+    // une tâche finie = terminée ou validée, rien d'autre
+    expect(EMPLOYES).toContain('new Set([TASK_STATUS.COMPLETED, TASK_STATUS.VALIDATED])')
+  })
+
   it('la légende montre les vraies cases, pas des points de 7 px', () => {
     // l'échantillon réutilise la classe de la grille : même forme, même motif
     expect(EMPLOYES).toContain('empv3-legende-item')
