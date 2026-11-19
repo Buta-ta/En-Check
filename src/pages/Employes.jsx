@@ -2006,20 +2006,36 @@ export default function Employes() {
 
               {/* la barre d'outils de « Tous les employés » :
                   la recherche, puis l'état de la journée */}
-              <div className="empv2-filtres" role="group" aria-label="Filtrer la liste">
-                <span className="empv3-bloc-titre">Tous les employés</span>
-
-                <label className="empv3-saisie">
-                  <Search size={12} aria-hidden="true" />
+              <div className="empv3-liste-tete">
+                <span className="empv3-bloc-titre">
+                  Tous les employés
+                  <small className="empv3-bloc-compte">
+                    {employesFiltres.length} sur {employes.length}
+                  </small>
+                </span>
+                <label className="empv3-recherche">
+                  <Search size={15} aria-hidden="true" />
                   <input
                     type="search"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Rechercher un nom, un matricule…"
+                    placeholder="Nom, matricule, poste, service, CNPS…"
                     aria-label="Rechercher un employé"
                   />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      className="empv3-recherche-effacer"
+                      aria-label="Effacer la recherche"
+                      onClick={() => setSearchTerm('')}
+                    >
+                      <X size={13} aria-hidden="true" />
+                    </button>
+                  )}
                 </label>
+              </div>
 
+              <div className="empv2-filtres" role="group" aria-label="Filtrer la liste">
                 {FILTRES_ANNUAIRE.map((filtre) => (
                   <button
                     key={filtre.key}

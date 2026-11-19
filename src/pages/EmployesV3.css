@@ -2278,3 +2278,246 @@
 @media (max-width: 1100px) {
   .empv3-colonne-droite { gap: 16px; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LA CARTE EMPLOYÉ, MODÈLE « PORTRAIT » — validée le 19/11
+   Le bandeau bogolan en haut, la photo posée dessus, le nom
+   sur le papier, les informations en pastilles, les contacts,
+   puis une barre de pied. Rien n'est posé sur le motif.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-fiche--portrait {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* le motif occupe le haut et s'arrête net : la photo le chevauche */
+.empv3-fiche-bandeau {
+  display: block;
+  height: 92px;
+  flex: none;
+  border-bottom: var(--charte-trait) solid color-mix(in srgb, var(--charte-encre) 22%, transparent);
+}
+
+.empv3-fiche-tete--portrait {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: -46px;   /* la photo sort du bandeau */
+  padding: 0 18px;
+}
+
+.empv3-fiche-avatar--portrait {
+  width: 78px;
+  height: 78px;
+  flex: none;
+  font-size: 22px;
+  border: 3px solid var(--charte-surface);
+  box-shadow: 0 0 0 2px var(--charte-encre), var(--charte-ombre-dure);
+  padding: 0;
+  cursor: pointer;
+  transition: transform 90ms ease;
+}
+.empv3-fiche-avatar--portrait:hover { transform: translateY(-2px); }
+.empv3-fiche-avatar--portrait:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-aplat);
+  outline-offset: 3px;
+}
+.empv3-fiche-avatar--portrait img { border-radius: inherit; }
+
+/* le rond « + photo » : il invite à compléter la fiche au lieu de rester vide */
+.empv3-fiche-avatar--vide {
+  display: grid;
+  place-items: center;
+  background:
+    repeating-linear-gradient(45deg,
+      color-mix(in srgb, var(--charte-aplat) 10%, transparent) 0 5px,
+      transparent 5px 10px),
+    var(--charte-surface2);
+  color: var(--charte-aplat);
+  border-style: dashed;
+  border-color: var(--charte-aplat);
+}
+
+.empv3-fiche-identite--portrait {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-top: 50px;   /* le nom descend sous la photo, sur le papier */
+}
+.empv3-fiche-identite--portrait .empv3-fiche-nom {
+  font-size: 16.5px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  line-height: 1.15;
+  color: var(--charte-encre);
+}
+.empv3-fiche-identite--portrait .empv3-fiche-poste {
+  font-size: 11.5px;
+  color: var(--charte-douce);
+}
+.empv3-fiche-etat { margin-top: 5px; }
+
+/* les pastilles d'information */
+.empv3-fiche-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 18px;
+}
+
+.empv3-fiche-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border: 1.5px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--charte-encre);
+  white-space: nowrap;
+}
+.empv3-fiche-chip--contrat {
+  background: var(--charte-encre);
+  border-color: var(--charte-encre);
+  color: var(--charte-surface);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.empv3-fiche-chip--actif {
+  border-color: color-mix(in srgb, var(--charte-succes) 60%, transparent);
+  background: color-mix(in srgb, var(--charte-succes) 12%, transparent);
+  color: var(--charte-succes);
+}
+.empv3-fiche-chip--vide {
+  border-style: dashed;
+  color: var(--charte-douce);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.empv3-fiche-contacts--portrait {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 0 18px 12px;
+  font-size: 11px;
+}
+
+/* le pied : une barre plus foncée, l'état et le menu */
+.empv3-fiche--portrait .empv3-fiche-pied {
+  margin-top: auto;
+  padding: 9px 14px 9px 18px;
+  border-top: var(--charte-trait) solid var(--charte-bordure);
+  background: color-mix(in srgb, var(--charte-surface2) 55%, var(--charte-surface));
+}
+
+/* l'ancienne anatomie ne sert plus dans cette liste */
+.empv3-fiche--portrait .empv3-fiche-contrat { display: none; }
+
+@media (max-width: 820px) {
+  .empv3-fiche-bandeau { height: 74px; }
+  .empv3-fiche-tete--portrait { margin-top: -38px; padding: 0 14px; gap: 11px; }
+  .empv3-fiche-avatar--portrait { width: 64px; height: 64px; font-size: 18px; }
+  .empv3-fiche-identite--portrait { padding-top: 42px; }
+  .empv3-fiche-identite--portrait .empv3-fiche-nom { font-size: 15px; }
+  .empv3-fiche-chips, .empv3-fiche-contacts--portrait { padding-left: 14px; padding-right: 14px; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LA RECHERCHE — large, explicite, effaçable
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-liste-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.empv3-bloc-titre {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.empv3-bloc-compte {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--charte-douce);
+  font-variant-numeric: tabular-nums;
+}
+
+.empv3-recherche {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1 1 300px;
+  max-width: 420px;
+  height: 42px;
+  padding: 0 12px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  box-shadow: var(--charte-ombre-dure);
+  color: var(--charte-douce);
+  transition: box-shadow 100ms ease, transform 100ms ease;
+}
+.empv3-recherche:focus-within {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--charte-encre);
+  color: var(--charte-encre);
+}
+.empv3-recherche input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  color: var(--charte-encre);
+}
+.empv3-recherche input::placeholder { color: var(--charte-douce); }
+.empv3-recherche input::-webkit-search-cancel-button { display: none; }
+
+.empv3-recherche-effacer {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: var(--charte-rayon-pilule);
+  background: color-mix(in srgb, var(--charte-encre) 10%, transparent);
+  color: var(--charte-encre);
+  cursor: pointer;
+}
+.empv3-recherche-effacer:hover { background: var(--charte-aplat); color: var(--charte-surface); }
+
+/* les filtres d'état passent dessous, sur leur propre rangée */
+.empv2-annuaire .empv2-filtres {
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 760px) {
+  .empv3-liste-tete { gap: 10px; }
+  .empv3-recherche { flex: 1 1 100%; max-width: none; height: 44px; }
+  .empv2-annuaire .empv2-filtres { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 6px; }
+}
