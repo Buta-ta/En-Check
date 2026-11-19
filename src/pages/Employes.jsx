@@ -34,6 +34,7 @@ import CarteEmploye from '../components/equipes/CarteEmploye'
 import PancarteEnseigne from '../components/parcours/PancarteEnseigne'
 import CheminEmpreintes from '../components/parcours/CheminEmpreintes'
 import BornePointage from '../components/parcours/BornePointage'
+import DecorationChemin from '../components/parcours/DecorationChemin'
 import Etincelle from '../components/equipes/Etincelle'
 import { useTheme } from '../contexts/ThemeContext'
 import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
@@ -1551,12 +1552,12 @@ export default function Employes() {
               qui occupe la place, et trois actions à droite. Plus de barre de
               raccourcis (le rail les porte) et plus de bouton de thème ici :
               il vit dans le rail, une seule fois. */}
-          <div className="empv3-pancarte-slot">
-            <PancarteEnseigne taille={88} />
-          </div>
-
           <header className="empv3-entete">
             <span className="empv3-entete-bandeau" aria-hidden="true" />
+            {/* la pancarte plante ses racines dans l'en-tête, au milieu */}
+            <span className="empv3-entete-pancarte" aria-hidden="true">
+              <PancarteEnseigne taille={88} />
+            </span>
             <div className="empv3-entete-corps">
             <div className="empv3-entete-gauche">
               <span className="empv3-entete-eyebrow">
@@ -1616,17 +1617,22 @@ export default function Employes() {
           </header>
 
           {vueActive === null && (
-            <>
-            {/* le chemin passe DERRIÈRE : il ne prend aucun clic.
-                Une bande dans la gouttière gauche et une à l'extrême droite
-                de la page : la tuile ne s'étire jamais, les traces restent
-                minuscules du haut en bas. */}
-            <span className="empv3-chemin empv3-chemin--gauche" aria-hidden="true">
+            <div className="empv3-parcours">
+            {/* le chemin descend de la pancarte, serpente, et s'arrête à la borne.
+                Il ne prend aucun clic : pointer-events: none. */}
+            <span className="empv3-chemin" aria-hidden="true">
               <CheminEmpreintes />
             </span>
-            <span className="empv3-chemin empv3-chemin--droite" aria-hidden="true">
-              <CheminEmpreintes opacite={0.34} />
-            </span>
+            <DecorationChemin haut={9} decalage={-44} variante={0} taille={20} />
+            <DecorationChemin haut={14} decalage={44} variante={1} taille={18} />
+            <DecorationChemin haut={23} decalage={-52} variante={2} taille={26} />
+            <DecorationChemin haut={31} decalage={48} variante={0} taille={20} />
+            <DecorationChemin haut={44} decalage={-48} variante={1} taille={18} />
+            <DecorationChemin haut={53} decalage={52} variante={2} taille={24} />
+            <DecorationChemin haut={64} decalage={-50} variante={0} taille={20} />
+            <DecorationChemin haut={73} decalage={46} variante={1} taille={18} />
+            <DecorationChemin haut={84} decalage={-46} variante={2} taille={24} />
+            <DecorationChemin haut={92} decalage={50} variante={0} taille={20} />
             <div className="empv2-annuaire">
               {/* les chiffres du jour : trois tuiles, le chiffre porte sa période.
                   Tout est compté sur le personnel chargé, jamais une estimation. */}
@@ -2051,6 +2057,11 @@ export default function Employes() {
                     </button>
                   )}
                 </label>
+
+                {/* la borne se plante ici, au milieu de l'espace libre */}
+                <span className="empv3-borne empv3-borne--entete">
+                  <BornePointage taille={44} />
+                </span>
               </div>
 
               <div className="empv2-filtres" role="group" aria-label="Filtrer la liste">
@@ -2164,7 +2175,12 @@ export default function Employes() {
                 </>
               )}
             </div>
-            </>
+
+            {/* la seconde pancarte ferme le chemin */}
+            <footer className="empv3-pancarte">
+              <PancarteEnseigne taille={96} compact />
+            </footer>
+            </div>
           )}
 
           {vueActive === 'equipes' && (
@@ -2175,21 +2191,6 @@ export default function Employes() {
             <TachesVue enterpriseId={entrepriseDesVues} employes={employes} signalCreation={signalCreationTache} />
           )}
 
-          {/* la borne de pointage, posée sur le chemin */}
-          {vueActive === null && (
-            <span className="empv3-borne">
-              <BornePointage taille={58} />
-            </span>
-          )}
-
-          {/* ── LA PANCARTE ──────────────────────────────────
-              Modèle B validé le 20/11 : le tissu bogolan encadre la
-              pancarte, une plaque ivoire porte le texte — le motif ne
-              passe jamais derrière les mots.
-              Le logo est le vrai : le pied de marque (EnCheckBrandMark). */}
-          <footer className="empv3-pancarte">
-            <PancarteEnseigne taille={96} compact />
-          </footer>
         </main>
         </div>
         </div>

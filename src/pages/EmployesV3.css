@@ -1354,7 +1354,9 @@
 .empv3-entete {
   display: block;
   padding: 0;
-  overflow: hidden;
+  /* ⚠️ surtout PAS overflow: hidden ici : ça coupait la pancarte.
+     Le rognage du motif est fait bandeau par bandeau, un peu plus bas. */
+  position: relative;
 }
 
 .empv3-entete-corps {
@@ -3456,11 +3458,24 @@
 
 .empv3-entete { position: relative; }
 
-.empv3-pancarte-slot {
-  display: flex;
-  justify-content: center;
-  margin: 0 0 14px;
+.empv3-entete-pancarte {
+  position: absolute;
+  left: 50%;
+  bottom: -26px;
+  transform: translateX(-50%);
+  z-index: 3;
   pointer-events: none;
+}
+
+/* sous 1180 px la place manque au milieu : elle repasse dans le flux */
+@media (max-width: 1180px) {
+  .empv3-entete-pancarte {
+    position: static;
+    transform: none;
+    display: flex;
+    justify-content: center;
+    margin: 6px auto 0;
+  }
 }
 
 /* sous 1180 px, la place manque au milieu : la pancarte repasse dans le flux */
@@ -3476,26 +3491,38 @@
   .empv3-entete-corps { flex-wrap: wrap; }
 }
 
-/* ── le chemin : derrière, jamais cliquable ────────────────── */
+/* ── le parcours : le repère du chemin ─────────────────────── */
 
+.empv3-parcours { position: relative; }
+
+/* le chemin descend de la pancarte, serpente, s'arrête à la borne */
 .empv3-chemin {
   position: absolute;
   top: 0;
+  left: calc(50% - 66px);
   bottom: 0;
   z-index: 0;
   width: 132px;
   pointer-events: none;
-  overflow: hidden;
 }
-
-.empv3-chemin--gauche { left: 0; }
-.empv3-chemin--droite { right: 0; }
 
 .chemin-empreintes {
   display: block;
   width: 132px;
-  height: 100%;
+  height: auto;
 }
+
+/* ── les herbes et les arbres qui bordent le chemin ────────── */
+
+.empv3-herbe {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  opacity: 0.8;
+}
+
+.empv3-herbe svg { display: block; width: 100%; height: auto; }
 
 /* le contenu passe au-dessus du chemin */
 .empv2-annuaire { position: relative; z-index: 1; }
@@ -3509,6 +3536,15 @@
   justify-content: center;
   margin: 10px 0 4px;
   pointer-events: none;
+}
+
+/* celle de l'en-tête de liste : elle pousse la recherche, sans la casser */
+.empv3-borne--entete {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
 }
 
 .borne {
@@ -3533,9 +3569,11 @@
 /* ── la pancarte de pied ───────────────────────────────────── */
 
 .empv3-pancarte {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: center;
-  margin: 34px 0 10px;
+  margin: 28px 0 10px;
   padding: 0;
   border: 0;
   background: none;
@@ -3578,3 +3616,12 @@
   text-transform: uppercase;
   color: var(--charte-douce);
 }
+
+/* le motif de l'en-tête reste rogné à sa bande, sans rogner la pancarte */
+.empv3-entete-bandeau,
+.empv3-entete-bandeau--bas {
+  overflow: hidden;
+}
+
+/* la liste doit laisser passer la borne qui dépasse de sa ligne */
+.empv3-liste-tete { position: relative; }
