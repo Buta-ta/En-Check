@@ -8,6 +8,7 @@ import useEmployeePayslipIndicators from '../hooks/useEmployeePayslipIndicators'
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { accountRpc } from '../services/adminAccounts'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Footprints, Users, Plus, ArrowLeft, Search, Edit, Trash2, X, Save,
@@ -91,6 +92,11 @@ export default function Employes() {
   // La moyenne des présents sur 30 jours : elle seule permet un écart honnête.
   // Pas de donnée → pas d'écart affiché (jamais un chiffre inventé).
   const [moyennePresents30j, setMoyennePresents30j] = useState(null)
+  // La semaine et le fil d'annonces : deux lectures silencieuses, aucune
+  // donnée inventée si le serveur ne répond pas.
+  const [semainePointages, setSemainePointages] = useState(null)
+  const [semaineAbsences, setSemaineAbsences] = useState([])
+  const [annoncesAccueil, setAnnoncesAccueil] = useState(null)
 
   // La moyenne des présents sur les 30 derniers jours, jour par jour.
   // Une seule requête, silencieuse en cas d'échec : on n'affiche rien.
@@ -127,6 +133,74 @@ export default function Employes() {
     mesurer()
     return () => { annule = true }
   }, [employes])
+
+  // La semaine en cours : pointages et absences, pour la grille du milieu.
+  useEffect(() => {
+    let annule = false
+    const lire = async () => {
+      try {
+        const ids = employes.map((e) => e.id)
+        if (!ids.length) { if (!annule) { setSemainePointages(null); setSemaineAbsences([]) } return }
+
+        const maintenant = new Date()
+        const lundi = new Date(maintenant)
+        const decalage = (maintenant.getDay() + 6) % 7
+        lundi.setDate(maintenant.getDate() - decalage)
+        lundi.setHours(0, 0, 0, 0)
+        const dimanche = new Date(lundi)
+        dimanche.setDate(lundi.getDate() + 6)
+        dimanche.setHours(23, 59, 59 , 999)
+
+        const [pointagesRes, absencesRes] = await Promise.all([
+          supabase
+            .from('attendances')
+            .select('employee_id, check_time, check_type')
+            .in('employee_id', ids)
+            .gte('check_time', lundi.toISOString())
+            .lte('check_time', dimanche.toISOString()),
+          supabase
+            .from('absences')
+            .select('id, employee_id, start_date, end_date, reason')
+            .in('employee_id', ids)
+            .lte('start_date', dimanche.toISOString().slice(0, 10))
+            .gte('end_date', lundi.toISOString().slice(0, 10)),
+        ])
+
+        const carte = new Map()
+        ;(pointagesRes.data || []).forEach((pointage) => {
+          if (String(pointage.check_type || '').toLowerCase() !== 'in') return
+          const jour = jourLocal(pointage.check_time) || String(pointage.check_time || '').slice(0, 10)
+          if (!carte.has(pointage.employee_id)) carte.set(pointage.employee_id, new Set())
+          carte.get(pointage.employee_id).add(jour)
+        })
+        if (!annule) {
+          setSemainePointages(carte)
+          setSemaineAbsences(absencesRes.data || [])
+        }
+      } catch {
+        if (!annule) { setSemainePointages(null); setSemaineAbsences([]) }
+      }
+    }
+    lire()
+    return () => { annule = true }
+  }, [employes])
+
+  // Le fil des annonces d'accueil — la même fonction que la page dédiée.
+  useEffect(() => {
+    let annule = false
+    const lire = async () => {
+      try {
+        const entreprise = admin?.enterprise_id
+        if (!entreprise) { if (!annule) setAnnoncesAccueil(null); return }
+        const data = await accountRpc('encheck_annonce_accueil_lister', { p_enterprise_id: entreprise })
+        if (!annule) setAnnoncesAccueil(data?.ok === true ? (data.annonces || []) : null)
+      } catch {
+        if (!annule) setAnnoncesAccueil(null)
+      }
+    }
+    lire()
+    return () => { annule = true }
+  }, [admin?.enterprise_id])
 
   const payslipIndicators = useEmployeePayslipIndicators(employes)
   const [entreprises, setEntreprises] = useState([])
@@ -1164,6 +1238,46 @@ export default function Employes() {
     .sort((a, b) => a.remplis - b.remplis)
     .slice(0, 5)
 
+  // La semaine en cours, découpée en sept jours.
+  const semaineAffichee = (() => {
+    const maintenant = new Date()
+    const lundi = new Date(maintenant)
+    lundi.setDate(maintenant.getDate() - ((maintenant.getDay() + 6) % 7))
+    lundi.setHours(0, 0, 0, 0)
+    const noms = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']
+    return Array.from({ length: 7 }, (_, i) => {
+      const jour = new Date(lundi)
+      jour.setDate(lundi.getDate() + i)
+      return {
+        iso: jour.toISOString().slice(0, 10),
+        nom: noms[i],
+        num: jour.getDate(),
+        futur: jour.getTime() > maintenant.getTime(),
+        aujourdhui: jour.toDateString() === maintenant.toDateString(),
+      }
+    })
+  })()
+
+  // Une ligne = une personne, sept cases. Trois états, jamais devinés :
+  // absence connue, pointage connu, ou rien.
+  const lignesPlanning = employes.slice(0, 6).map((employee) => ({
+    employee,
+    jours: semaineAffichee.map((jour) => {
+      const absence = semaineAbsences.find(
+        (a) => a.employee_id === employee.id
+          && String(a.start_date || '').slice(0, 10) <= jour.iso
+          && String(a.end_date || '').slice(0, 10) >= jour.iso,
+      )
+      if (absence) return { etat: 'conge', mot: absence.reason || 'Congé' }
+      if (semainePointages?.get(employee.id)?.has(jour.iso)) return { etat: 'pointe', mot: 'Pointé' }
+      return { etat: 'rien', mot: jour.futur ? 'À venir' : 'Rien ce jour' }
+    }),
+  }))
+
+  const annoncesEnLigne = (annoncesAccueil || [])
+    .filter((annonce) => annonce.statut === 'en_ligne')
+    .slice(0, 3)
+
   // L'export : ce que l'écran montre, à l'identique.
   const exporterCsv = () => {
     const entetes = ['Matricule', 'Nom', 'E-mail', 'Poste', 'Service', 'Contrat', 'Portail']
@@ -1439,6 +1553,100 @@ export default function Employes() {
                   </div>
                   <div className="empv3-kpi-chiffre">{suiviPresence ? liveCounts.retards : '—'}</div>
                   <div className="empv3-kpi-pied">ce jour — le mot est écrit</div>
+                </div>
+              </div>
+
+              {/* les deux blocs du milieu — planning de la semaine, annonces */}
+              <div className="empv3-grille-planning">
+
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Planning de la semaine</span>
+                    <span className="empv3-carte-total">
+                      {semainePointages === null ? '—' : `${employes.slice(0, 6).length} personne${employes.length > 1 ? 's' : ''}`}
+                    </span>
+                  </div>
+
+                  <div className="empv3-semaine">
+                    <div className="empv3-semaine-tete">
+                      <span className="empv3-semaine-nom" />
+                      {semaineAffichee.map((jour) => (
+                        <span
+                          key={jour.iso}
+                          className={`empv3-jour${jour.aujourdhui ? ' is-aujourdhui' : ''}`}
+                        >
+                          {jour.nom}
+                          <b>{jour.num}</b>
+                        </span>
+                      ))}
+                    </div>
+
+                    {lignesPlanning.map(({ employee, jours }) => (
+                      <div className="empv3-semaine-ligne" key={employee.id}>
+                        <span className="empv3-semaine-nom">
+                          <span className="empv3-avatar" aria-hidden="true">
+                            {(employee.first_name || '?')[0]}{(employee.last_name || '')[0] || ''}
+                          </span>
+                          <span className="empv3-semaine-qui">{nomCompletDe(employee)}</span>
+                        </span>
+                        {jours.map((jour, index) => (
+                          <span
+                            key={`${employee.id}-${index}`}
+                            className={`empv3-case empv3-case--${jour.etat}`}
+                            title={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
+                            aria-label={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="empv3-legende">
+                    <span><i style={{ background: 'var(--charte-aplat)' }} />Pointé</span>
+                    <span><i style={{ background: 'var(--charte-alerte)' }} />Absence</span>
+                    <span><i style={{ background: 'var(--charte-surface2)' }} />Rien</span>
+                  </div>
+                </div>
+
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Annonces d’accueil</span>
+                    <span className="empv3-carte-total">{annoncesEnLigne.length}</span>
+                  </div>
+
+                  {annoncesAccueil === null ? (
+                    <p className="empv3-legende">Les annonces n’ont pas pu être lues.</p>
+                  ) : annoncesEnLigne.length === 0 ? (
+                    <p className="empv3-legende">Aucune annonce en ligne pour l’instant.</p>
+                  ) : (
+                    <div className="empv3-annonces">
+                      {annoncesEnLigne.map((annonce, index) => (
+                        <article key={annonce.id} className={`empv3-annonce empv3-annonce--${index % 3}`}>
+                          <strong>
+                            {annonce.type_media === 'video' ? 'Vidéo d’accueil' : 'Image d’accueil'}
+                          </strong>
+                          <p>
+                            Diffusée sur l’écran d’accueil
+                            {annonce.duree_affichage_ms
+                              ? ` · ${Math.round(Number(annonce.duree_affichage_ms) / 1000)} s`
+                              : ''}
+                          </p>
+                          <div className="empv3-annonce-chips">
+                            <span>
+                              {annonce.debute_le
+                                ? new Date(annonce.debute_le).toLocaleDateString('fr-FR')
+                                : 'sans début'}
+                            </span>
+                            <span>
+                              {annonce.termine_le
+                                ? new Date(annonce.termine_le).toLocaleDateString('fr-FR')
+                                : 'sans fin'}
+                            </span>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

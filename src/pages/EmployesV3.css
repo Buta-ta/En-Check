@@ -725,3 +725,125 @@
 .empv3-ecart { font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .empv3-ecart--haut { color: var(--charte-succes); }
 .empv3-ecart--bas { color: var(--charte-erreur); }
+
+/* ── Les deux blocs du milieu : planning de la semaine + annonces ── */
+
+.empv3-grille-planning {
+  display: grid;
+  grid-template-columns: 1.9fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 1100px) { .empv3-grille-planning { grid-template-columns: 1fr; } }
+
+.empv3-semaine { display: flex; flex-direction: column; gap: 6px; }
+
+.empv3-semaine-tete,
+.empv3-semaine-ligne {
+  display: grid;
+  grid-template-columns: 148px repeat(7, minmax(0, 1fr));
+  align-items: center;
+  gap: 6px;
+}
+
+.empv3-semaine-nom {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 10.5px;
+  color: var(--charte-encre);
+}
+.empv3-semaine-qui {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empv3-semaine-nom .empv3-avatar {
+  width: 20px;
+  height: 20px;
+  font-size: 8px;
+}
+
+.empv3-jour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--charte-douce);
+  text-transform: lowercase;
+}
+.empv3-jour b {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--charte-encre);
+  font-variant-numeric: tabular-nums;
+}
+.empv3-jour.is-aujourdhui b {
+  padding: 1px 6px;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-aplat);
+  color: var(--charte-blanc);
+}
+
+/* Une case = un jour. Trois états seulement, jamais une couleur seule (D-009) :
+   la couleur est doublée d'une infobulle et d'un libellé pour lecteur d'écran. */
+.empv3-case {
+  display: block;
+  height: 28px;
+  border-radius: var(--charte-rayon-champ);
+  border: 1px solid var(--charte-bordure);
+  background: var(--charte-surface);
+}
+.empv3-case--pointe {
+  background: var(--charte-aplat);
+  border-color: var(--charte-encre);
+}
+.empv3-case--conge {
+  background: color-mix(in srgb, var(--charte-alerte) 22%, transparent);
+  border-color: color-mix(in srgb, var(--charte-alerte) 55%, transparent);
+}
+.empv3-case--rien { background: var(--charte-surface2); }
+
+/* Le fil des annonces : trois cartes teintées, comme la maquette */
+.empv3-annonces { display: flex; flex-direction: column; gap: 8px; }
+
+.empv3-annonce {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--charte-rayon-carte);
+  border: 1px solid transparent;
+}
+.empv3-annonce--0 {
+  background: color-mix(in srgb, var(--charte-aplat) 12%, transparent);
+  border-color: color-mix(in srgb, var(--charte-aplat) 30%, transparent);
+}
+.empv3-annonce--1 {
+  background: color-mix(in srgb, var(--charte-succes) 12%, transparent);
+  border-color: color-mix(in srgb, var(--charte-succes) 30%, transparent);
+}
+.empv3-annonce--2 {
+  background: color-mix(in srgb, var(--charte-alerte) 12%, transparent);
+  border-color: color-mix(in srgb, var(--charte-alerte) 30%, transparent);
+}
+.empv3-annonce strong { font-size: 11px; font-weight: 700; color: var(--charte-encre); }
+.empv3-annonce p { margin: 0; font-size: 10px; color: var(--charte-douce); line-height: 1.4; }
+
+.empv3-annonce-chips { display: flex; gap: 6px; margin-top: 2px; }
+.empv3-annonce-chips span {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  border: 1px solid var(--charte-bordure);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--charte-douce);
+  font-variant-numeric: tabular-nums;
+}
