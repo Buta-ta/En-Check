@@ -1078,6 +1078,38 @@ describe('la page Employés', () => {
     }
   }
 
+  it('les chiffres portent leur source : étincelle des présences, écart en pastille', () => {
+    // l'étincelle ne se dessine que sur une série réelle, jamais sur une invention
+    const ETINCELLE = readFileSync('src/components/equipes/Etincelle.jsx', 'utf8')
+    expect(ETINCELLE).toContain('if (serie.length < 2) return null')
+    expect(EMPLOYES).toContain('<Etincelle valeurs={seriePresents} />')
+    // les quatorze jours sont lus pour de vrai, zéros compris
+    expect(EMPLOYES).toContain('for (let i = 13; i >= 0; i -= 1)')
+    // le chiffre et son écart vivent sur la même ligne
+    expect(EMPLOYES).toContain('empv3-kpi-ligne')
+    expect(EMPLOYES).toContain('empv3-ecart empv3-ecart--')
+  })
+
+  it('la masse salariale se lit en barres couchées, montant écrit au bout', () => {
+    expect(EMPLOYES).toContain('empv3-rang-ligne')
+    expect(EMPLOYES).toContain('empv3-rang-montant')
+    // plus de barres verticales sans graduation : elles cachaient le montant
+    expect(EMPLOYES).not.toContain('empv3-histogramme')
+    expect(EMPLOYES).not.toContain('empv3-colonne-barre')
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_EMP).toMatch(/\.empv3-rang-ligne \{[\s\S]{0,120}grid-template-columns/)
+  })
+
+  it('le planning se pilote : la semaine précédente s’ouvre, le futur se refuse', () => {
+    expect(EMPLOYES).toContain('aria-label="La semaine précédente"')
+    expect(EMPLOYES).toContain('aria-label="La semaine suivante"')
+    expect(EMPLOYES).toContain('setDecalageSemaine((n) => Math.min(0, n + 1))')
+    expect(EMPLOYES).toContain('Semaine du ')
+    // la lecture suit le décalage, sinon on afficherait deux semaines à la fois
+    expect(EMPLOYES).toContain('decalageSemaine * 7')
+    expect(EMPLOYES).toMatch(/\}, \[employes, decalageSemaine\]\)/)
+  })
+
   it('entoure l’en-tête du bandeau bogolan, et n’y met aucun sélecteur d’entreprise', () => {
     // le sélecteur est parti : il vit dans la coque de l'application
     expect(EMPLOYES).not.toContain('<EnterpriseSwitcher')
