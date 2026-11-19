@@ -1195,3 +1195,150 @@
   box-shadow: var(--charte-ombre-dure);
   background: var(--charte-surface);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   L'EN-TÊTE EN BLOC — maquette employes-entete-v7
+   Une étiquette, un titre qui occupe la place, trois actions.
+   Plus de barre de raccourcis : le rail porte la navigation.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 20px 22px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--charte-surface);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.empv3-entete-gauche {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.empv3-entete-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--charte-texte);
+}
+.empv3-entete-point {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-succes);
+}
+
+.empv3-entete-titre {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+  font-size: clamp(34px, 3.4vw, 50px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1.5px;
+  color: var(--charte-encre);
+}
+
+.empv3-entete-compte {
+  padding: 4px 12px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.empv3-entete-sous {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--charte-douce);
+}
+
+/* Le sélecteur d'entreprise, ramené à une chip discrète */
+.empv3-entete-entreprise .switcher-trigger {
+  min-height: 0;
+  padding: 4px 10px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface2);
+}
+.empv3-entete-entreprise .switcher-trigger .switcher-label { display: none; }
+.empv3-entete-entreprise .switcher-trigger .switcher-name { font-size: 11px; font-weight: 700; }
+.empv3-entete-entreprise .switcher-single {
+  padding: 4px 10px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.empv3-entete-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.empv3-entete-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.empv3-entete-principale { display: flex; justify-content: flex-end; }
+
+.empv3-entete .ch-btn-pleine,
+.empv3-entete .ch-btn-contour,
+.empv3-entete .empv3-chip {
+  min-height: 38px;
+  border-width: var(--charte-trait);
+  border-radius: var(--charte-rayon-pilule);
+  box-shadow: var(--charte-ombre-dure);
+  background: var(--charte-surface);
+  font-size: 11px;
+}
+.empv3-entete .ch-btn-pleine {
+  background: var(--charte-aplat);
+  color: var(--charte-blanc);
+  border-color: var(--charte-encre);
+}
+
+/* Les deux vues de la page, dans le rail juste sous la rubrique */
+.nav3-rail-vues {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+}
+.nav3-rail-sous {
+  width: 34px;
+  height: 34px;
+  margin-left: 3px;
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-douce);
+}
+.nav3-rail-sous.is-actif,
+.nav3-rail-sous.is-actif:hover {
+  border-color: var(--charte-encre);
+  background: var(--charte-surface2);
+  color: var(--charte-encre);
+}

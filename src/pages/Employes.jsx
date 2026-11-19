@@ -78,6 +78,12 @@ const pourcent = (morceau, total) =>
 // PAGE PRINCIPALE
 // ═══════════════════════════════════════════════════════════
 
+// Les deux vues de la page : elles vivent dans le rail, pas dans l'en-tête.
+const VUES_DE_LA_PAGE = [
+  { cle: 'equipes', libelle: 'Équipes', icone: Network },
+  { cle: 'taches', libelle: 'Tâches', icone: ClipboardList },
+]
+
 export default function Employes() {
   const [admin, setAdmin] = useState(null)
   const [employes, setEmployes] = useState([])
@@ -1182,10 +1188,6 @@ export default function Employes() {
   // porte ses pages — c'est le modèle de la maquette du 08/11.
   const SECTION_ACTIVE = 'equipe'
   const SECTION_ACTIVE_LABEL = 'Équipe'
-  const pagesDeLaRubrique = (sectionsNav.find((section) => section.id === SECTION_ACTIVE)?.items || [])
-    .filter((item) => item.show && item.path)
-
-  const surNavigation = (item) => { if (item?.path) navigate(item.path) }
   const deconnexion = () => {
     localStorage.removeItem('admin')
     localStorage.removeItem('last_enterprise_id')
@@ -1356,7 +1358,35 @@ export default function Employes() {
             )
           })}
 
+          {/* les deux vues de la page vivent ici, pas dans l'en-tête :
+              une seule navigation, celle du rail */}
+          <div className="nav3-rail-vues" role="group" aria-label="Vues de la page Employés">
+            {vueAutorisee && VUES_DE_LA_PAGE.map(({ cle, libelle, icone: IconeVue }) => (
+              <button
+                key={cle}
+                type="button"
+                className={`nav3-rail-item nav3-rail-sous${vueActive === cle ? ' is-actif' : ''}`}
+                aria-current={vueActive === cle ? 'page' : undefined}
+                title={`Vue : ${libelle}`}
+                aria-label={`Vue ${libelle}`}
+                onClick={() => changerVue(cle)}
+              >
+                <IconeVue size={15} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+
           <div className="nav3-rail-pied">
+            <button
+              type="button"
+              className="nav3-rail-item"
+              onClick={toggleTheme}
+              title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+              aria-label={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+              aria-pressed={darkMode}
+            >
+              {darkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+            </button>
             <a
               className="nav3-rail-item"
               href="/employee/login"
@@ -1383,124 +1413,72 @@ export default function Employes() {
         </aside>
 
         <div className="nav3-colonne">
-          {/* la barre du haut : les pages de la rubrique, en pastilles */}
-          <header className="nav3-haut">
-            <nav className="nav3-pastilles" aria-label={`Pages de la rubrique ${SECTION_ACTIVE_LABEL}`}>
-              {pagesDeLaRubrique.map((item) => {
-                const ItemIcone = item.icon
-                const active = item.path === '/employes'
-                return (
-                  <button
-                    key={item.path}
-                    type="button"
-                    className={`nav3-pastille${active ? ' is-actif' : ''}`}
-                    aria-current={active ? 'page' : undefined}
-                    onClick={() => surNavigation(item)}
-                  >
-                    <ItemIcone size={13} aria-hidden="true" />
-                    {item.label}
-                  </button>
-                )
-              })}
-            </nav>
-
-            <div className="nav3-haut-droite">
-              <EnterpriseSwitcher admin={admin} onSwitch={() => window.location.reload()} />
-              <button
-                type="button"
-                className="nav3-rond"
-                onClick={toggleTheme}
-                title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-                aria-pressed={darkMode}
-              >
-                {darkMode ? <Sun size={14} /> : <Moon size={14} />}
-              </button>
-            </div>
-          </header>
-
-
         {/* ═══ MAIN ═══ */}
         <main className="empv2-main">
-          {/* la ligne de titre : Employés · le compte — l'action, à droite.
-              Une seule action de poids maximal par écran (D-013). */}
-          <div className="empv2-tete">
-            <h1 className="empv2-titre">
-              Employés
-              {vueActive === null && (
-                <span className="empv2-titre-compte">
-                  {employes.length} employé{employes.length > 1 ? 's' : ''}
-                </span>
-              )}
-              <span className="empv3-sous">
-                {vueActive === null
-                  ? `Bonjour, ${prenomAdmin} · ${jourEnClair}`
-                  : 'La page Employés, vue par vue'}
+          {/* L'en-tête est un bloc posé sur la page : une étiquette, un titre
+              qui occupe la place, et trois actions à droite. Plus de barre de
+              raccourcis (le rail les porte) et plus de bouton de thème ici :
+              il vit dans le rail, une seule fois. */}
+          <header className="empv3-entete">
+            <div className="empv3-entete-gauche">
+              <span className="empv3-entete-eyebrow">
+                Équipe
+                <i className="empv3-entete-point" aria-hidden="true" />
               </span>
-            </h1>
-            <div className="empv2-tete-actions">
-              {vueActive === null && (
-                <span className="empv3-chip">
-                  <CalendarDays size={12} aria-hidden="true" />
-                  {jourEnClair}
-                </span>
-              )}
-              {vueActive === null && (
-                <button type="button" className="ch-btn-contour" onClick={exporterCsv}>
-                  <FileText size={13} aria-hidden="true" /> Exporter
-                </button>
-              )}
-              {vueActive === 'equipes' && (
-                <button type="button" className="ch-btn-pleine" onClick={() => setSignalCreationEquipe((n) => n + 1)}>
-                  <Plus size={13} aria-hidden="true" /> Nouvelle équipe
-                </button>
-              )}
-              {vueActive === 'taches' && (
-                <button type="button" className="ch-btn-pleine" onClick={() => setSignalCreationTache((n) => n + 1)}>
-                  <Plus size={13} aria-hidden="true" /> Nouvelle tâche
-                </button>
-              )}
-              {vueActive === null && (
-                <button type="button" className="ch-btn-pleine" onClick={handleAdd}>
-                  <UserPlus size={13} aria-hidden="true" /> Nouvel employé
-                </button>
-              )}
-
-              <button
-                type="button"
-                className="empv2-theme"
-                onClick={toggleTheme}
-                title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-                aria-pressed={darkMode}
-              >
-                {darkMode ? <Sun size={13} aria-hidden="true" /> : <Moon size={13} aria-hidden="true" />}
-                <span>{darkMode ? 'Clair' : 'Sombre'}</span>
-              </button>
+              <h1 className="empv3-entete-titre">
+                Employés
+                {vueActive === null && (
+                  <span className="empv3-entete-compte">
+                    {employes.length} employé{employes.length > 1 ? 's' : ''}
+                  </span>
+                )}
+              </h1>
+              <p className="empv3-entete-sous">
+                {vueActive === null
+                  ? `Bonjour, ${prenomAdmin} — ${jourEnClair}`
+                  : 'La page Employés, vue par vue'}
+                {vueActive === null && (
+                  <span className="empv3-entete-entreprise">
+                    <EnterpriseSwitcher admin={admin} onSwitch={() => window.location.reload()} />
+                  </span>
+                )}
+              </p>
             </div>
-          </div>
 
-          {/* Les deux vues optionnelles. L'annuaire n'est plus un
-              onglet : c'est la page — re-cliquer l'onglet actif
-              rabat sur la liste. */}
-          <div className="empv2-tetes">
-            {vueAutorisee && (
-              <nav className="empv2-onglets" aria-label="Vues de la page Employés">
-                {[
-                  { cle: 'equipes', libelle: 'Équipes', icone: Network },
-                  { cle: 'taches', libelle: 'Tâches', icone: ClipboardList },
-                ].map(({ cle, libelle, icone: Icone }) => (
-                  <button
-                    key={cle}
-                    type="button"
-                    className="empv2-onglet"
-                    aria-current={vueActive === cle ? 'page' : undefined}
-                    onClick={() => changerVue(cle)}
-                  >
-                    <Icone size={13} aria-hidden="true" /> {libelle}
+            <div className="empv3-entete-actions">
+              <div className="empv3-entete-chips">
+                {vueActive === null && (
+                  <span className="empv3-chip">
+                    <CalendarDays size={12} aria-hidden="true" />
+                    {jourEnClair}
+                  </span>
+                )}
+                {vueActive === null && (
+                  <button type="button" className="ch-btn-contour" onClick={exporterCsv}>
+                    <FileText size={13} aria-hidden="true" /> Exporter
                   </button>
-                ))}
-              </nav>
-            )}
-          </div>
+                )}
+              </div>
+
+              <div className="empv3-entete-principale">
+                {vueActive === 'equipes' && (
+                  <button type="button" className="ch-btn-pleine" onClick={() => setSignalCreationEquipe((n) => n + 1)}>
+                    <Plus size={13} aria-hidden="true" /> Nouvelle équipe
+                  </button>
+                )}
+                {vueActive === 'taches' && (
+                  <button type="button" className="ch-btn-pleine" onClick={() => setSignalCreationTache((n) => n + 1)}>
+                    <Plus size={13} aria-hidden="true" /> Nouvelle tâche
+                  </button>
+                )}
+                {vueActive === null && (
+                  <button type="button" className="ch-btn-pleine" onClick={handleAdd}>
+                    <UserPlus size={13} aria-hidden="true" /> Nouvel employé
+                  </button>
+                )}
+              </div>
+            </div>
+          </header>
 
           {vueActive === null && (
             <div className="empv2-annuaire">
