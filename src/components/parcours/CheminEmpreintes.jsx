@@ -1,60 +1,93 @@
 // ═══════════════════════════════════════════════════════════
-// 👣 LE CHEMIN — des traces minuscules qui serpentent
+// 👣 LE CHEMIN — des traces de pieds humains, minuscules
 //
-// DEUX ERREURS CORRIGÉES ICI, toutes deux visibles à l'écran :
+// Sa demande du 21/11 : « un chemin serpenté de traces de pied
+// humain et non des humains ». Une trace = un pied NU, dessiné
+// avec ses cinq orteils. Pas une ellipse, pas un point, pas une
+// chaussure.
 //
-// 1. Un SVG de 100×100 étiré sur toute la page → chaque trace
-//    devenait une tache de 200 px. C'étaient les « auréoles » de
-//    sa capture. Corrigé : un MOTIF en pixels (132 × 260).
-//
-// 2. `<use x="58" y="4" transform="rotate(-8 58 4)">` — le
-//    décalage de <use> s'applique AVANT la rotation, et la
-//    rotation tourne donc autour d'un point vide : la trace
-//    revenait à l'origine, empilée sur les autres. Vérifié par
-//    le calcul : un pied posé en (3.5, 6) ressortait en (4.3,
-//    13.6) au lieu de (61, 10). Corrigé : `translate` puis
-//    `rotate` autour de 0,0, sans attribut x/y.
+// Il descend de la pancarte de l'en-tête, serpente en S, passe
+// dans la marge gauche, et s'arrête à la borne de pointage — là
+// où il y a le plus d'espace. Il ne prend aucun clic.
 // ═══════════════════════════════════════════════════════════
 
-// une trace de pied : 11 px de haut, 7 px de large, centrée sur 0,0
-const TRACE = 'M0.9 -4.8 C2.6 -4.8 3.4 -3.4 3.2 -1.9 C3 -0.6 2.4 0.2 2 1.4 C1.7 2.6 1.9 3.8 1.9 4.8 C1.9 5.4 1 5.6 0.4 5.6 C-0.2 5.6 -1.1 5.4 -1.1 4.8 C-1.1 3.8 -0.9 2.6 -1.2 1.4 C-1.6 0.2 -2.2 -0.6 -2.4 -1.9 C-2.6 -3.4 -1.8 -4.8 0.9 -4.8 Z'
+import { useState, useEffect } from 'react'
 
-// le petit orteil, séparé du talon : c'est lui qui fait « pied »
-const ORTEIL = 'M1.1 -7.5 C2.3 -7.5 2.8 -6.9 2.8 -6.2 C2.8 -5.5 2.2 -5.1 1.1 -5.1 C0.1 -5.1 -0.5 -5.5 -0.5 -6.2 C-0.5 -6.9 0 -7.5 1.1 -7.5 Z'
+// un pied nu, vu de dessus : talon, plante, cinq orteils
+const PIED = [
+  // la plante et le talon
+  'M0 1.6 C-2.1 1.2 -3.1 3.6 -2.6 6.4 C-2.1 9.2 -1.2 11.6 -0.4 13.6 C0 14.5 1 14.5 1.4 13.6 C2.2 11.6 3.1 9.2 3.6 6.4 C4.1 3.6 3.1 1.2 1 1.6 Z',
+]
 
-export default function CheminEmpreintes({ opacite = 0.5, className = '' }) {
-  // le tracé descend en S dans une bande de 132 px de large
-  const pas = []
-  for (let i = 0; i < 18; i += 1) {
-    const y = 8 + i * 14
-    // ⚠️ le sinus doit valoir 0 aux DEUX bouts de la tuile, sinon le tracé
-    // saute d'une tuile à l'autre (vérifié à l'image). Un tour complet règle ça.
-    const phase = (i / 17) * Math.PI * 2
-    const x = 54 + Math.sin(phase) * 26
-    pas.push({ x, y, angle: Math.cos(phase) > 0 ? 7 : -7 })
+// les orteils : du gros (à gauche) au petit (à droite)
+const ORTEILS = [
+  { cx: -3.0, cy: -0.6, r: 1.35 },
+  { cx: -1.1, cy: -2.2, r: 1.0 },
+  { cx: 0.5, cy: -2.8, r: 0.85 },
+  { cx: 2.0, cy: -2.5, r: 0.72 },
+  { cx: 3.2, cy: -1.8, r: 0.6 },
+]
+
+/** une trace seule, tournée, à l'échelle — sert au motif et à l'aperçu */
+export function TracePied({ x, y, angle = 0, echelle = 1, gauche = true }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${angle}) scale(${gauche ? -echelle : echelle} ${echelle})`}>
+      {PIED.map((d, i) => <path key={i} d={d} />)}
+      {ORTEILS.map((o, i) => <circle key={i} cx={o.cx} cy={o.cy} r={o.r} />)}
+    </g>
+  )
+}
+
+const TUILE_H = 264
+const TUILE_L = 132
+const PAS = 16
+
+export default function CheminEmpreintes({ className = '', opacite = 0.55 }) {
+  // la hauteur réelle du chemin, pour dessiner la bonne quantité de traces
+  const [hauteur, setHauteur] = useState(1200)
+
+  useEffect(() => {
+    const mesurer = () => {
+      const parent = document.querySelector('.empv3-parcours')
+      if (parent) setHauteur(Math.max(parent.getBoundingClientRect().height, 400))
+    }
+    mesurer()
+    window.addEventListener('resize', mesurer)
+    return () => window.removeEventListener('resize', mesurer)
+  }, [])
+
+  // ⚠️ un tour de sinus COMPLET par tuile : sinon le tracé saute
+  // d'une tuile à l'autre (défaut vu à l'image au premier essai).
+  const traces = []
+  const nombre = Math.ceil(hauteur / PAS) + 2
+  for (let i = 0; i < nombre; i += 1) {
+    const y = 10 + i * PAS
+    const phase = (y / TUILE_H) * Math.PI * 2
+    const x = 46 + Math.sin(phase) * 30
+    traces.push({
+      x,
+      y,
+      angle: Math.cos(phase) > 0 ? 9 : -9,
+      gauche: i % 2 === 0,
+    })
   }
 
   return (
     <svg
       className={`chemin-empreintes ${className}`.trim()}
-      viewBox="0 0 132 260"
+      viewBox={`0 0 ${TUILE_L} ${hauteur}`}
+      width={TUILE_L}
+      height={hauteur}
+      preserveAspectRatio="xMidYMin meet"
       aria-hidden="true"
       focusable="false"
       style={{ opacity: opacite }}
     >
-      <defs>
-        <pattern id="motif-traces" width="132" height="260" patternUnits="userSpaceOnUse">
-          <g fill="#A26537">
-            {pas.map((trace, i) => (
-              <g key={i} transform={`translate(${trace.x.toFixed(1)} ${trace.y}) rotate(${trace.angle})`}>
-                <path d={TRACE} />
-                <path d={ORTEIL} />
-              </g>
-            ))}
-          </g>
-        </pattern>
-      </defs>
-      <rect width="132" height="100%" fill="url(#motif-traces)" />
+      <g fill="#A26537">
+        {traces.map((t, i) => (
+          <TracePied key={i} x={t.x} y={t.y} angle={t.angle} echelle={1} gauche={t.gauche} />
+        ))}
+      </g>
     </svg>
   )
 }

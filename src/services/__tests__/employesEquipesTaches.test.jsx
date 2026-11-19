@@ -1168,14 +1168,23 @@ describe('la page Employés', () => {
     expect(PANCARTE).toContain('pancarte-clou')
 
     // elle est posée AU MILIEU de l'en-tête, et au pied de page
-    expect(EMPLOYES).toContain('empv3-pancarte-slot')
-    expect(EMPLOYES).toMatch(/empv3-pancarte-slot[\s\S]{0,120}PancarteEnseigne/)
+    expect(EMPLOYES).toContain('empv3-entete-pancarte')
+    expect(EMPLOYES).toMatch(/<header className="empv3-entete">[\s\S]{0,400}empv3-entete-pancarte/)
     expect(EMPLOYES).toMatch(/empv3-pancarte[\s\S]{0,120}PancarteEnseigne/)
     const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
-    expect(CSS_EMP).toMatch(/\.empv3-pancarte-slot \{[\s\S]{0,160}justify-content: center/)
+    expect(CSS_EMP).toMatch(/\.empv3-entete-pancarte \{[\s\S]{0,200}left: 50%/)
     // et elle repasse dans le flux quand la place manque
-    // elle vit hors du bloc d'en-tête, qui la rognait (overflow: hidden)
-    expect(CSS_EMP).toMatch(/\.empv3-entete \{[\s\S]{0,140}overflow: hidden/)
+    // ⚠️ la règle qui l'a COUPÉE : .empv3-entete porte overflow: hidden.
+    // Elle ne doit plus y être — le rognage du motif est fait bandeau par bandeau.
+    // la DERNIÈRE règle .empv3-entete est celle qui s'applique (la première
+    // est un ancien bloc, resté dans le fichier)
+    const SANS_COMMENTAIRES = CSS_EMP.replace(/\/\*[\s\S]*?\*\//g, '')
+    const entete = SANS_COMMENTAIRES.slice(
+      SANS_COMMENTAIRES.lastIndexOf('.empv3-entete {', SANS_COMMENTAIRES.indexOf('.empv3-entete-bandeau')),
+      SANS_COMMENTAIRES.indexOf('.empv3-entete-bandeau'),
+    )
+    expect(entete).not.toContain('overflow: hidden')
+    expect(CSS_EMP).toMatch(/\.empv3-entete-bandeau,\s*\.empv3-entete-bandeau--bas \{\s*overflow: hidden/)
   })
 
   it('le chemin de traces serpente derrière, et la borne se pose dessus', () => {
@@ -1183,21 +1192,30 @@ describe('la page Employés', () => {
     const BORNE = readFileSync('src/components/parcours/BornePointage.jsx', 'utf8')
     const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
 
-    // des traces minuscules : la tuile est en PIXELS, elle ne s'étire jamais
-    expect(CHEMIN).toContain('viewBox="0 0 132 260"')
-    expect(CHEMIN).toContain('motif-traces')
+    // des traces de pied HUMAIN : une plante, un talon, CINQ orteils
+    expect(CHEMIN).toContain('ORTEILS')
+    expect(CHEMIN).toContain('TracePied')
+    const cinqOrteils = CHEMIN.match(/\{ cx: [\d.-]+, cy: [\d.-]+, r: [\d.]+ \}/g)
+    expect(cinqOrteils).toHaveLength(5)
+    // le chemin descend de la pancarte et va jusqu'au pied de page
+    expect(CHEMIN).toContain("document.querySelector('.empv3-parcours')")
+    expect(EMPLOYES).toContain('empv3-parcours')
+    // il est en tour de sinus complet : sinon il saute d'une tuile à l'autre
+    expect(CHEMIN).toContain('Math.PI * 2')
     // et le motif se répète sans étirement : c'est ce qui garde les traces minuscules
-    expect(CHEMIN).toContain('patternUnits="userSpaceOnUse"')
+    expect(CHEMIN).toContain('TracePied')
     // aucune rotation décalée : `rotate` tourne autour de 0,0 après un translate.
     // On teste le CODE, pas les commentaires qui racontent le bug.
     const CODE = CHEMIN.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n')
     expect(CODE).not.toMatch(/<use[^>]*x="/)
-    expect(CODE).toContain('patternUnits="userSpaceOnUse"')
+    expect(CODE).toContain('TracePied')
     // et surtout PAS de preserveAspectRatio="none" sur la page entière :
     // c'est ce qui transformait les traces en taches géantes
     expect(CHEMIN).not.toContain('preserveAspectRatio="none"')
     // une bande de 132 px collée à chaque bord, jamais étirée
-    expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,160}width: 132px/)
+    expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,200}width: 132px/)
+    // il part du milieu, là où est plantée la pancarte
+    expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,200}left: calc\(50% - 66px\)/)
     // il ne prend aucun clic
     expect(CHEMIN).toContain('aria-hidden')
 
