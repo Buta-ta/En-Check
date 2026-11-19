@@ -296,7 +296,7 @@ const rendreEntree = async (props = {}) => {
 }
 
 describe('la vue Annuaire', () => {
-  it('pose trois tuiles chiffre + repère, et n’invente pas de présence', async () => {
+  it('pose les trois cartes de la composition validée, et n’invente pas de présence', async () => {
     await rendre(
       <ThemeProvider>
         <Employes />
@@ -304,14 +304,15 @@ describe('la vue Annuaire', () => {
     )
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
 
-    const tuiles = [...hote.querySelectorAll('.empv2-tuiles > .ch-tuile-repere')]
-    expect(tuiles).toHaveLength(3)
-    // le repère : le chiffre porte sa période ou son unité (D-017)
-    expect(tuiles.map((t) => t.querySelector('.ch-tuile-legende').textContent)).toEqual(
-      ['Effectif au registre', 'Présents (en poste ou en pause)', 'Retards — le mot est écrit, jamais un point seul'],
+    const cartes = [...hote.querySelectorAll('.empv3-cartes .empv3-carte')]
+    expect(cartes).toHaveLength(3)
+    expect(cartes.map((c) => c.querySelector('.empv3-carte-titre').textContent)).toEqual(
+      ['Effectif total', 'Assiduité du jour', 'Accès au portail'],
     )
+
     // rien à compter : un tiret, pas un zéro inventé pour la présence
-    expect(tuiles.map((t) => t.querySelector('.ch-tuile-valeur').textContent)).toEqual(['0', '—', '—'])
+    expect([...cartes[0].querySelectorAll('.empv3-ligne b')].map((b) => b.textContent)).toEqual(['—', '—'])
+    expect(cartes[1].querySelector('.empv3-pct').textContent).toBe('—')
   })
 
   it('explique l’annuaire vide et propose la première fiche', async () => {
@@ -334,15 +335,15 @@ describe('la vue Annuaire', () => {
     )
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
 
+    // les filtres vivent dans la barre d'outils de « Tous les employés »
     const enPoste = [...hote.querySelectorAll('.empv2-filtre')].find((f) => f.textContent === 'En poste')
     await act(async () => enPoste.click())
     expect(enPoste.getAttribute('aria-pressed')).toBe('true')
 
-    // « Tout montrer » apparaît tant qu’un filtre est posé
     const toutMontrer = [...hote.querySelectorAll('.empv2-filtre')].find((f) => f.textContent === 'Tout montrer')
     expect(toutMontrer).toBeTruthy()
     await act(async () => toutMontrer.click())
-    expect(hote.querySelector('.empv2-filtre[aria-pressed="true"]').textContent).toBe('Tous')
+    expect(hote.querySelector('.empv2-filtre[aria-pressed="true"]').textContent).toContain('Tous')
   })
 
   it('la carte porte la photo ou les initiales, le nom en serif, le matricule et le contrat', async () => {

@@ -40,6 +40,7 @@ import '../components/zoulou/zoulou.css'
 import '../pages/Dashboard.css'
 import './EmployesRefonte.css'
 import './EquipesTaches.css'
+import './EmployesV3.css'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
 import { formaterHeureLocale, jourLocal, minutesDepuisMinuit } from '../utils/timezoneUtils'
 
@@ -60,6 +61,20 @@ const FILTRES_ANNUAIRE = [
 ]
 
 // Une part réelle, ou un tiret quand il n'y a rien à diviser.
+// Les quatre morceaux d'une fiche complète — l'anatomie de la page.
+function morceauxDeFiche(employee, aCompte) {
+  return [
+    { mot: 'Poste', ok: Boolean(employee.position) },
+    { mot: 'Service', ok: Boolean(employee.department) },
+    { mot: 'Contrat', ok: Boolean(employee.contract_type) },
+    { mot: 'Portail', ok: Boolean(aCompte) },
+  ]
+}
+
+function nomCompletDe(employee) {
+  return [employee.first_name, employee.last_name].filter(Boolean).join(' ') || 'Sans nom'
+}
+
 const pourcent = (morceau, total) =>
   (total > 0 ? `${Math.round((morceau / total) * 100)} %` : '—')
 
@@ -1062,6 +1077,77 @@ export default function Employes() {
 
   const nomAdmin = admin?.name || admin?.email || 'Administrateur'
 
+  // ── les chiffres de la page : tout est compté, rien n'est estimé ──
+  const prenomAdmin = nomAdmin.includes('@') ? nomAdmin.split('@')[0] : nomAdmin.split(' ')[0]
+  const jourEnClair = (() => {
+    const texte = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())
+    return texte.charAt(0).toUpperCase() + texte.slice(1)
+  })()
+
+  const effectif = employes.length
+  const enPoste = suiviPresence ? liveCounts.enPoste : 0
+  const enPause = suiviPresence ? liveCounts.enPause : 0
+  const absents = suiviPresence ? liveCounts.enConge : 0
+  const tauxPresence = suiviPresence && effectif > 0
+    ? Math.round(((enPoste + enPause) / effectif) * 100)
+    : null
+  const partEnPoste = effectif > 0 ? (enPoste / effectif) * 100 : 0
+  const partEnPause = effectif > 0 ? (enPause / effectif) * 100 : 0
+  const partAbsents = effectif > 0 ? (absents / effectif) * 100 : 0
+
+  const actifsPortail = employes.filter((e) => aUnCompteEmploye(e)).length
+  const partPortail = effectif > 0 ? actifsPortail / effectif : 0
+  const perimetreAnneau = 2 * Math.PI * 33
+
+  // Les contrats, comptés par libellé.
+  const contratsParType = (() => {
+    const compte = new Map()
+    employes.forEach((e) => {
+      const mot = e.contract_type ? getContractLabel(e.contract_type) : 'Sans contrat renseigné'
+      compte.set(mot, (compte.get(mot) || 0) + 1)
+    })
+    return [...compte.entries()]
+      .map(([mot, nombre]) => ({ mot, nombre }))
+      .sort((a, b) => b.nombre - a.nombre)
+      .slice(0, 5)
+  })()
+  const maxContrat = contratsParType.reduce((m, c) => Math.max(m, c.nombre), 0)
+
+  // Les fiches incomplètes : on montre d'abord les plus trouées.
+  const fichesIncompletes = employes
+    .map((e) => {
+      const morceaux = morceauxDeFiche(e, aUnCompteEmploye(e))
+      return { employee: e, morceaux, remplis: morceaux.filter((m) => m.ok).length }
+    })
+    .filter((f) => f.remplis < 4)
+    .sort((a, b) => a.remplis - b.remplis)
+    .slice(0, 5)
+
+  // L'export : ce que l'écran montre, à l'identique.
+  const exporterCsv = () => {
+    const entetes = ['Matricule', 'Nom', 'E-mail', 'Poste', 'Service', 'Contrat', 'Portail']
+    const lignes = employesFiltres.map((e) => [
+      e.matricule || '',
+      nomCompletDe(e),
+      e.email || '',
+      e.position || '',
+      e.department || '',
+      e.contract_type ? getContractLabel(e.contract_type) : '',
+      aUnCompteEmploye(e) ? 'Actif' : 'À activer',
+    ])
+    const csv = [entetes, ...lignes]
+      .map((ligne) => ligne.map((cellule) => `"${String(cellule).replace(/"/g, '""')}"`).join(';'))
+      .join('\r\n')
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const lien = document.createElement('a')
+    lien.href = url
+    lien.download = `employes-${new Date().toISOString().slice(0, 10)}.csv`
+    lien.click()
+    URL.revokeObjectURL(url)
+    toast.success(`${employesFiltres.length} ligne${employesFiltres.length > 1 ? 's' : ''} exportée${employesFiltres.length > 1 ? 's' : ''}`)
+  }
+
   // ═══════════════════════════════════════════════════════════
   // RENDU
   // ═══════════════════════════════════════════════════════════
@@ -1142,8 +1228,24 @@ export default function Employes() {
                   {employes.length} employé{employes.length > 1 ? 's' : ''}
                 </span>
               )}
+              <span className="empv3-sous">
+                {vueActive === null
+                  ? `Bonjour, ${prenomAdmin} · ${jourEnClair}`
+                  : 'La page Employés, vue par vue'}
+              </span>
             </h1>
             <div className="empv2-tete-actions">
+              {vueActive === null && (
+                <span className="empv3-chip">
+                  <CalendarDays size={12} aria-hidden="true" />
+                  {jourEnClair}
+                </span>
+              )}
+              {vueActive === null && (
+                <button type="button" className="ch-btn-contour" onClick={exporterCsv}>
+                  <FileText size={13} aria-hidden="true" /> Exporter
+                </button>
+              )}
               {vueActive === 'equipes' && (
                 <button type="button" className="ch-btn-pleine" onClick={() => setSignalCreationEquipe((n) => n + 1)}>
                   <Plus size={13} aria-hidden="true" /> Nouvelle équipe
@@ -1159,6 +1261,7 @@ export default function Employes() {
                   <UserPlus size={13} aria-hidden="true" /> Nouvel employé
                 </button>
               )}
+
               <button
                 type="button"
                 className="empv2-theme"
@@ -1200,33 +1303,160 @@ export default function Employes() {
             <div className="empv2-annuaire">
               {/* les chiffres du jour : trois tuiles, le chiffre porte sa période.
                   Tout est compté sur le personnel chargé, jamais une estimation. */}
-              <div className="empv2-tuiles" aria-label="Chiffres du personnel">
-                <div className="ch-tuile-repere">
-                  <div className="ch-tuile-repere-ligne">
-                    <span className="ch-tuile-valeur">{employes.length}</span>
-                    <span className="ch-tuile-repere">enregistrés</span>
+              {/* les trois cartes : l'anatomie de la référence validée (D-022) */}
+              <div className="empv3-cartes">
+
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Effectif total</span>
+                    <span className="empv3-carte-total">{employes.length}</span>
                   </div>
-                  <span className="ch-tuile-legende">Effectif au registre</span>
+                  <div className="empv3-lignes">
+                    <div className="empv3-ligne empv3-ligne--ok">
+                      <b>{suiviPresence ? liveCounts.enPoste : '—'}</b>
+                      <span className="empv3-ligne-lab">En poste</span>
+                    </div>
+                    <div className="empv3-ligne empv3-ligne--att">
+                      <b>{suiviPresence ? liveCounts.enConge : '—'}</b>
+                      <span className="empv3-ligne-lab">Absents aujourd’hui</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="ch-tuile-repere">
-                  <div className="ch-tuile-repere-ligne">
-                    <span className="ch-tuile-valeur">{suiviPresence ? liveCounts.enPoste + liveCounts.enPause : '—'}</span>
-                    <span className="ch-tuile-repere">aujourd’hui</span>
+
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Assiduité du jour</span>
                   </div>
-                  <span className="ch-tuile-legende">Présents (en poste ou en pause)</span>
+                  <div>
+                    <span className="empv3-pct">{tauxPresence === null ? '—' : `${tauxPresence} %`}</span>
+                    <span className="empv3-pct-note">
+                      {tauxPresence === null
+                        ? 'relevés en cours de chargement'
+                        : `sur ${employes.length} personne${employes.length > 1 ? 's' : ''}`}
+                    </span>
+                  </div>
+                  <div
+                    className="empv3-empilee"
+                    role="img"
+                    aria-label={`En poste ${enPoste}, en pause ${enPause}, absents ${absents}`}
+                  >
+                    <i style={{ width: `${partEnPoste}%`, background: 'var(--charte-aplat)' }} />
+                    <i style={{ width: `${partEnPause}%`, background: 'var(--charte-alerte)' }} />
+                    <i style={{ width: `${partAbsents}%`, background: 'var(--charte-statut-neutre)' }} />
+                  </div>
+                  <div className="empv3-legende">
+                    <span><i style={{ background: 'var(--charte-aplat)' }} />En poste · {suiviPresence ? enPoste : '—'}</span>
+                    <span><i style={{ background: 'var(--charte-alerte)' }} />En pause · {suiviPresence ? enPause : '—'}</span>
+                    <span><i style={{ background: 'var(--charte-statut-neutre)' }} />Absents · {suiviPresence ? absents : '—'}</span>
+                  </div>
                 </div>
-                <div className="ch-tuile-repere">
-                  <div className="ch-tuile-repere-ligne">
-                    <span className="ch-tuile-valeur">{suiviPresence ? liveCounts.retards : '—'}</span>
-                    <span className="ch-tuile-repere">aujourd’hui</span>
+
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Accès au portail</span>
+                    <span className="empv3-carte-total">{actifsPortail}/{employes.length}</span>
                   </div>
-                  <span className="ch-tuile-legende">Retards — le mot est écrit, jamais un point seul</span>
+                  <div className="empv3-anneau">
+                    <div className="empv3-anneau-svg">
+                      <svg width="86" height="86" viewBox="0 0 86 86" role="img" aria-label={`${actifsPortail} comptes actifs sur ${employes.length}`}>
+                        <circle cx="43" cy="43" r="33" fill="none" stroke="var(--charte-surface2)" strokeWidth="10" />
+                        <circle
+                          cx="43" cy="43" r="33" fill="none"
+                          stroke="var(--charte-aplat)" strokeWidth="10"
+                          strokeDasharray={`${perimetreAnneau * partPortail} ${perimetreAnneau}`}
+                          transform="rotate(-90 43 43)"
+                        />
+                      </svg>
+                      <div className="empv3-anneau-centre">
+                        <span className="empv3-anneau-val">{actifsPortail}</span>
+                        <span className="empv3-anneau-lab">au total {employes.length}</span>
+                      </div>
+                    </div>
+                    <div className="empv3-appareils">
+                      <div>
+                        <i style={{ background: 'var(--charte-aplat)' }} />
+                        <b>{actifsPortail}</b>
+                        <span>Compte actif</span>
+                      </div>
+                      <div>
+                        <i style={{ background: 'var(--charte-surface2)' }} />
+                        <b>{Math.max(employes.length - actifsPortail, 0)}</b>
+                        <span>À activer</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* les filtres : l'état de la journée d'abord, des pilules
-                  où le mot est la donnée (C7) */}
-              <div className="empv2-filtres" role="group" aria-label="Filtrer l'annuaire">
+              {/* les deux grands blocs */}
+              <div className="empv3-deux">
+
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Fiches à compléter</span>
+                    <span className="empv3-carte-total">{fichesIncompletes.length}</span>
+                  </div>
+                  {fichesIncompletes.length === 0 ? (
+                    <p className="empv3-legende">Toutes les fiches sont complètes : poste, service, contrat et accès au portail.</p>
+                  ) : (
+                    <div className="empv3-perf-lignes">
+                      {fichesIncompletes.map(({ employee, morceaux, remplis }) => (
+                        <div className="empv3-perf-ligne" key={employee.id}>
+                          <span className="empv3-perf-nom">{nomCompletDe(employee)}</span>
+                          <span className="empv3-perf-bar">
+                            {morceaux.map((m) => (
+                              <i
+                                key={m.mot}
+                                title={`${m.mot} : ${m.ok ? 'renseigné' : 'manquant'}`}
+                                style={{ width: '25%', background: m.ok ? 'var(--charte-aplat)' : 'var(--charte-surface2)' }}
+                              />
+                            ))}
+                          </span>
+                          <span className="empv3-perf-total">{remplis}/4</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="empv3-carte">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Contrats par type</span>
+                  </div>
+                  {contratsParType.length === 0 ? (
+                    <p className="empv3-legende">Aucun contrat renseigné pour l’instant.</p>
+                  ) : (
+                    <div className="empv3-perf-lignes">
+                      {contratsParType.map(({ mot, nombre }) => (
+                        <div className="empv3-barre-ligne" key={mot}>
+                          <span>{mot}</span>
+                          <span className="empv3-barre-piste">
+                            <i style={{ width: `${maxContrat > 0 ? (nombre / maxContrat) * 100 : 0}%` }} />
+                          </span>
+                          <span className="empv3-barre-val">{nombre}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* la barre d'outils de « Tous les employés » :
+                  la recherche, puis l'état de la journée */}
+              <div className="empv2-filtres" role="group" aria-label="Filtrer la liste">
+                <span className="empv3-bloc-titre">Tous les employés</span>
+
+                <label className="empv3-saisie">
+                  <Search size={12} aria-hidden="true" />
+                  <input
+                    type="search"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Rechercher un nom, un matricule…"
+                    aria-label="Rechercher un employé"
+                  />
+                </label>
+
                 {FILTRES_ANNUAIRE.map((filtre) => (
                   <button
                     key={filtre.key}

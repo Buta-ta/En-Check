@@ -12,23 +12,23 @@ Légende : ✅ conforme · ⚠️ en dérogation (voir DEROGATIONS.md) · ⬜ no
 | Barre latérale | toutes | kente 28 px sous logo | — | ✅ (D-018) | — | — | ✅ 18/11 (D-018) |
 | Thème | toutes | — | — | ✅ (D-005) | — | — | ✅ 18/11 |
 | **Employés** | `/employes` | zoulou | ⬜ | ⬜ | ⬜ | ⬜ | 🔄 en cours (D-021) |
-| Dashboard / Accueil | `/` | bogolan | ⬜ |  | ⬜ |  | ⚠️ D-022 |
-| Fiche employée (modale) | — | — | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ D-023 |
-| Absences | `/absences` | ndebele | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ D-025 |
-| Planning | `/planning` | kuba | ⬜ |  | ⬜ |  | ⚠️ D-025 |
-| Paie | `/paie` | bogolan | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ D-025 |
-| Pointages | `/pointages` | adinkra | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ D-025 |
-| Pointes | `/heures-supplementaires` | aso-oke | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ D-025 |
-| Retards | `/retards` | retards-tissage | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ D-025 |
-| Prospection / Devis | `/prospection` | abomey | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ D-025 |
-| Rémunérations | `/remunerations` | bogolan | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ D-025 |
-| Comptes / Accès | `/admins` | abomey | ⬜ |  | ⬜ |  | ⚠️ D-025 |
-| Configuration pointeuse | `/pointeuses` | korhogo | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ D-025 |
-| Géopointage | `/geopointage` | dogon | ⬜ |  | ⬜ |  | ⚠️ D-025 |
-| Rapports | `/rapports` | nsibidi | ⬜ |  | ⬜ |  | ⚠️ D-025 |
-| Système (annonces, journal) | `/system-messages`, `/analytics` | korhogo | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ D-025 |
-| Pauses / Fériés | `/pauses` | lesotho | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ D-025 |
-| Reçus faciaux / Réglages | `/reconnaissance-faciale` | kuba | ⬜ |  | ⬜ |  | ⚠️ D-025 |
+| Dashboard / Accueil | `/` | bogolan | ⬜ |  | ⬜ |  | ⚠️ DÉR-01 |
+| Fiche employée (modale) | — | — | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ DÉR-02 |
+| Absences | `/absences` | ndebele | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ DÉR-04 |
+| Planning | `/planning` | kuba | ⬜ |  | ⬜ |  | ⚠️ DÉR-04 |
+| Paie | `/paie` | bogolan | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ DÉR-04 |
+| Pointages | `/pointages` | adinkra | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ DÉR-04 |
+| Pointes | `/heures-supplementaires` | aso-oke | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ DÉR-04 |
+| Retards | `/retards` | retards-tissage | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ DÉR-04 |
+| Prospection / Devis | `/prospection` | abomey | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ DÉR-04 |
+| Rémunérations | `/remunerations` | bogolan | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ DÉR-04 |
+| Comptes / Accès | `/admins` | abomey | ⬜ |  | ⬜ |  | ⚠️ DÉR-04 |
+| Configuration pointeuse | `/pointeuses` | korhogo | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ DÉR-04 |
+| Géopointage | `/geopointage` | dogon | ⬜ |  | ⬜ |  | ⚠️ DÉR-04 |
+| Rapports | `/rapports` | nsibidi | ⬜ |  | ⬜ |  | ⚠️ DÉR-04 |
+| Système (annonces, journal) | `/system-messages`, `/analytics` | korhogo | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ DÉR-04 |
+| Pauses / Fériés | `/pauses` | lesotho | ⬜ | ⬜ | ⬜ | ⬜ | ⚠️ DÉR-04 |
+| Reçus faciaux / Réglages | `/reconnaissance-faciale` | kuba | ⬜ |  | ⬜ |  | ⚠️ DÉR-04 |
 
 ## Verdict du dépôt
 

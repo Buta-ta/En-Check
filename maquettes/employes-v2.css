@@ -1,0 +1,273 @@
+/* ═══════════════════════════════════════════════════════════
+   MAQUETTE v2 — Employés, d'après la référence du fondateur.
+
+   Composition de la référence (barre d'outils, cartes à
+   anatomie interne, barres segmentées, tableau à cases à cocher)
+   · couleurs, polices, rayons et ombres de la charte (D-001,
+   D-006, D-016). Aucune couleur en dur : tout par jetons.
+   ═══════════════════════════════════════════════════════════ */
+
+.mq2-body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--charte-sable);
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-corps);
+  -webkit-font-smoothing: antialiased;
+  --v2-filet: var(--charte-bordure);
+}
+
+[data-theme='dark'] {
+  --v2-filet: rgba(243, 233, 218, 0.14);
+}
+/* Le body redéclare le filet : il faut donc la règle sur le body lui-même,
+   sinon le thème sombre garde la bordure claire de la palette. */
+[data-theme='dark'] .mq2-body {
+  --v2-filet: rgba(243, 233, 218, 0.14);
+}
+
+.mq2 { display: grid; grid-template-columns: 252px minmax(0, 1fr); min-height: 100vh; }
+@media (max-width: 980px) { .mq2 { grid-template-columns: 1fr; } .mq-barre { display: none; } }
+
+/* ── La colonne ─────────────────────────────────────────── */
+
+.mq2-col { min-width: 0; display: flex; flex-direction: column; }
+
+/* La barre d'outils du haut : recherche, notifications, avatars, invitation */
+.mq2-top {
+  display: flex; align-items: center; gap: 12px;
+  height: 60px;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--v2-filet);
+  background: var(--charte-surface);
+}
+.mq2-top-titre { font-size: 15px; font-weight: 700; margin-right: auto; }
+
+.mq2-recherche-top {
+  display: flex; align-items: center; gap: 8px;
+  width: 260px; height: 34px; padding: 0 12px;
+  border: 1px solid var(--v2-filet);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-sable);
+  color: var(--charte-douce);
+  font-size: 12px;
+}
+.mq2-ico {
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border: 1px solid var(--v2-filet);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-sable);
+  color: var(--charte-douce);
+  cursor: pointer;
+}
+.mq2-ico:hover { color: var(--charte-encre); }
+
+.mq2-avatars { display: flex; align-items: center; }
+.mq2-avatars span {
+  width: 26px; height: 26px; border-radius: 999px;
+  display: grid; place-items: center;
+  margin-left: -8px;
+  border: 2px solid var(--charte-surface);
+  background: var(--charte-surface2);
+  color: var(--charte-douce);
+  font-size: 9.5px; font-weight: 700;
+}
+.mq2-avatars span:first-child { margin-left: 0; }
+.mq2-avatars span.mq2-plus { background: var(--charte-aplat); color: var(--charte-blanc); }
+
+/* ── Le corps ───────────────────────────────────────────── */
+
+.mq2-corps {
+  padding: 24px 28px 48px;
+  display: flex; flex-direction: column; gap: 20px;
+  max-width: 1320px; width: 100%;
+}
+
+/* L'en-tête : titre à gauche, contrôles à droite */
+.mq2-tete { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.mq2-tete-copy { margin-right: auto; }
+.mq2-titre { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.15; letter-spacing: -0.2px; }
+.mq2-sous { margin: 4px 0 0; font-size: 12px; color: var(--charte-douce); }
+.mq2-tete-actions { display: flex; align-items: center; gap: 8px; }
+
+.mq2-selecteur {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 36px; padding: 0 12px;
+  border: 1px solid var(--v2-filet);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Les cartes ─────────────────────────────────────────── */
+
+.mq2-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.mq2-grille--deux { grid-template-columns: 1.15fr 1fr; }
+@media (max-width: 1100px) { .mq2-grille, .mq2-grille--deux { grid-template-columns: 1fr; } }
+
+.mq2-carte {
+  background: var(--charte-surface);
+  border: 1px solid var(--v2-filet);
+  border-radius: var(--charte-rayon-tuile);
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.mq2-carte-tete { display: flex; align-items: center; gap: 8px; }
+.mq2-carte-titre { font-size: 12.5px; font-weight: 700; margin-right: auto; }
+.mq2-kebab {
+  width: 22px; height: 22px; display: grid; place-items: center;
+  border: 0; background: transparent; color: var(--charte-douce);
+  font-size: 15px; line-height: 1; cursor: pointer; border-radius: 4px;
+}
+.mq2-kebab:hover { background: var(--charte-surface2); }
+
+/* Les deux lignes teintées de la référence (150 / 50) */
+.mq2-lignes { display: flex; flex-direction: column; gap: 6px; }
+.mq2-ligne {
+  display: flex; align-items: center; gap: 10px;
+  height: 42px; padding: 0 12px;
+  border-radius: var(--charte-rayon-champ);
+  font-size: 12px;
+}
+.mq2-ligne--a { background: color-mix(in srgb, var(--charte-succes) 10%, transparent); }
+.mq2-ligne--b { background: color-mix(in srgb, var(--charte-alerte) 12%, transparent); }
+.mq2-ligne-val { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mq2-ligne-lab { margin-left: auto; color: var(--charte-douce); font-weight: 600; }
+
+/* Le grand pourcentage + la barre + la légende */
+.mq2-pct { display: flex; align-items: baseline; gap: 8px; }
+.mq2-pct-val { font-size: 30px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.mq2-pct-note { font-size: 11px; color: var(--charte-succes); font-weight: 600; }
+
+.mq2-barre { height: 8px; border-radius: 999px; background: var(--charte-surface2); overflow: hidden; display: flex; }
+.mq2-barre i { display: block; height: 100%; }
+
+.mq2-legende { display: flex; gap: 12px; flex-wrap: wrap; font-size: 10.5px; color: var(--charte-douce); }
+.mq2-legende span { display: inline-flex; align-items: center; gap: 5px; }
+.mq2-legende i { width: 8px; height: 8px; border-radius: 999px; display: block; }
+
+/* Le donut */
+.mq2-donut { display: flex; align-items: center; gap: 16px; }
+.mq2-donut svg { flex: none; }
+.mq2-donut-centre { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mq2-donut-legend { display: flex; flex-direction: column; gap: 6px; font-size: 11.5px; }
+.mq2-donut-legend div { display: flex; align-items: center; gap: 8px; }
+.mq2-donut-legend b { margin-left: auto; font-variant-numeric: tabular-nums; }
+.mq2-donut-legend i { width: 8px; height: 8px; border-radius: 2px; display: block; }
+
+/* ── Les barres segmentées (la « performance » de la référence) ── */
+
+.mq2-liste { display: flex; flex-direction: column; gap: 10px; }
+.mq2-liste-ligne { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.mq2-liste-nom { width: 132px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mq2-segments { flex: 1; display: flex; gap: 3px; height: 14px; }
+.mq2-segments i { display: block; height: 100%; border-radius: 3px; }
+.mq2-liste-val { width: 44px; text-align: right; color: var(--charte-douce); font-variant-numeric: tabular-nums; }
+.mq2-echelle { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--charte-douce); padding-left: 144px; margin-top: -4px; }
+
+/* ── Le tableau ─────────────────────────────────────────── */
+
+.mq2-bloc {
+  background: var(--charte-surface);
+  border: 1px solid var(--v2-filet);
+  border-radius: var(--charte-rayon-tuile);
+  overflow: hidden;
+}
+.mq2-bloc-tete {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--v2-filet);
+}
+.mq2-bloc-titre { font-size: 13px; font-weight: 700; margin-right: auto; }
+
+.mq2-outil {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 32px; padding: 0 10px;
+  border: 1px solid var(--v2-filet);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-sable);
+  color: var(--charte-douce);
+  font-family: inherit; font-size: 11.5px;
+  cursor: pointer;
+}
+.mq2-outil--saisie { width: 190px; }
+.mq2-outil--saisie input {
+  border: 0; background: transparent; outline: none;
+  color: var(--charte-encre); font-family: inherit; font-size: 11.5px; width: 100%;
+}
+.mq2-outil--saisie input::placeholder { color: var(--charte-douce); }
+
+.mq2-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.mq2-table th {
+  height: 38px; padding: 0 14px;
+  text-align: left; white-space: nowrap;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase;
+  color: var(--charte-douce);
+  border-bottom: 1px solid var(--v2-filet);
+  background: color-mix(in srgb, var(--charte-surface2) 55%, transparent);
+}
+.mq2-table td {
+  height: 52px; padding: 0 14px;
+  border-bottom: 1px solid var(--v2-filet);
+  vertical-align: middle;
+}
+.mq2-table tbody tr:last-child td { border-bottom: 0; }
+.mq2-table tbody tr:hover { background: color-mix(in srgb, var(--charte-surface2) 45%, transparent); }
+.mq2-case { width: 15px; height: 15px; accent-color: var(--charte-aplat); }
+
+.mq2-personne { display: flex; align-items: center; gap: 10px; }
+.mq2-avatar {
+  width: 30px; height: 30px; flex: none; border-radius: 999px;
+  display: grid; place-items: center;
+  background: var(--charte-surface2);
+  color: var(--charte-texte);
+  font-size: 10px; font-weight: 700; letter-spacing: .4px;
+  overflow: hidden;
+}
+.mq2-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.mq2-nom { font-weight: 600; line-height: 1.25; }
+.mq2-mail { font-size: 10.5px; color: var(--charte-douce); }
+
+.mq2-pilule {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--v2-filet);
+  font-size: 10.5px; font-weight: 600;
+  white-space: nowrap;
+}
+.mq2-pilule i { width: 7px; height: 7px; border-radius: 999px; display: block; }
+.mq2-pilule--ok { color: var(--charte-succes); border-color: color-mix(in srgb, var(--charte-succes) 45%, transparent); }
+.mq2-pilule--att { color: var(--charte-alerte); border-color: color-mix(in srgb, var(--charte-alerte) 45%, transparent); }
+.mq2-pilule--ko { color: var(--charte-erreur); border-color: color-mix(in srgb, var(--charte-erreur) 45%, transparent); }
+.mq2-pilule--nu { color: var(--charte-douce); }
+
+.mq2-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.mq2-act {
+  width: 26px; height: 26px; display: grid; place-items: center;
+  border: 1px solid var(--v2-filet); border-radius: var(--charte-rayon-champ);
+  background: transparent; color: var(--charte-douce); cursor: pointer; font-size: 12px;
+}
+.mq2-act:hover { color: var(--charte-encre); background: var(--charte-surface2); }
+
+.mq2-pied {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--v2-filet);
+  font-size: 11px; color: var(--charte-douce);
+}
+
+/* ── La note de maquette ────────────────────────────────── */
+
+.mq2-note {
+  border-left: 3px solid var(--charte-aplat);
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--charte-surface2) 65%, transparent);
+  border-radius: 0 var(--charte-rayon-charte, 8px) 8px 0;
+  font-size: 11.5px; color: var(--charte-douce); line-height: 1.65;
+}
+.mq2-note strong { color: var(--charte-encre); }

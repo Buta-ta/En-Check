@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquettes — En-Check</title>
+<link rel="stylesheet" href="/src/styles/tokens.css">
+<link rel="stylesheet" href="/src/styles/charte.css">
+<link rel="stylesheet" href="/maquettes/maquette.css">
+<style>
+  .cat { max-width: 1080px; margin: 0 auto; padding: 40px 24px 90px; display: flex; flex-direction: column; gap: 22px; }
+  .cat h1 { margin: 0; font-size: 22px; font-weight: 700; }
+  .cat p { margin: 0; max-width: 760px; line-height: 1.7; color: var(--charte-douce); }
+  .cat h2 { margin: 12px 0 0; font-size: 10.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--charte-texte); }
+  .cat-liste { display: flex; flex-direction: column; gap: 8px; }
+  .cat-ligne {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--charte-bordure);
+    border-radius: 12px;
+    background: var(--charte-surface);
+    text-decoration: none; color: inherit;
+  }
+  .cat-ligne:hover { background: var(--charte-surface2); }
+  .cat-nom { font-weight: 600; }
+  .cat-rang { font-family: var(--charte-mono); font-size: 10.5px; color: var(--charte-douce); width: 28px; }
+  .cat-etat { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; }
+  .cat-etat--vif { color: var(--charte-succes); }
+  .cat-etat--encours { color: var(--charte-alerte); }
+  .cat-etat--afaire { color: var(--charte-douce); }
+  .cat-etat--jete { color: var(--charte-erreur); }
+  table.regles { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.regles th, table.regles td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--charte-bordure); vertical-align: top; }
+  table.regles th { font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--charte-douce); font-weight: 700; }
+  .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .deux { grid-template-columns: 1fr; } }
+  .carte-note { padding: 16px; border: 1px solid var(--charte-bordure); border-radius: 12px; background: var(--charte-surface); font-size: 12.5px; line-height: 1.7; }
+  .carte-note strong { display: block; margin-bottom: 6px; color: var(--charte-encre); }
+  .ref { border: 1px solid var(--charte-bordure); border-radius: 12px; overflow: hidden; background: var(--charte-surface); }
+  .ref img { display: block; width: 100%; height: auto; }
+  .ref p { padding: 10px 14px; font-size: 11.5px; margin: 0; }
+</style>
+</head>
+<body style="margin:0;background:var(--charte-sable);color:var(--charte-encre);font-family:var(--charte-police)">
+<div class="cat">
+
+  <div>
+    <p style="font-size:10.5px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--charte-texte)">En-Check · atelier</p>
+    <h1>Les maquettes</h1>
+  </div>
+
+  <p>
+    Une maquette se regarde, se corrige, puis se valide. Tant qu'elle n'est pas validée, aucune ligne de
+    produit n'est écrite. Chaque maquette charge <strong>les vrais</strong> <code>tokens.css</code> et
+    <code>charte.css</code> : ce que tu vois est exactement ce que l'agent devra produire.
+  </p>
+
+  <h2>Employés — la version qui compte</h2>
+  <div class="cat-liste">
+    <a class="cat-ligne" href="/maquettes/employes.html">
+      <span class="cat-rang">v3</span>
+      <span class="cat-nom">Le clone de ta référence, en brut adouci + la barre du dashboard</span>
+      <span class="cat-etat cat-etat--encours">à valider</span>
+    </a>
+    <a class="cat-ligne" href="/maquettes/employes-v2.html">
+      <span class="cat-rang">v2</span>
+      <span class="cat-nom">Employés — ma réinterprétation</span>
+      <span class="cat-etat cat-etat--jete">remplacée</span>
+    </a>
+    <a class="cat-ligne" href="/maquettes/employes-v1.html">
+      <span class="cat-rang">v1</span>
+      <span class="cat-nom">Employés — ma première proposition</span>
+      <span class="cat-etat cat-etat--jete">rejetée</span>
+    </a>
+  </div>
+
+  <h2>Ta référence</h2>
+  <div class="ref">
+    <img src="/maquettes/reference-employes.png" alt="Référence du fondateur : tableau de bord RH">
+    <p>La composition est prise. Les couleurs, les polices, les rayons et les ombres ne le sont pas.</p>
+  </div>
+
+  <h2>Ce que fait la v3</h2>
+  <div class="deux">
+    <div class="carte-note">
+      <strong>Identique à ta référence</strong>
+      La composition, les libellés, les KPI (150 / 50, 90 %, 100 appareils), les graphiques
+      (barres segmentées, anneau, barres empilées avec infobulle) et le tableau
+      (ID, nom, e-mail, rôle, département, statut, actions).
+    </div>
+    <div class="carte-note">
+      <strong>Quatre choses changent, et quatre seulement</strong>
+      La palette (sable &amp; argile au lieu du violet — D-001) · la police (IBM Plex — D-006) ·
+      les rayons ({6, 8, 11, 12} au lieu de 14-16) · les ombres (dures, flou 0 — D-016).
+    </div>
+  </div>
+
+  <h2>Deux écarts assumés dans la v3</h2>
+  <table class="regles">
+    <thead><tr><th>Sujet</th><th>La charte</th><th>La référence (et la v3)</th><th>Ta décision</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Actions pleines</strong></td>
+        <td>une seule par écran (D-013)</td>
+        <td>deux : « Invite » et « Export Data »</td>
+        <td>on garde deux, ou on en rétrograde une ?</td>
+      </tr>
+      <tr>
+        <td><strong>Barre latérale</strong></td>
+        <td>ta référence a une liste plate</td>
+        <td>le modèle du dashboard que tu as validé : rail 58 px + panneau 254 px, <strong>bords arrondis 12 px</strong></td>
+        <td>c'est le modèle que tu imposes — le bento est abandonné</td>
+      </tr>
+      <tr>
+        <td><strong>Contenu</strong></td>
+        <td>français (D-010), vraies données</td>
+        <td>anglais et noms d'exemple — c'est une comparaison de peaux</td>
+        <td>on traduit à la livraison</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Les autres pages, dans l'ordre (D-019 + D-021)</h2>
+  <div class="cat-liste">
+    <div class="cat-ligne"><span class="cat-rang">02</span><span class="cat-nom">Dashboard</span><span class="cat-etat cat-etat--afaire">à faire</span></div>
+    <div class="cat-ligne"><span class="cat-rang">03</span><span class="cat-nom">Pointages</span><span class="cat-etat cat-etat--afaire">à faire</span></div>
+    <div class="cat-ligne"><span class="cat-rang">04</span><span class="cat-nom">Absences · Planning · Paie</span><span class="cat-etat cat-etat--afaire">à faire</span></div>
+    <div class="cat-ligne"><span class="cat-rang">05</span><span class="cat-nom">Modales</span><span class="cat-etat cat-etat--afaire">à faire</span></div>
+  </div>
+
+</div>
+</body>
+</html>
