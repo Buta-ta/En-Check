@@ -1022,3 +1022,176 @@
   padding-top: 8px;
   border-top: 1px solid var(--charte-bordure);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LA PEAU DE LA MAQUETTE v5 — 08/11
+   Trois choses donnent son caractère à l'image validée, et les
+   trois manquaient : un titre qui occupe la page, un cadre de
+   2 px sur chaque bloc avec son ombre dure, et des objets plus
+   grands qu'on regarde sans plisser les yeux.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1 · le titre prend la page ── */
+.empv2-tete { align-items: flex-start; }
+.empv2-titre {
+  font-size: clamp(34px, 3.4vw, 50px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1.5px;
+}
+.empv2-titre-compte {
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.empv3-sous {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--charte-douce);
+}
+
+/* ── 2 · chaque bloc est un objet posé : cadre 2 px, ombre dure ── */
+.empv2-annuaire .empv3-carte,
+.empv2-annuaire .empv3-fiche {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  box-shadow: var(--charte-ombre-dure);
+  background: var(--charte-surface);
+}
+.empv2-annuaire .empv3-carte { padding: 16px; }
+
+.empv2-tete-actions .ch-btn-pleine,
+.empv2-tete-actions .ch-btn-contour {
+  min-height: 40px;
+  border-width: var(--charte-trait);
+  box-shadow: var(--charte-ombre-dure);
+}
+.empv2-tete-actions .empv3-chip {
+  min-height: 40px;
+  border-width: var(--charte-trait);
+  box-shadow: var(--charte-ombre-dure);
+  background: var(--charte-surface);
+  font-size: 11px;
+}
+
+/* ── 3 · les chiffres se lisent de loin ── */
+.empv2-annuaire .empv3-kpi-chiffre {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+}
+.empv2-annuaire .empv3-kpi { gap: 10px; }
+.empv2-annuaire .empv3-kpi .empv3-carte-titre {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--charte-encre);
+}
+.empv2-annuaire .empv3-kpi-ico {
+  width: 30px;
+  height: 30px;
+  border-width: var(--charte-trait);
+}
+.empv2-annuaire .empv3-kpi-pied { font-size: 11px; }
+
+/* ── 4 · les titres de bloc, plus grands qu'une étiquette ── */
+.empv2-annuaire .empv3-carte-titre {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  text-transform: none;
+  color: var(--charte-encre);
+}
+.empv2-annuaire .empv3-carte-total { font-size: 11px; }
+
+/* ── 5 · la grille de la semaine respire ── */
+.empv2-annuaire .empv3-semaine-tete,
+.empv2-annuaire .empv3-semaine-ligne {
+  grid-template-columns: 176px repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+.empv2-annuaire .empv3-case {
+  height: 40px;
+  border-width: var(--charte-trait);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface2);
+}
+.empv2-annuaire .empv3-case--pointe { background: var(--charte-aplat); }
+.empv2-annuaire .empv3-jour { font-size: 10px; }
+.empv2-annuaire .empv3-jour b { font-size: 12px; }
+.empv2-annuaire .empv3-semaine-nom { font-size: 11.5px; }
+.empv2-annuaire .empv3-semaine-poste { font-size: 9.5px; }
+.empv2-annuaire .empv3-barre {
+  height: 40px;
+  border-width: var(--charte-trait);
+  border-color: var(--charte-encre);
+  background: var(--charte-encre);
+  color: var(--charte-surface);
+  font-size: 11px;
+  box-shadow: none;
+}
+
+/* ── 6 · la masse salariale : le chiffre en très grand ── */
+.empv2-annuaire .empv3-masse {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+.empv2-annuaire .empv3-colonne-barre { border-width: var(--charte-trait); }
+
+/* ── 7 · les cartes d'employés, à l'échelle de la maquette ── */
+.empv2-annuaire .empv3-fiches { gap: 16px; }
+.empv2-annuaire .empv3-fiche { padding: 16px; gap: 12px; }
+.empv2-annuaire .empv3-fiche:nth-child(3n + 2) { background: var(--charte-surface2); }
+.empv2-annuaire .empv3-fiche-avatar {
+  width: 52px;
+  height: 52px;
+  border-width: var(--charte-trait);
+  font-size: 16px;
+}
+.empv2-annuaire .empv3-fiche-nom { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
+.empv2-annuaire .empv3-fiche-poste { font-size: 11px; }
+.empv2-annuaire .empv3-fiche-contrat {
+  border-width: var(--charte-trait);
+  font-size: 9.5px;
+  padding: 3px 9px;
+  color: var(--charte-encre);
+}
+.empv2-annuaire .empv3-fiche-contact { font-size: 11px; }
+.empv2-annuaire .empv3-fiche-pied { padding-top: 10px; }
+.empv2-annuaire .empv3-fiche .ch-badge-pilule {
+  height: 24px;
+  padding: 0 10px;
+  font-size: 10px;
+  border-color: transparent;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.empv2-annuaire .empv3-fiche-pastille {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}
+
+/* ── 8 · la barre d'outils : le titre à gauche, la recherche à droite ── */
+.empv2-annuaire .empv3-bloc-titre {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.empv2-annuaire .empv3-saisie {
+  min-height: 38px;
+  border-width: var(--charte-trait);
+  border-radius: var(--charte-rayon-pilule);
+  box-shadow: var(--charte-ombre-dure);
+  background: var(--charte-surface);
+}
+.empv2-annuaire .empv2-filtre {
+  min-height: 34px;
+  border-width: var(--charte-trait);
+  box-shadow: var(--charte-ombre-dure);
+  background: var(--charte-surface);
+}

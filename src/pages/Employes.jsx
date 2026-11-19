@@ -61,15 +61,6 @@ const FILTRES_ANNUAIRE = [
 ]
 
 // Une part réelle, ou un tiret quand il n'y a rien à diviser.
-// Les quatre morceaux d'une fiche complète — l'anatomie de la page.
-function morceauxDeFiche(employee, aCompte) {
-  return [
-    { mot: 'Poste', ok: Boolean(employee.position) },
-    { mot: 'Service', ok: Boolean(employee.department) },
-    { mot: 'Contrat', ok: Boolean(employee.contract_type) },
-    { mot: 'Portail', ok: Boolean(aCompte) },
-  ]
-}
 
 function nomCompletDe(employee) {
   return [employee.first_name, employee.last_name].filter(Boolean).join(' ') || 'Sans nom'
@@ -186,18 +177,19 @@ export default function Employes() {
     return () => { annule = true }
   }, [employes])
 
-  // La masse salariale : les profils de rémunération de l'entreprise.
-  // Lecture silencieuse — sans profils, l'écran écrit qu'il n'en a pas.
+  // La masse salariale : les profils de rémunération des entreprises
+  // réellement chargées — pas seulement celle de l'administrateur, sinon
+  // un super-administrateur lisait une table vide.
   useEffect(() => {
     let annule = false
     const lire = async () => {
       try {
-        const entreprise = admin?.enterprise_id
-        if (!entreprise) { if (!annule) setRemunerations(null); return }
+        const entreprisesDesEmployes = [...new Set(employes.map((e) => e.enterprise_id).filter(Boolean))]
+        if (entreprisesDesEmployes.length === 0) { if (!annule) setRemunerations([]); return }
         const { data, error } = await supabase
           .from('employee_payroll_profiles')
-          .select('employee_id, salary_type, base_salary, hourly_rate, daily_rate, contract_hours_per_month, contract_days_per_month, transport_allowance, housing_allowance, fixed_bonus, is_active')
-          .eq('enterprise_id', entreprise)
+          .select('employee_id, enterprise_id, salary_type, base_salary, hourly_rate, daily_rate, contract_hours_per_month, contract_days_per_month, transport_allowance, housing_allowance, fixed_bonus, is_active')
+          .in('enterprise_id', entreprisesDesEmployes)
         if (error) throw error
         if (!annule) setRemunerations((data || []).filter((p) => p.is_active !== false))
       } catch {
@@ -206,7 +198,7 @@ export default function Employes() {
     }
     lire()
     return () => { annule = true }
-  }, [admin?.enterprise_id])
+  }, [employes])
 
   const payslipIndicators = useEmployeePayslipIndicators(employes)
   const [entreprises, setEntreprises] = useState([])
@@ -1220,30 +1212,6 @@ export default function Employes() {
 
   const actifsPortail = employes.filter((e) => aUnCompteEmploye(e)).length
 
-  // Les contrats, comptés par libellé.
-  const contratsParType = (() => {
-    const compte = new Map()
-    employes.forEach((e) => {
-      const mot = e.contract_type ? getContractLabel(e.contract_type) : 'Sans contrat renseigné'
-      compte.set(mot, (compte.get(mot) || 0) + 1)
-    })
-    return [...compte.entries()]
-      .map(([mot, nombre]) => ({ mot, nombre }))
-      .sort((a, b) => b.nombre - a.nombre)
-      .slice(0, 5)
-  })()
-  const maxContrat = contratsParType.reduce((m, c) => Math.max(m, c.nombre), 0)
-
-  // Les fiches incomplètes : on montre d'abord les plus trouées.
-  const fichesIncompletes = employes
-    .map((e) => {
-      const morceaux = morceauxDeFiche(e, aUnCompteEmploye(e))
-      return { employee: e, morceaux, remplis: morceaux.filter((m) => m.ok).length }
-    })
-    .filter((f) => f.remplis < 4)
-    .sort((a, b) => a.remplis - b.remplis)
-    .slice(0, 5)
-
   // La semaine en cours, découpée en sept jours.
   const semaineAffichee = (() => {
     const maintenant = new Date()
@@ -1728,59 +1696,6 @@ export default function Employes() {
                           : ''}
                       </p>
                     </>
-                  )}
-                </div>
-              </div>
-
-              {/* les deux grands blocs */}
-              <div className="empv3-deux">
-
-                <div className="empv3-carte">
-                  <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Fiches à compléter</span>
-                    <span className="empv3-carte-total">{fichesIncompletes.length}</span>
-                  </div>
-                  {fichesIncompletes.length === 0 ? (
-                    <p className="empv3-legende">Toutes les fiches sont complètes : poste, service, contrat et accès au portail.</p>
-                  ) : (
-                    <div className="empv3-perf-lignes">
-                      {fichesIncompletes.map(({ employee, morceaux, remplis }) => (
-                        <div className="empv3-perf-ligne" key={employee.id}>
-                          <span className="empv3-perf-nom">{nomCompletDe(employee)}</span>
-                          <span className="empv3-perf-bar">
-                            {morceaux.map((m) => (
-                              <i
-                                key={m.mot}
-                                title={`${m.mot} : ${m.ok ? 'renseigné' : 'manquant'}`}
-                                style={{ width: '25%', background: m.ok ? 'var(--charte-aplat)' : 'var(--charte-surface2)' }}
-                              />
-                            ))}
-                          </span>
-                          <span className="empv3-perf-total">{remplis}/4</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="empv3-carte">
-                  <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Contrats par type</span>
-                  </div>
-                  {contratsParType.length === 0 ? (
-                    <p className="empv3-legende">Aucun contrat renseigné pour l’instant.</p>
-                  ) : (
-                    <div className="empv3-perf-lignes">
-                      {contratsParType.map(({ mot, nombre }) => (
-                        <div className="empv3-barre-ligne" key={mot}>
-                          <span>{mot}</span>
-                          <span className="empv3-barre-piste">
-                            <i style={{ width: `${maxContrat > 0 ? (nombre / maxContrat) * 100 : 0}%` }} />
-                          </span>
-                          <span className="empv3-barre-val">{nombre}</span>
-                        </div>
-                      ))}
-                    </div>
                   )}
                 </div>
               </div>

@@ -296,6 +296,24 @@ const rendreEntree = async (props = {}) => {
 }
 
 describe('la vue Annuaire', () => {
+  it('suit la maquette choisie : rien de plus entre la semaine et les cartes', () => {
+    // les deux blocs qui n'existent pas dans la maquette v5 ont quitté la vue
+    expect(EMPLOYES).not.toContain('Fiches à compléter')
+    expect(EMPLOYES).not.toContain('Contrats par type')
+    expect(EMPLOYES).not.toContain('empv3-deux')
+
+    // et la peau qu'il a validée : titre qui prend la page, cadre 2 px, ombre dure
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    const peau = CSS_EMP.slice(CSS_EMP.indexOf('LA PEAU DE LA MAQUETTE v5'))
+    expect(peau).toContain('clamp(34px, 3.4vw, 50px)')
+    expect(peau).toContain('box-shadow: var(--charte-ombre-dure)')
+    expect(peau).toContain('.empv3-fiche-avatar')
+
+    // la masse salariale se lit sur toutes les entreprises chargées, pas une seule
+    expect(EMPLOYES).toContain("entreprisesDesEmployes")
+    expect(EMPLOYES).toContain(".in('enterprise_id', entreprisesDesEmployes)")
+  })
+
   it('pose une carte par personne, avec ses contacts et son état', () => {
     // plus de tableau : une galerie de cartes
     expect(EMPLOYES).toContain('<CarteEmploye')
