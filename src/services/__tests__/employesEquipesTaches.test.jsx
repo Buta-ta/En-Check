@@ -1229,6 +1229,9 @@ describe('la page Employés', () => {
     expect(EMPLOYES).toContain('empv3-chemin')
     expect(EMPLOYES).toContain('CheminEmpreintes')
     expect(EMPLOYES).toContain('empv3-borne')
+    // ⚠️ le grid « 1fr auto 1fr » de la dernière fois élargissait un VIDE
+    // et tronquait la recherche (sa capture du 23/11) : on ne le veut plus.
+    expect(readFileSync('src/pages/EmployesV3.css', 'utf8')).not.toContain('grid-template-columns: 1fr auto 1fr')
     // la mesure de hauteur suit la page : sinon le chemin s'arrête avant la
     // seconde pancarte (sa capture du 22/11)
     expect(CHEMIN).toContain('new ResizeObserver(mesurer)')
@@ -1246,13 +1249,17 @@ describe('la page Employés', () => {
 
     // l'écran de la borne, en vrai texte
     expect(BORNE).toContain('borne-ecran')
-    expect(BORNE).toContain('Et maintenant…')
+    expect(BORNE).toContain('<span>Et</span>')
+    expect(BORNE).toContain('<span>maintenant…</span>')
+    // chaque ligne est INSÉCABLE : le mot ne peut plus se casser en quatre
+    expect(readFileSync('src/pages/EmployesV3.css', 'utf8')).toMatch(/\.borne-ecran-mot span \{ white-space: nowrap; \}/)
     // une empreinte digitale : des arcs concentriques
     expect(BORNE).toContain('borne-empreinte')
     // l'empreinte : des arcs CALCULÉS par formule, pas tracés à la main
     expect(BORNE).toContain('EmpreinteDigitale')
-    expect(BORNE).toContain('const arcs = [26, 21, 16, 11]')
-    expect(BORNE).toMatch(/A \$\{r\} \$\{r \* 0\.86\}/)
+    // trois arcs largement espacés + la boucle, calculés par formule
+    expect(BORNE).toMatch(/const arcs = \[[\s\S]{0,120}r: 22, w: 3\.6/)
+    expect(BORNE).toMatch(/A \$\{arc\.r\} \$\{arc\.r \* 0\.92\}/)
     // la forme colonne : un fût, un écran carré, un pied plus large
     expect(BORNE).toContain('borne-fut')
     expect(BORNE).toContain('borne-pied')
@@ -1270,7 +1277,8 @@ describe('la page Employés', () => {
     // l'écran est CLAIR avec du texte sombre : sur fond sombre, son texte
     // débordait et se faisait couper (sa capture du 22/11)
     expect(CSS_EMP).toMatch(/\.borne-ecran \{[\s\S]{0,320}background: var\(--charte-surface\)/)
-    expect(CSS_EMP).toMatch(/\.borne-ecran-mot \{[\s\S]{0,260}overflow-wrap: anywhere/)
+    // les deux lignes sont insécables : c'est mieux que de replier au hasard
+    expect(CSS_EMP).toMatch(/\.borne-ecran-mot span \{ white-space: nowrap; \}/)
     expect(CSS_EMP).toMatch(/\.pancarte-mot \{[\s\S]{0,200}font-family: 'Caveat'/)
   })
 
@@ -1284,6 +1292,19 @@ describe('la page Employés', () => {
     // Emma ne dépasse plus ses voisines
     const CSS_FICHES = readFileSync('src/pages/EmployesV3.css', 'utf8')
     expect(CSS_FICHES).toMatch(/\.empv3-fiches \{[\s\S]{0,220}grid-auto-rows: 1fr/)
+  })
+
+  it('le chemin a bien une arrivée : la seconde pancarte est DANS le parcours', () => {
+    // ⚠️ deux tours de suite, la pancarte de pied avait quitté le parcours :
+    // le chemin descendait donc vers rien (sa capture du 23/11).
+    const i = EMPLOYES.indexOf('<div className="empv3-parcours">')
+    expect(i).toBeGreaterThan(-1)
+    const parcours = EMPLOYES.slice(i, EMPLOYES.indexOf('</main>', i))
+    expect(parcours).toContain('empv3-pancarte')
+    expect(parcours).toContain('size={96}' === 'size={96}' ? 'PancarteEnseigne taille={96}' : '')
+    // et le chemin touche le bas de ce parcours
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_EMP).toMatch(/\.chemin-empreintes \{[\s\S]{0,200}position: absolute/)
   })
 
   it('le menu ⋮ ne suit plus la carte : sa transformation est neutralisée', () => {
