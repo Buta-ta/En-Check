@@ -33,7 +33,6 @@ import FicheEmployeModal from '../components/FicheEmployeModal'
 import CarteEmploye from '../components/equipes/CarteEmploye'
 import { useTheme } from '../contexts/ThemeContext'
 import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
-import EnterpriseSwitcher from '../components/EnterpriseSwitcher'
 import EquipesVue from '../components/equipes/EquipesVue'
 import TachesVue from '../components/taches/TachesVue'
 import '../components/zoulou/zoulou.css'
@@ -77,12 +76,6 @@ const pourcent = (morceau, total) =>
 // ═══════════════════════════════════════════════════════════
 // PAGE PRINCIPALE
 // ═══════════════════════════════════════════════════════════
-
-// Les deux vues de la page : elles vivent dans le rail, pas dans l'en-tête.
-const VUES_DE_LA_PAGE = [
-  { cle: 'equipes', libelle: 'Équipes', icone: Network },
-  { cle: 'taches', libelle: 'Tâches', icone: ClipboardList },
-]
 
 export default function Employes() {
   const [admin, setAdmin] = useState(null)
@@ -1361,19 +1354,30 @@ export default function Employes() {
           {/* les deux vues de la page vivent ici, pas dans l'en-tête :
               une seule navigation, celle du rail */}
           <div className="nav3-rail-vues" role="group" aria-label="Vues de la page Employés">
-            {vueAutorisee && VUES_DE_LA_PAGE.map(({ cle, libelle, icone: IconeVue }) => (
-              <button
-                key={cle}
-                type="button"
-                className={`nav3-rail-item nav3-rail-sous${vueActive === cle ? ' is-actif' : ''}`}
-                aria-current={vueActive === cle ? 'page' : undefined}
-                title={`Vue : ${libelle}`}
-                aria-label={`Vue ${libelle}`}
-                onClick={() => changerVue(cle)}
-              >
-                <IconeVue size={15} aria-hidden="true" />
-              </button>
-            ))}
+            {vueAutorisee && (
+              <>
+                <button
+                  type="button"
+                  className={`nav3-rail-item nav3-rail-sous${vueActive === 'equipes' ? ' is-actif' : ''}`}
+                  aria-current={vueActive === 'equipes' ? 'page' : undefined}
+                  title="Vue : Équipes"
+                  aria-label="Vue Équipes"
+                  onClick={() => changerVue('equipes')}
+                >
+                  <Network size={15} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className={`nav3-rail-item nav3-rail-sous${vueActive === 'taches' ? ' is-actif' : ''}`}
+                  aria-current={vueActive === 'taches' ? 'page' : undefined}
+                  title="Vue : Tâches"
+                  aria-label="Vue Tâches"
+                  onClick={() => changerVue('taches')}
+                >
+                  <ClipboardList size={15} aria-hidden="true" />
+                </button>
+              </>
+            )}
           </div>
 
           <div className="nav3-rail-pied">
@@ -1420,6 +1424,8 @@ export default function Employes() {
               raccourcis (le rail les porte) et plus de bouton de thème ici :
               il vit dans le rail, une seule fois. */}
           <header className="empv3-entete">
+            <span className="empv3-entete-bandeau" aria-hidden="true" />
+            <div className="empv3-entete-corps">
             <div className="empv3-entete-gauche">
               <span className="empv3-entete-eyebrow">
                 Équipe
@@ -1437,11 +1443,6 @@ export default function Employes() {
                 {vueActive === null
                   ? `Bonjour, ${prenomAdmin} — ${jourEnClair}`
                   : 'La page Employés, vue par vue'}
-                {vueActive === null && (
-                  <span className="empv3-entete-entreprise">
-                    <EnterpriseSwitcher admin={admin} onSwitch={() => window.location.reload()} />
-                  </span>
-                )}
               </p>
             </div>
 
@@ -1478,6 +1479,8 @@ export default function Employes() {
                 )}
               </div>
             </div>
+            </div>
+            <span className="empv3-entete-bandeau empv3-entete-bandeau--bas" aria-hidden="true" />
           </header>
 
           {vueActive === null && (

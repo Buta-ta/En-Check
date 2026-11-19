@@ -225,13 +225,13 @@ describe('le menu et les adresses', () => {
 describe('les onglets de la page Employés', () => {
   it('ne porte plus l’onglet « Annuaire » : la liste est la page', () => {
     expect(EMPLOYES).not.toMatch(/libelle:\s*['"]Annuaire['"]/)
-    expect(EMPLOYES).toContain("libelle: 'Équipes'")
-    expect(EMPLOYES).toContain("libelle: 'Tâches'")
+    expect(EMPLOYES).toContain('aria-label="Vue Équipes"')
+    expect(EMPLOYES).toContain('aria-label="Vue Tâches"')
   })
 
   it('ne montre pas une porte qui ne mène nulle part quand l’option est éteinte', () => {
     expect(EMPLOYES).toContain("const vueAutorisee = moduleTaches || admin?.role === 'super_admin'")
-    expect(EMPLOYES).toMatch(/\{vueAutorisee && VUES_DE_LA_PAGE\.map\(/)
+    expect(EMPLOYES).toMatch(/\{vueAutorisee && \(/)
   })
 
   it('rabat sur la liste quand on re-clique l’onglet actif, et reste sur la liste avec une adresse inconnue', () => {
@@ -1077,6 +1077,35 @@ describe('la page Employés', () => {
       await act(async () => { await Promise.resolve() })
     }
   }
+
+  it('entoure l’en-tête du bandeau bogolan, et n’y met aucun sélecteur d’entreprise', () => {
+    // le sélecteur est parti : il vit dans la coque de l'application
+    expect(EMPLOYES).not.toContain('<EnterpriseSwitcher')
+    expect(EMPLOYES).not.toContain('empv3-entete-entreprise')
+
+    // le bandeau du dashboard, en haut et en bas du bloc
+    expect(EMPLOYES).toContain('empv3-entete-bandeau')
+
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    const bandeau = CSS_EMP.slice(CSS_EMP.indexOf('LE BANDEAU BOGOLAN DE L'))
+    expect(bandeau).toContain("/images/paie-bogolan-haut.webp")
+    expect(bandeau).toContain("/images/paie-bogolan-bas.webp")
+  })
+
+  it('tient sur tous les écrans : le rail devient une barre basse sous 820 px', () => {
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    const ecrans = CSS_EMP.slice(CSS_EMP.indexOf('LA PAGE SUR TOUS LES ÉCRANS'))
+    // quatre paliers, du plus large au plus étroit
+    for (const largeur of ['1024px', '820px', '760px', '520px']) {
+      expect(ecrans).toContain(`max-width: ${largeur}`)
+    }
+    // sous 820 px, le rail ne disparaît plus : il passe en bas, en rangée
+    const petit = ecrans.slice(ecrans.indexOf('max-width: 820px'))
+    expect(petit).toMatch(/\.nav3-rail \{[\s\S]{0,200}position: fixed/)
+    expect(petit).toMatch(/\.nav3-rail \{[\s\S]{0,300}flex-direction: row/)
+    // et la grille de la semaine défile au lieu de s'écraser
+    expect(ecrans).toMatch(/\.empv3-semaine \{ overflow-x: auto/)
+  })
 
   it('ouvre la liste sous un en-tête en bloc, sans barre d’onglets', async () => {
     await monterPage()
