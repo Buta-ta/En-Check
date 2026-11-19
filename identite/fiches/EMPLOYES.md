@@ -257,3 +257,25 @@ tableau est paginé à 25 lignes et `LigneAnnuaire` porte les actions) ; la **co
 vient par-dessus — les trois cartes remplacent les trois tuiles, les deux blocs sont ajoutés, la
 recherche (qui n'avait plus de champ) revient dans la barre d'outils, et l'en-tête reçoit la date
 et l'export. Rien de leur travail n'est jeté.
+
+### Clonage de la référence v2, élément par élément — avancement
+
+La référence `maquettes/reference-employes-v2.png` se découpe en **dix éléments**. On les prend
+**un par un**, chacun discuté puis validé (D-022 : composition reprise ; palette, police, rayons et
+ombres restent les nôtres).
+
+| # | Élément de la référence | État | Ce qui est posé |
+|---|---|---|---|
+| 1 | la coque : rail à icônes + colonne à pastilles | **livré** | `.nav3-rail`, `.nav3-colonne`, `.nav3-haut`, `.nav3-pastille` |
+| 2 | quatre cartes de chiffres | **livré** | `.empv3-cartes` + `.empv3-kpi` : Effectif, Présents, Accès au portail, Retards |
+| 3 | « Meeting Scheduling » : la grille de la semaine | **livré** | `.empv3-grille-planning` → `.empv3-semaine` : `lun.`→`dim.`, une ligne par personne, cases `pointé / absence / rien` |
+| 4 | « Feature Events » : les cartes teintées | **livré** | `.empv3-annonces` : les annonces d'accueil **en ligne**, trois tons |
+| 5 | « Employee List » : le tableau et ses colonnes | **en discussion** | le tableau existe (`main`) ; la composition des colonnes n'est pas tranchée |
+| 6 | les pilules Active / Inactive | **en discussion** | le statut du jour existe ; sa forme (pilule ou angle 8 px) n'est pas tranchée |
+| 7 | le titre à ~40 px | **refusé le 19/11** | D-013 : titre à 20 px — la page est plus « sage » que la référence, c'est assumé |
+| 8 | les rayons 12–20 px | **refusé** | D-016 : rayons {6, 8, 11, 12, 999} |
+| 9 | les ombres douces | **refusé** | D-016 : ombre dure 3 px, flou 0 |
+| 10 | la typo géométrique | **refusé** | D-006 : IBM Plex Sans |
+
+Deux règles tenues dans les blocs 3 et 4, et qui valent pour la suite : **aucun état sans donnée**
+(une case vide n'est jamais verte par défaut) et **aucun mot anglais** à l'écran.
