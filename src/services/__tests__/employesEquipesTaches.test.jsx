@@ -317,6 +317,38 @@ describe('la vue Annuaire', () => {
     expect(cartes[1].querySelector('.empv3-ecart')).toBeNull()
   })
 
+  it('pose le planning de la semaine et les annonces, avec de vrais états', async () => {
+    await rendre(
+      <ThemeProvider>
+        <Employes />
+      </ThemeProvider>,
+    )
+    for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
+
+    const planning = hote.querySelector('.empv3-grille-planning')
+    expect(planning).not.toBeNull()
+
+    // sept jours, nommés en français
+    const jours = [...planning.querySelectorAll('.empv3-jour')]
+    expect(jours).toHaveLength(7)
+    expect(jours.map((j) => j.textContent.replace(/\d+/g, '').trim())).toEqual(
+      ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'],
+    )
+
+    // aucune personne : donc aucune ligne, et aucun état inventé
+    expect(planning.querySelectorAll('.empv3-semaine-ligne')).toHaveLength(0)
+    expect(planning.querySelectorAll('.empv3-case')).toHaveLength(0)
+
+    // les annonces : rien de lisible ici, donc le mot le dit
+    const annonces = planning.querySelectorAll('.empv3-carte')[1]
+    expect(annonces.querySelector('.empv3-carte-titre').textContent).toBe('Annonces d’accueil')
+    expect(annonces.querySelectorAll('.empv3-annonce')).toHaveLength(0)
+    expect(annonces.textContent).toMatch(/n’ont pas pu être lues|Aucune annonce en ligne/)
+
+    // et aucun mot anglais ne s'est glissé dans les deux blocs
+    expect(planning.textContent).not.toMatch(/Meeting|Schedule|Events|Today|Present/)
+  })
+
   it('explique l’annuaire vide et propose la première fiche', async () => {
     await rendre(
       <ThemeProvider>
