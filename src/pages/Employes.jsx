@@ -88,6 +88,46 @@ const pourcent = (morceau, total) =>
 export default function Employes() {
   const [admin, setAdmin] = useState(null)
   const [employes, setEmployes] = useState([])
+  // La moyenne des présents sur 30 jours : elle seule permet un écart honnête.
+  // Pas de donnée → pas d'écart affiché (jamais un chiffre inventé).
+  const [moyennePresents30j, setMoyennePresents30j] = useState(null)
+
+  // La moyenne des présents sur les 30 derniers jours, jour par jour.
+  // Une seule requête, silencieuse en cas d'échec : on n'affiche rien.
+  useEffect(() => {
+    let annule = false
+    const mesurer = async () => {
+      try {
+        const ids = employes.map((e) => e.id)
+        if (!ids.length) { if (!annule) setMoyennePresents30j(null); return }
+        const fin = new Date()
+        const debut = new Date(fin.getTime() - 30 * 24 * 3600 * 1000)
+        const { data, error } = await supabase
+          .from('attendances')
+          .select('employee_id, check_time, check_type')
+          .in('employee_id', ids)
+          .gte('check_time', debut.toISOString())
+          .lt('check_time', fin.toISOString())
+        if (error) throw error
+        const jours = new Map()
+        ;(data || []).forEach((pointage) => {
+          if (String(pointage.check_type || '').toLowerCase() !== 'in') return
+          const jour = String(pointage.check_time || '').slice(0, 10)
+          if (!jours.has(jour)) jours.set(jour, new Set())
+          jours.get(jour).add(pointage.employee_id)
+        })
+        const valeurs = [...jours.values()].map((ensemble) => ensemble.size)
+        if (!valeurs.length) { if (!annule) setMoyennePresents30j(null); return }
+        const moyenne = valeurs.reduce((somme, v) => somme + v, 0) / valeurs.length
+        if (!annule) setMoyennePresents30j(moyenne)
+      } catch {
+        if (!annule) setMoyennePresents30j(null)
+      }
+    }
+    mesurer()
+    return () => { annule = true }
+  }, [employes])
+
   const payslipIndicators = useEmployeePayslipIndicators(employes)
   const [entreprises, setEntreprises] = useState([])
   const [plannings, setPlannings] = useState([])
@@ -1089,20 +1129,16 @@ export default function Employes() {
     return texte.charAt(0).toUpperCase() + texte.slice(1)
   })()
 
-  const effectif = employes.length
   const enPoste = suiviPresence ? liveCounts.enPoste : 0
   const enPause = suiviPresence ? liveCounts.enPause : 0
-  const absents = suiviPresence ? liveCounts.enConge : 0
-  const tauxPresence = suiviPresence && effectif > 0
-    ? Math.round(((enPoste + enPause) / effectif) * 100)
+
+  const presentsDuJour = enPoste + enPause
+  // L'écart n'existe que si la moyenne existe : sinon, rien.
+  const ecartPresents = (suiviPresence && moyennePresents30j && moyennePresents30j > 0)
+    ? Math.round(((presentsDuJour - moyennePresents30j) / moyennePresents30j) * 100)
     : null
-  const partEnPoste = effectif > 0 ? (enPoste / effectif) * 100 : 0
-  const partEnPause = effectif > 0 ? (enPause / effectif) * 100 : 0
-  const partAbsents = effectif > 0 ? (absents / effectif) * 100 : 0
 
   const actifsPortail = employes.filter((e) => aUnCompteEmploye(e)).length
-  const partPortail = effectif > 0 ? actifsPortail / effectif : 0
-  const perimetreAnneau = 2 * Math.PI * 33
 
   // Les contrats, comptés par libellé.
   const contratsParType = (() => {
@@ -1342,88 +1378,67 @@ export default function Employes() {
             <div className="empv2-annuaire">
               {/* les chiffres du jour : trois tuiles, le chiffre porte sa période.
                   Tout est compté sur le personnel chargé, jamais une estimation. */}
-              {/* les trois cartes : l'anatomie de la référence validée (D-022) */}
-              <div className="empv3-cartes">
+              {/* les quatre cartes — l'anatomie de la maquette du 08/11 :
+                  icône ronde teintée, libellé, gros chiffre, légende.
+                  L'écart ne s'affiche que là où il est mesuré. */}
+              <div className="empv3-cartes empv3-cartes--quatre">
 
-                <div className="empv3-carte">
-                  <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Effectif total</span>
-                    <span className="empv3-carte-total">{employes.length}</span>
-                  </div>
-                  <div className="empv3-lignes">
-                    <div className="empv3-ligne empv3-ligne--ok">
-                      <b>{suiviPresence ? liveCounts.enPoste : '—'}</b>
-                      <span className="empv3-ligne-lab">En poste</span>
-                    </div>
-                    <div className="empv3-ligne empv3-ligne--att">
-                      <b>{suiviPresence ? liveCounts.enConge : '—'}</b>
-                      <span className="empv3-ligne-lab">Absents aujourd’hui</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="empv3-carte">
-                  <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Assiduité du jour</span>
-                  </div>
-                  <div>
-                    <span className="empv3-pct">{tauxPresence === null ? '—' : `${tauxPresence} %`}</span>
-                    <span className="empv3-pct-note">
-                      {tauxPresence === null
-                        ? 'relevés en cours de chargement'
-                        : `sur ${employes.length} personne${employes.length > 1 ? 's' : ''}`}
+                <div className="empv3-carte empv3-kpi">
+                  <div className="empv3-kpi-tete">
+                    <span className="empv3-kpi-ico" data-ton="argile">
+                      <Users size={16} aria-hidden="true" />
                     </span>
+                    <span className="empv3-carte-titre">Effectif total</span>
                   </div>
-                  <div
-                    className="empv3-empilee"
-                    role="img"
-                    aria-label={`En poste ${enPoste}, en pause ${enPause}, absents ${absents}`}
-                  >
-                    <i style={{ width: `${partEnPoste}%`, background: 'var(--charte-aplat)' }} />
-                    <i style={{ width: `${partEnPause}%`, background: 'var(--charte-alerte)' }} />
-                    <i style={{ width: `${partAbsents}%`, background: 'var(--charte-statut-neutre)' }} />
+                  <div className="empv3-kpi-chiffre">{employes.length}</div>
+                  <div className="empv3-kpi-pied">au registre</div>
+                </div>
+
+                <div className="empv3-carte empv3-kpi">
+                  <div className="empv3-kpi-tete">
+                    <span className="empv3-kpi-ico" data-ton="succes">
+                      <Briefcase size={16} aria-hidden="true" />
+                    </span>
+                    <span className="empv3-carte-titre">Présents</span>
                   </div>
-                  <div className="empv3-legende">
-                    <span><i style={{ background: 'var(--charte-aplat)' }} />En poste · {suiviPresence ? enPoste : '—'}</span>
-                    <span><i style={{ background: 'var(--charte-alerte)' }} />En pause · {suiviPresence ? enPause : '—'}</span>
-                    <span><i style={{ background: 'var(--charte-statut-neutre)' }} />Absents · {suiviPresence ? absents : '—'}</span>
+                  <div className="empv3-kpi-chiffre">{suiviPresence ? presentsDuJour : '—'}</div>
+                  <div className="empv3-kpi-pied">
+                    {ecartPresents === null ? (
+                      'en poste ou en pause, aujourd’hui'
+                    ) : (
+                      <>
+                        <span className={ecartPresents >= 0 ? 'empv3-ecart empv3-ecart--haut' : 'empv3-ecart empv3-ecart--bas'}>
+                          {ecartPresents >= 0 ? '↗' : '↘'} {Math.abs(ecartPresents)} %
+                        </span>
+                        <span className="empv3-kpi-note">vs 30 jours</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
-                <div className="empv3-carte">
-                  <div className="empv3-carte-tete">
+                <div className="empv3-carte empv3-kpi">
+                  <div className="empv3-kpi-tete">
+                    <span className="empv3-kpi-ico" data-ton="texte">
+                      <Key size={16} aria-hidden="true" />
+                    </span>
                     <span className="empv3-carte-titre">Accès au portail</span>
-                    <span className="empv3-carte-total">{actifsPortail}/{employes.length}</span>
                   </div>
-                  <div className="empv3-anneau">
-                    <div className="empv3-anneau-svg">
-                      <svg width="86" height="86" viewBox="0 0 86 86" role="img" aria-label={`${actifsPortail} comptes actifs sur ${employes.length}`}>
-                        <circle cx="43" cy="43" r="33" fill="none" stroke="var(--charte-surface2)" strokeWidth="10" />
-                        <circle
-                          cx="43" cy="43" r="33" fill="none"
-                          stroke="var(--charte-aplat)" strokeWidth="10"
-                          strokeDasharray={`${perimetreAnneau * partPortail} ${perimetreAnneau}`}
-                          transform="rotate(-90 43 43)"
-                        />
-                      </svg>
-                      <div className="empv3-anneau-centre">
-                        <span className="empv3-anneau-val">{actifsPortail}</span>
-                        <span className="empv3-anneau-lab">au total {employes.length}</span>
-                      </div>
-                    </div>
-                    <div className="empv3-appareils">
-                      <div>
-                        <i style={{ background: 'var(--charte-aplat)' }} />
-                        <b>{actifsPortail}</b>
-                        <span>Compte actif</span>
-                      </div>
-                      <div>
-                        <i style={{ background: 'var(--charte-surface2)' }} />
-                        <b>{Math.max(employes.length - actifsPortail, 0)}</b>
-                        <span>À activer</span>
-                      </div>
-                    </div>
+                  <div className="empv3-kpi-chiffre">{actifsPortail}</div>
+                  <div className="empv3-kpi-pied">
+                    comptes actifs sur {employes.length}
+                    <span className="empv3-kpi-note"> · {Math.max(employes.length - actifsPortail, 0)} à activer</span>
                   </div>
+                </div>
+
+                <div className="empv3-carte empv3-kpi">
+                  <div className="empv3-kpi-tete">
+                    <span className="empv3-kpi-ico" data-ton="alerte">
+                      <Clock size={16} aria-hidden="true" />
+                    </span>
+                    <span className="empv3-carte-titre">Retards</span>
+                  </div>
+                  <div className="empv3-kpi-chiffre">{suiviPresence ? liveCounts.retards : '—'}</div>
+                  <div className="empv3-kpi-pied">ce jour — le mot est écrit</div>
                 </div>
               </div>
 

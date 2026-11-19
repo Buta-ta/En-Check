@@ -652,3 +652,76 @@
 @media (max-width: 820px) {
   .nav3-rail { display: none; }
 }
+
+/* ── Les quatre cartes de tête, à l'anatomie de la maquette ── */
+
+.empv3-cartes--quatre { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1280px) { .empv3-cartes--quatre { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .empv3-cartes--quatre { grid-template-columns: 1fr; } }
+
+.empv3-kpi { gap: 10px; }
+
+.empv3-kpi-tete {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.empv3-kpi-ico {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: var(--charte-rayon-pilule);
+}
+.empv3-kpi-ico[data-ton='argile'] {
+  background: color-mix(in srgb, var(--charte-aplat) 18%, transparent);
+  color: var(--charte-aplat);
+}
+.empv3-kpi-ico[data-ton='succes'] {
+  background: color-mix(in srgb, var(--charte-succes) 16%, transparent);
+  color: var(--charte-succes);
+}
+.empv3-kpi-ico[data-ton='texte'] {
+  background: color-mix(in srgb, var(--charte-texte) 16%, transparent);
+  color: var(--charte-texte);
+}
+.empv3-kpi-ico[data-ton='alerte'] {
+  background: color-mix(in srgb, var(--charte-alerte) 16%, transparent);
+  color: var(--charte-alerte);
+}
+
+.empv3-kpi .empv3-carte-titre {
+  margin-right: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--charte-douce);
+}
+
+.empv3-kpi-chiffre {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-encre);
+}
+
+.empv3-kpi-pied {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--charte-douce);
+}
+
+.empv3-kpi-note { color: var(--charte-douce); }
+
+/* L'écart : le sens est écrit (une flèche) et la couleur ne dit rien seule (D-009). */
+.empv3-ecart { font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.empv3-ecart--haut { color: var(--charte-succes); }
+.empv3-ecart--bas { color: var(--charte-erreur); }

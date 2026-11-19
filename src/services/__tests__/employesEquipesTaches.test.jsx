@@ -305,14 +305,16 @@ describe('la vue Annuaire', () => {
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
 
     const cartes = [...hote.querySelectorAll('.empv3-cartes .empv3-carte')]
-    expect(cartes).toHaveLength(3)
+    expect(cartes).toHaveLength(4)
     expect(cartes.map((c) => c.querySelector('.empv3-carte-titre').textContent)).toEqual(
-      ['Effectif total', 'Assiduité du jour', 'Accès au portail'],
+      ['Effectif total', 'Présents', 'Accès au portail', 'Retards'],
     )
 
     // rien à compter : un tiret, pas un zéro inventé pour la présence
-    expect([...cartes[0].querySelectorAll('.empv3-ligne b')].map((b) => b.textContent)).toEqual(['—', '—'])
-    expect(cartes[1].querySelector('.empv3-pct').textContent).toBe('—')
+    expect(cartes[1].querySelector('.empv3-kpi-chiffre').textContent).toBe('—')
+    expect(cartes[3].querySelector('.empv3-kpi-chiffre').textContent).toBe('—')
+    // et pas d'écart sans mesure
+    expect(cartes[1].querySelector('.empv3-ecart')).toBeNull()
   })
 
   it('explique l’annuaire vide et propose la première fiche', async () => {
