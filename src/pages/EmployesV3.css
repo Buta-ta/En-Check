@@ -3170,3 +3170,151 @@
   .empv2-main { padding-left: var(--charte-espace-5); }
   .nav3-colonne { min-width: 0; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LE MENU ⋮ S'OUVRE À CÔTÉ DE SON BOUTON — correctif du 20/11
+   Sa capture : sur la carte du milieu, le menu s'ouvre tout en
+   haut à droite, loin du bouton. Cause : `.empv2-menu` garde
+   `position: absolute; top: 100%; right: 0` — et ces trois
+   propriétés écrasaient le style calculé. Une classe dédiée
+   reprend la main, et elle seule.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv2-menu.empv2-menu--flottant {
+  position: fixed;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  z-index: 900;
+  min-width: 0;
+  max-height: min(70vh, 420px);
+  overflow-y: auto;
+  box-shadow: var(--charte-ombre-dure), 0 12px 32px rgba(42, 23, 8, 0.28);
+}
+
+/* sur mobile, le menu se cale en feuille basse : plus de position à calculer */
+@media (max-width: 640px) {
+  .empv2-menu.empv2-menu--flottant {
+    position: fixed;
+    left: 10px !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    top: auto !important;
+    width: auto !important;
+    max-height: 62vh;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LA PANCARTE — modèle B validé le 20/11
+   Le tissu encadre, la plaque ivoire porte le texte. Le logo est
+   le vrai (le pied de marque), posé dans son rond.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-pancarte {
+  position: relative;
+  margin: 32px 0 8px;
+  padding: 14px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background-color: #3A2416;
+  background-image: url('/images/paie-bogolan-haut.webp');
+  background-repeat: repeat;
+  background-size: auto 84px;
+  box-shadow: var(--charte-ombre-dure);
+  overflow: hidden;
+}
+
+/* les deux « clous » ivoire aux extrémités, comme sur la maquette */
+.empv3-pancarte::before,
+.empv3-pancarte::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  margin-top: -5.5px;
+  border: 2px solid var(--charte-encre);
+  border-radius: 3px;
+  background: var(--charte-surface);
+  transform: rotate(45deg);
+}
+.empv3-pancarte::before { left: 12px; }
+.empv3-pancarte::after { right: 12px; }
+
+.empv3-pancarte-plaque {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 26px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 12px;
+  background: var(--charte-surface);
+}
+
+.empv3-pancarte-logo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: var(--charte-rayon-pilule);
+  box-shadow: 0 0 0 2px var(--charte-encre);
+  overflow: hidden;
+}
+
+.empv3-pancarte-textes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.empv3-pancarte-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.empv3-pancarte-marque {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 2.5px;
+  line-height: 1;
+  color: var(--charte-encre);
+}
+
+.empv3-pancarte-losange {
+  display: block;
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+  background: var(--charte-aplat);
+}
+
+.empv3-pancarte-slogan {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  line-height: 1;
+  color: var(--charte-encre);
+}
+
+.empv3-pancarte-sous {
+  font-size: 11.5px;
+  color: var(--charte-douce);
+  letter-spacing: 0.2px;
+}
+
+@media (max-width: 720px) {
+  .empv3-pancarte { padding: 11px; margin-top: 24px; background-size: auto 64px; }
+  .empv3-pancarte-plaque { padding: 12px 16px; gap: 10px; }
+  .empv3-pancarte-marque { font-size: 20px; letter-spacing: 1.8px; }
+  .empv3-pancarte-slogan { font-size: 16px; }
+  .empv3-pancarte-sous { font-size: 10.5px; }
+  .empv3-pancarte::before, .empv3-pancarte::after { display: none; }
+}

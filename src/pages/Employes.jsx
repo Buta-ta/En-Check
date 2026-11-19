@@ -2156,10 +2156,28 @@ export default function Employes() {
             <TachesVue enterpriseId={entrepriseDesVues} employes={employes} signalCreation={signalCreationTache} />
           )}
 
-          <div className="empv2-pied">
-            <EnCheckBrandMark size={16} />
-            <span>EN-CHECK · On gère ! · Gestion du Personnel</span>
-          </div>
+          {/* ── LA PANCARTE ──────────────────────────────────
+              Modèle B validé le 20/11 : le tissu bogolan encadre la
+              pancarte, une plaque ivoire porte le texte — le motif ne
+              passe jamais derrière les mots.
+              Le logo est le vrai : le pied de marque (EnCheckBrandMark). */}
+          <footer className="empv3-pancarte">
+            <div className="empv3-pancarte-plaque">
+              <span className="empv3-pancarte-logo">
+                <EnCheckBrandMark size={44} />
+              </span>
+              <span className="empv3-pancarte-textes">
+                <span className="empv3-pancarte-ligne">
+                  <strong className="empv3-pancarte-marque">EN-CHECK</strong>
+                  <i className="empv3-pancarte-losange" aria-hidden="true" />
+                  <span className="empv3-pancarte-slogan">On gère !</span>
+                </span>
+                <span className="empv3-pancarte-sous">
+                  Gestion du personnel — présences, plannings et paie
+                </span>
+              </span>
+            </div>
+          </footer>
         </main>
         </div>
         </div>
