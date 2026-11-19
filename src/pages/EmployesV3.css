@@ -779,6 +779,27 @@
   font-size: 8px;
 }
 
+/* Une barre d'absence traverse ses jours : elle se pose sur la même rangée
+   que les cases, et les couvre là où elle passe. */
+.empv3-semaine-ligne > * { grid-row: 1; }
+.empv3-barre {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  height: 24px;
+  padding: 0 8px;
+  overflow: hidden;
+  border-radius: var(--charte-rayon-pilule);
+  border: 1px solid color-mix(in srgb, var(--charte-alerte) 55%, transparent);
+  background: color-mix(in srgb, var(--charte-alerte) 24%, var(--charte-surface));
+  color: var(--charte-alerte);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+.empv3-barre-mot { overflow: hidden; text-overflow: ellipsis; }
+
 .empv3-jour {
   display: flex;
   flex-direction: column;

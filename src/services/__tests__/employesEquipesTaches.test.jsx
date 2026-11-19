@@ -367,6 +367,11 @@ describe('la vue Annuaire', () => {
     expect(annonces.querySelectorAll('.empv3-annonce')).toHaveLength(0)
     expect(annonces.textContent).toMatch(/n’ont pas pu être lues|Aucune annonce en ligne/)
 
+    // les barres : la case est là, la barre aussi — et le calcul est testé à part
+    expect(EMPLOYES).toContain("from '../utils/barresSemaine'")
+    expect(EMPLOYES).toContain('empv3-barre')
+    expect(EMPLOYES).toContain('gridColumn:')
+
     // et aucun mot anglais ne s'est glissé dans les deux blocs
     expect(planning.textContent).not.toMatch(/Meeting|Schedule|Events|Today|Present/)
   })

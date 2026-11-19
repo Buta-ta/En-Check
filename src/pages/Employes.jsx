@@ -28,6 +28,7 @@ import ModaleAccesPortail from '../components/employes/ModaleAccesPortail'
 import ModaleHoraires from '../components/employes/ModaleHoraires'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
 import EmployesLoadingScreen from '../components/EmployesLoadingScreen'
+import { grouperAbsences } from '../utils/barresSemaine'
 import FicheEmployeModal from '../components/FicheEmployeModal'
 import LigneAnnuaire from '../components/equipes/LigneAnnuaire'
 import { useTheme } from '../contexts/ThemeContext'
@@ -1260,9 +1261,8 @@ export default function Employes() {
 
   // Une ligne = une personne, sept cases. Trois états, jamais devinés :
   // absence connue, pointage connu, ou rien.
-  const lignesPlanning = employes.slice(0, 6).map((employee) => ({
-    employee,
-    jours: semaineAffichee.map((jour) => {
+  const lignesPlanning = employes.slice(0, 6).map((employee) => {
+    const jours = semaineAffichee.map((jour) => {
       const absence = semaineAbsences.find(
         (a) => a.employee_id === employee.id
           && String(a.start_date || '').slice(0, 10) <= jour.iso
@@ -1271,8 +1271,10 @@ export default function Employes() {
       if (absence) return { etat: 'conge', mot: absence.reason || 'Congé' }
       if (semainePointages?.get(employee.id)?.has(jour.iso)) return { etat: 'pointe', mot: 'Pointé' }
       return { etat: 'rien', mot: jour.futur ? 'À venir' : 'Rien ce jour' }
-    }),
-  }))
+    })
+    // Une absence de trois jours est une barre, pas trois cases.
+    return { employee, jours, barres: grouperAbsences(jours) }
+  })
 
   const annoncesEnLigne = (annoncesAccueil || [])
     .filter((annonce) => annonce.statut === 'en_ligne')
@@ -1581,7 +1583,7 @@ export default function Employes() {
                       ))}
                     </div>
 
-                    {lignesPlanning.map(({ employee, jours }) => (
+                    {lignesPlanning.map(({ employee, jours, barres }) => (
                       <div className="empv3-semaine-ligne" key={employee.id}>
                         <span className="empv3-semaine-nom">
                           <span className="empv3-avatar" aria-hidden="true">
@@ -1595,13 +1597,30 @@ export default function Employes() {
                             </span>
                           </span>
                         </span>
-                        {jours.map((jour, index) => (
+                        {jours.map((jour, index) => {
+                          // une case couverte par une barre n'est pas relue deux fois
+                          const couvert = barres.some((b) => index > b.debut && index <= b.fin)
+                          return (
+                            <span
+                              key={`${employee.id}-${index}`}
+                              className={`empv3-case empv3-case--${jour.etat}`}
+                              title={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
+                              aria-label={couvert
+                                ? undefined
+                                : `${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
+                              aria-hidden={couvert ? 'true' : undefined}
+                            />
+                          )
+                        })}
+                        {barres.map((barre) => (
                           <span
-                            key={`${employee.id}-${index}`}
-                            className={`empv3-case empv3-case--${jour.etat}`}
-                            title={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
-                            aria-label={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
-                          />
+                            key={`${employee.id}-barre-${barre.debut}`}
+                            className="empv3-barre"
+                            style={{ gridColumn: `${barre.debut + 2} / ${barre.fin + 3}` }}
+                            title={`${semaineAffichee[barre.debut].nom} ${semaineAffichee[barre.debut].num} → ${semaineAffichee[barre.fin].nom} ${semaineAffichee[barre.fin].num} — ${barre.mot}`}
+                          >
+                            <span className="empv3-barre-mot">{barre.mot}</span>
+                          </span>
                         ))}
                       </div>
                     ))}
