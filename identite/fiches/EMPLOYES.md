@@ -268,7 +268,7 @@ ombres restent les nôtres).
 |---|---|---|---|
 | 1 | la coque : rail à icônes + colonne à pastilles | **livré** | `.nav3-rail`, `.nav3-colonne`, `.nav3-haut`, `.nav3-pastille` |
 | 2 | quatre cartes de chiffres | **livré** | `.empv3-cartes` + `.empv3-kpi` : Effectif, Présents, Accès au portail, Retards |
-| 3 | « Meeting Scheduling » : la grille de la semaine | **livré, enrichi** | `.empv3-grille-planning` → `.empv3-semaine` : `lun.`→`dim.`, une ligne par personne (nom **+ rôle sous le nom**), cases `pointé / absence / rien` |
+| 3 | « Meeting Scheduling » : la grille de la semaine | **livré, enrichi** | `.empv3-grille-planning` → `.empv3-semaine` : `lun.`→`dim.`, une ligne par personne (nom **+ rôle sous le nom**), cases `pointé / absence / rien`, **barres d'absence sur plusieurs jours** |
 | 4 | « Feature Events » : les cartes teintées | **livré, enrichi** | `.empv3-annonces` : les annonces d'accueil **en ligne**, trois tons, **vignette du média** (image, ou première image de la vidéo) |
 | 5 | « Employee List » : le tableau et ses colonnes | **livré** | 4 colonnes : Employé · Poste · service · Statut du jour ; **le contrat s'écrit sous le poste** |
 | 6 | les pilules Active / Inactive | **livré** | **pilule pleine, sans contour**, fond teinté de sa propre couleur à 10 % ; mot + point portent le sens |
@@ -296,3 +296,14 @@ Le test interdit désormais ce champ (`not.toContain('annonce.type_media')`).
 **Restent ouverts** : le hachurage des samedis et dimanches, les barres d'absence qui traversent plusieurs
 jours, l'éventuelle troisième semaine de la grille, et le sélecteur d'entreprise (la variable
 `selectedEnterpriseFilter` existe dans `Employes.jsx` **sans aucun contrôle à l'écran**).
+
+### Décisions du 08/11, deuxième temps
+
+| Question posée | Sa réponse | Ce que ça a changé |
+|---|---|---|
+| fusionner la PR #236 | « **Fusionner maintenant** » | `main` = `f800186` (19/11, 13:41 UTC) |
+| l'élément suivant | « **Les barres d'absence sur plusieurs jours** » | `src/utils/barresSemaine.js` + `.empv3-barre` ; PR #237 |
+
+**Comment une barre est décidée** : on regarde les sept jours de la personne ; une suite d'au moins
+**deux** jours d'absence portant **le même motif** devient une barre ; un motif différent coupe la barre ;
+un jour isolé reste une case. Les cases couvertes sont `aria-hidden` pour ne pas être annoncées deux fois.
