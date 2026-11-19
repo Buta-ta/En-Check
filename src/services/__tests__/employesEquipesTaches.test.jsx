@@ -1168,23 +1168,36 @@ describe('la page Employés', () => {
     expect(PANCARTE).toContain('pancarte-clou')
 
     // elle est posée AU MILIEU de l'en-tête, et au pied de page
-    expect(EMPLOYES).toContain('empv3-entete-pancarte')
-    expect(EMPLOYES).toMatch(/empv3-entete-pancarte[\s\S]{0,120}PancarteEnseigne/)
+    expect(EMPLOYES).toContain('empv3-pancarte-slot')
+    expect(EMPLOYES).toMatch(/empv3-pancarte-slot[\s\S]{0,120}PancarteEnseigne/)
     expect(EMPLOYES).toMatch(/empv3-pancarte[\s\S]{0,120}PancarteEnseigne/)
     const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
-    expect(CSS_EMP).toMatch(/\.empv3-entete-pancarte \{[\s\S]{0,200}left: 50%/)
+    expect(CSS_EMP).toMatch(/\.empv3-pancarte-slot \{[\s\S]{0,160}justify-content: center/)
     // et elle repasse dans le flux quand la place manque
-    expect(CSS_EMP).toMatch(/max-width: 1180px[\s\S]{0,220}empv3-entete-pancarte \{[\s\S]{0,120}position: static/)
+    // elle vit hors du bloc d'en-tête, qui la rognait (overflow: hidden)
+    expect(CSS_EMP).toMatch(/\.empv3-entete \{[\s\S]{0,140}overflow: hidden/)
   })
 
   it('le chemin de traces serpente derrière, et la borne se pose dessus', () => {
     const CHEMIN = readFileSync('src/components/parcours/CheminEmpreintes.jsx', 'utf8')
     const BORNE = readFileSync('src/components/parcours/BornePointage.jsx', 'utf8')
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
 
-    // des traces minuscules, nombreuses, alternées et en S
-    expect(CHEMIN).toContain('nombre = 46')
-    expect(CHEMIN).toMatch(/Math\.sin\(t \* Math\.PI \* 3\.1\)/)
-    expect(CHEMIN).toContain('gauche')
+    // des traces minuscules : la tuile est en PIXELS, elle ne s'étire jamais
+    expect(CHEMIN).toContain('viewBox="0 0 132 260"')
+    expect(CHEMIN).toContain('motif-traces')
+    // et le motif se répète sans étirement : c'est ce qui garde les traces minuscules
+    expect(CHEMIN).toContain('patternUnits="userSpaceOnUse"')
+    // aucune rotation décalée : `rotate` tourne autour de 0,0 après un translate.
+    // On teste le CODE, pas les commentaires qui racontent le bug.
+    const CODE = CHEMIN.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n')
+    expect(CODE).not.toMatch(/<use[^>]*x="/)
+    expect(CODE).toContain('patternUnits="userSpaceOnUse"')
+    // et surtout PAS de preserveAspectRatio="none" sur la page entière :
+    // c'est ce qui transformait les traces en taches géantes
+    expect(CHEMIN).not.toContain('preserveAspectRatio="none"')
+    // une bande de 132 px collée à chaque bord, jamais étirée
+    expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,160}width: 132px/)
     // il ne prend aucun clic
     expect(CHEMIN).toContain('aria-hidden')
 
@@ -1198,10 +1211,21 @@ describe('la page Employés', () => {
     expect(EMPLOYES).toContain('empv3-borne')
     expect(EMPLOYES).toContain('BornePointage')
 
-    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
-    expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,200}pointer-events: none/)
-    expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,220}z-index: 0/)
+    expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,220}pointer-events: none/)
+    expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,260}z-index: 0/)
     expect(CSS_EMP).toMatch(/\.empv2-annuaire \{ position: relative; z-index: 1; \}/)
+  })
+
+  it('l’état ne s’affiche qu’une fois, et les cartes d’une rangée ont la même hauteur', () => {
+    const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
+    // le badge est dans le corps ; le pied ne le répète plus
+    const pied = CARTE.slice(CARTE.indexOf('empv3-fiche-pied'))
+    expect(pied).not.toContain('badgeForme')
+    expect(pied).toContain('empv3-fiche-pied-mot')
+
+    // Emma ne dépasse plus ses voisines
+    const CSS_FICHES = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_FICHES).toMatch(/\.empv3-fiches \{[\s\S]{0,220}grid-auto-rows: 1fr/)
   })
 
   it('le menu ⋮ ne suit plus la carte : sa transformation est neutralisée', () => {

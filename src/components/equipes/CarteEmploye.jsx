@@ -311,10 +311,7 @@ export default function CarteEmploye({
       </div>
 
       <footer className="empv3-fiche-pied" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-        <span className={`${badgeForme} ${classeStatut}`} data-concept={concept}>
-          {badgeForme === 'ch-badge-pilule' && <i className="ch-badge-point" aria-hidden="true" />}
-          {badgeMot}
-        </span>
+        <span className="empv3-fiche-pied-mot">Actions</span>
 
         <span className="empv2-ligne-menu-wrap" ref={menuRef}>
           <button

@@ -901,6 +901,7 @@
 .empv3-fiches {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1fr;   /* Emma ne dépasse plus ses voisines */
   gap: 14px;
 }
 @media (max-width: 1180px) { .empv3-fiches { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -3455,12 +3456,10 @@
 
 .empv3-entete { position: relative; }
 
-.empv3-entete-pancarte {
-  position: absolute;
-  left: 50%;
-  bottom: 8px;
-  transform: translateX(-50%);
-  z-index: 2;
+.empv3-pancarte-slot {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 14px;
   pointer-events: none;
 }
 
@@ -3481,18 +3480,21 @@
 
 .empv3-chemin {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
   z-index: 0;
+  width: 132px;
   pointer-events: none;
   overflow: hidden;
-  color: var(--charte-aplat);
 }
+
+.empv3-chemin--gauche { left: 0; }
+.empv3-chemin--droite { right: 0; }
 
 .chemin-empreintes {
   display: block;
-  width: 100%;
+  width: 132px;
   height: 100%;
-  opacity: 0.5;
 }
 
 /* le contenu passe au-dessus du chemin */
@@ -3567,3 +3569,12 @@
 
 /* et s'il n'y a pas de place à droite, il s'ouvre vers la gauche */
 .empv2-menu.empv2-menu--flottant[data-cote='gauche'] { left: auto !important; right: 8px !important; }
+
+/* le pied de la carte ne porte plus l'état (il s'affichait deux fois) */
+.empv3-fiche-pied-mot {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}

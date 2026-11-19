@@ -1551,6 +1551,10 @@ export default function Employes() {
               qui occupe la place, et trois actions à droite. Plus de barre de
               raccourcis (le rail les porte) et plus de bouton de thème ici :
               il vit dans le rail, une seule fois. */}
+          <div className="empv3-pancarte-slot">
+            <PancarteEnseigne taille={88} />
+          </div>
+
           <header className="empv3-entete">
             <span className="empv3-entete-bandeau" aria-hidden="true" />
             <div className="empv3-entete-corps">
@@ -1573,10 +1577,6 @@ export default function Employes() {
                   : 'La page Employés, vue par vue'}
               </p>
             </div>
-
-            <span className="empv3-entete-pancarte">
-              <PancarteEnseigne taille={84} />
-            </span>
 
             <div className="empv3-entete-actions">
               <div className="empv3-entete-chips">
@@ -1617,9 +1617,15 @@ export default function Employes() {
 
           {vueActive === null && (
             <>
-            {/* le chemin passe DERRIÈRE : il ne prend aucun clic */}
-            <span className="empv3-chemin" aria-hidden="true">
-              <CheminEmpreintes nombre={52} />
+            {/* le chemin passe DERRIÈRE : il ne prend aucun clic.
+                Une bande dans la gouttière gauche et une à l'extrême droite
+                de la page : la tuile ne s'étire jamais, les traces restent
+                minuscules du haut en bas. */}
+            <span className="empv3-chemin empv3-chemin--gauche" aria-hidden="true">
+              <CheminEmpreintes />
+            </span>
+            <span className="empv3-chemin empv3-chemin--droite" aria-hidden="true">
+              <CheminEmpreintes opacite={0.34} />
             </span>
             <div className="empv2-annuaire">
               {/* les chiffres du jour : trois tuiles, le chiffre porte sa période.
