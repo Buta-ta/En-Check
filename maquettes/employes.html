@@ -11,76 +11,84 @@
 <body class="mq3-body">
 <div class="mq3-cadre">
 
-  <!-- ═══ LA BARRE LATÉRALE — identique à la référence ═══ -->
-  <aside class="mq3-barre">
-    <div class="mq3-marque">
+  <!-- ═══ LA BARRE LATÉRALE — bento, rabattable ═══ -->
+  <aside class="mq3-barre" id="barre">
+
+    <div class="mq3-tuile mq3-tuile--marque" title="HRM">
       <span class="mq3-logo">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="12" height="12" rx="3"/><path d="M5.5 10V6M8 10V6M10.5 10V6"/></svg>
       </span>
-      <span class="mq3-marque-nom">HRM</span>
-      <span class="mq3-marque-avatar">JV</span>
+      <span class="mq3-lab mq3-lab--titre">HRM</span>
+      <span class="mq3-marque-avatar mq3-lab-pousse">JV</span>
     </div>
 
-    <a class="mq3-lien mq3-lien--actif" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 7 8 2.5 13.5 7v6.5h-11z"/></svg>
-      Dashboard
+    <a title="Dashboard" class="mq3-tuile mq3-tuile--large mq3-tuile--actif" href="#">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 7 8 2.5 13.5 7v6.5h-11z"/></svg>
+      <span class="mq3-lab">Dashboard</span>
     </a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 5.5 8 2l6.5 3.5L8 9z"/><path d="M4.5 7v4.5c0 1 1.6 1.8 3.5 1.8s3.5-.8 3.5-1.8V7"/></svg>
-      Projects
+
+    <a class="mq3-tuile" href="#" title="Projects">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1.5 5.5 8 2l6.5 3.5L8 9z"/><path d="M4.5 7v4.5c0 1 1.6 1.8 3.5 1.8s3.5-.8 3.5-1.8V7"/></svg>
+      <span class="mq3-lab">Projects</span>
     </a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.8" y="3" width="12.4" height="11" rx="1.4"/><path d="M1.8 6.4h12.4M5 1.8V4M11 1.8V4"/></svg>
-      Calendar
+    <a class="mq3-tuile" href="#" title="Calendar">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.8" y="3" width="12.4" height="11" rx="1.4"/><path d="M1.8 6.4h12.4M5 1.8V4M11 1.8V4"/></svg>
+      <span class="mq3-lab">Calendar</span>
     </a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2.2h7l3 3v8.6H3z"/><path d="M10 2.2v3h3"/></svg>
-      Leave Management
+    <a class="mq3-tuile" href="#" title="Leave Management">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2.2h7l3 3v8.6H3z"/><path d="M10 2.2v3h3"/></svg>
+      <span class="mq3-lab">Leave</span>
     </a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.6v1.8M8 12.6v1.8M1.6 8h1.8M12.6 8h1.8M3.7 3.7l1.3 1.3M11 11l1.3 1.3M12.3 3.7 11 5M5 11l-1.3 1.3"/></svg>
-      Settings
+    <a class="mq3-tuile" href="#" title="Settings">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.6v1.8M8 12.6v1.8M1.6 8h1.8M12.6 8h1.8M3.7 3.7l1.3 1.3M11 11l1.3 1.3M12.3 3.7 11 5M5 11l-1.3 1.3"/></svg>
+      <span class="mq3-lab">Settings</span>
     </a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6.6a4 4 0 0 1 8 0c0 2.9 1.2 3.9 1.2 3.9H2.8S4 9.5 4 6.6z"/><path d="M6.6 12.6a1.6 1.6 0 0 0 2.8 0"/></svg>
-      Notification
+
+    <a class="mq3-tuile" href="#" title="Notification">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6.6a4 4 0 0 1 8 0c0 2.9 1.2 3.9 1.2 3.9H2.8S4 9.5 4 6.6z"/><path d="M6.6 12.6a1.6 1.6 0 0 0 2.8 0"/></svg>
+      <span class="mq3-lab">Notification</span>
     </a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.2"/><path d="M6.3 6.2a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1"/><path d="M8 11.4v.2"/></svg>
-      Help &amp; Center
+    <a class="mq3-tuile" href="#" title="Help &amp; Center">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.2"/><path d="M6.3 6.2a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1"/><path d="M8 11.4v.2"/></svg>
+      <span class="mq3-lab">Help &amp; Center</span>
     </a>
 
     <div class="mq3-groupe">TEAM MANAGEMENT</div>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 13V9M8 13V4M13.5 13v-3"/></svg>
-      Performance
+
+    <a class="mq3-tuile" href="#" title="Performance">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 13V9M8 13V4M13.5 13v-3"/></svg>
+      <span class="mq3-lab">Performance</span>
     </a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.8" y="3.5" width="12.4" height="9" rx="1.4"/><path d="M1.8 6.8h12.4"/></svg>
-      Payrolls
+    <a class="mq3-tuile" href="#" title="Payrolls">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.8" y="3.5" width="12.4" height="9" rx="1.4"/><path d="M1.8 6.8h12.4"/></svg>
+      <span class="mq3-lab">Payrolls</span>
     </a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 2.2h9v11.6l-4.5-2.4-4.5 2.4z"/><path d="M6 6h4M6 8.6h4"/></svg>
-      Invoices
+    <a class="mq3-tuile" href="#" title="Invoices">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3.5 2.2h9v11.6l-4.5-2.4-4.5 2.4z"/><path d="M6 6h4M6 8.6h4"/></svg>
+      <span class="mq3-lab">Invoices</span>
     </a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5.2" r="2.4"/><path d="M1.8 13.8c0-2.3 1.9-3.7 4.2-3.7s4.2 1.4 4.2 3.7"/><circle cx="11.7" cy="5.8" r="1.9"/><path d="M10.8 10.2c1.9.2 3.4 1.5 3.4 3.6"/></svg>
-      Employees
+    <a class="mq3-tuile" href="#" title="Employees">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5.2" r="2.4"/><path d="M1.8 13.8c0-2.3 1.9-3.7 4.2-3.7s4.2 1.4 4.2 3.7"/><circle cx="11.7" cy="5.8" r="1.9"/><path d="M10.8 10.2c1.9.2 3.4 1.5 3.4 3.6"/></svg>
+      <span class="mq3-lab">Employees</span>
     </a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5.4" r="2.3"/><path d="M3.6 13.6c.5-2.6 2.2-4 4.4-4s3.9 1.4 4.4 4"/></svg>
-      Recruitment &amp; Hiring
+    <a title="Recruitment &amp; Hiring" class="mq3-tuile mq3-tuile--large" href="#">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5.4" r="2.3"/><path d="M3.6 13.6c.5-2.6 2.2-4 4.4-4s3.9 1.4 4.4 4"/></svg>
+      <span class="mq3-lab">Recruitment &amp; Hiring</span>
     </a>
 
     <div class="mq3-groupe">LIST</div>
-    <a class="mq3-lien" href="#"><span style="width:14px;text-align:center">₿</span> Salary Information</a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 12.5V3h7l4 2.5v7z"/><path d="M5 6.5h6M5 9h6"/></svg>
-      Compensation Breakdown
+
+    <a title="Salary Information" class="mq3-tuile mq3-tuile--large" href="#">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.2"/><path d="M9.6 5.6H6.9a1.4 1.4 0 0 0 0 2.8h2.2a1.4 1.4 0 0 1 0 2.8H6.4M8 4.2v7.6"/></svg>
+      <span class="mq3-lab">Salary Information</span>
     </a>
-    <a class="mq3-lien" href="#">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="9" height="12" rx="1.2"/><path d="M6 2V1.2M6 14.8V14"/></svg>
-      Project-specific Data
+    <a title="Compensation Breakdown" class="mq3-tuile mq3-tuile--large" href="#">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 12.5V3h7l4 2.5v7z"/><path d="M5 6.5h6M5 9h6"/></svg>
+      <span class="mq3-lab">Compensation Breakdown</span>
+    </a>
+    <a title="Project-specific Data" class="mq3-tuile mq3-tuile--large" href="#">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="9" height="12" rx="1.2"/><path d="M6 2V1.2M6 14.8V14"/></svg>
+      <span class="mq3-lab">Project-specific Data</span>
     </a>
 
     <div class="mq3-annonce">
@@ -94,12 +102,20 @@
       <div class="mq3-annonce-lien">Create Now</div>
       <div class="mq3-annonce-pied">Read by: <span>JV</span><span>AK</span><span>+10</span></div>
     </div>
+
+    <button class="mq3-reduire" id="reduire" type="button" title="Réduire la barre (ou clique dans le vide)">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 3 5 8l5 5"/></svg>
+      <span class="mq3-lab">Réduire</span>
+    </button>
   </aside>
 
   <!-- ═══ LA COLONNE ═══ -->
   <div class="mq3-col">
 
     <div class="mq3-top">
+      <button class="mq3-ico" type="button" id="menu" title="Ouvrir / réduire la barre">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 4.5h12M2 8h12M2 11.5h12"/></svg>
+      </button>
       <span class="mq3-top-titre">Dashboard</span>
 
       <label class="mq3-recherche">
@@ -450,6 +466,28 @@
   let depart = 'light';
   try { depart = localStorage.getItem('maquette.theme') || 'light'; } catch (e) {}
   racine.setAttribute('data-theme', depart);
+  /* La barre bento se rabat : au bouton, ou d'un clic dans le vide. */
+  const barre = document.getElementById('barre');
+  const reduire = document.getElementById('reduire');
+  const menu = document.getElementById('menu');
+  const estReduite = () => document.body.classList.contains('mq3-reduite');
+  const regler = (reduite) => {
+    document.body.classList.toggle('mq3-reduite', reduite);
+    try { localStorage.setItem('maquette.barre', reduite ? 'reduite' : 'ouverte'); } catch (e) {}
+  };
+  try { if (localStorage.getItem('maquette.barre') === 'reduite') regler(true); } catch (e) {}
+
+  reduire.addEventListener('click', (e) => { e.stopPropagation(); regler(!estReduite()); });
+  menu.addEventListener('click', (e) => { e.stopPropagation(); regler(!estReduite()); });
+
+  /* Le vide : tout clic hors de la barre et hors d'un contrôle la rabat. */
+  document.addEventListener('click', (e) => {
+    if (estReduite()) return;
+    if (e.target.closest('.mq3-barre')) return;
+    if (e.target.closest('button, a, input, label, select, textarea')) return;
+    regler(true);
+  });
+
   document.getElementById('bascule').addEventListener('click', () => {
     const suivant = racine.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     racine.setAttribute('data-theme', suivant);

@@ -48,6 +48,7 @@ On n'efface jamais l'ancienne : on la déclare remplacée.
 | D-019 | Périmètre : chaque page, chaque modale, dashboard en premier ; ordre dessin → validation → code → remesure | entérinée | « je veux cette nouvelle identité dans chaque page, chaque modale » | 18/11/2026 |
 | D-020 | La modale : carte 420 / 560 / 760 px, voile espresso 44 %, deux boutons au plus, fermeture clavier | **entérinée** | « je valide tout » (planche 27 vue) | 18/11/2026 |
 | D-021 | Exception d'ordre : la page Employés (et ses onglets) est redevinée avant le dashboard | entérinée | « commence par la page Employés car tu étais déjà dessus » (phrase rapportée par le fondateur) | 18/11/2026 |
+| D-022 | Page Employés : la composition d'une référence fournie est reprise à l'identique (barre latérale, en-tête, KPI, graphiques, tableau) ; seuls changent palette, police, rayons et ombres | entérinée | « je valide la version clonée » | 08/11/2026 |
 
 **Note D-018** : le tableau du registre dit « entérinée — je valide », le journal
 de la même page dit « proposée ». Le tableau fait foi (règle du document). Si le
@@ -114,4 +115,5 @@ dépôt conforme — « une porte rouge le premier jour reste rouge pour toujour
 | 18/11/2026 | D-017 entérinée — les 18 formes opposables, 5 contrôles CI ajoutés. |
 | 18/11/2026 | D-019 entérinée — périmètre et ordre. |
 | 18/11/2026 | D-021 entérinée — exception : Employés avant le dashboard. Note de divergence D-018 consignée. |
+| 08/11/2026 | D-022 entérinée — la composition d'une référence fournie prime sur l'interprétation de l'agent ; seules la palette, la police, les rayons et les ombres changent. Maquette v1 (dépouillée) et v2 (réinterprétée) rejetées. |
 | 18/11/2026 | Fondations installées dans le dépôt : `identite/`, `src/styles/tokens.css`, `src/styles/charte.css`, polices IBM Plex, `scripts/charte-check.mjs` + `npm run charte`, thème D-005, barre D-018. |
