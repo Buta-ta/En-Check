@@ -3318,3 +3318,252 @@
   .empv3-pancarte-sous { font-size: 10.5px; }
   .empv3-pancarte::before, .empv3-pancarte::after { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LA PANCARTE, LE CHEMIN, LA BORNE — V2 validée le 20/11
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── la pancarte : un carré sur une tige ───────────────────── */
+
+.pancarte {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--pancarte-taille);
+  flex: none;
+}
+
+.pancarte-panneau {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: var(--pancarte-taille);
+  height: var(--pancarte-taille);
+  padding: 7px 6px 6px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 7px;
+  background: var(--charte-surface);
+  box-shadow: 3px 3px 0 var(--charte-encre);
+}
+
+/* le fil de cuivre tendu d'un clou à l'autre */
+.pancarte-fil {
+  position: absolute;
+  top: 1px;
+  left: 8%;
+  width: 84%;
+  height: 9px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pancarte-clou {
+  position: absolute;
+  top: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--charte-encre);
+}
+.pancarte-clou--gauche { left: 10%; }
+.pancarte-clou--droite { right: 10%; }
+
+.pancarte-logo {
+  display: block;
+  width: 42%;
+  max-width: 44px;
+  height: auto;
+}
+
+.pancarte-marque {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  line-height: 1;
+  color: var(--charte-encre);
+}
+
+.pancarte-slogan {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--charte-encre);
+  white-space: nowrap;
+}
+
+.pancarte-losange {
+  display: block;
+  width: 4px;
+  height: 4px;
+  transform: rotate(45deg);
+  background: var(--charte-aplat);
+}
+
+.pancarte-sous {
+  font-size: 5.5px;
+  letter-spacing: 0.3px;
+  line-height: 1;
+  color: var(--charte-douce);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* le poteau, la plaque de base, la terre */
+.pancarte-poteau {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--charte-encre) 70%, #6B4A32) 0 34%,
+    #6B4A32 34% 66%,
+    color-mix(in srgb, var(--charte-encre) 70%, #6B4A32) 66% 100%);
+}
+
+.pancarte-plaque {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--charte-encre);
+}
+
+.pancarte-terre {
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 380%;
+  height: 12px;
+  overflow: visible;
+}
+
+/* la pancarte de pied : un peu plus grande, lisible */
+.pancarte--compacte .pancarte-panneau { box-shadow: 4px 4px 0 var(--charte-encre); }
+.pancarte--compacte .pancarte-marque { font-size: 11px; letter-spacing: 1.4px; }
+.pancarte--compacte .pancarte-slogan { font-size: 10px; }
+
+/* ── dans l'en-tête : au milieu, et elle dépasse un peu ────── */
+
+.empv3-entete { position: relative; }
+
+.empv3-entete-pancarte {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* sous 1180 px, la place manque au milieu : la pancarte repasse dans le flux */
+@media (max-width: 1180px) {
+  .empv3-entete-pancarte {
+    position: static;
+    transform: none;
+    display: flex;
+    justify-content: center;
+    margin: 4px auto 6px;
+    order: 3;
+  }
+  .empv3-entete-corps { flex-wrap: wrap; }
+}
+
+/* ── le chemin : derrière, jamais cliquable ────────────────── */
+
+.empv3-chemin {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  color: var(--charte-aplat);
+}
+
+.chemin-empreintes {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.5;
+}
+
+/* le contenu passe au-dessus du chemin */
+.empv2-annuaire { position: relative; z-index: 1; }
+
+/* ── la borne : petite, posée sur le chemin, après les cartes ── */
+
+.empv3-borne {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  margin: 10px 0 4px;
+  pointer-events: none;
+}
+
+.borne {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: var(--borne-taille);
+}
+
+.borne svg { display: block; width: 100%; height: auto; }
+
+.borne-mot {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+  white-space: nowrap;
+}
+
+/* ── la pancarte de pied ───────────────────────────────────── */
+
+.empv3-pancarte {
+  display: flex;
+  justify-content: center;
+  margin: 34px 0 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.empv3-pancarte::before,
+.empv3-pancarte::after { content: none; }
+
+@media (max-width: 720px) {
+  .empv3-pancarte { margin-top: 26px; transform: scale(0.92); }
+  .empv3-borne { margin: 6px 0 2px; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LE MENU ⋮ — LA VRAIE CAUSE, ENFIN
+   `transform` sur la carte au survol en fait le repère de tout
+   `position: fixed` posé dedans : le menu 「fixed」 suivait la
+   carte au lieu de l'écran. On retire la transformation pendant
+   que le menu est ouvert — et on garde l'effet de survol le
+   reste du temps.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-fiche.empv3-pro:has(.empv2-menu--flottant),
+.empv3-fiche.empv3-pro:has(.empv2-menu--flottant):hover {
+  transform: none;
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* le menu lui-même ne doit jamais hériter d'une transformation */
+.empv2-menu.empv2-menu--flottant { transform: none; }
+
+/* et s'il n'y a pas de place à droite, il s'ouvre vers la gauche */
+.empv2-menu.empv2-menu--flottant[data-cote='gauche'] { left: auto !important; right: 8px !important; }

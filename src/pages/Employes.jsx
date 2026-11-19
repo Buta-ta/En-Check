@@ -31,6 +31,9 @@ import { grouperAbsences } from '../utils/barresSemaine'
 import CurrencyService from '../services/currencyService'
 import FicheEmployeModal from '../components/FicheEmployeModal'
 import CarteEmploye from '../components/equipes/CarteEmploye'
+import PancarteEnseigne from '../components/parcours/PancarteEnseigne'
+import CheminEmpreintes from '../components/parcours/CheminEmpreintes'
+import BornePointage from '../components/parcours/BornePointage'
 import Etincelle from '../components/equipes/Etincelle'
 import { useTheme } from '../contexts/ThemeContext'
 import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
@@ -1571,6 +1574,10 @@ export default function Employes() {
               </p>
             </div>
 
+            <span className="empv3-entete-pancarte">
+              <PancarteEnseigne taille={84} />
+            </span>
+
             <div className="empv3-entete-actions">
               <div className="empv3-entete-chips">
                 {vueActive === null && (
@@ -1609,6 +1616,11 @@ export default function Employes() {
           </header>
 
           {vueActive === null && (
+            <>
+            {/* le chemin passe DERRIÈRE : il ne prend aucun clic */}
+            <span className="empv3-chemin" aria-hidden="true">
+              <CheminEmpreintes nombre={52} />
+            </span>
             <div className="empv2-annuaire">
               {/* les chiffres du jour : trois tuiles, le chiffre porte sa période.
                   Tout est compté sur le personnel chargé, jamais une estimation. */}
@@ -2146,6 +2158,7 @@ export default function Employes() {
                 </>
               )}
             </div>
+            </>
           )}
 
           {vueActive === 'equipes' && (
@@ -2156,27 +2169,20 @@ export default function Employes() {
             <TachesVue enterpriseId={entrepriseDesVues} employes={employes} signalCreation={signalCreationTache} />
           )}
 
+          {/* la borne de pointage, posée sur le chemin */}
+          {vueActive === null && (
+            <span className="empv3-borne">
+              <BornePointage taille={58} />
+            </span>
+          )}
+
           {/* ── LA PANCARTE ──────────────────────────────────
               Modèle B validé le 20/11 : le tissu bogolan encadre la
               pancarte, une plaque ivoire porte le texte — le motif ne
               passe jamais derrière les mots.
               Le logo est le vrai : le pied de marque (EnCheckBrandMark). */}
           <footer className="empv3-pancarte">
-            <div className="empv3-pancarte-plaque">
-              <span className="empv3-pancarte-logo">
-                <EnCheckBrandMark size={44} />
-              </span>
-              <span className="empv3-pancarte-textes">
-                <span className="empv3-pancarte-ligne">
-                  <strong className="empv3-pancarte-marque">EN-CHECK</strong>
-                  <i className="empv3-pancarte-losange" aria-hidden="true" />
-                  <span className="empv3-pancarte-slogan">On gère !</span>
-                </span>
-                <span className="empv3-pancarte-sous">
-                  Gestion du personnel — présences, plannings et paie
-                </span>
-              </span>
-            </div>
+            <PancarteEnseigne taille={96} compact />
           </footer>
         </main>
         </div>

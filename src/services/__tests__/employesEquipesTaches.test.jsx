@@ -1150,17 +1150,65 @@ describe('la page Employés', () => {
     expect(CARTE).toContain('estAdresseInterne')
   })
 
-  it('la pancarte de pied porte le vrai logo, le slogan et le tissu autour', () => {
-    expect(EMPLOYES).toContain('empv3-pancarte')
-    expect(EMPLOYES).toContain('empv3-pancarte-plaque')
-    // le logo est le vrai composant de marque, pas un dessin inventé
-    expect(EMPLOYES).toMatch(/empv3-pancarte-logo[\s\S]{0,120}EnCheckBrandMark/)
-    expect(EMPLOYES).toContain('On gère !')
-    expect(EMPLOYES).toContain('EN-CHECK')
+  it('la pancarte est un carré sur une tige, avec le vrai logo et le slogan', () => {
+    const PANCARTE = readFileSync('src/components/parcours/PancarteEnseigne.jsx', 'utf8')
+
+    // un carré sur une tige : panneau + poteau, pas une bannière
+    expect(PANCARTE).toContain('pancarte-panneau')
+    expect(PANCARTE).toContain('pancarte-poteau')
+    expect(PANCARTE).toContain('pancarte-terre')
+    // le vrai logo : le pied, dessiné à l'identique
+    expect(PANCARTE).toContain('pancarte-logo')
+    expect(PANCARTE).toMatch(/M 30\.5 44\.5 C 27 51\.5/)
+    // le slogan et la marque
+    expect(PANCARTE).toContain('EN-CHECK')
+    expect(PANCARTE).toContain('On gère !')
+    // le fil de cuivre et les clous, comme la maquette V2
+    expect(PANCARTE).toContain('pancarte-fil')
+    expect(PANCARTE).toContain('pancarte-clou')
+
+    // elle est posée AU MILIEU de l'en-tête, et au pied de page
+    expect(EMPLOYES).toContain('empv3-entete-pancarte')
+    expect(EMPLOYES).toMatch(/empv3-entete-pancarte[\s\S]{0,120}PancarteEnseigne/)
+    expect(EMPLOYES).toMatch(/empv3-pancarte[\s\S]{0,120}PancarteEnseigne/)
     const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
-    // le tissu encadre la pancarte, la plaque reste du papier
-    expect(CSS_EMP).toMatch(/\.empv3-pancarte \{[\s\S]{0,400}paie-bogolan-haut\.webp/)
-    expect(CSS_EMP).toMatch(/\.empv3-pancarte-plaque \{[\s\S]{0,320}background: var\(--charte-surface\)/)
+    expect(CSS_EMP).toMatch(/\.empv3-entete-pancarte \{[\s\S]{0,200}left: 50%/)
+    // et elle repasse dans le flux quand la place manque
+    expect(CSS_EMP).toMatch(/max-width: 1180px[\s\S]{0,220}empv3-entete-pancarte \{[\s\S]{0,120}position: static/)
+  })
+
+  it('le chemin de traces serpente derrière, et la borne se pose dessus', () => {
+    const CHEMIN = readFileSync('src/components/parcours/CheminEmpreintes.jsx', 'utf8')
+    const BORNE = readFileSync('src/components/parcours/BornePointage.jsx', 'utf8')
+
+    // des traces minuscules, nombreuses, alternées et en S
+    expect(CHEMIN).toContain('nombre = 46')
+    expect(CHEMIN).toMatch(/Math\.sin\(t \* Math\.PI \* 3\.1\)/)
+    expect(CHEMIN).toContain('gauche')
+    // il ne prend aucun clic
+    expect(CHEMIN).toContain('aria-hidden')
+
+    // la borne : écran, empreinte, tige, socle
+    expect(BORNE).toContain('borne ')
+    expect(BORNE).toContain('Borne de pointage')
+    expect(BORNE).toContain('<rect')
+
+    expect(EMPLOYES).toContain('empv3-chemin')
+    expect(EMPLOYES).toContain('CheminEmpreintes')
+    expect(EMPLOYES).toContain('empv3-borne')
+    expect(EMPLOYES).toContain('BornePointage')
+
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,200}pointer-events: none/)
+    expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,220}z-index: 0/)
+    expect(CSS_EMP).toMatch(/\.empv2-annuaire \{ position: relative; z-index: 1; \}/)
+  })
+
+  it('le menu ⋮ ne suit plus la carte : sa transformation est neutralisée', () => {
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    // la vraie cause : transform sur la carte = nouveau repère du fixed
+    expect(CSS_EMP).toMatch(/\.empv3-fiche\.empv3-pro:has\(\.empv2-menu--flottant\)[\s\S]{0,160}transform: none/)
+    expect(CSS_EMP).toMatch(/\.empv2-menu\.empv2-menu--flottant \{ transform: none; \}/)
   })
 
   it('la recherche est large, explicite et effaçable', () => {
