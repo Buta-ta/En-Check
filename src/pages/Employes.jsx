@@ -31,7 +31,6 @@ import FicheEmployeModal from '../components/FicheEmployeModal'
 import LigneAnnuaire from '../components/equipes/LigneAnnuaire'
 import { useTheme } from '../contexts/ThemeContext'
 import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
-import SidebarNavigation from '../components/SidebarNavigation'
 import EnterpriseSwitcher from '../components/EnterpriseSwitcher'
 import EquipesVue from '../components/equipes/EquipesVue'
 import TachesVue from '../components/taches/TachesVue'
@@ -1067,6 +1066,13 @@ export default function Employes() {
     }] : []),
   ]
 
+  // La rubrique de cette page : Équipe. Le rail la marque, la barre du haut
+  // porte ses pages — c'est le modèle de la maquette du 08/11.
+  const SECTION_ACTIVE = 'equipe'
+  const SECTION_ACTIVE_LABEL = 'Équipe'
+  const pagesDeLaRubrique = (sectionsNav.find((section) => section.id === SECTION_ACTIVE)?.items || [])
+    .filter((item) => item.show && item.path)
+
   const surNavigation = (item) => { if (item?.path) navigate(item.path) }
   const deconnexion = () => {
     localStorage.removeItem('admin')
@@ -1158,62 +1164,96 @@ export default function Employes() {
           du 08/11 : « enlève le bandeau motif culturel de la page ». */}
       <div className="pointages-afrotech-shell empv2-coque">
         <div className="empv2-layout">
-        <aside className="dashboard-sidebar empv2-sidebar" aria-label="Navigation principale">
-          <div className="nav-panel">
-            <div className="nav-panel-inner">
-              <header className="nav-panel-tete">
-                <div className="nav-panel-marque">
-                  <EnCheckBrandMark className="nav-panel-logo" size={30} />
-                  <div className="nav-panel-marque-copy">
-                    <span className="nav-panel-marque-nom">En-Check</span>
-                    <span className="nav-panel-marque-slogan">On gère !</span>
-                  </div>
-                </div>
-                <div className="nav-panel-contexte">
-                  <EnterpriseSwitcher admin={admin} onSwitch={() => window.location.reload()} />
-                </div>
+        {/* ═══ LA COQUE : rail d'icônes à gauche, pastilles en haut ═══ */}
+        <aside className="nav3-rail" aria-label="Rubriques">
+          <span className="nav3-rail-logo">
+            <EnCheckBrandMark size={26} />
+          </span>
+          <span className="nav3-rail-sep" aria-hidden="true" />
 
-                {/* D-018 — le kente sous le logo : 28 px, sans texte dessus. */}
-                <div className="nav-panel-kente" aria-hidden="true">
-                  <KenteWovenTapestrySvg />
-                </div>
-              </header>
+          {sectionsNav.map((section) => {
+            const SectionIcone = section.icon
+            const active = section.id === SECTION_ACTIVE
+            return (
+              <button
+                key={section.id}
+                type="button"
+                className={`nav3-rail-item${active ? ' is-actif' : ''}`}
+                aria-current={active ? 'true' : undefined}
+                title={section.label}
+                aria-label={section.label}
+                onClick={() => {
+                  const premiere = section.items.find((i) => i.show && i.path)
+                  if (premiere) navigate(premiere.path)
+                }}
+              >
+                <SectionIcone size={18} aria-hidden="true" />
+              </button>
+            )
+          })}
 
-              <div className="nav-panel-corps">
-                <SidebarNavigation
-                  sections={sectionsNav}
-                  onSelect={surNavigation}
-                  idAdministrateur={admin?.id}
-                />
-              </div>
-
-              <footer className="nav-panel-pied ec-nav-pied">
-                <a
-                  className="sidebar-portal-link"
-                  href="/employee/login"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Users size={16} />
-                  <span>Espace employé</span>
-                  <ArrowRight size={14} />
-                </a>
-                <div className="sidebar-profile">
-                  <div className="sidebar-profile-link is-statique">
-                    <span className="sidebar-profile-avatar">{(nomAdmin || 'A')[0].toUpperCase()}</span>
-                    <span className="sidebar-profile-copy">
-                      <span className="sidebar-profile-name">{nomAdmin}</span>
-                      <span className="sidebar-profile-role">{admin?.role === 'super_admin' ? 'Super admin' : 'Administrateur'}</span>
-                    </span>
-                  </div>
-                  <button type="button" className="sidebar-logout" onClick={deconnexion} title="Déconnexion" aria-label="Déconnexion">
-                    <LogOut size={15} />
-                  </button>
-                </div>
-              </footer>
-            </div>
+          <div className="nav3-rail-pied">
+            <a
+              className="nav3-rail-item"
+              href="/employee/login"
+              target="_blank"
+              rel="noreferrer"
+              title="Espace employé"
+              aria-label="Espace employé"
+            >
+              <Users size={18} aria-hidden="true" />
+            </a>
+            <button
+              type="button"
+              className="nav3-rail-item"
+              onClick={deconnexion}
+              title="Déconnexion"
+              aria-label="Déconnexion"
+            >
+              <LogOut size={18} aria-hidden="true" />
+            </button>
+            <span className="nav3-rail-compte" title={`${nomAdmin} — administrateur`}>
+              {(nomAdmin || 'A').trim().charAt(0).toUpperCase()}
+            </span>
           </div>
         </aside>
+
+        <div className="nav3-colonne">
+          {/* la barre du haut : les pages de la rubrique, en pastilles */}
+          <header className="nav3-haut">
+            <nav className="nav3-pastilles" aria-label={`Pages de la rubrique ${SECTION_ACTIVE_LABEL}`}>
+              {pagesDeLaRubrique.map((item) => {
+                const ItemIcone = item.icon
+                const active = item.path === '/employes'
+                return (
+                  <button
+                    key={item.path}
+                    type="button"
+                    className={`nav3-pastille${active ? ' is-actif' : ''}`}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={() => surNavigation(item)}
+                  >
+                    <ItemIcone size={13} aria-hidden="true" />
+                    {item.label}
+                  </button>
+                )
+              })}
+            </nav>
+
+            <div className="nav3-haut-droite">
+              <EnterpriseSwitcher admin={admin} onSwitch={() => window.location.reload()} />
+              <button
+                type="button"
+                className="nav3-rond"
+                onClick={toggleTheme}
+                title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+                aria-pressed={darkMode}
+              >
+                {darkMode ? <Sun size={14} /> : <Moon size={14} />}
+              </button>
+            </div>
+          </header>
+
 
         {/* ═══ MAIN ═══ */}
         <main className="empv2-main">
@@ -1595,6 +1635,7 @@ export default function Employes() {
             <span>EN-CHECK · On gère ! · Gestion du Personnel</span>
           </div>
         </main>
+        </div>
         </div>
         {/* D-003 — une seule bande de motif par page : le bandeau du haut. */}
 

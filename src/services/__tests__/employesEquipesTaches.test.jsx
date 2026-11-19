@@ -1022,7 +1022,7 @@ describe('la page Employés', () => {
     expect(REFONTE_CSS).toMatch(/\.empv2-onglet\[aria-current='page'\] \{[^}]*border: var\(--charte-trait\) solid var\(--charte-encre\)/)
   })
 
-  it('affiche la sidebar de la coque, avec la vraie navigation de l’application', async () => {
+  it('affiche la coque : le rail des rubriques et les pastilles des pages', async () => {
     // la sidebar détecte la page active via l'adresse : on la monte
     // sur /employes, comme dans l'application (le helper monte sur /)
     await act(async () => racine.unmount())
@@ -1040,15 +1040,19 @@ describe('la page Employés', () => {
       )
     })
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
-    const sidebar = hote.querySelector('.empv2-sidebar')
-    expect(sidebar, 'la sidebar de la page').not.toBeNull()
-    // la marque, le menu, et l'entrée active
-    expect(sidebar.querySelector('.nav-panel-marque-nom').textContent).toBe('En-Check')
-    expect(sidebar.querySelector('.sidebar-navigation')).not.toBeNull()
-    const liens = [...sidebar.querySelectorAll('.sidebar-link')].map((l) => l.textContent.trim())
-    expect(liens).toContain('Employés')
-    expect(liens).toContain('Pointages')
-    expect(sidebar.querySelector('.sidebar-link.is-active')?.textContent).toContain('Employés')
+    // la coque du 08/11 : un rail de rubriques, des pastilles de pages
+    const rail = hote.querySelector('.nav3-rail')
+    expect(rail, 'le rail de la coque').not.toBeNull()
+    expect(rail.querySelector('.nav3-rail-logo')).not.toBeNull()
+    const rubriques = [...rail.querySelectorAll('.nav3-rail-item')].map((b) => b.getAttribute('aria-label'))
+    expect(rubriques).toContain('Équipe')
+    expect(rubriques).toContain('Temps de travail')
+    // la rubrique de la page est marquée
+    expect(rail.querySelector('.nav3-rail-item.is-actif').getAttribute('aria-label')).toBe('Équipe')
+    // les pages de la rubrique sont en pastilles, la page courante est active
+    const pastilles = [...hote.querySelectorAll('.nav3-pastille')].map((p) => p.textContent.trim())
+    expect(pastilles).toContain('Employés')
+    expect(hote.querySelector('.nav3-pastille.is-actif').textContent).toContain('Employés')
   })
 
   it('pose le bouton clair / sombre dans la ligne de titre', async () => {
@@ -1106,8 +1110,8 @@ describe('la page Employés', () => {
     expect(EMPLOYES).not.toContain('employes-framed-card')
   })
 
-  it('la sidebar précède le contenu, et le menu reste celui de la coque', () => {
-    const sidebar = EMPLOYES.indexOf('<aside className="dashboard-sidebar empv2-sidebar"')
+  it('le rail précède le contenu, et les rubriques restent celles de l’application', () => {
+    const sidebar = EMPLOYES.indexOf('<aside className="nav3-rail"')
     const contenu = EMPLOYES.indexOf('<main className="empv2-main"')
     expect(sidebar).toBeGreaterThan(0)
     expect(contenu).toBeGreaterThan(sidebar)
