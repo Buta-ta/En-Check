@@ -141,12 +141,13 @@ export default function CarteEmploye({
       onClick={() => ouvrirFiche()}
       onKeyDown={(e) => { if (e.key === 'Enter') ouvrirFiche() }}
     >
-      {/* le tissu de boue, en haut : il s'efface avant le nom */}
-      <span className="empv3-fiche-bandeau" aria-hidden="true">
-        <BandeauBogolan hauteur={92} />
-      </span>
-
+      {/* Le bandeau porte la photo ET le nom, côte à côte : c'est la
+          composition de la maquette validée — pas une pile. */}
       <header className="empv3-fiche-tete empv3-fiche-tete--portrait">
+        <span className="empv3-fiche-bandeau" aria-hidden="true">
+          <BandeauBogolan hauteur={112} />
+        </span>
+
         <button
           type="button"
           className={`empv3-fiche-avatar empv3-fiche-avatar--portrait${aUnePhoto ? '' : ' empv3-fiche-avatar--vide'}`}
@@ -161,7 +162,7 @@ export default function CarteEmploye({
         >
           {aUnePhoto
             ? <img src={employee.photo_url} alt="" />
-            : (employee.photo_url === undefined ? null : <Plus size={18} aria-hidden="true" />)}
+            : <Plus size={20} aria-hidden="true" />}
           <i className={`empv3-fiche-pastille empv3-fiche-pastille--${concept}`} aria-hidden="true" />
         </button>
 
@@ -170,14 +171,15 @@ export default function CarteEmploye({
           <span className="empv3-fiche-poste">
             {poste || 'Fiche à compléter : ni poste, ni service.'}
           </span>
-          <span className="empv3-fiche-etat">
-            <span className={`${badgeForme} ${classeStatut}`} data-concept={concept}>
-              {badgeForme === 'ch-badge-pilule' && <i className="ch-badge-point" aria-hidden="true" />}
-              {badgeMot}
-            </span>
-          </span>
         </span>
       </header>
+
+      <div className="empv3-fiche-etat-ligne">
+        <span className={`${badgeForme} ${classeStatut}`} data-concept={concept}>
+          {badgeForme === 'ch-badge-pilule' && <i className="ch-badge-point" aria-hidden="true" />}
+          {badgeMot}
+        </span>
+      </div>
 
       {/* les cinq informations d'une carte professionnelle, en pastilles */}
       <div className="empv3-fiche-chips">

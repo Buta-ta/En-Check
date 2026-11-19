@@ -1086,6 +1086,14 @@ describe('la page Employés', () => {
     const BANDEAU = readFileSync('src/components/equipes/BandeauBogolan.jsx', 'utf8')
 
     // le motif est dessiné, pas une image
+    // le bogolan se lit par bandes : losanges pleins, créneaux, grille
+    expect(BANDEAU).toContain('bande 1')
+    expect(BANDEAU).toContain('bande 2')
+    expect(BANDEAU).toContain('bande 3')
+    expect(BANDEAU).toContain('escalier(')
+    // et il reste dense : le masque ne commence à baisser qu'au tiers
+    expect(BANDEAU).toMatch(/offset="0\.34" stopColor="#fff" stopOpacity="1"/)
+
     expect(BANDEAU).toContain('<pattern')
     expect(BANDEAU).toContain('<mask')
     expect(BANDEAU).not.toContain('.webp')
@@ -1106,7 +1114,14 @@ describe('la page Employés', () => {
     expect(CARTE).toContain("if (!valeur) return null")
 
     const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
-    expect(CSS_EMP).toMatch(/\.empv3-fiche-tete--portrait \{[\s\S]{0,160}margin-top: -46px/)
+    // la composition de la maquette : photo et nom côte à côte, sur le bandeau
+    expect(CSS_EMP).toMatch(/\.empv3-fiche-tete--portrait \{[\s\S]{0,200}display: flex/)
+    expect(CSS_EMP).toContain('.empv3-fiche-bandeau {')
+    // le bandeau est DANS l'en-tête : la photo se pose dessus, pas au-dessus
+    expect(CARTE).toMatch(/empv3-fiche-tete--portrait[\s\S]{0,200}empv3-fiche-bandeau/)
+    // l'état ne s'affiche qu'une fois : plus de pastille dans l'en-tête
+    const entete = CARTE.slice(CARTE.indexOf('empv3-fiche-tete--portrait'), CARTE.indexOf('empv3-fiche-chips'))
+    expect(entete).not.toMatch(/className="empv3-fiche-etat"/)
   })
 
   it('la recherche est large, explicite et effaçable', () => {
