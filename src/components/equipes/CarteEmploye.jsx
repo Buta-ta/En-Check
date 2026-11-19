@@ -18,6 +18,23 @@ import {
 //  · elle ne cache pas les gestes secondaires : ils sont dans ⋮.
 // ───────────────────────────────────────────────────────────
 
+// Un bouton « E-mail » doit ouvrir un vrai service de messagerie.
+// Sur un ordinateur comme sur un téléphone, `mailto:` ouvre le client
+// local — et sur beaucoup de postes, il n'y en a aucun : le clic ne fait
+// rien. On propose donc Gmail et Outlook, qui marchent partout, dès que
+// l'adresse n'est pas une adresse interne au portail.
+const GMAIL = 'https://mail.google.com/mail/?view=cm&fs=1&tf=1'
+const OUTLOOK = 'https://outlook.live.com/mail/0/deeplink/compose'
+
+const estAdresseInterne = (adresse) => /@[^@]*\.local$/i.test(adresse || '')
+  || /@espace\.encheck\./i.test(adresse || '')
+
+const lienGmail = (adresse) =>
+  `${GMAIL}&to=${encodeURIComponent(adresse)}`
+
+const lienOutlook = (adresse) =>
+  `${OUTLOOK}?to=${encodeURIComponent(adresse)}`
+
 const nomComplet = (personne) =>
   [personne?.first_name, personne?.last_name].filter(Boolean).join(' ') || 'Sans nom'
 
@@ -69,15 +86,34 @@ export default function CarteEmploye({
     const bouton = boutonRef.current
     if (!bouton) return
     const r = bouton.getBoundingClientRect()
-    const largeur = 210
-    const placeDessous = window.innerHeight - r.bottom > 300
+    const largeur = 214
+
+    // On ouvre TOUJOURS à côté du bouton qui l'a demandé.
+    // Vers le haut si le bas de l'écran est trop court.
+    const placeDessous = window.innerHeight - r.bottom > 330
+    const top = placeDessous
+      ? r.bottom + 6
+      : Math.max(8, r.top - 6 - 300)
+
     setPositionMenu({
-      top: placeDessous ? r.bottom + 6 : Math.max(8, r.top - 6),
+      top,
       left: Math.max(8, Math.min(window.innerWidth - largeur - 8, r.right - largeur)),
-      dessous: placeDessous,
       largeur,
+      dessous: placeDessous,
     })
   }
+
+  // Un redimensionnement peut rendre la position fausse : on la revérifie.
+  useEffect(() => {
+    if (!menu) return undefined
+    const recalculer = () => placerMenu()
+    window.addEventListener('resize', recalculer)
+    window.addEventListener('scroll', recalculer, true)
+    return () => {
+      window.removeEventListener('resize', recalculer)
+      window.removeEventListener('scroll', recalculer, true)
+    }
+  }, [menu])
 
   const basculerMenu = () => {
     if (menu) { setMenu(false); return }
@@ -231,16 +267,38 @@ export default function CarteEmploye({
                 WhatsApp
               </a>
             ) : null}
-            {courriel ? (
-              <a
-                className="empv3-d-action empv3-d-action--mail"
-                href={`mailto:${courriel}`}
-                onClick={(e) => e.stopPropagation()}
-                aria-label={`Écrire un e-mail à ${nomComplet(employee)}`}
-              >
+            {courriel && !estAdresseInterne(courriel) ? (
+              <>
+                <a
+                  className="empv3-d-action empv3-d-action--mail"
+                  href={lienGmail(courriel)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Écrire à ${nomComplet(employee)} depuis Gmail`}
+                >
+                  <Mail size={13} aria-hidden="true" />
+                  Gmail
+                </a>
+                <a
+                  className="empv3-d-action empv3-d-action--mail"
+                  href={lienOutlook(courriel)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Écrire à ${nomComplet(employee)} depuis Outlook`}
+                >
+                  <Mail size={13} aria-hidden="true" />
+                  Outlook
+                </a>
+              </>
+            ) : null}
+            {/* une adresse interne au portail ne part pas : on le dit, sans bouton mort */}
+            {courriel && estAdresseInterne(courriel) ? (
+              <span className="empv3-d-contact--vide" title={courriel}>
                 <Mail size={13} aria-hidden="true" />
-                E-mail
-              </a>
+                Adresse interne au portail
+              </span>
             ) : null}
             {!telephone && !courriel ? (
               <span className="empv3-d-contact--vide">
@@ -275,11 +333,8 @@ export default function CarteEmploye({
               role="group"
               aria-label={`Autres actions pour ${nomComplet(employee)}`}
               style={positionMenu ? {
-                position: 'fixed',
-                top: positionMenu.dessous ? `${positionMenu.top}px` : 'auto',
-                bottom: positionMenu.dessous ? 'auto' : `${window.innerHeight - positionMenu.top}px`,
+                top: `${positionMenu.top}px`,
                 left: `${positionMenu.left}px`,
-                right: 'auto',
                 width: `${positionMenu.largeur}px`,
               } : undefined}
             >

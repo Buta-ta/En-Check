@@ -1118,7 +1118,7 @@ describe('la page Employés', () => {
 
     // 2 · le menu sort de la carte : position fixe calculée, plus d'absolute rogné
     expect(CARTE).toContain('empv2-menu--flottant')
-    expect(CARTE).toContain("position: 'fixed'")
+    expect(CARTE).toContain('empv2-menu--flottant')
     expect(CARTE).toContain('getBoundingClientRect')
     expect(CSS_EMP).toMatch(/\.empv3-fiche\.empv3-pro \{ overflow: visible; \}/)
 
@@ -1126,9 +1126,41 @@ describe('la page Employés', () => {
     expect(CARTE).toContain('empv3-d-action--appel')
     expect(CARTE).toContain('href={`tel:')
     expect(CARTE).toContain('https://wa.me/')
-    expect(CARTE).toContain('href={`mailto:')
     expect(CARTE).toContain('<Phone size={13}')
     expect(CSS_EMP).toMatch(/\.empv3-d-action--appel \{[\s\S]{0,120}background: var\(--charte-succes\)/)
+  })
+
+  it('le menu s’ouvre à côté du bouton, et les mails passent par Gmail ou Outlook', () => {
+    const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+
+    // 1 · le menu : plus d'absolute rogné, un calcul ancré sur le bouton
+    expect(CSS_EMP).toMatch(/\.empv2-menu\.empv2-menu--flottant \{[\s\S]{0,200}position: fixed/)
+    // les valeurs héritées qui l'envoyaient en haut à droite sont neutralisées
+    expect(CSS_EMP).toMatch(/\.empv2-menu\.empv2-menu--flottant \{[\s\S]{0,260}right: auto/)
+    expect(CARTE).toContain('getBoundingClientRect')
+    // il se recalcule au défilement et au redimensionnement
+    expect(CARTE).toContain("window.addEventListener('scroll', recalculer, true)")
+
+    // 2 · les mails : Gmail et Outlook, pas un mailto muet
+    expect(CARTE).toContain('mail.google.com/mail/?view=cm')
+    expect(CARTE).toContain('outlook.live.com/mail/0/deeplink/compose')
+    expect(CARTE).toContain('lienGmail(courriel)')
+    expect(CARTE).toContain('lienOutlook(courriel)')
+    expect(CARTE).toContain('estAdresseInterne')
+  })
+
+  it('la pancarte de pied porte le vrai logo, le slogan et le tissu autour', () => {
+    expect(EMPLOYES).toContain('empv3-pancarte')
+    expect(EMPLOYES).toContain('empv3-pancarte-plaque')
+    // le logo est le vrai composant de marque, pas un dessin inventé
+    expect(EMPLOYES).toMatch(/empv3-pancarte-logo[\s\S]{0,120}EnCheckBrandMark/)
+    expect(EMPLOYES).toContain('On gère !')
+    expect(EMPLOYES).toContain('EN-CHECK')
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    // le tissu encadre la pancarte, la plaque reste du papier
+    expect(CSS_EMP).toMatch(/\.empv3-pancarte \{[\s\S]{0,400}paie-bogolan-haut\.webp/)
+    expect(CSS_EMP).toMatch(/\.empv3-pancarte-plaque \{[\s\S]{0,320}background: var\(--charte-surface\)/)
   })
 
   it('la recherche est large, explicite et effaçable', () => {
