@@ -1342,3 +1342,129 @@
   background: var(--charte-surface2);
   color: var(--charte-encre);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LE BANDEAU BOGOLAN DE L'EN-TÊTE — comme le dashboard
+   Le même motif que la page d'accueil, en haut et en bas du
+   bloc, pour l'entourer sans le noyer (C3 : une seule bande
+   de motif par page).
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-entete {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+}
+
+.empv3-entete-corps {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 20px 22px;
+}
+
+.empv3-entete-bandeau {
+  display: block;
+  width: 100%;
+  height: 18px;
+  background-image: url('/images/paie-bogolan-haut.webp');
+  background-repeat: repeat-x;
+  background-position: center;
+  background-size: auto 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--charte-encre) 22%, transparent);
+}
+.empv3-entete-bandeau--bas {
+  background-image: url('/images/paie-bogolan-bas.webp');
+  border-bottom: 0;
+  border-top: 1px solid color-mix(in srgb, var(--charte-encre) 22%, transparent);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LA PAGE SUR TOUS LES ÉCRANS
+   Trois paliers : la tablette (1024), le téléphone (820), le
+   petit téléphone (520). Sous 820 px, le rail quitte le côté et
+   devient une barre basse — la navigation ne disparaît jamais.
+   ═══════════════════════════════════════════════════════════ */
+
+@media (max-width: 1024px) {
+  .empv3-entete-corps { padding: 16px; }
+  .empv3-entete-actions { width: 100%; align-items: stretch; }
+  .empv3-entete-chips { justify-content: flex-start; }
+  .empv3-entete-principale { justify-content: flex-start; }
+  .empv3-entete-principale .ch-btn-pleine { width: 100%; justify-content: center; }
+  .empv3-entete-titre { font-size: clamp(28px, 5vw, 40px); }
+}
+
+@media (max-width: 820px) {
+  .nav3-rail {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    top: auto;
+    width: auto;
+    height: auto;
+    flex: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    gap: 2px;
+    padding: 6px;
+    border-radius: var(--charte-rayon-tuile);
+    z-index: 40;
+  }
+  .nav3-rail-logo,
+  .nav3-rail-sep { display: none; }
+  .nav3-rail-vues { flex-direction: row; padding: 0; }
+  .nav3-rail-sous { margin-left: 0; }
+  .nav3-rail-pied {
+    flex-direction: row;
+    justify-items: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    width: auto;
+    gap: 2px;
+  }
+  .empv2-main { padding: 12px 12px 104px; }
+  .empv3-entete-bandeau { height: 14px; background-size: auto 14px; }
+  .empv3-entete-corps { padding: 14px; gap: 14px; }
+  .empv3-entete-titre { gap: 8px; }
+  .empv3-entete-compte { font-size: 11px; padding: 3px 10px; }
+  .empv2-annuaire .empv3-cartes--quatre { gap: 10px; }
+  .empv2-annuaire .empv3-carte { padding: 12px; }
+  .empv2-annuaire .empv3-kpi-chiffre { font-size: 34px; }
+  .empv2-annuaire .empv3-masse { font-size: 26px; }
+  .empv3-grille-planning { gap: 10px; }
+  .empv3-fiches { gap: 10px; }
+}
+
+@media (max-width: 760px) {
+  /* la grille de la semaine défile horizontalement au lieu de s'écraser */
+  .empv3-semaine { overflow-x: auto; padding-bottom: 4px; }
+  .empv3-semaine-tete,
+  .empv3-semaine-ligne {
+    min-width: 540px;
+    grid-template-columns: 132px repeat(7, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .empv3-case,
+  .empv3-barre { height: 32px; }
+  .empv3-histogramme { height: 118px; }
+  .empv2-annuaire .empv3-bloc-titre { font-size: 16px; }
+  .empv2-annuaire .empv2-filtres { align-items: stretch; gap: 8px; }
+  .empv2-annuaire .empv3-saisie { width: 100%; }
+}
+
+@media (max-width: 520px) {
+  .empv2-main { padding: 10px 10px 100px; }
+  .empv3-entete-titre { font-size: 26px; letter-spacing: -0.8px; }
+  .empv3-entete-sous { font-size: 11.5px; }
+  .empv2-annuaire .empv3-kpi-chiffre { font-size: 30px; }
+  .empv2-annuaire .empv3-fiche-avatar { width: 44px; height: 44px; font-size: 14px; }
+  .empv2-annuaire .empv3-fiches { grid-template-columns: 1fr; }
+  .empv2-annuaire .empv3-colonne-mot { font-size: 8px; }
+  .nav3-rail-item { width: 36px; height: 36px; }
+}
