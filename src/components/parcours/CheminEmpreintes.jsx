@@ -53,14 +53,38 @@ export default function CheminEmpreintes({ className = '', opacite = 0.52 }) {
   // la hauteur réelle du parcours : le chemin doit aller jusqu'en bas
   const [hauteur, setHauteur] = useState(1400)
 
+  // ⚠️ CE QUI ÉTAIT FAUX (sa capture du 22/11) : la hauteur n'était
+  // mesurée qu'UNE fois, au chargement. Or les cartes arrivent après,
+  // la page grandit, et le chemin restait court : il n'atteignait
+  // jamais la pancarte du bas. Un ResizeObserver le remesure à chaque
+  // changement de taille, quel qu'en soit la cause.
   useEffect(() => {
+    const parent = document.querySelector('.empv3-parcours')
+    if (!parent) return undefined
+
     const mesurer = () => {
-      const parent = document.querySelector('.empv3-parcours')
-      if (parent) setHauteur(Math.max(parent.getBoundingClientRect().height, 400))
+      const h = parent.getBoundingClientRect().height
+      if (h > 0) setHauteur(Math.max(h, 400))
     }
+
     mesurer()
+    // ResizeObserver n'existe pas partout (jsdom, vieux navigateurs) :
+    // on s'en passe alors, le redimensionnement suffit.
+    let observateur = null
+    if (typeof ResizeObserver !== 'undefined') {
+      observateur = new ResizeObserver(mesurer)
+      observateur.observe(parent)
+    }
     window.addEventListener('resize', mesurer)
-    return () => window.removeEventListener('resize', mesurer)
+
+    // les cartes peuvent arriver une seconde après : on remesure encore
+    const rappels = [400, 1200, 2500].map((ms) => setTimeout(mesurer, ms))
+
+    return () => {
+      if (observateur) observateur.disconnect()
+      window.removeEventListener('resize', mesurer)
+      rappels.forEach(clearTimeout)
+    }
   }, [])
 
   // ⚠️ un tour de sinus COMPLET par tuile, sinon le tracé saute

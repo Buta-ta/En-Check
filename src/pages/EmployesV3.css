@@ -2287,13 +2287,16 @@
    ═══════════════════════════════════════════════════════════ */
 
 .empv3-liste-tete {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 12px;
 }
+
+/* le titre à gauche, la recherche à droite, la borne au centre */
+.empv3-liste-tete .empv3-bloc-titre { justify-self: start; }
+.empv3-liste-tete .empv3-recherche { justify-self: end; }
 
 .empv3-bloc-titre {
   display: flex;
@@ -3538,13 +3541,18 @@
   pointer-events: none;
 }
 
-/* celle de l'en-tête de liste : elle pousse la recherche, sans la casser */
+/* celle de l'en-tête de liste : au milieu, dans sa colonne, sans recouvrir */
 .empv3-borne--entete {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  position: static;
+  transform: none;
+  justify-self: center;
   margin: 0;
+}
+
+@media (max-width: 860px) {
+  .empv3-liste-tete { grid-template-columns: 1fr; justify-items: start; }
+  .empv3-liste-tete .empv3-recherche { justify-self: stretch; width: 100%; }
+  .empv3-borne--entete { justify-self: center; }
 }
 
 .borne {
@@ -3659,7 +3667,8 @@
 .pancarte--cahier .pancarte-panneau { padding-top: 10px; }
 
 /* ═══════════════════════════════════════════════════════════
-   LA BORNE — plus grande, avec son écran et son empreinte
+   LA BORNE — la forme « colonne » qu'il a demandée (22/11)
+   Un fût vertical, un écran carré en haut, un pied plus large.
    ═══════════════════════════════════════════════════════════ */
 
 .borne {
@@ -3669,71 +3678,76 @@
   width: var(--borne-taille);
 }
 
-.borne-machine {
+/* le fût : le corps de la colonne.
+   Haute et étroite comme sur sa photo de référence — pas trapue. */
+.borne-fut {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: 100%;
-  padding: 10px 8px 9px;
+  width: 58%;
+  height: calc(var(--borne-taille) * 1.62);
+  padding: 7px 7px 0;
   border: 3px solid var(--charte-encre);
-  border-radius: 10px;
-  background: var(--charte-surface);
-  box-shadow: 3px 3px 0 var(--charte-encre);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: var(--charte-encre);
 }
 
-/* l'écran de la borne — « Et maintenant… » */
+/* l'écran carré, posé en haut du fût */
 .borne-ecran {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  aspect-ratio: 1 / 1.02;
+  padding: 7px 6px;
+  border: 2px solid var(--charte-encre);
+  border-radius: 6px;
+  background: var(--charte-surface);
+}
+
+/* le texte est un vrai texte : il ne peut pas être coupé, il se replie */
+.borne-ecran-mot {
   display: block;
   width: 100%;
-  padding: 4px 5px;
-  border: 2px solid var(--charte-encre);
-  border-radius: 5px;
-  background: var(--charte-encre);
-  color: var(--charte-surface);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.15;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.1;
   text-align: center;
-  letter-spacing: -0.1px;
+  color: var(--charte-encre);
+  overflow-wrap: anywhere;
 }
 
 .borne-empreinte {
   display: block;
-  width: 52%;
+  width: 74%;
   height: auto;
   color: var(--charte-aplat);
 }
 
-/* le mât, le socle, l'ombre au sol */
-.borne-mat {
+/* le bas du fût, sous l'écran */
+.borne-corps {
   display: block;
-  width: 8px;
-  height: 30px;
-  background: var(--charte-encre);
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 34px;
 }
 
-.borne-socle {
+/* le pied : plus large que le fût */
+.borne-pied {
   display: block;
-  width: 62%;
-  height: 8px;
-  border-radius: 3px;
-  background: var(--charte-encre);
-}
-
-.borne-ombre {
-  display: block;
-  width: 92%;
-  height: 7px;
-  margin-top: 2px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--charte-aplat) 24%, transparent);
+  width: 100%;
+  height: 11px;
+  border: 3px solid var(--charte-encre);
+  border-radius: 5px;
+  background: var(--charte-surface2);
 }
 
 .borne-mot {
-  margin-top: 5px;
+  margin-top: 6px;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -3743,6 +3757,7 @@
 }
 
 @media (max-width: 720px) {
-  .borne-ecran { font-size: 8.5px; }
+  .borne-ecran-mot { font-size: 9px; }
   .borne-mot { font-size: 8px; }
+}
 }

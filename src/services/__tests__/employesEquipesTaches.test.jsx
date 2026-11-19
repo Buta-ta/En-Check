@@ -1229,6 +1229,10 @@ describe('la page Employés', () => {
     expect(EMPLOYES).toContain('empv3-chemin')
     expect(EMPLOYES).toContain('CheminEmpreintes')
     expect(EMPLOYES).toContain('empv3-borne')
+    // la mesure de hauteur suit la page : sinon le chemin s'arrête avant la
+    // seconde pancarte (sa capture du 22/11)
+    expect(CHEMIN).toContain('new ResizeObserver(mesurer)')
+    expect(CHEMIN).toContain("typeof ResizeObserver !== 'undefined'")
     expect(EMPLOYES).toContain('BornePointage')
 
     expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,220}pointer-events: none/)
@@ -1245,11 +1249,14 @@ describe('la page Employés', () => {
     expect(BORNE).toContain('Et maintenant…')
     // une empreinte digitale : des arcs concentriques
     expect(BORNE).toContain('borne-empreinte')
-    const arcs = BORNE.match(/<path d="M1[0-9] |<path d="M2[0-9] /g)
-    expect(arcs && arcs.length).toBeGreaterThanOrEqual(3)
-    // un mât, un socle, une ombre
-    expect(BORNE).toContain('borne-mat')
-    expect(BORNE).toContain('borne-socle')
+    // l'empreinte : des arcs CALCULÉS par formule, pas tracés à la main
+    expect(BORNE).toContain('EmpreinteDigitale')
+    expect(BORNE).toContain('const arcs = [26, 21, 16, 11]')
+    expect(BORNE).toMatch(/A \$\{r\} \$\{r \* 0\.86\}/)
+    // la forme colonne : un fût, un écran carré, un pied plus large
+    expect(BORNE).toContain('borne-fut')
+    expect(BORNE).toContain('borne-pied')
+    expect(BORNE).not.toContain('borne-socle')
 
     // la pancarte du haut : un cahier avec une coche et le mot « Avant… »
     expect(PANCARTE).toContain('CahierDePointage')
@@ -1260,7 +1267,10 @@ describe('la page Employés', () => {
 
     const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
     // l'écran est un écran : fond sombre, texte clair
-    expect(CSS_EMP).toMatch(/\.borne-ecran \{[\s\S]{0,300}background: var\(--charte-encre\)/)
+    // l'écran est CLAIR avec du texte sombre : sur fond sombre, son texte
+    // débordait et se faisait couper (sa capture du 22/11)
+    expect(CSS_EMP).toMatch(/\.borne-ecran \{[\s\S]{0,320}background: var\(--charte-surface\)/)
+    expect(CSS_EMP).toMatch(/\.borne-ecran-mot \{[\s\S]{0,260}overflow-wrap: anywhere/)
     expect(CSS_EMP).toMatch(/\.pancarte-mot \{[\s\S]{0,200}font-family: 'Caveat'/)
   })
 
