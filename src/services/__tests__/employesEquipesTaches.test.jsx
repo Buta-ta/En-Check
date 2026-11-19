@@ -231,7 +231,7 @@ describe('les onglets de la page Employés', () => {
 
   it('ne montre pas une porte qui ne mène nulle part quand l’option est éteinte', () => {
     expect(EMPLOYES).toContain("const vueAutorisee = moduleTaches || admin?.role === 'super_admin'")
-    expect(EMPLOYES).toMatch(/\{vueAutorisee && \(/)
+    expect(EMPLOYES).toMatch(/\{vueAutorisee && VUES_DE_LA_PAGE\.map\(/)
   })
 
   it('rabat sur la liste quand on re-clique l’onglet actif, et reste sur la liste avec une adresse inconnue', () => {
@@ -1078,36 +1078,42 @@ describe('la page Employés', () => {
     }
   }
 
-  it('ouvre la liste — pas d’onglet « Annuaire » — et les deux vues optionnelles dans la même barre', async () => {
+  it('ouvre la liste sous un en-tête en bloc, sans barre d’onglets', async () => {
     await monterPage()
-    const onglets = [...hote.querySelectorAll('.empv2-onglet')].map((o) => o.textContent.trim())
-    expect(onglets).toEqual(['Équipes', 'Tâches'])
-    // la liste est la page : elle est ouverte sans qu'on ait cliqué
-    expect(hote.querySelector('.empv2-onglet[aria-current="page"]')).toBeNull()
+    // plus d'onglets dans la page : la navigation vit dans le rail
+    expect(hote.querySelectorAll('.empv2-onglet')).toHaveLength(0)
+    expect(hote.querySelector('.empv2-tetes')).toBeNull()
+    expect(hote.querySelector('.nav3-pastille')).toBeNull()
+
+    // l'en-tête est un bloc : étiquette, titre qui occupe la place, compte, actions
+    const entete = hote.querySelector('.empv3-entete')
+    expect(entete, 'l’en-tête en bloc').not.toBeNull()
+    expect(entete.querySelector('.empv3-entete-eyebrow').textContent).toContain('Équipe')
+    const titre = entete.querySelector('h1.empv3-entete-titre')
+    expect(titre.textContent).toContain('Employés')
+    expect(titre.querySelector('.empv3-entete-compte').textContent).toContain('0 employé')
+    expect(entete.querySelector('.empv3-entete-actions')).not.toBeNull()
+
     expect(hote.querySelector('.empv2-annuaire')).not.toBeNull()
     expect(hote.querySelector('.empv2-vide')).not.toBeNull()
-
-    // le titre porte le compte, comme sur la maquette
-    const titre = hote.querySelector('h1.empv2-titre')
-    expect(titre).not.toBeNull()
-    expect(titre.textContent).toContain('Employés')
-    expect(titre.querySelector('.empv2-titre-compte').textContent).toContain('0 employé')
   })
 
-  it('passe aux équipes et aux tâches sans quitter la page, et re-cliquer rabat sur la liste', async () => {
+  it('passe aux équipes et aux tâches depuis le rail, et re-cliquer rabat sur la liste', async () => {
     await monterPage()
-    await act(async () => [...hote.querySelectorAll('.empv2-onglet')].find((o) => o.textContent.includes('Équipes')).click())
-    expect(hote.querySelector('.empv2-onglet[aria-current="page"]').textContent.trim()).toBe('Équipes')
+    const vue = (nom) => hote.querySelector(`.nav3-rail-sous[aria-label="Vue ${nom}"]`)
+
+    await act(async () => vue('Équipes').click())
+    expect(vue('Équipes').getAttribute('aria-current')).toBe('page')
     expect(hote.textContent).toContain('Nouvelle équipe')
     expect(hote.querySelector('.empv2-annuaire')).toBeNull()
 
-    // re-cliquer l’onglet actif rabat sur la liste
-    await act(async () => hote.querySelector('.empv2-onglet[aria-current="page"]').click())
-    expect(hote.querySelectorAll('.empv2-onglet[aria-current="page"]')).toHaveLength(0)
+    // re-cliquer la vue active rabat sur la liste
+    await act(async () => hote.querySelector('.nav3-rail-sous[aria-current="page"]').click())
+    expect(hote.querySelectorAll('.nav3-rail-sous[aria-current="page"]')).toHaveLength(0)
     expect(hote.querySelector('.empv2-annuaire')).not.toBeNull()
 
-    await act(async () => [...hote.querySelectorAll('.empv2-onglet')].find((o) => o.textContent.includes('Tâches')).click())
-    expect(hote.querySelector('.empv2-onglet[aria-current="page"]').textContent.trim()).toBe('Tâches')
+    await act(async () => vue('Tâches').click())
+    expect(vue('Tâches').getAttribute('aria-current')).toBe('page')
     expect(hote.textContent).toContain('Nouvelle tâche')
   })
 
@@ -1137,40 +1143,48 @@ describe('la page Employés', () => {
       )
     })
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
-    // la coque du 08/11 : un rail de rubriques, des pastilles de pages
+    // la coque : un rail de rubriques, et rien d'autre pour naviguer
     const rail = hote.querySelector('.nav3-rail')
     expect(rail, 'le rail de la coque').not.toBeNull()
     expect(rail.querySelector('.nav3-rail-logo')).not.toBeNull()
     const rubriques = [...rail.querySelectorAll('.nav3-rail-item')].map((b) => b.getAttribute('aria-label'))
     expect(rubriques).toContain('Équipe')
     expect(rubriques).toContain('Temps de travail')
-    // la rubrique de la page est marquée
     expect(rail.querySelector('.nav3-rail-item.is-actif').getAttribute('aria-label')).toBe('Équipe')
-    // les pages de la rubrique sont en pastilles, la page courante est active
-    const pastilles = [...hote.querySelectorAll('.nav3-pastille')].map((p) => p.textContent.trim())
-    expect(pastilles).toContain('Employés')
-    expect(hote.querySelector('.nav3-pastille.is-actif').textContent).toContain('Employés')
+
+    // la barre de raccourcis et ses pastilles ont quitté la page
+    expect(hote.querySelector('.nav3-haut')).toBeNull()
+    expect(hote.querySelectorAll('.nav3-pastille')).toHaveLength(0)
+
+    // les deux vues de la page vivent dans le rail
+    const vues = [...rail.querySelectorAll('.nav3-rail-sous')].map((b) => b.getAttribute('aria-label'))
+    expect(vues).toEqual(['Vue Équipes', 'Vue Tâches'])
   })
 
-  it('pose le bouton clair / sombre dans la ligne de titre', async () => {
+  it('pose le bouton clair / sombre dans le rail, et une seule fois', async () => {
     await monterPage()
-    const theme = hote.querySelector('button.empv2-theme')
-    expect(theme, 'bouton clair/sombre').not.toBeNull()
-    expect(theme.textContent).toMatch(/Clair|Sombre/)
-    const avant = theme.textContent
+    const rail = hote.querySelector('.nav3-rail')
+    const themes = [...rail.querySelectorAll('button[aria-pressed]')]
+    expect(themes).toHaveLength(1)
+    const theme = themes[0]
+    expect(theme.getAttribute('aria-label')).toMatch(/mode (clair|sombre)/)
+    const avant = theme.getAttribute('aria-label')
     await act(async () => theme.click())
-    expect(theme.textContent).not.toBe(avant)
+    expect(theme.getAttribute('aria-label')).not.toBe(avant)
+    // et plus aucun second bouton de thème dans la page
+    expect(hote.querySelector('button.empv2-theme')).toBeNull()
+    expect([...hote.querySelectorAll('button')].filter((b) => /^(Clair|Sombre)$/.test(b.textContent.trim()))).toHaveLength(0)
   })
 
-  it('propose dans la ligne de titre l’action de la vue affichée', async () => {
+  it('propose dans l’en-tête l’action de la vue affichée', async () => {
     await monterPage()
     expect(boutonAvec('Nouvel employé')).toBeTruthy()
 
-    await act(async () => [...hote.querySelectorAll('.empv2-onglet')].find((o) => o.textContent.includes('Équipes')).click())
+    await act(async () => hote.querySelector('.nav3-rail-sous[aria-label="Vue Équipes"]').click())
     expect(boutonAvec('Nouvelle équipe')).toBeTruthy()
-    expect(hote.querySelector('button.empv2-nouvel')?.textContent).not.toContain('Nouvel employé')
+    expect(boutonAvec('Nouvel employé')).toBeFalsy()
 
-    await act(async () => [...hote.querySelectorAll('.empv2-onglet')].find((o) => o.textContent.includes('Tâches')).click())
+    await act(async () => hote.querySelector('.nav3-rail-sous[aria-label="Vue Tâches"]').click())
     expect(boutonAvec('Nouvelle tâche')).toBeTruthy()
   })
 
