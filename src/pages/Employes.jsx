@@ -35,6 +35,8 @@ import Etincelle from '../components/equipes/Etincelle'
 import { useTheme } from '../contexts/ThemeContext'
 import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
 import EquipesVue from '../components/equipes/EquipesVue'
+import { getTeams } from '../services/teamService'
+import { getTasks, TASK_STATUS } from '../services/taskService'
 import TachesVue from '../components/taches/TachesVue'
 import '../components/zoulou/zoulou.css'
 import '../pages/Dashboard.css'
@@ -42,7 +44,7 @@ import './EmployesRefonte.css'
 import './EquipesTaches.css'
 import './EmployesV3.css'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
-import { formaterHeureLocale, jourLocal, minutesDepuisMinuit } from '../utils/timezoneUtils'
+import { formaterHeureLocale, jourLocal, minutesDepuisMinuit, obtenirDateDuJour } from '../utils/timezoneUtils'
 
 // Les filtres de la refonte : l'état de la journée d'abord —
 // devant la liste, c'est la présence qui compte — puis le compte
@@ -88,6 +90,8 @@ export default function Employes() {
   const [seriePresents, setSeriePresents] = useState(null)
   // 0 = cette semaine ; -1 = la précédente. On ne va jamais dans le futur.
   const [decalageSemaine, setDecalageSemaine] = useState(0)
+  // Les tâches par équipe : lues sur les mêmes équipes que la vue Équipes.
+  const [tachesParEquipe, setTachesParEquipe] = useState(null)
   // La semaine et le fil d'annonces : deux lectures silencieuses, aucune
   // donnée inventée si le serveur ne répond pas.
   const [semainePointages, setSemainePointages] = useState(null)
@@ -121,10 +125,12 @@ export default function Employes() {
         const valeurs = [...jours.values()].map((ensemble) => ensemble.size)
         // Les quatorze derniers jours, dans l'ordre, zéros compris :
         // un jour sans pointage est un zéro, pas un trou dans la courbe.
+        // Les clés sont celles que `jourLocal` produit pour les pointages :
+        // une date UTC ici décalerait tout d'un jour à Cotonou (UTC+1).
         const serie = []
         for (let i = 13; i >= 0; i -= 1) {
           const jour = new Date(fin.getTime() - i * 24 * 3600 * 1000)
-          const cle = jour.toISOString().slice(0, 10)
+          const cle = jourLocal(jour)
           serie.push(jours.has(cle) ? jours.get(cle).size : 0)
         }
         if (!annule) setSeriePresents(serie)
@@ -167,8 +173,8 @@ export default function Employes() {
             .from('absences')
             .select('id, employee_id, start_date, end_date, reason')
             .in('employee_id', ids)
-            .lte('start_date', dimanche.toISOString().slice(0, 10))
-            .gte('end_date', lundi.toISOString().slice(0, 10)),
+            .lte('start_date', jourLocal(dimanche))
+            .gte('end_date', jourLocal(lundi)),
         ])
 
         const carte = new Map()
@@ -1066,6 +1072,51 @@ export default function Employes() {
     ? '0'
     : `${(pageAnnuaireCourante - 1) * TAILLE_PAGE_ANNUAIRE + 1}\u2013${Math.min(pageAnnuaireCourante * TAILLE_PAGE_ANNUAIRE, employesFiltres.length)}`
 
+  // L'entreprise dont on lit les équipes : celle qu'on regarde, sinon la sienne.
+  const entrepriseDesVues = selectedEnterpriseFilter !== 'all'
+    ? selectedEnterpriseFilter
+    : (admin?.selectedEnterprise?.id || admin?.enterprise_id || null)
+
+  // ── les tâches par équipe ───────────────────────────────
+  // On lit les équipes de l'entreprise affichée, puis leurs tâches.
+  // Une tâche « finie » = terminée ou validée ; le reste est en cours.
+  useEffect(() => {
+    let annule = false
+    const lire = async () => {
+      if (!entrepriseDesVues) { if (!annule) setTachesParEquipe(null); return }
+      try {
+        const { data: equipes } = await getTeams(entrepriseDesVues, { includeMembers: true })
+        if (!equipes) { if (!annule) setTachesParEquipe([]); return }
+        const { data: taches } = await getTasks(entrepriseDesVues, { limit: 1000 })
+        const finies = new Set([TASK_STATUS.COMPLETED, TASK_STATUS.VALIDATED])
+        const parEquipe = new Map()
+        ;(taches || []).forEach((tache) => {
+          if (!tache.team_id) return
+          if (!parEquipe.has(tache.team_id)) parEquipe.set(tache.team_id, { total: 0, faites: 0 })
+          const compteur = parEquipe.get(tache.team_id)
+          compteur.total += 1
+          if (finies.has(tache.status)) compteur.faites += 1
+        })
+        if (!annule) {
+          setTachesParEquipe(equipes.map((equipe) => ({
+            id: equipe.id,
+            nom: equipe.name,
+            couleur: equipe.color || null,
+            membres: (equipe.members || [])
+              .map((m) => m.employee)
+              .filter((e) => e && e.is_active !== false),
+            ...(parEquipe.get(equipe.id) || { total: 0, faites: 0 }),
+          })))
+        }
+      } catch {
+        if (!annule) setTachesParEquipe(null)
+      }
+    }
+    lire()
+    return () => { annule = true }
+  }, [entrepriseDesVues])
+
+
   if (loading || !minLoadingDone) {
     return <EmployesLoadingScreen darkMode={darkMode} onSkip={() => setMinLoadingDone(true)} />
   }
@@ -1090,10 +1141,6 @@ export default function Employes() {
   const vueActive = vueAutorisee && (vueDemandee === 'equipes' || vueDemandee === 'taches')
     ? vueDemandee
     : null
-  const entrepriseDesVues = selectedEnterpriseFilter !== 'all'
-    ? selectedEnterpriseFilter
-    : (admin?.selectedEnterprise?.id || admin?.enterprise_id || null)
-
   const changerVue = (cle) => {
     // Re-cliquer l'onglet actif rabat sur la liste.
     setSearchParams(cle === vueActive ? {} : { vue: cle }, { replace: true })
@@ -1248,15 +1295,19 @@ export default function Employes() {
     lundi.setDate(maintenant.getDate() - ((maintenant.getDay() + 6) % 7) + decalageSemaine * 7)
     lundi.setHours(0, 0, 0, 0)
     const noms = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']
+    const aujourdhuiISO = obtenirDateDuJour()
     return Array.from({ length: 7 }, (_, i) => {
       const jour = new Date(lundi)
       jour.setDate(lundi.getDate() + i)
+      // La clé d'un jour doit être celle de l'entreprise, pas celle d'UTC :
+      // sinon un pointage du 19 à 00 h 30 heure de Cotonou se lit le 18.
+      const iso = jourLocal(jour)
       return {
-        iso: jour.toISOString().slice(0, 10),
+        iso,
         nom: noms[i],
         num: jour.getDate(),
-        futur: jour.getTime() > maintenant.getTime(),
-        aujourdhui: jour.toDateString() === maintenant.toDateString(),
+        futur: iso > aujourdhuiISO,
+        aujourdhui: iso === aujourdhuiISO,
       }
     })
   })()
@@ -1286,7 +1337,11 @@ export default function Employes() {
         }
         return { etat: 'pointe', mot: 'Pointé' }
       }
-      return { etat: jour.futur ? 'avenir' : 'rien', mot: jour.futur ? 'À venir' : 'Rien ce jour' }
+      // Un jour passé sans pointage est un fait, pas un vide : on le nomme.
+      return {
+        etat: jour.futur ? 'avenir' : 'rien',
+        mot: jour.futur ? 'À venir — jour non encore écoulé' : 'Non pointé',
+      }
     })
     // Une absence de trois jours est une barre, pas trois cases.
     return { employee, jours, barres: grouperAbsences(jours) }
@@ -1739,7 +1794,7 @@ export default function Employes() {
                                 <span
                                   key={`${employee.id}-${index}`}
                                   className={`empv3-case empv3-case--${jour.etat}`}
-                                  title={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
+                                  data-infobulle={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
                                   aria-label={couvert
                                     ? undefined
                                     : `${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
@@ -1760,7 +1815,7 @@ export default function Employes() {
                                 key={`${employee.id}-barre-${barre.debut}`}
                                 className="empv3-barre"
                                 style={{ gridColumn: `${barre.debut + 2} / ${barre.fin + 3}` }}
-                                title={`${semaineAffichee[barre.debut].nom} ${semaineAffichee[barre.debut].num} → ${semaineAffichee[barre.fin].nom} ${semaineAffichee[barre.fin].num} — ${barre.mot}`}
+                                data-infobulle={`${semaineAffichee[barre.debut].nom} ${semaineAffichee[barre.debut].num} → ${semaineAffichee[barre.fin].nom} ${semaineAffichee[barre.fin].num} — ${barre.mot}`}
                               >
                                 <span className="empv3-barre-mot">{barre.mot}</span>
                               </span>
@@ -1854,6 +1909,81 @@ export default function Employes() {
                       </p>
                     </>
                   )}
+                </div>
+
+                {/* Les tâches par équipe, sous la masse salariale : le travail
+                    en cours, avec les visages des membres. */}
+                <div className="empv3-carte empv3-carte--taches">
+                  <div className="empv3-carte-tete">
+                    <span className="empv3-carte-titre">Tâches par équipe</span>
+                    <span className="empv3-carte-total">
+                      {tachesParEquipe === null
+                        ? '—'
+                        : `${tachesParEquipe.reduce((n, e) => n + e.total, 0)} tâches`}
+                    </span>
+                  </div>
+
+                  {tachesParEquipe === null ? (
+                    <p className="empv3-legende">Les équipes n’ont pas pu être lues.</p>
+                  ) : tachesParEquipe.length === 0 ? (
+                    <p className="empv3-legende">
+                      Aucune équipe formée : créez-en une dans la vue Équipes pour voir
+                      ici le travail de chacune.
+                    </p>
+                  ) : (
+                    <div className="empv3-equipes-taches">
+                      {tachesParEquipe.slice(0, 5).map((equipe) => {
+                        const part = equipe.total > 0 ? Math.round((equipe.faites / equipe.total) * 100) : 0
+                        return (
+                          <button
+                            type="button"
+                            key={equipe.id}
+                            className="empv3-equipe-ligne"
+                            data-infobulle={`${equipe.nom} — ${equipe.faites} finie${equipe.faites > 1 ? 's' : ''} sur ${equipe.total} — ${equipe.membres.length} membre${equipe.membres.length > 1 ? 's' : ''}`}
+                            onClick={() => changerVue('taches')}
+                          >
+                            <span className="empv3-equipe-nom" title={equipe.nom}>
+                              {equipe.couleur && (
+                                <i className="empv3-equipe-teinte" style={{ background: equipe.couleur }} aria-hidden="true" />
+                              )}
+                              {equipe.nom}
+                            </span>
+                            <span className="empv3-equipe-avatars">
+                              {equipe.membres.slice(0, 4).map((membre) => (
+                                <span className="empv3-avatar empv3-avatar--pile" key={membre.id}>
+                                  {membre.photo_url
+                                    ? <img src={membre.photo_url} alt="" loading="lazy" />
+                                    : `${(membre.first_name || '?')[0]}${(membre.last_name || '')[0] || ''}`}
+                                </span>
+                              ))}
+                              {equipe.membres.length > 4 && (
+                                <span className="empv3-avatar empv3-avatar--pile empv3-avatar--plus">
+                                  +{equipe.membres.length - 4}
+                                </span>
+                              )}
+                              {equipe.membres.length === 0 && (
+                                <span className="empv3-equipe-vide">sans membre</span>
+                              )}
+                            </span>
+                            <span className="empv3-equipe-piste" aria-hidden="true">
+                              <span
+                                className="empv3-equipe-part"
+                                style={{ width: `${equipe.total > 0 ? Math.max(3, part) : 0}%` }}
+                              />
+                            </span>
+                            <span className="empv3-equipe-compte">
+                              {equipe.total > 0
+                                ? `${equipe.faites}/${equipe.total}`
+                                : 'aucune tâche'}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <p className="empv3-legende">
+                    Tâches terminées ou validées sur le total de l’équipe.
+                  </p>
                 </div>
               </div>
 
