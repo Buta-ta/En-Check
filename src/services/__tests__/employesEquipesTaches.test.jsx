@@ -1080,6 +1080,31 @@ describe('la page Employés', () => {
     }
   }
 
+  it('un retard se dit en heures et minutes, jamais en minutes seules', () => {
+    expect(EMPLOYES).toContain('function dureeEnHeuresEtMinutes')
+    // 523 min ne doit plus jamais s'écrire tel quel
+    expect(EMPLOYES).toContain('dureeEnHeuresEtMinutes(retard.retardMinutes)')
+    expect(EMPLOYES).not.toContain('Retard de ${retard.retardMinutes} min')
+    // la légende montre une durée lisible, pas « +12 »
+    expect(EMPLOYES).toContain('+42 min')
+  })
+
+  it('la case en retard est rouge pleine, sans rayure, et la tâche reste sous la masse', () => {
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    const bloc = CSS_EMP.slice(CSS_EMP.indexOf('LE RETARD DEVIENT ROUGE'))
+    const retard = bloc.slice(bloc.indexOf('.empv3-case--retard'), bloc.indexOf('.empv3-case-plus'))
+    expect(retard).toContain('background: var(--charte-erreur)')
+    expect(retard).not.toContain('repeating-linear-gradient')
+    expect(retard).not.toContain('linear-gradient')
+    // les deux cartes de droite sont dans une colonne, dans l'ordre
+    expect(EMPLOYES).toContain('empv3-colonne-droite')
+    const masse = EMPLOYES.indexOf('empv3-colonne-droite')
+    const taches = EMPLOYES.indexOf('empv3-carte--taches')
+    expect(masse).toBeGreaterThan(-1)
+    expect(taches).toBeGreaterThan(masse)
+    expect(CSS_EMP).toMatch(/\.empv3-colonne-droite \{[\s\S]{0,120}flex-direction: column/)
+  })
+
   it('les jours sont calculés en heure de l’entreprise, jamais en UTC', () => {
     // le bug du 19/11 : un pointage du 19 à 00 h 30 locale tombait sur le 18
     expect(EMPLOYES).toContain('const iso = jourLocal(jour)')

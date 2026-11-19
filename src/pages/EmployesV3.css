@@ -2218,3 +2218,63 @@
   [data-infobulle]:hover::after { opacity: 0; visibility: hidden; }
   [data-infobulle]:focus-visible::after { opacity: 1; visibility: visible; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LE RETARD DEVIENT ROUGE, SANS RAYURE
+   Sa phrase du 19/11 : « la case en retard doit être rouge sans
+   rayure ». Le retard ne se confond plus avec l'absence : le
+   rouge est franc et plein, la durée s'écrit en heures et
+   minutes, et la couleur est toujours doublée du texte.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv2-annuaire .empv3-piste .empv3-case--retard {
+  background: var(--charte-erreur);
+  border-color: color-mix(in srgb, var(--charte-erreur) 70%, var(--charte-encre));
+  color: var(--charte-blanc);
+}
+
+.empv3-case-plus {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  color: var(--charte-blanc);
+  font-variant-numeric: tabular-nums;
+}
+
+/* l'échantillon de la légende suit : rouge plein, durée écrite */
+.empv3-legende-item .empv3-case--retard {
+  position: relative;
+  background: var(--charte-erreur);
+  border-color: color-mix(in srgb, var(--charte-erreur) 70%, var(--charte-encre));
+  color: var(--charte-blanc);
+}
+.empv3-legende-item .empv3-case-plus {
+  right: 2px;
+  bottom: 1px;
+  font-size: 6px;
+}
+
+/* l'absence garde ses hachures : c'est elle qui doit rester reconnaissable */
+.empv3-legende-item .empv3-case--conge { border-style: solid; }
+
+/* ═══════════════════════════════════════════════════════════
+   LA COLONNE DE DROITE SE SUIT, DANS L'ORDRE
+   « le kpi card taches doit etre sous masse salariale juste »
+   Les deux blocs ne sont plus voisins de grille : ils forment
+   une colonne, et rien ne peut se glisser entre eux.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-colonne-droite {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .empv3-colonne-droite { gap: 16px; }
+}
