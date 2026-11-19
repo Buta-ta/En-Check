@@ -324,8 +324,9 @@ describe('la vue Annuaire', () => {
     const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
     expect(CARTE).toContain('empv3-fiche-nom')
     expect(CARTE).toContain('empv3-fiche-poste')
-    expect(CARTE).toContain('empv3-fiche-contrat')
-    expect(CARTE).toContain('contrat non renseigné')
+    // le contrat est une pastille pleine, plus un mot posé sous le nom
+    expect(CARTE).toContain('empv3-fiche-chip--contrat')
+    expect(CARTE).toContain('contrat à compléter')
     // le numéro WhatsApp et l'email, chacun avec son icône
     expect(CARTE).toContain('MessageCircle')
     expect(CARTE).toContain('employee.phone')
@@ -1079,6 +1080,43 @@ describe('la page Employés', () => {
       await act(async () => { await Promise.resolve() })
     }
   }
+
+  it('la carte employé est un portrait : bandeau bogolan, photo, pastilles', () => {
+    const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
+    const BANDEAU = readFileSync('src/components/equipes/BandeauBogolan.jsx', 'utf8')
+
+    // le motif est dessiné, pas une image
+    expect(BANDEAU).toContain('<pattern')
+    expect(BANDEAU).toContain('<mask')
+    expect(BANDEAU).not.toContain('.webp')
+    expect(BANDEAU).not.toContain('.png')
+    expect(CARTE).toContain('BandeauBogolan')
+    expect(CARTE).toContain('empv3-fiche-bandeau')
+
+    // la photo est un bouton : elle invite à compléter quand elle manque
+    expect(CARTE).toContain('empv3-fiche-avatar--vide')
+    expect(CARTE).toContain("Ajouter une photo pour")
+
+    // les cinq informations attendues d'une carte professionnelle
+    for (const morceau of ['matricule', 'Portail actif', 'Sans compte', 'Depuis ']) {
+      expect(CARTE).toContain(morceau)
+    }
+    // l'ancienneté ne s'invente pas : sans date, rien
+    expect(CARTE).toContain('function ancienneteDe')
+    expect(CARTE).toContain("if (!valeur) return null")
+
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_EMP).toMatch(/\.empv3-fiche-tete--portrait \{[\s\S]{0,160}margin-top: -46px/)
+  })
+
+  it('la recherche est large, explicite et effaçable', () => {
+    expect(EMPLOYES).toContain('empv3-recherche')
+    expect(EMPLOYES).toContain('empv3-recherche-effacer')
+    expect(EMPLOYES).toContain('Nom, matricule, poste, service, CNPS')
+    // le compte est dit à côté du titre, pas caché
+    expect(EMPLOYES).toContain('empv3-bloc-compte')
+    expect(EMPLOYES).toContain('} sur {employes.length}')
+  })
 
   it('un retard se dit en heures et minutes, jamais en minutes seules', () => {
     expect(EMPLOYES).toContain('function dureeEnHeuresEtMinutes')
