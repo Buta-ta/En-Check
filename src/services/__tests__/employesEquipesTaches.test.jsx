@@ -296,6 +296,28 @@ const rendreEntree = async (props = {}) => {
 }
 
 describe('la vue Annuaire', () => {
+  it('garde quatre colonnes : le contrat se lit sous le poste', () => {
+    // ce que l'écran montre, colonne par colonne
+    expect(EMPLOYES).toContain('<th scope="col">Employé</th>')
+    expect(EMPLOYES).toContain('<th scope="col">Poste · service</th>')
+    expect(EMPLOYES).toContain('<th scope="col">Statut du jour</th>')
+    expect(EMPLOYES).not.toContain('<th scope="col">Contrat</th>')
+
+    // et la ligne : le contrat n'a plus sa propre case, il vit sous le poste
+    const LIGNE = readFileSync('src/components/equipes/LigneAnnuaire.jsx', 'utf8')
+    const debutPoste = LIGNE.indexOf('<td className="empv2-ligne-poste">')
+    const cellulePoste = LIGNE.slice(debutPoste, LIGNE.indexOf('</td>', debutPoste))
+    expect(cellulePoste).toContain('empv2-ligne-intitule')
+    expect(cellulePoste).toContain('empv2-ligne-contrat')
+    expect(cellulePoste).toContain('contrat non renseigné')
+
+    // et la forme retenue : pilule pleine, fond teinté de sa propre couleur, sans contour
+    const REFONTE = readFileSync('src/pages/EmployesRefonte.css', 'utf8')
+    const pilule = REFONTE.slice(REFONTE.indexOf('.empv2-ligne .ch-badge-pilule'))
+    expect(pilule).toContain('border-color: transparent')
+    expect(pilule).toContain('color-mix(in srgb, currentColor')
+  })
+
   it('pose les trois cartes de la composition validée, et n’invente pas de présence', async () => {
     await rendre(
       <ThemeProvider>
@@ -305,14 +327,64 @@ describe('la vue Annuaire', () => {
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
 
     const cartes = [...hote.querySelectorAll('.empv3-cartes .empv3-carte')]
-    expect(cartes).toHaveLength(3)
+    expect(cartes).toHaveLength(4)
     expect(cartes.map((c) => c.querySelector('.empv3-carte-titre').textContent)).toEqual(
-      ['Effectif total', 'Assiduité du jour', 'Accès au portail'],
+      ['Effectif total', 'Présents', 'Accès au portail', 'Retards'],
     )
 
     // rien à compter : un tiret, pas un zéro inventé pour la présence
-    expect([...cartes[0].querySelectorAll('.empv3-ligne b')].map((b) => b.textContent)).toEqual(['—', '—'])
-    expect(cartes[1].querySelector('.empv3-pct').textContent).toBe('—')
+    expect(cartes[1].querySelector('.empv3-kpi-chiffre').textContent).toBe('—')
+    expect(cartes[3].querySelector('.empv3-kpi-chiffre').textContent).toBe('—')
+    // et pas d'écart sans mesure
+    expect(cartes[1].querySelector('.empv3-ecart')).toBeNull()
+  })
+
+  it('pose le planning de la semaine et les annonces, avec de vrais états', async () => {
+    await rendre(
+      <ThemeProvider>
+        <Employes />
+      </ThemeProvider>,
+    )
+    for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
+
+    const planning = hote.querySelector('.empv3-grille-planning')
+    expect(planning).not.toBeNull()
+
+    // sept jours, nommés en français
+    const jours = [...planning.querySelectorAll('.empv3-jour')]
+    expect(jours).toHaveLength(7)
+    expect(jours.map((j) => j.textContent.replace(/\d+/g, '').trim())).toEqual(
+      ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'],
+    )
+
+    // aucune personne : donc aucune ligne, et aucun état inventé
+    expect(planning.querySelectorAll('.empv3-semaine-ligne')).toHaveLength(0)
+    expect(planning.querySelectorAll('.empv3-case')).toHaveLength(0)
+
+    // les annonces : rien de lisible ici, donc le mot le dit
+    const annonces = planning.querySelectorAll('.empv3-carte')[1]
+    expect(annonces.querySelector('.empv3-carte-titre').textContent).toBe('Annonces d’accueil')
+    expect(annonces.querySelectorAll('.empv3-annonce')).toHaveLength(0)
+    expect(annonces.textContent).toMatch(/n’ont pas pu être lues|Aucune annonce en ligne/)
+
+    // et aucun mot anglais ne s'est glissé dans les deux blocs
+    expect(planning.textContent).not.toMatch(/Meeting|Schedule|Events|Today|Present/)
+  })
+
+  it('met le rôle sous le nom, et montre le média quand il existe', () => {
+    // le rôle sous le nom, jamais un poste inventé
+    expect(EMPLOYES).toContain('empv3-semaine-poste')
+    expect(EMPLOYES).toContain('poste non renseigné')
+
+    // la vignette : image ou vidéo, et le type lu sur le bon champ de la base
+    expect(EMPLOYES).toContain('empv3-annonce-vignette')
+    expect(EMPLOYES).toContain("annonce.type === 'video'")
+    expect(EMPLOYES).not.toContain('annonce.type_media')
+    // pas de média : pas de cadre vide
+    expect(EMPLOYES).toMatch(/annonce\.url && \(/)
+
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    expect(CSS_EMP).toMatch(/\.empv3-annonce-vignette[\s\S]{0,220}object-fit: cover/)
   })
 
   it('explique l’annuaire vide et propose la première fiche', async () => {
@@ -1022,7 +1094,7 @@ describe('la page Employés', () => {
     expect(REFONTE_CSS).toMatch(/\.empv2-onglet\[aria-current='page'\] \{[^}]*border: var\(--charte-trait\) solid var\(--charte-encre\)/)
   })
 
-  it('affiche la sidebar de la coque, avec la vraie navigation de l’application', async () => {
+  it('affiche la coque : le rail des rubriques et les pastilles des pages', async () => {
     // la sidebar détecte la page active via l'adresse : on la monte
     // sur /employes, comme dans l'application (le helper monte sur /)
     await act(async () => racine.unmount())
@@ -1040,15 +1112,19 @@ describe('la page Employés', () => {
       )
     })
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
-    const sidebar = hote.querySelector('.empv2-sidebar')
-    expect(sidebar, 'la sidebar de la page').not.toBeNull()
-    // la marque, le menu, et l'entrée active
-    expect(sidebar.querySelector('.nav-panel-marque-nom').textContent).toBe('En-Check')
-    expect(sidebar.querySelector('.sidebar-navigation')).not.toBeNull()
-    const liens = [...sidebar.querySelectorAll('.sidebar-link')].map((l) => l.textContent.trim())
-    expect(liens).toContain('Employés')
-    expect(liens).toContain('Pointages')
-    expect(sidebar.querySelector('.sidebar-link.is-active')?.textContent).toContain('Employés')
+    // la coque du 08/11 : un rail de rubriques, des pastilles de pages
+    const rail = hote.querySelector('.nav3-rail')
+    expect(rail, 'le rail de la coque').not.toBeNull()
+    expect(rail.querySelector('.nav3-rail-logo')).not.toBeNull()
+    const rubriques = [...rail.querySelectorAll('.nav3-rail-item')].map((b) => b.getAttribute('aria-label'))
+    expect(rubriques).toContain('Équipe')
+    expect(rubriques).toContain('Temps de travail')
+    // la rubrique de la page est marquée
+    expect(rail.querySelector('.nav3-rail-item.is-actif').getAttribute('aria-label')).toBe('Équipe')
+    // les pages de la rubrique sont en pastilles, la page courante est active
+    const pastilles = [...hote.querySelectorAll('.nav3-pastille')].map((p) => p.textContent.trim())
+    expect(pastilles).toContain('Employés')
+    expect(hote.querySelector('.nav3-pastille.is-actif').textContent).toContain('Employés')
   })
 
   it('pose le bouton clair / sombre dans la ligne de titre', async () => {
@@ -1106,8 +1182,8 @@ describe('la page Employés', () => {
     expect(EMPLOYES).not.toContain('employes-framed-card')
   })
 
-  it('la sidebar précède le contenu, et le menu reste celui de la coque', () => {
-    const sidebar = EMPLOYES.indexOf('<aside className="dashboard-sidebar empv2-sidebar"')
+  it('le rail précède le contenu, et les rubriques restent celles de l’application', () => {
+    const sidebar = EMPLOYES.indexOf('<aside className="nav3-rail"')
     const contenu = EMPLOYES.indexOf('<main className="empv2-main"')
     expect(sidebar).toBeGreaterThan(0)
     expect(contenu).toBeGreaterThan(sidebar)

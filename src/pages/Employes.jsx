@@ -8,6 +8,7 @@ import useEmployeePayslipIndicators from '../hooks/useEmployeePayslipIndicators'
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { accountRpc } from '../services/adminAccounts'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Footprints, Users, Plus, ArrowLeft, Search, Edit, Trash2, X, Save,
@@ -31,7 +32,6 @@ import FicheEmployeModal from '../components/FicheEmployeModal'
 import LigneAnnuaire from '../components/equipes/LigneAnnuaire'
 import { useTheme } from '../contexts/ThemeContext'
 import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
-import SidebarNavigation from '../components/SidebarNavigation'
 import EnterpriseSwitcher from '../components/EnterpriseSwitcher'
 import EquipesVue from '../components/equipes/EquipesVue'
 import TachesVue from '../components/taches/TachesVue'
@@ -89,6 +89,119 @@ const pourcent = (morceau, total) =>
 export default function Employes() {
   const [admin, setAdmin] = useState(null)
   const [employes, setEmployes] = useState([])
+  // La moyenne des présents sur 30 jours : elle seule permet un écart honnête.
+  // Pas de donnée → pas d'écart affiché (jamais un chiffre inventé).
+  const [moyennePresents30j, setMoyennePresents30j] = useState(null)
+  // La semaine et le fil d'annonces : deux lectures silencieuses, aucune
+  // donnée inventée si le serveur ne répond pas.
+  const [semainePointages, setSemainePointages] = useState(null)
+  const [semaineAbsences, setSemaineAbsences] = useState([])
+  const [annoncesAccueil, setAnnoncesAccueil] = useState(null)
+
+  // La moyenne des présents sur les 30 derniers jours, jour par jour.
+  // Une seule requête, silencieuse en cas d'échec : on n'affiche rien.
+  useEffect(() => {
+    let annule = false
+    const mesurer = async () => {
+      try {
+        const ids = employes.map((e) => e.id)
+        if (!ids.length) { if (!annule) setMoyennePresents30j(null); return }
+        const fin = new Date()
+        const debut = new Date(fin.getTime() - 30 * 24 * 3600 * 1000)
+        const { data, error } = await supabase
+          .from('attendances')
+          .select('employee_id, check_time, check_type')
+          .in('employee_id', ids)
+          .gte('check_time', debut.toISOString())
+          .lt('check_time', fin.toISOString())
+        if (error) throw error
+        const jours = new Map()
+        ;(data || []).forEach((pointage) => {
+          if (String(pointage.check_type || '').toLowerCase() !== 'in') return
+          const jour = String(pointage.check_time || '').slice(0, 10)
+          if (!jours.has(jour)) jours.set(jour, new Set())
+          jours.get(jour).add(pointage.employee_id)
+        })
+        const valeurs = [...jours.values()].map((ensemble) => ensemble.size)
+        if (!valeurs.length) { if (!annule) setMoyennePresents30j(null); return }
+        const moyenne = valeurs.reduce((somme, v) => somme + v, 0) / valeurs.length
+        if (!annule) setMoyennePresents30j(moyenne)
+      } catch {
+        if (!annule) setMoyennePresents30j(null)
+      }
+    }
+    mesurer()
+    return () => { annule = true }
+  }, [employes])
+
+  // La semaine en cours : pointages et absences, pour la grille du milieu.
+  useEffect(() => {
+    let annule = false
+    const lire = async () => {
+      try {
+        const ids = employes.map((e) => e.id)
+        if (!ids.length) { if (!annule) { setSemainePointages(null); setSemaineAbsences([]) } return }
+
+        const maintenant = new Date()
+        const lundi = new Date(maintenant)
+        const decalage = (maintenant.getDay() + 6) % 7
+        lundi.setDate(maintenant.getDate() - decalage)
+        lundi.setHours(0, 0, 0, 0)
+        const dimanche = new Date(lundi)
+        dimanche.setDate(lundi.getDate() + 6)
+        dimanche.setHours(23, 59, 59 , 999)
+
+        const [pointagesRes, absencesRes] = await Promise.all([
+          supabase
+            .from('attendances')
+            .select('employee_id, check_time, check_type')
+            .in('employee_id', ids)
+            .gte('check_time', lundi.toISOString())
+            .lte('check_time', dimanche.toISOString()),
+          supabase
+            .from('absences')
+            .select('id, employee_id, start_date, end_date, reason')
+            .in('employee_id', ids)
+            .lte('start_date', dimanche.toISOString().slice(0, 10))
+            .gte('end_date', lundi.toISOString().slice(0, 10)),
+        ])
+
+        const carte = new Map()
+        ;(pointagesRes.data || []).forEach((pointage) => {
+          if (String(pointage.check_type || '').toLowerCase() !== 'in') return
+          const jour = jourLocal(pointage.check_time) || String(pointage.check_time || '').slice(0, 10)
+          if (!carte.has(pointage.employee_id)) carte.set(pointage.employee_id, new Set())
+          carte.get(pointage.employee_id).add(jour)
+        })
+        if (!annule) {
+          setSemainePointages(carte)
+          setSemaineAbsences(absencesRes.data || [])
+        }
+      } catch {
+        if (!annule) { setSemainePointages(null); setSemaineAbsences([]) }
+      }
+    }
+    lire()
+    return () => { annule = true }
+  }, [employes])
+
+  // Le fil des annonces d'accueil — la même fonction que la page dédiée.
+  useEffect(() => {
+    let annule = false
+    const lire = async () => {
+      try {
+        const entreprise = admin?.enterprise_id
+        if (!entreprise) { if (!annule) setAnnoncesAccueil(null); return }
+        const data = await accountRpc('encheck_annonce_accueil_lister', { p_enterprise_id: entreprise })
+        if (!annule) setAnnoncesAccueil(data?.ok === true ? (data.annonces || []) : null)
+      } catch {
+        if (!annule) setAnnoncesAccueil(null)
+      }
+    }
+    lire()
+    return () => { annule = true }
+  }, [admin?.enterprise_id])
+
   const payslipIndicators = useEmployeePayslipIndicators(employes)
   const [entreprises, setEntreprises] = useState([])
   const [plannings, setPlannings] = useState([])
@@ -1067,6 +1180,13 @@ export default function Employes() {
     }] : []),
   ]
 
+  // La rubrique de cette page : Équipe. Le rail la marque, la barre du haut
+  // porte ses pages — c'est le modèle de la maquette du 08/11.
+  const SECTION_ACTIVE = 'equipe'
+  const SECTION_ACTIVE_LABEL = 'Équipe'
+  const pagesDeLaRubrique = (sectionsNav.find((section) => section.id === SECTION_ACTIVE)?.items || [])
+    .filter((item) => item.show && item.path)
+
   const surNavigation = (item) => { if (item?.path) navigate(item.path) }
   const deconnexion = () => {
     localStorage.removeItem('admin')
@@ -1083,20 +1203,16 @@ export default function Employes() {
     return texte.charAt(0).toUpperCase() + texte.slice(1)
   })()
 
-  const effectif = employes.length
   const enPoste = suiviPresence ? liveCounts.enPoste : 0
   const enPause = suiviPresence ? liveCounts.enPause : 0
-  const absents = suiviPresence ? liveCounts.enConge : 0
-  const tauxPresence = suiviPresence && effectif > 0
-    ? Math.round(((enPoste + enPause) / effectif) * 100)
+
+  const presentsDuJour = enPoste + enPause
+  // L'écart n'existe que si la moyenne existe : sinon, rien.
+  const ecartPresents = (suiviPresence && moyennePresents30j && moyennePresents30j > 0)
+    ? Math.round(((presentsDuJour - moyennePresents30j) / moyennePresents30j) * 100)
     : null
-  const partEnPoste = effectif > 0 ? (enPoste / effectif) * 100 : 0
-  const partEnPause = effectif > 0 ? (enPause / effectif) * 100 : 0
-  const partAbsents = effectif > 0 ? (absents / effectif) * 100 : 0
 
   const actifsPortail = employes.filter((e) => aUnCompteEmploye(e)).length
-  const partPortail = effectif > 0 ? actifsPortail / effectif : 0
-  const perimetreAnneau = 2 * Math.PI * 33
 
   // Les contrats, comptés par libellé.
   const contratsParType = (() => {
@@ -1121,6 +1237,46 @@ export default function Employes() {
     .filter((f) => f.remplis < 4)
     .sort((a, b) => a.remplis - b.remplis)
     .slice(0, 5)
+
+  // La semaine en cours, découpée en sept jours.
+  const semaineAffichee = (() => {
+    const maintenant = new Date()
+    const lundi = new Date(maintenant)
+    lundi.setDate(maintenant.getDate() - ((maintenant.getDay() + 6) % 7))
+    lundi.setHours(0, 0, 0, 0)
+    const noms = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']
+    return Array.from({ length: 7 }, (_, i) => {
+      const jour = new Date(lundi)
+      jour.setDate(lundi.getDate() + i)
+      return {
+        iso: jour.toISOString().slice(0, 10),
+        nom: noms[i],
+        num: jour.getDate(),
+        futur: jour.getTime() > maintenant.getTime(),
+        aujourdhui: jour.toDateString() === maintenant.toDateString(),
+      }
+    })
+  })()
+
+  // Une ligne = une personne, sept cases. Trois états, jamais devinés :
+  // absence connue, pointage connu, ou rien.
+  const lignesPlanning = employes.slice(0, 6).map((employee) => ({
+    employee,
+    jours: semaineAffichee.map((jour) => {
+      const absence = semaineAbsences.find(
+        (a) => a.employee_id === employee.id
+          && String(a.start_date || '').slice(0, 10) <= jour.iso
+          && String(a.end_date || '').slice(0, 10) >= jour.iso,
+      )
+      if (absence) return { etat: 'conge', mot: absence.reason || 'Congé' }
+      if (semainePointages?.get(employee.id)?.has(jour.iso)) return { etat: 'pointe', mot: 'Pointé' }
+      return { etat: 'rien', mot: jour.futur ? 'À venir' : 'Rien ce jour' }
+    }),
+  }))
+
+  const annoncesEnLigne = (annoncesAccueil || [])
+    .filter((annonce) => annonce.statut === 'en_ligne')
+    .slice(0, 3)
 
   // L'export : ce que l'écran montre, à l'identique.
   const exporterCsv = () => {
@@ -1158,62 +1314,96 @@ export default function Employes() {
           du 08/11 : « enlève le bandeau motif culturel de la page ». */}
       <div className="pointages-afrotech-shell empv2-coque">
         <div className="empv2-layout">
-        <aside className="dashboard-sidebar empv2-sidebar" aria-label="Navigation principale">
-          <div className="nav-panel">
-            <div className="nav-panel-inner">
-              <header className="nav-panel-tete">
-                <div className="nav-panel-marque">
-                  <EnCheckBrandMark className="nav-panel-logo" size={30} />
-                  <div className="nav-panel-marque-copy">
-                    <span className="nav-panel-marque-nom">En-Check</span>
-                    <span className="nav-panel-marque-slogan">On gère !</span>
-                  </div>
-                </div>
-                <div className="nav-panel-contexte">
-                  <EnterpriseSwitcher admin={admin} onSwitch={() => window.location.reload()} />
-                </div>
+        {/* ═══ LA COQUE : rail d'icônes à gauche, pastilles en haut ═══ */}
+        <aside className="nav3-rail" aria-label="Rubriques">
+          <span className="nav3-rail-logo">
+            <EnCheckBrandMark size={26} />
+          </span>
+          <span className="nav3-rail-sep" aria-hidden="true" />
 
-                {/* D-018 — le kente sous le logo : 28 px, sans texte dessus. */}
-                <div className="nav-panel-kente" aria-hidden="true">
-                  <KenteWovenTapestrySvg />
-                </div>
-              </header>
+          {sectionsNav.map((section) => {
+            const SectionIcone = section.icon
+            const active = section.id === SECTION_ACTIVE
+            return (
+              <button
+                key={section.id}
+                type="button"
+                className={`nav3-rail-item${active ? ' is-actif' : ''}`}
+                aria-current={active ? 'true' : undefined}
+                title={section.label}
+                aria-label={section.label}
+                onClick={() => {
+                  const premiere = section.items.find((i) => i.show && i.path)
+                  if (premiere) navigate(premiere.path)
+                }}
+              >
+                <SectionIcone size={18} aria-hidden="true" />
+              </button>
+            )
+          })}
 
-              <div className="nav-panel-corps">
-                <SidebarNavigation
-                  sections={sectionsNav}
-                  onSelect={surNavigation}
-                  idAdministrateur={admin?.id}
-                />
-              </div>
-
-              <footer className="nav-panel-pied ec-nav-pied">
-                <a
-                  className="sidebar-portal-link"
-                  href="/employee/login"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Users size={16} />
-                  <span>Espace employé</span>
-                  <ArrowRight size={14} />
-                </a>
-                <div className="sidebar-profile">
-                  <div className="sidebar-profile-link is-statique">
-                    <span className="sidebar-profile-avatar">{(nomAdmin || 'A')[0].toUpperCase()}</span>
-                    <span className="sidebar-profile-copy">
-                      <span className="sidebar-profile-name">{nomAdmin}</span>
-                      <span className="sidebar-profile-role">{admin?.role === 'super_admin' ? 'Super admin' : 'Administrateur'}</span>
-                    </span>
-                  </div>
-                  <button type="button" className="sidebar-logout" onClick={deconnexion} title="Déconnexion" aria-label="Déconnexion">
-                    <LogOut size={15} />
-                  </button>
-                </div>
-              </footer>
-            </div>
+          <div className="nav3-rail-pied">
+            <a
+              className="nav3-rail-item"
+              href="/employee/login"
+              target="_blank"
+              rel="noreferrer"
+              title="Espace employé"
+              aria-label="Espace employé"
+            >
+              <Users size={18} aria-hidden="true" />
+            </a>
+            <button
+              type="button"
+              className="nav3-rail-item"
+              onClick={deconnexion}
+              title="Déconnexion"
+              aria-label="Déconnexion"
+            >
+              <LogOut size={18} aria-hidden="true" />
+            </button>
+            <span className="nav3-rail-compte" title={`${nomAdmin} — administrateur`}>
+              {(nomAdmin || 'A').trim().charAt(0).toUpperCase()}
+            </span>
           </div>
         </aside>
+
+        <div className="nav3-colonne">
+          {/* la barre du haut : les pages de la rubrique, en pastilles */}
+          <header className="nav3-haut">
+            <nav className="nav3-pastilles" aria-label={`Pages de la rubrique ${SECTION_ACTIVE_LABEL}`}>
+              {pagesDeLaRubrique.map((item) => {
+                const ItemIcone = item.icon
+                const active = item.path === '/employes'
+                return (
+                  <button
+                    key={item.path}
+                    type="button"
+                    className={`nav3-pastille${active ? ' is-actif' : ''}`}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={() => surNavigation(item)}
+                  >
+                    <ItemIcone size={13} aria-hidden="true" />
+                    {item.label}
+                  </button>
+                )
+              })}
+            </nav>
+
+            <div className="nav3-haut-droite">
+              <EnterpriseSwitcher admin={admin} onSwitch={() => window.location.reload()} />
+              <button
+                type="button"
+                className="nav3-rond"
+                onClick={toggleTheme}
+                title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+                aria-pressed={darkMode}
+              >
+                {darkMode ? <Sun size={14} /> : <Moon size={14} />}
+              </button>
+            </div>
+          </header>
+
 
         {/* ═══ MAIN ═══ */}
         <main className="empv2-main">
@@ -1302,88 +1492,178 @@ export default function Employes() {
             <div className="empv2-annuaire">
               {/* les chiffres du jour : trois tuiles, le chiffre porte sa période.
                   Tout est compté sur le personnel chargé, jamais une estimation. */}
-              {/* les trois cartes : l'anatomie de la référence validée (D-022) */}
-              <div className="empv3-cartes">
+              {/* les quatre cartes — l'anatomie de la maquette du 08/11 :
+                  icône ronde teintée, libellé, gros chiffre, légende.
+                  L'écart ne s'affiche que là où il est mesuré. */}
+              <div className="empv3-cartes empv3-cartes--quatre">
 
-                <div className="empv3-carte">
-                  <div className="empv3-carte-tete">
+                <div className="empv3-carte empv3-kpi">
+                  <div className="empv3-kpi-tete">
+                    <span className="empv3-kpi-ico" data-ton="argile">
+                      <Users size={16} aria-hidden="true" />
+                    </span>
                     <span className="empv3-carte-titre">Effectif total</span>
-                    <span className="empv3-carte-total">{employes.length}</span>
                   </div>
-                  <div className="empv3-lignes">
-                    <div className="empv3-ligne empv3-ligne--ok">
-                      <b>{suiviPresence ? liveCounts.enPoste : '—'}</b>
-                      <span className="empv3-ligne-lab">En poste</span>
-                    </div>
-                    <div className="empv3-ligne empv3-ligne--att">
-                      <b>{suiviPresence ? liveCounts.enConge : '—'}</b>
-                      <span className="empv3-ligne-lab">Absents aujourd’hui</span>
-                    </div>
+                  <div className="empv3-kpi-chiffre">{employes.length}</div>
+                  <div className="empv3-kpi-pied">au registre</div>
+                </div>
+
+                <div className="empv3-carte empv3-kpi">
+                  <div className="empv3-kpi-tete">
+                    <span className="empv3-kpi-ico" data-ton="succes">
+                      <Briefcase size={16} aria-hidden="true" />
+                    </span>
+                    <span className="empv3-carte-titre">Présents</span>
+                  </div>
+                  <div className="empv3-kpi-chiffre">{suiviPresence ? presentsDuJour : '—'}</div>
+                  <div className="empv3-kpi-pied">
+                    {ecartPresents === null ? (
+                      'en poste ou en pause, aujourd’hui'
+                    ) : (
+                      <>
+                        <span className={ecartPresents >= 0 ? 'empv3-ecart empv3-ecart--haut' : 'empv3-ecart empv3-ecart--bas'}>
+                          {ecartPresents >= 0 ? '↗' : '↘'} {Math.abs(ecartPresents)} %
+                        </span>
+                        <span className="empv3-kpi-note">vs 30 jours</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
+                <div className="empv3-carte empv3-kpi">
+                  <div className="empv3-kpi-tete">
+                    <span className="empv3-kpi-ico" data-ton="texte">
+                      <Key size={16} aria-hidden="true" />
+                    </span>
+                    <span className="empv3-carte-titre">Accès au portail</span>
+                  </div>
+                  <div className="empv3-kpi-chiffre">{actifsPortail}</div>
+                  <div className="empv3-kpi-pied">
+                    comptes actifs sur {employes.length}
+                    <span className="empv3-kpi-note"> · {Math.max(employes.length - actifsPortail, 0)} à activer</span>
+                  </div>
+                </div>
+
+                <div className="empv3-carte empv3-kpi">
+                  <div className="empv3-kpi-tete">
+                    <span className="empv3-kpi-ico" data-ton="alerte">
+                      <Clock size={16} aria-hidden="true" />
+                    </span>
+                    <span className="empv3-carte-titre">Retards</span>
+                  </div>
+                  <div className="empv3-kpi-chiffre">{suiviPresence ? liveCounts.retards : '—'}</div>
+                  <div className="empv3-kpi-pied">ce jour — le mot est écrit</div>
+                </div>
+              </div>
+
+              {/* les deux blocs du milieu — planning de la semaine, annonces */}
+              <div className="empv3-grille-planning">
+
                 <div className="empv3-carte">
                   <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Assiduité du jour</span>
-                  </div>
-                  <div>
-                    <span className="empv3-pct">{tauxPresence === null ? '—' : `${tauxPresence} %`}</span>
-                    <span className="empv3-pct-note">
-                      {tauxPresence === null
-                        ? 'relevés en cours de chargement'
-                        : `sur ${employes.length} personne${employes.length > 1 ? 's' : ''}`}
+                    <span className="empv3-carte-titre">Planning de la semaine</span>
+                    <span className="empv3-carte-total">
+                      {semainePointages === null ? '—' : `${employes.slice(0, 6).length} personne${employes.length > 1 ? 's' : ''}`}
                     </span>
                   </div>
-                  <div
-                    className="empv3-empilee"
-                    role="img"
-                    aria-label={`En poste ${enPoste}, en pause ${enPause}, absents ${absents}`}
-                  >
-                    <i style={{ width: `${partEnPoste}%`, background: 'var(--charte-aplat)' }} />
-                    <i style={{ width: `${partEnPause}%`, background: 'var(--charte-alerte)' }} />
-                    <i style={{ width: `${partAbsents}%`, background: 'var(--charte-statut-neutre)' }} />
+
+                  <div className="empv3-semaine">
+                    <div className="empv3-semaine-tete">
+                      <span className="empv3-semaine-nom" />
+                      {semaineAffichee.map((jour) => (
+                        <span
+                          key={jour.iso}
+                          className={`empv3-jour${jour.aujourdhui ? ' is-aujourdhui' : ''}`}
+                        >
+                          {jour.nom}
+                          <b>{jour.num}</b>
+                        </span>
+                      ))}
+                    </div>
+
+                    {lignesPlanning.map(({ employee, jours }) => (
+                      <div className="empv3-semaine-ligne" key={employee.id}>
+                        <span className="empv3-semaine-nom">
+                          <span className="empv3-avatar" aria-hidden="true">
+                            {(employee.first_name || '?')[0]}{(employee.last_name || '')[0] || ''}
+                          </span>
+                          <span className="empv3-semaine-textes">
+                            <span className="empv3-semaine-qui">{nomCompletDe(employee)}</span>
+                            <span className="empv3-semaine-poste">
+                              {[employee.position, employee.department].filter(Boolean).join(' · ')
+                                || 'poste non renseigné'}
+                            </span>
+                          </span>
+                        </span>
+                        {jours.map((jour, index) => (
+                          <span
+                            key={`${employee.id}-${index}`}
+                            className={`empv3-case empv3-case--${jour.etat}`}
+                            title={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
+                            aria-label={`${semaineAffichee[index].nom} ${semaineAffichee[index].num} — ${jour.mot}`}
+                          />
+                        ))}
+                      </div>
+                    ))}
                   </div>
+
                   <div className="empv3-legende">
-                    <span><i style={{ background: 'var(--charte-aplat)' }} />En poste · {suiviPresence ? enPoste : '—'}</span>
-                    <span><i style={{ background: 'var(--charte-alerte)' }} />En pause · {suiviPresence ? enPause : '—'}</span>
-                    <span><i style={{ background: 'var(--charte-statut-neutre)' }} />Absents · {suiviPresence ? absents : '—'}</span>
+                    <span><i style={{ background: 'var(--charte-aplat)' }} />Pointé</span>
+                    <span><i style={{ background: 'var(--charte-alerte)' }} />Absence</span>
+                    <span><i style={{ background: 'var(--charte-surface2)' }} />Rien</span>
                   </div>
                 </div>
 
                 <div className="empv3-carte">
                   <div className="empv3-carte-tete">
-                    <span className="empv3-carte-titre">Accès au portail</span>
-                    <span className="empv3-carte-total">{actifsPortail}/{employes.length}</span>
+                    <span className="empv3-carte-titre">Annonces d’accueil</span>
+                    <span className="empv3-carte-total">{annoncesEnLigne.length}</span>
                   </div>
-                  <div className="empv3-anneau">
-                    <div className="empv3-anneau-svg">
-                      <svg width="86" height="86" viewBox="0 0 86 86" role="img" aria-label={`${actifsPortail} comptes actifs sur ${employes.length}`}>
-                        <circle cx="43" cy="43" r="33" fill="none" stroke="var(--charte-surface2)" strokeWidth="10" />
-                        <circle
-                          cx="43" cy="43" r="33" fill="none"
-                          stroke="var(--charte-aplat)" strokeWidth="10"
-                          strokeDasharray={`${perimetreAnneau * partPortail} ${perimetreAnneau}`}
-                          transform="rotate(-90 43 43)"
-                        />
-                      </svg>
-                      <div className="empv3-anneau-centre">
-                        <span className="empv3-anneau-val">{actifsPortail}</span>
-                        <span className="empv3-anneau-lab">au total {employes.length}</span>
-                      </div>
+
+                  {annoncesAccueil === null ? (
+                    <p className="empv3-legende">Les annonces n’ont pas pu être lues.</p>
+                  ) : annoncesEnLigne.length === 0 ? (
+                    <p className="empv3-legende">Aucune annonce en ligne pour l’instant.</p>
+                  ) : (
+                    <div className="empv3-annonces">
+                      {annoncesEnLigne.map((annonce, index) => (
+                        <article key={annonce.id} className={`empv3-annonce empv3-annonce--${index % 3}`}>
+                          {annonce.url && (
+                            <span className="empv3-annonce-vignette">
+                              {annonce.type === 'video' ? (
+                                <video src={annonce.url} muted playsInline preload="metadata" aria-hidden="true" />
+                              ) : (
+                                <img src={annonce.url} alt="" loading="lazy" />
+                              )}
+                            </span>
+                          )}
+                          <span className="empv3-annonce-texte">
+                            <strong>
+                              {annonce.type === 'video' ? 'Vidéo d’accueil' : 'Image d’accueil'}
+                            </strong>
+                            <p>
+                              Diffusée sur l’écran d’accueil
+                              {annonce.duree_affichage_ms
+                                ? ` · ${Math.round(Number(annonce.duree_affichage_ms) / 1000)} s`
+                                : ''}
+                            </p>
+                            <div className="empv3-annonce-chips">
+                              <span>
+                                {annonce.debute_le
+                                  ? new Date(annonce.debute_le).toLocaleDateString('fr-FR')
+                                  : 'sans début'}
+                              </span>
+                              <span>
+                                {annonce.termine_le
+                                  ? new Date(annonce.termine_le).toLocaleDateString('fr-FR')
+                                  : 'sans fin'}
+                              </span>
+                            </div>
+                          </span>
+                        </article>
+                      ))}
                     </div>
-                    <div className="empv3-appareils">
-                      <div>
-                        <i style={{ background: 'var(--charte-aplat)' }} />
-                        <b>{actifsPortail}</b>
-                        <span>Compte actif</span>
-                      </div>
-                      <div>
-                        <i style={{ background: 'var(--charte-surface2)' }} />
-                        <b>{Math.max(employes.length - actifsPortail, 0)}</b>
-                        <span>À activer</span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -1524,7 +1804,6 @@ export default function Employes() {
                         <tr>
                           <th scope="col">Employé</th>
                           <th scope="col">Poste · service</th>
-                          <th scope="col">Contrat</th>
                           <th scope="col">Statut du jour</th>
                           <th scope="col"><span className="visually-hidden">Actions</span></th>
                         </tr>
@@ -1595,6 +1874,7 @@ export default function Employes() {
             <span>EN-CHECK · On gère ! · Gestion du Personnel</span>
           </div>
         </main>
+        </div>
         </div>
         {/* D-003 — une seule bande de motif par page : le bandeau du haut. */}
 

@@ -505,3 +505,382 @@
   .empv3-table th:nth-child(5),
   .empv3-table td:nth-child(5) { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LA COQUE — rail d'icônes à gauche, pastilles en haut.
+   Modèle de la maquette du 08/11 (choix du fondateur : « adopter
+   la nouvelle coque »). Rayons de la charte, ombre dure, aucune
+   couleur en dur.
+   ═══════════════════════════════════════════════════════════ */
+
+.nav3-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 64px;
+  flex: 0 0 64px;
+  height: calc(100vh - 20px);
+  padding: 14px 0 12px;
+  position: sticky;
+  top: 10px;
+  align-self: flex-start;
+  background: var(--charte-surface);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-tuile);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.nav3-rail-logo { display: grid; place-items: center; padding-bottom: 2px; }
+.nav3-rail-sep {
+  display: block;
+  width: 24px;
+  height: 1px;
+  margin: 2px 0 8px;
+  background: var(--charte-bordure);
+}
+
+.nav3-rail-item {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid transparent;
+  border-radius: var(--charte-rayon-carte);
+  background: transparent;
+  color: var(--charte-douce);
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.nav3-rail-item:hover { background: var(--charte-surface2); color: var(--charte-encre); }
+
+/* L'objet actif : l'argile pleine, le contour 2 px espresso (D-016). */
+.nav3-rail-item.is-actif,
+.nav3-rail-item.is-actif:hover {
+  background: var(--charte-aplat);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+
+.nav3-rail-pied {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--charte-bordure);
+  width: 40px;
+}
+
+.nav3-rail-compte {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-top: 2px;
+  border: 2px solid var(--charte-sable);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface2);
+  color: var(--charte-texte);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.nav3-colonne {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* La barre du haut : pastilles à gauche, outils à droite */
+.nav3-haut {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 2px 0 12px;
+}
+
+.nav3-pastilles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-right: auto;
+}
+
+.nav3-pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--charte-rayon-pilule);
+  background: transparent;
+  color: var(--charte-douce);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.nav3-pastille:hover { background: var(--charte-surface2); color: var(--charte-encre); }
+.nav3-pastille.is-actif,
+.nav3-pastille.is-actif:hover {
+  background: var(--charte-encre);
+  color: var(--charte-blanc);
+  border-color: var(--charte-encre);
+}
+
+.nav3-haut-droite { display: flex; align-items: center; gap: 8px; }
+
+.nav3-rond {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  color: var(--charte-douce);
+  cursor: pointer;
+}
+.nav3-rond:hover { color: var(--charte-encre); background: var(--charte-surface2); }
+
+@media (max-width: 820px) {
+  .nav3-rail { display: none; }
+}
+
+/* ── Les quatre cartes de tête, à l'anatomie de la maquette ── */
+
+.empv3-cartes--quatre { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1280px) { .empv3-cartes--quatre { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .empv3-cartes--quatre { grid-template-columns: 1fr; } }
+
+.empv3-kpi { gap: 10px; }
+
+.empv3-kpi-tete {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.empv3-kpi-ico {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: var(--charte-rayon-pilule);
+}
+.empv3-kpi-ico[data-ton='argile'] {
+  background: color-mix(in srgb, var(--charte-aplat) 18%, transparent);
+  color: var(--charte-aplat);
+}
+.empv3-kpi-ico[data-ton='succes'] {
+  background: color-mix(in srgb, var(--charte-succes) 16%, transparent);
+  color: var(--charte-succes);
+}
+.empv3-kpi-ico[data-ton='texte'] {
+  background: color-mix(in srgb, var(--charte-texte) 16%, transparent);
+  color: var(--charte-texte);
+}
+.empv3-kpi-ico[data-ton='alerte'] {
+  background: color-mix(in srgb, var(--charte-alerte) 16%, transparent);
+  color: var(--charte-alerte);
+}
+
+.empv3-kpi .empv3-carte-titre {
+  margin-right: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--charte-douce);
+}
+
+.empv3-kpi-chiffre {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-encre);
+}
+
+.empv3-kpi-pied {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--charte-douce);
+}
+
+.empv3-kpi-note { color: var(--charte-douce); }
+
+/* L'écart : le sens est écrit (une flèche) et la couleur ne dit rien seule (D-009). */
+.empv3-ecart { font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.empv3-ecart--haut { color: var(--charte-succes); }
+.empv3-ecart--bas { color: var(--charte-erreur); }
+
+/* ── Les deux blocs du milieu : planning de la semaine + annonces ── */
+
+.empv3-grille-planning {
+  display: grid;
+  grid-template-columns: 1.9fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 1100px) { .empv3-grille-planning { grid-template-columns: 1fr; } }
+
+.empv3-semaine { display: flex; flex-direction: column; gap: 6px; }
+
+.empv3-semaine-tete,
+.empv3-semaine-ligne {
+  display: grid;
+  grid-template-columns: 176px repeat(7, minmax(0, 1fr));
+  align-items: center;
+  gap: 6px;
+}
+
+.empv3-semaine-nom {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 10.5px;
+  color: var(--charte-encre);
+}
+.empv3-semaine-textes {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.empv3-semaine-qui {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Le rôle, sous le nom — 9 px : il informe, il ne concurrence pas le nom. */
+.empv3-semaine-poste {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  color: var(--charte-douce);
+}
+
+.empv3-semaine-nom .empv3-avatar {
+  width: 20px;
+  height: 20px;
+  font-size: 8px;
+}
+
+.empv3-jour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--charte-douce);
+  text-transform: lowercase;
+}
+.empv3-jour b {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--charte-encre);
+  font-variant-numeric: tabular-nums;
+}
+.empv3-jour.is-aujourdhui b {
+  padding: 1px 6px;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-aplat);
+  color: var(--charte-blanc);
+}
+
+/* Une case = un jour. Trois états seulement, jamais une couleur seule (D-009) :
+   la couleur est doublée d'une infobulle et d'un libellé pour lecteur d'écran. */
+.empv3-case {
+  display: block;
+  height: 28px;
+  border-radius: var(--charte-rayon-champ);
+  border: 1px solid var(--charte-bordure);
+  background: var(--charte-surface);
+}
+.empv3-case--pointe {
+  background: var(--charte-aplat);
+  border-color: var(--charte-encre);
+}
+.empv3-case--conge {
+  background: color-mix(in srgb, var(--charte-alerte) 22%, transparent);
+  border-color: color-mix(in srgb, var(--charte-alerte) 55%, transparent);
+}
+.empv3-case--rien { background: var(--charte-surface2); }
+
+/* Le fil des annonces : trois cartes teintées, comme la maquette */
+.empv3-annonces { display: flex; flex-direction: column; gap: 8px; }
+
+.empv3-annonce {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--charte-rayon-carte);
+  border: 1px solid transparent;
+}
+.empv3-annonce-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+/* La vignette du média : carrée, l'image remplit, rien ne déborde. */
+.empv3-annonce-vignette {
+  display: block;
+  width: 54px;
+  height: 54px;
+  overflow: hidden;
+  border-radius: var(--charte-rayon-champ);
+  border: 1px solid var(--charte-bordure);
+  background: var(--charte-surface2);
+}
+.empv3-annonce-vignette img,
+.empv3-annonce-vignette video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.empv3-annonce--0 {
+  background: color-mix(in srgb, var(--charte-aplat) 12%, transparent);
+  border-color: color-mix(in srgb, var(--charte-aplat) 30%, transparent);
+}
+.empv3-annonce--1 {
+  background: color-mix(in srgb, var(--charte-succes) 12%, transparent);
+  border-color: color-mix(in srgb, var(--charte-succes) 30%, transparent);
+}
+.empv3-annonce--2 {
+  background: color-mix(in srgb, var(--charte-alerte) 12%, transparent);
+  border-color: color-mix(in srgb, var(--charte-alerte) 30%, transparent);
+}
+.empv3-annonce strong { font-size: 11px; font-weight: 700; color: var(--charte-encre); }
+.empv3-annonce p { margin: 0; font-size: 10px; color: var(--charte-douce); line-height: 1.4; }
+
+.empv3-annonce-chips { display: flex; gap: 6px; margin-top: 2px; }
+.empv3-annonce-chips span {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  border: 1px solid var(--charte-bordure);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--charte-douce);
+  font-variant-numeric: tabular-nums;
+}

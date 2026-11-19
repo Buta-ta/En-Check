@@ -268,14 +268,33 @@
 }
 
 .empv2-ligne-poste {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  color: var(--charte-encre);
+}
+.empv2-ligne-intitule {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.empv2-ligne-contrat {
   color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Le badge de la ligne : le mot + la durée, jamais la couleur seule (C7). */
-.empv2-ligne .ch-badge-pilule { font-variant-numeric: tabular-nums; }
+/* Le badge de la ligne : le mot + la durée, jamais la couleur seule (C7).
+   Forme retenue le 08/11 : pilule pleine, sans contour, fond teinté de sa
+   propre couleur — 10 % suffit, la couleur du texte porte le sens. */
+.empv2-ligne .ch-badge-pilule {
+  border-color: transparent;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  font-variant-numeric: tabular-nums;
+}
 
 /* Le menu (⋮) : le seul contrôle de la ligne, les actions secondaires
    vivent à l'intérieur — jamais de troisième bouton sur la ligne. */
