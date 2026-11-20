@@ -643,6 +643,10 @@
   width: 28px;
   height: 28px;
   flex: 0 0 28px;
+  /* ⚠️ LA DÉCOUPE EST ICI, pas dans --photo : une image sans découpe
+     s'affichait à sa taille NATURELLE et recouvrait toute la bande.
+     C'est ce qui cachait le nom et le logo sur sa capture. */
+  overflow: hidden;
   border-radius: 999px;
   border: 2px solid var(--charte-encre);
   background: var(--charte-aplat);
@@ -693,16 +697,18 @@
 /* ── la PHOTO de l'entreprise dans le sélecteur (sa demande du 24/11) ──
    Le rond garde sa bordure et sa taille : la photo le remplit, découpée. */
 .se-rond--photo {
-  overflow: hidden;
   padding: 0;
   background: var(--charte-surface2);
 }
 
-.se-rond--photo img {
+/* quelle que soit l'image — bannière, logo carré, photo — elle est
+   cadrée dans le rond et ne déborde jamais */
+.se-rond img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  max-width: 100%;
 }
 
 /* et sur la bande debout du rail : la photo de l'entreprise active */
