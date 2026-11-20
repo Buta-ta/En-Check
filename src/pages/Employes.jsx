@@ -2037,12 +2037,14 @@ export default function Employes() {
                     {employesFiltres.length} sur {employes.length}
                   </small>
                 </span>
-                {/* la borne se plante au milieu de la ligne, entre le titre
-                    et la recherche : elle ne recouvre plus rien */}
+                {/* la borne est DANS la ligne : titre | borne | recherche.
+                    Elle était placée après le </div> : elle devenait une sœur
+                    de la ligne, d'où les trois blocs empilés et le vide
+                    (sa capture du 23/11 au soir). */}
                 <span className="empv3-borne empv3-borne--entete">
-                  <BornePointage taille={150} />
+                  <BornePointage taille={132} />
                 </span>
-              </div>
+
                 <label className="empv3-recherche">
                   <Search size={15} aria-hidden="true" />
                   <input
@@ -2063,8 +2065,7 @@ export default function Employes() {
                     </button>
                   )}
                 </label>
-
-
+              </div>
 
               <div className="empv2-filtres" role="group" aria-label="Filtrer la liste">
                 {FILTRES_ANNUAIRE.map((filtre) => (
