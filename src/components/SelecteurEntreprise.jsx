@@ -17,6 +17,31 @@ import { Check, ChevronDown, Globe } from 'lucide-react'
 
 const initiale = (nom) => (nom || '?').trim().charAt(0).toUpperCase()
 
+/**
+ * La pastille d'une entreprise : sa PHOTO si elle en a une, sinon son
+ * initiale. Sa demande du 24/11 : « affiche la photo de profil des
+ * entreprises dans le selecteur ».
+ * ⚠️ Si l'image ne charge pas (lien mort), on retombe sur l'initiale :
+ * une pastille vide serait pire qu'une lettre.
+ */
+function PastilleEntreprise({ entreprise }) {
+  const [cassee, setCassee] = useState(false)
+  const photo = entreprise?.logo_url
+  if (photo && !cassee) {
+    return (
+      <span className="se-rond se-rond--photo">
+        <img
+          src={photo}
+          alt=""
+          loading="lazy"
+          onError={() => setCassee(true)}
+        />
+      </span>
+    )
+  }
+  return <span className="se-rond">{initiale(entreprise?.name)}</span>
+}
+
 export default function SelecteurEntreprise({
   entreprises = [],
   active = null,
@@ -51,6 +76,10 @@ export default function SelecteurEntreprise({
 
   const nomAffiche = active?.name || 'Toutes'
   const liste = entreprises.filter((e) => e && e.id && e.id !== active?.id)
+  // ⚠️ ses mots : « les autres entreprises n'apparaîtront que si c'est le
+  // superadmin ». Un admin simple ne doit pas voir une bande qui s'ouvre
+  // sur une liste d'un seul élément : elle reste alors un simple titre.
+  const peutChoisir = multi && (entreprises.length > 1 || Boolean(active))
 
   return (
     <div className={`se${ouvert ? ' est-ouvert' : ''}${compact ? ' se--compact' : ''}`} ref={zone}>
@@ -58,12 +87,22 @@ export default function SelecteurEntreprise({
       <button
         type="button"
         className="se-bande"
-        aria-haspopup="listbox"
-        aria-expanded={ouvert}
-        aria-label={`Entreprise active : ${nomAffiche}. Choisir une autre entreprise`}
-        title={`Entreprise : ${nomAffiche}`}
-        onClick={() => setOuvert((v) => !v)}
+        aria-haspopup={peutChoisir ? 'listbox' : undefined}
+        aria-expanded={peutChoisir ? ouvert : undefined}
+        aria-label={peutChoisir
+          ? `Entreprise active : ${nomAffiche}. Choisir une autre entreprise`
+          : `Entreprise : ${nomAffiche}`}
+        title={peutChoisir ? `Entreprise : ${nomAffiche}` : nomAffiche}
+        onClick={() => { if (peutChoisir) setOuvert((v) => !v) }}
+        disabled={!peutChoisir}
       >
+        {active && (
+          <span className="se-rond se-rond--bande">
+            {active.logo_url
+              ? <img src={active.logo_url} alt="" loading="lazy" />
+              : initiale(active.name)}
+          </span>
+        )}
         <span className="se-bande-nom">{nomAffiche}</span>
         <ChevronDown size={13} aria-hidden="true" className="se-bande-chev" />
         {multi && entreprises.length > 1 && (
@@ -84,7 +123,7 @@ export default function SelecteurEntreprise({
           {/* l'entreprise active, avec sa coche */}
           {active && (
             <div className="se-ligne est-active" role="option" aria-selected="true">
-              <span className="se-rond">{initiale(active.name)}</span>
+              <PastilleEntreprise entreprise={active} />
               <span className="se-ligne-copy">
                 <strong>{active.name}</strong>
                 <em>{active.code || 'Entreprise active'}</em>
@@ -102,7 +141,7 @@ export default function SelecteurEntreprise({
               aria-selected="false"
               onClick={() => choisir(e)}
             >
-              <span className="se-rond">{initiale(e.name)}</span>
+              <PastilleEntreprise entreprise={e} />
               <span className="se-ligne-copy">
                 <strong>{e.name}</strong>
                 <em>{e.code || 'Entreprise'}</em>
