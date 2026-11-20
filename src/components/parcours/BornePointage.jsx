@@ -1,4 +1,5 @@
 import EmpreinteDigitale from './EmpreinteDigitale'
+import useProximite from '../../hooks/useProximite'
 
 // ═══════════════════════════════════════════════════════════
 // 🕗 LA BORNE DE POINTAGE — forme « colonne », comme les vraies
@@ -17,8 +18,20 @@ import EmpreinteDigitale from './EmpreinteDigitale'
 // ═══════════════════════════════════════════════════════════
 
 export default function BornePointage({ taille = 150, className = '' }) {
+  // 🧲 à l'approche : l'écran s'allume, l'empreinte se balaie, et le fût
+  // s'incline vers le curseur.
+  const { ref, actif, penche } = useProximite()
+
   return (
-    <div className={`borne ${className}`.trim()} style={{ '--borne-taille': `${taille}px` }}>
+    <div
+      ref={ref}
+      className={`borne${actif ? ' est-proche' : ''} ${className}`.trim()}
+      style={{
+        '--borne-taille': `${taille}px`,
+        '--penche-x': `${penche.x}deg`,
+        '--penche-y': `${penche.y}deg`,
+      }}
+    >
       <div className="borne-fut">
         <div className="borne-ecran">
           <span className="borne-ecran-mot">

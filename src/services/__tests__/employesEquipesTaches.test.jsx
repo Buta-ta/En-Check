@@ -1299,6 +1299,38 @@ describe('la page Employés', () => {
     expect(rech).toBeLessThan(ferm)
   })
 
+  it('les pancartes, la borne et les herbes réagissent à l’approche du curseur', () => {
+    const HOOK = readFileSync('src/hooks/useProximite.js', 'utf8')
+    const PANCARTE = readFileSync('src/components/parcours/PancarteEnseigne.jsx', 'utf8')
+    const BORNE = readFileSync('src/components/parcours/BornePointage.jsx', 'utf8')
+    const HERBES = readFileSync('src/components/parcours/DecorationChemin.jsx', 'utf8')
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+
+    // une zone élargie, pas un simple :hover
+    expect(HOOK).toContain('const ZONE = 56')
+    expect(HOOK).toContain('getBoundingClientRect')
+    // l'écouteur de mouvement n'existe QUE pendant le survol
+    expect(HOOK).toContain("window.addEventListener('pointermove', bouger")
+    expect(HOOK).toContain("window.removeEventListener('pointermove', bouger)")
+    // et le respect du réglage système, sans quoi rien ne se branche
+    expect(HOOK).toContain('prefers-reduced-motion: reduce')
+
+    // les trois pièces portent la classe d'état
+    expect(PANCARTE).toContain('est-proche')
+    expect(PANCARTE).toContain('useProximite')
+    expect(BORNE).toContain('est-proche')
+    expect(HERBES).toContain('est-proche')
+
+    // les mouvements : soulèvement, fil, écran vert, empreinte balayée, herbe penchée
+    expect(CSS_EMP).toMatch(/\.pancarte\.est-proche \{[\s\S]{0,200}translateY\(-4px\)/)
+    expect(CSS_EMP).toContain('@keyframes fil-vibre')
+    expect(CSS_EMP).toMatch(/\.borne\.est-proche \.borne-ecran \{[\s\S]{0,160}background: #3F6B4C/)
+    expect(CSS_EMP).toContain('@keyframes empreinte-balaie')
+    expect(CSS_EMP).toMatch(/\.empv3-herbe\.est-proche \{[\s\S]{0,160}rotate\(9deg\)/)
+    // et le silence quand le système le demande
+    expect(CSS_EMP).toMatch(/prefers-reduced-motion: reduce[\s\S]{0,400}animation: none !important/)
+  })
+
   it('la barre de liste tient sur une rangée : filtres et légende dedans', () => {
     // sa demande du 23/11 au soir : « C EST CE QUI FAIT QUE JE DOIS SCROLLER
     // AU MOINS 3 FOIS. EN TOUT OPTIMISE DE L ESPACE »
