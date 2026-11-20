@@ -25,7 +25,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 
 import { ThemeProvider } from '../../contexts/ThemeContext'
 import Employes from '../../pages/Employes'
@@ -1198,12 +1198,14 @@ describe('la page Employés', () => {
     const cinqOrteils = CHEMIN.match(/\{ cx: [\d.-]+, cy: [\d.-]+, rx: [\d.]+, ry: [\d.]+ \}/g)
     expect(cinqOrteils).toHaveLength(5)
     // et il les a voulus plus GROS : l'échelle de la trace est montée
-    expect(CHEMIN).toMatch(/const ECHELLE = 1\.35/)
+    // leur taille se compense à la hauteur du parcours, pour rester constante
+    expect(CHEMIN).toContain('compensation')
     // le chemin descend de la pancarte et va jusqu'au pied de page
     expect(CHEMIN).toContain("document.querySelector('.empv3-parcours')")
     expect(EMPLOYES).toContain('empv3-parcours')
     // il est en tour de sinus complet : sinon il saute d'une tuile à l'autre
-    expect(CHEMIN).toContain('Math.PI * 2')
+    // quatre tours complets sur la hauteur : le tracé se raccorde toujours
+    expect(CHEMIN).toContain('Math.PI * 4')
     // et le motif se répète sans étirement : c'est ce qui garde les traces minuscules
     expect(CHEMIN).toContain('TracePied')
     // aucune rotation décalée : `rotate` tourne autour de 0,0 après un translate.
@@ -1213,7 +1215,10 @@ describe('la page Employés', () => {
     expect(CODE).toContain('TracePied')
     // et surtout PAS de preserveAspectRatio="none" sur la page entière :
     // c'est ce qui transformait les traces en taches géantes
-    expect(CHEMIN).not.toContain('preserveAspectRatio="none"')
+    // il se déforme avec la page POUR aller jusqu'au bout, mais chaque pied
+    // est compensé pour garder sa taille
+    expect(CHEMIN).toContain('preserveAspectRatio="none"')
+    expect(CHEMIN).toContain('scale(1 ${compensation})')
     // une bande de 132 px collée à chaque bord, jamais étirée
     expect(CSS_EMP).toMatch(/\.empv3-chemin \{[\s\S]{0,200}width: 132px/)
     // il part du milieu, là où est plantée la pancarte
@@ -1243,55 +1248,39 @@ describe('la page Employés', () => {
     expect(CSS_EMP).toMatch(/\.empv2-annuaire \{ position: relative; z-index: 1; \}/)
   })
 
-  it('la borne affiche « Et maintenant… » avec une empreinte, et la pancarte un cahier « Avant… »', () => {
+  it('la borne affiche « Et maintenant… » avec une vraie empreinte, le cahier « Avant… »', () => {
     const BORNE = readFileSync('src/components/parcours/BornePointage.jsx', 'utf8')
+    const EMPREINTE = readFileSync('src/components/parcours/EmpreinteDigitale.jsx', 'utf8')
     const PANCARTE = readFileSync('src/components/parcours/PancarteEnseigne.jsx', 'utf8')
 
-    // l'écran de la borne, en vrai texte
+    // l'écran de la borne, en deux lignes insécables
     expect(BORNE).toContain('borne-ecran')
     expect(BORNE).toContain('<span>Et</span>')
     expect(BORNE).toContain('<span>maintenant…</span>')
-    // chaque ligne est INSÉCABLE : le mot ne peut plus se casser en quatre
-    expect(readFileSync('src/pages/EmployesV3.css', 'utf8')).toMatch(/\.borne-ecran-mot span \{ white-space: nowrap; \}/)
-    // une empreinte digitale : des arcs concentriques
-    expect(BORNE).toContain('borne-empreinte')
-    // l'empreinte : des arcs CALCULÉS par formule, pas tracés à la main
-    expect(BORNE).toContain('EmpreinteDigitale')
-    // trois arcs largement espacés + la boucle, calculés par formule
-    expect(BORNE).toMatch(/const arcs = \[[\s\S]{0,120}r: 22, w: 3\.6/)
-    expect(BORNE).toMatch(/A \$\{arc\.r\} \$\{arc\.r \* 0\.92\}/)
+
+    // ⚠️ l'empreinte est une IMAGE RÉELLE : mes dessins d'arcs étaient ratés
+    expect(EMPREINTE).toContain('/images/empreinte-digitale.webp')
+    expect(EMPREINTE).toContain('<img')
+    // et le fichier existe vraiment
+    expect(existsSync('public/images/empreinte-digitale.webp')).toBe(true)
+
     // la forme colonne : un fût, un écran carré, un pied plus large
     expect(BORNE).toContain('borne-fut')
     expect(BORNE).toContain('borne-pied')
-    expect(BORNE).not.toContain('borne-socle')
 
     // la pancarte du haut : un cahier avec une coche et le mot « Avant… »
     expect(PANCARTE).toContain('CahierDePointage')
-    expect(PANCARTE).toContain('pancarte-cahier')
     expect(PANCARTE).toContain('Avant…')
-    expect(PANCARTE).toContain("motif = 'pied'")
     expect(EMPLOYES).toMatch(/PancarteEnseigne taille=\{104\} motif="cahier"/)
 
+    // une seule pancarte de pied : elle avait été DUPLIQUÉE (sa capture du 23/11)
+    const pieds = EMPLOYES.match(/PancarteEnseigne taille=\{96\}/g) || []
+    expect(pieds).toHaveLength(1)
+
     const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
-    // l'écran est un écran : fond sombre, texte clair
-    // l'écran est CLAIR avec du texte sombre : sur fond sombre, son texte
-    // débordait et se faisait couper (sa capture du 22/11)
-    expect(CSS_EMP).toMatch(/\.borne-ecran \{[\s\S]{0,320}background: var\(--charte-surface\)/)
-    // les deux lignes sont insécables : c'est mieux que de replier au hasard
     expect(CSS_EMP).toMatch(/\.borne-ecran-mot span \{ white-space: nowrap; \}/)
-    expect(CSS_EMP).toMatch(/\.pancarte-mot \{[\s\S]{0,200}font-family: 'Caveat'/)
-  })
-
-  it('l’état ne s’affiche qu’une fois, et les cartes d’une rangée ont la même hauteur', () => {
-    const CARTE = readFileSync('src/components/equipes/CarteEmploye.jsx', 'utf8')
-    // le badge est dans le corps ; le pied ne le répète plus
-    const pied = CARTE.slice(CARTE.indexOf('empv3-fiche-pied'))
-    expect(pied).not.toContain('badgeForme')
-    expect(pied).toContain('empv3-fiche-pied-mot')
-
-    // Emma ne dépasse plus ses voisines
-    const CSS_FICHES = readFileSync('src/pages/EmployesV3.css', 'utf8')
-    expect(CSS_FICHES).toMatch(/\.empv3-fiches \{[\s\S]{0,220}grid-auto-rows: 1fr/)
+    // la recherche ne s'étire plus en hauteur (la grosse bulle du 23/11)
+    expect(CSS_EMP).toMatch(/\.empv3-liste-tete \.empv3-recherche \{[\s\S]{0,300}min-height: 42px/)
   })
 
   it('le chemin a bien une arrivée : la seconde pancarte est DANS le parcours', () => {

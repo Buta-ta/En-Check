@@ -2297,7 +2297,16 @@
 
 /* la borne prend sa place entre le titre et la recherche : elle ne crée
    aucun vide et ne tronque rien (son reproche du 23/11) */
-.empv3-liste-tete .empv3-recherche { margin-left: auto; }
+.empv3-liste-tete .empv3-recherche {
+  margin-left: auto;
+  /* ⚠️ sans ces deux lignes, `flex: 1 1 300px` la fait s'étirer en HAUTEUR
+     dans une ligne qui passe à la ligne suivante : elle devenait la grosse
+     bulle de sa capture du 23/11. */
+  flex: 0 1 380px;
+  align-self: center;
+  height: 42px;
+  min-height: 42px;
+}
 
 .empv3-bloc-titre {
   display: flex;
@@ -3512,9 +3521,10 @@
 
 .chemin-empreintes {
   display: block;
+  /* le chemin occupe TOUTE la hauteur du parcours : il ne peut plus
+     s'arrêter avant la seconde pancarte (ses captures du 23/11) */
   width: 132px;
-  height: auto;
-  /* il touche le bas du parcours : c'est là qu'est la pancarte */
+  height: 100%;
   position: absolute;
   top: 0;
   left: 0;
@@ -3733,10 +3743,11 @@
 
 .borne-empreinte {
   display: block;
-  width: 72%;
+  width: 62%;
   height: auto;
+  max-height: 46px;
   margin-top: auto;
-  color: var(--charte-aplat);
+  object-fit: contain;
 }
 
 .borne-corps {

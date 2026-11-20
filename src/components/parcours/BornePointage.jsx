@@ -1,3 +1,5 @@
+import EmpreinteDigitale from './EmpreinteDigitale'
+
 // ═══════════════════════════════════════════════════════════
 // 🕗 LA BORNE DE POINTAGE — forme « colonne », comme les vraies
 //
@@ -13,30 +15,6 @@
 // Le texte est écrit sur DEUX lignes fixes, chacune insécable : il ne
 // peut plus se casser au milieu d'un mot.
 // ═══════════════════════════════════════════════════════════
-
-/** l'empreinte : trois arcs bien espacés et une boucle — lisible à 40 px */
-export function EmpreinteDigitale({ className = '' }) {
-  const arcs = [
-    { r: 22, w: 3.6 },
-    { r: 15, w: 3.4 },
-    { r: 8.5, w: 3.2 },
-  ]
-  return (
-    <svg className={className} viewBox="0 0 56 40" aria-hidden="true" focusable="false">
-      <g fill="none" stroke="currentColor" strokeLinecap="round">
-        {arcs.map((arc, i) => (
-          <path
-            key={i}
-            d={`M ${28 - arc.r} 33 A ${arc.r} ${arc.r * 0.92} 0 0 1 ${28 + arc.r} 33`}
-            strokeWidth={arc.w}
-          />
-        ))}
-        {/* la boucle du centre, ouverte vers le bas */}
-        <path d="M 23.5 33 A 4.5 4.9 0 0 1 32.5 33" strokeWidth={3.2} />
-      </g>
-    </svg>
-  )
-}
 
 export default function BornePointage({ taille = 150, className = '' }) {
   return (
