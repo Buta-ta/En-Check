@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { act } from 'react'
+import { readFileSync } from 'node:fs'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
 import { LayoutDashboard, Users } from 'lucide-react'
@@ -125,5 +126,43 @@ describe('le clic dans le vide rabat la sidebar', () => {
     })
     await laisser()
     expect(document.querySelector('.sb').className).not.toContain('sb--repliee')
+  })
+})
+
+describe('les autres entreprises, et la photo (sa demande du 24/11)', () => {
+  const EMPLOYES = readFileSync('src/pages/Employes.jsx', 'utf8')
+  const SELECTEUR = readFileSync('src/components/SelecteurEntreprise.jsx', 'utf8')
+
+  it('charge TOUTES les entreprises pour un super-admin, même avec une déjà choisie', () => {
+    // ⚠️ la cause du « je ne vois pas les autres entreprises » : l'ancienne
+    // condition `&& !targetEnterpriseId` ne chargeait qu'UNE entreprise.
+    expect(EMPLOYES).not.toContain('isSuperAdmin && !targetEnterpriseId')
+    expect(EMPLOYES).toContain('if (isSuperAdmin) {')
+    // et la requête ramène bien le logo
+    expect(EMPLOYES).toContain('logo_url')
+  })
+
+  it('ne propose pas de choisir quand on n’est pas super-admin', () => {
+    // ses mots : « les autres entreprises n'apparaîtront que si c'est le superadmin »
+    expect(SELECTEUR).toContain('const peutChoisir = multi')
+    expect(SELECTEUR).toContain('disabled={!peutChoisir}')
+  })
+
+  it('affiche la photo de l’entreprise, avec l’initiale en repli', () => {
+    expect(SELECTEUR).toContain('function PastilleEntreprise')
+    expect(SELECTEUR).toContain('entreprise?.logo_url')
+    expect(SELECTEUR).toContain('onError={() => setCassee(true)}')
+    expect(SELECTEUR).toContain('<PastilleEntreprise entreprise={active} />')
+  })
+})
+
+describe('la liste montre bien toutes les entreprises', () => {
+  it('affiche les trois entreprises quand on ouvre', async () => {
+    await monter()
+    await act(async () => bande().click())
+    const lignes = document.querySelectorAll('.se-liste .se-ligne')
+    // l'active + les deux autres + « Toutes les entreprises »
+    expect(lignes.length).toBe(4)
+    expect(liste().textContent).toContain('Maison Koffi')
   })
 })

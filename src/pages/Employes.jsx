@@ -527,8 +527,18 @@ export default function Employes() {
       let modulePlanningActif = false
       let moduleQRCodeActif = false
 
-      if (isSuperAdmin && !targetEnterpriseId) {
-        const { data: entreprisesData } = await supabase.from('enterprises').select('*').eq('is_active', true).order('name')
+      // ⚠️ SUPER-ADMIN : on charge TOUJOURS la liste complète, même quand une
+      // entreprise est déjà choisie. Avant, `&& !targetEnterpriseId` faisait
+      // qu'un super-admin avec une entreprise active ne recevait qu'UNE
+      // entreprise — le sélecteur n'avait donc rien d'autre à proposer.
+      // ⚠️ Les EMPLOYÉS, eux, restent filtrés sur targetEnterpriseId : la
+      // liste des entreprises et le filtre des employés sont deux choses.
+      if (isSuperAdmin) {
+        const { data: entreprisesData } = await supabase
+          .from('enterprises')
+          .select('id, name, code, logo_url, primary_color, is_active')
+          .eq('is_active', true)
+          .order('name')
         setEntreprises(entreprisesData || [])
         modulePlanningActif = true
         moduleQRCodeActif = true
