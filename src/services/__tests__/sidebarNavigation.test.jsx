@@ -313,7 +313,11 @@ describe('le registre qui se ferme (choix C du 24/11)', () => {
   it('a remplacé l’ancienne transition de largeur, qui la ferait saccader', () => {
     // ⚠️ deux animations de largeur concurrentes = geste cassé
     expect(CSS_DASH).not.toMatch(/\.nav-panel \{[\s\S]{0,300}transition: width 200ms/)
-    expect(EXPERIENCE).toContain('<RegistreRepli ferme={panneauReplie} largeur={254}')
+    // ⚠️ le registre est maintenant porté par la sidebar unique, qui
+    // remplace l'ancien couple SidebarRail + nav-panel.
+    expect(EXPERIENCE).toContain('<SidebarUnique')
+    const UNIQUE = readFileSync('src/components/SidebarUnique.jsx', 'utf8')
+    expect(UNIQUE).toContain('<RegistreRepli ferme={repliee}')
   })
 })
 })

@@ -1,0 +1,314 @@
+/* ═══════════════════════════════════════════════════════════
+   LA SIDEBAR UNIQUE — le rail de la page Employés, pour toute l'app
+   Sa décision du 24/11. Charte D-016 : contour 2 px, ombre nette.
+   ═══════════════════════════════════════════════════════════ */
+
+.sb {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+}
+
+/* le registre doit occuper la hauteur, pas seulement le rail */
+.sb > .registre { align-self: stretch; }
+
+/* ── LE RAIL : ne bouge jamais ── */
+.sb-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 64px;
+  flex: 0 0 64px;
+  padding: 12px 0 10px;
+  background: var(--charte-surface);
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  box-shadow: 3px 3px 0 var(--charte-encre);
+}
+
+.sb-rail-logo {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--charte-fond, #F3E9DA);
+  border: 2px solid var(--charte-encre);
+}
+
+.sb-rail-sep { width: 26px; height: 1px; background: var(--charte-bordure); margin: 2px 0; }
+
+.sb-rail-item {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--charte-encre);
+  border-radius: 9px;
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, transform 120ms ease;
+}
+.sb-rail-item:hover { background: var(--charte-surface2); transform: translateY(-1px); }
+.sb-rail-item.is-actif {
+  background: var(--charte-aplat);
+  color: #FFFDF7;
+}
+
+.sb-rail-pied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--charte-bordure);
+}
+
+.sb-rail-compte {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--charte-aplat);
+  color: #FFFDF7;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* ── LE PANNEAU : le registre ──
+   ⚠️ il doit remplir la hauteur du rail, sinon les groupes repliés
+   flottent au milieu et le bas reste vide. */
+.sb-panneau {
+  height: auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-panneau-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+  padding: 12px 12px 14px;
+}
+
+.sb-tete {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.sb-tete-marque {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--charte-fond, #F3E9DA);
+  border: 2px solid var(--charte-encre);
+}
+
+.sb-tete-copy { display: flex; flex-direction: column; line-height: 1.05; min-width: 0; }
+.sb-tete-copy strong { font-size: 15px; font-weight: 800; color: var(--charte-encre); }
+.sb-tete-copy em { font-style: normal; font-size: 10px; color: var(--charte-douce); }
+
+.sb-plier {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--charte-encre);
+  border-radius: 7px;
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  cursor: pointer;
+}
+.sb-plier:hover { background: var(--charte-surface2); }
+
+/* la recherche */
+.sb-recherche {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 9px;
+  border: 2px solid var(--charte-encre);
+  border-radius: 8px;
+  background: var(--charte-fond, #F3E9DA);
+  color: var(--charte-douce);
+}
+.sb-recherche input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  color: var(--charte-encre);
+  outline: none;
+}
+
+/* les groupes */
+.sb-groupes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: thin;
+}
+
+.sb-groupe-titre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 2px 2px;
+  border: 0;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+  cursor: pointer;
+}
+.sb-groupe-titre svg { transition: transform 160ms ease; }
+.sb-groupe-titre.est-replie svg { transform: rotate(-90deg); }
+
+.sb-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 0;
+  padding: 0 0 0 8px;
+  list-style: none;
+  border-left: 1px solid var(--charte-bordure);
+}
+
+.sb-lien {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--charte-encre);
+  text-decoration: none;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+.sb-lien:hover { background: var(--charte-surface2); }
+
+/* l'actif : un cartouche contouré, pas un aplat — la page Employés fait foi */
+.sb-lien.is-actif {
+  background: var(--charte-surface);
+  border-color: var(--charte-encre);
+  box-shadow: 2px 2px 0 var(--charte-encre);
+  font-weight: 800;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DANS LA PAGE EMPLOYÉS — la barre vit dans une coque qui défile
+   `align-items: flex-start` sur .empv2-layout : sans ça, la barre
+   s'étirerait à la hauteur du contenu au lieu de rester plein écran.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv2-layout > .sb {
+  position: sticky;
+  top: 10px;
+  align-self: flex-start;
+  height: calc(100vh - 20px);
+  flex: 0 0 auto;
+  z-index: 2;
+}
+
+/* quand elle est repliée, le panneau a disparu : le rail garde sa place */
+.empv2-layout > .sb.sb--repliee { gap: 0; }
+
+/* les vues de la page (Équipes / Tâches) : petites, sous un filet */
+.sb-rail-vues {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--charte-bordure);
+}
+
+.sb-rail-sous {
+  width: 34px;
+  height: 30px;
+  border-radius: 7px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SUR TÉLÉPHONE — la barre devient une rangée en bas de l'écran
+   L'ancien rail faisait ça sous 820 px ; la sidebar unique doit le
+   faire aussi, sinon elle mangerait 318 px d'un écran de 360.
+   ⚠️ Le panneau est FERMÉ par défaut sur mobile : il monterait
+   par-dessus la page et cacherait tout.
+   ═══════════════════════════════════════════════════════════ */
+
+@media (max-width: 820px) {
+  .empv2-layout > .sb,
+  .dashboard-sidebar .sb {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    top: auto;
+    height: auto;
+    z-index: 60;
+    gap: 0;
+  }
+
+  .sb { gap: 0; }
+
+  .sb-rail {
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+    height: auto;
+    padding: 6px;
+    gap: 2px;
+  }
+
+  .sb-rail-logo,
+  .sb-rail-sep { display: none; }
+
+  .sb-rail-vues { flex-direction: row; padding: 0; border-top: 0; border-left: 1px solid var(--charte-bordure); padding-left: 4px; }
+
+  .sb-rail-pied {
+    flex-direction: row;
+    margin: 0;
+    padding: 0;
+    padding-left: 4px;
+    border-top: 0;
+    border-left: 1px solid var(--charte-bordure);
+  }
+
+  /* le panneau, s'il est ouvert, monte au-dessus de la rangée */
+  .sb-panneau {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: 72px;
+    z-index: 61;
+    max-height: 60vh;
+  }
+
+  /* et il s'efface quand il est fermé, pour ne pas bloquer les clics */
+  .sb--repliee .sb-panneau { display: none; }
+}

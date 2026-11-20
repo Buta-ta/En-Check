@@ -18,6 +18,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import DashboardDesignPreview from './pages/DashboardDesignPreview'
 import Employes from './pages/Employes'
+import { SidebarProvider } from './hooks/useSidebarRepliee.jsx'
 import Employee360 from './pages/Employee360'
 import Pointages from './pages/Pointages'
 import Entreprises from './pages/Entreprises'
@@ -229,6 +230,7 @@ function SessionListener() {
 function App() {
   return (
     <ThemeProvider>
+      <SidebarProvider>
       <BrowserRouter>
         <Toaster position="top-center" />
         <SessionListener />
@@ -479,6 +481,7 @@ function App() {
         </Routes>
         </VerrouOptions>
       </BrowserRouter>
+      </SidebarProvider>
     </ThemeProvider>
   )
 }

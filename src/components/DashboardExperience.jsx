@@ -49,8 +49,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import EnterpriseSwitcher from './EnterpriseSwitcher'
 import SidebarNavigation from './SidebarNavigation'
-import RegistreRepli from './RegistreRepli'
-import SidebarRail, { ContenuMenuProfil } from './SidebarRail'
+import SidebarUnique from './SidebarUnique'
 import { chargerRail, sauvegarderRail } from '../lib/navigationPerso'
 import { nettoyerTexte } from '../lib/nettoyageTexte'
 import { finPosteDepassee } from '../lib/etatPresence'
@@ -844,121 +843,15 @@ export default function DashboardExperience({
             et un panneau (contexte d'entreprise + rubriques et leurs
             sous-éléments) qui se replie pour ne laisser que le rail.
             Sur petit écran, le rail disparaît : c'est le tiroir. */}
-        <aside ref={sidebarRef} className={`dashboard-sidebar${mobileMenuOpen ? ' is-open' : ''}${panneauReplie ? ' is-repliee' : ''}`} aria-label="Navigation principale">
-          <SidebarRail
+        <aside ref={sidebarRef} className={`dashboard-sidebar${mobileMenuOpen ? ' is-open' : ''}`} aria-label="Navigation principale">
+          <SidebarUnique
             sections={navigationSections}
-            cheminActif={pathname}
-            panneauReplie={panneauReplie}
-            onBasculerPanneau={() => setPanneauReplie((valeur) => !valeur)}
-            onRubrique={allerVersSection}
-            profil={{ nom: adminName, initiales: adminInitials, role: adminRole, photo: adminPhoto }}
-            menuProfilOuvert={menuProfilOuvert}
-            surMenuProfil={(ouvert) => setMenuProfilOuvert(ouvert)}
+            nomAdmin={adminName}
+            initialeAdmin={adminInitials}
+            darkMode={darkMode}
+            surTheme={toggleTheme}
             surDeconnexion={handleLogout}
           />
-
-          {/* le registre se ferme par PALIERS, pas en fondu (choix C du 24/11) */}
-          <RegistreRepli ferme={panneauReplie} largeur={254} className="nav-panel">
-            <div className="nav-panel-inner">
-              <header className="nav-panel-tete">
-                <div className="nav-panel-marque">
-                  <EnCheckBrandMark className="nav-panel-logo" size={30} />
-                  <div className="nav-panel-marque-copy">
-                    <span className="nav-panel-marque-nom">En-Check</span>
-                    <span className="nav-panel-marque-slogan">On gère !</span>
-                  </div>
-                </div>
-
-                <div className="nav-panel-contexte">
-                  <EnterpriseSwitcher admin={admin} onSwitch={handleEnterpriseSwitch} />
-                </div>
-
-                {/* D-018 — le kente sous le logo : 28 px, sans texte dessus. */}
-                <div className="nav-panel-kente" aria-hidden="true">
-                  <KenteWovenTapestrySvg />
-                </div>
-
-                <button
-                  type="button"
-                  className="nav-panel-plier"
-                  aria-label="Réduire la barre de navigation en icônes"
-                  title="Barre en icônes"
-                  onClick={() => setPanneauReplie(true)}
-                >
-                  <ChevronsLeft size={15} />
-                </button>
-              </header>
-
-              <div className="nav-panel-corps">
-                <SidebarNavigation
-                  sections={navigationSections}
-                  tabStates={tabStates}
-                  onSelect={handleNavigation}
-                  idAdministrateur={admin?.id}
-                  tableauActif={isCustomizing}
-                  surBasculerTableau={toggleDashboardCustomize}
-                  actionsActif={isCustomizingQuickActions}
-                  surBasculerActions={() => setIsCustomizingQuickActions((valeur) => !valeur)}
-                  cartesActif={kenteActif}
-                  surBasculerCartes={() => setKenteActif((valeur) => !valeur)}
-                />
-              </div>
-
-              <footer className="nav-panel-pied ec-nav-pied">
-                <a
-                  className="sidebar-portal-link"
-                  href="/employee/login"
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Users size={16} />
-                  <span>Espace employé</span>
-                  <ArrowRight size={14} />
-                </a>
-
-                <div className="sidebar-profile">
-                  {isSuperAdmin ? (
-                    <button
-                      type="button"
-                      className="sidebar-profile-link"
-                      aria-haspopup="menu"
-                      aria-expanded={menuProfilOuvert}
-                      title={`${adminName} · ${adminRole} — menu du profil`}
-                      aria-label={`Menu du profil de ${adminName}`}
-                      onClick={() => setMenuProfilOuvert((valeur) => !valeur)}
-                    >
-                      <span className="sidebar-profile-avatar">{adminAvatarContenu}</span>
-                      <span className="sidebar-profile-copy">
-                        <span className="sidebar-profile-name">{adminName}</span>
-                        <span className="sidebar-profile-role">{adminRole}</span>
-                      </span>
-                      <ChevronDown className="sidebar-profile-chevron" size={14} aria-hidden="true" />
-                    </button>
-                  ) : (
-                    <div className="sidebar-profile-link is-statique">
-                      <span className="sidebar-profile-avatar">{adminAvatarContenu}</span>
-                      <span className="sidebar-profile-copy">
-                        <span className="sidebar-profile-name">{adminName}</span>
-                        <span className="sidebar-profile-role">{adminRole}</span>
-                      </span>
-                    </div>
-                  )}
-                  {isSuperAdmin && menuProfilOuvert && (
-                    <div className="sidebar-profile-menu" role="menu" aria-label="Actions du profil">
-                      <ContenuMenuProfil
-                        surChoix={() => { setMenuProfilOuvert(false); setMobileMenuOpen(false) }}
-                        surDeconnexion={() => { setMenuProfilOuvert(false); handleLogout() }}
-                      />
-                    </div>
-                  )}
-                  <button type="button" className="sidebar-logout" onClick={handleLogout} title="Déconnexion" aria-label="Déconnexion">
-                    <LogOut size={15} />
-                  </button>
-                </div>
-              </footer>
-            </div>
-          </RegistreRepli>
         </aside>
 
         <div className="dashboard-workspace">

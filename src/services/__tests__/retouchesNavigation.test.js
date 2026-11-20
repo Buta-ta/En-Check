@@ -12,6 +12,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -35,7 +36,11 @@ describe('le profil mène à la page Administrateurs', () => {
   })
 
   it('la barre latérale garde son lien', () => {
-    expect(dashboard).toContain('className="sidebar-profile-link"')
+    // ⚠️ la barre a été refaite (son choix du 24/11) : le lien vit
+    // maintenant dans la sidebar unique, à la même place.
+    const UNIQUE = readFileSync('src/components/SidebarUnique.jsx', 'utf8')
+    expect(UNIQUE).toContain('sidebar-profile-link')
+    expect(UNIQUE).toContain('to="/admins"')
     expect(dashboard).toContain('to="/admins"')
   })
 
