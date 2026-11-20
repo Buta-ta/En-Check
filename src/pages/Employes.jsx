@@ -14,7 +14,7 @@ import {
   Eye, EyeOff, Camera, Upload, QrCode, Clock, Share2, AlertTriangle,
   BarChart2, ChevronDown, ChevronUp, Zap, Activity, ArrowRight, UserPlus,
   Coffee, CalendarX,
-  Briefcase, Hash, Mail, Phone, Building2, Shield,
+  Briefcase, Hash, Mail, Phone, Building2, Shield, ListChecks,
   Key, Lock, UserCheck, UserX, Calendar, Heart, Globe, CreditCard,
   FileText, Award, User, MapPin, Flag, Baby, Layers, Radio, ClipboardList, Network,
   LayoutDashboard, CalendarDays, CalendarOff, Timer, Wallet, Sparkles, Settings,
@@ -26,6 +26,7 @@ import BadgeEmploye from '../components/BadgeEmploye'
 import ModaleAccesPortail from '../components/employes/ModaleAccesPortail'
 import ModaleHoraires from '../components/employes/ModaleHoraires'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
+import SidebarUnique from '../components/SidebarUnique'
 import EmployesLoadingScreen from '../components/EmployesLoadingScreen'
 import { grouperAbsences } from '../utils/barresSemaine'
 import CurrencyService from '../services/currencyService'
@@ -1453,97 +1454,23 @@ export default function Employes() {
       <div className="pointages-afrotech-shell empv2-coque">
         <div className="empv2-layout">
         {/* ═══ LA COQUE : rail d'icônes à gauche, pastilles en haut ═══ */}
-        <aside className="nav3-rail" aria-label="Rubriques">
-          <span className="nav3-rail-logo">
-            <EnCheckBrandMark size={26} />
-          </span>
-          <span className="nav3-rail-sep" aria-hidden="true" />
-
-          {sectionsNav.map((section) => {
-            const SectionIcone = section.icon
-            const active = section.id === SECTION_ACTIVE
-            return (
-              <button
-                key={section.id}
-                type="button"
-                className={`nav3-rail-item${active ? ' is-actif' : ''}`}
-                aria-current={active ? 'true' : undefined}
-                title={section.label}
-                aria-label={section.label}
-                onClick={() => {
-                  const premiere = section.items.find((i) => i.show && i.path)
-                  if (premiere) navigate(premiere.path)
-                }}
-              >
-                <SectionIcone size={18} aria-hidden="true" />
-              </button>
-            )
-          })}
-
-          {/* les deux vues de la page vivent ici, pas dans l'en-tête :
-              une seule navigation, celle du rail */}
-          <div className="nav3-rail-vues" role="group" aria-label="Vues de la page Employés">
-            {vueAutorisee && (
-              <>
-                <button
-                  type="button"
-                  className={`nav3-rail-item nav3-rail-sous${vueActive === 'equipes' ? ' is-actif' : ''}`}
-                  aria-current={vueActive === 'equipes' ? 'page' : undefined}
-                  title="Vue : Équipes"
-                  aria-label="Vue Équipes"
-                  onClick={() => changerVue('equipes')}
-                >
-                  <Network size={15} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className={`nav3-rail-item nav3-rail-sous${vueActive === 'taches' ? ' is-actif' : ''}`}
-                  aria-current={vueActive === 'taches' ? 'page' : undefined}
-                  title="Vue : Tâches"
-                  aria-label="Vue Tâches"
-                  onClick={() => changerVue('taches')}
-                >
-                  <ClipboardList size={15} aria-hidden="true" />
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className="nav3-rail-pied">
-            <button
-              type="button"
-              className="nav3-rail-item"
-              onClick={toggleTheme}
-              title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-              aria-label={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-              aria-pressed={darkMode}
-            >
-              {darkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
-            </button>
-            <a
-              className="nav3-rail-item"
-              href="/employee/login"
-              target="_blank"
-              rel="noreferrer"
-              title="Espace employé"
-              aria-label="Espace employé"
-            >
-              <Users size={18} aria-hidden="true" />
-            </a>
-            <button
-              type="button"
-              className="nav3-rail-item"
-              onClick={deconnexion}
-              title="Déconnexion"
-              aria-label="Déconnexion"
-            >
-              <LogOut size={18} aria-hidden="true" />
-            </button>
-            <span className="nav3-rail-compte" title={`${nomAdmin} — administrateur`}>
-              {(nomAdmin || 'A').trim().charAt(0).toUpperCase()}
-            </span>
-          </div>
-        </aside>
+        {/* LA SIDEBAR UNIQUE — son choix du 24/11 : le rail de cette page,
+            avec le registre qui se ferme au repli. Elle remplace le rail
+            écrit en dur ici, qui n'avait aucun panneau à dérouler. */}
+        <SidebarUnique
+          sections={sectionsNav}
+          nomAdmin={nomAdmin}
+          initialeAdmin={(nomAdmin || 'A').charAt(0)}
+          darkMode={darkMode}
+          surTheme={toggleTheme}
+          surDeconnexion={deconnexion}
+          vues={vueAutorisee ? [
+            { id: 'equipes', label: 'Équipes', icon: Users },
+            { id: 'taches', label: 'Tâches', icon: ListChecks },
+          ] : null}
+          vueActive={vueActive}
+          surVue={changerVue}
+        />
 
         <div className="nav3-colonne">
         {/* ═══ MAIN ═══ */}

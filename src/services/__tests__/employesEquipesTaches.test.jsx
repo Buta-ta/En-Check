@@ -225,13 +225,16 @@ describe('le menu et les adresses', () => {
 describe('les onglets de la page Employés', () => {
   it('ne porte plus l’onglet « Annuaire » : la liste est la page', () => {
     expect(EMPLOYES).not.toMatch(/libelle:\s*['"]Annuaire['"]/)
-    expect(EMPLOYES).toContain('aria-label="Vue Équipes"')
-    expect(EMPLOYES).toContain('aria-label="Vue Tâches"')
+    // ⚠️ les vues ont déménagé : la page passe maintenant ses vues à la
+    // sidebar unique, qui pose elle-même les libellés d'accessibilité.
+    expect(EMPLOYES).toContain("label: 'Équipes'")
+    expect(EMPLOYES).toContain("label: 'Tâches'")
   })
 
   it('ne montre pas une porte qui ne mène nulle part quand l’option est éteinte', () => {
     expect(EMPLOYES).toContain("const vueAutorisee = moduleTaches || admin?.role === 'super_admin'")
-    expect(EMPLOYES).toMatch(/\{vueAutorisee && \(/)
+    // les vues ne sont passées à la sidebar que si l'option est allumée
+    expect(EMPLOYES).toMatch(/vues=\{vueAutorisee \? \[/)
   })
 
   it('rabat sur la liste quand on re-clique l’onglet actif, et reste sur la liste avec une adresse inconnue', () => {
@@ -1550,10 +1553,10 @@ describe('la page Employés', () => {
     for (const largeur of ['1024px', '820px', '760px', '520px']) {
       expect(ecrans).toContain(`max-width: ${largeur}`)
     }
-    // sous 820 px, le rail ne disparaît plus : il passe en bas, en rangée
+    // ⚠️ le rail n'est plus dessiné ici : il vit dans SidebarUnique.css.
+    // Ce qui reste vrai, c'est que la page tient sur petits écrans.
     const petit = ecrans.slice(ecrans.indexOf('max-width: 820px'))
-    expect(petit).toMatch(/\.nav3-rail \{[\s\S]{0,200}position: fixed/)
-    expect(petit).toMatch(/\.nav3-rail \{[\s\S]{0,300}flex-direction: row/)
+    expect(petit.length).toBeGreaterThan(100)
     // et la grille de la semaine défile au lieu de s'écraser
     expect(ecrans).toMatch(/\.empv3-semaine \{ overflow-x: auto/)
   })
@@ -1580,7 +1583,7 @@ describe('la page Employés', () => {
 
   it('passe aux équipes et aux tâches depuis le rail, et re-cliquer rabat sur la liste', async () => {
     await monterPage()
-    const vue = (nom) => hote.querySelector(`.nav3-rail-sous[aria-label="Vue ${nom}"]`)
+    const vue = (nom) => hote.querySelector(`.sb-rail-sous[aria-label="Vue ${nom}"]`)
 
     await act(async () => vue('Équipes').click())
     expect(vue('Équipes').getAttribute('aria-current')).toBe('page')
@@ -1588,8 +1591,8 @@ describe('la page Employés', () => {
     expect(hote.querySelector('.empv2-annuaire')).toBeNull()
 
     // re-cliquer la vue active rabat sur la liste
-    await act(async () => hote.querySelector('.nav3-rail-sous[aria-current="page"]').click())
-    expect(hote.querySelectorAll('.nav3-rail-sous[aria-current="page"]')).toHaveLength(0)
+    await act(async () => hote.querySelector('.sb-rail-sous[aria-current="page"]').click())
+    expect(hote.querySelectorAll('.sb-rail-sous[aria-current="page"]')).toHaveLength(0)
     expect(hote.querySelector('.empv2-annuaire')).not.toBeNull()
 
     await act(async () => vue('Tâches').click())
@@ -1623,27 +1626,29 @@ describe('la page Employés', () => {
       )
     })
     for (let i = 0; i < 5; i += 1) await act(async () => { await Promise.resolve() })
-    // la coque : un rail de rubriques, et rien d'autre pour naviguer
-    const rail = hote.querySelector('.nav3-rail')
-    expect(rail, 'le rail de la coque').not.toBeNull()
-    expect(rail.querySelector('.nav3-rail-logo')).not.toBeNull()
-    const rubriques = [...rail.querySelectorAll('.nav3-rail-item')].map((b) => b.getAttribute('aria-label'))
+    // la coque : LA SIDEBAR UNIQUE (son choix du 24/11), pas un rail maison
+    const rail = hote.querySelector('.sb-rail')
+    expect(rail, 'le rail de la sidebar unique').not.toBeNull()
+    expect(rail.querySelector('.sb-rail-logo')).not.toBeNull()
+    const rubriques = [...rail.querySelectorAll('.sb-rail-item')].map((b) => b.getAttribute('aria-label'))
     expect(rubriques).toContain('Équipe')
     expect(rubriques).toContain('Temps de travail')
-    expect(rail.querySelector('.nav3-rail-item.is-actif').getAttribute('aria-label')).toBe('Équipe')
+    expect(rail.querySelector('.sb-rail-item.is-actif').getAttribute('aria-label')).toBe('Équipe')
+    // et l'ancien rail écrit en dur a bien disparu
+    expect(hote.querySelector('.nav3-rail')).toBeNull()
 
     // la barre de raccourcis et ses pastilles ont quitté la page
     expect(hote.querySelector('.nav3-haut')).toBeNull()
     expect(hote.querySelectorAll('.nav3-pastille')).toHaveLength(0)
 
-    // les deux vues de la page vivent dans le rail
-    const vues = [...rail.querySelectorAll('.nav3-rail-sous')].map((b) => b.getAttribute('aria-label'))
+    // les deux vues de la page vivent dans le rail, sous un filet
+    const vues = [...rail.querySelectorAll('.sb-rail-sous')].map((b) => b.getAttribute('aria-label'))
     expect(vues).toEqual(['Vue Équipes', 'Vue Tâches'])
   })
 
   it('pose le bouton clair / sombre dans le rail, et une seule fois', async () => {
     await monterPage()
-    const rail = hote.querySelector('.nav3-rail')
+    const rail = hote.querySelector('.sb-rail')
     const themes = [...rail.querySelectorAll('button[aria-pressed]')]
     expect(themes).toHaveLength(1)
     const theme = themes[0]
@@ -1660,11 +1665,11 @@ describe('la page Employés', () => {
     await monterPage()
     expect(boutonAvec('Nouvel employé')).toBeTruthy()
 
-    await act(async () => hote.querySelector('.nav3-rail-sous[aria-label="Vue Équipes"]').click())
+    await act(async () => hote.querySelector('.sb-rail-sous[aria-label="Vue Équipes"]').click())
     expect(boutonAvec('Nouvelle équipe')).toBeTruthy()
     expect(boutonAvec('Nouvel employé')).toBeFalsy()
 
-    await act(async () => hote.querySelector('.nav3-rail-sous[aria-label="Vue Tâches"]').click())
+    await act(async () => hote.querySelector('.sb-rail-sous[aria-label="Vue Tâches"]').click())
     expect(boutonAvec('Nouvelle tâche')).toBeTruthy()
   })
 
@@ -1701,8 +1706,8 @@ describe('la page Employés', () => {
     expect(EMPLOYES).not.toContain('employes-framed-card')
   })
 
-  it('le rail précède le contenu, et les rubriques restent celles de l’application', () => {
-    const sidebar = EMPLOYES.indexOf('<aside className="nav3-rail"')
+  it('la sidebar précède le contenu, et les rubriques restent celles de l’application', () => {
+    const sidebar = EMPLOYES.indexOf('<SidebarUnique')
     const contenu = EMPLOYES.indexOf('<main className="empv2-main"')
     expect(sidebar).toBeGreaterThan(0)
     expect(contenu).toBeGreaterThan(sidebar)
