@@ -1629,7 +1629,10 @@ describe('la page Employés', () => {
     // la coque : LA SIDEBAR UNIQUE (son choix du 24/11), pas un rail maison
     const rail = hote.querySelector('.sb-rail')
     expect(rail, 'le rail de la sidebar unique').not.toBeNull()
-    expect(rail.querySelector('.sb-rail-logo')).not.toBeNull()
+    // ⚠️ le haut du rail porte SOIT la bande d'entreprise (nom à la verticale,
+    // sa maquette du 24/11), SOIT le logo quand aucune entreprise n'est chargée.
+    const marque = rail.querySelector('.sb-rail-logo') || rail.querySelector('.se-bande')
+    expect(marque, 'une marque en haut du rail').not.toBeNull()
     const rubriques = [...rail.querySelectorAll('.sb-rail-item')].map((b) => b.getAttribute('aria-label'))
     expect(rubriques).toContain('Équipe')
     expect(rubriques).toContain('Temps de travail')

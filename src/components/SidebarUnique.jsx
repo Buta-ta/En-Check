@@ -18,11 +18,12 @@
 // une coque qui défile — les rayons et le fond diffèrent.
 // ═══════════════════════════════════════════════════════════
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ChevronDown, ChevronLeft, ChevronRight, LogOut, Moon, Search, Sun, Users } from 'lucide-react'
 import EnCheckBrandMark from './EnCheckBrandMark'
 import RegistreRepli from './RegistreRepli'
+import SelecteurEntreprise from './SelecteurEntreprise'
 import { useSidebarRepliee } from '../hooks/useSidebarRepliee.jsx'
 import './SidebarUnique.css'
 
@@ -38,8 +39,28 @@ export default function SidebarUnique({
   vues = null,
   vueActive = '',
   surVue = () => {},
+  entreprises = [],
+  entrepriseActive = null,
+  surEntreprise = () => {},
 }) {
-  const { repliee, basculer, deplier } = useSidebarRepliee()
+  const { repliee, basculer, deplier, replier } = useSidebarRepliee()
+  const racine = useRef(null)
+
+  // ⚠️ UN CLIC DANS LE VIDE RABAT LA SIDEBAR — son choix du 24/11.
+  // Le mécanisme existait dans DashboardExperience, mais il pilotait un état
+  // LOCAL que cette barre n'écoute plus : il ne faisait donc rien. Il vit
+  // ici, une fois, pour toutes les pages.
+  // Il ne s'applique que si le panneau est ouvert ET sur un écran large :
+  // sur téléphone, la barre est une rangée basse et n'a rien à rabattre.
+  useEffect(() => {
+    if (repliee) return undefined
+    if (typeof window === 'undefined' || window.innerWidth <= 820) return undefined
+    const clicDansLeVide = (evenement) => {
+      if (racine.current && !racine.current.contains(evenement.target)) replier()
+    }
+    document.addEventListener('mousedown', clicDansLeVide)
+    return () => document.removeEventListener('mousedown', clicDansLeVide)
+  }, [repliee, replier])
   const { pathname } = useLocation()
   const [filtre, setFiltre] = useState('')
   const [groupesReplies, setGroupesReplies] = useState({})
@@ -68,12 +89,24 @@ export default function SidebarUnique({
   }
 
   return (
-    <div className={`sb${repliee ? ' sb--repliee' : ''}`}>
+    <div ref={racine} className={`sb${repliee ? ' sb--repliee' : ''}`}>
       {/* ═══ LE RAIL : permanent, jamais animé ═══ */}
       <aside className="sb-rail" aria-label="Rubriques">
-        <span className="sb-rail-logo">
-          <EnCheckBrandMark size={26} />
-        </span>
+        {/* ═══ LA BANDE D'ENTREPRISE — le dos du registre ═══
+            Son nom s'écrit à la verticale. Un clic fait SORTIR la liste du
+            cadre, et la navigation reste fermée. */}
+        {entreprises.length > 0 ? (
+          <SelecteurEntreprise
+            entreprises={entreprises}
+            active={entrepriseActive}
+            multi={entreprises.length > 1 || !entrepriseActive}
+            surChoix={surEntreprise}
+          />
+        ) : (
+          <span className="sb-rail-logo">
+            <EnCheckBrandMark size={26} />
+          </span>
+        )}
         <span className="sb-rail-sep" aria-hidden="true" />
 
         {rubriques.map((section) => {

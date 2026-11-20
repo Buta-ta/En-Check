@@ -848,6 +848,9 @@ export default function DashboardExperience({
             sections={navigationSections}
             nomAdmin={adminName}
             initialeAdmin={adminInitials}
+            entreprises={entreprises}
+            entrepriseActive={admin?.selectedEnterprise || null}
+            surEntreprise={(e) => handleEnterpriseSwitch && handleEnterpriseSwitch(e, null)}
             darkMode={darkMode}
             surTheme={toggleTheme}
             surDeconnexion={handleLogout}

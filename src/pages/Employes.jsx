@@ -1175,6 +1175,27 @@ export default function Employes() {
     return entreprises.find((e) => e.id === idCible) || entreprises[0] || null
   })()
 
+  // ═══════════════════════════════════════════════════════════
+  // CHANGER D'ENTREPRISE — le geste du sélecteur du rail
+  // Il ne déplie PAS la navigation (son choix du 24/11) : il change
+  // l'entreprise active et re-filtre la page. La préférence est retenue
+  // par administrateur, comme le faisait l'ancien sélecteur.
+  // ═══════════════════════════════════════════════════════════
+  const changerEntreprise = (entreprise) => {
+    const choix = entreprise && entreprise.id ? entreprise : null
+    setSelectedEnterpriseFilter(choix ? choix.id : 'all')
+    if (admin) {
+      const misAJour = { ...admin, entreprises, selectedEnterprise: choix }
+      setAdmin(misAJour)
+      try {
+        localStorage.setItem('admin', JSON.stringify(misAJour))
+        if (choix) localStorage.setItem(`last_enterprise_id_${admin.id}`, choix.id)
+      } catch {
+        /* le navigateur peut refuser le stockage : la page reste utilisable */
+      }
+    }
+  }
+
   const moduleActif = (champ) =>
     admin?.role === 'super_admin' || Boolean(entrepriseActive?.[champ])
 
@@ -1464,6 +1485,9 @@ export default function Employes() {
           darkMode={darkMode}
           surTheme={toggleTheme}
           surDeconnexion={deconnexion}
+          entreprises={entreprises}
+          entrepriseActive={entrepriseActive}
+          surEntreprise={changerEntreprise}
           vues={vueAutorisee ? [
             { id: 'equipes', label: 'Équipes', icon: Users },
             { id: 'taches', label: 'Tâches', icon: ListChecks },
