@@ -193,8 +193,12 @@ export default function SidebarUnique({
             />
           </label>
 
-          <nav className="sb-groupes" aria-label="Navigation principale">
-            {rubriques.map((section) => {
+          <nav
+            className="sb-groupes"
+            aria-label="Navigation principale"
+            style={{ '--sb-pile': Math.max(1, (rubriques || []).length - 1) }}
+          >
+            {rubriques.map((section, rang) => {
               const items = (section.items || []).filter(
                 (item) => item && item.show !== false && item.path && correspond(item.label),
               )
@@ -206,6 +210,7 @@ export default function SidebarUnique({
                   key={section.id}
                   className={`sb-feuillet${etendu ? ' est-etendu' : ''}`}
                   data-rubrique={section.id}
+                  style={{ '--etage': rang }}
                 >
                   <button
                     type="button"

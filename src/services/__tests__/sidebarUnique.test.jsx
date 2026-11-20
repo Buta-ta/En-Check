@@ -165,12 +165,16 @@ describe('le panneau est ivoire, pas espresso (sa capture du 24/11)', () => {
   })
 
   it('fait remplir la hauteur par la pile : plus de vide en bas', () => {
-    expect(UNIQUE).toMatch(/\.sb-feuillet:not\(\.est-etendu\) \{ flex: 1 1 0/)
+    expect(UNIQUE).toMatch(/\.sb-feuillet:not\(\.est-etendu\) \{[\s\S]{0,200}flex: 1 1 0/)
     expect(UNIQUE).toMatch(/\.sb-feuillet\.est-etendu \{ flex: 0 0 auto; \}/)
   })
 
-  it('empile des feuillets qui forment une marche sur le bord droit', () => {
+  it('empile des feuilles avec un escalier qui suit la profondeur', () => {
     expect(UNIQUE).toContain('.sb-feuillet')
-    expect(UNIQUE).toMatch(/\.sb-feuillet:not\(\.est-etendu\) \{ margin-right: 14px; \}/)
+    // l'escalier vient de --etage, jamais de l'ouverture
+    expect(UNIQUE).toMatch(/margin-right: calc\(\(var\(--etage, 0\) \/ var\(--sb-pile, 1\)\) \* 34px\)/)
+    // une ombre qui DÉPASSE à droite : c'est la tranche de la feuille
+    expect(UNIQUE).toMatch(/\.sb-feuillet \{[\s\S]{0,300}box-shadow: 4px 3px 0 var\(--charte-encre\)/)
+    expect(UNIQUE).toMatch(/\.sb-feuillet:not\(\.est-etendu\) \{[\s\S]{0,120}flex: 1 1 0/)
   })
 })
