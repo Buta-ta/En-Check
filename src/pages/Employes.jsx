@@ -2193,13 +2193,6 @@ export default function Employes() {
             <TachesVue enterpriseId={entrepriseDesVues} employes={employes} signalCreation={signalCreationTache} />
           )}
 
-          {/* la seconde pancarte ferme le chemin — elle doit être DANS le
-              parcours, sinon le chemin n'a rien à atteindre (sa capture du 23/11) */}
-          {vueActive === null && (
-            <footer className="empv3-pancarte">
-              <PancarteEnseigne taille={96} compact />
-            </footer>
-          )}
         </main>
         </div>
         </div>
