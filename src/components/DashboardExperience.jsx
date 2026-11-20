@@ -49,6 +49,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import EnterpriseSwitcher from './EnterpriseSwitcher'
 import SidebarNavigation from './SidebarNavigation'
+import RegistreRepli from './RegistreRepli'
 import SidebarRail, { ContenuMenuProfil } from './SidebarRail'
 import { chargerRail, sauvegarderRail } from '../lib/navigationPerso'
 import { nettoyerTexte } from '../lib/nettoyageTexte'
@@ -856,7 +857,8 @@ export default function DashboardExperience({
             surDeconnexion={handleLogout}
           />
 
-          <div className="nav-panel">
+          {/* le registre se ferme par PALIERS, pas en fondu (choix C du 24/11) */}
+          <RegistreRepli ferme={panneauReplie} largeur={254} className="nav-panel">
             <div className="nav-panel-inner">
               <header className="nav-panel-tete">
                 <div className="nav-panel-marque">
@@ -956,7 +958,7 @@ export default function DashboardExperience({
                 </div>
               </footer>
             </div>
-          </div>
+          </RegistreRepli>
         </aside>
 
         <div className="dashboard-workspace">

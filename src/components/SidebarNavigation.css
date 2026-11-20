@@ -666,3 +666,70 @@
   .sn-personnalisation-ligne,
   .sn-retablir { transition: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LE REGISTRE QUI SE FERME — son choix du 24/11
+   Le panneau se comprime par PALIERS nets, comme un soufflet.
+   Le contour reste tranchant à chaque étape (charte D-016).
+   ═══════════════════════════════════════════════════════════ */
+
+.registre {
+  position: relative;
+  flex: 0 0 auto;
+  width: var(--registre-largeur);
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--sidebar-line);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--sidebar);
+  box-shadow: var(--shadow-sm);
+  transition: width 60ms steps(2, end);
+}
+
+.registre.registre--anime {
+  /* l'animation est faite par paliers en JS : pas de transition douce ici,
+     c'est justement ce qu'on refuse */
+  transition: width 46ms linear;
+}
+
+/* refermé tout à fait : plus de bordure qui traîne, plus d'ombre */
+.registre.registre--ferme {
+  border-width: 0;
+  box-shadow: none;
+}
+
+/* le contenu garde sa largeur pleine : il est ROGNÉ, jamais comprimé */
+.registre-contenu {
+  height: 100%;
+  flex: 0 0 auto;
+}
+
+/* le pli : trois traits fins sur le bord droit, comme les feuillets
+   d'un registre qu'on referme */
+.registre-pli {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding-right: 4px;
+  pointer-events: none;
+}
+
+.registre-pli i {
+  display: block;
+  height: 1px;
+  align-self: stretch;
+  background: var(--charte-encre);
+  opacity: 0.18;
+}
+
+/* et si le système demande moins de mouvement : on ferme d'un coup */
+@media (prefers-reduced-motion: reduce) {
+  .registre,
+  .registre.registre--anime { transition: none; }
+}

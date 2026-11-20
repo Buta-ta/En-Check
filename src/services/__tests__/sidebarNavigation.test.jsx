@@ -10,6 +10,7 @@
 // @vitest-environment jsdom
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
@@ -286,4 +287,33 @@ describe('le point d’entrée unique « Personnalisation »', () => {
     await cliquer(bouton('Terminer'))
     expect(hote.querySelector('.sn-personnalisation-bouton')).toBeTruthy()
   })
+
+describe('le registre qui se ferme (choix C du 24/11)', () => {
+  const REGISTRE = readFileSync('src/components/RegistreRepli.jsx', 'utf8')
+  const EXPERIENCE = readFileSync('src/components/DashboardExperience.jsx', 'utf8')
+  const CSS_NAV = readFileSync('src/components/SidebarNavigation.css', 'utf8')
+  const CSS_DASH = readFileSync('src/pages/Dashboard.css', 'utf8')
+
+  it('descend par paliers nets, jamais en fondu', () => {
+    // quatre paliers, de 100 % à 0
+    expect(REGISTRE).toContain('const PALIERS = [100, 62, 30, 10, 0]')
+    // chaque palier est posé par un minuteur : des SAUTS, pas une interpolation
+    expect(REGISTRE).toContain('setTimeout')
+    expect(REGISTRE).toContain('const chemin = ferme')
+    // le contenu garde sa largeur pleine : il est rogné, jamais comprimé
+    expect(REGISTRE).toContain('registre-contenu')
+    expect(REGISTRE).toMatch(/width: `\$\{largeur\}px`/)
+  })
+
+  it('respecte « réduire les animations » : un seul coup, sans paliers', () => {
+    expect(REGISTRE).toContain('prefers-reduced-motion: reduce')
+    expect(CSS_NAV).toMatch(/prefers-reduced-motion: reduce[\s\S]{0,200}transition: none/)
+  })
+
+  it('a remplacé l’ancienne transition de largeur, qui la ferait saccader', () => {
+    // ⚠️ deux animations de largeur concurrentes = geste cassé
+    expect(CSS_DASH).not.toMatch(/\.nav-panel \{[\s\S]{0,300}transition: width 200ms/)
+    expect(EXPERIENCE).toContain('<RegistreRepli ferme={panneauReplie} largeur={254}')
+  })
+})
 })
