@@ -252,27 +252,19 @@
 .nav-rail-deconnexion { color: var(--sidebar-muted); }
 
 /* ── LE PANNEAU (contexte + rubriques) : la carte développée ── */
+/* ⚠️ le panneau est maintenant porté par <RegistreRepli> (choix C du 24/11).
+   L'ANCIENNE transition de largeur est retirée ici : si les deux coexistent,
+   elles se battent et le geste saccade. Le registre gère sa largeur, ses
+   bordures et son ombre. */
 .nav-panel {
   position: relative;
   z-index: 1;
-  width: 254px;
-  flex: 0 0 254px;
   margin-left: 10px;
-  overflow: hidden;
-  border: 1px solid var(--sidebar-line);
-  /* D-018 : le même rayon que le rail — les deux cartes se répondent. */
-  border-radius: var(--charte-rayon-tuile);
-  background: var(--sidebar);
-  box-shadow: var(--shadow-sm);
-  transition: width 200ms ease, flex-basis 200ms ease;
 }
 
+/* refermé : plus de marge, sinon il reste un fil de 10 px */
 .dashboard-sidebar.is-repliee .nav-panel {
-  width: 0;
-  flex-basis: 0;
   margin-left: 0;
-  border-width: 0;
-  box-shadow: none;
 }
 
 .nav-panel-inner {
