@@ -12,6 +12,8 @@
 // préférence du système.
 // ═══════════════════════════════════════════════════════════
 
+import useProximite from '../../hooks/useProximite'
+
 const CUIVRE = '#A26537'
 const ESPRESSO = '#2A1708'
 const TAN = '#E5D4C0'
@@ -68,6 +70,9 @@ function CahierDePointage() {
  * @param motif    'pied' (l'identité) ou 'cahier' (le pointage d'avant)
  */
 export default function PancarteEnseigne({ taille = 88, compact = false, motif = 'pied', className = '' }) {
+  // 🧲 à l'approche du curseur : la pancarte se soulève, son fil vibre,
+  // et elle s'incline légèrement vers la souris (niveau « spectaculaire »).
+  const { ref, actif, penche } = useProximite()
   const ratio = compact ? 1.12 : 1.45
   const hauteur = Math.round(taille * ratio)
   const poteau = Math.max(5, Math.round(taille * 0.075))
@@ -76,8 +81,14 @@ export default function PancarteEnseigne({ taille = 88, compact = false, motif =
 
   return (
     <div
-      className={`pancarte${compact ? ' pancarte--compacte' : ''}${cahier ? ' pancarte--cahier' : ''} ${className}`.trim()}
-      style={{ '--pancarte-taille': `${taille}px`, '--pancarte-hauteur': `${hauteur}px` }}
+      ref={ref}
+      className={`pancarte${compact ? ' pancarte--compacte' : ''}${cahier ? ' pancarte--cahier' : ''}${actif ? ' est-proche' : ''} ${className}`.trim()}
+      style={{
+        '--pancarte-taille': `${taille}px`,
+        '--pancarte-hauteur': `${hauteur}px`,
+        '--penche-x': `${penche.x}deg`,
+        '--penche-y': `${penche.y}deg`,
+      }}
     >
       <div className="pancarte-panneau">
         <svg className="pancarte-fil" viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true">

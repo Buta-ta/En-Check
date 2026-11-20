@@ -6,6 +6,8 @@
 // Dessinés en SVG, nets à toute taille, aucun fichier.
 // ═══════════════════════════════════════════════════════════
 
+import useProximite from '../../hooks/useProximite'
+
 const VERT = '#3F6B4C'
 
 function Touffe({ variante = 0 }) {
@@ -44,9 +46,13 @@ function Touffe({ variante = 0 }) {
 
 /** posée le long du chemin ; `decalage` = écart au centre de la page, en px */
 export default function DecorationChemin({ haut, decalage = 0, variante = 0, taille = 22 }) {
+  // 🧲 l'herbe se penche quand le curseur passe à côté
+  const { ref, actif } = useProximite()
+
   return (
     <span
-      className="empv3-herbe"
+      ref={ref}
+      className={`empv3-herbe${actif ? ' est-proche' : ''}`}
       style={{
         top: `${haut}%`,
         left: `calc(50% + ${decalage}px)`,

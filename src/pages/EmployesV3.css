@@ -3856,3 +3856,157 @@
   .empv2-filtres--ligne { order: 4; flex: 1 1 100%; }
   .empv3-liste-tete .empv3-recherche { flex: 1 1 100%; width: 100%; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LES OBJETS RÉAGISSENT — sa demande du 24/11, niveau « spectaculaire »
+   Le langage reste mécanique : on SOULÈVE et on POSE, on n'envole pas.
+   Contour 2 px et ombre nette obligent.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1 · la pancarte se soulève et s'incline vers le curseur ── */
+
+.pancarte {
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.pancarte.est-proche {
+  transform:
+    rotateX(var(--penche-y, 0deg))
+    rotateY(var(--penche-x, 0deg))
+    translateY(-4px);
+}
+
+/* l'ombre s'agrandit quand elle se soulève : 3 px → 7 px */
+.pancarte .pancarte-panneau {
+  transition: box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pancarte.est-proche .pancarte-panneau {
+  box-shadow: 7px 9px 0 var(--charte-encre);
+}
+
+/* ── 2 · le fil de cuivre vibre ── */
+
+.pancarte .pancarte-fil {
+  transform-origin: center top;
+}
+.pancarte .pancarte-fil path {
+  transition: transform 240ms ease-out;
+  transform-origin: center;
+}
+.pancarte.est-proche .pancarte-fil path {
+  animation: fil-vibre 620ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes fil-vibre {
+  0%   { transform: translateY(0) scaleY(1); }
+  22%  { transform: translateY(2.4px) scaleY(1.5); }
+  44%  { transform: translateY(-1.2px) scaleY(0.8); }
+  66%  { transform: translateY(0.8px) scaleY(1.15); }
+  100% { transform: translateY(0) scaleY(1); }
+}
+
+/* les clous tressaillent avec le fil */
+.pancarte.est-proche .pancarte-clou { animation: clou-tressaille 620ms ease-out; }
+@keyframes clou-tressaille {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.5); }
+}
+
+/* ── 3 · la borne s'incline, son écran s'allume, l'empreinte se balaie ── */
+
+.borne {
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.borne.est-proche {
+  transform: rotateY(var(--penche-x, 0deg)) rotateX(var(--penche-y, 0deg));
+}
+
+.borne .borne-ecran {
+  transition: background 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+/* l'écran s'allume : il passe de la surface au vert de la charte */
+.borne.est-proche .borne-ecran {
+  background: #3F6B4C; /* le vert de la charte, D-001 */
+  border-color: var(--charte-encre);
+  box-shadow: inset 0 0 0 2px #FFFDF7;
+}
+
+.borne .borne-ecran-mot {
+  transition: color 200ms ease;
+}
+.borne.est-proche .borne-ecran-mot { color: #FFFDF7; }
+
+/* l'empreinte se balaie de haut en bas, comme un vrai capteur */
+.borne .borne-empreinte {
+  transition: filter 200ms ease, transform 300ms ease;
+  filter: grayscale(1) opacity(0.7);
+}
+.borne.est-proche .borne-empreinte {
+  filter: none;
+  transform: scale(1.08);
+  animation: empreinte-balaie 900ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes empreinte-balaie {
+  0%   { clip-path: inset(0 0 100% 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+
+/* ── 4 · les herbes se penchent ── */
+
+.empv3-herbe {
+  transition: transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 320ms ease;
+  transform-origin: center bottom;
+}
+.empv3-herbe.est-proche {
+  transform: translateX(-50%) rotate(9deg) scale(1.12);
+  opacity: 1;
+}
+
+/* ── 5 · les traces s'allument une à une, vers la pancarte ── */
+
+.chemin-empreintes g > g {
+  transition: fill 220ms ease;
+}
+
+/* ⚠️ on n'anime PAS 60 traces en boucle : ce serait un sapin de Noël.
+   L'allumage se fait une fois, à l'arrivée sur la page, en décalé. */
+.chemin-empreintes g > g {
+  animation: trace-allume 500ms ease-out backwards;
+}
+@keyframes trace-allume {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── et si le système demande moins de mouvement, on se tait ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .pancarte,
+  .pancarte .pancarte-panneau,
+  .pancarte .pancarte-fil path,
+  .borne,
+  .borne .borne-ecran,
+  .borne .borne-empreinte,
+  .empv3-herbe,
+  .chemin-empreintes g > g {
+    transition: none !important;
+    animation: none !important;
+  }
+  .pancarte.est-proche,
+  .borne.est-proche,
+  .empv3-herbe.est-proche { transform: none !important; }
+}
+
+/* sur un écran tactile, le survol n'existe pas : rien ne bouge */
+@media (hover: none) {
+  .pancarte.est-proche,
+  .borne.est-proche,
+  .empv3-herbe.est-proche { transform: none; }
+}
