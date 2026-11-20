@@ -485,3 +485,207 @@
   /* et il s'efface quand il est fermé, pour ne pas bloquer les clics */
   .sb--repliee .sb-panneau { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LE SÉLECTEUR D'ENTREPRISE — la bande debout dans le rail
+   Sa maquette du 24/11 : le nom à la verticale, comme le dos d'un
+   registre ; on clique, la liste SORT DU CADRE, la navigation ne
+   s'ouvre pas.
+   ═══════════════════════════════════════════════════════════ */
+
+.se {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* la bande : une écriture debout, du haut vers le bas */
+.se-bande {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 40px;
+  max-height: 168px;
+  padding: 8px 4px;
+  border: 2px solid var(--charte-encre);
+  border-radius: 9px;
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  cursor: pointer;
+  overflow: hidden;
+  transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.se-bande:hover { background: var(--charte-surface2); }
+
+.se-bande-nom {
+  /* ⚠️ `vertical-rl` écrit du HAUT vers le BAS, comme la maquette.
+     Sans `rotate`, sinon les points sur les i partent de travers. */
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--charte-encre);
+  max-height: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.se-bande-chev { flex: 0 0 auto; color: var(--charte-douce); }
+.se.est-ouvert .se-bande-chev { transform: rotate(180deg); }
+.se.est-ouvert .se-bande {
+  background: var(--charte-surface2);
+  box-shadow: 2px 2px 0 var(--charte-encre);
+}
+
+/* le compteur d'entreprises, discret */
+.se-bande-compte {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  background: var(--charte-aplat);
+  color: #FFFDF7;
+  font-size: 9.5px;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+/* ═══ LA LISTE : elle sort du cadre ═══
+   ⚠️ Elle est positionnée en absolu À DROITE de la bande, et elle
+   déborde du rail : c'est tout le geste. Le rail ne doit PAS être en
+   overflow hidden, sinon la liste serait rognée. */
+.se-liste {
+  position: absolute;
+  top: -4px;
+  left: calc(50% + 26px);
+  z-index: 80;
+  width: 268px;
+  padding: 8px;
+  background: var(--charte-surface);
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  box-shadow: 5px 5px 0 var(--charte-encre);
+  animation: se-sortir 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* elle SORT du rail : un léger glissement depuis la gauche, pas un fondu */
+@keyframes se-sortir {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.se-liste-titre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 6px;
+  padding: 0 2px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+.se-fermer {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--charte-douce);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.se-fermer:hover { border-color: var(--charte-encre); color: var(--charte-encre); }
+
+/* une entreprise = une ligne nette */
+.se-ligne {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: background-color 130ms ease, border-color 130ms ease;
+}
+.se-ligne + .se-ligne { margin-top: 2px; }
+.se-ligne:hover { background: var(--charte-fond); border-color: var(--charte-bordure); }
+
+/* l'active : un cartouche, comme la navigation */
+.se-ligne.est-active {
+  background: var(--charte-surface);
+  border-color: var(--charte-encre);
+  box-shadow: 2px 2px 0 var(--charte-encre);
+  cursor: default;
+}
+
+.se-rond {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 999px;
+  border: 2px solid var(--charte-encre);
+  background: var(--charte-aplat);
+  color: #FFFDF7;
+  font-size: 12px;
+  font-weight: 800;
+}
+.se-rond--globe { background: var(--charte-surface2); color: var(--charte-encre); }
+
+.se-ligne-copy { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.se-ligne-copy strong {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--charte-encre);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.se-ligne-copy em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--charte-douce);
+}
+
+.se-coche { margin-left: auto; color: var(--charte-aplat); flex: 0 0 auto; }
+
+/* le retour à la vue consolidée, séparé par un filet */
+.se-ligne--toutes {
+  margin-top: 6px;
+  border-top: 1px solid var(--charte-bordure);
+  border-radius: 0 0 8px 8px;
+  padding-top: 9px;
+}
+
+/* sur mobile, la liste s'ouvre vers le bas depuis la barre */
+@media (max-width: 820px) {
+  .se { width: auto; }
+  .se-bande { flex-direction: row; max-height: none; width: auto; padding: 6px 8px; }
+  .se-bande-nom { writing-mode: horizontal-tb; max-height: none; font-size: 11px; }
+  .se-liste {
+    top: auto;
+    bottom: calc(100% + 8px);
+    left: 0;
+    width: min(280px, calc(100vw - 32px));
+  }
+}
