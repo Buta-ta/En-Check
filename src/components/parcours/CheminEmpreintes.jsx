@@ -81,13 +81,15 @@ export default function CheminEmpreintes({ className = '', opacite = 0.52 }) {
   // 64 traces réparties sur 1000 : un tour de sinus complet, donc raccord
   // parfait entre le haut et le bas, sans tuile à recoller.
   const traces = []
-  const N = 64
+  // il commence à 66/1000 de la hauteur : au-dessus, c'est l'en-tête et la
+  // barre d'outils — le chemin n'a rien à y faire (espace gagné)
+  const N = 60
   for (let i = 0; i < N; i += 1) {
     const t = i / (N - 1)
     const phase = t * Math.PI * 4
     traces.push({
       x: 50 + Math.sin(phase) * 26,
-      y: 8 + t * 984,
+      y: 66 + t * 926,
       angle: Math.cos(phase) > 0 ? 8 : -8,
       gauche: i % 2 === 0,
     })

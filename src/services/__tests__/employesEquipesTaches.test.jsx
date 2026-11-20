@@ -1299,6 +1299,25 @@ describe('la page Employés', () => {
     expect(rech).toBeLessThan(ferm)
   })
 
+  it('la barre de liste tient sur une rangée : filtres et légende dedans', () => {
+    // sa demande du 23/11 au soir : « C EST CE QUI FAIT QUE JE DOIS SCROLLER
+    // AU MOINS 3 FOIS. EN TOUT OPTIMISE DE L ESPACE »
+    const ouv = EMPLOYES.indexOf('<div className="empv3-liste-tete">')
+    const filtres = EMPLOYES.indexOf('empv2-filtres--ligne')
+    const rech = EMPLOYES.indexOf('<label className="empv3-recherche">', ouv)
+    const ferm = EMPLOYES.indexOf('</div>', EMPLOYES.indexOf('</label>', rech))
+    // les filtres sont DANS la ligne, avant la recherche
+    expect(filtres).toBeGreaterThan(ouv)
+    expect(filtres).toBeLessThan(rech)
+    expect(rech).toBeLessThan(ferm)
+
+    const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
+    // en grand écran, les cartes passent à quatre par rangée : deux fois moins haut
+    expect(CSS_EMP).toMatch(/min-width: 1280px[\s\S]{0,160}grid-template-columns: repeat\(4/)
+    // et les contacts d'une carte sont plus compacts
+    expect(CSS_EMP).toMatch(/\.empv3-d-action \{ height: 28px/)
+  })
+
   it('le chemin a bien une arrivée : la seconde pancarte est DANS le parcours', () => {
     // ⚠️ deux tours de suite, la pancarte de pied avait quitté le parcours :
     // le chemin descendait donc vers rien (sa capture du 23/11).

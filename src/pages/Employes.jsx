@@ -2045,6 +2045,30 @@ export default function Employes() {
                   <BornePointage taille={132} />
                 </span>
 
+                <div className="empv2-filtres empv2-filtres--ligne" role="group" aria-label="Filtrer la liste">
+                {FILTRES_ANNUAIRE.map((filtre) => (
+                    <button
+                      key={filtre.key}
+                      type="button"
+                      className={`empv2-filtre ${filtre.classe || ''}`}
+                      aria-pressed={categoryFilter === filtre.key}
+                      onClick={() => setCategoryFilter(filtre.key)}
+                    >
+                      {filtre.classe && <i className="ch-badge-point" aria-hidden="true" />}
+                      {filtre.label}
+                    </button>
+                  ))}
+                {(searchTerm || categoryFilter !== 'all') && (
+                    <button
+                      type="button"
+                      className="empv2-filtre"
+                      onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
+                    >
+                      Tout montrer
+                    </button>
+                  )}
+              </div>
+
                 <label className="empv3-recherche">
                   <Search size={15} aria-hidden="true" />
                   <input
@@ -2065,30 +2089,6 @@ export default function Employes() {
                     </button>
                   )}
                 </label>
-              </div>
-
-              <div className="empv2-filtres" role="group" aria-label="Filtrer la liste">
-                {FILTRES_ANNUAIRE.map((filtre) => (
-                  <button
-                    key={filtre.key}
-                    type="button"
-                    className={`empv2-filtre ${filtre.classe || ''}`}
-                    aria-pressed={categoryFilter === filtre.key}
-                    onClick={() => setCategoryFilter(filtre.key)}
-                  >
-                    {filtre.classe && <i className="ch-badge-point" aria-hidden="true" />}
-                    {filtre.label}
-                  </button>
-                ))}
-                {(searchTerm || categoryFilter !== 'all') && (
-                  <button
-                    type="button"
-                    className="empv2-filtre"
-                    onClick={() => { setSearchTerm(''); setCategoryFilter('all') }}
-                  >
-                    Tout montrer
-                  </button>
-                )}
               </div>
 
               {enrollmentCounts.toMigrate > 0 && (

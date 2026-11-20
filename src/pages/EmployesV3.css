@@ -3793,3 +3793,66 @@
 @media (max-width: 720px) {
   .borne-mot { font-size: 8px; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ON OPTIMISE L'ESPACE — sa demande du 23/11 au soir :
+   « c'est ce qui fait que je dois scroller au moins 3 fois »
+   Une seule rangée d'outils : titre · borne · filtres · recherche.
+   ═══════════════════════════════════════════════════════════ */
+
+.empv3-liste-tete {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+/* les filtres vivent DANS la ligne, ils ne prennent plus une bande à eux */
+.empv2-filtres--ligne {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.empv2-filtres--ligne::-webkit-scrollbar { display: none; }
+.empv2-filtres--ligne .empv2-filtre { flex: none; height: 30px; padding: 0 10px; font-size: 11.5px; }
+
+/* la recherche se réduit pour tenir sur la même rangée */
+.empv3-liste-tete .empv3-recherche {
+  flex: 0 1 300px;
+  width: auto;
+  min-width: 190px;
+  height: 38px;
+  min-height: 38px;
+  margin-left: 0;
+}
+
+/* la borne, compacte : elle ne fait plus la hauteur d'une colonne */
+.empv3-liste-tete .empv3-borne--entete { transform: scale(0.86); transform-origin: center bottom; }
+
+/* la bande de motif du planning ne prend plus 40 px à elle seule */
+@media (min-width: 901px) {
+  .empv3-liste-tete ~ .empv2-filtres { margin-top: 0; }
+}
+
+/* les rangées passent à QUATRE cartes : deux fois moins de hauteur */
+@media (min-width: 1280px) {
+  .empv3-fiches { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* les contacts d'une carte tiennent sur une rangée quand la place le permet */
+.empv3-d-contacts {
+  gap: 6px;
+  padding-top: 8px;
+}
+.empv3-d-action { height: 28px; padding: 0 9px; font-size: 11px; }
+
+@media (max-width: 900px) {
+  .empv3-liste-tete { flex-wrap: wrap; }
+  .empv2-filtres--ligne { order: 4; flex: 1 1 100%; }
+  .empv3-liste-tete .empv3-recherche { flex: 1 1 100%; width: 100%; }
+}
