@@ -246,6 +246,10 @@ export default function Employes() {
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [selectedEnterpriseFilter, setSelectedEnterpriseFilter] = useState('all')
+  // ⚠️ Changer d'entreprise doit RECHARGER la page. `loadData` n'était
+  // appelé qu'une fois, au montage : l'écran gardait donc les données de
+  // l'entreprise précédente. Ce compteur déclenche le rechargement.
+  const [rechargement, setRechargement] = useState(0)
   const { darkMode, toggleTheme } = useTheme()
 
 
@@ -572,6 +576,24 @@ export default function Employes() {
     } catch (error) { console.error('Erreur chargement:', error) }
     setLoading(false)
   }
+
+  // ⚠️ Le rechargement, à chaque changement d'entreprise.
+  // On relit `admin` depuis le stockage : c'est LUI que `changerEntreprise`
+  // a mis à jour, et c'est lui que `loadData` attend.
+  useEffect(() => {
+    if (rechargement === 0) return
+    try {
+      const brut = localStorage.getItem('admin')
+      if (!brut) return
+      const frais = JSON.parse(brut)
+      setAdmin(frais)
+      loadData(frais)
+    } catch {
+      /* stockage refusé : on garde l'écran tel quel plutôt que de le vider */
+    }
+    // loadData est recréé à chaque rendu : le lister relancerait en boucle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rechargement])
 
   const loadTodayLiveEmployeeStatus = async (employesList, targetEnterpriseId) => {
     try {
@@ -1194,6 +1216,9 @@ export default function Employes() {
   const changerEntreprise = (entreprise) => {
     const choix = entreprise && entreprise.id ? entreprise : null
     setSelectedEnterpriseFilter(choix ? choix.id : 'all')
+    // le filtre change tout de suite l'affichage ; le compteur va chercher
+    // les données de la nouvelle entreprise
+    setRechargement((n) => n + 1)
     if (admin) {
       const misAJour = { ...admin, entreprises, selectedEnterprise: choix }
       setAdmin(misAJour)

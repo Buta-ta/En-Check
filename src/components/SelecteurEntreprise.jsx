@@ -24,22 +24,23 @@ const initiale = (nom) => (nom || '?').trim().charAt(0).toUpperCase()
  * ⚠️ Si l'image ne charge pas (lien mort), on retombe sur l'initiale :
  * une pastille vide serait pire qu'une lettre.
  */
-function PastilleEntreprise({ entreprise }) {
+/** Le contenu seul : la photo, ou la lettre. On l'utilise dans le rond de
+ * la liste ET dans celui de la bande, pour qu'ils se comportent pareil. */
+function PastilleInterne({ entreprise }) {
   const [cassee, setCassee] = useState(false)
   const photo = entreprise?.logo_url
   if (photo && !cassee) {
-    return (
-      <span className="se-rond se-rond--photo">
-        <img
-          src={photo}
-          alt=""
-          loading="lazy"
-          onError={() => setCassee(true)}
-        />
-      </span>
-    )
+    return <img src={photo} alt="" loading="lazy" onError={() => setCassee(true)} />
   }
-  return <span className="se-rond">{initiale(entreprise?.name)}</span>
+  return <>{initiale(entreprise?.name)}</>
+}
+
+function PastilleEntreprise({ entreprise }) {
+  return (
+    <span className="se-rond se-rond--photo">
+      <PastilleInterne entreprise={entreprise} />
+    </span>
+  )
 }
 
 export default function SelecteurEntreprise({
@@ -98,9 +99,7 @@ export default function SelecteurEntreprise({
       >
         {active && (
           <span className="se-rond se-rond--bande">
-            {active.logo_url
-              ? <img src={active.logo_url} alt="" loading="lazy" />
-              : initiale(active.name)}
+            <PastilleInterne entreprise={active} />
           </span>
         )}
         <span className="se-bande-nom">{nomAffiche}</span>
