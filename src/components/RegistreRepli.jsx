@@ -69,7 +69,7 @@ export default function RegistreRepli({ ferme, largeur = 254, children, classNam
 
   return (
     <div
-      className={`registre${animating ? ' registre--anime' : ''}${ferme ? ' registre--ferme' : ''} ${className}`.trim()}
+      className={`sn-registre${animating ? ' sn-registre--anime' : ''}${ferme ? ' sn-registre--ferme' : ''} ${className}`.trim()}
       style={{
         '--registre-largeur': `${largeurCourante}px`,
         '--registre-palier': etape,
@@ -78,12 +78,12 @@ export default function RegistreRepli({ ferme, largeur = 254, children, classNam
     >
       {/* le contenu garde TOUJOURS sa largeur pleine : il est rogné, jamais
           comprimé. C'est ce qui garde les libellés nets. */}
-      <div className="registre-contenu" style={{ width: `${largeur}px` }}>
+      <div className="sn-registre-contenu" style={{ width: `${largeur}px` }}>
         {children}
       </div>
 
       {pliVisible && (
-        <span className="registre-pli" aria-hidden="true">
+        <span className="sn-registre-pli" aria-hidden="true">
           {[0, 1, 2].map((i) => <i key={i} />)}
         </span>
       )}

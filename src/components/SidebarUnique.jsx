@@ -200,21 +200,24 @@ export default function SidebarUnique({
               )
               if (!items.length) return null
               const replieGroupe = Boolean(groupesReplies[section.id])
-              const titreVisible = correspond(section.label)
-              if (!titreVisible && !items.length) return null
+              const etendu = !replieGroupe
               return (
-                <section key={section.id} className="sb-groupe" data-rubrique={section.id}>
+                <section
+                  key={section.id}
+                  className={`sb-feuillet${etendu ? ' est-etendu' : ''}`}
+                  data-rubrique={section.id}
+                >
                   <button
                     type="button"
-                    className={`sb-groupe-titre${replieGroupe ? ' est-replie' : ''}`}
-                    aria-expanded={!replieGroupe}
+                    className="sb-feuillet-titre"
+                    aria-expanded={etendu}
                     onClick={() => setGroupesReplies((e) => ({ ...e, [section.id]: !e[section.id] }))}
                   >
                     <span>{section.label}</span>
                     <ChevronDown size={13} aria-hidden="true" />
                   </button>
-                  {replieGroupe ? null : (
-                    <ul className="sb-liste">
+                  {etendu && (
+                    <ul className="sb-feuillet-liste">
                       {items.map((item) => {
                         const Icone = item.icon
                         const actif = item.path === pathname
