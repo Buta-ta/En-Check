@@ -59,7 +59,11 @@ export default function SidebarUnique({
     setGroupesReplies((etat) => ({ ...etat, [sectionId]: false }))
     window.setTimeout(() => {
       const cible = document.querySelector(`.sb-groupe[data-rubrique="${sectionId}"]`)
-      if (cible) cible.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      // ⚠️ scrollIntoView n'existe pas partout (jsdom, vieux navigateurs) :
+      // sans ce garde-fou, un test ou un appareil ancien plante ici.
+      if (cible && typeof cible.scrollIntoView === 'function') {
+        cible.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
     }, 230)
   }
 
