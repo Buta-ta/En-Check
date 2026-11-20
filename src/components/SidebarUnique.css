@@ -11,8 +11,64 @@
   min-height: 0;
 }
 
-/* le registre doit occuper la hauteur, pas seulement le rail */
-.sb > .registre { align-self: stretch; }
+/* ═══════════════════════════════════════════════════════════
+   LE REGISTRE — les règles vivent ICI et nulle part ailleurs.
+   ⚠️ Elles vivaient dans SidebarNavigation.css, où `.registre` prenait
+   `background: var(--sidebar)` (= espresso) et gagnait par l'ordre des
+   imports : le panneau sortait sombre alors qu'il devait être ivoire.
+   Le nom est maintenant préfixé pour ne rien attraper d'autre.
+   ═══════════════════════════════════════════════════════════ */
+
+.sn-registre {
+  position: relative;
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: var(--registre-largeur);
+  height: 100%;
+  overflow: hidden;
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  background: var(--charte-surface);
+  box-shadow: 3px 3px 0 var(--charte-encre);
+  transition: width 60ms steps(2, end);
+}
+
+.sn-registre.sn-registre--anime { transition: width 46ms linear; }
+
+.sn-registre.sn-registre--ferme {
+  border-width: 0;
+  box-shadow: none;
+}
+
+/* le contenu garde sa largeur pleine : rogné, jamais comprimé */
+.sn-registre-contenu { height: 100%; flex: 0 0 auto; }
+
+/* le pli : les feuillets du registre, sur le bord droit */
+.sn-registre-pli {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding-right: 4px;
+  pointer-events: none;
+}
+.sn-registre-pli i {
+  display: block;
+  height: 1px;
+  align-self: stretch;
+  background: var(--charte-encre);
+  opacity: 0.18;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sn-registre,
+  .sn-registre.sn-registre--anime { transition: none; }
+}
 
 /* ── LE RAIL : ne bouge jamais ── */
 .sb-rail {
@@ -157,50 +213,99 @@
   outline: none;
 }
 
-/* les groupes */
+/* ═══════════════════════════════════════════════════════════
+   LES FEUILLETS DU REGISTRE — la maquette qu'il a choisie
+   Chaque groupe est une BANDE ivoire à contour 2 px, empilée sur la
+   précédente ; un groupe ouvert se décale de 8 px vers la droite. La
+   pile forme ainsi une MARCHE sur le bord droit, comme un registre
+   dont on a tourné des pages.
+   ⚠️ Plus de filet vertical qui pend sous les titres : c'est lui qui
+   creusait les grands vides de sa capture.
+   ═══════════════════════════════════════════════════════════ */
+
 .sb-groupes {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   flex: 1 1 auto;
   overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
+  padding-right: 2px;
   scrollbar-width: thin;
 }
 
-.sb-groupe-titre {
+/* ⚠️ Les groupes ne doivent PAS flotter en haut en laissant un vide de
+   400 px sous eux : la pile de feuillets occupe la hauteur disponible.
+   Un groupe ouvert prend la place dont il a besoin ; les groupes fermés
+   se partagent le reste à égalité. */
+.sb-feuillet.est-etendu { flex: 0 0 auto; }
+.sb-feuillet:not(.est-etendu) { flex: 1 1 0; min-height: 34px; }
+
+/* le titre d'un feuillet fermé est centré verticalement dans sa bande */
+.sb-feuillet:not(.est-etendu) .sb-feuillet-titre {
+  flex: 1 1 auto;
+  align-items: center;
+}
+
+.sb-feuillet {
+  display: flex;
+  flex-direction: column;
+  background: var(--charte-surface);
+  border: 2px solid var(--charte-encre);
+  border-bottom-width: 0;
+  border-radius: 0;
+  transition: margin-right 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  /* le feuillet est découpé par le bas : la bande suivante le recouvre */
+  margin-top: -2px;
+}
+
+/* le premier garde son coin haut arrondi, le dernier son coin bas */
+.sb-feuillet:first-child { border-radius: var(--charte-rayon-tuile) var(--charte-rayon-tuile) 0 0; }
+.sb-feuillet:last-child {
+  border-bottom-width: 2px;
+  border-radius: 0 0 var(--charte-rayon-tuile) var(--charte-rayon-tuile);
+  margin-bottom: 2px;
+}
+
+/* ouvert : il s'avance, et c'est ça qui dessine la marche */
+.sb-feuillet.est-etendu { margin-right: 0; }
+.sb-feuillet:not(.est-etendu) { margin-right: 14px; }
+
+.sb-feuillet-titre {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 2px 2px;
+  padding: 9px 10px;
   border: 0;
   background: transparent;
+  font: inherit;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--charte-douce);
   cursor: pointer;
+  text-align: left;
 }
-.sb-groupe-titre svg { transition: transform 160ms ease; }
-.sb-groupe-titre.est-replie svg { transform: rotate(-90deg); }
+.sb-feuillet-titre svg { transition: transform 180ms ease; flex: 0 0 auto; }
+.sb-feuillet:not(.est-etendu) .sb-feuillet-titre svg { transform: rotate(-90deg); }
 
-.sb-liste {
+.sb-feuillet-liste {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 4px 0 0;
-  padding: 0 0 0 8px;
+  margin: 0;
+  padding: 0 8px 8px;
   list-style: none;
-  border-left: 1px solid var(--charte-bordure);
 }
 
 .sb-lien {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 7px 8px;
   border: 2px solid transparent;
   border-radius: 8px;
   font-size: 12.5px;
@@ -209,7 +314,7 @@
   text-decoration: none;
   transition: background-color 140ms ease, border-color 140ms ease;
 }
-.sb-lien:hover { background: var(--charte-surface2); }
+.sb-lien:hover { background: var(--charte-fond); }
 
 /* l'actif : un cartouche contouré, pas un aplat — la page Employés fait foi */
 .sb-lien.is-actif {

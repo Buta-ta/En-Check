@@ -9,6 +9,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter } from 'react-router-dom'
@@ -117,7 +118,7 @@ describe('la sidebar se déroule quand on clique (le reproche du 24/11)', () => 
 
   it('replie un groupe, puis le déplie', async () => {
     await monter()
-    const titre = parTexte('.sb-groupe-titre', 'Équipe')
+    const titre = parTexte('.sb-feuillet-titre', 'Équipe')
     expect(parTexte('.sb-lien', 'Planning')).toBeTruthy()
     await act(async () => titre.click())
     expect(parTexte('.sb-lien', 'Planning')).toBeFalsy()
@@ -130,5 +131,46 @@ describe('la sidebar se déroule quand on clique (le reproche du 24/11)', () => 
     const actifs = document.querySelectorAll('.sb-lien.is-actif')
     expect(actifs.length).toBe(1)
     expect(actifs[0].textContent).toContain('Employés')
+  })
+})
+
+describe('le panneau est ivoire, pas espresso (sa capture du 24/11)', () => {
+  const UNIQUE = readFileSync('src/components/SidebarUnique.css', 'utf8')
+  const ANCIEN = readFileSync('src/components/SidebarNavigation.css', 'utf8')
+  const REGISTRE = readFileSync('src/components/RegistreRepli.jsx', 'utf8')
+
+  it('ne laisse AUCUNE règle .registre dans l’ancien fichier', () => {
+    // ⚠️ .registre { background: var(--sidebar) } = espresso, et il gagnait
+    // par l'ordre des imports : le panneau sortait sombre.
+    expect(ANCIEN).not.toMatch(/\.registre\s*\{/)
+    expect(ANCIEN).not.toMatch(/registre--anime/)
+  })
+
+  it('nomme le registre d’un préfixe qui ne peut rien attraper d’autre', () => {
+    expect(REGISTRE).toContain('sn-registre')
+    expect(REGISTRE).not.toMatch(/className=\{`registre/)
+  })
+
+  it('donne au panneau la surface ivoire de la charte, contour 2 px', () => {
+    expect(UNIQUE).toMatch(/\.sn-registre \{[\s\S]{0,400}background: var\(--charte-surface\)/)
+    expect(UNIQUE).toMatch(/\.sn-registre \{[\s\S]{0,400}border: 2px solid var\(--charte-encre\)/)
+    // et surtout JAMAIS --sidebar, qui vaut l'espresso
+    expect(UNIQUE).not.toMatch(/\.sn-registre \{[\s\S]{0,400}var\(--sidebar\)/)
+  })
+
+  it('n’a plus de filet vertical qui pend sous les groupes', () => {
+    // c'est lui qui creusait les grands vides sur sa capture
+    expect(UNIQUE).not.toMatch(/\.sb-liste \{[\s\S]{0,300}border-left/)
+    expect(UNIQUE).not.toMatch(/\.sb-feuillet-liste \{[\s\S]{0,300}border-left/)
+  })
+
+  it('fait remplir la hauteur par la pile : plus de vide en bas', () => {
+    expect(UNIQUE).toMatch(/\.sb-feuillet:not\(\.est-etendu\) \{ flex: 1 1 0/)
+    expect(UNIQUE).toMatch(/\.sb-feuillet\.est-etendu \{ flex: 0 0 auto; \}/)
+  })
+
+  it('empile des feuillets qui forment une marche sur le bord droit', () => {
+    expect(UNIQUE).toContain('.sb-feuillet')
+    expect(UNIQUE).toMatch(/\.sb-feuillet:not\(\.est-etendu\) \{ margin-right: 14px; \}/)
   })
 })
