@@ -2289,23 +2289,29 @@
 .empv3-liste-tete {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
   margin-bottom: 12px;
 }
 
-/* la borne prend sa place entre le titre et la recherche : elle ne crée
-   aucun vide et ne tronque rien (son reproche du 23/11) */
+/* ⚠️ LA RÈGLE QUI FAISAIT LE VIDE (sa capture du 23/11 au soir) :
+   `.empv3-recherche { flex: 1 1 300px }` — dans un conteneur qui passe à
+   la ligne suivante, une base flexible de 300 px s'ÉTIRE, et `align-items:
+   stretch` par défaut l'étire aussi EN HAUTEUR. Elle devenait une bulle.
+   Ici : aucune base flexible, une hauteur fixe, et un alignement explicite. */
 .empv3-liste-tete .empv3-recherche {
-  margin-left: auto;
-  /* ⚠️ sans ces deux lignes, `flex: 1 1 300px` la fait s'étirer en HAUTEUR
-     dans une ligne qui passe à la ligne suivante : elle devenait la grosse
-     bulle de sa capture du 23/11. */
-  flex: 0 1 380px;
-  align-self: center;
+  flex: 0 0 auto;
+  width: 340px;
+  max-width: 100%;
   height: 42px;
   min-height: 42px;
+  margin-left: auto;
+  align-self: center;
+}
+
+/* la borne occupe seulement sa largeur, jamais l'espace libre */
+.empv3-liste-tete .empv3-borne--entete {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .empv3-bloc-titre {
@@ -2327,7 +2333,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  flex: 1 1 300px;
+  flex: 0 0 auto;
   max-width: 420px;
   height: 42px;
   padding: 0 12px;
@@ -3566,10 +3572,16 @@
   margin: 0 4px;
 }
 
-.empv3-liste-tete .empv3-bloc-titre { align-self: center; }
+.empv3-liste-tete .empv3-bloc-titre { flex: 0 0 auto; align-self: center; }
 
-@media (max-width: 860px) {
-  .empv3-borne--entete { margin: 0 auto; }
+@media (max-width: 900px) {
+  .empv3-liste-tete { flex-wrap: wrap; }
+  .empv3-liste-tete .empv3-recherche {
+    width: 100%;
+    margin-left: 0;
+    order: 3;
+  }
+  .empv3-liste-tete .empv3-borne--entete { order: 2; margin-left: auto; }
 }
 
 .borne {
@@ -3702,7 +3714,7 @@
   flex-direction: column;
   align-items: center;
   width: 78%;
-  height: calc(var(--borne-taille) * 1.3);
+  height: calc(var(--borne-taille) * 1.02);
   padding: 8px 8px 0;
   border: 3px solid var(--charte-encre);
   border-bottom: 0;
@@ -3718,8 +3730,9 @@
   justify-content: flex-start;
   gap: 6px;
   width: 100%;
-  min-height: 58%;
-  padding: 9px 6px 8px;
+  min-height: 0;
+  flex: 0 0 auto;
+  padding: 8px 6px 7px;
   border: 2px solid var(--charte-encre);
   border-radius: 5px;
   background: var(--charte-surface);
@@ -3743,9 +3756,9 @@
 
 .borne-empreinte {
   display: block;
-  width: 62%;
+  width: 46%;
   height: auto;
-  max-height: 46px;
+  max-height: 38px;
   margin-top: auto;
   object-fit: contain;
 }

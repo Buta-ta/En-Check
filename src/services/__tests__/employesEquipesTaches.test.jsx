@@ -1280,7 +1280,23 @@ describe('la page Employés', () => {
     const CSS_EMP = readFileSync('src/pages/EmployesV3.css', 'utf8')
     expect(CSS_EMP).toMatch(/\.borne-ecran-mot span \{ white-space: nowrap; \}/)
     // la recherche ne s'étire plus en hauteur (la grosse bulle du 23/11)
-    expect(CSS_EMP).toMatch(/\.empv3-liste-tete \.empv3-recherche \{[\s\S]{0,300}min-height: 42px/)
+    expect(CSS_EMP).toMatch(/\.empv3-liste-tete \.empv3-recherche \{[\s\S]{0,320}min-height: 42px/)
+    // ⚠️ la vraie cause du vide : une base flexible de 300 px qui s'étire.
+    const CSS_NU = CSS_EMP.replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(CSS_NU).not.toMatch(/\.empv3-recherche \{[\s\S]{0,200}flex: 1 1 300px/)
+  })
+
+  it('la borne est DANS la ligne de liste, et pas à côté', () => {
+    // ⚠️ elle avait été insérée après le </div> : elle devenait une sœur de
+    // la ligne, d'où trois blocs empilés et un grand vide (capture du 23/11).
+    const ouv = EMPLOYES.indexOf('<div className="empv3-liste-tete">')
+    const borne = EMPLOYES.indexOf('empv3-borne--entete')
+    const rech = EMPLOYES.indexOf('<label className="empv3-recherche">', ouv)
+    const ferm = EMPLOYES.indexOf('</div>', EMPLOYES.indexOf('</label>', rech))
+    expect(ouv).toBeGreaterThan(-1)
+    expect(borne).toBeGreaterThan(ouv)
+    expect(borne).toBeLessThan(rech)
+    expect(rech).toBeLessThan(ferm)
   })
 
   it('le chemin a bien une arrivée : la seconde pancarte est DANS le parcours', () => {
