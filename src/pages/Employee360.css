@@ -190,10 +190,15 @@
      C'est cette ombre plate qui fait la note collée ; elle ne coûte aucun
      recalcul, contrairement au `0 10px 30px` (flou 30 px) qu'elle remplace.
      Ma version du 23/11 avait un liseré pâle de 1 px et aucune ombre : d'où
-     les cartes « mal faites » signalées sur capture. */
+     les cartes « mal faites » signalées sur capture.
+     `main` après la fusion de #275 : les trois premières déclarations y
+     étaient, la quatrième (l'ombre) manquait. Le commentaire la promettait,
+     le code ne la posait pas. Reposée ici — le commit local qui la portait
+     (610ae47) n'a pas survécu au changement de branche. */
   background: var(--charte-surface);
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: var(--charte-rayon-tuile);
+  box-shadow: var(--charte-ombre-dure);
   padding: 14px;
   min-width: 0;
 }
