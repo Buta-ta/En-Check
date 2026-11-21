@@ -1594,10 +1594,25 @@ describe('la page Employés', () => {
     await act(async () => hote.querySelector('.sb-rail-sous[aria-current="page"]').click())
     expect(hote.querySelectorAll('.sb-rail-sous[aria-current="page"]')).toHaveLength(0)
     expect(hote.querySelector('.empv2-annuaire')).not.toBeNull()
+    // l'en-tête de page est revenu avec la liste : il n'a pas bougé d'un octet
+    expect(hote.querySelector('.empv3-entete')).not.toBeNull()
 
     await act(async () => vue('Tâches').click())
     expect(vue('Tâches').getAttribute('aria-current')).toBe('page')
     expect(hote.textContent).toContain('Nouvelle tâche')
+
+    // depuis le 21/11 : sur l'onglet Tâches, l'en-tête de page ne se monte PAS.
+    // Un seul en-tête cerclé par écran — c'est la tête de l'onglet qui occupe le
+    // haut de la page, et le bouton « Nouvelle tâche » du bandeau doublait déjà
+    // celui de la barre d'outils.
+    expect(hote.querySelector('.empv3-entete')).toBeNull()
+    expect(hote.querySelector('.empv3-entete-pancarte')).toBeNull()
+    // la tête de l'onglet porte le titre, au premier niveau : le h1 partait avec
+    // l'en-tête d'annuaire, l'écran ne doit pas rester sans titre
+    const tete = hote.querySelector('.tqv2-tete')
+    expect(tete.querySelector('h1.tqv2-titre').textContent).toBe('Tâches')
+    // les quatre chiffres vivent dans cette tête, pas sous elle
+    expect(tete.querySelector('.tqv2-kpis')).not.toBeNull()
   })
 
   it('pose les onglets en pastilles, sans titre ni trait de points', () => {
