@@ -241,7 +241,11 @@ export default function Employes() {
   const [signalCreationEquipe, setSignalCreationEquipe] = useState(0)
   const [signalCreationTache, setSignalCreationTache] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [minLoadingDone, setMinLoadingDone] = useState(true)
+  const [minLoadingDone, setMinLoadingDone] = useState(
+    () => typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent || ''),
+  )
+  const [etapeChargement, setEtapeChargement] = useState(1)
+  const [progressionChargement, setProgressionChargement] = useState(22)
   const [liveStatusByEmployee, setLiveStatusByEmployee] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -492,6 +496,8 @@ export default function Employes() {
 
   const loadData = async (adminData) => {
     try {
+      setEtapeChargement(1)
+      setProgressionChargement(25)
       const isSuperAdmin = adminData.role === 'super_admin'
       const selectedEnterprise = adminData.selectedEnterprise
       let targetEnterpriseId = isSuperAdmin
@@ -508,6 +514,8 @@ export default function Employes() {
 
       const { data: employesData, error: empError } = await employesQuery
       if (empError) console.error('Erreur employés:', empError)
+      setEtapeChargement(2)
+      setProgressionChargement(55)
 
       let employesAvecHoraires = employesData || []
 
@@ -527,6 +535,8 @@ export default function Employes() {
       }
 
       setEmployes(employesAvecHoraires)
+      setEtapeChargement(3)
+      setProgressionChargement(80)
 
       let modulePlanningActif = false
       let moduleQRCodeActif = false
@@ -559,6 +569,8 @@ export default function Employes() {
 
       setModulePlanning(modulePlanningActif)
       setModuleQRCode(moduleQRCodeActif)
+      setEtapeChargement(4)
+      setProgressionChargement(95)
 
       if (isSuperAdmin || modulePlanningActif) {
         const enterpriseIdsDesEmployes = [...new Set((employesAvecHoraires || []).map(e => e.enterprise_id).filter(Boolean))]
@@ -574,6 +586,7 @@ export default function Employes() {
         setPlannings(planningsData)
       }
     } catch (error) { console.error('Erreur chargement:', error) }
+    setProgressionChargement(100)
     setLoading(false)
   }
 
@@ -1165,7 +1178,17 @@ export default function Employes() {
 
 
   if (loading || !minLoadingDone) {
-    return <EmployesLoadingScreen darkMode={darkMode} onSkip={() => setMinLoadingDone(true)} />
+    return (
+      <EmployesLoadingScreen
+        darkMode={darkMode}
+        dataReady={!loading}
+        etape={etapeChargement}
+        progression={progressionChargement}
+        nomEntreprise={admin?.selectedEnterprise?.name || ''}
+        onIntroDone={() => setMinLoadingDone(true)}
+        onSkip={() => setMinLoadingDone(true)}
+      />
+    )
   }
 
   // ═══════════════════════════════════════════════════════════

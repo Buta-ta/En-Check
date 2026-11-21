@@ -5,13 +5,18 @@ import AbsencesLoadingScreen from '../../components/AbsencesLoadingScreen'
 import PausesLoadingScreen from '../../components/PausesLoadingScreen'
 import EmployesLoadingScreen from '../../components/EmployesLoadingScreen'
 
-it('Pauses et Employés utilisent les motifs validés, avec leurs étapes et bouton passer', () => {
-  for (const [Screen,motif] of [[PausesLoadingScreen,'lesotho'],[EmployesLoadingScreen,'zoulou']]) {
-    const html=renderToStaticMarkup(<Screen onSkip={()=>{}}/>)
-    expect(html).toContain(`data-cultural-motif="${motif}"`)
-    expect(html).toContain('Passer l’animation')
-    expect(html).toContain('pointages-loading-bar-fill')
-  }
+it('Pauses utilise son motif validé et Employés sa scène illustrée devant la borne sans bandeau culturel', () => {
+  const htmlPauses=renderToStaticMarkup(<PausesLoadingScreen onSkip={()=>{}}/>)
+  expect(htmlPauses).toContain('data-cultural-motif="lesotho"')
+  expect(htmlPauses).toContain('Passer l’animation')
+  expect(htmlPauses).toContain('pointages-loading-bar-fill')
+
+  const htmlEmployes=renderToStaticMarkup(<EmployesLoadingScreen onSkip={()=>{}} etape={2} nomEntreprise="Maison Koffi"/>)
+  expect(htmlEmployes).not.toContain('data-cultural-motif')
+  expect(htmlEmployes).toContain('employes-loading-approved.webp')
+  expect(htmlEmployes).toContain('Maison Koffi')
+  expect(htmlEmployes).toContain('Passer l’animation')
+  expect(htmlEmployes).toContain('pointages-loading-bar-fill')
 })
 it('Absences : vrai état d’attente accessible, pas de pourcentage ni de fausse approbation', () => {
   for (const darkMode of [true,false]) {

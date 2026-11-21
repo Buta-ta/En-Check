@@ -1,0 +1,523 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ÉCRAN DE CHARGEMENT — PAGE EMPLOYÉS · Concept A : la file devant la borne
+   Illustration validée par le fondateur (maquette du 24/11), découpée en
+   calques : le décor reste fixe, chaque collaborateur est un plan séparé.
+   Couleurs, tailles et rayons repris des jetons de la charte (D-001, D-013,
+   D-016) — aucune valeur inventée, le thème sombre vient donc tout seul.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.emp-loading-shell {
+  --emp-halo: rgba(122, 201, 138, 0.45);
+  --emp-halo-coeur: rgba(255, 248, 220, 0.95);
+  min-height: 100dvh;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(10px, 2.5vw, 28px);
+  background: var(--charte-sable);
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+}
+
+.emp-loading-card {
+  width: min(760px, 100%);
+  box-sizing: border-box;
+  background: var(--charte-surface);
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  box-shadow: 4px 4px 0 var(--charte-encre);
+  overflow: hidden;
+}
+
+/* ── En-tête : marque, entreprise active, compteur de progression réelle ── */
+.emp-loading-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px 12px;
+  border-bottom: 2px solid var(--charte-bordure);
+  background: var(--charte-surface2);
+}
+
+.emp-loading-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.emp-loading-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.emp-loading-eyebrow {
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--charte-texte);
+}
+
+.emp-loading-title {
+  margin: 2px 0 0;
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--charte-encre);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.emp-loading-badge-pct {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: var(--charte-rayon-pilule);
+  border: 2px solid var(--charte-encre);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  box-shadow: 2px 2px 0 var(--charte-encre);
+}
+
+.emp-loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-aplat);
+  animation: emp-dot-pulse 1.1s ease-in-out infinite;
+}
+
+.emp-loading-dot.is-ready {
+  background: var(--charte-succes);
+  animation: none;
+}
+
+/* ── La scène 16:9 : décor + 4 collaborateurs + borne lumineuse ── */
+.emp-loading-stage {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--charte-sable);
+  overflow: hidden;
+  border-bottom: 2px solid var(--charte-bordure);
+}
+
+.emp-loading-stage img {
+  display: block;
+  position: absolute;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Le décor et l'image complète couvrent toute la scène ; chaque collaborateur
+   est recadré à sa boîte exacte (gauche/haut/largeur/hauteur en pourcentage,
+   mesurés sur l'illustration 1600 × 900). */
+.emp-loading-layers > img,
+.emp-loading-approved {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Tant que les calques ne sont pas tous arrivés, l'illustration complète
+  reste visible : la file n'arrive jamais morceau par morceau. */
+.emp-loading-layers {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+
+.emp-loading-approved {
+  z-index: 2;
+}
+
+.emp-loading-stage.is-ready .emp-loading-layers {
+  visibility: visible;
+  z-index: 3;
+}
+
+.emp-loading-stage.is-ready .emp-loading-approved {
+  opacity: 0;
+}
+
+/* La file avance à pas souplement, chacun à son tour ; le point d'origine est
+   posé au sol, sous les pieds, pour que le balancement reste crédible. */
+.emp-layer-person {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.emp-loading-stage.is-ready .emp-layer-p1 {
+  transform-origin: 62% 88%;
+  animation: emp-pas-devant 2.8s ease-in-out infinite;
+}
+
+.emp-loading-stage.is-ready .emp-layer-p2 {
+  transform-origin: 49% 88%;
+  animation: emp-pas-file-2 2.8s ease-in-out infinite;
+}
+
+.emp-loading-stage.is-ready .emp-layer-p3 {
+  transform-origin: 37% 88%;
+  animation: emp-pas-file-3 2.8s ease-in-out infinite;
+}
+
+.emp-loading-stage.is-ready .emp-layer-p4 {
+  transform-origin: 25% 88%;
+  animation: emp-pas-file-4 2.8s ease-in-out infinite;
+}
+
+/* Progression réelle : une étape de plus = la file d'un cran plus près de la
+   borne. Le décor, lui, ne bouge pas — sinon la lumière se désalignerait. */
+.emp-queue-movers {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.55s cubic-bezier(0.34, 0.8, 0.3, 1);
+}
+
+.emp-loading-stage[data-step='2'] .emp-queue-movers {
+  transform: translateX(0.7%);
+}
+
+.emp-loading-stage[data-step='3'] .emp-queue-movers {
+  transform: translateX(1.4%);
+}
+
+.emp-loading-stage[data-step='4'] .emp-queue-movers {
+  transform: translateX(2.1%);
+}
+
+/* ── Lumière de la borne : le trapèze est le quadrilatère réel de la vitre,
+   mesuré sur l'illustration (colonnes 1227→1328, lignes 212→378). Le halo
+   ne déborde donc jamais du boîtier. ── */
+.emp-kiosk-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  clip-path: polygon(79.9% 24.7%, 83% 23.6%, 81.25% 41.9%, 76.7% 42%);
+  pointer-events: none;
+}
+
+.emp-kiosk-scanline {
+  position: absolute;
+  left: 74%;
+  width: 10%;
+  top: 22.6%;
+  height: 2.4%;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--emp-halo-coeur),
+    var(--emp-halo),
+    transparent
+  );
+  opacity: 0;
+}
+
+/* Curseur d'empreinte : centre mesuré à 79,7 % / 32,7 % de la scène. */
+.emp-kiosk-glow {
+  position: absolute;
+  left: 78.15%;
+  top: 29.85%;
+  width: 3.1%;
+  aspect-ratio: 1;
+  border-radius: var(--charte-rayon-pilule);
+  background: radial-gradient(circle, var(--emp-halo-coeur) 0%, var(--emp-halo) 55%, transparent 75%);
+  box-shadow: 0 0 18px 6px var(--emp-halo);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.emp-kiosk-scanline {
+  animation: emp-borne-lecture 2.4s ease-in-out infinite;
+}
+
+.emp-kiosk-glow {
+  animation: emp-borne-empreinte 2.4s ease-in-out infinite;
+}
+
+/* ── Pastilles d'étape, accrochées au-dessus de chaque collaborateur ── */
+.emp-queue-pip {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: var(--charte-rayon-pilule);
+  border: 2px solid var(--charte-encre);
+  background: var(--charte-surface);
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  box-shadow: 2px 2px 0 var(--charte-encre);
+  transition: transform 0.25s ease, background-color 0.25s ease, color 0.25s ease;
+}
+
+.emp-queue-pip--1 { left: 65.2%; top: 5.2%; }
+.emp-queue-pip--2 { left: 49.5%; top: 11.2%; }
+.emp-queue-pip--3 { left: 37%; top: 17.2%; }
+.emp-queue-pip--4 { left: 25.5%; top: 15.8%; }
+
+.emp-queue-pip.is-active {
+  background: var(--charte-aplat);
+  color: var(--charte-blanc);
+  transform: translate(-50%, -58%) scale(1.12);
+}
+
+.emp-queue-pip.is-done {
+  background: var(--charte-succes);
+  color: var(--charte-blanc);
+}
+
+/* ── Barre et étapes : la progression vient des vraies requêtes ── */
+.emp-loading-body {
+  padding: 14px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pointages-loading-bar-track {
+  width: 100%;
+  height: 10px;
+  border-radius: var(--charte-rayon-pilule);
+  border: 2px solid var(--charte-encre);
+  background: var(--charte-surface2);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.pointages-loading-bar-fill {
+  height: 100%;
+  border-radius: var(--charte-rayon-pilule);
+  background: linear-gradient(90deg, var(--charte-aplat) 0%, var(--charte-succes) 100%);
+  transition: width 0.32s ease-out;
+}
+
+.emp-loading-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.emp-loading-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border-radius: var(--charte-rayon-carte);
+  border: 2px solid var(--charte-bordure);
+  background: var(--charte-surface2);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: left;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.emp-loading-step.is-active {
+  border-color: var(--charte-aplat);
+  background: var(--charte-blanc);
+  color: var(--charte-encre);
+  box-shadow: 2px 2px 0 var(--charte-aplat);
+}
+
+.emp-loading-step.is-done {
+  border-color: var(--charte-succes);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+}
+
+.emp-loading-step-num {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--charte-rayon-pilule);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  border: 2px solid currentColor;
+}
+
+.emp-loading-step.is-done .emp-loading-step-num {
+  background: var(--charte-succes);
+  border-color: var(--charte-succes);
+  color: var(--charte-blanc);
+}
+
+.emp-loading-step.is-active .emp-loading-step-num {
+  background: var(--charte-aplat);
+  border-color: var(--charte-aplat);
+  color: var(--charte-blanc);
+}
+
+/* ── Pied : phrase d'état en français + bouton « Passer l'animation » ── */
+.emp-loading-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.emp-loading-status {
+  margin: 0;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--charte-douce);
+}
+
+.emp-loading-skip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 9px 18px;
+  border-radius: var(--charte-rayon-champ);
+  border: 2px solid var(--charte-encre);
+  background: var(--charte-surface2);
+  color: var(--charte-encre);
+  font: inherit;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--charte-encre);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.emp-loading-skip:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--charte-encre);
+}
+
+.emp-loading-skip:focus-visible {
+  outline: 2px solid var(--charte-aplat);
+  outline-offset: 3px;
+}
+
+.emp-loading-skip:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* ── Mouvements ── */
+@keyframes emp-dot-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.65; }
+}
+
+@keyframes emp-pas-devant {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  35% { transform: translate(0.75%, -0.45%) rotate(0.45deg); }
+  65% { transform: translate(0.45%, 0) rotate(0.2deg); }
+}
+
+@keyframes emp-pas-file-2 {
+  0%, 12%, 100% { transform: translate(0, 0) rotate(0deg); }
+  45% { transform: translate(1.15%, -0.55%) rotate(0.4deg); }
+  75% { transform: translate(0.65%, 0) rotate(0deg); }
+}
+
+@keyframes emp-pas-file-3 {
+  0%, 22%, 100% { transform: translate(0, 0) rotate(0deg); }
+  55% { transform: translate(1.25%, -0.5%) rotate(-0.35deg); }
+  82% { transform: translate(0.7%, 0) rotate(0deg); }
+}
+
+@keyframes emp-pas-file-4 {
+  0%, 30%, 100% { transform: translate(0, 0) rotate(0deg); }
+  62% { transform: translate(1.35%, -0.55%) rotate(0.35deg); }
+  88% { transform: translate(0.75%, 0) rotate(0deg); }
+}
+
+@keyframes emp-borne-lecture {
+  0%, 10% { transform: translateY(0); opacity: 0; }
+  25% { opacity: 0.9; }
+  70% { transform: translateY(790%); opacity: 0.85; }
+  88%, 100% { transform: translateY(790%); opacity: 0; }
+}
+
+@keyframes emp-borne-empreinte {
+  0%, 18%, 100% { opacity: 0.15; transform: scale(0.9); }
+  45%, 70% { opacity: 0.95; transform: scale(1.18); }
+}
+
+/* ── Responsive : tablette et téléphone ── */
+@media (max-width: 680px) {
+  .emp-loading-header,
+  .emp-loading-body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .emp-loading-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .emp-queue-pip {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    box-shadow: 1px 1px 0 var(--charte-encre);
+  }
+}
+
+@media (max-width: 440px) {
+  /* Les pastilles doublonnent les cartes numérotées du bas : sur petit écran
+     elles se toucheraient, donc on les retire plutôt que de les écraser. */
+  .emp-queue-pip {
+    display: none;
+  }
+
+  .emp-loading-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .emp-loading-skip {
+    width: 100%;
+  }
+}
+
+/* ── « Réduire les animations » dans le système : scène fixe, aucune attente ── */
+@media (prefers-reduced-motion: reduce) {
+  .emp-loading-stage *,
+  .emp-loading-dot {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .emp-loading-stage .emp-loading-layers {
+    display: none;
+  }
+
+  .emp-loading-stage .emp-loading-approved {
+    opacity: 1 !important;
+  }
+}
