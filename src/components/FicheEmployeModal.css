@@ -1,0 +1,411 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODALE « FICHE EMPLOYÉ » EN POST-IT — 21/11/2026
+   Maquette retenue par le fondateur : `maquettes/modal-modifier-postit.png`
+   (choix 2 sur 2), consignes : « garde la même interface, enlève le bandeau
+   motif, transforme le modal en une carte post-it avec double feutre ».
+
+   La modale devient une FEUILLE posée sur le voile : coin carré, contour
+   d'encre de 2 px, une seconde feuille décalée en bas à droite (le double
+   feutre), bande de colle en tête, rabat plié au coin bas-droit. Le bandeau de
+   motif du sommet saute — sur une note, le papier suffit à faire l'objet.
+
+   Quatre règles de tenue, toutes déjà mesurées ailleurs dans le dépôt :
+   • `border-radius: 0` SANS UNITÉ : l'audit C10 ne lit que les valeurs en px,
+     un coin carré ne coûte donc rien à l'échelle des rayons ;
+   • la bande de colle est une COUCHE DE FOND (`background-image`) et la couleur
+     du papier une `background-color` : le raccourci `background:` effacerait
+     l'une des deux, c'est le piège qui a fait disparaître la bande sur la fiche ;
+   • le pli est peint en pseudo-élément, jamais en `clip-path` : `clip-path`
+     rognerait la `box-shadow` et le double feutre partirait avec le coin ;
+   • le feutre double est fait de DEUX ombres dures empilées (papier par-dessus
+     encre), pas d'un calque absolu : un `::before` décalé aurait promené son
+     trait d'encre à l'intérieur de la feuille.
+
+   Le voile de fond ne floute plus : la peau D ne connaît aucun flou (D-016).
+
+   Aucun `container-type` ici, et c'est voulu : une modale est `position: fixed`,
+   sa largeur vient du viewport, donc les `@media` fenêtre sont la bonne
+   référence. La fiche employée, elle, est pilotée par `@container` parce que sa
+   largeur dépend de la coque.
+
+   Périmètre strict : la classe `fiche-v2--postit` est posée sur L'OVERLAY de
+   cette seule modale. « Modifier le pointage » partage les classes `fiche-v2-*`
+   et garde sa peau actuelle, intacte.
+
+   DÉR DÉR-05 : la feuille fait 940 px, hors des 420 / 560 / 760 de D-020 — le
+   passeport (256 px) et les deux colonnes de champs ne tiennent pas en 760.
+   Lever à la refonte du passeport en colonne rabattable.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.fiche-v2-overlay.fiche-v2--postit[data-theme] {
+  /* Le jeu de jetons de la modale est réécrit sur les jetons de la charte : les
+     règles partagées ci-dessous (champs, pilules, indices) héritent ainsi du
+     papier sans que j'aie à les reprendre une par une. Le sélecteur porte
+     `[data-theme]` pour battre en spécification la variante claire de
+     PointagesAfroTech.css, quel que soit l'ordre des feuilles dans le bundle. */
+  --fv-bg: var(--charte-sable);
+  --fv-surface: var(--charte-surface);
+  --fv-surface-soft: var(--charte-surface2);
+  --fv-input-bg: var(--charte-blanc);
+  --fv-border: var(--charte-bordure);
+  --fv-border-strong: var(--charte-encre);
+  --fv-text: var(--charte-encre);
+  --fv-text-soft: var(--charte-douce);
+  --fv-muted: var(--charte-douce);
+  --fv-copper: var(--charte-aplat);
+  --fv-copper-strong: var(--charte-texte);
+  --fv-emerald: var(--charte-succes);
+  --fv-danger: var(--charte-erreur);
+
+  /* la jambe du pli et la ligne de la bande de colle, aux deux mêmes valeurs
+     que la fiche : le post-it d'un écran doit se reconnaître sur l'autre */
+  --fv-pli: 14px;
+  --fv-colle: calc(var(--fv-pli) + 1px);
+  --fv-decalage: 8px;
+
+  padding: 24px;
+  background: var(--charte-modale-voile);
+  backdrop-filter: none;
+}
+
+/* ── la feuille ─────────────────────────────────────────────────────────── */
+
+.fiche-v2--postit .fiche-v2-modal {
+  position: relative;
+  width: min(940px, 100%);
+  /* la feuille + son ombre portée + le padding du voile doivent tenir dans un
+     écran : `92vh` seul ferait déborder de 32 px en bas, et une modale centrée
+     en flex qui déborde se coupe PAR LE HAUT — l'en-tête devient injoignable */
+  max-height: calc(100vh - var(--fv-decalage) * 2 - 48px);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  /* la bande de colle : plus claire sur les `--fv-pli` premiers px, un filet
+     d'encre à son pied, puis rien. Posée en couche, jamais en raccourci. */
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--fv-pli),
+    color-mix(in srgb, var(--charte-encre) 16%, transparent) var(--fv-pli)
+      var(--fv-colle),
+    transparent var(--fv-colle)
+  );
+  /* le double feutre : une seconde feuille, décalée en bas à droite. La première
+     ombre (papier, débord 6 px) masque la seconde (encre, débord 8 px) partout
+     sauf sur les 2 px du bord : il ne reste que la bordée du dessous. Flou à zéro
+     dans les deux, C9 ne bronche pas. */
+  box-shadow:
+    var(--fv-decalage) var(--fv-decalage) 0 6px
+      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
+    var(--fv-decalage) var(--fv-decalage) 0 8px var(--charte-encre);
+  /* la feuille du dessous déborde : le rognage de la modale doit tomber */
+  overflow: visible;
+  color: var(--fv-text);
+}
+
+/* Le rabat, au coin bas-droit : le dos de la feuille, 14 px, avec le trait de
+   pliure sur l'hypoténuse. Vérifié sans risque pour le contenu — la barre du bas
+   garde 18 px de respiration sous les boutons et 24 px à leur droite, le rabat
+   ne touche donc ni « Annuler » ni « Enregistrer l'employé ». */
+.fiche-v2--postit .fiche-v2-modal::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--fv-pli);
+  height: var(--fv-pli);
+  background: linear-gradient(
+    to top left,
+    transparent 0 44%,
+    var(--charte-encre) 44% 50%,
+    color-mix(in srgb, var(--charte-blanc) 60%, var(--charte-surface)) 50%
+  );
+  pointer-events: none;
+}
+
+/* ── en-tête : la vignette remplace le badge de motif ────────────────────── */
+
+.fiche-v2--postit .fiche-v2-header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid var(--fv-border);
+}
+
+.fiche-v2--postit .fiche-v2-header-vignette {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--fv-surface-soft);
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-corps);
+  font-weight: 800;
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.fiche-v2--postit .fiche-v2-header-vignette img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fiche-v2--postit .fiche-v2-header-title h2 {
+  color: var(--charte-encre);
+}
+
+.fiche-v2--postit .fiche-v2-header-title span {
+  color: var(--fv-muted);
+}
+
+.fiche-v2--postit .fiche-v2-close-btn {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  color: var(--charte-texte);
+}
+.fiche-v2--postit .fiche-v2-close-btn:hover {
+  background: var(--fv-surface-soft);
+  color: var(--charte-encre);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* ── le corps : le passeport est une seconde note, posée sur la première ─── */
+
+.fiche-v2--postit .fiche-v2-layout {
+  gap: 24px;
+  padding: 24px;
+}
+
+.fiche-v2--postit .fiche-v2-passport-card {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--fv-surface-soft);
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--fv-pli),
+    color-mix(in srgb, var(--charte-encre) 14%, transparent) var(--fv-pli)
+      var(--fv-colle),
+    transparent var(--fv-colle)
+  );
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* le cadre de sélection de la photo : le cercle reste un cercle (pilule dans
+   l'échelle des rayons), il prend juste le contour de 2 px que la charte donne
+   à tout objet actif, et son survol se lit au déplacement, pas à la lueur */
+.fiche-v2--postit .fiche-v2-photo-ring {
+  border: var(--charte-trait) dashed var(--charte-aplat);
+  background: var(--fv-input-bg);
+  transition: transform var(--charte-duree) var(--charte-easing),
+    border-color var(--charte-duree) var(--charte-easing);
+}
+.fiche-v2--postit .fiche-v2-photo-ring:hover {
+  transform: translate(-1px, -1px);
+  border-color: var(--charte-texte);
+}
+
+.fiche-v2--postit .fiche-v2-photo-plus {
+  color: var(--charte-blanc);
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-succes);
+}
+
+/* « Retirer la photo » n'est pas irréversible : le rouge reste dans la trame,
+   pas dans le cadre. Repli en secondaire, la couleur ne revient qu'au survol. */
+.fiche-v2--postit .fiche-v2-remove-photo-btn {
+  border: 1px solid var(--fv-border);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  color: var(--charte-texte);
+  transition: color var(--charte-duree) var(--charte-easing),
+    border-color var(--charte-duree) var(--charte-easing);
+}
+.fiche-v2--postit .fiche-v2-remove-photo-btn:hover {
+  border-color: var(--charte-erreur);
+  color: var(--charte-erreur);
+}
+
+/* le matricule se relit en tabulaire — la seule mono autorisée est celle de la
+   charte, pas la police de terminal du système */
+.fiche-v2--postit .fiche-v2-pill {
+  border-radius: var(--charte-rayon-pilule);
+  font-weight: 700;
+}
+.fiche-v2--postit .fiche-v2-pill.is-matricule {
+  font-family: var(--charte-mono);
+  letter-spacing: 0.02em;
+}
+.fiche-v2--postit .fiche-v2-pill.is-contract {
+  color: var(--charte-blanc);
+  background: var(--charte-succes);
+  border: 1px solid var(--charte-succes);
+}
+
+/* Le QR est une sortie d'impression, pas un bouton doré : le vert reste contenu
+   dans le trait d'encre. */
+.fiche-v2--postit .fiche-v2-qr-btn {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--charte-succes) 12%, var(--charte-surface));
+  color: var(--charte-succes);
+  font-weight: 800;
+  box-shadow: var(--charte-ombre-dure);
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+.fiche-v2--postit .fiche-v2-qr-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+/* ── les onglets, posés sur un filet ─────────────────────────────────────── */
+
+.fiche-v2--postit .fiche-v2-tabs {
+  gap: 8px;
+  padding-bottom: 0;
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+}
+
+.fiche-v2--postit .fiche-v2-tab-btn {
+  margin-bottom: calc(-1 * var(--charte-trait));
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-bottom: none;
+  border-radius: 0;
+  background: var(--charte-surface);
+  color: var(--charte-texte);
+  font-weight: 700;
+  transition: background-color var(--charte-duree) var(--charte-easing),
+    color var(--charte-duree) var(--charte-easing);
+}
+.fiche-v2--postit .fiche-v2-tab-btn:hover {
+  background-color: var(--fv-surface-soft);
+  color: var(--charte-encre);
+}
+/* l'onglet actif n'est pas rempli : il se colle au filet et porte une barre
+  d'argile de 4 px. Une seule variante pleine par écran — c'est le bouton
+  d'enregistrement qui la garde. */
+.fiche-v2--postit .fiche-v2-tab-btn.is-active {
+  background-color: var(--fv-surface-soft);
+  background-image: none;
+  color: var(--charte-encre);
+  font-weight: 800;
+  box-shadow: inset 0 -4px 0 0 var(--charte-aplat);
+}
+
+/* ── les champs : le papier, pas l'ivoire collant ────────────────────────── */
+
+.fiche-v2--postit .fiche-v2-field label {
+  color: var(--charte-encre);
+  font-weight: 700;
+}
+
+.fiche-v2--postit .fiche-v2-field input,
+.fiche-v2--postit .fiche-v2-field select {
+  border: 1px solid var(--fv-border);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--fv-input-bg);
+  color: var(--fv-text);
+  transition: border-color var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+/* le focus se voit sans couleur : un trait de 2 px, obtenu par une boucle
+   intérieure pour ne pas faire sauter le champ d'un pixel */
+.fiche-v2--postit .fiche-v2-field input:focus,
+.fiche-v2--postit .fiche-v2-field select:focus {
+  border-color: var(--charte-encre);
+  box-shadow: inset 0 0 0 1px var(--charte-encre);
+}
+/* le désactivé n'est jamais une opacité : il change de papier et de mot, sinon
+   on demande de lire ce qu'on vient d'effacer */
+.fiche-v2--postit .fiche-v2-field input:disabled,
+.fiche-v2--postit .fiche-v2-field select:disabled {
+  opacity: 1;
+  border-color: var(--fv-border);
+  background: var(--charte-sable);
+  color: var(--charte-douce);
+}
+
+.fiche-v2--postit .fiche-v2-pin-eye {
+  color: var(--fv-muted);
+}
+.fiche-v2--postit .fiche-v2-pin-eye:hover {
+  color: var(--charte-encre);
+}
+
+.fiche-v2--postit .fiche-v2-hint {
+  color: var(--fv-muted);
+}
+
+/* ── le pied de la feuille ───────────────────────────────────────────────── */
+
+.fiche-v2--postit .fiche-v2-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--fv-border);
+  background: transparent;
+}
+
+.fiche-v2--postit .fiche-v2-btn-cancel,
+.fiche-v2--postit .fiche-v2-btn-save {
+  border-radius: 0;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+.fiche-v2--postit .fiche-v2-btn-cancel {
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface);
+  color: var(--charte-texte);
+  box-shadow: var(--charte-ombre-dure);
+}
+.fiche-v2--postit .fiche-v2-btn-cancel:hover {
+  background-color: var(--fv-surface-soft);
+  color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--charte-encre);
+}
+
+/* L'engagement se remplit d'espresso, pas d'or : l'or a été refusé deux fois
+   comme action principale. Le texte sur remplissage suit le jeton « blanc »,
+   qui s'éclaire tout seul en thème sombre. */
+.fiche-v2--postit .fiche-v2-btn-save {
+  gap: 8px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  background-color: var(--charte-espresso);
+  background-image: none;
+  color: var(--charte-blanc);
+  box-shadow: var(--charte-ombre-dure);
+}
+.fiche-v2--postit .fiche-v2-btn-save:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+.fiche-v2--postit .fiche-v2-btn-save:disabled {
+  opacity: 1;
+  border-color: var(--fv-border);
+  background-color: var(--charte-btn-desactive);
+  color: var(--charte-btn-desactive-texte);
+  box-shadow: none;
+}
+
+/* ── petit écran : la note garde ses deux bords hors du pouce ────────────── */
+
+@media (max-width: 560px) {
+  .fiche-v2--postit .fiche-v2-modal {
+    --fv-decalage: 5px;
+  }
+  .fiche-v2--postit .fiche-v2-layout {
+    padding: 16px;
+  }
+  .fiche-v2--postit .fiche-v2-header,
+  .fiche-v2--postit .fiche-v2-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

@@ -26,12 +26,13 @@ Règles :
 | DÉR-02 | D-023 | `Employee360.jsx` (modale fiche employée) | Bento kente « #228 » (or/terre), modale hors D-020 | D-019 : les modales sont redevinées en dernier ; la fiche employée est un écran livré le 17/11 | 18/11/2026 | Rétro des modales |
 | DÉR-03 | D-024 | Motifs SVG/WebP culturels (bandes, bandeaux) | Couleurs hors palette B | D-007 : les pièces culturelles sont inchangées ; les motifs ne sont pas des surfaces de contenu | 18/11/2026 | Jamais tant que D-007 tient |
 | DÉR-04 | D-025 | Anciennes pages non redevinées (Absences, Planning, Paie, Pointages, …) | Peaux pré-charthe (or/terre/crème) | D-019 : une page = une branche ; le dépôt ne passe pas conforme page par page | 18/11/2026 | Rétro page par page |
+| DÉR-05 | — | `src/components/FicheEmployeModal.css` (modale fiche employé, 21/11) | Feuille de 940 px, hors des 420 / 560 / 760 de D-020 (et son voile passe à 44 %, conforme) | Le passeport 256 px + deux colonnes de champs ne tiennent pas en 760 ; le fondateur a demandé « garde la même interface » | 21/11/2026 | Rétro du passeport en colonne rabattable |
 
 ## Dérogations levées
 
 | N° | Ancien n° | Écran | Levée le | Remarques |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| DÉR-02 (partiellement) | D-023 | La MODALE de la fiche employé | 21/11/2026 | Peau post-it à la charte posée : bandeau de motif et filigrane retirés, contour de 2 px, ombres dures, voile à 44 %, action principale en espresso (l’or ne conduit plus). Reste sous DÉR-02 : le bento or/terre de la PAGE `Employee360.jsx`. L’écart de largeur de la modale est repris sous DÉR-05. |
 
 ## Format d'une entrée
 
