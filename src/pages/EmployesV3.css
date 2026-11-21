@@ -2865,7 +2865,7 @@
   display: block;
   border-right: var(--charte-trait) solid var(--charte-encre);
   overflow: hidden;
-  background: #3A2416;
+  background: var(--charte-tissu);
 }
 
 .empv3-d-tissu {
@@ -3240,7 +3240,7 @@
   padding: 14px;
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: var(--charte-rayon-carte);
-  background-color: #3A2416;
+  background-color: var(--charte-tissu);
   background-image: url('/images/paie-bogolan-haut.webp');
   background-repeat: repeat;
   background-size: auto 84px;

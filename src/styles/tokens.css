@@ -64,6 +64,7 @@
   --charte-encre: #2A1708;      /* l'encre : contours 2 px, titres, texte fort */
   --charte-douce: #6B4A32;      /* le texte doux, les légendes */
   --charte-aplat: #A26537;      /* l'argile remplie : la seule action principale */
+  --charte-tissu: #3A2416;      /* le fond du bogolan : sous le motif, dans les coins du cadre */
   --charte-texte: #7E4A26;      /* l'argile écrite : liens, secondaires, mots */
   --charte-blanc: #FFFDF7;      /* le blanc cassé : texte sur argile */
   --charte-espresso: #2A1708;   /* l'espresso fixe : la barre latérale (D-018), clair et sombre */
@@ -163,6 +164,7 @@
   --charte-encre: #F3E9DA;   /* l'encre s'inverse : encre sombre → sable clair */
   --charte-douce: #C9B49A;
   --charte-aplat: #A26537;   /* inchangé */
+  --charte-tissu: #3A2416;   /* inchangé : le tissu ne s'inverse pas, il reste le fond du motif */
   --charte-texte: #D8A468;   /* l'argile écrite, éclaircie pour le sombre */
   --charte-blanc: #FBF4E9;
 

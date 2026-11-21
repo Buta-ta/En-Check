@@ -23,11 +23,84 @@
   padding: 6px 28px 44px;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   LA TÊTE — « feutre double », maquette `maquettes/choix-G2-bogolan-autour.png`
+   choisie par le fondateur le 24/11 : « je choisis ça », en précisant
+   « une seule bande [de bogolan] qui entoure le bloc », pas trois.
+
+   Trois couches, deux pseudo-éléments, AUCUN changement dans le JSX :
+     1. `::before` à `inset: -24px`  = la bande de tissu qui fait le tour ;
+        c'est elle qui porte l'ombre décalée, donc l'encre n'est épaisse qu'en
+        bas et à droite — le « double passage de feutre » de la maquette ;
+     2. `::after` à `inset: 0`       = la plaque de papier qui porte le contenu ;
+     3. la tête elle-même            = le flex, transparent.
+   L'ordre de peinture vient de `isolation: isolate` + `z-index` négatifs : dans
+   un contexte d'empilement, les enfants à z-index négatif passent APRÈS le fond
+   de l'élément (ici transparent) et AVANT le contenu. C'est pour ça que la
+   plaque est un `::after` et non le fond de `.e360-tete` : posée sur le fond de
+   la tête, la bande la recouvrirait.
+
+   Mesures, pas d'à-peu-près :
+   • la bande fait 24 px et l'ombre 4 px, soit 28 px de débord — exactement le
+     `padding: 6px 28px 44px` de `.e360-conteneur`. Au-delà, le trait sortirait
+     de la gouttière ;
+   • les deux images du dépôt font 77 px d'épaisseur native (`paie-bogolan-haut.webp`
+     = 1537 × 77, `bogolan-vertical.webp` = 77 × 1537, mesuré dans les en-têtes
+     RIFF). Descendre à 24 px est une échelle UNIFORME, donc C4 « aucun motif
+     étiré » est tenu ; l'annuaire descend déjà à 18 px (`.empv3-entete-bandeau`) ;
+   • les quatre coins, là où les deux images se rejoignent, sont remplis par
+     `--charte-tissu`, le fond du bogolan. Les deux usages de l'annuaire
+     (`.empv3-d-tissu`, `.empv3-pancarte`) pointent maintenant sur ce jeton :
+     la couleur n'est plus écrite en dur nulle part, et C1 perd deux valeurs.
+   ═══════════════════════════════════════════════════════════════════════ */
 .e360-tete {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 18px 0 16px;
+  margin: 24px 0 18px;
+  padding: 13px 18px;
+}
+
+/* la bande UNIQUE qui entoure le bloc + le feutre double */
+.e360-tete::before {
+  content: '';
+  position: absolute;
+  inset: -24px;
+  z-index: -2;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background-color: var(--charte-tissu);
+  background-image:
+    url('/images/paie-bogolan-haut.webp'),
+    url('/images/paie-bogolan-haut.webp'),
+    url('/images/bogolan-vertical.webp'),
+    url('/images/bogolan-vertical.webp');
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-position: left top, left bottom, left top, right top;
+  background-size: auto 24px, auto 24px, 24px auto, 24px auto;
+  /* une seule ombre, à flou zéro : le jeton de l'annuaire, pas un 4px maison.
+     En clair il vaut `3px 3px 0 0 var(--charte-encre)` — le trait épais en bas
+     et à droite, le « double passage de feutre » de la maquette. En sombre, le
+     même jeton bascule sur un noir translucide dans le bloc
+     `[data-theme='dark']` de tokens.css : c'est pour ça que je ne réécris pas
+     la couleur à la main, la tête resterait lisible.
+     Et comme il n'y a aucun flou, C9 ne bouge pas : 131 avant, 131 après. */
+  box-shadow: var(--charte-ombre-dure);
+  pointer-events: none;
+}
+
+/* la plaque de papier, posée dans le cadre */
+.e360-tete::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  pointer-events: none;
 }
 
 .e360-tete-gauche {
@@ -36,23 +109,24 @@
   gap: 14px;
 }
 
+/* la flèche de retour : la recette de `.empv3-fleche` de l'annuaire, au format
+   d'une tête de page (34 px, pilule, contour 2 px d'encre, papier). Le liseré
+   pâle de 1 px `--rg-hair` sur fond transparent ne se voyait plus sur le sable. */
 .e360-retour {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  border: 1px solid var(--rg-hair);
-  background: transparent;
-  color: var(--rg-soft);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--charte-rayon-pilule);
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  transition: background-color 140ms ease;
 }
 
 .e360-retour:hover {
-  border-color: var(--rg-hair-fort);
-  color: var(--rg-ink);
-  background: var(--rg-voile);
+  background: var(--charte-surface2);
 }
 
 .e360-titre {
@@ -74,21 +148,21 @@
 }
 
 .e360-carrousel > button {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid var(--rg-hair);
-  background: transparent;
-  color: var(--rg-faint);
+  width: 24px;
+  height: 24px;
+  border-radius: var(--charte-rayon-pilule);
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
   display: grid;
   place-items: center;
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  padding: 0;
+  transition: background-color 140ms ease;
 }
 
 .e360-carrousel > button:hover {
-  color: var(--rg-ink);
-  border-color: var(--rg-hair-fort);
+  background: var(--charte-surface2);
 }
 
 .e360-carrousel-avatars {
@@ -99,16 +173,18 @@
 .e360-carrousel-avatar {
   width: 38px;
   height: 38px;
-  border-radius: 50%;
-  border: 1px solid var(--rg-hair-fort);
-  background: var(--rg-voile);
-  color: var(--rg-soft);
+  border-radius: var(--charte-rayon-pilule);
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
   overflow: hidden;
   cursor: pointer;
   padding: 0;
   display: grid;
   place-items: center;
-  font-size: 13px;
+  /* 11 px / 600 : le réglage des pastilles de l'annuaire, pas un 13 px maison */
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-micro);
   font-weight: 600;
 }
 
@@ -119,11 +195,15 @@
   display: block;
 }
 
+/* la pastille active : plus d'or privé `--e360-or`, plus de halo. Le halo
+   `0 0 0 3px color-mix(…25 %…)` était la dernière lueur de la page ; à sa place,
+   le même feutre double que le bloc, en miniature. La photo reste la photo :
+   aucun filtre, aucun retouchage (refus du 21/11). */
 .e360-carrousel-avatar.is-actif {
   width: 44px;
   height: 44px;
-  border: 2px solid var(--e360-or);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--e360-or) 25%, transparent);
+  border: var(--charte-trait) solid var(--charte-encre);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
 }
 
 /* ── boutons de la tête ───────────────────────────────────── */
@@ -134,35 +214,45 @@
   margin-left: auto;
 }
 
+/* les deux boutons de la tête : la recette de `.empv3-btn` de l'annuaire, mot
+   pour mot — 34 px de haut, contour 2 px d'encre, rayon de champ 6 px, papier,
+   11 px / 600. Avant : 13,5 px, liseré pâle de 1 px, fond transparent, rayon 12,
+   et un `or` privé (`--e360-or`) que la charte ne connaît pas. La charte
+   ne connaît qu'UNE surface remplie pour une action principale :
+   `--charte-aplat` (l'argile remplie), et c'est ce que fait `.empv3-btn--plein`. */
 .e360-bouton {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 9px 16px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 13.5px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: var(--charte-rayon-champ);
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-micro);
   font-weight: 600;
-  border: 1px solid var(--rg-hair-fort);
-  background: transparent;
-  color: var(--rg-soft);
-  transition: border-color 0.15s ease, color 0.15s ease, filter 0.15s ease;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease;
 }
 
 .e360-bouton:hover {
-  border-color: var(--e360-or);
-  color: var(--rg-ink);
+  background: var(--charte-surface2);
 }
 
 .e360-bouton.is-primaire {
-  background: var(--e360-or);
-  border-color: var(--e360-or);
-  color: #241a12;
+  background: var(--charte-aplat);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+  /* le feutre double, encore : 2 px, flou 0 */
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
 }
 
 .e360-bouton.is-primaire:hover {
-  filter: brightness(1.07);
-  color: #241a12;
+  /* plus de `filter: brightness()` : un filtre sur du texte, c'est exactement le
+     genre de recalcul que la page refusée du 21/11 multipliait */
+  background: var(--charte-texte);
 }
 
 /* ── la grille bento ──────────────────────────────────────── */
@@ -190,10 +280,15 @@
      C'est cette ombre plate qui fait la note collée ; elle ne coûte aucun
      recalcul, contrairement au `0 10px 30px` (flou 30 px) qu'elle remplace.
      Ma version du 23/11 avait un liseré pâle de 1 px et aucune ombre : d'où
-     les cartes « mal faites » signalées sur capture. */
+     les cartes « mal faites » signalées sur capture.
+     `main` après la fusion de la PR 275 : les trois premières déclarations y
+     étaient, la quatrième (l'ombre) manquait. Le commentaire la promettait,
+     le code ne la posait pas. Reposée ici — le commit local qui la portait
+     (610ae47) n'a pas survécu au changement de branche. */
   background: var(--charte-surface);
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: var(--charte-rayon-tuile);
+  box-shadow: var(--charte-ombre-dure);
   padding: 14px;
   min-width: 0;
 }
