@@ -1654,17 +1654,17 @@
   }
 }
 
-/* entre 701 et 1 219 px de conteneur, rien ne permet d'aligner la tête sur
+/* entre 701 et 1 159 px de conteneur, rien ne permet d'aligner la tête sur
    trois pistes sans que le carrousel écrase les boutons : il s'efface —
    comme le faisait l'ancien média, mais à la largeur de la fenêtre, lui, ce
    qui mentait dès qu'une coque encadrait la page */
-@container fiche (min-width: 701px) and (max-width: 1219px) {
+@container fiche (min-width: 701px) and (max-width: 1159px) {
   .e360-carrousel {
     display: none;
   }
 }
 
-@container fiche (min-width: 1220px) {
+@container fiche (min-width: 1160px) {
   .e360-tete {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -1683,16 +1683,18 @@
 }
 
 /* trois colonnes : identité, un large milieu, une fine */
-@container fiche (min-width: 1021px) and (max-width: 1279px) {
+@container fiche (min-width: 1021px) and (max-width: 1159px) {
   .e360-grille {
     grid-template-columns: minmax(240px, 1fr) minmax(300px, 1.35fr) minmax(230px, 0.9fr);
   }
 }
 
 /* quatre colonnes, la disposition aimée — mais à des largeurs qui TENENT :
-   le total des minimums fait 1 068 px + trois trous de 14, contre
-   1 290 + 42 avant (d'où le défilement horizontal sur un 1 456 ordinaire) */
-@container fiche (min-width: 1280px) {
+   le total des minimums fait 1 112 px (pistes 250+330+240+240 + trois trous
+   de 14), contre 1 290 + 42 avant — d'où le défilement horizontal sur un
+   1 456 ordinaire. Le seuil est pris à 1 160, pas au plus juste : la marge
+   de 48 px absorbe les arrondis sans jamais rouvrir le débordement. */
+@container fiche (min-width: 1160px) {
   .e360-grille {
     grid-template-columns: minmax(250px, 320px) minmax(330px, 1.3fr) minmax(240px, 1fr) minmax(240px, 1fr);
   }
