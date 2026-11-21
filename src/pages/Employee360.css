@@ -1231,7 +1231,11 @@
   background:
     radial-gradient(125% 95% at 50% 0%, rgba(20, 11, 5, 0.30), rgba(14, 8, 4, 0.80) 78%),
     #2a1b10 url('/images/bogolan-vertical.webp') repeat;
-  background-size: auto 100%, 76px auto;
+  /* 176 px = le motif vu à ×2,3 : dans la maquette F1 les losanges
+      font une taille de lettre, pas un grain de tissu. Rendu à sa
+      taille native de 76 px, le champ lisait comme un bruit sombre —
+      le reproche du 21/11 (« tu n'utilises pas le même fond bogolan »). */
+  background-size: auto 100%, 176px auto;
   background-attachment: fixed, fixed;
 }
 
@@ -1399,6 +1403,68 @@
 @media (prefers-reduced-motion: reduce) {
   [data-e360='bogolan'] .e360-col { transform: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   CORRECTIFS — 21/11, après les captures du fondateur
+   « je ne valide pas le résultat : enlève ces éléments, le
+   bandeau motif en bas, et ce n'est pas le même fond bogolan »
+   ───────────────────────────────────────────────────────────
+   1. Le bandeau motif du bas n'est plus monté dans la fiche
+      (src/pages/Employee360.jsx : <PageCulturalBand> retiré,
+      import compris). La carte « Nos talents font avancer
+      l'Afrique » reste, elle, en dur — c'est un avis, pas un
+      bandeau de remplissage.
+   2. La tranche perlée du registre (les demi-pastilles crème /
+      cuivre / sarcelle / sauge le long du bord gauche) est une
+      couture de l'ANNUAIRE des employés. Elle ne se lit plus sur
+      un champ de tissu sombre et chaud : masquée ici, intacte
+      partout ailleurs.
+   3. Le porte-à-faux de la maquette est surtout un décalage de
+      hauteur entre colonnes, pas seulement une rotation : posé.
+   ═══════════════════════════════════════════════════════════ */
+
+/* R1 ▸ rien ne dépasse plus du bas de la page */
+[data-e360='bogolan'] .ec-cultural-band {
+  display: none;
+}
+
+/* R2 ▸ la perle du registre n'a rien à faire sur le tissu */
+[data-e360='bogolan'].emp-vues::before {
+  display: none;
+}
+
+/* R3 ▸ les colonnes 2 et 4 descendent d'un cran, comme sur la
+       maquette ; sous 1080 px plus rien ne bascule ni ne descend,
+       la grille fait elle-même l'escalier. */
+[data-e360='bogolan'] .e360-col:nth-child(even) {
+  margin-top: 18px;
+}
+
+@media (max-width: 1080px) {
+  [data-e360='bogolan'] .e360-col:nth-child(odd),
+  [data-e360='bogolan'] .e360-col:nth-child(even) {
+    transform: none;
+    margin-top: 0;
+  }
+}
+
+/* R4 ▸ Dans la maquette, le contact se lit juste sous la carte
+       d'identité : c'est l'ordre du regard, pas celui du code. On
+       le remonte en CSS uniquement (le DOM garde son ordre, donc
+       la navigation au clavier et la lecture à voix haute aussi).
+       Sous 1080 px, on rend l'ordre d'origine. */
+@media (min-width: 1081px) {
+  [data-e360='bogolan'] .e360-carte-contact { order: 1; }
+  [data-e360='bogolan'] .e360-paire-stats { order: 2; }
+  [data-e360='bogolan'] .e360-carte-portrait { order: 0; }
+  [data-e360='bogolan'] .e360-col:first-child .e360-carte:last-of-type { order: 3; }
+}
+
+/* R5 ▸ le prénom du badge prend la même importance que sur la
+       maquette : 32 px, et le liseré doré de la photo est un peu
+       plus franc. */
+[data-e360='bogolan'] .e360-nom { font-size: 32px; }
+
 
 /* 11 ▸ Tablette : deux colonnes, le tissu continue à bord. */
 @media (max-width: 1080px) {

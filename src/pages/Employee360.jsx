@@ -20,7 +20,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import PageCulturalBand from '../components/PageCulturalBand'
 import EmployesLoadingScreen, { EMPLOYES_INTRO_MS } from '../components/EmployesLoadingScreen'
 import { useTheme } from '../contexts/ThemeContext'
 import FicheEmployeModal from '../components/FicheEmployeModal'
@@ -1246,8 +1245,6 @@ suivre('taches',
           }}
         />
       )}
-
-      <PageCulturalBand pathname="/employes" placement="bottom" />
 
       {/* Le badge QR : le même composant que l'annuaire. */}
       {badgeOuvert && employee && (
