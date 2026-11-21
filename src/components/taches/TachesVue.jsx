@@ -518,37 +518,44 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
 
   return (
     <div className="emp-vues tqv2 tqv2--postit">
-      {/* le bandeau de chiffres : compté sur les tâches chargées */}
-      <div className="tqv2-kpis" aria-label="Chiffres des tâches">
-        <div className="empv2-kpi">
-          <div className="empv2-kpi-haut">
-            <strong>{chiffres.total}</strong>
-            <ListTodo size={15} aria-hidden="true" />
+      {/* la tête de l'onglet : le titre et les quatre chiffres, cerclés d'UNE
+          SEULE bande de bogolan — le dispositif de la fiche employé, pas trois
+          galons. Le chiffre se lit sur la plaque de papier : le tissu ne passe
+          jamais sous un mot (refus enregistré sur la page). */}
+      <header className="tqv2-tete">
+        <h3 className="tqv2-titre">Tâches</h3>
+
+        <div className="tqv2-kpis" aria-label="Chiffres des tâches">
+          <div className="empv2-kpi">
+            <div className="empv2-kpi-haut">
+              <strong>{chiffres.total}</strong>
+              <ListTodo size={15} aria-hidden="true" />
+            </div>
+            <span className="empv2-kpi-libelle">Tâches</span>
           </div>
-          <span className="empv2-kpi-libelle">Tâches</span>
-        </div>
-        <div className="empv2-kpi">
-          <div className="empv2-kpi-haut">
-            <strong>{chiffres.enCours}</strong>
-            <Clock3 size={15} aria-hidden="true" />
+          <div className="empv2-kpi">
+            <div className="empv2-kpi-haut">
+              <strong>{chiffres.enCours}</strong>
+              <Clock3 size={15} aria-hidden="true" />
+            </div>
+            <span className="empv2-kpi-libelle">En cours</span>
           </div>
-          <span className="empv2-kpi-libelle">En cours</span>
-        </div>
-        <div className="empv2-kpi">
-          <div className="empv2-kpi-haut">
-            <strong>{chiffres.retard}</strong>
-            <AlertTriangle size={15} aria-hidden="true" />
+          <div className="empv2-kpi">
+            <div className="empv2-kpi-haut">
+              <strong>{chiffres.retard}</strong>
+              <AlertTriangle size={15} aria-hidden="true" />
+            </div>
+            <span className="empv2-kpi-libelle"><i className={`empv2-point ${chiffres.retard > 0 ? 'empv2-point--orange' : 'empv2-point--or'}`} aria-hidden="true" />En retard</span>
           </div>
-          <span className="empv2-kpi-libelle"><i className={`empv2-point ${chiffres.retard > 0 ? 'empv2-point--orange' : 'empv2-point--or'}`} aria-hidden="true" />En retard</span>
-        </div>
-        <div className="empv2-kpi">
-          <div className="empv2-kpi-haut">
-            <strong>{chiffres.terminees}</strong>
-            <CheckCircle2 size={15} aria-hidden="true" />
+          <div className="empv2-kpi">
+            <div className="empv2-kpi-haut">
+              <strong>{chiffres.terminees}</strong>
+              <CheckCircle2 size={15} aria-hidden="true" />
+            </div>
+            <span className="empv2-kpi-libelle">Terminées</span>
           </div>
-          <span className="empv2-kpi-libelle">Terminées</span>
         </div>
-      </div>
+      </header>
 
       {/* la barre d'outils : chercher, filtrer, trier, créer */}
       <div className="tqv2-outils">

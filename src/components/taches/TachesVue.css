@@ -60,7 +60,9 @@
     transparent var(--tqv-colle)
   );
 
-  gap: 24px;
+  /* 32 px entre la tête et la barre d'outils : la bande de bogolan déborde de
+     18 px + 4 px d'ombre, un rang à 24 px la frôlerait */
+  gap: var(--charte-espace-6);
 }
 
 /* le papier ligné et la tranche de perles ne suivent pas l'onglet */
@@ -73,6 +75,95 @@
 .tqv2--postit.emp-vues::after,
 [data-theme='dark'] .tqv2--postit.emp-vues::after {
   display: none;
+}
+
+/* ── 0 · la tête : le titre et les chiffres, cerclés d'une seule bande ───── */
+
+.tqv2--postit .tqv2-tete {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+}
+
+/* La bande UNIQUE qui fait le tour du bloc. Le débord porte l'ombre, donc
+   l'encre n'épaissit qu'en bas et à droite — le « double passage de feutre »,
+   obtenu sans un calque de plus. Trois mesures, pas d'à-peu-près :
+
+   • 18 px, c'est déjà l'épaisseur retenue par l'annuaire (`.empv3-entete-bandeau`)
+     pour descendre les 77 px natifs des deux images du dépôt : une échelle
+     UNIFORME, donc C4 « aucun motif étiré » est tenu ;
+   • 18 + 4 d'ombre = 22 px de débord, et la gouttière haute du `main` en fait
+     24 : le galon ne touche pas la barre d'onglets ;
+   • les quatre coins, là où les deux images se rejoignent, sont remplis par
+     `--charte-tissu`, le fond du bogolan — plus aucune couleur écrite ici.
+
+   Et le refus du fondateur tient : le tissu ne passe JAMAIS sous un mot. Ce que
+   on lit est posé sur la plaque de papier du `::after`, pas sur le galon. */
+.tqv2--postit .tqv2-tete::before {
+  content: '';
+  position: absolute;
+  inset: -18px;
+  z-index: -2;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-tissu);
+  background-image:
+    url('/images/paie-bogolan-haut.webp'),
+    url('/images/paie-bogolan-haut.webp'),
+    url('/images/bogolan-vertical.webp'),
+    url('/images/bogolan-vertical.webp');
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-position: left top, left bottom, left top, right top;
+  background-size: auto 18px, auto 18px, 18px auto, 18px auto;
+  box-shadow: var(--charte-ombre-dure);
+  pointer-events: none;
+}
+
+/* la plaque de papier qui porte le contenu — posée DANS le cadre, d'où
+   `isolation: isolate` plus haut et les deux `z-index` négatifs */
+.tqv2--postit .tqv2-tete::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background: var(--charte-surface);
+  pointer-events: none;
+}
+
+.tqv2--postit .tqv2-titre {
+  position: relative;
+  margin: 0;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--charte-encre);
+  /* posé, pas aligné au cordeau : 2 deg. Au-delà, le mot devient une enseigne
+     et son trait du bas ne suit plus la ligne des chiffres. La charte n'a pas
+     d'italique — une inclinaison de note n'en est pas un */
+  transform: rotate(-2deg);
+}
+
+/* le double feutre sous le titre : un trait de 4 px et sa seconde passe,
+   décalée de 2 px à droite et 4 px en bas, plus courte que le mot — comme un
+   feutre qui n'a pas fini sa course. Même encre, flou à zéro (C9 : 131). */
+.tqv2--postit .tqv2-titre::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: 8%;
+  bottom: -9px;
+  height: 4px;
+  background: var(--charte-encre);
+  box-shadow: 2px 4px 0 0 var(--charte-encre);
+  transform: rotate(0.5deg);
 }
 
 /* ── 1 · la rangée de chiffres : quatre notes, pas une colonne de texte ───── */
@@ -548,6 +639,17 @@
 }
 
 /* ── 7 · petit écran : la rangée de chiffres passe à deux notes ──────────── */
+
+@media (max-width: 900px) {
+  .tqv2--postit .tqv2-tete {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+  }
+  .tqv2--postit .tqv2-titre {
+    font-size: 32px;
+  }
+}
 
 @media (max-width: 640px) {
   .tqv2--postit .tqv2-kpis {
