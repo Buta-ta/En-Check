@@ -840,7 +840,6 @@ suivre('taches',
               <section className="e360-carte e360-carte-portrait" aria-label="Profil">
                 {/* Badge suspendu : la lanière est un ornement dessiné en CSS,
                     pas une image. Elle est masquée aux lecteurs d'écran. */}
-                <span className="e360-laniere" aria-hidden="true" />
                 <p className="e360-surtitre">
                   {(entreprise?.name || 'En-Check').toUpperCase()} · Fiche employée
                 </p>
@@ -858,6 +857,10 @@ suivre('taches',
                   {anciennete && <span className="e360-chip-haut">{anciennete}</span>}
                 </div>
                 <div className="e360-portrait-corps">
+                  {/* Badge suspendu : la lanière est le tissu de l'annuaire, pas une
+                      image inventée. Elle court le long du nom, sous la photo — posée
+                      à côté du texte, jamais derrière. Masquée aux lecteurs d'écran. */}
+                  <span className="e360-laniere" aria-hidden="true" />
                   <h2 className="e360-nom">{nomComplet}</h2>
                   <p className="e360-poste">
                     {employee?.position || 'Poste non renseigné'}

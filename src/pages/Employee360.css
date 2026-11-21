@@ -1306,7 +1306,11 @@
    l'annuaire. */
 .e360-carte-portrait {
   position: relative;
-  padding-left: var(--charte-bande-hauteur);
+}
+
+.e360-portrait-corps {
+  position: relative;
+  padding-left: calc(var(--charte-bande-hauteur) + 18px);
 }
 
 .e360-laniere {
@@ -1319,6 +1323,19 @@
 }
 
 /* 3 — la photo en grand, et son effet illustration */
+/* Le <p className="e360-surtitre"> du JSX, comme la lanière, n'avait AUCUNE
+   règle CSS dans le dépôt : il tombait collé au bord de la carte, en fonte par
+   défaut. Il devient le libellé haut-de-casse de la maquette validée. */
+.e360-surtitre {
+  margin: 0;
+  padding: 14px 18px 12px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--charte-texte);
+}
+
 .e360-portrait {
   aspect-ratio: 4 / 4.4;
   background: var(--charte-surface2);
@@ -1363,8 +1380,8 @@
 }
 
 @media (max-width: 760px) {
-  .e360-carte-portrait {
-    padding-left: 0;
+  .e360-portrait-corps {
+    padding-left: 18px;
   }
 
   .e360-laniere {
