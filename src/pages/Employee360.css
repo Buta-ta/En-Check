@@ -31,7 +31,19 @@
   /* 08/11 : la fiche ne se juge plus à la fenêtre, elle se juge à ELLE.
      `container-type` fait de ce conteneur la largeur de référence des
      @container plus bas — le rail, le panneau, les marges de la coque ne
-     peuvent plus tromper les points de rupture. */
+     peuvent plus tromper les points de rupture.
+
+     ⚠️ Le `width: 100%` n'est pas un ornement : `.emp-vues` (zoulou.css)
+     est un flex COLUMN, et dans un flex, un enfant à `margin: auto` sur
+     l'axe transversal est privé de l'align-stretch — il se dimensionne en
+     fit-content. `contain: inline-size` rend ce fit-content nul (l'item est
+     « vidé de son contenu » par la containment) : sans largeur forcée, la
+     fiche entière s'effondre en colonne de min-content. C'est le plantage
+     de la capture du 08/11 (page réduite à ~120 px centrés), pas une
+     coquille de seuils. `width: 100%` redonne une largeur qui ne dépend
+     plus du contenu — le max-width et les marges auto continuent de centrer
+     sous le plafond de 1 560. */
+  width: 100%;
   container: fiche / inline-size;
 }
 
