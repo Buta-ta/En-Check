@@ -1,0 +1,658 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ONGLET « TÂCHES » EN POST-IT — 21/11/2026
+   Maquette retenue par le fondateur : `maquettes/onglet-taches-postit.png`
+   (choix 1 sur 2). Consigne : le tableau s'accroche au mur comme la fiche
+   employé et la modale — quatre FEUILLES agrafées par une bande de colle, et
+   chaque tâche est un post-it.
+
+   Trois trous trouvés en route, qui n'étaient pas des choix mais des absences
+   de CSS dans le dépôt — la maquette ne pouvait pas les montrer :
+   • `.tqv2-kpis` déclarait `grid-template-columns` SANS `display: grid` : la
+     rangée de chiffres s'empilait en vrac dans le coin (visible sur la capture
+     du fondateur, « 1 / Tâches / 1 / En cours… ») ;
+   • `.empv2-nouvel` (« + Nouvelle tâche ») n'avait AUCUNE règle nulle part ;
+   • `.empv2-recherche` non plus : le champ de recherche était un `input` nu.
+
+   Ce que la peau doit à la charte :
+   • les jetons `--rg-*` du registre zoulou sont réécrits sur ceux de la charte
+     pour la seule portée de l'onglet — les règles que je ne reprends pas
+     (titre de carte, états vides, note, actions) parlent donc le même papier,
+     sans que l'annuaire soit touché d'un octet ;
+   • aucune `container-type` : l'onglet vit dans le flux de la page, mais ses
+     points de rupture existants sont en `@media` fenêtre et y restent — un
+     seul système de référence par écran, jamais un hybride ;
+   • le fond : le papier ligné et la tranche de perles restent dans l'annuaire,
+     ils ne suivent pas l'onglet (même neutralisation que la fiche, les deux
+     thèmes) ;
+   • la couleur d'une catégorie et le cerne doré de la sélection sont des
+     DONNÉES et des marqueurs : ils restent contenus dans le trait, l'or ne
+     conduit aucune action — le seul remplissage de l'écran est « Nouvelle
+     tâche », en espresso ;
+   • le pli ne rogne jamais de contenu : la carte garde 14 px de respiration
+     sous sa bande de colle et le rabat ne fait que 14 px.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* le papier de l'onglet, réécrit sur les jetons de la charte (dans les deux
+   thèmes : le sélecteur porte `[data-theme]` pour battre la variante sombre du
+   registre, quel que soit l'ordre des feuilles dans le bundle) */
+[data-theme] .tqv2--postit.tqv2 {
+  --rg-paper: var(--charte-surface);
+  --rg-ink: var(--charte-encre);
+  --rg-soft: var(--charte-douce);
+  --rg-faint: var(--charte-douce);
+  --rg-hair: var(--charte-bordure);
+  --rg-hair-fort: color-mix(in srgb, var(--charte-encre) 38%, transparent);
+  --rg-voile: color-mix(in srgb, var(--charte-encre) 7%, transparent);
+  --rg-corail: var(--charte-erreur);
+}
+
+.tqv2--postit {
+  --tqv-pli: 14px;
+  --tqv-colle: calc(var(--tqv-pli) + 1px);
+  /* la bande de colle, en VARIABLE : chaque feuille la pose en
+     `background-image`, et un `background:` en raccourci (celui de l'état de
+     glissement, par exemple) ne peut plus l'effacer par accident */
+  --tqv-colle-degrade: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--tqv-pli),
+    color-mix(in srgb, var(--charte-encre) 12%, transparent) var(--tqv-pli)
+      var(--tqv-colle),
+    transparent var(--tqv-colle)
+  );
+
+  /* 32 px entre la tête et la barre d'outils : la bande de bogolan déborde de
+     18 px + 4 px d'ombre, un rang à 24 px la frôlerait */
+  gap: var(--charte-espace-6);
+}
+
+/* le papier ligné et la tranche de perles ne suivent pas l'onglet */
+.tqv2--postit.emp-vues,
+[data-theme='dark'] .tqv2--postit.emp-vues {
+  padding-left: 0;
+}
+
+.tqv2--postit.emp-vues::before,
+.tqv2--postit.emp-vues::after,
+[data-theme='dark'] .tqv2--postit.emp-vues::after {
+  display: none;
+}
+
+/* ── 0 · la tête : le titre et les chiffres, cerclés d'une seule bande ───── */
+
+.tqv2--postit .tqv2-tete {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+}
+
+/* La bande UNIQUE qui fait le tour du bloc. Le débord porte l'ombre, donc
+   l'encre n'épaissit qu'en bas et à droite — le « double passage de feutre »,
+   obtenu sans un calque de plus. Trois mesures, pas d'à-peu-près :
+
+   • 18 px, c'est déjà l'épaisseur retenue par l'annuaire (`.empv3-entete-bandeau`)
+     pour descendre les 77 px natifs des deux images du dépôt : une échelle
+     UNIFORME, donc C4 « aucun motif étiré » est tenu ;
+   • 18 + 4 d'ombre = 22 px de débord, et la gouttière haute du `main` en fait
+     24 : le galon ne touche pas la barre d'onglets ;
+   • les quatre coins, là où les deux images se rejoignent, sont remplis par
+     `--charte-tissu`, le fond du bogolan — plus aucune couleur écrite ici.
+
+   Et le refus du fondateur tient : le tissu ne passe JAMAIS sous un mot. Ce que
+   on lit est posé sur la plaque de papier du `::after`, pas sur le galon. */
+.tqv2--postit .tqv2-tete::before {
+  content: '';
+  position: absolute;
+  inset: -18px;
+  z-index: -2;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-tissu);
+  background-image:
+    url('/images/paie-bogolan-haut.webp'),
+    url('/images/paie-bogolan-haut.webp'),
+    url('/images/bogolan-vertical.webp'),
+    url('/images/bogolan-vertical.webp');
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-position: left top, left bottom, left top, right top;
+  background-size: auto 18px, auto 18px, 18px auto, 18px auto;
+  box-shadow: var(--charte-ombre-dure);
+  pointer-events: none;
+}
+
+/* la plaque de papier qui porte le contenu — posée DANS le cadre, d'où
+   `isolation: isolate` plus haut et les deux `z-index` négatifs */
+.tqv2--postit .tqv2-tete::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background: var(--charte-surface);
+  pointer-events: none;
+}
+
+.tqv2--postit .tqv2-titre {
+  position: relative;
+  margin: 0;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--charte-encre);
+  /* posé, pas aligné au cordeau : 2 deg. Au-delà, le mot devient une enseigne
+     et son trait du bas ne suit plus la ligne des chiffres. La charte n'a pas
+     d'italique — une inclinaison de note n'en est pas un */
+  transform: rotate(-2deg);
+}
+
+/* le double feutre sous le titre : un trait de 4 px et sa seconde passe,
+   décalée de 2 px à droite et 4 px en bas, plus courte que le mot — comme un
+   feutre qui n'a pas fini sa course. Même encre, flou à zéro (C9 : 131). */
+.tqv2--postit .tqv2-titre::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: 8%;
+  bottom: -9px;
+  height: 4px;
+  background: var(--charte-encre);
+  box-shadow: 2px 4px 0 0 var(--charte-encre);
+  transform: rotate(0.5deg);
+}
+
+/* ── 1 · la rangée de chiffres : quatre notes, pas une colonne de texte ───── */
+
+.tqv2--postit .tqv2-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tqv2--postit .tqv2-kpis .empv2-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: calc(var(--tqv-pli) + 6px) 14px 12px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  background-image: var(--tqv-colle-degrade);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.tqv2--postit .tqv2-kpis .empv2-kpi-haut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tqv2--postit .tqv2-kpis .empv2-kpi-haut strong {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--charte-encre);
+  /* les chiffres du registre sont tabulaires : ils ne dansent pas quand le
+     compte passe de 9 à 10 */
+  font-variant-numeric: tabular-nums;
+}
+
+.tqv2--postit .tqv2-kpis .empv2-kpi-haut svg {
+  color: var(--charte-douce);
+}
+
+.tqv2--postit .tqv2-kpis .empv2-kpi-libelle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--charte-douce);
+}
+
+/* le point « à traiter » : une pastille de 6 px cerclée d'encre, jamais un
+   aplat flottant */
+.tqv2--postit .empv2-point {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-alerte);
+}
+.tqv2--postit .empv2-point--or {
+  background: var(--charte-surface2);
+}
+
+/* la note « En retard » se marque d'une barre d'alerte en pied de feuille */
+.tqv2--postit .tqv2-kpis .empv2-kpi:nth-child(3) {
+  box-shadow: var(--charte-ombre-dure), inset 0 -4px 0 0 var(--charte-alerte);
+}
+
+/* ── 2 · la barre d'outils ─────────────────────────────────────────────────── */
+
+.tqv2--postit .tqv2-outils {
+  gap: 8px;
+}
+
+/* le champ de recherche, qui n'avait aucune règle : il devient une fiche de
+   saisie cerclée d'encre, posée sur le même rang que les filtres */
+.tqv2--postit .tqv2-recherche {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-blanc);
+  color: var(--charte-douce);
+}
+.tqv2--postit .tqv2-recherche input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: var(--charte-taille-corps);
+  color: var(--charte-encre);
+}
+.tqv2--postit .tqv2-recherche input::placeholder {
+  color: var(--charte-douce);
+}
+.tqv2--postit .tqv2-recherche:focus-within {
+  box-shadow: inset 0 0 0 1px var(--charte-encre);
+}
+.tqv2--postit .tqv2-recherche-effacer {
+  border: none;
+  background: transparent;
+  color: var(--charte-douce);
+  cursor: pointer;
+  display: inline-flex;
+}
+.tqv2--postit .tqv2-recherche-effacer:hover {
+  color: var(--charte-encre);
+}
+
+.tqv2--postit .tqv2-select {
+  min-height: 38px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  font-weight: 600;
+}
+.tqv2--postit .tqv2-select:hover {
+  background-color: var(--charte-surface2);
+}
+
+.tqv2--postit .tqv2-actions .empv2-lien {
+  min-height: 38px;
+  padding: 6px 12px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background-color: var(--charte-surface);
+  color: var(--charte-texte);
+  font-weight: 700;
+  transition: background-color var(--charte-duree) var(--charte-easing),
+    transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+.tqv2--postit .tqv2-actions .empv2-lien:hover {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* le bouton qui n'existait pas : la seule variante pleine de l'écran, en
+   espresso — jamais en or (D-016, refusé deux fois comme action principale) */
+.tqv2--postit .tqv2-actions .empv2-nouvel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 6px 14px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--charte-ombre-dure);
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+.tqv2--postit .tqv2-actions .empv2-nouvel:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+.tqv2--postit .tqv2-actions .empv2-nouvel:disabled {
+  /* le désactivé ne se joue jamais de l'opacité : on change de papier et de mot
+     » (kit v1.3, règle 3 des boutons) */
+  background-color: var(--charte-btn-desactive);
+  border-color: var(--charte-bordure);
+  color: var(--charte-btn-desactive-texte);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* ── 3 · les catégories : la couleur est une donnée, elle reste dans le trait ── */
+
+.tqv2--postit .tqv2-categories-titre {
+  color: var(--charte-texte);
+}
+
+.tqv2--postit .tqv2-categorie {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  font-weight: 700;
+  box-shadow: var(--charte-ombre-dure);
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+.tqv2--postit .tqv2-categorie:hover {
+  background-color: var(--charte-surface2);
+}
+.tqv2--postit .tqv2-categorie[aria-pressed='true'] {
+  background-color: var(--charte-surface2);
+  border-color: var(--charte-encre);
+  color: var(--charte-encre);
+}
+
+.tqv2--postit .tqv2-pastille {
+  border: 1px solid var(--charte-encre);
+}
+
+.tqv2--postit .tqv2-categorie-nombre {
+  background: color-mix(in srgb, var(--charte-encre) 10%, transparent);
+  color: var(--charte-encre);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 4 · le tableau : quatre feuilles agrafées ───────────────────────────── */
+
+.tqv2--postit .tqv2-colonnes {
+  gap: 24px;
+  align-items: stretch;
+}
+
+.tqv2--postit .tqv2-colonne {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  padding: calc(var(--tqv-pli) + 10px) 12px 12px;
+  background-color: var(--charte-surface);
+  background-image: var(--tqv-colle-degrade);
+  box-shadow: var(--charte-ombre-dure);
+  transition: box-shadow var(--charte-duree) var(--charte-easing),
+    transform var(--charte-duree) var(--charte-easing);
+}
+
+/* la colonne survolée pendant un glissement : le cerne d'or du registre reste
+   (c'est un marqueur de déplacement, pas une action) ; la bande de colle est
+   redéclarée parce que la règle de base pose `background:` en raccourci, qui
+   l'effacerait — le piège est écrit en tête de ce fichier */
+.tqv2--postit .tqv2-colonne[data-survol='oui'] {
+  border-color: var(--empv2-or);
+  background-color: color-mix(in srgb, var(--empv2-or) 9%, var(--charte-surface));
+  background-image: var(--tqv-colle-degrade);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+.tqv2--postit .tqv2-colonne-tete {
+  padding: 0 2px 10px;
+  border-bottom: 1px solid var(--charte-bordure);
+}
+
+.tqv2--postit .tqv2-colonne-titre {
+  font-size: var(--charte-taille-corps);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--charte-encre);
+}
+
+/* le compte, en tampon cerclé — le ton de la colonne garde la couleur du
+   chiffre, l'encre fait l'anneau */
+.tqv2--postit .tqv2-colonne[data-ton] .tqv2-colonne-compte {
+  min-width: 30px;
+  padding: 2px 8px;
+  border: var(--charte-trait) dashed var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: transparent;
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.tqv2--postit .tqv2-colonne-corps {
+  gap: 12px;
+  min-height: 84px;
+}
+
+.tqv2--postit .tqv2-colonne-vide {
+  border: var(--charte-trait) dashed var(--charte-bordure);
+  border-radius: 0;
+  padding: 22px 12px;
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  color: var(--charte-douce);
+}
+
+/* ── 5 · la carte de tâche : un post-it, avec son drapeau et son rabat ────── */
+
+.tqv2--postit .tqv2-fiche {
+  position: relative;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  /* en bas, 16 px et non 11 : le rabat fait 14 px et les deux icônes se
+     collent au bord droit — vérifié en posant les trois calques, la diagonale
+     du pli s'arrête à 2 px sous le coin des boutons (0 pixel de cible touchée,
+     3 px de recouvrement avec les 11 px d'avant) */
+  padding: calc(var(--tqv-pli) + 6px) 12px calc(var(--tqv-pli) + 2px);
+  background-color: var(--charte-blanc);
+  background-image: var(--tqv-colle-degrade);
+  box-shadow: var(--charte-ombre-dure);
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+/* le survol ne décolore rien : il déplace la note et épaissit son ombre */
+.tqv2--postit .tqv2-fiche:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+/* la carte cochée garde le cerne d'or du registre — un marqueur de sélection,
+   pas une action. Redéclaré à la main ici : la règle de base a le même poids,
+   et l'ordre de nos deux fichiers dans le bundle n'est pas une garantie. */
+.tqv2--postit .tqv2-fiche[data-selection='oui'] {
+  border: var(--charte-trait) solid var(--empv2-or);
+  padding: calc(var(--tqv-pli) + 5px) 11px calc(var(--tqv-pli) + 1px);
+}
+
+/* le drapeau de priorité : une barre de 4 px dans l'épaisseur de la feuille,
+   et le MOT à côté — la priorité ne se lit jamais dans une pastille pleine qui
+   flotterait hors du trait. La barre est peinte par un calque, jamais par un
+   `clip-path` : la découpe rognerait l'ombre et le rabat partirait avec. */
+.tqv2--postit .tqv2-fiche::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--tqv-priorite, var(--charte-douce));
+}
+.tqv2--postit .tqv2-fiche[data-priorite='critical'] {
+  --tqv-priorite: var(--charte-erreur);
+}
+.tqv2--postit .tqv2-fiche[data-priorite='high'] {
+  --tqv-priorite: var(--charte-aplat);
+}
+.tqv2--postit .tqv2-fiche[data-priorite='medium'] {
+  --tqv-priorite: var(--charte-alerte);
+}
+.tqv2--postit .tqv2-fiche[data-priorite='low'] {
+  --tqv-priorite: var(--charte-bordure);
+}
+
+/* le rabat, au coin bas-droit de la carte : 14 px, dans la respiration du pied
+   (11 px) + de la dernière ligne. La découpe du papier n'est PAS peinte ici,
+   contrairement à la fiche : la carte vit sur une feuille colorée par le survol
+   de glissement, un triangle à plat fixe y laisserait une couture. */
+.tqv2--postit .tqv2-fiche::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--tqv-pli);
+  height: var(--tqv-pli);
+  background: linear-gradient(
+    to top left,
+    transparent 0 44%,
+    var(--charte-encre) 44% 50%,
+    color-mix(in srgb, var(--charte-blanc) 55%, var(--charte-surface2)) 50%
+  );
+  pointer-events: none;
+}
+
+.tqv2--postit .tqv2-fiche-titre {
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+
+.tqv2--postit .tqv2-case {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  color: transparent;
+}
+.tqv2--postit .tqv2-case:hover {
+  background: var(--charte-surface2);
+}
+
+/* le mot de priorité : la couleur vient du ton, plus de fond ni de cadre */
+.tqv2--postit .tqv2-priorite {
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.tqv2--postit .tqv2-priorite--basse {
+  color: var(--charte-douce);
+}
+
+/* l'échéance en tabulaire, le retard souligné d'un trait droit de 2 px — pas
+   de trait tremblé, pas de hachures : le mot fait l'alerte, la couleur le
+   rappelle */
+.tqv2--postit .tqv2-fiche-date {
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-douce);
+}
+.tqv2--postit .tqv2-fiche-date--retard {
+  color: var(--charte-erreur);
+}
+.tqv2--postit .tqv2-retard {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.tqv2--postit .tqv2-fiche-pied {
+  border-top: 1px solid var(--charte-bordure);
+}
+
+/* la vignette de la personne : un cadre d'encre carré, comme dans la modale —
+   la pastille ronde de l'annuaire ne descend pas dans les tâches */
+.tqv2--postit .tqv2-avatar {
+  width: 26px;
+  height: 26px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background: var(--charte-surface2);
+  color: var(--charte-texte);
+  font-size: 10px;
+  font-weight: 800;
+}
+.tqv2--postit .tqv2-avatar img {
+  border-radius: 0;
+}
+
+.tqv2--postit .tqv2-personne {
+  color: var(--charte-encre);
+  font-weight: 700;
+}
+.tqv2--postit .tqv2-personne-nom small {
+  color: var(--charte-douce);
+}
+/* la charte n'a pas d'italique : « Non assignée » se lit droit, en doux */
+.tqv2--postit .tqv2-personne-none {
+  font-style: normal;
+  color: var(--charte-douce);
+}
+
+.tqv2--postit .tqv2-action {
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-blanc);
+  color: var(--charte-texte);
+}
+.tqv2--postit .tqv2-action:hover {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+
+/* ── 6 · les états de la vue ──────────────────────────────────────────────── */
+
+.tqv2--postit .tqv2-selection {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.tqv2--postit .tqv2-vide,
+.tqv2--postit .tqv2-chargement {
+  border: var(--charte-trait) dashed var(--charte-bordure);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  padding: 32px 24px;
+}
+.tqv2--postit .tqv2-chargement {
+  border-style: solid;
+  border-color: var(--charte-bordure);
+  background: transparent;
+  padding: 40px 0;
+}
+
+/* ── 7 · petit écran : la rangée de chiffres passe à deux notes ──────────── */
+
+@media (max-width: 900px) {
+  .tqv2--postit .tqv2-tete {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+  }
+  .tqv2--postit .tqv2-titre {
+    font-size: 32px;
+  }
+}
+
+@media (max-width: 640px) {
+  .tqv2--postit .tqv2-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
