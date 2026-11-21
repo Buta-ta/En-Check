@@ -1093,35 +1093,9 @@
   color: var(--rg-ink);
 }
 
-/* ── états : chargement, erreur, vide ─────────────────────── */
-
-.e360-charge {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 60px 0;
-  color: var(--rg-faint);
-  font-size: 14px;
-}
-
-.e360-charge-point {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--e360-or);
-  animation: e360-pulse 1s ease-in-out infinite;
-}
-
-@keyframes e360-pulse {
-  0%, 100% {
-    opacity: 0.35;
-    transform: scale(0.8);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
-  }
-}
+/* ── états : erreur, vide ───────────────────────────────────
+   Le chargement, lui, est passé sur la scène de l'annuaire
+   (EmployesLoadingScreen) : plus de point pulsant ici. */
 
 .e360-erreur {
   display: flex;

@@ -21,6 +21,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import PageCulturalBand from '../components/PageCulturalBand'
+import EmployesLoadingScreen, { EMPLOYES_INTRO_MS } from '../components/EmployesLoadingScreen'
+import { useTheme } from '../contexts/ThemeContext'
 import FicheEmployeModal from '../components/FicheEmployeModal'
 import BadgeEmploye from '../components/BadgeEmploye'
 import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
@@ -158,6 +160,28 @@ function GrapheBarres({ colonnes, echelle, libelleGraduation, ariaLabel, fine = 
   )
 }
 
+// Les quatre groupes de requêtes de la fiche, dans l'ordre où ils rentrent.
+export const ETAPES_CHARGEMENT_FICHE = [
+  { id: 1, court: 'Identité', detail: 'Lecture du dossier du collaborateur…', requetes: ['fiche'], pct: 8 },
+  { id: 2, court: 'Entreprise', detail: 'Repère de l’entreprise et des collègues…', requetes: ['entreprise', 'carrousel'], pct: 22 },
+  {
+    id: 3,
+    court: 'Présence',
+    detail: 'Pointages, absences, pauses, plannings et règles…',
+    requetes: ['pointages', 'absences', 'pauses', 'horaires', 'plannings', 'feries', 'seuils'],
+    pct: 60,
+  },
+  {
+    id: 4,
+    court: 'Paie et tâches',
+    detail: 'Heures supplémentaires, bulletins et tâches…',
+    requetes: ['heuresSup', 'bulletins', 'taches'],
+    pct: 88,
+  },
+]
+
+const NOMBRE_REQUETES_FICHE = ETAPES_CHARGEMENT_FICHE.reduce((n, g) => n + g.requetes.length, 0)
+
 export default function Employee360() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -175,6 +199,38 @@ export default function Employee360() {
   const [badgeOuvert, setBadgeOuvert] = useState(false)
   const [periode, setPeriode] = useState('mois') // « mois » | « annee » — le sélecteur de l'activité
   const rechargementRef = useRef(0)
+
+  // ── ce que l'écran de chargement raconte, en vraies requêtes ──
+  // La fiche se paie 13 requêtes : 1 pour le collaborateur, 2 pour
+  // l'entreprise et le carrousel, puis 10 en parallèle. Elles sont suivies une
+  // par une ; une étape n'est franchie que quand TOUTES les requêtes du groupe
+  // sont rentrées — la barre ne peut donc pas mentir.
+  const [etapeChargement, setEtapeChargement] = useState(1)
+  const [progressionChargement, setProgressionChargement] = useState(8)
+  const [plancherFait, setPlancherFait] = useState(
+    // Sous jsdom (tests), aucun plancher : la page doit se rendre tout de suite.
+    () => typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent || ''),
+  )
+  const { darkMode } = useTheme()
+  const tourRef = useRef(0)
+  const dejaVueRef = useRef(false)
+  const requetesRef = useRef(new Set())
+
+  // Une requête qui rentre : on la note, on recalcule l'étape et le pourcentage.
+  const suivre = useCallback((nom, promesse) => {
+    const numeroDuTour = tourRef.current
+    return Promise.resolve(promesse).then((resultat) => {
+      const finies = requetesRef.current
+      finies.add(nom)
+      if (numeroDuTour !== tourRef.current) return resultat // un autre appel a démarré entre-temps
+      setProgressionChargement(Math.min(95, Math.round(8 + (finies.size / NOMBRE_REQUETES_FICHE) * 87)))
+      const groupeEnRetard = ETAPES_CHARGEMENT_FICHE.findIndex(
+        (groupe) => !groupe.requetes.every((nomRequete) => finies.has(nomRequete)),
+      )
+      setEtapeChargement(groupeEnRetard === -1 ? 4 : groupeEnRetard + 1)
+      return resultat
+    })
+  }, [])
 
   // ── chargement de la fiche ─────────────────────────────────
   const charger = useCallback(async (employeeArg, entrepriseArg) => {
@@ -220,60 +276,90 @@ export default function Employee360() {
       if (!debutAnneeInstante || !finInstante) throw new Error('Période de lecture invalide')
 
       const [attRes, absRes, pausesRes, affectRes, grillesRes, seuilsRes, feriesRes, heuresRes, bulletinsRes, tachesRes] = await Promise.all([
-        // L'année entière, colonnes « strictes » : le fil en garde la
-        // fenêtre, l'activité détaillée en garde l'historique.
-        supabase
-          .from('attendances')
-          .select('id, check_time, check_type, is_auto_closed, method, anomalie, estimation_validee_le, estimation_remplacee_le, estimation_niveau, estimation_confiance')
-          .eq('employee_id', emp.id)
-          .gte('check_time', debutAnneeInstante)
-          .lte('check_time', finInstante)
-          .order('check_time', { ascending: true }),
-        supabase
-          .from('absences')
-          .select('id, start_date, end_date, reason')
-          .eq('employee_id', emp.id)
-          .gte('start_date', anneeDebut)
-          .lte('end_date', dateDuJour),
-        supabase
-          .from('encheck_pauses')
-          .select('id, employee_id, jour, debut, fin, duree_minutes, statut, source, motif, anomalie')
-          .eq('employee_id', emp.id)
-          .gte('jour', debutFil)
-          .lte('jour', dateDuJour),
-        supabase
-          .from('employee_schedules')
-          .select('*, work_schedules(*)')
-          .eq('employee_id', emp.id)
-          .eq('is_active', true),
-        supabase
-          .from('work_schedules')
-          .select('*')
-          .eq('enterprise_id', ent.id)
-          .eq('is_active', true),
-        chargerSeuilsPointage(ent.id),
-        Promise.resolve(HolidayService.getHolidaysForRange(ent.id, anneeDebut, dateDuJour).catch(() => [])),
-        // L'histoire de l'argent (heures sup, valorisation) ne se charge
-        // QUE si un module le mérite — sinon aucune donnée inventée.
-        modules.heuresSup || modules.fichesPaie
-          ? Promise.resolve(calculateEmployeeHours(emp.id, ent.id).catch(() => null))
-          : Promise.resolve(null),
-        // L'histoire du salaire : les bulletins bruts de l'année.
-        modules.fichesPaie
-          ? Promise.resolve(chargerBulletinsPeriode({
-            enterpriseId: ent.id,
-            dateDebut: anneeDebut,
-            dateFin: dateDuJour,
-            employeeIds: [emp.id],
-          }).catch(() => null))
-          : Promise.resolve(null),
-        modules.taches
-          ? supabase
-            .from('tasks')
-            .select('id, title, status, due_at, completed_at, validated_at')
-            .eq('assigned_employee_id', emp.id)
-            .is('deleted_at', null)
-          : Promise.resolve({ data: null }),
+suivre('pointages',
+
+          // L'année entière, colonnes « strictes » : le fil en garde la
+          // fenêtre, l'activité détaillée en garde l'historique.
+          supabase
+            .from('attendances')
+            .select('id, check_time, check_type, is_auto_closed, method, anomalie, estimation_validee_le, estimation_remplacee_le, estimation_niveau, estimation_confiance')
+            .eq('employee_id', emp.id)
+            .gte('check_time', debutAnneeInstante)
+            .lte('check_time', finInstante)
+            .order('check_time', { ascending: true })
+),
+suivre('absences',
+
+          supabase
+            .from('absences')
+            .select('id, start_date, end_date, reason')
+            .eq('employee_id', emp.id)
+            .gte('start_date', anneeDebut)
+            .lte('end_date', dateDuJour)
+),
+suivre('pauses',
+
+          supabase
+            .from('encheck_pauses')
+            .select('id, employee_id, jour, debut, fin, duree_minutes, statut, source, motif, anomalie')
+            .eq('employee_id', emp.id)
+            .gte('jour', debutFil)
+            .lte('jour', dateDuJour)
+),
+suivre('horaires',
+
+          supabase
+            .from('employee_schedules')
+            .select('*, work_schedules(*)')
+            .eq('employee_id', emp.id)
+            .eq('is_active', true)
+),
+suivre('plannings',
+
+          supabase
+            .from('work_schedules')
+            .select('*')
+            .eq('enterprise_id', ent.id)
+            .eq('is_active', true)
+),
+suivre('seuils',
+
+          chargerSeuilsPointage(ent.id)
+),
+suivre('feries',
+
+          Promise.resolve(HolidayService.getHolidaysForRange(ent.id, anneeDebut, dateDuJour).catch(() => []))
+),
+suivre('heuresSup',
+
+          // L'histoire de l'argent (heures sup, valorisation) ne se charge
+          // QUE si un module le mérite — sinon aucune donnée inventée.
+          modules.heuresSup || modules.fichesPaie
+            ? Promise.resolve(calculateEmployeeHours(emp.id, ent.id).catch(() => null))
+            : Promise.resolve(null)
+),
+suivre('bulletins',
+
+          // L'histoire du salaire : les bulletins bruts de l'année.
+          modules.fichesPaie
+            ? Promise.resolve(chargerBulletinsPeriode({
+              enterpriseId: ent.id,
+              dateDebut: anneeDebut,
+              dateFin: dateDuJour,
+              employeeIds: [emp.id],
+            }).catch(() => null))
+            : Promise.resolve(null)
+),
+suivre('taches',
+
+          modules.taches
+            ? supabase
+              .from('tasks')
+              .select('id, title, status, due_at, completed_at, validated_at')
+              .eq('assigned_employee_id', emp.id)
+              .is('deleted_at', null)
+            : Promise.resolve({ data: null })
+),
       ])
       for (const [nom, r] of Object.entries({ attRes, absRes, pausesRes, affectRes, grillesRes, tachesRes })) {
         if (r?.error) throw new Error(`${nom} : ${r.error.message}`)
@@ -438,7 +524,12 @@ export default function Employee360() {
       console.error('Erreur chargement fiche employé:', err)
       if (estFrais()) setErreur(String(err?.message || err))
     } finally {
-      if (estFrais()) setChargement(false)
+      if (estFrais()) {
+        setChargement(false)
+        // La scène ne sera imposée qu'à la première ouverture de la
+        // session : feuilleter les collègues doit rester instantané.
+        dejaVueRef.current = true
+      }
     }
   }, [])
 
@@ -448,12 +539,21 @@ export default function Employee360() {
     const tout = async () => {
       setChargement(true)
       setErreur(null)
+      // Nouveau tour de charge : la jauge repart de zéro, et les marques d'un
+      // tour précédent ne peuvent plus rien écrire.
+      tourRef.current += 1
+      requetesRef.current.clear()
+      setEtapeChargement(1)
+      setProgressionChargement(8)
       try {
-        const { data: emp, error } = await supabase
-          .from('employees')
-          .select('*')
-          .eq('id', id)
-          .maybeSingle()
+        const { data: emp, error } = await suivre(
+          'fiche',
+          supabase
+            .from('employees')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle(),
+        )
         if (error) throw error
         if (!actif) return
         if (!emp) {
@@ -462,19 +562,25 @@ export default function Employee360() {
           return
         }
         setEmployee(emp)
-        const { data: ent } = await supabase
-          .from('enterprises')
-          .select('*')
-          .eq('id', emp.enterprise_id)
-          .maybeSingle()
+        const { data: ent } = await suivre(
+          'entreprise',
+          supabase
+            .from('enterprises')
+            .select('*')
+            .eq('id', emp.enterprise_id)
+            .maybeSingle(),
+        )
         if (!actif) return
         setEntreprise(ent || null)
-        const { data: liste } = await supabase
+        const { data: liste } = await suivre(
+          'carrousel',
+          supabase
           .from('employees')
           .select('id, first_name, last_name, photo_url')
           .eq('enterprise_id', emp.enterprise_id)
           .eq('is_active', true)
-          .order('last_name')
+          .order('last_name'),
+        )
         if (!actif) return
         setEmployesEnt(liste || [])
         charger(emp, ent || null)
@@ -483,12 +589,13 @@ export default function Employee360() {
         if (actif) {
           setErreur(String(err?.message || err))
           setChargement(false)
+          dejaVueRef.current = true
         }
       }
     }
     tout()
     return () => { actif = false }
-  }, [id, charger])
+  }, [id, charger, suivre])
 
   // ── temps réel : le badge de présence vit comme le dashboard ─
   useEffect(() => {
@@ -615,6 +722,30 @@ export default function Employee360() {
     ? 'fait'
     : ['in_progress', 'paused'].includes(statut) ? 'encours' : 'attente'
 
+  // ── la fiche se charge : la scène validée pour l'annuaire, branchée sur les
+  // vraies requêtes de cette page. La première ouverture laisse jouer la scène
+  // quelques secondes ; ensuite (carrousel, enregistrement) on ne l'impose pas.
+  if ((chargement || !plancherFait) && !erreur) {
+    const qui = nomComplet !== 'Sans nom' ? ` ${nomComplet}` : ''
+    return (
+      <EmployesLoadingScreen
+        darkMode={darkMode}
+        dataReady={!chargement}
+        etape={etapeChargement}
+        progression={progressionChargement}
+        etapes={ETAPES_CHARGEMENT_FICHE}
+        legende="Chargement de la fiche du collaborateur"
+        marque={nomComplet !== 'Sans nom' ? `EN-CHECK · FICHE · ${nomComplet}` : 'EN-CHECK · FICHE COLLABORATEUR'}
+        titre={`Chargement de la fiche${qui}…`}
+        titrePret="La fiche est prête"
+        statutPret="Toutes les données du collaborateur sont à jour."
+        dureeMin={dejaVueRef.current ? 0 : EMPLOYES_INTRO_MS}
+        onIntroDone={() => setPlancherFait(true)}
+        onSkip={() => setPlancherFait(true)}
+      />
+    )
+  }
+
   if (!admin) {
     return null
   }
@@ -670,12 +801,6 @@ export default function Employee360() {
         </header>
 
         {/* ─────────────── CORPS ─────────────── */}
-        {chargement && !erreur && (
-          <div className="e360-charge" aria-busy="true">
-            <span className="e360-charge-point" /> Lecture de la fiche…
-          </div>
-        )}
-
         {erreur && (
           <div className="e360-erreur" role="alert">
             <AlertTriangle size={18} />
