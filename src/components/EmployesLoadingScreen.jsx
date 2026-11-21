@@ -52,6 +52,15 @@ export default function EmployesLoadingScreen({
   etape = 1,
   progression,
   nomEntreprise = '',
+  // La même scène sert à la fiche d'un collaborateur : ces textes et ces
+  // étapes sont donc réglables, sans dupliquer le composant.
+  etapes = ETAPES_CHARGEMENT_EMPLOYES,
+  marque,
+  titre,
+  titrePret,
+  statutPret,
+  legende = 'Chargement de l’espace collaborateurs',
+  dureeMin = EMPLOYES_INTRO_MS,
 }) {
   const [calquesCharges, setCalquesCharges] = useState([])
   const [erreurCalque, setErreurCalque] = useState(false)
@@ -62,6 +71,8 @@ export default function EmployesLoadingScreen({
   // programme l'écoulement une seule fois, au montage.
   const finirRef = useRef(onIntroDone)
   finirRef.current = onIntroDone
+  const dureeRef = useRef(dureeMin)
+  dureeRef.current = dureeMin
 
   useEffect(() => {
     const reduit = window.matchMedia?.('(prefers-reduced-motion: reduce)')
@@ -69,7 +80,7 @@ export default function EmployesLoadingScreen({
       finirRef.current?.()
       return undefined
     }
-    const minuterie = window.setTimeout(() => finirRef.current?.(), EMPLOYES_INTRO_MS)
+    const minuterie = window.setTimeout(() => finirRef.current?.(), dureeRef.current)
     const surChangement = (event) => {
       if (event.matches) finirRef.current?.()
     }
@@ -93,10 +104,8 @@ export default function EmployesLoadingScreen({
     !erreurCalque &&
     calquesCharges.length === CALQUES_FIXES.length + CALQUES_PERSONNAGES.length
 
-  const etapeCourante = Math.min(4, Math.max(1, Number(etape) || 1))
-  const infoEtape =
-    ETAPES_CHARGEMENT_EMPLOYES.find((item) => item.id === etapeCourante) ||
-    ETAPES_CHARGEMENT_EMPLOYES[0]
+  const etapeCourante = Math.min(etapes.length, Math.max(1, Number(etape) || 1))
+  const infoEtape = etapes.find((item) => item.id === etapeCourante) || etapes[0]
 
   const pourcentageReel = dataReady
     ? 100
@@ -124,6 +133,15 @@ export default function EmployesLoadingScreen({
     onError: () => setErreurCalque(true),
   })
 
+  const ligneMarque = marque
+    ?? (nomEntreprise ? `EN-CHECK · ${nomEntreprise}` : 'EN-CHECK · ESPACE COLLABORATEURS')
+  const texteTitre = titre
+    ?? (nomEntreprise ? `Chargement de ${nomEntreprise}…` : 'Chargement de l’espace collaborateurs…')
+  const titreAffiche = dataReady ? (titrePret ?? 'L’espace collaborateurs est prêt') : texteTitre
+  const statutAffiche = dataReady
+    ? (statutPret ?? 'Tous les collaborateurs et pointages sont synchronisés.')
+    : `Étape ${etapeCourante}/${etapes.length} · ${infoEtape.detail}`
+
   return (
     <section
       className="emp-loading-shell"
@@ -131,23 +149,15 @@ export default function EmployesLoadingScreen({
       role="status"
       aria-live="polite"
       aria-busy={!dataReady}
-      aria-label="Chargement de l’espace collaborateurs"
+      aria-label={legende}
     >
       <div className="emp-loading-card">
         <header className="emp-loading-header">
           <div className="emp-loading-brand">
             <EnCheckBrandMark size={38} loading={!dataReady} />
             <div className="emp-loading-brand-text">
-              <span className="emp-loading-eyebrow">
-                {nomEntreprise ? `EN-CHECK · ${nomEntreprise}` : 'EN-CHECK · ESPACE COLLABORATEURS'}
-              </span>
-              <h1 className="emp-loading-title">
-                {dataReady
-                  ? 'L’espace collaborateurs est prêt'
-                  : nomEntreprise
-                    ? `Chargement de ${nomEntreprise}…`
-                    : 'Chargement de l’espace collaborateurs…'}
-              </h1>
+              <span className="emp-loading-eyebrow">{ligneMarque}</span>
+              <h1 className="emp-loading-title">{titreAffiche}</h1>
             </div>
           </div>
 
@@ -164,7 +174,7 @@ export default function EmployesLoadingScreen({
           <div
             className={`emp-loading-stage${scenePrete ? ' is-ready' : ''}`}
             data-artwork="approved-queue-illustration"
-            data-step={dataReady ? 4 : etapeCourante}
+            data-step={dataReady ? etapes.length : etapeCourante}
             aria-hidden="true"
           >
             <div className="emp-loading-layers">
@@ -215,7 +225,7 @@ export default function EmployesLoadingScreen({
           </div>
 
           <div className="emp-loading-steps" aria-label="Étapes du chargement">
-            {ETAPES_CHARGEMENT_EMPLOYES.map((item) => {
+            {etapes.map((item) => {
               const terminee = dataReady || item.id < etapeCourante
               const enCours = !dataReady && item.id === etapeCourante
               return (
@@ -233,11 +243,7 @@ export default function EmployesLoadingScreen({
           </div>
 
           <div className="emp-loading-footer">
-            <p className="emp-loading-status">
-              {dataReady
-                ? 'Tous les collaborateurs et pointages sont synchronisés.'
-                : `Étape ${etapeCourante}/4 · ${infoEtape.detail}`}
-            </p>
+            <p className="emp-loading-status">{statutAffiche}</p>
             {onSkip && (
               <button type="button" className="emp-loading-skip" onClick={onSkip}>
                 <span>Passer l’animation</span>
