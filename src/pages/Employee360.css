@@ -588,7 +588,20 @@
 .e360-paire-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  /* 08/11, fondateur : « espacer un peu les cards du bloc d'en haut ». Le gap
+     de `.e360-col` est hors d'atteinte — même classe pour les colonnes 2 à 4 de
+     la grille et pour les colonnes du rythme (l. 812) — donc le bloc de tête
+     prend son air carte par carte : +6 px sous le portrait, +6 px sous le
+     contact, et 20 au lieu de 14 entre les deux notes de stats. */
+  gap: 20px;
+}
+
+.e360-carte-portrait {
+  margin-bottom: 6px;
+}
+
+.e360-carte-contact {
+  margin-bottom: 6px;
 }
 
 .e360-stat {
