@@ -544,8 +544,8 @@ export default function DashboardExperience({
     ;[
       '/images/pointage-loading-pin.jpg',
       '/images/pointage-loading-qr.jpg',
-      '/images/employes-loading-badge.jpg',
-      '/images/employes-loading-team.jpg',
+      '/images/employes-loading-approved.webp',
+      '/images/employes-loading-decor.webp',
     ].forEach((src) => {
       const img = new window.Image()
       img.src = src

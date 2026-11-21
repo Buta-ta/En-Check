@@ -1,129 +1,251 @@
-import PageCulturalBand from './PageCulturalBand'
-import { useEffect, useState } from 'react'
-import { ArrowRight, CheckCircle2, QrCode, Users } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import EnCheckBrandMark from './EnCheckBrandMark'
-import { CulturalCornerMotifSvg } from './AfroCulturalSvg'
-import '../pages/PointagesAfroTech.css'
+import './EmployesLoadingScreen.css'
 
-export default function EmployesLoadingScreen({ darkMode = true, onSkip }) {
-  const [activeStep, setActiveStep] = useState(0)
-  const [progress, setProgress] = useState(14)
+// Durée plancher de la scène : le temps de la voir, pas plus.
+export const EMPLOYES_INTRO_MS = 2600
+
+// Calques découpés dans l'illustration validée (scène 1600 × 900).
+// `etape` relie chaque collaborateur à une étape réelle du chargement :
+// le premier de la file (devant la borne) est le dossier le plus tôt prêt.
+export const CALQUES_PERSONNAGES = [
+  { nom: 'p1', etape: 1, gauche: 57.188, haut: 6.889, largeur: 22.625, hauteur: 86.556 },
+  { nom: 'p2', etape: 2, gauche: 43.625, haut: 15.111, largeur: 12.438, hauteur: 77.222 },
+  { nom: 'p3', etape: 3, gauche: 31.5, haut: 21.556, largeur: 10.688, hauteur: 69.111 },
+  { nom: 'p4', etape: 4, gauche: 20.0, haut: 20.333, largeur: 10.688, hauteur: 69.778 },
+]
+
+const CALQUES_FIXES = ['decor', 'approved']
+
+export const ETAPES_CHARGEMENT_EMPLOYES = [
+  {
+    id: 1,
+    court: 'Collaborateurs',
+    detail: 'Lecture des dossiers et fiches collaborateurs…',
+    pct: 25,
+  },
+  {
+    id: 2,
+    court: 'Pointages du jour',
+    detail: 'Vérification des présences et des pointages en direct…',
+    pct: 55,
+  },
+  {
+    id: 3,
+    court: 'Entreprise',
+    detail: 'Chargement de l’entreprise et des options actives…',
+    pct: 80,
+  },
+  {
+    id: 4,
+    court: 'Plannings',
+    detail: 'Synchronisation des horaires et des équipes…',
+    pct: 95,
+  },
+]
+
+export default function EmployesLoadingScreen({
+  darkMode = false,
+  onSkip,
+  onIntroDone,
+  dataReady = false,
+  etape = 1,
+  progression,
+  nomEntreprise = '',
+}) {
+  const [calquesCharges, setCalquesCharges] = useState([])
+  const [erreurCalque, setErreurCalque] = useState(false)
+  const [erreurImage, setErreurImage] = useState(false)
+
+  // Le minuteur ne doit pas repartir à zéro à chaque mise à jour de
+  // progression : on garde le gestionnaire dans une référence et on
+  // programme l'écoulement une seule fois, au montage.
+  const finirRef = useRef(onIntroDone)
+  finirRef.current = onIntroDone
 
   useEffect(() => {
-    const stepTimer = window.setInterval(() => {
-      setActiveStep((prev) => (prev === 0 ? 1 : 0))
-    }, 2250)
-    const progressTimer = window.setInterval(() => {
-      setProgress((prev) => (prev >= 96 ? 24 : prev + 6))
-    }, 240)
+    const reduit = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (reduit?.matches) {
+      finirRef.current?.()
+      return undefined
+    }
+    const minuterie = window.setTimeout(() => finirRef.current?.(), EMPLOYES_INTRO_MS)
+    const surChangement = (event) => {
+      if (event.matches) finirRef.current?.()
+    }
+    reduit?.addEventListener?.('change', surChangement)
     return () => {
-      window.clearInterval(stepTimer)
-      window.clearInterval(progressTimer)
+      window.clearTimeout(minuterie)
+      reduit?.removeEventListener?.('change', surChangement)
     }
   }, [])
 
+  const marquerCharge = (nom) => {
+    setCalquesCharges((precedents) =>
+      precedents.includes(nom) ? precedents : [...precedents, nom],
+    )
+  }
+
+  // Au premier affichage, l'image complète approuvée est visible ; les calques
+  // animés ne prennent le relais que lorsqu'ils sont tous là, sinon la file
+  // arriverait morceau par morceau.
+  const scenePrete =
+    !erreurCalque &&
+    calquesCharges.length === CALQUES_FIXES.length + CALQUES_PERSONNAGES.length
+
+  const etapeCourante = Math.min(4, Math.max(1, Number(etape) || 1))
+  const infoEtape =
+    ETAPES_CHARGEMENT_EMPLOYES.find((item) => item.id === etapeCourante) ||
+    ETAPES_CHARGEMENT_EMPLOYES[0]
+
+  const pourcentageReel = dataReady
+    ? 100
+    : typeof progression === 'number'
+      ? Math.min(99, Math.max(8, Math.round(progression)))
+      : infoEtape.pct
+
+  const propsCalque = (nom, classe = '', geo = null) => ({
+    src: `/images/employes-loading-${nom}.webp`,
+    alt: '',
+    width: geo ? Math.round((geo.largeur / 100) * 1600) : 1600,
+    height: geo ? Math.round((geo.hauteur / 100) * 900) : 900,
+    decoding: 'async',
+    draggable: false,
+    className: classe,
+    style: geo
+      ? {
+          left: `${geo.gauche}%`,
+          top: `${geo.haut}%`,
+          width: `${geo.largeur}%`,
+          height: `${geo.hauteur}%`,
+        }
+      : undefined,
+    onLoad: () => marquerCharge(nom),
+    onError: () => setErreurCalque(true),
+  })
+
   return (
-    <div
-      className="pointages-afrotech-shell pointages-loading-screen"
+    <section
+      className="emp-loading-shell"
       data-theme={darkMode ? 'dark' : 'light'}
       role="status"
       aria-live="polite"
+      aria-busy={!dataReady}
+      aria-label="Chargement de l’espace collaborateurs"
     >
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-right" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-right" />
-
-      <div className="pointages-loading-inner">
-        <div className="pointages-loading-brand">
-          <EnCheckBrandMark className="pointages-loading-mark" size={58} loading />
-          <div className="pointages-loading-brand-copy">
-            <strong>En-Check</strong>
-            <span>On gère !</span>
-          </div>
-        </div>
-
-        <PageCulturalBand pathname="/employes" placement="loading"/>
-
-        <h1 className="pointages-loading-title">Chargement de l’espace Employés…</h1>
-
-        <div className="pointages-loading-stage">
-          <div
-            className={`pointages-loading-scene${activeStep === 0 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(0)}
-          >
-            <img
-              src="/images/employes-loading-badge.jpg"
-              alt="Remise d'un badge QR En-Check à un collaborateur"
-              loading="eager"
-              decoding="async"
-            />
-            <div className="pointages-loading-scene-caption">
-              <span>
-                <QrCode size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                Étape 1 · Activation des fiches & Badges QR
+      <div className="emp-loading-card">
+        <header className="emp-loading-header">
+          <div className="emp-loading-brand">
+            <EnCheckBrandMark size={38} loading={!dataReady} />
+            <div className="emp-loading-brand-text">
+              <span className="emp-loading-eyebrow">
+                {nomEntreprise ? `EN-CHECK · ${nomEntreprise}` : 'EN-CHECK · ESPACE COLLABORATEURS'}
               </span>
-              <CheckCircle2 size={15} color="#4ADE80" />
+              <h1 className="emp-loading-title">
+                {dataReady
+                  ? 'L’espace collaborateurs est prêt'
+                  : nomEntreprise
+                    ? `Chargement de ${nomEntreprise}…`
+                    : 'Chargement de l’espace collaborateurs…'}
+              </h1>
             </div>
           </div>
 
           <div
-            className={`pointages-loading-scene${activeStep === 1 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(1)}
+            className="emp-loading-badge-pct"
+            aria-label={`Progression ${pourcentageReel} pour cent`}
           >
-            <img
-              src="/images/employes-loading-team.jpg"
-              alt="Équipe de collaborateurs équipés de badges En-Check"
-              loading="eager"
-              decoding="async"
-            />
-            <div className="pointages-loading-scene-caption">
-              <span>
-                <Users size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                Étape 2 · Statut en direct, Pauses & Plannings
-              </span>
-              <CheckCircle2 size={15} color="#4ADE80" />
-            </div>
+            <span className={`emp-loading-dot${dataReady ? ' is-ready' : ''}`} aria-hidden="true" />
+            <span>{pourcentageReel} %</span>
           </div>
-        </div>
+        </header>
 
-        <div className="pointages-loading-steps">
-          <button
-            type="button"
-            className={`pointages-loading-step${activeStep === 0 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(0)}
+        {!erreurImage && (
+          <div
+            className={`emp-loading-stage${scenePrete ? ' is-ready' : ''}`}
+            data-artwork="approved-queue-illustration"
+            data-step={dataReady ? 4 : etapeCourante}
+            aria-hidden="true"
           >
-            <span>1. Fiches & Badges QR</span>
-            <CheckCircle2 size={15} />
-          </button>
-          <button
-            type="button"
-            className={`pointages-loading-step${activeStep === 1 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(1)}
-          >
-            <span>2. Présence, Pauses & Plannings</span>
-            <CheckCircle2 size={15} />
-          </button>
-        </div>
+            <div className="emp-loading-layers">
+              <img {...propsCalque('decor', 'emp-layer-decor')} />
+              <div className="emp-queue-movers">
+                {[...CALQUES_PERSONNAGES].reverse().map((calque) => {
+                  const terminee = dataReady || calque.etape < etapeCourante
+                  const enCours = !dataReady && calque.etape === etapeCourante
+                  return (
+                    <div key={calque.nom} className={`emp-layer-person emp-layer-${calque.nom}`}>
+                      <img {...propsCalque(calque.nom, '', calque)} />
+                      <span
+                        className={`emp-queue-pip emp-queue-pip--${calque.etape}${
+                          terminee ? ' is-done' : enCours ? ' is-active' : ''
+                        }`}
+                      >
+                        {terminee ? '✓' : calque.etape}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
 
-        <div className="pointages-loading-bar-track" aria-hidden="true">
-          <div className="pointages-loading-bar-fill" style={{ width: `${progress}%` }} />
-        </div>
+            <img
+              src="/images/employes-loading-approved.webp"
+              alt=""
+              width="1600"
+              height="900"
+              decoding="async"
+              fetchPriority="high"
+              draggable={false}
+              className="emp-loading-approved"
+              onLoad={() => marquerCharge('approved')}
+              onError={() => setErreurImage(true)}
+            />
 
-        <div className="pointages-loading-footer">
-          <p className="pointages-loading-subtitle">
-            {activeStep === 0
-              ? 'Étape 1/2 · Chargement des dossiers RH, contrats et badges QR…'
-              : 'Étape 2/2 · Synchronisation du statut en direct, des pauses et des plannings…'}
-          </p>
-          {onSkip && (
-            <button type="button" className="pointages-loading-skip" onClick={onSkip}>
-              <span>Passer l’animation</span>
-              <ArrowRight size={13} />
-            </button>
-          )}
+            <div className="emp-kiosk-screen">
+              <span className="emp-kiosk-scanline" />
+            </div>
+            <span className="emp-kiosk-glow" />
+          </div>
+        )}
+
+        <div className="emp-loading-body">
+          <div className="pointages-loading-bar-track" aria-hidden="true">
+            <div className="pointages-loading-bar-fill" style={{ width: `${pourcentageReel}%` }} />
+          </div>
+
+          <div className="emp-loading-steps" aria-label="Étapes du chargement">
+            {ETAPES_CHARGEMENT_EMPLOYES.map((item) => {
+              const terminee = dataReady || item.id < etapeCourante
+              const enCours = !dataReady && item.id === etapeCourante
+              return (
+                <div
+                  key={item.id}
+                  className={`emp-loading-step${terminee ? ' is-done' : enCours ? ' is-active' : ''}`}
+                >
+                  <span className="emp-loading-step-num" aria-hidden="true">
+                    {terminee ? '✓' : item.id}
+                  </span>
+                  <span>{item.court}</span>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="emp-loading-footer">
+            <p className="emp-loading-status">
+              {dataReady
+                ? 'Tous les collaborateurs et pointages sont synchronisés.'
+                : `Étape ${etapeCourante}/4 · ${infoEtape.detail}`}
+            </p>
+            {onSkip && (
+              <button type="button" className="emp-loading-skip" onClick={onSkip}>
+                <span>Passer l’animation</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   )
 }
