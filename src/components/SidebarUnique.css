@@ -410,6 +410,31 @@
 /* quand elle est repliée, le panneau a disparu : le rail garde sa place */
 .empv2-layout > .sb.sb--repliee { gap: 0; }
 
+/* ── 08/11 — « déplier la sidebar ne doit plus pousser la page » ──────
+   Le panneau était un flex-item dans le flux : son ouverture ôtait 254 px
+   au `main`, les grilles de la page, elles, gardaient leur largeur minimale
+   — et la page partait à droite, avec une barre de défilement horizontale.
+   Il est désormais POSE au-dessus du contenu : la largeur disponible du
+   `main` ne bouge jamais, le registre se froisse sur la page comme un
+   volet. `.sb` est déjà sticky plein écran ; le panneau colle à ses bords,
+   il suit donc le défilement comme le rail. Le clic dans le vide qui le
+   rabat (le mécanisme du composant) devient même plus utile : rien
+   n'est poussé, tout est couvert, on referme. Sous 821 px, la barre est
+   une rangée fixe en bas de l'écran — ce bloc ne s'applique pas là. */
+@media (min-width: 821px) {
+  .empv2-layout > .sb > .sn-registre {
+    position: absolute;
+    left: 74px;
+    top: 0;
+    bottom: 0;
+    z-index: 3;
+    /* PAS de `right` : la largeur reste `--registre-largeur`, l'unique
+       conducteur de l'animation par paliers du RegistreRepli. Ancrer le
+       bord droit ferait de la largeur ce qui reste du rail — un ruban de
+       0 px. Ni `width: auto` : le composant l'écrit en style interne. */
+  }
+}
+
 /* les vues de la page (Équipes / Tâches) : petites, sous un filet */
 .sb-rail-vues {
   display: flex;
