@@ -24,7 +24,6 @@ import EmployesLoadingScreen, { EMPLOYES_INTRO_MS } from '../components/Employes
 import { useTheme } from '../contexts/ThemeContext'
 import FicheEmployeModal from '../components/FicheEmployeModal'
 import BadgeEmploye from '../components/BadgeEmploye'
-import { KenteWovenTapestrySvg } from '../components/AfroCulturalSvg'
 import {
   AlertTriangle, ArrowLeft, CalendarRange, ChevronLeft, ChevronRight,
   Clock, Coffee, Globe, IdCard, LogIn, LogOut, Mail, Phone, QrCode,
@@ -756,6 +755,24 @@ suivre('taches',
 
   return (
     <div className="emp-vues emp-360">
+      {/* L'« effet illustration » de la photo : un seul filtre SVG, déclaré
+          ici parce qu'un filtre ne peut être appelé que depuis le même
+          document. Il écrase la photo en six aplats par canal (feComponent-
+          Transfer) et la réchauffe (feColorMatrix) : le rendu devient un
+          dessin plat, sans retoucher l'image sur le serveur et sans filtrer
+          les autres images de la page. Appelé par `.e360-portrait img`. */}
+      <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: 'absolute' }}>
+        <defs>
+          <filter id="e360-illustration" colorInterpolationFilters="sRGB">
+            <feColorMatrix type="matrix" values="0.90 0.06 0.02 0 0.035  0.05 0.88 0.03 0 0.025  0.03 0.05 0.80 0 0.015  0 0 0 1 0" />
+            <feComponentTransfer>
+              <feFuncR type="discrete" tableValues="0 0.2 0.4 0.6 0.8 1" />
+              <feFuncG type="discrete" tableValues="0 0.2 0.4 0.6 0.8 1" />
+              <feFuncB type="discrete" tableValues="0 0.2 0.4 0.6 0.8 1" />
+            </feComponentTransfer>
+          </filter>
+        </defs>
+      </svg>
       <div className="e360-conteneur">
         {/* ─────────────── TÊTE ─────────────── */}
         <header className="e360-tete">
@@ -1214,7 +1231,6 @@ suivre('taches',
               )}
 
               <section className="e360-carte e360-carte-promo" aria-label="En-Check">
-                <KenteWovenTapestrySvg className="e360-promo-motif" />
                 <p className="e360-promo-texte">Nos talents font avancer l'Afrique</p>
               </section>
             </div>
