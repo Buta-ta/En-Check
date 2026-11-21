@@ -7,9 +7,16 @@
 //   2. une barre d'outils (recherche, état, priorité, tri,
 //      « + Nouvelle tâche » doré) et les catégories en pastilles ;
 //   3. un tableau à quatre colonnes — à faire, en cours, terminées,
-//      validées — où chaque tâche est une carte : titre, pastille
-//      de priorité, échéance, personne. Glisser une carte d'une
-//      colonne à l'autre change son statut, pas son apparence.
+//      validées — où chaque tâche est une carte : titre, priorité,
+//      échéance, personne. Glisser une carte d'une colonne à
+//      l'autre change son statut, pas son apparence.
+//
+// Peau « post-it » du 21/11 (maquette `onglet-taches-postit.png`, choix du
+// fondateur) : la rangée de chiffres, les quatre colonnes et les cartes sont
+// des FEUILLES cerclées d'encre, bande de colle en tête, rabat plié pour les
+// cartes. L'action principale est en espresso, plus en or. Les règles de la
+// peau vivent dans TachesVue.css sous `.tqv2--postit` : l'annuaire
+// (`.emp-vues`, `.empv3-*`) n'est pas touché d'un octet.
 //
 // Mêmes tokens, même police, même thème que le reste de la page.
 // Les fenêtres (tâche, catégorie, suppression) sont partagées :
@@ -24,6 +31,7 @@ import {
   RefreshCw, Search, Sparkles, Tag, Trash2, X,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import './TachesVue.css'
 
 import FeatureService, { FEATURES } from '../../services/featureService'
 import {
@@ -481,7 +489,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
 
   if (raison === 'sansEntreprise') {
     return (
-      <div className="emp-vues tqv2">
+      <div className="emp-vues tqv2 tqv2--postit">
         <div className="tqv2-vide">
           <h3>Sélectionnez une entreprise</h3>
           <p>
@@ -495,7 +503,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
 
   if (raison === 'sansOption') {
     return (
-      <div className="emp-vues tqv2">
+      <div className="emp-vues tqv2 tqv2--postit">
         <div className="tqv2-vide">
           <h3>Option Équipes et tâches non activée</h3>
           <p>
@@ -509,7 +517,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
   }
 
   return (
-    <div className="emp-vues tqv2">
+    <div className="emp-vues tqv2 tqv2--postit">
       {/* le bandeau de chiffres : compté sur les tâches chargées */}
       <div className="tqv2-kpis" aria-label="Chiffres des tâches">
         <div className="empv2-kpi">
