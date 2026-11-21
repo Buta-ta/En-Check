@@ -751,7 +751,7 @@ suivre('taches',
   }
 
   return (
-    <div className="emp-vues emp-360">
+    <div className="emp-vues emp-360" data-e360="bogolan">
       <div className="e360-conteneur">
         {/* ─────────────── TÊTE ─────────────── */}
         <header className="e360-tete">
@@ -817,6 +817,12 @@ suivre('taches',
             {/* ═══ Colonne 1 — portrait, contact, accès ═══ */}
             <div className="e360-col">
               <section className="e360-carte e360-carte-portrait" aria-label="Profil">
+                {/* Badge suspendu : la lanière est un ornement dessiné en CSS,
+                    pas une image. Elle est masquée aux lecteurs d'écran. */}
+                <span className="e360-laniere" aria-hidden="true" />
+                <p className="e360-surtitre">
+                  {(entreprise?.name || 'En-Check').toUpperCase()} · Fiche employée
+                </p>
                 <div className="e360-portrait">
                   {employee?.photo_url
                     ? <img src={employee.photo_url} alt={`Photo de ${nomComplet}`} />
@@ -837,6 +843,11 @@ suivre('taches',
                     {employee?.department && ` · ${employee.department}`}
                   </p>
                 </div>
+                {employee?.matricule && (
+                  <p className="e360-matricule">
+                    N<span aria-hidden="true">°</span> {employee.matricule}
+                  </p>
+                )}
               </section>
 
               {(employee?.phone || employee?.email) && (
