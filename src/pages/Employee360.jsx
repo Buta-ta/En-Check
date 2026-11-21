@@ -396,7 +396,12 @@ suivre('taches',
       const attsDuJour = attsAsc.filter((a) => jourLocal(a.check_time, fuseau) === dateDuJour)
       const firstIn = attsDuJour.find((a) => String(a.check_type || '').toLowerCase() === 'in') || null
       const lastPunch = attsDuJour.length > 0 ? attsDuJour[attsDuJour.length - 1] : null
-      const activePause = pauses.find((p) => p.ouverte) || null
+      // Une pause ouverte ne juge la journée que si ELLE est du jour : sans
+      // ce filtre, une pause jamais refermée il y a plusieurs jours laisse
+      // la fiche en « En pause » indéfiniment (repéré 21/11 sur la capture
+      // du fondateur : « EN PAUSE · 16:42 » pour une pause du 17/11).
+      const activePause = pauses.find((p) => p.ouverte
+        && jourLocal(p.debutISO, fuseau) === dateDuJour) || null
       const absenceDuJour = absences.find((a) => a.start_date <= dateDuJour && (a.end_date || a.start_date) >= dateDuJour) || null
 
       const etat = etatPresenceDuJour({

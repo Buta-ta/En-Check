@@ -1495,6 +1495,38 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* 12 bis ▸ Le buste hors du cadre. Par défaut : un liseré d'or de
+       3 px et une ombre franche autour de la photo — ça marche avec
+       n'importe quel cliché, sans rien calculer. Le vrai décollement
+       (la tête qui dépasse du carton) demande une photo SANS fond :
+       il s'active avec data-e360-pop="decoupe", posée par le détourage
+       à l'import (option B du 21/11), et tant que l'attribut est absent
+       on reste sur le liseré. */
+[data-e360='bogolan'] .e360-portrait img {
+  border-radius: var(--charte-rayon-champ, 6px);
+  outline: 3px solid rgba(201, 169, 97, 0.92);
+  outline-offset: -3px;
+}
+
+[data-e360='bogolan'][data-e360-pop='decoupe'] .e360-portrait {
+  overflow: visible;
+  border: 0;
+  background: none;
+}
+
+[data-e360='bogolan'][data-e360-pop='decoupe'] .e360-portrait img {
+  outline: 0;
+  object-fit: contain;
+  object-position: bottom center;
+  transform: translateY(-14%) scale(1.16);
+  filter: drop-shadow(4px 5px 0 rgba(12, 6, 2, 0.34));
+}
+
+[data-e360='bogolan'][data-e360-pop='decoupe'] .e360-badge-etat,
+[data-e360='bogolan'][data-e360-pop='decoupe'] .e360-chip-haut {
+  background: rgba(16, 12, 8, 0.86);
+}
+
 /* hors scène : ces trois éléments n'existent que pour la carte-badge */
 :not([data-e360='bogolan']) .e360-carte-portrait .e360-laniere,
 :not([data-e360='bogolan']) .e360-surtitre,
