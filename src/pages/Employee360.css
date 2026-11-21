@@ -1527,3 +1527,131 @@
       minmax(320px, 360px) minmax(380px, 1.3fr) minmax(300px, 1fr) minmax(300px, 1fr);
   }
 }
+
+/* ════ 08/11 — demandes du fondateur sur le bloc du haut ════════════════
+   Quatre retouches, posées là en fin de fichier pour que la pile de
+   cascade les trouve après tout le reste, et commentées une par une. */
+
+/* 1 — « élargis la photo pour la voir en entier » : la note prend
+      désormais l'image à son ratio naturel. L'ancien `aspect-ratio: 2 /
+      1.25` + `object-fit: cover` recadraient le portrait — le haut du crâne
+      y restait. Plus de cadre imposé : la photo entière, jamais retouchée,
+      simplement logée. */
+.e360-portrait {
+  aspect-ratio: auto;
+}
+
+.e360-portrait img {
+  height: auto;
+}
+
+/* 2 — le bogolan derrière la citation d'En-Check. Trois précautions :
+      • sous la bande de colle (l'`inset` du haut commence à `--e360-pli`) —
+        le post-it garde son adhésif ;
+      • `z-index: -1` : au-dessus du fond de la carte, sous la découpe du
+        coin — le rabat replié continue de rogner le motif comme il rogne le
+        papier ;
+      • un voile de papier posé SUR le tissu (deux dégradés `color-mix`, pas
+        de `opacity` qui décolorerait aussi les bords) : la trame se devine,
+        les mots restent nets — le motif ne passe jamais derrière du texte
+        plein, il passe derrière du texte voilé. */
+.e360-citation-tissage {
+  position: absolute;
+  inset: var(--e360-pli) 0 0 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      color-mix(in srgb, var(--charte-surface) 80%, transparent),
+      color-mix(in srgb, var(--charte-surface) 88%, transparent)
+    ),
+    url('/images/bogolan-vertical.webp') center / cover no-repeat;
+}
+
+.e360-carte-citation > :not(.e360-citation-tissage) {
+  position: relative;
+}
+
+/* 3 — les cartes s'animent : la note s'accroche à l'ouverture (fondu +
+      descente de 8 px, décalée rangée par rangée), et se décolège du liège
+      au survol — l'ombre dure grandit avec elle, jamais de flou (C9). */
+.e360-carte {
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.e360-carte:hover {
+  transform: translateY(-2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+@keyframes e360-poser {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.e360-col > .e360-carte,
+.e360-paire-stats > .e360-carte {
+  animation: e360-poser 0.34s ease-out backwards;
+}
+
+.e360-col > .e360-carte:nth-child(2),
+.e360-col > :nth-child(3) .e360-carte:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.e360-col > .e360-carte:nth-child(3),
+.e360-col > :nth-child(3) .e360-carte:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.e360-col > .e360-carte:nth-child(4) {
+  animation-delay: 0.15s;
+}
+
+.e360-col > .e360-carte:nth-child(5) {
+  animation-delay: 0.2s;
+}
+
+.e360-col > .e360-carte:nth-child(6) {
+  animation-delay: 0.25s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .e360-col > .e360-carte,
+  .e360-paire-stats > .e360-carte {
+    animation: none;
+  }
+
+  .e360-carte,
+  .e360-carte:hover {
+    transition: none;
+    transform: none;
+    box-shadow: var(--charte-ombre-dure);
+  }
+}
+
+/* 4 — le sélecteur d'employés, centré pour de vrai dans la tête. Le flex
+      `margin: 0 auto` le poussait vers le centre sans jamais l'y mettre : la
+      place libre se répartissait avec la `margin-left: auto` des actions.
+      Trois colonnes `1fr auto 1fr` : le carrousel est pile milieu, quoi
+      qu'occupent les boutons à droite. Sous 1360 px, le carrousel est caché
+      par le média existant — la grille n'a donc de sens qu'au-dessus. */
+@media (min-width: 1361px) {
+  .e360-tete {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+  }
+
+  .e360-tete .e360-carrousel {
+    margin: 0;
+    justify-self: center;
+  }
+
+  .e360-tete .e360-actions {
+    margin-left: 0;
+    justify-self: end;
+  }
+}

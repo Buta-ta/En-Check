@@ -1714,10 +1714,17 @@ describe('la page Employés', () => {
     const contenu = EMPLOYES.indexOf('<main className="empv2-main"')
     expect(sidebar).toBeGreaterThan(0)
     expect(contenu).toBeGreaterThan(sidebar)
-    // les mêmes rubriques que le tableau de bord
-    expect(EMPLOYES).toContain("label: 'Accueil'")
-    expect(EMPLOYES).toContain("label: 'Temps de travail'")
-    expect(EMPLOYES).toContain("label: 'En-Check interne'")
+    // les mêmes rubriques que le tableau de bord — dans la fabrique partagée
+    // depuis le 08/11 : la fiche employé monte le même rail, les deux pages
+    // lisent LA même liste, le contrat se vérifie donc à sa source unique.
+    const rubriques = readFileSync('src/components/coque/sectionsNavAdmin.js', 'utf8')
+    expect(rubriques).toContain("label: 'Accueil'")
+    expect(rubriques).toContain("label: 'Temps de travail'")
+    expect(rubriques).toContain("label: 'En-Check interne'")
+    // et la fiche employé reprend exactement la même coque
+    const FICHE = readFileSync('src/pages/Employee360.jsx', 'utf8')
+    expect(FICHE).toContain('<SidebarUnique')
+    expect(FICHE).toContain('<main className=\"empv2-main\"')
   })
 })
 
