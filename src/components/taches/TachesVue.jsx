@@ -518,12 +518,13 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
 
   return (
     <div className="emp-vues tqv2 tqv2--postit">
-      {/* la tête de l'onglet : le titre et les quatre chiffres, cerclés d'UNE
-          SEULE bande de bogolan — le dispositif de la fiche employé, pas trois
-          galons. Le chiffre se lit sur la plaque de papier : le tissu ne passe
-          jamais sous un mot (refus enregistré sur la page). */}
+      {/* la tête de l'onglet — et donc la tête de la page : un en-tête cerclé
+          par écran, pas deux. Le titre et les quatre chiffres sous UNE SEULE
+          bande de bogolan, le dispositif de la fiche employé, pas trois galons.
+          Le chiffre se lit sur la plaque de papier : le tissu ne passe jamais
+          sous un mot (refus enregistré sur la page). */}
       <header className="tqv2-tete">
-        <h3 className="tqv2-titre">Tâches</h3>
+        <h1 className="tqv2-titre">Tâches</h1>
 
         <div className="tqv2-kpis" aria-label="Chiffres des tâches">
           <div className="empv2-kpi">

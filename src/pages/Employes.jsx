@@ -1490,70 +1490,81 @@ export default function Employes() {
           {/* L'en-tête est un bloc posé sur la page : une étiquette, un titre
               qui occupe la place, et trois actions à droite. Plus de barre de
               raccourcis (le rail les porte) et plus de bouton de thème ici :
-              il vit dans le rail, une seule fois. */}
-          <header className="empv3-entete">
-            <span className="empv3-entete-bandeau" aria-hidden="true" />
-            {/* la pancarte plante ses racines dans l'en-tête, au milieu */}
-            <span className="empv3-entete-pancarte">
-              <PancarteEnseigne taille={104} motif="cahier" />
-            </span>
-            <div className="empv3-entete-corps">
-            <div className="empv3-entete-gauche">
-              <span className="empv3-entete-eyebrow">
-                Équipe
-                <i className="empv3-entete-point" aria-hidden="true" />
+              il vit dans le rail, une seule fois.
+
+              SUR L'ONGLET TÂCHES IL NE SE MONTE PAS (demande du 21/11). Ce n'est
+              pas un retrait : le bloc reste, intact, pour l'annuaire et pour
+              l'onglet Équipes. L'onglet Tâches a sa propre tête — le bandeau de
+              bogolan qui cerne « Tâches » et les quatre chiffres — et c'est elle
+              qui occupe le haut de la page. Deux en-têtes cerclés l'un sur l'autre
+              ne faisaient qu'un seul cri de trop, et le bouton « Nouvelle tâche »
+              du bandeau doublait déjà celui de la barre d'outils.
+           */}
+          {vueActive !== 'taches' && (
+            <header className="empv3-entete">
+              <span className="empv3-entete-bandeau" aria-hidden="true" />
+              {/* la pancarte plante ses racines dans l'en-tête, au milieu */}
+              <span className="empv3-entete-pancarte">
+                <PancarteEnseigne taille={104} motif="cahier" />
               </span>
-              <h1 className="empv3-entete-titre">
-                Employés
-                {vueActive === null && (
-                  <span className="empv3-entete-compte">
-                    {employes.length} employé{employes.length > 1 ? 's' : ''}
-                  </span>
-                )}
-              </h1>
-              <p className="empv3-entete-sous">
-                {vueActive === null
-                  ? `Bonjour, ${prenomAdmin} — ${jourEnClair}`
-                  : 'La page Employés, vue par vue'}
-              </p>
-            </div>
-
-            <div className="empv3-entete-actions">
-              <div className="empv3-entete-chips">
-                {vueActive === null && (
-                  <span className="empv3-chip">
-                    <CalendarDays size={12} aria-hidden="true" />
-                    {jourEnClair}
-                  </span>
-                )}
-                {vueActive === null && (
-                  <button type="button" className="ch-btn-contour" onClick={exporterCsv}>
-                    <FileText size={13} aria-hidden="true" /> Exporter
-                  </button>
-                )}
+              <div className="empv3-entete-corps">
+              <div className="empv3-entete-gauche">
+                <span className="empv3-entete-eyebrow">
+                  Équipe
+                  <i className="empv3-entete-point" aria-hidden="true" />
+                </span>
+                <h1 className="empv3-entete-titre">
+                  Employés
+                  {vueActive === null && (
+                    <span className="empv3-entete-compte">
+                      {employes.length} employé{employes.length > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </h1>
+                <p className="empv3-entete-sous">
+                  {vueActive === null
+                    ? `Bonjour, ${prenomAdmin} — ${jourEnClair}`
+                    : 'La page Employés, vue par vue'}
+                </p>
               </div>
 
-              <div className="empv3-entete-principale">
-                {vueActive === 'equipes' && (
-                  <button type="button" className="ch-btn-pleine" onClick={() => setSignalCreationEquipe((n) => n + 1)}>
-                    <Plus size={13} aria-hidden="true" /> Nouvelle équipe
-                  </button>
-                )}
-                {vueActive === 'taches' && (
-                  <button type="button" className="ch-btn-pleine" onClick={() => setSignalCreationTache((n) => n + 1)}>
-                    <Plus size={13} aria-hidden="true" /> Nouvelle tâche
-                  </button>
-                )}
-                {vueActive === null && (
-                  <button type="button" className="ch-btn-pleine" onClick={handleAdd}>
-                    <UserPlus size={13} aria-hidden="true" /> Nouvel employé
-                  </button>
-                )}
+              <div className="empv3-entete-actions">
+                <div className="empv3-entete-chips">
+                  {vueActive === null && (
+                    <span className="empv3-chip">
+                      <CalendarDays size={12} aria-hidden="true" />
+                      {jourEnClair}
+                    </span>
+                  )}
+                  {vueActive === null && (
+                    <button type="button" className="ch-btn-contour" onClick={exporterCsv}>
+                      <FileText size={13} aria-hidden="true" /> Exporter
+                    </button>
+                  )}
+                </div>
+
+                <div className="empv3-entete-principale">
+                  {vueActive === 'equipes' && (
+                    <button type="button" className="ch-btn-pleine" onClick={() => setSignalCreationEquipe((n) => n + 1)}>
+                      <Plus size={13} aria-hidden="true" /> Nouvelle équipe
+                    </button>
+                  )}
+                  {vueActive === 'taches' && (
+                    <button type="button" className="ch-btn-pleine" onClick={() => setSignalCreationTache((n) => n + 1)}>
+                      <Plus size={13} aria-hidden="true" /> Nouvelle tâche
+                    </button>
+                  )}
+                  {vueActive === null && (
+                    <button type="button" className="ch-btn-pleine" onClick={handleAdd}>
+                      <UserPlus size={13} aria-hidden="true" /> Nouvel employé
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-            </div>
-            <span className="empv3-entete-bandeau empv3-entete-bandeau--bas" aria-hidden="true" />
-          </header>
+              </div>
+              <span className="empv3-entete-bandeau empv3-entete-bandeau--bas" aria-hidden="true" />
+            </header>
+          )}
 
           {vueActive === null && (
             <div className="empv3-parcours">
