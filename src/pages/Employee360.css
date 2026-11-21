@@ -1204,429 +1204,70 @@
   }
 }
 
-
 /* ═══════════════════════════════════════════════════════════
-   COUCHE « BOGOLAN PLEIN ÉCRAN » — 21/11, maquette F1 validée
-   « je veux ça comme résultat. N'oublie pas le style brut
-   adouci. Codons »
+   LE SEUL HABILILLAGE CONSERVÉ — 22/11
+   « la page est lourde, mal faite, c'est énergivore. Recommence
+   en partant sur une nouvelle maquette, enlève la 3D, le fond
+   bogolan, etc. Inspire-toi de la page employée qu'on a très bien
+   réussi. »
    ───────────────────────────────────────────────────────────
-   Cette couche est ADDITIVE : elle ne remplace rien au-dessus,
-   elle surcharge. Le jour où l'on veut revenir en arrière, il
-   suffit de retirer data-e360="bogolan" sur la racine de la
-   fiche (src/pages/Employee360.jsx) : tout ce bloc s'éteint.
-   Le tissu est le vrai fichier de l'app (jamais de SVG imité) :
-   public/images/bogolan-vertical.webp.
-   ── Ce que le fondateur a sous les yeux n'est PAS une capture :
-   la maquette est dessinée, et aucune capture d'écran réelle
-   n'est possible ici (pas de navigateur dans l'atelier). ──
+   Tout ce qui suivait (18 règles, ~430 lignes) est retiré : le
+   champ de tissu plein écran répété et `background-attachment:
+   fixed`, les 16 `filter: blur`, les deux `backdrop-filter:
+   blur(6px)`, les `transform: rotate` sur quatre colonnes, les
+   ombres portées doubles et le liseré doré en `inset`. C'est
+   exactement la liste des choses qu'un téléphone paie, écran par
+   écran, pendant tout le défilement.
+
+   Ce qui tient la comparaison avec la page Employés, et qui ne
+   coûte rien, est gardé : le papier du registre, ses filets, et
+   le motif tissé de 16 px posé en bordure — jamais derrière du
+   texte, jamais en fond de page. C'est la leçon de la page
+   réussie : le tissu y occupe 78 px de large sur une carte
+   (`.empv3-d-panneau`) et deux bandeaux de 16 et 17 px
+   (`.empv3-pro-galon`), pas la surface d'un écran.
    ═══════════════════════════════════════════════════════════ */
 
-/* 1 ▸ Le tissu : le champ entier, pas la zone de texte.
-      `fixed` = le fond couvre l'écran et respire pendant que
-      les tuiles défilent ; sur iOS on retombe sur `scroll`
-      (le fond fixe y est mal supporté). */
-[data-e360='bogolan'] .e360-conteneur {
-  max-width: none;
-  padding: 4px 0 60px;
-  background:
-    radial-gradient(125% 95% at 50% 0%, rgba(20, 11, 5, 0.30), rgba(14, 8, 4, 0.80) 78%),
-    #2a1b10 url('/images/bogolan-vertical.webp') repeat;
-  /* 176 px = le motif vu à ×2,3 : dans la maquette F1 les losanges
-      font une taille de lettre, pas un grain de tissu. Rendu à sa
-      taille native de 76 px, le champ lisait comme un bruit sombre —
-      le reproche du 21/11 (« tu n'utilises pas le même fond bogolan »). */
-  background-size: auto 100%, 176px auto;
-  background-attachment: fixed, fixed;
+/* la tranche perlée du registre est une couture de l'annuaire :
+   sur la fiche, elle n'a rien à faire (validé le 21/11) */
+.emp-360.emp-vues::before {
+  display: none;
 }
 
-@media (hover: none) {
-  [data-e360='bogolan'] .e360-conteneur {
-    background-attachment: scroll, scroll;
-  }
-}
-
-/* 2 ▸ Les tuiles : carton crème, contour d'encre, ombre franche.
-      le « brut » = trait 2 px + ombre sans flou ;
-      l'« adouci » = voile clair derrière le texte, coins ronds,
-      liseré d'or 1 px qui remplace l'ancien halo flou. */
-[data-e360='bogolan'] .e360-carte {
-  --e360-carte: #f3e9da;
-  --e360-encrage: #2a1b10;
-  background: #f3e9da;
-  border: var(--charte-trait, 2px) solid var(--e360-encrage);
-  border-radius: var(--charte-rayon-tuile, 12px);
-  padding: 18px;
-  box-shadow:
-    4px 5px 0 0 rgba(12, 6, 2, 0.55),
-    inset 0 1px 0 0 rgba(255, 247, 232, 0.75);
-  min-width: 0;
-}
-
-[data-theme='dark'] [data-e360='bogolan'] .e360-carte,
-[data-e360='bogolan'] .e360-carte:hover {
-  box-shadow:
-    4px 5px 0 0 rgba(12, 6, 2, 0.55),
-    inset 0 1px 0 0 rgba(255, 247, 232, 0.85);
-}
-
-/* le portrait reste une tuile, mais son image colle au cadre */
-[data-e360='bogolan'] .e360-carte-portrait {
-  padding: 0;
-  overflow: hidden;
-}
-
-/* 3 ▸ Légibilité posée sur le carton crème : on durcit les gris
-      les plus faibles (contraste), sans toucher au reste. */
-[data-e360='bogolan'] .e360-carte {
-  --rg-ink: #211710;
-  --rg-soft: #3c2f24;
-  --rg-faint: #574939;
-  --rg-hair: rgba(42, 27, 16, 0.22);
-  --rg-hair-fort: rgba(42, 27, 16, 0.40);
-  --rg-voile: rgba(255, 250, 239, 0.62);
-}
-
-/* 4 ▸ L'en-tête vit directement sur le tissu : textes crème. */
-[data-e360='bogolan'] .e360-tete {
-  padding: 20px clamp(14px, 2.4vw, 32px) 16px;
-}
-
-[data-e360='bogolan'] .e360-titre,
-[data-e360='bogolan'] .e360-erreur strong {
-  color: #f3e9da;
-  text-shadow: 0 1px 0 rgba(12, 6, 2, 0.55);
-}
-
-[data-e360='bogolan'] .e360-retour,
-[data-e360='bogolan'] .e360-carrousel > button {
-  border: var(--charte-trait, 2px) solid rgba(243, 233, 218, 0.62);
-  background: rgba(20, 12, 6, 0.34);
-  color: #f3e9da;
-  box-shadow: 2px 3px 0 0 rgba(12, 6, 2, 0.45);
-}
-
-[data-e360='bogolan'] .e360-retour:hover,
-[data-e360='bogolan'] .e360-carrousel > button:hover {
-  background: #f3e9da;
-  color: #2a1b10;
-  border-color: #f3e9da;
-}
-
-[data-e360='bogolan'] .e360-carrousel-avatar {
-  background: rgba(20, 12, 6, 0.34);
-  border: var(--charte-trait, 2px) solid rgba(243, 233, 218, 0.5);
-  color: #f3e9da;
-}
-
-[data-e360='bogolan'] .e360-carrousel-avatar.is-actif {
-  border-color: var(--e360-or);
-  box-shadow: 0 0 0 2px rgba(42, 27, 16, 0.85), 0 0 0 3px var(--e360-or);
-}
-
-/* 5 ▸ Les deux boutons : carton et feuille d'or. */
-[data-e360='bogolan'] .e360-bouton {
-  background: #f3e9da;
-  color: #2a1b10;
-  border: var(--charte-trait, 2px) solid #2a1b10;
-  border-radius: var(--charte-rayon-tuile, 12px);
-  box-shadow: 3px 3px 0 0 rgba(12, 6, 2, 0.5);
-}
-
-[data-e360='bogolan'] .e360-bouton.is-primaire {
-  background:
-    linear-gradient(168deg, #f0d79a 0%, #c9a961 42%, #a8853f 56%, #e3c480 100%);
-  color: #2a1b10;
-  border-color: #2a1b10;
-  text-shadow: 0 1px 0 rgba(255, 246, 220, 0.5);
-}
-
-/* 6 ▸ Le galon tissé sous l'en-tête : la vraie image, 16 px de
-      haut, jamais derrière du texte (leçon consignée dans
-      EmployesV3). Attention à l'échelle : paie-bogolan-haut.webp
-      mesure 1536×76 ; on ne réduit PAS le motif à 16 px (ce
-      serait l'écraser, contrôle C4), on le affiche à sa taille
-      native et on n'en montre qu'une tranche de 16 px. */
-[data-e360='bogolan'] .e360-tete {
+/* le galon tissé sous l'en-tête : une bande de 16 px. La règle de
+   dimensionnement est copiée sur celle qui a marché dans l'annuaire
+   (`.empv3-pro-galon` : `background-size: auto 17px`), pas inventée.
+   Le fichier fait 1536×76 : on fixe la HAUTEUR à 16 px, la largeur
+   suit toute seule et vaut 1536 × 16 / 76 = 323 px par cellule.
+   Écrire `76px auto` à la place — c'était mon premier essai — écrase
+   le motif sur 3,75 px de haut au milieu d'une bande de 16 : il
+   devient un filet à peine visible. La taille native d'un fichier
+   n'est jamais la taille de rendu d'une bande. */
+.e360-tete {
   position: relative;
 }
 
-[data-e360='bogolan'] .e360-tete::after {
+.e360-tete::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -10px;
+  bottom: -9px;
   height: 16px;
-  background: url('/images/paie-bogolan-haut.webp') repeat-x left center / 76px auto;
-  border-top: 1px solid rgba(243, 233, 218, 0.22);
-  border-bottom: var(--charte-trait, 2px) solid rgba(12, 6, 2, 0.72);
+  background: url('/images/paie-bogolan-haut.webp') repeat-x left center / auto 16px;
   pointer-events: none;
 }
 
-/* 7 ▸ Les listes : filets pleins → fils de trame pointillés,
-      et un fil de couleur de 3 px à gauche de chaque ligne. */
-[data-e360='bogolan'] .e360-liste li {
-  border-top: 1px dashed var(--rg-hair);
-  padding-left: 11px;
-  border-left: 3px solid rgba(42, 27, 16, 0.22);
+/* même galon, en tête de la carte d'identité : le tissu touche la
+   carte, jamais le texte (`.e360-portrait` commence sous la bande) */
+.e360-carte-portrait {
+  border-top: 0;
 }
 
-[data-e360='bogolan'] .e360-liste li:nth-child(4n + 1) { border-left-color: var(--e360-or); }
-[data-e360='bogolan'] .e360-liste li:nth-child(4n + 2) { border-left-color: #2f8f4e; }
-[data-e360='bogolan'] .e360-liste li:nth-child(4n + 3) { border-left-color: var(--e360-terre); }
-[data-e360='bogolan'] .e360-liste li:nth-child(4n + 4) { border-left-color: rgba(42, 27, 16, 0.38); }
-
-[data-e360='bogolan'] .e360-liste li:first-child { border-top: 0; }
-
-/* 8 ▸ Le contact : deux vraies touches de carton. */
-[data-e360='bogolan'] .e360-contact-btn {
-  border: var(--charte-trait, 2px) solid #2a1b10;
-  border-radius: var(--charte-rayon-champ, 6px);
-  background: #f3e9da;
-  color: #2a1b10;
-  box-shadow: 2px 2px 0 0 rgba(12, 6, 2, 0.5);
-}
-
-/* 9 ▸ Les cases de présence : sur carton, il leur faut un cerne,
-      sinon les jours clairs disparaissent dans le fond. */
-[data-e360='bogolan'] .e360-case {
-  border: 1px solid rgba(42, 27, 16, 0.26);
-  border-radius: var(--charte-rayon-champ, 6px);
-}
-
-/* 10 ▸ Le léger porte-à-faux : les colonnes paires basculent d'un
-       demi-degré, comme des cartons posés à la main. Rien à
-       l'intérieur ne tourne, donc aucune lettre de travers. */
-[data-e360='bogolan'] .e360-col:nth-child(odd) { transform: rotate(-0.35deg); }
-[data-e360='bogolan'] .e360-col:nth-child(even) { transform: rotate(0.4deg); }
-
-@media (prefers-reduced-motion: reduce) {
-  [data-e360='bogolan'] .e360-col { transform: none; }
-}
-
-/* ═══════════════════════════════════════════════════════════
-   CORRECTIFS — 21/11, après les captures du fondateur
-   « je ne valide pas le résultat : enlève ces éléments, le
-   bandeau motif en bas, et ce n'est pas le même fond bogolan »
-   ───────────────────────────────────────────────────────────
-   1. Le bandeau motif du bas n'est plus monté dans la fiche
-      (src/pages/Employee360.jsx : <PageCulturalBand> retiré,
-      import compris). La carte « Nos talents font avancer
-      l'Afrique » reste, elle, en dur — c'est un avis, pas un
-      bandeau de remplissage.
-   2. La tranche perlée du registre (les demi-pastilles crème /
-      cuivre / sarcelle / sauge le long du bord gauche) est une
-      couture de l'ANNUAIRE des employés. Elle ne se lit plus sur
-      un champ de tissu sombre et chaud : masquée ici, intacte
-      partout ailleurs.
-   3. Le porte-à-faux de la maquette est surtout un décalage de
-      hauteur entre colonnes, pas seulement une rotation : posé.
-   ═══════════════════════════════════════════════════════════ */
-
-/* R1 ▸ rien ne dépasse plus du bas de la page */
-[data-e360='bogolan'] .ec-cultural-band {
-  display: none;
-}
-
-/* R2 ▸ la perle du registre n'a rien à faire sur le tissu */
-[data-e360='bogolan'].emp-vues::before {
-  display: none;
-}
-
-/* R3 ▸ les colonnes 2 et 4 descendent d'un cran, comme sur la
-       maquette ; sous 1080 px plus rien ne bascule ni ne descend,
-       la grille fait elle-même l'escalier. */
-[data-e360='bogolan'] .e360-col:nth-child(even) {
-  margin-top: 18px;
-}
-
-@media (max-width: 1080px) {
-  [data-e360='bogolan'] .e360-col:nth-child(odd),
-  [data-e360='bogolan'] .e360-col:nth-child(even) {
-    transform: none;
-    margin-top: 0;
-  }
-}
-
-/* R4 ▸ Dans la maquette, le contact se lit juste sous la carte
-       d'identité : c'est l'ordre du regard, pas celui du code. On
-       le remonte en CSS uniquement (le DOM garde son ordre, donc
-       la navigation au clavier et la lecture à voix haute aussi).
-       Sous 1080 px, on rend l'ordre d'origine. */
-@media (min-width: 1081px) {
-  [data-e360='bogolan'] .e360-carte-contact { order: 1; }
-  [data-e360='bogolan'] .e360-paire-stats { order: 2; }
-  [data-e360='bogolan'] .e360-carte-portrait { order: 0; }
-  [data-e360='bogolan'] .e360-col:first-child .e360-carte:last-of-type { order: 3; }
-}
-
-/* R5 ▸ le prénom du badge prend la même importance que sur la
-       maquette : 32 px, et le liseré doré de la photo est un peu
-       plus franc. */
-[data-e360='bogolan'] .e360-nom { font-size: 32px; }
-
-
-/* 11 ▸ Tablette : deux colonnes, le tissu continue à bord. */
-@media (max-width: 1080px) {
-  [data-e360='bogolan'] .e360-grille {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  [data-e360='bogolan'] .e360-col:nth-child(odd),
-  [data-e360='bogolan'] .e360-col:nth-child(even) {
-    transform: none;
-  }
-}
-
-/* 12 ▸ La carte-badge du haut : lanière, fente, surtitre, numéro.
-       Tout est dessiné en CSS — aucune image n'est inventée, aucun
-       code-barres factice (un faux code ne se scanne pas : on met
-       le vrai matricule en lettres, et le vrai QR reste le bouton
-       « Badge QR »). ── Le `.e360-carte-portrait` d'en haut mettait
-       overflow: hidden : on le remonte d'un cran pour que la lanière
-       dépasse, et c'est la fenêtre photo qui découpe. ── */
-[data-e360='bogolan'] .e360-carte-portrait {
-  position: relative;
-  overflow: visible;
-  padding: 38px 18px 14px;
-}
-
-[data-e360='bogolan'] .e360-portrait {
-  overflow: hidden;
-  border: var(--charte-trait, 2px) solid rgba(42, 27, 16, 0.9);
-  border-radius: var(--charte-rayon-champ, 6px);
-}
-
-[data-e360='bogolan'] .e360-portrait img {
-  filter: drop-shadow(3px 4px 0 rgba(12, 6, 2, 0.28));
-}
-
-[data-e360='bogolan'] .e360-portrait .e360-chip-haut {
-  top: 8px;
-  right: 8px;
-}
-
-/* la lanière : deux bandes tressées qui sortent par la fente */
-[data-e360='bogolan'] .e360-laniere {
-  position: absolute;
-  top: -30px;
-  left: 50%;
-  width: 54px;
-  height: 62px;
-  transform: translateX(-50%);
-  border-radius: var(--charte-rayon-champ, 6px) var(--charte-rayon-champ, 6px) 3px 3px;
-  background:
-    repeating-linear-gradient(90deg,
-      rgba(255, 233, 197, 0.16) 0 2px, transparent 2px 5px),
-    linear-gradient(180deg, #8a5a34, #55321b);
-  box-shadow: 2px 3px 0 0 rgba(12, 6, 2, 0.45);
-  pointer-events: none;
-}
-
-[data-e360='bogolan'] .e360-laniere::after {
+.e360-carte-portrait::before {
   content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 6px;
-  width: 26px;
-  height: 9px;
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: #efe4d0;
-  border: 1px solid rgba(42, 27, 16, 0.9);
-  box-shadow: inset 0 2px 3px rgba(12, 6, 2, 0.35);
-}
-
-/* le surtitre, en petites capitales espacées (règle D-016/C12) */
-[data-e360='bogolan'] .e360-surtitre {
-  margin: 0 0 9px;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.9px;
-  text-transform: uppercase;
-  color: #7a6134;
-}
-
-/* le numéro, en lettres espacées — pas de police monospace chargée
-   par l'app, on l'admet plutôt que de promettre un faux code */
-[data-e360='bogolan'] .e360-matricule {
-  margin: 12px 0 0;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(42, 27, 16, 0.28);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.6px;
-  color: var(--rg-faint);
-  font-variant-numeric: tabular-nums;
-}
-
-/* 12 bis ▸ Le buste hors du cadre. Par défaut : un liseré d'or de
-       3 px et une ombre franche autour de la photo — ça marche avec
-       n'importe quel cliché, sans rien calculer. Le vrai décollement
-       (la tête qui dépasse du carton) demande une photo SANS fond :
-       il s'active avec data-e360-pop="decoupe", posée par le détourage
-       à l'import (option B du 21/11), et tant que l'attribut est absent
-       on reste sur le liseré. */
-[data-e360='bogolan'] .e360-portrait img {
-  border-radius: var(--charte-rayon-champ, 6px);
-  outline: 3px solid rgba(201, 169, 97, 0.92);
-  outline-offset: -3px;
-}
-
-[data-e360='bogolan'][data-e360-pop='decoupe'] .e360-portrait {
-  overflow: visible;
-  border: 0;
-  background: none;
-}
-
-[data-e360='bogolan'][data-e360-pop='decoupe'] .e360-portrait img {
-  outline: 0;
-  object-fit: contain;
-  object-position: bottom center;
-  transform: translateY(-14%) scale(1.16);
-  filter: drop-shadow(4px 5px 0 rgba(12, 6, 2, 0.34));
-}
-
-[data-e360='bogolan'][data-e360-pop='decoupe'] .e360-badge-etat,
-[data-e360='bogolan'][data-e360-pop='decoupe'] .e360-chip-haut {
-  background: rgba(16, 12, 8, 0.86);
-}
-
-/* hors scène : ces trois éléments n'existent que pour la carte-badge */
-:not([data-e360='bogolan']) .e360-carte-portrait .e360-laniere,
-:not([data-e360='bogolan']) .e360-surtitre,
-:not([data-e360='bogolan']) .e360-matricule {
-  display: none;
-}
-
-/* 13 ▸ Téléphone : une colonne, aucune rotation, ombre plus courte
-       (sur petit écran, une ombre de 4 px alourdit tout). */
-@media (max-width: 660px) {
-  [data-e360='bogolan'] .e360-grille {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
-
-  [data-e360='bogolan'] .e360-col {
-    transform: none;
-  }
-
-  [data-e360='bogolan'] .e360-carte {
-    box-shadow: 3px 3px 0 0 rgba(12, 6, 2, 0.5);
-  }
-
-  [data-e360='bogolan'] .e360-tete {
-    padding-top: 14px;
-  }
-
-  /* la lanière ne tient plus : on la remplace par la fente seule,
-     et la carte retrouve son cadre plein haut */
-  [data-e360='bogolan'] .e360-laniere {
-    display: none;
-  }
-
-  [data-e360='bogolan'] .e360-carte-portrait {
-    padding-top: 16px;
-  }
+  display: block;
+  height: 16px;
+  background: url('/images/paie-bogolan-haut.webp') repeat-x left center / auto 16px;
+  border-bottom: 1px solid var(--rg-hair-fort);
 }

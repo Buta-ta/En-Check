@@ -755,7 +755,7 @@ suivre('taches',
   }
 
   return (
-    <div className="emp-vues emp-360" data-e360="bogolan">
+    <div className="emp-vues emp-360">
       <div className="e360-conteneur">
         {/* ─────────────── TÊTE ─────────────── */}
         <header className="e360-tete">
