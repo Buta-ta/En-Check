@@ -38,7 +38,7 @@ import { CLE_POSTE, sensSuivant, messageDe } from '../../lib/postePointage'
 // ── la fausse base : elle journalise tout ce qu'on lui demande ──
 const { faux } = vi.hoisted(() => {
   const journal = []
-  const tables = { enterprises: [], adms_devices: [], adms_log: [] }
+  const tables = { enterprises: [], adms_devices: [], adms_log: [], encheck_reglages_pointage: [] }
   let identifiant = 0
 
   const correspond = (ligne, filtres) =>
@@ -154,6 +154,39 @@ const { faux } = vi.hoisted(() => {
     }
     if (nom === 'encheck_employee_login_qr') {
       return Promise.resolve({ data: { ok: false, raison: 'pin_requis' }, error: null })
+    }
+    // ── les deux seuils de pause (onglet « Temps de travail ») ──
+    if (nom === 'encheck_seuils_pause') {
+      const entreprise = parametres.p_enterprise
+      const tol = tables.encheck_reglages_pointage
+        ?.find((r) => r.enterprise_id === entreprise && r.cle === 'pause_tolerance_minutes')
+      const max = tables.encheck_reglages_pointage
+        ?.find((r) => r.enterprise_id === entreprise && r.cle === 'pause_duree_max_minutes')
+      journal.push({ table: 'rpc', action: 'rpc', nom, parametres: { ...parametres } })
+      return Promise.resolve({
+        data: {
+          tolerance_minutes: tol ? Number(tol.valeur) : 15,
+          tolerance_source: tol ? 'entreprise' : 'usage',
+          max_minutes: max ? Number(max.valeur) : 120,
+          max_source: max ? 'entreprise' : 'usage',
+          maj_le: tol?.maj_le || max?.maj_le || null,
+          maj_par: null,
+        },
+        error: null,
+      })
+    }
+    if (nom === 'encheck_seuil_ecrire') {
+      journal.push({ table: 'rpc', action: 'rpc', nom, parametres: { ...parametres } })
+      return Promise.resolve({
+        data: {
+          ok: true,
+          tolerance_minutes: parametres.p_tolerance,
+          max_minutes: parametres.p_max,
+          auteur: 'Awa Fagbohoun',
+          maj_le: new Date().toISOString(),
+        },
+        error: null,
+      })
     }
     if (nom === 'encheck_pointages_historique') {
       return Promise.resolve({ data: [], error: null })
@@ -365,9 +398,9 @@ describe('1. une seule page pour les deux écrans', () => {
     expect(VERROU).not.toContain("'/pointeuses': 'module_pointeuses'")
   })
 
-  it('garde les trois vues dans la même page', async () => {
+  it('garde les quatre vues dans la même page', async () => {
     await ouvrir()
-    expect(hote.querySelectorAll('.cp-onglet')).toHaveLength(3)
+    expect(hote.querySelectorAll('.cp-onglet')).toHaveLength(4)
     expect(hote.querySelector('.cp-onglet[aria-selected="true"]').textContent).toContain('Pointeuses')
 
     await cliquer(onglet('Journal des envois'))
@@ -375,8 +408,50 @@ describe('1. une seule page pour les deux écrans', () => {
 
     await cliquer(onglet('Poste de pointage'))
     expect(hote.querySelector('#cp-vue-poste')).not.toBeNull()
+
+    //  La quatrième vue : les seuils de pause, réglés par l'entreprise.
+    await cliquer(onglet('Temps de travail'))
+    expect(hote.querySelector('#cp-vue-temps-travail')).not.toBeNull()
     // les chiffres restent visibles dans toutes les vues
     expect(hote.querySelectorAll('.cp-stele')).toHaveLength(4)
+  })
+
+  it('l’onglet Temps de travail est câblé : lecture, bornes, RPC unique, cache', () => {
+    //  Vérifié dans la source : le rendu de cet onglet est couvert par le
+    //  test de l'onglet lui-même (présence de #cp-vue-temps-travail) et par
+    //  `seuilsPause.test.js` pour la logique.
+    expect(PAGE).toContain("rpc('encheck_seuils_pause'")
+    expect(PAGE).toContain("rpc('encheck_seuil_ecrire'")
+    expect(PAGE).toContain('validerSeuilsPause(')
+    //  Cache invalidé après écriture : sinon les pages ouvertes gardent
+    //  l'ancien chiffre jusqu'au rechargement.
+    expect(PAGE).toContain('invaliderCacheSeuils(selectedEntId)')
+    //  Lecture paresseuse : on ne lit les seuils qu'en arrivant sur l'onglet.
+    expect(PAGE).toMatch(/vue === 'temps-travail' && selectedEntId/)
+  })
+
+  it('chaque champ de seuil est décrit par un texte qui existe vraiment', () => {
+    //  Un `aria-describedby` qui pointe dans le vide est pire que rien :
+    //  le lecteur d'écran annonce un champ muet, et personne ne le voit
+    //  à l'œil. On vérifie donc la cible, pas seulement l'attribut.
+    const cibles = [...PAGE.matchAll(/aria-describedby="([^"]+)"/g)]
+      .flatMap((m) => m[1].split(/\s+/))
+    expect(cibles.length).toBeGreaterThanOrEqual(4)
+    for (const id of cibles) {
+      expect(PAGE, `la cible #${id} doit exister`).toMatch(
+        new RegExp(`id="${id}"`),
+      )
+    }
+    //  Et chaque identifiant n'est posé qu'une fois dans la page.
+    const ids = [...PAGE.matchAll(/\bid="(cp-[^"]+)"/g)].map((m) => m[1])
+    expect(ids.length).toBe(new Set(ids).size)
+  })
+
+  it('l’aperçu est calculé, pas écrit : changer un seuil change la démonstration', () => {
+    //  Trois cas, trois verdicts. Un aperçu figé mentirait dès la 1re saisie.
+    expect(PAGE).toContain('function apercuSeuils(')
+    expect(PAGE).toContain('apercuSeuils(saisieSeuils)')
+    expect(PAGE).not.toMatch(/Normale · dépassement 8/)
   })
 })
 
@@ -395,13 +470,22 @@ describe('2. la toile de Korhogo', () => {
     expect(culturalMotifForPath('/planning')).toBe('kuba')
   })
 
-  it('pose le vrai bandeau, en haut et en bas, à la hauteur commune', () => {
+  it('pose le bandeau en bas seulement — le haut porte la lisière', () => {
     const html = renderToStaticMarkup(<PageCulturalBand pathname="/configuration-pointeuse" />)
     expect(html).toContain('data-cultural-motif="korhogo"')
     expect(html).toContain('<svg')
     expect(html).toContain('ec-cultural-top')
-    expect(PAGE).toContain('<PageCulturalBand pathname="/configuration-pointeuse" />')
+
+    //  Décision du 21/11/2026 : plus de bande de motif en haut de cette page.
+    //  Le bandeau du bas reste — il ferme la toile. On compte les occurrences
+    //  sans `placement` : il ne doit plus en rester aucune.
+    const sansPlacement = [...PAGE.matchAll(/<PageCulturalBand\b[^>]*\/>/g)]
+      .map((m) => m[0])
+      .filter((balise) => !balise.includes('placement='))
+    expect(sansPlacement).toHaveLength(0)
     expect(PAGE).toContain('placement="bottom"')
+    //  Et la lisière coud le haut, elle n'est pas partie avec le bandeau.
+    expect(PAGE).toContain('cp-lisiere')
     expect(CSS).not.toMatch(/ec-cultural-top\[data-cultural-motif='korhogo'\][^}]*height:\s*1[0-9]{2}px/)
   })
 

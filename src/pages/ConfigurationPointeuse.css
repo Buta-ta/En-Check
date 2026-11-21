@@ -1896,3 +1896,171 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   22. TEMPS DE TRAVAIL — les deux seuils de pause
+   ───────────────────────────────────────────────────────────
+   La feuille de la page est une toile sur un mur : la grille des
+   seuils emprunte le cartouche et le trait, pas la peinture. Le
+   double feutre vient de la maquette B — un trait d'encre et son
+   ombre dure de 3 px, sans flou (C9 : blur toujours à 0).
+   ═══════════════════════════════════════════════════════════ */
+
+.cp-grille-seuils {
+  display: grid;
+  gap: 0;
+  padding: 16px;
+  border: 2px solid var(--cp-coton);
+  border-radius: 2px;
+  background-color: var(--cp-carte-2);
+  /* le double feutre : le trait, puis son ombre portée dure */
+  box-shadow: 3px 3px 0 0 var(--cp-ligne-forte);
+}
+
+.cp-ligne-seuil {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--cp-ligne);
+}
+
+.cp-ligne-seuil:first-child { padding-top: 0; }
+.cp-ligne-seuil:last-of-type { border-bottom: 0; padding-bottom: 0; }
+
+.cp-seuil-libelle {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cp-seuil-libelle b {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cp-coton);
+}
+
+.cp-seuil-libelle small {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--cp-coton-doux);
+  max-width: 54ch;
+}
+
+.cp-seuil-saisie {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cp-seuil-saisie input {
+  width: 76px;
+  height: 40px;
+  padding: 0 10px;
+  text-align: right;
+  border: 2px solid var(--cp-coton);
+  border-radius: 2px;
+  background-color: var(--cp-creux);
+  color: var(--cp-coton);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-seuil-saisie input:focus {
+  outline: none;
+  border-color: var(--cp-ocre);
+  /* L'anneau suit le token : il change de teinte avec le thème sombre. */
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cp-ocre) 18%, transparent);
+}
+
+.cp-seuil-saisie span {
+  font-size: 11px;
+  color: var(--cp-coton-doux);
+}
+
+/* L'aperçu : la démonstration chiffrée, sur le creux de la toile. */
+.cp-seuil-apercu {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--cp-ligne);
+  border-radius: 2px;
+  background-color: var(--cp-creux);
+}
+
+.cp-seuil-apercu h3 {
+  margin: 0 0 8px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--cp-coton-faible);
+}
+
+.cp-seuil-apercu ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cp-seuil-apercu li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cp-seuil-duree {
+  min-width: 48px;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--cp-coton);
+}
+
+/* La pastille : le MOT est la donnée, la couleur n'est que le rappel (C7). */
+.cp-seuil-pastille {
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.cp-seuil-pastille[data-ton='present'] { color: var(--cp-ok); }
+.cp-seuil-pastille[data-ton='retard'] { color: var(--cp-attente); }
+.cp-seuil-pastille[data-ton='absent'] { color: var(--cp-alerte); }
+
+.cp-seuil-pied {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px dashed var(--cp-ligne-forte);
+}
+
+.cp-seuil-trace {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--cp-coton-faible);
+}
+
+.cp-seuil-trace strong {
+  color: var(--cp-coton-doux);
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .cp-ligne-seuil {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .cp-seuil-saisie { justify-content: flex-start; }
+}
