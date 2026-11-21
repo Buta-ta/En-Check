@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Contre-note Admin — Pauses, sorties et vitesse de pointage</title>
+</head>
+<body>
+
+<h1>Contre-note Admin — Pauses, sorties pendant pause et vitesse de pointage</h1>
+<p><b>Date :</b> 17/11/2026 — <b>Auteur :</b> atelier <b>En-Check Admin</b> — <b>Commit lu :</b> <code>45d6076</code> (<code>main</code>, 17/11/2026).<br>
+<b>Objet :</b> réponse au rapport « Pauses, sorties pendant pause et vitesse de pointage » de l'atelier En-Check App Pointage, <b>côté Admin</b>.<br>
+<b>Statut :</b> à lire <b>avant tout développement</b>. Quatre décisions du fondateur sont actées (§7). Aucune ligne de code écrite par l'Admin à ce stade.</p>
+
+<h2>0. Comment lire cette note</h2>
+<ul>
+<li>Elle ne remplace pas le rapport de l'atelier Pointage : elle le complète avec ce qui existe <b>déjà</b> côté Admin.</li>
+<li>Chaque affirmation porte un fichier et une ligne, ou une clé de réglage. Rien n'est supposé.</li>
+<li>Les points où les deux rapports divergent sont signalés explicitement (§2). Ils doivent être tranchés avant le code, sinon les deux applications produiront deux vérités.</li>
+</ul>
+
+<h2>1. Ce qui existe déjà — à ne pas recréer</h2>
+<p>Le rapport Pointage demande de créer plusieurs briques. Elles existent déjà dans le dépôt Admin, vérifiées dans le code.</p>
+<table border="1" cellpadding="6" cellspacing="0">
+<tr><th>Brique demandée par le rapport</th><th>Réalité côté Admin</th><th>Référence</th></tr>
+<tr><td>Liste d'anomalies de pause</td><td>La table <code>encheck_pauses</code> porte une colonne <code>anomalie</code> avec les valeurs <code>sans_reprise</code> et <code>trop_longue</code></td><td><code>20261016000004_pauses_intelligentes.sql:81</code>, <code>:91</code></td></tr>
+<tr><td>Flux de validation par le manager</td><td><code>encheck_pauses_statuer</code> : Valider / Écarter, décisions réversibles, suppression tracée</td><td><code>…pauses_intelligentes.sql:396</code> et <code>20261021000001_pauses_decisions_reversibles.sql</code></td></tr>
+<tr><td>Seuil de pause « trop longue »</td><td><code>pause_duree_max_minutes</code>, défaut <b>120 minutes</b>, lu par le moteur</td><td><code>…pauses_intelligentes.sql:581</code></td></tr>
+<tr><td>Moteur de détection</td><td><code>encheck_pauses_controler</code>, plus <code>_lire</code>, <code>_duree_reelle</code>, <code>_alerter</code></td><td><code>:547</code>, <code>:340</code>, <code>:505</code>, <code>:690</code></td></tr>
+<tr><td>Journal des décisions</td><td><code>encheck_journal_tracer</code> — journal d'audit pur (n'efface rien)</td><td><code>20261021000001:134</code></td></tr>
+<tr><td>Déduction de la pause dans les heures</td><td><code>minutesPausesDeductibles</code> — « une seule règle, un seul endroit, testable »</td><td><code>src/services/pausesService.js:134</code></td></tr>
+<tr><td>Réglages par entreprise</td><td>Registre <code>encheck_reglages_pointage</code> + fonction <code>encheck_seuil()</code> (entreprise → global → défaut)</td><td><code>20261016000001:129</code>, semé <code>:107-126</code></td></tr>
+<tr><td>Décision manager sur les pauses</td><td>Page Pauses : Valider / Écarter, avec statuts et filtres</td><td><code>src/pages/Pauses.jsx:9</code>, <code>:322</code></td></tr>
+</table>
+
+<h2>2. Trois corrections au rapport Pointage</h2>
+
+<h3>2.1 Un seul plafond de pause, pas deux</h3>
+<p>Le rapport propose un « seuil pause suspecte = 2× la prévue (≈ 3h) ». Or <b><code>pause_duree_max_minutes</code> existe déjà et vaut 120 minutes par défaut</b> (<code>…pauses_intelligentes.sql:581</code>).</p>
+<p>Ajouter un second plafond créerait deux vérités pour une même pause — exactement le défaut que le fichier <code>src/services/seuilsPointage.js</code> a été écrit pour empêcher. Sa règle, en tête de fichier, vaut pour les deux ateliers : <i>« Aucun seuil de pointage ne doit être réécrit en dur dans un composant, une page ou une fonction SQL. Les valeurs par défaut ci-dessous sont le CONTRATOIRE, pas un réglage. »</i></p>
+<p><b>Décision technique :</b> si le fondateur veut un autre plafond (90 min, 180 min…), c'est <b>cette clé</b> qui change, une seule fois. Aucun second seuil n'est créé.</p>
+
+<h3>2.2 « Pause déduite oui/non » n'est pas un réglage d'affichage</h3>
+<p>La règle existante est déjà nuancée, codée et testée :</p>
+<ul>
+<li>pause <b>pointée</b> → déduite ;</li>
+<li>pause <b>présumée non validée</b> → <b>non</b> déduite (« Présomption non validée : on marque, on n'encaisse pas », <code>pausesService.js:153-156</code>) ;</li>
+<li>pause <b>écartée</b> → jamais déduite (<code>:150-151</code>).</li>
+</ul>
+<p>Un interrupteur binaire aplatirait cette nuance. Et la pause payée est une <b>décision de politique de paie</b>, pas d'affichage : si elle était réglée sur la tablette, la tablette dirait 3h16 et le bulletin paierait 4h54.</p>
+<p><b>Décision du fondateur (point 2, actée) :</b> on n'ajoute pas ce réglage maintenant. L'affichage Admin montre <b>Présence / Pause / Travaillé</b>, aligné sur la règle existante. « Pauses payées » reste un chantier de paie séparé, à ouvrir seulement si un client le demande.</p>
+
+<h3>2.3 Le 3<sup>e</sup> bouton employé doit laisser une trace de provenance</h3>
+<p>La colonne <code>source</code> est <b>fermée par contrainte</b> à <code>('pointee','presumee','admin')</code> (<code>…pauses_intelligentes.sql:90</code>). Une correction faite par l'employé ne peut donc pas être distinguée aujourd'hui d'une correction du manager.</p>
+<p><b>Décision du fondateur (point 3, actée) :</b> le bouton est accepté. Côté Admin, cela implique :</p>
+<ul>
+<li>ajouter <code>'employe'</code> à la contrainte <code>source</code> (migration petite et réversible) ;</li>
+<li>tracer chaque correction via <code>encheck_journal_tracer</code> (motif + action), pour que « qui a attesté quoi » reste lisible dans six mois ;</li>
+<li>n'accepter ce bouton que dans la <b>zone suspecte</b>, jamais dans le cas normal.</li>
+</ul>
+
+<h2>3. Ce que l'Admin doit construire</h2>
+
+<h3>3.1 L'écran « Temps de travail »</h3>
+<p><b>Constat : aucun écran n'édite aujourd'hui le registre des seuils.</b> Les valeurs sont semées en base, lues par <code>encheck_seuil()</code> côté SQL et par <code>chargerSeuilsPointage()</code> côté application (<code>src/services/seuilsPointage.js</code>) — mais aucune page ne permet de les régler.</p>
+<p><b>Décision du fondateur (point 1, actée)</b> : l'écran vit dans <b>Configuration pointeuse → onglet « Temps de travail »</b>. Un seul lieu, pas un cinquième endroit dans la navigation.</p>
+<p>Il regroupe tous les seuils par thème : <i>Sessions &amp; oublis</i>, <i>Pauses</i>, <i>Estimation</i>, <i>Anti-rebond</i>, <i>Alertes</i>. Chaque champ affiche son rôle et sa valeur par défaut — le registre porte déjà un commentaire par clé (<code>:107-126</code>) : c'est la meilleure documentation possible, autant la réutiliser telle quelle.</p>
+
+<h3>3.2 Les clés à ajouter au registre</h3>
+<table border="1" cellpadding="6" cellspacing="0">
+<tr><th>Clé</th><th>Défaut proposé</th><th>Rôle</th><th>État</th></tr>
+<tr><td><code>pause_duree_prevue_minutes</code></td><td>90</td><td>Base de comparaison pour « pause dépassée »</td><td><b>nouvelle</b></td></tr>
+<tr><td><code>pause_tolerance_minutes</code></td><td>20</td><td>Zone calme avant de signaler un dépassement</td><td><b>nouvelle</b></td></tr>
+<tr><td><code>pause_duree_max_minutes</code></td><td>120</td><td>Plafond unique au-delà duquel la pause est « trop longue »</td><td><b>utilisée par le code, absente du registre semé</b> → à semer</td></tr>
+</table>
+<p><b>Précision sans risque :</b> <code>encheck_seuil()</code> lit d'abord l'entreprise, puis le global, puis le défaut passé en paramètre. Semer <code>pause_duree_max_minutes</code> ne change donc <b>aucun comportement actuel</b> (le code passe déjà 120) : cela rend simplement la valeur visible et éditable.</p>
+
+<h3>3.3 Le contrat d'écriture (décision du fondateur, point 4, actée)</h3>
+<p>« Clôturer la pause et enregistrer la sortie » touche <b>deux tables</b> : <code>attendances</code> et <code>encheck_pauses</code>. La tablette ne peut pas garantir l'atomicité seule, surtout hors ligne.</p>
+<p><b>Contrat :</b></p>
+<ol>
+<li>une <b>opération serveur unique</b> (un RPC) reçoit la sortie et clôt la pause dans la même transaction ;</li>
+<li>elle porte une <b>clé d'idempotence</b> fournie par la tablette (le jeton d'intention) : rejouer le même jeton ne crée pas de seconde sortie ;</li>
+<li>la règle « aucune écriture directe dans <code>attendances</code> » interdit de <b>contourner</b> le canal, pas d'écrire <b>par</b> le canal prévu. Le RPC <i>est</i> le canal.</li>
+</ol>
+<p><b>Sans ce contrat écrit, l'atelier Pointage ne doit pas développer le jeton d'intention</b> : il produirait deux écritures non atomiques et laisserait des pauses orphelines — le défaut même que l'on corrige.</p>
+
+<h3>3.4 La file « à vérifier » côté Admin</h3>
+<p>Les anomalies de pause existent déjà et la page Pauses permet de les trancher. Reste à couvrir dans un seul endroit lisible par le manager :</p>
+<ul>
+<li>pauses <code>sans_reprise</code> et <code>trop_longue</code> (déjà calculées) ;</li>
+<li><b>journées non terminées</b> — le seuil existe déjà : <code>oubli_sortie_heures = 12</code> (<code>20261016000001:107</code>).</li>
+</ul>
+
+<h2>4. Ce que l'Admin refuse de faire, et pourquoi</h2>
+<table border="1" cellpadding="6" cellspacing="0">
+<tr><th>Refus</th><th>Motif</th></tr>
+<tr><td>Créer un second plafond de pause</td><td>Deux réglages pour une même réalité = deux vérités, puis un litige</td></tr>
+<tr><td>Régler « pause payée » sur la tablette ou sur l'écran d'affichage</td><td>C'est une politique de paie, qui se lit dans <code>minutesPausesDeductibles</code>, jamais dans l'interface</td></tr>
+<tr><td>Accepter une correction d'employé sans provenance ni journal</td><td>Dans six mois, plus personne ne sait qui a attesté quoi</td></tr>
+<tr><td>Laisser la tablette écrire en deux appels séparés</td><td>Ce serait réintroduire les pauses orphelines</td></tr>
+</table>
+
+<h2>5. Ce que l'Admin confirme sans réserve</h2>
+<p>Tout le reste du rapport Pointage est compatible avec le schéma actuel et validé côté Admin :</p>
+<ul>
+<li>la machine à états (hors service / en service / en pause / journée terminée) ;</li>
+<li>la <b>règle de borne</b> — la sortie clôt la pause au même instant, sans jamais inventer d'heure passée ;</li>
+<li>les deux dialogues de confirmation et leurs libellés (à valider par le fondateur) ;</li>
+<li>le jeton d'intention anti-double-tap ;</li>
+<li>le retour optimiste avec budget de 0,5 s et mesure anonyme des latences ;</li>
+<li>l'option « Personne suivante » pour la file d'attente ;</li>
+<li>la réconciliation « à vérifier », jamais de correction automatique du passé ;</li>
+<li>l'affichage Présence / Pause / Travaillé.</li>
+</ul>
+
+<h2>6. Répartition des tâches</h2>
+<table border="1" cellpadding="6" cellspacing="0">
+<tr><th>Tâche</th><th>Qui</th><th>Dépend de</th></tr>
+<tr><td>Écran « Temps de travail » (Configuration pointeuse)</td><td><b>Admin</b></td><td>§3.1</td></tr>
+<tr><td>Semis de 3 clés + valeur <code>'employe'</code> dans la contrainte <code>source</code></td><td><b>Admin</b> (migration)</td><td>§3.2, §2.3</td></tr>
+<tr><td>RPC atomique « clôture pause + sortie » avec clé d'idempotence</td><td><b>Admin</b> (contrat d'abord)</td><td>§3.3</td></tr>
+<tr><td>File « à vérifier » : pauses + journées non terminées</td><td><b>Admin</b></td><td>§3.4</td></tr>
+<tr><td>Machine à états, dialogues, jeton, retour optimiste, « Personne suivante »</td><td><b>Pointage</b></td><td>§3.3 pour le jeton</td></tr>
+<tr><td>Mesure de latence de la tablette</td><td><b>Pointage</b></td><td>indépendant</td></tr>
+<tr><td>Textes définitifs (contrat commun)</td><td><b>Fondateur</b></td><td>identiques dans les deux applications</td></tr>
+</table>
+
+<h2>7. Décisions du fondateur — actées le 17/11/2026</h2>
+<ol>
+<li><b>Les seuils se règlent dans Configuration pointeuse, onglet « Temps de travail »</b> — VALIDÉ (point 1).</li>
+<li><b>Pas de réglage « pause payée » maintenant</b> ; sujet de paie séparé s'il est ouvert un jour — VALIDÉ (point 2).</li>
+<li><b>3<sup>e</sup> bouton « Ma pause a duré moins longtemps » accepté</b>, avec provenance <code>employe</code> et journal d'audit — VALIDÉ (point 3).</li>
+<li><b>Opération serveur unique</b> clôturant la pause et enregistrant la sortie, avec jeton d'idempotence — VALIDÉ (point 4).</li>
+</ol>
+
+<h2>8. Ce qui reste à confirmer</h2>
+<ul>
+<li><b>Valeurs par défaut</b> : pause prévue <b>90 min</b>, tolérance <b>20 min</b>, plafond <b>120 min</b> (déjà en vigueur).</li>
+<li><b>Textes</b> du rapport Pointage : ils sont un contrat, ils doivent être identiques des deux côtés.</li>
+</ul>
+
+<h2>9. Ce que cette note ne couvre pas</h2>
+<ul>
+<li>La <b>vitesse du modal</b> côté tablette : elle se mesure dans le dépôt Pointage (budget de 0,5 s), pas ici.</li>
+<li>La <b>réconciliation des pauses orphelines déjà enregistrées</b> avant ce chantier : elle demande un passage de contrôle séparé, non bloquant, qui produit des lignes « à vérifier » sans toucher aux heures.</li>
+<li>Le <b>motif exact des décisions historiques</b> : à relire dans le journal d'audit avant toute reprise (<code>encheck_journal_tracer</code>), jamais modifié.</li>
+</ul>
+
+<p><i>Note établie le 17/11/2026 par l'atelier En-Check Admin, sur le commit <code>45d6076</code>. Aucun code écrit à ce stade.</i></p>
+
+</body>
+</html>
