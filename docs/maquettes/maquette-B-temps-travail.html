@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Maquette B — Temps de travail (grille de réglages du kit)</title>
+<link rel="stylesheet" href="../../src/styles/tokens.css">
+<link rel="stylesheet" href="../../src/styles/charte.css">
+<link rel="stylesheet" href="../../src/pages/ConfigurationPointeuse.css">
+<script type="module" src="./motif-seuil.js"></script>
+<style>
+  /* Uniquement de quoi poser la maquette : pas une valeur de la charte,
+     pas une couleur de produit. Le cadre gris dit « ceci est une maquette ». */
+  body { margin: 0; background: #6f675e; padding: 24px; font-family: var(--charte-police); }
+  .maquette-cadre { max-width: 1180px; margin: 0 auto 32px; }
+  .maquette-titre {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    margin: 0 0 10px; color: #fffdf7; font-size: 12px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase;
+  }
+  .maquette-titre span { font-weight: 400; letter-spacing: 0; text-transform: none; opacity: .8; }
+
+  /* La bande Adinkra : 76 px, hauteur native, jamais étirée (D-003). */
+  .maquette-bande {
+    height: 76px; margin: 0 0 18px;
+    border: 1px solid var(--charte-bordure); border-radius: 6px;
+    background-image: var(--motif-adinkra);
+    background-repeat: repeat-x; background-position: center;
+  }
+
+  /* ── B : la grille de réglages (forme « Étiquette fixe », D-017) ── */
+  .b-grille {
+    display: grid; gap: 0;
+    padding: var(--charte-espace-4);
+    border: var(--charte-trait) solid var(--charte-encre);
+    border-radius: var(--charte-rayon-carte);
+    background: var(--charte-surface);
+    box-shadow: var(--charte-ombre-dure);
+  }
+  .b-ligne {
+    display: grid; grid-template-columns: minmax(0,1fr) 150px;
+    align-items: center; gap: var(--charte-espace-4);
+    padding: var(--charte-espace-3) 0;
+    border-bottom: 1px solid var(--charte-surface2);
+  }
+  .b-ligne:first-child { padding-top: 0; }
+  .b-ligne:last-of-type { border-bottom: 0; padding-bottom: 0; }
+  .b-libelle { display: grid; gap: var(--charte-espace-1); }
+  .b-libelle b {
+    font-size: var(--charte-taille-corps); font-weight: 600; color: var(--charte-encre);
+  }
+  .b-libelle small {
+    font-size: var(--charte-taille-micro); line-height: 1.5; color: var(--charte-douce);
+    max-width: 54ch;
+  }
+  .b-saisie { display: flex; align-items: center; gap: var(--charte-espace-2); justify-content: flex-end; }
+  .b-saisie input {
+    width: 76px; height: 40px; padding: 0 10px; text-align: right;
+    border: var(--charte-trait) solid var(--charte-encre);
+    border-radius: var(--charte-rayon-champ);
+    background: var(--charte-sable); color: var(--charte-encre);
+    font-family: var(--charte-mono); font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+  .b-saisie span { font-size: var(--charte-taille-micro); color: var(--charte-douce); }
+  .b-pied {
+    display: flex; align-items: center; gap: var(--charte-espace-3); flex-wrap: wrap;
+    margin-top: var(--charte-espace-4); padding-top: var(--charte-espace-3);
+    border-top: 1px solid var(--charte-surface2);
+  }
+  .b-pied p { margin: 0; font-size: var(--charte-taille-micro); color: var(--charte-douce); }
+  .b-pied p strong { color: var(--charte-texte); font-weight: 600; }
+
+  /* L'aperçu chiffré : ce que le seuil fait à une journée réelle. */
+  .b-apercu {
+    margin-top: var(--charte-espace-4); padding: var(--charte-espace-3);
+    border: 1px solid var(--charte-bordure); border-radius: var(--charte-rayon-champ);
+    background: var(--charte-surface2);
+  }
+  .b-apercu h3 {
+    margin: 0 0 var(--charte-espace-2); font-size: var(--charte-taille-micro);
+    font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--charte-douce);
+  }
+  .b-apercu ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .b-apercu li {
+    display: flex; align-items: baseline; gap: var(--charte-espace-2);
+    font-size: var(--charte-taille-micro); color: var(--charte-encre);
+  }
+  .b-apercu .duree {
+    font-family: var(--charte-mono); font-variant-numeric: tabular-nums;
+    font-weight: 600; min-width: 46px;
+  }
+
+  .h-journal { width: 100%; border-collapse: collapse; font-size: var(--charte-taille-micro); }
+  .h-journal th {
+    padding: 8px 10px; text-align: left; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--charte-douce);
+    border-bottom: 1px solid var(--charte-bordure);
+  }
+  .h-journal td {
+    padding: 9px 10px; color: var(--charte-encre);
+    border-bottom: 1px solid var(--charte-surface2);
+  }
+  .h-journal td.num { text-align: right; font-family: var(--charte-mono); font-variant-numeric: tabular-nums; }
+  .h-journal td.avant { color: var(--charte-douce); text-decoration: line-through; }
+</style>
+</head>
+<body>
+
+<div class="maquette-cadre">
+  <p class="maquette-titre">Maquette B <span>— grille de réglages du kit, accordéon à deux lignes, aperçu chiffré</span></p>
+  <div class="maquette-bande"></div>
+
+  <div class="cp-page cp-clair" id="page-b">
+    <main class="cp-coque">
+      <div class="cp-sommaire">
+        <p class="cp-sommaire-titre">Sommaire</p>
+        <div class="cp-sommaire-liste" role="tablist" aria-label="Vues de la configuration pointeuse">
+          <button type="button" role="tab" aria-selected="false" class="cp-onglet">Pointeuses <span class="cp-onglet-nombre">4</span></button>
+          <button type="button" role="tab" aria-selected="false" class="cp-onglet">Journal des envois <span class="cp-onglet-nombre">25</span></button>
+          <button type="button" role="tab" aria-selected="false" class="cp-onglet">Poste de pointage <span class="cp-onglet-nombre">1</span></button>
+          <button type="button" role="tab" aria-selected="true" class="cp-onglet">Temps de travail <span class="cp-onglet-nombre">2</span></button>
+        </div>
+        <button type="button" class="cp-bouton-creux cp-onglet-action">Actualiser</button>
+      </div>
+
+      <section class="cp-vue" role="tabpanel">
+        <div class="cp-folio">
+          <p class="cp-marque"><strong>En-Check</strong> · Configuration pointeuse</p>
+          <p class="cp-folio-droite">Deux seuils</p>
+        </div>
+
+        <header class="cp-vue-tete">
+          <div>
+            <p class="cp-eyebrow">Ce que le moteur applique</p>
+            <h2 class="cp-titre-vue">Temps de travail<span>.</span></h2>
+          </div>
+          <p class="cp-tete-note">Cotonou · Africa/Porto-Novo</p>
+        </header>
+
+        <div class="b-grille">
+          <div class="b-ligne">
+            <div class="b-libelle">
+              <b>Tolérance de dépassement</b>
+              <small>Une pause peut dépasser son créneau de ce nombre de minutes
+                avant d'être signalée. Ce n'est pas la pause prévue : elle vient
+                de la grille horaire de chaque employé.</small>
+            </div>
+            <div class="b-saisie">
+              <input type="number" value="15" min="0" max="240" aria-label="Tolérance de dépassement, en minutes">
+              <span>min</span>
+            </div>
+          </div>
+
+          <div class="b-ligne">
+            <div class="b-libelle">
+              <b>Plafond d'une pause</b>
+              <small>Au-delà, la pause est marquée « très longue » et le manager
+                est prévenu. Une sortie en pleine pause au-delà de ce plafond
+                demande une vérification.</small>
+            </div>
+            <div class="b-saisie">
+              <input type="number" value="120" min="15" max="600" aria-label="Plafond d'une pause, en minutes">
+              <span>min</span>
+            </div>
+          </div>
+
+          <div class="b-apercu">
+            <h3>Avec ces deux valeurs, sur une pause prévue de 90 min</h3>
+            <ul>
+              <li><span class="duree">1 h 38</span><span class="ch-badge-pilule ch-statut-present">Normale · dépassement 8 min</span></li>
+              <li><span class="duree">1 h 51</span><span class="ch-badge-pilule ch-statut-retard">Dépassement · 21 min</span></li>
+              <li><span class="duree">2 h 05</span><span class="ch-badge-pilule ch-statut-absent">Très longue · au-delà de 120</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="b-pied">
+          <button type="button" class="ch-btn-pleine">Enregistrer</button>
+          <button type="button" class="ch-btn-contour">Valeurs d'usage</button>
+          <p>Dernière modification : <strong>17/11/2026 à 09:14</strong> · par <strong>A. Fagbohoun</strong></p>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="maquette-cadre">
+  <p class="maquette-titre">Le journal <span>— même contenu que A, forme tableau du kit (filets)</span></p>
+  <div class="cp-page cp-clair" id="page-b2">
+    <main class="cp-coque">
+      <section class="cp-vue">
+        <div class="cp-folio">
+          <p class="cp-marque"><strong>En-Check</strong> · Configuration pointeuse</p>
+          <p class="cp-folio-droite">Les dernières décisions</p>
+        </div>
+        <header class="cp-vue-tete">
+          <div>
+            <p class="cp-eyebrow">Qui a changé quoi</p>
+            <h2 class="cp-titre-vue">Historique des seuils<span>.</span></h2>
+          </div>
+        </header>
+        <table class="h-journal">
+          <thead>
+            <tr><th>Quand</th><th>Qui</th><th>Réglage</th><th class="num">Avant</th><th class="num">Après</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>17/11 09:14</td><td>A. Fagbohoun</td><td>Plafond d'une pause</td><td class="num avant">90</td><td class="num">120</td></tr>
+            <tr><td>17/11 09:14</td><td>A. Fagbohoun</td><td>Tolérance de dépassement</td><td class="num avant">20</td><td class="num">15</td></tr>
+            <tr><td>04/11 16:02</td><td>M. Dossou</td><td>Tolérance de dépassement</td><td class="num avant">30</td><td class="num">20</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

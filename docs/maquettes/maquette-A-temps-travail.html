@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Maquette A — Temps de travail (chrome de la page hôte)</title>
+<link rel="stylesheet" href="../../src/styles/tokens.css">
+<link rel="stylesheet" href="../../src/styles/charte.css">
+<link rel="stylesheet" href="../../src/pages/ConfigurationPointeuse.css">
+<script type="module" src="./motif-seuil.js"></script>
+<style>
+  /* Uniquement de quoi poser la maquette : pas une valeur de la charte,
+     pas une couleur de produit. Le cadre gris dit « ceci est une maquette ». */
+  body { margin: 0; background: #6f675e; padding: 24px; font-family: var(--charte-police); }
+  .maquette-cadre { max-width: 1180px; margin: 0 auto 32px; }
+  .maquette-titre {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    margin: 0 0 10px; color: #fffdf7; font-size: 12px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase;
+  }
+  .maquette-titre span { font-weight: 400; letter-spacing: 0; text-transform: none; opacity: .8; }
+
+  /* La bande Adinkra : 76 px, hauteur native, jamais étirée (D-003). */
+  .maquette-bande {
+    height: 76px; margin: 0 0 18px;
+    border: 1px solid var(--charte-bordure); border-radius: 6px;
+    background-image: var(--motif-adinkra);
+    background-repeat: repeat-x; background-position: center;
+  }
+
+  /* ── A : les deux champs nus, dans le chrome existant de l'onglet ── */
+  .a-panneau {
+    display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 14px;
+    padding: 16px; border: 1px solid var(--cp-ligne);
+    border-radius: 3px; background-color: var(--cp-carte-2);
+  }
+  @media (max-width: 760px) { .a-panneau { grid-template-columns: 1fr; } }
+  .a-champ { display: grid; gap: 6px; }
+  .a-champ label {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--cp-coton-faible);
+  }
+  .a-champ .a-unite { display: flex; align-items: center; gap: 8px; }
+  .a-champ input {
+    width: 96px; height: 34px; padding: 0 10px;
+    border: 1px solid var(--cp-ligne-forte); border-radius: 2px;
+    background-color: var(--cp-creux); color: var(--cp-coton);
+    font-family: var(--charte-mono); font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+  .a-champ .a-suffixe { font-size: 12px; color: var(--cp-coton-doux); }
+  .a-champ .a-aide {
+    font-size: 11.5px; line-height: 1.45; color: var(--cp-coton-doux);
+    max-width: 40ch;
+  }
+  .a-pied {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--cp-ligne-forte);
+  }
+  .a-trace { font-size: 11.5px; color: var(--cp-coton-faible); margin: 0; }
+  .a-trace strong { color: var(--cp-coton-doux); font-weight: 600; }
+
+  /* ── B : la grille de réglages (forme « Étiquette fixe ») ── */
+  .b-grille {
+    display: grid; grid-template-columns: minmax(0,1fr); gap: 12px;
+    padding: 16px; border: 1px solid var(--charte-bordure);
+    border-radius: var(--charte-rayon-champ); background: var(--charte-surface);
+    box-shadow: var(--charte-ombre-dure);
+  }
+  .b-ligne {
+    display: grid; grid-template-columns: minmax(0,1fr) 132px;
+    align-items: center; gap: 16px;
+    padding-bottom: 12px; border-bottom: 1px solid var(--charte-surface2);
+  }
+  .b-ligne:last-of-type { border-bottom: 0; padding-bottom: 0; }
+  .b-libelle { display: grid; gap: 3px; }
+  .b-libelle b {
+    font-size: var(--charte-taille-corps); font-weight: 600; color: var(--charte-encre);
+  }
+  .b-libelle small {
+    font-size: var(--charte-taille-micro); line-height: 1.5; color: var(--charte-douce);
+    max-width: 52ch;
+  }
+  .b-saisie { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .b-saisie input {
+    width: 74px; height: 40px; padding: 0 10px; text-align: right;
+    border: var(--charte-trait) solid var(--charte-encre);
+    border-radius: var(--charte-rayon-champ);
+    background: var(--charte-sable); color: var(--charte-encre);
+    font-family: var(--charte-mono); font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+  .b-saisie span { font-size: var(--charte-taille-micro); color: var(--charte-douce); }
+  .b-pied {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--charte-surface2);
+  }
+  .b-pied p { margin: 0; font-size: var(--charte-taille-micro); color: var(--charte-douce); }
+  .b-pied p strong { color: var(--charte-texte); font-weight: 600; }
+
+  /* La traînée de journal, commune aux deux : le mot est la donnée (C7). */
+  .h-journal { width: 100%; border-collapse: collapse; font-size: var(--charte-taille-micro); }
+  .h-journal th {
+    padding: 8px 10px; text-align: left; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--charte-douce);
+    border-bottom: 1px solid var(--charte-bordure);
+  }
+  .h-journal td {
+    padding: 9px 10px; color: var(--charte-encre);
+    border-bottom: 1px solid var(--charte-surface2);
+  }
+  .h-journal td.num { text-align: right; font-family: var(--charte-mono); font-variant-numeric: tabular-nums; }
+  .h-journal td.avant { color: var(--charte-douce); text-decoration: line-through; }
+</style>
+</head>
+<body>
+
+<div class="maquette-cadre">
+  <p class="maquette-titre">Maquette A <span>— deux champs nus, dans le chrome de l'onglet existant</span></p>
+  <div class="maquette-bande" id="bande-a"></div>
+
+  <div class="cp-page" id="page-a">
+    <main class="cp-coque">
+      <div class="cp-sommaire">
+        <p class="cp-sommaire-titre">Sommaire</p>
+        <div class="cp-sommaire-liste" role="tablist" aria-label="Vues de la configuration pointeuse">
+          <button type="button" role="tab" aria-selected="false" class="cp-onglet">Pointeuses <span class="cp-onglet-nombre">4</span></button>
+          <button type="button" role="tab" aria-selected="false" class="cp-onglet">Journal des envois <span class="cp-onglet-nombre">25</span></button>
+          <button type="button" role="tab" aria-selected="false" class="cp-onglet">Poste de pointage <span class="cp-onglet-nombre">1</span></button>
+          <button type="button" role="tab" aria-selected="true" class="cp-onglet">Temps de travail <span class="cp-onglet-nombre">2</span></button>
+        </div>
+        <button type="button" class="cp-bouton-creux cp-onglet-action">Actualiser</button>
+      </div>
+
+      <section class="cp-vue" role="tabpanel">
+        <div class="cp-folio">
+          <p class="cp-marque"><strong>En-Check</strong> · Configuration pointeuse</p>
+          <p class="cp-folio-droite">Deux seuils</p>
+        </div>
+
+        <header class="cp-vue-tete">
+          <div>
+            <p class="cp-eyebrow">Ce que le moteur applique</p>
+            <h2 class="cp-titre-vue">Temps de travail<span>.</span></h2>
+          </div>
+          <p class="cp-tete-note">Cotonou · Africa/Porto-Novo</p>
+        </header>
+
+        <div class="a-panneau">
+          <div class="a-champ">
+            <label for="a-tol">Tolérance de dépassement</label>
+            <div class="a-unite">
+              <input id="a-tol" type="number" value="15" min="0" max="240">
+              <span class="a-suffixe">minutes</span>
+            </div>
+            <p class="a-aide">Une pause peut dépasser son créneau de ce nombre de minutes
+              avant d'être signalée. 0 = signalée au premier dépassement.</p>
+          </div>
+
+          <div class="a-champ">
+            <label for="a-max">Plafond d'une pause</label>
+            <div class="a-unite">
+              <input id="a-max" type="number" value="120" min="15" max="600">
+              <span class="a-suffixe">minutes</span>
+            </div>
+            <p class="a-aide">Au-delà, la pause est marquée « très longue » et le manager
+              est prévenu. C'est aussi la durée au-delà de laquelle une sortie en pleine
+              pause interroge.</p>
+          </div>
+        </div>
+
+        <div class="a-pied">
+          <button type="button" class="cp-bouton">Enregistrer</button>
+          <button type="button" class="cp-bouton-creux">Revenir aux valeurs d'usage</button>
+          <p class="a-trace">Dernière modification : <strong>17/11/2026 à 09:14</strong> · par <strong>A. Fagbohoun</strong></p>
+        </div>
+
+        <p class="cp-note">La pause <em>prévue</em> n'est pas réglée ici : elle vient de la
+          grille horaire de chaque employé. Ce seuil-ci dit seulement quand un dépassement
+          devient anormal.</p>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="maquette-cadre">
+  <p class="maquette-titre">Le journal <span>— l'onglet « Journal des envois » de la même page, une fois la trace posée</span></p>
+  <div class="cp-page cp-clair" id="page-a2">
+    <main class="cp-coque">
+      <section class="cp-vue">
+        <div class="cp-folio">
+          <p class="cp-marque"><strong>En-Check</strong> · Configuration pointeuse</p>
+          <p class="cp-folio-droite">Les dernières décisions</p>
+        </div>
+        <header class="cp-vue-tete">
+          <div>
+            <p class="cp-eyebrow">Qui a changé quoi</p>
+            <h2 class="cp-titre-vue">Journal des envois<span>.</span></h2>
+          </div>
+        </header>
+        <table class="h-journal">
+          <thead>
+            <tr><th>Quand</th><th>Qui</th><th>Réglage</th><th class="num">Avant</th><th class="num">Après</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>17/11 09:14</td><td>A. Fagbohoun</td><td>Plafond d'une pause</td><td class="num avant">90</td><td class="num">120</td></tr>
+            <tr><td>17/11 09:14</td><td>A. Fagbohoun</td><td>Tolérance de dépassement</td><td class="num avant">20</td><td class="num">15</td></tr>
+            <tr><td>04/11 16:02</td><td>M. Dossou</td><td>Tolérance de dépassement</td><td class="num avant">30</td><td class="num">20</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

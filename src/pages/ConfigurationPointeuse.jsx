@@ -27,7 +27,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle, ArrowLeft, Building2, Check, CheckCircle2, Clock, Copy,
-  Download, Eye, EyeOff, FileJson, Info, KeyRound, MonitorSmartphone, Moon,
+  Download, Eye, EyeOff, FileJson, Gauge, Info, KeyRound, MonitorSmartphone, Moon,
   PauseCircle, PlayCircle, Plus, Radio, RefreshCw, Server, Sun, Tablet,
   Trash2, Wifi, WifiOff, X,
 } from 'lucide-react'
@@ -37,16 +37,32 @@ import RaccourcisPages from '../components/RaccourcisPages'
 import { KorhogoBlasonNuitSvg } from '../components/KorhogoSvg'
 import { useTheme } from '../contexts/ThemeContext'
 import { lirePoste, installerPoste, oublierPoste } from '../lib/postePointage'
+import {
+  BORNES_SEUILS_PAUSE, invaliderCacheSeuils, validerSeuilsPause,
+} from '../services/seuilsPointage'
 import './ConfigurationPointeuse.css'
 
 // Une machine est en ligne si elle s'est manifestée depuis moins de dix
 // minutes : elle interroge le receveur toutes les dix à trente secondes.
 const SEUIL_EN_LIGNE_MIN = 10
 
+//  Les valeurs d'usage des deux seuils de pause — celles que le moteur
+//  applique quand l'entreprise n'a rien réglé. Elles sont aussi semées en base
+//  (`20261105000001`), et `SEUILS_PAR_DEFAUT` les porte ; recopiées ici pour
+//  que « Revenir aux valeurs d'usage » n'ait pas à charger un module de paie.
+const SEUILS_USAGE = { tolerance: 15, max: 120 }
+
 const VUES = [
   { cle: 'pointeuses', libelle: 'Pointeuses', icone: Server },
   { cle: 'journal', libelle: 'Journal des envois', icone: Radio },
   { cle: 'poste', libelle: 'Poste de pointage', icone: MonitorSmartphone },
+  //  « Temps de travail » : les deux seuils de pause, réglés par l'entreprise.
+  //  Ils vivent ici parce que c'est le seul écran d'administration dont
+  //  l'admin d'entreprise est propriétaire (AdminRoute simple), et parce que
+  //  c'est là qu'on vient chercher la mécanique de la pointeuse. Une page
+  //  « Réglages » dédiée n'existe pas dans le produit — et la créer pour deux
+  //  champs ferait entrer une septième section dans la barre latérale.
+  { cle: 'temps-travail', libelle: 'Temps de travail', icone: Gauge },
 ]
 
 function depuis(iso) {
@@ -68,6 +84,56 @@ function dateHeure(iso) {
   return new Date(iso).toLocaleString('fr-FR', {
     day: '2-digit', month: '2-digit', year: '2-digit',
     hour: '2-digit', minute: '2-digit',
+  })
+}
+
+/**
+ * L'aperçu de l'onglet « Temps de travail » : ce que les deux seuils font à
+ * une pause prévue de 90 minutes. Les trois cas sont CALCULÉS à partir des
+ * champs — un seuil qu'on change change la démonstration, sinon l'aperçu
+ * mentirait dès la première saisie.
+ *
+ *   · sous la tolérance  → « Normale » (dépassement chiffré) ;
+ *   · au-delà de la tolérance, sous le plafond → « Dépassement » ;
+ *   · au-delà du plafond → « Très longue » (c'est le plafond qui alerte).
+ *
+ * Le plafond l'emporte : une pause de 2 h 05 sur 90 prévues est « très
+ * longue », pas « dépassement doublé ». Un fait, une alerte.
+ */
+function apercuSeuils({ tolerance, max }) {
+  const prevue = 90
+  const tol = Number(tolerance)
+  const plafond = Number(max)
+  const heures = (min) => `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`
+
+  // Trois durées choisies pour tomber de part et d'autre des seuils saisis.
+  const cas = [
+    { min: prevue + 8 },
+    { min: prevue + (Number.isFinite(tol) ? Math.max(1, tol + 6) : 21) },
+    { min: Math.max(prevue + 36, (Number.isFinite(plafond) ? plafond : 120) + 5) },
+  ]
+
+  return cas.map(({ min }) => {
+    const depasse = min - prevue
+    if (Number.isFinite(plafond) && min > plafond) {
+      return {
+        duree: heures(min),
+        badge: `Très longue · au-delà de ${plafond}`,
+        ton: 'absent',
+      }
+    }
+    if (Number.isFinite(tol) && depasse > tol) {
+      return {
+        duree: heures(min),
+        badge: `Dépassement · ${depasse} min`,
+        ton: 'retard',
+      }
+    }
+    return {
+      duree: heures(min),
+      badge: `Normale · dépassement ${depasse} min`,
+      ton: 'present',
+    }
   })
 }
 
@@ -206,6 +272,18 @@ export default function ConfigurationPointeuse() {
   const [rafraichir, setRafraichir] = useState(false)
 
   const [vue, setVue] = useState('pointeuses')
+
+  // ── Temps de travail : les deux seuils de pause ───────────────────────────
+  //  `seuils` garde ce que le serveur dit ; `saisieSeuils` ce que l'admin tape.
+  //  Deux états distincts, parce qu'un champ vidé n'est pas une valeur à
+  //  envoyer — on ne l'écrase pas en base, on le montre en erreur.
+  const [seuils, setSeuils] = useState(null)
+  const [seuilsErreur, setSeuilsErreur] = useState(null)
+  const [saisieSeuils, setSaisieSeuils] = useState({ tolerance: '', max: '' })
+  const [erreurSaisie, setErreurSaisie] = useState(null)
+  const [enregistrementSeuils, setEnregistrementSeuils] = useState(false)
+  const [avisSeuils, setAvisSeuils] = useState(null)
+
   const [showAjout, setShowAjout] = useState(false)
   const [form, setForm] = useState({ serial: '', label: '' })
   const [enregistrement, setEnregistrement] = useState(false)
@@ -343,6 +421,88 @@ export default function ConfigurationPointeuse() {
     setRafraichir(false)
   }, [marquer])
 
+  // ── les deux seuils de pause : lecture ────────────────────────────────────
+  //  On ne lit qu'en arrivant sur l'onglet : la page s'ouvre sur les pointeuses
+  //  neuf fois sur dix, et un appel de plus au chargement serait payé pour tous.
+  const chargerSeuils = useCallback(async (entId) => {
+    if (!entId) return
+    setSeuilsErreur(null)
+    const { data, error } = await supabase.rpc('encheck_seuils_pause', { p_enterprise: entId })
+    if (error) {
+      console.warn('[Configuration pointeuse] seuils de pause indisponibles :', error.message)
+      setSeuilsErreur(
+        'Les seuils ne peuvent pas être lus pour le moment. Les valeurs d’usage restent '
+        + 'appliquées par le moteur : rien n’est cassé, seul ce réglage est indisponible.',
+      )
+      setSeuils(null)
+      return
+    }
+    const lu = data || {}
+    setSeuils(lu)
+    setSaisieSeuils({
+      tolerance: String(lu.tolerance_minutes ?? ''),
+      max: String(lu.max_minutes ?? ''),
+    })
+    setErreurSaisie(null)
+    setAvisSeuils(null)
+  }, [])
+
+  useEffect(() => {
+    if (vue === 'temps-travail' && selectedEntId) chargerSeuils(selectedEntId)
+  }, [vue, selectedEntId, chargerSeuils])
+
+  // ── enregistrer : bornes d'abord, réseau ensuite, cache invalidé après ────
+  const enregistrerSeuils = async () => {
+    if (!selectedEntId || enregistrementSeuils) return
+    const verdict = validerSeuilsPause({
+      toleranceMinutes: saisieSeuils.tolerance,
+      maxMinutes: saisieSeuils.max,
+    })
+    if (!verdict.ok) {
+      setErreurSaisie(verdict.erreur)
+      setAvisSeuils(null)
+      return
+    }
+
+    setErreurSaisie(null)
+    setEnregistrementSeuils(true)
+    const { data, error } = await supabase.rpc('encheck_seuil_ecrire', {
+      p_enterprise: selectedEntId,
+      p_tolerance: verdict.valeurs.toleranceMinutes,
+      p_max: verdict.valeurs.maxMinutes,
+    })
+    setEnregistrementSeuils(false)
+
+    if (error) {
+      // Le message de la base est déjà en français et nomme la règle refusée.
+      setErreurSaisie(error.message || 'L’enregistrement a été refusé.')
+      setAvisSeuils(null)
+      return
+    }
+
+    //  Le cache de `seuilsPointage` vit en mémoire : sans cette ligne, les
+    //  pages déjà ouvertes (Pointages, Rapports) gardent l'ancien chiffre
+    //  jusqu'au rechargement — le défaut se voit en production, pas en recette.
+    invaliderCacheSeuils(selectedEntId)
+
+    setAvisSeuils({
+      tolerance: verdict.valeurs.toleranceMinutes,
+      max: verdict.valeurs.maxMinutes,
+      auteur: data?.auteur || null,
+      majLe: data?.maj_le || new Date().toISOString(),
+    })
+    await chargerSeuils(selectedEntId)
+  }
+
+  const revenirAuxValeursDusage = () => {
+    setSaisieSeuils({
+      tolerance: String(SEUILS_USAGE.tolerance),
+      max: String(SEUILS_USAGE.max),
+    })
+    setErreurSaisie(null)
+    setAvisSeuils(null)
+  }
+
   useEffect(() => {
     if (selectedEntId) chargerTout(selectedEntId)
   }, [selectedEntId, chargerTout])
@@ -350,6 +510,7 @@ export default function ConfigurationPointeuse() {
   const actualiser = () => {
     setRafraichir(true)
     chargerTout(selectedEntId)
+    if (vue === 'temps-travail') chargerSeuils(selectedEntId)
   }
 
   // ── les chiffres de la page ──────────────────────────────
@@ -850,7 +1011,9 @@ export default function ConfigurationPointeuse() {
 
   return (
     <div className={`cp-page${darkMode ? '' : ' cp-clair'}`}>
-      <PageCulturalBand pathname="/configuration-pointeuse" />
+      {/*  Pas de bande de motif en haut de cette page (décision du
+          21/11/2026) : la lisière suffit à marquer le haut. Le bandeau du
+          bas reste — il ferme la toile, et il n'est pas dans le champ. */}
       <div className="cp-lisiere" aria-hidden="true" />
 
       <header className="cp-entete">
@@ -1032,7 +1195,15 @@ export default function ConfigurationPointeuse() {
                 <Icone size={14} aria-hidden="true" />
                 {libelle}
                 <span className="cp-onglet-nombre">
-                  {cle === 'pointeuses' ? stats.machines : cle === 'journal' ? stats.journal : poste ? 1 : 0}
+                  {/*  Un compteur par vue, et un zéro qui veut dire quelque
+                       chose : 2 seuils réglables, 1 poste installé ou pas. */}
+                  {cle === 'pointeuses'
+                    ? stats.machines
+                    : cle === 'journal'
+                      ? stats.journal
+                      : cle === 'temps-travail'
+                        ? 2
+                        : (poste ? 1 : 0)}
                 </span>
               </button>
             ))}
@@ -1404,8 +1575,173 @@ export default function ConfigurationPointeuse() {
             </p>
           </section>
         )}
+
+        {/* ═══ VUE 4 — TEMPS DE TRAVAIL ═══
+            Les deux seuils de pause, réglés par l'entreprise. Pas de bande de
+            motif ici, ni en haut ni en bas : la page entière s'en passe (le
+            fond de toile et la lisière suffisent à dire « atelier »). */}
+        {vue === 'temps-travail' && (
+          <section
+            className="cp-vue"
+            id="cp-vue-temps-travail"
+            role="tabpanel"
+            aria-labelledby="cp-onglet-temps-travail"
+          >
+            <div className="cp-folio">
+              <p className="cp-marque"><strong>En-Check</strong> · Configuration pointeuse</p>
+              <p className="cp-folio-droite">Deux seuils</p>
+            </div>
+
+            <header className="cp-vue-tete">
+              <div>
+                <p className="cp-eyebrow">Ce que le moteur applique</p>
+                <h2 className="cp-titre-vue">Temps de travail<span>.</span></h2>
+              </div>
+              <p className="cp-tete-note">
+                <Clock size={11} aria-hidden="true" />
+                {nomAffiche}
+              </p>
+            </header>
+
+            {seuilsErreur && (
+              <p className="cp-erreur" role="alert">{seuilsErreur}</p>
+            )}
+
+            {seuils && (
+              <>
+                <div className="cp-grille-seuils">
+                  <div className="cp-ligne-seuil">
+                    <div className="cp-seuil-libelle">
+                      <b id="cp-seuil-tol-titre">Tolérance de dépassement</b>
+                      <small id="cp-seuil-tol-aide">
+                        Une pause peut dépasser son créneau de ce nombre de minutes avant
+                        d’être signalée. Ce n’est pas la pause prévue : elle vient de la
+                        grille horaire de chaque employé.
+                      </small>
+                    </div>
+                    <div className="cp-seuil-saisie">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={BORNES_SEUILS_PAUSE.pauseToleranceMinutes.min}
+                        max={BORNES_SEUILS_PAUSE.pauseToleranceMinutes.max}
+                        step="1"
+                        value={saisieSeuils.tolerance}
+                        onChange={(e) => {
+                          setSaisieSeuils((s) => ({ ...s, tolerance: e.target.value }))
+                          setErreurSaisie(null)
+                          setAvisSeuils(null)
+                        }}
+                        aria-labelledby="cp-seuil-tol-titre"
+                        aria-describedby="cp-seuil-tol-aide cp-seuil-erreur"
+                      />
+                      <span>min</span>
+                    </div>
+                  </div>
+
+                  <div className="cp-ligne-seuil">
+                    <div className="cp-seuil-libelle">
+                      <b id="cp-seuil-max-titre">Plafond d’une pause</b>
+                      <small id="cp-seuil-max-aide">
+                        Au-delà, la pause est marquée « très longue » et le manager est
+                        prévenu. Une sortie en pleine pause au-delà de ce plafond demande
+                        une vérification.
+                      </small>
+                    </div>
+                    <div className="cp-seuil-saisie">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={BORNES_SEUILS_PAUSE.pauseDureeMaxMinutes.min}
+                        max={BORNES_SEUILS_PAUSE.pauseDureeMaxMinutes.max}
+                        step="1"
+                        value={saisieSeuils.max}
+                        onChange={(e) => {
+                          setSaisieSeuils((s) => ({ ...s, max: e.target.value }))
+                          setErreurSaisie(null)
+                          setAvisSeuils(null)
+                        }}
+                        aria-labelledby="cp-seuil-max-titre"
+                        aria-describedby="cp-seuil-max-aide cp-seuil-erreur"
+                      />
+                      <span>min</span>
+                    </div>
+                  </div>
+
+                  {/* L'aperçu : ce que ces deux valeurs font à une journée réelle.
+                      Les durées sont calculées, pas écrites — changer un champ
+                      change la démonstration, et c'est tout l'intérêt. La pause
+                      prévue de 90 min est l'exemple, pas une règle. */}
+                  <div className="cp-seuil-apercu">
+                    <h3>Avec ces deux valeurs, sur une pause prévue de 90 min</h3>
+                    <ul>
+                      {apercuSeuils(saisieSeuils).map(({ duree, badge, ton }) => (
+                        <li key={duree}>
+                          <span className="cp-seuil-duree">{duree}</span>
+                          <span className={`cp-seuil-pastille`} data-ton={ton}>{badge}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {erreurSaisie && (
+                  <p className="cp-erreur" role="alert" id="cp-seuil-erreur">{erreurSaisie}</p>
+                )}
+
+                {avisSeuils && (
+                  <p className="cp-sceau" data-ton="ok" role="status">
+                    Enregistré. Tolérance {avisSeuils.tolerance} min · plafond {avisSeuils.max} min
+                    {avisSeuils.auteur ? ` — par ${avisSeuils.auteur}` : ''}
+                    {avisSeuils.majLe ? `, le ${dateHeure(avisSeuils.majLe)}` : ''}.
+                  </p>
+                )}
+
+                <div className="cp-seuil-pied">
+                  <button
+                    type="button"
+                    className="cp-bouton"
+                    onClick={enregistrerSeuils}
+                    disabled={enregistrementSeuils}
+                  >
+                    <Check size={14} aria-hidden="true" />
+                    {enregistrementSeuils ? 'Enregistrement…' : 'Enregistrer'}
+                  </button>
+                  <button
+                    type="button"
+                    className="cp-bouton-creux"
+                    onClick={revenirAuxValeursDusage}
+                    disabled={enregistrementSeuils}
+                  >
+                    Valeurs d’usage
+                  </button>
+                  {seuils.maj_le && (
+                    <p className="cp-seuil-trace">
+                      Dernière modification : <strong>{dateHeure(seuils.maj_le)}</strong>
+                      {seuils.maj_par ? <> · par <strong>{seuils.maj_par}</strong></> : null}
+                    </p>
+                  )}
+                </div>
+
+                <p className="cp-note">
+                  La pause <em>prévue</em> n’est pas réglée ici : elle vient de la grille
+                  horaire de chaque employé. Ce seuil-ci dit seulement quand un
+                  dépassement devient anormal. Chaque enregistrement est tracé au nom de
+                  son auteur, avec l’ancienne et la nouvelle valeur, dans le journal
+                  d’audit.
+                </p>
+              </>
+            )}
+
+            {!seuils && !seuilsErreur && (
+              <Chargement texte="Lecture des seuils…" note="La valeur appliquée arrive du serveur." />
+            )}
+          </section>
+        )}
       </main>
 
+      {/* Le bandeau du bas : il ferme la toile. Celui du haut a été retiré
+          le 21/11/2026 — la lisière suffit à coudre le haut de la page. */}
       <div className="cp-pied">
         <PageCulturalBand pathname="/configuration-pointeuse" placement="bottom" />
       </div>

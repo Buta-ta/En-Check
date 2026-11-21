@@ -52,6 +52,72 @@ export const SEUILS_PAR_DEFAUT = {
   nudgeApresMinutes: 20,
   delaiContestationHeures: 48,
   modeEstimation: 'ombre',
+  //  Seuils de PAUSE — réglés depuis Configuration pointeuse → Temps de travail.
+  //  Le plafond était déjà lu par le moteur (`20261016000004:581`, défaut 120)
+  //  sans être semé ni réglable ; la tolérance est née de la décision du
+  //  17/11/2026 (« 15 minutes de tolérance pour le seuil de dépassement »).
+  //  ⚠ Ce n'est PAS `late_tolerance_minutes` (retard d'arrivée, grille horaire) :
+  //  deux grandeurs différentes, deux écrans différents.
+  pauseToleranceMinutes: 15,
+  pauseDureeMaxMinutes: 120,
+}
+
+/**
+ * Les bornes des seuils de pause — MÊME règle que `encheck_seuil_borne()`
+ * en base. Deux endroits se justifient : celui-ci pour refuser une saisie
+ * avant l'aller-retour réseau, celui-là pour refuser une écriture directe.
+ * Les valeurs doivent rester identiques ; un test le vérifie.
+ */
+export const BORNES_SEUILS_PAUSE = {
+  pauseToleranceMinutes: { min: 0, max: 240, libelle: 'La tolérance' },
+  pauseDureeMaxMinutes: { min: 15, max: 600, libelle: 'Le plafond' },
+}
+
+/**
+ * Valide les deux seuils de pause d'un coup.
+ * Retourne `{ ok: true, valeurs }` ou `{ ok: false, erreur }` en français,
+ * avec la raison exacte — jamais un « valeur invalide » qui ne dit rien.
+ */
+export function validerSeuilsPause({ toleranceMinutes, maxMinutes }) {
+  for (const [nom, brut] of Object.entries({ toleranceMinutes, maxMinutes })) {
+    //  ⚠ `Number('')` vaut 0 : un champ VIDÉ passerait pour une tolérance
+    //  zéro, et écraserait la valeur en base. On refuse d'abord la chaîne vide,
+    //  avant toute conversion — c'est le piège que ce test a attrapé.
+    if (brut === null || brut === undefined || String(brut).trim() === '') {
+      return {
+        ok: false,
+        erreur: nom === 'toleranceMinutes'
+          ? 'La tolérance doit être renseignée (0 est une valeur acceptée : signaler dès le premier dépassement).'
+          : 'Le plafond doit être renseigné.',
+      }
+    }
+    const n = Number(brut)
+    if (!Number.isFinite(n)) {
+      return { ok: false, erreur: 'Les deux valeurs doivent être des nombres.' }
+    }
+    if (!Number.isInteger(n)) {
+      return { ok: false, erreur: 'Les valeurs doivent être des nombres entiers de minutes.' }
+    }
+  }
+  const { min: minTol, max: maxTol, libelle: libelleTol } = BORNES_SEUILS_PAUSE.pauseToleranceMinutes
+  const { min: minMax, max: maxMax, libelle: libelleMax } = BORNES_SEUILS_PAUSE.pauseDureeMaxMinutes
+  const tol = Number(toleranceMinutes)
+  const max = Number(maxMinutes)
+
+  if (tol < minTol || tol > maxTol) {
+    return { ok: false, erreur: `${libelleTol} doit être comprise entre ${minTol} et ${maxTol} minutes.` }
+  }
+  if (max < minMax || max > maxMax) {
+    return { ok: false, erreur: `${libelleMax} doit être comprise entre ${minMax} et ${maxMax} minutes.` }
+  }
+  if (tol > max) {
+    return {
+      ok: false,
+      erreur: `La tolérance (${tol} min) ne peut pas dépasser le plafond (${max} min) : `
+        + 'toute pause deviendrait « très longue » avant même d\'être tolérée.',
+    }
+  }
+  return { ok: true, valeurs: { toleranceMinutes: tol, maxMinutes: max } }
 }
 
 /** Correspondance nom JS ↔ clé SQL (`encheck_reglages_pointage.cle`). */
@@ -70,6 +136,8 @@ const CLES = {
   nudgeApresMinutes: 'nudge_apres_minutes',
   delaiContestationHeures: 'delai_contestation_heures',
   modeEstimation: 'mode_estimation',
+  pauseToleranceMinutes: 'pause_tolerance_minutes',
+  pauseDureeMaxMinutes: 'pause_duree_max_minutes',
 }
 
 // Cache par entreprise : une page de pointages lit ses seuils une fois, pas 40 fois.
@@ -438,8 +506,10 @@ export function validerCibleEstimation(entreeMs, cibleMs, seuils = SEUILS_PAR_DE
 
 export default {
   SEUILS_PAR_DEFAUT,
+  BORNES_SEUILS_PAUSE,
   chargerSeuilsPointage,
   invaliderCacheSeuils,
+  validerSeuilsPause,
   estEstimationNonValidee,
   estEstimationAStatuer,
   estEstimationEcartee,

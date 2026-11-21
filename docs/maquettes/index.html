@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquettes — onglet Temps de travail</title>
+<link rel="stylesheet" href="../../src/styles/tokens.css">
+<link rel="stylesheet" href="../../src/styles/charte.css">
+<style>
+  body { margin: 0; padding: 40px 24px; background: #6f675e; font-family: var(--charte-police); }
+  .boite { max-width: 880px; margin: 0 auto; }
+  h1 { margin: 0 0 8px; color: #fffdf7; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  p.intro { margin: 0 0 28px; color: #e3d8c6; font-size: 14px; line-height: 1.6; max-width: 68ch; }
+  .carte {
+    display: block; margin: 0 0 16px; padding: 20px 22px;
+    background: var(--charte-surface); color: var(--charte-encre);
+    border: var(--charte-trait) solid var(--charte-encre);
+    border-radius: var(--charte-rayon-carte); box-shadow: var(--charte-ombre-dure);
+    text-decoration: none;
+  }
+  .carte:hover { background: var(--charte-surface2); }
+  .carte b { display: block; font-size: 15px; margin-bottom: 6px; }
+  .carte span { font-size: 13px; line-height: 1.55; color: var(--charte-douce); }
+  .sac { margin-top: 28px; padding-top: 18px; border-top: 1px solid rgba(255,253,247,.25);
+         color: #d8cbb6; font-size: 12px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="boite">
+  <h1>Onglet « Temps de travail » — deux maquettes</h1>
+  <p class="intro">
+    Deux façons de poser les deux mêmes champs, servies avec les vraies feuilles
+    de style du dépôt : ce ne sont pas des images, c'est du code rendu par un
+    navigateur. Les champs, les boutons et les badges sont donc exactement ceux
+    que produira l'implémentation.
+  </p>
+
+  <a class="carte" href="./maquette-A-temps-travail.html">
+    <b>A — le chrome de la page, deux champs nus</b>
+    <span>Les champs restent ceux de Configuration pointeuse (creux, 34 px), posés
+    côte à côte. Le moins de travail, le plus proche de ce qui existe. Le journal
+    reste dans « Journal des envois ».</span>
+  </a>
+
+  <a class="carte" href="./maquette-B-temps-travail.html">
+    <b>B — la grille de réglages du kit, avec aperçu chiffré</b>
+    <span>Une ligne par réglage (forme « Étiquette fixe », D-017), un aperçu qui
+    montre ce que le seuil fait à une journée réelle, et l'historique des seuils
+    sur place. Plus de travail, mais c'est la première page à appliquer la charte.</span>
+  </a>
+
+  <p class="sac">
+    Les noms (A. Fagbohoun, M. Dossou), les dates et les chiffres de l'historique
+    sont des exemples, pas des données réelles. Les deux maquettes utilisent le
+    motif Adinkra de la page Pointages, à sa hauteur native de 76 px.
+  </p>
+</div>
+</body>
+</html>
