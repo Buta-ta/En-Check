@@ -29,12 +29,12 @@ import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
 import BadgeEmploye from './BadgeEmploye'
-import {
-  AdinkraWatermarkSvg,
-  KenteWovenTapestrySvg,
-  WovenKenteBadgeSvg,
-} from './AfroCulturalSvg'
 import '../pages/PointagesAfroTech.css'
+/* La modale est redevinée en post-it (21/11) : elle hérite des classes
+   `fiche-v2-*` de la peau partagée, puis les reprend à son compte sous
+   `.fiche-v2--postit`. Les motifs culturels du bandeau et du filigrane sont
+   tombés avec la refonte — la feuille de papier fait l'objet, rien derrière. */
+import './FicheEmployeModal.css'
 
 async function hasherPinEmploye(pin) {
   const sel = 'EnCheck_2024_Secure'
@@ -68,6 +68,18 @@ export default function FicheEmployeModal({
   const [showBadgeModal, setShowBadgeModal] = useState(false)
   const [enterpriseList, setEnterpriseList] = useState(entreprises)
   const [enterpriseMeta, setEnterpriseMeta] = useState(employee?.enterprises || null)
+
+  // D-020 : la modale se ferme au clavier. Le badge QR a SON propre écouteur
+  // d'Échap (BadgeEmploye) : quand il est ouvert, on ne fait rien, sinon une
+  // seule touche fermerait les deux couches d'un coup.
+  useEffect(() => {
+    const surTouche = (evenement) => {
+      if (evenement.key !== 'Escape' || showBadgeModal) return
+      onClose?.()
+    }
+    document.addEventListener('keydown', surTouche)
+    return () => document.removeEventListener('keydown', surTouche)
+  }, [onClose, showBadgeModal])
 
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(employee?.photo_url || null)
@@ -389,7 +401,7 @@ export default function FicheEmployeModal({
   return (
     <>
       <div
-        className="fiche-v2-overlay"
+        className="fiche-v2-overlay fiche-v2--postit"
         data-theme={darkMode ? 'dark' : 'light'}
         role="presentation"
         onClick={onClose}
@@ -405,13 +417,16 @@ export default function FicheEmployeModal({
           }
           onClick={(event) => event.stopPropagation()}
         >
-          {/* Frise textile africaine Kente en sommet de modale */}
-          <KenteWovenTapestrySvg className="fiche-v2-kente-top" />
-
           {/* En-tête */}
           <header className="fiche-v2-header">
             <div className="fiche-v2-header-left">
-              <WovenKenteBadgeSvg variant={isCreate ? 3 : 1} size={36} />
+              <span className="fiche-v2-header-vignette" aria-hidden="true">
+                {photoPreview ? (
+                  <img src={photoPreview} alt="" />
+                ) : (
+                  initials
+                )}
+              </span>
               <div className="fiche-v2-header-title">
                 <h2>
                   {isCreate
@@ -442,8 +457,6 @@ export default function FicheEmployeModal({
               {/* COLONNE GAUCHE : CARTE PASSEPORT IDENTITÉ */}
               <aside className="fiche-v2-passport-col">
                 <div className="fiche-v2-passport-card">
-                  <AdinkraWatermarkSvg className="fiche-v2-watermark" />
-
                   <div
                     className="fiche-v2-photo-ring"
                     onClick={() => effectiveCanEdit && fileInputRef.current?.click()}

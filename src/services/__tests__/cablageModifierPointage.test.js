@@ -79,7 +79,7 @@ describe('« Modifier le pointage » — les lignes d’audit ne s’y éditent 
     expect(source).toMatch(/p_decision:\s*'rejeter'/)
   })
 
-  it('5) ouverture depuis le tiroir Slide-Over + thème En-Check & motifs africains', () => {
+  it('5) ouverture depuis le tiroir Slide-Over + thème En-Check, et les deux peaux qui ne doivent pas se mélanger', () => {
     const sections = readFileSync(join(RACINE, 'components', 'PointagesAfroTechSections.jsx'), 'utf8')
     const pagePointages = readFileSync(join(RACINE, 'pages', 'Pointages.jsx'), 'utf8')
     const ficheEmploye = readFileSync(join(RACINE, 'components', 'FicheEmployeModal.jsx'), 'utf8')
@@ -96,7 +96,40 @@ describe('« Modifier le pointage » — les lignes d’audit ne s’y éditent 
 
     expect(ficheEmploye).toContain('useTheme')
     expect(ficheEmploye).toContain("data-theme={darkMode ? 'dark' : 'light'}")
-    expect(ficheEmploye).toContain('KenteWovenTapestrySvg')
-    expect(ficheEmploye).toContain('AdinkraWatermarkSvg')
+
+    // Modale « fiche employé » redevinée en post-it le 21/11/2026 (maquette
+    // `modal-modifier-postit.png`, consigne du fondateur : « enlève le bandeau
+    // motif »). Ce qui tient lieu de contrat depuis ce jour : la portée
+    // `.fiche-v2--postit` et SA feuille. Sans la portée, la modale reprendrait
+    // la peau partagée avec « Modifier le pointage » — qui, elle, garde ses
+    // motifs (les deux assertions sur `source` plus haut sont là pour ça).
+    expect(ficheEmploye).not.toContain('KenteWovenTapestrySvg')
+    expect(ficheEmploye).not.toContain('AdinkraWatermarkSvg')
+    expect(ficheEmploye).toContain('fiche-v2--postit')
+    expect(ficheEmploye).toContain("import './FicheEmployeModal.css'")
+
+    const peauPostit = readFileSync(
+      join(RACINE, 'components', 'FicheEmployeModal.css'),
+      'utf8'
+    )
+    // La peau post-it ne survit qu'à trois conditions, toutes trois déjà mesurées
+    // sur la fiche employée — chacune de ces lignes casse une d'elles :
+    //   1. le « double feutre » est une DOUBLE OMBRE DURE, pas un calque absolu
+    //      (un `::before` décalé promènerait son trait d'encre dans la feuille) ;
+    //   2. la bande de colle est une COUCHE de fond, donc jamais le raccourci
+    //      `background:` (il efface `background-image`, piège déjà vécu) ;
+    //   3. le flou reste à zéro partout : sur une couche de `box-shadow`, le
+    //      troisième nombre est le flou — c'est exactement la lecture de C9.
+    expect(peauPostit).toMatch(/box-shadow:[^;]*0 6px[^;]*,\s*var\(--fv-decalage\)[^;]*0 8px/)
+    expect(peauPostit).toMatch(/background-color:\s*var\(--charte-surface\)/)
+    expect(peauPostit).toMatch(/background-image:\s*linear-gradient\(/)
+    const floues = [...peauPostit.matchAll(/box-shadow\s*:\s*([^;]+);/g)]
+      .flatMap((m) => m[1].split(/,(?![^(]*\))/))
+      .filter((couche) => !/inset/.test(couche))
+      .filter((couche) => {
+        const nombres = (couche.match(/-?\d*\.?\d+(?:px)?/g) || []).map(parseFloat)
+        return nombres[2]
+      })
+    expect(floues).toEqual([])
   })
 })
