@@ -24,6 +24,8 @@ import EmployesLoadingScreen, { EMPLOYES_INTRO_MS } from '../components/Employes
 import { useTheme } from '../contexts/ThemeContext'
 import FicheEmployeModal from '../components/FicheEmployeModal'
 import BadgeEmploye from '../components/BadgeEmploye'
+import SidebarUnique from '../components/SidebarUnique'
+import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import {
   AlertTriangle, ArrowLeft, CalendarRange, ChevronLeft, ChevronRight,
   Clock, Coffee, Globe, IdCard, LogIn, LogOut, Mail, Phone, QrCode,
@@ -180,6 +182,37 @@ export const ETAPES_CHARGEMENT_FICHE = [
 
 const NOMBRE_REQUETES_FICHE = ETAPES_CHARGEMENT_FICHE.reduce((n, g) => n + g.requetes.length, 0)
 
+// Le chiffre d'une KPI monte de zéro à sa valeur (demande du 08/11 : « rends
+// les Kpi dynamiques »). Il démarre à la valeur déjà connue (0 au premier
+// rendu, l'ancien chiffre aux rechargements) pour ne jamais faire tanguer la
+// note ; et il s'efface totalement devant `prefers-reduced-motion`.
+function useCompteur(cible) {
+  const cibleNum = Number(cible)
+  const numerique = Number.isFinite(cibleNum) ? cibleNum : 0
+  const [valeur, setValeur] = useState(numerique)
+  const precedent = useRef(0)
+  useEffect(() => {
+    const reduit = typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduit) { setValeur(numerique); return undefined }
+    const depuis = precedent.current
+    precedent.current = numerique
+    if (depuis === numerique) { setValeur(numerique); return undefined }
+    const t0 = performance.now()
+    let raf = 0
+    const pas = (t) => {
+      const p = Math.min(1, (t - t0) / 750)
+      const assoupli = 1 - Math.pow(1 - p, 3)
+      setValeur(Math.round(depuis + (numerique - depuis) * assoupli))
+      if (p < 1) raf = requestAnimationFrame(pas)
+    }
+    raf = requestAnimationFrame(pas)
+    return () => cancelAnimationFrame(raf)
+  }, [numerique])
+  return valeur
+}
+
 export default function Employee360() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -209,7 +242,7 @@ export default function Employee360() {
     // Sous jsdom (tests), aucun plancher : la page doit se rendre tout de suite.
     () => typeof navigator !== 'undefined' && /jsdom/i.test(navigator.userAgent || ''),
   )
-  const { darkMode } = useTheme()
+  const { darkMode, toggleTheme } = useTheme()
   const tourRef = useRef(0)
   const dejaVueRef = useRef(false)
   const requetesRef = useRef(new Set())
@@ -660,6 +693,52 @@ suivre('taches',
     : null
   const d = donnees
 
+  // ── coque admin, comme la page annuaire (demande du 08/11) ─────────────
+  const nomAdmin = admin?.name || admin?.email || 'Administrateur'
+  const moduleActif = (champ) =>
+    admin?.role === 'super_admin' || Boolean(entreprise?.[champ])
+  const sectionsNav = sectionsNavAdmin({ admin, moduleActif })
+  const deconnexion = () => {
+    localStorage.removeItem('admin')
+    localStorage.removeItem('last_enterprise_id')
+    navigate('/login')
+  }
+  const [entreprises, setEntreprises] = useState([])
+  useEffect(() => {
+    // La liste des entreprises pour le sélecteur du rail : la requête est
+    // mot pour mot celle de l'annuaire (super-admin voit toute la liste,
+    // les autres n'ont que l'entreprise courante).
+    let ok = true
+    if (admin?.role === 'super_admin') {
+      supabase
+        .from('enterprises')
+        .select('id, name, code, logo_url, primary_color, is_active')
+        .eq('is_active', true)
+        .order('name')
+        .then(({ data }) => { if (ok) setEntreprises(data || []) })
+    } else if (entreprise) {
+      setEntreprises([entreprise])
+    }
+    return () => { ok = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [admin?.role, entreprise?.id])
+  const changerEntreprise = (choixBrut) => {
+    // Persiste exactement les mêmes clés que l'annuaire — l'autre page
+    // reprendra la préférence au prochain chargement. La fiche, elle, reste
+    // sur l'employé ouvert : c'est un détail, pas une liste, rien à filtrer.
+    const choix = choixBrut && choixBrut.id ? choixBrut : null
+    if (!admin) return
+    try {
+      const maj = { ...admin, entreprises, selectedEnterprise: choix }
+      localStorage.setItem('admin', JSON.stringify(maj))
+      if (choix) localStorage.setItem(`last_enterprise_id_${admin.id}`, choix.id)
+    } catch { /* stockage refusé : la fiche reste utilisable */ }
+  }
+
+  // Les deux chiffres de la paire de stats grimpent à l'ouverture de la note.
+  const ancienneteJoursAnime = useCompteur(ancienneteJours)
+  const joursPointesAnime = useCompteur(d?.joursPointes)
+
   // ── Activité : série, échelle, pic ─────────────────────────
   const serieBarres = d
     ? (periode === 'mois'
@@ -754,8 +833,23 @@ suivre('taches',
   }
 
   return (
-    <div className="emp-vues emp-360">
-      <div className="e360-conteneur">
+    <div className="pointages-afrotech-shell empv2-coque">
+      <div className="empv2-layout">
+        <SidebarUnique
+          sections={sectionsNav}
+          nomAdmin={nomAdmin}
+          initialeAdmin={(nomAdmin || 'A').charAt(0)}
+          darkMode={darkMode}
+          surTheme={toggleTheme}
+          surDeconnexion={deconnexion}
+          entreprises={entreprises}
+          entrepriseActive={entreprise}
+          surEntreprise={changerEntreprise}
+        />
+        <div className="nav3-colonne">
+          <main className="empv2-main">
+      <div className="emp-vues emp-360">
+        <div className="e360-conteneur">
         {/* ─────────────── TÊTE ─────────────── */}
         <header className="e360-tete">
           <div className="e360-tete-gauche">
@@ -825,9 +919,6 @@ suivre('taches',
                     ? <img src={employee.photo_url} alt={`Photo de ${nomComplet}`} />
                     : <span className="e360-portrait-initiales" aria-hidden="true">{initialesDe(employee?.first_name, employee?.last_name)}</span>}
                 </div>
-                <p className="e360-surtitre">
-                  {(entreprise?.name || 'En-Check').toUpperCase()} · Fiche employée
-                </p>
                 <div className="e360-portrait-corps">
                   <h2 className="e360-nom">{nomComplet}</h2>
                   <p className="e360-poste">
@@ -882,11 +973,11 @@ suivre('taches',
 
               <div className="e360-paire-stats">
                 <section className="e360-carte e360-stat" aria-label="Ancienneté en jours">
-                  <strong>{ancienneteJours != null ? new Intl.NumberFormat('fr-FR').format(ancienneteJours) : '—'}</strong>
+                  <strong>{ancienneteJours != null ? new Intl.NumberFormat('fr-FR').format(ancienneteJoursAnime) : '—'}</strong>
                   <span>jours dans l'entreprise</span>
                 </section>
                 <section className="e360-carte e360-stat" aria-label="Jours pointés ce mois">
-                  <strong>{d.joursPointes}</strong>
+                  <strong>{joursPointesAnime}</strong>
                   <span>jours pointés ce mois</span>
                 </section>
               </div>
@@ -1139,6 +1230,7 @@ suivre('taches',
               </section>
 
               <figure className="e360-carte e360-carte-citation">
+                <i className="e360-citation-tissage" aria-hidden="true" />
                 <span className="e360-citation-glyphe" aria-hidden="true">“</span>
                 <blockquote>Des équipes engagées bâtissent des entreprises plus fortes.</blockquote>
                 <figcaption>En-Check</figcaption>
@@ -1253,6 +1345,10 @@ suivre('taches',
           onClose={() => setBadgeOuvert(false)}
         />
       )}
+      </div>
+          </main>
+        </div>
+      </div>
     </div>
   )
 }
