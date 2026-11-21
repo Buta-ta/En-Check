@@ -57,9 +57,9 @@
 
 .e360-titre {
   margin: 0;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 24px;
-  font-weight: 600;
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
   letter-spacing: 0.2px;
   color: var(--rg-ink);
 }
@@ -182,41 +182,54 @@
 }
 
 .e360-carte {
-  /* « brut adouci », 23/11 : la carte est une feuille posée, pas un carton
-     soulevé. `0 10px 30px` et son double du thème sombre sortent d'ici — les
-     remplacer par `box-shadow: none` plus bas aurait laissé deux règles qui
-     se contredisent, et c'est exactement le « mal faite » du 22/11. Le rayon
-     passe de 18 px (valeur hors liste) à `--charte-rayon-carte` (8 px). */
+  /* « post-it », 23/11. La recette est recopiée de `.empv3-fiche`, la fiche de
+     l'annuaire — l'exemple que le fondateur cite : contour de `--charte-trait`
+     (2 px) d'encre, coin `--charte-rayon-tuile` (12 px), papier
+     `--charte-surface`, 14 px de respiration, et l'ombre DURE
+     `--charte-ombre-dure` = `3px 3px 0 0`, flou à zéro.
+     C'est cette ombre plate qui fait la note collée ; elle ne coûte aucun
+     recalcul, contrairement au `0 10px 30px` (flou 30 px) qu'elle remplace.
+     Ma version du 23/11 avait un liseré pâle de 1 px et aucune ombre : d'où
+     les cartes « mal faites » signalées sur capture. */
   background: var(--charte-surface);
-  border: 1px solid var(--charte-bordure);
-  border-radius: var(--charte-rayon-carte);
-  padding: 18px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  padding: 14px;
   min-width: 0;
 }
 
 .e360-carte-titre {
+  /* titre de note = `.empv3-carte-titre` de l'annuaire, mot pour mot : 11 px,
+     700, capitales, encre douce. LA déviation assumée par rapport à la
+     maquette (le générateur y avait dessiné des titres d'environ 18 px) : sur
+     la page qui sert de référence, les titres de carte sont minuscules et en
+     capitales. Harmoniser, c'est prendre ce réglage-là. */
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin: 0 0 14px;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 15.5px;
-  font-weight: 600;
-  color: var(--rg-ink);
+  margin: 0 0 12px;
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
 }
 
 /* ── portrait héro ────────────────────────────────────────── */
 
-.e360-carte-portrait {
-  padding: 0;
-  overflow: hidden;
-}
-
 .e360-portrait {
+  /* 2 / 1,25 : la photo est un bandeau large posé en tête de la note, comme
+     sur la maquette choisie. Aucun filtre devant l'image : l'effet
+     « illustration » du 23/11 réduisait chaque canal à six aplats et abîmait
+     le visage. Il est retiré, la photo redevient la photo. */
   position: relative;
-  aspect-ratio: 4 / 3.4;
-  background: var(--rg-voile);
+  aspect-ratio: 2 / 1.25;
+  background: var(--charte-surface2);
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  overflow: hidden;
 }
 
 .e360-portrait img {
@@ -233,7 +246,7 @@
   display: grid;
   place-items: center;
   font-size: 64px;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--charte-police);
   color: var(--rg-faint);
   background:
     radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--e360-or) 16%, transparent), transparent 70%),
@@ -312,13 +325,15 @@
 }
 
 .e360-nom {
+  /* le nom, à l'identique de `.empv3-pro-nom` de la page Employés : 17 px,
+     800, interlettrage -0,35 px. 30 px en Georgia, c'était une autre page. */
   margin: 0;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 30px;
-  line-height: 1.1;
-  font-weight: 600;
-  color: var(--rg-ink);
-  letter-spacing: 0.2px;
+  font-family: var(--charte-police);
+  font-size: 17px;
+  line-height: 1.15;
+  font-weight: 800;
+  color: var(--charte-encre);
+  letter-spacing: -0.35px;
   overflow-wrap: anywhere;
 }
 
@@ -343,6 +358,7 @@
 }
 
 .e360-contact-numero strong {
+  font-family: var(--charte-mono);
   color: var(--rg-ink);
   font-weight: 700;
   letter-spacing: 0.3px;
@@ -405,7 +421,8 @@
 }
 
 .e360-stat strong {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--charte-mono);
+  font-family: var(--charte-police);
   font-size: 27px;
   font-weight: 600;
   color: var(--rg-ink);
@@ -460,6 +477,7 @@
 }
 
 .e360-liste-val {
+  font-family: var(--charte-mono);
   margin-left: auto;
   color: var(--rg-ink);
   font-weight: 600;
@@ -547,6 +565,7 @@
 }
 
 .e360-kpi strong {
+  font-family: var(--charte-mono);
   font-size: 19px;
   font-weight: 650;
   color: var(--rg-ink);
@@ -573,6 +592,7 @@
 }
 
 .e360-chart-grads span {
+  font-family: var(--charte-mono);
   position: absolute;
   right: 6px;
   transform: translateY(50%);
@@ -799,7 +819,8 @@
 }
 
 .e360-tile3 strong {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--charte-mono);
+  font-family: var(--charte-police);
   font-size: 23px;
   font-weight: 600;
   color: var(--rg-ink);
@@ -823,6 +844,7 @@
 }
 
 .e360-case {
+  font-family: var(--charte-mono);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -896,7 +918,7 @@
 
 .e360-citation-glyphe {
   display: block;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--charte-police);
   font-size: 42px;
   line-height: 0.6;
   color: var(--e360-or);
@@ -905,7 +927,7 @@
 
 .e360-carte-citation blockquote {
   margin: 0 0 14px;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--charte-police);
   font-style: italic;
   font-size: 16.5px;
   line-height: 1.45;
@@ -1003,6 +1025,7 @@
 }
 
 .e360-fil-heure {
+  font-family: var(--charte-mono);
   margin-left: auto;
   font-size: 12.5px;
   font-weight: 700;
@@ -1084,7 +1107,7 @@
 .e360-promo-texte {
   position: relative;
   margin: 0;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--charte-police);
   font-size: 19px;
   line-height: 1.35;
   font-weight: 600;
@@ -1202,201 +1225,107 @@
   }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   LE SEUL HABILILLAGE CONSERVÉ — 22/11
-   « la page est lourde, mal faite, c'est énergivore. Recommence
-   en partant sur une nouvelle maquette, enlève la 3D, le fond
-   bogolan, etc. Inspire-toi de la page employée qu'on a très bien
-   réussi. »
-   ───────────────────────────────────────────────────────────
-   Tout ce qui suivait (18 règles, ~430 lignes) est retiré : le
-   champ de tissu plein écran répété et `background-attachment:
-   fixed`, les 16 `filter: blur`, les deux `backdrop-filter:
-   blur(6px)`, les `transform: rotate` sur quatre colonnes, les
-   ombres portées doubles et le liseré doré en `inset`. C'est
-   exactement la liste des choses qu'un téléphone paie, écran par
-   écran, pendant tout le défilement.
+/* ═══════════════════════════════════════════════════════════════════════
+   « POST-IT » — 23/11, maquette `maquettes/choix-D-postit.png`
+   Ce que le fondateur a refusé sur la page en production, et ce qui répond à
+   chaque refus, mesuré dans le dépôt :
 
-   Ce qui tient la comparaison avec la page Employés, et qui ne
-   coûte rien, est gardé : le papier du registre, ses filets, et
-   le motif tissé de 16 px posé en bordure — jamais derrière du
-   texte, jamais en fond de page. C'est la leçon de la page
-   réussie : le tissu y occupe 78 px de large sur une carte
-   (`.empv3-d-panneau`) et deux bandeaux de 16 et 17 px
-   (`.empv3-pro-galon`), pas la surface d'un écran.
-   ═══════════════════════════════════════════════════════════ */
+   • « l'arrière-plan de la page » : le papier ligné du registre est peint par
+     `.emp-vues::after` (deux `repeating-linear-gradient` dans
+     src/components/zoulou/zoulou.css, lignes 122 et 156). Sur la fiche, il est
+     éteint : le fond redevient le sable plat `--charte-sable`, posé par
+     src/index.css:42. La gouttière de 26 px de `.emp-vues` servait de rail aux
+     perles ; sans perles, elle ne sert plus à rien, elle part aussi.
+   • « le bandeau motif » : deux galons que j'avais laissés
+     (`.e360-tete::after`, `.e360-carte-portrait::before`) et la lanière de
+     76 px le long du prénom. Les trois sont supprimés, le span du JSX avec
+     eux : sur sa capture, le tissu revenait trois fois sur un seul écran.
+   • « la photo que tu as modifiée » : le filtre `#e360-illustration` est
+     retiré, et la déclaration SVG qui le portait aussi (Employee360.jsx).
+   • « les cards sont mal faites » : voir `.e360-carte` plus haut, la recette
+     de `.empv3-fiche` est reprise à l'octet près.
+   • « je ne veux pas voir les polices différentes » : les neuf
+     `font-family: Georgia` de la fiche sont partis, reste `--charte-police`
+     partout et `--charte-mono` sur les huit emplacements de nombres.
+   ═══════════════════════════════════════════════════════════════════════ */
 
-/* la tranche perlée du registre est une couture de l'annuaire :
-   sur la fiche, elle n'a rien à faire (validé le 21/11) */
-.emp-360.emp-vues::before {
+/* le papier ligné et la tranche de perles restent dans l'annuaire, ils ne
+   suivent plus la fiche — dans les deux thèmes */
+.emp-360.emp-vues {
+  padding-left: 0;
+}
+
+.emp-360.emp-vues::before,
+.emp-360.emp-vues::after,
+[data-theme='dark'] .emp-360.emp-vues::after {
   display: none;
 }
 
-/* le galon tissé sous l'en-tête : une bande de 16 px. La règle de
-   dimensionnement est copiée sur celle qui a marché dans l'annuaire
-   (`.empv3-pro-galon` : `background-size: auto 17px`), pas inventée.
-   Le fichier fait 1536×76 : on fixe la HAUTEUR à 16 px, la largeur
-   suit toute seule et vaut 1536 × 16 / 76 = 323 px par cellule.
-   Écrire `76px auto` à la place — c'était mon premier essai — écrase
-   le motif sur 3,75 px de haut au milieu d'une bande de 16 : il
-   devient un filet à peine visible. La taille native d'un fichier
-   n'est jamais la taille de rendu d'une bande. */
-.e360-tete {
-  position: relative;
-}
-
-.e360-tete::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -9px;
-  height: 16px;
-  background: url('/images/paie-bogolan-haut.webp') repeat-x left center / auto 16px;
-  pointer-events: none;
-}
-
-/* même galon, en tête de la carte d'identité : le tissu touche la
-   carte, jamais le texte (`.e360-portrait` commence sous la bande) */
-.e360-carte-portrait {
-  border-top: 0;
-}
-
-.e360-carte-portrait::before {
-  content: '';
-  display: block;
-  height: 16px;
-  background: url('/images/paie-bogolan-haut.webp') repeat-x left center / auto 16px;
-  border-bottom: 1px solid var(--rg-hair-fort);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   « BRUT ADOUCI, EFFET ILLUSTRATION » — 23/11
-   Maquette validée par le fondateur : maquettes/choix-C-brut-adouci.png.
-   Ses mots : « Garde l'interface actuelle car c'est ce que je veux, applique
-   un style brut adouci », et « je veux voir la photo de profil de l'employé
-   en grand au lieu juste d'un cercle ».
-
-   Trois mouvements, tous mesurables, aucun bloc déplacé :
-
-   1. BRUT — la carte n'a plus d'ombre du tout, un filet de 1 px et le rayon
-      des cartes de la charte (8 px). La règle de base `.e360-carte` a été
-      réécrite pour ça, ligne 184 : pas de correctif posé par-dessus.
-   2. ADOUCI — le tissu ne touche plus aucun texte, et les deux pastilles
-      posées sur la photo ne sont plus en verre dépoli. Il occupe deux bandes de
-      76 px : la lanière du portrait et le flanc de la carte En-Check. C'est
-      le VRAI fichier de l'app, `bogolan-vertical.webp` (76 × 1536), affiché
-      à sa largeur native — `--charte-bande-hauteur` vaut 76 px, le fichier
-      fait 76 px de large, donc `76px auto` n'étire rien. Sur téléphone
-      (palier 760 px, celui déjà employé plus haut dans ce fichier), la
-      lanière disparaît : elle ne se réduit pas, elle part.
-   3. LA PHOTO — `--e360-portrait` passe de 4/3,4 à 4/4,4 (plus haute que
-      large) et la colonne du portrait s'élargit de 320 à 360 px pour la
-      recevoir. L'« effet illustration » est UN SEUL filtre SVG statique
-      (#e360-illustration, déclaré dans Employee360.jsx) posé sur cette
-      unique image : six aplats par canal et une chauffe, rien d'autre.
-      Aucun `filter: blur`, aucun `backdrop-filter`, aucun
-      `background-attachment` n'entre ici — ce sont précisément les quatre
-      coûts retirés le 22/11.
-   ═══════════════════════════════════════════════════════════════════════ */
-
-/* 1 — la lanière. Le <span className="e360-laniere"> du JSX était rendu sans
-   une seule règle CSS dans le dépôt : il dessinait du vide, sous un
-   commentaire qui affirmait le contraire. Le voici rempli du tissu de
-   l'annuaire. */
-.e360-carte-portrait {
-  position: relative;
-}
-
-.e360-portrait-corps {
-  position: relative;
-  padding-left: calc(var(--charte-bande-hauteur) + 18px);
-}
-
-.e360-laniere {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: var(--charte-bande-hauteur);
-  background:
-    var(--charte-espresso) url('/images/bogolan-vertical.webp') repeat-y left top / var(--charte-bande-hauteur) auto;
-  border-right: var(--charte-bande-bordure) solid var(--charte-encre);
-}
-
-/* 3 — la photo en grand, et son effet illustration */
-/* Le <p className="e360-surtitre"> du JSX, comme la lanière, n'avait AUCUNE
-   règle CSS dans le dépôt : il tombait collé au bord de la carte, en fonte par
-   défaut. Il devient le libellé haut-de-casse de la maquette validée. */
+/* l'« EN-NOUS · FICHE EMPLOYÉE » au-dessus du prénom : le sur-titre du
+   registre, en 11 px capitales. Il était rendu sans une seule règle CSS. */
 .e360-surtitre {
-  margin: 0;
-  padding: 14px 18px 12px;
-  font-size: 10.5px;
+  margin: 0 0 6px;
+  font-size: var(--charte-taille-micro);
   font-weight: 700;
-  letter-spacing: 1.1px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--charte-texte);
+  color: var(--charte-douce);
 }
 
-.e360-portrait {
-  aspect-ratio: 4 / 4.4;
+/* les papiers différents, comme sur la maquette : une note sur deux est
+   teintée. `--charte-surface2` (#EADCC7) est un jeton, pas une couleur neuve. */
+.e360-carte--sable,
+.e360-stat {
   background: var(--charte-surface2);
-  overflow: hidden;
-  border-radius: var(--charte-rayon-champ);
 }
 
-.e360-portrait img {
-  filter: url(#e360-illustration);
-}
-
-/* 4 — la carte En-Check : le motif tissé inventé en SVG sort, le tissu vrai
-   entre, et la phrase n'est plus posée dessus — elle est sur l'espresso. */
+/* la note d'identité, en argile pleine : `--charte-aplat`, la seule surface
+   remplie que la charte admet. Plus de motif tissé derrière, plus de Georgia
+   sur la phrase. */
 .e360-carte-promo {
-  text-align: left;
-  background: var(--charte-espresso);
+  background: var(--charte-aplat);
   border-color: var(--charte-encre);
-  padding: var(--charte-espace-4) var(--charte-espace-4) var(--charte-espace-4)
-    calc(var(--charte-bande-hauteur) + var(--charte-espace-3));
-}
-
-.e360-carte-promo::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: var(--charte-bande-hauteur);
-  background: url('/images/bogolan-vertical.webp') repeat-y left top / var(--charte-bande-hauteur) auto;
+  text-align: left;
+  padding: var(--charte-espace-4);
 }
 
 .e360-promo-texte {
-  color: var(--charte-barre-ink);
+  margin: 0;
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--charte-blanc);
 }
 
-/* 5 — de la place pour la photo, mais seulement là où la grille est bien à
-   quatre colonnes : au-dessus du palier 1360 px, elle tombe à deux puis une
-   colonne et n'a que faire de cette largeur. */
+/* la photo, puis le sur-titre, puis le nom, puis la ligne du matricule :
+   l'ordre de la maquette. Les deux pastilles ne sont plus posées sur l'image,
+   elles ne sont donc plus en apesanteur — elles suivent le flot. */
+.e360-portrait-corps {
+  padding: 0;
+}
+
+.e360-portrait-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: var(--charte-espace-2);
+}
+
+.e360-badge-etat,
+.e360-chip-haut {
+  position: static;
+}
+
+/* la colonne du portrait, élargie de 280-320 px à 320-360 px : c est ce qui
+   fait « la photo en grand », et seulement là où la grille est bien à quatre
+   colonnes (au-dessous, elle tombe à deux puis une colonne). La règle avait
+   été posée le 23/11 puis effacée par ma réécriture du 23/11 au soir : la
+   reposer ici, sinon la photo revient à 292 × 182 px. */
 @media (min-width: 1361px) {
   .e360-grille {
     grid-template-columns:
       minmax(320px, 360px) minmax(380px, 1.3fr) minmax(300px, 1fr) minmax(300px, 1fr);
-  }
-}
-
-@media (max-width: 760px) {
-  .e360-portrait-corps {
-    padding-left: 18px;
-  }
-
-  .e360-laniere {
-    display: none;
-  }
-
-  .e360-portrait {
-    aspect-ratio: 4 / 3.4;
-  }
-
-  .e360-carte-promo {
-    padding-left: var(--charte-espace-4);
-  }
-
-  .e360-carte-promo::before {
-    display: none;
   }
 }
