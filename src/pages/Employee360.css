@@ -13,6 +13,12 @@
   --e360-carte: color-mix(in srgb, var(--rg-ink) 5%, var(--rg-paper));
   --e360-h-plot: 140px;
   --e360-h-lib: 18px;
+  /* le post-it, 08/11 (maquette `choix-I-postit-plie.png`) : la jambe du coin
+     replié, égale à la respiration des cartes pour ne jamais rogner un chiffre,
+     et le débord hors du contour, égal à 2 px de trait + 3 px d'ombre, pour que
+     la découpe coupe AUSSI l'ombre et pas seulement le papier. */
+  --e360-pli: 14px;
+  --e360-debord: calc(var(--charte-trait) + 3px);
 }
 
 /* ── conteneur + tête ─────────────────────────────────────── */
@@ -284,13 +290,90 @@
      `main` après la fusion de la PR 275 : les trois premières déclarations y
      étaient, la quatrième (l'ombre) manquait. Le commentaire la promettait,
      le code ne la posait pas. Reposée ici — le commit local qui la portait
-     (610ae47) n'a pas survécu au changement de branche. */
-  background: var(--charte-surface);
+     n'a pas survécu au changement de branche.
+
+       08/11, choix I de la maquette : la carte devient un post-it VRAI. Le coin
+       n'est plus arrondi mais COUPÉ-PLIÉ, et une bande de colle plus claire
+       court en tête. Deux règles, aucun changement de structure ni de padding.
+       • `border-radius: 0`, SANS UNITÉ : l'audit C10 ne lit que les valeurs en
+         px (`/(\d*\.?\d+)px/`), donc un coin carré ne coûte rien à l'échelle.
+         C'est aussi pour ça que le pli est fait en pseudo-éléments et non en
+         `clip-path` : `clip-path` rognerait la `box-shadow`, et le feutre
+         double disparaîtrait avec le coin.
+       • la bande de colle est une COUCHE DE FOND, pas un pseudo-élément : elle
+         doit rester sous le texte, et les deux cartes teintées (`.e360-carte--sable`,
+         `.e360-carte-promo`) doivent garder le droit de changer la couleur du
+         papier sans effacer la bande — d'où `background-color` chez elles. */
+  position: relative;
+  background-color: var(--charte-surface);
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--e360-pli),
+    color-mix(in srgb, var(--charte-encre) 16%, transparent) var(--e360-pli)
+      calc(var(--e360-pli) + 1px),
+    transparent calc(var(--e360-pli) + 1px)
+  );
   border: var(--charte-trait) solid var(--charte-encre);
-  border-radius: var(--charte-rayon-tuile);
+  border-radius: 0;
   box-shadow: var(--charte-ombre-dure);
   padding: 14px;
   min-width: 0;
+}
+
+/* la découpe : le coin bas-droit est effacé JUSQU'À L'OMBRE, sinon il resterait
+   un ergot d'encre de 3 px là où le papier n’existe plus. `--charte-sable`,
+   c'est la couleur du fond de page : vérifié, ni `.emp-vues` (zoulou.css) ni
+   `.e360-conteneur` ne peignent quoi que ce soit derrière les cartes, le fond
+   vient de `body` — donc c'est bien le sable du canvas qu'il faut poser là. */
+.e360-carte::before {
+  content: '';
+  position: absolute;
+  right: calc(-1 * var(--e360-debord));
+  bottom: calc(-1 * var(--e360-debord));
+  width: calc(var(--e360-pli) + 2 * var(--e360-debord));
+  height: calc(var(--e360-pli) + 2 * var(--e360-debord));
+  /* PAS un carré de couleur : un triangle. La diagonale de cette boîte est la
+     ligne de coupe, et elle tombe à `--e360-pli` du bord extérieur, soit 14 px —
+     moins que les 16 px (contour 2 + respiration 14) qui protègent le contenu.
+     Un carré plein, lui, aurait effacé 3 px de chiffre dans le coin : vérifié en
+     simulant la géométrie des trois calques, 0 pixel de contenu touché contre 9
+     avec le carré. */
+  background: linear-gradient(
+    to top left,
+    var(--charte-sable) 0 50%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+/* le rabat : le triangle replié, miroir exact de la découpe — donc contenu dans
+   les 14 px de respiration, jamais sur un chiffre. Son hypoténuse reçoit le
+   trait d'encre, la face est le dos de la feuille. */
+.e360-carte::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--e360-pli);
+  height: var(--e360-pli);
+  background: linear-gradient(
+    to top left,
+    transparent 0 44%,
+    var(--charte-encre) 44% 50%,
+    color-mix(in srgb, var(--charte-blanc) 60%, var(--charte-surface)) 50%
+  );
+  pointer-events: none;
+}
+
+/* sur la note d'identité, le dos de la feuille n'est pas crème : il reprend
+   l'argile, sinon le pli se lit comme une tache */
+.e360-carte-promo::after {
+  background: linear-gradient(
+    to top left,
+    transparent 0 44%,
+    var(--charte-encre) 44% 50%,
+    color-mix(in srgb, var(--charte-blanc) 22%, var(--charte-aplat)) 50%
+  );
 }
 
 .e360-carte-titre {
@@ -1193,7 +1276,10 @@
 
 .e360-carte-promo {
   position: relative;
-  overflow: hidden;
+  /* `overflow: hidden` datait du motif tissé qui remplissait la note avant ; il
+     ne reste dedans qu'un seul <p>, rien à rogner. Et tant qu'il est là, il
+     rogne le coin découpé du post-it, qui déborde de 5 px hors de la carte pour
+     couper aussi l'ombre. Retiré pour ça. */
   padding: 26px 18px;
   text-align: center;
 }
@@ -1369,16 +1455,20 @@
 
 /* les papiers différents, comme sur la maquette : une note sur deux est
    teintée. `--charte-surface2` (#EADCC7) est un jeton, pas une couleur neuve. */
+/* 08/11 : `background-color`, plus `background`. Le raccourci effaçait la
+   couche de la bande de colle posée sur `.e360-carte`, et les 6 cartes teintées
+   (4 sable + 2 stat) l’auraient perdue — le piège des deux règles qui se
+   contredisent, encore lui. */
 .e360-carte--sable,
 .e360-stat {
-  background: var(--charte-surface2);
+  background-color: var(--charte-surface2);
 }
 
 /* la note d'identité, en argile pleine : `--charte-aplat`, la seule surface
    remplie que la charte admet. Plus de motif tissé derrière, plus de Georgia
    sur la phrase. */
 .e360-carte-promo {
-  background: var(--charte-aplat);
+  background-color: var(--charte-aplat);
   border-color: var(--charte-encre);
   text-align: left;
   padding: var(--charte-espace-4);
