@@ -75,9 +75,16 @@ import "./PlanningPostIt.css";
 const OVERRIDES_STORAGE_KEY = "encheck_planning_day_overrides_v1";
 const CUSTOM_MODELS_STORAGE_KEY = "encheck_planning_custom_models_v1";
 const AVAILABILITY_STORAGE_KEY = "encheck_planning_availability_v1";
-// Dans les surcharges locales d'un collaborateur, la couleur qu'il a choisie
-// pour son horaire entier vit sous cette clé — jamais sous une date, pour ne
-// jamais être confondue avec une case.
+// DEUX PORTÉES, DEUX ADRESSES. Le 22/11, le fondateur a dû le redire : « chaque
+// case doit avoir sa propre couleur qu'on choisit, et non appliquer la couleur
+// choisie à toutes les cases sur la même ligne ». La teinte d'UNE case se range
+// sous sa DATE, et voyage jusqu'à `custom_day_colors` en base ; celle de l'horaire
+// entier, choisie depuis la LIGNE, reste sous cette clé sentinelle — jamais sous
+// une date, pour ne jamais être confondue avec une case, et jamais l'inverse. Une
+// case qui a choisi la sienne ne se laisse pas repeindre par la ligne : c'est
+// l'ordre de lecture de `resolveCellShift`. Les `couleur-horaire` écrits par le
+// vieux code depuis une case sont jetés au montage (voir le nettoyage de
+// `dayOverrides`) : ils ne racontent plus la même chose.
 const COULEUR_HORAIRE_CLE = "couleur-horaire";
 const TEAMS_STORAGE_KEY = "encheck_planning_teams_v1";
 const TEAM_ASSIGNMENTS_STORAGE_KEY = "encheck_planning_team_assignments_v1";
@@ -371,7 +378,22 @@ export default function Planning() {
   const [dayOverrides, setDayOverrides] = useState(() => {
     try {
       const raw = localStorage.getItem(OVERRIDES_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {};
+      const lu = raw ? JSON.parse(raw) : {};
+      // NETTOYAGE UNE FOIS. Avant le 22/11, la teinte demandée sur UNE case était
+      // rangée sous la clé de la ligne entière : le brouillon local suffisait donc
+      // à peindre les sept jours, et c'est exactement ce débordement que le
+      // fondateur reproche. Cette clé ne veut plus dire aujourd'hui que « teinte de
+      // la ligne, choisie depuis la ligne » — on jette donc ce que le vieux code y
+      // a laissé. Rien n'est inventé à la place : la case se recolorie en un clic,
+      // et part dans sa colonne.
+      const nettoye = {};
+      for (const [cle, surcharges] of Object.entries(lu || {})) {
+        if (!surcharges || typeof surcharges !== "object") continue;
+        const reste = { ...surcharges };
+        delete reste[COULEUR_HORAIRE_CLE];
+        if (Object.keys(reste).length > 0) nettoye[cle] = reste;
+      }
+      return nettoye;
     } catch {
       return {};
     }
@@ -1347,6 +1369,27 @@ export default function Planning() {
     const empOverrides = dayOverrides[emp.id] || {};
     const override = empOverrides[dateStr] ?? empOverrides[`day-${dayNum}`];
 
+    // DEUX PORTÉES, DEUX ENDROITS, ET UN ORDRE. La ligne de base du collaborateur
+    // porte la teinte de l'horaire entier (`custom_color`) et, à côté, la carte des
+    // teintes choisies jour par jour (`custom_day_colors`). L'ordre de lecture EST
+    // la correction : la case (brouillon local, puis base) avant la ligne (base,
+    // puis brouillon local). Une teinte de ligne qui descendrait sur une case
+    // ayant déjà choisi la sienne, c'est exactement le débordement reproché le
+    // 22/11 — « chaque case doit avoir sa propre couleur qu'on choisit, et non
+    // appliquer la couleur choisie à toutes les cases sur la même ligne ».
+    const es = employeeSchedules.find(
+      (row) => row.employee_id === emp.id && row.is_active !== false
+    );
+    const teinteDeLaCase =
+      override?.color ||
+      es?.custom_day_colors?.[dateStr] ||
+      es?.custom_day_colors?.[`day-${dayNum}`];
+    const teinte =
+      teinteDeLaCase ||
+      es?.custom_color ||
+      empOverrides[COULEUR_HORAIRE_CLE]?.color ||
+      undefined;
+
     if (override) {
       // Case explicitement vidée par l'utilisateur : aucun créneau affiché
       if (override.isEmpty) return null;
@@ -1372,11 +1415,12 @@ export default function Planning() {
           kind: override.kind || "rest",
         };
       }
-      // Une teinte choisie pour l'horaire entier habille aussi la case surchargée,
-      // sauf si cette case porte déjà la sienne (un modèle déposé, par exemple).
+      // Une case surchargée garde LA SIENNE. Elle ne prend la teinte de la ligne
+      // que si elle n'en a jamais choisi — c'est précisément ce débordement qui a
+      // fait dire au fondateur « non, pas à toutes les cases de la ligne ».
       return {
         ...override,
-        color: override.color ?? empOverrides[COULEUR_HORAIRE_CLE]?.color,
+        color: teinte,
       };
     }
 
@@ -1420,8 +1464,8 @@ export default function Planning() {
     // Option Planning non souscrite par l'entreprise : aucun horaire affiché
     if (!isPlanningModuleEnabled(emp)) return null;
 
-    // Planning personnalisé de l'employé (employee_schedules)
-    const es = employeeSchedules.find((row) => row.employee_id === emp.id && row.is_active !== false);
+    // Planning personnalisé de l'employé (employee_schedules) — `es` est déjà lu
+    // en tête de fonction, pour que les deux teintes y soient relues une seule fois
     if (es) {
       if (es.use_custom_hours) {
         const days = es.custom_work_days || [1, 2, 3, 4, 5];
@@ -1440,11 +1484,9 @@ export default function Planning() {
           name: es.work_schedules?.name || "Horaire personnalisé",
           source: "custom",
           esRow: es,
-          // La couleur choisie dans la fenêtre pour l'horaire entier de la
-          // semaine : elle habille chaque case, comme celle d'une case seule.
-          // La base d'abord — elle est la même pour tous les postes et survit
-          // au rechargement ; le brouillon local ne sert que de repli.
-          color: es.custom_color || empOverrides[COULEUR_HORAIRE_CLE]?.color,
+          // `teinte`, calculé en tête de fonction : la case d'abord, la ligne
+          // ensuite. Jamais l'inverse.
+          color: teinte,
         };
       }
       if (es.work_schedules) {
@@ -1466,9 +1508,9 @@ export default function Planning() {
           source: "assigned_schedule",
           schedule_id: ws.id,
           esRow: es,
-          // un modèle d'entreprise teinté depuis la fenêtre, même règle qu'au
-          // dessus : la base en premier, le brouillon local en repli
-          color: es.custom_color || empOverrides[COULEUR_HORAIRE_CLE]?.color,
+          // un modèle d'entreprise teinté jour par jour, même règle qu'au-dessus :
+          // la case a la parole avant la ligne
+          color: teinte,
         };
       }
     }
@@ -1493,6 +1535,9 @@ export default function Planning() {
         name: defaultPlan.name || "Modèle par défaut",
         source: "default",
         schedule_id: defaultPlan.id,
+        // un collaborateur sans ligne `employee_schedules` n'est pas pour autant
+        // aveugle à la couleur : sa case peut avoir choisi la sienne
+        color: teinte,
       };
     }
 
@@ -2574,6 +2619,60 @@ export default function Planning() {
     }));
   };
 
+  // Une teinte par case n'est libre que si elle est réversible : ce bouton rend
+  // la case à la teinte de l'horaire, en base comme dans le brouillon local. Sans
+  // lui, un clic de trop resterait colorié pour toujours — et on n'oserait plus
+  // essayer une couleur, ce qui est la façon la plus sûre de ne jamais en mettre.
+  const handleRetirerTeinteDeLaCase = async () => {
+    const dateStr = cellEditContext?.dateStr || null;
+    const id = employeeScheduleForm.employee_id;
+    if (!dateStr || !id) return;
+    const ligne = employeeSchedules.find((row) => row.employee_id === id);
+    const carte = { ...(ligne?.custom_day_colors || {}) };
+    delete carte[dateStr];
+    try {
+      const { error } = await supabase
+        .from("employee_schedules")
+        .update({ custom_day_colors: carte, updated_at: new Date().toISOString() })
+        .eq("employee_id", id);
+      if (error) throw error;
+      setEmployeeSchedules((prev) =>
+        prev.map((row) =>
+          row.employee_id === id ? { ...row, custom_day_colors: carte } : row
+        )
+      );
+      setDayOverrides((prev) => {
+        const cetEmploye = { ...(prev[id] || {}) };
+        if (cetEmploye[dateStr]) {
+          const sansTeinte = { ...cetEmploye[dateStr] };
+          delete sansTeinte.color;
+          cetEmploye[dateStr] = sansTeinte;
+        }
+        return { ...prev, [id]: cetEmploye };
+      });
+      setEmployeeScheduleForm({
+        ...employeeScheduleForm,
+        custom_color: ligne?.custom_color || TEINTE_PAR_DEFAUT,
+      });
+      toast.success("Cette case reprend la teinte de l'horaire");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erreur lors du retrait de la couleur");
+    }
+  };
+
+  // La portée d'une fenêtre se LIT dans sa propre étiquette : « couleur de
+  // l'horaire » et « couleur du mardi 24 novembre » ne promettent pas la même
+  // chose, et le fondateur a passé trois phases à découvrir laquelle s'appliquait.
+  const jourViseParLaCase = (dateStr) =>
+    dateStr
+      ? new Date(`${dateStr}T00:00:00`).toLocaleDateString("fr-FR", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        })
+      : null;
+
   const openCellEditorModal = (emp, dayItem = null, currentShift = null) => {
     setCellEditContext(
       dayItem
@@ -2587,14 +2686,18 @@ export default function Planning() {
     );
     // La fenêtre doit montrer la teinte EN PLACE, pas repartir de zéro : sans cette
     // relecture, un enregistrement effaçait la couleur choisie la fois précédente.
-    // L'ordre compte : la teinte de la case, puis celle que la BASE porte pour
-    // l'horaire entier (elle est partagée, visible d'un autre poste), puis le
-    // brouillon local de ce navigateur, puis la première teinte de la palette.
+    // L'ordre compte, et c'est celui de la grille : ce que CETTE case a choisi
+    // (base jour par jour) avant ce que la LIGNE a choisi. Sinon, peindre un mardi
+    // ferait croire au fondateur que le choix du lundi a disparu.
     const existingES = employeeSchedules.find((es) => es.employee_id === emp.id);
+    const teinteDeja = dayItem
+      ? existingES?.custom_day_colors?.[dayItem.dateStr]
+      : undefined;
     const teinteEnCours =
+      teinteDeja ||
       currentShift?.color ||
       existingES?.custom_color ||
-      (dayOverrides[emp.id] || {})[COULEUR_HORAIRE_CLE]?.color ||
+      (!dayItem ? (dayOverrides[emp.id] || {})[COULEUR_HORAIRE_CLE]?.color : undefined) ||
       TEINTE_PAR_DEFAUT;
     if (existingES) {
       setEditingEmployeeSchedule(existingES);
@@ -2661,12 +2764,17 @@ export default function Planning() {
         return;
       }
 
-      // La teinte choisie dans la fenêtre est UNE SEULE FOIS calculée : elle part
-      // en base (colonne `custom_color` de `employee_schedules`, donc vue de
-      // n'importe quel poste et après un rechargement) ET dans le brouillon local
-      // de la semaine. Deux destinations, une valeur — pas deux calculs qui
-      // peuvent se contredire.
+      // La teinte est calculée UNE FOIS, mais elle ne part pas au même endroit
+      // selon la portée de la fenêtre. Une case (la fenêtre a été ouverte sur un
+      // jour) écrit dans la carte des teintes par jour ; la ligne entière (fenêtre
+      // ouverte depuis le collaborateur) écrit `custom_color`. Le 22/11, les deux
+      // se confondaient : choisir une teinte pour un jour écrivait la clé de la
+      // ligne, et les sept jours prenaient la couleur.
       const couleur = employeeScheduleForm.custom_color || TEINTE_PAR_DEFAUT;
+      const dateCible = cellEditContext?.dateStr || null;
+      const ligneExistante = employeeSchedules.find(
+        (row) => row.employee_id === employeeScheduleForm.employee_id
+      );
 
       const payload = {
         employee_id: employeeScheduleForm.employee_id,
@@ -2696,9 +2804,18 @@ export default function Planning() {
         custom_work_days: employeeScheduleForm.use_custom_hours
           ? employeeScheduleForm.custom_work_days
           : null,
-        // la teinte de l'horaire entier, PERSISTÉE : c'est elle que la grille
-        // relit, pas le seul brouillon de ce navigateur
-        custom_color: couleur,
+        // DEUX PORTÉES, DEUX COLONNES. La fenêtre ouverte SUR UNE case écrit dans
+        // la carte des teintes jour par jour et ne touche pas à la teinte de la
+        // ligne ; la fenêtre ouverte depuis le collaborateur écrit `custom_color`
+        // et ne touche pas aux cases qui ont déjà choisi la leur.
+        ...(dateCible
+          ? {
+              custom_day_colors: {
+                ...(ligneExistante?.custom_day_colors || {}),
+                [dateCible]: couleur,
+              },
+            }
+          : { custom_color: couleur }),
         is_active: true,
         updated_at: new Date().toISOString(),
       };
@@ -2708,17 +2825,14 @@ export default function Planning() {
         .upsert(payload, { onConflict: "employee_id" });
       if (error) throw error;
 
-      // Les surcharges locales de cet employé sont reconstruites d'un bloc, pour
-      // refléter immédiatement son nouvel horaire. La teinte part donc DEUX PARTS :
-      // la base, qui la rend commune à tous les postes, et le brouillon local sous
-      // la clé sentinelle de l'horaire entier, qui la rend visible à la
-      // milliseconde. Avant cela, un collaborateur dont l'horaire venait d'un
-      // modèle d'entreprise (`use_custom_hours` faux) ne voyait jamais sa couleur
-      // appliquée, et la case ciblée perdait le nom de son modèle en chemin.
+      // Le brouillon local de ce navigateur suit la MÊME portée que l'écriture en
+      // base, et il se FUSIONNE : remplacer la ligne entière avait pour effet
+      // collatéral d'effacer les autres jours déjà travaillés sur cette ligne.
       setDayOverrides((prev) => {
-        const surcharges = { [COULEUR_HORAIRE_CLE]: { color: couleur } };
-        if (cellEditContext) {
-          surcharges[cellEditContext.dateStr] = {
+        const cetEmploye = { ...(prev[employeeScheduleForm.employee_id] || {}) };
+        if (dateCible) {
+          cetEmploye[dateCible] = {
+            ...(cetEmploye[dateCible] || {}),
             start_time: employeeScheduleForm.custom_start_time,
             end_time: employeeScheduleForm.custom_end_time,
             has_break: employeeScheduleForm.custom_has_break,
@@ -2728,8 +2842,20 @@ export default function Planning() {
             name: cellEditContext.shiftName || "Horaire personnalisé",
             color: couleur,
           };
+        } else {
+          cetEmploye[COULEUR_HORAIRE_CLE] = { color: couleur };
         }
-        return { ...prev, [employeeScheduleForm.employee_id]: surcharges };
+        return { ...prev, [employeeScheduleForm.employee_id]: cetEmploye };
+      });
+
+      // La ligne en mémoire reçoit la valeur qui vient d'être écrite : c'est elle
+      // qui peint, pas un brouillon parallèle. Un seul endroit où la teinte de la
+      // ligne fait foi, donc un seul endroit où elle peut déborder.
+      setEmployeeSchedules((prev) => {
+        const autres = prev.filter(
+          (row) => row.employee_id !== employeeScheduleForm.employee_id
+        );
+        return [...autres, { ...(ligneExistante || {}), ...payload }];
       });
 
       toast.success("Planning collaborateur enregistré !");
@@ -5193,7 +5319,11 @@ export default function Planning() {
                     : "Attribuer un planning"}
                 </h2>
                 <span className="sk-modal-sub">
-                  Configuration individuelle En-Check
+                  {cellEditContext?.dateStr
+                    ? `Une seule case — cette fenêtre ne change que le ${jourViseParLaCase(
+                        cellEditContext.dateStr
+                      )}`
+                    : "Configuration individuelle En-Check"}
                 </span>
               </div>
               <button
@@ -5375,14 +5505,19 @@ export default function Planning() {
                 </>
               )}
 
-              {/* Personnalisation de la couleur de la case / du créneau */}
+              {/* Personnalisation de la couleur — la portée se dit dans le titre
+                  du champ, pas dans une note qu'on ne lit pas */}
               <div>
                 <label className="sk-field-label">
-                  <Palette size={13} /> Couleur de l'horaire
+                  <Palette size={13} />{" "}
+                  {cellEditContext?.dateStr
+                    ? `Couleur du ${jourViseParLaCase(cellEditContext.dateStr)}`
+                    : "Couleur de l'horaire"}
                 </label>
                 <p className="sk-modal-note">
-                  Chaque case de la semaine prend cette teinte ; une case qui a déjà la
-                  sienne — un modèle déposé, par exemple — la garde.
+                  {cellEditContext?.dateStr
+                    ? "Une seule case : les six autres gardent leur teinte, et les jours sans couleur restent sur celle de l'horaire."
+                    : "Toute la ligne, pour les jours qui n'ont pas encore choisi leur teinte. Une case qui a la sienne la garde."}
                 </p>
                 <div className="sk-color-swatches">
                   {ENCHECK_COLOR_PALETTE.map((c) => (
@@ -5415,6 +5550,18 @@ export default function Planning() {
                     title="Couleur libre"
                   />
                 </div>
+                {cellEditContext?.dateStr && (
+                  // Une teinte par case veut dire aussi que la case peut la
+                  // rendre : sans ce geste, un clic de trop reste peint pour
+                  // toujours et la personne n'ose plus essayer.
+                  <button
+                    type="button"
+                    className="sk-btn-secondary"
+                    onClick={handleRetirerTeinteDeLaCase}
+                  >
+                    Reprendre la teinte de l'horaire
+                  </button>
+                )}
               </div>
             </div>
 
