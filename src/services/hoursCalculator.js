@@ -37,6 +37,7 @@ import {
   evaluerSeuilsHebdo,
   messageDepassement,
 } from './plafondHebdomadaire'
+import { evaluerReposQuotidien, messageRepos } from './reposQuotidien'
 
 //  Aucun seuil de pointage n'est plus écrit en dur dans ce moteur : ils viennent
 //  de `encheck_reglages_pointage` (voir src/services/seuilsPointage.js). Les
@@ -392,6 +393,28 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     seuilMajeur: hasOvertimeFeature && overtimeSettings ? overtimeSettings.weekly_threshold_major : null,
   })
 
+  // ── 11-ter) Repos entre deux journées ────────────────────────
+  //  On inclut le premier jour du mois suivant : sans lui, le repos entre le
+  //  31 et le 1ᵉʳ ne serait jamais mesuré.
+  const joursRepos = [...monthDays]
+  {
+    const dernier = new Date(`${monthPeriod.endDate}T00:00:00`)
+    dernier.setDate(dernier.getDate() + 1)
+    joursRepos.push(toDateKeyLocal(dernier))
+  }
+  const reposQuotidien = evaluerReposQuotidien({
+    journees: joursRepos.map((d) => {
+      const jour = daySummaries[d] || null
+      return {
+        date: d,
+        debut: jour?.firstInISO || null,
+        fin: jour?.lastOutISO || null,
+      }
+    }),
+    //  Seuil d'ENTREPRISE. Aucun minimum légal n'est codé ici.
+    minimumHeures: enterpriseCfg.seuils?.reposQuotidienHeures ?? null,
+  })
+
   // ✅ NOUVEAU : Structure avec taux dynamiques
   const monthData = {
     period: formatMonthYearFR(monthPeriod.startDate),
@@ -452,6 +475,14 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
 
     //  ⚠️ B — ce que le moteur a réparé tout seul ce mois-ci.
     anomalies: monthAnomalies,
+
+    //  🌙 Repos entre deux journées : mesuré seulement si un minimum est réglé.
+    repos_quotidien: {
+      ...reposQuotidien,
+      note: reposQuotidien.disponible
+        ? 'Seuil d’entreprise (repos quotidien), pas une norme légale invoquée ici.'
+        : 'Aucun minimum de repos configuré : la période n’est pas évaluée.',
+    },
 
     //  📅 Fenêtres de 7 jours (semaine complète, même à cheval sur deux mois).
     //  `source: 'entreprise'` : ce sont les seuils d'heures sup paramétrés,
@@ -1808,6 +1839,11 @@ function generateAlerts({ today, month, year, hasPlan, seuils, feries }) {
     alerts.push({ type: 'info', message: 'Aucun planning configuré — attendu non calculé' })
   } else if (year?.delays?.count > 0) {
     alerts.push({ type: 'warning', message: `${year.delays.count} retard(s) cette année` })
+  }
+
+  const messageReposQuotidien = messageRepos(month?.repos_quotidien)
+  if (messageReposQuotidien) {
+    alerts.push({ type: 'warning', message: messageReposQuotidien })
   }
 
   const messageHebdo = messageDepassement(month?.plafond_hebdo)
