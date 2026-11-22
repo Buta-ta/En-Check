@@ -26,6 +26,12 @@ import {
   estLigneHorsCalcul,
   estRebondNeutralise,
 } from './seuilsPointage'
+import {
+  resoudreMajorationFerie,
+  normaliserCodePays,
+  PAYS_EXIGEANT_ZONE,
+  TAUX_FERIE_PAR_DEFAUT,
+} from './feriesMajoration'
 
 //  Aucun seuil de pointage n'est plus écrit en dur dans ce moteur : ils viennent
 //  de `encheck_reglages_pointage` (voir src/services/seuilsPointage.js). Les
@@ -47,7 +53,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
       .single(),
     supabase
       .from('enterprises')
-      .select('id, currency, timezone, auto_close_enabled, auto_close_time, auto_close_grace_minutes')
+      .select('id, currency, timezone, country_code, auto_close_enabled, auto_close_time, auto_close_grace_minutes')
       .eq('id', enterpriseId)
       .single(),
   ])
@@ -70,6 +76,12 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
       ? Number(enterprise.auto_close_grace_minutes)
       : 0,
     timezone: enterprise.timezone || 'Africa/Porto-Novo',
+    //  Pays de l'entreprise : nécessaire pour résoudre le plancher légal du
+    //  férié. `null` n'est pas une erreur ici — la résolution le dira
+    //  explicitement (avertissement `pays_inconnu`), plutôt que de deviner.
+    pays: normaliserCodePays(enterprise.country_code),
+    paysBrut: enterprise.country_code || null,
+    zone: null,
     seuils,
   }
 
@@ -131,7 +143,11 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   const scheduleResolved = resolveScheduleLikeRetards(employeeScheduleRow, defaultScheduleRow)
 
   // ── 6) Jours fériés ──────────────────────────────────────────
-  const holidaysSet = await loadHolidaySet(employee.enterprise_id, yearPeriod.startDate, yearPeriod.endDate)
+  const { set: holidaysSet, map: holidayMap } = await loadHolidayContext(
+    employee.enterprise_id,
+    yearPeriod.startDate,
+    yearPeriod.endDate,
+  )
 
   // ── 7) Contexte heures sup ───────────────────────────────────
   const { hasOvertimeFeature, overtimeSettings, allSchedules } = await loadOvertimeContext(employee.enterprise_id)
@@ -212,16 +228,20 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
 
   let monthWorkedSeconds = 0
   let monthNormalSeconds = 0
-  let otNormalSeconds = 0
-  let otMajor50Seconds = 0
-  let otMajor100Seconds = 0
 
-  // ✅ NOUVEAU : Tracker les taux réellement appliqués
-  let appliedRateNormal = null
-  let appliedRateMajor = null
+  //  Chaque tranche est accumulée PAR TAUX : deux jours à 25 % et 60 % ne se
+  //  moyennent pas, et un férié à 150 % ne se confond pas avec une majoration
+  //  de nuit. Avant, le résumé gardait « le premier taux vu » (constat A2).
+  const otNormalParTaux = new Map()
+  const otMajorParTaux = new Map()
+  const otFerieParTaux = new Map()
 
   let monthOpenSessionsCount = 0
   let monthVirtualAutoCloseDays = 0
+
+  //  Trace des fériés rencontrés : ce qui a été majoré, à quel taux, pourquoi.
+  const feriesTraces = []
+  const avertissementsFeries = new Set()
 
   for (const d of monthDays) {
     const s = daySummaries[d] || makeEmptyDaySummary(d)
@@ -229,13 +249,24 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     monthOpenSessionsCount += s.openSessionsCount
     if (s.hasAutoCloseVirtual) monthVirtualAutoCloseDays += 1
 
-    if (
-      hasOvertimeFeature &&
-      overtimeSettings &&
-      s.totalSeconds > 0 &&
-      !s.hasAutoCloseVirtual &&
-      !s.hasAutoClosedOut
-    ) {
+    const holiday = holidayMap.get(d) || null
+    const ferie = resoudreFerieDuJour({
+      date: d,
+      holiday,
+      enterpriseCfg,
+      overtimeSettings,
+    })
+
+    //  Le férié est une majoration LÉGALE : elle ne dépend pas du forfait
+    //  « heures supplémentaires ». On la calcule donc même si l'option est
+    //  coupée — sinon un jour férié travaillé retomberait au tarif normal.
+    const peutCalculer =
+      (hasOvertimeFeature && overtimeSettings) || ferie.aMajorer
+    const jourExploitable =
+      s.totalSeconds > 0 && !s.hasAutoCloseVirtual && !s.hasAutoClosedOut
+    let secondesFerieJour = 0
+
+    if (peutCalculer && jourExploitable) {
       const overtimeData = FeatureService.calculateOvertimeForEmployeeDay({
         totalWorkedSeconds: s.totalSeconds,
         employeeSchedule: employeeScheduleRow,
@@ -243,31 +274,68 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
         dateStr: d,
         allSchedules,
         overtimeSettings,
+        //  Présent seulement si le jour est férié ET majorable : c'est ce qui
+        //  fait basculer le seuil du jour sur « tout le temps travaillé ».
+        holiday: ferie.aMajorer ? { is_worked: false, overtime_rate: ferie.tauxPercent } : null,
       })
 
-      const totalOt = overtimeData?.totalOvertimeSeconds || 0
-      const majorOt = overtimeData?.overtimeMajorSeconds || 0
-      const normalOt = overtimeData?.overtimeSeconds || Math.max(0, totalOt - majorOt)
-
-      otNormalSeconds += normalOt
-
-      const majorRate = overtimeData?.rateMajorApplied
-      if (majorRate === 100) otMajor100Seconds += majorOt
-      else if (majorRate === 50) otMajor50Seconds += majorOt
-      else otMajor50Seconds += majorOt
+      const tranches = tranchesDuJour(overtimeData)
+      let totalOt = 0
+      for (const t of tranches) {
+        totalOt += t.secondes
+        if (t.type === 'ferie') {
+          cumulerTaux(otFerieParTaux, t.taux, t.secondes)
+          secondesFerieJour += t.secondes
+        }
+        else if (t.type === 'major') cumulerTaux(otMajorParTaux, t.taux, t.secondes)
+        else cumulerTaux(otNormalParTaux, t.taux, t.secondes)
+      }
 
       monthNormalSeconds += Math.max(0, s.totalSeconds - totalOt)
-
-      // ✅ Capturer les taux réels
-      if (overtimeData?.rateApplied && appliedRateNormal === null) {
-        appliedRateNormal = overtimeData.rateApplied
-      }
-      if (overtimeData?.rateMajorApplied && appliedRateMajor === null) {
-        appliedRateMajor = overtimeData.rateMajorApplied
-      }
     } else {
       monthNormalSeconds += s.totalSeconds
+      //  Un férié majorable dont les heures sont « inventées » (sortie
+      //  présumée) n'est PAS majoré : on le dit, on ne l'invente pas non plus.
+      if (ferie.aMajorer && s.totalSeconds > 0 && (s.hasAutoCloseVirtual || s.hasAutoClosedOut)) {
+        avertissementsFeries.add('ferie_sortie_presumee')
+      }
     }
+
+    if (ferie.ferie && ferie.aMajorer) {
+      feriesTraces.push({
+        date: d,
+        nom: ferie.nom,
+        taux_percent: ferie.tauxPercent,
+        niveau: ferie.niveau,
+        motif: ferie.motif,
+        source: ferie.source,
+        secondes_majorees: secondesFerieJour,
+        heures_majorees: formatDurationSeconds(secondesFerieJour),
+      })
+    }
+    if (ferie.bloque) avertissementsFeries.add('taux_sous_plancher')
+    for (const a of ferie.avertissements || []) avertissementsFeries.add(a)
+  }
+
+  const otNormalSeconds = totalSecondes(otNormalParTaux)
+  const otMajorSeconds = totalSecondes(otMajorParTaux)
+  const otFerieSeconds = totalSecondes(otFerieParTaux)
+
+  //  Taux d'affichage : celui qui pèse le plus. Le calcul, lui, ne l'utilise
+  //  plus (chaque tranche est valorisée à son propre taux).
+  const appliedRateNormal = otNormalParTaux.size
+    ? tauxDominant(otNormalParTaux, null)
+    : null
+  const appliedRateMajor = otMajorParTaux.size
+    ? tauxDominant(otMajorParTaux, null)
+    : null
+
+  //  Répartition 50 / 100 conservée pour les écrans historiques.
+  let otMajor50Seconds = 0
+  let otMajor100Seconds = 0
+  for (const [taux, secondes] of otMajorParTaux.entries()) {
+    if (taux >= 100) otMajor100Seconds += secondes
+    else otMajor50Seconds += secondes
   }
 
   let monthExpectedSeconds = null
@@ -297,22 +365,44 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     period: formatMonthYearFR(monthPeriod.startDate),
 
     normal: formatDurationSeconds(monthNormalSeconds),
-    
+
     // ✅ Heures sup avec taux réels
     overtime_normal: {
       hours: formatDurationSeconds(otNormalSeconds),
       rate: appliedRateNormal !== null ? appliedRateNormal : (overtimeSettings?.rate_normal || 25),
+      par_taux: detailParTaux(otNormalParTaux),
     },
-    
+
     overtime_major: {
-      hours: formatDurationSeconds(otMajor50Seconds + otMajor100Seconds),
+      hours: formatDurationSeconds(otMajorSeconds),
       rate: appliedRateMajor !== null ? appliedRateMajor : (overtimeSettings?.rate_major || 50),
+      par_taux: detailParTaux(otMajorParTaux),
+    },
+
+    //  🎌 Fériés travaillés : catégorie à part entière. Avant, ces heures
+    //  étaient soit noyées dans « normal », soit comptées à +50 %.
+    overtime_ferie: {
+      hours: formatDurationSeconds(otFerieSeconds),
+      rate: otFerieParTaux.size ? tauxDominant(otFerieParTaux, 0) : null,
+      par_taux: detailParTaux(otFerieParTaux),
     },
 
     // ✅ Ancien format (rétrocompatibilité)
     overtime_25: formatDurationSeconds(otNormalSeconds),
     overtime_50: formatDurationSeconds(otMajor50Seconds),
     overtime_100: formatDurationSeconds(otMajor100Seconds),
+
+    //  Secondes brutes : la valorisation les utilise pour ne rien perdre
+    //  à l'arrondi d'affichage (« 8h30 » → 8,5 h ne perd rien, mais
+    //  « 8h29 » → 8,48 h rondi à 8,5 h, sans relecture possible).
+    overtime_seconds: {
+      normal: otNormalSeconds,
+      major: otMajorSeconds,
+      ferie: otFerieSeconds,
+      normal_par_taux: Object.fromEntries(otNormalParTaux),
+      major_par_taux: Object.fromEntries(otMajorParTaux),
+      ferie_par_taux: Object.fromEntries(otFerieParTaux),
+    },
 
     absences: plan ? formatDurationSeconds(monthAbsenceSeconds) : '0h00',
     total_worked: formatDurationSeconds(monthWorkedSeconds),
@@ -327,6 +417,21 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     virtualAutoCloseDays: monthVirtualAutoCloseDays,
   }
 
+  // 🎌 Trace des fériés : combien de temps, à quel taux, sur quelle base.
+  const feries = {
+    jours: feriesTraces,
+    secondes_majorees: otFerieSeconds,
+    heures_majorees: formatDurationSeconds(otFerieSeconds),
+    plancher_source: resoudreMajorationFerie({
+      pays: enterpriseCfg.pays,
+      zone: enterpriseCfg.zone,
+    }).source,
+    pays: enterpriseCfg.pays,
+    pays_brut: enterpriseCfg.paysBrut,
+    zone_requise: enterpriseCfg.pays ? PAYS_EXIGEANT_ZONE.includes(enterpriseCfg.pays) && !enterpriseCfg.zone : false,
+    avertissements: [...avertissementsFeries],
+  }
+
   // ── 12) Année ─────────────────────────────────────────────────
   const yearDays = listDaysInclusive(yearPeriod.startDate, yearPeriod.endDate)
 
@@ -339,9 +444,17 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     yearWorkedSeconds += s.totalSeconds
     if (s.firstInISO) yearPresenceDays += 1
 
+    //  Même résolution que dans le mois : le cumul annuel doit être la somme
+    //  des mêmes journées, sinon le bulletin annuel contredit le mensuel.
+    const ferieAnnee = resoudreFerieDuJour({
+      date: d,
+      holiday: holidayMap.get(d) || null,
+      enterpriseCfg,
+      overtimeSettings,
+    })
+
     if (
-      hasOvertimeFeature &&
-      overtimeSettings &&
+      ((hasOvertimeFeature && overtimeSettings) || ferieAnnee.aMajorer) &&
       s.totalSeconds > 0 &&
       !s.hasAutoCloseVirtual &&
       !s.hasAutoClosedOut
@@ -353,6 +466,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
         dateStr: d,
         allSchedules,
         overtimeSettings,
+        holiday: ferieAnnee.aMajorer ? { is_worked: false, overtime_rate: ferieAnnee.tauxPercent } : null,
       })
       yearOtSeconds += overtimeData?.totalOvertimeSeconds || 0
     }
@@ -400,12 +514,15 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   // ── 13) Valorisation (avec taux dynamiques) ───────────────────
   const valorization = await calculateValorization(employeeId, employee.enterprise_id, monthData, enterpriseCfg.currency)
 
+
   // ── 14) Alertes ───────────────────────────────────────────────
   const alerts = generateAlerts({
     today: todayData,
     month: monthData,
     year: yearData,
     hasPlan: !!plan,
+    seuils: enterpriseCfg.seuils,
+    feries,
   })
 
   return {
@@ -421,6 +538,9 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     thisYear: yearData,
     valorization,
     alerts,
+    //  🎌 Ce que le moteur a réellement majoré au titre des fériés, et sur
+    //  quelle base. Une paie doit pouvoir se défendre ligne par ligne.
+    feries,
   }
 }
 
@@ -1187,14 +1307,145 @@ async function loadOvertimeContext(enterpriseId) {
 // HOLIDAYS
 // ═══════════════════════════════════════════════════════════
 
-async function loadHolidaySet(enterpriseId, startDate, endDate) {
+/**
+ * Charge les fériés de la période, sous deux formes :
+ *   · `set`  : dates fériées NON travaillées — sert à l'attendu et aux retards,
+ *              comme avant (aucun changement de comportement) ;
+ *   · `map`  : date → férié complet (`overtime_rate`, `is_worked`, `name`,
+ *              dérogations) — sert à la MAJORATION, qui a besoin du taux.
+ *
+ *  Les deux viennent du même appel : une seule requête, donc aucun risque que
+ *  l'attendu et la majoration lisent deux vérités différentes.
+ */
+async function loadHolidayContext(enterpriseId, startDate, endDate) {
   try {
     const holidays = await HolidayService.getHolidaysForRange(enterpriseId, startDate, endDate)
-    const nonWorked = (holidays || []).filter(h => !h.is_worked)
-    return HolidayService.buildHolidaySet(nonWorked)
+    const tous = holidays || []
+    const nonWorked = tous.filter(h => !h.is_worked)
+    return {
+      set: HolidayService.buildHolidaySet(nonWorked),
+      map: HolidayService.buildHolidayMap(tous),
+    }
   } catch {
-    return new Set()
+    return { set: new Set(), map: new Map() }
   }
+}
+
+/**
+ * Résout la majoration applicable à UNE date, et dit quoi transmettre au
+ * calcul d'heures supplémentaires.
+ *
+ * Rend toujours un objet — jamais `undefined` — pour que la trace soit
+ * possible même quand il n'y a rien à majorer.
+ */
+function resoudreFerieDuJour({ date, holiday, enterpriseCfg, overtimeSettings }) {
+  const base = {
+    date,
+    ferie: holiday || null,
+    nom: holiday?.name || null,
+    aMajorer: false,
+    tauxPercent: 0,
+    niveau: 'aucun',
+    motif: holiday ? '' : 'jour ordinaire',
+    source: null,
+    bloque: false,
+    avertissements: [],
+  }
+  if (!holiday) return base
+
+  const settingsConfigurees = Boolean(overtimeSettings && overtimeSettings.id)
+  const resolution = resoudreMajorationFerie({
+    pays: enterpriseCfg?.pays ?? null,
+    zone: enterpriseCfg?.zone ?? null,
+    tauxEntreprise: overtimeSettings?.rate_holiday ?? null,
+    entrepriseConfiguree: settingsConfigurees,
+    ferie: holiday,
+  })
+
+  const aMajorer = !resolution.bloque && Number(resolution.tauxPercent) > 0
+  return {
+    ...base,
+    ...resolution,
+    aMajorer,
+    nom: holiday.name || null,
+  }
+}
+
+/**
+ * Découpe le résultat d'un calcul d'heures supplémentaires en TRANCHES.
+ *
+ * POURQUOI : le résumé mensuel gardait « le premier taux vu » et fusionnait
+ * 50 % avec 100 %. Ici, chaque tranche porte son taux, donc la valorisation
+ * n'a plus à deviner — et un férié ne peut plus être payé au taux des heures
+ * sup ordinaires.
+ *
+ * @returns {Array<{type: string, secondes: number, taux: number}>}
+ */
+export function tranchesDuJour(overtimeData) {
+  if (!overtimeData) return []
+  const total = Number(overtimeData.totalOvertimeSeconds) || 0
+  if (total <= 0) return []
+
+  //  Jour férié : tout le temps travaillé est majoré au taux résolu.
+  if (overtimeData.thresholdSource === 'holiday') {
+    return [{ type: 'ferie', secondes: total, taux: Number(overtimeData.rateApplied) || 0 }]
+  }
+
+  const tranches = []
+  const major = Math.max(0, Number(overtimeData.overtimeMajorSeconds) || 0)
+  const normal = Math.max(
+    0,
+    Number.isFinite(Number(overtimeData.overtimeSeconds))
+      ? Number(overtimeData.overtimeSeconds)
+      : total - major,
+  )
+  if (normal > 0) {
+    tranches.push({ type: 'normal', secondes: normal, taux: Number(overtimeData.rateApplied) || 0 })
+  }
+  if (major > 0) {
+    const taux = Number(overtimeData.rateMajorApplied) || 0
+    tranches.push({ type: 'major', secondes: major, taux })
+  }
+  return tranches
+}
+
+/** Accumule `secondes` dans une Map<tau, secondes>. */
+function cumulerTaux(map, taux, secondes) {
+  if (!(secondes > 0)) return
+  const cle = Number.isFinite(Number(taux)) ? Number(taux) : 0
+  map.set(cle, (map.get(cle) || 0) + secondes)
+}
+
+/** Total des secondes d'une Map<tau, secondes>. */
+function totalSecondes(map) {
+  let total = 0
+  for (const v of map.values()) total += v
+  return total
+}
+
+/**
+ * Taux dominant d'une Map<tau, secondes> (celui qui pèse le plus).
+ * Sert UNIQUEMENT à l'affichage : le calcul, lui, valorise chaque tranche.
+ */
+function tauxDominant(map, defaut = 0) {
+  let meilleur = null
+  let max = -1
+  for (const [taux, secondes] of map.entries()) {
+    if (secondes > max) { max = secondes; meilleur = taux }
+  }
+  return meilleur === null ? defaut : meilleur
+}
+
+/** Détail par taux, trié, pour l'écran et la preuve. */
+function detailParTaux(map) {
+  return [...map.entries()]
+    .filter(([, secondes]) => secondes > 0)
+    .sort((a, b) => a[0] - b[0])
+    .map(([taux, secondes]) => ({
+      taux_percent: taux,
+      secondes,
+      heures: formatDurationSeconds(secondes),
+    }))
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1283,6 +1534,66 @@ function resolveScheduleLikeRetards(employeeScheduleRow, defaultScheduleRow) {
 // VALORISATION (avec taux dynamiques)
 // ═══════════════════════════════════════════════════════════
 
+/**
+ * Construit la liste des tranches à valoriser à partir du résumé mensuel.
+ *
+ * Source de vérité : les SECONDES brutes (`overtime_seconds`), quand elles
+ * sont là. Sinon, repli sur les chaînes (« 8h30 ») pour les données déjà en
+ * mémoire — mais on ne fait plus du texte la source principale (constat A3).
+ *
+ * @returns {Array<{libelle: string, secondes: number, taux: number}>}
+ */
+export function tranchesValorisation(monthData) {
+  const tranches = []
+  const sec = monthData?.overtime_seconds
+
+  const ajouter = (libelle, parTaux, fallbackHeures, fallbackTaux) => {
+    if (parTaux && typeof parTaux === 'object') {
+      for (const [tauxTexte, secondes] of Object.entries(parTaux)) {
+        const s = Number(secondes)
+        if (s > 0) tranches.push({ libelle, secondes: s, taux: Number(tauxTexte) })
+      }
+      return
+    }
+    const heures = parseDurationToHours(fallbackHeures)
+    if (heures > 0) tranches.push({ libelle, secondes: heures * 3600, taux: Number(fallbackTaux) || 0 })
+  }
+
+  ajouter('normal', sec?.normal_par_taux, monthData?.overtime_25, monthData?.overtime_normal?.rate ?? 25)
+  ajouter('major', sec?.major_par_taux, monthData?.overtime_50, monthData?.overtime_major?.rate ?? 50)
+
+  //  🎌 Le férié est une tranche à part : avant, ces heures étaient payées au
+  //  taux des heures sup ordinaires — ou pas majorées du tout (constat A1).
+  const ferieDepuisChaine = monthData?.overtime_ferie?.hours
+  if (sec?.ferie_par_taux && Object.keys(sec.ferie_par_taux).length) {
+    ajouter('ferie', sec.ferie_par_taux, null, 0)
+  } else if (ferieDepuisChaine) {
+    ajouter('ferie', null, ferieDepuisChaine, monthData?.overtime_ferie?.rate ?? TAUX_FERIE_PAR_DEFAUT)
+  }
+
+  return tranches
+}
+
+/**
+ * Prix des tranches. PURE : aucune requête, aucun arrondi intermédiaire.
+ *
+ * Montant tranche = secondes / 3600 × taux horaire × (1 + taux majoration / 100).
+ *
+ * Exemple (Awa, 1 500 FCFA/h, férié de 8 h à +100 %) :
+ *   8 × 1 500 × 2 = 24 000  — et non 12 000 comme aujourd'hui.
+ */
+export function valoriserTranches(tranches, hourlyRate) {
+  const tauxHoraire = Number(hourlyRate)
+  if (!Number.isFinite(tauxHoraire) || tauxHoraire <= 0) return []
+  return (tranches || []).map(t => ({
+    libelle: t.libelle,
+    heures: Math.round((t.secondes / 3600) * 100) / 100,
+    taux_percent: t.taux,
+    taux_horaire_majore: Math.round(tauxHoraire * (1 + t.taux / 100) * 100) / 100,
+    montant: Math.round((t.secondes / 3600) * tauxHoraire * (1 + t.taux / 100)),
+  }))
+}
+
 async function calculateValorization(employeeId, enterpriseId, monthData, currency) {
   try {
     const { data: profile } = await supabase
@@ -1296,42 +1607,59 @@ async function calculateValorization(employeeId, enterpriseId, monthData, curren
     if (!hourlyRate || !Number.isFinite(hourlyRate) || hourlyRate <= 0) return null
 
     const normalHours = parseDurationToHours(monthData.normal)
-    
-    // ✅ Utiliser les taux réels
-    const otNormalHours = monthData.overtime_normal 
-      ? parseDurationToHours(monthData.overtime_normal.hours)
-      : parseDurationToHours(monthData.overtime_25)
-    
-    const otMajorHours = monthData.overtime_major
-      ? parseDurationToHours(monthData.overtime_major.hours)
-      : parseDurationToHours(monthData.overtime_50)
-
-    const rateNormal = monthData.overtime_normal?.rate || 25
-    const rateMajor = monthData.overtime_major?.rate || 50
-
     const normalAmount = normalHours * hourlyRate
-    const otNormalAmount = otNormalHours * hourlyRate * (1 + rateNormal / 100)
-    const otMajorAmount = otMajorHours * hourlyRate * (1 + rateMajor / 100)
+
+    const tranches = tranchesValorisation(monthData)
+    const valorisees = valoriserTranches(tranches, hourlyRate)
+
+    const bloc = (libelle) => {
+      const lignes = valorisees.filter(v => v.libelle === libelle)
+      if (!lignes.length) return null
+      const secondes = (lignes || []).reduce((acc, l) => acc + Math.round(l.heures * 3600), 0)
+      return {
+        hours: formatDurationSeconds(secondes),
+        rate: Math.round((lignes.reduce((a, l) => a + l.taux_horaire_majore, 0) / lignes.length) * 100) / 100,
+        ratePercent: lignes.length === 1 ? lignes[0].taux_percent : null,
+        amount: lignes.reduce((a, l) => a + l.montant, 0),
+        lignes,
+      }
+    }
+
+    const otNormal = bloc('normal')
+    const otMajor = bloc('major')
+    const otFerie = bloc('ferie')
+
+    const totalSup = valorisees.reduce((acc, l) => acc + l.montant, 0)
 
     return {
-      normal: { 
-        hours: monthData.normal, 
-        rate: hourlyRate, 
-        amount: Math.round(normalAmount) 
+      normal: {
+        hours: monthData.normal,
+        rate: hourlyRate,
+        amount: Math.round(normalAmount),
       },
-      overtime_normal: { 
+      overtime_normal: otNormal || {
         hours: monthData.overtime_normal?.hours || monthData.overtime_25,
-        rate: hourlyRate * (1 + rateNormal / 100), 
-        ratePercent: rateNormal,
-        amount: Math.round(otNormalAmount) 
+        rate: hourlyRate * (1 + (monthData.overtime_normal?.rate ?? 25) / 100),
+        ratePercent: monthData.overtime_normal?.rate ?? 25,
+        amount: 0,
+        lignes: [],
       },
-      overtime_major: { 
+      overtime_major: otMajor || {
         hours: monthData.overtime_major?.hours || monthData.overtime_50,
-        rate: hourlyRate * (1 + rateMajor / 100),
-        ratePercent: rateMajor, 
-        amount: Math.round(otMajorAmount) 
+        rate: hourlyRate * (1 + (monthData.overtime_major?.rate ?? 50) / 100),
+        ratePercent: monthData.overtime_major?.rate ?? 50,
+        amount: 0,
+        lignes: [],
       },
-      total_gross: Math.round(normalAmount + otNormalAmount + otMajorAmount),
+      //  🎌 Nouveau : le férié a sa ligne sur le bulletin.
+      overtime_ferie: otFerie || {
+        hours: '0h00',
+        rate: hourlyRate,
+        ratePercent: null,
+        amount: 0,
+        lignes: [],
+      },
+      total_gross: Math.round(normalAmount + totalSup),
       currency: currency || 'XAF',
     }
   } catch {
@@ -1343,11 +1671,15 @@ async function calculateValorization(employeeId, enterpriseId, monthData, curren
 // ALERTES
 // ═══════════════════════════════════════════════════════════
 
-function generateAlerts({ today, month, year, hasPlan }) {
+function generateAlerts({ today, month, year, hasPlan, seuils, feries }) {
   const alerts = []
 
   if (today?.openSessionsCount > 0) {
-    alerts.push({ type: 'warning', message: '⚠ 1 session ouverte (auto-close plafonné à 14h max)' })
+    //  Le plafond vient des seuils (12 h par défaut), plus d'un littéral
+    //  « 14h » qui ne correspondait à aucune règle réelle (constat F1).
+    const plafond = Number(seuils?.plafondInventionHeures)
+    const borne = Number.isFinite(plafond) && plafond > 0 ? `${plafond}h max` : 'plafonné'
+    alerts.push({ type: 'warning', message: `⚠ 1 session ouverte (auto-close ${borne})` })
   }
 
   if (month?.openSessionsCount > 0) {
@@ -1363,7 +1695,28 @@ function generateAlerts({ today, month, year, hasPlan }) {
   if (month?.rate !== null && month?.rate !== undefined) {
     if (month.rate > 110) alerts.push({ type: 'warning', message: `Surcharge détectée : ${month.rate}% de la capacité` })
     if (month.rate < 70 && month.rate > 0) alerts.push({ type: 'warning', message: `Sous-utilisation : seulement ${month.rate}% de la capacité` })
-    if (alerts.length === 0 && month.rate >= 90 && month.rate <= 105) alerts.push({ type: 'success', message: 'Performance optimale ce mois' })
+      if (alerts.length === 0 && month.rate >= 90 && month.rate <= 105) alerts.push({ type: 'success', message: 'Performance optimale ce mois' })
+  }
+
+  //  🎌 Fériés : on ne peut pas « majorer » ce qu'on ne sait pas chiffrer.
+  //  L'alerte dit exactement pourquoi, et n'invente pas de taux.
+  if (feries) {
+    const ligneDefaut = (feries.jours || []).find(j => j.niveau === 'defaut')
+    if (ligneDefaut) {
+      alerts.push({
+        type: 'info',
+        message: `Férié travaillé majoré au taux par défaut (${ligneDefaut.taux_percent ?? TAUX_FERIE_PAR_DEFAUT} %) — plancher ${feries.pays || 'pays inconnu'} non sourcé`,
+      })
+    }
+    if (feries.avertissements?.includes('taux_sous_plancher')) {
+      alerts.push({ type: 'warning', message: 'Taux férié de l’entreprise inférieur au plancher légal — vérifier avant paie' })
+    }
+    if (feries.avertissements?.includes('ferie_sortie_presumee')) {
+      alerts.push({ type: 'warning', message: 'Férié avec sortie présumée : heures non majorées (à confirmer)' })
+    }
+    if (feries.zone_requise) {
+      alerts.push({ type: 'warning', message: 'Pays à zones (canton) : le plancher férié ne peut pas être résolu sans la zone' })
+    }
   }
 
   return alerts
@@ -1914,4 +2267,7 @@ export const __internal = {
   timeToMinutes,
   resoudrePointagesJournee,
   compterRetardsDuJour,
+  //  🎌 Fériés : résolution de la majoration et valorisation par tranche.
+  resoudreFerieDuJour,
+  generateAlerts,
 }

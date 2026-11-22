@@ -460,6 +460,12 @@ class HolidayService {
         // Méta
         is_global: holiday.enterprise_id === null,
         has_override: !!override,
+        //  La dérogation porte-t-elle SUR LE TAUX ? Renommer un férié crée un
+        //  override sans toucher au taux : sans ce drapeau, le moteur prendrait
+        //  le taux par défaut (100) pour une décision d'entreprise et pourrait
+        //  bloquer une paie à cause d'un simple changement de libellé.
+        has_custom_rate: override?.custom_overtime_rate !== undefined
+          && override?.custom_overtime_rate !== null,
       })
     })
 
