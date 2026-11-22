@@ -1590,6 +1590,18 @@ describe('la page Employés', () => {
     expect(hote.textContent).toContain('Nouvelle équipe')
     expect(hote.querySelector('.empv2-annuaire')).toBeNull()
 
+    // le 22/11 a étendu aux Équipes ce que le 21/11 posait aux Tâches : pas
+    // d'en-tête de page sur un onglet qui a sa propre tête cerclée
+    expect(hote.querySelector('.empv3-entete')).toBeNull()
+    expect(hote.querySelector('.empv3-entete-pancarte')).toBeNull()
+    const teteEquipes = hote.querySelector('.eqv2-tete')
+    expect(teteEquipes.querySelector('h1.eqv2-titre').textContent).toBe('Équipes')
+    // les quatre chiffres vivent DANS la tête, cerclés avec le titre
+    expect(teteEquipes.querySelector('.eqv2-kpis')).not.toBeNull()
+    // et l'action de création est descendue dans la barre d'outils de l'onglet,
+    // puisque celle de l'en-tête ne se monte plus ici
+    expect(hote.querySelector('.eqv2-actions .empv2-nouvel').textContent).toContain('Nouvelle équipe')
+
     // re-cliquer la vue active rabat sur la liste
     await act(async () => hote.querySelector('.sb-rail-sous[aria-current="page"]').click())
     expect(hote.querySelectorAll('.sb-rail-sous[aria-current="page"]')).toHaveLength(0)
@@ -1679,7 +1691,7 @@ describe('la page Employés', () => {
     expect([...hote.querySelectorAll('button')].filter((b) => /^(Clair|Sombre)$/.test(b.textContent.trim()))).toHaveLength(0)
   })
 
-  it('propose dans l’en-tête l’action de la vue affichée', async () => {
+  it('porte l’action de la vue affichée — l’en-tête pour l’annuaire, la barre d’outils pour les deux onglets', async () => {
     await monterPage()
     expect(boutonAvec('Nouvel employé')).toBeTruthy()
 

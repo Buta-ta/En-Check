@@ -1,0 +1,684 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ONGLET « ÉQUIPES » EN POST-IT — 22/11/2026
+   « Tu peux le faire exactement comme l'onglet Tâches » : même papier, même
+   bande de bogolan autour du titre et des chiffres, mêmes feuilles agrafées,
+   même action pleine en espresso. La peau de `TachesVue.css` est le modèle,
+   sélecteur par sélecteur — pas une réinterprétation.
+
+   Trois absences trouvées ici aussi, qui n'étaient pas des choix mais du CSS
+   qui n'existait pas — visibles sur la capture du fondateur, où les quatre
+   chiffres tombent en colonne à plat sous l'en-tête :
+   • `.eqv2-kpis` n'a AUCUNE règle nulle part. La feuille de base écrit
+     `.eqv2 .empv2-kpis { grid-template-columns: repeat(4, 1fr) }` — un
+     sélecteur MORT : le conteneur s'appelle `.eqv2-kpis`, et `.empv2-kpis`
+     n'apparaît dans aucun JSX des équipes. Rien d'empilé, rien en ligne.
+   • `.empv2-recherche` et `.empv2-nouvel` n'avaient de règle que dans la peau
+     de l'onglet Tâches (portée `.tqv2--postit`), jamais pour les équipes : le
+     champ de recherche était un `input` nu et il n'y avait AUCUN bouton «
+     Nouvelle équipe » dans la barre d'outils — il vivait dans l'en-tête de
+     page, celui qui ne se monte plus sur les onglets. Le voilà revenu, à sa
+     place du Tâches : en fin de rangée.
+   • `.eqv2-carte-trait`, le filet de couleur d'une équipe, est collé à
+     `top: 0` sous la bande de colle : sans marge, le papier collant le
+     boufferait à moitié.
+
+   Ce que la peau doit à la charte (les mêmes six engagements que l'onglet
+   Tâches, puisqu'il s'agit du même écran) :
+   • les jetons `--rg-*` du registre zoulou sont réécrits sur ceux de la charte
+     pour la seule portée `.eqv2--postit` — les règles que je ne reprends pas
+     (badges de santé, menus, filets du pied) parlent donc le même papier, et
+     l'annuaire n'est touché d'aucun octet ;
+   • le motif ne passe jamais derrière un texte plein : la couleur d'une
+     équipe reste un filet de 4 px dans l'épaisseur de la feuille, les cercles
+     de santé et les pastilles de catégories restent des DONNÉES cerclées
+     d'encre, jamais des actions ;
+   • un survol déplace la note et épaissit son ombre, il ne décolore rien ;
+   • l'or ne conduit aucune action : le seul remplissage de l'écran est
+     « Nouvelle équipe », en espresso ;
+   • aucune `container-type`, aucun `clip-path`, aucun `filter:` : les ruptures
+     restent des `@media` sur la fenêtre, comme dans la feuille de base ;
+   • le rabat et la bande de colle ne rognent aucun contenu : la carte garde sa
+     respiration sous le pli.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* le papier de l'onglet, réécrit sur les jetons de la charte (dans les deux
+   thèmes : le sélecteur porte `[data-theme]` pour battre la variante sombre du
+   registre, quel que soit l'ordre des feuilles dans le bundle) */
+[data-theme] .eqv2--postit.eqv2 {
+  --rg-paper: var(--charte-surface);
+  --rg-ink: var(--charte-encre);
+  --rg-soft: var(--charte-douce);
+  --rg-faint: var(--charte-douce);
+  --rg-hair: var(--charte-bordure);
+  --rg-hair-fort: color-mix(in srgb, var(--charte-encre) 38%, transparent);
+  --rg-voile: color-mix(in srgb, var(--charte-encre) 7%, transparent);
+  --rg-corail: var(--charte-erreur);
+}
+
+/* deux classes, pas une : la base écrit `.eqv2 { gap: 14px }` avec la même
+   spécificité qu'une peau à un seul nom de classe, et l'ordre des deux feuilles
+   dans le bundle n'est pas une garantie. C'est exactement le piège qui a fait
+   disparaître l'espace de l'onglet Tâches pendant un tour entier. */
+.eqv2--postit.eqv2 {
+  --eqv-pli: 14px;
+  --eqv-colle: calc(var(--eqv-pli) + 1px);
+  /* la bande de colle, en VARIABLE : chaque feuille la pose en
+     `background-image`, et un `background:` en raccourci ne peut plus
+     l'effacer par accident */
+  --eqv-colle-degrade: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--eqv-pli),
+    color-mix(in srgb, var(--charte-encre) 12%, transparent) var(--eqv-pli)
+      var(--eqv-colle),
+    transparent var(--eqv-colle)
+  );
+
+  /* 32 px entre les blocs de l'onglet : la bande de bogolan déborde de 18 px
+     + 4 px d'ombre, un rang à 24 px la frôlerait */
+  gap: var(--charte-espace-6);
+}
+
+/* le papier ligné et la tranche de perles ne suivent pas l'onglet ; le
+   `!important` du registre est combattu par la NON-importantisation, pas par un
+   autre `!important` (même neutralisation, deux thèmes, que la fiche et que
+   l'onglet Tâches) */
+.eqv2--postit.emp-vues,
+[data-theme='dark'] .eqv2--postit.emp-vues {
+  padding-left: 0;
+}
+
+.eqv2--postit.emp-vues::before,
+.eqv2--postit.emp-vues::after,
+[data-theme='dark'] .eqv2--postit.emp-vues::after {
+  display: none;
+}
+
+/* ── 0 · la tête : le haut de la page ───────────────────────────────────────
+   L'en-tête d'annuaire (étiquette, « Employés », la pancarte, le bouton
+   « Nouvelle équipe ») ne se monte plus sur cet onglet : c'est ce bloc qui
+   occupe sa place, avec les mêmes 20/22 px de respiration que
+   `.empv3-entete-corps`, le titre incliné de 2 deg et son double trait de
+   feutre. Deux marges mesurées, pas d'à-peu-près :
+
+     · 14 px au-dessus, parce que le galon déborde de 22 px et que la gouttière
+       haute du `main` en fait 24 : sans elles, l'encre friserait le bord de
+       l'écran ;
+     · 40 px dessous, l'air entre la tête et la barre d'outils — avec les 32 px
+       du rang, 72 px d'un bloc à l'autre, dont 22 mangés par le débord, soit
+       50 px d'air net au-dessus du champ de recherche.
+
+   Le titre est un `<h1>` : celui de la page partait avec l'en-tête d'annuaire.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.eqv2--postit .eqv2-tete {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 20px 22px;
+  margin-top: 14px;
+  margin-bottom: 40px;
+}
+
+/* La bande UNIQUE qui fait le tour du bloc — et non une bande par chiffre. Le
+   débord porte l'ombre, donc l'encre n'épaissit qu'en bas et à droite : le
+   double passage de feutre, sans un calque de plus. 18 px = l'épaisseur déjà
+   retenue par l'annuaire pour descendre les 77 px natifs des deux images du
+   dépôt : échelle UNIFORME (C4), et les quatre coins sont remplis par
+   `--charte-tissu`. */
+.eqv2--postit .eqv2-tete::before {
+  content: '';
+  position: absolute;
+  inset: -18px;
+  z-index: -2;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-tissu);
+  background-image:
+    url('/images/paie-bogolan-haut.webp'),
+    url('/images/paie-bogolan-haut.webp'),
+    url('/images/bogolan-vertical.webp'),
+    url('/images/bogolan-vertical.webp');
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-position: left top, left bottom, left top, right top;
+  background-size: auto 18px, auto 18px, 18px auto, 18px auto;
+  box-shadow: var(--charte-ombre-dure);
+  pointer-events: none;
+}
+
+/* la plaque de papier qui porte le contenu — posée DANS le cadre, d'où
+   `isolation: isolate` plus haut et les deux `z-index` négatifs */
+.eqv2--postit .eqv2-tete::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background: var(--charte-surface);
+  pointer-events: none;
+}
+
+.eqv2--postit .eqv2-titre {
+  position: relative;
+  margin: 0;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--charte-encre);
+  transform: rotate(-2deg);
+}
+
+/* le double feutre sous le titre : un trait de 4 px et sa seconde passe,
+   décalée de 2 px à droite et 4 px en bas, plus courte que le mot. Le frangé
+   s'arrête à ce titre — il n'est pas demandé ailleurs, il ne voyage pas. */
+.eqv2--postit .eqv2-titre::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: 8%;
+  bottom: -9px;
+  height: 4px;
+  background: var(--charte-encre);
+  box-shadow: 2px 4px 0 0 var(--charte-encre);
+  transform: rotate(0.5deg);
+}
+
+/* ── 1 · la rangée de chiffres : quatre notes, pas une colonne de texte ───── */
+
+/* le `display: grid` que personne n'écrivait : la base ne visait que
+   `.eqv2 .empv2-kpis`, un sélecteur mort (voir l'en-tête du fichier) */
+.eqv2--postit .eqv2-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.eqv2--postit .eqv2-kpis .empv2-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: calc(var(--eqv-pli) + 6px) 14px 12px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  background-image: var(--eqv-colle-degrade);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.eqv2--postit .eqv2-kpis .empv2-kpi-haut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.eqv2--postit .eqv2-kpis .empv2-kpi-haut strong {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--charte-encre);
+  /* les chiffres sont tabulaires : ils ne dansent pas quand le compte passe de
+     9 à 10 */
+  font-variant-numeric: tabular-nums;
+}
+
+.eqv2--postit .eqv2-kpis .empv2-kpi-libelle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--charte-douce);
+}
+
+/* le point « à traiter » : une pastille de 7 px cerclée d'encre, jamais un
+   aplat flottant. C'est lui qui porte l'alerte ici — la barre d'alerte en pied
+   de feuille du Tâches n'a pas d'équivalent honnête, puisque ces deux chiffres
+   peuvent être à zéro sans que la feuille doive crier. */
+.eqv2--postit .empv2-point {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-alerte);
+}
+.eqv2--postit .empv2-point--or {
+  background: var(--charte-surface2);
+}
+
+/* ── 2 · la barre d'outils ─────────────────────────────────────────────────── */
+
+.eqv2--postit .eqv2-outils {
+  gap: 8px;
+}
+
+/* le champ de recherche, qui n'avait aucune règle pour cet onglet : une fiche
+   de saisie cerclée d'encre, posée sur le même rang que les filtres */
+.eqv2--postit .eqv2-recherche {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-blanc);
+  color: var(--charte-douce);
+}
+.eqv2--postit .eqv2-recherche input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: var(--charte-taille-corps);
+  color: var(--charte-encre);
+}
+.eqv2--postit .eqv2-recherche input::placeholder {
+  color: var(--charte-douce);
+}
+/* le focus se marque au trait, pas à l'halo : le registre n'a pas d'ombre
+   floue et la charte n'en veut pas non plus */
+.eqv2--postit .eqv2-recherche:focus-within {
+  box-shadow: inset 0 0 0 1px var(--charte-encre);
+}
+.eqv2--postit .empv2-recherche-effacer {
+  border: none;
+  background: transparent;
+  color: var(--charte-douce);
+  cursor: pointer;
+  display: inline-flex;
+}
+.eqv2--postit .empv2-recherche-effacer:hover {
+  color: var(--charte-encre);
+}
+
+/* les cinq filtres : des notes cerclées, plus des pastilles de site. Le
+   sélectionné change de papier — il ne s'écrit plus en encre pleine sur fond
+   noir, le seul remplissage de l'écran est l'action principale */
+.eqv2--postit .eqv2-filtres {
+  gap: 8px;
+}
+.eqv2--postit .eqv2-filtre {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  font-weight: 700;
+  box-shadow: var(--charte-ombre-dure);
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+.eqv2--postit .eqv2-filtre:hover {
+  background-color: var(--charte-surface2);
+}
+.eqv2--postit .eqv2-filtre[aria-pressed='true'] {
+  background-color: var(--charte-surface2);
+  border-color: var(--charte-encre);
+  color: var(--charte-encre);
+}
+
+.eqv2--postit .eqv2-tri {
+  min-height: 38px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  font-weight: 600;
+}
+.eqv2--postit .eqv2-tri:hover {
+  background-color: var(--charte-surface2);
+}
+
+.eqv2--postit .empv2-lien {
+  min-height: 38px;
+  padding: 6px 12px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background-color: var(--charte-surface);
+  color: var(--charte-texte);
+  font-weight: 700;
+  transition: background-color var(--charte-duree) var(--charte-easing),
+    transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+.eqv2--postit .empv2-lien:hover {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+/* le « À décider » du pied se déplie par ces mêmes boutons : l'enfoncé se lit
+   au papier, pas à un cerne doré */
+.eqv2--postit .empv2-lien[aria-pressed='true'] {
+  background-color: var(--charte-surface2);
+  border-color: var(--charte-encre);
+  color: var(--charte-encre);
+}
+
+.eqv2--postit .eqv2-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* le bouton qui n'existait pas dans cette barre : la seule variante pleine de
+   l'écran, en espresso — jamais en or (D-016) */
+.eqv2--postit .empv2-nouvel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 6px 14px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--charte-ombre-dure);
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+.eqv2--postit .empv2-nouvel:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+.eqv2--postit .empv2-nouvel:disabled {
+  /* le désactivé ne se joue jamais de l'opacité : on change de papier et de mot */
+  background-color: var(--charte-btn-desactive);
+  border-color: var(--charte-bordure);
+  color: var(--charte-btn-desactive-texte);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* ── 3 · les cartes d'équipe : des post-it, avec leur filet de couleur ───── */
+
+.eqv2--postit .eqv2-corps {
+  gap: var(--charte-espace-5);
+  align-items: start;
+}
+
+.eqv2--postit .eqv2-grille {
+  gap: var(--charte-espace-3);
+}
+
+.eqv2--postit .eqv2-carte {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-blanc);
+  background-image: var(--eqv-colle-degrade);
+  box-shadow: var(--charte-ombre-dure);
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+/* le survol ne décolore rien et ne change plus seulement le trait : la note se
+   déplace, son ombre s'épaissit. Le trait d'encre reste le même des deux côtés
+   pour que la carte ne « chauffe » pas sous le curseur. */
+.eqv2--postit .eqv2-carte:hover,
+.eqv2--postit .eqv2-carte[data-menu='ouvert'] {
+  border-color: var(--charte-encre);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+/* le filet de couleur de l'équipe : 4 px, SOUS la bande de colle — posé à
+   `top: 0` il serait mangé à moitié par le papier collant */
+.eqv2--postit .eqv2-carte-trait {
+  height: 4px;
+  margin-top: var(--eqv-colle);
+  border-radius: 0;
+}
+
+.eqv2--postit .eqv2-carte-corps {
+  padding: 12px 16px calc(var(--eqv-pli) + 4px);
+}
+
+.eqv2--postit .eqv2-carte-nom {
+  font-size: var(--charte-taille-corps);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--charte-encre);
+}
+.eqv2--postit .eqv2-carte-nom button {
+  color: var(--charte-encre);
+}
+.eqv2--postit .eqv2-carte-nom button:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+.eqv2--postit .eqv2-carte-note {
+  color: var(--charte-douce);
+}
+
+.eqv2--postit .eqv2-plus {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-blanc);
+  color: var(--charte-texte);
+}
+.eqv2--postit .eqv2-plus:hover,
+.eqv2--postit .eqv2-plus[aria-expanded='true'] {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+
+/* les membres : des vignettes d'identité cerclées d'encre, posées droites. La
+   pastille ronde de l'annuaire ne descend pas dans les équipes, comme elle
+   n'est pas descendue dans les tâches. */
+.eqv2--postit .eqv2-avatar {
+  width: 26px;
+  height: 26px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background: var(--charte-surface2);
+  color: var(--charte-texte);
+  font-size: 10px;
+  font-weight: 800;
+}
+.eqv2--postit .eqv2-avatar img {
+  border-radius: 0;
+}
+.eqv2--postit .eqv2-avatar + .eqv2-avatar {
+  margin-left: 3px;
+}
+/* la couronne du chef : un marqueur de DONNÉE, l'or reste permis ici — il ne
+   conduit aucune action, il dit qui l'est */
+.eqv2--postit .eqv2-avatar[data-chef='oui'] {
+  box-shadow: 0 0 0 2px var(--empv2-or);
+}
+.eqv2--postit .eqv2-avatars-note {
+  color: var(--charte-douce);
+  font-variant-numeric: tabular-nums;
+}
+
+.eqv2--postit .eqv2-carte-pied {
+  border-top: 1px solid var(--charte-bordure);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  color: var(--charte-douce);
+}
+.eqv2--postit .eqv2-carte-pied strong {
+  color: var(--charte-encre);
+  font-weight: 800;
+}
+
+/* le badge de santé : la couleur est une donnée, elle reste cerclée — le fond
+   teinté du registre est assez, aucun aplat plein ne vient porter un mot */
+.eqv2--postit .eqv2-sante-badge {
+  border-radius: var(--charte-rayon-pilule);
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* ── 4 · le rail de droite : deux feuilles agrafées, pas deux panneaux ───── */
+
+.eqv2--postit .eqv2-rais {
+  gap: var(--charte-espace-4);
+}
+
+.eqv2--postit .eqv2-panneau {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  padding: calc(var(--eqv-pli) + 10px) 14px 14px;
+  background-color: var(--charte-surface);
+  background-image: var(--eqv-colle-degrade);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.eqv2--postit .eqv2-panneau-titre {
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--charte-douce);
+}
+
+.eqv2--postit .eqv2-panneau-vide {
+  color: var(--charte-douce);
+}
+
+.eqv2--postit .eqv2-rattacher-info strong {
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+.eqv2--postit .eqv2-rattacher-info small {
+  color: var(--charte-douce);
+}
+
+.eqv2--postit .eqv2-btn-mini {
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-blanc);
+  color: var(--charte-texte);
+  font-weight: 700;
+}
+.eqv2--postit .eqv2-btn-mini:hover {
+  border-color: var(--charte-encre);
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+
+.eqv2--postit .eqv2-menu-pastille {
+  border: 1px solid var(--charte-encre);
+}
+
+/* la jauge de santé : 6 px d'encre dans un rail cerclé, tabulaire dans l'âme */
+.eqv2--postit .eqv2-sante-haut {
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+}
+.eqv2--postit .eqv2-sante-haut strong {
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  color: var(--charte-encre);
+  font-variant-numeric: tabular-nums;
+}
+.eqv2--postit .eqv2-sante-jauge {
+  height: 8px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface2);
+}
+
+/* ── 5 · les états de la vue et le pied « À décider » ──────────────────────── */
+
+.eqv2--postit .eqv2-vide {
+  border: var(--charte-trait) dashed var(--charte-bordure);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  padding: 32px 24px;
+}
+.eqv2--postit .eqv2-vide h3 {
+  font-size: var(--charte-taille-titre);
+  font-weight: 800;
+  color: var(--charte-encre);
+}
+.eqv2--postit .eqv2-vide p {
+  color: var(--charte-douce);
+}
+
+.eqv2--postit .eqv2-chargement {
+  padding: 40px 0;
+}
+.eqv2--postit .eqv2-chargement-texte {
+  color: var(--charte-douce);
+}
+
+.eqv2--postit .empv2-pied {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  padding: calc(var(--eqv-pli) + 8px) var(--charte-espace-4) var(--charte-espace-4);
+  background-color: var(--charte-surface);
+  background-image: var(--eqv-colle-degrade);
+  box-shadow: var(--charte-ombre-dure);
+}
+.eqv2--postit .empv2-pied-titre {
+  font-size: var(--charte-taille-corps);
+  font-weight: 800;
+  color: var(--charte-encre);
+}
+.eqv2--postit .empv2-pied-texte {
+  color: var(--charte-douce);
+}
+.eqv2--postit .empv2-pied-nombre {
+  background: color-mix(in srgb, var(--charte-encre) 10%, transparent);
+  color: var(--charte-encre);
+  font-variant-numeric: tabular-nums;
+}
+.eqv2--postit .empv2-pied-item-titre {
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+.eqv2--postit .empv2-pied-item-note {
+  color: var(--charte-douce);
+}
+
+/* ── 6 · les ruptures : les mêmes trois seuils que l'onglet Tâches ────────── */
+
+@media (max-width: 1100px) {
+  /* le `main` ne fait plus que 16 px de gouttière latérale et 16 px en haut :
+     le galon descend à 14 px — la hauteur déjà retenue par le bandeau de
+     l'annuaire à la même largeur, donc l'échelle reste uniforme des deux côtés
+     — et la tête se retire de 6 px pour que l'ombre ne déborde pas de la page */
+  .eqv2--postit .eqv2-tete {
+    margin-top: 8px;
+    margin-inline: 6px;
+  }
+  .eqv2--postit .eqv2-tete::before {
+    inset: -14px;
+    background-size: auto 14px, auto 14px, 14px auto, 14px auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .eqv2--postit .eqv2-tete {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+  }
+  .eqv2--postit .eqv2-titre {
+    font-size: 32px;
+  }
+}
+
+@media (max-width: 640px) {
+  .eqv2--postit .eqv2-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

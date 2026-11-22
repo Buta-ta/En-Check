@@ -1492,15 +1492,16 @@ export default function Employes() {
               raccourcis (le rail les porte) et plus de bouton de thème ici :
               il vit dans le rail, une seule fois.
 
-              SUR L'ONGLET TÂCHES IL NE SE MONTE PAS (demande du 21/11). Ce n'est
-              pas un retrait : le bloc reste, intact, pour l'annuaire et pour
-              l'onglet Équipes. L'onglet Tâches a sa propre tête — le bandeau de
-              bogolan qui cerne « Tâches » et les quatre chiffres — et c'est elle
-              qui occupe le haut de la page. Deux en-têtes cerclés l'un sur l'autre
-              ne faisaient qu'un seul cri de trop, et le bouton « Nouvelle tâche »
-              du bandeau doublait déjà celui de la barre d'outils.
+              SUR LES DEUX ONGLETS IL NE SE MONTE PAS (demande du 21/11 pour les
+              Tâches, étendue aux Équipes le 22/11). Ce n'est pas un retrait : le
+              bloc reste, intact, pour l'annuaire. Chaque onglet a sa propre tête
+              — le bandeau de bogolan qui cerne le titre et les quatre chiffres —
+              et c'est elle qui occupe le haut de la page. Deux en-têtes cerclés
+              l'un sur l'autre ne faisaient qu'un seul cri de trop, et le bouton
+              « Nouvelle équipe » / « Nouvelle tâche » du bandeau doublait déjà
+              celui de la barre d'outils de l'onglet.
            */}
-          {vueActive !== 'taches' && (
+          {vueActive === null && (
             <header className="empv3-entete">
               <span className="empv3-entete-bandeau" aria-hidden="true" />
               {/* la pancarte plante ses racines dans l'en-tête, au milieu */}

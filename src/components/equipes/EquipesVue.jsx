@@ -1,8 +1,11 @@
 // ════════════════════════════════════════════════════════════════
 // 👥 VUE « ÉQUIPES » — page Employés
 //
-// L'écran se lit en trois plans :
+// L'écran se lit en quatre plans :
 //
+//   0. sa tête — le titre « Équipes » et les quatre chiffres, cerclés d'une
+//      seule bande de bogolan. Depuis le 21/11, l'onglet porte le haut de la
+//      page : l'en-tête d'annuaire ne se monte plus ici ;
 //   1. quatre chiffres comptés sur les équipes chargées ;
 //   2. les équipes en cartes, à bordure colorée : le nom, la
 //      pastille de santé, la pile d'avatars (le chef couronné),
@@ -36,6 +39,7 @@ import {
   TeamModal, MembersModal, DeleteModal, HistoryModal, ShortcutsModal,
 } from './EquipesModales'
 import '../../pages/EmployesRefonte.css'
+import './EquipesVue.css'
 
 const FILTRES = [
   { key: 'all', label: 'Toutes' },
@@ -773,7 +777,7 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
 
   if (raison === 'sansEntreprise') {
     return (
-      <div className="emp-vues eqv2">
+      <div className="emp-vues eqv2 eqv2--postit">
         <div className="eqv2-vide">
           <h3>Sélectionnez une entreprise</h3>
           <p>
@@ -787,7 +791,7 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
 
   if (raison === 'sansOption') {
     return (
-      <div className="emp-vues eqv2">
+      <div className="emp-vues eqv2 eqv2--postit">
         <div className="eqv2-vide">
           <h3>Option Équipes non activée</h3>
           <p>
@@ -803,26 +807,34 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
   const sansChef = equipes.length - totalChefs
 
   return (
-    <div className="emp-vues eqv2">
-      {/* le bandeau de chiffres : compté sur les équipes chargées */}
-      <div className="eqv2-kpis" aria-label="Chiffres des équipes">
-        <div className="empv2-kpi">
-          <div className="empv2-kpi-haut"><strong>{equipes.length}</strong></div>
-          <span className="empv2-kpi-libelle">Équipes</span>
+    <div className="emp-vues eqv2 eqv2--postit">
+      {/* la tête de l'onglet — et donc la tête de la page : un en-tête cerclé
+          par écran, pas deux. Le titre et les quatre chiffres sous UNE SEULE
+          bande de bogolan, le dispositif de la fiche employé et de l'onglet
+          Tâches. Le chiffre se lit sur la plaque de papier : le tissu ne passe
+          jamais sous un mot (refus enregistré sur la page). */}
+      <header className="eqv2-tete">
+        <h1 className="eqv2-titre">Équipes</h1>
+
+        <div className="eqv2-kpis" aria-label="Chiffres des équipes">
+          <div className="empv2-kpi">
+            <div className="empv2-kpi-haut"><strong>{equipes.length}</strong></div>
+            <span className="empv2-kpi-libelle">Équipes</span>
+          </div>
+          <div className="empv2-kpi">
+            <div className="empv2-kpi-haut"><strong>{totalMembres}</strong></div>
+            <span className="empv2-kpi-libelle">Membres</span>
+          </div>
+          <div className="empv2-kpi">
+            <div className="empv2-kpi-haut"><strong>{sansChef}</strong></div>
+            <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--orange" aria-hidden="true" />Sans chef</span>
+          </div>
+          <div className="empv2-kpi">
+            <div className="empv2-kpi-haut"><strong>{orphelins.length}</strong></div>
+            <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--or" aria-hidden="true" />À rattacher</span>
+          </div>
         </div>
-        <div className="empv2-kpi">
-          <div className="empv2-kpi-haut"><strong>{totalMembres}</strong></div>
-          <span className="empv2-kpi-libelle">Membres</span>
-        </div>
-        <div className="empv2-kpi">
-          <div className="empv2-kpi-haut"><strong>{sansChef}</strong></div>
-          <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--orange" aria-hidden="true" />Sans chef</span>
-        </div>
-        <div className="empv2-kpi">
-          <div className="empv2-kpi-haut"><strong>{orphelins.length}</strong></div>
-          <span className="empv2-kpi-libelle"><i className="empv2-point empv2-point--or" aria-hidden="true" />À rattacher</span>
-        </div>
-      </div>
+      </header>
 
       {/* la barre d'outils : chercher, filtrer, trier, rafraîchir */}
       <div className="eqv2-outils">
@@ -880,6 +892,16 @@ export default function EquipesVue({ enterpriseId: enterpriseIdProp, employes = 
             title="Raccourcis (?)"
           >
             <HelpCircle size={13} />
+          </button>
+        </span>
+
+        {/* « Nouvelle équipe » : le bouton vivait dans l'en-tête de page, qui
+            ne se monte plus sur l'onglet. Le voilà dans la barre d'outils, à la
+            place qu'il a dans l'onglet Tâches — la seule variante pleine.
+            La touche « n » du clavier fait toujours la même chose. */}
+        <span className="eqv2-actions">
+          <button type="button" className="empv2-nouvel" onClick={ouvrirNouvelleEquipe}>
+            <Plus size={14} aria-hidden="true" /> Nouvelle équipe
           </button>
         </span>
       </div>
