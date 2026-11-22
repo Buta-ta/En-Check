@@ -69,7 +69,10 @@ it('retire le raccourci de la coque paie, mais garde Planning et les autres page
 })
 it('câblage : accueil paie depuis Planning et billet dans les trois vues', () => {
   const source=readFileSync('src/pages/Planning.jsx','utf8')
-  expect(source).toContain('path: "/paie"'); expect(source).not.toContain('path: "/paie?onglet=fiches"')
+  // Le 22/11, la bande de raccourcis est sortie du bandeau : le voyage se fait
+  // sur un seul bouton, « Fiches de paie », et il reste nu — pas d'onglet imposé.
+  expect(source).toContain('navigate("/paie")'); expect(source).toContain('<FileText size={14} />')
+  expect(source).not.toContain('path: "/paie?onglet=fiches"')
   expect(source.match(/<PlanningPayslipBadge entries=/g)).toHaveLength(3)
   expect(readFileSync('src/pages/PaieFiscalite.jsx','utf8')).toContain("excludePaths={['/paie']}")
   expect(readFileSync('src/components/PlanningPayslipBadge.css','utf8')).toContain('prefers-reduced-motion:reduce')
