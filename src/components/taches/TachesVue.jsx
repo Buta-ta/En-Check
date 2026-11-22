@@ -24,7 +24,7 @@
 // ════════════════════════════════════════════════════════════════
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
   AlertTriangle, CalendarDays, Check, CheckCircle2, ChevronDown,
   Clock3, HelpCircle, Info, ListTodo, Loader2, Pencil, Plus,
@@ -38,10 +38,12 @@ import {
   getTasks, createTask, updateTask, deleteTask,
   getTaskCategories, createTaskCategory, updateTaskCategory, deleteTaskCategory,
   getStatusLabel, getPriorityLabel, getDeadlineStatus, getTaskAlerts,
+  // la fiche de tâche : lue ici, écrite ici — la page `/taches/:id` n'est plus
+  getTaskById, validateTask, rejectTask, reassignRejectedTask, addTaskComment,
 } from '../../services/taskService'
 import { getTeams } from '../../services/teamService'
 import {
-  CategoryModal, TaskModal, DeleteModal, ShortcutsModal,
+  CategoryModal, TaskModal, DeleteModal, ShortcutsModal, FicheTacheModal,
 } from './TachesModales'
 import '../../pages/EmployesRefonte.css'
 
@@ -192,7 +194,6 @@ function CarteTache({ tache, selection, equipe, onBasculer, onOuvrir, onModifier
 }
 
 export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [], signalCreation = 0 }) {
-  const navigate = useNavigate()
   const [admin, setAdmin] = useState(null)
   const [enterpriseId, setEnterpriseId] = useState(enterpriseIdProp || null)
   const [raison, setRaison] = useState('ok')
@@ -221,6 +222,15 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
 
   const [montrerTache, setMontrerTache] = useState(false)
   const [montrerCategorie, setMontrerCategorie] = useState(false)
+  // ── la fiche de tâche, lue SANS quitter le tableau ──────────────
+  // L'identifiant est l'état, la tâche lue en découle : la liste du
+  // tableau ne porte pas les commentaires, les pièces jointes ni
+  // l'historique, donc la fenêtre demande la fiche complète au service.
+  const [tacheLue, setTacheLue] = useState(null)
+  const [detailTache, setDetailTache] = useState(null)
+  const [chargementFiche, setChargementFiche] = useState(false)
+  const [travailFiche, setTravailFiche] = useState(false)
+  const [params, setParams] = useSearchParams()
   const [montrerSuppression, setMontrerSuppression] = useState(false)
   const [montrerRaccourcis, setMontrerRaccourcis] = useState(false)
 
@@ -303,6 +313,140 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
     }
   }, [signalCreation])
 
+  // l'adresse porte la tâche lue (`?tache=<id>`) : le lien reste
+  // partageable, et le bouton « retour » du navigateur ferme la fenêtre au
+  // lieu de jeter hors de la page — c'est ce que la page savait faire et
+  // que la fenêtre doit garder
+  // l'adresse écrite et l'adresse LUE se comparent par cette référence : le
+  // parent est le seul à écrire l'adresse, donc il sait laquelle il vient de
+  // poser — sans ça, la fermeture par Échap se fait re-ouvrir par l'effet,
+  // l'effet voyant encore l'ancien `?tache=` pendant que le state est déjà vide
+  const adressePos = useRef(null)
+  const marquerAdresse = useCallback((id) => {
+    adressePos.current = id
+    setParams((precedents) => {
+      const suivants = new URLSearchParams(precedents)
+      if (id) suivants.set('tache', id)
+      else suivants.delete('tache')
+      return suivants
+    }, { replace: true })
+  }, [setParams])
+
+  const chargerFiche = useCallback(async (id) => {
+    if (!id) return
+    setChargementFiche(true)
+    try {
+      const { data, error } = await getTaskById(id)
+      if (error) throw error
+      setDetailTache(data)
+    } catch (erreur) {
+      console.error('Chargement de la tâche :', erreur)
+      toast.error('Impossible de charger la tâche')
+      setTacheLue(null)
+      setDetailTache(null)
+      marquerAdresse(null)
+    } finally {
+      setChargementFiche(false)
+    }
+  }, [marquerAdresse])
+
+  const ouvrirFiche = useCallback((id) => {
+    if (!id) return
+    setTacheLue(id)
+    marquerAdresse(id)
+    chargerFiche(id)
+  }, [chargerFiche, marquerAdresse])
+
+  const fermerFiche = useCallback(() => {
+    setTacheLue(null)
+    setDetailTache(null)
+    marquerAdresse(null)
+  }, [marquerAdresse])
+
+  // une arrivée par le lien (`?tache=<id>` — la commande rapide de
+  // l'assistant, un résultat de la recherche globale, le bouton « retour »
+  // du navigateur) pilote la fiche : l'identifiant ouvre, son absence referme
+  useEffect(() => {
+    const id = params.get('tache')
+    if (id === adressePos.current) return
+    if (id) ouvrirFiche(id)
+    else fermerFiche()
+  }, [params, ouvrirFiche, fermerFiche])
+
+  // après un geste de la fiche, la liste ET la fiche se rechargent : valider
+  // une tâche change la colonne de la carte SOUS la fenêtre ouverte
+  const apresGeste = useCallback(async (id) => {
+    await Promise.all([charger(enterpriseId), chargerFiche(id)])
+  }, [charger, chargerFiche, enterpriseId])
+
+  const validerTacheLue = useCallback(async () => {
+    if (!tacheLue) return
+    setTravailFiche(true)
+    try {
+      const { error } = await validateTask(tacheLue, admin?.id, '✅ Tâche validée par l’administrateur')
+      if (error) throw error
+      toast.success('Tâche validée')
+      await apresGeste(tacheLue)
+    } catch (erreur) {
+      toast.error(erreur.message || 'Validation impossible')
+    } finally {
+      setTravailFiche(false)
+    }
+  }, [tacheLue, admin, apresGeste])
+
+  const rejeterTacheLue = useCallback(async (motif) => {
+    if (!tacheLue || !motif) return
+    setTravailFiche(true)
+    try {
+      const { error } = await rejectTask(tacheLue, admin?.id, motif)
+      if (error) throw error
+      toast.success('Tâche rejetée')
+      await apresGeste(tacheLue)
+    } catch (erreur) {
+      toast.error(erreur.message || 'Rejet impossible')
+    } finally {
+      setTravailFiche(false)
+    }
+  }, [tacheLue, admin, apresGeste])
+
+  const reassignerTacheLue = useCallback(async (payload) => {
+    if (!tacheLue) return
+    setTravailFiche(true)
+    try {
+      const { error } = await reassignRejectedTask(tacheLue, admin?.id, payload)
+      if (error) throw error
+      toast.success('Tâche réassignée')
+      await apresGeste(tacheLue)
+    } catch (erreur) {
+      toast.error(erreur.message || 'Réassignation impossible')
+    } finally {
+      setTravailFiche(false)
+    }
+  }, [tacheLue, admin, apresGeste])
+
+  const commenterTacheLue = useCallback(async (texte) => {
+    if (!tacheLue || !texte) return
+    setTravailFiche(true)
+    try {
+      const { error } = await addTaskComment(tacheLue, admin?.id, 'admin', texte)
+      if (error) throw error
+      toast.success('Commentaire ajouté')
+      await chargerFiche(tacheLue)
+    } catch (erreur) {
+      toast.error(erreur.message || 'Commentaire refusé')
+    } finally {
+      setTravailFiche(false)
+    }
+  }, [tacheLue, admin, chargerFiche])
+
+  const passerEnEdition = useCallback((t) => {
+    // une fenêtre à la fois : la fiche s'efface pendant que la feuille
+    // d'écriture se pose, sinon deux « Enregistrer » se répondent
+    fermerFiche()
+    setTacheEditee(t)
+    setMontrerTache(true)
+  }, [fermerFiche])
+
   useEffect(() => {
     const surTouche = (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return
@@ -313,6 +457,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
         case 'escape':
           setMontrerTache(false); setMontrerCategorie(false)
           setMontrerSuppression(false); setMontrerRaccourcis(false)
+          fermerFiche()
           break
         case '?': e.preventDefault(); setMontrerRaccourcis(true); break
         default: break
@@ -320,7 +465,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
     }
     window.addEventListener('keydown', surTouche)
     return () => window.removeEventListener('keydown', surTouche)
-  }, [charger, ouvrirNouvelleTache, enterpriseId])
+  }, [charger, ouvrirNouvelleTache, enterpriseId, fermerFiche])
 
   const enregistrerTache = useCallback(async (formulaire) => {
     setEnregistrement(true)
@@ -707,7 +852,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
                     selection={selection.includes(tache.id)}
                     equipe={tache.team?.name}
                     onBasculer={basculerSelection}
-                    onOuvrir={(id) => navigate(`/taches/${id}`)}
+                    onOuvrir={ouvrirFiche}
                     onModifier={(t) => { setTacheEditee(t); setMontrerTache(true) }}
                     onSupprimer={(t) => { setASupprimer(t); setMontrerSuppression(true) }}
                   />
@@ -771,7 +916,7 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
                 </div>
                 {a.task_id && (
                   <div className="empv2-pied-item-actions">
-                    <button type="button" className="empv2-lien" onClick={() => navigate(`/taches/${a.task_id}`)}>
+                    <button type="button" className="empv2-lien" onClick={() => ouvrirFiche(a.task_id)}>
                       Ouvrir la tâche
                     </button>
                   </div>
@@ -781,6 +926,24 @@ export default function TachesVue({ enterpriseId: enterpriseIdProp, employes = [
           </div>
         )}
       </footer>
+
+      {tacheLue && (
+        <FicheTacheModal
+          key={tacheLue}
+          open
+          tache={detailTache}
+          chargement={chargementFiche}
+          travail={travailFiche}
+          employes={employes}
+          onFermer={fermerFiche}
+          onRafraichir={() => chargerFiche(tacheLue)}
+          onModifier={passerEnEdition}
+          onValider={validerTacheLue}
+          onRejeter={rejeterTacheLue}
+          onReassigner={reassignerTacheLue}
+          onCommenter={commenterTacheLue}
+        />
+      )}
 
       <TaskModal
         open={montrerTache}

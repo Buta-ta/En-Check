@@ -3,17 +3,24 @@
 //
 // Une tâche (avec durée prédite, charge de la personne et
 // suggestions), une catégorie, une suppression à confirmer, les
-// raccourcis. Partagées par la vue « Tâches » de la page Employés :
-// aucune coque d'écran ici, uniquement le travail — et la MÊME peau
-// que les fenêtres des Équipes : `TachesModales.css`, posée sur la
-// classe `tam-voile`.
+// raccourcis — et la FICHE de tâche, lue sans quitter le tableau :
+// l'adresse `/taches/:id` ouvrait une PAGE, le 22/11 elle ouvre une
+// fenêtre, et la page est supprimée.
+//
+// Partagées par la vue « Tâches » de la page Employés : aucune coque
+// d'écran ici, uniquement le travail — et la MÊME peau que les
+// fenêtres des Équipes : `TachesModales.css`, posée sur la classe
+// `tam-voile`.
 //
 // Jumelles strictes de `EquipesModales.jsx` : mêmes classes de
 // coque (`tam-` au lieu de `eqm-`), mêmes largeurs au registre, même
 // feuille (coin carré, contour d'encre de 2 px, bande de colle,
 // rabat, double feutre en deux ombres dures). Ce qui change, c'est
-// le contenu : la fenêtre de tâche est la seule à deux colonnes,
-// donc elle prend la largeur MAXIMALE du registre — 760 px.
+// le contenu : les trois fenêtres de tâche sont les seules à poser
+// deux colonnes, donc elles prennent la largeur MAXIMALE du registre
+// — 760 px. La fiche de tâche lit la MÊME largeur : elle n'a pas de
+// second panneau à côté, mais huit mesures, des pièces jointes, deux
+// groupes de commentaires et un historique à loger.
 //
 // Avant : un objet `styles` de 133 clefs de CSS écrites dans le JS,
 // posées en `style={…}` — 39 clefs trouvaient preneur, 94
@@ -37,12 +44,15 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
-import { Plus, X, Loader2, Edit3, Trash2, Clock, AlertTriangle, CheckCircle2, Camera, FileText, MessageSquare, ShieldCheck, Sparkles, Tag, Check, Lightbulb } from 'lucide-react'
+import { Plus, X, Loader2, Edit3, Trash2, Clock, AlertTriangle, CheckCircle2, Camera, FileText, MessageSquare, ShieldCheck, Sparkles, Tag, Check, Lightbulb, ClipboardList, Calendar, Eye, Play, Zap, Paperclip, Image as ImageIcon, Download, History, ChevronDown, Send, RefreshCw, TimerReset, Users, XCircle, Pencil, Flag } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import {
   predictTaskDuration, checkEmployeeWorkload, suggestAssignees,
   TASK_PRIORITY, TASK_TYPE,
+  // la fiche de tâche lit ses exigences et ses heures ici, et n'appelle
+  // AUCUN service d'écriture : les gestes remontent au parent
+  getStatusLabel, getPriorityLabel, getDeadlineStatus, formatDuration,
 } from '../../services/taskService'
 
 import './TachesModales.css'
@@ -713,6 +723,556 @@ export function ShortcutsModal({ open, onClose }) {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FENÊTRE FICHE DE TÂCHE — la page de détail est devenue une fenêtre
+// ═══════════════════════════════════════════════════════════════════
+//
+// Avant, cliquer une carte faisait QUITTER l'onglet : une page entière
+// s'ouvrait à l'adresse `/taches/:id`, hors de la peau : 1 655 lignes,
+// dont un objet `S` de 699 lignes de CSS écrites en JS et 40
+// attributions `style` — 83 valeurs de couleur en dur (dont un or
+// F59E0B et cinquante-six `rgba(…)`), un `backdropFilter: blur(6px)` et
+// deux ombres floues, rien que C1, C9 et D-016 n'auraient manqué. Elle
+// est supprimée, et tout ce qu'elle savait dire entre ici, dans la MÊME
+// feuille que les trois autres fenêtres de l'onglet.
+//
+// Ce qui est gardé, mot pour mot : les huit mesures (échéance, durée
+// prédite et réelle, performance, les quatre horodatages), le motif de
+// rejet, les pièces jointes, les cinq exigences, les commentaires en
+// deux groupes avec leur champ d'ajout, l'historique, et les trois
+// gestes d'administrateur — valider, rejeter, réassigner. Ce qui
+// change : la couleur, les ombres et les largeurs viennent de la
+// feuille, plus du JS. Les squelettes de chargement de la page sont
+// tombés avec elle — une fenêtre qui charge dit « Chargement » en une
+// ligne, elle ne dessine pas un faux écran derrière.
+//
+// Les gestes d'écriture restent chez le parent (`TachesVue`) : la fenêtre
+// ne parle à aucun service, elle appelle `onValider`, `onRejeter`,
+// `onReassigner`, `onCommenter` — comme `TaskModal` appelle `onSave`. La
+// fiche est donc la seule fenêtre de l'île à être posée par-dessus le
+// tableau SANS se refermer sur soi : après une validation, le parent
+// recharge la liste, et la carte change de colonne sous la fenêtre.
+
+// Le ton d'un statut, et le mot à côté. Une teinte seule ne dit rien (C7) :
+// le mot est écrit, la couleur le rappelle.
+const TON_STATUT = {
+  assigned: 'neutre',
+  seen: 'neutre',
+  in_progress: 'cours',
+  paused: 'cours',
+  completed: 'cours',
+  validated: 'present',
+  rejected: 'absent',
+  cancelled: 'neutre',
+}
+
+// Les cinq exigences, dans l'ordre du formulaire de création : la fiche de
+// lecture doit nommer les mêmes cases que la fiche d'écriture.
+const EXIGENCES_LUES = [
+  { cle: 'requires_proof', libelle: 'Preuve requise', icone: Camera },
+  { cle: 'requires_comment', libelle: 'Commentaire requis', icone: MessageSquare },
+  { cle: 'allow_image', libelle: 'Image autorisée', icone: ImageIcon },
+  { cle: 'allow_document', libelle: 'Document autorisé', icone: FileText },
+  { cle: 'allow_camera_photo', libelle: 'Photo caméra', icone: Camera },
+]
+
+const TYPE_FICHIER = {
+  image: 'Image',
+  camera_photo: 'Photo caméra',
+  document: 'Document',
+}
+
+// le service de réponse « — » quand une durée manque : la fiche le sait, et
+// marque le cas comme une ABSENCE — un tiret peint en valeur pleine ferait un
+// faux chiffre dans la grille
+const dureeLisible = (secondes) => {
+  const duree = formatDuration(secondes)
+  return duree && duree !== '—' ? duree : null
+}
+
+const dateLisible = (valeur) => {
+  if (!valeur) return null
+  const date = new Date(valeur)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleString('fr-FR', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+// une note ou un croquis, ça se lit à l'heure près, pas à l'année
+const heureLisible = (valeur) => {
+  if (!valeur) return null
+  const date = new Date(valeur)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleString('fr-FR', {
+    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+export function FicheTacheModal({
+  open,
+  tache = null,
+  chargement = false,
+  travail = false,
+  employes = [],
+  onFermer,
+  onRafraichir,
+  onModifier,
+  onValider,
+  onRejeter,
+  onReassigner,
+  onCommenter,
+}) {
+  const [commentaire, setCommentaire] = useState('')
+  const [journalOuvert, setJournalOuvert] = useState(false)
+  const [rejetOuvert, setRejetOuvert] = useState(false)
+  const [reassignationOuverte, setReassignationOuverte] = useState(false)
+
+  // AUCUN effet de remise à zéro ici, et c'est voulu : le parent pose
+  // `key={identifiant}` sur cette fenêtre, qui naît donc NEUVE à chaque
+  // tâche ouverte — pas le commentaire de la tâche d'avant, pas la
+  // fenêtre de rejet laissée ouverte. (Un `setState` dans un `useEffect`
+  // pour vider quatre états est la faute que l'île connaissait déjà.)
+  if (!open) return null
+
+  const echeance = tache?.due_at ? getDeadlineStatus(tache.due_at) : null
+  const commentaires = tache?.comments || []
+  const notesAdmin = commentaires.filter((c) => c.author_type === 'admin')
+  const notesEmploye = commentaires.filter((c) => c.author_type !== 'admin')
+  const pieces = tache?.attachments || []
+  const journal = tache?.activity_logs || []
+  const teinte = tache?.category?.color || null
+  const aValider = tache?.status === 'completed'
+  const rejetee = tache?.status === 'rejected'
+  const tonStatut = TON_STATUT[tache?.status] || 'neutre'
+
+  const mesures = [
+    { icone: Calendar, cle: 'echeance', label: 'Échéance', valeur: dateLisible(tache?.due_at) },
+    { icone: Clock, cle: 'prevue', label: 'Durée prévue', valeur: tache?.expected_duration_minutes ? `${tache.expected_duration_minutes} min` : null },
+    { icone: Clock, cle: 'reelle', label: 'Durée réelle', valeur: tache ? dureeLisible(tache.actual_duration_seconds) : null },
+    { icone: Zap, cle: 'performance', label: 'Performance', valeur: tache?.performance_score != null ? `${tache.performance_score}%` : null },
+    { icone: Eye, cle: 'vue', label: 'Vue le', valeur: dateLisible(tache?.seen_at) },
+    { icone: Play, cle: 'demarree', label: 'Démarrée le', valeur: dateLisible(tache?.started_at) },
+    { icone: CheckCircle2, cle: 'terminee', label: 'Terminée le', valeur: dateLisible(tache?.completed_at) },
+    { icone: Calendar, cle: 'creee', label: 'Créée le', valeur: dateLisible(tache?.created_at) },
+  ]
+
+  return (
+    <>
+      <div className="tam-voile" onClick={onFermer}>
+        <div
+          className="tam-feuille tam-feuille--large tam-feuille--lecture"
+          role="dialog"
+          aria-modal="true"
+          aria-label={tache ? `Tâche : ${tache.title}` : 'Tâche'}
+          /* la teinte de la catégorie est une DONNÉE : seule une variable
+             entre en ligne, la feuille en fait le trait. Pas de lavis ici :
+             sous cette feuille, il y a des mots à lire partout */
+          style={teinte ? { '--tam-teinte': teinte } : undefined}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="tam-tete">
+            <span className="tam-tete-bloc">
+              <span className="tam-pucelle"><ClipboardList size={18} /></span>
+              <h3 className="tam-titre">{tache?.title || 'Tâche'}</h3>
+            </span>
+            <span className="tam-tete-actions">
+              <button type="button" className="tam-fermer" onClick={onRafraichir} aria-label="Recharger la tâche">
+                <RefreshCw size={14} />
+              </button>
+              <button type="button" className="tam-fermer" onClick={onFermer} aria-label="Fermer">
+                <X size={18} />
+              </button>
+            </span>
+          </div>
+
+          <div className="tam-corps">
+            {chargement && (
+              <p className="tam-vide"><Loader2 size={14} className="spin" /> Chargement de la tâche…</p>
+            )}
+            {!tache && !chargement && (
+              <p className="tam-vide">Rien à montrer : la tâche n’est plus là.</p>
+            )}
+
+            {tache && (
+              <>
+                {/* les marques : quatre mots souligés de leur feutre, pas quatre
+                    pastilles pleines — la maison ne met pas de fond sous un mot */}
+                <p className="tam-marques" data-ton={tonStatut} data-priorite={tache.priority || 'medium'}>
+                  <span className="tam-marque tam-marque--statut">{getStatusLabel(tache.status)}</span>
+                  <span className="tam-marque tam-marque--priorite">{getPriorityLabel(tache.priority)}</span>
+                  <span className="tam-marque">{tache.task_type === 'team' ? 'Équipe' : 'Individuelle'}</span>
+                  {tache.category?.name && (
+                    <span className="tam-marque tam-marque--categorie">{tache.category.name}</span>
+                  )}
+                </p>
+
+                {echeance && echeance.urgency !== 'none' && (
+                  <div className="tam-charge" data-ton={echeance.overdue ? 'critique' : 'attention'}>
+                    {echeance.overdue
+                      ? <AlertTriangle size={16} className="tam-charge-ico" aria-hidden="true" />
+                      : <Clock size={16} className="tam-charge-ico" aria-hidden="true" />}
+                    <span className="tam-charge-corps">
+                      <span className="tam-charge-ligne">{echeance.text}</span>
+                    </span>
+                  </div>
+                )}
+
+                {tache.description && <p className="tam-texte">{tache.description}</p>}
+
+                {/* à qui, et par qui */}
+                <div className="tam-attribution">
+                  {tache.task_type === 'team' ? (
+                    <span className="tam-qui">
+                      <span className="tam-qui-ico"><Users size={13} /></span>
+                      <span className="tam-qui-nom">{tache.team?.name || 'Équipe'}</span>
+                      <span className="tam-qui-role">équipe</span>
+                    </span>
+                  ) : (
+                    <span className="tam-qui">
+                      <span className="tam-avatar" aria-hidden="true">
+                        {tache.assigned_employee?.photo_url
+                          ? <img src={tache.assigned_employee.photo_url} alt="" />
+                          : `${tache.assigned_employee?.first_name?.[0] || ''}${tache.assigned_employee?.last_name?.[0] || ''}`.toUpperCase() || '—'}
+                      </span>
+                      <span className="tam-qui-nom">
+                        {tache.assigned_employee
+                          ? `${tache.assigned_employee.first_name || ''} ${tache.assigned_employee.last_name || ''}`.trim()
+                          : 'Personne non assignée'}
+                      </span>
+                      {tache.assigned_employee?.position && (
+                        <span className="tam-qui-role">{tache.assigned_employee.position}</span>
+                      )}
+                    </span>
+                  )}
+                  {tache.created_by_admin && (
+                    <span className="tam-qui">
+                      <span className="tam-qui-ico"><ShieldCheck size={13} /></span>
+                      <span className="tam-qui-role">créée par</span>
+                      <span className="tam-qui-nom">
+                        {tache.created_by_admin.first_name} {tache.created_by_admin.last_name}
+                      </span>
+                    </span>
+                  )}
+                </div>
+
+                <h4 className="tam-section"><ClipboardList size={13} /><span>Informations</span></h4>
+                <dl className="tam-mesures">
+                  {mesures.map((mesure) => (
+                    <div className="tam-mesure" key={mesure.cle}>
+                      <dt className="tam-mesure-cle">
+                        <mesure.icone size={12} aria-hidden="true" />
+                        <span>{mesure.label}</span>
+                      </dt>
+                      <dd className={`tam-mesure-valeur${mesure.valeur ? '' : ' tam-mesure-valeur--absente'}`}>
+                        {mesure.valeur || '—'}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+
+                {tache.rejection_reason && (
+                  <div className="tam-charge" data-ton="critique">
+                    <XCircle size={16} className="tam-charge-ico" aria-hidden="true" />
+                    <span className="tam-charge-corps">
+                      <span className="tam-charge-ligne">Rejetée : {tache.rejection_reason}</span>
+                    </span>
+                  </div>
+                )}
+
+                <h4 className="tam-section">
+                  <Paperclip size={13} />
+                  <span>Pièces jointes{pieces.length ? ` (${pieces.length})` : ''}</span>
+                </h4>
+                {pieces.length ? (
+                  <ul className="tam-pieces">
+                    {pieces.map((fichier) => (
+                      <li key={fichier.id}>
+                        <a className="tam-piece" href={fichier.file_url} target="_blank" rel="noreferrer">
+                          <span className="tam-piece-ico" aria-hidden="true">
+                            {fichier.file_type === 'image' && <ImageIcon size={14} />}
+                            {fichier.file_type === 'camera_photo' && <Camera size={14} />}
+                            {fichier.file_type === 'document' && <FileText size={14} />}
+                            {!TYPE_FICHIER[fichier.file_type] && <Paperclip size={14} />}
+                          </span>
+                          <span className="tam-piece-corps">
+                            <span className="tam-piece-nom">{fichier.file_name || 'Fichier'}</span>
+                            <span className="tam-piece-note">
+                              {TYPE_FICHIER[fichier.file_type] || fichier.file_type}
+                              {' · '}{heureLisible(fichier.uploaded_at) || 'sans date'}
+                            </span>
+                          </span>
+                          {/* le geste est ÉCRIT, pas seulement dessiné : une
+                              icône de téléchargement seule ne dit pas ce qui
+                              s'ouvre, et un mot caché à la main n'est pas la
+                              maison */}
+                          <span className="tam-piece-ouvrir">
+                            <Download size={12} aria-hidden="true" />
+                            <span>Ouvrir</span>
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="tam-vide">Aucune pièce jointe.</p>
+                )}
+
+                <h4 className="tam-section"><Flag size={13} /><span>Exigences</span></h4>
+                <div className="tam-stats">
+                  {EXIGENCES_LUES.map((exigence) => (
+                    <span className="tam-stat" key={exigence.cle}>
+                      <exigence.icone size={14} aria-hidden="true" />
+                      <span>
+                        {exigence.libelle} : <strong>{tache[exigence.cle] ? 'oui' : 'non'}</strong>
+                      </span>
+                    </span>
+                  ))}
+                </div>
+
+                <h4 className="tam-section">
+                  <MessageSquare size={13} />
+                  <span>Commentaires{commentaires.length ? ` (${commentaires.length})` : ''}</span>
+                </h4>
+                <NotesTache Groupe="Commentaires admin" notes={notesAdmin} auteur="admin" vide="Aucun commentaire admin." />
+                <NotesTache Groupe="Commentaires employé" notes={notesEmploye} auteur="employe" vide="Aucun commentaire employé." />
+
+                <div className="tam-champ">
+                  <label htmlFor="tam-fiche-commentaire">Ajouter un commentaire</label>
+                  <textarea
+                    id="tam-fiche-commentaire"
+                    className="tam-saisie tam-saisie--longue"
+                    rows={2}
+                    value={commentaire}
+                    onChange={(e) => setCommentaire(e.target.value)}
+                    placeholder="Ce que la personne doit savoir…"
+                  />
+                  <span className="tam-envoyer">
+                    <button
+                      type="button"
+                      className="tam-btn"
+                      disabled={travail || !commentaire.trim()}
+                      onClick={() => onCommenter(commentaire.trim())}
+                    >
+                      {travail ? <Loader2 size={13} className="spin" /> : <Send size={13} />}
+                      <span>Envoyer</span>
+                    </button>
+                  </span>
+                </div>
+
+                <h4 className="tam-section">
+                  <button
+                    type="button"
+                    className="tam-repli"
+                    aria-expanded={journalOuvert}
+                    onClick={() => setJournalOuvert((v) => !v)}
+                  >
+                    <History size={13} />
+                    <span>Historique{journal.length ? ` (${journal.length})` : ''}</span>
+                    <ChevronDown size={13} data-ouvert={journalOuvert ? 'oui' : undefined} />
+                  </button>
+                </h4>
+                {journalOuvert && (
+                  journal.length ? (
+                    <ol className="tam-journal">
+                      {journal.map((ligne) => (
+                        <li className="tam-journal-ligne" key={ligne.id}>
+                          <span className="tam-journal-point" aria-hidden="true" />
+                          <span className="tam-journal-corps">
+                            <span className="tam-journal-action">{ligne.action}</span>
+                            <span className="tam-journal-note">
+                              {ligne.actor_type === 'employee' ? 'l’employé' : ligne.actor_type === 'admin' ? 'l’administrateur' : ligne.actor_type}
+                              {' · '}{heureLisible(ligne.created_at) || 'sans date'}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="tam-vide">Aucune activité enregistrée.</p>
+                  )
+                )}
+              </>
+            )}
+          </div>
+
+          {tache && (
+            <div className="tam-pied">
+              <button
+                type="button"
+                className={`tam-btn${aValider || rejetee ? '' : ' tam-btn--pleine'}`}
+                onClick={() => onModifier(tache)}
+              >
+                <Pencil size={14} />
+                <span>Modifier</span>
+              </button>
+              {aValider && (
+                <>
+                  <button type="button" className="tam-btn tam-btn--danger" onClick={() => setRejetOuvert(true)} disabled={travail}>
+                    <XCircle size={14} />
+                    <span>Rejeter</span>
+                  </button>
+                  <button type="button" className="tam-btn tam-btn--pleine" onClick={onValider} disabled={travail}>
+                    {travail ? <Loader2 size={15} className="spin" /> : <CheckCircle2 size={15} />}
+                    <span>Valider</span>
+                  </button>
+                </>
+              )}
+              {rejetee && (
+                <button type="button" className="tam-btn tam-btn--pleine" onClick={() => setReassignationOuverte(true)} disabled={travail}>
+                  <TimerReset size={14} />
+                  <span>Réassigner</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* les deux fenêtres de geste, posées PAR-DESSUS la fiche : mêmes
+          classes, même voile, et le clic sur leur fond ne ferme QUE elles */}
+      {rejetOuvert && (
+        <FenetreRejet
+          travail={travail}
+          onFermer={() => setRejetOuvert(false)}
+          onConfirmer={(motif) => { setRejetOuvert(false); onRejeter(motif) }}
+        />
+      )}
+      {reassignationOuverte && (
+        <FenetreReassignation
+          travail={travail}
+          employes={employes}
+          onFermer={() => setReassignationOuverte(false)}
+          onConfirmer={(payload) => { setReassignationOuverte(false); onReassigner(payload) }}
+        />
+      )}
+    </>
+  )
+}
+
+// un groupe de notes : le mot de l'auteur porte la couleur, jamais l'inverse
+function NotesTache({ Groupe, notes, auteur, vide }) {
+  return (
+    <div className="tam-notes-bloc">
+      <p className="tam-notes-titre">{Groupe}</p>
+      {notes.length ? (
+        <ul className="tam-notes">
+          {notes.map((note) => (
+            <li className="tam-note" data-auteur={auteur} key={note.id}>
+              <span className="tam-note-tete">
+                <span className="tam-note-auteur">{auteur === 'admin' ? 'Admin' : 'Employé'}</span>
+                <span className="tam-note-date">{heureLisible(note.created_at) || 'sans date'}</span>
+              </span>
+              <span className="tam-note-texte">{note.comment}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="tam-vide">{vide}</p>
+      )}
+    </div>
+  )
+}
+
+// la voile d'une fenêtre fille : le clic doit fermer la fille, pas la mère
+const dessusVoile = (onFermer) => (e) => {
+  e.stopPropagation()
+  if (e.target === e.currentTarget) onFermer()
+}
+
+// posée par le père seulement quand elle est ouverte : elle se démonte, donc
+// son motif s'efface sans effet à poser
+function FenetreRejet({ travail, onFermer, onConfirmer }) {
+  const [motif, setMotif] = useState('')
+
+  return (
+    <div className="tam-voile" onClick={dessusVoile(onFermer)}>
+      <div className="tam-feuille" role="dialog" aria-modal="true" aria-label="Rejeter la tâche" onClick={(e) => e.stopPropagation()}>
+        <div className="tam-tete">
+          <span className="tam-tete-bloc">
+            <span className="tam-pucelle"><XCircle size={18} /></span>
+            <h3 className="tam-titre">Rejeter la tâche</h3>
+          </span>
+          <button type="button" className="tam-fermer" onClick={onFermer} aria-label="Fermer"><X size={18} /></button>
+        </div>
+        <form className="tam-corps" onSubmit={(e) => { e.preventDefault(); if (motif.trim()) onConfirmer(motif.trim()) }}>
+          <div className="tam-champ">
+            <label htmlFor="tam-rejet-motif">Motif du rejet *</label>
+            <textarea
+              id="tam-rejet-motif"
+              className="tam-saisie tam-saisie--longue"
+              rows={4}
+              value={motif}
+              onChange={(e) => setMotif(e.target.value)}
+              placeholder="Expliquez pourquoi la tâche est rejetée…"
+            />
+          </div>
+          <div className="tam-pied">
+            <button type="button" className="tam-btn" onClick={onFermer} disabled={travail}>Annuler</button>
+            <button type="submit" className="tam-btn tam-btn--danger" disabled={travail || !motif.trim()}>
+              {travail ? <Loader2 size={14} className="spin" /> : <XCircle size={14} />}
+              <span>Rejeter</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function FenetreReassignation({ travail, employes, onFermer, onConfirmer }) {
+  const [employeId, setEmployeId] = useState('')
+  const [echeance, setEcheance] = useState('')
+  const [motif, setMotif] = useState('')
+
+  return (
+    <div className="tam-voile" onClick={dessusVoile(onFermer)}>
+      <div className="tam-feuille" role="dialog" aria-modal="true" aria-label="Réassigner la tâche" onClick={(e) => e.stopPropagation()}>
+        <div className="tam-tete">
+          <span className="tam-tete-bloc">
+            <span className="tam-pucelle"><TimerReset size={18} /></span>
+            <h3 className="tam-titre">Réassigner la tâche</h3>
+          </span>
+          <button type="button" className="tam-fermer" onClick={onFermer} aria-label="Fermer"><X size={18} /></button>
+        </div>
+        <form className="tam-corps" onSubmit={(e) => {
+          e.preventDefault()
+          onConfirmer({
+            new_employee_id: employeId || null,
+            new_due_at: echeance || null,
+            comment: motif || null,
+          })
+        }}>
+          <div className="tam-champ">
+            <label htmlFor="tam-reassign-employe">Nouvel employé</label>
+            <select id="tam-reassign-employe" className="tam-saisie" value={employeId} onChange={(e) => setEmployeId(e.target.value)}>
+              <option value="">Garder l’employé actuel</option>
+              {employes.map((e) => (
+                <option key={e.id} value={e.id}>{e.first_name} {e.last_name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="tam-champ">
+            <label htmlFor="tam-reassign-echeance">Nouvelle échéance</label>
+            <input id="tam-reassign-echeance" className="tam-saisie" type="datetime-local" value={echeance} onChange={(e) => setEcheance(e.target.value)} />
+          </div>
+          <div className="tam-champ">
+            <label htmlFor="tam-reassign-motif">Commentaire admin</label>
+            <textarea id="tam-reassign-motif" className="tam-saisie tam-saisie--longue" rows={3} value={motif} onChange={(e) => setMotif(e.target.value)} placeholder="Message de réassignation…" />
+          </div>
+          <div className="tam-pied">
+            <button type="button" className="tam-btn" onClick={onFermer} disabled={travail}>Annuler</button>
+            <button type="submit" className="tam-btn tam-btn--pleine" disabled={travail}>
+              {travail ? <Loader2 size={14} className="spin" /> : <TimerReset size={14} />}
+              <span>Réassigner</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

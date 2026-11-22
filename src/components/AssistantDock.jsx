@@ -396,7 +396,8 @@ export default function AssistantDock() {
     const actions = { goDashboard: '/dashboard', goReports: '/rapports', goMap: '/geopointage', goPredictions: '/predictions' }
     if (result.type === 'download_app' || result.type === 'hours_detail') return
     if (result.type === 'employee') return go(`/employes?id=${encodeURIComponent(result.id)}`)
-    if (result.type === 'task') return go(`/taches/${encodeURIComponent(result.id)}`)
+    // l'ancienne page de tâche n'existe plus : la vue, et la fiche ouverte
+    if (result.type === 'task') return go(`/employes?vue=taches&tache=${encodeURIComponent(result.id)}`)
     const path = result.type === 'action' ? actions[result.action] : paths[result.type]
     if (path) go(path)
     else setMessage('Ce résultat est consultable ici. Pour poursuivre, ouvrez la page métier correspondante depuis En-Check.')

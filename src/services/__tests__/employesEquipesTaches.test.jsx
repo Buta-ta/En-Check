@@ -134,6 +134,17 @@ vi.mock('../../services/taskService', () => ({
   updateTaskCategory: async () => ({ error: null }),
   deleteTaskCategory: async () => ({ success: true }),
   getTaskAlerts: async () => ({ data: etat.alertes }),
+  // la fiche de tâche : lue par le parent, écrite par le parent
+  getTaskById: async (id) => {
+    appels.push({ type: 'getTaskById', id })
+    if (etat.erreurFiche) return { data: null, error: etat.erreurFiche }
+    return { data: etat.fiche ? { ...etat.fiche, id } : null }
+  },
+  validateTask: async (id, _adminId, commentaire) => { appels.push({ type: 'validateTask', id, commentaire }); return { error: null } },
+  rejectTask: async (id, _adminId, motif) => { appels.push({ type: 'rejectTask', id, motif }); return { error: null } },
+  reassignRejectedTask: async (id, _adminId, payload) => { appels.push({ type: 'reassignRejectedTask', id, payload }); return { error: null } },
+  addTaskComment: async (id, _auteurId, _auteurType, texte) => { appels.push({ type: 'addTaskComment', id, texte }); return { error: null } },
+  formatDuration: (secondes) => (secondes ? `${Math.round(secondes / 60)} min` : '—'),
   getStatusLabel: (s) => ({ assigned: 'Assignée', seen: 'Vue', in_progress: 'En cours', paused: 'En pause', completed: 'Terminée', validated: 'Validée', rejected: 'Refusée', cancelled: 'Annulée' }[s] || s),
   getPriorityLabel: (p) => ({ low: 'Basse', medium: 'Moyenne', high: 'Haute', critical: 'Critique' }[p] || p),
   getDeadlineStatus: (date) => {
@@ -161,7 +172,7 @@ beforeEach(() => {
   Object.assign(etat, {
     equipes: [], taches: [], categories: [], equipeAutorisee: true, tacheAutorisee: true,
     predictions: false, alertes: [], sante: null, orphelins: [], suggestions: [], besoins: [],
-    erreurEquipes: null, erreurTaches: null,
+    erreurEquipes: null, erreurTaches: null, fiche: null, erreurFiche: null,
   })
   hote = document.createElement('div')
   document.body.append(hote)
@@ -1770,5 +1781,267 @@ describe('la feuille de style de la page Employés est saine', () => {
     const ouvrantes = (sansCommentaires.match(/{/g) || []).length
     const fermantes = (sansCommentaires.match(/}/g) || []).length
     expect(fermantes).toBe(ouvrantes)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════
+// ④ bis La fiche de tâche — la page de détail, devenue fenêtre
+// ═══════════════════════════════════════════════════════════
+
+const ficheComplete = (surcharge = {}) => ({
+  ...tache(),
+  description: 'Sortir les bacs, puis rincer le chariot',
+  seen_at: '2026-04-15T14:19:00.000Z',
+  started_at: '2026-04-15T14:25:00.000Z',
+  completed_at: null,
+  actual_duration_seconds: 1500,
+  expected_duration_minutes: 48,
+  performance_score: 92,
+  requires_proof: true,
+  requires_comment: false,
+  allow_image: true,
+  allow_document: false,
+  allow_camera_photo: true,
+  created_by_admin: { first_name: 'Buta', last_name: 'code' },
+  assigned_employee: { first_name: 'Hippo', last_name: 'Biyokila', position: 'Agent' },
+  comments: [
+    { id: 'c-1', author_type: 'admin', comment: 'Merci de finir avant 17 h.', created_at: '2026-04-15T15:00:00.000Z' },
+    { id: 'c-2', author_type: 'employee', comment: 'Chariot cassé, réparé.', created_at: '2026-04-15T16:00:00.000Z' },
+  ],
+  attachments: [
+    { id: 'a-1', file_name: 'photo-bac.jpg', file_type: 'camera_photo', file_url: 'https://exemple.tld/1', uploaded_at: '2026-04-15T16:05:00.000Z' },
+  ],
+  activity_logs: [
+    { id: 'l-1', action: 'tâche démarrée', actor_type: 'employee', created_at: '2026-04-15T14:25:00.000Z' },
+  ],
+  ...surcharge,
+})
+
+// remplir une saisie pilotée par React, comme le reste du dépôt
+const ecrire = (el, valeur) => {
+  const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
+  Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, valeur)
+  el.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+const ouvrirFicheDepuisLaCarte = async (surcharge = {}, gens = []) => {
+  etat.taches = [tache()]
+  etat.fiche = ficheComplete(surcharge)
+  await rendre(<TachesVue enterpriseId="ent-1" employes={gens} />)
+  await act(async () => hote.querySelector('.tqv2-fiche-titre').click())
+  return hote.querySelector('.tam-feuille--lecture')
+}
+
+describe('la fiche de tâche, posée sur le tableau', () => {
+  it('cliquer la carte ouvre une FENÊTRE et ne quitte plus le tableau', async () => {
+    const feuille = await ouvrirFicheDepuisLaCarte()
+    expect(feuille).not.toBeNull()
+    expect(feuille.getAttribute('role')).toBe('dialog')
+    expect(feuille.getAttribute('aria-label')).toContain('Vérifier les extincteurs')
+    // le tableau est toujours dessous : quatre colonnes vivantes
+    expect(hote.querySelectorAll('.tqv2-colonne')).toHaveLength(4)
+    // et c'est bien le parent qui est allé chercher la fiche complète
+    expect(appels.filter((a) => a.type === 'getTaskById')).toEqual([{ type: 'getTaskById', id: 't-1' }])
+  })
+
+  it('écrit le statut, la priorité, le type et la catégorie en mots soulignés', async () => {
+    const feuille = await ouvrirFicheDepuisLaCarte()
+    const marques = [...feuille.querySelectorAll('.tam-marque')].map((m) => m.textContent)
+    expect(marques).toEqual(['Assignée', 'Haute', 'Individuelle', 'Sécurité'])
+    const rangee = feuille.querySelector('.tam-marques')
+    // le ton porte un MOT à côté : la couleur seule ne dirait rien (C7)
+    expect(rangee.getAttribute('data-ton')).toBe('neutre')
+    expect(rangee.getAttribute('data-priorite')).toBe('high')
+    expect(feuille.querySelector('.tam-marque--categorie')).not.toBeNull()
+  })
+
+  it('pose les huit mesures de la page, et dit le vide par un tiret', async () => {
+    const feuille = await ouvrirFicheDepuisLaCarte({ completed_at: null })
+
+    const mesures = [...feuille.querySelectorAll('.tam-mesure')]
+    expect(mesures).toHaveLength(8)
+    const libelles = mesures.map((m) => m.querySelector('.tam-mesure-cle').textContent.trim())
+    expect(libelles).toEqual([
+      'Échéance', 'Durée prévue', 'Durée réelle', 'Performance',
+      'Vue le', 'Démarrée le', 'Terminée le', 'Créée le',
+    ])
+    expect(mesures[1].querySelector('.tam-mesure-valeur').textContent).toBe('48 min')
+    expect(mesures[2].querySelector('.tam-mesure-valeur').textContent).toBe('25 min')
+    expect(mesures[3].querySelector('.tam-mesure-valeur').textContent).toBe('92%')
+    // ce qui manque s'écrit, il n'est pas tu par une pastille vide
+    const absente = mesures[6].querySelector('.tam-mesure-valeur')
+    expect(absente.textContent).toBe('—')
+    expect(absente.getAttribute('class')).toContain('tam-mesure-valeur--absente')
+  })
+
+  it('montre pièces jointes, exigences lues et les deux groupes de commentaires', async () => {
+    const feuille = await ouvrirFicheDepuisLaCarte()
+    expect(feuille.querySelector('.tam-piece-nom').textContent).toBe('photo-bac.jpg')
+    expect(feuille.querySelector('.tam-piece-note').textContent).toContain('Photo caméra')
+    // le geste est écrit, pas seulement dessiné
+    expect(feuille.querySelector('.tam-piece-ouvrir').textContent).toBe('Ouvrir')
+    const exigences = [...feuille.querySelectorAll('.tam-stat')].map((x) => x.textContent)
+    expect(exigences).toHaveLength(5)
+    expect(exigences[0]).toContain('Preuve requise')
+    expect(exigences[0]).toContain('oui')
+    expect(exigences[3]).toContain('non')
+    const notes = [...feuille.querySelectorAll('.tam-note')]
+    expect(notes).toHaveLength(2)
+    expect(notes[0].getAttribute('data-auteur')).toBe('admin')
+    expect(notes[1].querySelector('.tam-note-auteur').textContent).toBe('Employé')
+    expect(notes[1].querySelector('.tam-note-texte').textContent).toContain('Chariot cassé')
+  })
+
+  it(' replie l’historique sur son titre et le déplie à la demande', async () => {
+    const feuille = await ouvrirFicheDepuisLaCarte()
+    const bouton = feuille.querySelector('.tam-repli')
+    expect(bouton.getAttribute('aria-expanded')).toBe('false')
+    expect(feuille.querySelector('.tam-journal')).toBeNull()
+    await act(async () => bouton.click())
+    expect(feuille.querySelector('.tam-repli').getAttribute('aria-expanded')).toBe('true')
+    expect(feuille.querySelector('.tam-journal-action').textContent).toBe('tâche démarrée')
+    expect(feuille.querySelector('.tam-journal-note').textContent).toContain('l’employé')
+  })
+
+  it('une tâche terminée offre Valider, et la seule action pleine de l’écran', async () => {
+    const feuille = await ouvrirFicheDepuisLaCarte({ status: 'completed' })
+    const pied = feuille.querySelector('.tam-pied')
+    expect([...pied.querySelectorAll('.tam-btn')].map((b) => b.textContent.trim())).toEqual(['Modifier', 'Rejeter', 'Valider'])
+    expect(pied.querySelectorAll('.tam-btn--pleine')).toHaveLength(1)
+    expect(pied.querySelector('.tam-btn--pleine').textContent).toContain('Valider')
+
+    await act(async () => boutonAvec('Valider').click())
+    expect(appels.some((a) => a.type === 'validateTask' && a.id === 't-1')).toBe(true)
+    // après le geste, la liste ET la fiche repartent se recaler sur la base
+    expect(appels.filter((a) => a.type === 'getTaskById').length).toBe(2)
+  })
+
+  it('une tâche sans action en attente met MODIFIER en action pleine', async () => {
+    const feuille = await ouvrirFicheDepuisLaCarte()
+    const pleine = feuille.querySelector('.tam-pied .tam-btn--pleine')
+    expect(pleine.textContent).toContain('Modifier')
+    expect(feuille.querySelector('.tam-btn--danger')).toBeNull()
+  })
+
+  it('le rejet demande un motif, écrit dans le service, et ne part pas vide', async () => {
+    const feuille = await ouvrirFicheDepuisLaCarte({ status: 'completed' })
+    await act(async () => [...feuille.querySelectorAll('.tam-btn')].find((b) => b.textContent.includes('Rejeter')).click())
+    const fenetre = hote.querySelector('[aria-label="Rejeter la tâche"]')
+    expect(fenetre).not.toBeNull()
+    const soumettre = [...fenetre.querySelectorAll('.tam-btn')].find((b) => b.textContent.includes('Rejeter'))
+    // aucun appel tant que le motif manque : le bouton est tenu désactivé
+    expect(soumettre.disabled).toBe(true)
+    expect(appels.some((a) => a.type === 'rejectTask')).toBe(false)
+
+    ecrire(fenetre.querySelector('textarea'), 'Preuve illisible')
+    await act(async () => {
+      fenetre.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    expect(appels.some((a) => a.type === 'rejectTask' && a.motif === 'Preuve illisible')).toBe(true)
+    // la fille fermée, la mère reste ouverte sous les yeux
+    expect(hote.querySelector('[aria-label="Rejeter la tâche"]')).toBeNull()
+    expect(hote.querySelector('.tam-feuille--lecture')).not.toBeNull()
+  })
+
+  it('réassigner une tâche rejetée envoie l’employé, l’échéance et le mot', async () => {
+    const feuille = await ouvrirFicheDepuisLaCarte(
+      { status: 'rejected', rejection_reason: 'Bac manquant' },
+      [{ id: 'emp-1', first_name: 'Awa', last_name: 'Dossou' }],
+    )
+    // la fiche porte le motif du rejet, en toutes lettres (à côté du banner
+    // d'échéance, qui est l'autre charge de l'écran)
+    const charges = [...feuille.querySelectorAll('.tam-charge-ligne')].map((c) => c.textContent)
+    expect(charges.find((c) => c.includes('Bac manquant'))).toBeDefined()
+    await act(async () => [...feuille.querySelectorAll('.tam-btn')].find((b) => b.textContent.includes('Réassigner')).click())
+    const fenetre = hote.querySelector('[aria-label="Réassigner la tâche"]')
+    expect(fenetre).not.toBeNull()
+    const selecteur = fenetre.querySelector('select')
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(selecteur, 'emp-1')
+    selecteur.dispatchEvent(new Event('change', { bubbles: true }))
+    ecrire(fenetre.querySelector('input[type="datetime-local"]'), '2026-04-20T09:00')
+    await act(async () => {
+      fenetre.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+    const appel = appels.find((a) => a.type === 'reassignRejectedTask')
+    expect(appel.payload.new_employee_id).toBe('emp-1')
+    expect(appel.payload.new_due_at).toBe('2026-04-20T09:00')
+  })
+
+  it('écrit un commentaire admin depuis la fiche, sans la refermer', async () => {
+    const feuille = await ouvrirFicheDepuisLaCarte()
+    const zone = feuille.querySelector('#tam-fiche-commentaire')
+    ecrire(zone, 'Reprendre lundi')
+    await act(async () => boutonAvec('Envoyer').click())
+    expect(appels.some((a) => a.type === 'addTaskComment' && a.texte === 'Reprendre lundi')).toBe(true)
+    expect(hote.querySelector('.tam-feuille--lecture')).not.toBeNull()
+  })
+
+  it('Échap la referme, et rend l’adresse au tableau', async () => {
+    const feuille = await ouvrirFicheDepuisLaCarte()
+    expect(feuille).not.toBeNull()
+    await act(async () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
+    expect(hote.querySelector('.tam-feuille--lecture')).toBeNull()
+  })
+
+  it('une arrivée par le lien « ?tache=<id> » ouvre la fiche sans clic', async () => {
+    etat.taches = [tache()]
+    etat.fiche = ficheComplete()
+    await act(async () => racine.render(
+      <MemoryRouter initialEntries={['/employes?vue=taches&tache=t-1']}>
+        <TachesVue enterpriseId="ent-1" employes={[]} />
+      </MemoryRouter>,
+    ))
+    expect(hote.querySelector('.tam-feuille--lecture')).not.toBeNull()
+    expect(appels.some((a) => a.type === 'getTaskById' && a.id === 't-1')).toBe(true)
+  })
+
+  it('ne montre pas une fenêtre sur une tâche introuvable', async () => {
+    etat.taches = [tache()]
+    etat.erreurFiche = new Error('panne')
+    await rendre(<TachesVue enterpriseId="ent-1" employes={[]} />)
+    await act(async () => hote.querySelector('.tqv2-fiche-titre').click())
+    expect(hote.querySelector('.tam-feuille--lecture')).toBeNull()
+  })
+
+  it('fermer la fiche n’ouvre plus JAMAIS une page : la page est morte', () => {
+    expect(existsSync('src/pages/TaskDetail.jsx')).toBe(false)
+    expect(APP).not.toMatch(/import\s+TaskDetail\s+from/)
+    expect(APP).not.toContain('<TaskDetail')
+    // l'adresse, elle, reste vivante et porte l'identifiant jusqu'à l'onglet
+    expect(APP).toMatch(/path=["']\/taches\/:taskId["']/)
+    expect(APP).toMatch(/new URLSearchParams\(\{ vue: 'taches', tache: taskId/)
+    // plus aucune carte, ni aucun résultat de recherche, ne navigue vers /taches/<id>
+    const TACHES_VUE = readFileSync('src/components/taches/TachesVue.jsx', 'utf8')
+    expect(TACHES_VUE).not.toMatch(/navigate\(`\/taches\//)
+    const ASSISTANT = readFileSync('src/components/AssistantDock.jsx', 'utf8')
+    expect(ASSISTANT).toContain('/employes?vue=taches&tache=')
+    const SPOTLIGHT = readFileSync('src/components/SpotlightSearchModal.jsx', 'utf8')
+    expect(SPOTLIGHT).toContain('/employes?vue=taches&tache=')
+  })
+
+  it('la fenêtre ne parle à aucun service : les gestes remontent au parent', () => {
+    const MODALES = readFileSync('src/components/taches/TachesModales.jsx', 'utf8')
+    const tete = MODALES.slice(0, MODALES.indexOf('export function FicheTacheModal'))
+    expect(tete.match(/import\s*\{[\s\S]*?\}\s*from '\.\.\/\.\.\/services\/taskService'/)[0])
+      .not.toMatch(/getTaskById|validateTask\(|rejectTask|addTaskComment/)
+    expect(MODALES).not.toMatch(/await\s+(validateTask|rejectTask|reassignRejectedTask|addTaskComment)\(/)
+  })
+
+  it('habille la fiche dans la feuille, pas dans le JS, et sans couleur en dur', () => {
+    const FEUILLE = readFileSync('src/components/taches/TachesModales.css', 'utf8')
+    const depart = FEUILLE.indexOf('.tam-feuille--lecture')
+    const fiche = FEUILLE.slice(depart, FEUILLE.indexOf('}', depart))
+    // la teinte est une donnée : elle entre en variable, la feuille en fait un trait
+    expect(fiche).toMatch(/--tam-teinte: var\(--charte-bordure\)/)
+    // le raccourci `background:` effacerait la bande de colle : interdit ici
+    expect(fiche).not.toMatch(/^\s*background:\s/gm)
+    // aucun #hexadécimal, même en commentaire (C1)
+    expect(FEUILLE).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+    // aucun mot posé sur une teinte : les marques sont d'encre ou de doux
+    expect(FEUILLE).toMatch(/\.tam-marque \{[^}]*color: var\(--charte-douce\)/s)
+    // et le feutre sous le mot est une ombre à zéro de flou (C9)
+    expect(FEUILLE).toMatch(/box-shadow: inset 0 -2px 0 0 /)
+    // aucune valeur de police écrite en dur : la fiche ne connaît que les jetons
+    expect(FEUILLE).not.toMatch(/font-size: [0-9]/)
   })
 })
