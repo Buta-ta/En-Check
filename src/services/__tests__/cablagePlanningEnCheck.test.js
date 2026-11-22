@@ -110,14 +110,24 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // Le fondateur a redemandé le 22/11 : « quand on clique sur une case, on choisit
     // la couleur, cependant tu n'as pas appliqué les couleurs ». Trois causes, trois
     // verrous. 1 · la teinte n'est plus réservée aux heures personnalisées — un
-    // collaborateur qui reçoit un modèle d'entreprise a une couleur, lui aussi ;
-    expect(planningSrc).toMatch(
-      /const couleur = employeeScheduleForm\.custom_color \|\| TEINTE_PAR_DEFAUT;\s*setDayOverrides\(\(prev\) => \{\s*const surcharges = \{ \[COULEUR_HORAIRE_CLE\]: \{ color: couleur \} \};/
+    // collaborateur qui reçoit un modèle d'entreprise a une couleur, lui aussi, et
+    // les deux chemins la relisent DABORD dans la ligne `employee_schedules` ;
+    const lecturesBase = planningSrc.match(
+      /color: es\.custom_color \|\| empOverrides\[COULEUR_HORAIRE_CLE\]\?\.color/g
     )
-    // 2 · la fenêtre relit la teinte EN PLACE avant de l'afficher, sinon enregistrer
-    // une seconde fois effaçait ce que la première avait peint ;
+    expect(lecturesBase).toHaveLength(2)
+    // Un seul calcul de la teinte, deux destinations : la base et le brouillon.
+    const calcul = planningSrc.match(
+      /const couleur = employeeScheduleForm\.custom_color \|\| TEINTE_PAR_DEFAUT;/g
+    )
+    expect(calcul).toHaveLength(1)
+    expect(planningSrc).toContain('custom_color: couleur,')
+    // 2 · la fenêtre relit la teinte EN PLACE avant de l'afficher — dans la base
+    // d'abord — sinon enregistrer une seconde fois effaçait ce que la première
+    // avait peint ;
     expect(planningSrc).toContain('custom_color: teinteEnCours')
     expect(planningSrc.match(/custom_color: teinteEnCours/g)).toHaveLength(2)
+    expect(planningSrc).toContain('existingES?.custom_color ||')
     // 3 · la teinte de départ vient de la palette, plus d'un hexa recopié trois fois.
     expect(planningSrc).toContain('const TEINTE_PAR_DEFAUT = ENCHECK_COLOR_PALETTE[0].value')
     expect(
@@ -131,6 +141,58 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
       /\.sk-plan-page--postit \.sk-matrix-card \.sk-shift-top\s*\{[^}]*--plq-ruban/s
     )
     expect(peau).toMatch(/--plq-postit: color-mix\(in srgb, var\(--plq-teinte\) 24%/)
+  })
+
+  it('6ter. peint la case, pas seulement le projet — et garde la teinte en base', () => {
+    // Le 22/11, le fondateur est revenu une troisième fois : « encore tu nas pas
+    // coloré les cases selon la couleur que j'ai choisi ». Deux manquements,
+    // chacun verrouillé ici. UN · la cascade : une variable personnalisée se
+    // calcule là où elle est écrite, donc `--plq-teinte` devait descendre sur la
+    // carte, qui porte le style en ligne, et non rester sur le conteneur.
+    // DEUX · la persistance : la teinte ne vivait que dans le `localStorage` de
+    // ce navigateur, invisible d'un autre poste et perdue au moindre nettoyage.
+    const peau = lire('src/pages/PlanningPostIt.css')
+    const regle = (source, selecteur) => {
+      const d = source.indexOf(selecteur + ' {')
+      expect(d, selecteur + ' — règle manquante').toBeGreaterThan(-1)
+      return source.slice(d, source.indexOf('}', d))
+    }
+    const carte = regle(peau, '.sk-plan-page--postit .sk-matrix-card .sk-shift-card')
+    const conteneur = regle(peau, '.sk-plan-page--postit .sk-matrix-card')
+    // la teinte et ses deux dérivés se calculent SUR LA CARTE
+    expect(carte).toContain('--plq-teinte: var(--shift-teinte, var(--charte-surface2))')
+    expect(carte).toContain('--plq-postit: color-mix(in srgb, var(--plq-teinte) 24%')
+    expect(carte).toContain('--plq-ruban: color-mix(in srgb, var(--plq-teinte) 58%')
+    // le conteneur ne prétend plus lire une variable qu'il ne peut pas voir
+    expect(conteneur).not.toContain('var(--shift-teinte')
+    // et la page attache bien la teinte sur CE nœud-là : sinon la règle est
+    // juste et le rendu reste gris — c'était exactement le cas avant ce correctif
+    const noeud = planningSrc.slice(
+      planningSrc.indexOf('className={`sk-shift-card variant-${'),
+      planningSrc.indexOf('"--shift-custom-bg"')
+    )
+    expect(noeud).toContain('"--shift-teinte": shift.color || undefined')
+
+    // LA PERSISTANCE. La colonne est ajoutée par une migration du dépôt, seule
+    // façon de la faire exister côté serveur ; elle est nullable (rien n'est
+    // repeint d'office) et son format est contraint, pour qu'une valeur mal
+    // formée ne se retrouve pas dans un `style` en ligne où elle serait muette.
+    const migration = lire('supabase/migrations/20261122000002_teinte_horaire_collaborateur.sql')
+    expect(migration).toContain('ADD COLUMN IF NOT EXISTS custom_color text')
+    expect(migration).toContain('custom_color IS NULL OR custom_color')
+    // l'enregistrement de la fenêtre porte la teinte jusquau upsert
+    const ecriture = planningSrc.slice(
+      planningSrc.indexOf('const handleSaveEmployeeSchedule = async () => {'),
+      planningSrc.indexOf('Planning collaborateur enregistré')
+    )
+    expect(ecriture).toContain('.from("employee_schedules")')
+    expect(ecriture).toContain('custom_color: couleur,')
+    // la page relit la base (select *), et la fenêtre aussi : pas de second
+    // endroit où la couleur pourrait se perdre
+    expect(planningSrc).toContain('es.custom_color')
+    expect(planningSrc).toContain('existingES?.custom_color ||')
+    // aucune valeur de couleur ajoutée dans le SQL de la migration
+    expect(migration).not.toMatch(/#[0-9a-fA-F]{6}'/)
   })
 
   it('7. suit le thème de l\u2019application sans le commander dans son bandeau', () => {

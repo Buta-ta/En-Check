@@ -1442,7 +1442,9 @@ export default function Planning() {
           esRow: es,
           // La couleur choisie dans la fenêtre pour l'horaire entier de la
           // semaine : elle habille chaque case, comme celle d'une case seule.
-          color: empOverrides[COULEUR_HORAIRE_CLE]?.color,
+          // La base d'abord — elle est la même pour tous les postes et survit
+          // au rechargement ; le brouillon local ne sert que de repli.
+          color: es.custom_color || empOverrides[COULEUR_HORAIRE_CLE]?.color,
         };
       }
       if (es.work_schedules) {
@@ -1464,7 +1466,9 @@ export default function Planning() {
           source: "assigned_schedule",
           schedule_id: ws.id,
           esRow: es,
-          color: empOverrides[COULEUR_HORAIRE_CLE]?.color,
+          // un modèle d'entreprise teinté depuis la fenêtre, même règle qu'au
+          // dessus : la base en premier, le brouillon local en repli
+          color: es.custom_color || empOverrides[COULEUR_HORAIRE_CLE]?.color,
         };
       }
     }
@@ -2583,11 +2587,15 @@ export default function Planning() {
     );
     // La fenêtre doit montrer la teinte EN PLACE, pas repartir de zéro : sans cette
     // relecture, un enregistrement effaçait la couleur choisie la fois précédente.
+    // L'ordre compte : la teinte de la case, puis celle que la BASE porte pour
+    // l'horaire entier (elle est partagée, visible d'un autre poste), puis le
+    // brouillon local de ce navigateur, puis la première teinte de la palette.
+    const existingES = employeeSchedules.find((es) => es.employee_id === emp.id);
     const teinteEnCours =
       currentShift?.color ||
+      existingES?.custom_color ||
       (dayOverrides[emp.id] || {})[COULEUR_HORAIRE_CLE]?.color ||
       TEINTE_PAR_DEFAUT;
-    const existingES = employeeSchedules.find((es) => es.employee_id === emp.id);
     if (existingES) {
       setEditingEmployeeSchedule(existingES);
       setEmployeeScheduleForm({
@@ -2653,6 +2661,13 @@ export default function Planning() {
         return;
       }
 
+      // La teinte choisie dans la fenêtre est UNE SEULE FOIS calculée : elle part
+      // en base (colonne `custom_color` de `employee_schedules`, donc vue de
+      // n'importe quel poste et après un rechargement) ET dans le brouillon local
+      // de la semaine. Deux destinations, une valeur — pas deux calculs qui
+      // peuvent se contredire.
+      const couleur = employeeScheduleForm.custom_color || TEINTE_PAR_DEFAUT;
+
       const payload = {
         employee_id: employeeScheduleForm.employee_id,
         schedule_id: employeeScheduleForm.use_custom_hours
@@ -2681,6 +2696,9 @@ export default function Planning() {
         custom_work_days: employeeScheduleForm.use_custom_hours
           ? employeeScheduleForm.custom_work_days
           : null,
+        // la teinte de l'horaire entier, PERSISTÉE : c'est elle que la grille
+        // relit, pas le seul brouillon de ce navigateur
+        custom_color: couleur,
         is_active: true,
         updated_at: new Date().toISOString(),
       };
@@ -2691,12 +2709,12 @@ export default function Planning() {
       if (error) throw error;
 
       // Les surcharges locales de cet employé sont reconstruites d'un bloc, pour
-      // refléter immédiatement son nouvel horaire. La teinte choisie dans la fenêtre
-      // y figure TOUJOURS, sous la clé sentinelle de l'horaire entier : avant cela,
-      // un collaborateur dont l'horaire venait d'un modèle d'entreprise
-      // (`use_custom_hours` faux) ne voyait jamais sa couleur appliquée, et la case
-      // ciblée perdait le nom de son modèle en chemin.
-      const couleur = employeeScheduleForm.custom_color || TEINTE_PAR_DEFAUT;
+      // refléter immédiatement son nouvel horaire. La teinte part donc DEUX PARTS :
+      // la base, qui la rend commune à tous les postes, et le brouillon local sous
+      // la clé sentinelle de l'horaire entier, qui la rend visible à la
+      // milliseconde. Avant cela, un collaborateur dont l'horaire venait d'un
+      // modèle d'entreprise (`use_custom_hours` faux) ne voyait jamais sa couleur
+      // appliquée, et la case ciblée perdait le nom de son modèle en chemin.
       setDayOverrides((prev) => {
         const surcharges = { [COULEUR_HORAIRE_CLE]: { color: couleur } };
         if (cellEditContext) {

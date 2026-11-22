@@ -872,12 +872,12 @@
   --plq-pli: 14px;
   --plq-colle: calc(var(--plq-pli) + 1px);
   --plq-lave: color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface));
-  /* la teinte du poste arrive de la page ; à défaut, c'est le papier qui parle */
-  --plq-teinte: var(--shift-teinte, var(--charte-surface2));
-  /* le papier de la case, trempé dans la teinte du poste : lisible, jamais saturé */
-  --plq-postit: color-mix(in srgb, var(--plq-teinte) 24%, var(--charte-surface));
-  /* le ruban du haut, la même teinte poussée jusqu'au feutre */
-  --plq-ruban: color-mix(in srgb, var(--plq-teinte) 58%, var(--charte-surface));
+  /* le repli, pour tout ce qui n'est pas une carte de poste : le papier, seul.
+     La teinte d'un poste ne se lit PAS ici — voir la règle de `.sk-shift-card`,
+     c'est sur la carte que la page pose `--shift-teinte` en style en ligne */
+  --plq-teinte: var(--charte-surface2);
+  --plq-postit: var(--charte-surface);
+  --plq-ruban: var(--charte-surface2);
 
   position: relative;
   background-color: var(--charte-surface);
@@ -1278,6 +1278,14 @@
 .sk-plan-page--postit .sk-matrix-card .sk-shift-card {
   /* la marge intérieure de la carte, et donc l'aplomb du ruban qui la coiffe */
   --plq-marge: var(--charte-espace-2);
+  /* LA TEINTE SE DÉCLARE ICI, PAS SUR LE CONTENEUR. Une variable personnalisée
+     se calcule là où elle est écrite : le `var(--shift-teinte)` posé en style en
+     ligne sur la carte était invisible depuis `.sk-matrix-card`, et le ruban
+     comme le lavis retombaient sur le papier — « tu n'as pas coloré les cases »,
+     22/11. Les trois dérivés se recalculent donc sur la carte, à la source. */
+  --plq-teinte: var(--shift-teinte, var(--charte-surface2));
+  --plq-postit: color-mix(in srgb, var(--plq-teinte) 24%, var(--charte-surface));
+  --plq-ruban: color-mix(in srgb, var(--plq-teinte) 58%, var(--charte-surface));
   padding: 0 var(--plq-marge) var(--charte-espace-1);
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: 0;
@@ -1413,13 +1421,15 @@
   opacity: 0.4;
 }
 
-/* la pastille du modèle : la teinte nue, dans un carré — un bouton, pas un point */
+/* la pastille du modèle : la teinte nue, dans un carré — un bouton, pas un point.
+   Hors d'une carte, la variable n'a pas été calculée : on relit la teinte posée par
+   la page, puis le papier — sinon le carré serait transparent et muet */
 .sk-plan-page--postit .sk-shift-color-mini {
   width: 11px;
   height: 11px;
   border: 1px solid var(--charte-encre);
   border-radius: 0;
-  background-color: var(--plq-teinte);
+  background-color: var(--plq-teinte, var(--shift-teinte, var(--charte-surface2)));
   padding: 0;
   cursor: pointer;
 }
