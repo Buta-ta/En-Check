@@ -1,0 +1,674 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   FENÊTRES DES ÉQUIPES EN POST-IT — 22/11/2026
+   Les cinq fenêtres de l'onglet (créer, membres, supprimer, historique,
+   raccourcis) reçoivent la peau de la fiche employé validée le 21/11 — une
+   FEUILLE posée sur le voile : coin carré, contour d'encre de 2 px, double
+   feutre en ombre, bande de colle en tête, rabat au coin bas-droit.
+
+   Elles sortent d'une île de styles en ligne (`style={S.modal}`), où trois
+   règles étaient contraires à la maison et impossibles à rattraper d'une
+   feuille — une attribution en ligne bat n'importe quel sélecteur :
+
+     • le voile floutait (`backdropFilter: blur(5px)`) et la feuille portait une
+       ombre de 70 px de flou : aucun flou, nulle part (D-016) ;
+     • le voile était `rgba(0,0,0,.8)` : du noir pur à 80 %, alors que le voile
+       de la maison est l'espresso à 44 % (`--charte-modale-voile`) ;
+     • les largeurs étaient 300 / 380 / 440 / 460 / 480 px, hors du registre des
+       modales de D-020 (420 / 560 / 760). Les voici 560 pour les trois fenêtres
+       de travail, 420 pour les deux de confirmation.
+
+   Quatre règles de tenue, les mêmes que la fiche (elles sont déjà mesurées) :
+   • `border-radius: 0` SANS UNITÉ — l'audit C10 ne lit que les valeurs en px,
+     un coin carré ne coûte rien à l'échelle des rayons ;
+   • la bande de colle est une COUCHE DE FOND (`background-image`) et le papier
+     une `background-color` : le raccourci `background:` effacerait l'une des
+     deux — c'est le piège qui a fait disparaître la bande sur la fiche ;
+   • le rabat est peint en pseudo-élément, jamais en `clip-path` : la découpe
+     rognerait la `box-shadow` et le double feutre partirait avec le coin ;
+   • le double feutre est fait de DEUX ombres dures empilées (papier par-dessus
+     encre), pas d'un calque absolu : un `::before` décalé promènerait son trait
+     d'encre à l'intérieur de la feuille.
+
+   Aucun `container-type` ici, et c'est voulu : une modale est `position:
+   fixed`, sa largeur vient du viewport, donc les `@media` fenêtre sont la bonne
+   référence — comme la fiche, pas comme l'onglet.
+
+   Les COULEURS D'ÉQUIPE restent en ligne dans le JSX, parce que ce sont des
+   DONNÉES qui viennent de la base : une feuille ne peut pas les connaître.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.eqm-voile {
+  --qm-pli: 14px;
+  --qm-colle: calc(var(--qm-pli) + 1px);
+  --qm-decalage: 3px;
+
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--charte-espace-4);
+  /* le voile de la maison : l'espresso à 44 %, jamais un noir à 80 %. Il
+     assourdit la page, il ne l'efface pas — et il ne floute rien */
+  background: var(--charte-modale-voile);
+}
+
+/* ── la feuille ───────────────────────────────────────────────────────────── */
+
+.eqm-feuille {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--charte-modale-moyenne);
+  /* la hauteur utile, pas un `90vh` qui déborde : voile (2 × 16 px de padding)
+     + l'ombre décalée (3 px) + la marge de sécurité. Une modale centrée en flex
+     qui déborde se coupe PAR LE HAUT — l'en-tête devient injoignable, c'est la
+     faute relevée sur la fiche le 21/11 */
+  max-height: calc(100vh - var(--qm-decalage) * 2 - 48px);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  /* la bande de colle : plus claire sur les 14 premiers px, un filet d'encre à
+     son pied, puis rien. En couche, jamais en raccourci */
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--qm-pli),
+    color-mix(in srgb, var(--charte-encre) 16%, transparent) var(--qm-pli)
+      var(--qm-colle),
+    transparent var(--qm-colle)
+  );
+  /* le double feutre : une seconde feuille décalée en bas à droite. La première
+     ombre (papier, débord 6 px) masque la seconde (encre, débord 8 px) partout
+     sauf sur les 2 px du bord. Flou à zéro dans les deux : C9 ne bronche pas */
+  box-shadow:
+    var(--qm-decalage) var(--qm-decalage) 0 6px
+      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
+    var(--qm-decalage) var(--qm-decalage) 0 8px var(--charte-encre);
+  /* la feuille du dessous déborde : le rognage serait un crime */
+  overflow: visible;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+}
+
+.eqm-feuille--petite { max-width: var(--charte-modale-petite); }
+
+/* le rabat, au coin bas-droit : le dos de la feuille, 14 px, le trait de pliure
+   sur l'hypoténuse. Il ne touche aucun bouton — la barre du bas se retire de
+   son côté, voir `.eqm-pied` */
+.eqm-feuille::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--qm-pli);
+  height: var(--qm-pli);
+  background: linear-gradient(
+    to top left,
+    transparent 0 44%,
+    var(--charte-encre) 44% 50%,
+    color-mix(in srgb, var(--charte-blanc) 60%, var(--charte-surface)) 50%
+  );
+  pointer-events: none;
+}
+
+/* ── l'en-tête ────────────────────────────────────────────────────────────── */
+
+.eqm-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4) var(--charte-espace-4) var(--charte-espace-3);
+  border-bottom: 1px solid var(--charte-bordure);
+}
+
+.eqm-tete-bloc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eqm-titre {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  margin: 0;
+  font-size: var(--charte-taille-titre);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--charte-encre);
+}
+
+.eqm-sous-titre {
+  margin: 0;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--charte-texte);
+}
+
+.eqm-fermer {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-texte);
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+.eqm-fermer:hover {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+
+/* ── le corps et les champs ───────────────────────────────────────────────── */
+
+.eqm-corps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4);
+  overflow-y: auto;
+}
+
+.eqm-corps--deroulant {
+  /* la liste défile dans la feuille, jamais la feuille tout entière : sans
+     cette ligne, l'historique long pousserait le bord hors de l'écran */
+  max-height: 360px;
+}
+
+.eqm-corps--centre {
+  align-items: center;
+  text-align: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-6) var(--charte-espace-5) var(--charte-espace-5);
+}
+
+.eqm-champ {
+  display: grid;
+  gap: var(--charte-espace-1);
+}
+
+.eqm-etiquette,
+.eqm-champ > label {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.eqm-saisie {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-blanc);
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-corps);
+  outline: none;
+}
+.eqm-saisie::placeholder { color: var(--charte-douce); }
+.eqm-saisie:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--charte-encre);
+}
+.eqm-saisie--longue {
+  min-height: 70px;
+  resize: vertical;
+}
+
+/* le focus se marque au trait de 2 px décalé de 2 (kit, règle des mesures) :
+   jamais un halo flou, jamais une couleur d'or */
+.eqm-btn:focus-visible,
+.eqm-fermer:focus-visible,
+.eqm-couleur:focus-visible,
+.eqm-ligne:focus-visible,
+.eqm-retirer:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* ── les couleurs d'équipe : la teinte est une donnée, le choisi est un marqueur ── */
+
+.eqm-couleurs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-1);
+}
+
+.eqm-couleur {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  cursor: pointer;
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+.eqm-couleur:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+.eqm-couleur[aria-pressed='true'] {
+  box-shadow: var(--charte-ombre-dure);
+  transform: translate(-1px, -1px);
+}
+.eqm-couleur[aria-pressed='true']::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-shadow: inset 0 0 0 3px var(--charte-blanc);
+}
+
+/* ── la vignette d'une personne ───────────────────────────────────────────── */
+
+.eqm-personne {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.eqm-vignette {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface2);
+  color: var(--charte-texte);
+}
+.eqm-vignette img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.eqm-initiales {
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* la couronne du chef : un timbre de 11 px posé sur le coin, en or — une
+   DONNÉE qui dit qui commande, jamais une action conduite par l'or */
+.eqm-couronne {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  /* pas l'or de l'annuaire : sous la peau post-it, `--empv2-or` est mis à
+     `transparent`, et la couronne disparaîtrait. Le dos de la feuille, avec son
+     propre repli hors de l'onglet */
+  background: var(--eqv-colle, var(--charte-blanc));
+  color: var(--charte-texte);
+}
+
+.eqm-personne-nom {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.eqm-personne-titre {
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  color: var(--charte-encre);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.eqm-personne-nom small {
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+}
+
+/* ── les jetons de membres actuels ────────────────────────────────────────── */
+
+.eqm-pile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-1);
+}
+
+.eqm-jeton {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+}
+
+.eqm-retirer {
+  display: inline-flex;
+  padding: 1px;
+  border: none;
+  background: transparent;
+  color: var(--charte-erreur);
+  cursor: pointer;
+}
+.eqm-retirer:hover {
+  color: var(--charte-encre);
+}
+
+/* ── la recherche et la liste des personnes ──────────────────────────────── */
+
+.eqm-recherche {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-blanc);
+  color: var(--charte-douce);
+}
+.eqm-recherche input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-corps);
+}
+.eqm-recherche input::placeholder { color: var(--charte-douce); }
+
+.eqm-liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-1);
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: var(--charte-espace-2);
+}
+
+.eqm-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-2);
+  padding: 8px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  cursor: pointer;
+  transition: border-color var(--charte-duree) var(--charte-easing);
+}
+/* le survol change le TRAIT, pas le fond derrière un nom */
+.eqm-ligne:hover {
+  border-color: var(--charte-encre);
+}
+/* le choisi change de papier : c'est l'état du champ, pas un effet de curseur */
+.eqm-ligne[data-choix='oui'] {
+  border-color: var(--charte-encre);
+  background-color: var(--charte-surface2);
+}
+
+.eqm-case {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-blanc);
+  color: var(--charte-encre);
+}
+.eqm-ligne[data-choix='oui'] .eqm-case {
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+}
+
+.eqm-vide {
+  margin: 0;
+  padding: var(--charte-espace-5) var(--charte-espace-3);
+  border: var(--charte-trait) dashed var(--charte-bordure);
+  border-radius: 0;
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  text-align: center;
+}
+
+/* ── l'historique ─────────────────────────────────────────────────────────── */
+
+.eqm-ecritures {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-1);
+}
+
+.eqm-ecriture {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--charte-espace-2);
+  padding: 7px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+}
+
+.eqm-ecriture-ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+}
+
+.eqm-ecriture-corps {
+  flex: 1;
+  min-width: 0;
+}
+.eqm-ecriture-corps p {
+  margin: 0;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+}
+.eqm-ecriture-corps small {
+  display: block;
+  margin-top: 1px;
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── la confirmation de suppression ──────────────────────────────────────── */
+
+.eqm-alerte {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--charte-erreur) 12%, var(--charte-surface));
+  color: var(--charte-erreur);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.eqm-titre--scene {
+  font-size: var(--charte-taille-corps);
+  font-weight: 800;
+}
+
+.eqm-texte {
+  margin: 0 0 var(--charte-espace-3);
+  color: var(--charte-douce);
+  line-height: 1.5;
+}
+.eqm-texte strong {
+  color: var(--charte-encre);
+  font-weight: 700;
+}
+
+/* ── les raccourcis ───────────────────────────────────────────────────────── */
+
+.eqm-raccourci {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-3);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--charte-bordure);
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-micro);
+}
+.eqm-raccourci:last-child { border-bottom: none; }
+
+.eqm-raccourci kbd {
+  padding: 3px 8px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+}
+
+/* ── les boutons : une seule variante pleine par écran (kit, règle 1) ────── */
+
+.eqm-pied {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--charte-espace-2);
+  /* à droite et en bas, la respiration du rabat : 14 px de dos de feuille ne
+     doivent manger ni « Annuler » ni « Créer » */
+  padding: var(--charte-espace-3) calc(var(--qm-pli) + 6px) var(--qm-pli) var(--charte-espace-4);
+  border-top: 1px solid var(--charte-bordure);
+  margin-top: var(--charte-espace-1);
+}
+
+.eqm-pied--partage {
+  width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+  border-top: none;
+}
+.eqm-pied--partage > * { flex: 1; }
+
+.eqm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 8px var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background-color: transparent;
+  color: var(--charte-texte);
+  font-family: inherit;
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+.eqm-btn:hover:not(:disabled) {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* l'engagement se remplit d'espresso, pas d'or : l'or a été refusé deux fois
+   comme action principale */
+.eqm-btn--pleine {
+  background-color: var(--charte-espresso);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+  font-weight: 700;
+  box-shadow: var(--charte-ombre-dure);
+}
+.eqm-btn--pleine:hover:not(:disabled) {
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+/* le rouge est réservé à l'irréversible, et seulement après confirmation (kit,
+   règle 2) : ici le bouton EST la confirmation */
+.eqm-btn--danger {
+  background-color: var(--charte-btn-danger);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+  font-weight: 700;
+  box-shadow: var(--charte-ombre-dure);
+}
+.eqm-btn--danger:hover:not(:disabled) {
+  background-color: var(--charte-btn-danger);
+  color: var(--charte-blanc);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+/* le désactivé n'est jamais une opacité réduite (kit, règle 3) : on change de
+   papier et de mot, et le texte reste lisible */
+.eqm-btn:disabled {
+  background-color: var(--charte-btn-desactive);
+  border-color: var(--charte-bordure);
+  color: var(--charte-btn-desactive-texte);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── l'écran étroit : la feuille prend la place, les champs restent ──────── */
+
+@media (max-width: 560px) {
+  .eqm-voile {
+    padding: var(--charte-espace-2);
+  }
+  .eqm-feuille {
+    max-height: calc(100vh - var(--qm-decalage) * 2 - var(--charte-espace-4));
+  }
+  .eqm-tete,
+  .eqm-corps {
+    padding: var(--charte-espace-3);
+  }
+  .eqm-pied {
+    padding-left: var(--charte-espace-3);
+  }
+}
