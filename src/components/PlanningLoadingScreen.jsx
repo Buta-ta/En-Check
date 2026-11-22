@@ -1,14 +1,14 @@
-import PageCulturalBand from './PageCulturalBand'
 // ═══════════════════════════════════════════════════════════════════════════
 // 📅 ÉCRAN DE CHARGEMENT PLANNING — la carte de la page Employés
 // « Je veux le même style de loading comme la page employé », 22/11. La carte
 // est donc empruntée, pas copié-collé : même en-tête (marque, entreprise,
 // compteur), même scène 16:9, quatre étapes, « Passer l'animation ».
 //
-// Une seule image, ici : la scène du Planning est un mur d'équipe qu'on
-// regarde d'un bloc, pas une file de personnages découpée en calques. Le
-// bandeau de motif kuba reste dans la carte — un seul motif par écran, la page
-// elle-même ne porte plus sa bande de pied depuis le même jour.
+// Une seule image, ici : la scène du Planning est un mur d'équipe qu'on regarde
+// d'un bloc. AUCUN bandeau de motif dans la carte — « Enlève le bandeau motif
+// qui est dans la page loading », 22/11 au second regard : un écran de
+// chargement est un compte rendu, pas une tribune décorative, et la page porte
+// déjà sa toile dans le cadre du bandeau de commande.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
@@ -82,7 +82,6 @@ export default function PlanningLoadingScreen({
       dossierImages="/images/planning-loading-"
       imageScene="/images/planning-loading-scene.webp"
       calques={[]}
-      ruban={<PageCulturalBand pathname="/planning" placement="loading" />}
     />
   )
 }

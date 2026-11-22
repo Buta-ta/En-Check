@@ -61,14 +61,12 @@ export default function EmployesLoadingScreen({
   statutPret,
   legende = 'Chargement de l’espace collaborateurs',
   dureeMin = EMPLOYES_INTRO_MS,
-  // Une autre page peut emprunter la même carte : le dossier d’images, la
-  // file de personnages découpée en calques, et un bandeau de motif posé sous
-  // l’en-tête. `imageScene` donne UNE scène unique, sans calques : la page
-  // Planning regarde son mur d’équipe d’un seul bloc.
+  // Une autre page peut emprunter la même carte : le dossier d’images et la
+  // file de personnages découpée en calques. `imageScene` donne UNE scène
+  // unique, sans calques : la page Planning regarde son mur d’équipe d’un bloc.
   dossierImages = '/images/employes-loading-',
   calques = CALQUES_PERSONNAGES,
   imageScene = null,
-  ruban = null,
 }) {
   const sceneUnique = Boolean(imageScene)
   const [calquesCharges, setCalquesCharges] = useState([])
@@ -180,11 +178,11 @@ export default function EmployesLoadingScreen({
           </div>
         </header>
 
-        {ruban}
-
         {!erreurImage && (
           <div
-            className={`emp-loading-stage${scenePrete ? ' is-ready' : ''}`}
+            className={`emp-loading-stage${scenePrete ? ' is-ready' : ''}${
+              dataReady ? ' est-pret' : ''
+            }`}
             data-artwork={sceneUnique ? 'page-scene-illustration' : 'approved-queue-illustration'}
             data-step={dataReady ? etapes.length : etapeCourante}
             aria-hidden="true"

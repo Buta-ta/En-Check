@@ -91,7 +91,8 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     )
     expect(planningSrc).toContain('--brick-color')
     expect(planningSrc).toContain('sk-color-swatch')
-    expect(planningSrc).toContain('Couleur de la case')
+    // La fenêtre commande la teinte de l'horaire entier, son étiquette le dit
+    expect(planningSrc).toContain("Couleur de l'horaire")
     expect(planningCss).toContain('.sk-color-input')
   })
 
@@ -101,8 +102,29 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // pour l’horaire entier de la semaine. Deux chemins de donnée, un seul
     // aspect : la feuille lave son papier et peint son ruban avec cette teinte.
     expect(planningSrc).toContain('const COULEUR_HORAIRE_CLE = "couleur-horaire"')
-    expect(planningSrc.match(/empOverrides\[COULEUR_HORAIRE_CLE\]\?\.color/g)).toHaveLength(2)
+    // Trois lectures de la teinte de l'horaire : les deux chemins de résolution
+    // (heures personnalisées, modèle d'entreprise) et la surcharge de case, qui
+    // hérite de la teinte quand elle n'a pas la sienne.
+    expect(planningSrc.match(/empOverrides\[COULEUR_HORAIRE_CLE\]\?\.color/g)).toHaveLength(3)
     expect(planningSrc).toContain('[COULEUR_HORAIRE_CLE]: { color: couleur }')
+    // Le fondateur a redemandé le 22/11 : « quand on clique sur une case, on choisit
+    // la couleur, cependant tu n'as pas appliqué les couleurs ». Trois causes, trois
+    // verrous. 1 · la teinte n'est plus réservée aux heures personnalisées — un
+    // collaborateur qui reçoit un modèle d'entreprise a une couleur, lui aussi ;
+    expect(planningSrc).toMatch(
+      /const couleur = employeeScheduleForm\.custom_color \|\| TEINTE_PAR_DEFAUT;\s*setDayOverrides\(\(prev\) => \{\s*const surcharges = \{ \[COULEUR_HORAIRE_CLE\]: \{ color: couleur \} \};/
+    )
+    // 2 · la fenêtre relit la teinte EN PLACE avant de l'afficher, sinon enregistrer
+    // une seconde fois effaçait ce que la première avait peint ;
+    expect(planningSrc).toContain('custom_color: teinteEnCours')
+    expect(planningSrc.match(/custom_color: teinteEnCours/g)).toHaveLength(2)
+    // 3 · la teinte de départ vient de la palette, plus d'un hexa recopié trois fois.
+    expect(planningSrc).toContain('const TEINTE_PAR_DEFAUT = ENCHECK_COLOR_PALETTE[0].value')
+    expect(
+      planningSrc.match(/custom_color: TEINTE_PAR_DEFAUT|custom_color \|\| TEINTE_PAR_DEFAUT/g)
+    ).toHaveLength(3)
+    // La case ciblée garde le nom de son modèle : la surcharge locale ne le portait pas.
+    expect(planningSrc).toContain('name: cellEditContext.shiftName || "Horaire personnalisé"')
     const peau = lire('src/pages/PlanningPostIt.css')
     expect(peau).toContain('--plq-teinte: var(--shift-teinte, var(--charte-surface2))')
     expect(peau).toMatch(
@@ -328,9 +350,13 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     for (const mot of ['Modèles', 'Collaborateurs', 'Horaires & dispos', 'Grille de la semaine']) {
       expect(planningLoading).toContain(mot)
     }
-    // le kuba reste dans la carte : un seul motif par écran, la page ne portant
-    // plus sa bande de pied depuis le même jour
-    expect(planningLoading).toContain('<PageCulturalBand pathname="/planning" placement="loading" />')
+    // AUCUN bandeau de motif dans la carte de chargement : « Enlève le bandeau
+    // motif qui est dans la page loading », 22/11 au second regard. La carte est
+    // un compte rendu, pas une tribune décorative ; la page, elle, garde sa toile
+    // dans le cadre du bandeau de commande.
+    expect(planningLoading).not.toContain('PageCulturalBand')
+    expect(planningLoading).not.toContain('ruban')
+    expect(carte).not.toContain('PageCulturalBand')
     // la carte, elle, accepte l'emprunt sans dupliquer la file de personnages
     expect(carte).toContain('dossierImages')
     expect(carte).toContain('sceneUnique')
@@ -342,6 +368,59 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningSrc).toMatch(/import PlanningLoadingScreen from ["']\.\.\/components\/PlanningLoadingScreen["']/)
     expect(planningSrc).toContain('<PlanningLoadingScreen')
     expect(planningLoading).not.toMatch(/Skello|SKELLO|skello/i)
+  })
+
+  it('25bis. anime la scène du chargement par le cadrage, pas par un décor posé dessus', () => {
+    // « Anime cette scène (comment peux-tu l'animer?) », 22/11. Réponse : la
+    // scène est UNE image validée — on ne lui colle pas de faux post-it par-
+    // dessus (le fondateur a déjà retiré ce procédé), on la FILME. Quatre
+    // cadrages, un par étape réelle ; une respiration lente ; une lumière qui
+    // traverse la salle ; et quand les données arrivent, l'objectif recule.
+    const carte = lire('src/components/EmployesLoadingScreen.jsx')
+    const peau = lire('src/components/EmployesLoadingScreen.css')
+    // les crochets du sélecteur sont échappés : sinon ils deviennent une classe
+    // de caractères et la recherche ne trouve plus la règle
+    const scene = '\\.emp-loading-stage\\[data-artwork="page-scene-illustration"\\]'
+    // le plateau sait qu'il est filmé : il publie son étape et son état
+    expect(carte).toContain('data-step={dataReady ? etapes.length : etapeCourante}')
+    expect(carte).toContain("' est-pret'")
+    // quatre cadrages, chacun avec son grossissement et son point regardé
+    for (const pas of [1, 2, 3, 4]) {
+      const regle = peau.match(
+        new RegExp(scene + '\\[data-step="' + pas + '"\\]\\s*\\{([^}]*)\\}', 's')
+      )
+      expect(regle, `cadrage ${pas} manquant`).toBeTruthy()
+      expect(regle[1]).toContain('--scene-k:')
+      expect(regle[1]).toContain('--scene-x:')
+      expect(regle[1]).toContain('--scene-y:')
+    }
+    // le point regardé porte l'image : jamais de bord vide, donc jamais de cache
+    expect(peau).toMatch(/\.emp-loading-approved \{\s*transform-origin: var\(--scene-x\) var\(--scene-y\);/)
+    expect(peau).toMatch(/transform: scale\(var\(--scene-k\)\);/)
+    // un grossissement d'au moins un partout (la couverture le commande)
+    for (const k of peau.match(/--scene-k:\s*([0-9.]+)/g)) {
+      expect(Number(k.split(':')[1])).toBeGreaterThanOrEqual(1)
+    }
+    // le mouvement est animé, pas brut
+    expect(peau).toMatch(/transition: transform 900ms ease-in-out/)
+    expect(peau).toContain('@keyframes emp-scene-haleine')
+    expect(peau).toContain('@keyframes emp-scene-clarte')
+    // l'état prêt commande les cadrages : il est écrit après eux et recule
+    const pret = peau.indexOf('.est-pret {')
+    const der = peau.indexOf('[data-step="4"]')
+    expect(pret).toBeGreaterThan(der)
+    expect(peau.slice(pret, pret + 220)).toMatch(/--scene-k: 1\.0\d/)
+    // aucun pixel nouveau sur l'image : pas de calque, pas de carte factice
+    expect(peau).not.toMatch(/page-scene-illustration[^{]*\{[^}]*url\(/)
+    // et « réduire les animations » garde la salle entière, immobile
+    const réduit = peau.slice(peau.indexOf('@media (prefers-reduced-motion: reduce)'))
+    // la respiration est couverte par la règle générale du plateau
+    expect(réduit).toMatch(/\.emp-loading-stage \*,\s*\.emp-loading-dot \{\s*animation: none !important;/)
+    expect(réduit).toMatch(/\.emp-loading-approved \{\s*transform: none;/)
+    expect(réduit).toMatch(/::after \{\s*display: none;/)
+    // aucune couleur nouvelle dans cette peau (la lumière vient du blanc de la maison)
+    expect(peau.match(/#[0-9A-Fa-f]{3,8}/g) || []).toHaveLength(0)
+    expect(peau).not.toMatch(/\bblur\(/)
   })
 
   it('26. illustre le chargement Pauses par le dépointage de pause', () => {
@@ -554,9 +633,10 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(attribues.every((nom) => nom.startsWith('--'))).toBe(true)
     expect(fenetres).not.toMatch(/style=\{\{[^}]*background:/)
     expect(fenetres).not.toMatch(/color="#/)
-    // la seule couleur en dur qui reste est la valeur de l'entrée native de
-    // couleur : un `input type="color"` ne connaît pas les variables
-    expect(fenetres.match(/#[0-9A-Fa-f]{6}/g)).toHaveLength(1)
+    // et depuis le 22/11, plus AUCUNE : la valeur de départ de l'entrée native de
+    // couleur se lit sur la palette (`TEINTE_PAR_DEFAUT`), elle n'est plus recopiée
+    // en hexa dans la fenêtre
+    expect(fenetres.match(/#[0-9A-Fa-f]{6}/g)).toBeNull()
     // la feuille, elle : voile sans flou, ruban, rabat, double trait au titre
     expect(peau).toMatch(
       /\.sk-plan-page--postit \.sk-modal-backdrop\s*\{[^}]*backdrop-filter: none/s

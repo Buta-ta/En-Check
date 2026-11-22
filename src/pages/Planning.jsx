@@ -97,6 +97,10 @@ const ENCHECK_COLOR_PALETTE = [
   { id: "ardoise", label: "Ardoise", value: "#475569" },
 ];
 
+// La teinte de départ d'une fenêtre n'est pas un hexa de plus dans le code : c'est la
+// première peinture de la palette, celle que le premier carré montre déjà.
+const TEINTE_PAR_DEFAUT = ENCHECK_COLOR_PALETTE[0].value;
+
 // Types de modèles créables par l'entreprise
 const MODEL_KINDS = [
   { id: "shift", label: "Horaire de travail / Garde / Nuit" },
@@ -480,7 +484,7 @@ export default function Planning() {
     custom_break_end: "13:00",
     custom_has_break: true,
     custom_work_days: [1, 2, 3, 4, 5],
-    custom_color: "#B56235",
+    custom_color: TEINTE_PAR_DEFAUT,
   });
 
   // Écoute de la touche Alt pour dupliquer au lieu de déplacer
@@ -1368,7 +1372,12 @@ export default function Planning() {
           kind: override.kind || "rest",
         };
       }
-      return override;
+      // Une teinte choisie pour l'horaire entier habille aussi la case surchargée,
+      // sauf si cette case porte déjà la sienne (un modèle déposé, par exemple).
+      return {
+        ...override,
+        color: override.color ?? empOverrides[COULEUR_HORAIRE_CLE]?.color,
+      };
     }
 
     // Jour férié non travaillé ?
@@ -2564,9 +2573,20 @@ export default function Planning() {
   const openCellEditorModal = (emp, dayItem = null, currentShift = null) => {
     setCellEditContext(
       dayItem
-        ? { empId: emp.id, dateStr: dayItem.dateStr, dayNum: dayItem.dayNum }
+        ? {
+            empId: emp.id,
+            dateStr: dayItem.dateStr,
+            dayNum: dayItem.dayNum,
+            shiftName: currentShift?.name,
+          }
         : null
     );
+    // La fenêtre doit montrer la teinte EN PLACE, pas repartir de zéro : sans cette
+    // relecture, un enregistrement effaçait la couleur choisie la fois précédente.
+    const teinteEnCours =
+      currentShift?.color ||
+      (dayOverrides[emp.id] || {})[COULEUR_HORAIRE_CLE]?.color ||
+      TEINTE_PAR_DEFAUT;
     const existingES = employeeSchedules.find((es) => es.employee_id === emp.id);
     if (existingES) {
       setEditingEmployeeSchedule(existingES);
@@ -2592,6 +2612,7 @@ export default function Planning() {
           "13:00",
         custom_has_break: currentShift?.has_break ?? existingES.custom_has_break ?? true,
         custom_work_days: existingES.custom_work_days || [1, 2, 3, 4, 5],
+        custom_color: teinteEnCours,
       });
     } else {
       setEditingEmployeeSchedule(null);
@@ -2605,7 +2626,7 @@ export default function Planning() {
         custom_break_end: currentShift?.break_end?.slice(0, 5) || "13:00",
         custom_has_break: currentShift?.has_break ?? true,
         custom_work_days: dayItem ? [1, 2, 3, 4, 5] : [1, 2, 3, 4, 5],
-        custom_color: currentShift?.color || "#B56235",
+        custom_color: teinteEnCours,
       });
     }
     setShowEmployeeScheduleModal(true);
@@ -2669,44 +2690,29 @@ export default function Planning() {
         .upsert(payload, { onConflict: "employee_id" });
       if (error) throw error;
 
-      // Nettoyer les surcharges locales de cet employé pour refléter immédiatement son nouvel horaire
+      // Les surcharges locales de cet employé sont reconstruites d'un bloc, pour
+      // refléter immédiatement son nouvel horaire. La teinte choisie dans la fenêtre
+      // y figure TOUJOURS, sous la clé sentinelle de l'horaire entier : avant cela,
+      // un collaborateur dont l'horaire venait d'un modèle d'entreprise
+      // (`use_custom_hours` faux) ne voyait jamais sa couleur appliquée, et la case
+      // ciblée perdait le nom de son modèle en chemin.
+      const couleur = employeeScheduleForm.custom_color || TEINTE_PAR_DEFAUT;
       setDayOverrides((prev) => {
-        const next = { ...prev };
-        delete next[employeeScheduleForm.employee_id];
-        return next;
-      });
-
-      // Personnalisation de la couleur de la case éditée — ou, sans case ciblée,
-      // de l'horaire entier de la semaine
-      if (cellEditContext) {
-        const color = employeeScheduleForm.custom_color || "#B56235";
-        setDayOverrides((prev) => ({
-          ...prev,
-          [cellEditContext.empId]: {
-            ...(prev[cellEditContext.empId] || {}),
-            [cellEditContext.dateStr]: {
-              start_time: employeeScheduleForm.custom_start_time,
-              end_time: employeeScheduleForm.custom_end_time,
-              has_break: employeeScheduleForm.custom_has_break,
-              break_start: employeeScheduleForm.custom_break_start,
-              break_end: employeeScheduleForm.custom_break_end,
-              variant: "standard",
-              color,
-            },
-          },
-        }));
-      } else if (employeeScheduleForm.use_custom_hours) {
-        const couleur = employeeScheduleForm.custom_color;
-        if (couleur) {
-          setDayOverrides((prev) => ({
-            ...prev,
-            [employeeScheduleForm.employee_id]: {
-              ...(prev[employeeScheduleForm.employee_id] || {}),
-              [COULEUR_HORAIRE_CLE]: { color: couleur },
-            },
-          }));
+        const surcharges = { [COULEUR_HORAIRE_CLE]: { color: couleur } };
+        if (cellEditContext) {
+          surcharges[cellEditContext.dateStr] = {
+            start_time: employeeScheduleForm.custom_start_time,
+            end_time: employeeScheduleForm.custom_end_time,
+            has_break: employeeScheduleForm.custom_has_break,
+            break_start: employeeScheduleForm.custom_break_start,
+            break_end: employeeScheduleForm.custom_break_end,
+            variant: "standard",
+            name: cellEditContext.shiftName || "Horaire personnalisé",
+            color: couleur,
+          };
         }
-      }
+        return { ...prev, [employeeScheduleForm.employee_id]: surcharges };
+      });
 
       toast.success("Planning collaborateur enregistré !");
       setShowEmployeeScheduleModal(false);
@@ -5354,8 +5360,12 @@ export default function Planning() {
               {/* Personnalisation de la couleur de la case / du créneau */}
               <div>
                 <label className="sk-field-label">
-                  <Palette size={13} /> Couleur de la case
+                  <Palette size={13} /> Couleur de l'horaire
                 </label>
+                <p className="sk-modal-note">
+                  Chaque case de la semaine prend cette teinte ; une case qui a déjà la
+                  sienne — un modèle déposé, par exemple — la garde.
+                </p>
                 <div className="sk-color-swatches">
                   {ENCHECK_COLOR_PALETTE.map((c) => (
                     <button
@@ -5377,7 +5387,7 @@ export default function Planning() {
                   <input
                     type="color"
                     className="sk-color-input"
-                    value={employeeScheduleForm.custom_color || "#B56235"}
+                    value={employeeScheduleForm.custom_color || TEINTE_PAR_DEFAUT}
                     onChange={(e) =>
                       setEmployeeScheduleForm({
                         ...employeeScheduleForm,
