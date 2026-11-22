@@ -30,7 +30,7 @@ import EnCheckBrandMark from './EnCheckBrandMark'
 import PhotoSignee from './PhotoSignee'
 import { AdinkraWatermarkSvg, KenteWovenTapestrySvg, WovenKenteBadgeSvg } from './AfroCulturalSvg'
 import {
-  badgeAnomalie,
+  badgeAnomalieDetaillee,
   estPausePresumee,
   estPauseReelleEffectuee,
   formatDuree,
@@ -1228,6 +1228,7 @@ export function PausesCollaborateursSection({
       base = anomaliesPauses
       if (subFilter === 'anomalie_sans_reprise') base = base.filter((p) => p.anomalie === 'sans_reprise')
       else if (subFilter === 'anomalie_trop_longue') base = base.filter((p) => p.anomalie === 'trop_longue')
+      else if (subFilter === 'anomalie_depassement') base = base.filter((p) => p.anomalie === 'depassement')
     } else {
       // Vue 'all' : pauses en direct en tête, puis réelles et présumées non
       // écartées. Le sous-filtre 'ecartees' est la porte de secours : une
@@ -1470,7 +1471,7 @@ export function PausesCollaborateursSection({
                   empObj?.position ||
                   p.entreprise_nom ||
                   'Équipe'
-                const anomalie = badgeAnomalie(p.anomalie)
+                const anomalie = badgeAnomalieDetaillee(p)
                 const isPresumed = estPausePresumee(p)
                 const isReal = estPauseReelleEffectuee(p)
                 const liveElapsed = p.ouverte ? formaterTempsPauseEnDirect(p, nowMs) : null
@@ -1585,7 +1586,14 @@ export function PausesCollaborateursSection({
                         )}
 
                         {anomalie && (
-                          <span className="pauses-v2-status-pill is-anomaly">
+                          <span
+                            className={
+                              p.anomalie === 'depassement'
+                                ? 'pauses-v2-status-pill is-depassement'
+                                : 'pauses-v2-status-pill is-anomaly'
+                            }
+                            title={anomalie.raison || undefined}
+                          >
                             {anomalie.label}
                           </span>
                         )}
