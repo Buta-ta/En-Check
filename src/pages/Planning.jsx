@@ -4998,7 +4998,7 @@ export default function Planning() {
               </div>
 
               <div>
-                <label className="sk-field-label" style={{ cursor: "pointer" }}>
+                <label className="sk-field-label sk-field-label--geste">
                   <input
                     type="checkbox"
                     checked={formData.has_break}
@@ -5006,7 +5006,7 @@ export default function Planning() {
                       setFormData({ ...formData, has_break: e.target.checked })
                     }
                   />
-                  <Coffee size={14} color="#F59E0B" />
+                  <Coffee size={14} />
                   <span>Inclure une pause déjeuner</span>
                 </label>
               </div>
@@ -5077,8 +5077,8 @@ export default function Planning() {
                     }
                   />
                 </div>
-                <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 10 }}>
-                  <label className="sk-field-label" style={{ cursor: "pointer", margin: 0 }}>
+                <div className="sk-modal-pied-ligne">
+                  <label className="sk-field-label sk-field-label--geste sk-field-label--sans-marge">
                     <input
                       type="checkbox"
                       checked={formData.is_default}
@@ -5086,7 +5086,7 @@ export default function Planning() {
                         setFormData({ ...formData, is_default: e.target.checked })
                       }
                     />
-                    <Zap size={14} color="#F59E0B" />
+                    <Zap size={14} />
                     <span>Planning par défaut</span>
                   </label>
                 </div>
@@ -5097,8 +5097,7 @@ export default function Planning() {
               {editingPlanning && (
                 <button
                   type="button"
-                  className="sk-btn-secondary"
-                  style={{ color: "#EF4444", marginRight: "auto" }}
+                  className="sk-btn-secondary sk-btn--danger"
                   onClick={() => {
                     setShowModal(false);
                     confirmDelete(editingPlanning);
@@ -5174,7 +5173,7 @@ export default function Planning() {
               </div>
 
               <div>
-                <label className="sk-field-label" style={{ cursor: "pointer" }}>
+                <label className="sk-field-label sk-field-label--geste">
                   <input
                     type="checkbox"
                     checked={employeeScheduleForm.use_custom_hours}
@@ -5185,7 +5184,7 @@ export default function Planning() {
                       })
                     }
                   />
-                  <Shield size={14} color="#F59E0B" />
+                  <Shield size={14} />
                   <span>Horaires sur-mesure (personnalisés)</span>
                 </label>
               </div>
@@ -5248,7 +5247,7 @@ export default function Planning() {
                   </div>
 
                   <div>
-                    <label className="sk-field-label" style={{ cursor: "pointer" }}>
+                    <label className="sk-field-label sk-field-label--geste">
                       <input
                         type="checkbox"
                         checked={employeeScheduleForm.custom_has_break}
@@ -5259,7 +5258,7 @@ export default function Planning() {
                           })
                         }
                       />
-                      <Coffee size={14} color="#F59E0B" />
+                      <Coffee size={14} />
                       <span>Inclure une pause</span>
                     </label>
                   </div>
@@ -5332,7 +5331,7 @@ export default function Planning() {
                       className={`sk-color-swatch ${
                         employeeScheduleForm.custom_color === c.value ? "active" : ""
                       }`}
-                      style={{ background: c.value }}
+                      style={{ "--pastille": c.value }}
                       title={c.label}
                       onClick={() =>
                         setEmployeeScheduleForm({
@@ -5493,7 +5492,7 @@ export default function Planning() {
 
               {modelForm.kind === "shift" && (
                 <div>
-                  <label className="sk-field-label" style={{ cursor: "pointer" }}>
+                  <label className="sk-field-label sk-field-label--geste">
                     <input
                       type="checkbox"
                       checked={modelForm.has_break}
@@ -5501,7 +5500,7 @@ export default function Planning() {
                         setModelForm({ ...modelForm, has_break: e.target.checked })
                       }
                     />
-                    <Coffee size={14} color="#F59E0B" />
+                    <Coffee size={14} />
                     <span>Inclure une pause</span>
                   </label>
                 </div>
@@ -5546,7 +5545,7 @@ export default function Planning() {
                       className={`sk-color-swatch ${
                         modelForm.color === c.value ? "active" : ""
                       }`}
-                      style={{ background: c.value }}
+                      style={{ "--pastille": c.value }}
                       title={c.label}
                       onClick={() => setModelForm({ ...modelForm, color: c.value })}
                     />
@@ -5562,14 +5561,8 @@ export default function Planning() {
               </div>
 
               <div
-                style={{
-                  padding: 12,
-                  borderRadius: 12,
-                  background: buildShiftGradient(modelForm.color),
-                  color: "#FFF7ED",
-                  fontSize: 13,
-                  fontWeight: 700,
-                }}
+                className="sk-modele-apercu"
+                style={{ "--shift-teinte": modelForm.color || undefined }}
               >
                 Aperçu : {modelForm.name || "Mon modèle"}
                 {modelForm.kind === "shift"
@@ -5842,7 +5835,7 @@ export default function Planning() {
                     );
                   })}
                   {filteredEmployees.length === 0 && (
-                    <span style={{ fontSize: 12.5, color: "var(--sk-text-muted)" }}>
+                    <span className="sk-modal-note">
                       Aucun collaborateur disponible pour ce filtre.
                     </span>
                   )}
@@ -5913,8 +5906,7 @@ export default function Planning() {
                   <MessageSquare size={13} /> Commentaire administrateur (optionnel)
                 </label>
                 <textarea
-                  className="sk-input"
-                  style={{ minHeight: 90, resize: "vertical" }}
+                  className="sk-input sk-input--longue"
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
                   placeholder="Commentaire de validation ou motif de refus..."
@@ -5954,15 +5946,14 @@ export default function Planning() {
       {showDeleteModal && planningToDelete && (
         <div className="sk-modal-backdrop" onClick={() => setShowDeleteModal(false)}>
           <div
-            className="sk-modal-box"
-            style={{ maxWidth: 400 }}
+            className="sk-modal-box sk-modal-box--petite"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sk-modal-head">
               <h2 className="sk-modal-title">Supprimer ce modèle ?</h2>
             </div>
             <div className="sk-modal-body">
-              <p style={{ margin: 0, fontSize: 13.5, color: "var(--sk-text-soft)" }}>
+              <p className="sk-modal-texte">
                 Voulez-vous vraiment supprimer <strong>"{planningToDelete.name}"</strong> ?
               </p>
             </div>
@@ -5979,8 +5970,7 @@ export default function Planning() {
               </button>
               <button
                 type="button"
-                className="sk-btn-publish"
-                style={{ background: "#EF4444", color: "#fff" }}
+                className="sk-btn-publish sk-btn--danger-rempli"
                 onClick={handleDelete}
               >
                 Supprimer
@@ -5997,15 +5987,14 @@ export default function Planning() {
           onClick={() => setShowDeleteRequestModal(false)}
         >
           <div
-            className="sk-modal-box"
-            style={{ maxWidth: 400 }}
+            className="sk-modal-box sk-modal-box--petite"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sk-modal-head">
               <h2 className="sk-modal-title">Supprimer cette demande ?</h2>
             </div>
             <div className="sk-modal-body">
-              <p style={{ margin: 0, fontSize: 13.5, color: "var(--sk-text-soft)" }}>
+              <p className="sk-modal-texte">
                 La demande de{" "}
                 <strong>
                   {requestToDelete.employees?.first_name}{" "}
@@ -6027,8 +6016,7 @@ export default function Planning() {
               </button>
               <button
                 type="button"
-                className="sk-btn-publish"
-                style={{ background: "#EF4444", color: "#fff" }}
+                className="sk-btn-publish sk-btn--danger-rempli"
                 onClick={handleDeleteRequest}
               >
                 Supprimer

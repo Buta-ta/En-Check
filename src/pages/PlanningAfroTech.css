@@ -960,6 +960,68 @@
   font-weight: 700;
 }
 
+/* Les huit fenêtres de la page portaient une partie de leur aspect dans le
+   JSX. Le rhabillage post-it les a rendus à la feuille ; les sept règles ci-
+   dessous sont la peau D'ORIGINE, recopiée à l'identique, pour que les autres
+   peaux de `Planning.jsx` ne perdent ni un curseur, ni un centrage, ni une
+   couleur pendant que la feuille, elle, habille la même fenêtre autrement. */
+.sk-field-label--geste {
+  cursor: pointer;
+}
+
+.sk-field-label--sans-marge {
+  margin: 0;
+}
+
+.sk-modal-pied-ligne {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 10px;
+}
+
+.sk-modal-note {
+  font-size: 12.5px;
+  color: var(--sk-text-muted);
+}
+
+.sk-modal-texte {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--sk-text-soft);
+}
+
+.sk-modal-box--petite {
+  max-width: 400px;
+}
+
+.sk-input--longue {
+  min-height: 90px;
+  resize: vertical;
+}
+
+/* la destruction, dans la peau de la page : le libellé d'alerte du dépôt, puis
+   le bouton plein d'alerte des deux confirmations */
+.sk-btn--danger {
+  color: #EF4444;
+  margin-right: auto;
+}
+
+.sk-btn--danger-rempli {
+  background: #EF4444;
+  color: #fff;
+}
+
+/* l'aperçu du modèle, hors peau post-it : la teinte choisie en aplat, comme
+   avant, portée par la variable que la page attache */
+.sk-modele-apercu {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--shift-teinte, var(--sk-terracotta-strong));
+  color: #FFF7ED;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 /* Carte de Shift dans une cellule avec support de couleur personnalisée */
 .sk-shift-card {
   background: var(--shift-custom-bg, linear-gradient(145deg, var(--sk-terracotta-strong) 0%, var(--sk-terracotta) 100%));
@@ -1300,6 +1362,7 @@
 }
 
 .sk-color-swatch {
+  background-color: var(--pastille, var(--sk-terracotta-strong));
   width: 28px;
   height: 28px;
   border-radius: 50%;

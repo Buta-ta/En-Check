@@ -462,6 +462,52 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(petit).toContain('.sk-plan-page--postit .sk-legend')
   })
 
+  it('30. les huit fenêtres du Planning portent la feuille et ne se peignent plus elles-mêmes', () => {
+    // « Retravaille les modales de la page planning », 22/11, sur la maquette
+    // choisie : un ruban de scotch en travers du haut, un coin plié en haut à
+    // droite qui abrite le ×, un titre centré à double trait, des champs à
+    // angle droit, un pied séparé d'un pointillé. Le contrat est double : la
+    // feuille habille, et le JSX, lui, ne peint plus rien.
+    const peau = lire('src/pages/PlanningPostIt.css')
+    const debut = planningSrc.indexOf('sk-modal-backdrop')
+    const fin = planningSrc.lastIndexOf('sk-modal-foot')
+    expect(debut).toBeGreaterThan(-1)
+    expect(fin).toBeGreaterThan(debut)
+    const fenetres = planningSrc.slice(debut, fin)
+    expect(fenetres.length).toBeGreaterThan(6000)
+    // dans les fenêtres, un style en ligne ne porte DÉSORMAIS PLUS qu'une
+    // donnée nommée (une teinte choisie dans la fenêtre), jamais de la peinture
+    const attribues = [...fenetres.matchAll(/style=\{\{\s*"([^"]+)"/g)].map((m) => m[1])
+    expect(attribues).toHaveLength(3)
+    expect(attribues.every((nom) => nom.startsWith('--'))).toBe(true)
+    expect(fenetres).not.toMatch(/style=\{\{[^}]*background:/)
+    expect(fenetres).not.toMatch(/color="#/)
+    // la seule couleur en dur qui reste est la valeur de l'entrée native de
+    // couleur : un `input type="color"` ne connaît pas les variables
+    expect(fenetres.match(/#[0-9A-Fa-f]{6}/g)).toHaveLength(1)
+    // la feuille, elle : voile sans flou, ruban, rabat, double trait au titre
+    expect(peau).toMatch(
+      /\.sk-plan-page--postit \.sk-modal-backdrop\s*\{[^}]*backdrop-filter: none/s
+    )
+    expect(peau).toContain('background: var(--charte-modale-voile)')
+    expect(peau).toContain('.sk-plan-page--postit .sk-modal-box::before')
+    expect(peau).toContain('.sk-plan-page--postit .sk-modal-box::after')
+    expect(peau).toMatch(
+      /\.sk-plan-page--postit \.sk-modal-title::after\s*\{[^}]*box-shadow: 2px 4px 0 0 var\(--charte-encre\)/s
+    )
+    // et la peau d'origine de la page a bien reçu ce que le JSX lui rendait
+    expect(planningCss).toContain('.sk-modal-box--petite')
+    expect(planningCss).toContain('.sk-modal-pied-ligne')
+    expect(planningCss).toContain('.sk-field-label--geste')
+    expect(planningCss).toContain('.sk-modele-apercu')
+    expect(planningCss).toContain('background-color: var(--pastille')
+    // les deux largeurs connaissent les fenêtres : le ruban s'élargit, le pied
+    // se partage les gestes, la disponibilité passe en colonne
+    const petit = peau.slice(peau.lastIndexOf('@media (max-width: 700px)'))
+    expect(petit).toContain('.sk-plan-page--postit .sk-modal-backdrop')
+    expect(petit).toContain('.sk-plan-page--postit .sk-avail-day-row')
+  })
+
   it('28quater. le bandeau motif ENTOURE la section au lieu de la couronner', () => {
     // « je veux que le bandeau motif de cette section puisse entourer cette
     // section ». Une seule et même toile, quatre lisières : le placement
