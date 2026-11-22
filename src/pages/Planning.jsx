@@ -2857,10 +2857,8 @@ export default function Planning() {
 
   return (
     <div className="sk-plan-page sk-plan-page--postit" data-theme={darkMode ? "dark" : "light"}>
-      <PageCulturalBand pathname="/planning"/>
-
-      {/* ═══ LE BANDEAU DE COMMANDE — UNE FEUILLE POSÉE SUR LA PAGE (22/11/2026) ═══
-          Trois choses en sortent, à la demande du fondateur :
+      {/* ═══ LE BANDEAU DE COMMANDE — UNE FEUILLE ENCADRÉE DE TOILE (22/11/2026) ═══
+          Trois choses sont SORTIES du bandeau, à la demande du fondateur :
           · le sélecteur d'entreprise — le périmètre vient du sélecteur global
             de l'application (voir `entrepriseActive`), et le bandeau LE DIT :
             le nom de l'entreprise choisie s'affiche à droite, en toutes lettres ;
@@ -2870,147 +2868,151 @@ export default function Planning() {
           · le bouton clair / sombre — le thème est un choix de l'application,
             pas d'une page ; il reste dans le tableau de bord et l'application
             lui obéit ici comme avant (`darkMode` pilote toujours `data-theme`).
-          Le bandeau, lui, devient une note en papier : cerne d'encre de 2 px,
-          bande de colle, rabat, motif de bogolan en liseré gauche, double
-          trait de feutre sous le titre — et plus aucun flou (la barre
-          flottait en `backdrop-filter: blur(14px)` avec une ombre de 36 px). */}
-      <header className="sk-topbar">
-        <div className="sk-topbar-inner">
-          {/* Gauche : flèche retour + titre, posés sur le liseré de motif */}
-          <div className="sk-topbar-left">
-            <button
-              type="button"
-              className="sk-back-btn"
-              onClick={() => navigate("/dashboard")}
-              title="Retour au Dashboard"
-              aria-label="Retour au Dashboard"
-            >
-              <ArrowLeft size={18} />
-            </button>
-
-            <div className="sk-brand-title-wrap">
-              <h1 className="sk-brand-title">En-Check · Planning</h1>
-            </div>
-          </div>
-
-          {/* Droite : la période, puis les deux seuls gestes du bandeau */}
-          <div className="sk-topbar-right">
-            <div className="sk-period-nav">
+          Et le bandeau motif ne se pose plus AU-DESSUS de la feuille : il l'EN-
+          CADRE (« je veux que le bandeau motif de cette section puisse entourer
+          cette section »). Une seule et même toile, `placement="cadre"`, quatre
+          lisières de 26 px autour de la note. Elle ne prend ni texte ni clic :
+          le motif fait le tour, les mots restent sur le papier (D-004). */}
+      <div className="sk-plan-encadrement">
+        <PageCulturalBand pathname="/planning" placement="cadre" />
+        <header className="sk-topbar">
+          <div className="sk-topbar-inner">
+            {/* Gauche : la flèche retour et le titre, posés sur le papier, jamais sur la toile */}
+            <div className="sk-topbar-left">
               <button
                 type="button"
-                className="sk-period-arrow"
-                onClick={() => navigatePeriod(-1)}
-                title="Période précédente"
-                aria-label="Période précédente"
+                className="sk-back-btn"
+                onClick={() => navigate("/dashboard")}
+                title="Retour au Dashboard"
+                aria-label="Retour au Dashboard"
               >
-                <ChevronLeft size={16} />
+                <ArrowLeft size={18} />
               </button>
-              <div className="sk-period-label-wrap">
+
+              <div className="sk-brand-title-wrap">
+                <h1 className="sk-brand-title">En-Check · Planning</h1>
+              </div>
+            </div>
+
+            {/* Droite : la période, puis les deux seuls gestes du bandeau */}
+            <div className="sk-topbar-right">
+              <div className="sk-period-nav">
                 <button
                   type="button"
-                  className="sk-period-label"
-                  onClick={() => setPeriodeOuverte((v) => !v)}
-                  aria-expanded={periodeOuverte}
-                  aria-haspopup="dialog"
-                  title="Choisir une date, un mois ou une année"
-                  data-testid="sk-period-label"
+                  className="sk-period-arrow"
+                  onClick={() => navigatePeriod(-1)}
+                  title="Période précédente"
+                  aria-label="Période précédente"
                 >
-                  {periodLabel}
-                  <ChevronDown size={14} className="sk-period-caret" data-ouvert={periodeOuverte ? "oui" : "non"} />
+                  <ChevronLeft size={16} />
                 </button>
+                <div className="sk-period-label-wrap">
+                  <button
+                    type="button"
+                    className="sk-period-label"
+                    onClick={() => setPeriodeOuverte((v) => !v)}
+                    aria-expanded={periodeOuverte}
+                    aria-haspopup="dialog"
+                    title="Choisir une date, un mois ou une année"
+                    data-testid="sk-period-label"
+                  >
+                    {periodLabel}
+                    <ChevronDown size={14} className="sk-period-caret" data-ouvert={periodeOuverte ? "oui" : "non"} />
+                  </button>
 
-                <ChoixPeriode
-                  ouvert={periodeOuverte}
-                  onFermer={() => setPeriodeOuverte(false)}
-                  jourSel={jourSelPlanning}
-                  annee={calendarDate.getFullYear()}
-                  onAllerA={allerADate}
-                  darkMode={darkMode}
-                />
+                  <ChoixPeriode
+                    ouvert={periodeOuverte}
+                    onFermer={() => setPeriodeOuverte(false)}
+                    jourSel={jourSelPlanning}
+                    annee={calendarDate.getFullYear()}
+                    onAllerA={allerADate}
+                    darkMode={darkMode}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="sk-period-arrow"
+                  onClick={() => navigatePeriod(1)}
+                  title="Période suivante"
+                  aria-label="Période suivante"
+                >
+                  <ChevronRight size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="sk-today-chip"
+                  onClick={() => setCalendarDate(new Date())}
+                >
+                  Aujourd'hui
+                </button>
               </div>
+
               <button
                 type="button"
-                className="sk-period-arrow"
-                onClick={() => navigatePeriod(1)}
-                title="Période suivante"
-                aria-label="Période suivante"
+                className="sk-btn-secondary"
+                onClick={handleDuplicateWeek}
+                title="Dupliquer les horaires de cette semaine sur la semaine suivante"
               >
-                <ChevronRight size={16} />
+                <Copy size={14} />
+                <span>Dupliquer la semaine</span>
               </button>
+
               <button
                 type="button"
-                className="sk-today-chip"
-                onClick={() => setCalendarDate(new Date())}
+                className="sk-btn-publish"
+                onClick={handlePublishPlanning}
+                disabled={publishing}
               >
-                Aujourd'hui
+                {publishing
+                  ? "Publication..."
+                  : pendingChangesCount > 0
+                  ? `Publier le planning (${pendingChangesCount})`
+                  : "Publier le planning"}
+              </button>
+
+              {/* Un seul voyage hors de la page, et c'est le vrai : la fiche de
+                  paie du jour se lit dans l'île Paie. Les quatre tuiles « Aller à »
+                  sont parties le 22/11 — le rail fait déjà ces voyages ; celui-ci
+                  reste parce qu'il prolonge l'acte publié : publier la semaine,
+                  puis vérifier qu'elle est bien sortie sur les fiches. */}
+              <button
+                type="button"
+                className="sk-btn-secondary"
+                onClick={() => navigate("/paie")}
+                title="Voir les fiches de paie dans l'île Paie"
+              >
+                <FileText size={14} />
+                <span>Fiches de paie</span>
               </button>
             </div>
-
-            <button
-              type="button"
-              className="sk-btn-secondary"
-              onClick={handleDuplicateWeek}
-              title="Dupliquer les horaires de cette semaine sur la semaine suivante"
-            >
-              <Copy size={14} />
-              <span>Dupliquer la semaine</span>
-            </button>
-
-            <button
-              type="button"
-              className="sk-btn-publish"
-              onClick={handlePublishPlanning}
-              disabled={publishing}
-            >
-              {publishing
-                ? "Publication..."
-                : pendingChangesCount > 0
-                ? `Publier le planning (${pendingChangesCount})`
-                : "Publier le planning"}
-            </button>
-
-            {/* Un seul voyage hors de la page, et c'est le vrai : la fiche de
-                paie du jour se lit dans l'île Paie. Les quatre tuiles « Aller à »
-                sont parties le 22/11 — le rail fait déjà ces voyages ; celui-ci
-                reste parce qu'il prolonge l'acte publié : publier la semaine,
-                puis vérifier qu'elle est bien sortie sur les fiches. */}
-            <button
-              type="button"
-              className="sk-btn-secondary"
-              onClick={() => navigate("/paie")}
-              title="Voir les fiches de paie dans l'île Paie"
-            >
-              <FileText size={14} />
-              <span>Fiches de paie</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Rang 2 : les quatre vues, en mots soulignés de feutre, et l'état de
-            la feuille à droite — le nom de l'entreprise, le numéro de semaine,
-            le compte des collaborateurs vus. */}
-        <div className="sk-topbar-vues">
-          <div className="sk-view-Inline" role="tablist" aria-label="Vues du planning">
-            {["semaine", "mois", "jour", "demandes"].map((vue) => (
-              <button
-                key={vue}
-                type="button"
-                className={`sk-view-link ${planningView === vue ? "active" : ""}`}
-                onClick={() => setPlanningView(vue)}
-                aria-selected={planningView === vue}
-                role="tab"
-              >
-                {vue === "semaine" ? "Semaine" : vue === "mois" ? "Mois" : vue === "jour" ? "Jour" : "Demandes"}
-                {vue === "demandes" && pendingRequestsCount > 0 && (
-                  <span className="sk-req-badge">{pendingRequestsCount}</span>
-                )}
-              </button>
-            ))}
           </div>
 
-          <p className="sk-topbar-etat">{etatFeuille}</p>
-        </div>
-      </header>
+          {/* Rang 2 : les quatre vues, en mots soulignés de feutre, et l'état de
+              la feuille à droite — le nom de l'entreprise, le numéro de semaine,
+              le compte des collaborateurs vus. */}
+          <div className="sk-topbar-vues">
+            <div className="sk-view-Inline" role="tablist" aria-label="Vues du planning">
+              {["semaine", "mois", "jour", "demandes"].map((vue) => (
+                <button
+                  key={vue}
+                  type="button"
+                  className={`sk-view-link ${planningView === vue ? "active" : ""}`}
+                  onClick={() => setPlanningView(vue)}
+                  aria-selected={planningView === vue}
+                  role="tab"
+                >
+                  {vue === "semaine" ? "Semaine" : vue === "mois" ? "Mois" : vue === "jour" ? "Jour" : "Demandes"}
+                  {vue === "demandes" && pendingRequestsCount > 0 && (
+                    <span className="sk-req-badge">{pendingRequestsCount}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <p className="sk-topbar-etat">{etatFeuille}</p>
+          </div>
+        </header>
+      </div>
 
       {/* ═══ ESPACE DE TRAVAIL PRINCIPAL EN-CHECK ═══ */}
       <main className="sk-workspace">

@@ -16,6 +16,9 @@ const bandeau = planningSrc.slice(
 )
 expect(bandeau.length).toBeGreaterThan(1000)
 const planningCss = lire('src/pages/PlanningAfroTech.css')
+
+// L'anneau de toile, lui aussi isolé : c'est le nouveau contenant du bandeau.
+const cadreOuvert = planningSrc.indexOf('<div className="sk-plan-encadrement">')
 const pointagesSections = lire('src/components/PointagesAfroTechSections.jsx')
 const pausesSections = lire('src/components/PausesAfroTechSections.jsx')
 
@@ -121,7 +124,10 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
   it('conserve l’identité Afro-Tech et le thème actif (useTheme + motifs culturels)', () => {
     expect(planningSrc).toContain('useTheme')
     expect(planningSrc).toContain('data-theme={darkMode ? "dark" : "light"}')
-    expect(planningSrc).toContain('<PageCulturalBand pathname="/planning"/>')
+    // Le bandeau motif de la page n'est plus posé au-dessus du bandeau de
+    // commande : il l'encadre (22/11). La page garde sa bande de pied.
+    expect(planningSrc).toContain('<PageCulturalBand pathname="/planning" placement="cadre" />')
+    expect(planningSrc).toContain('<PageCulturalBand pathname="/planning" placement="bottom"/>')
     expect(planningSrc).toContain('AdinkraWatermarkSvg')
     expect(planningCss).toContain('.sk-plan-page[data-theme="light"]')
   })
@@ -302,6 +308,47 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // le sélecteur d\u2019affichage (équipes / collaborateurs), lui, est un autre
     // objet : il est dans la barre de focus, pas dans le bandeau
     expect(planningSrc).toContain('className="sk-ent-select"')
+  })
+
+  it('28quater. le bandeau motif ENTOURE la section au lieu de la couronner', () => {
+    // « je veux que le bandeau motif de cette section puisse entourer cette
+    // section ». Une seule et même toile, quatre lisières : le placement
+    // « cadre », pas une bande de plus.
+    expect(cadreOuvert).toBeGreaterThan(-1)
+    expect(planningSrc.slice(cadreOuvert, cadreOuvert + 220)).toContain('placement="cadre"')
+    // la toile est un FOND absolu sous la feuille : elle ne boit aucun clic…
+    const peau = lire('src/pages/PlanningPostIt.css')
+    const bandeauCss = lire('src/components/PageCulturalBand.css')
+    const regle = (source, selecteur) => {
+      const d = source.indexOf(selecteur + ' {')
+      expect(d, selecteur + ' — règle manquante').toBeGreaterThan(-1)
+      return source.slice(d, source.indexOf('}', d))
+    }
+    const toile = regle(bandeauCss, '.ec-cultural-cadre')
+    expect(toile).toContain('position: absolute')
+    expect(toile).toContain('inset: 0')
+    expect(toile).toContain('pointer-events: none')
+    // …et la toile garde ses proportions : on lui donne une HAUTEUR, la largeur
+    // suit. Une largeur imposée serait un motif étiré (C4 / D-003).
+    expect(toile).toContain('background-size: auto var(--ec-cadre-epaisseur, 26px)')
+    expect(toile).not.toMatch(/background-size:\s*\d+px \d+px/)
+    expect(toile).toContain('background-repeat: repeat')
+    // l'épaisseur ne vit qu'à UN seul endroit : le cadre la prête au bandeau
+    const carcasse = regle(peau, '.sk-plan-encadrement')
+    expect(carcasse).toContain('--plq-cadre: 26px')
+    expect(carcasse).toContain('padding: var(--plq-cadre)')
+    expect(carcasse).toContain('--ec-cadre-epaisseur: var(--plq-cadre)')
+    // une seule assise : le feutre dur est sur le cadre, la feuille ne se
+    // projette pas en plus sur le tissu
+    expect(carcasse).toContain('position: sticky')
+    const feuille = regle(peau, '.sk-plan-page--postit .sk-topbar')
+    expect(feuille).toContain('position: relative')
+    expect(feuille).toContain('z-index: 1')
+    expect(feuille).toContain('box-shadow: none')
+    // aucun texte sur le motif (D-004) : les mots restent dans la feuille
+    expect(bandeau).not.toContain('PageCulturalBand')
+    expect(carcasse).not.toContain('!important')
+    expect(toile).not.toMatch(/#[0-9a-fA-F]{3}/)
   })
 
   it('28ter. dit le périmètre, la semaine et le compte à la place des contrôles retirés', () => {

@@ -38,19 +38,55 @@
    de `!important` ici.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── la feuille ───────────────────────────────────────────────────────────── */
+/* ── le cadre de toile ──────────────────────────────────────────────────────
+   Le bandeau motif n'est plus posé AU-DESSUS de la feuille, il la fait le tour
+   (« je veux que le bandeau motif de cette section puisse entourer cette
+   section »). Une seule et même toile, quatre lisières : `PageCulturalBand` en
+   `placement="cadre"`, étalé en fond absolu du cadre, et la feuille posée par-
+   dessus au centre — c'est elle qui masque le milieu, donc le motif ne se
+   voit qu'en bordure.
 
-.sk-plan-page--postit .sk-topbar {
+   L'épaisseur du cadre se règle ICI, à un seul endroit : `--plq-cadre` donne à
+   la fois l'espace intérieur du conteneur et la hauteur de la tuile chez le
+   bandeau (par `--ec-cadre-epaisseur`). Deux nombres séparés, le papier et la
+   toile ne se rejoignent plus — faute déjà payée ailleurs, donc prévenue.
+   La tuile est réduite d'une hauteur, sa largeur suit : les proportions du
+   motif sont sauves, il n'est jamais étiré (C4 / D-003). Et le cadre ne boit
+   aucun clic, ne porte aucun mot : les mots restent sur le papier (D-004). */
+
+.sk-plan-encadrement {
   --plq-pli: 14px;
   --plq-colle: calc(var(--plq-pli) + 1px);
   --plq-lave: color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface));
   --plq-decalage: 3px;
+  --plq-cadre: 26px;
+  --ec-cadre-epaisseur: var(--plq-cadre);
 
   /* collant comme avant : la grille est longue, le geste doit rester à portée */
   position: sticky;
   top: 8px;
   z-index: 60;
   margin: 8px 14px 0;
+  padding: var(--plq-cadre);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  /* le double feutre, déménagé de la feuille au cadre : une seule assise posée
+     sur l'écran, deux couches à zéro de flou (D-016) */
+  box-shadow:
+    var(--plq-decalage) var(--plq-decalage) 0 6px
+      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
+    var(--plq-decalage) var(--plq-decalage) 0 8px var(--charte-encre);
+}
+
+/* ── la feuille, posée dans le cadre ─────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-topbar {
+  /* au-dessus de la toile, et sans marge ni assise propres : le cadre a déjà
+     l'espace, et une ombre de plus irait se coucher sur le tissu */
+  position: relative;
+  z-index: 1;
+  margin: 0;
   padding: calc(var(--plq-pli) + 6px) var(--charte-espace-5) var(--charte-espace-3);
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: 0;
@@ -63,13 +99,9 @@
     color-mix(in srgb, var(--charte-encre) 16%, transparent) var(--plq-pli) var(--plq-colle),
     transparent var(--plq-colle)
   );
-  /* le double feutre : papier par-dessus encre, deux ombres à zéro de flou */
-  box-shadow:
-    var(--plq-decalage) var(--plq-decalage) 0 6px
-      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
-    var(--plq-decalage) var(--plq-decalage) 0 8px var(--charte-encre);
-  /* pas de flou sous la note, et pas de voile : `backdrop-filter` ne sert à
-     rien sur un fond qui n'est pas translucide */
+  /* plus d'ombre sous la note : l'assise est sur le cadre, et `backdrop-filter`
+     ne sert à rien sur un fond qui n'est pas translucide */
+  box-shadow: none;
   backdrop-filter: none;
   color: var(--charte-encre);
   font-family: var(--charte-police);
@@ -77,8 +109,8 @@
 }
 
 /* le rabat, au coin bas-droit : le dos de la feuille, 14 px, la pliure sur
-   l'hypoténuse. En pseudo-élément, jamais en `clip-path` : la découpe rognerait
-   le double feutre */
+   l'hypoténuse, posé sur la toile du cadre. En pseudo-élément, jamais en
+   `clip-path` : la découpe rognerait le coin et emporterait la bande de colle */
 .sk-plan-page--postit .sk-topbar::after {
   content: '';
   position: absolute;
@@ -443,9 +475,11 @@
 }
 
 @media (max-width: 700px) {
-  .sk-plan-page--postit .sk-topbar {
+  .sk-plan-encadrement {
     top: 4px;
     margin: 4px 8px 0;
+    /* la lisière se retire un cran, sinon le tissu mangerait la note */
+    --plq-cadre: 18px;
   }
 
   .sk-plan-page--postit .sk-topbar-vues {
