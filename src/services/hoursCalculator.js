@@ -365,6 +365,8 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     period: formatMonthYearFR(monthPeriod.startDate),
 
     normal: formatDurationSeconds(monthNormalSeconds),
+    //  Secondes brutes : la valorisation ne doit pas repasser par « 39h59 ».
+    normal_seconds: monthNormalSeconds,
 
     // ✅ Heures sup avec taux réels
     overtime_normal: {
@@ -1606,7 +1608,11 @@ async function calculateValorization(employeeId, enterpriseId, monthData, curren
     const hourlyRate = profile?.hourly_rate ? Number(profile.hourly_rate) : null
     if (!hourlyRate || !Number.isFinite(hourlyRate) || hourlyRate <= 0) return null
 
-    const normalHours = parseDurationToHours(monthData.normal)
+    //  ⚠️ A3 : les heures normales étaient relues depuis « 39h59 », qui perd
+    //  les secondes. On préfère la valeur brute quand elle existe.
+    const normalHours = Number.isFinite(monthData.normal_seconds)
+      ? monthData.normal_seconds / 3600
+      : parseDurationToHours(monthData.normal)
     const normalAmount = normalHours * hourlyRate
 
     const tranches = tranchesValorisation(monthData)
@@ -1827,9 +1833,13 @@ function formatDurationSeconds(seconds) {
 
 function parseDurationToHours(durationStr) {
   if (!durationStr) return 0
-  const match = String(durationStr).match(/(\d+)h(\d+)/)
+  //  « 8h » (sans minutes) valait 0 avant : un zéro silencieux, exactement le
+  //  genre de perte qu'on cherche à supprimer sur le chemin de l'argent.
+  const match = String(durationStr).match(/(\d+)h(\d*)/)
   if (!match) return 0
-  return (parseInt(match[1], 10) || 0) + (parseInt(match[2], 10) || 0) / 60
+  const heures = parseInt(match[1], 10) || 0
+  const minutes = parseInt(match[2], 10) || 0
+  return heures + minutes / 60
 }
 
 function formatDateShortFR(dateStr) {
@@ -2270,4 +2280,6 @@ export const __internal = {
   //  🎌 Fériés : résolution de la majoration et valorisation par tranche.
   resoudreFerieDuJour,
   generateAlerts,
+  //  💰 Testé de bout en bout (constat A0 : zéro test sur l'argent).
+  calculateValorization,
 }
