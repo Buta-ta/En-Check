@@ -554,11 +554,13 @@
   --scene-y: 38%;
 }
 
-/* 4 · la grille de la semaine : le mur, et la fiche qu'on épingle */
+/* 4 · la grille de la semaine : le mur EN ENTIER, et la fiche qu'on épingle.
+   Le point regardé est calé sur l'angle haut-droit : c'est ce qui garde les
+   sept colonnes dans le champ (un point centré rognerait la colonne du bout). */
 .emp-loading-stage[data-artwork="page-scene-illustration"][data-step="4"] {
   --scene-k: 1.85;
-  --scene-x: 78%;
-  --scene-y: 22%;
+  --scene-x: 96%;
+  --scene-y: 6%;
 }
 
 /* la semaine est chargée : on recule d'un cran, la salle se rappelle, la
