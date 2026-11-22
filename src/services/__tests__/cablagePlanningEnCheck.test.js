@@ -102,37 +102,30 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // pour l’horaire entier de la semaine. Deux chemins de donnée, un seul
     // aspect : la feuille lave son papier et peint son ruban avec cette teinte.
     expect(planningSrc).toContain('const COULEUR_HORAIRE_CLE = "couleur-horaire"')
-    // Trois lectures de la teinte de l'horaire : les deux chemins de résolution
-    // (heures personnalisées, modèle d'entreprise) et la surcharge de case, qui
-    // hérite de la teinte quand elle n'a pas la sienne.
-    expect(planningSrc.match(/empOverrides\[COULEUR_HORAIRE_CLE\]\?\.color/g)).toHaveLength(3)
-    expect(planningSrc).toContain('[COULEUR_HORAIRE_CLE]: { color: couleur }')
-    // Le fondateur a redemandé le 22/11 : « quand on clique sur une case, on choisit
-    // la couleur, cependant tu n'as pas appliqué les couleurs ». Trois causes, trois
-    // verrous. 1 · la teinte n'est plus réservée aux heures personnalisées — un
-    // collaborateur qui reçoit un modèle d'entreprise a une couleur, lui aussi, et
-    // les deux chemins la relisent DABORD dans la ligne `employee_schedules` ;
-    const lecturesBase = planningSrc.match(
-      /color: es\.custom_color \|\| empOverrides\[COULEUR_HORAIRE_CLE\]\?\.color/g
-    )
-    expect(lecturesBase).toHaveLength(2)
-    // Un seul calcul de la teinte, deux destinations : la base et le brouillon.
+    // TOUTES les branches de résolution peignent, y compris le modèle par défaut
+    // de l'entreprise et la case surchargée : une branche qui oublierait `teinte`
+    // est une case qui reste grise sans que rien ne le dise.
+    expect(planningSrc.match(/color: teinte,/g)).toHaveLength(4)
+    // La teinte de la ligne se lit à DEUX endroits seulement — la chaîne de
+    // résolution et la fenêtre, qui doit montrer ce qui est en place.
+    expect(planningSrc.match(/empOverrides\[COULEUR_HORAIRE_CLE\]\?\.color/g)).toHaveLength(1)
+    // Un seul calcul de la teinte, une seule portée à la fois.
     const calcul = planningSrc.match(
       /const couleur = employeeScheduleForm\.custom_color \|\| TEINTE_PAR_DEFAUT;/g
     )
     expect(calcul).toHaveLength(1)
-    expect(planningSrc).toContain('custom_color: couleur,')
-    // 2 · la fenêtre relit la teinte EN PLACE avant de l'afficher — dans la base
-    // d'abord — sinon enregistrer une seconde fois effaçait ce que la première
-    // avait peint ;
+    // la fenêtre relit la teinte EN PLACE avant de l'afficher — celle de la case
+    // visée d'abord — sinon enregistrer une seconde fois effaçait ce que la
+    // première avait peint ;
     expect(planningSrc).toContain('custom_color: teinteEnCours')
     expect(planningSrc.match(/custom_color: teinteEnCours/g)).toHaveLength(2)
-    expect(planningSrc).toContain('existingES?.custom_color ||')
-    // 3 · la teinte de départ vient de la palette, plus d'un hexa recopié trois fois.
+    expect(planningSrc).toContain('existingES?.custom_day_colors?.[dayItem.dateStr]')
+    // la teinte de départ vient de la palette, plus d'un hexa recopié trois fois :
+    // la fenêtre, le payload, le champ libre, et le retour en arrière d'une case.
     expect(planningSrc).toContain('const TEINTE_PAR_DEFAUT = ENCHECK_COLOR_PALETTE[0].value')
     expect(
       planningSrc.match(/custom_color: TEINTE_PAR_DEFAUT|custom_color \|\| TEINTE_PAR_DEFAUT/g)
-    ).toHaveLength(3)
+    ).toHaveLength(4)
     // La case ciblée garde le nom de son modèle : la surcharge locale ne le portait pas.
     expect(planningSrc).toContain('name: cellEditContext.shiftName || "Horaire personnalisé"')
     const peau = lire('src/pages/PlanningPostIt.css')
@@ -180,19 +173,100 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     const migration = lire('supabase/migrations/20261122000002_teinte_horaire_collaborateur.sql')
     expect(migration).toContain('ADD COLUMN IF NOT EXISTS custom_color text')
     expect(migration).toContain('custom_color IS NULL OR custom_color')
-    // l'enregistrement de la fenêtre porte la teinte jusquau upsert
+    // la teinte de la LIGNE ne part en base que quand la fenêtre n'est pas ouverte
+    // sur une case — voir 6quater, qui verrouille la portée
     const ecriture = planningSrc.slice(
       planningSrc.indexOf('const handleSaveEmployeeSchedule = async () => {'),
       planningSrc.indexOf('Planning collaborateur enregistré')
     )
     expect(ecriture).toContain('.from("employee_schedules")')
-    expect(ecriture).toContain('custom_color: couleur,')
+    expect(ecriture).toContain(': { custom_color: couleur }),')
     // la page relit la base (select *), et la fenêtre aussi : pas de second
     // endroit où la couleur pourrait se perdre
-    expect(planningSrc).toContain('es.custom_color')
+    expect(planningSrc).toContain('es?.custom_color')
     expect(planningSrc).toContain('existingES?.custom_color ||')
     // aucune valeur de couleur ajoutée dans le SQL de la migration
     expect(migration).not.toMatch(/#[0-9a-fA-F]{6}'/)
+  })
+
+  it('6quater. une case choisit SA teinte, et la ligne ne déborde pas dessus', () => {
+    // Quatre heures après la correction précédente, le fondateur renvoie une
+    // capture : deux cases de la même ligne, le même violet. « chaque case doit
+    // avoir sa propre couleur qu'on choisit, et non appliquer la couleur choisie
+    // à toutes les cases sur la même ligne ». La fenêtre servait aux deux
+    // portées et n'écrivait qu'à une seule adresse. Trois verrous.
+
+    // 1 · L'ÉCRITURE EST SCOPÉE. Une date visée écrit dans la carte des teintes
+    // par jour et ne touche pas à `custom_color` ; sans date, c'est l'inverse.
+    const ecriture = planningSrc.slice(
+      planningSrc.indexOf('const handleSaveEmployeeSchedule = async () => {'),
+      planningSrc.indexOf('Planning collaborateur enregistré')
+    )
+    expect(ecriture).toContain('const dateCible = cellEditContext?.dateStr || null;')
+    expect(ecriture).toContain('...(dateCible')
+    expect(ecriture).toContain('[dateCible]: couleur,')
+    expect(ecriture).toContain(': { custom_color: couleur }),')
+    // la carte se FUSIONNE avec ce qui est déjà en base : peindre un mardi ne
+    // doit pas effacer le vendredi d'à côté
+    expect(ecriture).toContain('...(ligneExistante?.custom_day_colors || {}),')
+    // et le brouillon local non plus ne remplace plus la ligne entière
+    expect(ecriture).toContain(
+      'const cetEmploye = { ...(prev[employeeScheduleForm.employee_id] || {}) };'
+    )
+    expect(ecriture).not.toContain('const surcharges = { [COULEUR_HORAIRE_CLE]')
+    // la clé de la ligne ne peut plus être écrite depuis une case
+    expect(ecriture.match(/cetEmploye\[COULEUR_HORAIRE_CLE\] = \{ color: couleur \};/g)).toHaveLength(
+      1
+    )
+    expect(ecriture.indexOf('if (dateCible) {')).toBeLessThan(
+      ecriture.indexOf('cetEmploye[COULEUR_HORAIRE_CLE]')
+    )
+
+    // 2 · LA LECTURE EST ORDONNÉE. La case (brouillon, puis base) avant la ligne
+    // (base, puis brouillon). Un `indexOf` suffit à dire l'ordre, et c'est
+    // l'ordre qui est la correction.
+    const chaine = planningSrc.slice(
+      planningSrc.indexOf('const teinteDeLaCase ='),
+      planningSrc.indexOf('if (override) {')
+    )
+    expect(chaine).toContain('override?.color ||')
+    expect(chaine).toContain('es?.custom_day_colors?.[dateStr] ||')
+    expect(chaine.indexOf('teinteDeLaCase')).toBeLessThan(chaine.indexOf('es?.custom_color'))
+
+    // 3 · LE VIEUX BROUILLON NE DÉBORDE PLUS. La clé de ligne laissée dans un
+    // `localStorage` par l'ancien code signifiait autrefois « peins les sept
+    // jours depuis un seul jour » : elle est jetée au montage, pas relue.
+    const hydratation = planningSrc.slice(
+      planningSrc.indexOf('const [dayOverrides, setDayOverrides] = useState('),
+      planningSrc.indexOf('// Modals existants')
+    )
+    expect(hydratation).toContain('delete reste[COULEUR_HORAIRE_CLE]')
+
+    // LA COLONNE. `custom_day_colors` naît d'une migration du dépôt, nullable,
+    // contrainte à un objet dont chaque valeur est un hexa de six chiffres.
+    const migration = lire('supabase/migrations/20261122000004_teinte_case_par_case.sql')
+    expect(migration).toContain('ADD COLUMN IF NOT EXISTS custom_day_colors jsonb')
+    expect(migration).toContain("jsonb_typeof(custom_day_colors) = 'object'")
+    expect(migration).toContain('like_regex')
+
+    // LA PORTÉE SE LIT DANS LA FENÊTRE. Un champ qui ne dit pas ce qu'il change
+    // est une promesse qu'on doit deviner.
+    expect(planningSrc).toContain('Couleur du ${jourViseParLaCase(cellEditContext.dateStr)}')
+    expect(planningSrc).toContain('"Couleur de l\'horaire"')
+    expect(planningSrc).toContain('Une seule case : les six autres gardent leur teinte')
+    expect(planningSrc).toContain('Toute la ligne, pour les jours qui n\'ont pas encore choisi')
+
+    // ET ELLE EST RÉVERSIBLE. Une teinte par case qui ne peut pas être ôtée est une
+    // case qu'on n'ose plus toucher.
+    expect(planningSrc).toContain('const handleRetirerTeinteDeLaCase = async () => {')
+    const retrait = planningSrc.slice(
+      planningSrc.indexOf('const handleRetirerTeinteDeLaCase = async () => {'),
+      planningSrc.indexOf('const jourViseParLaCase =')
+    )
+    expect(retrait).toContain('delete carte[dateStr];')
+    expect(retrait).toContain('delete sansTeinte.color;')
+    expect(retrait).toContain('.from("employee_schedules")')
+    expect(planningSrc).toContain("Reprendre la teinte de l'horaire")
   })
 
   it('7. suit le thème de l\u2019application sans le commander dans son bandeau', () => {
