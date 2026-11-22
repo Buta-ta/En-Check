@@ -179,6 +179,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     break: null,
     openSessionsCount: todaySummary.openSessionsCount,
     hasAutoCloseVirtual: todaySummary.hasAutoCloseVirtual,
+    anomalies: todaySummary.anomalies || [],
   }
 
   // ── 10) Semaine ───────────────────────────────────────────────
@@ -238,6 +239,8 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
 
   let monthOpenSessionsCount = 0
   let monthVirtualAutoCloseDays = 0
+  //  ⚠️ B : toute réparation automatique du mois, avec sa date.
+  const monthAnomalies = []
 
   //  Trace des fériés rencontrés : ce qui a été majoré, à quel taux, pourquoi.
   const feriesTraces = []
@@ -248,6 +251,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     monthWorkedSeconds += s.totalSeconds
     monthOpenSessionsCount += s.openSessionsCount
     if (s.hasAutoCloseVirtual) monthVirtualAutoCloseDays += 1
+    for (const a of s.anomalies || []) monthAnomalies.push({ date: d, ...a })
 
     const holiday = holidayMap.get(d) || null
     const ferie = resoudreFerieDuJour({
@@ -417,6 +421,9 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
 
     openSessionsCount: monthOpenSessionsCount,
     virtualAutoCloseDays: monthVirtualAutoCloseDays,
+
+    //  ⚠️ B — ce que le moteur a réparé tout seul ce mois-ci.
+    anomalies: monthAnomalies,
   }
 
   // 🎌 Trace des fériés : combien de temps, à quel taux, sur quelle base.
@@ -577,6 +584,18 @@ function buildDaySummariesStrict({
     return summaries[dateKey]
   }
 
+  /**
+   * Note une réparation sur la journée concernée.
+   *
+   * Principe : le moteur peut toujours décider de ne pas payer 20 h pour une
+   * session de 20 h… mais il ne peut plus le faire en silence. La ligne dit
+   * ce qui a été écarté, et combien.
+   */
+  const noterAnomalie = (dateKey, type, detail = {}) => {
+    if (!dateKey || dateKey < yearStartDate || dateKey > yearEndDate) return
+    ensure(dateKey).anomalies.push({ type, ...detail })
+  }
+
   const pushPairToDay = (inAtt, outAtt) => {
     const inDate = new Date(inAtt.check_time)
     //  Journée de travail : la bascule de la grille décide où commence la
@@ -588,8 +607,21 @@ function buildDaySummariesStrict({
     const s = ensure(dayKey)
 
     const duration = calculerDureeSecondes(inAtt.check_time, outAtt.check_time)
-    const cappedDuration = Math.min(duration, APPARIEMENT_H * 3600)
+    const plafondSecondes = APPARIEMENT_H * 3600
+    const cappedDuration = Math.min(duration, plafondSecondes)
     s.totalSeconds += cappedDuration
+
+    //  Garde-fou : le chemin nominal rejette déjà une sortie au-delà de
+    //  `appariementHeures`, donc ce plafond ne devrait jamais mordre. S'il
+    //  mord un jour (seuils reconfigurés), la perte sera au moins chiffrée.
+    if (duration > plafondSecondes) {
+      s.anomalies.push({
+        type: 'session_plafonnee',
+        secondes_reelles: Math.round(duration),
+        secondes_retenues: Math.round(cappedDuration),
+        message: `Session de ${(duration / 3600).toFixed(1)} h ramenée à ${APPARIEMENT_H} h`,
+      })
+    }
 
     s.validPairsCount += 1
     if (!s.firstInISO) s.firstInISO = inAtt.check_time
@@ -668,8 +700,30 @@ function buildDaySummariesStrict({
         if (!isConsecutiveInSameShift) {
           closeOpenSessionVirtually(currentIn)
           currentIn = att
+        } else {
+          //  Deux entrées dans la même garde : la seconde est ignorée pour le
+          //  calcul. On le dit (elle peut être un vrai retour de pause).
+          //
+          //  ⚠️ La trace est rattachée à la journée de l'ENTRÉE de la garde,
+          //  pas à celle du badge ignoré : une garde de nuit 22:30 → 02:55
+          //  reste UNE journée. Créer une journée à 0 h le lendemain ferait
+          //  apparaître un dédoublement que le calcul n'a jamais fait.
+          noterAnomalie(inDay, 'entree_ignoree', {
+            heure: att.check_time,
+            message: 'Deuxième entrée sans sortie : ignorée dans le calcul',
+          })
         }
       }
+      continue
+    }
+
+    //  Sortie sans entrée en cours : rien à apparier. Aujourd'hui elle
+    //  disparaît purement et simplement du total.
+    if (att.check_type === 'out' && !currentIn) {
+      noterAnomalie(cleJourDeTravail(new Date(att.check_time), basculeMinutes), 'sortie_orpheline', {
+        heure: att.check_time,
+        message: 'Sortie sans entrée correspondante : non comptée',
+      })
       continue
     }
 
@@ -682,6 +736,10 @@ function buildDaySummariesStrict({
       // `encheck_nettoyer_rebonds_qr` effaçait aussi les vraies paires courtes, la
       // fonction est donc neutralisée côté base (elle marque, elle ne détruit plus).
       if (diffSeconds >= 0 && diffSeconds < REBOND_S) {
+        noterAnomalie(cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes), 'rebond_ignore', {
+          secondes: Math.round(diffSeconds),
+          message: 'Double scan rapproché : ignoré',
+        })
         continue
       }
 
@@ -691,6 +749,12 @@ function buildDaySummariesStrict({
       } else {
         // OUT trop loin (> appariement_heures) => l'ancien IN était un oubli de
         // dépointage : on le clôture virtuellement (on marque, on n'efface pas).
+        noterAnomalie(cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes), 'sortie_trop_lointaine', {
+          heures_ecart: Math.round(diffHours * 10) / 10,
+          message: diffSeconds < 0
+            ? 'Sortie antérieure à l’entrée : non comptée'
+            : `Sortie à ${Math.round(diffHours)} h de l’entrée : session clôturée virtuellement`,
+        })
         closeOpenSessionVirtually(currentIn)
         currentIn = null
       }
@@ -1692,6 +1756,15 @@ function generateAlerts({ today, month, year, hasPlan, seuils, feries }) {
     alerts.push({ type: 'warning', message: `${month.openSessionsCount} session(s) ouverte(s) sur la période (auto-close plafonné)` })
   }
 
+  if (month?.anomalies?.length > 0) {
+    const plafonnees = month.anomalies.filter(a => a.type === 'session_plafonnee').length
+    const detail = plafonnees > 0 ? ` dont ${plafonnees} session(s) plafonnée(s)` : ''
+    alerts.push({
+      type: 'warning',
+      message: `${month.anomalies.length} pointage(s) réparé(s) automatiquement ce mois${detail} — à vérifier avant paie`,
+    })
+  }
+
   if (!hasPlan) {
     alerts.push({ type: 'info', message: 'Aucun planning configuré — attendu non calculé' })
   } else if (year?.delays?.count > 0) {
@@ -1820,7 +1893,11 @@ function makeEmptyDaySummary(dateStr) {
     validPairsCount: 0,
     openSessionsCount: 0,
     hasAutoCloseVirtual: false,
+    hasAutoClosedOut: false,
     entries: [],
+    //  ⚠️ B — un pointage réparé sans trace est invisible à l'inspection.
+    //  Chaque réparation laisse une ligne ici, au lieu d'un silence.
+    anomalies: [],
   }
 }
 
