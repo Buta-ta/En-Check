@@ -937,6 +937,29 @@
   border-color: #2C241E transparent transparent transparent;
 }
 
+/* Quatre détails qui vivaient dans le JSX de la grille hebdomadaire : la peau
+   de la page les retrouve ici, pour que la seule feuille post-it n'en hérite
+   pas par accident et que les autres peaux ne perdent rien au passage. */
+.sk-th-emp-icone {
+  margin-right: 8px;
+  color: var(--sk-accent-warm);
+}
+
+.sk-group-caret {
+  margin-right: 4px;
+  color: var(--sk-accent-warm);
+}
+
+.sk-matrix-vide {
+  padding: 42px;
+  text-align: center;
+  color: var(--sk-text-muted);
+}
+
+.sk-shift-net {
+  font-weight: 700;
+}
+
 /* Carte de Shift dans une cellule avec support de couleur personnalisée */
 .sk-shift-card {
   background: var(--shift-custom-bg, linear-gradient(145deg, var(--sk-terracotta-strong) 0%, var(--sk-terracotta) 100%));
@@ -1025,6 +1048,8 @@
 .sk-shift-color-mini {
   width: 11px;
   height: 11px;
+  /* la teinte du poste, que la page attache elle-même */
+  background: var(--shift-teinte, var(--sk-terracotta));
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.75);
   cursor: pointer;
