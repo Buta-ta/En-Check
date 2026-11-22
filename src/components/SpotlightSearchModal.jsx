@@ -104,7 +104,7 @@ export default function SpotlightSearchModal({ admin, onClose, isOpen }) {
     if (result.type === 'employee') navigate(`/employes?id=${result.id}`)
     else if (result.type === 'attendance') navigate('/pointages')
     else if (result.type === 'retard') navigate('/retards')
-    else if (result.type === 'task') navigate(`/taches/${result.id}`)
+    else if (result.type === 'task') navigate(`/employes?vue=taches&tache=${encodeURIComponent(result.id)}`)
     else if (result.type === 'hours_detail') {
       console.log('Détails heures:', result)
     }

@@ -5,6 +5,14 @@
    FEUILLE posée sur le voile : coin carré, contour d'encre de 2 px, double
    feutre en ombre, bande de colle en tête, rabat au coin bas-droit.
 
+   Les trois champs de saisie de cette feuille (champ, recherche, case) se
+   lavent le fond depuis le 22/11, et la jumelle `TachesModales.css` a changé
+   avec eux : `--charte-blanc` est un token de TEXTE sur remplissage — le thème
+   sombre le laisse en sable clair, si bien qu'en dessous l'encre, elle aussi
+   claire, le champ tombait à 1,10:1 : un cadre vide. Un fond qui porte un mot
+   lave donc le papier de la feuille (`color-mix(… 12 %, --charte-surface)`),
+   jamais ne se peint en blanc.
+
    Elles sortent d'une île de styles en ligne (`style={S.modal}`), où trois
    règles étaient contraires à la maison et impossibles à rattraper d'une
    feuille — une attribution en ligne bat n'importe quel sélecteur :
@@ -216,7 +224,7 @@
   padding: 8px 10px;
   border: 1px solid var(--charte-encre);
   border-radius: var(--charte-rayon-champ);
-  background-color: var(--charte-blanc);
+  background-color: color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface));
   color: var(--charte-encre);
   font-family: inherit;
   font-size: var(--charte-taille-corps);
@@ -394,7 +402,7 @@
   padding: 0 10px;
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: var(--charte-rayon-champ);
-  background-color: var(--charte-blanc);
+  background-color: color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface));
   color: var(--charte-douce);
 }
 .eqm-recherche input {
@@ -449,7 +457,7 @@
   flex-shrink: 0;
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: var(--charte-rayon-champ);
-  background-color: var(--charte-blanc);
+  background-color: color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface));
   color: var(--charte-encre);
 }
 .eqm-ligne[data-choix='oui'] .eqm-case {

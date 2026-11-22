@@ -3,7 +3,7 @@ import { redirectForMfaObligation } from './services/adminMfaObligation'
 import { adminPasswordChangeRequired } from './services/adminPasswordCheckpoint'
 import AdminRecovery from './pages/AdminRecovery'
 // src/App.jsx
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { Toaster } from 'react-hot-toast'
 import { useEffect, useState } from 'react'
@@ -62,7 +62,6 @@ import EmployeeFichesPaie from './pages/employee/EmployeeFichesPaie'
 import ConfigurationFiscale from './pages/ConfigurationFiscale'
 import PaieFiscalite from './pages/PaieFiscalite'
 import AnalyticsSite from './pages/AnalyticsSite'
-import TaskDetail from './pages/TaskDetail'
 import EmployeeTasks from './pages/employee/EmployeeTasks'
 import Predictions from './pages/Predictions'
 import AiConnectionTest from './pages/AiConnectionTest'
@@ -79,6 +78,15 @@ const canShowDashboardPreview = import.meta.env.DEV || isVercelPreview
 // POURQUOI : La session Supabase Auth et le rôle serveur font foi.
 // Un utilisateur qui modifie `localStorage.getItem('admin')` dans la console
 // F12 (ex. en changeant `role: "super_admin"` ou `expiresAt`) est bloqué.
+// Un identifiant de tâche dans l'adresse, et rien d'autre : la redirection
+// n'a pas d'écran à montrer, elle ne fait que porter l'identifiant jusqu'à
+// l'onglet qui sait l'ouvrir.
+function RedirectionTache() {
+  const { taskId } = useParams()
+  const cible = new URLSearchParams({ vue: 'taches', tache: taskId || '' })
+  return <Navigate to={`/employes?${cible.toString()}`} replace />
+}
+
 function AdminRoute({ children, requireSuperAdmin = false }) {
   const {ensureMfa,challenge}=useAdminMfaCheckpoint()
   const [checking, setChecking] = useState(true)
@@ -461,9 +469,13 @@ function App() {
 
 
 
+          {/* LA PAGE DE DÉTAIL D'UNE TÂCHE N'EST PLUS (22/11) : la fiche se lit
+              dans une fenêtre posée sur l'onglet « Tâches ». L'adresse, elle,
+              reste vivante — un lien déjà envoyé (message, favori, résultat
+              de l'assistant) atterrit sur la vue, la fenêtre ouverte. */}
           <Route path="/taches/:taskId" element={
             <AdminRoute>
-              <TaskDetail />
+              <RedirectionTache />
             </AdminRoute>
           } />
 
