@@ -766,8 +766,12 @@ suivre('taches',
     if (!d?.heuresEmp) return null
     if (periode === 'mois') {
       const m = d.heuresEmp.thisMonth
+      //  🎌 Les heures de férié majorées sont des heures sup comme les autres
+      //  pour ce total : les oublier ferait disparaître la majoration de la
+      //  fiche 360 alors qu'elle apparaît sur le bulletin.
       return __internal.parseDurationToHours(m?.overtime_normal?.hours || m?.overtime_25 || '0h00')
         + __internal.parseDurationToHours(m?.overtime_major?.hours || m?.overtime_50 || '0h00')
+        + __internal.parseDurationToHours(m?.overtime_ferie?.hours || '0h00')
     }
     return __internal.parseDurationToHours(d.heuresEmp.thisYear?.overtime || '0h00')
   })()

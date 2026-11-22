@@ -175,6 +175,19 @@ export default function HoursDetailCard({ data, isSelected, onClick }) {
               </div>
             )}
 
+            {/* 🎌 Fériés travaillés : ligne distincte, sinon ces heures se
+                cachent dans « normal » et l'écart de paie devient invisible. */}
+            {thisMonth?.overtime_ferie && thisMonth.overtime_ferie.hours !== '0h00' && (
+              <div className="hours-detail-month-row hours-detail-month-row-overtime">
+                <span className="hours-detail-month-label">
+                  Fériés majorés {thisMonth.overtime_ferie.rate != null ? `${thisMonth.overtime_ferie.rate}%` : ''}
+                </span>
+                <span className="hours-detail-month-value">
+                  {thisMonth.overtime_ferie.hours}
+                </span>
+              </div>
+            )}
+
             {thisMonth?.overtime_100 && thisMonth.overtime_100 !== '0h00' && (
               <div className="hours-detail-month-row hours-detail-month-row-overtime">
                 <span className="hours-detail-month-label">Heures sup 100%</span>
@@ -321,6 +334,21 @@ export default function HoursDetailCard({ data, isSelected, onClick }) {
                   )}
                 </span>
                 <strong>{valorization.overtime_major.amount.toLocaleString('fr-FR')} {valorization.currency}</strong>
+              </div>
+            )}
+
+            {/* 🎌 Fériés travaillés — la ligne que la paie doit pouvoir défendre */}
+            {valorization.overtime_ferie && valorization.overtime_ferie.amount > 0 && (
+              <div className="hours-detail-valorization-row">
+                <span>
+                  {valorization.overtime_ferie.hours} × {Math.round(valorization.overtime_ferie.rate)} {valorization.currency}
+                  {valorization.overtime_ferie.ratePercent != null && (
+                    <em style={{ color: '#7C3AED', fontSize: '10px', marginLeft: '4px' }}>
+                      (+{valorization.overtime_ferie.ratePercent}% férié)
+                    </em>
+                  )}
+                </span>
+                <strong>{valorization.overtime_ferie.amount.toLocaleString('fr-FR')} {valorization.currency}</strong>
               </div>
             )}
 
