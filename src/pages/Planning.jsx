@@ -2926,7 +2926,6 @@ export default function Planning() {
                     jourSel={jourSelPlanning}
                     annee={calendarDate.getFullYear()}
                     onAllerA={allerADate}
-                    darkMode={darkMode}
                   />
                 </div>
                 <button

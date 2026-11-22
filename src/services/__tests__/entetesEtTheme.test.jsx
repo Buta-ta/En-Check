@@ -208,3 +208,94 @@ it('14. la bande de raccourcis n’a plus de couleurs figées au sombre', () => 
   expect(source).not.toContain('#F59E0B')
   expect(source).toContain('className="abs-raccourci"')
 })
+
+// ── 15. La fenêtre « Aller à » du sélecteur de période ─────────────
+// Le fondateur a demandé de la retravailler (22/11). Elle se peignait
+// elle-même, en styles en ligne et en deux palettes cousues selon l'humeur
+// de la page qui la montait. Le contrat ci-dessous ne dit pas « joli » :
+// il dit « une seule peau pour les deux îles, et elle vient des jetons ».
+
+it('15. la fenêtre « Aller à » porte la peau de la maison, pas la sienne', () => {
+  const fenetre = lire('src/components/ChoixPeriode.jsx')
+  const peau = lire('src/components/ChoixPeriode.css')
+
+  // Les commentaires racontent l'histoire, y compris les fautes corrigées : ce
+  // qui compte, c'est le CODE. Il est isolé avant d'être jugé.
+  const code = fenetre.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\/\/.*$/gm, '')
+  const feuilleDeStyle = peau.replace(/\/\*[\s\S]*?\*\//g, '')
+
+  // plus un style en ligne, plus une couleur en dur, plus un rgba de fortune
+  expect(code).not.toContain('style={{')
+  expect(code).not.toContain('rgba(')
+  for (const source of [code, feuilleDeStyle]) {
+    expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+    expect(source).not.toContain('!important')
+    expect(source).not.toContain('clip-path')
+  }
+
+  // la fenêtre ne demande plus à son hôte s'il fait nuit : le thème vient de
+  // la racine du document, et les deux appelants ne le passent plus
+  expect(code).not.toContain('darkMode')
+  const appel = (source) => source.match(/<ChoixPeriode[\s\S]*?\/>/)[0]
+  expect(appel(lire('src/pages/Planning.jsx'))).not.toContain('darkMode')
+  expect(appel(lire('src/components/AbsencesCalendrier.jsx'))).not.toContain('darkMode')
+
+  // D-016 : aucun flou, jamais. Une assise qui appelle un jeton répond par la
+  // charte elle-même ; les autres se lisent ici, flou à zéro obligatoire.
+  const assises = [...peau.matchAll(/box-shadow\s*:\s*([^;]+);/g)].map((m) => m[1].replace(/\s+/g, ' '))
+  expect(assises.length).toBeGreaterThan(0)
+  for (const assise of assises) {
+    for (const couche of assise.split(/,(?![^(]*\))/)) {
+      const valeur = couche.trim()
+      // « aucune assise » et « l'assise est un jeton » répondent par la charte
+      if (valeur === 'none' || valeur.includes('var(')) continue
+      expect(valeur, `un flou s'est glissé dans « ${valeur} »`).toMatch(/\s0\s/)
+    }
+  }
+  expect(peau).not.toMatch(/backdrop-filter\s*:\s*(?!none)/)
+
+  // D-013 : les trois tailles de la maison, rien d'autre. L'ancienne fenêtre
+  // en parlait quatre qu'elle avait inventées.
+  const tailles = [...peau.matchAll(/font-size\s*:\s*([^;]+);/g)].map((m) => m[1].trim())
+  expect(tailles.length).toBeGreaterThanOrEqual(4)
+  for (const taille of tailles) {
+    expect(taille).toMatch(/^var\(--charte-taille-(titre|corps|micro|bouton)\)$/)
+  }
+
+  // les rayons : la feuille est carrée SANS UNITÉ, les objets appellent un jeton
+  const rayons = [...peau.matchAll(/border-radius\s*:\s*([^;]+);/g)].map((m) => m[1].trim())
+  for (const rayon of rayons) {
+    expect(['0', 'var(--charte-rayon-champ)', 'var(--charte-rayon-carte)']).toContain(rayon)
+  }
+
+  // la bande de colle est une COUCHE : le raccourci du fond l'effacerait
+  // (piège déjà payé sur la fiche employé)
+  const debut = peau.indexOf('.cap-feuille {')
+  const feuille = peau.slice(debut, peau.indexOf('}', debut))
+  expect(feuille).toContain('background-color: var(--charte-surface);')
+  expect(feuille).toContain('background-image: linear-gradient(')
+  expect(feuille).not.toMatch(/^\s*background\s*:/m)
+
+  // le fond d'un champ ne se peint pas en blanc de jeton : `--charte-blanc`
+  // est une couleur de TEXTE sur remplissage, en thème sombre elle vire au
+  // beige clair et le mot disparaît dedans. Le papier se LAVE.
+  const debutChamp = peau.indexOf('.cap-champ {')
+  const champ = peau.slice(debutChamp, peau.indexOf('}', debutChamp))
+  expect(champ).not.toMatch(/background-color\s*:\s*var\(--charte-blanc\)/)
+  expect(champ).toContain('color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface))')
+  // et le calendrier natif suit le thème de l'application
+  expect(peau).toContain("[data-theme='dark'] .cap-champ")
+  expect(peau).toContain('color-scheme: dark')
+
+  // l'ancrage et le geste du dehors sont ceux d'avant : la fenêtre s'ouvre
+  // toujours sous le titre de période, un clic ailleurs la referme
+  expect(feuille).toContain('top: calc(100% + 8px)')
+  expect(feuille).toContain('left: 0')
+  expect(feuille).toContain('min-width: 232px')
+  expect(fenetre).toContain('className="cap-voile"')
+  expect(fenetre).toContain('onClick={onFermer}')
+
+  // le focus ENTRE avec la fenêtre, et la réductions des mouvements est lue
+  expect(fenetre).toContain('champ.current?.focus()')
+  expect(peau).toContain('prefers-reduced-motion')
+})

@@ -1,0 +1,265 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   CHOIX DE LA PÉRIODE — LA FENÊTRE DE POCHE, EN FEUILLE (22/11/2026)
+
+   Ce panneau est PARTAGÉ : le Planning et les Absences ouvrent le même. Il
+   porte donc la peau de la maison une fois pour les deux îles, et non deux
+   rendus côte à côte — deux peaux d'un même objet, c'est deux objets.
+
+   CE QUE LA PEAU CORRIGE, mesuré dans l'ancien fichier :
+   · la feuille se peignait en huit `style` en ligne, avec six couleurs en dur
+     et une palette différente selon que la page était en jour ou en nuit ;
+   · une assise de 40 px de flou et des coins à 14 px → la maison ne connaît
+     AUCUN flou (D-016) : bord d'encre de 2 px, coin carré SANS UNITÉ sur la
+     feuille, double feutre derrière (une feuille de papier posée sur une
+     autre), flou à zéro dans les deux couches ;
+   · quatre tailles hors échelle (10,5 · 12 · 13 · 15 px) → les trois de la
+     maison, rien d'autre (D-013) : micro pour les mots d'étiquette, corps pour
+     le champ et l'année, capitales 9,5 pour les gestes ;
+   · le fond du champ n'est PAS un blanc de jeton : `--charte-blanc` est une
+     couleur de TEXTE sur remplissage, elle vire au beige en thème sombre et le
+     mot disparaît. Le champ se lave à 12 % de blanc dans la surface.
+
+   Le voile ne voile rien : il est là pour attraper le clic du dehors et
+   refermer. Une fenêtre de poche posée sur la page, pas un écran qui éteint
+   la page — c'est pourquoi il n'a ni teinte ni flou derrière.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.cap-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+/* ── la feuille ─────────────────────────────────────────────────────────── */
+
+.cap-feuille {
+  --cap-pli: 14px;
+  --cap-colle: calc(var(--cap-pli) + 1px);
+  --cap-decalage: 3px;
+
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 41;
+  min-width: 232px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-3);
+  padding: calc(var(--cap-pli) + 6px) var(--charte-espace-4) var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  /* la bande de colle, plus claire sur les 14 premiers px et coupée d'un filet
+     d'encre : en COUCHE, jamais en raccourci — le raccourci efface la couche */
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--cap-pli),
+    color-mix(in srgb, var(--charte-encre) 16%, transparent) var(--cap-pli) var(--cap-colle),
+    transparent var(--cap-colle)
+  );
+  /* le double feutre : la feuille du dessous déborde de 2 px partout sauf en
+     bas à droite. Aucun rognage ici, il tuerait les deux couches */
+  box-shadow:
+    var(--cap-decalage) var(--cap-decalage) 0 6px
+      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
+    var(--cap-decalage) var(--cap-decalage) 0 8px var(--charte-encre);
+  overflow: visible;
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-corps);
+}
+
+/* le rabat, au coin bas-droit : le dos de la feuille. En pseudo-élément,
+   jamais en découpe — la découpe rognerait le coin et l'assise */
+.cap-feuille::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--cap-pli);
+  height: var(--cap-pli);
+  background: linear-gradient(
+    to top left,
+    transparent 0 44%,
+    var(--charte-encre) 44% 50%,
+    color-mix(in srgb, var(--charte-blanc) 60%, var(--charte-surface)) 50%
+  );
+  pointer-events: none;
+}
+
+.cap-titre {
+  margin: 0;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  /* le titre est souligné d'un trait d'encre, pas lavé : un lavis sous un mot
+     se lit comme un surligneur, et le surligneur est réservé aux valeurs */
+  border-bottom: 1px solid var(--charte-encre);
+  padding-bottom: var(--charte-espace-2);
+}
+
+.cap-bloc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-1);
+}
+
+.cap-etiquette {
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  /* l'étiquette se fonce d'un mélange d'encre et de papier, jamais d'un gris
+     importé : en thème sombre, `--charte-encre` est déjà claire */
+  color: color-mix(in srgb, var(--charte-encre) 72%, var(--charte-surface));
+}
+
+/* ── le champ de date ───────────────────────────────────────────────────── */
+
+.cap-champ {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  /* le papier du champ est LAVÉ, pas blanc (voir l'en-tête) */
+  background-color: color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface));
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-corps);
+  font-variant-numeric: tabular-nums;
+  color-scheme: light;
+  outline: none;
+}
+
+/* le calendrier natif du champ suit le thème de l'application, pas une
+  question posée à la page qui monte la fenêtre */
+[data-theme='dark'] .cap-champ {
+  color-scheme: dark;
+}
+
+.cap-champ:hover {
+  border-color: var(--charte-encre);
+  background-color: color-mix(in srgb, var(--charte-blanc) 18%, var(--charte-surface));
+}
+
+/* ── le pas-à-pas de l'année ────────────────────────────────────────────── */
+
+.cap-rangee {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+}
+
+.cap-annee {
+  flex: 1;
+  text-align: center;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  /* un numéro qui bouge ne doit pas faire danser la ligne */
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-encre);
+}
+
+.cap-fleche {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  cursor: pointer;
+  transition:
+    transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+.cap-fleche:hover {
+  background-color: var(--charte-surface2);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.cap-fleche:active {
+  transform: translate(0, 0);
+  box-shadow: none;
+}
+
+/* ── le geste de retour ─────────────────────────────────────────────────── */
+
+.cap-geste {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 8px var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background-color: transparent;
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+.cap-geste:hover {
+  background-color: var(--charte-surface2);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.cap-geste:active {
+  transform: translate(0, 0);
+  box-shadow: none;
+}
+
+.cap-feuille :is(button, input):focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* ── deux largeurs, pas plus ────────────────────────────────────────────── */
+
+@media (max-width: 700px) {
+  .cap-feuille {
+    /* la fenêtre ne se fait pas couper par le bord de l'écran */
+    left: 0;
+    right: auto;
+    min-width: 0;
+    width: min(320px, calc(100vw - 32px));
+  }
+
+  .cap-fleche {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cap-fleche,
+  .cap-geste {
+    transition: none;
+  }
+
+  .cap-fleche:hover,
+  .cap-geste:hover {
+    transform: none;
+  }
+}
