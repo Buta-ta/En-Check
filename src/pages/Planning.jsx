@@ -52,8 +52,6 @@ import {
   Ban,
   Copy,
   Sparkles,
-  Sun,
-  Moon,
   Palette,
   Layers,
   FileText,
@@ -76,6 +74,7 @@ import {
   SANS_EQUIPE,
 } from "../lib/planningEquipes";
 import "./PlanningAfroTech.css";
+import "./PlanningPostIt.css";
 
 const OVERRIDES_STORAGE_KEY = "encheck_planning_day_overrides_v1";
 const CUSTOM_MODELS_STORAGE_KEY = "encheck_planning_custom_models_v1";
@@ -86,13 +85,6 @@ const MONTH_MODELS_STORAGE_KEY = "encheck_planning_month_models_v1";
 const COLLAPSED_GROUPS_STORAGE_KEY = "encheck_planning_teams_collapsed_v1";
 
 // Raccourcis En-Check : rejoindre les autres modules sans repasser par le Dashboard
-const PLANNING_SHORTCUTS = [
-  { id: "pointages", label: "Pointages", path: "/pointages", icon: Clock, hint: "Entrées et sorties du jour, écarts et régularisations" },
-  { id: "employes", label: "Employés", path: "/employes", icon: Users, hint: "Fiches collaborateurs, affectations et horaires" },
-  { id: "pauses", label: "Pauses", path: "/pauses", icon: Coffee, hint: "Pauses pointées, chronomètre en direct et pauses présumées" },
-  { id: "fiches-paie", label: "Fiches de paie", path: "/paie", icon: FileText, hint: "Bulletins et récapitulatifs de paie" },
-];
-
 // Palette de couleurs personnalisables En-Check (modèles & cases)
 const ENCHECK_COLOR_PALETTE = [
   { id: "copper", label: "Cuivre", value: "#B56235" },
@@ -292,7 +284,10 @@ const correspondAuFocus = (employe, focus, membresDuGroupe) => {
 };
 
 export default function Planning() {
-  const { darkMode, toggleTheme } = useTheme();
+  // SEUL `darkMode` est demandé ici : le bandeau n'a plus de bouton de thème
+  // (c'est un choix de l'application, pas d'une page) — la page continue de le
+  // suivre, son `data-theme` se pose toujours sur la racine.
+  const { darkMode } = useTheme();
   const navigate = useNavigate();
 
   const [admin, setAdmin] = useState(null);
@@ -2105,6 +2100,46 @@ export default function Planning() {
     [visibleEmployees, focusFilter, teamAssignments, equipesParEmploye]
   );
 
+  // ═══ LE PÉRIMÈTRE D'ENTREPRISE N'A PLUS DE SÉLECTEUR DANS LE BANDEAU (22/11) ═══
+  // Il suit le sélecteur GLOBAL de l'application (le rail du dashboard, qui
+  // écrit `admin.selectedEnterprise`) : un super-administrateur qui a choisi
+  // une entreprise la voit ici aussi, sans deuxième sélecteur dans la page —
+  // deux portes pour la même pièce font douter de laquelle est la bonne.
+  // « all » = la vue globale, exactement le réglage par défaut d'avant.
+  useEffect(() => {
+    const id = admin?.selectedEnterprise?.id || null;
+    setSelectedEntreprise(id && entreprises.some((e) => e.id === id) ? id : "all");
+  }, [admin?.selectedEnterprise?.id, entreprises]);
+
+  const entrepriseActive = useMemo(
+    () =>
+      selectedEntreprise === "all"
+        ? null
+        : entreprises.find((e) => e.id === selectedEntreprise) || null,
+    [selectedEntreprise, entreprises]
+  );
+
+  // Le numéro de semaine ISO, pour que la feuille se repère dans l'année
+  // sans compter les lundis à la main.
+  const semaineIso = useMemo(() => {
+    const d = new Date(Date.UTC(calendarDate.getFullYear(), calendarDate.getMonth(), calendarDate.getDate()));
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) + 3); // le jeudi de la semaine
+    const premierJeudi = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    return 1 + Math.round(((d - premierJeudi) / 86400000 - 3 + ((premierJeudi.getUTCDay() + 6) % 7)) / 7);
+  }, [calendarDate]);
+
+  // Ce que le bandeau dit à la place du sélecteur retiré : le périmètre réel
+  // et le nombre de collaborateurs sous les yeux — deux nombres lus dans cet
+  // écran, pas une phrase.
+  const etatFeuille = useMemo(() => {
+    const morceaux = [entrepriseActive ? entrepriseActive.name : "Toutes les entreprises"];
+    if (planningView === "semaine") morceaux.push(`Semaine ${semaineIso}`);
+    morceaux.push(
+      `${scopedEmployees.length} collaborateur${scopedEmployees.length > 1 ? "s" : ""}`
+    );
+    return morceaux.join(" · ");
+  }, [entrepriseActive, planningView, semaineIso, scopedEmployees.length]);
+
   // Jours de la période affichée (Semaine = 7 jours, Mois = tout le mois, Jour = 1 jour)
   const periodDates = useMemo(() => {
     if (planningView === "jour") return [toIsoDateLocal(calendarDate)];
@@ -2821,13 +2856,27 @@ export default function Planning() {
       : "48h00";
 
   return (
-    <div className="sk-plan-page" data-theme={darkMode ? "dark" : "light"}>
+    <div className="sk-plan-page sk-plan-page--postit" data-theme={darkMode ? "dark" : "light"}>
       <PageCulturalBand pathname="/planning"/>
 
-      {/* ═══ BARRE DE COMMANDE SUPÉRIEURE FAÇON EN-CHECK ═══ */}
+      {/* ═══ LE BANDEAU DE COMMANDE — UNE FEUILLE POSÉE SUR LA PAGE (22/11/2026) ═══
+          Trois choses en sortent, à la demande du fondateur :
+          · le sélecteur d'entreprise — le périmètre vient du sélecteur global
+            de l'application (voir `entrepriseActive`), et le bandeau LE DIT :
+            le nom de l'entreprise choisie s'affiche à droite, en toutes lettres ;
+          · la bande « Aller à » (Pointages · Employés · Pauses · Fiches de
+            paie) — le rail du tableau de bord fait déjà ce voyage, une page
+            n'a pas à se refaire menu ;
+          · le bouton clair / sombre — le thème est un choix de l'application,
+            pas d'une page ; il reste dans le tableau de bord et l'application
+            lui obéit ici comme avant (`darkMode` pilote toujours `data-theme`).
+          Le bandeau, lui, devient une note en papier : cerne d'encre de 2 px,
+          bande de colle, rabat, motif de bogolan en liseré gauche, double
+          trait de feutre sous le titre — et plus aucun flou (la barre
+          flottait en `backdrop-filter: blur(14px)` avec une ombre de 36 px). */}
       <header className="sk-topbar">
         <div className="sk-topbar-inner">
-          {/* Gauche : Flèche retour ← + Titre En-Check · Planning + Filtre Entreprise */}
+          {/* Gauche : flèche retour + titre, posés sur le liseré de motif */}
           <div className="sk-topbar-left">
             <button
               type="button"
@@ -2842,36 +2891,17 @@ export default function Planning() {
             <div className="sk-brand-title-wrap">
               <h1 className="sk-brand-title">En-Check · Planning</h1>
             </div>
-
-            {admin?.role === "super_admin" && entreprises.length > 0 && (
-              <select
-                className="sk-ent-select"
-                value={selectedEntreprise}
-                onChange={(e) => setSelectedEntreprise(e.target.value)}
-                aria-label="Filtrer par entreprise"
-              >
-                <option value="all">Toutes les entreprises</option>
-                {entreprises.map((ent) => (
-                  <option key={ent.id} value={ent.id}>
-                    {ent.name}
-                  </option>
-                ))}
-              </select>
-            )}
           </div>
 
-          {/* Centre : Motifs Adinkra + Sélecteur de semaine "Lun 19 – Dim 25 Oct. 2026" */}
-          <div className="sk-topbar-center">
-            <span className="sk-adinkra-divider" aria-hidden="true">
-              <AdinkraWatermarkSvg size={24} />
-            </span>
-
+          {/* Droite : la période, puis les deux seuls gestes du bandeau */}
+          <div className="sk-topbar-right">
             <div className="sk-period-nav">
               <button
                 type="button"
                 className="sk-period-arrow"
                 onClick={() => navigatePeriod(-1)}
                 title="Période précédente"
+                aria-label="Période précédente"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -2903,6 +2933,7 @@ export default function Planning() {
                 className="sk-period-arrow"
                 onClick={() => navigatePeriod(1)}
                 title="Période suivante"
+                aria-label="Période suivante"
               >
                 <ChevronRight size={16} />
               </button>
@@ -2915,58 +2946,6 @@ export default function Planning() {
               </button>
             </div>
 
-            <span className="sk-adinkra-divider" aria-hidden="true">
-              <AdinkraWatermarkSvg size={24} />
-            </span>
-          </div>
-
-          {/* Droite : Semaine | Mois | Jour | Demandes + Dupliquer la semaine + Publier le planning */}
-          <div className="sk-topbar-right">
-            <div className="sk-view-Inline" role="tablist" aria-label="Vues du planning">
-              <button
-                type="button"
-                className={`sk-view-link ${planningView === "semaine" ? "active" : ""}`}
-                onClick={() => setPlanningView("semaine")}
-              >
-                Semaine
-              </button>
-              <button
-                type="button"
-                className={`sk-view-link ${planningView === "mois" ? "active" : ""}`}
-                onClick={() => setPlanningView("mois")}
-              >
-                Mois
-              </button>
-              <button
-                type="button"
-                className={`sk-view-link ${planningView === "jour" ? "active" : ""}`}
-                onClick={() => setPlanningView("jour")}
-              >
-                Jour
-              </button>
-              <button
-                type="button"
-                className={`sk-view-link ${planningView === "demandes" ? "active" : ""}`}
-                onClick={() => setPlanningView("demandes")}
-              >
-                Demandes
-                {pendingRequestsCount > 0 && (
-                  <span className="sk-req-badge">{pendingRequestsCount}</span>
-                )}
-              </button>
-            </div>
-
-            {/* Bouton Mode Clair / Mode Sombre */}
-            <button
-              type="button"
-              className="sk-theme-btn"
-              onClick={toggleTheme}
-              title={darkMode ? "Passer en mode clair" : "Passer en mode sombre"}
-              aria-label={darkMode ? "Passer en mode clair" : "Passer en mode sombre"}
-            >
-              {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
-
             <button
               type="button"
               className="sk-btn-secondary"
@@ -2974,7 +2953,7 @@ export default function Planning() {
               title="Dupliquer les horaires de cette semaine sur la semaine suivante"
             >
               <Copy size={14} />
-              Dupliquer la semaine
+              <span>Dupliquer la semaine</span>
             </button>
 
             <button
@@ -2989,35 +2968,52 @@ export default function Planning() {
                 ? `Publier le planning (${pendingChangesCount})`
                 : "Publier le planning"}
             </button>
+
+            {/* Un seul voyage hors de la page, et c'est le vrai : la fiche de
+                paie du jour se lit dans l'île Paie. Les quatre tuiles « Aller à »
+                sont parties le 22/11 — le rail fait déjà ces voyages ; celui-ci
+                reste parce qu'il prolonge l'acte publié : publier la semaine,
+                puis vérifier qu'elle est bien sortie sur les fiches. */}
+            <button
+              type="button"
+              className="sk-btn-secondary"
+              onClick={() => navigate("/paie")}
+              title="Voir les fiches de paie dans l'île Paie"
+            >
+              <FileText size={14} />
+              <span>Fiches de paie</span>
+            </button>
           </div>
+        </div>
+
+        {/* Rang 2 : les quatre vues, en mots soulignés de feutre, et l'état de
+            la feuille à droite — le nom de l'entreprise, le numéro de semaine,
+            le compte des collaborateurs vus. */}
+        <div className="sk-topbar-vues">
+          <div className="sk-view-Inline" role="tablist" aria-label="Vues du planning">
+            {["semaine", "mois", "jour", "demandes"].map((vue) => (
+              <button
+                key={vue}
+                type="button"
+                className={`sk-view-link ${planningView === vue ? "active" : ""}`}
+                onClick={() => setPlanningView(vue)}
+                aria-selected={planningView === vue}
+                role="tab"
+              >
+                {vue === "semaine" ? "Semaine" : vue === "mois" ? "Mois" : vue === "jour" ? "Jour" : "Demandes"}
+                {vue === "demandes" && pendingRequestsCount > 0 && (
+                  <span className="sk-req-badge">{pendingRequestsCount}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <p className="sk-topbar-etat">{etatFeuille}</p>
         </div>
       </header>
 
       {/* ═══ ESPACE DE TRAVAIL PRINCIPAL EN-CHECK ═══ */}
       <main className="sk-workspace">
-        {/* Raccourcis En-Check : Pointages · Employés · Pauses · Fiches de paie */}
-        <nav className="sk-quick-nav" aria-label="Raccourcis En-Check">
-          <span className="sk-quick-nav-label">
-            <Zap size={13} /> Aller à
-          </span>
-          {PLANNING_SHORTCUTS.map((raccourci) => {
-            const IconRaccourci = raccourci.icon;
-            return (
-              <button
-                key={raccourci.id}
-                type="button"
-                className="sk-quick-link"
-                onClick={() => navigate(raccourci.path)}
-                title={raccourci.hint}
-                aria-label={raccourci.hint}
-              >
-                <IconRaccourci size={14} />
-                <span>{raccourci.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-
         <div className="sk-payslip-status" role="status">
           <span>{publishedPayslips.loading ? 'Vérification des fiches envoyées…' : publishedPayslips.error || 'Billet animé : jour couvert par une fiche envoyée au salarié (pas une preuve de paiement).'}</span>
           <button type="button" onClick={publishedPayslips.refresh} disabled={publishedPayslips.loading}>Actualiser les fiches</button>

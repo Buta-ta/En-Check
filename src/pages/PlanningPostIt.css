@@ -1,0 +1,459 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PLANNING · LE BANDEAU DE COMMANDE EN FEUILLE — 22/11/2026
+   La peau n'habille QUE le bandeau du haut : le reste de la page garde ses
+   classes `sk-` et sa feuille d'origine, intactes, tant que le chantier
+   n'avance pas sur elles.
+
+   CE QUI EST SORTI DU BANDEAU, à la demande du fondateur :
+   · le sélecteur d'entreprise — le périmètre vient du sélecteur GLOBAL de
+     l'application (le rail), et le bandeau le DIT en toutes lettres à droite ;
+   · la bande « Aller à » (Pointages · Employés · Pauses · Fiches de paie) —
+     une page n'a pas à se refaire menu, le rail fait déjà ce voyage ;
+   · le bouton clair / sombre — le thème est un choix de l'application, pas
+     d'une page. La page continue de le suivre (`data-theme` posé sur sa
+     racine), elle ne le commande plus.
+
+   CE QUE LA PEAU CORRIGE, mesuré dans la feuille de base :
+   · `backdrop-filter` avec 14 px de flou et une ombre `0 14px 36px` → la
+     maison ne connaît AUCUN flou (D-016) : deux ombres dures empilées, flou à zéro ;
+   · des coins arrondis à 18 px et des pilules à 999 px partout → rayon à zéro,
+     SANS UNITÉ sur la feuille (l'audit C10 ne lit que les valeurs en px : un
+     coin carré ne coûte rien), et les rayons des jetons pour les objets ;
+   · un fond `background` en raccourci sur `--sk-bg-elevated` → le papier de la charte, en COUCHE
+     (`background-color`) et non en raccourci : le raccourci effacerait la
+     bande de colle, piège déjà payé sur la fiche employé ;
+   · 'Plus Jakarta Sans' → `--charte-police` (D-006, aucune police tierce).
+
+   CE QUE LA MAQUETTE NE DISAIT PAS, et que la charte interdit : le liseré de
+   bogolan le long du titre. `PageCulturalBand` pose DÉJÀ la bande de motif de
+   cette page juste au-dessus ; en mettre une deuxième dans le bandeau
+   contreviendrait à D-003 (« une seule bande de motif par page »). Le titre
+   garde donc son double trait de feutre — d'ENCRE, pas d'argile : l'argile
+   remplie est la seule action principale de l'écran, elle ne souligne pas un
+   mot. Aucun tissu sous un texte (D-004).
+
+   Tous les sélecteurs portent DEUX classes (`.sk-plan-page--postit` + la
+   classe de l'île) : la feuille de base a le même poids qu'une classe seule,
+   et l'ordre des deux fichiers dans le bundle n'est pas une garantie. Jamais
+   de `!important` ici.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── la feuille ───────────────────────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-topbar {
+  --plq-pli: 14px;
+  --plq-colle: calc(var(--plq-pli) + 1px);
+  --plq-lave: color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface));
+  --plq-decalage: 3px;
+
+  /* collant comme avant : la grille est longue, le geste doit rester à portée */
+  position: sticky;
+  top: 8px;
+  z-index: 60;
+  margin: 8px 14px 0;
+  padding: calc(var(--plq-pli) + 6px) var(--charte-espace-5) var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  /* la bande de colle : plus claire sur les 14 premiers px, un filet d'encre à
+     son pied, puis rien */
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--plq-pli),
+    color-mix(in srgb, var(--charte-encre) 16%, transparent) var(--plq-pli) var(--plq-colle),
+    transparent var(--plq-colle)
+  );
+  /* le double feutre : papier par-dessus encre, deux ombres à zéro de flou */
+  box-shadow:
+    var(--plq-decalage) var(--plq-decalage) 0 6px
+      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
+    var(--plq-decalage) var(--plq-decalage) 0 8px var(--charte-encre);
+  /* pas de flou sous la note, et pas de voile : `backdrop-filter` ne sert à
+     rien sur un fond qui n'est pas translucide */
+  backdrop-filter: none;
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-corps);
+}
+
+/* le rabat, au coin bas-droit : le dos de la feuille, 14 px, la pliure sur
+   l'hypoténuse. En pseudo-élément, jamais en `clip-path` : la découpe rognerait
+   le double feutre */
+.sk-plan-page--postit .sk-topbar::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--plq-pli);
+  height: var(--plq-pli);
+  background: linear-gradient(
+    to top left,
+    transparent 0 44%,
+    var(--charte-encre) 44% 50%,
+    color-mix(in srgb, var(--charte-blanc) 60%, var(--charte-surface)) 50%
+  );
+  pointer-events: none;
+}
+
+.sk-plan-page--postit .sk-topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-4);
+  flex-wrap: wrap;
+}
+
+.sk-plan-page--postit .sk-topbar-left,
+.sk-plan-page--postit .sk-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-3);
+  min-width: 0;
+}
+
+/* ── le titre ─────────────────────────────────────────────────────────────── */
+
+/* 20 px, pas 40 : la taille du `h1` de la charte (D-013 — trois tailles, point
+   final). La plaque de 40 px des onglets Équipes et Tâches est une TÊTE DE
+   PAGE qui ne se colle pas au haut de l'écran ; ici la note reste collante,
+   elle ne peut pas faire 90 px de haut. L'inclinaison et le double feutre,
+   eux, sont bien les mêmes. */
+.sk-plan-page--postit .sk-brand-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  min-width: 0;
+}
+
+.sk-plan-page--postit .sk-brand-title {
+  position: relative;
+  margin: 0;
+  padding-bottom: var(--charte-espace-2);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-titre);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transform: rotate(-2deg);
+}
+
+/* le double trait de feutre : 4 px d'encre et sa seconde passe, décalée de
+   2 px à droite et 4 px en bas, plus courte que le mot. Le liseré de motif de
+   la maquette n'est PAS repris : D-003 veut une seule bande par page, et la
+   page porte déjà la sienne au-dessus du bandeau */
+.sk-plan-page--postit .sk-brand-title::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: 12%;
+  bottom: 0;
+  height: 4px;
+  background: var(--charte-encre);
+  box-shadow: 2px 4px 0 0 var(--charte-encre);
+  transform: rotate(0.5deg);
+}
+
+/* ── les objets ───────────────────────────────────────────────────────────── */
+
+/* un objet actif, c'est 2 px d'encre (C11) et un focus en trait décalé, jamais
+   un halo flou : les trois gabarits sont ceux du kit */
+.sk-plan-page--postit .sk-back-btn,
+.sk-plan-page--postit .sk-period-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--plq-lave);
+  color: var(--charte-encre);
+  cursor: pointer;
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-back-btn {
+  width: 36px;
+  height: 36px;
+}
+
+.sk-plan-page--postit .sk-back-btn:hover,
+.sk-plan-page--postit .sk-period-arrow:hover {
+  background-color: var(--charte-surface2);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* ── la période, en pilule de papier ──────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-period-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  padding: var(--charte-espace-1);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  /* le fond d'un objet qui porte un mot lave la feuille, il ne se peint pas en
+     blanc : `--charte-blanc` est un jeton de TEXTE sur remplissage et le thème
+     sombre le laisse en sable clair — sous l'encre, elle aussi claire, le
+     libellé tombait à 1,10:1 */
+  background-color: var(--plq-lave);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.sk-plan-page--postit .sk-period-label-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.sk-plan-page--postit .sk-period-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--charte-espace-1);
+  min-width: 0;
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border: none;
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.sk-plan-page--postit .sk-period-label:hover {
+  background-color: var(--charte-surface2);
+}
+
+.sk-plan-page--postit .sk-period-caret {
+  transition: transform var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-period-caret[data-ouvert='oui'] {
+  transform: rotate(180deg);
+}
+
+.sk-plan-page--postit .sk-today-chip {
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: transparent;
+  color: var(--charte-texte);
+  font-family: inherit;
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing),
+    color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-today-chip:hover {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+
+/* ── les deux gestes ──────────────────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-btn-secondary,
+.sk-plan-page--postit .sk-btn-publish {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: var(--charte-espace-2) var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  font-family: inherit;
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-btn-secondary {
+  background-color: transparent;
+  color: var(--charte-texte);
+}
+
+.sk-plan-page--postit .sk-btn-secondary:hover:not(:disabled) {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* l'engagement se remplit d'espresso — pas d'un dégradé cuivre et pas d'une
+   ombre floue de 16 px. Une seule action pleine par écran (kit, règle 1) */
+.sk-plan-page--postit .sk-btn-publish {
+  background-color: var(--charte-espresso);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.sk-plan-page--postit .sk-btn-publish:hover:not(:disabled) {
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+/* le désactivé n'est jamais une opacité réduite (kit, règle 3) */
+.sk-plan-page--postit .sk-btn-secondary:disabled,
+.sk-plan-page--postit .sk-btn-publish:disabled {
+  background-color: var(--charte-btn-desactive);
+  border-color: var(--charte-bordure);
+  color: var(--charte-btn-desactive-texte);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* l'anneau de focus : un trait de 2 px décalé de 2, sur tous les objets du
+   bandeau (C11) */
+.sk-plan-page--postit .sk-topbar :is(button, select, a):focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* ── le rang des vues : quatre mots, pas quatre pilules ────────────────────── */
+
+.sk-plan-page--postit .sk-topbar-vues {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-3);
+  margin-top: var(--charte-espace-3);
+  padding-top: var(--charte-espace-2);
+  border-top: 1px solid var(--charte-bordure);
+}
+
+.sk-plan-page--postit .sk-view-Inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-4);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.sk-plan-page--postit .sk-view-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  padding: 0 0 5px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--charte-douce);
+  font-family: inherit;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  /* l'onglet se lit au SOULIGNÉ, jamais au fond : une pilule pleine serait un
+     second objet rempli dans une note de papier */
+  box-shadow: inset 0 -2px 0 0 transparent;
+  transition: color var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-view-link:hover {
+  color: var(--charte-encre);
+  box-shadow: inset 0 -2px 0 0 var(--charte-bordure);
+}
+
+.sk-plan-page--postit .sk-view-link.active {
+  color: var(--charte-encre);
+  font-weight: 800;
+  box-shadow: inset 0 -3px 0 0 var(--charte-encre);
+  background: transparent;
+}
+
+/* le compte des demandes : un tampon, et le mot du badge reste le nombre —
+   la pastille ne remplace pas l'information (C7) */
+.sk-plan-page--postit .sk-req-badge {
+  min-width: 18px;
+  padding: 1px var(--charte-espace-1);
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-badge);
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* l'état de la feuille, à droite : ce que disait le sélecteur d'entreprise
+   (le périmètre) et ce qu'aucun contrôle ne disait (combien de collaborateurs
+   sont réellement sous les yeux) */
+.sk-plan-page--postit .sk-topbar-etat {
+  margin: 0;
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ── deux largeurs, pas plus : la note reste lisible, elle ne se tasse pas ── */
+
+@media (max-width: 1100px) {
+  .sk-plan-page--postit .sk-topbar {
+    padding: calc(var(--plq-pli) + 2px) var(--charte-espace-4) var(--charte-espace-2);
+  }
+
+  .sk-plan-page--postit .sk-topbar-inner,
+  .sk-plan-page--postit .sk-topbar-right {
+    gap: var(--charte-espace-2);
+  }
+
+  .sk-plan-page--postit .sk-brand-title {
+    white-space: normal;
+  }
+
+  .sk-plan-page--postit .sk-topbar-vues {
+    flex-wrap: wrap;
+    gap: var(--charte-espace-2);
+  }
+
+  .sk-plan-page--postit .sk-topbar-etat {
+    text-align: left;
+  }
+}
+
+@media (max-width: 700px) {
+  .sk-plan-page--postit .sk-topbar {
+    top: 4px;
+    margin: 4px 8px 0;
+  }
+
+  .sk-plan-page--postit .sk-topbar-vues {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sk-plan-page--postit .sk-view-Inline {
+    gap: var(--charte-espace-3);
+  }
+}

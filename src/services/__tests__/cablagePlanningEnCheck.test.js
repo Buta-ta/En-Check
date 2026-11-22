@@ -6,6 +6,15 @@ const ROOT = path.resolve(import.meta.dirname, '../../..')
 const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
 
 const planningSrc = lire('src/pages/Planning.jsx')
+
+// Le bandeau du haut, isolé du reste de la page : c'est lui que le fondateur a
+// demandé de retravailler, et une assertion sur la page entière ne dirait pas
+// si le contrôle est sorti du bandeau ou d'ailleurs.
+const bandeau = planningSrc.slice(
+  planningSrc.indexOf('<header className="sk-topbar">'),
+  planningSrc.indexOf('</header>') + '</header>'.length
+)
+expect(bandeau.length).toBeGreaterThan(1000)
 const planningCss = lire('src/pages/PlanningAfroTech.css')
 const pointagesSections = lire('src/components/PointagesAfroTechSections.jsx')
 const pausesSections = lire('src/components/PausesAfroTechSections.jsx')
@@ -74,11 +83,21 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningCss).toContain('.sk-color-input')
   })
 
-  it('7. expose un bouton Mode clair / Mode sombre dans la page Planning', () => {
-    expect(planningSrc).toContain('toggleTheme')
-    expect(planningSrc).toContain('sk-theme-btn')
-    expect(planningSrc).toContain('Passer en mode clair')
-    expect(planningSrc).toContain('Passer en mode sombre')
+  it('7. suit le thème de l\u2019application sans le commander dans son bandeau', () => {
+    // Le fondateur a retiré le bouton du bandeau le 22/11 : le thème est un
+    // choix de l\u2019application, pas d\u2019une page. Ce contrat dit donc le
+    // contraire de l\u2019ancien — et il est plus dur, pas plus souple : la page
+    // doit OBÉIR au thème global et ne plus lever la main dessus.
+    expect(planningSrc).not.toContain('toggleTheme')
+    expect(planningSrc).not.toContain('sk-theme-btn')
+    expect(planningSrc).toContain('const { darkMode } = useTheme();')
+    expect(planningSrc).toContain('data-theme={darkMode ? "dark" : "light"}')
+    // la feuille de base ne garde pas la règle d\u2019un objet supprimé
+    expect(planningCss).not.toContain('.sk-theme-btn')
+    // le bouton reste ailleurs : le thème se change depuis le tableau de bord
+    const coque = lire('src/components/DashboardExperience.jsx')
+    expect(coque).toContain('toggleTheme')
+    expect(coque).toContain('theme-toggle')
   })
 
   it('8. affiche les 7 jours complets (Lun -> Dim) dans la barre récapitulative du bas', () => {
@@ -251,17 +270,52 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(pointagesSrc).toContain('empSchedulesQuery.in(\'employee_id\', employeeIdsAffiches)')
   })
 
-  it('28. offre des raccourcis vers Pointages, Employés, Pauses et Fiches de paie', () => {
-    expect(planningSrc).toContain('PLANNING_SHORTCUTS')
-    expect(planningSrc).toContain('sk-quick-nav')
-    expect(planningSrc).toContain('sk-quick-link')
-    expect(planningSrc).toContain('"/pointages"')
-    expect(planningSrc).toContain('"/employes"')
-    expect(planningSrc).toContain('"/pauses"')
-    // les fiches de paie vivent dans la coque : le raccourci ouvre l'onglet
-    expect(planningSrc).toContain('path: "/paie"')
-    expect(planningCss).toContain('.sk-quick-link')
-    expect(planningCss).toContain('.sk-quick-nav-label')
+  it('28. ne refait pas le menu de l\u2019application dans son bandeau', () => {
+    // La bande « Aller à » (Pointages · Employés · Pauses · Fiches de paie) est
+    // retirée à la demande du fondateur : le rail fait déjà ces quatre voyages,
+    // et une page qui recopie le menu en ajoute un deuxième à regarder.
+    for (const morte of ['PLANNING_SHORTCUTS', 'sk-quick-nav', 'sk-quick-link']) {
+      expect(planningSrc).not.toContain(morte)
+      expect(planningCss).not.toContain('.' + morte.replace('PLANNING_SHORTCUTS', 'sk-quick-nav'))
+    }
+    // la navigation, elle, est bien vivante ailleurs : la coque du tableau de
+    // bord, qu'on ne peut pas rater puisqu'elle est sur toutes les pages
+    const coque = lire('src/components/DashboardExperience.jsx')
+    for (const entree of ["path: '/pointages'", "path: '/employes'", "path: '/pauses'", "path: '/paie'"]) {
+      expect(coque).toContain(entree)
+    }
+    // et le voyage de la flèche retour du bandeau reste branché
+    expect(bandeau).toContain('navigate("/dashboard")')
+  })
+
+  it('28bis. ne laisse plus un sélecteur d\u2019entreprise dans le bandeau', () => {
+    // Le périmètre se prend dans le sélecteur GLOBAL (le rail écrit
+    // `admin.selectedEnterprise`) : deux sélecteurs pour la même échelle, c\u2019est
+    // un doute de plus. La page continue de filtrer, elle ne demande plus.
+    expect(bandeau).not.toContain('<select')
+    expect(bandeau).not.toContain('Filtrer par entreprise')
+    expect(planningSrc).toContain('admin?.selectedEnterprise?.id')
+    expect(planningSrc).toContain('setSelectedEntreprise(')
+    // « all » reste le réglage par défaut : rien n\u2019est filtré tant que le rail
+    // n\u2019a pas choisi d\u2019entreprise — la vue globale d\u2019avant, en plus simple
+    expect(planningSrc).toContain('useState("all");')
+    // le sélecteur d\u2019affichage (équipes / collaborateurs), lui, est un autre
+    // objet : il est dans la barre de focus, pas dans le bandeau
+    expect(planningSrc).toContain('className="sk-ent-select"')
+  })
+
+  it('28ter. dit le périmètre, la semaine et le compte à la place des contrôles retirés', () => {
+    // Ce que le sélecteur enlevé savait, la feuille l\u2019écrit : une étiquette,
+    // pas une icône, avec deux nombres comptés sur place.
+    expect(bandeau).toContain('sk-topbar-etat')
+    expect(planningSrc).toContain('const etatFeuille = useMemo(')
+    expect(planningSrc).toContain('"Toutes les entreprises"')
+    expect(planningSrc).toContain('`Semaine ${semaineIso}`')
+    expect(planningSrc).toContain('collaborateur${scopedEmployees.length > 1 ? "s" : ""}')
+    // le numéro de semaine est ISO : le jeudi au milieu, l\u2019année qui le porte
+    expect(planningSrc).toContain('getUTCDate() - ((d.getUTCDay() + 6) % 7) + 3')
+    const nombre = Number(new Date(2026, 10, 16).toISOString().slice(0, 10) === '2026-11-16')
+    expect(nombre).toBe(1) // repère du fondateur : la semaine du 16 au 22 nov. 2026
   })
 
   it('11. lie les compteurs du haut au groupe déplié et au focus sélectionné', () => {
