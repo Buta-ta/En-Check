@@ -79,6 +79,10 @@ import "./PlanningPostIt.css";
 const OVERRIDES_STORAGE_KEY = "encheck_planning_day_overrides_v1";
 const CUSTOM_MODELS_STORAGE_KEY = "encheck_planning_custom_models_v1";
 const AVAILABILITY_STORAGE_KEY = "encheck_planning_availability_v1";
+// Dans les surcharges locales d'un collaborateur, la couleur qu'il a choisie
+// pour son horaire entier vit sous cette clé — jamais sous une date, pour ne
+// jamais être confondue avec une case.
+const COULEUR_HORAIRE_CLE = "couleur-horaire";
 const TEAMS_STORAGE_KEY = "encheck_planning_teams_v1";
 const TEAM_ASSIGNMENTS_STORAGE_KEY = "encheck_planning_team_assignments_v1";
 const MONTH_MODELS_STORAGE_KEY = "encheck_planning_month_models_v1";
@@ -1431,6 +1435,9 @@ export default function Planning() {
           name: es.work_schedules?.name || "Horaire personnalisé",
           source: "custom",
           esRow: es,
+          // La couleur choisie dans la fenêtre pour l'horaire entier de la
+          // semaine : elle habille chaque case, comme celle d'une case seule.
+          color: empOverrides[COULEUR_HORAIRE_CLE]?.color,
         };
       }
       if (es.work_schedules) {
@@ -1452,6 +1459,7 @@ export default function Planning() {
           source: "assigned_schedule",
           schedule_id: ws.id,
           esRow: es,
+          color: empOverrides[COULEUR_HORAIRE_CLE]?.color,
         };
       }
     }
@@ -2671,7 +2679,8 @@ export default function Planning() {
         return next;
       });
 
-      // Personnalisation de la couleur de la case éditée
+      // Personnalisation de la couleur de la case éditée — ou, sans case ciblée,
+      // de l'horaire entier de la semaine
       if (cellEditContext) {
         const color = employeeScheduleForm.custom_color || "#B56235";
         setDayOverrides((prev) => ({
@@ -2689,6 +2698,17 @@ export default function Planning() {
             },
           },
         }));
+      } else if (employeeScheduleForm.use_custom_hours) {
+        const couleur = employeeScheduleForm.custom_color;
+        if (couleur) {
+          setDayOverrides((prev) => ({
+            ...prev,
+            [employeeScheduleForm.employee_id]: {
+              ...(prev[employeeScheduleForm.employee_id] || {}),
+              [COULEUR_HORAIRE_CLE]: { color: couleur },
+            },
+          }));
+        }
       }
 
       toast.success("Planning collaborateur enregistré !");

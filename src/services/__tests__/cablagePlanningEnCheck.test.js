@@ -95,6 +95,22 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningCss).toContain('.sk-color-input')
   })
 
+  it('6bis. porte la couleur choisie dans la fenêtre jusqu’à chaque case de la grille', () => {
+    // Le fondateur a redemandé la couleur le 22/11 : la teinte d’un poste doit
+    // se voir dans la grille, qu’elle ait été choisie pour une case seule ou
+    // pour l’horaire entier de la semaine. Deux chemins de donnée, un seul
+    // aspect : la feuille lave son papier et peint son ruban avec cette teinte.
+    expect(planningSrc).toContain('const COULEUR_HORAIRE_CLE = "couleur-horaire"')
+    expect(planningSrc.match(/empOverrides\[COULEUR_HORAIRE_CLE\]\?\.color/g)).toHaveLength(2)
+    expect(planningSrc).toContain('[COULEUR_HORAIRE_CLE]: { color: couleur }')
+    const peau = lire('src/pages/PlanningPostIt.css')
+    expect(peau).toContain('--plq-teinte: var(--shift-teinte, var(--charte-surface2))')
+    expect(peau).toMatch(
+      /\.sk-plan-page--postit \.sk-matrix-card \.sk-shift-top\s*\{[^}]*--plq-ruban/s
+    )
+    expect(peau).toMatch(/--plq-postit: color-mix\(in srgb, var\(--plq-teinte\) 24%/)
+  })
+
   it('7. suit le thème de l\u2019application sans le commander dans son bandeau', () => {
     // Le fondateur a retiré le bouton du bandeau le 22/11 : le thème est un
     // choix de l\u2019application, pas d\u2019une page. Ce contrat dit donc le
