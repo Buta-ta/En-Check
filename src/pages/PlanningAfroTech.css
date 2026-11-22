@@ -145,17 +145,6 @@
   gap: 12px;
 }
 
-.sk-adinkra-divider {
-  width: 26px;
-  height: 26px;
-  opacity: 0.38;
-  color: var(--sk-text-muted);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-
 .sk-period-nav {
   display: inline-flex;
   align-items: center;
@@ -1323,34 +1312,150 @@
   box-shadow: var(--sk-shadow);
 }
 
-.sk-bottom-slots {
+/* Le pied de grille dit la semaine chiffre par chiffre : une tête (l'effectif
+   total), un rang par jour (personnes, puis heures), un récapitulatif à droite.
+   Les sept colonnes se partagent la place disponible et passent en deux rangées
+   quand la page se resserre. */
+.sk-bottom-tete {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding-right: 12px;
+  border-right: 1px solid var(--sk-border-soft);
+}
+
+.sk-bottom-etiquette {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sk-text-muted);
+}
+
+.sk-bottom-nombre {
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--sk-text);
+}
+
+.sk-bottom-legende {
+  font-size: 10.5px;
+  color: var(--sk-text-muted);
+}
+
+.sk-bottom-jours {
+  display: flex;
+  align-items: stretch;
   gap: 12px;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   font-size: 12px;
   color: var(--sk-text-soft);
 }
 
-.sk-bottom-slot {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.sk-bottom-jour {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 68px;
+  flex: 1 1 68px;
   padding-right: 12px;
   border-right: 1px solid var(--sk-border-soft);
 }
 
-.sk-bottom-slot:last-child {
+.sk-bottom-jour:last-child {
   border-right: none;
 }
 
-.sk-bottom-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.sk-bottom-jour-nom {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sk-text-muted);
+}
+
+.sk-bottom-jour-chiffre {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
   font-size: 13px;
   font-weight: 700;
   color: var(--sk-text);
+}
+
+.sk-bottom-jour-chiffre small {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--sk-text-muted);
+}
+
+.sk-bottom-jour-heures {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--sk-text-soft);
+}
+
+/* l'avertissement de dépôt : le même emplacement, une autre intention */
+.sk-bottom-jour-deposer {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sk-accent);
+}
+
+/* un jour sans personne garde son chiffre, à demi encre : le vide se lit,
+   il ne disparaît pas */
+.sk-bottom-jour:not(.is-plein) .sk-bottom-jour-chiffre,
+.sk-bottom-jour:not(.is-plein) .sk-bottom-jour-heures {
+  opacity: 0.5;
+}
+
+.sk-bottom-recap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 12px;
+  border-left: 1px solid var(--sk-border-soft);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sk-text);
+}
+
+.sk-bottom-recap-lignes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sk-text-muted);
+}
+
+.sk-bottom-recap-lignes strong {
+  color: var(--sk-text);
+}
+
+.sk-bottom-tampon {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-bottom-tampon small {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sk-text-muted);
 }
 
 /* ═══ SÉLECTEUR DE COULEURS PERSONNALISÉES ═══ */
@@ -2720,13 +2825,17 @@
     gap: 8px;
   }
 
-  .sk-bottom-slots {
+  .sk-bottom-jours {
     gap: 8px;
     font-size: 11px;
   }
 
-  .sk-bottom-slot {
+  .sk-bottom-jour {
     padding-right: 8px;
+  }
+
+  .sk-bottom-recap-lignes {
+    align-items: flex-start;
   }
 
   /* Calendrier mensuel compact */

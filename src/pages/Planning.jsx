@@ -15,10 +15,6 @@ import HolidayService from "../services/holidayService";
 import { resoudrePointagesJournee } from "../services/hoursCalculator";
 import { chargerSeuilsPointage } from "../services/seuilsPointage";
 import FeatureService from "../services/featureService";
-import {
-  AdinkraWatermarkSvg,
-  WovenKenteBadgeSvg,
-} from "../components/AfroCulturalSvg";
 import PlanningLoadingScreen from "../components/PlanningLoadingScreen";
 import useLoadingMinimum from "../hooks/useLoadingMinimum";
 import {
@@ -2407,6 +2403,7 @@ export default function Planning() {
         headcount,
         totalMinutes,
         hoursLabel: formatHoursCompact(totalMinutes),
+        isToday: dayItem.isToday,
       };
     });
   }, [weekDays, scopedEmployees, dayOverrides, employeeSchedules, plannings, absences, holidayMapsByEnterprise]);
@@ -2876,6 +2873,8 @@ export default function Planning() {
     return (
       <PlanningLoadingScreen
         darkMode={darkMode}
+        nomEntreprise={entrepriseActive?.name ?? ""}
+        dataReady={!loading}
         onSkip={() => {
           skipLoading();
           setLoading(false);
@@ -2884,13 +2883,20 @@ export default function Planning() {
     );
   }
 
-  // Totaux globaux pour la barre de pied En-Check
-  const summaryDay = dailyTotals[0] || { headcount: filteredEmployees.length, hoursLabel: "48h00" };
+  // Le pied de grille ne répète pas la grille : il la résume. L'ancien total de la barre
+  // de pied portait les heures du SEUL lundi sous un libellé qui prétendait parler de la
+  // semaine, et tombait sur un nombre inventé dès que la semaine était vide. Trois valeurs
+  // réelles le remplacent : les heures cumulées, les jours réellement couverts, la moyenne
+  // par jour couvert. Chacune se lit une fois, nulle part deux.
   const totalActiveEmployees = filteredEmployees.length;
-  const totalDayHoursLabel =
-    summaryDay.totalMinutes > 0
-      ? `${Math.floor(summaryDay.totalMinutes / 60)}h${String(summaryDay.totalMinutes % 60).padStart(2, "0")}`
-      : "48h00";
+  const heuresSemaine = dailyTotals.reduce((somme, dt) => somme + (dt.totalMinutes || 0), 0);
+  const joursCouverts = dailyTotals.filter((dt) => dt.headcount > 0).length;
+  const labelHeures = (minutes) =>
+    `${Math.floor(minutes / 60)}h${String(Math.round(minutes % 60)).padStart(2, "0")}`;
+  const totalHeuresSemaineLabel = labelHeures(heuresSemaine);
+  const moyenneJourCouvertLabel = labelHeures(
+    joursCouverts ? Math.round(heuresSemaine / joursCouverts) : 0,
+  );
 
   return (
     <div className="sk-plan-page sk-plan-page--postit" data-theme={darkMode ? "dark" : "light"}>
@@ -4048,31 +4054,59 @@ export default function Planning() {
               </div>
             </div>
 
-            {/* Barre Récapitulative Fixe en Bas (Pied de Grille En-Check) */}
+            {/* Pied de grille : la semaine récapitulée, un chiffre par jour. Le
+                geste de dépôt prend la place du chiffre tant qu'un modèle est en
+                main ; le filigrane de culture, lui, ne se pose plus ici — la page
+                le porte déjà en cadre, au bandeau de commande. */}
             <footer className="sk-bottom-bar">
-              <div className="sk-bottom-slots">
-                <div className="sk-bottom-slot">
-                  <span>
-                    Effectif: <strong>{totalActiveEmployees}</strong>
-                  </span>
-                </div>
+              <div className="sk-bottom-tete">
+                <span className="sk-bottom-etiquette">Collaborateurs</span>
+                <strong className="sk-bottom-nombre">{totalActiveEmployees}</strong>
+                <span className="sk-bottom-legende">dans la sélection</span>
+              </div>
+
+              <div className="sk-bottom-jours">
                 {dailyTotals.map((dt) => (
-                  <div key={dt.dateStr} className="sk-bottom-slot">
-                    <span>
-                      {draggedPayload
-                        ? `Déposer ici · ${dt.labelHeader}`
-                        : `${dt.labelHeader} : ${dt.headcount} pers. (${dt.hoursLabel})`}
-                    </span>
+                  <div
+                    key={dt.dateStr}
+                    className={[
+                      "sk-bottom-jour",
+                      dt.headcount ? "is-plein" : "",
+                      dt.isToday ? "is-today" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <span className="sk-bottom-jour-nom">{dt.labelHeader}</span>
+                    {draggedPayload ? (
+                      <span className="sk-bottom-jour-deposer">Déposer ici</span>
+                    ) : (
+                      <>
+                        <span className="sk-bottom-jour-chiffre">
+                          {dt.headcount}
+                          <small>pers.</small>
+                        </span>
+                        <span className="sk-bottom-jour-heures">{dt.hoursLabel}</span>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
 
-              <div className="sk-bottom-right">
-                <span>
-                  Effectif: {totalActiveEmployees} pers. &nbsp;|&nbsp; {totalDayHoursLabel}
-                </span>
-                <span className="sk-adinkra-divider" aria-hidden="true">
-                  <AdinkraWatermarkSvg size={22} />
+              <div className="sk-bottom-recap">
+                <div className="sk-bottom-recap-lignes">
+                  <span>
+                    Jours couverts
+                    <strong> {joursCouverts}/7</strong>
+                  </span>
+                  <span>
+                    Moyenne par jour couvert
+                    <strong> {moyenneJourCouvertLabel}</strong>
+                  </span>
+                </div>
+                <span className="sk-bottom-tampon">
+                  <small>Heures de la semaine</small>
+                  <strong>{totalHeuresSemaineLabel}</strong>
                 </span>
               </div>
             </footer>
@@ -4910,7 +4944,6 @@ export default function Planning() {
           </div>
         )}
       </main>
-      <PageCulturalBand pathname="/planning" placement="bottom"/>
 
       {/* ═══ MODAL CRÉATION / ÉDITION DE MODÈLE (work_schedules) ═══ */}
       {showModal && (

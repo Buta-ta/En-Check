@@ -1,135 +1,88 @@
 import PageCulturalBand from './PageCulturalBand'
 // ═══════════════════════════════════════════════════════════════════════════
-// 📅 ÉCRAN DE CHARGEMENT PLANNING — identique à l'écran Pointages
-// Deux scènes rythmées (Étape 1 / Étape 2) : le planning En-Check projeté,
-// puis la construction de la grille de la semaine.
+// 📅 ÉCRAN DE CHARGEMENT PLANNING — la carte de la page Employés
+// « Je veux le même style de loading comme la page employé », 22/11. La carte
+// est donc empruntée, pas copié-collé : même en-tête (marque, entreprise,
+// compteur), même scène 16:9, quatre étapes, « Passer l'animation ».
+//
+// Une seule image, ici : la scène du Planning est un mur d'équipe qu'on
+// regarde d'un bloc, pas une file de personnages découpée en calques. Le
+// bandeau de motif kuba reste dans la carte — un seul motif par écran, la page
+// elle-même ne porte plus sa bande de pied depuis le même jour.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
-import { ArrowRight, CalendarDays, CheckCircle2, LayoutGrid, Users } from 'lucide-react'
-import EnCheckBrandMark from './EnCheckBrandMark'
-import { CulturalCornerMotifSvg } from './AfroCulturalSvg'
-import '../pages/PointagesAfroTech.css'
+import EmployesLoadingScreen from './EmployesLoadingScreen'
+import { DUREE_MIN_CHARGEMENT_MS } from '../hooks/useLoadingMinimum'
 
-export default function PlanningLoadingScreen({ darkMode = true, onSkip }) {
-  const [activeStep, setActiveStep] = useState(0)
-  const [progress, setProgress] = useState(14)
+// Les quatre étapes sont celles que la page traverse vraiment, dans l'ordre de
+// `loadData` : les modèles, les collaborateurs et leurs équipes, les horaires
+// individuels et les disponibilités, puis la grille de la semaine.
+export const ETAPES_CHARGEMENT_PLANNING = [
+  {
+    id: 1,
+    court: 'Modèles',
+    detail: 'Lecture des modèles d’horaire de l’entreprise…',
+    pct: 22,
+  },
+  {
+    id: 2,
+    court: 'Collaborateurs',
+    detail: 'Lecture des équipes et des collaborateurs de la semaine…',
+    pct: 48,
+  },
+  {
+    id: 3,
+    court: 'Horaires & dispos',
+    detail: 'Synchronisation des horaires individuels et des disponibilités…',
+    pct: 74,
+  },
+  {
+    id: 4,
+    court: 'Grille de la semaine',
+    detail: 'Composition de la grille et contrôle des pointages réels…',
+    pct: 95,
+  },
+]
 
+export default function PlanningLoadingScreen({
+  darkMode = false,
+  onSkip,
+  nomEntreprise = '',
+  dataReady = false,
+}) {
+  const [etape, setEtape] = useState(1)
+
+  // Le rythme est décoratif : le plancher de `useLoadingMinimum` tient l'écran
+  // ouvert le temps du chargement minimal, et la page s'affiche dès que LES
+  // DONNÉES sont là. L'étape avance donc à pas réglé, sans jamais promettre un
+  // pourcentage mesuré — le compteur, lui, est branché sur la donnée réelle.
   useEffect(() => {
-    const stepTimer = window.setInterval(() => {
-      setActiveStep((prev) => (prev === 0 ? 1 : 0))
-    }, 2300)
-    const progressTimer = window.setInterval(() => {
-      setProgress((prev) => (prev >= 96 ? 24 : prev + 6))
-    }, 240)
-    return () => {
-      window.clearInterval(stepTimer)
-      window.clearInterval(progressTimer)
-    }
+    const total = ETAPES_CHARGEMENT_PLANNING.length
+    const pas = Math.max(DUREE_MIN_CHARGEMENT_MS, 1200) / total
+    const minuterie = window.setInterval(() => {
+      setEtape((prev) => (prev >= total ? prev : prev + 1))
+    }, pas)
+    return () => window.clearInterval(minuterie)
   }, [])
 
   return (
-    <div
-      className="pointages-afrotech-shell pointages-loading-screen"
-      data-theme={darkMode ? 'dark' : 'light'}
-      role="status"
-      aria-live="polite"
-    >
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-top-right" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-left" />
-      <CulturalCornerMotifSvg className="pointages-corner-svg is-bottom-right" />
-
-      <div className="pointages-loading-inner">
-        <div className="pointages-loading-brand">
-          <EnCheckBrandMark className="pointages-loading-mark" size={58} loading />
-          <div className="pointages-loading-brand-copy">
-            <strong>En-Check</strong>
-            <span>On gère !</span>
-          </div>
-        </div>
-
-        <PageCulturalBand pathname="/planning" placement="loading"/>
-
-        <h1 className="pointages-loading-title">Chargement du planning En-Check…</h1>
-
-        <div className="pointages-loading-stage">
-          <div
-            className={`pointages-loading-scene${activeStep === 0 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(0)}
-          >
-            <img
-              src="/images/planning-loading-ecran.jpg"
-              alt="Le planning En-Check projeté sur grand écran devant une équipe"
-              loading="eager"
-              decoding="async"
-            />
-            <div className="pointages-loading-scene-caption">
-              <span>
-                <CalendarDays size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                Étape 1 · Le planning En-Check projeté à l’équipe
-              </span>
-              <CheckCircle2 size={15} color="#4ADE80" />
-            </div>
-          </div>
-
-          <div
-            className={`pointages-loading-scene${activeStep === 1 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(1)}
-          >
-            <img
-              src="/images/planning-loading-grid-femme.jpg"
-              alt="Construction de la grille de la semaine et placement des créneaux"
-              loading="eager"
-              decoding="async"
-            />
-            <div className="pointages-loading-scene-caption">
-              <span>
-                <LayoutGrid size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                Étape 2 · Grille de la semaine & pose des créneaux
-              </span>
-              <CheckCircle2 size={15} color="#4ADE80" />
-            </div>
-          </div>
-        </div>
-
-        <div className="pointages-loading-steps">
-          <button
-            type="button"
-            className={`pointages-loading-step${activeStep === 0 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(0)}
-          >
-            <span>1. Modèles, équipes & disponibilités</span>
-            <Users size={15} />
-          </button>
-          <button
-            type="button"
-            className={`pointages-loading-step${activeStep === 1 ? ' is-active' : ''}`}
-            onClick={() => setActiveStep(1)}
-          >
-            <span>2. Grille de la semaine & créneaux</span>
-            <CheckCircle2 size={15} />
-          </button>
-        </div>
-
-        <div className="pointages-loading-bar-track" aria-hidden="true">
-          <div className="pointages-loading-bar-fill" style={{ width: `${progress}%` }} />
-        </div>
-
-        <div className="pointages-loading-footer">
-          <p className="pointages-loading-subtitle">
-            {activeStep === 0
-              ? 'Étape 1/2 · Chargement des modèles (horaires, repos, congés) et des équipes…'
-              : 'Étape 2/2 · Construction de la grille de la semaine et placement des créneaux…'}
-          </p>
-          {onSkip && (
-            <button type="button" className="pointages-loading-skip" onClick={onSkip}>
-              <span>Passer l’animation</span>
-              <ArrowRight size={13} />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    <EmployesLoadingScreen
+      darkMode={darkMode}
+      onSkip={onSkip}
+      dataReady={dataReady}
+      etape={etape}
+      nomEntreprise={nomEntreprise}
+      etapes={ETAPES_CHARGEMENT_PLANNING}
+      marque="EN-CHECK · PLANNING DE LA SEMAINE"
+      titre="Chargement du planning de la semaine…"
+      titrePret="Le planning de la semaine est prêt"
+      statutPret="Modèles, horaires, disponibilités et pointages sont à jour."
+      legende="Chargement du planning"
+      dossierImages="/images/planning-loading-"
+      imageScene="/images/planning-loading-scene.webp"
+      calques={[]}
+      ruban={<PageCulturalBand pathname="/planning" placement="loading" />}
+    />
   )
 }
