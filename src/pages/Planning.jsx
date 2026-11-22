@@ -176,6 +176,23 @@ const DEFAULT_DOCK_TEMPLATES = [
     isPreset: true,
   },
 ];
+// Les cinq teintes de la légende sont CELLES des modèles du dock, lues à la
+// source. Un modèle qui change de teinte change donc aussi dans la légende —
+// les recalquer à la main dans le rendu, c'est déjà arrivé, et la légende avait
+// survécu à deux changements de palette sans bouger d'un cheveu : une légende
+// qui ne raconte plus la grille est un mensonge de couleur.
+const LEGENDE_TEINTES = [
+  { cle: "tpl-matin", mot: "Horaire" },
+  { cle: "tpl-garde", mot: "Garde" },
+  { cle: "tpl-nuit", mot: "Nuit" },
+  { cle: "tpl-pause", mot: "Pause" },
+  { cle: "tpl-repos", mot: "Congé / Repos" },
+].map(({ cle, mot }) => ({
+  cle,
+  mot,
+  teinte: DEFAULT_DOCK_TEMPLATES.find((modele) => modele.id === cle)?.color ?? null,
+}));
+
 
 function readStorage(key, fallback) {
   try {
@@ -3045,14 +3062,12 @@ export default function Planning() {
               onClick={() => setDockOpen((o) => !o)}
             >
               <span className={`sk-dock-caret ${dockOpen ? "" : "collapsed"}`}>▼</span>
-              <span>Modèles à glisser-déposer (Drag &amp; Drop)</span>
+              <span className="sk-dock-titre">
+                Modèles à glisser-déposer (Drag &amp; Drop)
+              </span>
             </button>
 
             <div className="sk-dock-actions">
-              <span className="sk-dock-hint">
-                Glissez un modèle sur une case jour, sur un collaborateur ou sur le
-                calendrier • Maintenez <strong>Alt</strong> pour dupliquer un shift
-              </span>
               <button
                 type="button"
                 className="sk-dock-add-btn"
@@ -3081,6 +3096,15 @@ export default function Planning() {
                 Nouveau modèle
               </button>
             </div>
+
+            {/* La consigne descend sous le titre et sous les trois gestes : la
+                maquette retenue la montre posée EN TRAVERS de la feuille, comme
+                une mention manuscrite — pas comme un quatrième bouton aligné
+                avec les actions. */}
+            <span className="sk-dock-hint">
+              Glissez un modèle sur une case jour, sur un collaborateur ou sur le
+              calendrier • Maintenez <strong>Alt</strong> pour dupliquer un shift
+            </span>
           </div>
 
           {dockOpen && (
@@ -3330,37 +3354,35 @@ export default function Planning() {
           <div className="sk-legend">
             <span className="sk-legend-group">
               <span className="sk-legend-title">Disponibilité</span>
+              {/* Les mêmes puces que la fenêtre de disponibilités, donc LES
+                  MÊMES couleurs : la bande peignait ses trois pastilles à la
+                  main, avec son propre vert menthe, et ne racontait plus ni la
+                  grille ni la fenêtre. « sk-avail-legend-dot » est la classe
+                  qui sert déjà les deux états à côté des pilules. */}
               <span className="sk-legend-item">
-                <span className="sk-avail-dot" style={{ color: "#10B981", background: "#10B981" }} />{" "}
+                <span className="sk-avail-legend-dot is-on" />{" "}
                 Auj. / Sem. / jour = disponible
               </span>
               <span className="sk-legend-item">
-                <span className="sk-avail-dot" style={{ color: "#EF4444", background: "#EF4444" }} />{" "}
-                indisponible
+                <span className="sk-avail-legend-dot is-off" /> indisponible
               </span>
               <span className="sk-legend-item">
-                <span className="sk-avail-dot" style={{ color: "#8E7E6F", background: "#8E7E6F" }} />{" "}
-                non renseigné
+                <span className="sk-avail-legend-dot" /> non renseigné
               </span>
             </span>
             <span className="sk-legend-group">
               <span className="sk-legend-title">Types de cartes</span>
-              <span className="sk-legend-item">
-                <span className="sk-legend-swatch" style={{ background: "#B56235" }} /> Horaire
-              </span>
-              <span className="sk-legend-item">
-                <span className="sk-legend-swatch" style={{ background: "#9A5B25" }} /> Garde
-              </span>
-              <span className="sk-legend-item">
-                <span className="sk-legend-swatch" style={{ background: "#4B3869" }} /> Nuit
-              </span>
-              <span className="sk-legend-item">
-                <span className="sk-legend-swatch" style={{ background: "#0E7490" }} /> Pause
-              </span>
-              <span className="sk-legend-item">
-                <span className="sk-legend-swatch" style={{ background: "#2D5A43" }} /> Congé /
-                Repos
-              </span>
+              {LEGENDE_TEINTES.map((teinte) => (
+                <span className="sk-legend-item" key={teinte.cle}>
+                  <span
+                    className="sk-legend-swatch"
+                    // la teinte arrive en DONNÉE, comme sur la brique du dock :
+                    // c'est la couleur du modèle, pas un choix de la feuille
+                    style={teinte.teinte ? { "--brick-color": teinte.teinte } : undefined}
+                  />{" "}
+                  {teinte.mot}
+                </span>
+              ))}
               <span className="sk-legend-item">
                 <span className="sk-legend-swatch is-dashed" /> Réel effectué
               </span>
