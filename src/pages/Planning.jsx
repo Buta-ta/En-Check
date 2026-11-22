@@ -3423,7 +3423,7 @@ export default function Planning() {
                   <thead>
                     <tr>
                       <th className="sk-col-emp sk-th-emp">
-                        <span style={{ color: "var(--sk-accent-warm)", marginRight: 8 }}>
+                        <span className="sk-th-emp-icone" aria-hidden="true">
                           <Users size={13} />
                         </span>
                         Collaborateurs &amp; Équipes
@@ -3452,14 +3452,7 @@ export default function Planning() {
                   <tbody>
                     {filteredEmployees.length === 0 ? (
                       <tr>
-                        <td
-                          colSpan={8}
-                          style={{
-                            padding: 42,
-                            textAlign: "center",
-                            color: "var(--sk-text-muted)",
-                          }}
-                        >
+                        <td className="sk-matrix-vide" colSpan={8}>
                           Aucun collaborateur actif trouvé pour ce filtre.
                         </td>
                       </tr>
@@ -3486,12 +3479,7 @@ export default function Planning() {
                               <td colSpan={8}>
                                 <div className="sk-group-row-inner">
                                   <span className="sk-group-row-left">
-                                    <span
-                                      style={{
-                                        color: "var(--sk-accent-warm)",
-                                        marginRight: 4,
-                                      }}
-                                    >
+                                    <span className="sk-group-caret" aria-hidden="true">
                                       {isCollapsed ? "▶" : "▼"}
                                     </span>
                                     <span>{group.title}</span>
@@ -3588,7 +3576,6 @@ export default function Planning() {
                                       onDrop={(e) => handleDropOnEmployeeRow(e, emp)}
                                       onClick={() => openCellEditorModal(emp)}
                                       title="Cliquez pour configurer le planning ou glissez un modèle ici pour toute la semaine"
-                                      style={{ cursor: "pointer" }}
                                     >
                                       <div className="sk-emp-box">
                                         {emp.photo_url ? (
@@ -3787,9 +3774,12 @@ export default function Planning() {
                                                   shift.variant || "standard"
                                                 }`}
                                                 style={{
-                                                  "--shift-custom-bg": buildShiftGradient(
-                                                    shift.color
-                                                  ),
+                                                  // la teinte nue, pour la peau post-it (lavée sur papier)
+                                                  "--shift-teinte": shift.color || undefined,
+                                                  // le dégradé peint, pour les autres peaux de la page
+                                                  "--shift-custom-bg": shift.color
+                                                    ? buildShiftGradient(shift.color)
+                                                    : undefined,
                                                 }}
                                                 draggable={!shift.isHoliday && !shift.isAbsence}
                                                 onDragStart={(e) =>
@@ -3815,10 +3805,6 @@ export default function Planning() {
                                                       <button
                                                         type="button"
                                                         className="sk-shift-color-mini"
-                                                        style={{
-                                                          background:
-                                                            shift.color || "#B56235",
-                                                        }}
                                                         onClick={(e) => {
                                                           e.stopPropagation();
                                                           openCellEditorModal(
@@ -3901,7 +3887,7 @@ export default function Planning() {
                                                     </span>
                                                   )}
                                                   {netLabel && !isDropOver && (
-                                                    <span style={{ fontWeight: 700 }}>
+                                                    <span className="sk-shift-net">
                                                       {netLabel}
                                                     </span>
                                                   )}

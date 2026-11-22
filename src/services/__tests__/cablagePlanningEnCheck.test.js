@@ -77,9 +77,18 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
   })
 
   it('6. permet de personnaliser la couleur des modèles et des cases', () => {
+    const peau = lire('src/pages/PlanningPostIt.css')
     expect(planningSrc).toContain('ENCHECK_COLOR_PALETTE')
     expect(planningSrc).toContain('buildShiftGradient')
     expect(planningSrc).toContain('--shift-custom-bg')
+    // La grille de la semaine, sous la peau post-it, ne peint plus de dégradé :
+    // la page attache aussi la teinte nue du poste, et c'est la feuille qui la
+    // lave sur son papier. Le contrat porte donc sur les deux, chacun pour sa peau.
+    expect(planningSrc).toContain('"--shift-teinte": shift.color')
+    expect(peau).toContain('--plq-postit: color-mix')
+    expect(peau).toMatch(
+      /\.sk-plan-page--postit \.sk-matrix-card \.sk-shift-card\s*\{[^}]*background-image: none/s
+    )
     expect(planningSrc).toContain('--brick-color')
     expect(planningSrc).toContain('sk-color-swatch')
     expect(planningSrc).toContain('Couleur de la case')

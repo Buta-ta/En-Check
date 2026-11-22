@@ -846,6 +846,724 @@
   }
 }
 
+/* ═══ LA GRILLE DE LA SEMAINE : « COLLABORATEURS & ÉQUIPES » EST UNE FEUILLE ══
+   La matière de cette vue était la dernière de la page à rester habillée en
+   poste de pilotage : cadres arrondis, halos, bandeaux en dégradé et cases
+   teintées d'orange. Le fondateur a validé une maquette qui la dessine comme
+   les deux feuilles du dessous (docs/maquettes/planning-section-matrice-choix.png) :
+   un plan de travail encadré d'encre, une bande collée le long du haut, des
+   jours écrits dans une barre lavée, une carte de poste posée à plat avec son
+   rabat en haut à gauche, des cases vides simplement pointillées.
+
+   La recette est celle du reste de la page, et rien ici ne se peigne à la main :
+   les teintes viennent du token de teinte que la page attache à la carte, lavé
+   sur le papier de la maison ; les contours, l'encre ; les assises, l'ombre dure.
+   Les données et les gestes ne bougent pas — seul l'aspect change, et seulement
+   sous la peau post-it, pour que les autres vues de la page gardent la leur. */
+
+/* le geste de la cellule entière, rappelé ici : il était écrit dans le JSX */
+.sk-plan-page--postit .sk-emp-cell {
+  cursor: pointer;
+}
+
+/* ── la feuille et sa bande de colle ──────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-matrix-card {
+  --plq-pli: 14px;
+  --plq-colle: calc(var(--plq-pli) + 1px);
+  --plq-lave: color-mix(
+    in srgb,
+    var(--charte-blanc) 12%,
+    var(--charte-surface)
+  );
+  /* la teinte du poste arrive de la page ; à défaut, c'est le papier qui parle */
+  --plq-teinte: var(--shift-teinte, var(--charte-surface2));
+  --plq-postit: color-mix(
+    in srgb,
+    var(--plq-teinte) 14%,
+    var(--charte-surface)
+  );
+
+  position: relative;
+  background-color: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  /* le rabat des cartes et l'assise du cadre doivent pouvoir dépasser la feuille */
+  overflow: visible;
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* la bande qui tient la feuille sur le plan de travail, collée sur le haut */
+.sk-plan-page--postit .sk-matrix-card::after {
+  content: '';
+  position: absolute;
+  z-index: 6;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--plq-colle);
+  background-color: var(--plq-lave);
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+  pointer-events: none;
+}
+
+/* le rail qui permettait de faire glisser la grille reste un rail : on ne
+   remplace pas une fonction par une cosmétique, on lui rend seulement sa
+   transparence pour que la bande collée se lise jusqu'au bord */
+.sk-plan-page--postit .sk-matrix-scroll {
+  scrollbar-color: var(--charte-bordure) transparent;
+}
+
+/* ── le rang des jours : une barre lavée, pas un bandeau peint ────────────── */
+
+.sk-plan-page--postit .sk-matrix-card thead th {
+  /* la place de la bande de colle, pour que rien ne soit mangé */
+  padding-top: calc(var(--charte-espace-3) + var(--plq-colle));
+  padding-bottom: var(--charte-espace-2);
+  border-right: 1px solid var(--charte-bordure);
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+  background-color: var(--plq-lave);
+}
+
+.sk-plan-page--postit .sk-matrix-card thead th:last-child {
+  border-right: none;
+}
+
+.sk-plan-page--postit .sk-th-emp {
+  padding-left: var(--charte-espace-3);
+  text-align: left;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* l'icône du rang portait sa couleur dans le JSX : elle est ici, à l'encre */
+.sk-plan-page--postit .sk-th-emp-icone {
+  margin-right: var(--charte-espace-2);
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-th-day-name {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.sk-plan-page--postit .sk-th-day-sub {
+  color: color-mix(in srgb, var(--charte-encre) 62%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+/* le jour d'aujourd'hui se voit à la teinte plate et au tampon, jamais au halo */
+.sk-plan-page--postit .sk-th-day.is-today {
+  background-color: color-mix(
+    in srgb,
+    var(--charte-alerte) 16%,
+    var(--plq-lave)
+  );
+  background-image: none;
+}
+
+.sk-plan-page--postit .sk-today-pill {
+  padding: 1px var(--charte-espace-2);
+  border: 1px solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-encre);
+  color: var(--charte-blanc);
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* les sept lettres qui ouvrent chaque jour : des tampons de papier, pas des
+   pilules — et la surbrillance du jour se lit au trait, pas au remplissage */
+.sk-plan-page--postit .sk-th-day .sk-day-letter {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: transparent;
+  color: color-mix(in srgb, var(--charte-encre) 74%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-th-day.is-today .sk-day-letter {
+  border-color: var(--charte-encre);
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-th-day .sk-day-btn:hover {
+  border-color: var(--charte-encre);
+  background-color: transparent;
+}
+
+.sk-plan-page--postit .sk-th-day .sk-day-toggle {
+  border-radius: 0;
+  color: color-mix(in srgb, var(--charte-encre) 62%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-th-day .sk-day-toggle:hover {
+  border-color: var(--charte-encre);
+  color: var(--charte-encre);
+  background-color: var(--charte-surface2);
+}
+
+/* ── le corps de la grille : des filets, pas des cases peintes ─────────────── */
+
+.sk-plan-page--postit .sk-matrix-card tbody th,
+.sk-plan-page--postit .sk-matrix-card tbody td {
+  border-right: 1px solid var(--charte-bordure);
+  border-bottom: 1px solid var(--charte-bordure);
+}
+
+.sk-plan-page--postit .sk-td-emp {
+  padding: var(--charte-espace-3);
+  background-color: var(--charte-surface);
+  border-right: 1px solid var(--charte-bordure);
+}
+
+/* l'assise du jour se lit sur toute la colonne, en creux de papier */
+.sk-plan-page--postit .sk-td-cell {
+  padding: var(--charte-espace-2);
+  background-color: transparent;
+}
+
+.sk-plan-page--postit .sk-td-emp.is-today,
+.sk-plan-page--postit .sk-td-cell.is-today {
+  background-color: color-mix(
+    in srgb,
+    var(--charte-alerte) 9%,
+    var(--charte-surface)
+  );
+}
+
+/* l'état « on laisse tomber ici » : le fond de la page reste celui que la page
+   a choisi pour lui, la maison n'y ajoute que son trait — c'est lui qui parle */
+.sk-plan-page--postit .sk-td-cell.is-drop-over {
+  outline: var(--charte-trait) dashed var(--charte-encre);
+  outline-offset: -4px;
+}
+
+.sk-plan-page--postit .sk-td-emp.drop-hover,
+.sk-plan-page--postit .sk-td-cell.drop-hover {
+  outline: var(--charte-trait) dashed var(--charte-encre);
+  outline-offset: -4px;
+  background-color: var(--plq-lave);
+}
+
+.sk-plan-page--postit .sk-matrix-vide {
+  padding: var(--charte-espace-6) var(--charte-espace-4);
+  text-align: center;
+  color: color-mix(in srgb, var(--charte-encre) 62%, var(--charte-surface));
+  font-size: var(--charte-taille-corps);
+}
+
+/* ── les rangées d'équipe : un tampon, une trousse, et c'est tout ─────────── */
+
+.sk-plan-page--postit .sk-group-row {
+  background-color: var(--charte-surface2);
+  border-top: var(--charte-trait) solid var(--charte-encre);
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-group-row.is-collapsed {
+  background-color: var(--plq-lave);
+}
+
+.sk-plan-page--postit .sk-group-row.is-selected {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: -4px;
+}
+
+.sk-plan-page--postit .sk-group-row-inner {
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.sk-plan-page--postit .sk-group-toggle {
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-group-caret {
+  margin-right: var(--charte-espace-1);
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-group-name {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sk-plan-page--postit .sk-group-count {
+  padding: 0 var(--charte-espace-1);
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: transparent;
+  color: color-mix(in srgb, var(--charte-encre) 62%, var(--charte-surface));
+  font-variant-numeric: tabular-nums;
+}
+
+/* les deux compteurs sont le même tampon, posé à l'endroit et à l'envers : la
+   maison remplit un seul engagement par rangée, l'autre reste au trait */
+.sk-plan-page--postit .sk-group-count-badge {
+  padding: 1px var(--charte-espace-2);
+  border: 1px solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-plan-page--postit .sk-group-badge {
+  padding: 1px var(--charte-espace-2);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* le chef porte sa couronne en donnée, pas en couleur : un trait, une initiale */
+.sk-plan-page--postit .sk-group-avatar-mini {
+  border: 1px solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-group-actions {
+  gap: var(--charte-espace-1);
+}
+
+.sk-plan-page--postit .sk-group-row-btn {
+  min-height: 26px;
+  gap: var(--charte-espace-1);
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: transparent;
+  color: color-mix(in srgb, var(--charte-encre) 74%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+  transition:
+    color var(--charte-duree) var(--charte-easing),
+    border-color var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-group-row-btn:hover {
+  border-color: var(--charte-encre);
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+
+/* la destruction ne se déguise pas en rouge : le trait se serre, le mot reste */
+.sk-plan-page--postit .sk-group-row-btn.is-danger:hover {
+  border-color: var(--charte-encre);
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  outline: 1px solid var(--charte-encre);
+  outline-offset: 1px;
+}
+
+/* ── la cellule du collaborateur ──────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-emp-box {
+  cursor: pointer;
+  gap: 0;
+  padding: var(--charte-espace-2);
+  border: 1px solid transparent;
+  border-radius: 0;
+  transition:
+    border-color var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-emp-box:hover {
+  border-color: var(--charte-encre);
+  background-color: var(--plq-lave);
+}
+
+/* la vignette est un carré d'encre, comme dans les fenêtres d'équipe */
+.sk-plan-page--postit .sk-emp-avatar {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface2);
+  background-image: none;
+  color: var(--charte-encre);
+  font-weight: 800;
+}
+
+.sk-plan-page--postit .sk-emp-name {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+}
+
+.sk-plan-page--postit .sk-emp-hours,
+.sk-plan-page--postit .sk-emp-hours-row {
+  color: color-mix(in srgb, var(--charte-encre) 74%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+/* la barre des heures : un sillon et un rempli, au trait, sans brillance */
+.sk-plan-page--postit .sk-emp-progress-track {
+  height: 6px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: transparent;
+}
+
+.sk-plan-page--postit .sk-emp-progress-fill {
+  border-radius: 0;
+  background-color: var(--charte-encre);
+  background-image: none;
+}
+
+.sk-plan-page--postit .sk-emp-progress-fill.over {
+  background-color: var(--charte-erreur);
+}
+
+/* liseré de kuba, une seule fois par page : la grille reste sur son filet */
+.sk-plan-page--postit .sk-avail-row {
+  gap: var(--charte-espace-1);
+}
+
+.sk-plan-page--postit .sk-avail-pill {
+  padding: 1px var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: transparent;
+  color: color-mix(in srgb, var(--charte-encre) 62%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* disponible et absent se distinguent au trait et au mot, avant la couleur :
+   le vert et le rouge ne portaient pas le texte, ils ne le portent toujours pas */
+.sk-plan-page--postit .sk-avail-pill.is-on {
+  border-color: var(--charte-encre);
+  background-color: transparent;
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-avail-pill.is-off {
+  border-style: dashed;
+  border-color: color-mix(
+    in srgb,
+    var(--charte-encre) 62%,
+    var(--charte-surface)
+  );
+  background-color: transparent;
+  color: color-mix(in srgb, var(--charte-encre) 62%, var(--charte-surface));
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.sk-plan-page--postit .sk-avail-pill.is-daypicker {
+  background-color: transparent;
+  color: color-mix(in srgb, var(--charte-encre) 74%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-avail-pill.is-daypicker:hover {
+  border-color: var(--charte-encre);
+  color: var(--charte-encre);
+  background-color: var(--charte-surface2);
+}
+
+/* ── la carte de poste : un post-it posé dans la case ─────────────────────── */
+
+.sk-plan-page--postit .sk-matrix-card .sk-shift-card {
+  padding: var(--charte-espace-2) var(--charte-espace-2) var(--charte-espace-1);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-left: 6px solid var(--plq-teinte);
+  border-radius: 0;
+  /* le lavis porte la teinte du poste ; le texte, lui, reste sur le papier */
+  background-color: var(--plq-postit);
+  background-image: none;
+  color: var(--charte-encre);
+  box-shadow: 3px 3px 0 0
+    color-mix(in srgb, var(--charte-encre) 26%, transparent);
+  /* le rabat se plie hors de la carte */
+  overflow: visible;
+  transition:
+    transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+
+/* les cinq familles de postes ne se peignent plus chacune : elles se reconnaissent
+   à la bande de feutre du bord gauche, qui est la teinte du modèle */
+.sk-plan-page--postit .sk-matrix-card .sk-shift-card.variant-garde,
+.sk-plan-page--postit .sk-matrix-card .sk-shift-card.variant-nuit,
+.sk-plan-page--postit .sk-matrix-card .sk-shift-card.variant-conge,
+.sk-plan-page--postit .sk-matrix-card .sk-shift-card.variant-pause,
+.sk-plan-page--postit .sk-matrix-card .sk-shift-card.variant-ferie {
+  background-color: var(--plq-postit);
+  background-image: none;
+  border-left-color: var(--plq-teinte);
+  color: var(--charte-encre);
+}
+
+/* le rabat, plié en haut à gauche : un triangle d'encre sur du papier tourné */
+.sk-plan-page--postit .sk-matrix-card .sk-shift-card::before {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  top: -1px;
+  left: -1px;
+  width: 11px;
+  height: 11px;
+  opacity: 1;
+  background-color: var(--charte-surface);
+  background-image: linear-gradient(
+    to top left,
+    transparent 0%,
+    transparent 44%,
+    var(--charte-encre) 44%,
+    var(--charte-encre) 50%,
+    var(--charte-surface) 50%,
+    var(--charte-surface) 100%
+  );
+  pointer-events: none;
+}
+
+.sk-plan-page--postit .sk-matrix-card .sk-shift-card:hover {
+  border-color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0
+    color-mix(in srgb, var(--charte-encre) 34%, transparent);
+}
+
+/* les trois mots de la carte, à l'encre : le blanc cassé n'a plus lieu d'être,
+   la carte n'est plus un aplat saturé */
+.sk-plan-page--postit .sk-matrix-card .sk-shift-name,
+.sk-plan-page--postit .sk-matrix-card .sk-shift-time {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+}
+
+.sk-plan-page--postit .sk-matrix-card .sk-shift-time {
+  font-size: var(--charte-taille-bouton);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-plan-page--postit .sk-matrix-card .sk-shift-meta,
+.sk-plan-page--postit .sk-matrix-card .sk-shift-real {
+  color: color-mix(in srgb, var(--charte-encre) 74%, var(--charte-surface));
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-plan-page--postit .sk-matrix-card .sk-shift-real {
+  border-top: 1px dashed var(--charte-encre);
+}
+
+/* l'écart entre le réel et le prévu reste un signe fort, mais écrit avec les
+   couleurs de la maison : le succès et l'erreur, pas le menthe et le corail */
+.sk-plan-page--postit .sk-real-diff {
+  color: var(--charte-encre);
+  font-weight: 800;
+}
+
+.sk-plan-page--postit .sk-real-diff.is-pos {
+  color: var(--charte-succes);
+}
+
+.sk-plan-page--postit .sk-real-diff.is-neg,
+.sk-plan-page--postit .sk-real-diff.is-manquante {
+  color: var(--charte-erreur);
+}
+
+.sk-plan-page--postit .sk-shift-net {
+  color: var(--charte-encre);
+  font-weight: 800;
+}
+
+/* le grain de préhension se tient à l'encre, à moitié posé */
+.sk-plan-page--postit .sk-matrix-card .sk-shift-dots span {
+  border-radius: 0;
+  background-color: var(--charte-encre);
+  opacity: 0.4;
+}
+
+/* la pastille du modèle : la teinte nue, dans un carré — un bouton, pas un point */
+.sk-plan-page--postit .sk-shift-color-mini {
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--plq-teinte);
+  padding: 0;
+  cursor: pointer;
+}
+
+.sk-plan-page--postit .sk-shift-del-btn {
+  width: 19px;
+  height: 19px;
+  border: 1px solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-shift-del-btn:hover {
+  background-color: var(--charte-espresso);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+
+/* le point « ouvert » : le trait compte, la pastille pulse encore — c'est une
+  donnée vivante, pas une décoration ; on la carrée et on la garde à l'encre */
+.sk-plan-page--postit .sk-open-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 0;
+  background-color: var(--charte-encre);
+}
+
+/* la pause supprimée reste un signal d'alerte, mais un signal de la maison :
+   le mot « supprimée » est écrit dans le texte, la texture est le hachuré */
+.sk-plan-page--postit .sk-shift-pause-supprimee {
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border: 1px solid var(--charte-erreur);
+  border-radius: 0;
+  background-color: color-mix(
+    in srgb,
+    var(--charte-erreur) 12%,
+    var(--charte-surface)
+  );
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-shift-break.is-supprimee,
+.sk-plan-page--postit .sk-shift-meta .is-supprimee {
+  color: var(--charte-erreur);
+  text-decoration-color: var(--charte-erreur);
+}
+
+.sk-plan-page--postit .sk-shift-break.is-supprimee svg {
+  color: var(--charte-erreur);
+}
+
+/* ── les cases vides et le collage ────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-empty-cell {
+  height: 74px;
+  border: 1px dashed var(--charte-bordure);
+  border-radius: 0;
+  background-color: transparent;
+  color: color-mix(in srgb, var(--charte-encre) 62%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+  transition:
+    border-color var(--charte-duree) var(--charte-easing),
+    color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-empty-cell:hover {
+  border-color: var(--charte-encre);
+  border-style: solid;
+  background-color: transparent;
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-td-cell:hover .sk-empty-cell {
+  border-color: var(--charte-bordure);
+  background-color: transparent;
+  color: color-mix(in srgb, var(--charte-encre) 62%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-td-cell:hover .sk-empty-cell:hover {
+  border-color: var(--charte-encre);
+  border-style: solid;
+  color: var(--charte-encre);
+}
+
+/* une case qu'on survole pendant un glisser : le trait du dessin, pas le lavis */
+.sk-plan-page--postit .sk-drop-outline {
+  padding: var(--charte-espace-1);
+  border: var(--charte-trait) dashed var(--charte-encre);
+  border-radius: 0;
+  background-color: transparent;
+}
+
+/* l'étiquette « Coller ici » est un tampon, posé sur la case : encre pleine,
+   mot en blanc cassé, un seul par écran */
+.sk-plan-page--postit .sk-case-coller {
+  min-height: 24px;
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.sk-plan-page--postit .sk-case-coller:hover {
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+  transform: translate(-1px, -1px);
+}
+
+.sk-plan-page--postit .sk-case-coller kbd {
+  border: 1px solid var(--charte-blanc);
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--charte-blanc);
+}
+
+/* ── le clavier : un contour, jamais un halo ──────────────────────────────── */
+
+.sk-plan-page--postit .sk-matrix-card button:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.sk-plan-page--postit .sk-matrix-scroll:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: -2px;
+}
+
+/* ── le mouvement, si on le lui demande ───────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-plan-page--postit .sk-emp-box,
+  .sk-plan-page--postit .sk-group-row-btn,
+  .sk-plan-page--postit .sk-empty-cell,
+  .sk-plan-page--postit .sk-matrix-card .sk-shift-card,
+  .sk-plan-page--postit .sk-case-coller {
+    transition: none;
+  }
+
+  .sk-plan-page--postit .sk-matrix-card .sk-shift-card:hover,
+  .sk-plan-page--postit .sk-case-coller:hover,
+  .sk-plan-page--postit .sk-group-row-btn:hover {
+    transform: none;
+  }
+}
+
 /* ── deux largeurs, pas plus : la note reste lisible, elle ne se tasse pas ── */
 
 @media (max-width: 1100px) {
@@ -880,7 +1598,24 @@
   .sk-plan-page--postit .sk-dock-titre {
     line-height: 1.25;
   }
+
+  /* la grille de la semaine se lit en huit colonnes : à cette largeur, on serre
+     la cellule du collaborateur et la trousse d'équipe, la carte de poste garde
+     son rabat mais reprend sa bande d'un cran plus fine */
+  .sk-plan-page--postit .sk-td-emp {
+    padding: var(--charte-espace-2);
+  }
+
+  .sk-plan-page--postit .sk-group-row-inner {
+    gap: var(--charte-espace-2);
+    flex-wrap: wrap;
+  }
+
+  .sk-plan-page--postit .sk-matrix-card .sk-shift-card {
+    border-left-width: 4px;
+  }
 }
+
 
 @media (max-width: 700px) {
   .sk-plan-encadrement {
@@ -924,4 +1659,23 @@
   .sk-plan-page--postit .sk-legend-group {
     flex-wrap: wrap;
   }
+
+  /* sous cette largeur, la bande collée ne doit rien manger : le rang des jours
+     reprend sa respiration et les sept lettres se posent à plat */
+  .sk-plan-page--postit .sk-matrix-card thead th {
+    padding-top: calc(var(--charte-espace-2) + var(--plq-colle));
+    padding-left: var(--charte-espace-2);
+    padding-right: var(--charte-espace-2);
+  }
+
+  .sk-plan-page--postit .sk-th-day .sk-day-letter {
+    display: none;
+  }
+
+  
+
+  .sk-plan-page--postit .sk-group-actions {
+    flex-wrap: wrap;
+  }
 }
+
