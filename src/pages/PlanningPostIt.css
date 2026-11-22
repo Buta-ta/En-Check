@@ -2125,6 +2125,194 @@
   }
 }
 
+/* ── le pied de grille : la semaine récapitulée sur une feuille de compte ─── */
+
+/* La maquette retenue (docs/maquettes/planning-pied-grille-choix.png) demande un
+   seul objet : une bande de papier cerclée d'encre, trois blocs, sept colonnettes
+   séparées d'un pointillé — et rien en dessous, la page ne porte plus son bandeau
+   de motif depuis le 22/11. Un seul motif par page : c'est le cadre du bandeau
+   de commande, et la légende ne doit pas mentir là-dessus. */
+
+.sk-plan-page--postit .sk-bottom-bar {
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  box-shadow: var(--charte-ombre-dure);
+  overflow: visible;
+}
+
+/* la tête : l'effectif, en chiffre qu'on lit de loin, pas en phrase */
+.sk-plan-page--postit .sk-bottom-tete {
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border-right: var(--charte-trait) solid var(--charte-encre);
+  background-color: var(--plq-lave);
+}
+
+.sk-plan-page--postit .sk-bottom-etiquette {
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.sk-plan-page--postit .sk-bottom-nombre {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-titre);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-plan-page--postit .sk-bottom-legende {
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+}
+
+/* les sept colonnettes : un pointillé les sépare, le jour courant est lavé et
+   souligné de deux traits, comme les titres de la page */
+.sk-plan-page--postit .sk-bottom-jours {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  align-items: stretch;
+  gap: 0;
+  padding: var(--charte-espace-1) 0;
+}
+
+.sk-plan-page--postit .sk-bottom-jour {
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border-right: 1px dotted
+    color-mix(in srgb, var(--charte-encre) 34%, transparent);
+}
+
+.sk-plan-page--postit .sk-bottom-jour:last-child {
+  border-right: none;
+}
+
+.sk-plan-page--postit .sk-bottom-jour.is-today {
+  background-color: var(--plq-lave);
+}
+
+.sk-plan-page--postit .sk-bottom-jour-nom {
+  position: relative;
+  padding-bottom: var(--charte-espace-1);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.sk-plan-page--postit .sk-bottom-jour.is-today .sk-bottom-jour-nom::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--charte-encre);
+  box-shadow: 2px 3px 0 0
+    color-mix(in srgb, var(--charte-encre) 45%, transparent);
+}
+
+.sk-plan-page--postit .sk-bottom-jour-chiffre {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-plan-page--postit .sk-bottom-jour-chiffre small {
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+}
+
+/* l'heure du jour se lit au carré d'argile posé devant le chiffre : le signe
+   avant le nombre, jamais un aplat sous le mot */
+.sk-plan-page--postit .sk-bottom-jour-heures {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  color: color-mix(in srgb, var(--charte-encre) 74%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+}
+
+.sk-plan-page--postit .sk-bottom-jour.is-plein .sk-bottom-jour-heures::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  background-color: var(--charte-aplat);
+}
+
+/* un jour vide reste écrit : c'est une information, pas une absence de style */
+.sk-plan-page--postit .sk-bottom-jour:not(.is-plein) .sk-bottom-jour-chiffre,
+.sk-plan-page--postit .sk-bottom-jour:not(.is-plein) .sk-bottom-jour-heures {
+  color: color-mix(in srgb, var(--charte-encre) 46%, var(--charte-surface));
+}
+
+/* le geste de dépôt : la FORME le dit (un cerne pointillé), pas une couleur */
+.sk-plan-page--postit .sk-bottom-jour-deposer {
+  padding: 1px var(--charte-espace-1);
+  border: 1px dashed var(--charte-encre);
+  border-radius: 0;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* le récapitulatif : deux lignes écrites, un tampon comptable */
+.sk-plan-page--postit .sk-bottom-recap {
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border-left: var(--charte-trait) solid var(--charte-encre);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+}
+
+.sk-plan-page--postit .sk-bottom-recap-lignes {
+  align-items: flex-start;
+  gap: 2px;
+  color: var(--charte-douce);
+  letter-spacing: 0.06em;
+}
+
+.sk-plan-page--postit .sk-bottom-recap-lignes strong {
+  color: var(--charte-encre);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-plan-page--postit .sk-bottom-tampon {
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 800;
+  box-shadow: 2px 2px 0 0
+    color-mix(in srgb, var(--charte-encre) 26%, transparent);
+}
+
+/* le tampon porte son propre libelle : le chiffre du pied ne se devine pas */
+.sk-plan-page--postit .sk-bottom-tampon small {
+  color: color-mix(in srgb, var(--charte-blanc) 74%, var(--charte-espresso));
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
 /* ── deux largeurs, pas plus : la note reste lisible, elle ne se tasse pas ── */
 
 @media (max-width: 1100px) {
@@ -2190,7 +2378,18 @@
   .sk-plan-page--postit .sk-modal-body {
     padding: var(--charte-espace-3);
   }
+
+  /* à cette largeur, le pied de grille compte en colonnettes plus étroites :
+     sept colonnes tiennent encore, elles se serrent seulement */
+  .sk-plan-page--postit .sk-bottom-jours {
+    grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
+  }
+
+  .sk-plan-page--postit .sk-bottom-jour {
+    padding: var(--charte-espace-1);
+  }
 }
+
 
 
 
@@ -2291,6 +2490,33 @@
   .sk-plan-page--postit .sk-avail-day-actions {
     flex-wrap: wrap;
   }
+
+  /* sur téléphone, le compte rendu se lit en trois rangées : l'effectif, les
+     sept jours, puis le tampon — aucune colonne ne s'écrase sous 60 px */
+  .sk-plan-page--postit .sk-bottom-bar {
+    flex-wrap: wrap;
+  }
+
+  .sk-plan-page--postit .sk-bottom-tete {
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--charte-espace-2);
+    border-right: 0;
+    border-bottom: 1px dotted color-mix(in srgb, var(--charte-encre) 34%, transparent);
+  }
+
+  .sk-plan-page--postit .sk-bottom-jours {
+    flex: 1 1 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-bottom: 1px dotted color-mix(in srgb, var(--charte-encre) 34%, transparent);
+  }
+
+  .sk-plan-page--postit .sk-bottom-recap {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    border-left: 0;
+  }
 }
+
 
 

@@ -25,11 +25,11 @@ it('le chargement Planning emploie le même motif, dans les deux thèmes, sans s
     expect(html).toContain('data-cultural-motif="kuba"')
     expect(html).toContain('ec-cultural-loading')
     expect(html).toContain('Passer l’animation')
-    expect(html).toContain('planning-loading-grid-femme.jpg')
+    expect(html).toContain('planning-loading-scene.webp')
   }
 })
 it('les images de chaque identité existent et les motifs ne sont pas déformés', () => {
-  for (const name of ['planning-kuba','absences-ndebele','paie-bogolan-haut','paie-bogolan-bas','pointages-adinkra','pauses-lesotho','employes-zoulou']) expect(existsSync(`public/images/${name}.webp`)).toBe(true)
+  for (const name of ['planning-kuba','absences-ndebele','paie-bogolan-haut','paie-bogolan-bas','pointages-adinkra','pauses-lesotho','employes-zoulou','planning-loading-scene']) expect(existsSync(`public/images/${name}.webp`)).toBe(true)
   const css=readFileSync('src/components/PageCulturalBand.css','utf8')
   expect(css).toContain('background-size: auto 100%')
   expect(css).toContain('.ec-cultural-compact { height: 100%; }')

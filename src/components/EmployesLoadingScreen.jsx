@@ -61,7 +61,16 @@ export default function EmployesLoadingScreen({
   statutPret,
   legende = 'Chargement de l’espace collaborateurs',
   dureeMin = EMPLOYES_INTRO_MS,
+  // Une autre page peut emprunter la même carte : le dossier d’images, la
+  // file de personnages découpée en calques, et un bandeau de motif posé sous
+  // l’en-tête. `imageScene` donne UNE scène unique, sans calques : la page
+  // Planning regarde son mur d’équipe d’un seul bloc.
+  dossierImages = '/images/employes-loading-',
+  calques = CALQUES_PERSONNAGES,
+  imageScene = null,
+  ruban = null,
 }) {
+  const sceneUnique = Boolean(imageScene)
   const [calquesCharges, setCalquesCharges] = useState([])
   const [erreurCalque, setErreurCalque] = useState(false)
   const [erreurImage, setErreurImage] = useState(false)
@@ -101,8 +110,9 @@ export default function EmployesLoadingScreen({
   // animés ne prennent le relais que lorsqu'ils sont tous là, sinon la file
   // arriverait morceau par morceau.
   const scenePrete =
+    !sceneUnique &&
     !erreurCalque &&
-    calquesCharges.length === CALQUES_FIXES.length + CALQUES_PERSONNAGES.length
+    calquesCharges.length === CALQUES_FIXES.length + calques.length
 
   const etapeCourante = Math.min(etapes.length, Math.max(1, Number(etape) || 1))
   const infoEtape = etapes.find((item) => item.id === etapeCourante) || etapes[0]
@@ -114,7 +124,7 @@ export default function EmployesLoadingScreen({
       : infoEtape.pct
 
   const propsCalque = (nom, classe = '', geo = null) => ({
-    src: `/images/employes-loading-${nom}.webp`,
+    src: `${dossierImages}${nom}.webp`,
     alt: '',
     width: geo ? Math.round((geo.largeur / 100) * 1600) : 1600,
     height: geo ? Math.round((geo.hauteur / 100) * 900) : 900,
@@ -170,17 +180,20 @@ export default function EmployesLoadingScreen({
           </div>
         </header>
 
+        {ruban}
+
         {!erreurImage && (
           <div
             className={`emp-loading-stage${scenePrete ? ' is-ready' : ''}`}
-            data-artwork="approved-queue-illustration"
+            data-artwork={sceneUnique ? 'page-scene-illustration' : 'approved-queue-illustration'}
             data-step={dataReady ? etapes.length : etapeCourante}
             aria-hidden="true"
           >
+            {!sceneUnique && (
             <div className="emp-loading-layers">
               <img {...propsCalque('decor', 'emp-layer-decor')} />
               <div className="emp-queue-movers">
-                {[...CALQUES_PERSONNAGES].reverse().map((calque) => {
+                {[...calques].reverse().map((calque) => {
                   const terminee = dataReady || calque.etape < etapeCourante
                   const enCours = !dataReady && calque.etape === etapeCourante
                   return (
@@ -199,23 +212,29 @@ export default function EmployesLoadingScreen({
               </div>
             </div>
 
+            )}
+
             <img
-              src="/images/employes-loading-approved.webp"
+              src={imageScene ?? `${dossierImages}approved.webp`}
               alt=""
               width="1600"
               height="900"
               decoding="async"
               fetchPriority="high"
               draggable={false}
-              className="emp-loading-approved"
+              className={`emp-loading-approved${sceneUnique ? ' is-unique' : ''}`}
               onLoad={() => marquerCharge('approved')}
               onError={() => setErreurImage(true)}
             />
 
-            <div className="emp-kiosk-screen">
-              <span className="emp-kiosk-scanline" />
-            </div>
-            <span className="emp-kiosk-glow" />
+            {!sceneUnique && (
+              <>
+                <div className="emp-kiosk-screen">
+                  <span className="emp-kiosk-scanline" />
+                </div>
+                <span className="emp-kiosk-glow" />
+              </>
+            )}
           </div>
         )}
 

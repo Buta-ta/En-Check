@@ -133,6 +133,60 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningSrc).toContain('{dailyTotals.map((dt) => (')
   })
 
+  it('8bis. dit le pied de grille en chiffres, pas en phrase', () => {
+    // Le fondateur a relu le pied de la grille : « Effectif: 6 | Lun 16 : 2 pers.
+    // (15h) | … » ne se lisait pas. La maquette retenue
+    // (docs/maquettes/planning-pied-grille-choix.png) découpe la bande en trois
+    // blocs : une tête (l'effectif, en chiffre), sept colonnettes (un jour, ses
+    // personnes, ses heures), un récapitulatif chiffré à droite.
+    const peau = lire('src/pages/PlanningPostIt.css')
+    const pied = planningSrc.slice(
+      planningSrc.indexOf('<footer className="sk-bottom-bar">'),
+      planningSrc.indexOf('</footer>', planningSrc.indexOf('<footer className="sk-bottom-bar">'))
+    )
+    expect(pied.length).toBeGreaterThan(400)
+    for (const objet of [
+      'sk-bottom-tete',
+      'sk-bottom-etiquette',
+      'sk-bottom-nombre',
+      'sk-bottom-legende',
+      'sk-bottom-jours',
+      'sk-bottom-jour-nom',
+      'sk-bottom-jour-chiffre',
+      'sk-bottom-jour-heures',
+      'sk-bottom-recap',
+      'sk-bottom-tampon',
+    ]) {
+      expect(pied).toContain(objet)
+      expect(peau).toContain('.sk-plan-page--postit .' + objet)
+    }
+    // le jour est porté par DEUX nombres étiquetés, plus une phrase entre
+    // parenthèses ; et le vide reste écrit, il ne se tait pas
+    expect(pied).toContain('<small>pers.</small>')
+    expect(pied).toContain('is-plein')
+    expect(pied).toContain('dt.isToday ? "is-today" : ""')
+    // un fait, une seule fois : le pied ne répète plus « Effectif » deux fois et
+    // ne dit plus « Heures de la semaine » sur les heures du seul lundi
+    expect(pied.match(/Effectif/g) || []).toHaveLength(0)
+    expect(pied).toContain('Collaborateurs')
+    expect(pied).toContain('Jours couverts')
+    expect(pied).toContain('Moyenne par jour couvert')
+    expect(pied).toContain('<small>Heures de la semaine</small>')
+    // et le chiffre du tampon est cumulé, pas copié du premier jour : le « 48h00 »
+    // de repli, lui, est sorti de la page (un récapitulatif ne s'invente pas)
+    expect(planningSrc).toContain('const heuresSemaine = dailyTotals.reduce(')
+    expect(planningSrc).toMatch(/const joursCouverts = dailyTotals\.filter\(\(dt\) => dt\.headcount > 0\)/)
+    expect(planningSrc).not.toMatch(/totalDayHoursLabel|summaryDay/)
+    expect(planningSrc).not.toMatch(/dailyTotals\[0\][^\n]*48h00/)
+    // le geste de dépôt prend la place du chiffre, à la FORME et non à la couleur
+    expect(pied).toContain('<span className="sk-bottom-jour-deposer">Déposer ici</span>')
+    expect(peau).toMatch(/\.sk-plan-page--postit \.sk-bottom-jour-deposer\s*\{[^}]*dashed/s)
+    // et la bande se tient sur téléphone : trois rangées, pas sept colonnes écrasées
+    const petit = peau.slice(peau.lastIndexOf('@media (max-width: 700px)'))
+    expect(petit).toContain('.sk-plan-page--postit .sk-bottom-bar')
+    expect(petit).toContain('.sk-plan-page--postit .sk-bottom-jours')
+  })
+
   it('9. aligne la barre d’alerte Pause de Pointages sur celle de la page Pauses', () => {
     expect(pointagesSections).toContain('pauses-v2-live-banner-left')
     expect(pointagesSections).toContain('pauses-v2-live-pulse-dot')
@@ -150,10 +204,13 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningSrc).toContain('useTheme')
     expect(planningSrc).toContain('data-theme={darkMode ? "dark" : "light"}')
     // Le bandeau motif de la page n'est plus posé au-dessus du bandeau de
-    // commande : il l'encadre (22/11). La page garde sa bande de pied.
+    // commande : il l'encadre (22/11). La page ne porte donc AUCUNE autre bande
+    // de motif — ni en haut, ni en bas (« enlève le bandeau motif en bas »,
+    // 22/11) — et le filigrane du pied de grille a suivi la même règle : la
+    // page dit une seule fois d'où elle vient.
     expect(planningSrc).toContain('<PageCulturalBand pathname="/planning" placement="cadre" />')
-    expect(planningSrc).toContain('<PageCulturalBand pathname="/planning" placement="bottom"/>')
-    expect(planningSrc).toContain('AdinkraWatermarkSvg')
+    expect(planningSrc).not.toContain('placement="bottom"')
+    expect(planningSrc).not.toContain('AdinkraWatermarkSvg')
     expect(planningCss).toContain('.sk-plan-page[data-theme="light"]')
   })
 
@@ -256,20 +313,35 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningCss).toMatch(/\.sk-day-block-label\s*\{\s*display:\s*flex;/)
   })
 
-  it('25. possède un écran de chargement Planning rythmé en deux scènes, comme Pointages', () => {
+  it('25. emprunte à la page Employés sa carte de chargement, en quatre étapes', () => {
+    // « Je veux le même style de loading comme la page employé », 22/11. La
+    // carte est PRÊTÉE, pas recopiée : un seul composant, deux pages. Et le
+    // fondateur a écarté le dessin en SVG : la scène est une image.
     const planningLoading = lire('src/components/PlanningLoadingScreen.jsx')
-    // Même recette que l'écran Pointages : frise Kente, coins culturels, barre de progression
-    expect(planningLoading).toContain('<PageCulturalBand pathname="/planning" placement="loading"/>')
-    expect(planningLoading).toContain('CulturalCornerMotifSvg')
-    expect(planningLoading).toContain('pointages-loading-bar-fill')
-    expect(planningLoading).toContain('Passer l\u2019animation')
-    // Deux scènes Planning : planning projeté, puis grille de la semaine
-    expect(planningLoading).toContain('/images/planning-loading-ecran.jpg')
-    expect(planningLoading).toContain('/images/planning-loading-grid-femme.jpg')
-    expect(planningLoading).not.toMatch(/Skello|SKELLO|skello/i)
-    // L'écran est réellement branché sur la page Planning
+    const carte = lire('src/components/EmployesLoadingScreen.jsx')
+    expect(planningLoading).toContain('<EmployesLoadingScreen')
+    expect(planningLoading).toContain('dossierImages="/images/planning-loading-"')
+    expect(planningLoading).toContain('imageScene="/images/planning-loading-scene.webp"')
+    expect(planningLoading).not.toMatch(/<svg|CulturalCornerMotifSvg/)
+    // les quatre étapes sont celles que la page traverse vraiment, dans l'ordre
+    expect(planningLoading).toContain('export const ETAPES_CHARGEMENT_PLANNING')
+    for (const mot of ['Modèles', 'Collaborateurs', 'Horaires & dispos', 'Grille de la semaine']) {
+      expect(planningLoading).toContain(mot)
+    }
+    // le kuba reste dans la carte : un seul motif par écran, la page ne portant
+    // plus sa bande de pied depuis le même jour
+    expect(planningLoading).toContain('<PageCulturalBand pathname="/planning" placement="loading" />')
+    // la carte, elle, accepte l'emprunt sans dupliquer la file de personnages
+    expect(carte).toContain('dossierImages')
+    expect(carte).toContain('sceneUnique')
+    expect(carte).toContain('imageScene ?? ')
+    expect(carte).toContain('pointages-loading-bar-fill')
+    expect(carte).toContain('Passer l\u2019animation')
+    // et le pourcentage est branché sur la donnée réelle, pas sur le minuteur
+    expect(planningSrc).toContain('dataReady={!loading}')
     expect(planningSrc).toMatch(/import PlanningLoadingScreen from ["']\.\.\/components\/PlanningLoadingScreen["']/)
     expect(planningSrc).toContain('<PlanningLoadingScreen')
+    expect(planningLoading).not.toMatch(/Skello|SKELLO|skello/i)
   })
 
   it('26. illustre le chargement Pauses par le dépointage de pause', () => {
