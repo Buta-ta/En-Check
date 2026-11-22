@@ -276,7 +276,6 @@ export default function AbsencesCalendrier({
               jourSel={jourSel}
               annee={annee}
               onAllerA={allerA}
-              darkMode={darkMode}
             />
           </div>
 

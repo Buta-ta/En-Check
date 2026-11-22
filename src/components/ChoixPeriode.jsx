@@ -7,11 +7,30 @@
 //
 // Il ne sait pas comment la page bouge : il remonte la date ISO
 // choisie via `onAllerA` et c'est l'appelant qui se positionne.
+//
+// ─── LA FENÊTRE PORTE LA PEAU DE LA MAISON, 22/11/2026 ────────
+// « Retravaille le modal qui s'ouvre dans ce sélecteur de date ».
+// Elle se peignait elle-même : huit styles en ligne, six couleurs
+// en dur, deux palettes cousues selon l'humeur du jour de la page.
+// Tout est parti dans `ChoixPeriode.css`, en jetons. Ce que la
+// charte gagne, mesuré dans l'ancien fichier :
+//   · une assise de 40 px de flou et des coins à 14 px → bord
+//     d'encre de 2 px, coin carré sur la feuille, double feutre à
+//     zéro de flou (D-016) ;
+//   · quatre tailles inventées (10,5 · 12 · 13 · 15 px) → les
+//     trois de la maison, plus une de rab : micro pour les mots
+//     d'étiquette, corps pour le champ et l'année, capitales 9,5
+//     pour les gestes (D-013) ;
+//   · la palette dépendait de la page → elle dépend du thème de
+//     l'application. Le prop `darkMode` est RETIRÉ : une fenêtre
+//     ne demande pas à son hôte de lui dire s'il fait nuit, elle
+//     lit `[data-theme]` posé sur la racine du document.
 // ═══════════════════════════════════════════════════════════
 
-import { useEffect, useId } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { ChevronLeft, ChevronRight, CalendarSearch } from 'lucide-react'
 import { memeJourAutreAnnee } from '../services/absencesCalendrier'
+import './ChoixPeriode.css'
 
 const aujourdhuiIso = () => {
   const d = new Date()
@@ -25,13 +44,16 @@ export default function ChoixPeriode({
   jourSel,
   annee,
   onAllerA,
-  darkMode = true,
 }) {
   const idDate = useId()
+  const champ = useRef(null)
 
-  // Échap referme, comme n'importe quelle fenêtre
+  // Échap referme, comme n'importe quelle fenêtre. Et le focus ENTRE avec
+  // elle : sinon le clavier reste derrière le panneau qu'il vient d'ouvrir,
+  // obligé de retaper Tab pour atteindre le champ.
   useEffect(() => {
     if (!ouvert) return
+    champ.current?.focus()
     const surTouche = (e) => { if (e.key === 'Escape') onFermer?.() }
     window.addEventListener('keydown', surTouche)
     return () => window.removeEventListener('keydown', surTouche)
@@ -39,87 +61,59 @@ export default function ChoixPeriode({
 
   if (!ouvert) return null
 
-  const fond = darkMode ? '#1D1713' : '#FFFFFF'
-  const bordure = darkMode ? 'rgba(245,158,11,0.16)' : 'rgba(29,23,19,0.12)'
-  const texte = darkMode ? '#F5F2EB' : '#1D1713'
-  const texteDoux = darkMode ? 'rgba(245,242,235,0.60)' : 'rgba(29,23,19,0.60)'
-  const champ = darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(29,23,19,0.04)'
-
-  const fleche = {
-    width: 30, height: 30, borderRadius: 9, cursor: 'pointer',
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    background: champ, border: `1px solid ${bordure}`, color: texte,
-  }
-
   return (
     <>
-      {/* clic ailleurs = on referme */}
-      <div onClick={onFermer} style={{ position: 'fixed', inset: 0, zIndex: 40 }} aria-hidden="true" />
+      {/* clic ailleurs = on referme. Le voile est transparent : il ne voile
+          rien, il attrape seulement le geste du dehors — une fenêtre de poche
+          posée sur la page, pas un écran qui éteint la page */}
+      <div className="cap-voile" onClick={onFermer} aria-hidden="true" />
 
       <div
+        className="cap-feuille"
         role="dialog"
         aria-label="Aller à une date"
         data-testid="choix-periode"
-        style={{
-          position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 41,
-          minWidth: 232, padding: 14, borderRadius: 14,
-          background: fond, border: `1px solid ${bordure}`,
-          boxShadow: '0 18px 40px rgba(0,0,0,0.35)',
-          display: 'flex', flexDirection: 'column', gap: 12,
-        }}
       >
-        <div>
-          <label
-            htmlFor={idDate}
-            style={{
-              display: 'block', marginBottom: 6, fontSize: 10.5,
-              textTransform: 'uppercase', letterSpacing: '0.4px', color: texteDoux,
-            }}
-          >
+        <p className="cap-titre">Choisir la période</p>
+
+        <div className="cap-bloc">
+          <label htmlFor={idDate} className="cap-etiquette">
             Aller au
           </label>
           <input
+            ref={champ}
             id={idDate}
             type="date"
+            className="cap-champ"
             value={jourSel}
             onChange={(e) => e.target.value && onAllerA?.(e.target.value)}
             data-testid="choix-periode-date"
-            style={{
-              width: '100%', padding: '9px 10px', borderRadius: 10, fontSize: 13,
-              background: champ, border: `1px solid ${bordure}`,
-              color: texte, fontFamily: 'inherit',
-              colorScheme: darkMode ? 'dark' : 'light',
-            }}
           />
         </div>
 
-        <div>
-          <span style={{
-            display: 'block', marginBottom: 6, fontSize: 10.5,
-            textTransform: 'uppercase', letterSpacing: '0.4px', color: texteDoux,
-          }}
-          >
+        <div className="cap-bloc">
+          <span className="cap-etiquette" id={`${idDate}-annee`}>
             Année
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="cap-rangee" role="group" aria-labelledby={`${idDate}-annee`}>
             <button
               type="button"
+              className="cap-fleche"
               onClick={() => onAllerA?.(memeJourAutreAnnee(jourSel, -1) || aujourdhuiIso())}
               aria-label="Année précédente"
               data-testid="choix-periode-annee-moins"
-              style={fleche}
             >
               <ChevronLeft size={16} />
             </button>
-            <span data-testid="choix-periode-annee" style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 800, color: texte }}>
+            <span className="cap-annee" data-testid="choix-periode-annee">
               {annee}
             </span>
             <button
               type="button"
+              className="cap-fleche"
               onClick={() => onAllerA?.(memeJourAutreAnnee(jourSel, 1) || aujourdhuiIso())}
               aria-label="Année suivante"
               data-testid="choix-periode-annee-plus"
-              style={fleche}
             >
               <ChevronRight size={16} />
             </button>
@@ -128,16 +122,9 @@ export default function ChoixPeriode({
 
         <button
           type="button"
+          className="cap-geste"
           onClick={() => onAllerA?.(aujourdhuiIso())}
           data-testid="choix-periode-aujourdhui"
-          style={{
-            padding: '9px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 12,
-            fontWeight: 700, fontFamily: 'inherit',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            background: 'rgba(245,158,11,0.12)',
-            border: '1px solid rgba(245,158,11,0.35)',
-            color: darkMode ? '#F59E0B' : '#9C5321',
-          }}
         >
           <CalendarSearch size={14} /> Revenir à aujourd’hui
         </button>
