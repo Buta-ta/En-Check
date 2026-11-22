@@ -1568,6 +1568,563 @@
   }
 }
 
+/* ═══ LES HUIT FENÊTRES DU PLANNING : DES FEUILLES POSÉES SUR LE PLAN ════════
+   « Retravaille les modales de la page planning », 22/11. Le fondateur a choisi
+   une maquette (docs/maquettes/planning-modales-choix.png) : un ruban de scotch
+   posé en travers du haut de la feuille, un coin plié en haut à droite qui
+   abrite le × , un titre centré et souligné de deux traits, des champs cerclés
+   d'encre à angle droit, un trait pointillé avant le pied, et deux tampons de
+   geste. Rien de neuf dans le vocabulaire : c'est la peau déjà validée des
+   fenêtres d'Équipes et de Tâches, portée sur les classes de cette page.
+
+   Les couleurs de modèle et de case restent des DONNÉES posées par la page
+   (`--pastille`, `--shift-teinte`) : une feuille ne peut pas les connaître.
+   Les autres peaux de `Planning.jsx` ne perdent rien : ce qu'elles lisaient
+   dans le JSX est écrit dans leur propre feuille, à l'identique. */
+
+/* ── le voile : un linge posé sur la page, pas un flou ─────────────────────── */
+
+.sk-plan-page--postit .sk-modal-backdrop {
+  background: var(--charte-modale-voile);
+  /* la page floute son fond ; la feuille, non : C9 veut un flou à zéro */
+  backdrop-filter: none;
+  padding: var(--charte-espace-5) var(--charte-espace-4);
+}
+
+/* ── la feuille ─────────────────────────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-modal-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--charte-modale-moyenne);
+  /* la hauteur utile, pas un 90vh qui déborde : voile, ombre et marge de
+     sécurité déduits. Une feuille centrée en flex qui déborde se coupe par le
+     haut, et l'en-tête devient injoignable */
+  max-height: calc(100vh - var(--plq-decalage) * 2 - 48px);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  background-image: none;
+  /* le double feutre : la feuille du dessous dépasse de 6 px de papier puis de
+     2 px d'encre, à flou nul. Le rognage tuerait l'une et l'autre */
+  box-shadow:
+    var(--plq-decalage) var(--plq-decalage) 0 6px
+      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
+    var(--plq-decalage) var(--plq-decalage) 0 8px var(--charte-encre);
+  overflow: visible;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+}
+
+.sk-plan-page--postit .sk-modal-box--petite {
+  max-width: var(--charte-modale-petite);
+}
+
+/* le ruban de scotch, collé en travers du haut : 38 % de la largeur, un degré
+   et des tours de biais, une teinte de la maison lavée — jamais une couleur
+   d'or, jamais une transparence de verre dépoli */
+.sk-plan-page--postit .sk-modal-box::before {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--plq-pli) / -2);
+  left: 50%;
+  width: 38%;
+  height: var(--plq-pli);
+  transform: translateX(-50%) rotate(-1.2deg);
+  background-color: color-mix(in srgb, var(--charte-alerte) 22%, var(--charte-blanc));
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--charte-encre) 12%, transparent);
+  pointer-events: none;
+}
+
+/* le coin plié, en haut à droite : le dos de la feuille, et son trait de
+   pliure sur l'hypoténuse. Le × s'y pose, voir `.sk-back-btn` */
+.sk-plan-page--postit .sk-modal-box::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  width: calc(var(--plq-pli) * 2);
+  height: calc(var(--plq-pli) * 2);
+  background: linear-gradient(
+    to bottom left,
+    transparent 0 46%,
+    var(--charte-encre) 46% 50%,
+    color-mix(in srgb, var(--charte-blanc) 60%, var(--charte-surface)) 50%
+  );
+  pointer-events: none;
+}
+
+/* ── l'en-tête : titre centré, double trait, × au coin ─────────────────────── */
+
+.sk-plan-page--postit .sk-modal-head {
+  flex-direction: column;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  /* la place du ruban, pour que rien ne soit mangé */
+  padding: calc(var(--plq-pli) + var(--charte-espace-4)) var(--charte-espace-6)
+    var(--charte-espace-3);
+  border-bottom: 1px solid var(--charte-bordure);
+  text-align: center;
+}
+
+.sk-plan-page--postit .sk-modal-head > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  min-width: 0;
+}
+
+.sk-plan-page--postit .sk-modal-title {
+  position: relative;
+  padding-bottom: var(--charte-espace-2);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-titre);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+/* les deux traits de feutre sous le titre, à plat : une seule feuille à la fois
+   porte un titre incliné sur cette page, et c'est le bandeau de commande */
+.sk-plan-page--postit .sk-modal-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--charte-encre);
+  box-shadow: 2px 4px 0 0 var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-modal-sub {
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* le × vit sur le coin plié : il est posé dessus, il ne pousse plus le titre */
+.sk-plan-page--postit .sk-modal-box .sk-back-btn {
+  position: absolute;
+  z-index: 4;
+  top: var(--charte-espace-2);
+  right: var(--charte-espace-2);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+  color: var(--charte-texte);
+  transition:
+    background-color var(--charte-duree) var(--charte-easing),
+    color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-modal-box .sk-back-btn:hover {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  transform: none;
+}
+
+/* ── le corps et les champs ────────────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-modal-body {
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4);
+  min-height: 0;
+  /* c'est le corps qui défile, jamais la feuille : le ruban et le titre restent */
+  overflow-y: auto;
+}
+
+.sk-plan-page--postit .sk-modal-body + .sk-modal-body {
+  padding-top: 0;
+}
+
+.sk-plan-page--postit .sk-field-label {
+  gap: var(--charte-espace-1);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sk-plan-page--postit .sk-field-label svg {
+  color: var(--charte-texte);
+}
+
+.sk-plan-page--postit .sk-input,
+.sk-plan-page--postit .sk-select {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface));
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-corps);
+}
+
+.sk-plan-page--postit .sk-input::placeholder {
+  color: var(--charte-douce);
+}
+
+.sk-plan-page--postit .sk-input:focus-visible,
+.sk-plan-page--postit .sk-select:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-modal-box input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-row-2 {
+  gap: var(--charte-espace-3);
+}
+
+.sk-plan-page--postit .sk-modal-note {
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+}
+
+.sk-plan-page--postit .sk-modal-texte {
+  color: color-mix(in srgb, var(--charte-encre) 82%, var(--charte-surface));
+  font-size: var(--charte-taille-corps);
+}
+
+.sk-plan-page--postit .sk-modal-texte strong {
+  color: var(--charte-encre);
+}
+
+/* ── les sept jours d'un horaire : des tampons, pas des pilules ────────────── */
+
+.sk-plan-page--postit .sk-days-pills {
+  gap: var(--charte-espace-1);
+}
+
+.sk-plan-page--postit .sk-day-pill {
+  padding: var(--charte-espace-2) var(--charte-espace-1);
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: transparent;
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition:
+    background-color var(--charte-duree) var(--charte-easing),
+    color var(--charte-duree) var(--charte-easing),
+    transform var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-day-pill:hover {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+}
+
+/* le jour retenu est rempli d'encre, le mot passe en blanc cassé : la maison
+   remplit l'engagement, elle ne l'entoure pas d'or */
+.sk-plan-page--postit .sk-day-pill.active {
+  background-color: var(--charte-encre);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+  transform: none;
+}
+
+/* ── les teintes d'un modèle : la donnée est un carré, le choisi est un marqueur ── */
+
+.sk-plan-page--postit .sk-color-swatches {
+  gap: var(--charte-espace-2);
+}
+
+.sk-plan-page--postit .sk-color-swatch {
+  width: 30px;
+  height: 30px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  /* la teinte vient de la page, en donnée ; à défaut, c'est le papier qui parle */
+  background-color: var(--pastille, var(--charte-surface2));
+  transition:
+    transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-color-swatch:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.sk-plan-page--postit .sk-color-swatch.active {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--charte-encre);
+}
+
+/* le cercle blanc cassé du choisi, dans un carré : un anneau de papier, jamais
+   un liseré de couleur d'or */
+.sk-plan-page--postit .sk-color-swatch.active::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-shadow: inset 0 0 0 3px var(--charte-blanc);
+}
+
+.sk-plan-page--postit .sk-color-input {
+  width: 30px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+}
+
+.sk-plan-page--postit .sk-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 0;
+}
+
+.sk-plan-page--postit .sk-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 0;
+}
+
+/* l'aperçu du modèle, dans la fenêtre : exactement la matière d'une case de la
+   grille — papier lavé à la teinte, bande de feutre sur le haut, encre posée */
+.sk-plan-page--postit .sk-modele-apercu {
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-top: calc(var(--plq-pli) / 2) solid
+    var(--shift-teinte, var(--charte-surface2));
+  border-radius: 0;
+  background-color: color-mix(
+    in srgb,
+    var(--shift-teinte, var(--charte-surface2)) 24%,
+    var(--charte-surface)
+  );
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* ── la disponibilité, jour par jour : un rang, trois tampons ──────────────── */
+
+.sk-plan-page--postit .sk-avail-day-row {
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2) 0;
+  border: 0;
+  border-bottom: 1px solid var(--charte-bordure);
+  border-radius: 0;
+}
+
+.sk-plan-page--postit .sk-avail-day-label {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sk-plan-page--postit .sk-avail-day-actions {
+  gap: var(--charte-espace-1);
+}
+
+.sk-plan-page--postit .sk-avail-choice {
+  min-height: 30px;
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background-color: transparent;
+  color: color-mix(in srgb, var(--charte-encre) 74%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  transition:
+    background-color var(--charte-duree) var(--charte-easing),
+    border-color var(--charte-duree) var(--charte-easing),
+    color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-avail-choice:hover {
+  border-color: var(--charte-encre);
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+
+/* les trois états se distinguent d'abord à la FORME : retenu = rempli, absent =
+   hachuré au pointillé, renseigné = cerclé. La couleur du statut ne porte
+   aucun mot, elle ne fait que souligner */
+.sk-plan-page--postit .sk-avail-choice.active {
+  border-color: var(--charte-encre);
+  background-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+
+.sk-plan-page--postit .sk-avail-choice.is-no.active {
+  border-style: solid;
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+}
+
+.sk-plan-page--postit .sk-avail-choice:not(.active) {
+  border-style: dashed;
+}
+
+.sk-plan-page--postit .sk-avail-legend {
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: var(--plq-lave);
+}
+
+/* ── les membres d'une équipe ──────────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-team-member-list {
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: transparent;
+}
+
+.sk-plan-page--postit .sk-team-member-row {
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border: 0;
+  border-bottom: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+}
+
+.sk-plan-page--postit .sk-team-member-row:last-child {
+  border-bottom: none;
+}
+
+.sk-plan-page--postit .sk-team-member-row:hover {
+  background-color: var(--plq-lave);
+}
+
+/* ── le pied et les gestes ─────────────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-modal-foot {
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  /* le trait d'union du ruban, en pointillé : la fin de la note, pas une
+     séparation de tableau */
+  border-top: 1px dashed color-mix(in srgb, var(--charte-encre) 40%, transparent);
+}
+
+.sk-plan-page--postit .sk-modal-foot .sk-btn-publish,
+.sk-plan-page--postit .sk-modal-foot .sk-btn-secondary {
+  min-height: 36px;
+  gap: 5px;
+  padding: var(--charte-espace-2) var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition:
+    transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-modal-foot .sk-btn-secondary {
+  background-color: var(--charte-surface);
+}
+
+/* le geste premier de la maison : l'argile remplie, une seule fois par fenêtre,
+   texte en blanc cassé, contour d'encre et assise dure — pas d'or, pas de halo */
+.sk-plan-page--postit .sk-modal-foot .sk-btn-publish {
+  background-color: var(--charte-aplat);
+  color: var(--charte-blanc);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.sk-plan-page--postit .sk-modal-foot .sk-btn-secondary:hover,
+.sk-plan-page--postit .sk-modal-foot .sk-btn-publish:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-modal-foot .sk-btn-secondary:hover {
+  background-color: var(--charte-surface2);
+}
+
+.sk-plan-page--postit .sk-modal-foot .sk-btn-publish:active,
+.sk-plan-page--postit .sk-modal-foot .sk-btn-secondary:active {
+  transform: translate(0, 0);
+  box-shadow: none;
+}
+
+/* la destruction n'est pas un rouge de circonstance : le mot la dit, le trait
+   la serres, et l'engagement se remplit d'espresso */
+.sk-plan-page--postit .sk-modal-foot .sk-btn--danger {
+  color: var(--charte-encre);
+  margin-right: auto;
+}
+
+.sk-plan-page--postit .sk-modal-foot .sk-btn--danger:hover {
+  outline: 1px solid var(--charte-encre);
+  outline-offset: 1px;
+}
+
+.sk-plan-page--postit .sk-modal-foot .sk-btn--danger-rempli {
+  background-color: var(--charte-espresso);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+}
+
+.sk-plan-page--postit .sk-modal-box button:focus-visible,
+.sk-plan-page--postit .sk-modal-box input:focus-visible,
+.sk-plan-page--postit .sk-modal-box select:focus-visible,
+.sk-plan-page--postit .sk-modal-box textarea:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* ── le mouvement, si on le lui demande ────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-plan-page--postit .sk-day-pill,
+  .sk-plan-page--postit .sk-color-swatch,
+  .sk-plan-page--postit .sk-avail-choice,
+  .sk-plan-page--postit .sk-modal-box .sk-back-btn,
+  .sk-plan-page--postit .sk-modal-foot .sk-btn-publish,
+  .sk-plan-page--postit .sk-modal-foot .sk-btn-secondary {
+    transition: none;
+  }
+
+  .sk-plan-page--postit .sk-day-pill:hover,
+  .sk-plan-page--postit .sk-color-swatch:hover,
+  .sk-plan-page--postit .sk-color-swatch.active,
+  .sk-plan-page--postit .sk-modal-foot .sk-btn-secondary:hover,
+  .sk-plan-page--postit .sk-modal-foot .sk-btn-publish:hover {
+    transform: none;
+  }
+}
+
 /* ── deux largeurs, pas plus : la note reste lisible, elle ne se tasse pas ── */
 
 @media (max-width: 1100px) {
@@ -1618,7 +2175,23 @@
   .sk-plan-page--postit .sk-matrix-card .sk-shift-card {
     --plq-marge: var(--charte-espace-1);
   }
+
+  /* une fenêtre respire moins à cette largeur, mais elle garde son ruban : le
+     scotch s'élargit, pour qu'on voie qu'il reste du papier et non un cadre */
+  .sk-plan-page--postit .sk-modal-head {
+    padding: calc(var(--plq-pli) + var(--charte-espace-3)) var(--charte-espace-4)
+      var(--charte-espace-2);
+  }
+
+  .sk-plan-page--postit .sk-modal-box::before {
+    width: 46%;
+  }
+
+  .sk-plan-page--postit .sk-modal-body {
+    padding: var(--charte-espace-3);
+  }
 }
+
 
 
 @media (max-width: 700px) {
@@ -1681,5 +2254,43 @@
   .sk-plan-page--postit .sk-group-actions {
     flex-wrap: wrap;
   }
+
+  /* à cette largeur, une fenêtre prend la page : le voile se resserre, les deux
+     gestes du pied se partagent le rang, la disponibilité passe en colonne */
+  .sk-plan-page--postit .sk-modal-backdrop {
+    padding: var(--charte-espace-2);
+  }
+
+  .sk-plan-page--postit .sk-modal-box {
+    max-height: calc(100vh - var(--plq-decalage) * 2 - 12px);
+  }
+
+  .sk-plan-page--postit .sk-modal-box::before {
+    width: 54%;
+  }
+
+  .sk-plan-page--postit .sk-modal-title {
+    font-size: var(--charte-taille-corps);
+  }
+
+  .sk-plan-page--postit .sk-modal-foot {
+    flex-wrap: wrap;
+  }
+
+  .sk-plan-page--postit .sk-modal-foot .sk-btn-publish,
+  .sk-plan-page--postit .sk-modal-foot .sk-btn-secondary {
+    flex: 1 1 auto;
+  }
+
+  .sk-plan-page--postit .sk-avail-day-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--charte-espace-2);
+  }
+
+  .sk-plan-page--postit .sk-avail-day-actions {
+    flex-wrap: wrap;
+  }
 }
+
 
