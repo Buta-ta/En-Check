@@ -59,7 +59,11 @@ describe('Patrimoine Kente conservé et bandeau Ndebele propre aux Absences', ()
   })
 
   it('6. Planning utilise le nouveau motif kuba sans changer le SVG Kente partagé', () => {
-    expect(planningSrc).toContain('<PageCulturalBand pathname="/planning"/>')
+    // Le 22/11, la toile kuba ne couronne plus la page : elle ENCADRE le
+    // bandeau de commande (`placement="cadre"`), une seule toile pour quatre
+    // lisières. La bande de pied, elle, reste où elle était.
+    expect(planningSrc).toContain('<PageCulturalBand pathname="/planning" placement="cadre" />')
+    expect(planningSrc).not.toContain('<PageCulturalBand pathname="/planning"/>')
     expect(planningSrc).toContain('<PageCulturalBand pathname="/planning" placement="bottom"/>')
     expect(planningSrc).not.toContain('KenteWovenTapestrySvg')
     expect(svgSrc).toContain('export function KenteWovenTapestrySvg')

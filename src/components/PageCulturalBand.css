@@ -52,3 +52,24 @@
 @media (max-width: 650px) {
   .ec-cultural-top[data-cultural-motif='nsibidi'] { height: 60px; }
 }
+
+/* ═══ LE CADRE — la toile fait le TOUR d'une section, pas seulement son sommet ═══
+   Planning, 22/11/2026 : « je veux que le bandeau motif de cette section puisse
+   entourer cette section ». Le même bandeau, le même motif, la même source — il
+   n'est plus posé au-dessus de la feuille, il la tourne autour.
+
+   Trois choses à savoir avant de réutiliser ce placement :
+   · le bandeau devient un FOND, pas un objet : il ne boit aucun clic et ne prend
+     rien au clavier ; il reste muet (`aria-hidden` est porté par l'élément) ;
+   · il ne porte AUCUN texte. C'est la feuille posée par-dessus qui masque le
+     milieu de la toile et écrit les mots (D-004 : aucun texte sur un motif) ;
+   · l'épaisseur du cadre vient de la page, par `--ec-cadre-epaisseur`, et sert à
+     la fois de hauteur à la tuile et de padding au conteneur. Un nombre unique,
+     sinon le papier et la toile ne se rejoignent plus.
+
+   La tuile est réduite d'une hauteur, sa largeur suit : les proportions du
+   motif sont sauves, il n'est jamais étiré (C4 / D-003). Les motifs dessinés
+   en SVG gardent la même règle : on leur donne la hauteur du cadre, jamais
+   les deux à la fois. */
+.ec-cultural-cadre { position: absolute; inset: 0; z-index: 0; height: auto; width: auto; flex-shrink: 0; pointer-events: none; background-repeat: repeat; background-position: top left; background-size: auto var(--ec-cadre-epaisseur, 26px); }
+.ec-cultural-cadre > svg { height: var(--ec-cadre-epaisseur, 26px); width: 100%; }
