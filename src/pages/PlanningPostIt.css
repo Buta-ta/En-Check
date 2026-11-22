@@ -448,6 +448,404 @@
   text-align: right;
 }
 
+/* ═══ LE DOCK DES MODÈLES ET LA BANDE DES FILTRES — DEUX FEUILLES DE PLUS ═══
+   (22/11/2026 — la maquette que le fondateur a retenue pour cette section.)
+
+   La peau est CELLE du bandeau de commande, rien d'inventé : même papier, même
+   cerne d'encre de 2 px, même angle droit, même double feutre dessous, même
+   rabat au coin bas-droit. Un écran, une seule manière d'être un post-it.
+
+   CE QUE LA MAQUETTE PROPOSAIT ET QUI NE VIENT PAS : le liseré de toile le
+   long du dock. D-003 veut une seule bande de motif par page, et la page porte
+   déjà la sienne — c'est le CADRE du bandeau de commande, au sommet. Un second
+   tissu dans la même colonne ferait deux motifs à regarder, et un de trop à
+   justifier.
+
+   CE QUE LA PEAU CORRIGE, mesuré dans la feuille de base :
+   · deux panneaux aux coins de 14 px et 12 px, cerclés d'un filet gris à 1 px,
+     posés sur une ombre de 36 px de flou → cerne d'encre de 2 px, angle droit,
+     assise dure à zéro de flou (D-016) ;
+   · les trois gestes du dock en pilules pointillées dorées, 12 px en minuscules
+     → capitales 9,5 / 700 sous contour d'encre (C11, C12) : un contour pointillé
+     est un appel à POSER quelque chose — ici on glisse une brique, on ne clique
+     pas une étiquette ;
+   · les mots de la légende peints en gris de remplissage (--sk-text-soft) →
+     encre pleine : une légende se lit, elle ne se devine pas ;
+   · les teintes des cinq types de cartes, recopiées à la main dans le rendu en
+     styles en ligne → lues sur le modèle (LEGENDE_TEINTES) ; les trois puces de
+     disponibilité → LES MÊMES classes que dans la fenêtre de disponibilités.
+     Une légende qui ne raconte plus la grille est un mensonge de couleur. */
+
+/* ── les deux feuilles ────────────────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-dock-panel,
+.sk-plan-page--postit .sk-focus-bar {
+  --plq-pli: 14px;
+  --plq-colle: calc(var(--plq-pli) + 1px);
+  --plq-lave: color-mix(in srgb, var(--charte-blanc) 12%, var(--charte-surface));
+  --plq-decalage: 3px;
+
+  position: relative;
+  padding: var(--charte-espace-4) var(--charte-espace-5);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  /* le double feutre : la feuille du dessous déborde de 2 px, nulle part de
+     flou — c'est l'assise de la maison, posée une fois par objet */
+  box-shadow:
+    var(--plq-decalage) var(--plq-decalage) 0 6px
+      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
+    var(--plq-decalage) var(--plq-decalage) 0 8px var(--charte-encre);
+  backdrop-filter: none;
+  /* pas de rognage : il tuerait le rabat et l'assise, faute déjà payée ici */
+  overflow: visible;
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+}
+
+/* la bande de colle, sur la feuille du dock seulement : la seconde note n'a
+   pas de ruban, elle a son rabat — c'est ce que la maquette retenue montre.
+   En COUCHE, jamais en raccourci : le raccourci effacerait la couche du fond */
+.sk-plan-page--postit .sk-dock-panel {
+  padding-top: calc(var(--plq-pli) + var(--charte-espace-4));
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--plq-pli),
+    color-mix(in srgb, var(--charte-encre) 16%, transparent) var(--plq-pli) var(--plq-colle),
+    transparent var(--plq-colle)
+  );
+}
+
+/* les rabats, au coin bas-droit des deux feuilles */
+.sk-plan-page--postit .sk-dock-panel::after,
+.sk-plan-page--postit .sk-focus-bar::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--plq-pli);
+  height: var(--plq-pli);
+  background: linear-gradient(
+    to top left,
+    transparent 0 44%,
+    var(--charte-encre) 44% 50%,
+    color-mix(in srgb, var(--charte-blanc) 60%, var(--charte-surface)) 50%
+  );
+  pointer-events: none;
+}
+
+/* ── le rang du titre ─────────────────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-dock-header {
+  align-items: flex-start;
+  gap: var(--charte-espace-2) var(--charte-espace-4);
+  margin-bottom: var(--charte-espace-3);
+}
+
+.sk-plan-page--postit .sk-dock-toggle {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-titre);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+/* le double trait de feutre sous le titre, le même que sur le bandeau — sans la
+   rotation : deux titres penchés dans la même colonne, c'est un vacarme */
+.sk-plan-page--postit .sk-dock-titre {
+  position: relative;
+  padding-bottom: var(--charte-espace-2);
+}
+.sk-plan-page--postit .sk-dock-titre::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: 8%;
+  bottom: 0;
+  height: 4px;
+  background: var(--charte-encre);
+  box-shadow: 2px 4px 0 0 var(--charte-encre);
+  transform: rotate(0.4deg);
+}
+
+.sk-plan-page--postit .sk-dock-caret {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  transition: transform var(--charte-duree) var(--charte-easing);
+}
+
+/* la consigne, posée en travers de la feuille sous le rang des gestes */
+.sk-plan-page--postit .sk-dock-hint {
+  flex: 1 1 100%;
+  font-size: var(--charte-taille-micro);
+  color: color-mix(in srgb, var(--charte-encre) 74%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-dock-hint strong {
+  color: var(--charte-encre);
+}
+
+/* ── les trois gestes du dock ─────────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-dock-add-btn {
+  min-height: 34px;
+  gap: 5px;
+  padding: 8px var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: transparent;
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition:
+    transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-dock-add-btn:hover {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.sk-plan-page--postit .sk-dock-add-btn:active {
+  transform: translate(0, 0);
+  box-shadow: none;
+}
+
+/* ── les briques : des modèles qu'on prend à deux mains ───────────────────── */
+
+.sk-plan-page--postit .sk-dock-bricks {
+  gap: var(--charte-espace-3);
+}
+
+.sk-plan-page--postit .sk-brick {
+  padding: var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-encre);
+  /* la barre de feutre sur le bord gauche reste la teinte du MODÈLE : c'est une
+     donnée posée par la page (`--brick-color`), pas une couleur de la feuille */
+  border-left: 6px solid var(--brick-color, var(--charte-encre));
+  border-radius: 0;
+  background-color: var(--plq-lave);
+  box-shadow: var(--charte-ombre-dure);
+  transition:
+    transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+/* le survol remue l'assise, pas le papier : une brique qu'on va saisir se
+   soulève, elle ne se repeint pas d'une couleur de remplissage */
+.sk-plan-page--postit .sk-brick:hover {
+  background-color: var(--plq-lave);
+  border-color: var(--charte-encre);
+  border-left-color: var(--brick-color, var(--charte-encre));
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--charte-encre);
+}
+
+/* la brique tenue au doigt, et celle qu'on a copiée : les deux états se lisent
+   dans la FORME, pas dans une teinte (D-009) */
+.sk-plan-page--postit .sk-brick.is-armed {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-brick.is-copie {
+  outline: var(--charte-trait) dashed var(--charte-encre);
+  outline-offset: 3px;
+}
+
+.sk-plan-page--postit .sk-brick-title {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+}
+
+.sk-plan-page--postit .sk-brick-sub {
+  color: color-mix(in srgb, var(--charte-encre) 74%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-plan-page--postit .sk-drag-dots span {
+  width: 4px;
+  height: 4px;
+  background-color: var(--charte-encre);
+  opacity: 0.45;
+}
+
+.sk-plan-page--postit .sk-brick-copy,
+.sk-plan-page--postit .sk-brick-edit {
+  width: 28px;
+  height: 28px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  transition:
+    transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-brick-copy:hover,
+.sk-plan-page--postit .sk-brick-edit:hover {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* l'état « copié » est un espresso rempli, pas un vert de circonstance : la
+   maison remplit l'engagement, une seule fois par écran (kit, règle 1) */
+.sk-plan-page--postit .sk-brick-copy.is-copie {
+  background-color: var(--charte-espresso);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* ── la bande des filtres et de la légende ───────────────────────────────── */
+
+.sk-plan-page--postit .sk-focus-corps {
+  gap: var(--charte-espace-4);
+  padding-top: var(--charte-espace-3);
+  border-top: 1px solid color-mix(in srgb, var(--charte-encre) 24%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-focus-toggle {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--charte-rayon-champ);
+}
+
+.sk-plan-page--postit .sk-focus-toggle:hover .sk-focus-toggle-titre {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.sk-plan-page--postit .sk-focus-chevron {
+  transition: transform var(--charte-duree) var(--charte-easing);
+}
+
+/* les mots d'étiquette : une seule voix dans toute la section */
+.sk-plan-page--postit .sk-focus-label,
+.sk-plan-page--postit .sk-legend-title {
+  color: color-mix(in srgb, var(--charte-encre) 74%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sk-plan-page--postit .sk-focus-count,
+.sk-plan-page--postit .sk-focus-resume {
+  color: color-mix(in srgb, var(--charte-encre) 74%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* le sélecteur d'affichage : un champ de la maison, lavé, cerclé d'encre —
+   et son calendrier de natif suit le thème, non la page */
+.sk-plan-page--postit .sk-ent-select {
+  min-height: 36px;
+  padding: 8px var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--plq-lave);
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  color-scheme: light;
+  cursor: pointer;
+}
+
+.sk-plan-page--postit[data-theme='dark'] .sk-ent-select {
+  color-scheme: dark;
+}
+
+.sk-plan-page--postit .sk-ent-select:hover {
+  background-color: color-mix(in srgb, var(--charte-blanc) 18%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-legend {
+  gap: var(--charte-espace-4);
+}
+
+.sk-plan-page--postit .sk-legend-group {
+  gap: var(--charte-espace-2);
+}
+
+/* la légende s'écrit en encre pleine : un gris de remplissage sous un mot de
+   six lettres, à 11 px, ce n'est plus une légende, c'est un bruit */
+.sk-plan-page--postit .sk-legend-item {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+}
+
+.sk-plan-page--postit .sk-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--charte-encre);
+  border-radius: 0;
+  /* la teinte vient du modèle, en Donnée ; sans elle, la pastille reste vide
+     et cerclée — elle ne se rhabille pas d'une couleur de la feuille */
+  background-color: var(--brick-color, transparent);
+}
+
+.sk-plan-page--postit .sk-legend-swatch.is-dashed {
+  border: 1px dashed var(--charte-encre);
+  background-color: transparent;
+}
+
+.sk-plan-page--postit .sk-legend-symbol {
+  font-size: var(--charte-taille-micro);
+}
+
+/* le rouge de la pause barrée est celui des statuts de la maison, pas un rose
+   importé : la rature se lit aussi bien en jour qu'en nuit */
+.sk-plan-page--postit .sk-legend-pause-barree {
+  color: var(--charte-statut-absent);
+  font-size: var(--charte-taille-micro);
+  text-decoration-color: var(--charte-erreur);
+}
+
+/* un objet actif de la section, c'est un contour d'encre décalé, jamais un halo */
+.sk-plan-page--postit .sk-dock-panel :is(button, select):focus-visible,
+.sk-plan-page--postit .sk-dock-bricks [draggable='true']:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-plan-page--postit .sk-dock-add-btn,
+  .sk-plan-page--postit .sk-brick,
+  .sk-plan-page--postit .sk-brick-copy,
+  .sk-plan-page--postit .sk-brick-edit {
+    transition: none;
+  }
+
+  .sk-plan-page--postit .sk-brick:hover,
+  .sk-plan-page--postit .sk-brick.is-armed,
+  .sk-plan-page--postit .sk-dock-add-btn:hover,
+  .sk-plan-page--postit .sk-brick-copy:hover,
+  .sk-plan-page--postit .sk-brick-edit:hover {
+    transform: none;
+  }
+}
+
 /* ── deux largeurs, pas plus : la note reste lisible, elle ne se tasse pas ── */
 
 @media (max-width: 1100px) {
@@ -472,6 +870,16 @@
   .sk-plan-page--postit .sk-topbar-etat {
     text-align: left;
   }
+
+  /* les briques respirent moins, mais elles restent des briques : une par
+     case, jamais deux mots sur la même ligne */
+  .sk-plan-page--postit .sk-dock-bricks {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  }
+
+  .sk-plan-page--postit .sk-dock-titre {
+    line-height: 1.25;
+  }
 }
 
 @media (max-width: 700px) {
@@ -489,5 +897,31 @@
 
   .sk-plan-page--postit .sk-view-Inline {
     gap: var(--charte-espace-3);
+  }
+
+  /* sur téléphone, les deux feuilles se serrent d'un cran et la légende se met
+     en colonne : trois groupes en travers, à 11 px, ça ne se lit plus */
+  .sk-plan-page--postit .sk-dock-panel,
+  .sk-plan-page--postit .sk-focus-bar {
+    padding: var(--charte-espace-3) var(--charte-espace-3) var(--charte-espace-3);
+  }
+
+  .sk-plan-page--postit .sk-dock-panel {
+    padding-top: calc(var(--plq-pli) + var(--charte-espace-3));
+  }
+
+  .sk-plan-page--postit .sk-dock-bricks {
+    grid-template-columns: 1fr;
+  }
+
+  .sk-plan-page--postit .sk-focus-corps,
+  .sk-plan-page--postit .sk-legend {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--charte-espace-3);
+  }
+
+  .sk-plan-page--postit .sk-legend-group {
+    flex-wrap: wrap;
   }
 }

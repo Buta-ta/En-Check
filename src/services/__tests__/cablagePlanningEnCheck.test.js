@@ -310,6 +310,133 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningSrc).toContain('className="sk-ent-select"')
   })
 
+  it('29. le dock des modèles et la bande des filtres portent la peau de la feuille', () => {
+    // Le fondateur a choisi une maquette pour cette section, et la règle 5 de la
+    // carte de poste veut qu'une maquette se maquette EN CODE : le contrat vit
+    // donc dans la feuille, pas dans une image. Ce test-là vérifie que le code
+    // dit bien ce que la peau promet.
+    const peau = lire('src/pages/PlanningPostIt.css')
+    const regle = (selecteur) => {
+      const d = peau.indexOf(selecteur + ' {')
+      expect(d, selecteur + ' — règle manquante').toBeGreaterThan(-1)
+      return peau.slice(d, peau.indexOf('}', d))
+    }
+
+    // deux feuilles de plus, la même assise que le bandeau, un seul objet posé
+    const feuilles = regle('.sk-plan-page--postit .sk-dock-panel,\n.sk-plan-page--postit .sk-focus-bar')
+    expect(feuilles).toContain('border: var(--charte-trait) solid var(--charte-encre)')
+    expect(feuilles).toContain('border-radius: 0')
+    expect(feuilles).toContain('background-color: var(--charte-surface)')
+    expect(feuilles).toContain('backdrop-filter: none')
+    expect(feuilles).toContain('overflow: visible')
+    expect(feuilles).toContain('color: var(--charte-encre)')
+    // le rognage tuerait le rabat et l'assise — faute déjà payée, donc vérifiée
+    expect(feuilles).not.toContain('overflow: hidden')
+
+    // la bande de colle ne se pose QUE sur la feuille du dock : la seconde note
+    // a son rabat, pas son ruban (c'est ce que la maquette retenue montre)
+    const dock = regle('.sk-plan-page--postit .sk-dock-panel')
+    expect(dock).toContain('background-image: linear-gradient(')
+    expect(dock).toContain('padding-top: calc(var(--plq-pli) + var(--charte-espace-4))')
+    expect(peau).toContain('.sk-plan-page--postit .sk-dock-panel::after,')
+    expect(peau).toContain('.sk-plan-page--postit .sk-focus-bar::after')
+
+    // les trois gestes : capitales 9,5 / 700 sous contour d'encre (C11, C12),
+    // plus de pilule pointillée dorée
+    const geste = regle('.sk-plan-page--postit .sk-dock-add-btn')
+    expect(geste).toContain('text-transform: uppercase')
+    expect(geste).toContain('font-size: var(--charte-taille-bouton)')
+    expect(geste).toContain('font-weight: 700')
+    expect(geste).toContain('border: var(--charte-trait) solid var(--charte-encre)')
+    expect(geste).toContain('border-radius: var(--charte-rayon-champ)')
+    // et le survol remue l'assise, il ne repeint pas le mot
+    expect(regle('.sk-plan-page--postit .sk-dock-add-btn:hover')).toContain(
+      'box-shadow: var(--charte-ombre-dure)'
+    )
+
+    // les briques : la teinte du modèle reste une DONNÉE sur le bord gauche
+    const brique = regle('.sk-plan-page--postit .sk-brick')
+    expect(brique).toContain('border-left: 6px solid var(--brick-color, var(--charte-encre))')
+    expect(brique).toContain('background-color: var(--plq-lave)')
+    expect(brique).toContain('box-shadow: var(--charte-ombre-dure)')
+    // les deux états d'une brique se lisent dans la FORME, pas dans une teinte
+    expect(regle('.sk-plan-page--postit .sk-brick.is-armed')).toContain('translate(-2px, -2px)')
+    expect(regle('.sk-plan-page--postit .sk-brick.is-copie')).toContain('dashed')
+
+    // la légende s'écrit en encre pleine, plus en gris de remplissage
+    expect(regle('.sk-plan-page--postit .sk-legend-item')).toContain('color: var(--charte-encre)')
+    expect(regle('.sk-plan-page--postit .sk-legend-swatch')).toContain(
+      'background-color: var(--brick-color, transparent)'
+    )
+    // le rouge de la pause barrée vient des statuts de la maison, pas d'un rose
+    // importé qui ne se lit pas en nuit
+    expect(regle('.sk-plan-page--postit .sk-legend-pause-barree')).toContain(
+      'var(--charte-statut-absent)'
+    )
+
+    // aucune taille hors des trois de la charte dans toute la feuille, et pas
+    // d'`!important` — la feuille de la section se tient par son poids propre
+    const horsCommentaires = peau.replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(horsCommentaires).not.toContain('!important')
+    expect(horsCommentaires).not.toContain('clip-path')
+    for (const taille of horsCommentaires.matchAll(/font-size:\s*([^;]+);/g)) {
+      expect(taille[1].trim()).toMatch(/^var\(--charte-taille-(titre|corps|micro|bouton)\)$/)
+    }
+    for (const rayon of horsCommentaires.matchAll(/border-radius:\s*([^;]+);/g)) {
+      expect(['0', 'var(--charte-rayon-champ)', 'var(--charte-rayon-carte)', 'var(--charte-rayon-badge)']).toContain(
+        rayon[1].trim()
+      )
+    }
+    // le liseré de toile que la maquette dessinait sur le bord du dock n'est PAS
+    // repris : la page a déjà sa bande de motif, le cadre du bandeau (D-003)
+    expect(peau).not.toMatch(/\.sk-dock-panel[^}]*background-image:[^}]*planning-kuba/s)
+    expect(planningSrc).not.toMatch(/sk-dock-panel[^>]*kuba/)
+  })
+
+  it('29bis. la légende lit les teintes sur le modèle au lieu de les recopier', () => {
+    // Cinq pastilles peintes à la main dans le rendu, c'est une légende qui peut
+    // mentir : elle a survécu à deux changements de palette sans bouger.
+    expect(planningSrc).toContain('const LEGENDE_TEINTES = [')
+    expect(planningSrc).toContain('DEFAULT_DOCK_TEMPLATES.find((modele) => modele.id === cle)')
+    expect(planningSrc).toContain('{LEGENDE_TEINTES.map((teinte) => (')
+    // la teinte passe en donnée, comme sur la brique — plus de couleur en ligne
+    expect(planningSrc).not.toMatch(/sk-legend-swatch" style=\{\{ background:/)
+    expect(planningSrc).toContain('"--brick-color": teinte.teinte')
+    // et les trois puces de disponibilité sont LES MÊMES que dans la fenêtre de
+    // disponibilités : une légende, une grille, une seule couleur par état
+    const bandeLegende = planningSrc.slice(
+      planningSrc.indexOf('<span className="sk-legend-title">Disponibilité</span>'),
+      planningSrc.indexOf('Types de cartes')
+    )
+    expect(bandeLegende).toContain('sk-avail-legend-dot is-on')
+    expect(bandeLegende).toContain('sk-avail-legend-dot is-off')
+    expect(bandeLegende).toContain('className="sk-avail-legend-dot"')
+    expect(bandeLegende).not.toMatch(/style=\{\{/)
+  })
+
+  it('29ter. la consigne du dock se pose sous les gestes, et le titre a un mot à souligner', () => {
+    // la maquette retenue montre la mention en travers de la feuille, pas un
+    // quatrième bouton aligné avec les actions
+    const actions = planningSrc.indexOf('className="sk-dock-actions"')
+    const consigne = planningSrc.indexOf('className="sk-dock-hint"')
+    const briques = planningSrc.indexOf('className="sk-dock-bricks"')
+    expect(actions).toBeGreaterThan(-1)
+    expect(consigne).toBeGreaterThan(actions)
+    expect(consigne).toBeLessThan(briques)
+    // le titre est un mot, pas une chaîne noyée dans le bouton : c'est lui qui
+    // reçoit le double trait de feutre, comme sur le bandeau de commande
+    expect(planningSrc).toContain('<span className="sk-dock-titre">')
+    const peau = lire('src/pages/PlanningPostIt.css')
+    expect(peau).toContain('.sk-plan-page--postit .sk-dock-titre::after')
+    expect(peau).toContain('box-shadow: 2px 4px 0 0 var(--charte-encre)')
+    // et la section entière se tient sur téléphone : une brique par rangée, la
+    // légende en colonne
+    const petit = peau.slice(peau.lastIndexOf('@media (max-width: 700px)'))
+    expect(petit).toContain('.sk-plan-page--postit .sk-dock-bricks')
+    expect(petit).toContain('grid-template-columns: 1fr')
+    expect(petit).toContain('.sk-plan-page--postit .sk-legend')
+  })
+
   it('28quater. le bandeau motif ENTOURE la section au lieu de la couronner', () => {
     // « je veux que le bandeau motif de cette section puisse entourer cette
     // section ». Une seule et même toile, quatre lisières : le placement
