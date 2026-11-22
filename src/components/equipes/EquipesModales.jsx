@@ -35,9 +35,9 @@
 // fichier ne contient plus que le style des fenêtres, et ce style
 // est dans une feuille — 319 lignes de markup, 674 de peau.
 //
-// Les COULEURS D'ÉQUIPE restent en ligne, et c'est voulu : `C9772F`
-// et les huit autres viennent de la base, ce sont des DONNÉES ; une
-// feuille ne peut pas les connaître. Tout le reste est classe.
+// Les COULEURS D'ÉQUIPE restent en ligne, et c'est voulu : ce sont des
+// DONNÉES enregistrées en base par équipe, une feuille ne peut pas les
+// connaître. Tout le reste est classe.
 // ═══════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
@@ -46,9 +46,25 @@ import toast from 'react-hot-toast'
 
 import './EquipesModales.css'
 
+/* LA PALETTE FEUTRE — dix encres de marqueur, les mêmes que dans l'onglet
+   Tâches (`TachesModales.jsx`). Elles remplacent les dix teintes terreuses de
+   l'île zoulou sur demande du fondateur (« je veux des couleurs feutres »,
+   22/11) : un marqueur rouge, orange, jaune, vert, turquoise, bleu, violet,
+   rose, sépia, bleu nuit. Ces couleurs ne portent JAMAIS un texte — mesurées
+   sous l'encre de la maison, la pire donne 2,13:1 : elles servent au lavis du
+   papier (12 %), au trait et au soulignement, jamais à un mot. Les équipes
+   déjà enregistrées en base gardent leur ancienne teinte, qui continue de
+   laver leur carte : la palette gouverne les choix nouveaux, pas les passés. */
 const TEAM_COLORS = [
-  '#C9772F', '#2F7F73', '#8A8F4A', '#B4553F', '#7C6AA8',
-  '#A9743F', '#4C7E8F', '#6E8B5A', '#B34B37', '#5B6F8C',
+  '#D2372C', '#E07B1F', '#E3B500', '#1F8A4C', '#0E8C9E',
+  '#2C63B4', '#6A3FA0', '#C4326E', '#7A4A21', '#39507C',
+]
+
+// Les dix feutres ont un NOM, pour qu’un lecteur d’écran n’annonce pas un
+// code hexadécimal : la teinte est une donnée, le mot est une étiquette.
+const FEUTRE_NOMS = [
+  'rouge', 'orange', 'jaune', 'vert', 'turquoise',
+  'bleu', 'violet', 'rose', 'sepia', 'bleu nuit',
 ]
 
 /**
@@ -111,12 +127,13 @@ export function TeamModal({ isOpen, onClose, team, employees, onSave, loading })
                 marqueur — il se lit dans la peau, pas dans un anneau de la
                 couleur elle-même. */}
             <div className="eqm-couleurs" role="group" aria-label="Couleur de l’équipe">
-              {TEAM_COLORS.map(c => (
+              {TEAM_COLORS.map((c, i) => (
                 <button
                   key={c}
                   type="button"
                   className="eqm-couleur"
                   aria-pressed={form.color === c}
+                  aria-label={`Couleur ${FEUTRE_NOMS[i] || c}`}
                   style={{ background: c }}
                   onClick={() => setForm({ ...form, color: c })}
                 />

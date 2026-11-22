@@ -100,12 +100,17 @@ function CarteEquipe({ equipe, onMembres, onModifier, onRetirer, onChangerChef }
   }, [menu])
 
   return (
-    <article className="eqv2-carte" data-menu={menu ? 'ouvert' : undefined}>
-      <span
-        className="eqv2-carte-trait"
-        style={{ background: equipe.color || '#c9a961' }}
-        aria-hidden="true"
-      />
+    <article
+      className="eqv2-carte"
+      data-menu={menu ? 'ouvert' : undefined}
+      /* la couleur de l'équipe est une DONNÉE : elle entre ici comme une
+         variable, et c'est la feuille (`EquipesVue.css`) qui en fait un
+         lavis de papier, un trait de feutre et sa saignée. Peindre en
+         `style={…}` — comme le faisait l'île — mettrait l'encre hors de
+         portée de la charte : une attribution en ligne bat tout sélecteur */
+      style={{ '--eqv-teinte': equipe.color || undefined }}
+    >
+      <span className="eqv2-carte-trait" aria-hidden="true" />
       <div className="eqv2-carte-corps">
         <div className="eqv2-carte-tete">
           <h4 className="eqv2-carte-nom">
@@ -239,7 +244,7 @@ function RattacherPanel({ orphelins, equipes, onRattacher }) {
                         type="button"
                         onClick={() => { setMenuOuvert(null); onRattacher(o.id, e.id) }}
                       >
-                        <span className="eqv2-menu-pastille" style={{ background: e.color || 'var(--empv2-or)' }} aria-hidden="true" />
+                        <span className="eqv2-menu-pastille" style={{ background: e.color || 'var(--charte-bordure)' }} aria-hidden="true" />
                         {e.name}
                       </button>
                     ))}

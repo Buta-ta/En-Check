@@ -18,9 +18,12 @@
      Nouvelle équipe » dans la barre d'outils — il vivait dans l'en-tête de
      page, celui qui ne se monte plus sur les onglets. Le voilà revenu, à sa
      place du Tâches : en fin de rangée.
-   • `.eqv2-carte-trait`, le filet de couleur d'une équipe, est collé à
+   • `.eqv2-carte-trait`, le trait de feutre d'une équipe, est collé à
      `top: 0` sous la bande de colle : sans marge, le papier collant le
-     boufferait à moitié.
+     boufferait à moitié. Et il est mis en `display: block` : posé en span dans
+     un `article` qui n'est ni flex ni grille, il ne prenait ni hauteur ni
+     largeur — le filet de couleur de la carte ne s'est jamais peint, ni avant
+     ni après la peau.
 
    Ce que la peau doit à la charte (les mêmes six engagements que l'onglet
    Tâches, puisqu'il s'agit du même écran) :
@@ -412,10 +415,18 @@
   gap: var(--charte-espace-3);
 }
 
+/* la carte d'une équipe est LAVÉE de sa couleur : `--eqv-teinte` arrive du
+   JSX (la teinte est une donnée de la base, `equipe.color`), et le repli est
+   le filet de sable pour les équipes qui n'en ont pas. Douze pour cent de
+   couleur dans le papier, pas davantage : l'encre doit rester au-dessus de
+   14:1 sur le lavis : mesuré au pire des dix feutres (le bleu nuit), 13,97.
+   Un lavis, jamais un aplat : la carte reste du papier, elle ne devient pas
+   une pastille. */
 .eqv2--postit .eqv2-carte {
+  --eqv-teinte: var(--charte-bordure);
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: 0;
-  background-color: var(--charte-blanc);
+  background-color: color-mix(in srgb, var(--eqv-teinte) 12%, var(--charte-blanc));
   background-image: var(--eqv-colle-degrade);
   box-shadow: var(--charte-ombre-dure);
   transition: transform var(--charte-duree) var(--charte-easing),
@@ -431,12 +442,27 @@
   box-shadow: 5px 5px 0 0 var(--charte-encre);
 }
 
-/* le filet de couleur de l'équipe : 4 px, SOUS la bande de colle — posé à
-   `top: 0` il serait mangé à moitié par le papier collant */
+/* le TRAIT DE FEUTRE de l'équipe : 6 px d'encre pure, SOUS la bande de colle
+   — posé à `top: 0` il serait mangé à moitié par le papier collant. Dessous,
+   3 px de SAIGNÉE : l'ombre du trait, à 24 % de la même encre, à zéro de flou.
+   C'est ce que fait un marqueur sur un papier léger — l'encre passe au travers
+   — et c'est la seule trace de « couleur feutre » qui ne soit pas un aplat.
+
+   `display: block`, et c'est la vraie trouvaille de ce chantier :
+   `.eqv2-carte-trait` est un `<span>` vide posé dans un `article` qui n'est
+   NI flex NI grille — donc EN LIGNE. Un inline ne prend ni `height` ni
+   largeur : le filet de couleur de l'équipe, `height: 3px` à la base et son
+   `background` en attribution depuis l'île zoulou, ne s'est JAMAIS peint. La
+   carte d'équipe n'a jamais été colorée, elle attendait juste qu'on la
+   regarde. `display: block` la rend à son office ; la base n'est pas touchée,
+   la correction vit dans la peau. */
 .eqv2--postit .eqv2-carte-trait {
-  height: 4px;
+  display: block;
+  height: 6px;
   margin-top: var(--eqv-colle);
   border-radius: 0;
+  background: var(--eqv-teinte);
+  box-shadow: 0 3px 0 0 color-mix(in srgb, var(--eqv-teinte) 24%, transparent);
 }
 
 .eqv2--postit .eqv2-carte-corps {
@@ -452,10 +478,15 @@
 .eqv2--postit .eqv2-carte-nom button {
   color: var(--charte-encre);
 }
+/* le nom est souligné d'un trait de feutre à la couleur de l'équipe, et au
+   survol ce trait s'assombrit : le geste reste le même (un trait sous le mot),
+   seule son encre change — jamais un halo, jamais un tremblé */
+.eqv2--postit .eqv2-carte-nom button {
+  box-shadow: inset 0 -2px 0 0 color-mix(in srgb, var(--eqv-teinte) 45%, transparent);
+}
 .eqv2--postit .eqv2-carte-nom button:hover {
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 2px;
+  text-decoration: none;
+  box-shadow: inset 0 -3px 0 0 color-mix(in srgb, var(--eqv-teinte) 85%, transparent);
 }
 
 .eqv2--postit .eqv2-carte-note {

@@ -390,8 +390,13 @@
   color: var(--charte-encre);
 }
 
+/* la pastille d'une catégorie sans couleur n'est plus un point d'or : le repli
+   de la base (`--tqv2-pastille, var(--empv2-or)`) est redit ici en papier. La
+   teinte d'une catégorie qui en a une reste la sienne — elle arrive du JSX en
+   variable, comme la teinte d'équipe en Équipes */
 .tqv2--postit .tqv2-pastille {
   border: 1px solid var(--charte-encre);
+  background: var(--tqv2-pastille, var(--charte-bordure));
 }
 
 .tqv2--postit .tqv2-categorie-nombre {
@@ -471,7 +476,19 @@
 
 /* ── 5 · la carte de tâche : un post-it, avec son drapeau et son rabat ────── */
 
+/* la carte de tâche est LAVÉE de la couleur de sa CATÉGORIE — `--tqv-teinte`
+   arrive du JSX (`tache.category.color`, une donnée de la base) et le repli est
+   le filet de sable pour les tâches sans catégorie. Douze pour cent, comme en
+   Équipes : l'encre reste à 13,97:1 au pire des dix feutres. Et le trait de
+   feutre est posé LÀ OÙ LA MAISON MET SON FILET D'ENCRE — au pied de la bande
+   de colle —, en rouge de la teinte à 100 % sur 5 px : la carte n'a pas de
+   place libre au-dessus (le rabat, le drapeau de priorité, les deux icônes du
+   pied), donc le trait vit dans la bande, pas par-dessus le contenu. La
+   `background-image` est redéclarée EN ENTIER sur la carte, et non héritée de
+   `--tqv-colle-degrade`, pour cette seule raison ; la colonne, elle, garde le
+   filet d'encre de la variable. */
 .tqv2--postit .tqv2-fiche {
+  --tqv-teinte: var(--charte-bordure);
   position: relative;
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: 0;
@@ -480,8 +497,13 @@
      du pli s'arrête à 2 px sous le coin des boutons (0 pixel de cible touchée,
      3 px de recouvrement avec les 11 px d'avant) */
   padding: calc(var(--tqv-pli) + 6px) 12px calc(var(--tqv-pli) + 2px);
-  background-color: var(--charte-blanc);
-  background-image: var(--tqv-colle-degrade);
+  background-color: color-mix(in srgb, var(--tqv-teinte) 12%, var(--charte-blanc));
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--tqv-pli),
+    var(--tqv-teinte) var(--tqv-pli) calc(var(--tqv-pli) + 5px),
+    transparent calc(var(--tqv-pli) + 5px)
+  );
   box-shadow: var(--charte-ombre-dure);
   transition: transform var(--charte-duree) var(--charte-easing),
     box-shadow var(--charte-duree) var(--charte-easing);
@@ -562,6 +584,21 @@
 }
 
 /* le mot de priorité : la couleur vient du ton, plus de fond ni de cadre */
+/* le mot de la catégorie : la teinte ne se lit jamais seule (C7), elle est
+   portée par le NOM du feutre, souligné de la même encre à 55 % */
+.tqv2--postit .tqv2-fiche-categorie {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 -2px 0 0 color-mix(in srgb, var(--tqv-teinte) 55%, transparent);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .tqv2--postit .tqv2-priorite {
   padding: 0;
   border: none;

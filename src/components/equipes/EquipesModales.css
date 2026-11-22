@@ -251,8 +251,8 @@
 }
 
 .eqm-couleur {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: var(--charte-rayon-champ);
@@ -265,8 +265,8 @@
   box-shadow: var(--charte-ombre-dure);
 }
 .eqm-couleur[aria-pressed='true'] {
-  box-shadow: var(--charte-ombre-dure);
   transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--charte-encre);
 }
 .eqm-couleur[aria-pressed='true']::after {
   content: '';
@@ -322,9 +322,13 @@
   height: 11px;
   border: 1px solid var(--charte-encre);
   border-radius: var(--charte-rayon-pilule);
-  /* pas l'or de l'annuaire : sous la peau post-it, `--empv2-or` est mis à
-     `transparent`, et la couronne disparaîtrait. Le dos de la feuille, avec son
-     propre repli hors de l'onglet */
+  /* pas l'or de l'annuaire : `--empv2-or` vaut le sable doré de la base
+     (c9a961, posé sur `.empv2-main`) et il est toujours vivant sous la
+     peau post-it — j'ai écrit hier qu'il y était mis à `transparent`, c'était
+     FAUX, vérifié le 22/11 : la seule règle qui le lit ici est le cerne
+     d'or du registre, `0 0 0 2px var(--empv2-or)`. Le dos de la feuille est
+     gardé pour une autre raison, qui tient : une couronne dorée sur une carte
+     déjà lavée à la couleur de l'équipe ferait deux marques sur un seul mot */
   background: var(--eqv-colle, var(--charte-blanc));
   color: var(--charte-texte);
 }
