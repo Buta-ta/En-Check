@@ -167,3 +167,47 @@ Trois choses que j'ai dites et qui étaient fausses, corrigées en route :
 3. j'ai cru que le rattrapage ne trouvait rien — je regardais la **mauvaise entreprise**.
 
 Tout ce qui est affirmé ici a été mesuré en base ou par un test qui échoue quand on casse la règle. Ce qui n'a pas été vérifié est signalé comme tel — notamment **le rendu visuel**, que je n'ai pas pu voir (pas de navigateur dans mon environnement).
+
+---
+
+## 10. Errata — retour du 22/11 et suite
+
+### 10.1 Ce que le §7.4 disait de faux
+
+Le §7.4 affirmait qu'**aucune** des deux règles ne s'applique sans grille. C'est faux pour le plafond.
+
+Mesuré en base (`BEGIN/ROLLBACK`, aucune écriture) : Reine `bd42d04c…`, Pharmacie Blanche Gomes `ff74f1bd…`, **sans grille horaire**, pause de 150 minutes → `trop_longue`. Le plafond de 120 minutes est une durée absolue ; la grille ne lui sert à rien. La tolérance, elle, compare un créneau : sans grille, elle n'a rien à comparer.
+
+Les deux textes de l'écran disent maintenant exactement cela, et un test échoue si la phrase fausse revient (`src/services/__tests__/seuilsPause.test.js`, mutation vérifiée).
+
+### 10.2 Les deux ajouts serveur
+
+Appliqués en production le 22/11, versionnés dans `supabase/migrations/20261123000001_contrat_serveur_app_pointage.sql`.
+
+| Ajout | Ce qu'il fait | Ce qu'il refuse |
+|---|---|---|
+| `encheck_pauses_mes_pauses(p_jeton, p_du, p_au)` | lit les pauses de **la personne qui détient la session** ; 30 jours par défaut ; remonte prévue, écart, tolérance et créneau pour que l'écran explique | un jeton absent, vide ou expiré → `42501` |
+| `motif_fermeture` + `encheck_pause_fermer(uuid, timestamptz, text)` | dit **pourquoi** la pause s'est fermée : `reprise` ou `sortie` | un motif inconnu ne bloque pas la fermeture, il retombe sur `reprise` |
+
+Deux décisions que je défends :
+
+1. **Pas de `p_employee`.** La demande initiale le proposait. Un identifiant employé n'est pas un secret et circule sur la tablette : avec lui, n'importe qui lit les pauses d'un collègue. La session existait déjà, elle prouve quelque chose.
+2. **L'ancienne signature à 2 paramètres est supprimée, pas laissée en place.** Mesuré : deux `encheck_pause_fermer` ont coexisté dans `pg_proc` ; un appel à deux arguments prenait l'ancienne et n'écrivait jamais le motif. Le `DROP` est dans la migration.
+
+`encheck_pauses_lire` **n'est pas** ouverte à `anon` — elle vérifie l'appartenance à l'entreprise, pas l'identité. Un test de contrat échoue si un `GRANT` la concerne.
+
+### 10.3 Ce que l'App Pointage doit câbler
+
+**Lot 1 (dépointage groupé)** — appeler `encheck_pause_fermer(p_employee, now(), 'sortie')` avant de fermer le pointage. Tant que ce n'est pas fait, `motif_fermeture` restera `reprise` par défaut : les données sont justes sur la durée, muettes sur la cause.
+
+**Lot 3 (vue « mes pauses »)** — la RPC est prête et testée en base (14 pauses pour un employé, 0 pour un autre, valeurs de dépassement exactes). Il reste **l'écran**, qui n'existe pas encore côté web : `EmployeeHeures.jsx` ne lit que `attendances`.
+
+### 10.4 Ce qui n'est toujours pas réglé
+
+**Aucune CI n'applique les migrations.** La migration de ce lot a été appliquée à la main. C'est la troisième fois que ce trou est signalé ; il a causé la panne du 21/11. Tant qu'il est là, une migration fusionnée n'est pas une migration appliquée.
+
+### 10.5 Preuves
+
+- 152 fichiers de test, **2 104 tests** ✓ ; build ✓ ; ESLint propre sur les fichiers touchés.
+- 12 tests de contrat ajoutés (`src/services/__tests__/contratAppPointage.test.js`), dont deux vérifiés par mutation : retirer le `DROP` les fait échouer.
+- En base : jetons inventé / vide / `NULL` → `42501` trois fois ; session de test créée puis **supprimée** (0 restante sur 191).
