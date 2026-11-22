@@ -105,10 +105,17 @@ BEGIN
   v_max := COALESCE(public.encheck_seuil(p_enterprise, 'pause_duree_max_minutes', 120), 120)::int;
 
   --  Dernière modification connue, sur l'un ou l'autre des deux réglages.
-  SELECT a.first_name || ' ' || a.last_name, r.maj_le
+  --  ⚠️ `maj_par` reçoit `encheck_auteur_actuel()`, c'est-à-dire le `sub` du
+  --  JWT — la colonne `user_id` d'`admins`, jamais son `id`. Joindre sur
+  --  `admins.id` ne renvoyait aucun nom sans lever d'erreur : la trace
+  --  s'affichait « Dernière modification : <date> » sans dire PAR QUI,
+  --  ce qui est exactement la demande du fondateur. Trouvé le 15/11/2026
+  --  en relisant la base avant d'appliquer la migration.
+  SELECT NULLIF(trim(COALESCE(a.first_name, '') || ' ' || COALESCE(a.last_name, '')), ''),
+         r.maj_le
     INTO v_nom, v_quand
     FROM public.encheck_reglages_pointage r
-    LEFT JOIN public.admins a ON a.id = r.maj_par
+    LEFT JOIN public.admins a ON a.user_id = r.maj_par
    WHERE r.enterprise_id = p_enterprise
      AND r.cle IN ('pause_tolerance_minutes', 'pause_duree_max_minutes')
    ORDER BY r.maj_le DESC
@@ -125,8 +132,9 @@ BEGIN
         SELECT 1 FROM public.encheck_reglages_pointage
          WHERE enterprise_id = p_enterprise AND cle = 'pause_duree_max_minutes')
       THEN 'entreprise' ELSE 'usage' END,
+    --  `NULL` et non la chaîne 'null' : le client teste `seuils.maj_par`.
     'maj_le', v_quand,
-    'maj_par', NULLIF(trim(COALESCE(v_nom, '')), '')
+    'maj_par', v_nom
   );
 END;
 $$;

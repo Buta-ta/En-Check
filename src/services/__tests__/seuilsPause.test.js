@@ -97,6 +97,21 @@ describe('⏱️ Seuils de pause — qui a touché, et quoi', () => {
     expect(MIGRATION).toContain('last_name')
   })
 
+  it('la relecture retrouve le nom : maj_par porte un user_id, pas un admins.id', () => {
+    //  Défaut trouvé en appliquant la migration le 15/11/2026 : `maj_par`
+    //  reçoit `encheck_auteur_actuel()`, c'est-à-dire le `sub` du JWT, donc
+    //  `admins.user_id`. La lecture joignait `admins.id` : aucun nom, sans
+    //  erreur — la trace affichait la date sans dire PAR QUI, exactement ce
+    //  que le fondateur refusait. Le test précédent vérifiait l'écriture du
+    //  nom, jamais sa relecture. Celui-ci ferme la porte.
+    expect(MIGRATION).toContain('a.user_id = r.maj_par')
+    expect(MIGRATION).not.toContain('a.id = r.maj_par')
+
+    //  Et l'auteur inconnu reste `null` côté JSON, pour que le client puisse
+    //  tester la valeur sans recevoir la chaîne « null ».
+    expect(MIGRATION).toContain("'maj_par', v_nom")
+  })
+
   it('les deux champs sont tracés, avec l’ancienne valeur', () => {
     //  « trace les 2 champs » : une trace par champ, pas une trace par
     //  enregistrement — sinon on ne sait pas lequel des deux a bougé.

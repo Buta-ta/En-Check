@@ -21,6 +21,25 @@ export const STATUTS_BADGES = {
 export const ANOMALIES_BADGES = {
   sans_reprise: { label: '🚫 Sans reprise', color: '#EF4444' },
   trop_longue: { label: '⚠️ Très longue', color: '#F97316' },
+  //  Deux grandeurs différentes, deux badges différents :
+  //    · `trop_longue`  = durée absolue au-delà du plafond (ex. 120 min) ;
+  //    · `depassement`  = écart au créneau de la grille au-delà de la tolérance.
+  //  Une pause de 95 min sur un créneau de 90 est un dépassement, pas une
+  //  « très longue ». Les confondre effacerait la décision du fondateur.
+  depassement: { label: '⏱️ Dépassement', color: '#E0A100' },
+}
+
+/**
+ * Le libellé exact d'un dépassement, pour que l'écran dise POURQUOI.
+ * Sans le chiffre, « Dépassement » est un mot creux : l'admin doit lire
+ * « 16 min de plus que les 60 min prévues », pas deviner.
+ */
+export function libelleDepassement (p) {
+  if (!p || p.anomalie !== 'depassement') return null
+  const ecart = Number(p.ecartMinutes)
+  const prevue = Number(p.prevueMinutes)
+  if (!Number.isFinite(ecart) || !Number.isFinite(prevue)) return 'Dépassement du créneau'
+  return `${ecart} min de plus que les ${prevue} min prévues`
 }
 
 export const STATUTS_A_STATUER = ['reelle', 'presumee']
@@ -250,6 +269,10 @@ export function construirePauses (lignesSql) {
       source: l.source,
       motif: l.motif,
       anomalie: l.anomalie,
+      //  Le chiffre du dépassement, quand il y en a un. `null` sinon :
+      //  l'écran ne doit pas afficher « 0 min de plus » sur une pause normale.
+      prevueMinutes: Number.isFinite(Number(l.prevue_minutes)) ? Number(l.prevue_minutes) : null,
+      ecartMinutes: Number.isFinite(Number(l.ecart_minutes)) ? Number(l.ecart_minutes) : null,
       ouverte,
       aStatuer: STATUTS_A_STATUER.includes(l.statut),
       estPresumee,
@@ -370,6 +393,19 @@ export function badgeStatut (statut) {
 /** Libellé/teinte du badge d'anomalie (null si aucune). */
 export function badgeAnomalie (anomalie) {
   return anomalie ? (ANOMALIES_BADGES[anomalie] || { label: anomalie, color: '#EF4444' }) : null
+}
+
+/**
+ * Le badge prêt à afficher : le libellé générique, enrichi du chiffre quand
+ * la pause le connaît. « ⏱️ Dépassement » seul oblige l'admin à ouvrir la
+ * ligne pour comprendre ; « 18 min de plus que les 60 prévues » se lit.
+ */
+export function badgeAnomalieDetaillee (p) {
+  const badge = badgeAnomalie(p?.anomalie)
+  if (!badge) return null
+  if (p.anomalie !== 'depassement') return badge
+  const raison = libelleDepassement(p)
+  return { ...badge, label: `⏱️ Dépassement · ${raison}`, raison }
 }
 
 /** Format « 1h57 » / « 45 min » pour une durée en minutes. */

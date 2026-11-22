@@ -3769,6 +3769,20 @@
   color: #b91c1c;
 }
 
+/*  ⏱️ Dépassement — le troisième badge d'anomalie, et le plus doux.
+    `sans_reprise` et `trop_longue` sont des ruptures ; un dépassement est
+    un écart mesuré au créneau. Il ne doit pas crier en rouge comme eux,
+    sinon l'admin apprend à ignorer le rouge. Teinte ambre d'or, distincte
+    du jaune « présumée » (qui parle de la nature de la pause, pas d'un écart). */
+.pauses-v2-status-pill.is-depassement {
+  color: #e0a100;
+  border: 1px solid rgba(224, 161, 0, 0.46);
+  background: rgba(224, 161, 0, 0.13);
+}
+.pauses-v2-shell[data-theme="light"] .pauses-v2-status-pill.is-depassement {
+  color: #7a5300;
+}
+
 .pauses-v2-btn-validate {
   display: inline-flex;
   align-items: center;

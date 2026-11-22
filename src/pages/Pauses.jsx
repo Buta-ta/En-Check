@@ -174,12 +174,25 @@ export default function Pauses () {
       const entArg = target === 'all' ? null : target
 
       // ── Le moteur d'abord : présumées + anomalies à jour, puis lecture ──
+      //    Deux juges, deux questions différentes :
+      //      · `encheck_pauses_controler` → sans reprise / très longue ;
+      //      · `encheck_pauses_juger_lot` → écart au créneau de la grille
+      //        au-delà de la tolérance réglée par l'entreprise.
+      //    Le second est idempotent : il ne rejuge pas ce qui est déjà marqué,
+      //    et n'alerte qu'une fois. Il tourne ici pour que le badge apparaisse
+      //    même sur les pauses fermées avant que la règle existe.
       if (entArg) {
         await supabase.rpc('encheck_pauses_controler', { p_enterprise: entArg })
+        await supabase.rpc('encheck_pauses_juger_lot', { p_enterprise: entArg, p_jours: 30 })
       } else if (entreprises.length > 0) {
         await Promise.allSettled(
           entreprises.map((ent) =>
             supabase.rpc('encheck_pauses_controler', { p_enterprise: ent.id })
+          )
+        )
+        await Promise.allSettled(
+          entreprises.map((ent) =>
+            supabase.rpc('encheck_pauses_juger_lot', { p_enterprise: ent.id, p_jours: 30 })
           )
         )
       }
