@@ -506,6 +506,108 @@
 }
 
 /* ── « Réduire les animations » dans le système : scène fixe, aucune attente ── */
+/* ── La scène du Planning s'anime par le cadrage, pas par un décor ajouté ──
+   Une seule image, validée telle quelle : aucun post-it peint par-dessus,
+   aucun calque inventé. Ce qui bouge est l'objectif. Chaque étape réelle du
+   chargement amène le regard sur ce qu'elle charge — les fiches posées sur la
+   table, la file des collaborateurs, la tablette des horaires, le mur de la
+   semaine — et la salle entière se rappelle quand les données sont là.
+   `transform-origin` posé sur le point regardé, `scale` par-dessus : ce point
+   reste à sa place à l'écran, l'image ne quitte jamais les bords de la scène,
+   et pour un grossissement d'au moins un, aucun bord vide n'apparaît. */
+
+.emp-loading-stage[data-artwork="page-scene-illustration"] {
+  --scene-k: 1;
+  --scene-x: 50%;
+  --scene-y: 50%;
+}
+
+/* `scale` est une propriete distincte de `transform` : la respiration compose
+   avec le cadrage au lieu de lui marcher dessus, et le plateau — donc son
+   trait du bas — ne bouge pas d'un pixel */
+.emp-loading-stage[data-artwork="page-scene-illustration"] .emp-loading-approved {
+  transform-origin: var(--scene-x) var(--scene-y);
+  transform: scale(var(--scene-k));
+  scale: 1;
+  transition: transform 900ms ease-in-out, transform-origin 900ms ease-in-out;
+  animation: emp-scene-haleine 9s ease-in-out infinite alternate;
+}
+
+/* 1 · les modèles d'horaire : les piles de fiches, en bas à gauche */
+.emp-loading-stage[data-artwork="page-scene-illustration"][data-step="1"] {
+  --scene-k: 2.1;
+  --scene-x: 15%;
+  --scene-y: 76%;
+}
+
+/* 2 · les collaborateurs : la file, à gauche du mur */
+.emp-loading-stage[data-artwork="page-scene-illustration"][data-step="2"] {
+  --scene-k: 1.75;
+  --scene-x: 24%;
+  --scene-y: 52%;
+}
+
+/* 3 · horaires et disponibilités : la tablette et la fiche tendue */
+.emp-loading-stage[data-artwork="page-scene-illustration"][data-step="3"] {
+  --scene-k: 1.9;
+  --scene-x: 45%;
+  --scene-y: 38%;
+}
+
+/* 4 · la grille de la semaine : le mur, et la fiche qu'on épingle */
+.emp-loading-stage[data-artwork="page-scene-illustration"][data-step="4"] {
+  --scene-k: 1.85;
+  --scene-x: 78%;
+  --scene-y: 22%;
+}
+
+/* la semaine est chargée : on recule d'un cran, la salle se rappelle, la
+   lumière se pose — écrit après les quatre cadrages, il les commande */
+.emp-loading-stage[data-artwork="page-scene-illustration"].est-pret {
+  --scene-k: 1.08;
+  --scene-x: 50%;
+  --scene-y: 46%;
+}
+
+.emp-loading-stage[data-artwork="page-scene-illustration"].est-pret .emp-loading-approved {
+  animation: none;
+}
+
+/* le jour qui traverse la salle : un plan de lumière, en opacity basse, peint
+   avec le blanc de la maison — aucune couleur nouvelle dans la feuille */
+.emp-loading-stage[data-artwork="page-scene-illustration"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0.13;
+  background: linear-gradient(105deg, transparent 35%, var(--charte-blanc) 50%, transparent 65%);
+  background-size: 260% 100%;
+  background-position: 132% 0;
+  animation: emp-scene-clarte 11s linear infinite;
+}
+
+@keyframes emp-scene-haleine {
+  from {
+    scale: 1;
+  }
+
+  to {
+    scale: 1.012;
+  }
+}
+
+@keyframes emp-scene-clarte {
+  from {
+    background-position: 132% 0;
+  }
+
+  to {
+    background-position: -32% 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .emp-loading-stage *,
   .emp-loading-dot {
@@ -519,5 +621,15 @@
 
   .emp-loading-stage .emp-loading-approved {
     opacity: 1 !important;
+  }
+
+  /* aucun cadrage imposé : la salle entière, immobile, complète */
+  .emp-loading-stage[data-artwork="page-scene-illustration"] .emp-loading-approved {
+    transform: none;
+    transform-origin: 50% 50%;
+  }
+
+  .emp-loading-stage[data-artwork="page-scene-illustration"]::after {
+    display: none;
   }
 }

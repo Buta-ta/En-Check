@@ -19,13 +19,18 @@ it('les bandeaux sont décoratifs et le Kente existant reste disponible', () => 
   expect(html).toContain('aria-hidden="true"'); expect(html).not.toContain('<svg')
   expect(renderToStaticMarkup(<PageCulturalBand pathname="/rapports"/>)).toContain('<svg')
 })
-it('le chargement Planning emploie le même motif, dans les deux thèmes, sans supprimer ses étapes', () => {
+it('le chargement Planning rend son bandeau motif, mais garde carte et étapes', () => {
+  // Le 22/11, au second regard sur la maquette : « Enlève le bandeau motif qui est
+  // dans la page loading ». La carte reste celle des Employés — en-tête, scène,
+  // barre, étapes, « Passer l’animation » —, la toile kuba sort de l'écran.
   for (const darkMode of [false,true]) {
     const html=renderToStaticMarkup(<PlanningLoadingScreen darkMode={darkMode} onSkip={()=>{}}/> )
-    expect(html).toContain('data-cultural-motif="kuba"')
-    expect(html).toContain('ec-cultural-loading')
+    expect(html).not.toContain('ec-cultural-')
+    expect(html).not.toContain('data-cultural-motif')
     expect(html).toContain('Passer l’animation')
     expect(html).toContain('planning-loading-scene.webp')
+    expect(html).toContain('pointages-loading-bar-fill')
+    expect(html).toContain(darkMode ? 'data-theme="dark"' : 'data-theme="light"')
   }
 })
 it('les images de chaque identité existent et les motifs ne sont pas déformés', () => {
