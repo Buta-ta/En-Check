@@ -1,15 +1,43 @@
 // ═══════════════════════════════════════════════════════════
-// 🧩 TÂCHES — FENÊTRES DE TRAVAIL (perles zoulou)
+// 🧩 TÂCHES — FENÊTRES DE TRAVAIL, en post-it (22/11/2026)
 //
-// Une tâche (avec durée estimée, charge de la personne et
+// Une tâche (avec durée prédite, charge de la personne et
 // suggestions), une catégorie, une suppression à confirmer, les
-// raccourcis. Partagées par la vue « Tâches » de la page
-// Employés : pas de coque d'écran ici, uniquement le travail.
-// Les couleurs viennent des variables --zl-* de la page hôte.
+// raccourcis. Partagées par la vue « Tâches » de la page Employés :
+// aucune coque d'écran ici, uniquement le travail — et la MÊME peau
+// que les fenêtres des Équipes : `TachesModales.css`, posée sur la
+// classe `tam-voile`.
+//
+// Jumelles strictes de `EquipesModales.jsx` : mêmes classes de
+// coque (`tam-` au lieu de `eqm-`), mêmes largeurs au registre, même
+// feuille (coin carré, contour d'encre de 2 px, bande de colle,
+// rabat, double feutre en deux ombres dures). Ce qui change, c'est
+// le contenu : la fenêtre de tâche est la seule à deux colonnes,
+// donc elle prend la largeur MAXIMALE du registre — 760 px.
+//
+// Avant : un objet `styles` de 133 clefs de CSS écrites dans le JS,
+// posées en `style={…}` — 39 clefs trouvaient preneur, 94
+// décrivaient une ANCIENNE PAGE entière (bandeau d'alertes,
+// calendrier, grille de stats, squelettes) retirée quand la vue est
+// devenue `.tqv2`. Une attribution en ligne bat n'importe quel
+// sélecteur de feuille : trois entorses y étaient figées sans
+// recours : `backdropFilter: blur(6px)` sur le voile et une ombre de
+// `0 24px 80px` sous la feuille (la maison ne connaît AUCUN flou,
+// D-016) ; un voile `rgba(0,0,0,0.8)`, du noir pur à 80 % qui efface
+// la page au lieu de l'assourdir ; un `borderRadius: 18` et des
+// rayons de 10 / 8 / 6 en dur ; et des largeurs de 340, 420, 520 et
+// 800 px, hors du registre des modales (420 / 560 / 760, D-020).
+// Les voilà 560 pour la catégorie, 760 pour la tâche, 420 pour les
+// deux autres — le 420 de la suppression était la seule valeur
+// conforme de l'île.
+//
+// Les COULEURS DE CATÉGORIE restent en ligne, et c'est voulu : ce
+// sont des DONNÉES qui viennent de la base, une feuille ne peut pas
+// les connaître. Tout le reste est classe.
 // ═══════════════════════════════════════════════════════════
 
 import { useEffect, useState } from 'react'
-import { Plus, X, Loader2, Edit3, Trash2, Clock, AlertTriangle, CheckCircle2, Camera, FileText, MessageSquare, ShieldCheck, Sparkles, Tag, Check, List, Lightbulb } from 'lucide-react'
+import { Plus, X, Loader2, Edit3, Trash2, Clock, AlertTriangle, CheckCircle2, Camera, FileText, MessageSquare, ShieldCheck, Sparkles, Tag, Check, Lightbulb } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import {
@@ -17,10 +45,30 @@ import {
   TASK_PRIORITY, TASK_TYPE,
 } from '../../services/taskService'
 
+import './TachesModales.css'
+
+// La palette FEUTRE — dix encres de marqueur, les mêmes que dans
+// l'onglet Équipes (`EquipesModales.jsx`). Elle est écrite ici AUSSI
+// parce que ce sont des valeurs enregistrées en base par catégorie,
+// non un style : les deux îles doivent rester lisibles l'une sans
+// l'autre. Les teintes sont choisies pour laver un papier sans jamais
+// porter de texte (voir `TachesVue.css`, règle du lavis).
 const CATEGORY_COLORS = [
-  '#C9772F', '#2F7F73', '#8A8F4A', '#B4553F', '#7C6AA8',
-  '#A9743F', '#4C7E8F', '#6E8B5A', '#B34B37', '#5B6F8C',
+  '#D2372C', '#E07B1F', '#E3B500', '#1F8A4C', '#0E8C9E',
+  '#2C63B4', '#6A3FA0', '#C4326E', '#7A4A21', '#39507C',
 ]
+
+// Les dix feutres ont un NOM, pour qu’un lecteur d’écran n’annonce pas un
+// code hexadécimal : la teinte est une donnée, le mot est une étiquette.
+const FEUTRE_NOMS = [
+  'rouge', 'orange', 'jaune', 'vert', 'turquoise',
+  'bleu', 'violet', 'rose', 'sepia', 'bleu nuit',
+]
+
+// ═══════════════════════════════════════════════════════════════════
+// FENÊTRE CATÉGORIE
+// ═══════════════════════════════════════════════════════════════════
+
 
 export function CategoryModal({ open, onClose, onSave, onDelete, loading, editingCategory, categories }) {
   const [form, setForm] = useState({ name: '', description: '', color: CATEGORY_COLORS[0], icon: 'clipboard' })
@@ -59,54 +107,55 @@ export function CategoryModal({ open, onClose, onSave, onDelete, loading, editin
   }
 
   return (
-    <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.modalHeader}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--zl-cuivre-voile)', border: '1px solid var(--zl-cuivre-voile)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Tag size={18} color="var(--zl-cuivre)" />
-            </div>
-            <h3 style={styles.modalTitle}>{editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</h3>
-          </div>
-          <button onClick={onClose} style={styles.modalCloseBtn}><X size={18} /></button>
+    <div className="tam-voile" onClick={onClose}>
+      <div className="tam-feuille" role="dialog" aria-modal="true" aria-label={editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie'} onClick={(e) => e.stopPropagation()}>
+        <div className="tam-tete">
+          <span className="tam-tete-bloc">
+            <span className="tam-pucelle"><Tag size={18} /></span>
+            <h3 className="tam-titre">{editingCategory ? 'Modifier la catégorie' : 'Nouvelle catégorie'}</h3>
+          </span>
+          <button type="button" className="tam-fermer" onClick={onClose} aria-label="Fermer"><X size={18} /></button>
         </div>
-        
-        <form onSubmit={handleSubmit} style={styles.modalBody}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Nom *</label>
+
+        <form onSubmit={handleSubmit} className="tam-corps">
+          <div className="tam-champ">
+            <label htmlFor="tam-categorie-nom">Nom *</label>
             <input
+              id="tam-categorie-nom"
+              className="tam-saisie"
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              style={styles.input}
               placeholder="Ex: Maintenance"
             />
           </div>
-          
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Description</label>
+
+          <div className="tam-champ">
+            <label htmlFor="tam-categorie-description">Description</label>
             <textarea
+              id="tam-categorie-description"
+              className="tam-saisie tam-saisie--longue"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              style={{ ...styles.input, minHeight: 70, resize: 'vertical' }}
               rows={3}
               placeholder="Description optionnelle..."
             />
           </div>
-          
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Couleur</label>
-            <div style={styles.colorPicker}>
-              {CATEGORY_COLORS.map((color) => (
+
+          <div className="tam-champ">
+            <span className="tam-etiquette">Couleur</span>
+            {/* la teinte est une DONNÉE : elle reste écrite en ligne. Le
+                SÉLECTIONNÉ est un marqueur, il se lit dans la peau */}
+            <div className="tam-couleurs" role="group" aria-label="Couleur de la catégorie">
+              {CATEGORY_COLORS.map((color, i) => (
                 <button
                   key={color}
                   type="button"
+                  className="tam-couleur"
+                  aria-pressed={form.color === color}
+                  aria-label={`Couleur ${FEUTRE_NOMS[i] || color}`}
+                  style={{ background: color }}
                   onClick={() => setForm({ ...form, color })}
-                  style={{
-                    width: 32, height: 32, borderRadius: 8, background: color, cursor: 'pointer',
-                    border: form.color === color ? '3px solid var(--zl-encre)' : '3px solid transparent',
-                    boxShadow: form.color === color ? `0 0 0 2px ${color}` : 'none',
-                  }}
                 />
               ))}
             </div>
@@ -114,39 +163,35 @@ export function CategoryModal({ open, onClose, onSave, onDelete, loading, editin
 
           {/* Stats de la catégorie si édition */}
           {editingCategory && editingCategory.avg_duration_minutes && (
-            <div style={styles.categoryStats}>
-              <div style={styles.categoryStatItem}>
-                <Clock size={14} color="#6366F1" />
+            <div className="tam-stats">
+              <span className="tam-stat">
+                <Clock size={14} />
                 <span>Durée moyenne: <strong>{editingCategory.avg_duration_minutes} min</strong></span>
-              </div>
+              </span>
               {editingCategory.total_tasks_completed > 0 && (
-                <div style={styles.categoryStatItem}>
-                  <CheckCircle2 size={14} color="var(--zl-teal)" />
+                <span className="tam-stat">
+                  <CheckCircle2 size={14} />
                   <span>Tâches complétées: <strong>{editingCategory.total_tasks_completed}</strong></span>
-                </div>
+                </span>
               )}
             </div>
           )}
-          
-          <div style={styles.modalActions}>
+
+          <div className="tam-pied">
             {editingCategory && (
               <button
                 type="button"
+                className="tam-btn tam-btn--danger"
+                data-confirme={showDeleteConfirm ? 'oui' : undefined}
                 onClick={handleDelete}
-                style={{
-                  ...styles.btnDanger,
-                  marginRight: 'auto',
-                  background: showDeleteConfirm ? 'var(--zl-corail)' : 'rgba(239,68,68,0.1)',
-                  color: showDeleteConfirm ? 'var(--zl-encre)' : 'var(--zl-corail)',
-                }}
                 disabled={loading}
               >
                 <Trash2 size={14} />
                 {showDeleteConfirm ? 'Confirmer' : 'Supprimer'}
               </button>
             )}
-            <button type="button" onClick={onClose} style={styles.btnSecondary}>Annuler</button>
-            <button type="submit" style={styles.btnPrimary} disabled={loading}>
+            <button type="button" className="tam-btn" onClick={onClose}>Annuler</button>
+            <button type="submit" className="tam-btn tam-btn--pleine" disabled={loading}>
               {loading ? <Loader2 size={15} className="spin" /> : <Check size={15} />}
               <span>{editingCategory ? 'Enregistrer' : 'Créer'}</span>
             </button>
@@ -158,7 +203,7 @@ export function CategoryModal({ open, onClose, onSave, onDelete, loading, editin
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MODAL TÂCHE (Avec prédictions intégrées)
+// FENÊTRE TÂCHE (avec prédictions intégrées)
 // ═══════════════════════════════════════════════════════════════════
 
 
@@ -321,68 +366,67 @@ export function TaskModal({
     })
   }
 
+  const exige = form.task_type === TASK_TYPE.INDIVIDUAL
+
   return (
-    <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={{ ...styles.modal, maxWidth: '800px' }} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.modalHeader}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--zl-cuivre-voile)', border: '1px solid var(--zl-cuivre-voile)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {editingTask ? <Edit3 size={18} color="var(--zl-cuivre)" /> : <Plus size={18} color="var(--zl-cuivre)" />}
-            </div>
-            <h3 style={styles.modalTitle}>{editingTask ? 'Modifier la tâche' : 'Nouvelle tâche'}</h3>
-          </div>
-          <button onClick={onClose} style={styles.modalCloseBtn}><X size={18} /></button>
+    <div className="tam-voile" onClick={onClose}>
+      <div className="tam-feuille tam-feuille--large" role="dialog" aria-modal="true" aria-label={editingTask ? 'Modifier la tâche' : 'Nouvelle tâche'} onClick={(e) => e.stopPropagation()}>
+        <div className="tam-tete">
+          <span className="tam-tete-bloc">
+            <span className="tam-pucelle">{editingTask ? <Edit3 size={18} /> : <Plus size={18} />}</span>
+            <h3 className="tam-titre">{editingTask ? 'Modifier la tâche' : 'Nouvelle tâche'}</h3>
+          </span>
+          <button type="button" className="tam-fermer" onClick={onClose} aria-label="Fermer"><X size={18} /></button>
         </div>
         
-        <form onSubmit={handleSubmit} style={styles.modalBody}>
+        <form onSubmit={handleSubmit} className="tam-corps">
           {/* Alerte de charge si warning */}
           {workloadWarning && workloadWarning.severity !== 'ok' && (
-            <div style={{
-              ...styles.workloadAlert,
-              borderColor: workloadWarning.severity === 'critical' ? 'var(--zl-corail)' : 'var(--zl-cuivre)',
-              background: workloadWarning.severity === 'critical' ? 'rgba(239,68,68,0.1)' : 'var(--zl-cuivre-voile)'
-            }}>
-              <AlertTriangle size={16} color={workloadWarning.severity === 'critical' ? 'var(--zl-corail)' : 'var(--zl-cuivre)'} />
-              <div style={styles.workloadAlertContent}>
+            <div className="tam-charge" data-ton={workloadWarning.severity === 'critical' ? 'critique' : 'attention'}>
+              <AlertTriangle size={16} className="tam-charge-ico" aria-hidden="true" />
+              <span className="tam-charge-corps">
                 {workloadWarning.warnings.map((w, i) => (
-                  <div key={i} style={styles.workloadWarningItem}>{w.message}</div>
+                  <span className="tam-charge-ligne" key={i}>{w.message}</span>
                 ))}
-              </div>
+              </span>
             </div>
           )}
 
-          <div style={styles.formGrid}>
+          <div className="tam-grille">
             {/* Titre */}
-            <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
-              <label style={styles.label}>Titre *</label>
+            <div className="tam-champ tam-champ--large">
+              <label htmlFor="tam-tache-titre">Titre *</label>
               <input
+                id="tam-tache-titre"
+                className="tam-saisie"
                 type="text"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                style={styles.input}
                 placeholder="Ex: Vérifier les extincteurs"
               />
             </div>
 
             {/* Description */}
-            <div style={{ ...styles.formGroup, gridColumn: '1 / -1' }}>
-              <label style={styles.label}>Description</label>
+            <div className="tam-champ tam-champ--large">
+              <label htmlFor="tam-tache-description">Description</label>
               <textarea
+                id="tam-tache-description"
+                className="tam-saisie tam-saisie--longue"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                style={{ ...styles.input, minHeight: 80, resize: 'vertical' }}
                 rows={3}
                 placeholder="Décrivez la tâche..."
               />
             </div>
 
             {/* Type de tâche */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Type</label>
+            <div className="tam-champ">
+              <label htmlFor="tam-tache-type">Type</label>
               <select
+                id="tam-tache-type"
+                className="tam-saisie"
                 value={form.task_type}
                 onChange={(e) => setForm({ ...form, task_type: e.target.value, assigned_employee_id: '', team_id: '' })}
-                style={styles.select}
               >
                 <option value={TASK_TYPE.INDIVIDUAL}>Individuelle</option>
                 <option value={TASK_TYPE.TEAM}>Équipe</option>
@@ -390,24 +434,25 @@ export function TaskModal({
             </div>
 
             {/* Assignation avec bouton IA */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                {form.task_type === TASK_TYPE.INDIVIDUAL ? 'Employé *' : 'Équipe *'}
+            <div className="tam-champ">
+              <label htmlFor="tam-tache-assignation" className="tam-libelle--action">
+                {exige ? 'Employé *' : 'Équipe *'}
                 <button
                   type="button"
+                  className="tam-faisceau"
                   onClick={loadSuggestions}
-                  style={styles.suggestBtn}
                   disabled={loadingPrediction}
                 >
                   <Lightbulb size={12} />
                   Suggérer
                 </button>
               </label>
-              {form.task_type === TASK_TYPE.INDIVIDUAL ? (
+              {exige ? (
                 <select
+                  id="tam-tache-assignation"
+                  className="tam-saisie"
                   value={form.assigned_employee_id}
                   onChange={(e) => setForm({ ...form, assigned_employee_id: e.target.value })}
-                  style={styles.select}
                 >
                   <option value="">Choisir un employé</option>
                   {employees.map(emp => (
@@ -416,9 +461,10 @@ export function TaskModal({
                 </select>
               ) : (
                 <select
+                  id="tam-tache-assignation"
+                  className="tam-saisie"
                   value={form.team_id}
                   onChange={(e) => setForm({ ...form, team_id: e.target.value })}
-                  style={styles.select}
                 >
                   <option value="">Choisir une équipe</option>
                   {teams.map(team => (
@@ -429,36 +475,37 @@ export function TaskModal({
 
               {/* Suggestions IA */}
               {showSuggestions && suggestions && (
-                <div style={styles.suggestionsDropdown}>
-                  <div style={styles.suggestionsHeader}>
-                    <Sparkles size={14} color="var(--zl-cuivre)" />
+                <div className="tam-faisceaux" role="group" aria-label="Suggestions d'affectation">
+                  <div className="tam-faisceaux-tete">
+                    <Sparkles size={14} />
                     <span>Suggestions IA</span>
-                    <button onClick={() => setShowSuggestions(false)} style={styles.closeSuggestBtn}>
+                    <button type="button" className="tam-fermer tam-fermer--menu" onClick={() => setShowSuggestions(false)} aria-label="Masquer les suggestions">
                       <X size={12} />
                     </button>
                   </div>
                   {suggestions.suggestions?.slice(0, 3).map((s, i) => (
                     <div
                       key={i}
-                      style={styles.suggestionItem}
+                      className="tam-faisceau-ligne"
                       onClick={() => applySuggestion(s)}
                     >
-                      <div style={styles.suggestionMain}>
-                        <span style={styles.suggestionName}>
+                      <span className="tam-faisceau-corps">
+                        <span className="tam-faisceau-nom">
                           {s.employee_name || s.team_name}
                         </span>
-                        <span style={styles.suggestionScore}>{s.score}%</span>
-                      </div>
-                      <div style={styles.suggestionFactors}>
+                        <span className="tam-faisceau-score">{s.score}%</span>
+                      </span>
+                      <span className="tam-motifs">
                         {s.factors?.slice(0, 2).map((f, j) => (
-                          <span key={j} style={{
-                            ...styles.factorChip,
-                            color: f.impact > 0 ? 'var(--zl-teal)' : f.impact < 0 ? 'var(--zl-corail)' : 'var(--zl-faible)'
-                          }}>
+                          <span
+                            key={j}
+                            className="tam-motif"
+                            data-impact={f.impact > 0 ? 'pour' : f.impact < 0 ? 'contre' : 'neutre'}
+                          >
                             {f.label}
                           </span>
                         ))}
-                      </div>
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -466,12 +513,13 @@ export function TaskModal({
             </div>
 
             {/* Catégorie */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Catégorie</label>
+            <div className="tam-champ">
+              <label htmlFor="tam-tache-categorie">Catégorie</label>
               <select
+                id="tam-tache-categorie"
+                className="tam-saisie"
                 value={form.category_id}
                 onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                style={styles.select}
               >
                 <option value="">Aucune catégorie</option>
                 {categories.map(cat => (
@@ -481,12 +529,13 @@ export function TaskModal({
             </div>
 
             {/* Priorité */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Priorité</label>
+            <div className="tam-champ">
+              <label htmlFor="tam-tache-priorite">Priorité</label>
               <select
+                id="tam-tache-priorite"
+                className="tam-saisie"
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                style={styles.select}
               >
                 <option value="low">Basse</option>
                 <option value="medium">Moyenne</option>
@@ -496,12 +545,13 @@ export function TaskModal({
             </div>
 
             {/* Difficulté */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Difficulté</label>
+            <div className="tam-champ">
+              <label htmlFor="tam-tache-difficulte">Difficulté</label>
               <select
+                id="tam-tache-difficulte"
+                className="tam-saisie"
                 value={form.difficulty}
                 onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
-                style={styles.select}
               >
                 <option value="easy">Facile</option>
                 <option value="medium">Moyenne</option>
@@ -511,42 +561,44 @@ export function TaskModal({
             </div>
 
             {/* Deadline */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Date limite</label>
+            <div className="tam-champ">
+              <label htmlFor="tam-tache-echeance">Date limite</label>
               <input
+                id="tam-tache-echeance"
+                className="tam-saisie"
                 type="datetime-local"
                 value={form.due_at}
                 onChange={(e) => setForm({ ...form, due_at: e.target.value })}
-                style={styles.input}
               />
             </div>
 
             {/* Durée prévue avec prédiction */}
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
+            <div className="tam-champ">
+              <label htmlFor="tam-tache-duree" className="tam-libelle--action">
                 Durée prévue (min)
-                {loadingPrediction && <Loader2 size={12} className="spin" style={{ marginLeft: 6 }} />}
+                {loadingPrediction && <Loader2 size={12} className="spin" />}
               </label>
               <input
+                id="tam-tache-duree"
+                className="tam-saisie"
                 type="number"
                 min="1"
                 value={form.expected_duration_minutes}
                 onChange={(e) => setForm({ ...form, expected_duration_minutes: e.target.value })}
-                style={styles.input}
                 placeholder="Ex: 45"
               />
               {durationPrediction && (
-                <div style={styles.predictionHint}>
-                  <Sparkles size={12} color="var(--zl-cuivre)" />
+                <div className="tam-indice">
+                  <Sparkles size={12} />
                   <span>{durationPrediction.message}</span>
                   {durationPrediction.predicted_minutes !== Number(form.expected_duration_minutes) && (
                     <button
                       type="button"
+                      className="tam-appliquer"
                       onClick={() => setForm(prev => ({ 
                         ...prev, 
                         expected_duration_minutes: durationPrediction.predicted_minutes 
                       }))}
-                      style={styles.applyPredictionBtn}
                     >
                       Appliquer
                     </button>
@@ -557,12 +609,12 @@ export function TaskModal({
           </div>
 
           {/* Exigences de validation */}
-          <div style={styles.settingsBox}>
-            <h4 style={styles.sectionTitle}>
-              <ShieldCheck size={14} color="var(--zl-cuivre)" />
+          <div className="tam-exigences">
+            <h4 className="tam-exigences-titre">
+              <ShieldCheck size={14} />
               <span>Exigences de validation</span>
             </h4>
-            <div style={styles.checkboxGrid}>
+            <div className="tam-coches">
               {[
                 { key: 'requires_proof', label: 'Preuve requise', icon: Camera },
                 { key: 'requires_comment', label: 'Commentaire requis', icon: MessageSquare },
@@ -570,32 +622,26 @@ export function TaskModal({
                 { key: 'allow_document', label: 'Autoriser document', icon: FileText },
                 { key: 'allow_camera_photo', label: 'Photo caméra', icon: Camera },
               ].map(({ key, label, icon: Ic }) => (
-                <label key={key} style={styles.checkboxItem}>
-                  <div style={{
-                    width: 20, height: 20, borderRadius: 6,
-                    border: `2px solid ${form[key] ? 'var(--zl-cuivre)' : 'rgba(255,255,255,0.15)'}`,
-                    background: form[key] ? 'var(--zl-cuivre-voile)' : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', flexShrink: 0,
-                  }}>
-                    {form[key] && <Check size={12} color="var(--zl-cuivre)" />}
-                  </div>
+                <label key={key} className="tam-coche" data-coche={form[key] ? 'oui' : undefined}>
+                  <span className="tam-casier" aria-hidden="true">
+                    {form[key] && <Check size={12} />}
+                  </span>
                   <input
                     type="checkbox"
                     checked={form[key]}
                     onChange={(e) => setForm({ ...form, [key]: e.target.checked })}
-                    style={{ display: 'none' }}
+                    className="tam-case-cachee"
                   />
-                  <Ic size={13} color={form[key] ? 'var(--zl-cuivre)' : 'var(--zl-faible)'} />
-                  <span style={{ color: form[key] ? 'var(--zl-encre)' : 'var(--zl-faible)' }}>{label}</span>
+                  <Ic size={13} className="tam-coche-ico" />
+                  <span>{label}</span>
                 </label>
               ))}
             </div>
           </div>
 
-          <div style={styles.modalActions}>
-            <button type="button" onClick={onClose} style={styles.btnSecondary}>Annuler</button>
-            <button type="submit" style={styles.btnPrimary} disabled={loading}>
+          <div className="tam-pied">
+            <button type="button" className="tam-btn" onClick={onClose}>Annuler</button>
+            <button type="submit" className="tam-btn tam-btn--pleine" disabled={loading}>
               {loading ? <Loader2 size={15} className="spin" /> : <CheckCircle2 size={15} />}
               <span>{editingTask ? 'Enregistrer' : 'Créer la tâche'}</span>
             </button>
@@ -607,26 +653,24 @@ export function TaskModal({
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MODAL SUPPRESSION
+// FENÊTRE SUPPRESSION
 // ═══════════════════════════════════════════════════════════════════
 
 
 export function DeleteModal({ open, onClose, onConfirm, title, loading }) {
   if (!open) return null
   return (
-    <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={{ ...styles.modal, maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ padding: '28px', textAlign: 'center' }}>
-          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <AlertTriangle size={26} color="var(--zl-corail)" />
-          </div>
-          <h3 style={{ color: 'var(--zl-encre)', fontSize: '18px', margin: '0 0 10px' }}>Confirmer la suppression</h3>
-          <p style={{ color: 'var(--zl-faible)', fontSize: '14px', margin: '0 0 24px', lineHeight: '1.5' }}>
-            Supprimer <strong style={{ color: 'var(--zl-cuivre)' }}>"{title}"</strong> ?
+    <div className="tam-voile" onClick={onClose}>
+      <div className="tam-feuille tam-feuille--petite" role="alertdialog" aria-modal="true" aria-label="Confirmer la suppression" onClick={(e) => e.stopPropagation()}>
+        <div className="tam-corps tam-corps--centre">
+          <span className="tam-alerte"><AlertTriangle size={26} /></span>
+          <h3 className="tam-titre tam-titre--scene">Confirmer la suppression</h3>
+          <p className="tam-texte">
+            Supprimer <strong>« {title} »</strong> ?
           </p>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={onClose} style={{ ...styles.btnSecondary, flex: 1 }} disabled={loading}>Annuler</button>
-            <button onClick={onConfirm} style={{ ...styles.btnDanger, flex: 1 }} disabled={loading}>
+          <div className="tam-pied tam-pied--partage">
+            <button type="button" className="tam-btn" onClick={onClose} disabled={loading}>Annuler</button>
+            <button type="button" className="tam-btn tam-btn--danger" onClick={onConfirm} disabled={loading}>
               {loading ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
               Supprimer
             </button>
@@ -638,7 +682,7 @@ export function DeleteModal({ open, onClose, onConfirm, title, loading }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MODAL RACCOURCIS CLAVIER
+// FENÊTRE RACCOURCIS CLAVIER
 // ═══════════════════════════════════════════════════════════════════
 
 
@@ -655,479 +699,21 @@ export function ShortcutsModal({ open, onClose }) {
     { key: 'Esc', action: 'Fermer modal' },
   ]
   return (
-    <div style={styles.modalOverlay} onClick={onClose}>
-      <div style={{ ...styles.modal, maxWidth: 340 }} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.modalHeader}>
-          <h3 style={styles.modalTitle}>Raccourcis clavier</h3>
-          <button onClick={onClose} style={styles.modalCloseBtn}><X size={18} /></button>
+    <div className="tam-voile" onClick={onClose}>
+      <div className="tam-feuille tam-feuille--petite" role="dialog" aria-modal="true" aria-label="Raccourcis clavier" onClick={(e) => e.stopPropagation()}>
+        <div className="tam-tete">
+          <h3 className="tam-titre">Raccourcis clavier</h3>
+          <button type="button" className="tam-fermer" onClick={onClose} aria-label="Fermer"><X size={18} /></button>
         </div>
-        <div style={styles.modalBody}>
+        <div className="tam-corps">
           {shortcuts.map((s) => (
-            <div key={s.key} style={styles.shortcutRow}>
-              <kbd style={styles.kbd}>{s.key}</kbd>
-              <span style={{ color: 'var(--zl-douce)', fontSize: '13px' }}>{s.action}</span>
+            <div key={s.key} className="tam-raccourci">
+              <kbd>{s.key}</kbd>
+              <span>{s.action}</span>
             </div>
           ))}
         </div>
       </div>
     </div>
   )
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// CARTE DE TÂCHE
-// ═══════════════════════════════════════════════════════════════════
-
-
-const styles = {
-  container: { minHeight: '100vh', background: 'var(--zl-fond)', position: 'relative' },
-  bgPattern: {
-    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 0,
-    backgroundImage: `radial-gradient(circle at 15% 50%, var(--zl-cuivre-voile) 0%, transparent 50%),
-                      radial-gradient(circle at 85% 20%, rgba(99,102,241,0.03) 0%, transparent 50%)`
-  },
-  main: { padding: 'clamp(14px, 3vw, 24px)', maxWidth: '1500px', margin: '0 auto', position: 'relative', zIndex: 1 },
-
-  // Alerts Banner
-  alertsBanner: {
-    background: 'var(--zl-surface)', border: '1px solid var(--zl-cuivre-voile)',
-    borderRadius: '14px', marginBottom: '16px', overflow: 'hidden'
-  },
-  alertsBannerCollapsed: {
-    background: 'var(--zl-surface)', border: '1px solid var(--zl-cuivre-voile)',
-    borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', cursor: 'pointer'
-  },
-  alertsBannerCollapsedContent: { display: 'flex', alignItems: 'center', gap: '8px' },
-  alertsBannerHeader: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '12px 16px', borderBottom: '1px solid var(--zl-trait)'
-  },
-  alertsCount: {
-    background: 'var(--zl-cuivre-voile)', color: 'var(--zl-cuivre)',
-    padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '700'
-  },
-  alertsList: { padding: '10px', display: 'flex', flexDirection: 'column', gap: '6px' },
-  alertItem: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px',
-    padding: '8px 10px', background: 'var(--zl-creux)', borderRadius: '8px',
-    borderLeft: '3px solid', flexWrap: 'wrap'
-  },
-  alertItemContent: { display: 'flex', alignItems: 'center', gap: '8px', flex: 1 },
-  alertMessage: { color: 'var(--zl-douce)', fontSize: '12px' },
-  alertActionBtn: {
-    display: 'flex', alignItems: 'center', gap: '4px',
-    padding: '4px 10px', background: 'var(--zl-cuivre-voile)',
-    border: '1px solid var(--zl-cuivre-voile)', borderRadius: '6px',
-    color: 'var(--zl-cuivre)', fontSize: '11px', fontWeight: '600', cursor: 'pointer'
-  },
-
-  // Header
-  headerSection: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: '20px', gap: '16px', flexWrap: 'wrap'
-  },
-  titleIcon: {
-    width: 46, height: 46, borderRadius: 12,
-    background: 'var(--zl-cuivre-voile)', border: '1px solid var(--zl-cuivre-voile)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center'
-  },
-  pageTitle: { color: 'var(--zl-encre)', fontSize: 'clamp(18px, 3vw, 24px)', fontWeight: '700', margin: 0 },
-  pageSubtitle: { color: 'var(--zl-faible)', fontSize: '13px', margin: '2px 0 0' },
-  headerActions: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
-  liveBadge: {
-    display: 'flex', alignItems: 'center', gap: '5px',
-    background: 'var(--zl-teal-voile)', border: '1px solid var(--zl-teal-voile)',
-    color: 'var(--zl-teal)', padding: '5px 12px', borderRadius: '16px', fontSize: '11px', fontWeight: '600'
-  },
-  iconBtnHeader: {
-    width: 36, height: 36, borderRadius: 10,
-    border: '1px solid var(--zl-trait)', background: 'var(--zl-creux)',
-    color: 'var(--zl-faible)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-  },
-
-  // Stats
-  statsGrid: {
-    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-    gap: '10px', marginBottom: '16px'
-  },
-  statCard: {
-    background: 'var(--zl-surface)', borderRadius: '12px',
-    padding: '14px', display: 'flex', alignItems: 'center', gap: '10px',
-    border: '1px solid var(--zl-trait)'
-  },
-  statIconWrap: { width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  statContent: { display: 'flex', flexDirection: 'column' },
-  statNumber: { fontSize: 'clamp(18px, 3vw, 24px)', fontWeight: '700', color: 'var(--zl-encre)', lineHeight: 1, marginBottom: 2 },
-  statLabel: { fontSize: '11px', color: 'var(--zl-faible)', fontWeight: '500' },
-
-  // Toolbar
-  toolbar: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    gap: '10px', marginBottom: '14px', flexWrap: 'wrap'
-  },
-  searchBox: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    background: 'var(--zl-surface)', border: '1px solid var(--zl-trait)',
-    borderRadius: '10px', padding: '10px 14px', flex: 1, maxWidth: '360px', minWidth: '200px'
-  },
-  searchInput: { flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--zl-encre)', fontSize: '13px' },
-  clearBtn: {
-    background: 'var(--zl-trait-fort)', border: 'none', borderRadius: '50%',
-    width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: 'var(--zl-faible)', cursor: 'pointer'
-  },
-  toolbarRight: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
-  filterSelect: {
-    background: 'var(--zl-surface)', border: '1px solid var(--zl-trait)',
-    borderRadius: '8px', padding: '8px 10px', color: 'var(--zl-encre)', fontSize: '12px',
-    cursor: 'pointer', outline: 'none'
-  },
-  viewToggle: {
-    display: 'flex', background: 'var(--zl-surface)',
-    borderRadius: '8px', border: '1px solid var(--zl-trait)', overflow: 'hidden'
-  },
-  viewBtn: {
-    padding: '8px 10px', background: 'transparent', border: 'none',
-    color: 'var(--zl-faible)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-  },
-  viewBtnActive: { background: 'var(--zl-cuivre-voile)', color: 'var(--zl-cuivre)' },
-
-  // Bulk Bar
-  bulkBar: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '10px 16px', background: 'var(--zl-cuivre-voile)',
-    border: '1px solid var(--zl-cuivre-voile)', borderRadius: '10px', marginBottom: '12px', flexWrap: 'wrap', gap: 8
-  },
-  bulkBtn: {
-    display: 'flex', alignItems: 'center', gap: '5px',
-    padding: '6px 12px', background: 'transparent',
-    border: '1px solid var(--zl-trait-fort)', borderRadius: '6px',
-    color: 'var(--zl-douce)', fontSize: '12px', cursor: 'pointer'
-  },
-
-  // Layout
-  tasksLayout: { display: 'flex', gap: '14px', alignItems: 'flex-start' },
-  categoriesSidebar: { width: '200px', flexShrink: 0 },
-  tasksMain: { flex: 1, minWidth: 0 },
-
-  // Task Grid / List
-  taskGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '12px' },
-  tasksList: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  listHeader: {
-    display: 'flex', alignItems: 'center', gap: '12px',
-    padding: '8px 14px', color: 'var(--zl-faible)', fontSize: '11px'
-  },
-
-  // Task Card (Grid)
-  taskCard: {
-    background: 'var(--zl-surface)', borderRadius: '14px',
-    border: '1px solid var(--zl-trait)',
-    padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px',
-    position: 'relative', overflow: 'hidden', cursor: 'grab'
-  },
-  cardAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: '2px' },
-  cardTopRow: { display: 'flex', alignItems: 'flex-start', gap: '10px' },
-  cardCheck: { cursor: 'pointer', paddingTop: '2px', flexShrink: 0 },
-  taskIconWrap: {
-    width: 36, height: 36, borderRadius: 10,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-  },
-  taskInfo: { flex: 1, minWidth: 0 },
-  taskTitle: {
-    margin: 0, color: 'var(--zl-encre)', fontSize: '14px', fontWeight: '700',
-    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
-  },
-  taskDescription: {
-    margin: '3px 0 0', color: 'var(--zl-faible)', fontSize: '11px', lineHeight: '1.4',
-    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
-  },
-  taskMeta: { display: 'flex', gap: '5px', flexWrap: 'wrap' },
-  infoSection: {
-    display: 'flex', flexDirection: 'column', gap: '6px',
-    background: 'var(--zl-creux)', borderRadius: '10px', padding: '8px 10px'
-  },
-  infoRow: { display: 'flex', alignItems: 'center', gap: '7px' },
-  infoText: { fontSize: '12px', color: 'var(--zl-douce)' },
-  deadlineBox: {
-    display: 'flex', alignItems: 'center', gap: '6px',
-    padding: '6px 10px', borderRadius: '8px', border: '1px solid'
-  },
-  cardActionsRow: {
-    display: 'flex', gap: '6px',
-    borderTop: '1px solid var(--zl-creux)', paddingTop: '10px'
-  },
-  cardActionBtn: {
-    flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px',
-    padding: '8px', borderRadius: '8px', border: '1px solid var(--zl-trait)',
-    background: 'var(--zl-creux)', color: 'var(--zl-douce)', cursor: 'pointer',
-    fontWeight: '600', fontSize: '12px', fontFamily: 'inherit'
-  },
-
-  // Task Row (List)
-  taskRow: {
-    display: 'flex', alignItems: 'center', gap: '10px',
-    padding: '10px 14px', background: 'var(--zl-surface)',
-    borderRadius: '10px', border: '1px solid var(--zl-trait)'
-  },
-  rowCheck: { cursor: 'pointer', flexShrink: 0 },
-  priorityDot: { width: 8, height: 8, borderRadius: 3, flexShrink: 0 },
-  rowMain: { flex: 1, minWidth: 0 },
-  rowTitle: { color: 'var(--zl-encre)', fontSize: '13px', fontWeight: '600' },
-  rowMeta: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' },
-  rowActions: { display: 'flex', gap: '4px' },
-  iconBtn: {
-    width: 28, height: 28, borderRadius: 6,
-    background: 'var(--zl-creux)', border: '1px solid var(--zl-trait)',
-    color: 'var(--zl-faible)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-  },
-
-  // Kanban
-  kanbanContainer: { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '8px' },
-  kanbanColumn: {
-    minWidth: '240px', flex: 1, background: 'var(--zl-surface)',
-    borderRadius: '12px', border: '1px solid var(--zl-trait)', transition: 'border-color 0.2s'
-  },
-  kanbanHeader: {
-    padding: '12px', borderBottom: '1px solid var(--zl-trait)',
-    borderLeft: '3px solid', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-  },
-  kanbanTitle: { color: 'var(--zl-encre)', fontSize: '13px', fontWeight: '700' },
-  kanbanCount: {
-    background: 'var(--zl-trait-fort)', padding: '2px 8px',
-    borderRadius: '10px', fontSize: '11px', color: 'var(--zl-faible)'
-  },
-  kanbanCards: { padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '500px', overflowY: 'auto' },
-  kanbanCard: {
-    padding: '10px', background: 'var(--zl-surface)',
-    borderRadius: '10px', border: '1px solid var(--zl-trait)', cursor: 'grab'
-  },
-  kanbanCardHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' },
-  kanbanCardTitle: { color: 'var(--zl-encre)', fontSize: '12px', fontWeight: '600', flex: 1 },
-  kanbanCardMeta: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' },
-  kanbanAssignee: { display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--zl-douce)' },
-  kanbanCardActions: { display: 'flex', gap: '4px', marginTop: '8px' },
-  kanbanActionBtn: {
-    width: 24, height: 24, borderRadius: 6,
-    background: 'var(--zl-trait)', border: '1px solid var(--zl-trait)',
-    color: 'var(--zl-faible)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-  },
-  kanbanEmpty: { padding: '20px', textAlign: 'center', color: 'var(--zl-faible)', fontSize: '12px' },
-
-  // Categories Panel
-  categoriesPanel: {
-    background: 'var(--zl-surface)', borderRadius: '12px',
-    border: '1px solid var(--zl-trait)', overflow: 'hidden'
-  },
-  categoriesPanelCollapsed: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '10px 12px', background: 'var(--zl-surface)',
-    borderRadius: '12px', border: '1px solid var(--zl-trait)', cursor: 'pointer'
-  },
-  categoriesPanelHeader: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '12px', borderBottom: '1px solid var(--zl-trait)'
-  },
-  addCategoryBtn: {
-    width: 24, height: 24, borderRadius: 6, background: 'var(--zl-cuivre-voile)',
-    border: '1px solid var(--zl-cuivre-voile)', color: 'var(--zl-cuivre)', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center'
-  },
-  collapseBtn: {
-    width: 24, height: 24, borderRadius: 6, background: 'transparent',
-    border: 'none', color: 'var(--zl-faible)', cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center'
-  },
-  categoriesList: { padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' },
-  categoryItem: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '8px 10px', borderRadius: '8px', border: '1px solid',
-    cursor: 'pointer', transition: 'all 0.15s ease'
-  },
-  editCategoryBtn: {
-    background: 'transparent', border: 'none', color: 'var(--zl-faible)',
-    cursor: 'pointer', padding: '2px', borderRadius: '4px',
-    display: 'flex', alignItems: 'center', justifyContent: 'center'
-  },
-
-  // Empty State
-  emptyState: {
-    textAlign: 'center', padding: '48px 20px',
-    background: 'var(--zl-surface)', borderRadius: '16px',
-    border: '1px solid var(--zl-trait)'
-  },
-  emptyIcon: {
-    width: 64, height: 64, borderRadius: 16,
-    background: 'var(--zl-cuivre-voile)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    margin: '0 auto 16px'
-  },
-
-  // Modals
-  modalOverlay: {
-    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '16px', zIndex: 1000
-  },
-  modal: {
-    width: '100%', maxWidth: '520px', background: 'var(--zl-fond-2)',
-    border: '1px solid var(--zl-cuivre-voile)', borderRadius: '18px',
-    overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
-    maxHeight: '90vh', display: 'flex', flexDirection: 'column'
-  },
-  modalHeader: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '16px 18px', borderBottom: '1px solid var(--zl-trait)'
-  },
-  modalTitle: { margin: 0, color: 'var(--zl-encre)', fontSize: '16px', fontWeight: '700' },
-  modalCloseBtn: {
-    width: 32, height: 32, borderRadius: 8,
-    border: '1px solid var(--zl-trait-fort)', background: 'var(--zl-creux)',
-    color: 'var(--zl-faible)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-  },
-  modalBody: { padding: '18px', overflowY: 'auto', flex: 1 },
-  modalActions: { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginTop: '20px' },
-
-  // Form
-  formGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' },
-  formGroup: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  label: {
-    display: 'flex', alignItems: 'center', gap: '6px',
-    fontSize: '11px', fontWeight: '700', color: 'var(--zl-faible)',
-    textTransform: 'uppercase', letterSpacing: '0.5px'
-  },
-  input: {
-    width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '10px',
-    border: '1px solid var(--zl-trait)', background: 'var(--zl-creux)',
-    color: 'var(--zl-encre)', outline: 'none', fontSize: '13px', fontFamily: 'inherit'
-  },
-  select: {
-    width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: '10px',
-    border: '1px solid var(--zl-trait)', background: 'var(--zl-creux)',
-    color: 'var(--zl-encre)', outline: 'none', fontSize: '13px', fontFamily: 'inherit', cursor: 'pointer'
-  },
-  colorPicker: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
-  categoryStats: {
-    display: 'flex', flexDirection: 'column', gap: '8px',
-    padding: '12px', background: 'var(--zl-creux)',
-    borderRadius: '10px', border: '1px solid var(--zl-trait)', marginTop: '4px'
-  },
-  categoryStatItem: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--zl-douce)' },
-
-  // Task Modal spécifiques
-  workloadAlert: {
-    display: 'flex', alignItems: 'flex-start', gap: '10px',
-    padding: '12px', borderRadius: '10px', border: '1px solid',
-    marginBottom: '14px'
-  },
-  workloadAlertContent: { flex: 1 },
-  workloadWarningItem: { color: 'var(--zl-douce)', fontSize: '12px', lineHeight: '1.5' },
-  suggestBtn: {
-    display: 'flex', alignItems: 'center', gap: '4px',
-    padding: '3px 8px', background: 'var(--zl-cuivre-voile)',
-    border: '1px solid var(--zl-cuivre-voile)', borderRadius: '6px',
-    color: 'var(--zl-cuivre)', fontSize: '10px', fontWeight: '600', cursor: 'pointer',
-    marginLeft: '8px'
-  },
-  suggestionsDropdown: {
-    marginTop: '6px', background: 'var(--zl-fond-2)', border: '1px solid var(--zl-cuivre-voile)',
-    borderRadius: '10px', overflow: 'hidden', boxShadow: '0 8px 30px rgba(0,0,0,0.4)'
-  },
-  suggestionsHeader: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    padding: '8px 12px', borderBottom: '1px solid var(--zl-trait)',
-    fontSize: '12px', color: 'var(--zl-cuivre)', fontWeight: '700'
-  },
-  closeSuggestBtn: {
-    marginLeft: 'auto', background: 'transparent', border: 'none',
-    color: 'var(--zl-faible)', cursor: 'pointer', display: 'flex', alignItems: 'center'
-  },
-  suggestionItem: {
-    padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--zl-creux)',
-    transition: 'background 0.15s'
-  },
-  suggestionMain: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' },
-  suggestionName: { color: 'var(--zl-encre)', fontSize: '13px', fontWeight: '600' },
-  suggestionScore: {
-    background: 'var(--zl-teal-voile)', color: 'var(--zl-teal)',
-    padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '700'
-  },
-  suggestionFactors: { display: 'flex', gap: '4px', flexWrap: 'wrap' },
-  factorChip: {
-    padding: '2px 6px', background: 'var(--zl-trait)',
-    borderRadius: '6px', fontSize: '10px'
-  },
-  predictionHint: {
-    display: 'flex', alignItems: 'center', gap: '6px',
-    marginTop: '6px', padding: '6px 10px', background: 'var(--zl-cuivre-voile)',
-    border: '1px solid var(--zl-cuivre-voile)', borderRadius: '8px',
-    fontSize: '11px', color: 'var(--zl-douce)', flexWrap: 'wrap'
-  },
-  applyPredictionBtn: {
-    marginLeft: 'auto', padding: '3px 8px', background: 'var(--zl-cuivre-voile)',
-    border: '1px solid var(--zl-cuivre-voile)', borderRadius: '6px',
-    color: 'var(--zl-cuivre)', fontSize: '10px', fontWeight: '600', cursor: 'pointer'
-  },
-  settingsBox: {
-    marginTop: '16px', padding: '14px', borderRadius: '12px',
-    background: 'var(--zl-cuivre-voile)', border: '1px solid var(--zl-cuivre-voile)'
-  },
-  sectionTitle: {
-    margin: '0 0 12px', color: 'var(--zl-encre)', fontSize: '12px', fontWeight: '700',
-    display: 'flex', alignItems: 'center', gap: '6px'
-  },
-  checkboxGrid: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' },
-  checkboxItem: {
-    display: 'flex', alignItems: 'center', gap: '8px',
-    color: 'var(--zl-douce)', fontSize: '12px', cursor: 'pointer',
-    padding: '7px 10px', borderRadius: '8px',
-    background: 'var(--zl-creux)', border: '1px solid var(--zl-creux)'
-  },
-
-  // Shortcuts
-  shortcutRow: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '8px 0', borderBottom: '1px solid var(--zl-creux)'
-  },
-  kbd: {
-    padding: '4px 10px', background: 'var(--zl-cuivre-voile)',
-    border: '1px solid var(--zl-cuivre-voile)', borderRadius: '6px',
-    color: 'var(--zl-cuivre)', fontSize: '12px', fontWeight: '700', fontFamily: 'monospace'
-  },
-
-  // Skeleton
-  skeletonCard: {
-    background: 'var(--zl-surface)', borderRadius: '14px',
-    border: '1px solid var(--zl-trait)', padding: '14px'
-  },
-  skeletonHeader: { display: 'flex', alignItems: 'center', gap: '10px' },
-  skeletonCircle: {
-    borderRadius: '10px',
-    background: 'linear-gradient(90deg, var(--zl-creux) 25%, var(--zl-trait) 50%, var(--zl-creux) 75%)',
-    backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite'
-  },
-  skeletonLine: {
-    height: 14, borderRadius: '6px',
-    background: 'linear-gradient(90deg, var(--zl-creux) 25%, var(--zl-trait) 50%, var(--zl-creux) 75%)',
-    backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite'
-  },
-
-  // Buttons
-  btnPrimary: {
-    display: 'inline-flex', alignItems: 'center', gap: '6px',
-    padding: '10px 18px', borderRadius: '10px', border: 'none',
-    background: 'linear-gradient(135deg, var(--zl-cuivre), var(--zl-cuivre-fort))',
-    color: 'var(--zl-sur-cuivre)', fontWeight: '700', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
-  },
-  btnSecondary: {
-    display: 'inline-flex', alignItems: 'center', gap: '6px',
-    padding: '10px 16px', borderRadius: '10px',
-    border: '1px solid var(--zl-trait)', background: 'var(--zl-creux)',
-    color: 'var(--zl-douce)', fontWeight: '600', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
-  },
-  btnDanger: {
-    display: 'inline-flex', alignItems: 'center', gap: '6px',
-    padding: '10px 18px', borderRadius: '10px', border: 'none',
-    background: 'linear-gradient(135deg, var(--zl-corail), var(--zl-corail-fort))',
-    color: 'var(--zl-encre)', fontWeight: '700', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit'
-  },
 }

@@ -684,9 +684,17 @@ describe('la vue Équipes', () => {
     // la vue s'ouvre triée par nom
     expect(cartes.map((c) => c.querySelector('.eqv2-carte-nom').textContent)).toEqual(['Expédition', 'Maintenance'])
     const maintenance = cartes.find((c) => c.textContent.includes('Maintenance'))
-    // le trait de couleur de l'équipe couronne la carte
+    // la couleur de l'équipe couronne la carte, mais elle n'est plus peinte
+    // en ligne : elle ENTRE dans la carte par une variable de peau,
+    // `--eqv-teinte`, posée sur l'article. C'est `EquipesVue.css` qui en fait
+    // le lavis du papier, le trait de feutre de 6 px et sa saignée — une
+    // attribution `style` battrait n'importe quel sélecteur de feuille, donc
+    // la donnée se transmet, la peinture s'écrit dans la charte.
+    expect(maintenance.getAttribute('style')).toContain('--eqv-teinte')
+    expect(maintenance.getAttribute('style')).toMatch(/2F7F73|rgb\(47, 127, 115\)/i)
     const trait = maintenance.querySelector('.eqv2-carte-trait')
-    expect(trait.getAttribute('style')).toContain('rgb(47, 127, 115)')
+    expect(trait).not.toBeNull()
+    expect(trait.hasAttribute('style')).toBe(false)
     expect(maintenance.querySelector('.eqv2-carte-note').textContent).toContain('Ligne de production')
     expect(maintenance.querySelector('.eqv2-carte-pied').textContent).toContain('2 membres')
   })

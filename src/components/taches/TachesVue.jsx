@@ -132,6 +132,9 @@ function CarteTache({ tache, selection, equipe, onBasculer, onOuvrir, onModifier
       className="tqv2-fiche"
       data-priorite={tache.priority || 'medium'}
       data-selection={selection ? 'oui' : 'non'}
+      /* même règle qu'en Équipes : la teinte de la catégorie est une DONNÉE,
+         elle est posée en variable et peinte par la feuille */
+      style={{ '--tqv-teinte': tache.category?.color || undefined }}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData('text/tache', tache.id)
@@ -157,6 +160,11 @@ function CarteTache({ tache, selection, equipe, onBasculer, onOuvrir, onModifier
         <span className={`tqv2-priorite tqv2-priorite--${ton}`}>
           {getPriorityLabel(tache.priority)}
         </span>
+        {/* le MOT de la catégorie, posé à côté de sa teinte : une carte
+            colorée sans nom de catégorie serait une couleur seule (C7) */}
+        {tache.category?.name && (
+          <span className="tqv2-fiche-categorie">{tache.category.name}</span>
+        )}
         {tache.due_at && (
           <span className={`tqv2-fiche-date${retard ? ' tqv2-fiche-date--retard' : ''}`}>
             <CalendarDays size={12} aria-hidden="true" />

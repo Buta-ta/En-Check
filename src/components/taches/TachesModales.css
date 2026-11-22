@@ -1,0 +1,765 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   FENÊTRES DES TÂCHES EN POST-IT — 22/11/2026
+   Les quatre fenêtres de l'onglet (tâche, catégorie, suppression, raccourcis)
+   reçoivent la peau de la fiche employé, à l'identique des fenêtres des
+   Équipes de la veille : feuille à coin carré, contour d'encre de 2 px, bande
+   de colle de 14 px, rabat plié au coin bas-droit, double feutre en deux
+   ombres dures. `tam-voile` porte les variables du thème de la feuille ; tout le
+   reste est classe.
+
+   JUMELLES STRICTES de `EquipesModales.css`. Les deux feuilles se
+   ressemblent parce qu'elles habillent le même objet — un voile et une
+   feuille posée dessus — et non par paresse : quand une des deux change de
+   mesure, l'autre doit changer avec elle, sinon les deux onglets de la même
+   page n'ont plus la même épaisseur de papier.
+
+   Quatre règles de tenue, déjà mesurées ailleurs dans le dépôt :
+   • `border-radius: 0` SANS UNITÉ : l'audit C10 ne lit que les valeurs en px,
+     un coin carré ne coûte donc rien à l'échelle des rayons ;
+   • la bande de colle est une COUCHE DE FOND (`background-image`) et le papier
+     une `background-color` : le raccourci `background:` effacerait l'une des
+     deux — c'est le piège qui a fait disparaître la bande sur la fiche ;
+   • le rabat est peint en pseudo-élément, jamais en `clip-path` : la découpe
+     rognerait la `box-shadow` et le double feutre partirait avec le coin ;
+   • le double feutre est fait de DEUX ombres dures empilées (papier par-dessus
+     encre), pas d'un calque absolu.
+
+   Ce que la peau corrige de l'île « perles zoulou » (tout était posé en
+   `style={…}` dans le JS, donc aucune feuille ne pouvait rattraper) :
+   • `backdropFilter: blur(6px)` et `boxShadow: 0 24px 80px` → aucun flou ;
+   • voile `rgba(0,0,0,0.8)` → `--charte-modale-voile`, l'espresso à 44 % ;
+   • `borderRadius: 18` sur la feuille, 10 sur les champs → les jetons ;
+   • largeurs 340 / 420 / 520 / 800 → 420 / 420 / 560 / 760 (D-020). La
+     fenêtre de tâche perd 40 px : c'est le registre qui parle, pas moi.
+
+   Aucun `container-type` ici, et c'est voulu : une modale est `position:
+   fixed`, sa largeur vient du viewport, donc les `@media` fenêtre sont la
+   bonne référence — comme la fiche et comme les Équipes.
+
+   Les deux seules largeurs qui se lisent encore en ligne dans le JSX sont les
+   teintes de catégorie du sélecteur : des DONNÉES, pas du style.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.tam-voile {
+  --qm-pli: 14px;
+  --qm-colle: calc(var(--qm-pli) + 1px);
+  --qm-decalage: 3px;
+
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--charte-espace-4);
+  /* le voile de la maison : l'espresso à 44 %, jamais du noir à 80 %. Il
+     assourdit la page, il ne l'efface pas — et il ne floute rien */
+  background: var(--charte-modale-voile);
+}
+
+/* ── la feuille ───────────────────────────────────────────────────────────── */
+
+.tam-feuille {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--charte-modale-moyenne);
+  /* la hauteur UTILE, pas `90vh` : voile (2 × 16 px) + l'ombre décalée (3 px)
+     + la respiration. Une modale centrée en flex qui déborde se coupe PAR LE
+     HAUT — l'en-tête devient injoignable, la faute relevée sur la fiche */
+  max-height: calc(100vh - var(--qm-decalage) * 2 - 48px);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  /* la bande de colle : plus claire sur les 14 premiers px, un filet d'encre à
+     son pied, puis rien. En couche, jamais en raccourci */
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 45%, transparent) 0 var(--qm-pli),
+    color-mix(in srgb, var(--charte-encre) 16%, transparent) var(--qm-pli)
+      var(--qm-colle),
+    transparent var(--qm-colle)
+  );
+  /* le double feutre : une seconde feuille décalée en bas à droite. La première
+     ombre (papier, débord 6 px) masque la seconde (encre, débord 8 px) partout
+     sauf sur les 2 px du bord. Flou à zéro dans les deux : C9 ne bronche pas */
+  box-shadow:
+    var(--qm-decalage) var(--qm-decalage) 0 6px
+      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
+    var(--qm-decalage) var(--qm-decalage) 0 8px var(--charte-encre);
+  /* la feuille du dessous déborde : le rognage serait un crime — c'est aussi
+     ce qui tuait le double feutre quand l'île posait `overflow: hidden` */
+  overflow: visible;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+}
+
+.tam-feuille--petite { max-width: var(--charte-modale-petite); }
+.tam-feuille--large { max-width: var(--charte-modale-large); }
+
+/* le rabat, au coin bas-droit : le dos de la feuille, 14 px, le trait de pliure
+   sur l'hypoténuse. Aucun bouton ne le touche : la barre du bas se retire de
+   son côté, voir `.tam-pied` */
+.tam-feuille::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--qm-pli);
+  height: var(--qm-pli);
+  background: linear-gradient(
+    to top left,
+    transparent 0 44%,
+    var(--charte-encre) 44% 50%,
+    color-mix(in srgb, var(--charte-blanc) 60%, var(--charte-surface)) 50%
+  );
+  pointer-events: none;
+}
+
+/* ── l'en-tête ────────────────────────────────────────────────────────────── */
+
+.tam-tete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4) var(--charte-espace-4) var(--charte-espace-3);
+  border-bottom: 1px solid var(--charte-bordure);
+}
+
+.tam-tete-bloc {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-3);
+  min-width: 0;
+}
+
+/* la pucelle : le carré d'icône de la fiche employé, mêmes mesures — 44 px,
+   cadre d'encre, papier creux, ombre dure. Le carré cuivre de l'île saute :
+   sur une note, le papier suffit à faire l'objet */
+.tam-pucelle {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface2);
+  color: var(--charte-texte);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.tam-titre {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  margin: 0;
+  font-size: var(--charte-taille-titre);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--charte-encre);
+}
+
+.tam-fermer {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-texte);
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+.tam-fermer:hover {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+.tam-fermer--menu {
+  width: 22px;
+  height: 22px;
+  border: none;
+}
+
+/* ── le corps, la grille et les champs ────────────────────────────────────── */
+
+.tam-corps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-4);
+  overflow-y: auto;
+}
+
+.tam-corps--centre {
+  align-items: center;
+  text-align: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-6) var(--charte-espace-5) var(--charte-espace-5);
+}
+
+/* deux colonnes, comme l'île le faisait — seule la fenêtre de tâche s'en sert */
+.tam-grille {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--charte-espace-3);
+}
+
+.tam-champ {
+  display: grid;
+  gap: var(--charte-espace-1);
+  min-width: 0;
+}
+.tam-champ--large { grid-column: 1 / -1; }
+
+.tam-etiquette,
+.tam-champ > label {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* l'étiquette qui porte un bouton (Suggérer, le spinner de prédiction) : le
+   mot reste à gauche, l'action à droite de la même ligne */
+.tam-libelle--action {
+  justify-content: space-between;
+  gap: var(--charte-espace-2);
+}
+
+.tam-saisie {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-blanc);
+  color: var(--charte-encre);
+  font-family: inherit;
+  font-size: var(--charte-taille-corps);
+  outline: none;
+}
+.tam-saisie::placeholder { color: var(--charte-douce); }
+.tam-saisie:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--charte-encre);
+}
+.tam-saisie--longue {
+  min-height: 70px;
+  resize: vertical;
+}
+select.tam-saisie { cursor: pointer; }
+
+/* le focus se marque au trait de 2 px décalé de 2 (kit, mesures) : jamais un
+   halo flou, jamais une couleur d'or */
+.tam-btn:focus-visible,
+.tam-fermer:focus-visible,
+.tam-couleur:focus-visible,
+.tam-faisceau:focus-visible,
+.tam-appliquer:focus-visible,
+.tam-faisceau-ligne:focus-visible,
+.tam-coche:focus-within {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* ── le sélecteur de couleur : la teinte est une donnée, le choisi un marqueur ── */
+
+.tam-couleurs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-1);
+}
+
+.tam-couleur {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  cursor: pointer;
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+.tam-couleur:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+.tam-couleur[aria-pressed='true'] {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 0 var(--charte-encre);
+}
+/* l'anneau du choisi est en PAPIER, posé par-dessus la teinte : un anneau de
+   la couleur elle-même ne se verrait pas sur la couleur elle-même */
+.tam-couleur[aria-pressed='true']::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-shadow: inset 0 0 0 3px var(--charte-blanc);
+}
+
+/* ── les statistiques d'une catégorie en édition ─────────────────────────── */
+
+.tam-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: var(--charte-surface2);
+}
+
+.tam-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-corps);
+}
+.tam-stat strong {
+  color: var(--charte-encre);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.tam-stat svg { color: var(--charte-texte); }
+
+/* ── l'alerte de charge ──────────────────────────────────────────────────── */
+
+.tam-charge {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-alerte);
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--charte-alerte) 9%, var(--charte-blanc));
+}
+.tam-charge[data-ton='critique'] {
+  border-color: var(--charte-erreur);
+  background-color: color-mix(in srgb, var(--charte-erreur) 9%, var(--charte-blanc));
+}
+.tam-charge-ico {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--charte-alerte);
+}
+.tam-charge[data-ton='critique'] .tam-charge-ico { color: var(--charte-erreur); }
+.tam-charge-corps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.tam-charge-ligne {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  line-height: 1.5;
+}
+
+/* ── le faisceau : les suggestions d'affectation ─────────────────────────── */
+
+.tam-faisceau {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  padding: 2px var(--charte-espace-2);
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: transparent;
+  color: var(--charte-texte);
+  font-family: inherit;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+.tam-faisceau:hover:not(:disabled) {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+.tam-faisceau:disabled {
+  border-color: var(--charte-bordure);
+  background-color: var(--charte-btn-desactive);
+  color: var(--charte-btn-desactive-texte);
+  cursor: progress;
+}
+
+.tam-faisceaux {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--charte-espace-1);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-blanc);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.tam-faisceaux-tete {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border-bottom: 1px solid var(--charte-bordure);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.tam-faisceaux-tete svg:first-child { color: var(--charte-texte); }
+.tam-faisceaux-tete > span { flex: 1; }
+
+.tam-faisceau-ligne {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-1);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border-bottom: 1px solid var(--charte-bordure);
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+.tam-faisceau-ligne:last-child { border-bottom: none; }
+/* le survol change le papier, pas le trait : c'est une cible, pas un état */
+.tam-faisceau-ligne:hover {
+  background-color: var(--charte-surface2);
+}
+
+.tam-faisceau-corps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-2);
+}
+.tam-faisceau-nom {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+}
+.tam-faisceau-score {
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-corps);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.tam-motifs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-1);
+}
+.tam-motif {
+  padding: 1px var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-pilule);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+}
+/* l'impact porte un MOT (la étiquette de la base) ; la couleur ne fait que le
+   répéter — C7 est respectée dans les deux sens */
+.tam-motif[data-impact='pour'] {
+  border-color: color-mix(in srgb, var(--charte-succes) 45%, transparent);
+  color: var(--charte-succes);
+}
+.tam-motif[data-impact='contre'] {
+  border-color: color-mix(in srgb, var(--charte-erreur) 45%, transparent);
+  color: var(--charte-erreur);
+}
+
+/* ── l'indice de prédiction ──────────────────────────────────────────────── */
+
+.tam-indice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border: 1px dashed var(--charte-bordure);
+  border-radius: 0;
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+}
+.tam-indice svg { color: var(--charte-texte); }
+
+.tam-appliquer {
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  border-bottom: 1px solid currentColor;
+  background: transparent;
+  color: var(--charte-btn-lien);
+  font-family: inherit;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  cursor: pointer;
+}
+.tam-appliquer:hover { color: var(--charte-encre); }
+
+/* ── les exigences de validation ─────────────────────────────────────────── */
+
+.tam-exigences {
+  padding: var(--charte-espace-3);
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: var(--charte-surface2);
+}
+
+.tam-exigences-titre {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  margin: 0 0 var(--charte-espace-2);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.tam-exigences-titre svg { color: var(--charte-texte); }
+
+.tam-coches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--charte-espace-2);
+}
+
+.tam-coche {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border: 1px solid transparent;
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-corps);
+  cursor: pointer;
+  transition: border-color var(--charte-duree) var(--charte-easing);
+}
+.tam-coche:hover { border-color: var(--charte-bordure); }
+.tam-coche[data-coche='oui'] {
+  border-color: var(--charte-encre);
+  background-color: var(--charte-blanc);
+  color: var(--charte-encre);
+  font-weight: 600;
+}
+
+.tam-casier {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-blanc);
+  color: var(--charte-encre);
+}
+.tam-coche[data-coche='oui'] .tam-casier {
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+}
+.tam-coche-ico { color: inherit; }
+
+/* la vraie case reste DANS l'arbre accessible — `display: none` l'en sortait ;
+   elle est posée sous le casier, invisible, et c'est le `:focus-within` de la
+   ligne qui montre l'anneau */
+.tam-case-cachee {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── la confirmation de suppression ──────────────────────────────────────── */
+
+.tam-alerte {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--charte-erreur) 12%, var(--charte-surface));
+  color: var(--charte-erreur);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.tam-titre--scene {
+  /* la taille du corps en 800, comme la confirmation des Équipes : les deux
+     îles jumelles doivent avoir le même mot au même poids */
+  font-size: var(--charte-taille-corps);
+  font-weight: 800;
+}
+
+.tam-texte {
+  margin: 0 0 var(--charte-espace-3);
+  color: var(--charte-douce);
+  line-height: 1.5;
+}
+.tam-texte strong {
+  color: var(--charte-encre);
+  font-weight: 700;
+}
+
+/* ── les raccourcis ───────────────────────────────────────────────────────── */
+
+.tam-raccourci {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-3);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--charte-bordure);
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-corps);
+}
+.tam-raccourci:last-child { border-bottom: none; }
+
+.tam-raccourci kbd {
+  padding: 3px 8px;
+  border: 1px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-micro);
+  font-weight: 800;
+}
+
+/* ── les boutons : une seule variante pleine par écran (kit, règle 1) ────── */
+
+.tam-pied {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--charte-espace-2);
+  /* à droite et en bas, la respiration du rabat : 14 px de dos de feuille ne
+     doivent manger ni « Annuler » ni « Créer la tâche » */
+  padding: var(--charte-espace-3) calc(var(--qm-pli) + 6px) var(--qm-pli) var(--charte-espace-4);
+  border-top: 1px solid var(--charte-bordure);
+  margin-top: var(--charte-espace-1);
+}
+
+/* la confirmation à plat : les deux boutons se partagent la largeur */
+.tam-pied--partage {
+  width: 100%;
+  padding: 0;
+  border-top: none;
+}
+.tam-pied--partage > * { flex: 1; }
+
+.tam-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 8px var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background-color: transparent;
+  color: var(--charte-texte);
+  font-family: inherit;
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+.tam-btn:hover:not(:disabled) {
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+  transform: translate(-1px, -1px);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* l'engagement se remplit d'espresso, pas d'or et pas d'argile : la seule
+   action pleine de l'écran, une par fenêtre (kit, règle 1) */
+.tam-btn--pleine {
+  background-color: var(--charte-espresso);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+  font-weight: 700;
+  box-shadow: var(--charte-ombre-dure);
+}
+.tam-btn--pleine:hover:not(:disabled) {
+  background-color: var(--charte-espresso);
+  color: var(--charte-blanc);
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 0 var(--charte-encre);
+}
+
+/* le rouge est réservé à l'irréversible, et seulement après confirmation (kit,
+   règle 2). Le bouton « Supprimer » de la fenêtre de catégorie EST cette
+   confirmation : au premier clic il se vide, au second il agit — l'état se lit
+   aussi dans le MOT, « Confirmer » */
+.tam-btn--danger {
+  background-color: transparent;
+  border-color: var(--charte-erreur);
+  color: var(--charte-erreur);
+  font-weight: 700;
+}
+.tam-btn--danger:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--charte-erreur) 9%, var(--charte-blanc));
+  color: var(--charte-erreur);
+}
+.tam-btn--danger[data-confirme='oui'] {
+  background-color: var(--charte-btn-danger);
+  border-color: var(--charte-encre);
+  color: var(--charte-blanc);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* le désactivé n'est jamais une opacité réduite (kit, règle 3) */
+.tam-btn:disabled {
+  background-color: var(--charte-btn-desactive);
+  border-color: var(--charte-bordure);
+  color: var(--charte-btn-desactive-texte);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── une fenêtre de tâche sur deux colonnes a besoin de sa largeur ────────── */
+
+@media (max-width: 820px) {
+  .tam-grille,
+  .tam-coches {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .tam-voile {
+    padding: var(--charte-espace-2);
+  }
+  .tam-feuille {
+    max-height: calc(100vh - var(--qm-decalage) * 2 - var(--charte-espace-4));
+  }
+  .tam-tete,
+  .tam-corps {
+    padding: var(--charte-espace-3);
+  }
+  .tam-pied {
+    padding-left: var(--charte-espace-3);
+  }
+}
