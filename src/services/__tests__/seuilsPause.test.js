@@ -97,6 +97,24 @@ describe('⏱️ Seuils de pause — qui a touché, et quoi', () => {
     expect(MIGRATION).toContain('last_name')
   })
 
+  it('l’écran ne prétend pas que le plafond s’arrête sans grille', () => {
+    //  Mesuré en base le 22/11/2026 sur un employé SANS aucune grille
+    //  (Reine, Pharmacie Blanche Gomes) : une pause de 150 min est bien
+    //  marquée « très longue » par `encheck_pauses_controler`.
+    //
+    //  La boucle des anomalies est HORS du garde `v_plan` — contrairement
+    //  aux présomptions. Une phrase du type « sans grille, aucune des deux
+    //  règles ne s'applique » serait donc fausse et ferait croire à un
+    //  administrateur que son plafond ne sert à rien.
+    const page = readFileSync('src/pages/ConfigurationPointeuse.jsx', 'utf8')
+    expect(page).toContain('même sans grille horaire')
+    expect(page).not.toMatch(/sans grille[^.]*aucune de ces deux r[èe]gles/i)
+    expect(page).not.toMatch(/aucune des deux r[èe]gles/i)
+
+    //  Et la tolérance, elle, dit franchement qu'elle a besoin d'une grille.
+    expect(page).toContain('Sans grille, cette règle ne')
+  })
+
   it('la relecture retrouve le nom : maj_par porte un user_id, pas un admins.id', () => {
     //  Défaut trouvé en appliquant la migration le 15/11/2026 : `maj_par`
     //  reçoit `encheck_auteur_actuel()`, c'est-à-dire le `sub` du JWT, donc

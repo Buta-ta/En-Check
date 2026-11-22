@@ -1616,7 +1616,8 @@ export default function ConfigurationPointeuse() {
                       <small id="cp-seuil-tol-aide">
                         Une pause peut dépasser son créneau de ce nombre de minutes avant
                         d’être signalée. Ce n’est pas la pause prévue : elle vient de la
-                        grille horaire de chaque employé.
+                        grille horaire de chaque employé. Sans grille, cette règle ne
+                        s’applique pas — il n’y a rien à comparer.
                       </small>
                     </div>
                     <div className="cp-seuil-saisie">
@@ -1644,8 +1645,9 @@ export default function ConfigurationPointeuse() {
                       <b id="cp-seuil-max-titre">Plafond d’une pause</b>
                       <small id="cp-seuil-max-aide">
                         Au-delà, la pause est marquée « très longue » et le manager est
-                        prévenu. Une sortie en pleine pause au-delà de ce plafond demande
-                        une vérification.
+                        prévenu — <b>même sans grille horaire</b>, puisque c’est une durée
+                        absolue et non un écart. Une sortie en pleine pause au-delà de ce
+                        plafond demande une vérification.
                       </small>
                     </div>
                     <div className="cp-seuil-saisie">
@@ -1682,6 +1684,16 @@ export default function ConfigurationPointeuse() {
                         </li>
                       ))}
                     </ul>
+                    {/*  La deuxième règle, dite à part : elle ne dépend pas de la
+                        grille. Le confondre avec la tolérance ferait croire à un
+                        administrateur que son plafond ne sert à rien sans grille.
+                        (Vérifié en base le 22/11/2026 : un employé sans aucune
+                        grille, pause de 150 min → marquée « très longue ».) */}
+                    <p className="cp-seuil-note-grille">
+                      Sans grille horaire, seule la deuxième règle s’applique : une pause
+                      de plus de {saisieSeuils.max || '…'} min reste « très longue ». Le
+                      dépassement, lui, n’a pas de créneau à quoi se comparer.
+                    </p>
                   </div>
                 </div>
 
