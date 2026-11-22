@@ -32,6 +32,11 @@ import {
   PAYS_EXIGEANT_ZONE,
   TAUX_FERIE_PAR_DEFAUT,
 } from './feriesMajoration'
+import {
+  agregerParSemaine,
+  evaluerSeuilsHebdo,
+  messageDepassement,
+} from './plafondHebdomadaire'
 
 //  Aucun seuil de pointage n'est plus écrit en dur dans ce moteur : ils viennent
 //  de `encheck_reglages_pointage` (voir src/services/seuilsPointage.js). Les
@@ -364,6 +369,29 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     ? Math.round((monthWorkedSeconds / monthExpectedSeconds) * 100)
     : null
 
+  // ── 11-bis) Fenêtres de 7 jours ───────────────────────────────
+  //  ⚠️ Ce n'est PAS un cumul annuel : c'est `somme_fenetre(employé, 7 j)`.
+  //  Les semaines sont calculées sur des fenêtres complètes (lundi → dimanche),
+  //  y compris celles à cheval sur deux mois : sinon 50 h pourraient se cacher
+  //  dans deux « semaines » de 25 h au 1ᵉʳ du mois.
+  const debutSemaines = getWeekPeriod(monthPeriod.startDate).startDate
+  const finSemaines = getWeekPeriod(monthPeriod.endDate).endDate
+  const secondesParJour = {}
+  for (const d of listDaysInclusive(debutSemaines, finSemaines)) {
+    secondesParJour[d] = (daySummaries[d] || {}).totalSeconds || 0
+  }
+  const plafondHebdo = evaluerSeuilsHebdo({
+    semaines: agregerParSemaine({
+      secondesParJour,
+      debut: debutSemaines,
+      fin: finSemaines,
+    }),
+    //  Seuils d'HEURES SUPÉRIEURES de l'entreprise (40 h / 48 h). Ce ne sont
+    //  pas des plafonds légaux : aucun texte n'est invoqué ici.
+    seuil: hasOvertimeFeature && overtimeSettings ? overtimeSettings.weekly_threshold : null,
+    seuilMajeur: hasOvertimeFeature && overtimeSettings ? overtimeSettings.weekly_threshold_major : null,
+  })
+
   // ✅ NOUVEAU : Structure avec taux dynamiques
   const monthData = {
     period: formatMonthYearFR(monthPeriod.startDate),
@@ -424,6 +452,17 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
 
     //  ⚠️ B — ce que le moteur a réparé tout seul ce mois-ci.
     anomalies: monthAnomalies,
+
+    //  📅 Fenêtres de 7 jours (semaine complète, même à cheval sur deux mois).
+    //  `source: 'entreprise'` : ce sont les seuils d'heures sup paramétrés,
+    //  pas un plafond légal — le mot importe.
+    plafond_hebdo: {
+      ...plafondHebdo,
+      periode: { debut: debutSemaines, fin: finSemaines },
+      note: plafondHebdo.disponible
+        ? 'Seuil d’entreprise (heures supplémentaires hebdomadaires), pas un plafond légal.'
+        : 'Aucun seuil hebdomadaire configuré : la semaine n’est pas évaluée.',
+    },
   }
 
   // 🎌 Trace des fériés : combien de temps, à quel taux, sur quelle base.
@@ -1771,10 +1810,15 @@ function generateAlerts({ today, month, year, hasPlan, seuils, feries }) {
     alerts.push({ type: 'warning', message: `${year.delays.count} retard(s) cette année` })
   }
 
+  const messageHebdo = messageDepassement(month?.plafond_hebdo)
+  if (messageHebdo) {
+    alerts.push({ type: 'warning', message: messageHebdo })
+  }
+
   if (month?.rate !== null && month?.rate !== undefined) {
     if (month.rate > 110) alerts.push({ type: 'warning', message: `Surcharge détectée : ${month.rate}% de la capacité` })
     if (month.rate < 70 && month.rate > 0) alerts.push({ type: 'warning', message: `Sous-utilisation : seulement ${month.rate}% de la capacité` })
-      if (alerts.length === 0 && month.rate >= 90 && month.rate <= 105) alerts.push({ type: 'success', message: 'Performance optimale ce mois' })
+    if (alerts.length === 0 && month.rate >= 90 && month.rate <= 105) alerts.push({ type: 'success', message: 'Performance optimale ce mois' })
   }
 
   //  🎌 Fériés : on ne peut pas « majorer » ce qu'on ne sait pas chiffrer.
