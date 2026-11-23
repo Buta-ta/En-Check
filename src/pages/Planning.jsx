@@ -2936,7 +2936,12 @@ export default function Planning() {
       // l'enregistrement échouer sans explication : refuser ici empêcherait le
       // fondateur de réparer son propre brouillon.
       const teinteDemandee = normaliserTeinte(employeeScheduleForm.custom_color);
-      if (teinteDemandee.message) toast.message(teinteDemandee.message);
+      // un avis NEUTRE se dit `toast(...)`. `toast.message` serait l'API d'une
+      // autre bibliothèque : n'existant pas, elle levait un TypeError dans le
+      // `try`, et l'enregistrement entier partait dans son `catch` — le 23/11,
+      // en production, pendant vingt minutes. La liste des méthodes autorisées
+      // est verrouillée par contrat, dans le fichier de tests de câblage.
+      if (teinteDemandee.message) toast(teinteDemandee.message);
       const couleur = teinteDemandee.teinte || TEINTE_PAR_DEFAUT;
 
       // Les quatre heures suivent la même règle, avec une exception : une heure
@@ -2974,7 +2979,7 @@ export default function Planning() {
       }
       reglagesHeures
         .filter((h) => h.message && h.heure !== null)
-        .forEach((h) => toast.message(h.message));
+        .forEach((h) => toast(h.message));
       const [debut, fin, pauseDebut, pauseFin] = reglagesHeures;
 
       const dateCible = cellEditContext?.dateStr || null;
@@ -2988,7 +2993,7 @@ export default function Planning() {
       // d'avant tout choix, « la ligne décide » — ce n'est pas une punition.
       const carteJour = carteDeTeintes(ligneExistante);
       if (carteJour.retirees > 0) {
-        toast.message(
+        toast(
           `${carteJour.retirees} autre${carteJour.retirees > 1 ? "s" : ""} jour${
             carteJour.retirees > 1 ? "s" : ""
           } portaient une teinte que la base refuse ; ils reprennent la teinte de l'horaire.`

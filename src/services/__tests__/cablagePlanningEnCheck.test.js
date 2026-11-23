@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
+import toast from 'react-hot-toast'
 
 const ROOT = path.resolve(import.meta.dirname, '../../..')
 const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
@@ -1583,7 +1584,7 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // son propre brouillon
     expect(ecriture).toContain("const heureBloquante = reglagesHeures.find((h) => h.message && h.heure === null)")
     expect(ecriture).toContain('toast.error(heureBloquante.message)')
-    expect(ecriture).toContain('toast.message(h.message)')
+    expect(ecriture).toContain('.forEach((h) => toast(h.message));')
     // la carte des jours n'est plus étendue à l'aveugle
     expect(ecriture).toContain('...carteJour.carte,')
     expect(ecriture).toContain('const carteJour = carteDeTeintes(ligneExistante);')
@@ -1653,6 +1654,40 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
       planningSrc.indexOf('═══ CALENDRIER MENSUEL')
     )
     expect(revue).toContain('toast.error(causeRejetBase(error))')
+
+    // UNE MÉTHODE D'EMPRUNT NE SE VOIT QU'AU CLIC. Vingt minutes après le
+    // déploiement du contrôle de teinte, l'enregistrement plantait d'une
+    // `TypeError` produite PAR cet chantier : un avis s'écrivait
+    // `toast.message(...)`, qui est l'API d'une autre bibliothèque de
+    // notifications (installée ici, react-hot-toast ne la connaît pas). L'appel
+    // étant dans le `try`, il partait dans le `catch`, qui le traduisait en
+    // « refus de la base » — et le fondateur lisait un 400 de Postgres pour une
+    // faute de JavaScript, sans que la requête soit jamais partie.
+    //
+    // La liste n'est pas une invention qu'on met à jour : elle est lue sur la
+    // bibliothèque installée. Une page qui masque la variable par un élément DOM
+    // nommé `toast` serait un faux positif — vérifié le 23/11, seule
+    // `src/registerSW.js` le fait, et elle n'est pas dans ce périmètre.
+    const pages = fs
+      .readdirSync(path.join(ROOT, 'src/pages'))
+      .filter((f) => f.endsWith('.jsx'))
+      .map((f) => [f, lire(`src/pages/${f}`)])
+      .filter(
+        ([, source]) =>
+          source.includes('from "react-hot-toast"') || source.includes("from 'react-hot-toast'")
+      )
+    expect(pages.length).toBeGreaterThanOrEqual(15)
+    const inventees = []
+    for (const [nomPage, source] of pages) {
+      for (const occurrence of source.match(/toast\.([a-zA-Z]+)\(/g) || []) {
+        const methode = occurrence.slice('toast.'.length, -1)
+        if (typeof toast[methode] !== 'function') inventees.push(`${nomPage} → toast.${methode}()`)
+      }
+    }
+    expect(inventees).toEqual([])
+    // et la forme exacte qui a cassé ne revient pas
+    expect(planningSrc).not.toContain('toast.message(')
+    expect(lire('src/pages/Pointages.jsx')).not.toContain('toast.warning(')
 
     // la cause est une LISTE BLANCHE : aucun message brut du fournisseur n'est
     // recopié tel quel à l'écran (même règle que pour le MFA le 26/10)
