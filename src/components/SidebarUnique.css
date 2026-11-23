@@ -408,7 +408,16 @@
   align-self: flex-start;
   height: calc(100vh - 20px);
   flex: 0 0 auto;
-  z-index: 2;
+  /* la barre est un contexte d'empilement : tout ce qu'elle porte en
+     absolu (le registre qui se déplie par-dessus la page) est peint à SON
+     étage. À 2, le bandeau collant du Planning (`z-index: 60`) passait devant
+     le registre ouvert. Les menus qui doivent flotter plus haut que la page
+     sont portés hors d'ici (la liste d'entreprises, `se-liste--flottante`) ;
+     ce qui reste dans la barre monte à 74 : au-dessus des 60 du bandeau
+     collant et des 70 de la bande du modèle à poser — le registre ouvert couvre
+     la page, c'est son dessin —, sous les 78 de la liste d'entreprises et sous
+     la fenêtre modale (120). */
+  z-index: 74;
 }
 
 /* la hauteur utile, à l'unité près : `100vh` sur un téléphone vaut la hauteur
@@ -620,6 +629,30 @@
   animation: se-sortir 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* LA LISTE EST PORTÉE HORS DE LA BARRE (`createPortal`, voir le composant) :
+   ses coordonnées sont LUES sur la bande : à l'ouverture, à chaque défilement,
+   à chaque redimensionnement. Cette variante ne fait donc qu'une chose : poser la
+   feuille en `fixed`, à l'étage qui la met au-dessus du mobilier de la page
+   (le bandeau collant du Planning est à 60, sa bande du modèle à poser à 70)
+   et AU-DESSOUS de ce qui doit la couvrir (la fenêtre modale : 120). Le `top`
+   et le `left` du dessin d'en haut sont remis à `auto` : la seule géométrie
+   qui compte désormais est celle qui est LUE sur la bande, et une valeur écrite
+   ici en dur serait un second patron du même geste. */
+.se-liste--flottante {
+  position: fixed;
+  top: auto;
+  left: auto;
+  z-index: 78;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
+@supports (height: 100dvh) {
+  .se-liste--flottante {
+    max-height: calc(100dvh - 16px);
+  }
+}
+
 /* elle SORT du rail : un léger glissement depuis la gauche, pas un fondu */
 @keyframes se-sortir {
   from { opacity: 0; transform: translateX(-10px); }
@@ -729,6 +762,14 @@
   .se { width: auto; }
   .se-bande { flex-direction: row; max-height: none; width: auto; padding: 6px 8px; }
   .se-bande-nom { writing-mode: horizontal-tb; max-height: none; font-size: 11px; }
+  /* la liste portée hors de la barre n'a plus à s'accrocher à la rangée : son
+     bord bas est calculé, et un `bottom` hérité d'ici étirerait la feuille
+     entre deux bords. Seule la largeur reste un réglage de palier. */
+  .se-liste--flottante {
+    bottom: auto;
+    width: min(280px, calc(100vw - 32px));
+  }
+
   .se-liste {
     top: auto;
     bottom: calc(100% + 8px);
