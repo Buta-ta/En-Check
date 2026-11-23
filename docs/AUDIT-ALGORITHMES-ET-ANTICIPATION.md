@@ -631,7 +631,9 @@ Des seuils modifiables sans trace sont un bouton pour réécrire janvier depuis 
 des seuils modifiables sur un calcul faux sont un bouton qui ment deux fois. Le détail, les
 constats re-vérifiés, le modèle de données et les tests sont dans
 `docs/PLAN-REGLAGES-TEMPS-TRAVAIL.md` (lots G1→G9). Les réglages y sont portés **par
-entreprise et par employé**, clé par clé, avec un emplacement réservé aux contrats futurs.
+entreprise et par employé**, clé par clé, avec un emplacement réservé aux contrats futurs, et
+ils ont une maison unique : la page **« Mon entreprise »** du groupe Réglages, qui remplace
+l'accès factice à « Entreprises » pour les administrateurs clients.
 G1 (fenêtre à cheval sur deux années) et G2 (origine réelle des valeurs) précèdent toute
 interface ; **R3 reste bloqué par C5-mince et D3**, dont G3 ne couvre que les règles de
 temps de travail.
