@@ -1,0 +1,76 @@
+/* ═══════════════════════════════════════════════════════════
+   LA COQUE ADMIN — la géométrie de la barre, une seule fois
+
+   Ce que ce fichier contient, et LUI SEUL doit contenir :
+   · les variables que la barre lit (`--sidebar-*`), sans lesquelles sa carte
+     est transparente — la panne du « rien ne se passe » du 24/11 venait de
+     là, et c'est ce bloc qui l'a réglée sur la page Employés ;
+   · les deux colonnes : la barre à gauche, la page à droite ;
+   · `min-width: 0` sur la colonne de la page : sans lui, une grille large
+     (le Planning fait 1 140 px de plancher) remonte en `min-content` jusqu'au
+     flex-item et met le DÉFILEMENT À LA PAGE AU LIEU DU RAIL — la page entière
+     glisse, l'en-tête avec elle, et le rail sticky se comporterait comme un
+     bloc qui sort du champ. Avec lui, seul `.sk-matrix-scroll` défile.
+
+   Ce qu'il ne contient PAS : la barre elle-même (rail, registre, paliers,
+   rangée du bas) — tout cela vit dans `SidebarUnique.css` et s'accroche à
+   `.coque-admin > .sb`. Une page qui redessinerait la barre pour soi-même est
+   la barre d'avant, en deux exemplaires.
+   ═══════════════════════════════════════════════════════════ */
+
+.coque-admin {
+  /* les variables de la barre (D-018), lues par le rail et le registre */
+  --sidebar: var(--charte-barre);
+  --sidebar-ink: var(--charte-barre-ink);
+  --sidebar-muted: var(--charte-barre-muet);
+  --sidebar-line: var(--charte-barre-ligne);
+  --sidebar-active: var(--charte-barre-actif-texte);
+  --sidebar-fill: var(--charte-barre-actif);
+  --sidebar-hover: var(--charte-barre-hover);
+  --sidebar-focus: var(--charte-barre-actif);
+  --sidebar-point: var(--charte-barre-point);
+  --sidebar-count: var(--charte-barre-compteur);
+  --sidebar-count-actif: var(--charte-barre-compteur-actif);
+
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+
+  background: var(--charte-sable);
+}
+
+.coque-admin-page {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* la hauteur UtILE, pas la hauteur du navigateur — posée ici en bloc et non
+   nichée dans la règle : un `@supports` écrit dans une accolade demande l'
+   imbrication CSS, et un navigateur d'il y a trois ans ne lit pas l'imbrication.
+   100vh, sur téléphone, compte la barre d'URL repliée : la toile s'arrêtait
+   avant le bas de l'écran et la page finissait sur du vide. */
+@supports (height: 100dvh) {
+  .coque-admin {
+    min-height: 100dvh;
+  }
+}
+
+/* ── sous 821 px, la barre n'est plus une colonne : c'est une rangée posée
+      en bas de l'écran (le choix de SidebarUnique.css). La coque redevient
+      donc une pile, et la page se réserve la hauteur du rail + l'ancrage du
+      registre (72 px, la valeur que la feuille de la barre utilise déjà pour
+      son `bottom`) — sinon la dernière ligne de la page vit sous un pouce.
+      Un défilement de page, pas un défilement dans un carcan : sur téléphone
+      on lit jusqu'au bas, on ne scrolle pas deux fois. ── */
+@media (max-width: 820px) {
+  .coque-admin {
+    display: block;
+  }
+
+  .coque-admin-page {
+    padding-bottom: calc(72px + var(--charte-espace-3));
+  }
+}

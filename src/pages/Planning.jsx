@@ -71,6 +71,15 @@ import {
 } from "../lib/planningEquipes";
 import "./PlanningAfroTech.css";
 import "./PlanningPostIt.css";
+// LA COQUE, EMPRUNTÉE — pas recopiée : le composant partagé qui met la barre à
+// gauche et la page à droite, et LA barre unique de l'application (rail
+// d'icônes + registre qui se referme par paliers). Le Planning a retiré de son
+// bandeau le sélecteur d'entreprise, le voyage « Aller à » et le bouton de
+// thème le 22/11 EN PROMETTANT que le rail les fait ; le rail, ici, n'avait
+// jamais été branché. Il l'est à la même adresse que sur la page Employés.
+import CoqueAdmin from "../components/coque/CoqueAdmin";
+import SidebarUnique from "../components/SidebarUnique";
+import { sectionsNavAdmin } from "../components/coque/sectionsNavAdmin";
 
 const OVERRIDES_STORAGE_KEY = "encheck_planning_day_overrides_v1";
 const CUSTOM_MODELS_STORAGE_KEY = "encheck_planning_custom_models_v1";
@@ -315,7 +324,10 @@ export default function Planning() {
   // SEUL `darkMode` est demandé ici : le bandeau n'a plus de bouton de thème
   // (c'est un choix de l'application, pas d'une page) — la page continue de le
   // suivre, son `data-theme` se pose toujours sur la racine.
-  const { darkMode } = useTheme();
+  // `toggleTheme` est demandé depuis que le rail est là : le bouton clair /
+  // sombre vit dans la barre, une seule fois pour toute l'application — le
+  // bandeau de la page, lui, n'a jamais eu à le porter.
+  const { darkMode, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const [admin, setAdmin] = useState(null);
@@ -3144,8 +3156,77 @@ export default function Planning() {
     })
     .filter(Boolean);
 
+  // ═══ LA COQUE : les voyages et le périmètre, dans la barre ═══
+  //
+  // LE PÉRIMÈTRE N'EST PAS RE-CALCULÉ ICI. Plus haut, la page a déjà l'effet qui
+  // lit `admin.selectedEnterprise` (le choix du sélecteur GLOBAL) et le
+  // `entrepriseActive` qui en découle — c'est la promesse du bandeau du 22/11,
+  // qui avait retiré son propre sélecteur pour cette raison. Le rail ne fait
+  // qu'écrire la même valeur, à la même adresse (`last_enterprise_id_<id>`),
+  // donc choisir son établissement ici le change sur la page Employés, et
+  // l'inverse.
+  const changerEntreprise = (entreprise) => {
+    const choix = entreprise && entreprise.id ? entreprise : null;
+    setSelectedEntreprise(choix ? choix.id : "all");
+    if (admin) {
+      const misAJour = { ...admin, selectedEnterprise: choix };
+      setAdmin(misAJour);
+      try {
+        window.localStorage.setItem("admin", JSON.stringify(misAJour));
+        if (choix) {
+          window.localStorage.setItem(`last_enterprise_id_${admin.id}`, choix.id);
+        }
+      } catch {
+        /* le navigateur peut refuser le stockage : la page reste utilisable */
+      }
+    }
+  };
+
+  // Le rail a besoin d'UNE entreprise, là où la page accepte « toutes » : un
+  // administrateur qui n'a pas choisi voit la vue globale — c'est juste — mais
+  // ses rubriques, elles, s'allument sur les modules SOUSCRITS par son
+  // établissement. Lu sur `null`, le garde-fou les éteindrait toutes.
+  const entrepriseDuRail =
+    entrepriseActive ||
+    entreprises.find((e) => e.id === (admin?.selectedEnterprise?.id || admin?.enterprise_id)) ||
+    (admin?.role === "super_admin" ? null : entreprises[0]);
+
+  // Les rubriques du rail, par la fabrique partagée avec l'annuaire et la fiche
+  // employé : une seule liste pour les trois coques.
+  const moduleActif = (champ) =>
+    admin?.role === "super_admin" || Boolean(entrepriseDuRail?.[champ]);
+  const sectionsNav = sectionsNavAdmin({ admin, moduleActif });
+  const nomAdmin = admin?.name || admin?.email || "Administrateur";
+
+  const deconnexion = () => {
+    window.localStorage.removeItem("admin");
+    window.localStorage.removeItem("last_enterprise_id");
+    navigate("/login");
+  };
+
+  // LES QUATRE VUES RESTENT AU BANDEAU, ET LE RAIL N'EST PAS NOURRI EN `vues`.
+  // `SidebarUnique` sait les recevoir (`sb-rail-vues` : Semaine · Mois · Jour ·
+  // Demandes y tiendrait), mais les y mettre ferait deux interrupteurs pour la
+  // même lampe — et l'un des deux mentirait : le badge « demandes en attente »
+  // vit sur le bouton du bandeau (`pendingRequestsCount`), pas dans le rail.
+  // C'est le raisonnement du 22/11 sur le sélecteur d'entreprise, appliqué ici.
   return (
-    <div className="sk-plan-page sk-plan-page--postit" data-theme={darkMode ? "dark" : "light"}>
+    <CoqueAdmin
+      sidebar={
+        <SidebarUnique
+          sections={sectionsNav}
+          nomAdmin={nomAdmin}
+          initialeAdmin={(nomAdmin || "A").charAt(0)}
+          darkMode={darkMode}
+          surTheme={toggleTheme}
+          surDeconnexion={deconnexion}
+          entreprises={entreprises}
+          entrepriseActive={entrepriseDuRail}
+          surEntreprise={changerEntreprise}
+        />
+      }
+    >
+      <div className="sk-plan-page sk-plan-page--postit" data-theme={darkMode ? "dark" : "light"}>
       {/* ═══ LE BANDEAU DE COMMANDE — UNE FEUILLE ENCADRÉE DE TOILE (22/11/2026) ═══
           Trois choses sont SORTIES du bandeau, à la demande du fondateur :
           · le sélecteur d'entreprise — le périmètre vient du sélecteur global
@@ -6545,5 +6626,6 @@ export default function Planning() {
         </div>
       )}
     </div>
+    </CoqueAdmin>
   );
 }

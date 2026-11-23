@@ -678,6 +678,28 @@ body[data-theme="light"] .ec-assistant-panel:not([data-theme="dark"]) {
   background: var(--ec-surface);
 }
 
+/* ── LE DOCK S'ASSOIT AU-DESSUS DE LA BARRE DE NAVIGATION — 23/11/2026
+   La barre de la coque se range en bas de l'écran sous 821 px (son palier à
+   elle, `SidebarUnique.css`). Le dock, lui, ne se relevait que sous 640 : de
+   641 à 820 — la tablette, le téléphone paysagé — ses 16 px du bas tombaient
+   pile sur la rangée d'icônes, et comme il est en z-index 80 contre 60, c'est
+   la barre qui disparaissait dessous. Un seul nombre à aligner, et il vit là
+   où le dock le décide. Le porte-hauteur de la page suit de 60 px
+   (76 − 16) pour que la dernière ligne de contenu reste libre. */
+@media (max-width: 820px) and (min-width: 641px) {
+  .ec-assistant-dock {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ec-assistant-space {
+    height: 236px;
+  }
+
+  .ec-assistant-space.is-repliee {
+    height: 152px;
+  }
+}
+
 @media (max-width: 640px) {
   .ec-assistant-dock {
     width: calc(100% - 20px);
