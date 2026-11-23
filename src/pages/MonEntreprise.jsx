@@ -2,16 +2,22 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // 🏢 MON ENTREPRISE — ce que l'entreprise a décidé, et depuis quand
 //
-// TROIS SECTIONS, ET RIEN D'AUTRE
-//   1. Identité — lecture seule. Modifier le nom, le pays ou la devise reste
-//      l'affaire du super-administrateur dans « Entreprises » ; un écran qui
-//      laisse croire le contraire serait un bouton mort.
-//   2. Règles de temps de travail — la valeur en vigueur, son origine, sa date
-//      d'effet, et l'historique. Chaque écriture crée une VERSION : rien ne se
-//      réécrit, donc rien ne s'efface.
+// Maquette retenue le 24/11/2026 : `maquettes/choix-mon-entreprise.png`.
+// Le fondateur a dit : « refais la page Mon entreprise car ça ne colle pas avec
+// l'identité En-Check ». La page est donc UNE FEUILLE : bande de bogolan en
+// haut, cadre d'encre de 2 px, ombre dure à flou zéro, bandes de colle, rabat
+// au coin, registre à traits de feutre. Aucune carte à gros arrondi, aucune
+// ombre floue, aucune couleur en dur.
+//
+// QUATRE SECTIONS, ET RIEN D'AUTRE
+//   1. Identité — lecture seule. La modifier reste l'affaire du super-admin
+//      dans « Entreprises » ; un écran qui laisse croire le contraire mentirait.
+//   2. Règles de temps de travail — la valeur, son origine, sa date d'effet,
+//      l'écriture en deux temps, l'aperçu d'impact. Chaque écriture crée une
+//      VERSION : rien ne se réécrit, donc rien ne s'efface. L'historique est la
+//      colonne de droite, comme un registre qu'on tourne.
 //   3. Modèle proposé — 48 h / 50 h. Le produit PROPOSE, l'entreprise CONFIRME.
-//      Tant que personne n'a confirmé, l'écran affiche « proposition du produit,
-//      non appliquée » : c'est le `statut_source` demandé, pas un slogan.
+//   4. Pied — la dernière écriture, datée.
 //
 // CE QUE CET ÉCRAN N'INVENTE PAS
 //   · aucun « seuil légal » : aucune source pays n'est vérifiée (D5) ;
@@ -33,6 +39,7 @@ import {
   modelePropose,
   statutModele,
 } from '../lib/monEntreprise'
+import { dateEffetCourte } from '../lib/reglesPersonnelles'
 import './MonEntreprise.css'
 
 const CHAMPS_ENTREPRISE = 'id, name, code, country_code, currency, timezone, is_active'
@@ -44,6 +51,25 @@ function lireAdmin() {
   } catch {
     return null
   }
+}
+
+/** L'état d'une règle, pour le trait de feutre. */
+function etatRegle(resolution) {
+  if (!resolution || resolution.origine === 'aucune') return 'aucune'
+  if (resolution.verrouille === true) return 'verrouillee'
+  if (resolution.origine === 'employe') return 'personnelle'
+  if (resolution.origine === 'contrat') return 'contrat'
+  return 'entreprise'
+}
+
+/** Le tampon dit l'origine en trois mots, jamais une couleur seule (C7). */
+function tamponOrigine(resolution) {
+  const etat = etatRegle(resolution)
+  if (etat === 'aucune') return 'Aucune valeur'
+  if (etat === 'verrouillee') return 'Personnel · verrouillé'
+  if (etat === 'personnelle') return 'Réglage personnel'
+  if (etat === 'contrat') return 'Valeur du contrat'
+  return 'Règle de l’entreprise'
 }
 
 export default function MonEntreprise() {
@@ -195,325 +221,368 @@ export default function MonEntreprise() {
   if (admin.role !== 'super_admin' && entrepriseId && entreprises.length && !autorise) {
     return (
       <main className="me-page">
-        <div className="me-carte" role="alert">
-          <h1>Accès refusé</h1>
-          <p>Cette entreprise n’est pas rattachée à votre compte.</p>
+        <div className="me-feuille">
+          <span className="me-bande-motif" aria-hidden="true" />
+          <div className="me-carte" role="alert">
+            <h1>Accès refusé</h1>
+            <p>Cette entreprise n’est pas rattachée à votre compte.</p>
+          </div>
         </div>
       </main>
     )
   }
 
+  const derniere = historique[0] || null
+
   return (
     <main className="me-page">
-      <header className="me-tete">
-        <div>
-          <p className="me-surtitre">Réglages</p>
-          <h1>Mon entreprise</h1>
-          <p className="me-sous-titre">
-            Les règles de temps de travail qui s’appliquent ici, d’où elles
-            viennent et depuis quand.
-          </p>
-        </div>
+      <div className="me-feuille">
+        <span className="me-bande-motif" aria-hidden="true" />
 
-        {admin.role === 'super_admin' && entreprises.length > 1 && (
-          <label className="me-selecteur">
-            <span>Entreprise</span>
-            <select
-              value={entrepriseId || ''}
-              onChange={(e) => {
-                setEntrepriseId(e.target.value)
-                setEdition(null)
-                setConfirmationModele(false)
-              }}
-            >
-              {entreprises.map((e) => (
-                <option key={e.id} value={e.id}>{e.name || e.code || e.id}</option>
-              ))}
-            </select>
-          </label>
-        )}
-      </header>
-
-      {erreur && <p className="me-erreur" role="alert">{erreur}</p>}
-
-      {/* ── Identité : lecture seule, et on dit pourquoi ─────────── */}
-      <section className="me-carte" aria-label="Identité de l’entreprise">
-        <h2 className="me-carte-titre">Identité</h2>
-        <dl className="me-identite">
-          <div><dt>Nom</dt><dd>{entreprise?.name || '—'}</dd></div>
-          <div><dt>Code</dt><dd>{entreprise?.code || '—'}</dd></div>
-          <div><dt>Pays</dt><dd>{entreprise?.country_code || 'non renseigné'}</dd></div>
-          <div><dt>Devise</dt><dd>{entreprise?.currency || 'non renseignée'}</dd></div>
-          <div><dt>Fuseau</dt><dd>{entreprise?.timezone || '—'}</dd></div>
-        </dl>
-        <p className="me-note">
-          <Lock size={14} aria-hidden="true" /> Cette identité se modifie dans
-          « Entreprises », réservé au super-administrateur. Ici, elle se lit.
-        </p>
-      </section>
-
-      {/* ── Règles de temps de travail ───────────────────────────── */}
-      <section className="me-carte" aria-label="Règles de temps de travail">
-        <h2 className="me-carte-titre">Règles de temps de travail</h2>
-        <p className="me-note">
-          <Info size={14} aria-hidden="true" /> Ce sont des paramètres
-          d’entreprise, pas des obligations légales. Chaque changement crée une
-          version : la précédente reste dans l’historique.
-        </p>
-
-        {chargement ? (
-          <p className="me-vide">Chargement des règles…</p>
-        ) : (
-          <ul className="me-regles">
-            {REGLES_AFFICHEES.map((regle) => {
-              const resolution = regles[regle.cle]
-              const enEdition = edition?.cle === regle.cle
-              return (
-                <li key={regle.cle} className="me-regle">
-                  <div className="me-regle-entete">
-                    <div>
-                      <h3>{regle.libelle}</h3>
-                      <p className="me-regle-valeur">
-                        {formaterHeures(resolution?.valeur)}
-                        {resolution?.valeur !== null && resolution?.valeur !== undefined && (
-                          <span className="me-regle-origine">
-                            {' · '}{resolution?.libelle}
-                            {resolution?.dateEffet ? ` · depuis le ${resolution.dateEffet}` : ''}
-                          </span>
-                        )}
-                      </p>
-                      <p className="me-regle-aide">{regle.aide}</p>
-                    </div>
-
-                    {!enEdition && (
-                      <button
-                        type="button"
-                        className="me-bouton me-bouton--discret"
-                        onClick={() => {
-                          setConfirmationModele(false)
-                          setImpact(null)
-                          setEdition({
-                            cle: regle.cle,
-                            valeur: resolution?.valeur ?? '',
-                            dateEffet: AUJOURDHUI(),
-                            confirme: false,
-                          })
-                        }}
-                      >
-                        Modifier
-                      </button>
-                    )}
-                  </div>
-
-                  {enEdition && (
-                    <div className="me-edition">
-                      <label>
-                        <span>Nouvelle valeur (heures)</span>
-                        <input
-                          type="number"
-                          min="0.5"
-                          step="0.5"
-                          value={edition.valeur}
-                          onChange={(e) => setEdition({ ...edition, valeur: e.target.value, confirme: false })}
-                        />
-                      </label>
-                      <label>
-                        <span>À partir du</span>
-                        <input
-                          type="date"
-                          value={edition.dateEffet}
-                          onChange={(e) => setEdition({ ...edition, dateEffet: e.target.value, confirme: false })}
-                        />
-                      </label>
-
-                      {/*  La confirmation montre ce qui sera remplacé. */}
-                      <div className="me-confirmation">
-                        <p>
-                          Remplacer <strong>{formaterHeures(resolution?.valeur)}</strong> par{' '}
-                          <strong>{formaterHeures(edition.valeur)}</strong> à partir du{' '}
-                          <strong>{edition.dateEffet}</strong>.
-                        </p>
-                        <label className="me-case">
-                          <input
-                            type="checkbox"
-                            checked={edition.confirme}
-                            onChange={async (e) => {
-                              const coche = e.target.checked
-                              setEdition({ ...edition, confirme: coche })
-                              setImpact(null)
-                              if (!coche) return
-                              const valeur = Number(edition.valeur)
-                              if (!Number.isFinite(valeur)) return
-                              try {
-                                setImpact(await Regles.apercuImpact({
-                                  entrepriseId,
-                                  cle: regle.cle,
-                                  valeur,
-                                  date: edition.dateEffet,
-                                }))
-                              } catch {
-                                //  Pas d'aperçu : on n'en fabrique pas un.
-                                setImpact(null)
-                              }
-                            }}
-                          />
-                          <span>Je confirme ce changement</span>
-                        </label>
-
-                        {/*  Ce que le changement va remplacer, nommé, avant l'écriture. */}
-                        {impact && (
-                          <p className={impact.ecritureBloquee ? 'me-impact me-impact--bloque' : 'me-impact'}>
-                            {impact.valeursChangees === 0
-                              ? 'Aucune valeur personnelle ne serait remplacée.'
-                              : impact.valeursChangees === 1
-                                ? `1 employé verrait sa valeur remplacée (sur ${impact.employesConcernes} ayant une valeur personnelle).`
-                                : `${impact.valeursChangees} employés verraient leur valeur remplacée (sur ${impact.employesConcernes} ayant une valeur personnelle).`}
-                            {impact.dontVerrouillees > 0 && (
-                              <> {impact.dontVerrouillees} valeur{impact.dontVerrouillees > 1 ? 's sont verrouillées' : ' est verrouillée'}
-                                {impact.ecritureBloquee
-                                  ? ' : l’enregistrement sera refusé. Un super-administrateur doit lever le verrou.'
-                                  : '.'}</>
-                            )}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="me-actions">
-                        <button
-                          type="button"
-                          className="me-bouton me-bouton--discret"
-                          onClick={() => setEdition(null)}
-                          disabled={enCours}
-                        >
-                          Annuler
-                        </button>
-                        <button
-                          type="button"
-                          className="me-bouton"
-                          disabled={!edition.confirme || enCours || impact?.ecritureBloquee === true}
-                          onClick={() =>
-                            appliquer({
-                              cle: regle.cle,
-                              valeur: edition.valeur === '' ? null : Number(edition.valeur),
-                              dateEffet: edition.dateEffet,
-                            })
-                          }
-                        >
-                          Enregistrer
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
-
-      {/* ── Modèle proposé (G4b) ─────────────────────────────────── */}
-      <section className="me-carte" aria-label="Modèle proposé">
-        <h2 className="me-carte-titre">Modèle de seuil hebdomadaire</h2>
-
-        <p className={`me-statut me-statut--${etatDuModele.statut_source}`}>
-          {libelleStatutModele(etatDuModele.statut_source)}
-          {' · '}
-          {formaterHeures(etatDuModele.valeur)}
-        </p>
-
-        <p className="me-note">
-          <Info size={14} aria-hidden="true" /> Le produit propose un point de
-          départ ; il ne l’applique jamais tout seul, et aucun modèle n’est
-          rattaché à un pays tant qu’aucune source n’a été vérifiée.
-        </p>
-
-        {!confirmationModele && etatDuModele.statut_source !== 'applique' && (
-          <button type="button" className="me-bouton" onClick={() => setConfirmationModele(true)}>
-            Utiliser le modèle {modele.heures} h
-          </button>
-        )}
-
-        {confirmationModele && (
-          <div className="me-confirmation">
-            <p>
-              Appliquer <strong>{modele.heures} h</strong> au seuil d’alerte
-              hebdomadaire, à partir du <strong>{AUJOURDHUI()}</strong>. Un
-              changement d’avis est possible : chaque version reste dans
-              l’historique.
+        <header className="me-tete">
+          <div className="me-tete-texte">
+            <p className="me-surtitre">En-Check · Réglages</p>
+            <h1 className="me-titre">Mon entreprise</h1>
+            <p className="me-sous-titre">
+              Les règles de temps de travail qui s’appliquent ici, d’où elles
+              viennent et depuis quand.
             </p>
-            <div className="me-actions">
-              <button
-                type="button"
-                className="me-bouton me-bouton--discret"
-                onClick={() => setConfirmationModele(false)}
-                disabled={enCours}
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                className="me-bouton"
-                disabled={enCours}
-                onClick={() =>
-                  appliquer({
-                    cle: 'alerte_hebdo_heures',
-                    valeur: modele.heures,
-                    dateEffet: AUJOURDHUI(),
-                  })
-                }
-              >
-                <Check size={15} aria-hidden="true" /> Confirmer l’application
-              </button>
+          </div>
+
+          {admin.role === 'super_admin' && entreprises.length > 1 && (
+            <label className="me-selecteur">
+              <span className="me-selecteur-libelle">Entreprise</span>
+              <span className="me-selecteur-champ">
+                <select
+                  value={entrepriseId || ''}
+                  onChange={(e) => {
+                    setEntrepriseId(e.target.value)
+                    setEdition(null)
+                    setConfirmationModele(false)
+                  }}
+                >
+                  {entreprises.map((e) => (
+                    <option key={e.id} value={e.id}>{e.name || e.code || e.id}</option>
+                  ))}
+                </select>
+                <span className="me-chevron" aria-hidden="true">▾</span>
+              </span>
+            </label>
+          )}
+        </header>
+
+        {erreur && <p className="me-erreur" role="alert">{erreur}</p>}
+
+        {/* ── Identité : lecture seule, et on dit pourquoi ─────────── */}
+        <section className="me-carte me-carte--identite" aria-label="Identité de l’entreprise">
+          <h2 className="me-carte-titre">Identité</h2>
+          <dl className="me-identite">
+            <div><dt>Nom</dt><dd>{entreprise?.name || '—'}</dd></div>
+            <div><dt>Code</dt><dd>{entreprise?.code || '—'}</dd></div>
+            <div><dt>Pays</dt><dd>{entreprise?.country_code || 'non renseigné'}</dd></div>
+            <div><dt>Devise</dt><dd>{entreprise?.currency || 'non renseignée'}</dd></div>
+            <div><dt>Fuseau</dt><dd>{entreprise?.timezone || '—'}</dd></div>
+          </dl>
+          <p className="me-note">
+            <Lock size={14} aria-hidden="true" /> Cette identité se modifie dans
+            « Entreprises », réservé au super-administrateur. Ici, elle se lit.
+          </p>
+        </section>
+
+        {/* ── Règles de temps de travail + historique ───────────────── */}
+        <section className="me-carte me-carte--regles" aria-label="Règles de temps de travail">
+          <div className="me-regles-corps">
+            <div className="me-regles-principal">
+              <h2 className="me-carte-titre">Règles de temps de travail</h2>
+              <p className="me-note">
+                <Info size={14} aria-hidden="true" /> Ce sont des paramètres
+                d’entreprise, pas des obligations légales. Chaque changement crée
+                une version : la précédente reste dans l’historique.
+              </p>
+
+              {chargement ? (
+                <p className="me-vide">Chargement des règles…</p>
+              ) : (
+                <ul className="me-regles">
+                  {REGLES_AFFICHEES.map((regle) => {
+                    const resolution = regles[regle.cle]
+                    const enEdition = edition?.cle === regle.cle
+                    const etat = etatRegle(resolution)
+                    const dateEffet = dateEffetCourte(resolution?.dateEffet)
+                    return (
+                      <li key={regle.cle} className={`me-regle me-regle--${etat}`}>
+                        <span className="me-trait" aria-hidden="true" />
+
+                        <div className="me-regle-texte">
+                          <h3 className="me-regle-titre">{regle.libelle}</h3>
+                          <p className="me-regle-aide">{regle.aide}</p>
+                        </div>
+
+                        <p className="me-regle-valeur">{formaterHeures(resolution?.valeur)}</p>
+
+                        <div className="me-regle-origine">
+                          <span className="me-tampon">{tamponOrigine(resolution)}</span>
+                          {dateEffet ? (
+                            <span className="me-regle-date">
+                              {etat === 'entreprise' || etat === 'contrat'
+                                ? 'depuis le '
+                                : 'décidé le '}
+                              {dateEffet}
+                            </span>
+                          ) : (
+                            <span className="me-regle-date">contrôle indisponible</span>
+                          )}
+                        </div>
+
+                        {!enEdition && (
+                          <button
+                            type="button"
+                            className="me-bouton me-bouton--discret"
+                            onClick={() => {
+                              setConfirmationModele(false)
+                              setImpact(null)
+                              setEdition({
+                                cle: regle.cle,
+                                valeur: resolution?.valeur ?? '',
+                                dateEffet: AUJOURDHUI(),
+                                confirme: false,
+                              })
+                            }}
+                          >
+                            Modifier
+                          </button>
+                        )}
+
+                        {enEdition && (
+                          <div className="me-edition">
+                            <div className="me-edition-champs">
+                              <label>
+                                <span>Nouvelle valeur (heures)</span>
+                                <input
+                                  type="number"
+                                  min="0.5"
+                                  step="0.5"
+                                  value={edition.valeur}
+                                  onChange={(e) => setEdition({ ...edition, valeur: e.target.value, confirme: false })}
+                                />
+                              </label>
+                              <label>
+                                <span>À partir du</span>
+                                <input
+                                  type="date"
+                                  value={edition.dateEffet}
+                                  onChange={(e) => setEdition({ ...edition, dateEffet: e.target.value, confirme: false })}
+                                />
+                              </label>
+                            </div>
+
+                            {/*  La confirmation montre ce qui sera remplacé. */}
+                            <div className="me-confirmation">
+                              <p>
+                                Remplacer <strong>{formaterHeures(resolution?.valeur)}</strong> par{' '}
+                                <strong>{formaterHeures(edition.valeur)}</strong> à partir du{' '}
+                                <strong>{dateEffetCourte(edition.dateEffet) || '—'}</strong>.
+                              </p>
+                              <label className="me-case">
+                                <input
+                                  type="checkbox"
+                                  checked={edition.confirme}
+                                  onChange={async (e) => {
+                                    const coche = e.target.checked
+                                    setEdition({ ...edition, confirme: coche })
+                                    setImpact(null)
+                                    if (!coche) return
+                                    const valeur = Number(edition.valeur)
+                                    if (!Number.isFinite(valeur)) return
+                                    try {
+                                      setImpact(await Regles.apercuImpact({
+                                        entrepriseId,
+                                        cle: regle.cle,
+                                        valeur,
+                                        date: edition.dateEffet,
+                                      }))
+                                    } catch {
+                                      //  Pas d'aperçu : on n'en fabrique pas un.
+                                      setImpact(null)
+                                    }
+                                  }}
+                                />
+                                <span>Je confirme ce changement</span>
+                              </label>
+
+                              {/*  Ce que le changement va remplacer, nommé, avant l'écriture. */}
+                              {impact && (
+                                <p className={impact.ecritureBloquee ? 'me-impact me-impact--bloque' : 'me-impact'}>
+                                  {impact.valeursChangees === 0
+                                    ? 'Aucune valeur personnelle ne serait remplacée.'
+                                    : impact.valeursChangees === 1
+                                      ? `1 employé verrait sa valeur remplacée (sur ${impact.employesConcernes} ayant une valeur personnelle).`
+                                      : `${impact.valeursChangees} employés verraient leur valeur remplacée (sur ${impact.employesConcernes} ayant une valeur personnelle).`}
+                                  {impact.dontVerrouillees > 0 && (
+                                    <> {impact.dontVerrouillees} valeur{impact.dontVerrouillees > 1 ? 's sont verrouillées' : ' est verrouillée'}
+                                      {impact.ecritureBloquee
+                                        ? ' : l’enregistrement sera refusé. Un super-administrateur doit lever le verrou.'
+                                        : '.'}</>
+                                  )}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="me-actions">
+                              <button
+                                type="button"
+                                className="me-bouton me-bouton--discret"
+                                onClick={() => setEdition(null)}
+                                disabled={enCours}
+                              >
+                                Annuler
+                              </button>
+                              <button
+                                type="button"
+                                className="me-bouton"
+                                disabled={!edition.confirme || enCours || impact?.ecritureBloquee === true}
+                                onClick={() =>
+                                  appliquer({
+                                    cle: regle.cle,
+                                    valeur: edition.valeur === '' ? null : Number(edition.valeur),
+                                    dateEffet: edition.dateEffet,
+                                  })
+                                }
+                              >
+                                Enregistrer
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <aside className="me-historique-col" aria-label="Historique des règles">
+              <h3 className="me-historique-titre">
+                <History size={13} aria-hidden="true" /> Historique
+              </h3>
+              {historique.length === 0 ? (
+                <p className="me-vide">
+                  Aucune règle enregistrée. Tant qu’il n’y en a pas, l’alerte
+                  retombe sur la valeur par défaut du produit et le dit.
+                </p>
+              ) : (
+                <ol className="me-historique">
+                  {historique.slice(0, 12).map((v) => {
+                    const libelle = REGLES_AFFICHEES.find((r) => r.cle === v.cle)?.libelle || v.cle
+                    return (
+                      <li key={v.id}>
+                        <span className="me-historique-date">
+                          <Clock4 size={11} aria-hidden="true" />
+                          {dateEffetCourte(v.dateEffet) || '—'}
+                        </span>
+                        <span className="me-historique-texte">
+                          {libelle} : <strong>{formaterHeures(v.valeur)}</strong>
+                          {v.employeId ? ' (personnel)' : ''}
+                          {v.verrouille ? ' · verrouillée' : ''}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ol>
+              )}
+            </aside>
+          </div>
+        </section>
+
+        {/* ── Modèle proposé (G4b) ─────────────────────────────────── */}
+        <section className="me-carte me-carte--modele" aria-label="Modèle proposé">
+          <h2 className="me-carte-titre">Modèle proposé</h2>
+
+          <div className="me-modele-corps">
+            <p className="me-modele-grand">{formaterHeures(etatDuModele.valeur)}</p>
+
+            <div className="me-modele-texte">
+              <p className={`me-statut me-statut--${etatDuModele.statut_source}`}>
+                {libelleStatutModele(etatDuModele.statut_source)}
+              </p>
+              <p className="me-note">
+                <Info size={14} aria-hidden="true" /> Le produit propose un point
+                de départ ; il ne l’applique jamais tout seul, et aucun modèle
+                n’est rattaché à un pays tant qu’aucune source n’a été vérifiée.
+              </p>
+
+              {!confirmationModele && etatDuModele.statut_source !== 'applique' && (
+                <button type="button" className="me-bouton" onClick={() => setConfirmationModele(true)}>
+                  Utiliser le modèle {modele.heures} h
+                </button>
+              )}
             </div>
           </div>
-        )}
 
-        {etatDuModele.statut_source === 'applique' && (
-          <p className="me-note">
-            <ShieldCheck size={14} aria-hidden="true" /> Ce modèle est bien celui
-            en vigueur. Il reste modifiable ci-dessus, réglage par réglage.
-          </p>
-        )}
+          {confirmationModele && (
+            <div className="me-confirmation">
+              <p>
+                Appliquer <strong>{modele.heures} h</strong> au seuil d’alerte
+                hebdomadaire, à partir du <strong>{AUJOURDHUI()}</strong>. Un
+                changement d’avis est possible : chaque version reste dans
+                l’historique.
+              </p>
+              <div className="me-actions">
+                <button
+                  type="button"
+                  className="me-bouton me-bouton--discret"
+                  onClick={() => setConfirmationModele(false)}
+                  disabled={enCours}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  className="me-bouton"
+                  disabled={enCours}
+                  onClick={() =>
+                    appliquer({
+                      cle: 'alerte_hebdo_heures',
+                      valeur: modele.heures,
+                      dateEffet: AUJOURDHUI(),
+                    })
+                  }
+                >
+                  <Check size={15} aria-hidden="true" /> Confirmer l’application
+                </button>
+              </div>
+            </div>
+          )}
 
-        <ul className="me-modeles">
-          {MODELES_HEBDO.map((m) => (
-            <li key={m.id} className={m.heures === modele.heures ? 'is-propose' : ''}>
-              {m.libelle}
-              {m.heures === modele.heures && <span className="me-puce">proposé</span>}
-            </li>
-          ))}
-        </ul>
-      </section>
+          {etatDuModele.statut_source === 'applique' && (
+            <p className="me-note">
+              <ShieldCheck size={14} aria-hidden="true" /> Ce modèle est bien celui
+              en vigueur. Il reste modifiable ci-dessus, réglage par réglage.
+            </p>
+          )}
 
-      {/* ── Historique ───────────────────────────────────────────── */}
-      <section className="me-carte" aria-label="Historique des règles">
-        <h2 className="me-carte-titre">
-          <History size={16} aria-hidden="true" /> Historique
-        </h2>
-        {historique.length === 0 ? (
-          <p className="me-vide">
-            Aucune règle enregistrée. Tant qu’il n’y en a pas, l’alerte retombe
-            sur la valeur par défaut du produit et le dit.
-          </p>
-        ) : (
-          <ol className="me-historique">
-            {historique.slice(0, 20).map((v) => {
-              const libelle = REGLES_AFFICHEES.find((r) => r.cle === v.cle)?.libelle || v.cle
-              return (
-                <li key={v.id}>
-                  <Clock4 size={14} aria-hidden="true" />
-                  <span className="me-historique-date">{v.dateEffet}</span>
-                  <span className="me-historique-texte">
-                    {libelle} : <strong>{formaterHeures(v.valeur)}</strong>
-                    {v.employeId ? ' (valeur personnelle)' : ''}
-                    {v.remplaceId ? ' — remplace la version précédente' : ' — première version'}
-                  </span>
-                </li>
-              )
-            })}
-          </ol>
-        )}
-      </section>
+          <ul className="me-modeles">
+            {MODELES_HEBDO.map((m) => (
+              <li key={m.id} className={m.heures === modele.heures ? 'is-propose' : ''}>
+                {m.libelle}
+                {m.heures === modele.heures && <span className="me-puce">proposé</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <footer className="me-pied">
+          {derniere ? (
+            <p className="me-pied-texte">
+              Dernière écriture : <strong>{dateEffetCourte(derniere.dateEffet) || '—'}</strong>
+              {' · '}
+              {formaterHeures(derniere.valeur)}
+            </p>
+          ) : (
+            <p className="me-pied-texte">Aucune écriture enregistrée pour l’instant.</p>
+          )}
+        </footer>
+      </div>
     </main>
   )
 }

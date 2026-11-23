@@ -86,9 +86,46 @@ async function monter(props = {}) {
 const bouton = (texte) =>
   [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === texte)
 
-describe('Les trois états, en mots', () => {
-  it('suit l’entreprise par défaut, avec sa date', async () => {
+//  Depuis le 24/11/2026, les règles vivent dans une MODALE : la fiche ne porte
+//  plus qu'une bande. On ouvre donc la modale comme le ferait un humain — le
+//  reste des assertions ne change pas : c'est le même contenu, au même endroit
+//  pour la personne qui lit.
+async function ouvrirRegles(props = {}) {
+  await monter(props)
+  await act(async () => bouton('Voir les règles').click())
+}
+
+describe('La bande, et la modale qui la complète', () => {
+  it('la fiche ne porte plus le registre : la bande seule, avant le clic', async () => {
     await monter()
+    //  Ce que le fondateur a demandé : plus de bloc imposant en haut de fiche.
+    expect(host.querySelector('.rtt-bande')).not.toBeNull()
+    expect(host.querySelector('.rtt-modale')).toBeNull()
+    expect(host.textContent).not.toContain('Règle de l’entreprise')
+    expect(host.querySelectorAll('.rtt-ligne')).toHaveLength(0)
+  })
+
+  it('la modale est un vrai dialogue : rôle, aria-modal, Échap la referme', async () => {
+    await ouvrirRegles()
+
+    const modale = host.querySelector('.rtt-modale')
+    expect(modale.getAttribute('role')).toBe('dialog')
+    expect(modale.getAttribute('aria-modal')).toBe('true')
+    expect(modale.getAttribute('aria-labelledby')).toBe('rtt-titre')
+
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    })
+    expect(host.querySelector('.rtt-modale')).toBeNull()
+    //  La bande, elle, reste : on n'a rien perdu de la fiche.
+    expect(host.querySelector('.rtt-bande')).not.toBeNull()
+  })
+})
+
+describe('Les trois états, en mots', () => {
+
+  it('suit l’entreprise par défaut, avec sa date', async () => {
+    await ouvrirRegles()
     expect(host.textContent).toContain('Règle de l’entreprise')
     expect(host.textContent).toContain('depuis le 1 sept. 2026')
     expect(host.textContent).toContain('45 h')
@@ -100,7 +137,7 @@ describe('Les trois états, en mots', () => {
         ? { valeur: 52, origine: 'employe', dateEffet: '2026-11-03', verrouille: false }
         : { valeur: 45, origine: 'entreprise', dateEffet: '2026-09-01', verrouille: false },
     )
-    await monter()
+    await ouvrirRegles()
     expect(host.textContent).toContain('Réglage personnel')
     expect(host.textContent).toContain('décidé le 3 nov. 2026')
     expect(host.textContent).toContain('52 h')
@@ -113,7 +150,7 @@ describe('Les trois états, en mots', () => {
       dateEffet: '2026-10-01',
       verrouille: true,
     }))
-    await monter()
+    await ouvrirRegles()
     expect(host.textContent).toContain('Réglage personnel · verrouillé')
   })
 
@@ -124,7 +161,7 @@ describe('Les trois états, en mots', () => {
       dateEffet: null,
       verrouille: false,
     })
-    await monter()
+    await ouvrirRegles()
     expect(host.textContent).toContain('Aucune valeur')
     expect(host.textContent).toContain('non configuré')
     expect(host.textContent).toContain('contrôle indisponible')
@@ -134,7 +171,7 @@ describe('Les trois états, en mots', () => {
 
 describe('L’aperçu vient avant l’écriture', () => {
   it('ouvrir un réglage n’écrit RIEN et montre l’impact', async () => {
-    await monter()
+    await ouvrirRegles()
     await act(async () => bouton('Régler').click())
 
     expect(mocks.ecrire).not.toHaveBeenCalled()
@@ -144,7 +181,7 @@ describe('L’aperçu vient avant l’écriture', () => {
   })
 
   it('enregistrer transmet la clé, l’employé et la valeur saisie', async () => {
-    await monter()
+    await ouvrirRegles()
     //  La deuxième ligne : le seuil d'alerte hebdomadaire (168 h au plus).
     await act(async () => host.querySelectorAll('.rtt-action')[1].click())
 
@@ -171,7 +208,7 @@ describe('L’aperçu vient avant l’écriture', () => {
   })
 
   it('une valeur hors bornes est refusée AVANT l’appel, avec un motif', async () => {
-    await monter()
+    await ouvrirRegles()
     await act(async () => bouton('Régler').click())
 
     const champ = host.querySelector('.rtt-champ input[type="number"]')
@@ -193,7 +230,7 @@ describe('L’aperçu vient avant l’écriture', () => {
       dateEffet: '2026-10-01',
       verrouille: true,
     })
-    await monter()
+    await ouvrirRegles()
     await act(async () => bouton('Régler').click())
 
     expect(host.textContent).toContain('Cette valeur est verrouillée')
@@ -207,7 +244,7 @@ describe('L’aperçu vient avant l’écriture', () => {
       dateEffet: '2026-10-01',
       verrouille: true,
     })
-    await monter({ superAdmin: true })
+    await ouvrirRegles({ superAdmin: true })
     await act(async () => bouton('Régler').click())
 
     expect(bouton('Enregistrer').disabled).toBe(false)
@@ -222,7 +259,7 @@ describe('Le retour à la règle de l’entreprise est un acte distinct', () => 
         ? { valeur: 52, origine: 'employe', dateEffet: '2026-11-03', verrouille: false }
         : { valeur: 45, origine: 'entreprise', dateEffet: '2026-09-01', verrouille: false },
     )
-    await monter()
+    await ouvrirRegles()
 
     //  La deuxième ligne est la valeur personnelle.
     await act(async () => host.querySelectorAll('.rtt-action')[1].click())
@@ -243,7 +280,7 @@ describe('Le retour à la règle de l’entreprise est un acte distinct', () => 
   })
 
   it('ne propose pas le retour sur une règle d’entreprise', async () => {
-    await monter()
+    await ouvrirRegles()
     await act(async () => bouton('Régler').click())
     expect(bouton('Revenir à la règle de l’entreprise')).toBeUndefined()
   })
@@ -261,7 +298,7 @@ describe('Les informations enregistrées', () => {
         consulteLe: null,
       },
     ])
-    await monter()
+    await ouvrirRegles()
 
     expect(host.textContent).toContain('Informations enregistrées')
     expect(host.textContent).toContain('est fixé à 52 h')
@@ -269,14 +306,14 @@ describe('Les informations enregistrées', () => {
   })
 
   it('sans information, le dit — et n’en invente pas une', async () => {
-    await monter()
+    await ouvrirRegles()
     expect(host.textContent).toContain('Aucune information enregistrée pour cette personne.')
     expect(host.querySelectorAll('.rtt-table tbody tr')).toHaveLength(0)
   })
 
   it('si le journal est indisponible, les trois états restent lisibles — et le manque est dit', async () => {
     mocks.informations.mockRejectedValue(new Error('Cette fonction n’est pas encore installée sur ce serveur.'))
-    await monter()
+    await ouvrirRegles()
 
     expect(host.textContent).toContain('Règle de l’entreprise')
     expect(host.textContent).toContain('Cette fonction n’est pas encore installée sur ce serveur.')
@@ -285,7 +322,7 @@ describe('Les informations enregistrées', () => {
 
   it('une erreur de service s’affiche en clair, et l’écran ne fait pas semblant', async () => {
     mocks.resoudre.mockRejectedValue(new Error('Cette fonction n’est pas encore installée sur ce serveur.'))
-    await monter()
+    await ouvrirRegles()
 
     expect(host.textContent).toContain('Cette fonction n’est pas encore installée sur ce serveur.')
     expect(host.textContent).not.toContain('Règle de l’entreprise')

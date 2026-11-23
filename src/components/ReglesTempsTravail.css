@@ -1,16 +1,23 @@
 /* src/components/ReglesTempsTravail.css
    ─────────────────────────────────────────────────────────────────────────
-   La feuille de la maquette `maquettes/choix-g5-fiche-employe.png` (retenue le
-   24/10/2026) : un cadre d'encre de 2 px, une ombre dure à flou zéro, des
-   lavis de feutre par état, des étiquettes en capitales monospace.
+   Maquette retenue : `maquettes/choix-g5-fiche-modale.png` (24/11/2026) —
+   « ce bloc est trop imposant en haut de la fiche employé, il faut utiliser
+   des modales ». La page ne porte plus qu'une BANDE de 52 px ; le registre,
+   l'aperçu d'impact et les informations vivent dans la modale.
 
    Aucune couleur en dur (C1), aucun flou (C9), rayons dans {6, 8, 999} (C10).
    L'état ne se lit jamais par la couleur seule : il porte toujours son mot (C7).
    ───────────────────────────────────────────────────────────────────────── */
 
-.rtt {
-  margin: 0 0 var(--charte-espace-5);
-  padding: var(--charte-espace-4) var(--charte-espace-4) var(--charte-espace-3);
+/* ═══ LA BANDE ══════════════════════════════════════════════════════════ */
+
+.rtt-bande {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: var(--charte-espace-3);
+  align-items: center;
+  margin: 0 0 var(--charte-espace-4);
+  padding: 9px var(--charte-espace-3);
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: var(--charte-rayon-carte);
   background: var(--charte-surface);
@@ -19,55 +26,141 @@
   color: var(--charte-encre);
 }
 
-/* ── la tête ───────────────────────────────────────────────────────────── */
+.rtt-bande-titre {
+  margin: 0;
+  font-family: var(--charte-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
 
-.rtt-tete {
+.rtt-bande-resume {
+  margin: 0;
+  font-size: 12px;
+  color: var(--charte-douce);
+  white-space: nowrap;
+}
+
+/* ═══ LE VOILE ET LA MODALE ═════════════════════════════════════════════ */
+
+.rtt-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--charte-espace-6) var(--charte-espace-4) var(--charte-espace-4);
+  overflow-y: auto;
+  background: var(--charte-modale-voile);
+}
+
+.rtt-modale {
+  position: relative;
+  width: 100%;
+  max-width: var(--charte-modale-large);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  box-shadow: var(--charte-ombre-dure);
+  font-family: var(--charte-police);
+  color: var(--charte-encre);
+}
+
+/* la bande de colle, comme sur les feuilles de la maison */
+.rtt-modale::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 40px;
+  width: 132px;
+  height: 14px;
+  border: 1px solid color-mix(in srgb, var(--charte-encre) 15%, transparent);
+  background: color-mix(in srgb, var(--charte-sable) 70%, var(--charte-surface));
+  transform: rotate(-1.4deg);
+  pointer-events: none;
+}
+
+/* le rabat du coin bas-droit */
+.rtt-modale::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  border-style: solid;
+  border-width: 0 0 20px 20px;
+  border-color: transparent transparent var(--charte-sable) transparent;
+  pointer-events: none;
+}
+
+.rtt-modale-tete {
+  display: flex;
   gap: var(--charte-espace-3);
   align-items: flex-start;
   justify-content: space-between;
-  padding-bottom: var(--charte-espace-3);
+  padding: var(--charte-espace-4) var(--charte-espace-5) var(--charte-espace-3);
   border-bottom: var(--charte-trait) solid var(--charte-encre);
 }
 
 .rtt-titre {
   margin: 0;
-  font-family: var(--charte-mono);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 20px;
+  line-height: 1.2;
 }
 
 .rtt-sous-titre {
-  margin: var(--charte-espace-1) 0 0;
-  max-width: 62ch;
-  font-size: 12.5px;
-  line-height: 1.5;
+  margin: 3px 0 0;
+  font-family: var(--charte-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--charte-douce);
 }
 
-/* ── le corps : les règles à gauche, l'aperçu à droite ─────────────────── */
-
-.rtt-corps {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+.rtt-fermer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  cursor: pointer;
 }
+
+.rtt-fermer:hover {
+  background: var(--charte-surface2);
+}
+
+.rtt-fermer:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+.rtt-modale-corps {
+  padding: var(--charte-espace-3) var(--charte-espace-5) var(--charte-espace-4);
+}
+
+/* ═══ LES LIGNES DU REGISTRE ════════════════════════════════════════════ */
 
 .rtt-lignes {
   margin: 0;
   padding: 0;
   list-style: none;
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
 }
 
 .rtt-ligne {
   position: relative;
   display: grid;
-  grid-template-columns: 5px minmax(0, 1.6fr) minmax(64px, auto) minmax(0, 1.1fr) auto;
+  grid-template-columns: 5px minmax(0, 1.5fr) auto minmax(150px, 0.9fr) auto;
   gap: var(--charte-espace-3);
   align-items: center;
-  padding: var(--charte-espace-3) var(--charte-espace-3) var(--charte-espace-3) 0;
+  padding: 10px var(--charte-espace-2) 10px 0;
   border-bottom: 1px solid var(--charte-bordure);
 }
 
@@ -76,7 +169,7 @@
 }
 
 .rtt-ligne.is-active {
-  background: color-mix(in srgb, var(--charte-aplat) 7%, transparent);
+  background: color-mix(in srgb, var(--charte-aplat) 8%, transparent);
 }
 
 /* Le trait de feutre : 5 px à gauche, et son second passage sur un verrou. */
@@ -84,7 +177,7 @@
   position: relative;
   align-self: stretch;
   width: 5px;
-  min-height: 40px;
+  min-height: 34px;
   background: var(--charte-bordure);
 }
 
@@ -92,10 +185,7 @@
   background: var(--charte-aplat);
 }
 
-.rtt-ligne--personnelle .rtt-feuille {
-  background: var(--charte-alerte);
-}
-
+.rtt-ligne--personnelle .rtt-feuille,
 .rtt-ligne--personnelle_verrouillee .rtt-feuille {
   background: var(--charte-alerte);
 }
@@ -112,21 +202,22 @@
 
 .rtt-ligne-texte {
   padding-left: var(--charte-espace-2);
+  min-width: 0;
 }
 
 .rtt-ligne-titre {
   margin: 0;
   font-family: var(--charte-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .rtt-ligne-aide {
   margin: 2px 0 0;
-  max-width: 40ch;
-  font-size: 11.5px;
+  max-width: 42ch;
+  font-size: 11px;
   line-height: 1.4;
   color: var(--charte-douce);
 }
@@ -134,7 +225,7 @@
 .rtt-valeur {
   margin: 0;
   font-family: var(--charte-mono);
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 700;
   line-height: 1.1;
   text-align: right;
@@ -144,7 +235,7 @@
 
 .rtt-ligne--aucune .rtt-valeur {
   font-family: var(--charte-police);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--charte-douce);
 }
@@ -152,7 +243,7 @@
 .rtt-origine {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -166,9 +257,9 @@
   border: 1px solid color-mix(in srgb, var(--charte-encre) 30%, transparent);
   background: color-mix(in srgb, var(--charte-aplat) 12%, transparent);
   font-family: var(--charte-mono);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -185,21 +276,21 @@
 }
 
 .rtt-date {
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 10.5px;
+  line-height: 1.35;
   color: var(--charte-douce);
 }
 
 .rtt-action {
-  padding: 6px 10px;
+  padding: 5px 9px;
   border: 1px solid color-mix(in srgb, var(--charte-encre) 40%, transparent);
   border-radius: var(--charte-rayon-champ);
   background: transparent;
   color: var(--charte-btn-lien);
   font-family: var(--charte-mono);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   cursor: pointer;
   transition: background-color var(--charte-duree) var(--charte-easing);
@@ -214,78 +305,76 @@
   outline-offset: 2px;
 }
 
-/* ── le panneau d'aperçu ───────────────────────────────────────────────── */
+/* ═══ L'APERÇU D'IMPACT ═════════════════════════════════════════════════ */
 
-.rtt-panneau {
-  display: flex;
-  flex-direction: column;
-  gap: var(--charte-espace-3);
-  margin: calc(var(--charte-espace-4) * -1) calc(var(--charte-espace-4) * -1)
-    calc(var(--charte-espace-3) * -1) 0;
-  padding: var(--charte-espace-4);
-  border-left: var(--charte-trait) solid var(--charte-encre);
+.rtt-impact {
+  margin-top: var(--charte-espace-3);
+  padding: var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
   background: var(--charte-surface2);
 }
 
-.rtt-panneau-titre {
-  margin: 0;
+.rtt-impact-titre {
+  margin: 0 0 var(--charte-espace-2);
   font-family: var(--charte-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
-.rtt-panneau-vide {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--charte-douce);
-}
-
-.rtt-impact {
+.rtt-impact-chiffres {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px var(--charte-espace-3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--charte-espace-3);
   margin: 0;
 }
 
-.rtt-impact div {
-  display: contents;
+.rtt-impact-chiffres div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: var(--charte-espace-3);
+  border-right: 1px solid color-mix(in srgb, var(--charte-encre) 22%, transparent);
 }
 
-.rtt-impact dt {
-  font-size: 11.5px;
+.rtt-impact-chiffres div:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.rtt-impact-chiffres dt {
+  font-size: 10.5px;
   color: var(--charte-douce);
 }
 
-.rtt-impact dd {
+.rtt-impact-chiffres dd {
   margin: 0;
   font-family: var(--charte-mono);
-  font-size: 12.5px;
+  font-size: 15px;
   font-weight: 700;
-  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 .rtt-impact-phrase {
-  margin: 0;
+  margin: var(--charte-espace-2) 0 var(--charte-espace-3);
   padding-top: var(--charte-espace-2);
   border-top: 1px solid color-mix(in srgb, var(--charte-encre) 20%, transparent);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .rtt-blocage {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  margin: 0;
+  margin: 0 0 var(--charte-espace-3);
   padding: var(--charte-espace-2);
   border-left: 3px solid var(--charte-erreur);
   background: color-mix(in srgb, var(--charte-erreur) 10%, transparent);
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 .rtt-blocage svg {
@@ -293,11 +382,17 @@
   margin-top: 2px;
 }
 
+.rtt-champs {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: var(--charte-espace-3);
+}
+
 .rtt-champ {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -307,7 +402,7 @@
 .rtt-champ input {
   height: 34px;
   padding: 0 var(--charte-espace-2);
-  border: 1px solid color-mix(in srgb, var(--charte-encre) 30%, transparent);
+  border: var(--charte-trait) solid var(--charte-encre);
   border-radius: var(--charte-rayon-champ);
   background: var(--charte-surface);
   color: var(--charte-encre);
@@ -324,6 +419,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--charte-espace-2);
+  margin-top: var(--charte-espace-2);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -336,13 +432,16 @@
 .rtt-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--charte-espace-2);
+  margin-top: var(--charte-espace-3);
 }
 
 .rtt-confirmation {
   display: flex;
   flex-direction: column;
   gap: var(--charte-espace-2);
+  width: 100%;
   padding: var(--charte-espace-2);
   border: 1px solid color-mix(in srgb, var(--charte-encre) 30%, transparent);
   border-radius: var(--charte-rayon-champ);
@@ -355,27 +454,29 @@
   line-height: 1.45;
 }
 
-.rtt-message {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--charte-encre);
+.rtt-confirmation .rtt-actions {
+  margin-top: 0;
 }
 
-/* ── les informations enregistrées ─────────────────────────────────────── */
+.rtt-message {
+  margin: var(--charte-espace-3) 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
 
-.rtt-informations {
-  margin-top: var(--charte-espace-4);
-  padding-top: var(--charte-espace-3);
+/* ═══ LE PIED — LES INFORMATIONS ENREGISTRÉES ═══════════════════════════ */
+
+.rtt-pied {
+  padding: var(--charte-espace-3) var(--charte-espace-5) var(--charte-espace-4);
   border-top: var(--charte-trait) solid var(--charte-encre);
 }
 
-.rtt-informations-titre {
+.rtt-pied-titre {
   margin: 0;
   font-family: var(--charte-mono);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
@@ -383,9 +484,9 @@
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  margin: var(--charte-espace-1) 0 var(--charte-espace-3);
-  font-size: 11.5px;
-  line-height: 1.45;
+  margin: var(--charte-espace-1) 0 var(--charte-espace-2);
+  font-size: 11px;
+  line-height: 1.4;
   color: var(--charte-douce);
 }
 
@@ -397,47 +498,53 @@
 .rtt-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 11.5px;
 }
 
 .rtt-table th {
-  padding: 6px var(--charte-espace-2);
+  padding: 5px var(--charte-espace-2);
   border-bottom: 1px solid color-mix(in srgb, var(--charte-encre) 35%, transparent);
   font-family: var(--charte-mono);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   text-align: left;
   color: var(--charte-douce);
 }
 
 .rtt-table td {
-  padding: 7px var(--charte-espace-2);
+  padding: 6px var(--charte-espace-2);
   border-bottom: 1px solid var(--charte-bordure);
   vertical-align: top;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 .rtt-table tr:last-child td {
   border-bottom: 0;
 }
 
-/* ── états vides et erreurs ────────────────────────────────────────────── */
+.rtt-modale-pied {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 var(--charte-espace-5) var(--charte-espace-3);
+}
+
+/* ═══ ÉTATS VIDES ET ERREURS ════════════════════════════════════════════ */
 
 .rtt-vide {
-  margin: var(--charte-espace-3) 0;
-  font-size: 12.5px;
+  margin: var(--charte-espace-2) 0;
+  font-size: 12px;
   color: var(--charte-douce);
 }
 
 .rtt-erreur {
-  margin: var(--charte-espace-3) 0 0;
+  margin: var(--charte-espace-2) 0;
   padding: var(--charte-espace-2) var(--charte-espace-3);
   border-left: 3px solid var(--charte-erreur);
   background: color-mix(in srgb, var(--charte-erreur) 10%, transparent);
-  font-size: 12.5px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .rtt-lien {
@@ -446,27 +553,51 @@
   background: none;
   color: var(--charte-btn-lien);
   font-family: inherit;
-  font-size: inherit;
+  font-size: 12px;
   text-decoration: underline;
   cursor: pointer;
 }
 
-/* ── le téléphone et la tablette ───────────────────────────────────────── */
+.rtt-lien:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* ═══ LE TÉLÉPHONE ═══════════════════════════════════════════════════════ */
 
 @media (max-width: 900px) {
-  .rtt-corps {
-    grid-template-columns: minmax(0, 1fr);
+  .rtt-voile {
+    padding: var(--charte-espace-4) var(--charte-espace-2) var(--charte-espace-2);
   }
 
-  .rtt-panneau {
-    margin: var(--charte-espace-3) calc(var(--charte-espace-4) * -1)
-      calc(var(--charte-espace-3) * -1);
-    border-left: 0;
-    border-top: var(--charte-trait) solid var(--charte-encre);
+  .rtt-modale-tete,
+  .rtt-modale-corps,
+  .rtt-pied {
+    padding-left: var(--charte-espace-4);
+    padding-right: var(--charte-espace-4);
+  }
+
+  .rtt-modale::before {
+    left: var(--charte-espace-5);
   }
 }
 
 @media (max-width: 680px) {
+  .rtt-bande {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: var(--charte-espace-2);
+  }
+
+  .rtt-bande-resume {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .rtt-bande .ch-btn-contour {
+    grid-column: 2;
+    grid-row: 1 / 3;
+  }
+
   .rtt-ligne {
     grid-template-columns: 5px minmax(0, 1fr) auto;
     row-gap: var(--charte-espace-2);
@@ -491,6 +622,18 @@
     justify-self: end;
   }
 
+  .rtt-impact-chiffres,
+  .rtt-champs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rtt-impact-chiffres div {
+    padding-right: 0;
+    padding-bottom: var(--charte-espace-1);
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--charte-encre) 18%, transparent);
+  }
+
   .rtt-table thead {
     display: none;
   }
@@ -503,7 +646,7 @@
 
   .rtt-table td {
     display: block;
-    padding: 2px 0;
+    padding: 1px 0;
     border: 0;
   }
 }

@@ -688,6 +688,17 @@ sont, inchangés — le plafond n'existe toujours pas, et il n'est pas inventé.
    clair et sombre. Aucun test automatisé de rendu visuel ne le vérifie — la capture reste
    à faire.
 
+**Refonte d'apparence du 24/11/2026** — « refais la page Mon entreprise car ça ne colle pas avec
+l'identité En-Check ». Maquette retenue : `maquettes/choix-mon-entreprise.png` (option 2 sur 2).
+La page cesse d'être une pile de cartes arrondies : c'est **une feuille**, bande de bogolan native
+en tête, cadre d'encre de 2 px et son ombre dure à flou zéro, bandes de colle et rabat au coin,
+titre à double soulignement de feutre, identité en cinq colonnes séparées par un filet, registre
+des règles à cinq colonnes avec la valeur en gros chiffres tabulaires, **historique en colonne de
+droite**, modèle proposé au tampon incliné en pointillé et pied « Dernière écriture ». Aucune
+règle de calcul n'a bougé : c'est la même logique d'écriture, la même édition en deux temps, le
+même aperçu d'impact. Ce qui reste à valider : les captures réelles aux quatre largeurs et en
+thème sombre.
+
 #### Lot 4 — G5 + G5-bis : la fiche employé et le devoir d'informer (M + M) ✅ *sauf G5-bis (versionner l'activation)*
 
 ##### 5.4.4 Ce qui est livré, et ce qui ne l'est pas encore
@@ -713,9 +724,17 @@ proposées, la première choisie). La peau suit la charte « brut adouci, double
 cadre d'encre de 2 px, ombre dure à flou zéro, lavis de feutre par état, aucune couleur
 en dur, aucun flou, rayons dans la liste blanche.
 
+**Repliée le 24/11/2026** : « ce bloc est trop imposant en haut de la fiche employé, il faut
+utiliser des modales ». Maquette retenue : `maquettes/choix-g5-fiche-modale.png` (option 2 sur 2).
+La fiche ne porte plus qu'une **bande de 52 px** — titre, compte (« 3 réglages · 1 personnel »),
+un bouton contour « Voir les règles » — et le contenu décrit ci-dessous vit dans une **modale de
+760 px** : `role="dialog"`, `aria-modal="true"`, Échap qui referme, focus porté sur le bouton de
+fermeture, voile cliquable. Rien n'a été retiré, tout a été déplacé : c'est le même registre, au
+même endroit pour qui lit.
+
 | Livré | Où | Vérifié par |
 |---|---|---|
-| **Trois états, clé par clé** (`suit_entreprise` / `personnelle` / `personnelle_verrouillée`) avec la valeur, l'origine, la date d'effet et le verrou | `src/components/ReglesTempsTravail.jsx` + `src/lib/reglesPersonnelles.js` | 21 tests de logique + 15 de page |
+| **Trois états, clé par clé** (`suit_entreprise` / `personnelle` / `personnelle_verrouillée`) avec la valeur, l'origine, la date d'effet et le verrou | `src/components/ReglesTempsTravail.jsx` + `src/lib/reglesPersonnelles.js` | 21 tests de logique + 17 de page |
 | **Quatrième vérité affichée** : `aucune` → « non configuré » et « contrôle indisponible », jamais `0 h` | idem | test de page explicite |
 | **Aperçu d'impact avant écriture**, une personne concernée, blocage si verrou non levé | `apercuReglagePersonnel` + panneau | 2 tests de page |
 | **Retour à la règle de l'entreprise** en deux temps (confirmation, puis acte distinct de l'écriture ordinaire) | `revenirEntreprise()` | 2 tests de page |
