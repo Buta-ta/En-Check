@@ -40,9 +40,18 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-/** Un réglage d'entreprise fictif, tel que le rendrait `getOvertimeSettingsAvecOrigine`. */
-const reglage = (valeur, origine, majeur = null) => ({
-  settings: { ...FeatureService.getDefaultOvertimeSettings(), weekly_threshold: valeur, weekly_threshold_major: majeur },
+/**
+ * Un réglage fictif, tel que le rendrait `getOvertimeSettingsAvecOrigine`.
+ * `activee` reproduit la case « m'alerter au-delà de ce seuil » : elle est
+ * distincte de la valeur, c'est tout l'objet du lot.
+ */
+const reglage = (valeur, origine, majeur = null, activee = true) => ({
+  settings: {
+    ...FeatureService.getDefaultOvertimeSettings(),
+    weekly_threshold: valeur,
+    weekly_threshold_major: majeur,
+    alerte_hebdo_activee: activee,
+  },
   provenance: { origine, motif: 'test' },
 })
 
@@ -153,6 +162,42 @@ describe('Aucune alerte sans seuil choisi', () => {
     expect(evaluation.disponible).toBe(true)
     expect(evaluation.nb_depassees).toBe(1)
     expect(evaluation.semaines[0].depassement_heures).toBe(5)
+  })
+
+  it('un seuil prouvé ne suffit pas : sans la case cochée, l’alerte reste muette', () => {
+    const seuils = seuilsAlerteHebdo(reglage(45, 'entreprise', null, false))
+    const evaluation = evaluerSeuilsHebdo({ semaines: SEMAINE_50H, ...seuils })
+
+    expect(seuils.actif).toBe(false)
+    expect(seuils.alerteActivee).toBe(false)
+    expect(seuils.motif).toContain('non activée')
+    expect(evaluation.disponible).toBe(false)
+    expect(evaluation.nb_depassees).toBe(0)
+    //  Le seuil reste connu : il sert à pré-remplir, pas à alerter.
+    expect(seuils.seuilPropose).toBe(45)
+  })
+
+  it('la case cochée ne suffit pas non plus : sans seuil prouvé, silence', () => {
+    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit', null, true))
+    expect(seuils.actif).toBe(false)
+    expect(seuils.seuil).toBeNull()
+  })
+
+  it('une case absente n’est jamais un oui', () => {
+    const sansCase = {
+      settings: { weekly_threshold: 45 },
+      provenance: { origine: 'entreprise' },
+    }
+    const seuils = seuilsAlerteHebdo(sansCase)
+    expect(seuils.alerteActivee).toBe(false)
+    expect(seuils.actif).toBe(false)
+  })
+
+  it('les deux conditions réunies allument l’alerte', () => {
+    const seuils = seuilsAlerteHebdo(reglage(45, 'entreprise', 50, true))
+    expect(seuils.actif).toBe(true)
+    expect(seuils.seuil).toBe(45)
+    expect(seuils.motif).toBeNull()
   })
 
   it('le second niveau est neutralisé avec le premier', () => {

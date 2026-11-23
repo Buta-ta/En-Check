@@ -150,3 +150,39 @@ describe('L’évaluation et les libellés', () => {
     }
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ⏰ LA CASE « M'ALERTER » EST UNE DÉCISION, PAS UNE DÉDUCTION
+//
+// Décision du fondateur (24/10/2026) : le seuil et l'activation sont deux
+// choses distinctes. Un seuil peut servir à pré-remplir un contrat sans que
+// personne ne veuille être prévenu — et une case jamais transmise par l'écran
+// ne doit pas devenir un `false` écrit en base, exactement comme un seuil
+// absent ne devient pas 48 h.
+// ═══════════════════════════════════════════════════════════════════════════
+describe('Écriture de la case d’alerte hebdomadaire', () => {
+  const payload = (settings) =>
+    FeatureService.construirePayloadOvertimeSettings('ent-fictive', settings, new Date('2026-10-24T10:00:00Z'))
+
+  it('le défaut du produit n’active aucune alerte', () => {
+    expect(FeatureService.getDefaultOvertimeSettings().alerte_hebdo_activee).toBe(false)
+  })
+
+  it('une case cochée est écrite telle quelle', () => {
+    expect(payload({ alerte_hebdo_activee: true }).alerte_hebdo_activee).toBe(true)
+  })
+
+  it('une case décochée est écrite : c’est une décision, pas une absence', () => {
+    expect(payload({ alerte_hebdo_activee: false }).alerte_hebdo_activee).toBe(false)
+  })
+
+  it('une case jamais transmise n’est pas écrite du tout', () => {
+    expect('alerte_hebdo_activee' in payload({ weekly_threshold: 45 })).toBe(false)
+  })
+
+  it('une valeur non booléenne n’active rien par accident', () => {
+    for (const valeur of ['true', 1, null, undefined, 'oui']) {
+      expect('alerte_hebdo_activee' in payload({ alerte_hebdo_activee: valeur })).toBe(false)
+    }
+  })
+})

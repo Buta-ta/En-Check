@@ -387,7 +387,7 @@ rendre l'écran muet au premier jour.
 | 1 | **G1** ✅ *réalisé, en attente de validation* | Fenêtres hebdo et repos calculées sur une plage élargie ; la primitive refuse des bornes étroites ; drapeau mort supprimé | S | — | — | Un réglage éditable sur un calcul faux à cheval sur deux années, c'est un bouton qui ment deux fois |
 | 2 | **G2** ✅ *réalisé, en attente de validation* | Provenance réelle (`entreprise` / `defaut_produit` / `historique_incertain` / `inconnue`), défaut à 48 h, écriture qui n'invente plus de seuil, libellé honnête | S | S | — | Supprime le mensonge actuel (« seuil d'entreprise ») pour tous, tout de suite, sans toucher au calcul |
 | 3 | **G3** | Table versionnée + `encheck_regle_resolue` + `encheck_regle_ecrire` + journal (auteur, date d'effet, avant/après) | M | — | G2 (origines) | Le journal **avant** l'éditeur : des seuils modifiables sans trace sont un bouton pour réécrire janvier depuis novembre (règle C5-mince de l'audit) |
-| 4 | **G6** ⏳ *découplage + règle du seuil choisi faits ; séparation des clés à suivre* | Découplage de l'alerte et du module de paie ✅ (`seuilsAlerteHebdo`) ; séparation des trois clés (déclenchement de paie / seuil d'alerte / plafond `a_sourcer`) → **G3** | S | S | G3 | Donner un bouton « repos personnel » alors que l'alerte s'éteint avec la paie serait livrer un réglage inopérant |
+| 4 | **G6** ⏳ *découplage + seuil choisi + case d'alerte (données) faits ; case à l'écran et séparation des clés à suivre* | Découplage de l'alerte et du module de paie ✅ (`seuilsAlerteHebdo`) ; séparation des trois clés (déclenchement de paie / seuil d'alerte / plafond `a_sourcer`) → **G3** | S | S | G3 | Donner un bouton « repos personnel » alors que l'alerte s'éteint avec la paie serait livrer un réglage inopérant |
 | 5 | **G4** | Page **« Mon entreprise »** : profil, identité, pays, règles de temps de travail ; accès de l'admin client ; « Entreprises » réservé au super-administrateur (V-A2, V-A3) | M | **M** | G3, G6 | Un écran « S » n'est pas une tâche « S » (audit §7.2) ; c'est la maison unique des règles d'entreprise (§4.2) |
 | 6 | **G4b** | **Modèles 48 h / 50 h par pays** : table, pré-sélection à la création, confirmation explicite, `statut_source` | S | S | G4 | Les modèles sont un confort de saisie ; les brancher avant la page n'aurait aucun support |
 | 7 | **G5** | Fiche employé : suivre l'entreprise ou valeur personnelle, clé par clé, retour à la règle générale, origine affichée | M | **M** | G3, G6, G4 | Après G4, sinon l'héritage n'a pas de parent à hériter |
@@ -489,6 +489,35 @@ et la règle est simple :
 
 Le second niveau (`weekly_threshold_major`) est neutralisé avec le premier : un niveau 2 ne
 peut pas devenir un seuil quand le niveau 1 n'est pas prouvé.
+
+##### Décision du 24/10/2026 : une case distincte, pas une déduction
+
+**« Il faut une case distincte »** — validé par le fondateur. Le seuil et l'alerte sont deux
+objets : un seuil peut pré-remplir un contrat, une simulation, un formulaire, sans que personne
+n'ait demandé à être prévenu. L'alerte exige donc **deux conditions cumulatives** :
+
+| Condition | Vérifiée par | Si absente |
+|---|---|---|
+| le seuil est **prouvé comme un choix** | `provenance.origine === 'entreprise'` | silence, `seuilPropose` reste visible |
+| la case **« m'alerter au-delà de ce seuil »** est cochée | `settings.alerte_hebdo_activee === true` | silence, motif « alerte non activée » |
+
+- **En base** : `overtime_settings.alerte_hebdo_activee boolean not null default false`
+  (migration `20261123000001`, rejouable, testée dans PGlite). Défaut `false` : aucune
+  entreprise n'est alertée par héritage, ni par le défaut 48 h, ni par l'ancien `|| 48`.
+- **À l'écriture** : un booléen transmis est écrit tel quel (un `false` explicite est une
+  décision) ; une case absente du formulaire **n'est pas écrite** — même règle que les seuils.
+- **À la lecture** : une case absente n'est jamais un « oui ».
+
+**⚠️ Ce qui n'est pas encore livré, et pourquoi** : la case n'apparaît pas encore dans l'écran
+de réglages. Aucune alerte hebdomadaire n'est affichée aujourd'hui (voir le rectificatif
+ci-dessous) ; poser la case maintenant serait exactement l'interface qui promet un contrôle
+indisponible, ce que le fondateur a interdit. La case arrive **avec l'affichage**, dans le même
+lot (G4/G5) — données et règle sont prêtes, il ne reste que le rendu.
+
+**⚠️ Constat de reproductibilité** : `overtime_settings` n'a **aucune migration de création**
+dans ce dépôt — la table n'existe qu'en base. La migration ajoutée est donc écrite pour être
+inoffensive si la table manque (et c'est testé). C'est un argument de plus pour G3, qui remplace
+cette table par `encheck_regles_temps_travail`, historisée par construction.
 
 **⚠️ Limite connue, à corriger en G3** : un client qui choisit *délibérément* 48 h est
 aujourd'hui indiscernable d'un héritage de l'ancien `|| 48` → il reste silencieux. La table

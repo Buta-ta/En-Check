@@ -388,6 +388,11 @@ class FeatureService {
       //  « légal » : aucune source pays n'est vérifiée (D5).
       weekly_threshold: 48,
       weekly_threshold_major: null,
+      //  ⚠️ Une VALEUR n'est pas une CONSENTE : cette case suit la décision du
+      //  24/10/2026. Le seuil peut servir à pré-remplir un contrat sans que
+      //  personne ne veuille être prévenu. Aucune alerte n'est donc déduite de
+      //  la présence d'un seuil — encore moins du défaut produit.
+      alerte_hebdo_activee: false,
       rate_normal: 25,
       rate_major: 50,
       rate_sunday: 100,
@@ -509,6 +514,13 @@ class FeatureService {
       auto_calculate: settings.auto_calculate ?? true,
       require_approval: settings.require_approval ?? false,
       updated_at: maintenant.toISOString(),
+    }
+
+    //  La case d'alerte suit la même règle : elle ne s'écrit que si l'écran
+    //  l'a transmise comme un booléen. Absente du formulaire = non écrite.
+    //  Aucun `|| false` déguisé : un `false` explicite est une décision.
+    if (typeof settings.alerte_hebdo_activee === 'boolean') {
+      dataToSave.alerte_hebdo_activee = settings.alerte_hebdo_activee
     }
 
     //  Les seuils hebdomadaires ne s'écrivent que sur décision explicite.

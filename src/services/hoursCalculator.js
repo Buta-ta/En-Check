@@ -1513,10 +1513,15 @@ export function seuilsAlerteHebdo(reglageHebdo) {
   //
   //  `historique_incertain` (valeur égale à un défaut : 48 ou 40) n'est pas un
   //  choix prouvé non plus : la valeur a pu être écrite par l'ancien `|| 48`.
-  //  Silence, donc. ⚠️ Limite connue : un client qui choisit délibérément 48 h
-  //  est aujourd'hui indiscernable de l'héritage ; il faut une confirmation
-  //  explicite (indicateur dédié) dans G3 pour le distinguer.
-  const actif = seuilEnregistre !== null && origine === 'entreprise'
+  //  Silence, donc.
+  //
+  //  ⚠️ ET LA CASE « m'alerter » DOIT ÊTRE COCHÉE (décision du 24/10/2026).
+  //  Le seuil et l'alerte sont deux choses : un seuil peut pré-remplir un
+  //  contrat sans que personne ne veuille être prévenu. Deux conditions
+  //  cumulatives, donc — un seuil prouvé ET une activation explicite.
+  const alerteActivee = settings?.alerte_hebdo_activee === true
+  const seuilProuve = seuilEnregistre !== null && origine === 'entreprise'
+  const actif = seuilProuve && alerteActivee
 
   return {
     //  Ce que l'alerte a le DROIT d'utiliser : null = pas d'alerte.
@@ -1528,11 +1533,14 @@ export function seuilsAlerteHebdo(reglageHebdo) {
     //  La valeur telle qu'enregistrée (ou le défaut) : pour pré-remplir un
     //  formulaire ou expliquer le silence. Jamais pour déclencher une alerte.
     seuilPropose: seuilEnregistre,
+    alerteActivee,
     motif: actif
       ? null
       : (seuilEnregistre === null
         ? 'aucun seuil enregistré'
-        : `seuil (${seuilEnregistre} h) non prouvé comme un choix : ${origine}`),
+        : !seuilProuve
+          ? `seuil (${seuilEnregistre} h) non prouvé comme un choix : ${origine}`
+          : 'alerte non activée : la case « m’alerter au-delà de ce seuil » n’est pas cochée'),
   }
 }
 
