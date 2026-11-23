@@ -140,7 +140,15 @@ function seuilValide(valeur) {
  *   max: object|null
  * }}
  */
-export function evaluerSeuilsHebdo({ semaines = [], seuil = null, seuilMajeur = null } = {}) {
+export function evaluerSeuilsHebdo({
+  semaines = [],
+  seuil = null,
+  seuilMajeur = null,
+  //  ⚠️ D'où vient le seuil ? Par défaut « inconnue », jamais « entreprise » :
+  //  une affirmation par défaut est exactement ce qui produisait le mensonge de
+  //  libellé (P5). L'appelant doit dire ce qu'il sait.
+  source = 'inconnue',
+} = {}) {
   const s = seuilValide(seuil)
   const sM = seuilValide(seuilMajeur)
   const bareme = sM !== null && s !== null ? Math.max(s, sM) : (sM ?? s)
@@ -177,9 +185,12 @@ export function evaluerSeuilsHebdo({ semaines = [], seuil = null, seuilMajeur = 
       depasse,
       depassement_heures: depasse ? Math.round((heures - bareme) * 100) / 100 : 0,
       niveau,
-      //  Une semaine incomplète (période qui commence un mercredi) ne peut pas
-      //  être jugée sur son total : on le signale au lieu de la déclarer sage.
-      complete: sem.joursDansLaPeriode === 7,
+      //  ⚠️ Pas de drapeau `complete` ici, et c'est volontaire.
+      //  Le moteur demande désormais chaque semaine sur ses 7 jours réels (fenêtre
+      //  élargie, cf. `fenetreDeLecture`), donc un booléen vaudrait toujours vrai
+      //  et ne mesurerait plus rien. Ce qui reste vrai et vérifiable, c'est le
+      //  nombre de jours effectivement couverts par la fenêtre demandée :
+      //  `joursDansLaPeriode`, déjà porté par l'agrégat.
     }
   })
 
@@ -194,8 +205,9 @@ export function evaluerSeuilsHebdo({ semaines = [], seuil = null, seuilMajeur = 
     motif: null,
     seuil: s,
     seuil_majeur: sM,
-    //  Traçabilité : c'est un réglage d'entreprise, pas une règle légale.
-    source: 'entreprise',
+    //  Traçabilité : la source est celle que l'appelant a constatée, pas une
+    //  supposition. Aucune de ces valeurs n'est une règle légale.
+    source,
     semaines: evaluees,
     nb_depassees: depassees.length,
     max: max ? { debut: max.debut, fin: max.fin, heures: max.heures } : null,
@@ -207,12 +219,30 @@ function arrondiHeures(secondes) {
 }
 
 /** Message d'alerte — jamais le mot « légal ». */
+/** Comment nommer le seuil sans mentir sur son origine. */
+export function libelleOrigineSeuil(source) {
+  switch (source) {
+    case 'entreprise':
+      return 'seuil hebdomadaire d’entreprise'
+    case 'defaut_produit':
+      return 'valeur par défaut du produit, à confirmer'
+    case 'historique_incertain':
+      return 'seuil enregistré, origine à confirmer'
+    case 'employe':
+      return 'seuil personnel de l’employé'
+    case 'contrat':
+      return 'seuil prévu au contrat'
+    default:
+      return 'seuil hebdomadaire'
+  }
+}
+
 export function messageDepassement(evaluation) {
   if (!evaluation?.disponible || !evaluation.nb_depassees) return null
   const seuil = evaluation.seuil_majeur ?? evaluation.seuil
   const max = evaluation.max?.heures ?? 0
   const semaines = evaluation.nb_depassees === 1 ? '1 semaine' : `${evaluation.nb_depassees} semaines`
-  return `${semaines} au-delà du seuil hebdomadaire d’entreprise (${seuil} h) — maximum ${max} h`
+  return `${semaines} au-delà du ${libelleOrigineSeuil(evaluation.source)} (${seuil} h) — maximum ${max} h`
 }
 
 export default {
@@ -221,5 +251,6 @@ export default {
   semainesDeLaPeriode,
   agregerParSemaine,
   evaluerSeuilsHebdo,
+  libelleOrigineSeuil,
   messageDepassement,
 }

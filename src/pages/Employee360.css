@@ -1711,3 +1711,56 @@
     grid-template-columns: minmax(250px, 320px) minmax(330px, 1.3fr) minmax(240px, 1fr) minmax(240px, 1fr);
   }
 }
+
+/* ── alerte hebdomadaire ────────────────────────────────────────────────
+   Une carte qui n'existe que si l'entreprise a coché « m'alerter » ET qu'une
+   semaine dépasse son seuil. Le trait d'argile est le seul signal : pas de
+   rouge criard, pas de badge — c'est un constat chiffré, pas une sanction. */
+.e360-alerte-hebdo {
+  border-left: 3px solid var(--charte-alerte);
+}
+
+.e360-alerte-hebdo-compte {
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--charte-alerte);
+}
+
+.e360-alerte-hebdo-message {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--charte-encre);
+}
+
+.e360-alerte-hebdo-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.e360-alerte-hebdo-liste li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--charte-douce);
+}
+
+.e360-alerte-hebdo-liste strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+
+.e360-alerte-hebdo-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--charte-douce);
+}
