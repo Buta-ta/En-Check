@@ -51,6 +51,15 @@ export const SEUILS_PAR_DEFAUT = {
   clusterIqrMaxMinutes: 45,
   nudgeApresMinutes: 20,
   delaiContestationHeures: 48,
+  //  🌙 Repos entre deux journées. `null` = NON CONFIGURÉ : le moteur ne
+  //  mesure alors rien et le dit, plutôt que d'appliquer une valeur choisie
+  //  par un développeur. Une valeur légale demande une source (D5).
+  reposQuotidienHeures: null,
+  //  📊 Bornes de lecture du taux de charge mensuel (affichage, pas de la paie).
+  //  Elles étaient écrites en dur (110 / 70) au milieu du calcul : impossible
+  //  de les ajuster sans toucher au code.
+  surchargePourcent: 110,
+  sousUtilisationPourcent: 70,
   modeEstimation: 'ombre',
   //  Seuils de PAUSE — réglés depuis Configuration pointeuse → Temps de travail.
   //  Le plafond était déjà lu par le moteur (`20261016000004:581`, défaut 120)
@@ -135,6 +144,9 @@ const CLES = {
   clusterIqrMaxMinutes: 'cluster_iqr_max_minutes',
   nudgeApresMinutes: 'nudge_apres_minutes',
   delaiContestationHeures: 'delai_contestation_heures',
+  reposQuotidienHeures: 'repos_quotidien_heures',
+  surchargePourcent: 'surcharge_pourcent',
+  sousUtilisationPourcent: 'sous_utilisation_pourcent',
   modeEstimation: 'mode_estimation',
   pauseToleranceMinutes: 'pause_tolerance_minutes',
   pauseDureeMaxMinutes: 'pause_duree_max_minutes',
