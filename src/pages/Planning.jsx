@@ -3048,6 +3048,87 @@ export default function Planning() {
     joursCouverts ? Math.round(heuresSemaine / joursCouverts) : 0,
   );
 
+  // LE MOIS, CALCULÉ UNE FOIS. La grille ET le pied de semaine lisent le même
+  // résultat. Avant ce chantier, le compteur d'une case filtrait sur le JOUR DE
+  // SEMAINE (`work_days.includes(pDay)`) pendant que ses pastilles passaient
+  // par `resolveCellShift`, qui lui connaît la DATE : deux questions, deux
+  // réponses, et une case pouvait annoncer « 5 perso » sans montrer personne —
+  // c'est exactement ce que la capture du 23/11 montrait sur le 25.
+  //
+  // Pas de `useMemo` ici, et c'est voulu : `resolveCellShift` et
+  // `getRealAttendance` sont recréés à chaque rendu, donc une mémoïsation qui
+  // les prendrait comme dépendance recalculerait de toute façon.
+  const moisParJour = (() => {
+    const carte = new Map();
+    for (const cellule of calendarWeeks.flat()) {
+      if (cellule.type !== "day") continue;
+      const dayNum = dayNumFromDateStr(cellule.date);
+      const rangs = [];
+      for (const emp of scopedEmployees) {
+        const shift = resolveCellShift(emp, {
+          dateStr: cellule.date,
+          dayNum,
+          labelHeader: `${emp.first_name} ${cellule.day}`,
+        });
+        const real = getRealAttendance(emp.id, cellule.date);
+        if (!shift && !real?.firstIn) continue;
+        // Un rang ne porte qu'un seul mot, pris dans l'ordre de gravité. Une
+        // teinte sans mot ne dit rien (C7) : l'état s'écrit, il ne se devine pas.
+        const etat = shift?.isRest
+          ? { mot: "repos", espece: "repos" }
+          : shift?.isAbsence
+          ? { mot: "absence", espece: "absent" }
+          : shift?.isLeave
+          ? { mot: "congé", espece: "conge" }
+          : sortiesManquantes.has(`${emp.id}|${cellule.date}`)
+          ? { mot: "sortie manquante", espece: "absent" }
+          : estEnCours(emp, cellule.date, real)
+          ? { mot: "en cours", espece: "heure" }
+          : real?.autoClosed
+          ? { mot: "oubli de sortie", espece: "oubli" }
+          : null;
+        rangs.push({
+          emp,
+          shift,
+          real,
+          minutes: computeShiftNetMinutes(shift),
+          teinte: shift?.color || null,
+          etat,
+        });
+      }
+      carte.set(cellule.date, {
+        rangs,
+        minutes: rangs.reduce((somme, r) => somme + r.minutes, 0),
+        anomalies: rangs.filter((r) => r.etat && r.etat.espece !== "heure").length,
+      });
+    }
+    return carte;
+  })();
+
+  // Le pied de semaine se lit en dates, pas en numéro ISO : un numéro inventé
+  // serait un chiffre de plus que personne ne peut vérifier.
+  const dateCourte = (d) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  const semainesDuMois = calendarWeeks
+    .map((semaine) => {
+      const jours = semaine.filter((c) => c.type === "day");
+      if (!jours.length) return null;
+      const portees = jours.map((c) => moisParJour.get(c.date)).filter(Boolean);
+      return {
+        cle: jours[0].date,
+        libelle:
+          jours.length === 1
+            ? `le ${dateCourte(new Date(`${jours[0].date}T12:00:00`))}`
+            : `du ${dateCourte(new Date(`${jours[0].date}T12:00:00`))} au ${dateCourte(
+                new Date(`${jours[jours.length - 1].date}T12:00:00`)
+              )}`,
+        postes: portees.reduce((n, j) => n + j.rangs.length, 0),
+        minutes: portees.reduce((n, j) => n + j.minutes, 0),
+        anomalies: portees.reduce((n, j) => n + j.anomalies, 0),
+        feries: jours.filter((c) => c.isHoliday).length,
+      };
+    })
+    .filter(Boolean);
+
   return (
     <div className="sk-plan-page sk-plan-page--postit" data-theme={darkMode ? "dark" : "light"}>
       {/* ═══ LE BANDEAU DE COMMANDE — UNE FEUILLE ENCADRÉE DE TOILE (22/11/2026) ═══
@@ -4591,272 +4672,290 @@ export default function Planning() {
         {/* 4. VUE MOIS (CALENDRIER MENSUEL + JOURS FÉRIÉS) */}
         {planningView === "mois" && (
           <div className="sk-matrix-card" style={{ padding: 20 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(7, 1fr)",
-                gap: 8,
-                marginBottom: 8,
-              }}
-            >
-              {joursSemaine.map((j) => (
-                <div
-                  key={j.id}
-                  style={{
-                    textAlign: "center",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "var(--sk-text-soft)",
-                    padding: 6,
-                  }}
-                >
-                  {j.nom}
-                </div>
-              ))}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
-              {calendarWeeks.flat().map((cell) => {
-                if (cell.type === "empty") {
+            {/* UNE SEULE GRILLE POUR L'EN-TÊTE ET POUR LES CASES. Le mois posait
+                deux grilles `repeat(7, 1fr)` l'une sur l'autre : celle des jours,
+                réglée sur la largeur du cadre, et celle des cases, poussée par la
+                largeur MINIMALE de ses pastilles (un `1fr` ne descend jamais sous
+                le `min-content` de son contenu, et les pastilles étaient en
+                `nowrap`). Résultat mesuré sur la page du fondateur : six colonnes
+                gonflées, la septième écrasée et peinte par-dessus le liseré du
+                panneau — la peau Post-it rend le cadre `overflow: visible` pour
+                laisser respirer le rabat — et « Jeudi » qui tombe au-dessus du
+                mercredi. Ici, l'alignement n'est plus une intention : c'est une
+                conséquence. */}
+            <div className="sk-matrix-scroll">
+              <div className="sk-mois sk-mois--effectif">
+                {joursSemaine.map((j) => (
+                  <div
+                    key={`mois-jour-${j.id}`}
+                    className="sk-mois-jour"
+                    data-fin-semaine={j.id >= 6 ? "oui" : undefined}
+                  >
+                    {j.nom}
+                  </div>
+                ))}
+                {calendarWeeks.flat().map((cell) => {
+                  if (cell.type === "empty") {
+                    // Hors du mois, il n'y a RIEN à montrer : une encoche, pas une
+                    // case à 112 px qui affiche zéro compteur pour zéro personne. Douze
+                    // de ces fausses cases sur quarante-deux en novembre.
+                    return <div key={cell.id} className="sk-mois-encoche" />;
+                  }
+                  const isSelected = selectedCalendarDay?.date === cell.date;
+                  const dayModels = monthModels[cell.date] || [];
+                  const isMonthDropOver = monthDropDate === cell.date;
+                  const todayIso = toIsoDateLocal(new Date());
+                  const isToday = cell.date === todayIso;
+                  const cellDayNum = dayNumFromDateStr(cell.date);
+                  const jour = moisParJour.get(cell.date) || { rangs: [], minutes: 0, anomalies: 0 };
+                  // La bande de teinte ne se pose que si le jour a UN auteur :
+                  // peindre une case collective de la teinte choisie par une seule
+                  // personne serait un mensonge de plus dans cette vue.
+                  const teinteDuJour = jour.rangs.length === 1 ? jour.rangs[0].teinte : null;
+                  const ouvrirLaJournee = () => {
+                    setSelectedCalendarDay(cell);
+                    setCalendarDate(new Date(`${cell.date}T12:00:00`));
+                    setPlanningView("jour");
+                  };
+                  const classes = [
+                    "sk-cal-cell",
+                    "sk-mois-case",
+                    isMonthDropOver ? "is-drop-over" : "",
+                    isToday ? "is-today" : "",
+                    isSelected ? "is-selected" : "",
+                    touchDragPayload ? "is-touch-armed" : "",
+                    modeleCopie ? "is-collable" : "",
+                    caseCible?.vue === "mois" && caseCible.dateStr === cell.date
+                      ? "is-cible-collage"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+
                   return (
                     <div
                       key={cell.id}
-                      style={{
-                        minHeight: 112,
-                        background: "transparent",
-                        borderRadius: 10,
+                      role="button"
+                      tabIndex={0}
+                      className={classes}
+                      data-fin-semaine={cell.pDay >= 6 ? "oui" : undefined}
+                      style={teinteDuJour ? { "--teinte-du-jour": teinteDuJour } : undefined}
+                      onClick={() => {
+                        if (applyTouchDropOnDay(cell.date)) return;
+                        setSelectedCalendarDay(cell);
+                        setCalendarDate(new Date(`${cell.date}T12:00:00`));
                       }}
-                    />
-                  );
-                }
-                const isSelected = selectedCalendarDay?.date === cell.date;
-                const dayModels = monthModels[cell.date] || [];
-                const isMonthDropOver = monthDropDate === cell.date;
-                const todayIso = toIsoDateLocal(new Date());
-                const isToday = cell.date === todayIso;
-                const cellDayNum = dayNumFromDateStr(cell.date);
-
-                // Shifts et pointages réels des collaborateurs du focus sur cette journée
-                const cellRows = scopedEmployees
-                  .map((emp) => ({
-                    emp,
-                    shift: resolveCellShift(emp, {
-                      dateStr: cell.date,
-                      dayNum: cellDayNum,
-                      labelHeader: `${emp.first_name} ${cell.day}`,
-                    }),
-                    real: getRealAttendance(emp.id, cell.date),
-                  }))
-                  .filter((r) => r.shift || r.real);
-                const cellMinutes = cellRows.reduce(
-                  (acc, r) => acc + computeShiftNetMinutes(r.shift),
-                  0
-                );
-
-                return (
-                  <div
-                    key={cell.id}
-                    className={`sk-cal-cell ${isMonthDropOver ? "is-drop-over" : ""} ${
-                      isToday ? "is-today" : ""
-                    } ${isSelected ? "is-selected" : ""} ${
-                      touchDragPayload ? "is-touch-armed" : ""
-                    } ${modeleCopie ? "is-collable" : ""} ${
-                      caseCible?.vue === "mois" && caseCible.dateStr === cell.date
-                        ? "is-cible-collage"
-                        : ""
-                    }`}
-                    style={
-                      cell.isHoliday
-                        ? { background: "rgba(139, 92, 246, 0.14)" }
-                        : undefined
-                    }
-                    onClick={() => {
-                      if (applyTouchDropOnDay(cell.date)) return;
-                      setSelectedCalendarDay(cell);
-                      setCalendarDate(new Date(cell.date + "T12:00:00"));
-                    }}
-                    onMouseEnter={() => survolerCase("mois", null, cell.date, cellDayNum)}
-                    onMouseLeave={() => setCaseCible(null)}
-                    onDoubleClick={() => setPlanningView("jour")}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      if (monthDropDate !== cell.date) setMonthDropDate(cell.date);
-                    }}
-                    onDragLeave={() => setMonthDropDate(null)}
-                    onDrop={(e) => handleDropOnCalendarDay(e, cell.date)}
-                    title={
-                      focusFilter.type === "employee"
-                        ? "Déposez un modèle : il sera affecté au collaborateur sélectionné"
-                        : "Déposez un modèle sur la journée (double-clic pour la vue Jour)"
-                    }
-                  >
-                    <div className="sk-cal-cell-head">
-                      <span className={isToday ? "sk-cal-day is-today-num" : "sk-cal-day"}>
-                        {cell.day}
-                      </span>
-                      <span className="sk-cal-cell-head-right">
-                        {cell.isHoliday && <span title={cell.holiday?.name}>🎌</span>}
-                        {isToday && <span className="sk-today-pill">Aujourd&apos;hui</span>}
-                      </span>
-                    </div>
-
-                    <PlanningPayslipBadge entries={payslipEntries(scopedEmployees, cell.date)} />
-
-                    {modeleCopie && (
-                      <button
-                        type="button"
-                        className="sk-case-coller is-mois"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          collerModeleSurJour(cell.date);
-                        }}
-                        title={`Coller « ${libelleModele(modeleCopie.template)} » sur cette journée`}
-                      >
-                        <ClipboardPaste size={12} />
-                        Coller
-                      </button>
-                    )}
-
-                    {cell.isHoliday ? (
-                      <div className="sk-cal-holiday">{cell.holiday?.name}</div>
-                    ) : (
-                      <div className="sk-cal-summary">
-                        {cellRows.length > 0
-                          ? `${cellRows.length} pers. · ${formatHoursCompact(cellMinutes)}`
-                          : `${cell.schPlannings.length} modèle(s) • ${cell.actES.length} perso`}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter" && e.key !== " ") return;
+                        e.preventDefault();
+                        ouvrirLaJournee();
+                      }}
+                      onMouseEnter={() => survolerCase("mois", null, cell.date, cellDayNum)}
+                      onMouseLeave={() => setCaseCible(null)}
+                      onDoubleClick={ouvrirLaJournee}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (monthDropDate !== cell.date) setMonthDropDate(cell.date);
+                      }}
+                      onDragLeave={() => setMonthDropDate(null)}
+                      onDrop={(e) => handleDropOnCalendarDay(e, cell.date)}
+                      title={
+                        focusFilter.type === "employee"
+                          ? "Déposez un modèle : il sera affecté au collaborateur sélectionné"
+                          : "Déposez un modèle sur la journée · double-clic ou Entrée pour ouvrir le jour"
+                      }
+                    >
+                      <div className="sk-cal-cell-head">
+                        <span className={isToday ? "sk-cal-day is-today-num" : "sk-cal-day"}>
+                          {cell.day}
+                        </span>
+                        <span className="sk-cal-cell-head-right">
+                          {cell.isHoliday && <span title={cell.holiday?.name}>🎌</span>}
+                          {isToday && <span className="sk-today-pill">Aujourd&apos;hui</span>}
+                        </span>
                       </div>
-                    )}
 
-                    {/* Shifts par collaborateur (focus équipe ou collaborateur) */}
-                    <div className="sk-cal-pills-list">
-                      {cellRows.slice(0, 4).map(({ emp, shift, real }) => {
-                        const netM = computeShiftNetMinutes(shift);
-                        return (
+                      <PlanningPayslipBadge entries={payslipEntries(scopedEmployees, cell.date)} />
+
+                      {modeleCopie && (
+                        <button
+                          type="button"
+                          className="sk-case-coller is-mois"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            collerModeleSurJour(cell.date);
+                          }}
+                          title={`Coller « ${libelleModele(modeleCopie.template)} » sur cette journée`}
+                        >
+                          <ClipboardPaste size={12} />
+                          Coller
+                        </button>
+                      )}
+
+                      <div className="sk-cal-summary sk-mois-chiffre">
+                        {cell.isHoliday && cell.holiday?.name ? (
+                          <span className="sk-cal-holiday sk-mois-tampon" data-espece="ferie">
+                            {cell.holiday.name}
+                          </span>
+                        ) : jour.rangs.length ? (
+                          <>
+                            <b>{jour.rangs.length}</b>
+                            {` poste${jour.rangs.length > 1 ? "s" : ""} · ${formatHoursCompact(
+                              jour.minutes
+                            )}`}
+                          </>
+                        ) : (
+                          <span className="sk-mois-vide">
+                            {cell.schPlannings.length
+                              ? "Modèle posé, aucun nom dans ce focus"
+                              : "Aucun poste"}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* QUI EST LÀ, CE JOUR-LÀ. C'est la question qu'on se pose
+                          devant un mois ; la pastille du modèle, elle, répondait à
+                          côté — un nom tronqué à 78 px répété trente fois. */}
+                      <div className="sk-mois-liste">
+                        {jour.rangs.slice(0, 4).map((r) => (
                           <span
-                            key={emp.id}
-                            className="sk-cal-pill"
-                            style={{ "--cal-pill-bg": buildShiftGradient(shift?.color) }}
-                            title={`${emp.first_name} ${emp.last_name} — ${
-                              shift
-                                ? `${shift.start_time} - ${shift.end_time}`
-                                : "non planifié"
-                            }`}
-                            draggable={Boolean(shift) && !shift.isHoliday && !shift.isAbsence}
+                            key={r.emp.id}
+                            className="sk-mois-rang"
+                            draggable={Boolean(r.shift) && !r.shift.isHoliday && !r.shift.isAbsence}
                             onDragStart={(e) =>
                               handleDragStartCellShift(
                                 e,
-                                emp,
+                                r.emp,
                                 {
                                   dateStr: cell.date,
                                   dayNum: cellDayNum,
-                                  labelHeader: `${emp.first_name} ${cell.day}`,
+                                  labelHeader: `${r.emp.first_name} ${cell.day}`,
                                 },
-                                shift
+                                r.shift
                               )
                             }
+                            title={`${r.emp.first_name} ${r.emp.last_name || ""} — ${
+                              r.shift
+                                ? `${r.shift.name || "poste"} · ${r.shift.start_time}-${r.shift.end_time}`
+                                : "aucun poste planifié, pointage seul"
+                            }${r.real?.firstIn ? ` · ${titreReelDuJour(r.real)}` : ""}`}
                           >
-                            <span className="sk-cal-pill-name">
-                              {emp.first_name?.charAt(0) || ""}
-                              {emp.last_name?.charAt(0) || ""}
+                            <i
+                              aria-hidden="true"
+                              style={r.teinte ? { "--teinte-du-rang": r.teinte } : undefined}
+                            />
+                            <span className="sk-mois-nom">
+                              {r.emp.first_name} {r.emp.last_name}
                             </span>
-                            <span className="sk-cal-pill-model">
-                              {shift?.name ||
-                                (shift?.isRest
-                                  ? "Repos"
-                                  : shift?.isAbsence
-                                  ? "Congé"
-                                  : "—")}
-                            </span>
-                            <span>
-                              {shift
-                                ? shift.isRest || shift.isLeave
-                                  ? shift.subtitle || "Repos"
-                                  : shift.isAbsence
-                                  ? shift.start_time
-                                  : `${shift.start_time}-${shift.end_time}`
-                                : ""}
-                            </span>
-                            {netM > 0 && <span className="sk-cal-pill-net">{formatHoursCompact(netM)}</span>}
-                            {real && real.firstIn && (
-                              <span
-                                className={`sk-cal-pill-real ${
-                                  estEnCours(emp, cell.date, real) ? "is-open" : ""
-                                } ${
-                                  sortiesManquantes.has(`${emp.id}|${cell.date}`)
-                                    ? "is-manquante"
-                                    : ""
-                                }`}
-                                title={
-                                  real.lastOut
-                                    ? titreReelDuJour(real)
-                                    : sortiesManquantes.has(`${emp.id}|${cell.date}`)
-                                    ? `Entrée ${heureLocale(
-                                        real.firstIn
-                                      )} — aucune sortie : sortie manquante`
-                                    : `Entrée ${heureLocale(
-                                        real.firstIn
-                                      )} — sortie pas encore pointée`
-                                }
-                              >
-                                ▸ {real.lastOut
-                                  ? formatRealLabel(real)
-                                  : sortiesManquantes.has(`${emp.id}|${cell.date}`)
-                                  ? `${heureLocale(real.firstIn)} · sortie manquante`
-                                  : `${heureLocale(real.firstIn)} · en cours`}
-                              </span>
-                            )}
-                            {shift && !shift.isHoliday && !shift.isAbsence && (
-                              <button
-                                type="button"
-                                className="sk-shift-del-btn"
-                                style={{ width: 16, height: 16 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  clearShiftForDate(emp, cell.date, cellDayNum);
-                                  toast.success(
-                                    `Créneau retiré (${emp.first_name} · ${cell.date})`
-                                  );
-                                }}
-                                title={`Retirer le créneau de ${emp.first_name} le ${cell.date}`}
-                              >
-                                <X size={10} />
-                              </button>
+                            <b className="sk-mois-heures">
+                              {r.shift ? formatHoursCompact(r.minutes) : "pointage seul"}
+                            </b>
+                            {r.etat && (
+                              <em className="sk-mois-tampon" data-espece={r.etat.espece}>
+                                {r.etat.mot}
+                              </em>
                             )}
                           </span>
-                        );
-                      })}
-                      {cellRows.length > 4 && (
-                        <span className="sk-cal-more">+{cellRows.length - 4} autres</span>
-                      )}
-                    </div>
-
-                    {/* Modèles déposés au niveau de la journée */}
-                    <div className="sk-cal-pills-list">
-                      {dayModels.map((m, mIdx) => (
-                        <span
-                          key={`${m.id}-${mIdx}`}
-                          className="sk-cal-pill is-daymodel"
-                          style={{ "--cal-pill-bg": buildShiftGradient(m.color) }}
-                          title={m.label || m.name}
-                        >
-                          <span>{m.label || m.name}</span>
+                        ))}
+                        {jour.rangs.length > 4 && (
+                          // Le « +N » n'est pas un compteur : c'est une porte.
                           <button
                             type="button"
-                            className="sk-shift-del-btn"
-                            style={{ width: 16, height: 16 }}
+                            className="sk-mois-plus"
                             onClick={(e) => {
                               e.stopPropagation();
-                              removeMonthModel(cell.date, mIdx);
+                              ouvrirLaJournee();
                             }}
-                            title="Retirer ce modèle de la journée"
                           >
-                            <X size={10} />
+                            +{jour.rangs.length - 4} autres · ouvrir la journée
                           </button>
-                        </span>
-                      ))}
+                        )}
+                      </div>
+
+                      {dayModels.length > 0 && (
+                        <div className="sk-cal-pills-list sk-mois-depots">
+                          {dayModels.map((m, mIdx) => (
+                            <span
+                              key={`${m.id}-${mIdx}`}
+                              className="sk-cal-pill is-daymodel"
+                              style={{ "--teinte-du-depot": m.color }}
+                              title={m.label || m.name}
+                            >
+                              <span className="sk-cal-pill-model">{m.label || m.name}</span>
+                              {/* Un seul mot, écrit, pas une croix de 16 px posée
+                                  sur une vue de lecture. */}
+                              <button
+                                type="button"
+                                className="sk-mois-retirer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeMonthModel(cell.date, mIdx);
+                                }}
+                                title={`Retirer « ${m.label || m.name} » de cette journée`}
+                              >
+                                Retirer
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        className="sk-mois-ouvrir"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          ouvrirLaJournee();
+                        }}
+                      >
+                        Ouvrir la journée
+                      </button>
                     </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* LE PIED, dans les termes de celui de la semaine : une ligne par
+                semaine, les heures à droite en colonnes serrées, et le compte des
+                jours à vérifier — ce qu'un mois doit laisser lire sans clic. */}
+            {semainesDuMois.length > 0 && (
+              <div className="sk-mois-pied">
+                {semainesDuMois.map((s) => (
+                  <div key={s.cle} className="sk-mois-ligne-pied">
+                    <span>
+                      <em>{s.libelle}</em>
+                      {` · ${s.postes} poste${s.postes > 1 ? "s" : ""}`}
+                      {s.feries ? ` · ${s.feries} férié${s.feries > 1 ? "s" : ""}` : ""}
+                      {s.anomalies ? ` · ${s.anomalies} à vérifier` : ""}
+                    </span>
+                    <strong>{formatHoursCompact(s.minutes)}</strong>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+            )}
+
+            <div className="sk-mois-legende">
+              <span>
+                <i aria-hidden="true" />
+                poste planifié · la bande porte la teinte du jour
+              </span>
+              <span>
+                <i aria-hidden="true" data-espece="oubli" />
+                oubli · sortie manquante — à vérifier
+              </span>
+              <span>
+                <i aria-hidden="true" data-espece="absent" />
+                non pointé après la fin du poste
+              </span>
+              <span>
+                <i aria-hidden="true" data-espece="repos" />
+                repos · congé · férié
+              </span>
+              <span>{`${Math.min(
+                scopedEmployees.length,
+                4
+              )} rangées par case au plus, le reste s'ouvre au clic`}</span>
             </div>
           </div>
         )}

@@ -429,8 +429,12 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // Les créneaux issus des grilles portent désormais leur nom
     expect(planningSrc).toContain('name: ws.name || "Modèle entreprise"')
     expect(planningSrc).toContain('name: defaultPlan.name || "Modèle par défaut"')
-    // Le nom est rendu dans les trois vues
+    // Le nom est rendu dans les trois vues. Dans le Mois, depuis le 23/11, la place
+    // du nom du modèle est prise par le nom de la PERSONNE (direction B : « le mois
+    // dit qui est là ») ; sk-cal-pill-model ne subsiste que pour le modèle DÉPOSÉ sur
+    // la journée, qui est exactement ce qu'il est.
     expect(planningSrc).toContain('sk-shift-name')
+    expect(planningSrc).toContain('sk-mois-nom')
     expect(planningSrc).toContain('sk-cal-pill-model')
     expect(planningSrc).toContain('sk-day-block-label')
     expect(planningCss).toContain('.sk-shift-name')
@@ -909,10 +913,17 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
   })
 
   it('15. offre la même expérience en Mois et en Jour qu\'en Semaine', () => {
-    // Mois : cases dépôt + shifts + réel
+    // Mois : un rang par PERSONNE, son état écrit en mot, et les modèles déposés.
+    // La pastille de shift avec sa sous-puce de réel est l'objet d'avant le 23/11 :
+    // à l'échelle d'un mois elle tronquait le nom à 78 px et répétait trente fois la
+    // même norme. L'info n'a pas disparu, elle a changé de porte : le rang la titre
+    // (infobulle du réel) et la vue Jour l'affiche en entier.
+    expect(planningSrc).toContain('sk-mois-rang')
+    expect(planningSrc).toContain('sk-mois-tampon')
     expect(planningSrc).toContain('sk-cal-pills-list')
-    expect(planningSrc).toContain('sk-cal-pill-real')
+    expect(planningSrc).toContain('titreReelDuJour')
     expect(planningSrc).toContain('dayNumFromDateStr')
+    expect(planningSrc).not.toContain('sk-cal-pill-real')
     // Jour : timeline horaire avec blocs glissables
     expect(planningSrc).toContain('sk-day-track')
     expect(planningSrc).toContain('sk-day-block')
@@ -936,5 +947,75 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(planningCss).toContain('@media (max-width: 760px)')
     expect(planningCss).toContain('@media (max-width: 420px)')
     expect(planningCss).toContain('scroll-snap-type: x mandatory')
+  })
+
+  it('31. tient le mois dans son cadre et dit qui est là, jour par jour', () => {
+    // Le bloc du mois, isolé : ces contrats-là portent sur UN écran, pas sur le
+    // fichier entier — une assertion sur tout Planning.jsx ne dirait pas où.
+    const mois = planningSrc.slice(
+      planningSrc.indexOf('{planningView === "mois" && ('),
+      planningSrc.indexOf('{/* 5. VUE DEMANDES DES COLLABORATEURS')
+    )
+    expect(mois.length).toBeGreaterThan(2000)
+
+    // UNE SEULE GRILLE, et un gabarit qui ne peut pas déborder. `1fr` vaut
+    // `minmax(auto, 1fr)` : sous ce régime, la largeur MINIMALE d'une pastille
+    // `nowrap` poussait sa colonne, les six premières gonflaient et la septième —
+    // le dimanche — s'écrasait et se peignait hors du panneau (la peau rend la carte
+    // `overflow: visible` pour laisser respirer le rabat).
+    expect(mois).toContain('<div className="sk-matrix-scroll">')
+    expect(mois).toContain('<div className="sk-mois sk-mois--effectif">')
+    // `null`, pas `[]` : l'absence est la preuve cherchée — plus aucun gabarit
+    // écrit en style en ligne dans le mois, il n'y a qu'une grille et elle est
+    // habillée par la feuille.
+    expect(mois.match(/gridTemplateColumns/g)).toBeNull()
+    expect(mois).toContain('joursSemaine.map')
+    // le gabarit n'est plus écrit dans le style en ligne de la page : le commentaire
+    // du bloc, lui, a le droit de nommer l'ancien défaut pour expliquer le nouveau
+    expect(mois).not.toMatch(/gridTemplateColumns:\s*["']repeat\(7/)
+
+    // CE QUI EST ANNONCÉ et CE QUI EST PEINT sortent du même calcul. La case du 25,
+    // sur la capture du fondateur, annonçait « 1 modèle(s) • 5 perso » sans montrer
+    // personne : le compteur filtrait sur le jour de SEMAINE, les pastilles sur la
+    // DATE.
+    expect(planningSrc).toContain('const moisParJour = (() => {')
+    expect(mois).toContain('moisParJour.get(cell.date)')
+    expect(mois).toContain('semainesDuMois.map')
+    expect(mois).toContain('jour.rangs.length ? (')
+
+    // le MOT, jamais la couleur seule (C7), et plus de jargon de compteur
+    expect(mois).toContain('r.etat.mot')
+    expect(mois).toContain('Aucun poste')
+    expect(mois).not.toContain('modèle(s)')
+    expect(mois).not.toContain('•')
+
+    // rien de DESTRUCTEUR dans une vue de lecture : la croix de 16 px posée sur
+    // chaque pastille est sortie du mois, le retrait d'un dépôt s'écrit en mot
+    expect(mois).not.toContain('sk-shift-del-btn')
+    expect(mois).toContain('sk-mois-retirer')
+    // et la porte du jour est explicite : plus seulement un double-clic à deviner
+    expect(mois).toContain('sk-mois-ouvrir')
+    expect(mois).toContain('role="button"')
+    expect(mois).toContain('onKeyDown')
+    expect(mois).toContain('ouvrirLaJournee')
+
+    // la peau du mois est ÉCRITE dans la feuille de la maison : avant le 23/11,
+    // zéro règle du mois y figurait (douze dans la feuille voisine), et le mois
+    // héritait de son vocabulaire — un dégradé saturé sous un texte clair, là où la
+    // grille de la semaine pose un lavis.
+    const peau = lire('src/pages/PlanningPostIt.css')
+    const debutPeau = peau.indexOf('LE MODE MOIS, ENFIN HABILLÉ')
+    expect(debutPeau).toBeGreaterThan(-1)
+    const blocPeau = peau.slice(debutPeau)
+    expect(blocPeau).toContain('grid-template-columns: repeat(7, minmax(0, 1fr))')
+    expect(blocPeau).toContain('.sk-plan-page--postit .sk-cal-cell.sk-mois-case')
+    expect(blocPeau).toContain('.sk-plan-page--postit .sk-mois-legende')
+    expect(blocPeau).toContain('min-width: 760px')
+    // aucun des trois audits ne doit bouger à cause de ce chantier
+    expect(blocPeau.match(/#[0-9a-fA-F]{3,8}\b/g)).toBeNull()
+    expect(blocPeau).not.toMatch(/blur\(/)
+    expect(blocPeau).not.toMatch(/border-radius:\s*[^;]*\d+px/)
+    // les trois tailles de la charte, pas une de plus (D-013)
+    expect(blocPeau.match(/font-size:\s*\d/g)).toBeNull()
   })
 })
