@@ -386,7 +386,7 @@ rendre l'écran muet au premier jour.
 |---|---|---|---|---|---|---|
 | 1 | **G1** ✅ *réalisé, en attente de validation* | Fenêtres hebdo et repos calculées sur une plage élargie ; la primitive refuse des bornes étroites ; drapeau mort supprimé | S | — | — | Un réglage éditable sur un calcul faux à cheval sur deux années, c'est un bouton qui ment deux fois |
 | 2 | **G2** ✅ *réalisé, en attente de validation* | Provenance réelle (`entreprise` / `defaut_produit` / `historique_incertain` / `inconnue`), défaut à 48 h, écriture qui n'invente plus de seuil, libellé honnête | S | S | — | Supprime le mensonge actuel (« seuil d'entreprise ») pour tous, tout de suite, sans toucher au calcul |
-| 3 | **G3** ⏳ *2a fait (table + RPC + service, sans branchement) ; 2b à faire* |
+| 3 | **G3** ✅ *2a (table + RPC + service) et 2b (branchement) faits* |
 | 4 | **G6** ⏳ *découplage + seuil choisi + case d'alerte (données) faits ; case à l'écran et séparation des clés à suivre* | Découplage de l'alerte et du module de paie ✅ (`seuilsAlerteHebdo`) ; séparation des trois clés (déclenchement de paie / seuil d'alerte / plafond `a_sourcer`) → **G3** | S | S | G3 | Donner un bouton « repos personnel » alors que l'alerte s'éteint avec la paie serait livrer un réglage inopérant |
 | 5 | **G4** | Page **« Mon entreprise »** : profil, identité, pays, règles de temps de travail ; accès de l'admin client ; « Entreprises » réservé au super-administrateur (V-A2, V-A3) | M | **M** | G3, G6 | Un écran « S » n'est pas une tâche « S » (audit §7.2) ; c'est la maison unique des règles d'entreprise (§4.2) |
 | 6 | **G4b** | **Modèles 48 h / 50 h par pays** : table, pré-sélection à la création, confirmation explicite, `statut_source` | S | S | G4 | Les modèles sont un confort de saisie ; les brancher avant la page n'aurait aucun support |
@@ -625,13 +625,33 @@ Le gros morceau. Coupé en deux pour rester relisible.
   dépôt : la table de test les recrée à la main. C'est le risque de reproductibilité déjà
   signalé, que G3 ne corrige pas encore.
 
-**PR 2b — le branchement (S)**
+**PR 2b — le branchement (S)** ✅ *réalisé le 24/10/2026*
 - `hoursCalculator.js` : le seuil d'alerte vient de `encheck_regle_resolue(...)` ; les réglages
   d'heures supplémentaires ne servent plus qu'à la paie ;
 - bascule : tant qu'aucune règle n'est écrite, la valeur résolue retombe sur le comportement
   actuel (48 h, origine `defaut_produit`) — **aucune rupture de service** ;
 - tests : avant/après migration, mêmes alertes pour une entreprise sans règle ; montants de
   paie strictement identiques.
+
+##### 5.4.2 Ce que le branchement fait exactement
+
+| Question | Réponse implémentée | Vérifié par |
+|---|---|---|
+| Qui fait autorité pour le seuil ? | la table versionnée **dès qu'elle porte une valeur** ; sinon le réglage d'entreprise, défaut 48 h compris | 6 tests de bascule |
+| La paie lit-elle cette table ? | **non** — `overtimeSettings` inchangé, mêmes montants | test d'égalité des réglages de paie avec/sans règle |
+| Si la migration n'est pas installée ? | `chargerReglesAlerte` attrape et rend `null` ; repli sur l'existant | 2 tests de panne |
+| L'activation suit-elle la règle ? | **non** : la case reste la preuve. Une règle de 45 h sans case cochée n'alerte pas | 1 test dédié |
+| Un employé peut-il avoir sa valeur ? | oui côté base, et `source` vaut alors `employe` ; la lecture par employé arrive avec G5 | 1 test de libellé |
+
+**Ce que la table versionnée ne porte pas encore** : l'**activation** de l'alerte
+(`alerte_hebdo_activee`) reste dans `overtime_settings`, donc hors historique. C'est la limite
+la plus visible qui reste : on saura *quelle* valeur s'applique et *depuis quand*, mais pas
+*qui* a coché la case ni *quand*. G5 (fiche employé) doit la versionner à son tour — c'est une
+clé de plus, pas une refonte.
+
+**Séparation des trois clés (reste de G6)** : le seuil d'alerte ne vient plus de la paie dès
+qu'une règle existe ✅ ; le déclenchement de paie et le plafond `a_sourcer` restent où ils
+sont, inchangés — le plafond n'existe toujours pas, et il n'est pas inventé.
 
 #### Lot 3 — G4 : « Mon entreprise » (M + M)
 
@@ -668,7 +688,7 @@ Le gros morceau. Coupé en deux pour rester relisible.
 | 0 | #313 (G1+G2) | — | rien (calcul inchangé, totaux identiques) | tu regardes, tu fusionnes |
 | 1 | G6-mince | S | **aucune alerte nouvelle** : le seuil non choisi n'alerte pas (5.3.1) ; l'affichage n'existe pas encore | une capture : alerte visible module coupé, avec un seuil d'entreprise |
 | 2a | G3 base | M | rien : pas encore branché | revue de la migration et des RPC |
-| 2b | G3 branchement | S | les alertes si la bascule est mal faite | avant/après identiques pour une entreprise sans règle |
+| 2b | G3 branchement ✅ | S | rien pour un client sans règle (mêmes seuils, mêmes montants) | avant/après identiques — testé |
 | 3 | G4 + G4b | M+M | l'accès des admins clients | parcours admin non super-admin |
 | 4 | G5 + G5-bis | M+M | la lisibilité de la fiche employé | parcours : poser, verrouiller, informer |
 | 5 | G7 | S | des libellés | captures des 3 écrans |

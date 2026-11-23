@@ -38,6 +38,7 @@ import {
   messageDepassement,
 } from './plafondHebdomadaire'
 import { evaluerReposQuotidien, messageRepos } from './reposQuotidien'
+import { resoudre as resoudreRegleTemps } from './reglesTempsTravail'
 
 //  Aucun seuil de pointage n'est plus écrit en dur dans ce moteur : ils viennent
 //  de `encheck_reglages_pointage` (voir src/services/seuilsPointage.js). Les
@@ -203,7 +204,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   )
 
   // ── 7) Contexte heures sup ───────────────────────────────────
-  const { hasOvertimeFeature, overtimeSettings, reglageHebdo, allSchedules } = await loadOvertimeContext(employee.enterprise_id)
+  const { hasOvertimeFeature, overtimeSettings, reglageHebdo, reglesAlerte, allSchedules } = await loadOvertimeContext(employee.enterprise_id)
 
   // ── 8) Calcul jour par jour ──────────────────────────────────
   const daySummaries = buildDaySummariesStrict({
@@ -429,7 +430,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   //  y compris celles à cheval sur deux mois : sinon 50 h pourraient se cacher
   //  dans deux « semaines » de 25 h au 1ᵉʳ du mois.
   //  Les seuils de l'alerte : jamais conditionnés au module de paie (G6).
-  const seuilsAlerteRegles = seuilsAlerteHebdo(reglageHebdo)
+  const seuilsAlerteRegles = seuilsAlerteHebdo(reglageHebdo, reglesAlerte)
   const secondesParJour = {}
   for (const d of listDaysInclusive(debutSemaines, finSemaines)) {
     secondesParJour[d] = (daySummaries[d] || {}).totalSeconds || 0
@@ -1496,11 +1497,20 @@ function resolvePlanForExpected(employeeScheduleRow, defaultScheduleRow) {
  * valeurs viennent du réglage d'entreprise, ou de ses défauts, et l'origine est
  * toujours transmise pour que le message ne mente pas (P5).
  */
-export function seuilsAlerteHebdo(reglageHebdo) {
+export function seuilsAlerteHebdo(reglageHebdo, reglesAlerte = null) {
   const settings = reglageHebdo?.settings || null
-  const seuilEnregistre = settings?.weekly_threshold ?? null
-  const majeurEnregistre = settings?.weekly_threshold_major ?? null
   const origineEnregistree = reglageHebdo?.provenance?.origine || 'inconnue'
+
+  //  ⚠️ DEUX SOURCES, UNE SEULE VÉRITÉ (lot 2b).
+  //  La table versionnée `encheck_regles_temps_travail` fait autorité dès qu'elle
+  //  porte une valeur pour `alerte_hebdo_heures` : elle sait depuis quand, et qui
+  //  a décidé. Tant qu'aucune règle n'y est écrite, on retombe EXACTEMENT sur le
+  //  comportement d'avant (réglage d'entreprise, ou défaut produit 48 h) : aucune
+  //  rupture de service, aucun client ne voit son alerte changer sans acte.
+  const valeurRegle = reglesAlerte?.seuil?.valeur ?? null
+  const valeurMajeurRegle = reglesAlerte?.niveau2?.valeur ?? null
+  const seuilEnregistre = valeurRegle !== null ? valeurRegle : (settings?.weekly_threshold ?? null)
+  const majeurEnregistre = valeurRegle !== null ? valeurMajeurRegle : (settings?.weekly_threshold_major ?? null)
 
   //  ⚠️ LA CASE EST LA PREUVE (décision du 24/10/2026).
   //
@@ -1528,9 +1538,15 @@ export function seuilsAlerteHebdo(reglageHebdo) {
     seuil: actif ? valeur : null,
     seuilMajeur: actif ? majeurEnregistre : null,
     //  Une valeur confirmée par la case est, de fait, une règle d'entreprise.
-    //  L'origine BRUTE reste exposée à côté, pour l'audit et les messages.
-    source: actif ? 'entreprise' : (seuilEnregistre === null ? 'inconnue' : origineEnregistree),
+    //  Quand la valeur vient de la table versionnée, c'est ELLE qui nomme
+    //  l'origine (entreprise ou employé) — on ne l'écrase pas par 'entreprise'.
+    source: valeurRegle !== null
+      ? (reglesAlerte?.seuil?.origine || 'entreprise')
+      : (actif ? 'entreprise' : (seuilEnregistre === null ? 'inconnue' : origineEnregistree)),
     origineEnregistree,
+    //  Traçabilité de la version retenue : le message peut dire « depuis le ».
+    dateEffetRegle: valeurRegle !== null ? (reglesAlerte?.seuil?.dateEffet || null) : null,
+    sourceValeur: valeurRegle !== null ? 'table_versionnee' : 'reglage_entreprise',
     actif,
     alerteActivee,
     //  La valeur telle qu'enregistrée (ou le défaut) : pour pré-remplir un
@@ -1574,8 +1590,33 @@ async function loadOvertimeContext(enterpriseId) {
     if (hasOvertimeFeature) overtimeSettings = null
   }
 
-  const allSchedules = await FeatureService.loadSchedules([enterpriseId])
-  return { hasOvertimeFeature, overtimeSettings, reglageHebdo, allSchedules }
+  const [allSchedules, reglesAlerte] = await Promise.all([
+    FeatureService.loadSchedules([enterpriseId]),
+    chargerReglesAlerte(enterpriseId),
+  ])
+
+  return { hasOvertimeFeature, overtimeSettings, reglageHebdo, reglesAlerte, allSchedules }
+}
+
+/**
+ * Les règles VERSIONNÉES du seuil d'alerte, s'il y en a.
+ *
+ * POURQUOI un `catch` total : cette lecture dépend d'une migration qui peut ne
+ * pas être installée sur un serveur donné. Son absence ne doit empêcher ni un
+ * calcul de paie ni l'affichage d'une fiche — on retombe alors sur le réglage
+ * existant, exactement comme avant ce lot. Le silence est un repli, pas une
+ * conclusion : `reglesAlerte` vaut `null`, et l'origine affichée le dira.
+ */
+async function chargerReglesAlerte(entrepriseId) {
+  try {
+    const [seuil, niveau2] = await Promise.all([
+      resoudreRegleTemps({ entrepriseId, cle: 'alerte_hebdo_heures' }),
+      resoudreRegleTemps({ entrepriseId, cle: 'alerte_hebdo_niveau2_heures' }),
+    ])
+    return { seuil, niveau2 }
+  } catch {
+    return null
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2554,6 +2595,7 @@ export function compterRetardsDuJour(
 export const __internal = {
   buildDaySummariesStrict,
   loadOvertimeContext,
+  chargerReglesAlerte,
   seuilsAlerteHebdo,
   fenetreDeLecture,
   computeDayStrict,
