@@ -1369,6 +1369,37 @@
   background-color: var(--charte-surface2);
 }
 
+/* ── la MÊME brique, posée dans la fenêtre de la case vide (08/12) ──────────
+   Ce n'est pas un objet neuf : c'est le brick du dock, hors de son dock. Elle
+   ne se glisse plus, elle se clique — le curseur le dit, et le geste est
+   unique : un clic, la case est remplie, la fenêtre se referme. Le corps et le
+   pied de la fenêtre sont ceux de la maison (`sk-modal-body` défile,
+   `sk-modal-foot` porte les deux autres sorties) : rien n'est redessiné ici. */
+.sk-plan-page--postit .sk-brick--choix {
+  width: 100%;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* la liste des modèles, dans la fenêtre : deux colonnes, puis une seule sous
+   700 px — LE palier où la bande du dock est déjà passée à une brique par
+   ligne (décidé le 22/11, vérifié à 360). Un objet de la même espèce suit la
+   règle de son espèce, il ne s'en invente pas une seconde. */
+.sk-plan-page--postit .sk-choix-modeles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--charte-espace-2);
+}
+
+/* la mention au-dessus de la liste : une phrase, pas un quatrième bouton */
+.sk-plan-page--postit .sk-choix-legende {
+  margin: 0;
+  color: color-mix(in srgb, var(--charte-encre) 68%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+  letter-spacing: 0.04em;
+}
+
 /* ── la carte de poste : un post-it posé dans la case ─────────────────────── */
 
 .sk-plan-page--postit .sk-matrix-card .sk-shift-card {
@@ -2508,6 +2539,11 @@
 
   .sk-plan-page--postit .sk-view-Inline {
     gap: var(--charte-espace-3);
+  }
+
+  /* la fenêtre de la case vide suit la bande du dock : une brique par ligne */
+  .sk-plan-page--postit .sk-choix-modeles {
+    grid-template-columns: 1fr;
   }
 
   /* sur téléphone, les deux feuilles se serrent d'un cran et la légende se met

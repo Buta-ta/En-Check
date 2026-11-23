@@ -784,7 +784,11 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // dans les fenêtres, un style en ligne ne porte DÉSORMAIS PLUS qu'une
     // donnée nommée (une teinte choisie dans la fenêtre), jamais de la peinture
     const attribues = [...fenetres.matchAll(/style=\{\{\s*"([^"]+)"/g)].map((m) => m[1])
-    expect(attribues).toHaveLength(3)
+    // quatre, et pas trois, depuis le 08/12 : la fenêtre de la case vide donne
+    // aux briques du dock leur teinte (`--brick-color`), exactement l'autre
+    // espèce de style en ligne tolérée ici — une DONNÉE nommée, jamais de la
+    // peinture. C'est la règle d'en dessous qui tient : tout commence par `--`.
+    expect(attribues).toHaveLength(4)
     expect(attribues.every((nom) => nom.startsWith('--'))).toBe(true)
     expect(fenetres).not.toMatch(/style=\{\{[^}]*background:/)
     expect(fenetres).not.toMatch(/color="#/)
@@ -1412,5 +1416,95 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // et la porte de charte ne bouge pas d'un cran (aucun hex, aucun flou
     // ajoutés par ces trois états) : le compte global est pris au compteur, en
     // dur dans la chaîne de contrôle — pas rejoué ici à l'arrache.
+  })
+
+  it('39. laisse le choix sur la case vide : poser, créer, ou ajuster', () => {
+    // « je veux qu'on puisse choisir ou créer le modèle (jour, pause, garde de
+    // nuit etc) en cliquant seulement sur la case vide — donc il faut laisser
+    // le choix entre ajuster le planning, choisir un modèle ou en créer ».
+    const debutCase = planningSrc.indexOf('className="sk-empty-cell"')
+    const caseVide = planningSrc.slice(
+      debutCase,
+      planningSrc.indexOf('\n', planningSrc.indexOf('title="Cliquer pour poser', debutCase))
+    )
+    expect(caseVide.length).toBeGreaterThan(60)
+    // un clic sur la case vide PROPOSE, il n'ordonne plus
+    expect(caseVide).toContain('onClick={() => setCaseVide({ emp, dayItem })}')
+    expect(caseVide).not.toContain('openCellEditorModal(emp, dayItem)')
+    // le geste validé du doigt garde la priorité : la brique tenue se pose, la
+    // fenêtre ne se lève pas par-dessus
+    expect(planningSrc).toContain('if (touchDragPayload) {')
+    expect(planningSrc).toContain('applyTouchDropOnCell(emp, dayItem)')
+
+    // LES TROIS SORTIES, dans la même fenêtre
+    const fenetre = planningSrc.slice(
+      planningSrc.indexOf('{caseVide && ('),
+      planningSrc.indexOf('{showAvailabilityModal && availabilityTarget && (')
+    )
+    expect(fenetre.length).toBeGreaterThan(400)
+    expect(fenetre).toContain('dockTemplates.map((tpl) => (')
+    expect(fenetre).toContain('onClick={() => poserModeleSurLaCase(tpl)}')
+    expect(fenetre).toContain('openCellEditorModal(emp, dayItem);')
+    expect(fenetre).toContain('openNewModelModal();')
+    expect(fenetre).toContain('Ajuster le planning')
+    expect(fenetre).toContain('Créer un modèle')
+    // la fenêtre emprunte le corps et le pied de la maison : pas de modale
+    // parallèle à entretenir
+    expect(fenetre).toContain('className="sk-modal-backdrop"')
+    expect(fenetre).toContain('className="sk-modal-box"')
+    expect(fenetre).toContain('className="sk-modal-body"')
+    expect(fenetre).toContain('className="sk-modal-foot"')
+    expect(fenetre).toContain('onClick={() => setCaseVide(null)}')
+
+    // POSER un modèle depuis la fenêtre, c'est DÉPOSER une brique : le même
+    // chemin, pas une seconde écriture de l'application (qui aurait fini par
+    // mentir sur la pause autonome, le repos ou le compteur de modifications)
+    const poser = planningSrc.slice(
+      planningSrc.indexOf('const poserModeleSurLaCase = (tpl) => {'),
+      planningSrc.indexOf('// Application du modèle sélectionné au doigt sur une case du calendrier')
+    )
+    expect(poser).toContain('handleDropOnCell(')
+    expect(poser).toContain('sourceType: "dock"')
+    expect(poser).toContain('template: tpl')
+    expect(poser).toContain('setCaseVide(null)')
+    // une seule application des modèles dans toute la page
+    expect(planningSrc.match(/sourceType: "dock",\s*\n\s*template: tpl/g)).toHaveLength(2) // handleDragStartTemplate + la fenêtre
+    expect(planningSrc.match(/const poserModeleSurLaCase = /g)).toHaveLength(1)
+
+    // le sous-titre d'un modèle est ÉCRIT UNE FOIS et lu par les deux endroits
+    // qui l'affichent — la bande du dock et la fenêtre
+    expect(planningSrc.match(/soustitreModele/g)).toHaveLength(3) // définition + 2 usages
+    const bande = planningSrc.slice(
+      planningSrc.indexOf('<span className="sk-brick-title">'),
+      planningSrc.indexOf('</span>', planningSrc.indexOf('<span className="sk-brick-sub">'))
+    )
+    expect(bande).toContain('{soustitreModele(tpl)}')
+    // et la bande du dock ne recopie plus le ternaire : elle lit l'helper
+    expect(bande).not.toContain('tpl.kind === "rest"')
+    // et la teinte reste une DONNÉE du modèle : la fenêtre ne choisit pas une
+    // couleur, elle reporte `--brick-color` (le repli est dans la feuille)
+    expect(fenetre).toContain('"--brick-color": tpl.color || undefined')
+
+    // la peau habite la brique de la fenêtre, sans réécrire la fenêtre
+    const peau = lire('src/pages/PlanningPostIt.css')
+    const reglures = peau.slice(
+      peau.indexOf('.sk-plan-page--postit .sk-brick--choix {'),
+      peau.indexOf('/* ── la carte de poste')
+    )
+    expect(reglures.length).toBeGreaterThan(200)
+    expect(reglures).toContain('cursor: pointer;')
+    expect(reglures).toContain('.sk-plan-page--postit .sk-choix-modeles {')
+    expect(reglures).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));')
+    // le palier qui passe à une brique par ligne est CELUI de la bande des
+    // modèles (700 px), pas un cran inventé pour la fenêtre
+    const ouveur700 = peau.indexOf('@media (max-width: 700px)')
+    const bloc700 = peau.slice(ouveur700, peau.indexOf('@media', ouveur700 + 10))
+    expect(bloc700).toContain('.sk-plan-page--postit .sk-choix-modeles {')
+    expect(bloc700).toContain('grid-template-columns: 1fr;')
+    // les trois comptes de la porte de charte, sur ce qui vient d'être écrit
+    expect(reglures.match(/#[0-9a-fA-F]{3,8}\b/g)).toBeNull()
+    expect(reglures).not.toMatch(/blur\(/)
+    expect(reglures).not.toMatch(/border-radius:\s*[^;]*\d+px/)
+    expect(reglures).not.toContain('!important')
   })
 })
