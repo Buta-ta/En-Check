@@ -653,7 +653,7 @@ clé de plus, pas une refonte.
 qu'une règle existe ✅ ; le déclenchement de paie et le plafond `a_sourcer` restent où ils
 sont, inchangés — le plafond n'existe toujours pas, et il n'est pas inventé.
 
-#### Lot 3 — G4 : « Mon entreprise » (M + M)
+#### Lot 3 — G4 : « Mon entreprise » (M + M) ✅ *écran livré le 24/10/2026*
 
 Écran + accès + pays. Le premier lot visible par le client.
 - entrée dans le groupe Réglages ; « Entreprises » réservé au super-admin ;
@@ -662,6 +662,31 @@ sont, inchangés — le plafond n'existe toujours pas, et il n'est pas inventé.
   confirmation, `statut_source` visible.
 - tests : visibilité par rôle, refus d'une autre entreprise, confirmation du pays, modèle non
   appliqué sans confirmation, 4 largeurs + thèmes.
+
+##### 5.4.3 Ce que l'écran « Mon entreprise » fait, et ce qu'il ne fait pas
+
+| Section | Livré | Vérifié par |
+|---|---|---|
+| Identité | lecture seule (nom, code, pays, devise, fuseau) + renvoi vers « Entreprises » | test de page : l'entreprise non rattachée est refusée |
+| Règles | valeur en vigueur, origine, date d'effet, édition en **deux temps** (saisir, puis confirmer en voyant l'ancienne valeur) | 5 tests de page + 11 de logique |
+| Historique | 20 dernières versions, avec « remplace la précédente » | lecture de `encheck_regle_historique` |
+| Modèle (G4b) | 48 h / 50 h proposés, `statut_source` visible, **aucune écriture avant confirmation** | test : ouvrir la confirmation n'écrit rien ; confirmer écrit 48 |
+| Accès | un admin ne voit que son entreprise ; le super-admin choisit | `accesAutorise` + refus affiché |
+
+**Trois écarts assumés, à valider** :
+
+1. **Le pays est en lecture seule.** Le plan prévoyait un « acte daté et tracé » pour le pays.
+   Écrire un pays sans historique serait une décision sans trace — exactement ce que G3
+   corrige ailleurs. En attendant une table d'audit des entreprises, le pays se modifie dans
+   « Entreprises » (super-admin), et l'écran le dit.
+2. **Le rattachement pays → modèle est VIDE.** `MODELES_PAR_PAYS` est un objet vide : aucune
+   source pays n'a été vérifiée (D5). Le mécanisme existe (pré-sélection par pays, un jour),
+   mais aucun chiffre n'est rattaché à un pays aujourd'hui. Les 48/50 h sont des modèles du
+   **produit**, confirmés par l'entreprise.
+3. **« 4 largeurs + thèmes »** : les points de rupture sont écrits dans `MonEntreprise.css`
+   (960 / 720 / 480 px) et la page n'utilise que les jetons `--charte-*`, donc suit le thème
+   clair et sombre. Aucun test automatisé de rendu visuel ne le vérifie — la capture reste
+   à faire.
 
 #### Lot 4 — G5 + G5-bis : la fiche employé et le devoir d'informer (M + M)
 
@@ -689,7 +714,7 @@ sont, inchangés — le plafond n'existe toujours pas, et il n'est pas inventé.
 | 1 | G6-mince | S | **aucune alerte nouvelle** : le seuil non choisi n'alerte pas (5.3.1) ; l'affichage n'existe pas encore | une capture : alerte visible module coupé, avec un seuil d'entreprise |
 | 2a | G3 base | M | rien : pas encore branché | revue de la migration et des RPC |
 | 2b | G3 branchement ✅ | S | rien pour un client sans règle (mêmes seuils, mêmes montants) | avant/après identiques — testé |
-| 3 | G4 + G4b | M+M | l'accès des admins clients | parcours admin non super-admin |
+| 3 | G4 + G4b ✅ | M+M | l'accès des admins clients | parcours admin non super-admin |
 | 4 | G5 + G5-bis | M+M | la lisibilité de la fiche employé | parcours : poser, verrouiller, informer |
 | 5 | G7 | S | des libellés | captures des 3 écrans |
 | 6 | G8/G9 | — | la paie si on active trop tôt | décision écrite |
