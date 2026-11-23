@@ -234,10 +234,42 @@ déduit l'employé du jeton. La révocation des fonctions ouvertes à `anon` est
 écrite mais **non appliquée** — elle casserait le pointage tant que l'app
 n'a pas basculé.
 
-### 10.6 Preuves
+### 10.6 Le trou que j'avais laissé dans ma propre séquence
 
-- 152 fichiers de test, **2 110 tests** ✓ ; build ✓ ; ESLint propre sur les fichiers touchés.
-- **18 tests de contrat** (`src/services/__tests__/contratAppPointage.test.js`), dont deux vérifiés par mutation (retirer le `DROP` les fait échouer) et six sur le nouveau chemin par jeton.
+Mon document de révocation demandait de révoquer `encheck_pause_ouvrir` sans
+avoir fourni d'équivalent par jeton. Appliquée telle quelle, la séquence
+aurait cassé « Je pars en pause ». C'est l'App Pointage qui l'a relevé.
+
+Pire : le trou était **écrit dans ma migration du 23/11**, sous mes yeux —
+« `encheck_pause_ouvrir` a le même défaut, pour la même raison » — et je n'en
+ai pas tiré la conséquence dans la séquence. J'ai décrit le problème et livré
+la solution à moitié.
+
+Deux fonctions ajoutées le 25/11, toutes deux **additives** (rien de révoqué) :
+
+| Fonction | Remplace | Sortie |
+|---|---|---|
+| `encheck_ma_pause_ouvrir(p_jeton, p_debut, p_motif)` | `encheck_pause_ouvrir` | `{ok, pause_id, fermees, jour}` |
+| `encheck_pauses_bandeau(p_enterprise)` | `encheck_pauses_en_cours` | `affichage, debut, motif, duree_minutes` |
+
+La seconde applique la décision du fondateur (option b) : prénom + initiale,
+**ni identifiant, ni matricule, ni nom complet**. Mesuré sous `SET LOCAL ROLE
+anon` : « Hippo B. », sans erreur de droits. Contrôle des paramètres de sortie
+fait sur `information_schema.parameters`.
+
+Je n'y ai **pas** ajouté `prevue_minutes`, contrairement au contrat proposé :
+`encheck_pause_prevue` est `STABLE SECURITY DEFINER`, l'appeler une fois par
+ligne ouverte multiplierait les exécutions sur un écran qui se rafraîchit.
+L'absence se voit et se discute ; une lenteur de borne ne se voit pas.
+
+La révocation de `encheck_pauses_en_cours` est désormais isolée derrière un
+point d'arrêt explicite : c'est la seule qui retire une fonctionnalité
+visible, et elle dépend d'un déploiement d'app.
+
+### 10.7 Preuves
+
+- 153 fichiers de test, **2 116 tests** ✓ ; build ✓ ; ESLint propre sur les fichiers touchés.
+- **24 tests de contrat** (`contratAppPointage.test.js` et `bandeauPauses.test.js`), dont deux vérifiés par mutation (retirer le `DROP` les fait échouer) et six sur le nouveau chemin par jeton.
 - `encheck_ma_pause_fermer` appliquée en production et testée : jeton inventé → `42501`, jeton valide d'un compte `RECETTE` → `aucune pause ouverte` (donc l'employé a bien été résolu).
 - Réparation vérifiée en base : `encheck_pauses_duree_reelle` du 17/11 repasse de `7666` à `presumee 60`, `encheck_temps_travaille` de `4,91` à son état d'origine, et 0 pause porte un motif.
 - En base : jetons inventé / vide / `NULL` → `42501` trois fois ; session de test créée puis **supprimée** (0 restante sur 191).

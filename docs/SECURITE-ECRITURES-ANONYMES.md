@@ -21,6 +21,8 @@ l'employé en paramètre, sans rien vérifier :
 | `encheck_pause_ouvrir` | `uuid, timestamptz, text` | ouvrir une pause antidatée pour n'importe qui |
 | `encheck_pauses_en_cours` | `uuid` (entreprise) | **14 employés, 3 entreprises**, avec prénom, nom et matricule |
 
+Les deux fonctions ont maintenant un remplacement par jeton (voir §4) : leur révocation ne supprime plus aucune fonctionnalité, une fois l'app basculée.
+
 `encheck_pauses_en_cours` suffit à obtenir les identifiants employés que les
 deux autres attendent : la chaîne est complète. Le contrôle de l'exécution
 est fait en `SET LOCAL ROLE anon`.
@@ -98,30 +100,58 @@ l'employé. **L'employé n'est plus un paramètre.** Testé :
 Elle délègue à `encheck_pause_fermer` : une seule définition de « fermer une
 pause », donc une seule règle.
 
+**`encheck_ma_pause_ouvrir(p_jeton, p_debut, p_motif)`** — appliquée le 25/11.
+Manquait dans la première version de ce document, qui demandait pourtant de
+révoquer `encheck_pause_ouvrir` : la révocation aurait cassé « Je pars en
+pause ». C'est l'App Pointage qui l'a relevé, à raison. Même modèle que la
+fermeture ; testée : jeton inventé → `42501`.
+
+**`encheck_pauses_bandeau(p_enterprise)`** — appliquée le 25/11. Remplace
+`encheck_pauses_en_cours` pour le bandeau de la borne partagée, avec la sortie
+réduite décidée par le fondateur : `affichage` (« Hippo B. »), `debut`,
+`motif`, `duree_minutes`. **Ni identifiant, ni matricule, ni nom complet** —
+contrôle sur `information_schema.parameters`. Mesuré sous `SET LOCAL ROLE
+anon` : renvoie « Hippo B. » sans erreur de droits.
+
+Elle **n'ajoute pas** `prevue_minutes` au SQL, contrairement au contrat
+proposé : l'app affiche déjà ses lignes figées, et `encheck_pause_prevue` est
+`STABLE SECURITY DEFINER` — l'appeler une fois par ligne ouverte multiplierait
+les exécutions sur un écran qui se rafraîchit. À ajouter si l'app en a
+réellement besoin.
+
 ## 5. La bascule — à faire dans cet ordre
 
 Cette séquence **n'est pas appliquée**. L'appliquer maintenant casserait le
 pointage : l'app actuelle n'a pas d'autre chemin que la fonction ouverte.
 
 1. **Côté app Pointage** — remplacer l'appel de fermeture par
-   `encheck_ma_pause_fermer(<jeton>, <fin>, <motif>)`. Le jeton est déjà
-   disponible (`enregistrerJeton`).
+   `encheck_ma_pause_fermer(<jeton>, <fin>, <motif>)`, et l'ouverture par
+   `encheck_ma_pause_ouvrir(<jeton>, <debut>, <motif>)`. Le jeton est déjà
+   disponible (`enregistrerJeton`) ; l'App Pointage a confirmé qu'il est lu
+   au moment de l'appel, y compris pendant une pause.
 2. **Publier un APK** et vérifier sur une tablette réelle qu'une pause se
    ferme normalement. C'est la seule preuve acceptable.
 3. **Seulement ensuite**, appliquer la révocation :
 
 ```sql
---  Ne PAS exécuter avant l'étape 2.
+--  Ne PAS exécuter avant l'étape 2, ni avant que l'app soit passée aux
+--  DEUX fonctions par jeton (fermeture ET ouverture).
 BEGIN;
 REVOKE EXECUTE ON FUNCTION public.encheck_pause_fermer(uuid, timestamptz, text) FROM anon;
 REVOKE EXECUTE ON FUNCTION public.encheck_pause_ouvrir(uuid, timestamptz, text) FROM anon;
-REVOKE EXECUTE ON FUNCTION public.encheck_pauses_en_cours(uuid) FROM anon;
 COMMIT;
+
+--  ⛔ POINT D'ARRÊT — ne pas inclure dans la transaction ci-dessus.
+--  Cette ligne n'est possible qu'une fois le bandeau de l'app basculé sur
+--  `encheck_pauses_bandeau`, et la tablette vérifiée. Sinon le bandeau de
+--  la borne disparaît.
+REVOKE EXECUTE ON FUNCTION public.encheck_pauses_en_cours(uuid) FROM anon;
 ```
 
-La ligne 3 est la plus utile des trois : c'est elle qui coupe la fuite de
-noms et de matricules, et elle n'a **aucun** impact sur le pointage — l'app
-n'appelle cette fonction que pour un écran d'administration.
+Les deux premières coupent l'écriture ; la troisième coupe la fuite de
+prénoms, de noms et de matricules. Elle est séparée volontairement : c'est la
+seule qui **retire** une fonctionnalité visible, et elle dépend d'un
+déploiement d'app.
 
 4. **Après la révocation**, vérifier que RLS et les politiques tiennent seuls,
    puis retirer les GRANT trop larges de la table si l'on veut aller au bout.
