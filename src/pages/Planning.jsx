@@ -5426,27 +5426,76 @@ export default function Planning() {
               </div>
             )}
 
-            <div className="sk-mois-legende">
-              <span>
-                <i aria-hidden="true" />
-                poste planifié · la bande porte la teinte du jour
+            {/* LA MÊME LÉGENDE QUE DANS LA SECTION FILTRES (24/11, sur la remarque du
+                fondateur). Les deux ne disaient pas la même chose avec les mêmes
+                mots, et pire : celle du mois alignait quatre carrés peints À LA
+                MAIN — `--charte-aplat`, `--charte-alerte`, `--charte-statut-absent`,
+                `--charte-douce` — pour décrire une grille qui montre, elle, une
+                teinte de modèle et des MOTS d'état cerclés. Une légende qui ne
+                ressemble pas à ce qu'elle légende est une seconde peinture à
+                entretenir, et c'est exactement ce que la section filtres avait déjà
+                réglé. Elle prend donc la structure des filtres (`sk-legend`,
+                `sk-legend-group`, `sk-legend-title`, `sk-legend-item`,
+                `sk-legend-swatch`) et, pour les états, LE VRAI OBJET de la case
+                (`sk-mois-tampon`, `sk-cal-pill.is-daymodel`) : ce qui est écrit en
+                bas de la grille est ce qui est écrit dans la case, même élément,
+                même feuille. Aucun carré inventé ici, aucune couleur de plus. */}
+            <div className="sk-legend sk-mois-legende">
+              <span className="sk-legend-group">
+                <span className="sk-legend-title">Case du mois</span>
+                <span className="sk-legend-item">
+                  <span className="sk-legend-swatch" /> poste planifié · la bande et la
+                  pastille portent sa teinte
+                </span>
+                <span className="sk-legend-item">
+                  <em className="sk-mois-tampon" data-espece="oubli">
+                    oubli de sortie
+                  </em>{" "}
+                  — à vérifier
+                </span>
+                <span className="sk-legend-item">
+                  <em className="sk-mois-tampon" data-espece="absent">
+                    sortie manquante
+                  </em>{" "}
+                  — non pointé après la fin du poste
+                </span>
+                <span className="sk-legend-item">
+                  <em className="sk-mois-tampon" data-espece="heure">
+                    en cours
+                  </em>{" "}
+                  — journée ouverte, heure de fin non affichée
+                </span>
+                <span className="sk-legend-item">
+                  <em className="sk-mois-tampon" data-espece="repos">
+                    repos
+                  </em>
+                  <em className="sk-mois-tampon" data-espece="conge">
+                    congé
+                  </em>
+                  <em className="sk-mois-tampon" data-espece="ferie">
+                    férié
+                  </em>
+                  jour non travaillé
+                </span>
               </span>
-              <span>
-                <i aria-hidden="true" data-espece="oubli" />
-                oubli · sortie manquante — à vérifier
+              <span className="sk-legend-group">
+                <span className="sk-legend-title">Lecture</span>
+                {/* Le compte était le mauvais : il écrivait
+                    `min(collaborateurs affichés, 4)`, donc « 2 rangées par case au
+                    plus » devant deux collaborateurs — alors que la case coupe à
+                    QUATRE rangées, quel que soit l'effectif. Le chiffre d'une règle
+                    de rendu ne se déduit pas du nombre de lignes du jour. */}
+                <span className="sk-legend-item">
+                  4 rangées par case au plus, le reste s&apos;ouvre au clic
+                </span>
+                <span className="sk-legend-item">
+                  un clic sur la case ouvre la fenêtre de réglage
+                </span>
+                <span className="sk-legend-item" title="Un modèle posé en vue mois reste sur CE poste tant qu'il n'est pas enregistré depuis la journée.">
+                  <span className="sk-cal-pill is-daymodel">modèle déposé</span> brouillon
+                  local, pas encore en base
+                </span>
               </span>
-              <span>
-                <i aria-hidden="true" data-espece="absent" />
-                non pointé après la fin du poste
-              </span>
-              <span>
-                <i aria-hidden="true" data-espece="repos" />
-                repos · congé · férié
-              </span>
-              <span>{`${Math.min(
-                scopedEmployees.length,
-                4
-              )} rangées par case au plus, le reste s'ouvre au clic`}</span>
             </div>
           </div>
         )}
@@ -6617,6 +6666,18 @@ export default function Planning() {
         const placees = jourChoisi.rangs;
         const restees = scopedEmployees.filter((e) => !placees.some((r) => r.emp.id === e.id));
         const dateChoisie = choixJour.cell.date;
+        // UNE LIGNE PAR PERSONNE, dans le même ordre que la ligne de la case :
+        // ce qui est posé, combien, et l'état qui fâche s'il y en a un. Trois
+        // morceaux recollés, pas deux phrases séparées : la fenêtre doit dire la
+        // même chose que la grille, mot pour mot.
+        const sousRang = (r) =>
+          [
+            r.shift ? r.shift.name || "poste" : "pointage seul",
+            r.shift ? formatHoursCompact(r.minutes) : null,
+            r.etat?.mot || null,
+          ]
+            .filter(Boolean)
+            .join(" · ");
         return (
           <div className="sk-modal-backdrop" onClick={() => setChoixJour(null)}>
             <div className="sk-modal-box" onClick={(e) => e.stopPropagation()}>
@@ -6625,10 +6686,13 @@ export default function Planning() {
                   <h2 className="sk-modal-title">
                     Journée du {choixJour.cell.day} — qui, sur cette case ?
                   </h2>
-                  <span className="sk-modal-sub">
-                    Une case du mois est une journée, pas une ligne : elle peut
-                    porter plusieurs personnes. Dites celle dont vous réglez la case.
-                  </span>
+                  {/* LE CHAPEAU DIT LE GESTE, pas une définition de la vue mois, et
+                      aucun compte : le compte est déjà dans l'étiquette du groupe
+                      en dessous. Deux lignes de majuscules épaisses au-dessus de
+                      deux boutons, c'est ce qui « mélangeait les écrits avec les
+                      boutons » — le chapeau criait comme un bouton et répétait ce
+                      que la liste allait dire. */}
+                  <span className="sk-modal-sub">Un clic ouvre le réglage de la personne</span>
                 </div>
                 <button
                   type="button"
@@ -6671,12 +6735,7 @@ export default function Planning() {
                           <span className="sk-brick-title">
                             {r.emp.first_name} {r.emp.last_name || ""}
                           </span>
-                          <span className="sk-brick-sub">
-                            {r.etat?.mot ||
-                              (r.shift
-                                ? labelHeures(r.minutes)
-                                : "pointage seul, aucun poste")}
-                          </span>
+                          <span className="sk-brick-sub">{sousRang(r)}</span>
                         </button>
                       ))}
                     </div>
@@ -6685,7 +6744,7 @@ export default function Planning() {
 
                 {restees.length > 0 && (
                   <>
-                    <p className="sk-choix-legende">Aucun poste ce jour · {restees.length}</p>
+                    <p className="sk-choix-legende">Sans poste ce jour · {restees.length}</p>
                     <div
                       className="sk-choix-modeles"
                       role="group"
@@ -6710,7 +6769,10 @@ export default function Planning() {
                           <span className="sk-brick-title">
                             {e.first_name} {e.last_name || ""}
                           </span>
-                          <span className="sk-brick-sub">case vide — choisir ou créer un modèle</span>
+                          {/* le verbe, pas la phrase : l'étiquette du groupe a déjà
+                              dit « sans poste ce jour », et une ligne de texte long
+                              dans un bouton le fait ressembler à du texte */}
+                          <span className="sk-brick-sub">choisir ou créer un modèle</span>
                         </button>
                       ))}
                     </div>
@@ -6725,10 +6787,17 @@ export default function Planning() {
                 )}
               </div>
 
+              {/* LE PIED PORTE LA SORTIE, PAS LE COIN. La première version de cette
+                  fenêtre avait posé son bouton de sortie sur `sk-back-btn` — la
+                  classe du × , qui est `position: absolute` dans le coin plié : le
+                  bouton quittait le pied, allait s'écraser sur le titre et se
+                  repliait en trois lignes de trois syllabes. Le contrat 42 veille
+                  sur cette classe : elle n'a le droit d'apparaître qu'une fois par
+                  fenêtre, sur le ×. */}
               <div className="sk-modal-foot">
                 <button
                   type="button"
-                  className="sk-back-btn"
+                  className="sk-btn-secondary"
                   onClick={() => {
                     const cell = choixJour.cell;
                     setChoixJour(null);

@@ -36,7 +36,7 @@ environnement, donc « la case s'affiche bien ainsi » n'a pas été vu, seuleme
 ## Ce qui a été changé
 
 **① Un clic ne déménage plus le curseur** (`Planning.jsx:5187`, `ouvrirLaCaseDuJour`
-en 2940, fenêtre en 6615). Une case du mois n'est pas une case : c'est une
+en 2940, fenêtre en 6664 — les numéros de cette fiche sont ceux de `main` après la reprise du 24/11). Une case du mois n'est pas une case : c'est une
 **journée**, avec un à N rangs. Devant un rang unique, le clic ouvre directement la
 fenêtre de réglage de cette personne (`openCellEditorModal`) — ou le choisisseur de
 modèles (`setCaseVide`) si la journée n'a aucun poste. Devant plusieurs rangs, le
@@ -73,6 +73,45 @@ même que la page Pointages). `aria-live="polite"`, `aria-busy`, et un trait qui
 remue (`PlanningPostIt.css:459`) — le mouvement sur le conteneur, jamais sur le
 texte.
 
+## Reprise du 24/11 : deux présentations qui mentaient
+
+Le fondateur a renvoyé deux captures de ce nouveau chemin.
+
+**La fenêtre « qui, sur cette case ? ».** Son bouton de sortie portait la classe
+`sk-back-btn` — or `.sk-modal-box .sk-back-btn` est `position: absolute`, posé
+dans le coin plié : le bouton quittait le pied, allait s'écraser sur le titre et se
+repliait en trois syllabes. Il prend désormais `sk-btn-secondary`, la classe des
+sorties du pied, et la tête de fenêtre réserve le coin (`--place-coin: calc(
+var(--charte-espace-2) + 28px)`, des deux côtés, reproduit au palier 1100 px).
+Sous le titre, les briques coupaient les noms en « Emma … », « Hippo Bl… » :
+`sk-brick-title` arrive de `PlanningAfroTech.css:486` en `white-space: nowrap` avec
+ellipse, et `.sk-brick` est une ligne flex `space-between` — le sous-titre, plus
+long que le nom, mangeait la place. `sk-brick--choix` empile maintenant les deux
+lignes et défait le `nowrap`, et le sous-titre dit le poste, l'horaire et l'état
+dans le même ordre que la ligne de la case. Le chapeau, lui, ne répète plus la
+définition de la vue mois en deux lignes de majuscules : une phrase sur le geste,
+un compte par groupe.
+
+**La légende du mois.** Elle peint ses quatre carrés ELLE-MÊME (`i[data-espece]`,
+`--charte-aplat`, `--charte-alerte`, `--charte-statut-absent`, `--charte-douce`)
+pendant que la case, elle, montre une teinte de modèle et des mots d'état cerclés :
+deux peintures de la même page. Elle prend la structure de la légende des filtres
+(`sk-legend`, `sk-legend-group`, `sk-legend-title`, `sk-legend-item`,
+`sk-legend-swatch`) et, pour les états, LE VRAI objet de la grille
+(`sk-mois-tampon`, `sk-cal-pill.is-daymodel`). Les règles `sk-mois-legende i` sont
+supprimées de la feuille : il ne reste sur le conteneur que l'aplomb et le trait du
+haut. Deux mots d'état qui manquaient sont apparus en route — « en cours », et le
+« modèle déposé » maintenant annoncé comme **brouillon local, pas encore en base**
+(voir « Ce qui reste ouvert »). Enfin, le compte était faux : la légende écrivait
+`min(collaborateurs affichés, 4)` — donc « 2 rangées par case au plus » devant deux
+collaborateurs — alors que la case coupe à QUATRE rangées quel que soit l'effectif ;
+le chiffre est posé en dur, ce que le contrat 42 vérifie dans les deux sens.
+
+Contrat **42** dans `cablagePlanningEnCheck.test.js` : la sortie sur la classe du
+pied, le coin réservé dans la tête (et au palier étroit), le nom qui ne se coupe
+plus, l'absence de compte dupliqué, la légende aux objets de la grille, et le
+chiffre de coupure. Suite : **2 142 passed**.
+
 ## Contrats
 
 `src/services/__tests__/cablagePlanningEnCheck.test.js` : contrat **41** (les
@@ -101,7 +140,10 @@ erreurs, toutes préexistantes (deux `set-state-in-effect` du hook déjà là su
   **brouillon local** : il ne passe pas à un autre poste, et il disparaît avec le
   navigateur. Ce n'est pas le sujet des quatre étapes, mais ça explique qu'une
   case du mois mélange deux espèces de lignes, et ça se tranche : écrire en base,
-  ou le dire en toutes lettres dans l'interface.
+  ou le dire en toutes lettres dans l'interface. Depuis le 24/11 la légende du mois
+  le DIT — « modèle déposé · brouillon local, pas encore en base » — donc la moitié
+  « le dire » est faite ; resterait à trancher la seconde : assumer le brouillon de
+  poste, ou l'écrire en `employee_schedules` comme la vue semaine le fait.
 - **La reprise « en fond » n'est pas un cache** : les données affichées pendant la
   reprise sont celles d'avant, puis sont remplacées. C'est le contrat de la vue,
   pas une garantie d'instantanéité.

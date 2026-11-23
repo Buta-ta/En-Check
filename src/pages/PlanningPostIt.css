@@ -1408,10 +1408,46 @@
    pied de la fenêtre sont ceux de la maison (`sk-modal-body` défile,
    `sk-modal-foot` porte les deux autres sorties) : rien n'est redessiné ici. */
 .sk-plan-page--postit .sk-brick--choix {
+  /* EN DEUX LIGNES, PAS UNE. `sk-brick-title` arrive de la feuille voisine en
+     `white-space: nowrap` avec ellipse (`PlanningAfroTech.css:486`), et `.sk-brick`
+     est une ligne flex `justify-content: space-between` : dans la fenêtre, le
+     sous-titre — plus long que le nom — prenait la place, et le nom tombait en «
+     Emma … », « Hippo Bl… ». Un bouton dont on ne lit pas le titre. Ici, le nom est
+     la seule chose qu'on cherche : il prend la ligne, l'état prend la suivante. */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--charte-espace-1);
   width: 100%;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+.sk-plan-page--postit .sk-brick--choix .sk-brick-title {
+  max-width: 100%;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.25;
+}
+
+.sk-plan-page--postit .sk-brick--choix .sk-brick-sub {
+  /* le sous-titre d'un choix se lit en entier aussi : il dit
+     « Matin · 8h00 · oubli de sortie », et un état tronqué n'est plus un état */
+  max-width: 100%;
+  white-space: normal;
+  overflow: visible;
+  text-align: left;
+  line-height: 1.3;
+}
+
+/* un choix qui ressemble à un champ désactivé n'est pas un choix : l'assise se
+   soulève comme sur la brique du dock, et le curseur le dit — mais le survol ne
+   repeint rien, la seule couleur d'une brique reste sa teinte de modèle */
+.sk-plan-page--postit .sk-brick--choix:hover .sk-brick-title {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 /* la liste des modèles, dans la fenêtre : deux colonnes, puis une seule sous
@@ -1834,9 +1870,16 @@
   flex-direction: column;
   align-items: center;
   gap: var(--charte-espace-1);
-  /* la place du ruban, pour que rien ne soit mangé */
-  padding: calc(var(--plq-pli) + var(--charte-espace-4)) var(--charte-espace-6)
-    var(--charte-espace-3);
+  /* LA PLACE DU RUBAN, pour que rien ne soit mangé — et, depuis le 24/11, LA
+     PLACE DU ×. Le × est posé à `--charte-espace-2` du bord sur 28 px : il
+     occupe donc 36 px depuis chaque bord et depuis le haut. Une tête de fenêtre
+     ne réservait que 32 px sur les côtés (et 30 en haut) : le titre du
+     choisisseur du jour — « Journée du 28 — qui, sur cette case ? » — arrivait
+     jusque dessous. Le même cran est pris DES DEUX CÔTÉS, sinon le centrage
+     devient faux ; et `max()` garde le ruban quand il est plus large que le coin. */
+  --place-coin: calc(var(--charte-espace-2) + 28px);
+  padding: max(var(--place-coin), calc(var(--plq-pli) + var(--charte-espace-4)))
+    var(--place-coin) var(--charte-espace-3);
   border-bottom: 1px solid var(--charte-bordure);
   text-align: center;
 }
@@ -2536,8 +2579,11 @@
   /* une fenêtre respire moins à cette largeur, mais elle garde son ruban : le
      scotch s'élargit, pour qu'on voie qu'il reste du papier et non un cadre */
   .sk-plan-page--postit .sk-modal-head {
-    padding: calc(var(--plq-pli) + var(--charte-espace-3)) var(--charte-espace-4)
-      var(--charte-espace-2);
+    /* La réserve du coin SE REPRODUIT à ce palier (1100 px), elle ne se rétrécit
+       pas avec la fenêtre : le × reste à 8 px du bord sur 28 px quelle que soit la
+       largeur, donc c'est le titre qui doit s'arrêter avant lui — surtout quand la
+       fenêtre est étroite. */
+    padding: var(--place-coin) var(--place-coin) var(--charte-espace-2);
   }
 
   .sk-plan-page--postit .sk-modal-box::before {
@@ -3066,39 +3112,24 @@
   font-weight: 700;
 }
 
-/* la légende : quatre mots, un carré chacun. Elle aussi n'existait pas. */
+/* LA LÉGENDE DU MOIS N'A PLUS DE PEINTURE À ELLE (24/11). Elle s'écrivait avec
+   ses quatre carrés `i[data-espece]` peints à la main — un second stock de
+   couleurs pour quatre mots. Elle prend désormais la structure de la légende de
+   la section filtres (`sk-legend`, `sk-legend-item`, `sk-legend-swatch`) et les
+   vrais objets de la grille (`sk-mois-tampon`, `sk-cal-pill.is-daymodel`) : il ne
+   reste ici que l'aplomb, le trait du haut et rien d'autre. Un conteneur, pas une
+   seconde façon d'écrire la même chose. */
 .sk-plan-page--postit .sk-mois-legende {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--charte-espace-4);
   margin-top: var(--charte-espace-3);
   padding-top: var(--charte-espace-2);
   border-top: 1px solid var(--charte-bordure);
-  color: var(--charte-douce);
-  font-size: var(--charte-taille-micro);
+  align-items: flex-start;
 }
 
-.sk-plan-page--postit .sk-mois-legende i {
-  --couleur: var(--charte-aplat);
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: var(--charte-espace-1);
-  border: 1px solid var(--charte-encre);
-  background-color: var(--couleur);
-  vertical-align: -1px;
-}
-
-.sk-plan-page--postit .sk-mois-legende i[data-espece='oubli'] {
-  --couleur: var(--charte-alerte);
-}
-
-.sk-plan-page--postit .sk-mois-legende i[data-espece='absent'] {
-  --couleur: var(--charte-statut-absent);
-}
-
-.sk-plan-page--postit .sk-mois-legende i[data-espece='repos'] {
-  --couleur: var(--charte-douce);
+/* les groupes se lisent à plat sous la grille : une ligne par idée, pas une
+   colonne de titres qui dépasserait ses items */
+.sk-plan-page--postit .sk-mois-legende .sk-legend-group {
+  align-items: center;
 }
 
 @media (prefers-reduced-motion: reduce) {
