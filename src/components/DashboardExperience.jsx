@@ -363,10 +363,6 @@ export default function DashboardExperience({
       label: 'Réglages',
       icon: Settings,
       items: [
-        // La porte d'entrée des réglages côté client : les règles de temps de
-        // travail, leur origine et leur historique — lisibles par tout
-        // administrateur, sans passer par le super-admin.
-        { label: 'Mon entreprise', icon: Building2, path: '/mon-entreprise', show: true },
         // Les machines ADMS et le poste de pointage font un seul écran :
         // l'une ou l'autre des deux options ouvre « Configuration pointeuse ».
         { label: 'Configuration pointeuse', icon: Router, path: '/configuration-pointeuse', show: isSuperAdmin || modulePointeuses || modulePostePointage },

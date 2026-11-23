@@ -154,15 +154,12 @@ it('preserves draft on save failure and makes the rules explanations collapsible
   await click('Règles de calcul')
   expect(host.querySelector('dialog[open]')).toBeTruthy()
   expect(host.querySelectorAll('dialog .ec-cultural-band')).toHaveLength(2)
-  expect(host.querySelectorAll('dialog .ot-rules-section')).toHaveLength(4)
+  expect(host.querySelectorAll('dialog .ot-rules-section')).toHaveLength(3)
   expect(
     host
       .querySelectorAll('.ot-rules-section')[2]
       .querySelector('#ot-rate_sunday'),
   ).toBeTruthy()
-  //  ⏰ Seuil et alerte : deux objets distincts, dans leur propre section.
-  expect(host.querySelector('#ot-weekly_threshold')).toBeTruthy()
-  expect(host.querySelector('#ot-alerte_hebdo_activee').checked).toBe(false)
   expect(host.querySelector('dialog details[open]')).toBeNull()
   expect(host.querySelector('label[for="ot-rate_normal"]')).toBeTruthy()
   mocks.save.mockRejectedValueOnce(new Error('offline'))
@@ -176,47 +173,6 @@ it('preserves draft on save failure and makes the rules explanations collapsible
   await click('Sauvegarder')
   expect(host.querySelector('dialog')).toBeNull()
 })
-it('refuses to activate the weekly alert without a usable threshold', async () => {
-  await mount()
-  await click('Règles de calcul')
-
-  const caseAlerte = host.querySelector('#ot-alerte_hebdo_activee')
-  await act(async () => caseAlerte.click())
-  expect(caseAlerte.checked).toBe(true)
-
-  //  Aucun seuil saisi : la sauvegarde doit refuser plutôt que d'enregistrer
-  //  une alerte qui ne pourrait jamais se déclencher.
-  mocks.save.mockClear()
-  await click('Sauvegarder')
-  expect(mocks.save).not.toHaveBeenCalled()
-  expect(host.querySelector('dialog[open]')).toBeTruthy()
-})
-
-it('saves the threshold and the activation as two distinct values', async () => {
-  await mount()
-  await click('Règles de calcul')
-
-  const seuil = host.querySelector('#ot-weekly_threshold')
-  const setValeur = Object.getOwnPropertyDescriptor(
-    window.HTMLInputElement.prototype,
-    'value',
-  ).set
-  await act(async () => {
-    setValeur.call(seuil, '45')
-    seuil.dispatchEvent(new Event('input', { bubbles: true }))
-  })
-  await act(async () => host.querySelector('#ot-alerte_hebdo_activee').click())
-
-  mocks.save.mockClear()
-  mocks.save.mockResolvedValue(true)
-  await click('Sauvegarder')
-
-  expect(mocks.save).toHaveBeenCalledTimes(1)
-  const [, payload] = mocks.save.mock.calls[0]
-  expect(payload.weekly_threshold).toBe(45)
-  expect(payload.alerte_hebdo_activee).toBe(true)
-})
-
 it('does not turn query errors into a zero-hours result and supports retry', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   mocks.fail = true

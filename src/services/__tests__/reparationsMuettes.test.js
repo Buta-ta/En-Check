@@ -31,12 +31,8 @@ const SEUILS = {
 
 const DEFAUTS = {
   enterpriseCfg: { id: 'ent-1', currency: 'XAF', timezone: 'Africa/Porto-Novo' },
-  //  Périodes brutes : la fenêtre de calcul est dérivée à l'intérieur
-  //  (année civile élargie aux semaines du mois, cf. P1).
-  debutAnnee: '2026-01-01',
-  finAnnee: '2026-12-31',
-  debutMois: '2026-10-01',
-  finMois: '2026-10-31',
+  yearStartDate: '2026-01-01',
+  yearEndDate: '2026-12-31',
   seuils: SEUILS,
 }
 

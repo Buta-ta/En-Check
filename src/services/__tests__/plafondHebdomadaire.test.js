@@ -68,7 +68,7 @@ describe('La semaine est une fenêtre, pas un mois', () => {
     expect(semaine.secondes).toBe(H(50))
   })
 
-  it('une fenêtre partielle reste chiffrée honnêtement : 3 jours couverts, pas 7', () => {
+  it('une semaine incomplète est signalée comme telle, pas déclarée sage', () => {
     const agrege = agregerParSemaine({
       secondesParJour: jours([['2026-10-07', 8]]),
       debut: '2026-10-07',
@@ -78,11 +78,8 @@ describe('La semaine est une fenêtre, pas un mois', () => {
     const evaluation = evaluerSeuilsHebdo({ semaines: agrege, seuil: 40, seuilMajeur: 48 })
     const semaine = evaluation.semaines[0]
 
-    //  La couverture est portée par le chiffre, pas par un booléen : un drapeau
-    //  « complete » vaudrait toujours vrai depuis que le moteur demande les
-    //  semaines sur leurs 7 jours réels (constat P1, `fenetreDeLecture`).
+    expect(semaine.complete).toBe(false)
     expect(semaine.joursDansLaPeriode).toBe(3)
-    expect(semaine).not.toHaveProperty('complete')
   })
 })
 
@@ -97,15 +94,9 @@ describe('Évaluation contre les seuils d’entreprise', () => {
       fin: '2026-10-11',
     })
 
-    const evaluation = evaluerSeuilsHebdo({
-      semaines: agrege,
-      seuil: 40,
-      seuilMajeur: 48,
-      source: 'entreprise',
-    })
+    const evaluation = evaluerSeuilsHebdo({ semaines: agrege, seuil: 40, seuilMajeur: 48 })
 
     expect(evaluation.disponible).toBe(true)
-    //  La source n'est plus affirmée par défaut : elle vient de l'appelant (P5).
     expect(evaluation.source).toBe('entreprise')
     expect(evaluation.semaines[0].heures).toBe(62)
     expect(evaluation.semaines[0].depasse).toBe(true)
@@ -184,12 +175,7 @@ describe('Le message d’alerte', () => {
       fin: '2026-10-11',
     })
 
-    //  Le seuil est ici explicitement déclaré comme celui de l'entreprise : c'est
-    //  l'appelant qui le sait, pas la fonction. Sans cette information, le
-    //  message ne prétend rien (voir origineSeuilHebdo.test.js).
-    const message = messageDepassement(
-      evaluerSeuilsHebdo({ semaines: agrege, seuil: 40, seuilMajeur: 48, source: 'entreprise' }),
-    )
+    const message = messageDepassement(evaluerSeuilsHebdo({ semaines: agrege, seuil: 40, seuilMajeur: 48 }))
 
     expect(message).toContain('seuil hebdomadaire d’entreprise')
     expect(message).toContain('48 h')

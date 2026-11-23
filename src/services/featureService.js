@@ -381,18 +381,8 @@ class FeatureService {
       daily_threshold: 8,
       daily_threshold_major: 10,
       overtime_major_after_hours: 2,
-      //  ⚠️ 48 h est une VALEUR PAR DÉFAUT DU PRODUIT, pas une obligation.
-      //  Décision du fondateur (24/10/2026) : le seuil d'alerte hebdomadaire par
-      //  défaut est 48 h, et il n'y a pas de second niveau tant que l'entreprise
-      //  n'en choisit pas un. Aucun libellé ne doit présenter ce chiffre comme
-      //  « légal » : aucune source pays n'est vérifiée (D5).
-      weekly_threshold: 48,
-      weekly_threshold_major: null,
-      //  ⚠️ Une VALEUR n'est pas une CONSENTE : cette case suit la décision du
-      //  24/10/2026. Le seuil peut servir à pré-remplir un contrat sans que
-      //  personne ne veuille être prévenu. Aucune alerte n'est donc déduite de
-      //  la présence d'un seuil — encore moins du défaut produit.
-      alerte_hebdo_activee: false,
+      weekly_threshold: 40,
+      weekly_threshold_major: 48,
       rate_normal: 25,
       rate_major: 50,
       rate_sunday: 100,
@@ -403,63 +393,7 @@ class FeatureService {
     }
   }
 
-  /**
-   * D'où vient le seuil hebdomadaire ? Trois réponses honnêtes, pas deux.
-   *
-   * POURQUOI : `getOvertimeSettings` fusionne les défauts avec la ligne en base.
-   * Le résultat ne dit donc plus si l'entreprise a CHOISI 48 h, si c'est le
-   * défaut du produit, ou si c'est une ancienne valeur écrite par une
-   * sauvegarde sans saisie. Les écrans affichaient « seuil d'entreprise » dans
-   * les trois cas — c'est le mensonge de libellé corrigé ici (constat P5).
-   *
-   * Règle retenue, volontairement prudente : une valeur égale à un défaut connu
-   * du produit (48 h aujourd'hui, 40 h avant) ne prouve pas un choix. On ne
-   * reconstitue pas une intention : on l'étiquette « origine à confirmer ».
-   */
-  static qualifierOrigineSeuilHebdo(data) {
-    const defauts = this.getDefaultOvertimeSettings()
-
-    if (!data) {
-      return { origine: 'defaut_produit', motif: 'aucune règle enregistrée' }
-    }
-
-    const brut = data.weekly_threshold
-    if (brut === null || brut === undefined || brut === '') {
-      return {
-        origine: 'defaut_produit',
-        motif: 'règle enregistrée sans seuil hebdomadaire',
-      }
-    }
-
-    const valeur = Number(brut)
-    if (!Number.isFinite(valeur) || valeur <= 0) {
-      return { origine: 'inconnue', motif: 'valeur enregistrée illisible' }
-    }
-
-    //  Défauts connus : 48 h (actuel) et 40 h (hérité). Une valeur identique ne
-    //  prouve rien — une sauvegarde ancienne a pu l'écrire sans que personne ne
-    //  la choisisse.
-    const defautsConnus = [defauts.weekly_threshold, 40].filter(
-      (v) => v !== null && v !== undefined,
-    )
-    if (defautsConnus.includes(valeur)) {
-      return {
-        origine: 'historique_incertain',
-        motif: `valeur (${valeur} h) identique à un défaut du produit : impossible de savoir si elle a été choisie`,
-      }
-    }
-
-    return {
-      origine: 'entreprise',
-      motif: `valeur (${valeur} h) différente des défauts du produit`,
-    }
-  }
-
-  /**
-   * Les réglages ET leur provenance, en une seule lecture.
-   * `provenance.origine` ∈ 'entreprise' | 'defaut_produit' | 'historique_incertain' | 'inconnue'.
-   */
-  static async getOvertimeSettingsAvecOrigine(enterpriseId) {
+  static async getOvertimeSettings(enterpriseId) {
     try {
       const { data, error } = await db()
         .from('overtime_settings')
@@ -467,74 +401,16 @@ class FeatureService {
         .eq('enterprise_id', enterpriseId)
         .maybeSingle()
 
-      if (error) throw error
-
-      return {
-        settings: { ...this.getDefaultOvertimeSettings(), ...(data || {}) },
-        provenance: this.qualifierOrigineSeuilHebdo(data),
+      if (!data && !error) {
+        return this.getDefaultOvertimeSettings()
       }
+
+      if (error) throw error
+      return { ...this.getDefaultOvertimeSettings(), ...data }
     } catch (err) {
       console.error('Erreur récupération overtime settings:', err)
-      //  Une lecture qui échoue ne dit rien de l'origine : on ne prétend ni
-      //  « entreprise », ni « défaut produit ».
-      return {
-        settings: this.getDefaultOvertimeSettings(),
-        provenance: { origine: 'inconnue', motif: 'lecture impossible' },
-      }
+      return this.getDefaultOvertimeSettings()
     }
-  }
-
-  static async getOvertimeSettings(enterpriseId) {
-    const { settings } = await this.getOvertimeSettingsAvecOrigine(enterpriseId)
-    return settings
-  }
-
-  /**
-   * Le corps écrit en base. PUR, pour être testable sans base.
-   *
-   * POURQUOI : la version précédente terminait chaque seuil par `|| 40` / `|| 48`.
-   * Un formulaire qui ne contient pas la clé écrivait donc un défaut que
-   * personne n'avait choisi — et ce défaut devenait ensuite indiscernable d'une
-   * décision, exactement ce que le rapport interdit de reconstituer (P3/P5).
-   * Désormais, un seuil absent du formulaire n'est pas écrit du tout, et un
-   * seuil explicitement `null` est écrit comme `null`.
-   */
-  static construirePayloadOvertimeSettings(enterpriseId, settings = {}, maintenant = new Date()) {
-    const dataToSave = {
-      enterprise_id: enterpriseId,
-      calculation_mode: settings.calculation_mode || 'daily',
-      daily_threshold: parseFloat(settings.daily_threshold) || 8,
-      daily_threshold_major: parseFloat(settings.daily_threshold_major) || 10,
-      overtime_major_after_hours: parseFloat(settings.overtime_major_after_hours) || 2,
-      rate_normal: parseFloat(settings.rate_normal) || 25,
-      rate_major: parseFloat(settings.rate_major) || 50,
-      rate_sunday: parseFloat(settings.rate_sunday) || 100,
-      rate_holiday: parseFloat(settings.rate_holiday) || 100,
-      include_weekends: settings.include_weekends ?? true,
-      auto_calculate: settings.auto_calculate ?? true,
-      require_approval: settings.require_approval ?? false,
-      updated_at: maintenant.toISOString(),
-    }
-
-    //  La case d'alerte suit la même règle : elle ne s'écrit que si l'écran
-    //  l'a transmise comme un booléen. Absente du formulaire = non écrite.
-    //  Aucun `|| false` déguisé : un `false` explicite est une décision.
-    if (typeof settings.alerte_hebdo_activee === 'boolean') {
-      dataToSave.alerte_hebdo_activee = settings.alerte_hebdo_activee
-    }
-
-    //  Les seuils hebdomadaires ne s'écrivent que sur décision explicite.
-    for (const cle of ['weekly_threshold', 'weekly_threshold_major']) {
-      if (settings[cle] === null) {
-        dataToSave[cle] = null
-        continue
-      }
-      if (settings[cle] === undefined || settings[cle] === '') continue
-      const valeur = Number(settings[cle])
-      if (Number.isFinite(valeur) && valeur > 0) dataToSave[cle] = valeur
-    }
-
-    return dataToSave
   }
 
   static async saveOvertimeSettings(enterpriseId, settings) {
@@ -545,7 +421,23 @@ class FeatureService {
         .eq('enterprise_id', enterpriseId)
         .single()
 
-      const dataToSave = this.construirePayloadOvertimeSettings(enterpriseId, settings)
+      const dataToSave = {
+        enterprise_id: enterpriseId,
+        calculation_mode: settings.calculation_mode || 'daily',
+        daily_threshold: parseFloat(settings.daily_threshold) || 8,
+        daily_threshold_major: parseFloat(settings.daily_threshold_major) || 10,
+        overtime_major_after_hours: parseFloat(settings.overtime_major_after_hours) || 2,
+        weekly_threshold: parseFloat(settings.weekly_threshold) || 40,
+        weekly_threshold_major: parseFloat(settings.weekly_threshold_major) || 48,
+        rate_normal: parseFloat(settings.rate_normal) || 25,
+        rate_major: parseFloat(settings.rate_major) || 50,
+        rate_sunday: parseFloat(settings.rate_sunday) || 100,
+        rate_holiday: parseFloat(settings.rate_holiday) || 100,
+        include_weekends: settings.include_weekends ?? true,
+        auto_calculate: settings.auto_calculate ?? true,
+        require_approval: settings.require_approval ?? false,
+        updated_at: new Date().toISOString(),
+      }
 
       if (existing) {
         const { error } = await db()

@@ -38,7 +38,6 @@ import {
   messageDepassement,
 } from './plafondHebdomadaire'
 import { evaluerReposQuotidien, messageRepos } from './reposQuotidien'
-import { resoudre as resoudreRegleTemps } from './reglesTempsTravail'
 
 //  Aucun seuil de pointage n'est plus écrit en dur dans ce moteur : ils viennent
 //  de `encheck_reglages_pointage` (voir src/services/seuilsPointage.js). Les
@@ -46,39 +45,6 @@ import { resoudre as resoudreRegleTemps } from './reglesTempsTravail'
 const H = (seuils, cle) => {
   const n = Number(seuils?.[cle])
   return Number.isFinite(n) && n > 0 ? n : SEUILS_PAR_DEFAUT[cle]
-}
-
-/**
- * Fenêtre de LECTURE des pointages, plus large que l'année civile.
- *
- * POURQUOI (constat P1) : une semaine peut commencer en décembre et finir en
- * janvier ; le repos entre deux journées se mesure aussi entre un 31/12 et un
- * 01/01. Bornée à l'année de la date de référence, la lecture fait disparaître
- * ces journées sans rien dire : 50 h deviennent 30 h + 20 h, et un écart de
- * repos de 4 h 30 devient « aucun écart ».
- *
- * Ce que la fenêtre couvre : l'année civile ∪ la semaine du 1ᵉʳ du mois ∪ la
- * semaine du dernier jour du mois ∪ le lendemain du dernier jour du mois.
- * Rien de plus : les totaux mensuels et annuels continuent de boucler sur leurs
- * propres listes de jours, donc ces journées supplémentaires ne les touchent
- * jamais.
- */
-export function fenetreDeLecture({ debutAnnee, finAnnee, debutMois, finMois }) {
-  const debutSemaines = getWeekPeriod(debutMois).startDate
-  const finSemaines = getWeekPeriod(finMois).endDate
-  const lendemain = (() => {
-    const d = new Date(`${finMois}T00:00:00`)
-    d.setDate(d.getDate() + 1)
-    return toDateKeyLocal(d)
-  })()
-
-  return {
-    debut: [debutAnnee, debutSemaines].sort()[0],
-    fin: [finAnnee, finSemaines, lendemain].sort().pop(),
-    debutSemaines,
-    finSemaines,
-    lendemain,
-  }
 }
 
 export async function calculateEmployeeHours(employeeId, enterpriseId, referenceDate = new Date()) {
@@ -131,22 +97,8 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   const weekPeriod = getWeekPeriod(ref)
   let todayKey = toDateKeyLocal(ref)
 
-  //  ⚠️ La lecture des pointages dépasse l'année civile (voir `fenetreDeLecture`).
-  const {
-    debut: debutLecture,
-    fin: finLecture,
-    debutSemaines,
-    finSemaines,
-    lendemain: lendemainFinMois,
-  } = fenetreDeLecture({
-    debutAnnee: yearPeriod.startDate,
-    finAnnee: yearPeriod.endDate,
-    debutMois: monthPeriod.startDate,
-    finMois: monthPeriod.endDate,
-  })
-
-  const debutLectureISO = new Date(`${debutLecture}T00:00:00`).toISOString()
-  const finLectureISO = new Date(`${finLecture}T23:59:59.999`).toISOString()
+  const yearStartISO = new Date(`${yearPeriod.startDate}T00:00:00`).toISOString()
+  const yearEndISO = new Date(`${yearPeriod.endDate}T23:59:59.999`).toISOString()
 
   // ── 3) Charger attendances ──────────────────────────────────
   //  Les colonnes `estimation_*` arrivent avec la migration des fondations :
@@ -159,8 +111,8 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
         'anomalie, estimation_validee_le, estimation_remplacee_le, estimation_niveau, estimation_confiance',
     )
     .eq('employee_id', employeeId)
-    .gte('check_time', debutLectureISO)
-    .lte('check_time', finLectureISO)
+    .gte('check_time', yearStartISO)
+    .lte('check_time', yearEndISO)
     .order('check_time', { ascending: true })
 
   if (attErr) throw attErr
@@ -204,7 +156,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   )
 
   // ── 7) Contexte heures sup ───────────────────────────────────
-  const { hasOvertimeFeature, overtimeSettings, reglageHebdo, reglesAlerte, allSchedules } = await loadOvertimeContext(employee.enterprise_id)
+  const { hasOvertimeFeature, overtimeSettings, allSchedules } = await loadOvertimeContext(employee.enterprise_id)
 
   // ── 8) Calcul jour par jour ──────────────────────────────────
   const daySummaries = buildDaySummariesStrict({
@@ -219,14 +171,8 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     planPerso: resolvePlanForExpected(employeeScheduleRow, null),
     planDefaut: resolvePlanForExpected(null, defaultScheduleRow),
     seuils: enterpriseCfg.seuils,
-    //  Périodes brutes : la fonction en dérive sa fenêtre de calcul (année civile
-    //  élargie aux semaines du mois). Les totaux mensuels et annuels, eux,
-    //  continuent de boucler sur leurs propres listes de jours — ils ne voient
-    //  donc jamais les journées en trop.
-    debutAnnee: yearPeriod.startDate,
-    finAnnee: yearPeriod.endDate,
-    debutMois: monthPeriod.startDate,
-    finMois: monthPeriod.endDate,
+    yearStartDate: yearPeriod.startDate,
+    yearEndDate: yearPeriod.endDate,
   })
 
   // ── 9) Aujourd'hui ────────────────────────────────────────────
@@ -429,8 +375,8 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   //  Les semaines sont calculées sur des fenêtres complètes (lundi → dimanche),
   //  y compris celles à cheval sur deux mois : sinon 50 h pourraient se cacher
   //  dans deux « semaines » de 25 h au 1ᵉʳ du mois.
-  //  Les seuils de l'alerte : jamais conditionnés au module de paie (G6).
-  const seuilsAlerteRegles = seuilsAlerteHebdo(reglageHebdo, reglesAlerte)
+  const debutSemaines = getWeekPeriod(monthPeriod.startDate).startDate
+  const finSemaines = getWeekPeriod(monthPeriod.endDate).endDate
   const secondesParJour = {}
   for (const d of listDaysInclusive(debutSemaines, finSemaines)) {
     secondesParJour[d] = (daySummaries[d] || {}).totalSeconds || 0
@@ -443,18 +389,19 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     }),
     //  Seuils d'HEURES SUPÉRIEURES de l'entreprise (40 h / 48 h). Ce ne sont
     //  pas des plafonds légaux : aucun texte n'est invoqué ici.
-    //  `null` quand le seuil n'a pas été CHOISI : pas de seuil, pas d'alerte.
-    seuil: seuilsAlerteRegles.seuil,
-    seuilMajeur: seuilsAlerteRegles.seuilMajeur,
-    //  Ce que l'on SAIT de l'origine, jamais davantage (P5). Et surtout : plus de
-    //  condition au module de paie — le contrôle survit à sa désactivation (G6).
-    source: seuilsAlerteRegles.source,
+    seuil: hasOvertimeFeature && overtimeSettings ? overtimeSettings.weekly_threshold : null,
+    seuilMajeur: hasOvertimeFeature && overtimeSettings ? overtimeSettings.weekly_threshold_major : null,
   })
 
   // ── 11-ter) Repos entre deux journées ────────────────────────
   //  On inclut le premier jour du mois suivant : sans lui, le repos entre le
   //  31 et le 1ᵉʳ ne serait jamais mesuré.
-  const joursRepos = [...monthDays, lendemainFinMois]
+  const joursRepos = [...monthDays]
+  {
+    const dernier = new Date(`${monthPeriod.endDate}T00:00:00`)
+    dernier.setDate(dernier.getDate() + 1)
+    joursRepos.push(toDateKeyLocal(dernier))
+  }
   const reposQuotidien = evaluerReposQuotidien({
     journees: joursRepos.map((d) => {
       const jour = daySummaries[d] || null
@@ -543,13 +490,9 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     plafond_hebdo: {
       ...plafondHebdo,
       periode: { debut: debutSemaines, fin: finSemaines },
-      //  Une valeur non choisie reste VISIBLE ici (pour pré-remplir un écran ou
-      //  expliquer le silence), mais n'est jamais brandie comme un seuil.
-      seuil_propose: seuilsAlerteRegles.seuilPropose,
-      motif_silence: seuilsAlerteRegles.motif,
       note: plafondHebdo.disponible
         ? 'Seuil d’entreprise (heures supplémentaires hebdomadaires), pas un plafond légal.'
-        : 'Aucun seuil d’entreprise confirmé : la semaine n’est pas évaluée.',
+        : 'Aucun seuil hebdomadaire configuré : la semaine n’est pas évaluée.',
     },
   }
 
@@ -689,13 +632,8 @@ function buildDaySummariesStrict({
   enterpriseCfg,
   plan = null,
   plansParJour = null,
-  //  La fenêtre de calcul est DÉRIVÉE des périodes, jamais passée par
-  //  l'appelant : c'est ce qui rend impossible de réintroduire des bornes trop
-  //  étroites (le défaut d'origine). Voir `fenetreDeLecture`.
-  debutAnnee,
-  finAnnee,
-  debutMois,
-  finMois,
+  yearStartDate,
+  yearEndDate,
   basculeMinutes = 0,
   seuils = null,
   planPerso = null,
@@ -705,12 +643,6 @@ function buildDaySummariesStrict({
   //  Avant, ce fichier écrivait un 16 (appariement), un 60 (anti-rebond) et un 14
   //  (plafond d'invention) en dur à quatre endroits — et le plafond de 14 h
   //  n'était même pas le même que celui du SQL.
-  const { debut: borneStartDate, fin: borneEndDate } = fenetreDeLecture({
-    debutAnnee,
-    finAnnee,
-    debutMois,
-    finMois,
-  })
   const s = seuils || enterpriseCfg?.seuils || SEUILS_PAR_DEFAUT
   const APPARIEMENT_H = H(s, 'appariementHeures')
   const REBOND_S = H(s, 'seuilRebondSecondes')
@@ -730,7 +662,7 @@ function buildDaySummariesStrict({
    * ce qui a été écarté, et combien.
    */
   const noterAnomalie = (dateKey, type, detail = {}) => {
-    if (!dateKey || dateKey < borneStartDate || dateKey > borneEndDate) return
+    if (!dateKey || dateKey < yearStartDate || dateKey > yearEndDate) return
     ensure(dateKey).anomalies.push({ type, ...detail })
   }
 
@@ -740,7 +672,7 @@ function buildDaySummariesStrict({
     //  journée, donc à quelle journée appartient un pointage d'après minuit.
     const dayKey = cleJourDeTravail(inDate, basculeMinutes)
 
-    if (dayKey < borneStartDate || dayKey > borneEndDate) return
+    if (dayKey < yearStartDate || dayKey > yearEndDate) return
 
     const s = ensure(dayKey)
 
@@ -1489,134 +1421,22 @@ function resolvePlanForExpected(employeeScheduleRow, defaultScheduleRow) {
 // OVERTIME CONTEXT
 // ═══════════════════════════════════════════════════════════
 
-/**
- * Les seuils de l'ALERTE hebdomadaire, séparés de la paie (constat G6 / P4).
- *
- * POURQUOI une fonction pure : la règle « l'alerte ne dépend pas du module de
- * paie » doit être vérifiable sans base. Ici, aucun `hasOvertimeFeature` : les
- * valeurs viennent du réglage d'entreprise, ou de ses défauts, et l'origine est
- * toujours transmise pour que le message ne mente pas (P5).
- */
-export function seuilsAlerteHebdo(reglageHebdo, reglesAlerte = null) {
-  const settings = reglageHebdo?.settings || null
-  const origineEnregistree = reglageHebdo?.provenance?.origine || 'inconnue'
-
-  //  ⚠️ DEUX SOURCES, UNE SEULE VÉRITÉ (lot 2b).
-  //  La table versionnée `encheck_regles_temps_travail` fait autorité dès qu'elle
-  //  porte une valeur pour `alerte_hebdo_heures` : elle sait depuis quand, et qui
-  //  a décidé. Tant qu'aucune règle n'y est écrite, on retombe EXACTEMENT sur le
-  //  comportement d'avant (réglage d'entreprise, ou défaut produit 48 h) : aucune
-  //  rupture de service, aucun client ne voit son alerte changer sans acte.
-  const valeurRegle = reglesAlerte?.seuil?.valeur ?? null
-  const valeurMajeurRegle = reglesAlerte?.niveau2?.valeur ?? null
-  const seuilEnregistre = valeurRegle !== null ? valeurRegle : (settings?.weekly_threshold ?? null)
-  const majeurEnregistre = valeurRegle !== null ? valeurMajeurRegle : (settings?.weekly_threshold_major ?? null)
-
-  //  ⚠️ LA CASE EST LA PREUVE (décision du 24/10/2026).
-  //
-  //  Une alerte est une affirmation : « vous avez dépassé VOTRE seuil ». Elle
-  //  exige donc un acte humain explicite, jamais une déduction. La colonne
-  //  `alerte_hebdo_activee` naît à `false` et n'est écrite que si un formulaire
-  //  l'a transmise : la cocher EST cet acte, posé avec le seuil affiché à côté.
-  //
-  //  Pourquoi la provenance ne sert plus de seconde barrière : un client qui
-  //  choisit 48 h — la valeur du défaut — resterait sinon éternellement muet,
-  //  case cochée comprise. La case lève exactement l'ambiguïté que
-  //  `historique_incertain` décrivait : « impossible de savoir si elle a été
-  //  choisie » devient « un humain l'a confirmée ».
-  //
-  //  Il reste une seule condition de fond : un seuil valide doit exister. Une
-  //  case cochée sans seuil n'allume rien.
-  const alerteActivee = settings?.alerte_hebdo_activee === true
-  const valeur = Number(seuilEnregistre)
-  const seuilValide =
-    seuilEnregistre !== null && seuilEnregistre !== '' && Number.isFinite(valeur) && valeur > 0
-  const actif = alerteActivee && seuilValide
-
-  return {
-    //  Ce que l'alerte a le DROIT d'utiliser : null = pas d'alerte.
-    seuil: actif ? valeur : null,
-    seuilMajeur: actif ? majeurEnregistre : null,
-    //  Une valeur confirmée par la case est, de fait, une règle d'entreprise.
-    //  Quand la valeur vient de la table versionnée, c'est ELLE qui nomme
-    //  l'origine (entreprise ou employé) — on ne l'écrase pas par 'entreprise'.
-    source: valeurRegle !== null
-      ? (reglesAlerte?.seuil?.origine || 'entreprise')
-      : (actif ? 'entreprise' : (seuilEnregistre === null ? 'inconnue' : origineEnregistree)),
-    origineEnregistree,
-    //  Traçabilité de la version retenue : le message peut dire « depuis le ».
-    dateEffetRegle: valeurRegle !== null ? (reglesAlerte?.seuil?.dateEffet || null) : null,
-    sourceValeur: valeurRegle !== null ? 'table_versionnee' : 'reglage_entreprise',
-    actif,
-    alerteActivee,
-    //  La valeur telle qu'enregistrée (ou le défaut) : pour pré-remplir un
-    //  formulaire ou expliquer le silence. Jamais pour déclencher une alerte.
-    seuilPropose: seuilEnregistre,
-    motif: actif
-      ? null
-      : (!seuilValide
-        ? 'aucun seuil hebdomadaire valide enregistré'
-        : 'alerte non activée : la case « m’alerter au-delà de ce seuil » n’est pas cochée'),
-  }
-}
-
 async function loadOvertimeContext(enterpriseId) {
   let hasOvertimeFeature = false
   let overtimeSettings = null
-  let reglageHebdo = null
 
   try {
     hasOvertimeFeature = await FeatureService.hasFeature(enterpriseId, FEATURES.HEURES_SUPPLEMENTAIRES)
+    if (hasOvertimeFeature) {
+      overtimeSettings = await FeatureService.getOvertimeSettings(enterpriseId)
+    }
   } catch {
     hasOvertimeFeature = false
+    overtimeSettings = null
   }
 
-  //  ⚠️ DEUX lectures distinctes, et c'est volontaire (constat G6).
-  //
-  //  `overtimeSettings` sert à la PAIE : il reste conditionné au module, parce
-  //  que `resoudreFerieDuJour` s'en sert pour savoir si l'entreprise a configuré
-  //  une majoration de férié (`settingsConfigurees`, l. 1555). Le charger sans
-  //  condition changerait des montants — donc on ne le charge pas.
-  //
-  //  `reglageHebdo` sert à l'ALERTE : elle ne doit pas mourir avec la paie.
-  //  Couper le module « heures supplémentaires » n'est pas une décision de
-  //  renoncer au contrôle du temps de travail. Il est donc lu dans tous les cas.
-  try {
-    const lecture = await FeatureService.getOvertimeSettingsAvecOrigine(enterpriseId)
-    reglageHebdo = { settings: lecture.settings, provenance: lecture.provenance }
-    if (hasOvertimeFeature) overtimeSettings = lecture.settings
-  } catch {
-    reglageHebdo = null
-    if (hasOvertimeFeature) overtimeSettings = null
-  }
-
-  const [allSchedules, reglesAlerte] = await Promise.all([
-    FeatureService.loadSchedules([enterpriseId]),
-    chargerReglesAlerte(enterpriseId),
-  ])
-
-  return { hasOvertimeFeature, overtimeSettings, reglageHebdo, reglesAlerte, allSchedules }
-}
-
-/**
- * Les règles VERSIONNÉES du seuil d'alerte, s'il y en a.
- *
- * POURQUOI un `catch` total : cette lecture dépend d'une migration qui peut ne
- * pas être installée sur un serveur donné. Son absence ne doit empêcher ni un
- * calcul de paie ni l'affichage d'une fiche — on retombe alors sur le réglage
- * existant, exactement comme avant ce lot. Le silence est un repli, pas une
- * conclusion : `reglesAlerte` vaut `null`, et l'origine affichée le dira.
- */
-async function chargerReglesAlerte(entrepriseId) {
-  try {
-    const [seuil, niveau2] = await Promise.all([
-      resoudreRegleTemps({ entrepriseId, cle: 'alerte_hebdo_heures' }),
-      resoudreRegleTemps({ entrepriseId, cle: 'alerte_hebdo_niveau2_heures' }),
-    ])
-    return { seuil, niveau2 }
-  } catch {
-    return null
-  }
+  const allSchedules = await FeatureService.loadSchedules([enterpriseId])
+  return { hasOvertimeFeature, overtimeSettings, allSchedules }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2594,10 +2414,6 @@ export function compterRetardsDuJour(
 // production.
 export const __internal = {
   buildDaySummariesStrict,
-  loadOvertimeContext,
-  chargerReglesAlerte,
-  seuilsAlerteHebdo,
-  fenetreDeLecture,
   computeDayStrict,
   computeVirtualAutoCloseOut,
   calculerSortieAutoClose,

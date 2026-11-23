@@ -89,10 +89,6 @@ export function sectionsNavAdmin({ admin, moduleActif }) {
       label: 'Réglages',
       icon: Settings,
       items: [
-        // La porte d'entrée des réglages côté client : ses règles de temps de
-        // travail, leur origine et leur historique. Toujours visible — un
-        // administrateur doit pouvoir lire ce qui s'applique chez lui.
-        { label: 'Mon entreprise', icon: Building2, path: '/mon-entreprise', show: true },
         { label: 'Configuration pointeuse', icon: Router, path: '/configuration-pointeuse', show: moduleActif('module_pointeuses') || moduleActif('module_poste_pointage') },
         { label: 'Géopointage', icon: MapPin, path: '/geopointage', show: moduleActif('module_carte_temps_reel') || moduleActif('module_geolocalisation') },
         { label: 'Reconnaissance faciale', icon: ScanFace, path: '/reconnaissance-faciale', show: moduleActif('module_reconnaissance_faciale') },

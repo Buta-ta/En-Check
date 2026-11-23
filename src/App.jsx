@@ -56,7 +56,6 @@ import PostePointage from './pages/PostePointage'
 // La configuration pointeuse réunit les machines ADMS et le poste de
 // pointage : un seul écran pour le matériel de l'entrée.
 import ConfigurationPointeuse from './pages/ConfigurationPointeuse'
-import MonEntreprise from './pages/MonEntreprise'
 import Remunerations from './pages/Remunerations'
 import FichesPaie from './pages/FichesPaie'
 import EmployeeFichesPaie from './pages/employee/EmployeeFichesPaie'
@@ -377,14 +376,6 @@ function App() {
               signet ou un lien ancien ne tombe pas dans le vide. */}
           <Route path="/enrollements-faciaux" element={<Navigate to="/reconnaissance-faciale" replace />} />
           <Route path="/config-reco-faciale" element={<Navigate to="/reconnaissance-faciale" replace />} />
-          {/* « Mon entreprise » : le client lit ses règles et leur origine.
-              Ouvert à tout administrateur ; le choix de l'entreprise reste
-              réservé au super-admin, et le serveur revérifie l'accès. */}
-          <Route path="/mon-entreprise" element={
-            <AdminRoute>
-              <MonEntreprise />
-            </AdminRoute>
-          } />
           <Route path="/configuration-pointeuse" element={
             <AdminRoute>
               <ConfigurationPointeuse />
