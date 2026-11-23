@@ -17,7 +17,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { PGlite } from '@electric-sql/pglite'
 import { readFileSync } from 'node:fs'
 
-const MIGRATION = 'supabase/migrations/20261123000002_encheck_regles_temps_travail.sql'
+const MIGRATIONS = [
+  'supabase/migrations/20261123000002_encheck_regles_temps_travail.sql',
+  'supabase/migrations/20261123000003_regles_retour_et_impact.sql',
+]
 
 const ENTS = {
   a: '11111111-1111-4111-8111-111111111111',
@@ -116,7 +119,7 @@ beforeAll(async () => {
       ('${EMPLOYES.a2}', '${ENTS.a}'),
       ('${EMPLOYES.b1}', '${ENTS.b}');
   `)
-  await db.exec(readFileSync(MIGRATION, 'utf8'))
+  for (const fichier of MIGRATIONS) await db.exec(readFileSync(fichier, 'utf8'))
 }, 60000)
 
 afterAll(async () => {
@@ -326,5 +329,94 @@ describe('Verrou : deux gestes réservés au super-administrateur', () => {
     const r = await resoudre({ entreprise: ENTS.a, employe: EMPLOYES.a1 })
     expect(Number(r.valeur)).toBe(39)
     expect(r.verrouille).toBe(false)
+  })
+})
+
+describe('Retour à la règle d’entreprise', () => {
+  it('une valeur personnelle NULL est un ABANDON, pas un « non configuré »', async () => {
+    await semer({ entreprise: ENTS.a, cle: 'alerte_hebdo_heures', valeur: 42, date: '2026-09-01' })
+    await semer({ entreprise: ENTS.a, employe: EMPLOYES.a1, cle: 'alerte_hebdo_heures', valeur: 38, date: '2026-09-15' })
+    expect(Number((await resoudre({ entreprise: ENTS.a, employe: EMPLOYES.a1 })).valeur)).toBe(38)
+
+    //  L'employé revient à la règle commune : nouvelle version personnelle nulle.
+    await semer({ entreprise: ENTS.a, employe: EMPLOYES.a1, cle: 'alerte_hebdo_heures', valeur: null, date: '2026-10-01' })
+
+    const r = await resoudre({ entreprise: ENTS.a, employe: EMPLOYES.a1 })
+    expect(Number(r.valeur)).toBe(42)
+    expect(r.origine).toBe('entreprise')
+  })
+
+  it('l’abandon reste dans l’historique : on saura qu’il y a eu un arrangement', async () => {
+    await semer({ entreprise: ENTS.a, employe: EMPLOYES.a1, cle: 'alerte_hebdo_heures', valeur: 38, date: '2026-09-01' })
+    await semer({ entreprise: ENTS.a, employe: EMPLOYES.a1, cle: 'alerte_hebdo_heures', valeur: null, date: '2026-10-01' })
+
+    const { rows } = await db.query(
+      'select * from public.encheck_regle_historique($1, $2, $3)',
+      [ENTS.a, EMPLOYES.a1, 'alerte_hebdo_heures'],
+    )
+    expect(rows).toHaveLength(2)
+    expect(rows[0].valeur).toBeNull()
+  })
+
+  it('un abandon personnel ne masque pas une valeur d’entreprise absente', async () => {
+    await semer({ entreprise: ENTS.a, employe: EMPLOYES.a1, cle: 'alerte_hebdo_heures', valeur: 38, date: '2026-09-01' })
+    await semer({ entreprise: ENTS.a, employe: EMPLOYES.a1, cle: 'alerte_hebdo_heures', valeur: null, date: '2026-10-01' })
+
+    const r = await resoudre({ entreprise: ENTS.a, employe: EMPLOYES.a1 })
+    expect(r.valeur).toBeNull()
+    expect(r.origine).toBe('aucune')
+  })
+})
+
+describe('Aperçu d’impact avant écriture', () => {
+  const impact = async ({ entreprise = ENTS.a, cle = 'alerte_hebdo_heures', valeur = 44, date = '2026-10-20' }) => {
+    const { rows } = await db.query(
+      'select public.encheck_regle_impact($1, $2, $3, $4) as r',
+      [entreprise, cle, valeur, date],
+    )
+    return rows[0].r
+  }
+
+  it('compte les employés dont la valeur changerait', async () => {
+    await semer({ entreprise: ENTS.a, employe: EMPLOYES.a1, cle: 'alerte_hebdo_heures', valeur: 38, date: '2026-09-01' })
+    await semer({ entreprise: ENTS.a, employe: EMPLOYES.a2, cle: 'alerte_hebdo_heures', valeur: 44, date: '2026-09-01' })
+
+    await endosser(ADMINS.normal)
+    const r = await impact({ valeur: 44 })
+
+    expect(r.employes_concernes).toBe(2)
+    //  a1 passe de 38 à 44 ; a2 est déjà à 44, rien ne change pour lui.
+    expect(r.valeurs_changees).toBe(1)
+    expect(r.details).toHaveLength(1)
+    expect(r.details[0].employe_id).toBe(EMPLOYES.a1)
+    expect(Number(r.details[0].valeur_actuelle)).toBe(38)
+  })
+
+  it('signale les verrous, et que l’écriture sera refusée', async () => {
+    await semer({ entreprise: ENTS.a, employe: EMPLOYES.a1, cle: 'alerte_hebdo_heures', valeur: 38, date: '2026-09-01', verrouille: true })
+
+    await endosser(ADMINS.normal)
+    const r = await impact({ valeur: 44 })
+    expect(r.dont_verrouillees).toBe(1)
+    expect(r.ecriture_bloquee).toBe(true)
+
+    //  Pour un super-administrateur, le verrou est levable : l'écriture passe.
+    await endosser(ADMINS.super)
+    const rSuper = await impact({ valeur: 44 })
+    expect(rSuper.dont_verrouillees).toBe(1)
+    expect(rSuper.ecriture_bloquee).toBe(false)
+  })
+
+  it('sans aucun employé concerné, l’impact est vide — pas une estimation inventée', async () => {
+    await endosser(ADMINS.normal)
+    const r = await impact({ valeur: 44 })
+    expect(r.employes_concernes).toBe(0)
+    expect(r.valeurs_changees).toBe(0)
+    expect(r.details).toEqual([])
+  })
+
+  it('est cloisonné par entreprise', async () => {
+    await endosser(ADMINS.normal)
+    await expect(impact({ entreprise: ENTS.b })).rejects.toThrow(/acces refuse/)
   })
 })

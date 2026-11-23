@@ -688,7 +688,31 @@ sont, inchangés — le plafond n'existe toujours pas, et il n'est pas inventé.
    clair et sombre. Aucun test automatisé de rendu visuel ne le vérifie — la capture reste
    à faire.
 
-#### Lot 4 — G5 + G5-bis : la fiche employé et le devoir d'informer (M + M)
+#### Lot 4 — G5 + G5-bis : la fiche employé et le devoir d'informer (M + M) ⏳ *préalables livrés le 24/10/2026*
+
+##### 5.4.4 Ce qui est livré, et ce qui ne l'est pas encore
+
+Deux manques sont comblés, et ils bloquaient tout le reste :
+
+| Livré | Pourquoi c'était bloquant | Vérifié par |
+|---|---|---|
+| **Retour à la règle d'entreprise** (version personnelle `NULL` = abandon) | sans lui, le troisième état `suit_entreprise` n'avait aucune écriture possible : écrire `NULL` donnait « le plus récent gagne, valeur nulle », donc un employé sans règle, pas un employé revenu à la règle commune | 3 tests SQL, dont l'annulation des versions antérieures |
+| **Aperçu d'impact** `encheck_regle_impact` | la protection (a) du §3.3 : « le plus récent gagne » remplace des valeurs personnelles en silence | 4 tests SQL + 3 de service |
+| Impact affiché **avant** l'écriture, avec blocage si verrou | un refus doit se voir avant, pas après l'erreur | 1 test de page |
+| `revenirEntreprise()` | l'acte doit être nommé dans le service, pas être un `null` anonyme | 1 test |
+
+Détail de la règle d'abandon, parce qu'elle est contre-intuitive : l'abandon **annule toutes les
+versions personnelles antérieures** de cet employé. Sans cela, l'ancienne valeur (plus récente
+que la règle d'entreprise) resterait gagnante et le retour ne changerait rien — mesuré, puis
+corrigé.
+
+**Ce qui reste du lot G5, et n'est pas fait** :
+- les **trois états affichés clé par clé** dans la fiche employé (`suit_entreprise` /
+  `personnelle` / `personnelle_verrouillée`) — la logique serveur existe, l'écran non ;
+- les **informations enregistrées** du §3.5.g (destinataire, date, contenu, consulté) : aucun
+  stockage, aucun envoi ;
+- **versionner l'activation** de l'alerte (`alerte_hebdo_activee`) : toujours dans
+  `overtime_settings`, donc hors historique.
 
 - trois états (`suit_entreprise` / `personnelle` / `verrouillée`), clé par clé, retour ;
 - aperçu d'impact avec les non-concernés ;
@@ -715,7 +739,7 @@ sont, inchangés — le plafond n'existe toujours pas, et il n'est pas inventé.
 | 2a | G3 base | M | rien : pas encore branché | revue de la migration et des RPC |
 | 2b | G3 branchement ✅ | S | rien pour un client sans règle (mêmes seuils, mêmes montants) | avant/après identiques — testé |
 | 3 | G4 + G4b ✅ | M+M | l'accès des admins clients | parcours admin non super-admin |
-| 4 | G5 + G5-bis | M+M | la lisibilité de la fiche employé | parcours : poser, verrouiller, informer |
+| 4 | G5 + G5-bis ⏳ *retour + impact faits ; fiche et informations à faire* | M+M | la lisibilité de la fiche employé | parcours : poser, verrouiller, informer |
 | 5 | G7 | S | des libellés | captures des 3 écrans |
 | 6 | G8/G9 | — | la paie si on active trop tôt | décision écrite |
 

@@ -62,6 +62,8 @@ export default function MonEntreprise() {
   //  valeur. Un écran qui écrase sans montrer ce qu'il remplace n'informe pas.
   const [edition, setEdition] = useState(null)
   const [confirmationModele, setConfirmationModele] = useState(false)
+  //  Aperçu d'impact (protection (a) du §3.3) : chargé AVANT l'écriture.
+  const [impact, setImpact] = useState(null)
 
   useEffect(() => {
     const courant = lireAdmin()
@@ -289,6 +291,7 @@ export default function MonEntreprise() {
                         className="me-bouton me-bouton--discret"
                         onClick={() => {
                           setConfirmationModele(false)
+                          setImpact(null)
                           setEdition({
                             cle: regle.cle,
                             valeur: resolution?.valeur ?? '',
@@ -334,10 +337,45 @@ export default function MonEntreprise() {
                           <input
                             type="checkbox"
                             checked={edition.confirme}
-                            onChange={(e) => setEdition({ ...edition, confirme: e.target.checked })}
+                            onChange={async (e) => {
+                              const coche = e.target.checked
+                              setEdition({ ...edition, confirme: coche })
+                              setImpact(null)
+                              if (!coche) return
+                              const valeur = Number(edition.valeur)
+                              if (!Number.isFinite(valeur)) return
+                              try {
+                                setImpact(await Regles.apercuImpact({
+                                  entrepriseId,
+                                  cle: regle.cle,
+                                  valeur,
+                                  date: edition.dateEffet,
+                                }))
+                              } catch {
+                                //  Pas d'aperçu : on n'en fabrique pas un.
+                                setImpact(null)
+                              }
+                            }}
                           />
                           <span>Je confirme ce changement</span>
                         </label>
+
+                        {/*  Ce que le changement va remplacer, nommé, avant l'écriture. */}
+                        {impact && (
+                          <p className={impact.ecritureBloquee ? 'me-impact me-impact--bloque' : 'me-impact'}>
+                            {impact.valeursChangees === 0
+                              ? 'Aucune valeur personnelle ne serait remplacée.'
+                              : impact.valeursChangees === 1
+                                ? `1 employé verrait sa valeur remplacée (sur ${impact.employesConcernes} ayant une valeur personnelle).`
+                                : `${impact.valeursChangees} employés verraient leur valeur remplacée (sur ${impact.employesConcernes} ayant une valeur personnelle).`}
+                            {impact.dontVerrouillees > 0 && (
+                              <> {impact.dontVerrouillees} valeur{impact.dontVerrouillees > 1 ? 's sont verrouillées' : ' est verrouillée'}
+                                {impact.ecritureBloquee
+                                  ? ' : l’enregistrement sera refusé. Un super-administrateur doit lever le verrou.'
+                                  : '.'}</>
+                            )}
+                          </p>
+                        )}
                       </div>
 
                       <div className="me-actions">
@@ -352,7 +390,7 @@ export default function MonEntreprise() {
                         <button
                           type="button"
                           className="me-bouton"
-                          disabled={!edition.confirme || enCours}
+                          disabled={!edition.confirme || enCours || impact?.ecritureBloquee === true}
                           onClick={() =>
                             appliquer({
                               cle: regle.cle,

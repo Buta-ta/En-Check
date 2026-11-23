@@ -172,6 +172,64 @@ export async function ecrire({
   return data
 }
 
+/**
+ * L'aperçu d'impact AVANT d'écrire (protection (a) du §3.3).
+ *
+ * « L'acte le plus récent gagne » a un prix : un changement d'entreprise peut
+ * remplacer des valeurs personnelles plus anciennes. Cet appel dit combien,
+ * lesquelles, et si des verrous feront échouer l'écriture — avant, pas après.
+ */
+export async function apercuImpact({ entrepriseId, cle, valeur, date = null }) {
+  const { data, error } = await db().rpc('encheck_regle_impact', {
+    p_entreprise: entrepriseId,
+    p_cle: cle,
+    p_valeur: valeur,
+    p_date: date,
+  })
+  if (error) throw traduireErreur(error)
+  return normaliserImpact(data)
+}
+
+/** La réponse jsonb de la RPC → objet lisible. Pure. */
+export function normaliserImpact(impact) {
+  if (!impact || typeof impact !== 'object') {
+    return {
+      employesConcernes: 0,
+      valeursChangees: 0,
+      dontVerrouillees: 0,
+      ecritureBloquee: false,
+      details: [],
+    }
+  }
+
+  const details = Array.isArray(impact.details) ? impact.details : []
+
+  return {
+    employesConcernes: Number(impact.employes_concernes) || 0,
+    valeursChangees: Number(impact.valeurs_changees) || 0,
+    dontVerrouillees: Number(impact.dont_verrouillees) || 0,
+    //  Un booléen explicite, jamais déduit : c'est le serveur qui sait si le
+    //  demandeur peut lever un verrou.
+    ecritureBloquee: impact.ecriture_bloquee === true,
+    details: details.map((d) => ({
+      employeId: d.employe_id || null,
+      valeurActuelle: d.valeur_actuelle === null || d.valeur_actuelle === undefined ? null : Number(d.valeur_actuelle),
+      nouvelleValeur: d.nouvelle_valeur === null || d.nouvelle_valeur === undefined ? null : Number(d.nouvelle_valeur),
+      verrouillee: d.verrouillee === true,
+    })),
+  }
+}
+
+/**
+ * Revenir à la règle de l'entreprise pour un employé.
+ *
+ * Ce n'est PAS une suppression : c'est une NOUVELLE version personnelle nulle,
+ * qui annule les précédentes et laisse la trace qu'un arrangement a existé.
+ */
+export async function revenirEntreprise({ entrepriseId, employeId, cle, dateEffet = null }) {
+  return ecrire({ entrepriseId, employeId, cle, valeur: null, dateEffet })
+}
+
 /** L'historique complet d'une entreprise, d'un employé, ou d'une clé. */
 export async function historique({ entrepriseId, employeId = null, cle = null }) {
   const { data, error } = await db().rpc('encheck_regle_historique', {

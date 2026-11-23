@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   ecrire: vi.fn(),
   resoudre: vi.fn(),
   historique: vi.fn(),
+  apercuImpact: vi.fn(),
   entreprise: {
     id: 'ent-a',
     name: 'Entreprise fictive',
@@ -35,6 +36,7 @@ vi.mock('../reglesTempsTravail', () => ({
   resoudre: (...args) => mocks.resoudre(...args),
   ecrire: (...args) => mocks.ecrire(...args),
   historique: (...args) => mocks.historique(...args),
+  apercuImpact: (...args) => mocks.apercuImpact(...args),
 }))
 
 vi.mock('../../lib/supabase', () => {
@@ -60,6 +62,14 @@ beforeEach(() => {
   mocks.resoudre.mockResolvedValue({ valeur: null, origine: 'aucune', libelle: 'aucune règle enregistrée', dateEffet: null })
   mocks.historique.mockReset()
   mocks.historique.mockResolvedValue([])
+  mocks.apercuImpact.mockReset()
+  mocks.apercuImpact.mockResolvedValue({
+    employesConcernes: 0,
+    valeursChangees: 0,
+    dontVerrouillees: 0,
+    ecritureBloquee: false,
+    details: [],
+  })
 
   host = document.createElement('div')
   document.body.append(host)
@@ -135,4 +145,48 @@ it('affiche une valeur en vigueur avec son origine et sa date', async () => {
 
   expect(host.textContent).toContain('45 h')
   expect(host.textContent).toContain('depuis le 2026-09-01')
+})
+
+it('montre l’impact avant d’écrire, et refuse si un verrou bloque', async () => {
+  mocks.resoudre.mockResolvedValue({
+    valeur: 42,
+    origine: 'entreprise',
+    libelle: 'règle de l’entreprise',
+    dateEffet: '2026-09-01',
+  })
+  mocks.apercuImpact.mockResolvedValue({
+    employesConcernes: 12,
+    valeursChangees: 3,
+    dontVerrouillees: 1,
+    ecritureBloquee: true,
+    details: [],
+  })
+
+  await monter()
+  await act(async () => bouton('Modifier').click())
+
+  //  Saisir une nouvelle valeur, puis cocher la confirmation.
+  const champ = host.querySelector('.me-edition input[type="number"]')
+  const setValeur = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype,
+    'value',
+  ).set
+  await act(async () => {
+    setValeur.call(champ, '44')
+    champ.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const caseConfirme = host.querySelector('.me-case input[type="checkbox"]')
+  await act(async () => caseConfirme.click())
+
+  expect(mocks.apercuImpact).toHaveBeenCalledTimes(1)
+  expect(mocks.apercuImpact.mock.calls[0][0]).toMatchObject({
+    entrepriseId: 'ent-a',
+    cle: 'alerte_hebdo_heures',
+    valeur: 44,
+  })
+  expect(host.textContent).toContain('3 employés verraient leur valeur remplacée')
+  expect(host.textContent).toContain('l’enregistrement sera refusé')
+
+  const enregistrer = bouton('Enregistrer')
+  expect(enregistrer.disabled).toBe(true)
 })

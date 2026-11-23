@@ -27,7 +27,10 @@ const {
   historique,
   libelleOrigine,
   normaliserHistorique,
+  normaliserImpact,
   normaliserResolution,
+  apercuImpact,
+  revenirEntreprise,
   resoudre,
   validerValeur,
 } = await import('../reglesTempsTravail')
@@ -201,5 +204,59 @@ describe('Historique', () => {
 
   it('une ligne vide reste vide : rien n’est reconstitué', () => {
     expect(normaliserHistorique([])).toEqual([])
+  })
+})
+
+describe('Aperçu d’impact', () => {
+  it('traduit la réponse du serveur, sans rien compléter', async () => {
+    rpc.mockResolvedValue({
+      data: {
+        employes_concernes: 12,
+        valeurs_changees: 3,
+        dont_verrouillees: 1,
+        ecriture_bloquee: true,
+        details: [{ employe_id: 'e1', valeur_actuelle: '38.00', nouvelle_valeur: 44, verrouillee: true }],
+      },
+      error: null,
+    })
+    const impact = await apercuImpact({ entrepriseId: 'ent', cle: CLES.ALERTE_HEBDO, valeur: 44 })
+
+    expect(impact.employesConcernes).toBe(12)
+    expect(impact.valeursChangees).toBe(3)
+    expect(impact.dontVerrouillees).toBe(1)
+    expect(impact.ecritureBloquee).toBe(true)
+    expect(impact.details[0]).toEqual({
+      employeId: 'e1',
+      valeurActuelle: 38,
+      nouvelleValeur: 44,
+      verrouillee: true,
+    })
+  })
+
+  it('une réponse absente ne devient pas « zéro employé concerné » par hasard', () => {
+    const impact = normaliserImpact(null)
+    expect(impact.employesConcernes).toBe(0)
+    expect(impact.ecritureBloquee).toBe(false)
+    expect(impact.details).toEqual([])
+  })
+
+  it('ecritureBloquee n’est vrai que si le serveur le dit', () => {
+    expect(normaliserImpact({ ecriture_bloquee: 'oui' }).ecritureBloquee).toBe(false)
+    expect(normaliserImpact({ ecriture_bloquee: true }).ecritureBloquee).toBe(true)
+  })
+})
+
+describe('Retour à la règle d’entreprise', () => {
+  it('écrit une valeur NULL — un acte, pas une suppression', async () => {
+    rpc.mockResolvedValue({ data: 'v-abandon', error: null })
+    await revenirEntreprise({ entrepriseId: 'ent', employeId: 'emp', cle: CLES.ALERTE_HEBDO })
+
+    expect(rpc).toHaveBeenCalledWith('encheck_regle_ecrire', expect.objectContaining({
+      p_entreprise: 'ent',
+      p_employe: 'emp',
+      p_cle: 'alerte_hebdo_heures',
+      p_valeur: null,
+      p_verrouille: false,
+    }))
   })
 })
