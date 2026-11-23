@@ -440,8 +440,98 @@ Réalisé le 24/10/2026, **non validé**.
 **Non fait** : aucun écran n'affiche encore ces libellés (c'est G7), et le placement de
 l'alerte sous condition du module de paie reste à défaire (G6).
 
-**G1 et G2 sont indépendants et peuvent être menés en parallèle, une PR chacun. Le reste est
-séquentiel : G3 avant toute interface, G4 avant G4b et G5.
+### 5.3 Plan d'exécution — ce que je code, dans quel ordre
+
+#### Étape 0 — fermer #313 avant d'empiler (décision du fondateur)
+
+#313 contient G1 (fenêtre) et G2 (origine + 48 h). Tant qu'elle n'est pas validée, tout ce qui
+suit s'appuie sur un calcul non validé. **Aucun lot ci-dessous ne démarre sans cette
+validation** — ou sans un « je continue quand même » explicite.
+
+#### Lot 1 — G6-mince : l'alerte ne meurt plus avec la paie (S, 1 PR)
+
+**Pourquoi d'abord** : c'est le dernier défaut de justesse qui ne dépend d'aucun modèle de
+données. Deux lignes, un vrai bug : aujourd'hui, couper le module « heures supplémentaires »
+éteint le contrôle hebdomadaire.
+
+- `hoursCalculator.js` : `loadOvertimeContext` charge toujours les réglages et leur origine
+  (aujourd'hui seulement si `hasOvertimeFeature`) ; le calcul de paie garde SA condition
+  (`peutCalculer`), seule l'alerte s'affranchit du module ;
+- tests : module coupé ⇒ l'alerte existe, avec l'origine `defaut_produit` ou
+  `historique_incertain` ; module coupé ⇒ **aucun montant** d'heures supplémentaires calculé
+  (verrou anti-régression de paie).
+- ⚠️ Ce lot lit encore `overtime_settings`. **G3 le rebranchera** sur la nouvelle table : ce
+  double passage est assumé, il achète un correctif immédiat pour deux lignes de code.
+
+#### Lot 2 — G3 : la fondation, en deux PR (M puis S)
+
+Le gros morceau. Coupé en deux pour rester relisible.
+
+**PR 2a — la base et la résolution (sans interface, sans branchement)**
+- migration `2026xxxx_encheck_regles_temps_travail.sql` : table versionnée (§3.2), index
+  partiels, RLS (lecture selon l'accès, écriture par RPC seulement) ;
+- `encheck_regle_resolue(entreprise, employe, cle, date)` : la course des actes (§3.3),
+  verrou compris (§3.5.c) ;
+- `encheck_regle_ecrire(...)` : contrôle `admin_has_access_to_entreprise`, appartenance de
+  l'employé, bornes **dans la RPC**, écriture d'une nouvelle version + archive ;
+- `encheck_regle_historique(entreprise, employe, cle)` : qui, quand, avant → après ;
+- service `src/services/reglesTempsTravail.js` : `resoudre()`, `ecrire()`, `historique()`,
+  sans UI ;
+- tests : héritage par clé, retour à l'entreprise, verrou, date d'effet, refus inter-entreprises
+  **au niveau RPC**, bornes.
+- **Rien ne change à l'écran. Aucun calcul existant n'est modifié.** C'est un lot sûr.
+
+**PR 2b — le branchement (S)**
+- `hoursCalculator.js` : le seuil d'alerte vient de `encheck_regle_resolue(...)` ; les réglages
+  d'heures supplémentaires ne servent plus qu'à la paie ;
+- bascule : tant qu'aucune règle n'est écrite, la valeur résolue retombe sur le comportement
+  actuel (48 h, origine `defaut_produit`) — **aucune rupture de service** ;
+- tests : avant/après migration, mêmes alertes pour une entreprise sans règle ; montants de
+  paie strictement identiques.
+
+#### Lot 3 — G4 : « Mon entreprise » (M + M)
+
+Écran + accès + pays. Le premier lot visible par le client.
+- entrée dans le groupe Réglages ; « Entreprises » réservé au super-admin ;
+- identité (lecture), pays (acte daté et tracé, super-admin seul), règles de temps de travail ;
+- **G4b dans la même PR ou juste après** : modèles 48 h / 50 h par pays, pré-sélection +
+  confirmation, `statut_source` visible.
+- tests : visibilité par rôle, refus d'une autre entreprise, confirmation du pays, modèle non
+  appliqué sans confirmation, 4 largeurs + thèmes.
+
+#### Lot 4 — G5 + G5-bis : la fiche employé et le devoir d'informer (M + M)
+
+- trois états (`suit_entreprise` / `personnelle` / `verrouillée`), clé par clé, retour ;
+- aperçu d'impact avec les non-concernés ;
+- **informations enregistrées** (destinataire, date, contenu, consulté), pas des toasts ;
+- tests : les quatre événements du §3.5.g, l'absence d'information inventée.
+
+#### Lot 5 — G7 : les libellés dans les écrans existants (S)
+
+- le message d'alerte, la page Heures supplémentaires et le Planning affichent l'origine et
+  « contrôle indisponible » ;
+- aucun calcul nouveau, uniquement de la vérité visible.
+
+#### Lot 6 — G8 / G9 : contrats et snapshots (décisions, peu de code)
+
+- `contrat_id`, date d'effet, historique : le socle est déjà posé par G3 ;
+- G9 : **ne rien activer** tant que G1 n'est pas en production et l'historique tranché.
+
+#### Récapitulatif
+
+| Ordre | Lot | Taille | Ce qui peut casser | Validation attendue |
+|---|---|---|---|---|
+| 0 | #313 (G1+G2) | — | rien (calcul inchangé, totaux identiques) | tu regardes, tu fusionnes |
+| 1 | G6-mince | S | rien : l'alerte apparaît là où elle manquait | une capture : alerte visible module coupé |
+| 2a | G3 base | M | rien : pas encore branché | revue de la migration et des RPC |
+| 2b | G3 branchement | S | les alertes si la bascule est mal faite | avant/après identiques pour une entreprise sans règle |
+| 3 | G4 + G4b | M+M | l'accès des admins clients | parcours admin non super-admin |
+| 4 | G5 + G5-bis | M+M | la lisibilité de la fiche employé | parcours : poser, verrouiller, informer |
+| 5 | G7 | S | des libellés | captures des 3 écrans |
+| 6 | G8/G9 | — | la paie si on active trop tôt | décision écrite |
+
+**G1 et G2 ont été livrés ensemble dans #313** (même branche, même PR : le second corrigeait le
+libellé du premier). La suite est séquentielle.
 
 **Rien de tout cela ne remplace R3** (« écran des seuils », audit §7) : G4/G5 n'en est que la
 part « temps de travail », entreprise + employé. R3 reste bloqué par C5-mince et D3.
