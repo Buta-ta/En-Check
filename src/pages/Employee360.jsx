@@ -36,6 +36,8 @@ import {
 } from '../utils/timezoneUtils'
 import { initialesDe } from '../utils/initiales'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
+import AlerteHebdoCard from '../components/AlerteHebdoCard'
+import ReglesTempsTravail from '../components/ReglesTempsTravail'
 import { __internal, calculateEmployeeHours } from '../services/hoursCalculator'
 import { chargerBulletinsPeriode } from '../services/paiementBulletins'
 import { chargerSeuilsPointage } from '../services/seuilsPointage'
@@ -913,6 +915,19 @@ suivre('taches',
           </div>
         )}
 
+        {/* ─────────────── RÈGLES DE TEMPS DE TRAVAIL (G5) ───────────────
+            Clé par clé : la valeur, son origine, sa date, et le verrou s'il y
+            en a un. Une personne sans réglage personnel suit l'entreprise —
+            et l'écran le dit, au lieu de laisser croire à une décision. */}
+        {!erreur && (
+          <ReglesTempsTravail
+            entrepriseId={entreprise?.id}
+            employeId={employee?.id}
+            nomEmploye={nomComplet}
+            superAdmin={admin?.role === 'super_admin'}
+          />
+        )}
+
         {!chargement && !erreur && d && (
           <div className="e360-grille">
             {/* ═══ Colonne 1 — portrait, contact, accès ═══ */}
@@ -1029,6 +1044,9 @@ suivre('taches',
 
             {/* ═══ Colonne 2 — activité, salaire, rythme ═══ */}
             <div className="e360-col">
+              {/*  ⏰ Muette par défaut : la carte ne s'affiche que si la case
+                  « m'alerter » est cochée ET qu'une semaine dépasse le seuil. */}
+              <AlerteHebdoCard plafond={d?.heuresEmp?.thisMonth?.plafond_hebdo} />
               <section className="e360-carte e360-carte--sable" aria-label="Activité sur la période">
                 <h3 className="e360-carte-titre">
                   Activité

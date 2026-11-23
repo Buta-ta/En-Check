@@ -1,0 +1,509 @@
+/* src/components/ReglesTempsTravail.css
+   ─────────────────────────────────────────────────────────────────────────
+   La feuille de la maquette `maquettes/choix-g5-fiche-employe.png` (retenue le
+   24/10/2026) : un cadre d'encre de 2 px, une ombre dure à flou zéro, des
+   lavis de feutre par état, des étiquettes en capitales monospace.
+
+   Aucune couleur en dur (C1), aucun flou (C9), rayons dans {6, 8, 999} (C10).
+   L'état ne se lit jamais par la couleur seule : il porte toujours son mot (C7).
+   ───────────────────────────────────────────────────────────────────────── */
+
+.rtt {
+  margin: 0 0 var(--charte-espace-5);
+  padding: var(--charte-espace-4) var(--charte-espace-4) var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  box-shadow: var(--charte-ombre-dure);
+  font-family: var(--charte-police);
+  color: var(--charte-encre);
+}
+
+/* ── la tête ───────────────────────────────────────────────────────────── */
+
+.rtt-tete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-3);
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: var(--charte-espace-3);
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+}
+
+.rtt-titre {
+  margin: 0;
+  font-family: var(--charte-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rtt-sous-titre {
+  margin: var(--charte-espace-1) 0 0;
+  max-width: 62ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--charte-douce);
+}
+
+/* ── le corps : les règles à gauche, l'aperçu à droite ─────────────────── */
+
+.rtt-corps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+
+.rtt-lignes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rtt-ligne {
+  position: relative;
+  display: grid;
+  grid-template-columns: 5px minmax(0, 1.6fr) minmax(64px, auto) minmax(0, 1.1fr) auto;
+  gap: var(--charte-espace-3);
+  align-items: center;
+  padding: var(--charte-espace-3) var(--charte-espace-3) var(--charte-espace-3) 0;
+  border-bottom: 1px solid var(--charte-bordure);
+}
+
+.rtt-ligne:last-child {
+  border-bottom: 0;
+}
+
+.rtt-ligne.is-active {
+  background: color-mix(in srgb, var(--charte-aplat) 7%, transparent);
+}
+
+/* Le trait de feutre : 5 px à gauche, et son second passage sur un verrou. */
+.rtt-feuille {
+  position: relative;
+  align-self: stretch;
+  width: 5px;
+  min-height: 40px;
+  background: var(--charte-bordure);
+}
+
+.rtt-ligne--suit_entreprise .rtt-feuille {
+  background: var(--charte-aplat);
+}
+
+.rtt-ligne--personnelle .rtt-feuille {
+  background: var(--charte-alerte);
+}
+
+.rtt-ligne--personnelle_verrouillee .rtt-feuille {
+  background: var(--charte-alerte);
+}
+
+.rtt-ligne--personnelle_verrouillee .rtt-feuille::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 8px;
+  width: 2px;
+  background: var(--charte-alerte);
+}
+
+.rtt-ligne-texte {
+  padding-left: var(--charte-espace-2);
+}
+
+.rtt-ligne-titre {
+  margin: 0;
+  font-family: var(--charte-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.rtt-ligne-aide {
+  margin: 2px 0 0;
+  max-width: 40ch;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--charte-douce);
+}
+
+.rtt-valeur {
+  margin: 0;
+  font-family: var(--charte-mono);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rtt-ligne--aucune .rtt-valeur {
+  font-family: var(--charte-police);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--charte-douce);
+}
+
+.rtt-origine {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.rtt-tampon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 2px 6px;
+  border-radius: var(--charte-rayon-champ);
+  border: 1px solid color-mix(in srgb, var(--charte-encre) 30%, transparent);
+  background: color-mix(in srgb, var(--charte-aplat) 12%, transparent);
+  font-family: var(--charte-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rtt-ligne--personnelle .rtt-tampon,
+.rtt-ligne--personnelle_verrouillee .rtt-tampon {
+  background: color-mix(in srgb, var(--charte-alerte) 14%, transparent);
+}
+
+.rtt-ligne--aucune .rtt-tampon {
+  background: transparent;
+  border-style: dashed;
+  color: var(--charte-douce);
+}
+
+.rtt-date {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--charte-douce);
+}
+
+.rtt-action {
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--charte-encre) 40%, transparent);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--charte-btn-lien);
+  font-family: var(--charte-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+
+.rtt-action:hover {
+  background: var(--charte-surface2);
+}
+
+.rtt-action:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* ── le panneau d'aperçu ───────────────────────────────────────────────── */
+
+.rtt-panneau {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-3);
+  margin: calc(var(--charte-espace-4) * -1) calc(var(--charte-espace-4) * -1)
+    calc(var(--charte-espace-3) * -1) 0;
+  padding: var(--charte-espace-4);
+  border-left: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface2);
+}
+
+.rtt-panneau-titre {
+  margin: 0;
+  font-family: var(--charte-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rtt-panneau-vide {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--charte-douce);
+}
+
+.rtt-impact {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px var(--charte-espace-3);
+  margin: 0;
+}
+
+.rtt-impact div {
+  display: contents;
+}
+
+.rtt-impact dt {
+  font-size: 11.5px;
+  color: var(--charte-douce);
+}
+
+.rtt-impact dd {
+  margin: 0;
+  font-family: var(--charte-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rtt-impact-phrase {
+  margin: 0;
+  padding-top: var(--charte-espace-2);
+  border-top: 1px solid color-mix(in srgb, var(--charte-encre) 20%, transparent);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.rtt-blocage {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: var(--charte-espace-2);
+  border-left: 3px solid var(--charte-erreur);
+  background: color-mix(in srgb, var(--charte-erreur) 10%, transparent);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.rtt-blocage svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.rtt-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+.rtt-champ input {
+  height: 34px;
+  padding: 0 var(--charte-espace-2);
+  border: 1px solid color-mix(in srgb, var(--charte-encre) 30%, transparent);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-size: 13px;
+}
+
+.rtt-champ input:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 1px;
+}
+
+.rtt-case {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--charte-espace-2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.rtt-case input {
+  margin-top: 2px;
+  accent-color: var(--charte-aplat);
+}
+
+.rtt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-2);
+}
+
+.rtt-confirmation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2);
+  border: 1px solid color-mix(in srgb, var(--charte-encre) 30%, transparent);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
+}
+
+.rtt-confirmation p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.rtt-message {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--charte-encre);
+}
+
+/* ── les informations enregistrées ─────────────────────────────────────── */
+
+.rtt-informations {
+  margin-top: var(--charte-espace-4);
+  padding-top: var(--charte-espace-3);
+  border-top: var(--charte-trait) solid var(--charte-encre);
+}
+
+.rtt-informations-titre {
+  margin: 0;
+  font-family: var(--charte-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rtt-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: var(--charte-espace-1) 0 var(--charte-espace-3);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--charte-douce);
+}
+
+.rtt-note svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.rtt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.rtt-table th {
+  padding: 6px var(--charte-espace-2);
+  border-bottom: 1px solid color-mix(in srgb, var(--charte-encre) 35%, transparent);
+  font-family: var(--charte-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--charte-douce);
+}
+
+.rtt-table td {
+  padding: 7px var(--charte-espace-2);
+  border-bottom: 1px solid var(--charte-bordure);
+  vertical-align: top;
+  line-height: 1.45;
+}
+
+.rtt-table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* ── états vides et erreurs ────────────────────────────────────────────── */
+
+.rtt-vide {
+  margin: var(--charte-espace-3) 0;
+  font-size: 12.5px;
+  color: var(--charte-douce);
+}
+
+.rtt-erreur {
+  margin: var(--charte-espace-3) 0 0;
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border-left: 3px solid var(--charte-erreur);
+  background: color-mix(in srgb, var(--charte-erreur) 10%, transparent);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.rtt-lien {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--charte-btn-lien);
+  font-family: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── le téléphone et la tablette ───────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .rtt-corps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rtt-panneau {
+    margin: var(--charte-espace-3) calc(var(--charte-espace-4) * -1)
+      calc(var(--charte-espace-3) * -1);
+    border-left: 0;
+    border-top: var(--charte-trait) solid var(--charte-encre);
+  }
+}
+
+@media (max-width: 680px) {
+  .rtt-ligne {
+    grid-template-columns: 5px minmax(0, 1fr) auto;
+    row-gap: var(--charte-espace-2);
+  }
+
+  .rtt-ligne-texte {
+    grid-column: 2 / 4;
+  }
+
+  .rtt-valeur {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .rtt-origine {
+    grid-column: 2 / 4;
+  }
+
+  .rtt-action {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+  }
+
+  .rtt-table thead {
+    display: none;
+  }
+
+  .rtt-table tr {
+    display: block;
+    padding: var(--charte-espace-2) 0;
+    border-bottom: 1px solid var(--charte-bordure);
+  }
+
+  .rtt-table td {
+    display: block;
+    padding: 2px 0;
+    border: 0;
+  }
+}
