@@ -625,6 +625,17 @@ utilisable ».
 destinataire existe. Un moteur qui produit dix signaux que personne ne lit n'est pas
 un progrès, c'est une dette.
 
+**Règle jumelle, ajoutée après validation des réglages de temps de travail :** ne jamais
+ouvrir un éditeur de seuils avant que le calcul qu'il pilote soit juste **et** journalisé.
+Des seuils modifiables sans trace sont un bouton pour réécrire janvier depuis novembre ;
+des seuils modifiables sur un calcul faux sont un bouton qui ment deux fois. Le détail, les
+constats re-vérifiés, le modèle de données et les tests sont dans
+`docs/PLAN-REGLAGES-TEMPS-TRAVAIL.md` (lots G1→G9). Les réglages y sont portés **par
+entreprise et par employé**, clé par clé, avec un emplacement réservé aux contrats futurs.
+G1 (fenêtre à cheval sur deux années) et G2 (origine réelle des valeurs) précèdent toute
+interface ; **R3 reste bloqué par C5-mince et D3**, dont G3 ne couvre que les règles de
+temps de travail.
+
 ### 7.1 Pourquoi l'ordre a changé par rapport à la v1
 
 Deux déplacements, tous deux proposés par l'arbitre 1 et acceptés :
