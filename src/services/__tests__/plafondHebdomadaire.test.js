@@ -68,7 +68,7 @@ describe('La semaine est une fenêtre, pas un mois', () => {
     expect(semaine.secondes).toBe(H(50))
   })
 
-  it('une semaine incomplète est signalée comme telle, pas déclarée sage', () => {
+  it('une fenêtre partielle reste chiffrée honnêtement : 3 jours couverts, pas 7', () => {
     const agrege = agregerParSemaine({
       secondesParJour: jours([['2026-10-07', 8]]),
       debut: '2026-10-07',
@@ -78,8 +78,11 @@ describe('La semaine est une fenêtre, pas un mois', () => {
     const evaluation = evaluerSeuilsHebdo({ semaines: agrege, seuil: 40, seuilMajeur: 48 })
     const semaine = evaluation.semaines[0]
 
-    expect(semaine.complete).toBe(false)
+    //  La couverture est portée par le chiffre, pas par un booléen : un drapeau
+    //  « complete » vaudrait toujours vrai depuis que le moteur demande les
+    //  semaines sur leurs 7 jours réels (constat P1, `fenetreDeLecture`).
     expect(semaine.joursDansLaPeriode).toBe(3)
+    expect(semaine).not.toHaveProperty('complete')
   })
 })
 

@@ -277,7 +277,7 @@ rendre l'écran muet au premier jour.
 
 | Ordre | Lot | Contenu | E | É | Dépend de | Pourquoi ici |
 |---|---|---|---|---|---|---|
-| 1 | **G1** | Fenêtres hebdo et repos calculées sur une plage élargie, depuis les pointages bruts ; `donnees_completes` remplace le drapeau mort | S | — | — | Un réglage éditable sur un calcul faux à cheval sur deux années, c'est un bouton qui ment deux fois |
+| 1 | **G1** ✅ *réalisé, en attente de validation* | Fenêtres hebdo et repos calculées sur une plage élargie ; la primitive refuse des bornes étroites ; drapeau mort supprimé | S | — | — | Un réglage éditable sur un calcul faux à cheval sur deux années, c'est un bouton qui ment deux fois |
 | 2 | **G2** | Provenance minimale (`entreprise` / `defaut_produit` / `historique_incertain`) + libellé honnête | S | S | — | Supprime le mensonge actuel (« seuil d'entreprise ») pour tous, tout de suite, sans toucher au calcul |
 | 3 | **G3** | Table versionnée + `encheck_regle_resolue` + `encheck_regle_ecrire` + journal (auteur, date d'effet, avant/après) | M | — | G2 (origines) | Le journal **avant** l'éditeur : des seuils modifiables sans trace sont un bouton pour réécrire janvier depuis novembre (règle C5-mince de l'audit) |
 | 4 | **G6** | Découpler l'alerte du module de paie (défaire `hoursCalculator.js` l. 389) et séparer les trois clés : déclenchement de paie / seuil d'alerte / plafond légal (`a_sourcer`) | S | S | G3 | Donner un bouton « repos personnel » alors que l'alerte s'éteint avec la paie serait livrer un réglage inopérant |
@@ -287,6 +287,27 @@ rendre l'écran muet au premier jour.
 | 8 | **G7** | Affichage de la provenance et de « contrôle indisponible » dans les écrans d'alerte et le Planning (V-B3, V-C2) | S | S | G2, G6 | Rendre visible ce que G3-G5 savent, sans ajouter de règle |
 | 9 | **G8** | Contrats : date d'effet, emplacement `contrat_id`, historique, distinction des quatre notions (V-D1, V-D2, V-D5) | M | S | G3, §6.1 | Conception maintenant, code quand le module contrats se précise |
 | 10 | **G9** | Snapshots de calcul : ne pas activer avant G1 et avant décision sur l'historique | — | — | G1 | Figer un calcul faux au 31/12 est exactement ce que le rapport interdit |
+
+### 5.1 G1 — ce qui a été fait, et ce qui a changé en route
+
+Réalisé le 24/10/2026, **non validé** : le statut reste « en attente ».
+
+- `fenetreDeLecture({ debutAnnee, finAnnee, debutMois, finMois })` (nouvelle fonction
+  exportée) rend la fenêtre de lecture : année civile ∪ semaine du 1ᵉʳ du mois ∪ semaine du
+  dernier jour ∪ lendemain du dernier jour. Rien de plus.
+- la lecture des pointages utilise cette fenêtre (elle était bornée à l'année civile) ;
+- `buildDaySummariesStrict` **dérive lui-même** ses bornes des périodes : il n'accepte plus
+  de bornes de l'extérieur, donc un appelant ne peut plus réintroduire des bornes trop
+  étroites — c'était le vrai risque de régression ;
+- le drapeau `complete` a été **supprimé**, pas renommé. Après élargissement, il vaudrait
+  toujours `true` : un booléen toujours vrai ne mesure rien. `joursDansLaPeriode` reste, et
+  c'est lui qui chiffre la couverture réelle de la fenêtre demandée.
+- 7 tests de régression (`fenetreAnnee.test.js`) + 3 fichiers de tests existants adaptés au
+  nouveau contrat.
+
+**Ce que G1 ne fait pas** : il ne renomme rien à l'écran, ne modifie aucune alerte, ne touche
+ni aux seuils ni à la paie. Les totaux mensuels et annuels sont inchangés par construction
+(les boucles de totalisation gardent leurs propres listes de jours) et un test le vérifie.
 
 **G1 et G2 sont indépendants** et peuvent être menés en parallèle, une PR chacun. Le reste est
 séquentiel : G3 avant toute interface, G4 avant G4b et G5.

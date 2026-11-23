@@ -47,6 +47,39 @@ const H = (seuils, cle) => {
   return Number.isFinite(n) && n > 0 ? n : SEUILS_PAR_DEFAUT[cle]
 }
 
+/**
+ * Fenêtre de LECTURE des pointages, plus large que l'année civile.
+ *
+ * POURQUOI (constat P1) : une semaine peut commencer en décembre et finir en
+ * janvier ; le repos entre deux journées se mesure aussi entre un 31/12 et un
+ * 01/01. Bornée à l'année de la date de référence, la lecture fait disparaître
+ * ces journées sans rien dire : 50 h deviennent 30 h + 20 h, et un écart de
+ * repos de 4 h 30 devient « aucun écart ».
+ *
+ * Ce que la fenêtre couvre : l'année civile ∪ la semaine du 1ᵉʳ du mois ∪ la
+ * semaine du dernier jour du mois ∪ le lendemain du dernier jour du mois.
+ * Rien de plus : les totaux mensuels et annuels continuent de boucler sur leurs
+ * propres listes de jours, donc ces journées supplémentaires ne les touchent
+ * jamais.
+ */
+export function fenetreDeLecture({ debutAnnee, finAnnee, debutMois, finMois }) {
+  const debutSemaines = getWeekPeriod(debutMois).startDate
+  const finSemaines = getWeekPeriod(finMois).endDate
+  const lendemain = (() => {
+    const d = new Date(`${finMois}T00:00:00`)
+    d.setDate(d.getDate() + 1)
+    return toDateKeyLocal(d)
+  })()
+
+  return {
+    debut: [debutAnnee, debutSemaines].sort()[0],
+    fin: [finAnnee, finSemaines, lendemain].sort().pop(),
+    debutSemaines,
+    finSemaines,
+    lendemain,
+  }
+}
+
 export async function calculateEmployeeHours(employeeId, enterpriseId, referenceDate = new Date()) {
   const ref = new Date(referenceDate)
 
@@ -97,8 +130,22 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   const weekPeriod = getWeekPeriod(ref)
   let todayKey = toDateKeyLocal(ref)
 
-  const yearStartISO = new Date(`${yearPeriod.startDate}T00:00:00`).toISOString()
-  const yearEndISO = new Date(`${yearPeriod.endDate}T23:59:59.999`).toISOString()
+  //  ⚠️ La lecture des pointages dépasse l'année civile (voir `fenetreDeLecture`).
+  const {
+    debut: debutLecture,
+    fin: finLecture,
+    debutSemaines,
+    finSemaines,
+    lendemain: lendemainFinMois,
+  } = fenetreDeLecture({
+    debutAnnee: yearPeriod.startDate,
+    finAnnee: yearPeriod.endDate,
+    debutMois: monthPeriod.startDate,
+    finMois: monthPeriod.endDate,
+  })
+
+  const debutLectureISO = new Date(`${debutLecture}T00:00:00`).toISOString()
+  const finLectureISO = new Date(`${finLecture}T23:59:59.999`).toISOString()
 
   // ── 3) Charger attendances ──────────────────────────────────
   //  Les colonnes `estimation_*` arrivent avec la migration des fondations :
@@ -111,8 +158,8 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
         'anomalie, estimation_validee_le, estimation_remplacee_le, estimation_niveau, estimation_confiance',
     )
     .eq('employee_id', employeeId)
-    .gte('check_time', yearStartISO)
-    .lte('check_time', yearEndISO)
+    .gte('check_time', debutLectureISO)
+    .lte('check_time', finLectureISO)
     .order('check_time', { ascending: true })
 
   if (attErr) throw attErr
@@ -171,8 +218,14 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     planPerso: resolvePlanForExpected(employeeScheduleRow, null),
     planDefaut: resolvePlanForExpected(null, defaultScheduleRow),
     seuils: enterpriseCfg.seuils,
-    yearStartDate: yearPeriod.startDate,
-    yearEndDate: yearPeriod.endDate,
+    //  Périodes brutes : la fonction en dérive sa fenêtre de calcul (année civile
+    //  élargie aux semaines du mois). Les totaux mensuels et annuels, eux,
+    //  continuent de boucler sur leurs propres listes de jours — ils ne voient
+    //  donc jamais les journées en trop.
+    debutAnnee: yearPeriod.startDate,
+    finAnnee: yearPeriod.endDate,
+    debutMois: monthPeriod.startDate,
+    finMois: monthPeriod.endDate,
   })
 
   // ── 9) Aujourd'hui ────────────────────────────────────────────
@@ -375,8 +428,6 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   //  Les semaines sont calculées sur des fenêtres complètes (lundi → dimanche),
   //  y compris celles à cheval sur deux mois : sinon 50 h pourraient se cacher
   //  dans deux « semaines » de 25 h au 1ᵉʳ du mois.
-  const debutSemaines = getWeekPeriod(monthPeriod.startDate).startDate
-  const finSemaines = getWeekPeriod(monthPeriod.endDate).endDate
   const secondesParJour = {}
   for (const d of listDaysInclusive(debutSemaines, finSemaines)) {
     secondesParJour[d] = (daySummaries[d] || {}).totalSeconds || 0
@@ -396,12 +447,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   // ── 11-ter) Repos entre deux journées ────────────────────────
   //  On inclut le premier jour du mois suivant : sans lui, le repos entre le
   //  31 et le 1ᵉʳ ne serait jamais mesuré.
-  const joursRepos = [...monthDays]
-  {
-    const dernier = new Date(`${monthPeriod.endDate}T00:00:00`)
-    dernier.setDate(dernier.getDate() + 1)
-    joursRepos.push(toDateKeyLocal(dernier))
-  }
+  const joursRepos = [...monthDays, lendemainFinMois]
   const reposQuotidien = evaluerReposQuotidien({
     journees: joursRepos.map((d) => {
       const jour = daySummaries[d] || null
@@ -632,8 +678,13 @@ function buildDaySummariesStrict({
   enterpriseCfg,
   plan = null,
   plansParJour = null,
-  yearStartDate,
-  yearEndDate,
+  //  La fenêtre de calcul est DÉRIVÉE des périodes, jamais passée par
+  //  l'appelant : c'est ce qui rend impossible de réintroduire des bornes trop
+  //  étroites (le défaut d'origine). Voir `fenetreDeLecture`.
+  debutAnnee,
+  finAnnee,
+  debutMois,
+  finMois,
   basculeMinutes = 0,
   seuils = null,
   planPerso = null,
@@ -643,6 +694,12 @@ function buildDaySummariesStrict({
   //  Avant, ce fichier écrivait un 16 (appariement), un 60 (anti-rebond) et un 14
   //  (plafond d'invention) en dur à quatre endroits — et le plafond de 14 h
   //  n'était même pas le même que celui du SQL.
+  const { debut: borneStartDate, fin: borneEndDate } = fenetreDeLecture({
+    debutAnnee,
+    finAnnee,
+    debutMois,
+    finMois,
+  })
   const s = seuils || enterpriseCfg?.seuils || SEUILS_PAR_DEFAUT
   const APPARIEMENT_H = H(s, 'appariementHeures')
   const REBOND_S = H(s, 'seuilRebondSecondes')
@@ -662,7 +719,7 @@ function buildDaySummariesStrict({
    * ce qui a été écarté, et combien.
    */
   const noterAnomalie = (dateKey, type, detail = {}) => {
-    if (!dateKey || dateKey < yearStartDate || dateKey > yearEndDate) return
+    if (!dateKey || dateKey < borneStartDate || dateKey > borneEndDate) return
     ensure(dateKey).anomalies.push({ type, ...detail })
   }
 
@@ -672,7 +729,7 @@ function buildDaySummariesStrict({
     //  journée, donc à quelle journée appartient un pointage d'après minuit.
     const dayKey = cleJourDeTravail(inDate, basculeMinutes)
 
-    if (dayKey < yearStartDate || dayKey > yearEndDate) return
+    if (dayKey < borneStartDate || dayKey > borneEndDate) return
 
     const s = ensure(dayKey)
 
@@ -2414,6 +2471,7 @@ export function compterRetardsDuJour(
 // production.
 export const __internal = {
   buildDaySummariesStrict,
+  fenetreDeLecture,
   computeDayStrict,
   computeVirtualAutoCloseOut,
   calculerSortieAutoClose,

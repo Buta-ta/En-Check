@@ -105,8 +105,13 @@ describe('hoursCalculator — Fonctions pures de calcul des heures (VD-15)', () 
     const summaries = buildDaySummariesStrict({
       attendances,
       enterpriseCfg: { autoCloseEnabled: false, autoCloseTime: '23:59:00', autoCloseGraceMinutes: 0 },
-      yearStartDate: '2026-01-01',
-      yearEndDate: '2026-12-31',
+      debutAnnee: '2026-01-01',
+
+      finAnnee: '2026-12-31',
+
+      debutMois: '2026-10-01',
+
+      finMois: '2026-10-31',
       basculeMinutes: minutesDeBascule('06:00'),
     })
 
@@ -348,8 +353,13 @@ describe('hoursCalculator — Fonctions pures de calcul des heures (VD-15)', () 
     const summaries = buildDaySummariesStrict({
       attendances: rawAttendances.slice(0, 4),
       enterpriseCfg: { autoCloseEnabled: false, autoCloseTime: '23:59:00', autoCloseGraceMinutes: 0 },
-      yearStartDate: '2026-01-01',
-      yearEndDate: '2026-12-31',
+      debutAnnee: '2026-01-01',
+
+      finAnnee: '2026-12-31',
+
+      debutMois: '2026-10-01',
+
+      finMois: '2026-10-31',
       basculeMinutes: 0,
     })
     expect(summaries['2026-10-13']?.totalSeconds).toBe(15917)
@@ -428,8 +438,10 @@ describe('hoursCalculator — Fonctions pures de calcul des heures (VD-15)', () 
         ],
         enterpriseCfg: { autoCloseEnabled: false, autoCloseTime: '23:59:00', autoCloseGraceMinutes: 0 },
         plan: null,
-        yearStartDate: '2026-10-01',
-        yearEndDate: '2026-10-31',
+        debutAnnee: '2026-01-01',
+        finAnnee: '2026-12-31',
+        debutMois: '2026-10-01',
+        finMois: '2026-10-31',
         basculeMinutes: 0,
       })
 

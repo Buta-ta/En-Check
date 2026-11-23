@@ -177,9 +177,12 @@ export function evaluerSeuilsHebdo({ semaines = [], seuil = null, seuilMajeur = 
       depasse,
       depassement_heures: depasse ? Math.round((heures - bareme) * 100) / 100 : 0,
       niveau,
-      //  Une semaine incomplète (période qui commence un mercredi) ne peut pas
-      //  être jugée sur son total : on le signale au lieu de la déclarer sage.
-      complete: sem.joursDansLaPeriode === 7,
+      //  ⚠️ Pas de drapeau `complete` ici, et c'est volontaire.
+      //  Le moteur demande désormais chaque semaine sur ses 7 jours réels (fenêtre
+      //  élargie, cf. `fenetreDeLecture`), donc un booléen vaudrait toujours vrai
+      //  et ne mesurerait plus rien. Ce qui reste vrai et vérifiable, c'est le
+      //  nombre de jours effectivement couverts par la fenêtre demandée :
+      //  `joursDansLaPeriode`, déjà porté par l'agrégat.
     }
   })
 
