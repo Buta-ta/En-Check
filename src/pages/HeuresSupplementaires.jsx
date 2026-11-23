@@ -338,6 +338,17 @@ export default function HeuresSupplementaires() {
       )
       return
     }
+    //  Une case cochée sans seuil valide produirait une alerte fantôme : on
+    //  refuse la sauvegarde plutôt que d'enregistrer un réglage inopérant.
+    if (settingsForm.alerte_hebdo_activee === true) {
+      const seuil = Number(settingsForm.weekly_threshold)
+      if (!Number.isFinite(seuil) || seuil <= 0 || seuil > 168) {
+        toast.error(
+          'Indiquez un seuil hebdomadaire entre 1 et 168 heures pour activer l’alerte.',
+        )
+        return
+      }
+    }
     if (savingSettings) return
     setSavingSettings(true)
     try {
@@ -774,6 +785,67 @@ export default function HeuresSupplementaires() {
                 <span>Calculer les heures sup le weekend</span>
               </label>
             </div>
+
+            {/*  ⏰ Seuil et alerte : deux objets distincts (décision 24/10/2026).
+                Le seuil peut servir de point de repère sans que personne ne
+                veuille être prévenu — d'où la case séparée. Et aucune alerte
+                ne se déduit d'une valeur : seule la case l'allume. */}
+            <div
+              className="ot-rules-section"
+              style={pageStyles.settingsSection}
+            >
+              <h3 style={pageStyles.settingsSectionTitle}>
+                Alerte hebdomadaire
+              </h3>
+              <div style={pageStyles.settingsRow}>
+                <div style={pageStyles.settingsField}>
+                  <label
+                    htmlFor="ot-weekly_threshold"
+                    style={pageStyles.settingsLabel}
+                  >
+                    Seuil hebdomadaire (heures)
+                  </label>
+                  <input
+                    id="ot-weekly_threshold"
+                    min="1"
+                    max="168"
+                    step="0.5"
+                    disabled={savingSettings}
+                    type="number"
+                    value={settingsForm.weekly_threshold ?? ''}
+                    onChange={(e) =>
+                      setSettingsForm({
+                        ...settingsForm,
+                        weekly_threshold:
+                          e.target.value === '' ? '' : Number(e.target.value),
+                      })
+                    }
+                    style={pageStyles.settingsInput}
+                  />
+                </div>
+              </div>
+              <label style={pageStyles.settingsToggle}>
+                <input
+                  id="ot-alerte_hebdo_activee"
+                  disabled={savingSettings}
+                  type="checkbox"
+                  checked={settingsForm.alerte_hebdo_activee === true}
+                  onChange={(e) =>
+                    setSettingsForm({
+                      ...settingsForm,
+                      alerte_hebdo_activee: e.target.checked,
+                    })
+                  }
+                />
+                <span>M’alerter au-delà de ce seuil</span>
+              </label>
+              <small style={pageStyles.settingsNote}>
+                Le seuil et l’alerte sont deux choses : vous pouvez fixer un
+                seuil sans être prévenu. Sans case cochée, aucune alerte n’est
+                produite. 48 h est une valeur proposée par le produit, pas une
+                obligation.
+              </small>
+            </div>
           </div>
 
           <div className="ot-rules-footer" style={pageStyles.settingsFooter}>
@@ -857,6 +929,12 @@ const pageStyles = {
     fontFamily: "'SF Mono', 'Fira Code', monospace",
     width: '100%',
     boxSizing: 'border-box',
+  },
+  settingsNote: {
+    color: 'var(--ot-muted)',
+    fontSize: '12px',
+    lineHeight: 1.5,
+    margin: 0,
   },
   settingsToggle: {
     display: 'flex',
