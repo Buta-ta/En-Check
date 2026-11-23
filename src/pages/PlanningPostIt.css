@@ -2957,3 +2957,482 @@
     opacity: 1;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LES DEMANDES, ENFIN HABILLÉES — 23/11/2026
+
+   ZÉRO règle de demande dans cette feuille avant aujourd'hui : la peau du
+   voisin habillait tout l'écran de `sk-request-*` (trente-sept règles, l.2375
+   de la feuille voisine) — pilules totalement arrondies, aplat ambre saturé
+   sous le filtre actif, carte à gros arrondi et ombre de 40 %, trois teintes
+   de statut écrites en dur dans la feuille. Le fondateur a envoyé
+   la capture le 23/11 : « retravaille cette partie ». Ce que la maison y met :
+
+   1. un SEUL CADRE pour l'écran entier — le bandeau du haut portait le cadre,
+      la liste flottait hors de lui, et une carte de 380 px se perdait dans
+      1 268 px de vide ;
+   2. les filtres se lisent au SOULIGNÉ, comme les quatre vues du haut de la
+      page — une pilule pleine serait un second objet rempli dans une note de
+      papier (la règle est déjà écrite plus haut, elle valait aussi ici) ;
+   3. le statut est un MOT sur un lavis, jamais une couleur seule (C7) ; le
+      rouge reste à ce qui détruit, et « refusée » n'est pas une destruction ;
+   4. ce qui change se VOIT : sept casiers, un par jour, avec le mot dessous —
+      « Lun - Sam » ne disait pas quel jour s'ajoutait ni lequel partait ;
+   5. les heures des deux côtés sont écrites en colonnes serrées, et le
+      différentiel ne s'affiche que si les DEUX côtés ont des heures ;
+   6. le geste de supprimer garde sa fenêtre de confirmation (elle existait)
+      mais prend un MOT : un pictogramme seul n'est pas une étiquette.
+
+   Comme pour le mois : deux classes par sélecteur, pas d'« important », aucun
+   hexadécimal, aucun flou, aucun rayon en pixels, aucune taille de texte
+   chiffrée — les trois tailles de la charte et rien d'autre.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* le titre de la SECTION, pas celui d'une fenêtre : la barre de feutre du
+   titre de modale est collée à `left: 0; right: 0`, donc elle prend la largeur
+   du conteneur — 750 px de noir sous 340 px de texte. Ici la barre suit le
+   mot. */
+.sk-plan-page--postit .sk-requests-titre {
+  display: inline-block;
+  margin: 0;
+  padding-bottom: var(--charte-espace-1);
+  border-bottom: 4px solid var(--charte-encre);
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-titre);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+/* la ligne de compte du périmètre : ce que le filtre ne dit pas */
+.sk-plan-page--postit .sk-requests-memo {
+  margin: var(--charte-espace-2) 0 0;
+  padding-top: var(--charte-espace-2);
+  border-top: 1px solid var(--charte-bordure);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* une colonne, pleine largeur : c'est un écran de décision, pas une galerie
+   d'images. Les cartes se lisent une par une, dans l'ordre du travail. */
+.sk-plan-page--postit .sk-requests-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--charte-espace-3);
+  margin-top: var(--charte-espace-3);
+}
+
+.sk-plan-page--postit .sk-request-filter {
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background-color: transparent;
+  color: var(--charte-douce);
+  font-family: inherit;
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: inset 0 -2px 0 0 transparent;
+  transition: color var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    border-color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-request-filter:hover {
+  border-color: var(--charte-encre);
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-request-filter.active {
+  border-color: var(--charte-encre);
+  background-color: transparent;
+  color: var(--charte-encre);
+  font-weight: 800;
+  box-shadow: inset 0 -3px 0 0 var(--charte-encre);
+}
+
+/* le nombre, en mono serré : un compteur se lit comme un chiffre, pas comme
+   une épaulette remplie */
+.sk-plan-page--postit .sk-request-filter-count {
+  min-width: 18px;
+  padding: 0 var(--charte-espace-1);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-badge);
+  background: none;
+  color: inherit;
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* ── la carte d'une demande : la matière d'une feuille, pas un panneau ───── */
+
+.sk-plan-page--postit .sk-request-card.sk-demande {
+  --teinte-du-statut: var(--charte-statut-cours);
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-3);
+  border: 1px solid var(--charte-bordure);
+  border-left: 6px solid var(--teinte-du-statut);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  background-image: none;
+  box-shadow: none;
+  transition: border-color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-request-card.is-approved {
+  --teinte-du-statut: var(--charte-succes);
+}
+
+.sk-plan-page--postit .sk-request-card.is-rejected {
+  --teinte-du-statut: var(--charte-texte);
+}
+
+.sk-plan-page--postit .sk-request-emp-meta strong {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.sk-plan-page--postit .sk-request-emp-meta span {
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+}
+
+/* le statut : le MOT d'abord, posé sur un lavis de la teinte — jamais un mot
+   blanc sur un aplat, jamais une couleur sans mot (C7) */
+.sk-plan-page--postit .sk-request-status {
+  padding: 1px var(--charte-espace-2);
+  border: 1px solid var(--teinte-du-statut);
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--teinte-du-statut) 18%, var(--charte-surface));
+  color: color-mix(in srgb, var(--teinte-du-statut) 82%, var(--charte-encre));
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sk-plan-page--postit .sk-request-age,
+.sk-plan-page--postit .sk-demande-attente {
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+/* une attente de plus de sept jours se voit : c'est le seul chiffre de l'écran
+   qui doive hurler, et il le fait en gras, pas en rouge */
+.sk-plan-page--postit .sk-demande-attente[data-urgence="oui"] {
+  padding: 0 var(--charte-espace-1);
+  border: 1px solid var(--charte-alerte);
+  background-color: color-mix(in srgb, var(--charte-alerte) 18%, var(--charte-surface));
+  color: color-mix(in srgb, var(--charte-alerte) 84%, var(--charte-encre));
+  font-weight: 700;
+}
+
+/* ── le comparatif : deux colonnes qui se répondent, pas trois blocs collés ─ */
+
+.sk-plan-page--postit .sk-request-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: var(--charte-surface2);
+}
+
+.sk-plan-page--postit .sk-request-compare-label {
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sk-plan-page--postit .sk-request-compare-col {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.sk-plan-page--postit .sk-request-compare-col strong {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+  font-weight: 800;
+}
+
+.sk-plan-page--postit .sk-request-compare-col.is-to strong {
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-request-compare-heures,
+.sk-plan-page--postit .sk-request-compare-days {
+  color: var(--charte-texte);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.sk-plan-page--postit .sk-request-compare-arrow {
+  align-self: center;
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+}
+
+/* le différentiel d'heures, écrit comme une note en marge : lavis de la
+   couleur du sens, mot et chiffre ensemble */
+.sk-plan-page--postit .sk-demande-delta {
+  justify-self: start;
+  margin-top: var(--charte-espace-1);
+  padding: 0 var(--charte-espace-1);
+  border: 1px solid var(--charte-succes);
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--charte-succes) 18%, var(--charte-surface));
+  color: color-mix(in srgb, var(--charte-succes) 84%, var(--charte-encre));
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.sk-plan-page--postit .sk-demande-delta[data-sens="moins"] {
+  border-color: var(--charte-alerte);
+  background-color: color-mix(in srgb, var(--charte-alerte) 18%, var(--charte-surface));
+  color: color-mix(in srgb, var(--charte-alerte) 84%, var(--charte-encre));
+}
+
+/* ── les sept casiers : ce qui bouge, jour par jour ─────────────────────── */
+
+.sk-plan-page--postit .sk-demande-jours {
+  display: grid;
+  gap: var(--charte-espace-1);
+  padding: var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+}
+
+.sk-plan-page--postit .sk-demande-jours-legende {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--charte-espace-2);
+  flex-wrap: wrap;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+}
+
+.sk-plan-page--postit .sk-demande-jours-comptes {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.sk-plan-page--postit .sk-demande-jours-comptes i {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--charte-alerte);
+  background-color: color-mix(in srgb, var(--charte-alerte) 18%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-demande-jours-comptes i[data-etat="ajoute"] {
+  border-color: var(--charte-succes);
+  background-color: color-mix(in srgb, var(--charte-succes) 18%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-demande-jours-grille {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--charte-espace-1);
+}
+
+.sk-plan-page--postit .sk-demande-casier {
+  --couleur-du-casier: transparent;
+  display: grid;
+  gap: 1px;
+  justify-items: center;
+  padding: var(--charte-espace-1) 0;
+  border: 1px solid var(--charte-bordure);
+  border-bottom: 3px solid var(--couleur-du-casier);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  text-align: center;
+}
+
+.sk-plan-page--postit .sk-demande-casier[data-etat="identique"] {
+  --couleur-du-casier: var(--charte-bordure);
+  background-color: var(--charte-surface2);
+}
+
+.sk-plan-page--postit .sk-demande-casier[data-etat="ajoute"] {
+  --couleur-du-casier: var(--charte-succes);
+  background-color: color-mix(in srgb, var(--charte-succes) 12%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-demande-casier[data-etat="retire"] {
+  --couleur-du-casier: var(--charte-alerte);
+  background-color: color-mix(in srgb, var(--charte-alerte) 12%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-demande-casier[data-etat="libre"] {
+  background-color: transparent;
+}
+
+.sk-plan-page--postit .sk-demande-casier em {
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sk-plan-page--postit .sk-demande-casier b {
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sk-plan-page--postit .sk-demande-casier[data-etat="libre"] b {
+  color: color-mix(in srgb, var(--charte-douce) 60%, var(--charte-surface));
+  font-weight: 400;
+}
+
+/* ── ce que le collaborateur a écrit, et ce que l'admin a répondu ───────── */
+
+.sk-plan-page--postit .sk-request-reason,
+.sk-plan-page--postit .sk-request-comment {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--charte-espace-2);
+  padding-left: var(--charte-espace-2);
+  border-left: var(--charte-trait) solid var(--charte-bordure);
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-micro);
+  line-height: 1.45;
+}
+
+.sk-plan-page--postit .sk-request-comment {
+  border-left-color: var(--charte-encre);
+  color: var(--charte-encre);
+  font-weight: 700;
+}
+
+.sk-plan-page--postit .sk-request-actions {
+  gap: var(--charte-espace-2);
+  margin-top: var(--charte-espace-1);
+  padding-top: var(--charte-espace-2);
+  border-top: 1px solid var(--charte-bordure);
+}
+
+/* les deux gestes reprennent la peau des boutons de la page — il ne restait
+   qu'à leur rendre la place que le style en ligne leur piquait */
+.sk-plan-page--postit .sk-demande-action {
+  align-self: flex-start;
+  white-space: normal;
+}
+
+/* supprimer : le mot, pas le pictogramme seul, et la teinte du dommage
+   réservée à ce qui détruit vraiment */
+.sk-plan-page--postit .sk-demande-action.is-suppression {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  min-height: 34px;
+  padding: 0 var(--charte-espace-1);
+  border: none;
+  border-bottom: var(--charte-trait) solid transparent;
+  border-radius: 0;
+  background: none;
+  color: color-mix(in srgb, var(--charte-btn-danger) 82%, var(--charte-encre));
+  font-family: inherit;
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color var(--charte-duree) var(--charte-easing),
+    color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-demande-action.is-suppression:hover,
+.sk-plan-page--postit .sk-demande-action.is-suppression:focus-visible {
+  border-bottom-color: var(--charte-btn-danger);
+  color: var(--charte-btn-danger);
+}
+
+/* ── le vide, qui dit où aller ──────────────────────────────────────────── */
+
+.sk-plan-page--postit .sk-requests-empty.sk-demandes-vide {
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-5) var(--charte-espace-3);
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: var(--charte-surface2);
+  color: var(--charte-texte);
+  font-size: var(--charte-taille-corps);
+  text-align: center;
+}
+
+.sk-plan-page--postit .sk-demandes-vide svg {
+  color: var(--charte-douce);
+}
+
+.sk-plan-page--postit .sk-demandes-vide p {
+  margin: 0;
+}
+
+/* ── à l'étroit : le comparatif se lit à la verticale, la flèche se retourne ─ */
+
+@media (max-width: 760px) {
+  .sk-plan-page--postit .sk-request-compare {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sk-plan-page--postit .sk-request-compare-arrow {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
+  .sk-plan-page--postit .sk-demande-jours-grille {
+    gap: 1px;
+  }
+
+  .sk-plan-page--postit .sk-demande-casier {
+    padding: var(--charte-espace-1) 0;
+    border-left-width: 0;
+    border-right-width: 0;
+  }
+
+  .sk-plan-page--postit .sk-request-card-head {
+    align-items: flex-start;
+  }
+
+  .sk-plan-page--postit .sk-request-card-head-right {
+    align-items: flex-start;
+  }
+
+  .sk-plan-page--postit .sk-request-actions {
+    flex-wrap: wrap;
+  }
+}

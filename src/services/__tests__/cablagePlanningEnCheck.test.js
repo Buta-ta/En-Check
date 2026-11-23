@@ -1018,4 +1018,100 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // les trois tailles de la charte, pas une de plus (D-013)
     expect(blocPeau.match(/font-size:\s*\d/g)).toBeNull()
   })
+
+  it('32. traite la file des demandes dans l ordre, et dit ce qui change jour par jour', () => {
+    // Le bloc des demandes, isolé comme celui du mois : un contrat qui porte sur
+    // tout Planning.jsx ne dirait pas où la faute a été commise.
+    const demandes = planningSrc.slice(
+      planningSrc.indexOf('{/* 5. VUE DEMANDES DES COLLABORATEURS'),
+      planningSrc.indexOf('{/* Barre flottante du mode tactile')
+    )
+    expect(demandes.length).toBeGreaterThan(2000)
+
+    // UN SEUL CADRE. Le bandeau du haut portait le cadre de la maison et la liste
+    // flottait hors de lui, avec une carte de 380 px perdue dans 1 268 px de vide.
+    expect(demandes.indexOf('sk-requests-list')).toBeGreaterThan(
+      demandes.indexOf('<div className="sk-matrix-card"')
+    )
+    // et le titre de section n'est plus celui d'une fenêtre : sa barre de feutre
+    // est collée à `left: 0; right: 0`, donc elle barrerait tout le conteneur.
+    // Le NOT porte sur l'usage rendu — le commentaire du bloc, lui, a le droit de
+    // nommer la classe qu'il remplace.
+    expect(demandes).not.toMatch(/className="sk-modal-title/)
+    expect(demandes).toContain('sk-requests-titre')
+
+    // Plus un seul style en ligne dans cet écran : trois boutons portaient
+    // `fontSize: 12.5` (quatrième taille inventée) et l'un d'eux une teinte
+    // drapeau en hexadécimal — la seule source de la mesure C1 du dépôt.
+    expect(demandes).not.toMatch(/fontSize:/)
+    expect(demandes).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
+    // un seul style en ligne reste dans le bloc, et c'est celui du cadre, comme
+    // dans les trois autres vues de la page — pas un style par bouton
+    expect(demandes.match(/style=\{\{/g) || []).toHaveLength(1)
+    expect(demandes).toContain('<div className="sk-matrix-card" style={{ padding: 20 }}>')
+
+    // LE MOT, UNE SEULE FOIS. Le casier, son infobulle et la phrase du jour
+    // sortent du même objet : trois écritures d'un même état finissent toujours
+    // par se contredire.
+    expect(demandes).toContain('const ETATS_CASIER = {')
+    expect(demandes).toContain('...ETATS_CASIER[cle]')
+    for (const mot of ['"les deux"', '"en plus"', '"en moins"']) {
+      expect(demandes.match(new RegExp(mot, 'g')) || []).toHaveLength(1)
+    }
+    // le statut se LIT : le mot est écrit, l'emoji n'est pas l'information (C7)
+    expect(demandes).toContain('"En attente"')
+    expect(demandes).toContain('"Approuvée"')
+    expect(demandes).toContain('"Refusée"')
+    expect(demandes).not.toContain('⏳')
+    expect(demandes).not.toContain('✕ Refusée')
+
+    // CE QUI CHANGE, JOUR PAR JOUR : sept casiers et la phrase qui les résume.
+    // « Lun - Sam » sous « Lun - Ven » ne disait pas quel jour s'ajoutait.
+    expect(demandes).toContain('sk-demande-jours-grille')
+    expect(demandes).toContain('phraseJours')
+    expect(demandes).toContain('title={`${j.nom} — ${j.phrase}`}')
+
+    // le différentiel d'heures ne s'écrit que si les DEUX côtés en ont : devant un
+    // collaborateur sans ligne d'horaire, « +8h00 » serait un chiffre inventé
+    expect(demandes).toContain('const heuresDesDeuxCotes = Boolean(')
+    expect(demandes).toContain('if (!heuresDesDeuxCotes || !deltaMinutes) return null')
+
+    // LA FILE, DANS L'ORDRE DU TRAVAIL : ce qui attend d'abord, le plus ancien en
+    // tête. La requête renvoyait le dépôt décroissant — une attente de huit mois
+    // tombait derrière trois refus de la semaine.
+    expect(planningSrc).toContain('[...choisies].sort((a, b) => {')
+    expect(planningSrc).toContain('return attenteA - attenteB')
+    expect(planningSrc).toContain('depot(a) - depot(b)')
+
+    // RIEN D'ICÔNE SEUL, et surtout pas sur ce qui détruit : le pictogramme
+    // corbeille est devenu un mot, la fenêtre de confirmation restait déjà là.
+    expect(demandes).toContain('Supprimer la demande')
+    expect(demandes).toContain('confirmDeleteRequest(req)')
+    expect(demandes).not.toMatch(/<Trash2 size=\{14\}[^>]*\/>\s*<\/button>/)
+
+    // le filtre est un interrupteur, il se lit au clavier
+    expect(demandes).toContain('role="group"')
+    expect(demandes).toContain('aria-pressed={requestFilter === f.id}')
+    // et le vide dit où aller
+    expect(demandes).toContain('Voir les {filteredRequests.length} demandes')
+
+    // LA PEAU EST ÉCRITE DANS LA FEUILLE DE LA MAISON — une colonne, sept casiers
+    // égaux, et rien des trois dérives auditées par la porte de charte.
+    const peau = lire('src/pages/PlanningPostIt.css')
+    const debut = peau.indexOf('LES DEMANDES, ENFIN HABILLÉES')
+    expect(debut).toBeGreaterThan(-1)
+    const blocPeau = peau.slice(debut)
+    expect(blocPeau).toContain('grid-template-columns: minmax(0, 1fr)')
+    expect(blocPeau).toContain('grid-template-columns: repeat(7, minmax(0, 1fr))')
+    expect(blocPeau).not.toContain('auto-fill')
+    expect(blocPeau).not.toContain('999px')
+    expect(blocPeau.match(/#[0-9a-fA-F]{3,8}\b/g)).toBeNull()
+    expect(blocPeau).not.toMatch(/blur\(/)
+    expect(blocPeau).not.toMatch(/border-radius:\s*[^;]*\d+px/)
+    expect(blocPeau.match(/font-size:\s*\d/g)).toBeNull()
+    // les filtres se lisent au souligné, comme les quatre vues : pas de pilule
+    // pleine dans une note de papier
+    expect(blocPeau).toContain('.sk-plan-page--postit .sk-request-filter.active')
+    expect(blocPeau).toContain('box-shadow: inset 0 -3px 0 0 var(--charte-encre)')
+  })
 })

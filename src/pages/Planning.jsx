@@ -817,9 +817,24 @@ export default function Planning() {
 
   const pendingRequestsCount = filteredRequests.filter((r) => r.status === "pending").length;
 
+  // LA FILE, DANS L'ORDRE OÙ ELLE SE TRAITE. La requête arrivait triée par dépôt
+  // décroissant : une demande en attente depuis huit mois tombait en bas de page,
+  // derrière trois refus de la semaine. Ici : d'abord ce qui ATTEND, le plus
+  // ancien en tête (c'est celui qui bloque depuis le plus longtemps), puis ce qui
+  // est décidé, de la décision la plus récente à la plus ancienne.
   const visibleRequests = useMemo(() => {
-    if (requestFilter === "all") return filteredRequests;
-    return filteredRequests.filter((r) => (r.status || "pending") === requestFilter);
+    const choisies =
+      requestFilter === "all"
+        ? filteredRequests
+        : filteredRequests.filter((r) => (r.status || "pending") === requestFilter);
+    const depot = (r) => new Date(r.created_at || 0).getTime();
+    const decision = (r) => new Date(r.reviewed_at || r.created_at || 0).getTime();
+    return [...choisies].sort((a, b) => {
+      const attenteA = (a.status || "pending") === "pending" ? 0 : 1;
+      const attenteB = (b.status || "pending") === "pending" ? 0 : 1;
+      if (attenteA !== attenteB) return attenteA - attenteB;
+      return attenteA === 0 ? depot(a) - depot(b) : decision(b) - decision(a);
+    });
   }, [filteredRequests, requestFilter]);
 
   const getHolidaySet = (id) => holidaysByEnterprise[id] || new Set();
@@ -4963,16 +4978,26 @@ export default function Planning() {
         {/* 5. VUE DEMANDES DES COLLABORATEURS (schedule_change_requests) */}
         {planningView === "demandes" && (
           <div className="sk-requests-view">
+            {/* L'ÉCRAN ENTIER DANS UN SEUL CADRE. Avant le 23/11, le bandeau du haut
+                portait le cadre de la maison et la liste flottait hors de lui : deux
+                régimes visuels sur un même écran, et une carte de 380 px perdue dans
+                un cadre de 1 268 px. */}
             <div className="sk-matrix-card" style={{ padding: 20 }}>
               <div className="sk-requests-head">
                 <div>
-                  <h2 className="sk-modal-title" style={{ fontSize: 18 }}>
-                    Demandes de changement de planning
-                  </h2>
+                  {/* `sk-modal-title` est le titre des FENÊTRES : sa barre de feutre
+                      est collée à `left: 0; right: 0`, donc elle prend la largeur du
+                      conteneur — sur cette page elle barrait 750 px sous 340 px de
+                      texte. Le titre de section a sa classe, et sa barre suit le mot. */}
+                  <h2 className="sk-requests-titre">Demandes de changement de planning</h2>
+                  {/* Ce que fait le geste, écrit avant le geste. La phrase d'avant
+                      promettait « met à jour le planning du collaborateur » : c'est la
+                      LIGNE d'horaire entière qui est remplacée, pas la semaine affichée
+                      — la différence compte le jour où l'on décide. */}
                   <p className="sk-day-sub">
-                    Validez ou refusez les demandes d&apos;aménagement horaire soumises par
-                    les employés. Une demande approuvée met automatiquement à jour le planning
-                    du collaborateur.
+                    Une demande porte sur la ligne d&apos;horaire du collaborateur, pas sur une
+                    semaine : approuver la remplace par l&apos;horaire demandé, refuser ne change
+                    rien.
                   </p>
                 </div>
                 <button
@@ -4984,14 +5009,20 @@ export default function Planning() {
                 </button>
               </div>
 
-              {/* Compteurs / filtres */}
-              <div className="sk-requests-filters">
+              {/* Compteurs / filtres. Le filtre est un INTERRUPTEUR, pas un onglet :
+                  `aria-pressed` se lit au clavier, `role` nomme le groupe. */}
+              <div
+                className="sk-requests-filters"
+                role="group"
+                aria-label="Filtrer les demandes par statut"
+              >
                 {[
                   { id: "all", label: "Toutes", count: filteredRequests.length },
                   {
                     id: "pending",
                     label: "En attente",
-                    count: filteredRequests.filter((r) => r.status === "pending").length,
+                    count: filteredRequests.filter((r) => (r.status || "pending") === "pending")
+                      .length,
                   },
                   {
                     id: "approved",
@@ -5010,6 +5041,7 @@ export default function Planning() {
                     className={`sk-request-filter ${
                       requestFilter === f.id ? "active" : ""
                     } is-${f.id}`}
+                    aria-pressed={requestFilter === f.id}
                     onClick={() => setRequestFilter(f.id)}
                   >
                     {f.label}
@@ -5017,161 +5049,341 @@ export default function Planning() {
                   </button>
                 ))}
               </div>
-            </div>
 
-            {visibleRequests.length === 0 ? (
-              <div className="sk-matrix-card sk-requests-empty">
-                <CalendarDays size={26} color="#C25E28" />
-                <p>
-                  {requestFilter === "pending"
-                    ? "Aucune demande en attente."
-                    : "Aucune demande pour ce filtre."}
+              {filteredRequests.length > 0 && (
+                <p className="sk-requests-memo">
+                  {`${filteredRequests.length} demande${
+                    filteredRequests.length > 1 ? "s" : ""
+                  } au total pour cette entreprise · ${
+                    filteredRequests.filter((r) => (r.status || "pending") === "pending").length
+                  } à traiter`}
                 </p>
-              </div>
-            ) : (
-              <div className="sk-requests-list">
-                {visibleRequests.map((req) => {
-                  const emp = req.employees || {};
-                  const fullName =
-                    `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || "Collaborateur";
-                  const initials = `${emp.first_name?.[0] || ""}${
-                    emp.last_name?.[0] || ""
-                  }`.toUpperCase();
-                  const statut = req.status || "pending";
-                  const currentLabel = req.use_custom_hours
-                    ? `${formatTime(req.requested_start_time)} - ${formatTime(
-                        req.requested_end_time
-                      )}`
-                    : req.requested_schedule?.name || "Planning entreprise";
-                  const prevLabel = req.current_schedule?.name
-                    ? `${req.current_schedule.name} (${formatTime(
-                        req.current_schedule.start_time
-                      )} - ${formatTime(req.current_schedule.end_time)})`
-                    : "Aucun planning défini";
-                  const joursDemandes =
-                    req.use_custom_hours && req.requested_work_days
-                      ? formatWorkDays(req.requested_work_days)
-                      : req.requested_schedule?.work_days
-                      ? formatWorkDays(req.requested_schedule.work_days)
-                      : null;
-                  const ageDays = req.created_at
-                    ? Math.floor((Date.now() - new Date(req.created_at).getTime()) / 86400000)
-                    : null;
+              )}
 
-                  return (
-                    <article key={req.id} className={`sk-request-card is-${statut}`}>
-                      <div className="sk-request-card-head">
-                        <div className="sk-request-emp">
-                          {emp.photo_url ? (
-                            <img src={emp.photo_url} alt="" className="sk-emp-avatar" />
-                          ) : (
-                            <div className="sk-emp-avatar">{initials || "EC"}</div>
-                          )}
-                          <div className="sk-request-emp-meta">
-                            <strong>{fullName}</strong>
-                            <span>
-                              {emp.matricule ? `#${emp.matricule}` : "—"} ·{" "}
-                              {emp.department || emp.position || "Sans équipe"}
+              {visibleRequests.length === 0 ? (
+                <div className="sk-requests-empty sk-demandes-vide">
+                  <CalendarDays size={26} aria-hidden="true" />
+                  <p>
+                    {filteredRequests.length === 0
+                      ? "Aucune demande pour l'instant. C'est ici que celles des collaborateurs arrivent."
+                      : requestFilter === "pending"
+                      ? "Rien en attente : toutes les demandes de cette entreprise sont traitées."
+                      : requestFilter === "approved"
+                      ? "Aucune demande approuvée pour l'instant."
+                      : "Aucune demande refusée pour l'instant."}
+                  </p>
+                  {filteredRequests.length > 0 && (
+                    <button
+                      type="button"
+                      className="sk-btn-secondary"
+                      onClick={() => setRequestFilter("all")}
+                    >
+                      Voir les {filteredRequests.length} demandes
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="sk-requests-list">
+                  {visibleRequests.map((req) => {
+                    const emp = req.employees || {};
+                    const fullName =
+                      `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || "Collaborateur";
+                    const initials = `${emp.first_name?.[0] || ""}${
+                      emp.last_name?.[0] || ""
+                    }`.toUpperCase();
+                    const statut = req.status || "pending";
+
+                    // LES DEUX CÔTÉS DU COMPARAT ONT LA MÊME FORME, sinon la
+                    // comparaison ne compare rien : à gauche la ligne d'horaire du
+                    // collaborateur telle qu'elle est, à droite ce qui est demandé —
+                    // un modèle d'entreprise OU des heures posées à la main, qui
+                    // n'arrivent pas dans le même champ.
+                    const courant = req.current_schedule || null;
+                    const demande = req.use_custom_hours
+                      ? {
+                          name: "Heures écrites à la main",
+                          start_time: req.requested_start_time,
+                          end_time: req.requested_end_time,
+                          has_break: req.requested_has_break,
+                          break_start: req.requested_break_start,
+                          break_end: req.requested_break_end,
+                          work_days: req.requested_work_days || [],
+                        }
+                      : req.requested_schedule || null;
+
+                    const joursCourants = courant?.work_days || [];
+                    const joursDemandes = demande?.work_days || [];
+                    // LES MOTS D'UN CASIER, ÉCRITS UNE SEULE FOIS. Le casier, son
+                    // infobulle et la légende du jour sortent du même objet : trois
+                    // écritures d'un même état, c'est le chemin le plus court vers une
+                    // case qui dit « en plus » sous une légende qui dit « s'ajoute ».
+                    const ETATS_CASIER = {
+                      identique: { mot: "les deux", phrase: "travaillé des deux côtés" },
+                      ajoute: {
+                        mot: "en plus",
+                        phrase: "demandé, et il ne l'était pas aujourd'hui",
+                      },
+                      retire: {
+                        mot: "en moins",
+                        phrase: "travaillé aujourd'hui, et il ne le serait plus",
+                      },
+                      libre: { mot: "-", phrase: "chômé des deux côtés" },
+                    };
+                    const jours = joursSemaine.map((j) => {
+                      const desDeuxCotes =
+                        joursCourants.includes(j.id) && joursDemandes.includes(j.id);
+                      const cle = desDeuxCotes
+                        ? "identique"
+                        : joursDemandes.includes(j.id)
+                        ? "ajoute"
+                        : joursCourants.includes(j.id)
+                        ? "retire"
+                        : "libre";
+                      return { id: j.id, nom: j.nom, court: j.court, cle, ...ETATS_CASIER[cle] };
+                    });
+                    const ajoutes = jours.filter((j) => j.cle === "ajoute");
+                    const retires = jours.filter((j) => j.cle === "retire");
+                    // La phrase ne parle QUE de ce qui bouge ; les deux listes de
+                    // jours sont écrites sous chaque côté du comparatif — une fois
+                    // l'écart dit, on n'a plus besoin qu'on les raconte.
+                    const motsJours = (liste) =>
+                      liste.map((j) => j.nom.toLowerCase()).join(", ");
+                    const phraseJours = !demande
+                      ? "Aucun horaire n'est arrivé — rien à comparer"
+                      : !joursCourants.length
+                      ? `${
+                          courant ? "Aucun jour travaillé aujourd'hui" : "Aucune ligne d'horaire"
+                        } : tout ce qui est demandé s'ajoute`
+                      : ajoutes.length === 0 && retires.length === 0
+                      ? "Les jours travaillés ne changent pas"
+                      : [
+                          ajoutes.length ? `s'ajoutent : ${motsJours(ajoutes)}` : "",
+                          retires.length ? `partent : ${motsJours(retires)}` : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ");
+
+                    // Heures : le différentiel ne s'écrit que si les DEUX côtés en ont.
+                    // Annoncer « +8h00 » devant un collaborateur sans ligne d'horaire
+                    // serait un chiffre inventé.
+                    const heuresDesDeuxCotes = Boolean(
+                      courant?.start_time &&
+                        courant?.end_time &&
+                        demande?.start_time &&
+                        demande?.end_time
+                    );
+                    const deltaMinutes = heuresDesDeuxCotes
+                      ? computeShiftNetMinutes(demande) - computeShiftNetMinutes(courant)
+                      : 0;
+                    const etiquetteDelta = (() => {
+                      if (!heuresDesDeuxCotes || !deltaMinutes) return null;
+                      const abs = Math.abs(deltaMinutes);
+                      const texte = `${Math.floor(abs / 60)}h${String(abs % 60).padStart(2, "0")}`;
+                      return deltaMinutes > 0 ? `+${texte} par jour` : `−${texte} par jour`;
+                    })();
+
+                    const etiquetteCote = (obj) =>
+                      obj?.start_time
+                        ? `${formatTime(obj.start_time)} – ${formatTime(obj.end_time)} · ${formatDuration(
+                            obj
+                          )} par jour travaillé`
+                        : "aucune heure précisée";
+
+                    const dateFr = (horodatage) => {
+                      const jour = jourLocal(horodatage);
+                      if (!jour) return null;
+                      const [a, m, j] = jour.split("-");
+                      return `${j}/${m}/${a}`;
+                    };
+                    const joursDAttente = req.created_at
+                      ? Math.max(
+                          0,
+                          Math.floor((Date.now() - new Date(req.created_at).getTime()) / 86400000)
+                        )
+                      : null;
+
+                    return (
+                      <article key={req.id} className={`sk-request-card sk-demande is-${statut}`}>
+                        <div className="sk-request-card-head">
+                          <div className="sk-request-emp">
+                            {emp.photo_url ? (
+                              <img src={emp.photo_url} alt="" className="sk-emp-avatar" />
+                            ) : (
+                              <div className="sk-emp-avatar">{initials || "EC"}</div>
+                            )}
+                            <div className="sk-request-emp-meta">
+                              <strong>{fullName}</strong>
+                              <span>
+                                {emp.matricule ? `#${emp.matricule}` : "—"} ·{" "}
+                                {emp.department || emp.position || "Sans équipe"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="sk-request-card-head-right">
+                            <span className={`sk-request-status is-${statut}`}>
+                              {statut === "pending"
+                                ? "En attente"
+                                : statut === "approved"
+                                ? "Approuvée"
+                                : "Refusée"}
                             </span>
+                            {/* La date d'abord, le compte de jours ensuite, et jamais
+                                les deux pour dire la même chose : « déposée le
+                                23/11/2026 » suivi de « déposée aujourd'hui » est une
+                                carte qui se répète. Le nombre ne sort que s'il ajoute
+                                quelque chose — et un jour d'attente n'est pas une urgence. */}
+                            <span className="sk-request-age">
+                              {statut === "pending" && joursDAttente === 0
+                                ? "déposée aujourd'hui"
+                                : statut === "pending"
+                                ? `déposée le ${dateFr(req.created_at) || "—"}`
+                                : `déposée le ${dateFr(req.created_at) || "—"} · décidée le ${
+                                    dateFr(req.reviewed_at) || "—"
+                                  }`}
+                            </span>
+                            {statut === "pending" && joursDAttente > 0 && (
+                              <span
+                                className="sk-demande-attente"
+                                data-urgence={joursDAttente > 7 ? "oui" : undefined}
+                              >
+                                {`attend depuis ${joursDAttente} jour${joursDAttente > 1 ? "s" : ""}`}
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <div className="sk-request-card-head-right">
-                          <span className={`sk-request-status is-${statut}`}>
-                            {statut === "pending"
-                              ? "⏳ En attente"
-                              : statut === "approved"
-                              ? "✓ Approuvée"
-                              : "✕ Refusée"}
-                          </span>
-                          {ageDays !== null && (
-                            <span className="sk-request-age">
-                              {ageDays === 0
-                                ? "déposée aujourd'hui"
-                                : `déposée il y a ${ageDays} j`}
+
+                        {/* Comparatif visuel : planning actuel -> planning demandé */}
+                        <div className="sk-request-compare">
+                          <div className="sk-request-compare-col is-from">
+                            <span className="sk-request-compare-label">Aujourd&apos;hui</span>
+                            <strong>{courant ? courant.name : "Aucun planning défini"}</strong>
+                            {courant && (
+                              <span className="sk-request-compare-heures">
+                                {etiquetteCote(courant)}
+                              </span>
+                            )}
+                            <span className="sk-request-compare-days">
+                              {formatWorkDays(joursCourants)}
                             </span>
-                          )}
+                          </div>
+                          <span className="sk-request-compare-arrow" aria-hidden="true">
+                            →
+                          </span>
+                          <div className="sk-request-compare-col is-to">
+                            <span className="sk-request-compare-label">Demandé</span>
+                            <strong>{demande?.name || "Modèle d'horaire non chargé"}</strong>
+                            {demande && (
+                              <span className="sk-request-compare-heures">
+                                {etiquetteCote(demande)}
+                              </span>
+                            )}
+                            <span className="sk-request-compare-days">
+                              {formatWorkDays(joursDemandes)}
+                            </span>
+                            {etiquetteDelta && (
+                              <span className="sk-demande-delta" data-sens={deltaMinutes > 0 ? "plus" : "moins"}>
+                                {etiquetteDelta}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Comparatif visuel : planning actuel -> planning demandé */}
-                      <div className="sk-request-compare">
-                        <div className="sk-request-compare-col is-from">
-                          <span className="sk-request-compare-label">Planning actuel</span>
-                          <strong>{prevLabel}</strong>
+                        {/* LA SEMAINE, EN SEPT CASIERS. C'est la question réelle de
+                            l'écran : qu'est-ce qui bouge, jour par jour ? Le texte seul
+                            (« Lun - Sam ») ne répondait pas — on ne voyait pas le jour
+                            ajouté ni le jour perdu. */}
+                        <div className="sk-demande-jours">
+                          <div className="sk-demande-jours-legende">
+                            <span>{phraseJours}</span>
+                            <span className="sk-demande-jours-comptes">
+                              <i aria-hidden="true" data-etat="ajoute" />
+                              {` ${ajoutes.length} ajouté${ajoutes.length > 1 ? "s" : ""}`}
+                              <i aria-hidden="true" data-etat="retire" />
+                              {` ${retires.length} retiré${retires.length > 1 ? "s" : ""}`}
+                            </span>
+                          </div>
+                          <div className="sk-demande-jours-grille">
+                            {jours.map((j) => (
+                              <span
+                                key={j.id}
+                                className="sk-demande-casier"
+                                data-etat={j.cle}
+                                title={`${j.nom} — ${j.phrase}`}
+                              >
+                                <em>{j.court}</em>
+                                <b>{j.mot}</b>
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                        <span className="sk-request-compare-arrow">→</span>
-                        <div className="sk-request-compare-col is-to">
-                          <span className="sk-request-compare-label">Planning demandé</span>
-                          <strong>
-                            {currentLabel}
-                            {req.use_custom_hours ? " (horaires sur-mesure)" : ""}
-                          </strong>
-                          {joursDemandes && (
-                            <span className="sk-request-compare-days">{joursDemandes}</span>
-                          )}
-                        </div>
-                      </div>
 
-                      {req.reason && (
-                        <div className="sk-request-reason">
-                          <MessageSquare size={13} /> Motif de l&apos;employé : « {req.reason} »
-                        </div>
-                      )}
+                        {req.reason && (
+                          <div className="sk-request-reason">
+                            <MessageSquare size={13} aria-hidden="true" />
+                            <span>
+                              {`Motif du collaborateur : « ${req.reason} »`}
+                            </span>
+                          </div>
+                        )}
 
-                      {req.admin_comment && (
-                        <div className="sk-request-comment">
-                          <Shield size={13} /> Réponse de l&apos;admin : « {req.admin_comment} »
-                          {req.reviewed_at
-                            ? ` — ${new Date(req.reviewed_at).toLocaleDateString("fr-FR")}`
-                            : ""}
-                        </div>
-                      )}
+                        {req.admin_comment && (
+                          <div className="sk-request-comment">
+                            <Shield size={13} aria-hidden="true" />
+                            <span>
+                              {`Réponse de l'admin : « ${req.admin_comment} »`}
+                              {req.reviewed_at ? ` — ${dateFr(req.reviewed_at)}` : ""}
+                            </span>
+                          </div>
+                        )}
 
-                      <div className="sk-request-actions">
-                        {statut === "pending" ? (
-                          <>
+                        <div className="sk-request-actions">
+                          {statut === "pending" ? (
+                            <>
+                              <button
+                                type="button"
+                                className="sk-btn-publish sk-demande-action"
+                                onClick={() => openReviewRequestModal(req, "approved")}
+                              >
+                                <CheckCircle2 size={14} aria-hidden="true" />
+                                Approuver
+                              </button>
+                              <button
+                                type="button"
+                                className="sk-btn-secondary sk-demande-action"
+                                onClick={() => openReviewRequestModal(req, "rejected")}
+                              >
+                                <Ban size={14} aria-hidden="true" />
+                                Refuser
+                              </button>
+                            </>
+                          ) : (
                             <button
                               type="button"
-                              className="sk-btn-publish"
-                              style={{ padding: "8px 15px", fontSize: 12.5 }}
-                              onClick={() => openReviewRequestModal(req, "approved")}
+                              className="sk-btn-secondary sk-demande-action"
+                              onClick={() => openReviewRequestModal(req, "pending")}
                             >
-                              <CheckCircle2 size={14} /> Approuver
+                              <Clock size={14} aria-hidden="true" />
+                              Remettre en attente
                             </button>
-                            <button
-                              type="button"
-                              className="sk-btn-secondary"
-                              style={{ padding: "8px 15px", fontSize: 12.5, color: "#EF4444" }}
-                              onClick={() => openReviewRequestModal(req, "rejected")}
-                            >
-                              <Ban size={14} /> Refuser
-                            </button>
-                          </>
-                        ) : (
+                          )}
+                          {/* Le geste reste, le mot aussi : un pictogramme seul, sur une
+                              carte qui décide d'un horaire, n'est pas une étiquette. La
+                              confirmation, elle, est déjà une fenêtre du système. */}
                           <button
                             type="button"
-                            className="sk-btn-secondary"
-                            style={{ padding: "8px 15px", fontSize: 12.5 }}
-                            onClick={() => openReviewRequestModal(req, "pending")}
+                            className="sk-demande-action is-dossier"
+                            onClick={() => confirmDeleteRequest(req)}
                           >
-                            <Clock size={14} /> Remettre en attente
+                            <Trash2 size={14} aria-hidden="true" />
+                            Supprimer la demande
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          className="sk-btn-secondary"
-                          style={{ padding: "8px 12px" }}
-                          onClick={() => confirmDeleteRequest(req)}
-                          title="Supprimer la demande"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -81,6 +81,11 @@ Blocs de chiffres : repeat(auto-fit, minmax(122px, 1fr)) — deux notes côte à
 
 ## État d’application
 
+Le titre d'une SECTION de page ne s'habille pas comme celui d'une fenêtre : la barre de
+feutre du titre de modale est collée à `left: 0; right: 0`, donc sur une large colonne elle
+barre 750 px sous 340 px de texte. Un titre de section prend sa propre classe et sa barre
+suit le mot.
+
 Le **mode mois du Planning** est passé par cette carte le 23/11/2026 : une seule grille de sept
 colonnes égales (`repeat(7, minmax(0, 1fr))` + `min-width: 760px` dans le rail qui défile), un rang
 par personne — nom lisible, heures en chiffres tabulaires, état écrit en mot sur un lavis de 18 % —,
