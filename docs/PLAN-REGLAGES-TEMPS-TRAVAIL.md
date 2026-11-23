@@ -257,7 +257,31 @@ pas seulement de l'affichage.
 - il ne modifie rien lui-même : aucun champ d'administration sur la borne employé (V-C3) ;
 - s'il n'y a pas de valeur applicable, l'écran le dit — il n'affiche ni 0, ni « conforme ».
 
-#### g) Interdits d'accès
+#### g) Le devoir d'informer — « toujours informer »
+
+Une exception personnelle n'est acceptable que si elle est **visible par ceux qu'elle
+concerne**. Ce n'est pas un bandeau : c'est un fait enregistré.
+
+| Événement | Qui est informé | Ce qui est dit |
+|---|---|---|
+| une valeur personnelle est posée, modifiée ou verrouillée | l'employé concerné | la valeur, sa date d'effet, qui l'a décidée, et pourquoi elle diffère de la règle d'entreprise |
+| une règle d'entreprise change **et** un employé verrouillé n'est pas concerné | l'employé (il conserve son réglage) **et** l'administrateur (liste) | « votre réglage personnel reste applicable » — l'administrateur ne doit pas croire avoir tout changé |
+| une règle d'entreprise remplace une valeur personnelle (sans verrou) | l'employé concerné | l'ancienne valeur, la nouvelle, la date — **au moment** de l'application |
+| une valeur personnelle est retirée (retour à la règle générale) | l'employé | la règle qui s'applique désormais |
+
+Trois règles de mise en œuvre :
+
+1. **un enregistrement, pas une notification volatile** : destinataire, date, contenu, et si le
+   message a été consulté — on doit pouvoir prouver que l'information a été émise ;
+2. **avant ou au moment, jamais après coup en silence** : un changement déjà appliqué et jamais
+   signalé est exactement ce que le rapport interdit ;
+3. **aucune information inventée** : si l'origine n'est pas connue (`historique_incertain`),
+   le message le dit, il ne fabrique pas un auteur.
+
+L'aperçu d'impact (§3.5.d) est l'autre moitié du dispositif : il informe **avant** d'écrire,
+celui-ci informe **ceux qui subissent** l'écriture.
+
+#### h) Interdits d'accès
 
 - un administrateur ne lit ni n'écrit la valeur personnelle d'un employé d'une autre
   entreprise : refus **dans la RPC**, pas seulement dans l'écran ;
@@ -361,7 +385,7 @@ rendre l'écran muet au premier jour.
 | Ordre | Lot | Contenu | E | É | Dépend de | Pourquoi ici |
 |---|---|---|---|---|---|---|
 | 1 | **G1** ✅ *réalisé, en attente de validation* | Fenêtres hebdo et repos calculées sur une plage élargie ; la primitive refuse des bornes étroites ; drapeau mort supprimé | S | — | — | Un réglage éditable sur un calcul faux à cheval sur deux années, c'est un bouton qui ment deux fois |
-| 2 | **G2** | Provenance minimale (`entreprise` / `defaut_produit` / `historique_incertain`) + libellé honnête | S | S | — | Supprime le mensonge actuel (« seuil d'entreprise ») pour tous, tout de suite, sans toucher au calcul |
+| 2 | **G2** ✅ *réalisé, en attente de validation* | Provenance réelle (`entreprise` / `defaut_produit` / `historique_incertain` / `inconnue`), défaut à 48 h, écriture qui n'invente plus de seuil, libellé honnête | S | S | — | Supprime le mensonge actuel (« seuil d'entreprise ») pour tous, tout de suite, sans toucher au calcul |
 | 3 | **G3** | Table versionnée + `encheck_regle_resolue` + `encheck_regle_ecrire` + journal (auteur, date d'effet, avant/après) | M | — | G2 (origines) | Le journal **avant** l'éditeur : des seuils modifiables sans trace sont un bouton pour réécrire janvier depuis novembre (règle C5-mince de l'audit) |
 | 4 | **G6** | Découpler l'alerte du module de paie (défaire `hoursCalculator.js` l. 389) et séparer les trois clés : déclenchement de paie / seuil d'alerte / plafond légal (`a_sourcer`) | S | S | G3 | Donner un bouton « repos personnel » alors que l'alerte s'éteint avec la paie serait livrer un réglage inopérant |
 | 5 | **G4** | Page **« Mon entreprise »** : profil, identité, pays, règles de temps de travail ; accès de l'admin client ; « Entreprises » réservé au super-administrateur (V-A2, V-A3) | M | **M** | G3, G6 | Un écran « S » n'est pas une tâche « S » (audit §7.2) ; c'est la maison unique des règles d'entreprise (§4.2) |
@@ -397,7 +421,26 @@ attribuée à sa journée d'ouverture, n'est jamais dupliquée entre deux mois n
 la semaine à cheval sur le 31/12 la compte désormais une fois au lieu de zéro. Le taux appliqué
 est celui du jour d'ouverture — c'est une convention chiffrée au §8.7, pas un effet de G1.
 
-**G1 et G2 sont indépendants** et peuvent être menés en parallèle, une PR chacun. Le reste est
+### 5.2 G2 — ce qui a été fait (provenance et défaut à 48 h)
+
+Réalisé le 24/10/2026, **non validé**.
+
+- le défaut produit du seuil d'alerte passe de 40 h à **48 h**, et
+  `weekly_threshold_major` vaut `null` par défaut : plus de second niveau fantôme ;
+- `qualifierOrigineSeuilHebdo()` répond `entreprise` / `defaut_produit` /
+  `historique_incertain` / `inconnue`. Une valeur égale à un défaut **connu** (48 h aujourd'hui,
+  40 h avant) est classée `historique_incertain` : on ne reconstitue pas une intention ;
+- un échec de lecture ne prétend rien (`inconnue`) ;
+- `evaluerSeuilsHebdo` ne dit plus « entreprise » par défaut : la source vient de l'appelant,
+  et le message parle de « valeur par défaut du produit, à confirmer » quand c'en est une ;
+- `saveOvertimeSettings` n'écrit plus de seuil hebdomadaire que personne n'a saisi
+  (`|| 40` / `|| 48` supprimés, corps extrait dans une fonction pure testable) ;
+- 17 tests (`origineSeuilHebdo.test.js`), plus 2 assertions existantes mises à jour.
+
+**Non fait** : aucun écran n'affiche encore ces libellés (c'est G7), et le placement de
+l'alerte sous condition du module de paie reste à défaire (G6).
+
+**G1 et G2 sont indépendants et peuvent être menés en parallèle, une PR chacun. Le reste est
 séquentiel : G3 avant toute interface, G4 avant G4b et G5.
 
 **Rien de tout cela ne remplace R3** (« écran des seuils », audit §7) : G4/G5 n'en est que la
@@ -426,13 +469,26 @@ selon le pays de l'entreprise et **confirmé explicitement** au moment du profil
 modèles ne sont pas des obligations : tant que D5 n'est pas sourcé, leur statut reste
 `modele_produit` ou `a_sourcer` et la mention « à confirmer » s'affiche.
 
-### 6.3 Défaut produit 40 h — tranché : option (a)
+### 6.3 Défaut produit — tranché : 48 h, et pas de second niveau supposé
 
-Le défaut produit alimente encore l'alerte pendant la transition, **étiqueté** « valeur par
-défaut du produit (40 h), à confirmer ». Dès que l'entreprise confirme un modèle ou saisit sa
-valeur, celle-ci prend l'origine `entreprise` et le repli disparaît de l'écran. Passage à
-l'option (b) — contrôle indisponible tant que rien n'est configuré — quand les entreprises
-existantes auront un profil renseigné.
+**Révision du 24/10/2026** (elle remplace l'option « 40 h » retenue plus tôt le même jour) :
+le seuil d'alerte hebdomadaire **par défaut du produit est 48 h**, et **aucun second niveau**
+n'est supposé tant que l'entreprise n'en choisit pas un.
+
+- l'alerte continue de fonctionner pendant la transition, **étiquetée** « valeur par défaut du
+  produit, à confirmer » — jamais « seuil d'entreprise » ;
+- dès que l'entreprise confirme un modèle ou saisit sa valeur, celle-ci prend l'origine
+  `entreprise` et le repli disparaît de l'écran ;
+- 48 h est un **défaut de produit**, pas une obligation : aucune source pays n'est vérifiée
+  (D5), et aucun libellé ne doit le suggérer.
+
+**Conséquence à connaître** : une semaine de 45 h ne déclenche plus d'alerte, alors qu'elle en
+déclenchait une avec l'ancien défaut de 40 h. C'est l'effet voulu (« je veux les 48 h par
+défaut »), mais il change ce que les clients voient — il doit être annoncé, pas découvert.
+
+**Ce qui n'a pas changé** : aucun montant. Le seuil hebdomadaire n'entre dans aucun calcul de
+paie (les heures supplémentaires se calculent au jour), il ne sert qu'à l'alerte. Vérifié :
+`weekly_threshold` n'est lu que par le contrôle hebdomadaire.
 
 ### 6.4 Rétroactivité — tranchée : le passé ne bouge pas
 
@@ -471,13 +527,14 @@ passe en `show: admin?.role === 'super_admin'`, ce qui supprime la redirection a
 - **non-régression paie** : totaux du mois et de l'année **identiques** avant/après (G1 ne
   change que les fenêtres, jamais la paie).
 
-**G2 — provenance et libellé**
+**G2 — provenance et libellé** ✅ *écrits et verts*
 - base sans ligne `overtime_settings` ⇒ origine `defaut_produit`, message sans le mot
   « entreprise » ;
-- erreur de lecture ⇒ même étiquette, jamais « entreprise » ;
-- ligne existante ⇒ `entreprise` ;
-- une valeur historique 40/48 non saisissable ⇒ `historique_incertain` ;
-- aucun test ne doit contenir le mot « légal ».
+- erreur de lecture ⇒ `inconnue`, jamais « entreprise » ;
+- valeur 45 h ⇒ `entreprise` ; valeur 40 h ou 48 h ⇒ `historique_incertain` ;
+- le défaut produit vaut 48 h et le second niveau est `null` ;
+- l'écriture n'invente aucun seuil hebdomadaire (absent, vide, explicite, `null`) ;
+- aucun libellé ne contient le mot « légal » (balayage des six origines).
 
 **G3 — résolution, précédence et écriture**
 - surcharge personnelle sur **une** clé : les autres clés restent celles de l'entreprise ;
@@ -525,6 +582,18 @@ passe en `show: admin?.role === 'super_admin'`, ce qui supprime la redirection a
 - l'écran dit l'origine de chaque valeur, et « hérite de Mon entreprise » pointe vers G4 ;
 - contrôle indisponible affiché quand la valeur manque — jamais une coche verte ;
 - thème clair et sombre, 320 / 390 / 768 / 1440 px.
+
+**G5-bis — le devoir d'informer (§3.5.g)**
+- poser, modifier ou verrouiller une valeur personnelle crée **un enregistrement** destiné à
+  l'employé (destinataire, date, contenu), et non un simple message volatil ;
+- une règle d'entreprise qui remplace une valeur personnelle génère l'information **au moment**
+  de l'application, avec l'ancienne et la nouvelle valeur ;
+- une règle d'entreprise qui **n'atteint pas** un employé verrouillé le dit : à l'employé
+  (« votre réglage reste applicable ») et à l'administrateur (liste des non-concernés) ;
+- un changement d'origine `historique_incertain` ne fabrique pas d'auteur : le message dit que
+  l'origine est inconnue ;
+- l'aperçu d'impact et l'information ne peuvent pas se contredire (même calcul, même date
+  de référence).
 
 **G6 — découplage et séparation**
 - module heures supplémentaires **désactivé** ⇒ l'alerte hebdomadaire existe toujours ;

@@ -203,7 +203,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   )
 
   // ── 7) Contexte heures sup ───────────────────────────────────
-  const { hasOvertimeFeature, overtimeSettings, allSchedules } = await loadOvertimeContext(employee.enterprise_id)
+  const { hasOvertimeFeature, overtimeSettings, provenanceSeuil, allSchedules } = await loadOvertimeContext(employee.enterprise_id)
 
   // ── 8) Calcul jour par jour ──────────────────────────────────
   const daySummaries = buildDaySummariesStrict({
@@ -442,6 +442,8 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     //  pas des plafonds légaux : aucun texte n'est invoqué ici.
     seuil: hasOvertimeFeature && overtimeSettings ? overtimeSettings.weekly_threshold : null,
     seuilMajeur: hasOvertimeFeature && overtimeSettings ? overtimeSettings.weekly_threshold_major : null,
+    //  Ce que l'on SAIT de l'origine, jamais davantage (P5).
+    source: hasOvertimeFeature && overtimeSettings ? provenanceSeuil.origine : 'inconnue',
   })
 
   // ── 11-ter) Repos entre deux journées ────────────────────────
@@ -1481,19 +1483,23 @@ function resolvePlanForExpected(employeeScheduleRow, defaultScheduleRow) {
 async function loadOvertimeContext(enterpriseId) {
   let hasOvertimeFeature = false
   let overtimeSettings = null
+  let provenanceSeuil = { origine: 'inconnue', motif: 'non chargé' }
 
   try {
     hasOvertimeFeature = await FeatureService.hasFeature(enterpriseId, FEATURES.HEURES_SUPPLEMENTAIRES)
     if (hasOvertimeFeature) {
-      overtimeSettings = await FeatureService.getOvertimeSettings(enterpriseId)
+      const { settings, provenance } = await FeatureService.getOvertimeSettingsAvecOrigine(enterpriseId)
+      overtimeSettings = settings
+      provenanceSeuil = provenance
     }
   } catch {
     hasOvertimeFeature = false
     overtimeSettings = null
+    provenanceSeuil = { origine: 'inconnue', motif: 'lecture impossible' }
   }
 
   const allSchedules = await FeatureService.loadSchedules([enterpriseId])
-  return { hasOvertimeFeature, overtimeSettings, allSchedules }
+  return { hasOvertimeFeature, overtimeSettings, provenanceSeuil, allSchedules }
 }
 
 // ═══════════════════════════════════════════════════════════
