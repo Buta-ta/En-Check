@@ -105,6 +105,14 @@ erreurs, toutes préexistantes (deux `set-state-in-effect` du hook déjà là su
 - **La reprise « en fond » n'est pas un cache** : les données affichées pendant la
   reprise sont celles d'avant, puis sont remplacées. C'est le contrat de la vue,
   pas une garantie d'instantanéité.
+- **Le liseré « sélectionné » d'une case du mois ne suit plus le clic** : c'est un
+  contour chaud de 2 px (`PlanningAfroTech.css:1995`, `.sk-cal-cell.is-selected`),
+  et il se pose désormais quand on ouvre la journée (lien au survol, ou pied de la
+  fenêtre du « qui ? ») — plus quand on clique pour régler une case. C'est voulu — la surbrillance disait
+  « c'est ce jour-là que j'ai chargé », et ce jour-là n'est plus une unité de
+  chargement depuis que les bornes sont celles du mois. Le seul lecteur de
+  `selectedCalendarDay` dans la page est d'ailleurs cette surbrillance
+  (`isSelected`, 5177) : rien d'autre ne dépendait du clic.
 - **Rendu navigateur jamais vérifié d'ici**, pour les mêmes raisons que d'habitude.
 - Le poste du fondateur consomme le **precache de la PWA** : après ce déploiement,
   fermer l'onglet et recharger (Ctrl+Maj+R), ou cliquer « Mettre à jour ».
