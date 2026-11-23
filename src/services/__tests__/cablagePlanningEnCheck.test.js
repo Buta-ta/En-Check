@@ -807,11 +807,11 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // dans les fenêtres, un style en ligne ne porte DÉSORMAIS PLUS qu'une
     // donnée nommée (une teinte choisie dans la fenêtre), jamais de la peinture
     const attribues = [...fenetres.matchAll(/style=\{\{\s*"([^"]+)"/g)].map((m) => m[1])
-    // quatre, et pas trois, depuis le 08/12 : la fenêtre de la case vide donne
-    // aux briques du dock leur teinte (`--brick-color`), exactement l'autre
-    // espèce de style en ligne tolérée ici — une DONNÉE nommée, jamais de la
-    // peinture. C'est la règle d'en dessous qui tient : tout commence par `--`.
-    expect(attribues).toHaveLength(4)
+    // cinq, et pas quatre, depuis le 23/11 : la fenêtre du choisisseur de journée
+    // reporte la teinte du rang, exactement l'espèce de style en ligne tolérée
+    // ici — une DONNÉE nommée, jamais de la peinture. C'est la règle d'en
+    // dessous qui tient : tout commence par `--`.
+    expect(attribues).toHaveLength(5)
     expect(attribues.every((nom) => nom.startsWith('--'))).toBe(true)
     expect(fenetres).not.toMatch(/style=\{\{[^}]*background:/)
     expect(fenetres).not.toMatch(/color="#/)
@@ -1299,8 +1299,11 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(bandeau).toContain('setPlanningView(vue)')
     expect(bandeau).toContain('sk-req-badge')
     // les autres écritures de la vue sont des voyages (« voir la semaine »),
-    // pas des interrupteurs : elles ne dédoublent rien
-    expect(planningSrc.match(/setPlanningView\(/g)).toHaveLength(4)
+    // pas des interrupteurs : elles ne dédoublent rien. Cinq depuis le 23/11 :
+    // le choisisseur d'une journée du mois offre « Ouvrir la journée » en pied,
+    // ce qui remplace le double-clic que personne ne voyait — un voyage de plus,
+    // toujours pas un second interrupteur.
+    expect(planningSrc.match(/setPlanningView\(/g)).toHaveLength(5)
   })
 
   it('36. porte la liste des entreprises hors de la barre, où plus rien ne la coince', () => {
@@ -1705,5 +1708,94 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(lire('supabase/outils-sql/20261123_diagnostic_teinte_horaire_refusee.sql')).toContain(
       'Lecture seule'
     )
+  })
+
+  it('41. un clic dans le mois ouvre une fenêtre, pas l\'écran de chargement', () => {
+    // Le 23/11, trois questions du fondateur n'en font qu'une : « quand je clique
+    // une case en mode mois, ça doit recharger la page — pourquoi ça n'ouvre
+    // juste pas le modal ? », « regarde les autres actions qui rechargent »,
+    // « pourquoi un pointage n'apparaît-il pas en direct ». La réponse tenait en
+    // un faisceau : l'`onClick` de la case posait `setCalendarDate`, l'effet de
+    // reprise écoutait `calendarDate`, `loadData` levait `loading` — et `loading`
+    // est un `return` anticipé qui démonte la page, modals compris. Un clic pour
+    // ouvrir une fenêtre coûtait sept requêtes et perdait la fenêtre.
+    const mois = planningSrc.slice(
+      planningSrc.indexOf('{planningView === "mois" && ('),
+      planningSrc.indexOf('{caseVide && (')
+    )
+    expect(mois.length).toBeGreaterThan(1500)
+
+    // ① LE CLIC NE DÉMÉNAGE PLUS LE CURSEUR. Il pose le « qui ? » ; et devant un
+    // rang unique il va directement au réglage, parce qu'un choisisseur devant
+    // une réponse déjà écrite dans la case est un clic de plus, pas une sécurité.
+    expect(mois).toContain('setChoixJour({ cell, dayNum: cellDayNum });')
+    expect(mois).toContain('const unSeulRang = jour.rangs.length === 1;')
+    // les deux portes (souris, clavier) ouvrent la même fenêtre devant un rang
+    // unique. Comptées séparément plutôt que par une fenêtre de N caractères : la
+    // borne glissait dès qu'un commentaire s'allongeait — un contrat qui casse
+    // parce qu'une phrase a dix mots de plus ne teste rien.
+    expect(mois.match(/if \(unSeulRang\) \{/g)).toHaveLength(2)
+    // quatre, et c'est le compte juste : deux dans la case (souris, clavier) et
+    // deux dans le choisisseur (un rang déjà placé, une case encore vide)
+    expect(mois.match(/ouvrirLaCaseDuJour\(/g)).toHaveLength(4)
+    expect(mois.match(/const r = jour\.rangs\[0\];/g)).toHaveLength(2)
+    // la souris et le clavier ouvrent la même porte
+    expect(mois).toContain('// la même porte, au clavier')
+    // le double-clic qui faisait concurrence au simple est parti avec elle — et
+    // il ne reste AUCUN onDoubleClick dans la page : c'était le seul
+    expect(planningSrc).not.toContain('onDoubleClick')
+
+    // ② LA REPRISE SE DÉCOUPLE DU CURSEUR ET NE REDÉMONTRE PLUS LA PAGE
+    expect(planningSrc).toContain('}, [selectedEntreprise, fenetreAffichee.cle]);')
+    expect(planningSrc).not.toContain('}, [selectedEntreprise, calendarDate]);')
+    expect(planningSrc).toContain('const fenetreAffichee = useMemo(')
+    expect(planningSrc).toContain('cle: `${debutISO}|${finISO}`')
+    expect(planningSrc).toContain('const loadData = async (adminData, { enFond = false } = {}) => {')
+    // LE SECOND PLAN SE DÉCIDE À L'APPEL, PAS DE L'ÉTAT DU MOMENT. Écrire
+    // « si loading est déjà levé » aurait fait basculer une vraie première feuille
+    // en second plan dès que `loading` est rouge — le plein écran disparaissait
+    // au changement d'entreprise, ce que personne n'avait demandé.
+    expect(planningSrc).toContain('if (enFond) setRechargement(true);')
+    expect(planningSrc).toContain('else setLoading(true);')
+    expect(planningSrc).toContain('setLoading(false);\n    setRechargement(false);')
+    // les cinq écritures de la page passent par le second plan : enregistrer une
+    // case ne doit plus faire disparaître la fenêtre qui vient de l'enregistrer
+    expect(planningSrc.match(/loadData\(admin, \{ enFond: true \}\);/g)).toHaveLength(5)
+    // un fond discret qui ne se dit pas est une page qui ment sur son état
+    expect(planningSrc).toContain('if (rechargement) morceaux.push("reprise en cours");')
+    expect(planningSrc).toContain('aria-busy={rechargement || undefined}')
+
+    // ③ LE DIRECT : UNE TABLE, UN CANAL, UNE REQUÊTE DE REPRISE
+    expect(planningSrc).toContain('const TABLES_DU_PLANNING = ["attendances"];')
+    expect(planningSrc).toContain('tables: TABLES_DU_PLANNING,')
+    expect(planningSrc).toContain('setAttendances(await chargerPointages(idsPointagesRef.current));')
+    // la reprise du direct ne reprend pas les sept requêtes : elle n'en fait
+    // aucune elle-même, elle appelle le même chargeur que la grande reprise
+    const direct = planningSrc.slice(
+      planningSrc.indexOf('const rafraichirPointages = async () => {'),
+      planningSrc.indexOf('const { etat: etatDirect } = useDirectPointages({')
+    )
+    expect(direct.length).toBeGreaterThan(300)
+    expect(direct).not.toContain('.from(')
+    // le hook n'ouvre plus « parce que » deux tables : la liste est passée par
+    // l'appelant, et Pointages garde la sienne par défaut
+    const hook = lire('src/hooks/useDirectPointages.js')
+    expect(hook).toContain('tables = TABLES_SUIVIES,')
+    expect(hook).toContain('tables.forEach(abonner)')
+    expect(hook).not.toContain('TABLES_SUIVIES.forEach(abonner)')
+
+    // ④ UNE SEULE ÉCRITURE DE LA REQUÊTE POINTAGES, pour les deux chemins. C'est
+    // la garde contre la dérive qui aurait fait du direct un lecteur d'autres
+    // colonnes que la reprise complète — le moteur de résolution prendrait alors
+    // une colonne manquante pour un pointage absent.
+    expect(planningSrc.match(/from\("attendances"\)/g)).toHaveLength(1)
+    expect(planningSrc).toContain('.select(COLONNES_POINTAGES)')
+    // et les colonnes ne sont pas retapées deux fois
+    expect(planningSrc.match(/const COLONNES_POINTAGES =/g)).toHaveLength(1)
+
+    // Ce contrat ne prouve rien de ce qui se VOIT : un clic qui ouvre une fenêtre
+    // au lieu d'un rideau, une grille qui ne saute plus pendant une sauvegarde,
+    // un pointage qui arrive sans rechargement. Les quatre sont des gestes, et il
+    // n'y a pas de navigateur ici.
   })
 })

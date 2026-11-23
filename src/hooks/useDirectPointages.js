@@ -39,7 +39,21 @@ import {
 
 const suffixe = () => Math.random().toString(36).slice(2, 9)
 
-export default function useDirectPointages({ enterpriseId = 'all', onChangement, actif = true }) {
+export default function useDirectPointages({
+  enterpriseId = 'all',
+  onChangement,
+  actif = true,
+  // Une page qui n'aime qu'une table ne doit pas ouvrir un canal sur l'autre :
+  // `encheck_pauses` n'est pas dans la publication temps réel, et son canal
+  // échoue à chaque reconnexion (c'est le récit du bandeau ci-dessus — un canal
+  // PAR table, précisément pour qu'une table muette ne salisse pas les autres).
+  // La liste vient de l'appelant et NON d'un littéral dans le composant : un
+  // tableau écrit à chaque rendu changerait d'identité à chaque frappe, donc
+  // reconnecterait à chaque frappe. Les deux appelants passent une constante de
+  // module (TABLES_SUIVIES par défaut) — c'est ce qui permet de la mettre dans
+  // les dépendances de l'effet sans mensonge ni boucle.
+  tables = TABLES_SUIVIES,
+}) {
   const [etats, setEtats] = useState({})
   const [tentative, setTentative] = useState(0)
 
@@ -99,7 +113,7 @@ export default function useDirectPointages({ enterpriseId = 'all', onChangement,
       canaux.push(canal)
     }
 
-    TABLES_SUIVIES.forEach(abonner)
+    tables.forEach(abonner)
 
     return () => {
       vivant = false
@@ -115,7 +129,7 @@ export default function useDirectPointages({ enterpriseId = 'all', onChangement,
         }
       })
     }
-  }, [actif, enterpriseId, tentative])
+  }, [actif, enterpriseId, tentative, tables])
 
   // ── Reconnexion automatique ─────────────────────────────────
   useEffect(() => {

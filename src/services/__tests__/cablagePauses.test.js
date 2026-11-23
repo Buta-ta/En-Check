@@ -78,7 +78,12 @@ describe('🔌 Câblage Pauses — app de pointage + migration 000004', () => {
     const directPointages = readFileSync(ROOT + '/src/hooks/useDirectPointages.js', 'utf8')
     const tablesSuivies = readFileSync(ROOT + '/src/utils/directPointages.js', 'utf8')
     expect(pointagesPage).toContain('useDirectPointages')
-    expect(directPointages).toContain('TABLES_SUIVIES.forEach(abonner)')
+    // la liste des tables est un PARAMÈTRE du crochet depuis le 23/11 : la page
+    // Planning n'aime qu'`attendances` et ne doit pas ouvrir un canal sur les
+    // pauses. Pointages, lui, ne passe rien — et retombe sur la liste complète,
+    // ce que verrouille la ligne suivante.
+    expect(directPointages).toContain('tables = TABLES_SUIVIES,')
+    expect(directPointages).toContain('tables.forEach(abonner)')
     expect(tablesSuivies).toContain("['attendances', 'encheck_pauses']")
     expect(pointagesPage).toContain('formaterTempsPauseEnDirect')
     expect(pointagesSections).toContain('formaterTempsPauseEnDirect')

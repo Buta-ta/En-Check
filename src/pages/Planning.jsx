@@ -1,6 +1,8 @@
 import PageCulturalBand from "../components/PageCulturalBand";
 import PlanningPayslipBadge from "../components/PlanningPayslipBadge";
 import usePlanningPayslips, { payslipsForDay } from "../hooks/usePlanningPayslips";
+import useDirectPointages from "../hooks/useDirectPointages";
+import { presenterEtat } from "../utils/directPointages";
 // ═══════════════════════════════════════════════════════════════════════════
 // 📅 EN-CHECK · PLANNING — SYSTÈME DRAG & DROP × IDENTITÉ AFRO-TECH
 // Matrice hebdomadaire glisser-déposer + Modèles personnalisables + Équipes
@@ -104,6 +106,18 @@ const COULEUR_HORAIRE_CLE = "couleur-horaire";
 const TEAMS_STORAGE_KEY = "encheck_planning_teams_v1";
 const TEAM_ASSIGNMENTS_STORAGE_KEY = "encheck_planning_team_assignments_v1";
 const MONTH_MODELS_STORAGE_KEY = "encheck_planning_month_models_v1";
+
+// Ce que le planning sait recoudre sans tout reprendre : les pointages. Liste en
+// constante de module parce que le crochet temps réel compare ce tableau par
+// identité — un littéral dans le composant signifierait « nouveaux abonnements à
+// chaque rendu », donc reconnexion à chaque frappe.
+const TABLES_DU_PLANNING = ["attendances"];
+
+// Les colonnes ne sont écrites qu'ici : la grande reprise de `loadData` et la
+// reprise en second plan du temps réel doivent ramener la MÊME ligne, sinon le
+// moteur de résolution prend une colonne manquante pour un pointage absent.
+const COLONNES_POINTAGES =
+  "id, employee_id, enterprise_id, check_time, check_type, method, is_auto_closed, anomalie, estimation_source_id, estimation_validee_le, estimation_remplacee_le, estimation_niveau, estimation_confiance, notes, modifie_le, modifie_par, created_at, origine, decision_raison, modifie_par_employe, suspect, suspect_reason";
 const COLLAPSED_GROUPS_STORAGE_KEY = "encheck_planning_teams_collapsed_v1";
 const GROUPS_ORDER_STORAGE_KEY = "encheck_planning_teams_ordre_v1";
 
@@ -352,6 +366,9 @@ export default function Planning() {
   const [seuilsByEnterprise, setSeuilsByEnterprise] = useState({});
   const [allSchedules, setAllSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
+  // « les données repartent, ce n'est pas la première feuille » : le bandeau le
+  // dit, la grille ne se démonte pas.
+  const [rechargement, setRechargement] = useState(false);
   const { minLoadingDone, skipLoading } = useLoadingMinimum();
 
   // Filtre de focus : totaux et grille liés au groupe ou au collaborateur sélectionné
@@ -473,6 +490,12 @@ export default function Planning() {
 
   // LA CASE VIDE N'ORDONNE RIEN, ELLE PROPOSE (08/12) : { emp, dayItem }.
   const [caseVide, setCaseVide] = useState(null);
+
+  // Le clic sur une case du mois (23/11). Une case du mois n'est pas une case
+  // d'employé : c'est une JOURNÉE, avec un à N rangs. Sans intermédiaire, le clic
+  // ne pouvait qu'ouvrir la journée (l'ancien comportement) ou mentir sur la
+  // personne visée. Cet état ouvre le « qui ? », et rien d'autre.
+  const [choixJour, setChoixJour] = useState(null); // { cell, dayNum }
 
   // ═══ GLISSER-DÉPOSER TACTILE (mobile : appui long puis toucher la case cible) ═══
   const [touchDragPayload, setTouchDragPayload] = useState(null);
@@ -601,8 +624,59 @@ export default function Planning() {
     loadData(parsedAdmin);
   }, [navigate]);
 
-  const loadData = async (adminData) => {
-    setLoading(true);
+  // LA FENÊTRE RENDUE, calculée à un seul endroit (23/11). Elle vivait au
+  // milieu de `loadData`, ce qui rendait impossible de répondre AVANT de relancer
+  // sept requêtes à la seule question qui vaille : « la période a-t-elle changé ? ».
+  // Les bornes restent l'union de la semaine et du mois — ce n'est pas une
+  // nouvelle fenêtre, c'est la même, écrite une fois.
+  const fenetreAffichee = useMemo(() => {
+    const annee = calendarDate.getFullYear();
+    const mois = calendarDate.getMonth();
+    const debutMois = new Date(annee, mois, 1);
+    const finMois = new Date(annee, mois, getDaysInMonth(annee, mois));
+    const debutSemaine = getStartOfWeekMonday(calendarDate);
+    const finSemaine = new Date(debutSemaine);
+    finSemaine.setDate(finSemaine.getDate() + 6);
+    const debut = new Date(Math.min(debutSemaine.getTime(), debutMois.getTime()));
+    const fin = new Date(Math.max(finSemaine.getTime(), finMois.getTime()));
+    const debutISO = toIsoDateLocal(debut);
+    const finISO = toIsoDateLocal(fin);
+    // « même fenêtre » veut dire mêmes bornes, pas même curseur : la clé est ce
+    // que l'effet regarde, et elle serait fausse déduite d'autre chose.
+    return { debutISO, finISO, cle: `${debutISO}|${finISO}` };
+  }, [calendarDate]);
+
+  // Les pointages d'une fenêtre, pour une liste d'employés. Deux appelants, une
+  // écriture : `loadData`, et la reprise en second plan déclenchée par le canal —
+  // qui ne doit surtout pas demander d'autres colonnes que la première.
+  const chargerPointages = async (idsEmployes) => {
+    if (!idsEmployes || idsEmployes.length === 0) return [];
+    const { data, error } = await supabase
+      .from("attendances")
+      .select(COLONNES_POINTAGES)
+      .in("employee_id", idsEmployes)
+      .gte("check_time", `${fenetreAffichee.debutISO}T00:00:00`)
+      .lte("check_time", `${fenetreAffichee.finISO}T23:59:59`)
+      .order("check_time", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  };
+
+  const loadData = async (adminData, { enFond = false } = {}) => {
+    // LE PLEIN ÉCRAN N'EST QUE POUR LA PREMIÈRE FEUILLE (23/11). Remettre
+    // `loading` à vrai à chaque sauvegarde avait deux effets que personne ne
+    // voulait : l'écran de chargement est un `return` anticipé, il démontait le
+    // modal ouvert au clic sous les yeux du fondateur ; et chaque écriture coûtait
+    // sept requêtes avec disparition de la grille. En second plan la grille reste
+    // en place, le bandeau dit la reprise, le modal survit à son propre
+    // enregistrement.
+    //
+    // Ce que l'APPELANT décide, et rien d'autre : écrire « si on est déjà en
+    // train de charger » aurait fait basculer une vraie première feuille en
+    // second plan dès que `loading` est rouge — le plein écran disparaissait au
+    // changement d'entreprise, ce qui n'était demandé par personne.
+    if (enFond) setRechargement(true);
+    else setLoading(true);
     try {
       const isSuperAdmin = adminData.role === "super_admin";
       const enterpriseId = adminData.selectedEnterprise?.id || adminData.enterprise_id;
@@ -661,6 +735,7 @@ export default function Planning() {
       }
 
       const employeeIds = (employeesData || []).map((e) => e.id);
+      idsPointagesRef.current = employeeIds;
 
       if (employeeIds.length > 0) {
         const { data: esData } = await supabase
@@ -725,35 +800,11 @@ export default function Planning() {
         console.error("[planning] motifs indisponibles", err);
       }
 
-      // Chargement des pointages réels (attendances) sur toute la période affichée
-      const weekStart = getStartOfWeekMonday(calendarDate);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      const periodeStart = new Date(
-        Math.min(weekStart.getTime(), new Date(year, month, 1).getTime())
-      );
-      const periodeEnd = new Date(
-        Math.max(weekEnd.getTime(), new Date(year, month, getDaysInMonth(year, month)).getTime())
-      );
-      const periodeStartISO = `${toIsoDateLocal(periodeStart)}T00:00:00`;
-      const periodeEndISO = `${toIsoDateLocal(periodeEnd)}T23:59:59`;
-
-      // Mêmes colonnes que la page Pointages : le moteur resoudrePointagesJournee
-      // a besoin des champs d'estimation / modification pour ne rien inventer.
-      if (employeeIds.length > 0) {
-        const { data: attData } = await supabase
-          .from("attendances")
-          .select(
-            "id, employee_id, enterprise_id, check_time, check_type, method, is_auto_closed, anomalie, estimation_source_id, estimation_validee_le, estimation_remplacee_le, estimation_niveau, estimation_confiance, notes, modifie_le, modifie_par, created_at, origine, decision_raison, modifie_par_employe, suspect, suspect_reason"
-          )
-          .in("employee_id", employeeIds)
-          .gte("check_time", periodeStartISO)
-          .lte("check_time", periodeEndISO)
-          .order("check_time", { ascending: true });
-        setAttendances(attData || []);
-      } else {
-        setAttendances([]);
-      }
+      // Les pointages de la période. Les bornes ne se recalculent plus ici :
+      // c'est `fenetreAffichee`, la même pour la reprise complète et pour celle du
+      // direct. Sept lignes de dates recopiées à cet endroit, c'est deux fenêtres
+      // qui peuvent cesser d'être la même — et la seconde n'aurait aucun témoin.
+      setAttendances(await chargerPointages(employeeIds));
 
       // Grilles horaires entreprise + seuils de pointage (identiques à Pointages)
       const entIdsForConfig = isSuperAdmin
@@ -818,11 +869,50 @@ export default function Planning() {
       toast.error("Erreur lors du chargement");
     }
     setLoading(false);
+    setRechargement(false);
   };
 
+  // LA REPRISE DÉPEND DE LA PÉRIODE, PAS DU CURSEUR. C'était `calendarDate` :
+  // choisir un jour du mois déjà chargé, ou poser un modèle sur une case,
+  // repartait pour sept requêtes alors que les bornes demandées étaient
+  // identiques. Passer à la semaine d'à côté change `cle` (l'union semaine/mois
+  // se déplace) et reprend bien ; cliquer dans le mois ne la change plus.
   useEffect(() => {
     if (admin) loadData(admin);
-  }, [selectedEntreprise, calendarDate]);
+  }, [selectedEntreprise, fenetreAffichee.cle]);
+
+  // ── LE PLANNING EN DIRECT (23/11) ─────────────────────────────
+  // « Pourquoi le planning ne montre pas les pointages en temps réel ? » : parce
+  // qu'il ne regardait rien. Les « 8h », « oubli de sortie », « en cours » sont
+  // lus dans un instantané pris au dernier `loadData`.
+  //
+  // Un canal dit « une ligne a bougé » ; on redemande les pointages de la période
+  // — UNE requête — et rien d'autre ne bouge. Le crochet, lui, apporte ce que la
+  // page Pointages a appris à la dure : un canal PAR table (une table non publiée
+  // faisait refuser le canal entier), le statut ÉCOUTÉ (un `.subscribe()` muet
+  // rend l'incident invisible), les tentatives qui s'espacent, et la reprise au
+  // retour de l'onglet comme au retour du réseau — la cause n°1 des « il faut que
+  // je recharge » est là, pas dans les données.
+  const idsPointagesRef = useRef([]);
+  const rafraichirPointages = async () => {
+    if (idsPointagesRef.current.length === 0) return;
+    setRechargement(true);
+    try {
+      setAttendances(await chargerPointages(idsPointagesRef.current));
+    } catch (eReel) {
+      // Le direct est tombé : la grille garde ce qu'elle avait, et le bandeau
+      // porte l'état du canal. Un « Erreur lors du chargement » toutes les
+      // trente secondes pendant une coupure serait pire que le silence.
+      console.error("[planning] reprise des pointages impossible", eReel);
+    }
+    setRechargement(false);
+  };
+  const { etat: etatDirect } = useDirectPointages({
+    enterpriseId: selectedEntreprise,
+    onChangement: rafraichirPointages,
+    actif: Boolean(admin),
+    tables: TABLES_DU_PLANNING,
+  });
 
   const formatTime = (t) => (t ? t.slice(0, 5) : "--:--");
 
@@ -2358,8 +2448,20 @@ export default function Planning() {
     morceaux.push(
       `${scopedEmployees.length} collaborateur${scopedEmployees.length > 1 ? "s" : ""}`
     );
+    // DEUX MOTS DE PLUS, ET ILS NE SONT PAS DÉCORATIFS (23/11). Depuis que la
+    // reprise ne démonnte plus la page, le fondateur doit pouvoir savoir si ce
+    // qu'il voit est à jour : « reprise en cours » le dit pendant la requête, et
+    // « direct » / « figé » dit si les pointages arrivent tout seuls. Sans ces
+    // deux-là, le fond discret serait une nouvelle forme de mensonge — une page
+    // qui ne change plus d'écran n'est visible à rien.
+    // Le libellé vient de `presenterEtat`, pas d'un texte inventé ici ; SA
+    // bulle, non : elle promet un sondage toutes les 30 s que la page Pointages
+    // seule fait. La bulle du planning s'écrit donc à côté, à la mesure de ce
+    // que cette page sait faire.
+    if (rechargement) morceaux.push("reprise en cours");
+    morceaux.push(presenterEtat(etatDirect).libelle.toLowerCase());
     return morceaux.join(" · ");
-  }, [entrepriseActive, planningView, semaineIso, scopedEmployees.length]);
+  }, [entrepriseActive, planningView, semaineIso, scopedEmployees.length, rechargement, etatDirect]);
 
   // Jours de la période affichée (Semaine = 7 jours, Mois = tout le mois, Jour = 1 jour)
   const periodDates = useMemo(() => {
@@ -2691,7 +2793,7 @@ export default function Planning() {
         toast.success("Modèle de planning créé !");
       }
       setShowModal(false);
-      loadData(admin);
+      loadData(admin, { enFond: true });
     } catch (error) {
       console.error(error);
       toast.error("Erreur sauvegarde");
@@ -2719,7 +2821,7 @@ export default function Planning() {
       toast.success("Demande supprimée");
       setShowDeleteRequestModal(false);
       setRequestToDelete(null);
-      loadData(admin);
+      loadData(admin, { enFond: true });
     } catch (error) {
       console.error(error);
       toast.error("Erreur lors de la suppression");
@@ -2736,7 +2838,7 @@ export default function Planning() {
       toast.success("Planning supprimé");
       setShowDeleteModal(false);
       setPlanningToDelete(null);
-      loadData(admin);
+      loadData(admin, { enFond: true });
     } catch (error) {
       console.error(error);
       toast.error("Erreur suppression");
@@ -2827,6 +2929,24 @@ export default function Planning() {
           month: "long",
         })
       : null;
+
+  // UNE CASE DU MOIS, UN COLLABORATEUR, UNE DES DEUX FENÊTRES. Deux portes
+  // existent déjà et il n'y en aura pas de troisième : la case réglée s'ajuste
+  // dans `openCellEditorModal`, la case vide lève le choisisseur de modèles de la
+  // vue semaine (`setCaseVide`, né avec la case vide de la vue semaine). Le `dayItem` porte la même forme que celui
+  // que le glisser-déposer des noms fabrique à côté — mêmes champs, mêmes
+  // libellés, sinon les deux chemins finiraient par dire deux choses différentes
+  // de la même case.
+  const ouvrirLaCaseDuJour = (emp, dateStr, dayNum, shift, etiquette) => {
+    setChoixJour(null);
+    const dayItem = {
+      dateStr,
+      dayNum,
+      labelHeader: `${emp.first_name} ${etiquette}`,
+    };
+    if (shift) openCellEditorModal(emp, dayItem, shift);
+    else setCaseVide({ emp, dayItem });
+  };
 
   const openCellEditorModal = (emp, dayItem = null, currentShift = null) => {
     setCellEditContext(
@@ -3066,7 +3186,7 @@ export default function Planning() {
 
       toast.success("Planning collaborateur enregistré !");
       setShowEmployeeScheduleModal(false);
-      loadData(admin);
+      loadData(admin, { enFond: true });
     } catch (error) {
       // Le refus de la base EST le message : sans lui, le fondateur reste avec
       // un « Erreur sauvegarde » et un 400 dans la console, et doit deviner.
@@ -3146,7 +3266,7 @@ export default function Planning() {
       setSelectedRequest(null);
       setReviewAction(null);
       setReviewComment("");
-      await loadData(admin);
+      await loadData(admin, { enFond: true });
     } catch (error) {
       console.error("Erreur traitement demande:", error);
       toast.error(causeRejetBase(error));
@@ -3559,7 +3679,19 @@ export default function Planning() {
               ))}
             </div>
 
-            <p className="sk-topbar-etat">{etatFeuille}</p>
+            <p
+              className="sk-topbar-etat"
+              aria-live="polite"
+              aria-busy={rechargement || undefined}
+              title={
+                etatDirect === "direct"
+                  ? "Les pointages arrivent dès qu'ils sont enregistrés."
+                  : "Écoute en direct indisponible : le planning reste celui de la dernière reprise. Elle repart d'elle-même au retour sur cet onglet ou à la reprise du réseau — et elle ne montre rien de faux en attendant."
+              }
+              data-reprise={rechargement ? "oui" : undefined}
+            >
+              {etatFeuille}
+            </p>
           </div>
         </header>
       </div>
@@ -5049,6 +5181,10 @@ export default function Planning() {
                   const isToday = cell.date === todayIso;
                   const cellDayNum = dayNumFromDateStr(cell.date);
                   const jour = moisParJour.get(cell.date) || { rangs: [], minutes: 0, anomalies: 0 };
+                  // UN SEUL RANG, UNE SEULE PERSONNE, UN SEUL CLIC. Le choisisseur
+                  // n'existe que pour lever l'ambiguïté ; là où il n'y en a pas, il
+                  // serait un clic de plus pour une réponse déjà écrite dans la case.
+                  const unSeulRang = jour.rangs.length === 1;
                   // La bande de teinte ne se pose que si le jour a UN auteur :
                   // peindre une case collective de la teinte choisie par une seule
                   // personne serait un mensonge de plus dans cette vue.
@@ -5083,17 +5219,31 @@ export default function Planning() {
                       style={teinteDuJour ? { "--teinte-du-jour": teinteDuJour } : undefined}
                       onClick={() => {
                         if (applyTouchDropOnDay(cell.date)) return;
-                        setSelectedCalendarDay(cell);
-                        setCalendarDate(new Date(`${cell.date}T12:00:00`));
+                        if (unSeulRang) {
+                          // Un seul rang, c'est CETTE personne : demander « qui ? »
+                          // devant un nom déjà sous les yeux serait un clic de plus
+                          // pour une réponse évidente. Et le curseur ne bouge pas —
+                          // c'est son déplacement qui partait chercher sept requêtes
+                          // et plaquait l'écran de chargement sur la page.
+                          const r = jour.rangs[0];
+                          ouvrirLaCaseDuJour(r.emp, cell.date, cellDayNum, r.shift, cell.day);
+                          return;
+                        }
+                        setChoixJour({ cell, dayNum: cellDayNum });
                       }}
                       onKeyDown={(e) => {
+                        // la même porte, au clavier
                         if (e.key !== "Enter" && e.key !== " ") return;
                         e.preventDefault();
-                        ouvrirLaJournee();
+                        if (unSeulRang) {
+                          const r = jour.rangs[0];
+                          ouvrirLaCaseDuJour(r.emp, cell.date, cellDayNum, r.shift, cell.day);
+                          return;
+                        }
+                        setChoixJour({ cell, dayNum: cellDayNum });
                       }}
                       onMouseEnter={() => survolerCase("mois", null, cell.date, cellDayNum)}
                       onMouseLeave={() => setCaseCible(null)}
-                      onDoubleClick={ouvrirLaJournee}
                       onDragOver={(e) => {
                         e.preventDefault();
                         if (monthDropDate !== cell.date) setMonthDropDate(cell.date);
@@ -6457,6 +6607,144 @@ export default function Planning() {
             le geste d'hier n'a pas été enlevé, il est devenu UN CHOIX.
           Rien n'est verrouillé au passage : l'arrière-plan ferme la fenêtre, et
           le × avec lui. */}
+      {/* QUI, SUR CETTE JOURNÉE ? — Le choisisseur du mois (23/11). Il n'invente
+          aucune fenêtre : une rangée déjà placée ouvre le réglage de la case, une
+          rangée vide ouvre le choisisseur de modèles de la vue semaine. Le
+          « ouvrir la journée » y trouve enfin une porte écrite, alors qu'il
+          n'existait que par un double-clic invisible. */}
+      {choixJour && (() => {
+        const jourChoisi = moisParJour.get(choixJour.cell.date) || { rangs: [] };
+        const placees = jourChoisi.rangs;
+        const restees = scopedEmployees.filter((e) => !placees.some((r) => r.emp.id === e.id));
+        const dateChoisie = choixJour.cell.date;
+        return (
+          <div className="sk-modal-backdrop" onClick={() => setChoixJour(null)}>
+            <div className="sk-modal-box" onClick={(e) => e.stopPropagation()}>
+              <div className="sk-modal-head">
+                <div>
+                  <h2 className="sk-modal-title">
+                    Journée du {choixJour.cell.day} — qui, sur cette case ?
+                  </h2>
+                  <span className="sk-modal-sub">
+                    Une case du mois est une journée, pas une ligne : elle peut
+                    porter plusieurs personnes. Dites celle dont vous réglez la case.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="sk-back-btn"
+                  onClick={() => setChoixJour(null)}
+                  aria-label="Fermer sans rien changer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="sk-modal-body">
+                {placees.length > 0 && (
+                  <>
+                    <p className="sk-choix-legende">
+                      Déjà placé{placees.length > 1 ? "s" : ""} · {placees.length}
+                    </p>
+                    <div
+                      className="sk-choix-modeles"
+                      role="group"
+                      aria-label="Personnes déjà placées ce jour"
+                    >
+                      {placees.map((r) => (
+                        <button
+                          key={r.emp.id}
+                          type="button"
+                          className="sk-brick sk-brick--choix"
+                          style={{ "--brick-color": r.teinte || undefined }}
+                          title={`Régler la case de ${r.emp.first_name} ${r.emp.last_name || ""}`}
+                          onClick={() =>
+                            ouvrirLaCaseDuJour(
+                              r.emp,
+                              dateChoisie,
+                              choixJour.dayNum,
+                              r.shift,
+                              choixJour.cell.day
+                            )
+                          }
+                        >
+                          <span className="sk-brick-title">
+                            {r.emp.first_name} {r.emp.last_name || ""}
+                          </span>
+                          <span className="sk-brick-sub">
+                            {r.etat?.mot ||
+                              (r.shift
+                                ? labelHeures(r.minutes)
+                                : "pointage seul, aucun poste")}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {restees.length > 0 && (
+                  <>
+                    <p className="sk-choix-legende">Aucun poste ce jour · {restees.length}</p>
+                    <div
+                      className="sk-choix-modeles"
+                      role="group"
+                      aria-label="Personnes sans poste ce jour"
+                    >
+                      {restees.map((e) => (
+                        <button
+                          key={e.id}
+                          type="button"
+                          className="sk-brick sk-brick--choix"
+                          title={`Poser un modèle sur la case de ${e.first_name} ${e.last_name || ""}`}
+                          onClick={() =>
+                            ouvrirLaCaseDuJour(
+                              e,
+                              dateChoisie,
+                              choixJour.dayNum,
+                              null,
+                              choixJour.cell.day
+                            )
+                          }
+                        >
+                          <span className="sk-brick-title">
+                            {e.first_name} {e.last_name || ""}
+                          </span>
+                          <span className="sk-brick-sub">case vide — choisir ou créer un modèle</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {placees.length === 0 && restees.length === 0 && (
+                  <span className="sk-modal-sub">
+                    Personne dans le périmètre affiché : changez de focus ou
+                    d&apos;entreprise pour amener un collaborateur sur ce jour.
+                  </span>
+                )}
+              </div>
+
+              <div className="sk-modal-foot">
+                <button
+                  type="button"
+                  className="sk-back-btn"
+                  onClick={() => {
+                    const cell = choixJour.cell;
+                    setChoixJour(null);
+                    setSelectedCalendarDay(cell);
+                    setCalendarDate(new Date(`${cell.date}T12:00:00`));
+                    setPlanningView("jour");
+                  }}
+                >
+                  Ouvrir la journée
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {caseVide && (
         <div className="sk-modal-backdrop" onClick={() => setCaseVide(null)}>
           <div className="sk-modal-box" onClick={(e) => e.stopPropagation()}>

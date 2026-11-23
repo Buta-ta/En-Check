@@ -448,6 +448,38 @@
   text-align: right;
 }
 
+/* LA REPRISE EN SECOND PLAN (23/11). Une sauvegarde ou un pointage qui arrive ne
+   démontrent plus la page : ils la reprennent sous les yeux du fondateur. Une
+   reprise qu'il ne voit pas du tout serait une page prétendant être à jour
+   pendant qu'elle ne l'est pas. Le mot « reprise en cours » entre donc dans ce
+   bandeau — `aria-live`, donc lu — et son soulignement remue. Le kit ne connaît
+   que le trait : pas d'anneau, pas de voile, pas de flou. Et le mouvement se pose
+   sur le CONTENEUR du texte, jamais sur le texte : une opacité ferait vaciller
+   les mots sous les yeux de celui qui les lit. */
+.sk-plan-page--postit .sk-topbar-etat[data-reprise] {
+  border-bottom: 2px solid color-mix(in srgb, var(--charte-encre) 45%, transparent);
+  padding-bottom: calc(var(--charte-espace-1) / 2);
+  animation: sk-reprise-trait 1.1s var(--charte-easing) infinite;
+}
+
+@keyframes sk-reprise-trait {
+  0%,
+  100% {
+    border-bottom-color: color-mix(in srgb, var(--charte-encre) 45%, transparent);
+  }
+
+  50% {
+    border-bottom-color: color-mix(in srgb, var(--charte-encre) 8%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-plan-page--postit .sk-topbar-etat[data-reprise] {
+    animation: none;
+    border-bottom-color: var(--charte-encre);
+  }
+}
+
 /* ═══ LE DOCK DES MODÈLES ET LA BANDE DES FILTRES — DEUX FEUILLES DE PLUS ═══
    (22/11/2026 — la maquette que le fondateur a retenue pour cette section.)
 
@@ -2944,8 +2976,11 @@
 }
 
 /* la porte de la journée : elle n'existe qu'au survol ou au clavier, pour ne pas
-   trente fois le même verbe à l'écran ; le double-clic et Entrée la tiennent
-   aussi, donc elle n'est jamais le seul chemin. */
+   trente fois le même verbe à l'écran. Depuis le 23/11, le clic sur la case, lui,
+   ouvre la fenêtre de la personne (ou le « qui ? » quand elles sont plusieurs) ;
+   le double-clic est parti parce qu'il faisait concurrence au simple. Ce lien
+   reste donc le SEUL chemin de la case vers la vue journée — c'est ce que dit son
+   libellé, et il est atteignable au clavier, donc il n'a pas besoin d'être deviné. */
 .sk-plan-page--postit .sk-mois-ouvrir {
   margin-top: auto;
   opacity: 0;

@@ -105,7 +105,13 @@ it('6. on ne recharge que si quelque chose a bougé', () => {
 
 it('7. un canal PAR table — c’est la cause du blocage en bloc', () => {
   expect(TABLES_SUIVIES).toEqual(['attendances', 'encheck_pauses'])
-  expect(hook).toContain('TABLES_SUIVIES.forEach(abonner)')
+  // la boucle lit désormais la liste reçue en paramètre, dont la valeur par
+  // défaut EST `TABLES_SUIVIES` (23/11 : une page qui n'aime qu'une table ne
+  // doit pas ouvrir un canal sur l'autre). Les deux lignes ci-dessous tiennent
+  // ce que tenait `TABLES_SUIVIES.forEach(abonner)` : une table = un canal, et
+  // Pointages n'a rien demandé, donc il garde les deux.
+  expect(hook).toContain('tables = TABLES_SUIVIES,')
+  expect(hook).toContain('tables.forEach(abonner)')
   // l'ancienne forme : deux `.on()` sur un seul canal
   expect(page).not.toMatch(/\.channel\(`pointages_live_/)
   expect(page).toContain('useDirectPointages({')
