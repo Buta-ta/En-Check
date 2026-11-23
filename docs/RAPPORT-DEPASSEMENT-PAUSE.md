@@ -313,3 +313,159 @@ utile ».
 - `encheck_ma_pause_fermer` appliquée en production et testée : jeton inventé → `42501`, jeton valide d'un compte `RECETTE` → `aucune pause ouverte` (donc l'employé a bien été résolu).
 - Réparation vérifiée en base : `encheck_pauses_duree_reelle` du 17/11 repasse de `7666` à `presumee 60`, `encheck_temps_travaille` de `4,91` à son état d'origine, et 0 pause porte un motif.
 - En base : jetons inventé / vide / `NULL` → `42501` trois fois ; session de test créée puis **supprimée** (0 restante sur 191).
+
+---
+
+## 11 — Les gardes d'écriture s'ouvraient sans session (23/11)
+
+### 11.1 Ce que j'ai trouvé en cherchant autre chose
+
+Je vérifiais les droits sur les fonctions de pause pour préparer la
+révocation d'`encheck_pauses_en_cours`. En listant `proacl`, j'ai vu que
+cinq fonctions **d'écriture** étaient appelables par `anon`. J'ai supposé
+un problème de droits. C'était pire : le problème était dans le code.
+
+La garde, présente à l'identique dans cinq fonctions :
+
+```sql
+IF NULLIF(coalesce(auth.jwt() ->> 'email', ''), '') IS NOT NULL
+   AND NOT public.encheck_est_admin_de(p_enterprise) THEN
+  RAISE EXCEPTION 'non autorisé';
+END IF;
+```
+
+**L'intention :** « si quelqu'un est connecté, on vérifie ses droits ».
+**L'exécution :** sans JWT, l'email est `NULL`. `NULL AND FALSE` vaut `NULL`.
+Un `IF` ne s'exécute pas sur `NULL`. **La garde ne se déclenchait jamais
+dans le cas qu'elle devait fermer** — et seulement dans celui-là.
+
+C'est le même défaut que celui corrigé sur `encheck_pauses_lire`, où la
+garde `IF v_email IS NOT NULL` échouait ouverte. Deux fois la même erreur,
+à deux endroits, écrite par la même main. Ce n'est pas de la malchance :
+c'est un raisonnement qui paraît juste et qui ne l'est pas.
+
+### 11.2 La mesure, faite avant toute correction
+
+Sous `BEGIN … ROLLBACK`, rôle `anon`, sans JWT :
+
+```
+encheck_pause_creer(REC-0002, now()-3h, now()-2h)  → {"ok": true, "pause_id": "f3ce883f-…"}
+encheck_pauses_annuler_decision([…])                → 1
+```
+
+Aucune trace en base après `ROLLBACK` — vérifié (`0` ligne restante).
+
+Détail qui compte : `anon` ne peut pas inventer d'identifiant. J'ai essayé
+une valeur au hasard, réponse `employé inconnu ou inactif`. Il faut
+**connaître** un identifiant existant. La faille est donc réelle mais pas
+ouverte à un inconnu : elle demande un identifiant, ce qu'un ancien
+salarié ou une personne ayant eu accès à la base possède.
+
+### 11.3 La correction
+
+```sql
+IF auth.uid() IS NULL
+   AND NULLIF(coalesce(auth.jwt() ->> 'email', ''), '') IS NULL THEN
+  RAISE EXCEPTION 'non authentifié …' USING ERRCODE = '42501';
+END IF;
+IF NOT public.encheck_est_admin_de(p_entreprise) THEN RAISE … 42501; END IF;
+```
+
+Deux tests explicites au lieu d'un test à trois états. On exige l'identité,
+**puis** on vérifie les droits — l'ordre est ce qui empêche le retour du
+défaut.
+
+**Trois pièges rencontrés en écrivant la migration :**
+
+1. `CREATE OR REPLACE` **refuse** de retirer une valeur par défaut (`42P13`).
+   Les quatre signatures portaient `DEFAULT NULL::text` : les recopier sans
+   le défaut échoue.
+2. Les fonctions portaient `SET search_path TO 'public', 'pg_temp'`. Ce
+   n'est pas décoratif : c'est ce qui empêche un schéma malveillant de
+   passer devant `public`. Le perdre en réécrivant la fonction aurait
+   fermé une porte et ouvert une autre. Un test le vérifie désormais.
+3. Un commentaire d'explication citant la garde fautive faisait échouer ma
+   propre vérification — elle cherchait la chaîne, et la trouvait dans la
+   documentation. Corrigé en testant l'absence réelle, pas l'absence de
+   mention.
+
+### 11.4 Vérification, sur la production
+
+| Appel | Avant | Après |
+|---|---|---|
+| `anon` → `encheck_pause_creer` | `{"ok": true, "pause_id": …}` | **42501 non authentifié** |
+| `anon` → `encheck_pauses_statuer` | passait | **42501** |
+| `anon` → `encheck_pauses_supprimer` | passait | **42501** |
+| `anon` → `encheck_pauses_annuler_decision` | `1` | **42501** |
+| `anon` → `encheck_pauses_restaurer` | passait | **42501** |
+| Admin connecté → `encheck_pause_creer` | `ok: true` | **`ok: true`** (inchangé) |
+
+L'admin connecté a été testé avec un JWT simulé (`set_config('request.jwt.claims')`)
+sous `BEGIN … ROLLBACK`. Rien n'a été écrit.
+
+**22 tests** (`gardesEcriturePauses.test.js`), dont `it.each` sur les cinq
+fonctions et trois vérifications par mutation : remettre la garde fautive
+dans une seule fonction fait échouer trois tests.
+
+### 11.5 La pause de 5,9 jours — et pourquoi elle n'était pas indéterminée
+
+Le bandeau allait afficher `Hippo B. 141:07`. Une pause ouverte depuis le
+17/11 15:42, jamais fermée.
+
+J'ai failli la traiter comme les 27 `NULL` du §10.7, en laissant la décision
+au fondateur. **C'était une erreur** : j'avais les pointages du 17/11 sous
+la main et je ne les avais pas lus.
+
+```
+17/11 12:26:24  in   (pin)
+17/11 15:42:58  ← début de la pause
+17/11 17:20:43  out  (pin)   ← la pause courait encore
+```
+
+Une **sortie** pointée pendant que la pause courait : c'est exactement le
+cas `sortie` documenté, celui que l'app Pointage produit à
+`pointage_screen.dart:6034`. Il n'y avait rien à inventer. Fermée à
+`17:20:43`, soit 98 minutes, motif `sortie`, tracée au journal
+(`pause_fermee_correction`, id 41).
+
+Après : **0 pause ouverte** en base, et `encheck_pauses_bandeau` renvoie une
+liste vide.
+
+**Ce que je ne dois pas laisser croire :** ce n'est pas une déduction
+certaine, c'est la lecture la plus probable d'un enchaînement cohérent. Un
+employé qui badge sa sortie à 17:20 reste exceptionnellement longtemps en
+pause ; l'alternative — qu'il ait pointé sa sortie en étant en pause et
+soit revenu plus tard sans pointer de reprise — n'est pas distinguable.
+L'heure, elle, n'est pas inventée : elle vient du pointage.
+
+### 11.6 Ce que cette pause dit du système, et qui est plus gênant
+
+`encheck_pauses_controler` tourne **toutes les 10 minutes** (tâche
+`encheck-alertes-scan` → `encheck_alertes_scan` → `encheck_pauses_controler`).
+Il a bien produit l'alerte :
+
+> **« Pause sans reprise »** — *Pause débutée à 16:42 toujours sans pointage
+> de reprise (75 min de rappel dépassées).* Créée le 17/11 à 17:00.
+
+Donc le moteur a fait son travail **dès le premier quart d'heure**. Ce qui a
+manqué n'est pas la détection, c'est **la fermeture** : une alerte signale,
+elle ne corrige pas. Et rien, nulle part, ne ferme automatiquement une
+pause dont la sortie est pointée.
+
+C'est un défaut de conception, pas un bug. Je ne le corrige pas ici : fermer
+automatiquement une pause au pointage de sortie changerait la paie sans
+qu'aucun humain ne voie la ligne, et c'est exactement ce qu'on refuse depuis
+le début de ce lot. **À discuter, pas à décider seul.**
+
+### 11.7 Ce qui reste ouvert, et ce n'est pas de mon fait
+
+`encheck_pauses_en_cours(p_enterprise)` reste appelable par `anon` **sans
+aucune garde** et renvoie, pour chaque pause en cours :
+`{employé_id, prénom, nom complet, matricule, début, motif, durée}`.
+
+Mesuré sous rôle `anon` : `Hippo`, `BIYOKILA`, `ENN-0002`. C'est
+exactement ce que le bandeau a corrigé — sauf que le bandeau est une
+**nouvelle** fonction, et que l'ancienne n'a pas été fermée.
+
+Elle attend l'APK de l'app Pointage. Tant qu'elle n'est pas révoquée,
+l'identité d'un salarié reste lisible avec la seule clé publique.
