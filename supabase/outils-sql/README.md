@@ -33,6 +33,7 @@ posée, annulation en section 6).
 | `lister-signatures-fonctions.sql` | **éditeur SQL Supabase** | lecture seule — les signatures réelles des fonctions que l'app appelle mais que ce dépôt ne déclare pas |
 | `controle-estimations-decidables.sql` | **éditeur SQL Supabase** | lecture seule — combien de lignes estimées sont réellement en base, le tournage du déclencheur, et les journées qui ne seront jamais consignées |
 | `test-execution-migration.sql` | ⛔ **Postgres local seulement**, après le squelette | 25 assertions : la migration, exécutée pour de vrai |
+| `20261123_diagnostic_teinte_horaire_refusee.sql` | **éditeur SQL Supabase** | lecture seule — départage les quatre causes d'un HTTP 400 sur la ligne d'horaire d'un collaborateur (teinte hors format, colonne absente, clé de fusion, droit)
 
 `squelette-supabase-local.sql` et `test-execution-migration.sql` sont la raison de deux
 erreurs vues dans l'éditeur le 16/10 : collés en prod, ils échouent (`\set` n'est pas du SQL — c'est une méta-commande psql —

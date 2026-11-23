@@ -14,6 +14,12 @@ import { useTheme } from "../contexts/ThemeContext";
 import HolidayService from "../services/holidayService";
 import { resoudrePointagesJournee } from "../services/hoursCalculator";
 import { chargerSeuilsPointage } from "../services/seuilsPointage";
+import {
+  normaliserHeure,
+  normaliserTeinte,
+  carteDeTeintes,
+  causeRejetBase,
+} from "../services/ecritureHorairesEmploye";
 import FeatureService from "../services/featureService";
 import PlanningLoadingScreen from "../components/PlanningLoadingScreen";
 import useLoadingMinimum from "../hooks/useLoadingMinimum";
@@ -1656,11 +1662,28 @@ export default function Planning() {
 
       if (nextDays.length === 0) nextDays = [1, 2, 3, 4, 5];
 
-      const startStr = (shiftData?.start_time || "08:00").slice(0, 5) + ":00";
-      const endStr = (shiftData?.end_time || "17:00").slice(0, 5) + ":00";
+      // LES QUATRE HEURES, CONTRÔLÉES ICI AUSSI (23/11). Ce payload-là ne vient
+      // pas d'un champ du formulaire mais du MODÈLE déposé — un modèle d'avant la
+      // contrainte de format, ou une brique d'entreprise dont l'horaire a été
+      // rangé à la main. `(valeur || "08:00").slice(0, 5) + ":00"` laissait donc
+      // passer n'importe quoi de jusqu'à cinq caractères, et l'`upsert`
+      // répondait 22007 — un 400 de plus, sur un geste qui n'avait rien de
+      // suspect. La règle est la même que dans la fenêtre : on replie sur
+      // l'heure attendue, on ne bloque pas le dépôt.
+      const heureDeposee = (valeur, defaut, champ) =>
+        normaliserHeure(typeof valeur === "string" ? valeur.slice(0, 8) : null, {
+          defaut,
+          champ,
+        }).heure;
+      const startStr = heureDeposee(shiftData?.start_time, "08:00:00", "Début du modèle");
+      const endStr = heureDeposee(shiftData?.end_time, "17:00:00", "Fin du modèle");
       const hasBrk = shiftData?.has_break ?? true;
-      const brkStart = hasBrk ? (shiftData?.break_start || "12:00").slice(0, 5) + ":00" : null;
-      const brkEnd = hasBrk ? (shiftData?.break_end || "13:00").slice(0, 5) + ":00" : null;
+      const brkStart = hasBrk
+        ? heureDeposee(shiftData?.break_start, "12:00:00", "Début de pause")
+        : null;
+      const brkEnd = hasBrk
+        ? heureDeposee(shiftData?.break_end, "13:00:00", "Fin de pause")
+        : null;
 
       const payload = {
         employee_id: emp.id,
@@ -1680,14 +1703,22 @@ export default function Planning() {
         .from("employee_schedules")
         .upsert(payload, { onConflict: "employee_id" });
 
-      if (!error) {
-        setEmployeeSchedules((prev) => {
-          const others = prev.filter((r) => r.employee_id !== emp.id);
-          return [...others, { ...(existingES || {}), ...payload }];
-        });
+      if (error) {
+        // La brique est posée à l'écran — c'est le geste du fondateur, on ne le
+        // remet pas en question — mais elle n'est pas en base. L'avaler en
+        // `console.warn` est ce qui a rendu ce dossier muet : le planning avait
+        // l'air de marcher jusqu'au rechargement, et le seul message visible
+        // était un 400 sans nom.
+        toast.error(`Le modèle est posé à l'écran, mais pas enregistré : ${causeRejetBase(error)}`);
+        return;
       }
+      setEmployeeSchedules((prev) => {
+        const others = prev.filter((r) => r.employee_id !== emp.id);
+        return [...others, { ...(existingES || {}), ...payload }];
+      });
     } catch (err) {
       console.warn("Synchronisation directe employee_schedules:", err);
+      toast.error(`Le modèle est posé à l'écran, mais pas enregistré : ${causeRejetBase(err)}`);
     }
   };
 
@@ -2768,7 +2799,7 @@ export default function Planning() {
       toast.success("Cette case reprend la teinte de l'horaire");
     } catch (error) {
       console.error(error);
-      toast.error("Erreur lors du retrait de la couleur");
+      toast.error(`${causeRejetBase(error)} — la case reste donc coloriée ici seulement`);
     }
   };
 
@@ -2881,40 +2912,86 @@ export default function Planning() {
       // ouverte depuis le collaborateur) écrit `custom_color`. Le 22/11, les deux
       // se confondaient : choisir une teinte pour un jour écrivait la clé de la
       // ligne, et les sept jours prenaient la couleur.
-      const couleur = employeeScheduleForm.custom_color || TEINTE_PAR_DEFAUT;
+      //
+      // LE FORMAT AVANT L'ENVOI (23/11). Ces valeurs ne viennent pas que du
+      // nuancier : la fenêtre se rouvre sur ce qui est EN PLACE, et « en place »
+      // inclut le brouillon local de ce navigateur (`dayOverrides`), écrit par
+      // les versions d'avant la contrainte de format. Le 400 signalé par le
+      // fondateur est un refus de la base sur une valeur de cette origine — elle
+      // a raison de la refuser, la page a tort de l'envoyer. On replie donc sur
+      // la première teinte de la palette en le DISANT, au lieu de laisser
+      // l'enregistrement échouer sans explication : refuser ici empêcherait le
+      // fondateur de réparer son propre brouillon.
+      const teinteDemandee = normaliserTeinte(employeeScheduleForm.custom_color);
+      if (teinteDemandee.message) toast.message(teinteDemandee.message);
+      const couleur = teinteDemandee.teinte || TEINTE_PAR_DEFAUT;
+
+      // Les quatre heures suivent la même règle, avec une exception : une heure
+      // vide alors qu'elle est obligatoire n'a rien à quoi se replier. C'est le
+      // seul cas où la fenêtre refuse d'écrire, et elle le nomme champ par
+      // champ — « une heure est invalide » ne dit pas où cliquer.
+      const heuresLibres = employeeScheduleForm.use_custom_hours;
+      const avecPause = heuresLibres && employeeScheduleForm.custom_has_break;
+      const reglagesHeures = [
+        normaliserHeure(employeeScheduleForm.custom_start_time, {
+          champ: "Début de journée",
+          obligatoire: heuresLibres,
+          defaut: "08:00:00",
+        }),
+        normaliserHeure(employeeScheduleForm.custom_end_time, {
+          champ: "Fin de journée",
+          obligatoire: heuresLibres,
+          defaut: "17:00:00",
+        }),
+        normaliserHeure(employeeScheduleForm.custom_break_start, {
+          champ: "Début de pause",
+          obligatoire: avecPause && !employeeScheduleForm.custom_break_start,
+          defaut: "12:00:00",
+        }),
+        normaliserHeure(employeeScheduleForm.custom_break_end, {
+          champ: "Fin de pause",
+          obligatoire: avecPause && !employeeScheduleForm.custom_break_end,
+          defaut: "13:00:00",
+        }),
+      ];
+      const heureBloquante = reglagesHeures.find((h) => h.message && h.heure === null);
+      if (heureBloquante) {
+        toast.error(heureBloquante.message);
+        return;
+      }
+      reglagesHeures
+        .filter((h) => h.message && h.heure !== null)
+        .forEach((h) => toast.message(h.message));
+      const [debut, fin, pauseDebut, pauseFin] = reglagesHeures;
+
       const dateCible = cellEditContext?.dateStr || null;
       const ligneExistante = employeeSchedules.find(
         (row) => row.employee_id === employeeScheduleForm.employee_id
       );
+      // Fusionner la carte telle qu'elle est, c'est laisser UNE teinte saisie à
+      // la main un jour précédent refuser l'enregistrement de celui d'aujourd'hui
+      // (le CHECK de la colonne ne fait pas de sentiment). `carteDeTeintes` la
+      // retire, et cette fenêtre le dit : retirer rend à la case son état
+      // d'avant tout choix, « la ligne décide » — ce n'est pas une punition.
+      const carteJour = carteDeTeintes(ligneExistante);
+      if (carteJour.retirees > 0) {
+        toast.message(
+          `${carteJour.retirees} autre${carteJour.retirees > 1 ? "s" : ""} jour${
+            carteJour.retirees > 1 ? "s" : ""
+          } portaient une teinte que la base refuse ; ils reprennent la teinte de l'horaire.`
+        );
+      }
 
       const payload = {
         employee_id: employeeScheduleForm.employee_id,
-        schedule_id: employeeScheduleForm.use_custom_hours
-          ? null
-          : employeeScheduleForm.schedule_id || null,
-        use_custom_hours: employeeScheduleForm.use_custom_hours,
-        custom_start_time: employeeScheduleForm.use_custom_hours
-          ? employeeScheduleForm.custom_start_time + ":00"
-          : null,
-        custom_end_time: employeeScheduleForm.use_custom_hours
-          ? employeeScheduleForm.custom_end_time + ":00"
-          : null,
-        custom_break_start:
-          employeeScheduleForm.use_custom_hours &&
-          employeeScheduleForm.custom_has_break
-            ? employeeScheduleForm.custom_break_start + ":00"
-            : null,
-        custom_break_end:
-          employeeScheduleForm.use_custom_hours &&
-          employeeScheduleForm.custom_has_break
-            ? employeeScheduleForm.custom_break_end + ":00"
-            : null,
-        custom_has_break: employeeScheduleForm.use_custom_hours
-          ? employeeScheduleForm.custom_has_break
-          : true,
-        custom_work_days: employeeScheduleForm.use_custom_hours
-          ? employeeScheduleForm.custom_work_days
-          : null,
+        schedule_id: heuresLibres ? null : employeeScheduleForm.schedule_id || null,
+        use_custom_hours: heuresLibres,
+        custom_start_time: heuresLibres ? debut.heure : null,
+        custom_end_time: heuresLibres ? fin.heure : null,
+        custom_break_start: avecPause ? pauseDebut.heure : null,
+        custom_break_end: avecPause ? pauseFin.heure : null,
+        custom_has_break: heuresLibres ? employeeScheduleForm.custom_has_break : true,
+        custom_work_days: heuresLibres ? employeeScheduleForm.custom_work_days : null,
         // DEUX PORTÉES, DEUX COLONNES. La fenêtre ouverte SUR UNE case écrit dans
         // la carte des teintes jour par jour et ne touche pas à la teinte de la
         // ligne ; la fenêtre ouverte depuis le collaborateur écrit `custom_color`
@@ -2922,7 +2999,7 @@ export default function Planning() {
         ...(dateCible
           ? {
               custom_day_colors: {
-                ...(ligneExistante?.custom_day_colors || {}),
+                ...carteJour.carte,
                 [dateCible]: couleur,
               },
             }
@@ -2973,8 +3050,10 @@ export default function Planning() {
       setShowEmployeeScheduleModal(false);
       loadData(admin);
     } catch (error) {
-      console.error(error);
-      toast.error("Erreur sauvegarde");
+      // Le refus de la base EST le message : sans lui, le fondateur reste avec
+      // un « Erreur sauvegarde » et un 400 dans la console, et doit deviner.
+      console.error("Enregistrement de la ligne d'horaire refusé:", error);
+      toast.error(causeRejetBase(error));
     }
   };
 
@@ -3052,7 +3131,7 @@ export default function Planning() {
       await loadData(admin);
     } catch (error) {
       console.error("Erreur traitement demande:", error);
-      toast.error("Erreur lors du traitement");
+      toast.error(causeRejetBase(error));
     }
     setReviewingRequest(false);
   };
