@@ -107,6 +107,15 @@ Câblage dans `src/pages/Planning.jsx` :
 * idem pour le retrait d'une teinte de case et pour l'approbation d'une demande,
   qui écrivent dans la même table.
 
+Un trou reconnu le soir même, dans la foulée du premier déploiement : la page
+`handleRetirerTeinteDeLaCase` étendait encore `custom_day_colors` à l'aveugle. Le
+message de refus, lui, était bien branché — mais le bouton qui **efface** une
+couleur renvoyait la carte telle quelle en base, et se trouvait donc refusé par
+le CHECK à cause d'une teinte illisible dormant sur un autre jour. Un retrait
+bloqué par une faute que le retrait ne touche pas, c'est exactement la panne
+signalée, version inverse. Il passe désormais par `carteDeTeintes`, et la teinte
+de la ligne qu'il remet dans le formulaire est relue par `normaliserTeinte`.
+
 Contrats : `ecritureHorairesEmploye.test.js` (21 tests de format et de traduction),
 contrat 40 de `cablagePlanningEnCheck.test.js` (la page doit passer par le
 service, plus de concaténation d'heure brute, plus d'extension à l'aveugle, plus

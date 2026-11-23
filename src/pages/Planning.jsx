@@ -2770,7 +2770,13 @@ export default function Planning() {
     const id = employeeScheduleForm.employee_id;
     if (!dateStr || !id) return;
     const ligne = employeeSchedules.find((row) => row.employee_id === id);
-    const carte = { ...(ligne?.custom_day_colors || {}) };
+    // LA CARTE EST RELUE ICI AUSSI, comme à l'enregistrement (23/11, second volet).
+    // « Retirer » renvoie en base la carte telle qu'elle est déjà : si une teinte
+    // illisible dort sur un AUTRE jour, le CHECK refuse le retrait — un bouton qui
+    // efface se met à refuser d'effacer. Et si la carte n'est pas un objet, l'extension
+    // à l'aveugle fabrique des clés "0", "1", "2".
+    const carteJour = carteDeTeintes(ligne);
+    const carte = { ...carteJour.carte };
     delete carte[dateStr];
     try {
       const { error } = await supabase
@@ -2794,9 +2800,16 @@ export default function Planning() {
       });
       setEmployeeScheduleForm({
         ...employeeScheduleForm,
-        custom_color: ligne?.custom_color || TEINTE_PAR_DEFAUT,
+        // la teinte de la ligne est relue avant de rejoindre le formulaire : elle
+        // repartira en base au prochain enregistrement, et une valeur raccourcie y
+        // serait un 400
+        custom_color: normaliserTeinte(ligne?.custom_color ?? null).teinte || TEINTE_PAR_DEFAUT,
       });
-      toast.success("Cette case reprend la teinte de l'horaire");
+      toast.success(
+        carteJour.retirees > 0
+          ? `Cette case reprend la teinte de l'horaire · ${carteJour.retirees} couleur saisie à la main sur un autre jour écartée${carteJour.retirees > 1 ? "s" : ""}`
+          : "Cette case reprend la teinte de l'horaire"
+      );
     } catch (error) {
       console.error(error);
       toast.error(`${causeRejetBase(error)} — la case reste donc coloriée ici seulement`);
