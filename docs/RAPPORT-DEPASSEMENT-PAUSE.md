@@ -321,9 +321,16 @@ utile ».
 ### 11.1 Ce que j'ai trouvé en cherchant autre chose
 
 Je vérifiais les droits sur les fonctions de pause pour préparer la
-révocation d'`encheck_pauses_en_cours`. En listant `proacl`, j'ai vu que
-cinq fonctions **d'écriture** étaient appelables par `anon`. J'ai supposé
-un problème de droits. C'était pire : le problème était dans le code.
+révocation d'`encheck_pauses_en_cours`. J'ai supposé un problème de droits.
+C'était pire : le problème était dans le code.
+
+**Erratum du même jour.** J'ai d'abord écrit ici que ces cinq fonctions
+étaient « appelables par `anon` ». C'était vrai pour **une seule**
+(`encheck_pauses_annuler_decision`) et faux pour les quatre autres, dont
+l'ACL exclut `anon`. J'avais conclu d'une ligne de tableau (`anon_peut_executer`)
+sans lire l'ACL complète. La conclusion — « la garde échoue ouverte » —
+restait juste, mais l'exposé était faux, et il a été relevé par le lot
+App Pointage avant que je le corrige. C'est leur reproche, et il porte.
 
 La garde, présente à l'identique dans cinq fonctions :
 
@@ -375,6 +382,19 @@ Deux tests explicites au lieu d'un test à trois états. On exige l'identité,
 **puis** on vérifie les droits — l'ordre est ce qui empêche le retour du
 défaut.
 
+**Ce qui était réellement atteignable par `anon`, ACL en main :**
+
+| Fonction | `anon` dans l'ACL | Comportement mesuré |
+|---|---|---|
+| `encheck_pauses_annuler_decision` | **oui** | refusait déjà (`42501` possible) — **atteignable** |
+| `encheck_pauses_statuer` | non | `42501 permission denied for function` |
+| `encheck_pauses_supprimer` | non | `42501 permission denied for function` |
+| `encheck_pauses_restaurer` | non | `42501 permission denied for function` |
+| `encheck_pause_creer` | oui | portait la garde fautive **et** n'avait de toute façon pas besoin de session pour écrire |
+
+La correction reste justifiée : la garde d'`annuler_decision` était la seule
+barrière, et `pause_creer` la portait sans être protégée par l'ACL.
+
 **Trois pièges rencontrés en écrivant la migration :**
 
 1. `CREATE OR REPLACE` **refuse** de retirer une valeur par défaut (`42P13`).
@@ -398,6 +418,7 @@ défaut.
 | `anon` → `encheck_pauses_supprimer` | passait | **42501** |
 | `anon` → `encheck_pauses_annuler_decision` | `1` | **42501** |
 | `anon` → `encheck_pauses_restaurer` | passait | **42501** |
+| `anon` → `encheck_pause_fermer` | passait | **passait encore** — non gérée par ce lot |
 | Admin connecté → `encheck_pause_creer` | `ok: true` | **`ok: true`** (inchangé) |
 
 L'admin connecté a été testé avec un JWT simulé (`set_config('request.jwt.claims')`)
@@ -469,3 +490,38 @@ exactement ce que le bandeau a corrigé — sauf que le bandeau est une
 
 Elle attend l'APK de l'app Pointage. Tant qu'elle n'est pas révoquée,
 l'identité d'un salarié reste lisible avec la seule clé publique.
+
+### 11.8 Ce qui reste atteignable par `anon`, mesuré le 23/11 après correction
+
+Rien ne le dit mieux qu'un tableau — et cette fois l'ACL a été lue
+ligne par ligne, puis chaque appel **exécuté** sous `SET LOCAL ROLE anon`
+dans sa propre transaction :
+
+| Fonction | `anon` peut exécuter | Effet réel |
+|---|---|---|
+| `encheck_pause_fermer` | **oui** | ferme la pause ouverte d'un employé, **sans session** |
+| `encheck_pause_ouvrir` | **oui** | ouvre une pause, **sans session** |
+| `encheck_pauses_en_cours` | **oui** | **lit prénom, nom complet, matricule** |
+| `encheck_pauses_mes_pauses` | **oui** | ne rend rien sans jeton (`42501` côté employé) |
+| les quatre fonctions d'écriture corrigées | **non** | `42501 permission denied for function` |
+
+La fuite noms + matricules est donc **toujours ouverte**, comme le dit le
+lot App Pointage. Trois revokes l'arrêteraient. Ils attendent leur
+déploiement : c'est un point d'arrêt assumé, pas un oubli.
+
+### 11.9 La règle « une pause écartée n'existe plus pour l'employé »
+
+Cette règle est arrivée sans être décidée. En écrivant la vue web, j'ai
+écrit ce filtre de moi-même — puis l'ai présenté comme une règle, ce qui
+lui a donné l'apparence d'une décision.
+
+Elle n'est pas anodine : **3 pauses en base portent aujourd'hui le statut
+`ecartee`** (2, 0 et 1 minute). Si l'écartement n'est que de l'affichage,
+la vue employé crée un **écart de périmètre** — l'employé ne voit pas une
+pause que l'administration a écartée pour lui. Si c'est une vraie décision
+d'administration, la règle est juste.
+
+Je ne tranche pas : la règle a été alignée dans l'app Pointage (`5a1f08b`,
+3 fichiers) et le web, et **décider maintenant changerait la paie sans
+regarder les lignes**. C'est à vérifier sur ces 3 pauses avant d'être
+affirmé comme règle. À soumettre avec le reste.
