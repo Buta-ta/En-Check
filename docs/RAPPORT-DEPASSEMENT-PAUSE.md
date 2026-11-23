@@ -521,10 +521,22 @@ la vue employé crée un **écart de périmètre** — l'employé ne voit pas un
 pause que l'administration a écartée pour lui. Si c'est une vraie décision
 d'administration, la règle est juste.
 
-Je ne tranche pas : la règle a été alignée dans l'app Pointage (`5a1f08b`,
-3 fichiers) et le web, et **décider maintenant changerait la paie sans
-regarder les lignes**. C'est à vérifier sur ces 3 pauses avant d'être
-affirmé comme règle. À soumettre avec le reste.
+**Vérifié le 23/11, les trois lignes en main.** La règle est juste :
+
+| Pause | Employé | Durée | Qui a écarté, et quand |
+|---|---|---|---|
+| `e8efabcb…` | ya Ya (ENN-0006) | 1 min | super admin, journal #22 |
+| `ddfe1926…` | ya Ya (ENN-0006) | 0 min | idem |
+| `09a61cce…` | Hippo BIYOKILA | 2 min | idem, motif « annulé depuis le journal des décisions » |
+
+Trois pauses réelles, **écartées par un super administrateur** (auteur
+`39dfaca2…`, `butacode08@gmail.com`), toutes de 0 à 2 minutes. Ce n'est pas
+un filtrage d'affichage décidé par moi : c'est une décision d'administration,
+tracée. **Les montrer à l'employé reviendrait à lui montrer une décision
+qu'on a prise sur son dos** — exactement ce que la règle du 26/11 évite.
+
+La règle est donc acquise, et l'alignement de l'app (`5a1f08b`) est fondé.
+Je la retire de la liste des points à trancher.
 
 ---
 
