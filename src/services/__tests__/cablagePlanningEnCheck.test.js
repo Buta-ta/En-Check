@@ -112,10 +112,15 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // résolution et la fenêtre, qui doit montrer ce qui est en place.
     expect(planningSrc.match(/empOverrides\[COULEUR_HORAIRE_CLE\]\?\.color/g)).toHaveLength(1)
     // Un seul calcul de la teinte, une seule portée à la fois.
+    // …et depuis le 23/11, cette valeur passe par le contrôle de format avant
+    // de servir : une teinte de brouillon local qui n'est pas un hexadécimal ne
+    // peut plus atteindre la base. Le contrat suit l'écriture, pas les mots
+    // d'avant — il vérifie la même chose (un seul calcul) et une de plus.
     const calcul = planningSrc.match(
-      /const couleur = employeeScheduleForm\.custom_color \|\| TEINTE_PAR_DEFAUT;/g
+      /const couleur = teinteDemandee\.teinte \|\| TEINTE_PAR_DEFAUT;/g
     )
     expect(calcul).toHaveLength(1)
+    expect(planningSrc).toContain('normaliserTeinte(employeeScheduleForm.custom_color)')
     // la fenêtre relit la teinte EN PLACE avant de l'afficher — celle de la case
     // visée d'abord — sinon enregistrer une seconde fois effaçait ce que la
     // première avait peint ;
@@ -125,8 +130,14 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // la teinte de départ vient de la palette, plus d'un hexa recopié trois fois :
     // la fenêtre, le payload, le champ libre, et le retour en arrière d'une case.
     expect(planningSrc).toContain('const TEINTE_PAR_DEFAUT = ENCHECK_COLOR_PALETTE[0].value')
+    // quatre endroits relisent la palette au lieu de recopier un hexa. Depuis le
+    // 23/11, l'un d'eux s'écrit sur la valeur normalisée (`teinteDemandee`),
+    // parce que la fenêtre replie d'abord ce qu'elle tient sur la première
+    // teinte de la palette — le compte est le même, l'orthographe a suivi.
     expect(
-      planningSrc.match(/custom_color: TEINTE_PAR_DEFAUT|custom_color \|\| TEINTE_PAR_DEFAUT/g)
+      planningSrc.match(
+        /custom_color: TEINTE_PAR_DEFAUT|custom_color \|\| TEINTE_PAR_DEFAUT|teinteDemandee\.teinte \|\| TEINTE_PAR_DEFAUT/g
+      )
     ).toHaveLength(4)
     // La case ciblée garde le nom de son modèle : la surcharge locale ne le portait pas.
     expect(planningSrc).toContain('name: cellEditContext.shiftName || "Horaire personnalisé"')
@@ -209,8 +220,15 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(ecriture).toContain('[dateCible]: couleur,')
     expect(ecriture).toContain(': { custom_color: couleur }),')
     // la carte se FUSIONNE avec ce qui est déjà en base : peindre un mardi ne
-    // doit pas effacer le vendredi d'à côté
-    expect(ecriture).toContain('...(ligneExistante?.custom_day_colors || {}),')
+    // doit pas effacer le vendredi d'à côté. L'extension passe par
+    // `carteDeTeintes`, qui refuse de fusionner une valeur qui n'est pas un
+    // objet — `{..."abc"}` fabrique des clés "0", "1", "2" et le CHECK de la
+    // colonne répond 400. Depuis le 23/11, la garde va plus loin : une teinte
+    // mal formée d'un JOUR QU'ON NE TOUCHE PAS est retirée de la carte, sinon
+    // elle condamnerait l'enregistrement du jour en cours (contrat 40).
+    expect(ecriture).toContain('...carteJour.carte,')
+    expect(ecriture).toContain('const carteJour = carteDeTeintes(ligneExistante);')
+    expect(ecriture).toContain('carteJour.retirees')
     // et le brouillon local non plus ne remplace plus la ligne entière
     expect(ecriture).toContain(
       'const cetEmploye = { ...(prev[employeeScheduleForm.employee_id] || {}) };'
@@ -1506,5 +1524,137 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     expect(reglures).not.toMatch(/blur\(/)
     expect(reglures).not.toMatch(/border-radius:\s*[^;]*\d+px/)
     expect(reglures).not.toContain('!important')
+  })
+
+  it('40. refuse une valeur que la base refuserait, et nomme son refus', () => {
+    // « j'essaie de modifier la couleur d'un modèle appliqué à une case mais
+    // j'ai eu erreur : Failed to load resource: … 400 ». Un 400 de PostgREST
+    // dans une console ne dit rien, et la page répondait « Erreur sauvegarde ».
+    // Le contrat est donc double, et dans cet ordre : la page ne DOIT PLUS
+    // envoyer ce que la base rejette (format de teinte, format d'heure, carte
+    // des jours qui n'est pas un objet), et elle DOIT traduire tout refus en une
+    // phrase qui nomme la cause. Le deuxième seul aurait laissé le fondateur
+    // avec un diagnostic ; le premier seul lui aurait opposé un refus muet.
+    const service = lire('src/services/ecritureHorairesEmploye.js')
+    for (const sortie of [
+      'export function normaliserTeinte',
+      'export function normaliserHeure',
+      'export function carteDeTeintes',
+      'export function causeRejetBase',
+    ]) {
+      expect(service).toContain(sortie)
+    }
+    // le service ne connaît ni React ni supabase-js : c'est ce qui le rend
+    // testable sans navigateur, et ce qui empêche la peinture de s'y glisser
+    expect(service).not.toMatch(/^import /m)
+    expect(service).not.toContain('useState')
+    expect(service).not.toContain('await supabase')
+    // et il ne peint pas non plus : aucune valeur de couleur en dur, la charte
+    // (D-001) compte aussi les fichiers de service
+    expect(service.match(/#[0-9a-fA-F]{6}\b/g)).toBeNull()
+
+    const entete = planningSrc.indexOf('import {')
+    const imports = planningSrc.slice(0, planningSrc.indexOf('const COULEUR_HORAIRE_CLE'))
+    expect(imports).toContain('from "../services/ecritureHorairesEmploye"')
+    expect(imports).toContain('causeRejetBase')
+    expect(entete).toBeGreaterThan(-1)
+
+    // LA FENÊTRE DE LA CASE, qui est le geste signalé
+    const ecriture = planningSrc.slice(
+      planningSrc.indexOf('const handleSaveEmployeeSchedule = async () => {'),
+      planningSrc.indexOf('Planning collaborateur enregistré')
+    )
+    expect(ecriture.length).toBeGreaterThan(800)
+    // une teinte illisible ne part plus : elle est repliée ET annoncée
+    expect(ecriture).toContain('normaliserTeinte(employeeScheduleForm.custom_color)')
+    expect(ecriture).toContain('teinteDemandee.message')
+    expect(ecriture).toContain('teinteDemandee.teinte || TEINTE_PAR_DEFAUT')
+    // plus de concaténation d'heure : `"" + ":00"` fabriquait `":00"`, que la
+    // colonne `time` rejette en 22007 — c'est-à-dire en 400
+    expect(ecriture).not.toContain('+ ":00"')
+    expect(ecriture).toContain('normaliserHeure(employeeScheduleForm.custom_start_time')
+    expect(ecriture).toContain('normaliserHeure(employeeScheduleForm.custom_break_end')
+    // une heure obligatoire laissée vide bloque l'écriture et se nomme ; un
+    // champ illisible se replie sans bloquer — le fondateur doit pouvoir réparer
+    // son propre brouillon
+    expect(ecriture).toContain("const heureBloquante = reglagesHeures.find((h) => h.message && h.heure === null)")
+    expect(ecriture).toContain('toast.error(heureBloquante.message)')
+    expect(ecriture).toContain('toast.message(h.message)')
+    // la carte des jours n'est plus étendue à l'aveugle
+    expect(ecriture).toContain('...carteJour.carte,')
+    expect(ecriture).toContain('const carteJour = carteDeTeintes(ligneExistante);')
+    expect(ecriture).not.toContain('...(ligneExistante?.custom_day_colors || {})')
+    // le DÉPÔT d'un modèle écrit dans les MÊMES colonnes : il est contrôlé de la
+    // même façon, sinon un modèle plus vieux que la contrainte ferait échouer le
+    // dépôt — et le 400 retomberait sur la case, pas sur le modèle
+    const depot = planningSrc.slice(
+      planningSrc.indexOf('const persistEmployeeShiftToSupabase = async ('),
+      planningSrc.indexOf('.upsert(payload, { onConflict: "employee_id" });')
+    )
+    expect(depot.length).toBeGreaterThan(400)
+    expect(depot).toContain('const heureDeposee = (valeur, defaut, champ) =>')
+    expect(depot).toContain('normaliserHeure(typeof valeur === "string" ? valeur.slice(0, 8) : null')
+    expect(depot).not.toContain('+ ":00";')
+    // et le refus de la base se lit à l'écran
+    const catchSave = planningSrc.slice(
+      planningSrc.indexOf('Planning collaborateur enregistré'),
+      planningSrc.indexOf('const openReviewRequestModal')
+    )
+    expect(catchSave).toContain('toast.error(causeRejetBase(error))')
+    expect(catchSave).not.toContain('"Erreur sauvegarde"')
+    // la valeur écrite en base est LA MÊME que celle qui peint la carte : un
+    // repli qui ne repeindrait pas l'écran montrerait une teinte fantôme
+    expect(planningSrc).toContain('color: couleur,')
+
+    // LE DÉPÔT D'UN MODÈLE, qui avalait son erreur : la brique restait posée à
+    // l'écran sans jamais atteindre la base, et le seul témoin était un
+    // `console.warn`. Une écriture ratée qui ne se dit pas est une écriture
+    // qui n'existe pas.
+    const synchro = planningSrc.slice(
+      planningSrc.indexOf('const persistEmployeeShiftToSupabase = async ('),
+      planningSrc.indexOf('const handleSaveTeam') > 0
+        ? planningSrc.indexOf('if (removeDay && !shiftData && existingES')
+        : planningSrc.indexOf('const persistEmployeeShiftToSupabase = async (') + 6000
+    )
+    const corps = planningSrc.slice(
+      planningSrc.indexOf('.upsert(payload, { onConflict: "employee_id" });', 1600 * 0),
+      planningSrc.indexOf('// ═══ GESTIONNAIRES DRAG & DROP EN-CHECK ═══')
+    )
+    expect(corps).toContain('if (error) {')
+    expect(corps).toContain('pas enregistré : ${causeRejetBase(error)}')
+    expect(corps).toContain('return;')
+    expect(corps).not.toContain('if (!error) {')
+    expect(synchro.length).toBeLessThan(4000) // l'ancre reste proche, tranche valide
+
+    // les deux autres écritures de la même table disent la cause, elles aussi :
+    // retirer une teinte et approuver une demande
+    const retrait = planningSrc.slice(
+      planningSrc.indexOf('const handleRetirerTeinteDeLaCase = async () => {'),
+      planningSrc.indexOf('const jourViseParLaCase =')
+    )
+    expect(retrait).toContain('causeRejetBase(error)')
+    expect(retrait).not.toContain('"Erreur lors du retrait de la couleur"')
+    const revue = planningSrc.slice(
+      planningSrc.indexOf('const handleReviewRequest = async () => {'),
+      planningSrc.indexOf('═══ CALENDRIER MENSUEL')
+    )
+    expect(revue).toContain('toast.error(causeRejetBase(error))')
+
+    // la cause est une LISTE BLANCHE : aucun message brut du fournisseur n'est
+    // recopié tel quel à l'écran (même règle que pour le MFA le 26/10)
+    const traducteur = service.slice(service.indexOf('export function causeRejetBase'))
+    expect(service).toContain('const CAUSES = {')
+    // la liste est close : un code qui n'y figure pas ne devient pas un message
+    // inventé, il devient un code cité
+    expect(traducteur).toContain('if (code && CAUSES[code])')
+    expect(traducteur).not.toContain('return error.message')
+    expect(traducteur).not.toContain('String(error)')
+    // une colonne absente se nomme, migration à l'appui
+    expect(service).toContain('20261122000002_teinte_horaire_collaborateur.sql')
+    expect(service).toContain('20261122000004_teinte_case_par_case.sql')
+    // et le contrôle qui a servi à écarter les fausses causes est rejouable
+    expect(lire('supabase/outils-sql/20261123_diagnostic_teinte_horaire_refusee.sql')).toContain(
+      'Lecture seule'
+    )
   })
 })
