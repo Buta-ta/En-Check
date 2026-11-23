@@ -102,6 +102,24 @@ export function accesAutorise(admin, entrepriseId, entreprises = []) {
   return entreprisesVisibles(admin, entreprises).some((e) => e.id === entrepriseId)
 }
 
+/**
+ * Où mène le bouton « Retour » de la page « Mon entreprise ».
+ *
+ * On ne devine pas : on regarde ce que le routeur sait de l'historique.
+ * `history.state.idx` est l'index de l'entrée courante dans la session ; à 0,
+ * il n'y a rien derrière et `navigate(-1)` sortirait de l'application (ou ne
+ * ferait rien du tout, selon le navigateur) — le pire des deux mondes pour un
+ * bouton qu'on vient de dessiner.
+ *
+ * ⚠️ Le repli n'est pas le menu : c'est le tableau de bord, la page d'accueil
+ *    de tout administrateur connecté. Un retour doit toujours aboutir.
+ */
+export const ACCUEIL_ADMIN = '/dashboard'
+
+export function cibleRetour(idx) {
+  return Number(idx) > 0 ? 'precedent' : ACCUEIL_ADMIN
+}
+
 /** « 45 » → « 45 h » ; null → « non configuré » (jamais 0, jamais un défaut). */
 export function formaterHeures(valeur) {
   if (valeur === null || valeur === undefined || valeur === '') return 'non configuré'
