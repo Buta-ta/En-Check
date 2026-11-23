@@ -465,6 +465,9 @@ export default function Planning() {
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [availabilityTarget, setAvailabilityTarget] = useState(null);
 
+  // LA CASE VIDE N'ORDONNE RIEN, ELLE PROPOSE (08/12) : { emp, dayItem }.
+  const [caseVide, setCaseVide] = useState(null);
+
   // ═══ GLISSER-DÉPOSER TACTILE (mobile : appui long puis toucher la case cible) ═══
   const [touchDragPayload, setTouchDragPayload] = useState(null);
   const [requestFilter, setRequestFilter] = useState("all");
@@ -817,6 +820,26 @@ export default function Planning() {
 
   const formatTime = (t) => (t ? t.slice(0, 5) : "--:--");
 
+  // Le sous-titre d'un modèle : les heures, la pause, le repos, et d'où il vient.
+  // La bande du dock et la fenêtre de la case vide l'affichent TOUS LES DEUX —
+  // écrit une fois ici, pas recopié là (deux copies, c'est l'une des deux qui
+  // ment le jour où on ajoute un type de brique).
+  const soustitreModele = (tpl) => {
+    const coeur =
+      tpl.kind === "rest"
+        ? "Repos"
+        : tpl.kind === "leave"
+          ? "Congé / Absence"
+          : tpl.kind === "break_only"
+            ? `Pause ${formatTime(tpl.break_start)}-${formatTime(tpl.break_end)}`
+            : `${formatTime(tpl.start_time)} - ${formatTime(tpl.end_time)}`;
+    return (
+      coeur +
+      (tpl.isCustom ? " · Modèle En-Check" : "") +
+      (tpl.kind === "work_schedule" ? " · Horaires entreprise" : "")
+    );
+  };
+
   const formatWorkDays = (days) => {
     if (!days || days.length === 0) return "Aucun";
     if (days.length === 7) return "Tous les jours";
@@ -933,6 +956,22 @@ export default function Planning() {
     handleDropOnCell({ preventDefault: () => {}, altKey: false }, emp, dayItem, payload);
     clearTouchDrag();
     return true;
+  };
+
+  // Poser un modèle choisi DANS LA FENÊTRE DE LA CASE (08/12) : le même chemin
+  // que la brique glissée — un payload `{ sourceType: "dock", template }` et
+  // `handleDropOnCell`, qui tient déjà le repos, le congé, la pause autonome,
+  // la surcharge d'horaire, le compteur de modifications et le toast. Réécrire
+  // une application ici aurait fait DEUX règles de pose : celle du glisser et
+  // celle du clic, et l'une des deux aurait fini par mentir.
+  const poserModeleSurLaCase = (tpl) => {
+    if (!caseVide) return;
+    const { emp, dayItem } = caseVide;
+    setCaseVide(null);
+    handleDropOnCell({ preventDefault: () => {}, altKey: false }, emp, dayItem, {
+      sourceType: "dock",
+      template: tpl,
+    });
   };
 
   // Application du modèle sélectionné au doigt sur une case du calendrier (Mois)
@@ -3544,17 +3583,7 @@ export default function Planning() {
                     </div>
                     <span className="sk-brick-title">
                       {tpl.label}
-                      <span className="sk-brick-sub">
-                        {tpl.kind === "rest"
-                          ? "Repos"
-                          : tpl.kind === "leave"
-                          ? "Congé / Absence"
-                          : tpl.kind === "break_only"
-                          ? `Pause ${formatTime(tpl.break_start)}-${formatTime(tpl.break_end)}`
-                          : `${formatTime(tpl.start_time)} - ${formatTime(tpl.end_time)}`}
-                        {tpl.isCustom ? " · Modèle En-Check" : ""}
-                        {tpl.kind === "work_schedule" ? " · Horaires entreprise" : ""}
-                      </span>
+                      <span className="sk-brick-sub">{soustitreModele(tpl)}</span>
                     </span>
                   </div>
 
@@ -4458,8 +4487,16 @@ export default function Planning() {
                                             ) : (
                                               <div
                                                 className="sk-empty-cell"
-                                                onClick={() => openCellEditorModal(emp, dayItem)}
-                                                title="Cliquer pour ajouter un shift ou déposer un modèle ici"
+                                                // Un clic sur une case VIDE ouvrait DROIT la fenêtre
+                                                // d'ajustement : les modèles, eux, n'avaient qu'une
+                                                // porte — le dock, en haut de l'écran, à attraper
+                                                // puis à redescendre. La case ouvre maintenant les
+                                                // trois gestes (poser · créer · ajuster). Le dépôt
+                                                // armé au doigt garde la priorité : il est absorbé
+                                                // plus haut par `onClickCapture`, ce clic n'arrive
+                                                // jamais jusqu'ici quand une brique est tenue.
+                                                onClick={() => setCaseVide({ emp, dayItem })}
+                                                title="Cliquer pour poser un modèle, en créer un, ou ajuster l'horaire de cette case"
                                               >
                                                 {isDropOver ? (
                                                   "Déposer ici"
@@ -6310,7 +6347,98 @@ export default function Planning() {
         </div>
       )}
 
-      {/* ═══ MODAL DISPONIBILITÉ D'UN COLLABORATEUR (jour par jour) ═══ */}
+      {/* ═══ FENÊTRE DE LA CASE VIDE : POSER · CRÉER · AJUSTER (08/12/2026) ═══
+          « je veux qu'on puisse choisir ou créer le modèle (jour, pause, garde
+          de nuit etc) en cliquant seulement sur la case vide — donc il faut
+          laisser le choix entre ajuster le planning, choisir un modèle ou en
+          créer ». Trois sorties, une seule fenêtre, posée sur la case :
+          · la liste des briques du dock, telle qu'elle est déjà dessinée — la
+            même classe, le même sous-titre, la même teinte en bord gauche ;
+          · « Créer un modèle » ouvre la fenêtre de création qui existe déjà
+            (`showModelModal`), pas un formulaire bis ;
+          · « Ajuster le planning » ouvre la fenêtre de la case, comme avant :
+            le geste d'hier n'a pas été enlevé, il est devenu UN CHOIX.
+          Rien n'est verrouillé au passage : l'arrière-plan ferme la fenêtre, et
+          le × avec lui. */}
+      {caseVide && (
+        <div className="sk-modal-backdrop" onClick={() => setCaseVide(null)}>
+          <div className="sk-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="sk-modal-head">
+              <div>
+                <h2 className="sk-modal-title">
+                  {caseVide.emp.first_name} {caseVide.emp.last_name} —{" "}
+                  {caseVide.dayItem.labelHeader}
+                </h2>
+                <span className="sk-modal-sub">
+                  Cette case est vide : posez un modèle, créez celui qui manque,
+                  ou ajustez l&apos;horaire à la main
+                </span>
+              </div>
+              <button
+                type="button"
+                className="sk-back-btn"
+                onClick={() => setCaseVide(null)}
+                aria-label="Fermer sans rien poser"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="sk-modal-body">
+              <p className="sk-choix-legende">
+                Choisir un modèle · {dockTemplates.length} disponible
+                {dockTemplates.length > 1 ? "s" : ""} — jour, pause, garde de
+                nuit, repos
+                {touchDragPayload ? " (une brique est déjà tenue au doigt : la poser suffit)" : ""}
+              </p>
+
+              <div className="sk-choix-modeles" role="group" aria-label="Modèles à poser sur cette case">
+                {dockTemplates.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    className="sk-brick sk-brick--choix"
+                    style={{ "--brick-color": tpl.color || undefined }}
+                    title={`Poser « ${tpl.label} » sur cette case`}
+                    onClick={() => poserModeleSurLaCase(tpl)}
+                  >
+                    <span className="sk-brick-title">
+                      {tpl.label}
+                      <span className="sk-brick-sub">{soustitreModele(tpl)}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="sk-modal-foot">
+              <button
+                type="button"
+                className="sk-btn-secondary"
+                onClick={() => {
+                  const { emp, dayItem } = caseVide;
+                  setCaseVide(null);
+                  openCellEditorModal(emp, dayItem);
+                }}
+              >
+                <Edit size={13} /> Ajuster le planning
+              </button>
+              <button
+                type="button"
+                className="sk-btn-publish"
+                onClick={() => {
+                  setCaseVide(null);
+                  openNewModelModal();
+                }}
+              >
+                <Plus size={13} /> Créer un modèle
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+            {/* ═══ MODAL DISPONIBILITÉ D'UN COLLABORATEUR (jour par jour) ═══ */}
       {showAvailabilityModal && availabilityTarget && (
         <div
           className="sk-modal-backdrop"
