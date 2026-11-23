@@ -156,6 +156,37 @@ déploiement d'app.
 4. **Après la révocation**, vérifier que RLS et les politiques tiennent seuls,
    puis retirer les GRANT trop larges de la table si l'on veut aller au bout.
 
+## 5 bis. Incident du 26/11 — j'ai rouvert `anon` sur `encheck_pauses_lire`
+
+Je dois le consigner, parce que c'est la deuxième fois que je touche à cette
+fonction et la première fois que je la rouvre.
+
+En ajoutant `motif_fermeture` à `encheck_pauses_lire`, j'ai fait
+`DROP` puis `CREATE`, puis `GRANT EXECUTE ... TO authenticated, service_role`.
+**Un `GRANT` ne retire pas un droit existant.** La fonction recréée héritait
+du `GRANT` par défaut de PostgreSQL à `PUBLIC`, et `anon` l'a de nouveau
+obtenu. Mesuré juste après :
+
+```
+acl = {=X/postgres | postgres=X/postgres | anon=X/postgres | authenticated=X/postgres | ...}
+```
+
+**Ce qui m'a rattrapé** : l'App Pointage venait d'écrire « `anon` = faux sur
+cette fonction, votre règle d'or tient toujours ». J'ai vérifié au lieu de
+croire mon `GRANT`, et la mesure a contredit l'attendu.
+
+Deuxième problème dans la même migration : la garde d'origine s'appelait
+`IF v_email IS NOT NULL THEN ...`. Sans JWT — appel direct avec la clé
+publique — **elle ne s'appliquait pas du tout** et la fonction renvoyait les
+pauses de toute l'entreprise. La nouvelle version refuse d'emblée.
+
+Corrigé le même jour : `REVOKE ALL ... FROM PUBLIC, anon` avant le `GRANT`,
+garde basée sur `auth.uid()` avec repli sur l'e-mail, et un test qui échoue si
+quelqu'un réintroduit un `REVOKE` sans `anon` (vérifié par mutation).
+
+Ce que je retiens : **après tout `DROP`/`CREATE`, relire `proacl`.** Le
+`GRANT` qu'on écrit ne décrit pas l'état final, il s'ajoute à ce qui existe.
+
 ## 6. Ce que je ne peux pas garantir
 
 - Je n'ai pas vu le code de l'app Pointage ; je sais seulement qu'elle appelle
