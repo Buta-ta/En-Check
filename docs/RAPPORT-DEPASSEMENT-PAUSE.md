@@ -266,7 +266,47 @@ La révocation de `encheck_pauses_en_cours` est désormais isolée derrière un
 point d'arrêt explicite : c'est la seule qui retire une fonctionnalité
 visible, et elle dépend d'un déploiement d'app.
 
-### 10.7 Preuves
+### 10.7 Le motif de fermeture — ce qui a été vérifié, et ce qui ne peut pas l'être
+
+**La chaîne fonctionne, prouvée de bout en bout.** Sur un compte `RECETTE`,
+sous `BEGIN … ROLLBACK` :
+
+```
+encheck_session_ouvrir  → jeton
+encheck_ma_pause_ouvrir(jeton, now() - 90 min)
+encheck_ma_pause_fermer(jeton, now() - 30 min, 'sortie')
+→ en base : duree_minutes 60, motif_fermeture 'sortie'
+```
+
+**Aucune pause réelle ne porte de motif — et c'est normal.** Mesuré le 28/11 :
+27 pauses, **27 à `NULL`**. Leur dernière création date du **20/11**, trois
+jours avant l'ajout de la colonne. Les 8 pauses pointées sont toutes
+antérieures. Les deux seules lignes qui ont porté un motif étaient celles de
+mes propres tests du 22/11, annulées depuis.
+
+Conséquence : **le badge ne s'affichera pas tant qu'une vraie pause n'aura pas
+été prise après le 23/11.** Ce n'est pas un défaut d'affichage, c'est un
+manque d'écriture. Il faut une pause réelle sur tablette pour le voir.
+
+**La reconstitution du passé est impossible, pas seulement risquée.** J'ai
+cherché, pour chaque pause fermée, le pointage présent à moins de deux minutes
+de son heure de fin :
+
+| Pauses réelles fermées | Avec un pointage à la fermeture |
+|---|---|
+| 7 | **2** |
+
+Cinq pauses ont donc été fermées **sans pointage** : action d'administrateur,
+correction manuelle, import. Leur attribuer `reprise` ou `sortie` serait
+fabriquer une donnée dans un écran qui sert à trancher des paies. Elles
+restent à `NULL`, et l'écran n'affiche rien — c'est la seule réponse honnête.
+
+**Ce que ça implique pour la suite :** la valeur de ce motif se jugera dans
+quelques semaines, sur des pauses réellement prises. Aujourd'hui, le seul
+verdict possible est « la mécanique est en place », pas « le résultat est
+utile ».
+
+### 10.8 Preuves
 
 - 153 fichiers de test, **2 116 tests** ✓ ; build ✓ ; ESLint propre sur les fichiers touchés.
 - **24 tests de contrat** (`contratAppPointage.test.js` et `bandeauPauses.test.js`), dont deux vérifiés par mutation (retirer le `DROP` les fait échouer) et six sur le nouveau chemin par jeton.
