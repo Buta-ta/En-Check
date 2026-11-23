@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mode mois — A · le mois ne dit que ce qui dépasse</title>
+<!-- Les feuilles RÉELLES du dépôt, pas une copie : la peau est celle que le
+     produit sert. Aucune maquette d'image : le rendu jugé est le vrai. -->
+<link rel="stylesheet" href="../../src/styles/tokens.css">
+<link rel="stylesheet" href="../../src/styles/charte.css">
+<link rel="stylesheet" href="../../src/pages/PlanningPostIt.css">
+<!-- la proposition : ces deux fichiers sont ceux à transférer dans
+     PlanningPostIt.css quand la direction sera choisie -->
+<link rel="stylesheet" href="./planning-mois.css">
+<link rel="stylesheet" href="./planning-mois-a.css">
+<style>
+  /* Seulement de quoi poser la maquette dans son cadre de travail. Rien qui
+     appartienne au produit : le fond gris dit « maquette », le papier dit « En-Check ». */
+  body { margin: 0; padding: 24px 20px 64px; background: #6f675e; font-family: var(--charte-police); }
+  .maquette-liseret { max-width: 1180px; margin: 0 auto 16px; }
+  .maquette-liseret h1 { margin: 0 0 8px; color: #fffdf7; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .maquette-liseret p { margin: 0 0 6px; max-width: 84ch; color: #e3d8c6; font-size: 13px; line-height: 1.6; }
+  .maquette-liseret p a { color: #fffdf7; }
+  .maquette-bascule { display: flex; gap: 8px; margin-top: 12px; }
+  .maquette-bascule a {
+    padding: 8px 12px; border: 1px solid rgba(255, 253, 247, 0.45); border-radius: 6px;
+    color: #fffdf7; font-size: 12px; font-weight: 600; text-decoration: none;
+  }
+  .maquette-bascule a[aria-current] { background: rgba(255, 253, 247, 0.16); }
+  .maquette-note {
+    margin: 0 auto 14px; max-width: 1180px; padding: 10px 14px;
+    border-left: 3px solid var(--charte-encre); background: var(--charte-surface);
+    color: var(--charte-encre); font-size: 12px; line-height: 1.55;
+  }
+</style>
+</head>
+<body>
+<div class="maquette-liseret">
+  <h1>A · le mois ne dit que ce qui dépasse</h1>
+  <p>
+    Le planning d'un mois, à 22px de haut par case, ne peut pas montrer vingt-deux fois la même
+    journée. Ici la norme se tait : une case conforme porte la bande de teinte du jour, deux chiffres,
+    et une règle en pied. Ne parlent que les tampons — oubli, retard, congé, repos, férié — et le
+    pied qui compte les heures semaine par semaine.
+  </p>
+  <p>
+    Les six constats de la page actuelle sont traités dans les deux directions : <b>colonnes égales qui
+    tiennent dans le cadre</b> (le Dimanche ne se peignait plus hors du panneau), <b>en-tête et cases dans
+    la même grille</b> (« Jeudi » était au-dessus du mercredi), <b>les couleurs du produit en lavis et non
+    en aplat</b>, <b>plus de jargon</b> (« 0 modèle(s) • 0 perso »), <b>aucun ✕ de destruction dans une vue
+    d'ensemble</b>, <b>un mois qui tient à l'écran</b> (92 px par case au lieu de 112, et 6 encoches
+    vides au lieu de 6 fausses cases).
+  </p>
+  <div class="maquette-bascule">
+    <a href="./planning-mois-A.html" aria-current="true">A · le mois ne dit que ce qui dépasse</a>
+    <a href="./planning-mois-B.html">B · le mois dit qui est là</a>
+  </div>
+</div>
+
+<div class="sk-plan-page sk-plan-page--postit" data-theme="light">
+  <div class="sk-plan-encadrement">
+    <div class="maquette-note">
+      Novembre 2026 — équipe « Accueil + Atelier », cinq collaborateurs. Les noms, les heures et les
+      effectifs sont des exemples ; les couleurs, les contours, les ombres et les espacements sont
+      exactement ceux du produit, parce que ce sont ses feuilles qui sont chargées.
+    </div>
+
+    <div class="sk-matrix-card" style="padding: 20px">
+      <div class="sk-mois-deroule">
+        <div class="sk-mois sk-mois--exceptions">
+          <div class="sk-mois-jour">Lundi</div>
+          <div class="sk-mois-jour">Mardi</div>
+          <div class="sk-mois-jour">Mercredi</div>
+          <div class="sk-mois-jour">Jeudi</div>
+          <div class="sk-mois-jour">Vendredi</div>
+          <div class="sk-mois-jour" data-fin-semaine>Samedi</div>
+          <div class="sk-mois-jour" data-fin-semaine>Dimanche</div>
+
+          <!-- semaine 44 : le mois commence un dimanche -->
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-case" data-fin-semaine style="--teinte-du-jour: #475569">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">1</span><span class="sk-mois-mot">Toussaint</span></div>
+            <div class="sk-mois-tampons"><span class="sk-mois-tampon" data-espece="repos"><span>Repos · férié</span></span></div>
+          </div>
+
+          <!-- semaine 45 -->
+          <div class="sk-mois-case" data-norme="total" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">2</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>32 h</b></div>
+            <span class="sk-mois-ouvrir">Ouvrir la journée</span>
+          </div>
+          <div class="sk-mois-case" data-norme="total" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">3</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>32 h</b></div>
+          </div>
+          <div class="sk-mois-case" data-norme="partiel" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">4</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>24 h 30</b></div>
+            <div class="sk-mois-tampons">
+              <span class="sk-mois-tampon" data-espece="oubli"><span>Oubli · Mariam S.</span></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-norme="total" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">5</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>32 h</b></div>
+          </div>
+          <div class="sk-mois-case" data-norme="partiel" style="--teinte-du-jour: #0E7490">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">6</span></div>
+            <div class="sk-mois-chiffre"><b>5</b> postes · <b>39 h</b></div>
+            <div class="sk-mois-tampons">
+              <span class="sk-mois-tampon" data-espece="retard"><span>Retard 08:38</span></span>
+              <span class="sk-mois-tampon" data-espece="heure"><span>+1 h 43</span></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine style="--teinte-du-jour: #B56235">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">7</span></div>
+            <div class="sk-mois-chiffre"><b>1</b> poste · <b>6 h 20</b></div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine>
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">8</span></div>
+            <div class="sk-mois-vide-mot">Aucun poste</div>
+          </div>
+
+          <!-- semaine 46 -->
+          <div class="sk-mois-case" data-norme="total" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">9</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>32 h</b></div>
+          </div>
+          <div class="sk-mois-case" data-norme="partiel" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">10</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>28 h 45</b></div>
+            <div class="sk-mois-tampons">
+              <span class="sk-mois-tampon" data-espece="absent"><span>Non pointé · Kossi M.</span></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #475569">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">11</span><span class="sk-mois-mot">Férié</span></div>
+            <div class="sk-mois-chiffre"><b>0</b> poste · <b>0 h</b></div>
+            <div class="sk-mois-tampons">
+              <span class="sk-mois-tampon" data-espece="ferie"><span>Armistice 1918</span></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-norme="total" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">12</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>32 h</b></div>
+          </div>
+          <div class="sk-mois-case" data-norme="partiel" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">13</span></div>
+            <div class="sk-mois-chiffre"><b>3</b> postes · <b>20 h 30</b></div>
+            <div class="sk-mois-tampons">
+              <span class="sk-mois-tampon" data-espece="conge"><span>Congé · Paul A.</span></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine style="--teinte-du-jour: #B56235">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">14</span></div>
+            <div class="sk-mois-chiffre"><b>1</b> poste · <b>6 h 20</b></div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine>
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">15</span></div>
+            <div class="sk-mois-vide-mot">Aucun poste</div>
+          </div>
+
+          <!-- semaine 47 -->
+          <div class="sk-mois-case" data-norme="total" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">16</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>32 h</b></div>
+          </div>
+          <div class="sk-mois-case" data-norme="partiel" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">17</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>24 h</b></div>
+            <div class="sk-mois-tampons">
+              <span class="sk-mois-tampon" data-espece="conge"><span>Congé · Awa D.</span></span>
+              <span class="sk-mois-tampon" data-espece="oubli"><span>Sortie manquante</span></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-norme="total" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">18</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>32 h</b></div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #10B981">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">19</span></div>
+            <div class="sk-mois-chiffre"><b>1</b> poste · <b>8 h</b></div>
+            <div class="sk-mois-tampons">
+              <span class="sk-mois-tampon" data-espece="repos"><span>Repos hebdo · équipe</span></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-norme="total" data-fin-semaine style="--teinte-du-jour: #0E7490">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">20</span></div>
+            <div class="sk-mois-chiffre"><b>2</b> postes · <b>12 h 40</b></div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine>
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">21</span></div>
+            <div class="sk-mois-vide-mot">Aucun poste</div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine>
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">22</span></div>
+            <div class="sk-mois-vide-mot">Aucun poste</div>
+          </div>
+
+          <!-- semaine 48 : aujourd'hui -->
+          <div class="sk-mois-case" data-aujourdhui data-norme="partiel" data-survol style="--teinte-du-jour: #10B981">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">23</span><span class="sk-mois-mot">Aujourd'hui</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>31 h 30</b></div>
+            <div class="sk-mois-tampons">
+              <span class="sk-mois-tampon" data-espece="oubli"><span>Écart -00:29 · Franck H.</span></span>
+            </div>
+            <span class="sk-mois-ouvrir">Ouvrir la journée</span>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">24</span></div>
+            <div class="sk-mois-chiffre"><b>5</b> postes · <b>40 h</b></div>
+            <div class="sk-mois-tampons">
+              <span class="sk-mois-tampon" data-espece="retard"><span>Retard 09:12</span></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-norme="total" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">25</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>32 h</b></div>
+          </div>
+          <div class="sk-mois-case" data-norme="total" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">26</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>32 h</b></div>
+          </div>
+          <div class="sk-mois-case" data-norme="partiel" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">27</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>30 h 15</b></div>
+            <div class="sk-mois-tampons">
+              <span class="sk-mois-tampon" data-espece="absent"><span>Absent · Kossi M.</span></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine style="--teinte-du-jour: #B56235">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">28</span></div>
+            <div class="sk-mois-chiffre"><b>1</b> poste · <b>6 h 20</b></div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine>
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">29</span></div>
+            <div class="sk-mois-vide-mot">Aucun poste</div>
+          </div>
+
+          <!-- semaine 49 : un seul jour, et le mois ne fait pas semblant -->
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">30</span></div>
+            <div class="sk-mois-chiffre"><b>4</b> postes · <b>32 h</b></div>
+          </div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+        </div>
+      </div>
+
+      <!-- le pied, dans les termes de celui de la semaine : une ligne par semaine,
+           les heures en colonnes serrées, et le mot à côté du chiffre -->
+      <div class="sk-mois-pied">
+        <div class="sk-mois-ligne-pied">
+          <span><em>S44</em> · lun 26 oct → dim 1 nov</span>
+          <span>1 jour porté · <strong>0 h</strong></span>
+        </div>
+        <div class="sk-mois-ligne-pied">
+          <span><em>S45</em> · lun 2 → dim 8 nov</span>
+          <span>19 postes · <strong>165 h 50</strong></span>
+        </div>
+        <div class="sk-mois-ligne-pied">
+          <span><em>S46</em> · lun 9 → dim 15 nov</span>
+          <span>13 postes · <strong>113 h 15</strong> · 1 férié</span>
+        </div>
+        <div class="sk-mois-ligne-pied">
+          <span><em>S47</em> · lun 16 → dim 22 nov</span>
+          <span>15 postes · <strong>133 h 20</strong></span>
+        </div>
+        <div class="sk-mois-ligne-pied">
+          <span><em>S48</em> · lun 23 → dim 29 nov</span>
+          <span>22 postes · <strong>184 h 35</strong> · 3 à vérifier</span>
+        </div>
+        <div class="sk-mois-ligne-pied">
+          <span><em>S49</em> · lun 30 nov</span>
+          <span>4 postes · <strong>32 h</strong></span>
+        </div>
+      </div>
+
+      <div class="sk-mois-legende">
+        <span><i style="background: #7C3AED"></i>poste planifié, teinte de l'équipe</span>
+        <span><i style="background: #8A5A14"></i>oubli · retard — à vérifier</span>
+        <span><i style="background: #9B2C2C"></i>non pointé après la fin du poste</span>
+        <span><i style="background: #475569"></i>repos · férié</span>
+        <span>La règle sous les chiffres : la journée couvre tout l'effectif</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

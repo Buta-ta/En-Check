@@ -1,0 +1,93 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   MAQUETTE B — « LE MOIS DIT QUI EST LÀ »
+   La case répond à la question qu'on se pose vraiment devant un mois : qui,
+   ce jour-là, et combien d'heures. Un rang par personne, le nom LISIBLE (pas
+   deux initiales sous un aplat), les heures en monnaie de compte à droite,
+   l'anomalie collée au nom qui la porte.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* le rang d'une personne : un repère de teinte, le nom, les heures. Le point
+   est CARRE et dans le trait — c'est la griffe de la maison, pas une pastille
+   flottante ; aucun rayon ici, donc rien à payer à l'audit des rayons. */
+.sk-plan-page--postit .sk-mois--effectif .sk-mois-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--charte-espace-1);
+}
+
+.sk-plan-page--postit .sk-mois-rang {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  line-height: 1.25;
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-mois-rang i {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--charte-encre);
+  background-color: var(--teinte-du-jour);
+}
+
+/* le nom ne se fait plus tronquer à 78 px : il prend la place disponible et
+   ne pousse plus la colonne — le rang est une grille, pas une ligne de texte */
+.sk-plan-page--postit .sk-mois-rang span {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-plan-page--postit .sk-mois-rang b {
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* l'anomalie se lit SUR le rang qu'elle concerne, en un mot, lavée et non
+   aplatie : plus de puce de 14 % sous un blanc, plus de nom de modèle tronqué */
+.sk-plan-page--postit .sk-mois-rang em {
+  grid-column: 2 / -1;
+  color: color-mix(in srgb, var(--charte-alerte) 82%, var(--charte-encre));
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* au-delà de quatre, on le DIT et on peut l'ouvrir : le "+3" n'est pas un
+   compteur technique, c'est une porte ; il hérite du double trait de feutre */
+.sk-plan-page--postit .sk-mois-plus {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding-bottom: 2px;
+  border: 0;
+  background: none;
+  color: var(--charte-texte);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.sk-plan-page--postit .sk-mois-plus:hover {
+  color: var(--charte-encre);
+}
+
+/* dans B, la norme est dite mais ne crie pas : le chiffre du haut disparaît
+   au profit des rangs, et ne revient que sur les jours vides */
+.sk-plan-page--postit .sk-mois--effectif .sk-mois-chiffre {
+  color: color-mix(in srgb, var(--charte-douce) 84%, var(--charte-surface));
+}

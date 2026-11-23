@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mode mois — B · le mois dit qui est là</title>
+<!-- Les feuilles RÉELLES du dépôt, pas une copie : la peau est celle que le
+     produit sert. Aucune maquette d'image : le rendu jugé est le vrai. -->
+<link rel="stylesheet" href="../../src/styles/tokens.css">
+<link rel="stylesheet" href="../../src/styles/charte.css">
+<link rel="stylesheet" href="../../src/pages/PlanningPostIt.css">
+<!-- la proposition : ces deux fichiers sont ceux à transférer dans
+     PlanningPostIt.css quand la direction sera choisie -->
+<link rel="stylesheet" href="./planning-mois.css">
+<link rel="stylesheet" href="./planning-mois-b.css">
+<style>
+  /* Seulement de quoi poser la maquette dans son cadre de travail. */
+  body { margin: 0; padding: 24px 20px 64px; background: #6f675e; font-family: var(--charte-police); }
+  .maquette-liseret { max-width: 1180px; margin: 0 auto 16px; }
+  .maquette-liseret h1 { margin: 0 0 8px; color: #fffdf7; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .maquette-liseret p { margin: 0 0 6px; max-width: 84ch; color: #e3d8c6; font-size: 13px; line-height: 1.6; }
+  .maquette-bascule { display: flex; gap: 8px; margin-top: 12px; }
+  .maquette-bascule a {
+    padding: 8px 12px; border: 1px solid rgba(255, 253, 247, 0.45); border-radius: 6px;
+    color: #fffdf7; font-size: 12px; font-weight: 600; text-decoration: none;
+  }
+  .maquette-bascule a[aria-current] { background: rgba(255, 253, 247, 0.16); }
+  .maquette-note {
+    margin: 0 auto 14px; max-width: 1180px; padding: 10px 14px;
+    border-left: 3px solid var(--charte-encre); background: var(--charte-surface);
+    color: var(--charte-encre); font-size: 12px; line-height: 1.55;
+  }
+</style>
+</head>
+<body>
+<div class="maquette-liseret">
+  <h1>B · le mois dit qui est là</h1>
+  <p>
+    Même cadre, même géométrie réparée, autre contrat de lecture : chaque case ouvre un rang par
+    collaborateur. Le nom est lisible (plus de « AD » sous un aplat, plus de « Horaire per… » coupé à
+    78 pixels), les heures sont à droite en colonnes serrées, l'anomalie est collée au nom qui la porte,
+    et au-delà de quatre personnes le « +3 » est une porte, pas un compteur.
+  </p>
+  <p>
+    C'est la direction qui se rapproche le plus de la grille de la semaine que vous avez validée : mêmes
+    matières, mêmes jetons, mais posées à la densité d'un mois. Les jours sans poste le disent en deux
+    mots, et les six cases hors du mois ne sont plus des cases — ce ne sont que des encoches.
+  </p>
+  <div class="maquette-bascule">
+    <a href="./planning-mois-A.html">A · le mois ne dit que ce qui dépasse</a>
+    <a href="./planning-mois-B.html" aria-current="true">B · le mois dit qui est là</a>
+  </div>
+</div>
+
+<div class="sk-plan-page sk-plan-page--postit" data-theme="light">
+  <div class="sk-plan-encadrement">
+    <div class="maquette-note">
+      Novembre 2026 — équipe « Accueil + Atelier », cinq collaborateurs. Les noms, les heures et les
+      effectifs sont des exemples ; les couleurs, les contours, les ombres et les espacements sont
+      exactement ceux du produit, parce que ce sont ses feuilles qui sont chargées.
+    </div>
+
+    <div class="sk-matrix-card" style="padding: 20px">
+      <div class="sk-mois-deroule">
+        <div class="sk-mois sk-mois--effectif">
+          <div class="sk-mois-jour">Lundi</div>
+          <div class="sk-mois-jour">Mardi</div>
+          <div class="sk-mois-jour">Mercredi</div>
+          <div class="sk-mois-jour">Jeudi</div>
+          <div class="sk-mois-jour">Vendredi</div>
+          <div class="sk-mois-jour" data-fin-semaine>Samedi</div>
+          <div class="sk-mois-jour" data-fin-semaine>Dimanche</div>
+
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-case" data-fin-semaine style="--teinte-du-jour: #475569">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">1</span><span class="sk-mois-mot">Toussaint</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Repos de l'équipe</span><b>0 h</b></span>
+            </div>
+          </div>
+
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">2</span><span class="sk-mois-chiffre"><b>4</b> · 32 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+            <span class="sk-mois-ouvrir">Ouvrir la journée</span>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">3</span><span class="sk-mois-chiffre"><b>4</b> · 32 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">4</span><span class="sk-mois-chiffre"><b>4</b> · 24 h 30</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b><em>oubli de sortie</em></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>0 h 30</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">5</span><span class="sk-mois-chiffre"><b>4</b> · 32 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #0E7490">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">6</span><span class="sk-mois-chiffre"><b>5</b> · 39 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>9 h 43</b><em>retard 08:38</em></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+              <button class="sk-mois-plus" type="button">+1 · ouvrir la journée</button>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine style="--teinte-du-jour: #B56235">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">7</span><span class="sk-mois-chiffre"><b>1</b> · 6 h 20</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Kossi Mensah</span><b>6 h 20</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine>
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">8</span></div>
+            <div class="sk-mois-vide-mot">Aucun poste</div>
+          </div>
+
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">9</span><span class="sk-mois-chiffre"><b>4</b> · 32 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">10</span><span class="sk-mois-chiffre"><b>4</b> · 28 h 45</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Kossi Mensah</span><b>4 h 45</b><em>non pointé</em></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #475569">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">11</span><span class="sk-mois-mot">Férié</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Armistice 1918</span><b>0 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">12</span><span class="sk-mois-chiffre"><b>4</b> · 32 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">13</span><span class="sk-mois-chiffre"><b>3</b> · 20 h 30</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>4 h 30</b><em>congé · 13-14</em></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine style="--teinte-du-jour: #B56235">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">14</span><span class="sk-mois-chiffre"><b>1</b> · 6 h 20</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Kossi Mensah</span><b>6 h 20</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine>
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">15</span></div>
+            <div class="sk-mois-vide-mot">Aucun poste</div>
+          </div>
+
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">16</span><span class="sk-mois-chiffre"><b>4</b> · 32 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">17</span><span class="sk-mois-chiffre"><b>4</b> · 24 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b><em>sortie manquante</em></span>
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b><em>congé payé</em></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>0 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">18</span><span class="sk-mois-chiffre"><b>4</b> · 32 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #10B981">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">19</span><span class="sk-mois-chiffre"><b>1</b> · 8 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b><em>repos d'équipe</em></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine style="--teinte-du-jour: #0E7490">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">20</span><span class="sk-mois-chiffre"><b>2</b> · 12 h 40</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>6 h 20</b></span>
+              <span class="sk-mois-rang"><i></i><span>Kossi Mensah</span><b>6 h 20</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine>
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">21</span></div>
+            <div class="sk-mois-vide-mot">Aucun poste</div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine>
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">22</span></div>
+            <div class="sk-mois-vide-mot">Aucun poste</div>
+          </div>
+
+          <div class="sk-mois-case" data-aujourdhui data-survol style="--teinte-du-jour: #10B981">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">23</span><span class="sk-mois-mot">Aujourd'hui</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>7 h 31</b><em>écart -00:29</em></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+            <span class="sk-mois-ouvrir">Ouvrir la journée</span>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">24</span><span class="sk-mois-chiffre"><b>5</b> · 40 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+              <button class="sk-mois-plus" type="button">+1 · ouvrir la journée</button>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">25</span><span class="sk-mois-chiffre"><b>4</b> · 32 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">26</span><span class="sk-mois-chiffre"><b>4</b> · 32 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">27</span><span class="sk-mois-chiffre"><b>4</b> · 30 h 15</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>14 h 15</b><em>+6 h 15</em></span>
+              <span class="sk-mois-rang"><i></i><span>Kossi Mensah</span><b>0 h</b><em>absent</em></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine style="--teinte-du-jour: #B56235">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">28</span><span class="sk-mois-chiffre"><b>1</b> · 6 h 20</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Kossi Mensah</span><b>6 h 20</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-case" data-fin-semaine>
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">29</span></div>
+            <div class="sk-mois-vide-mot">Aucun poste</div>
+          </div>
+
+          <div class="sk-mois-case" style="--teinte-du-jour: #7C3AED">
+            <div class="sk-mois-tete"><span class="sk-mois-nombre">30</span><span class="sk-mois-chiffre"><b>4</b> · 32 h</span></div>
+            <div class="sk-mois-liste">
+              <span class="sk-mois-rang"><i></i><span>Awa Dossou</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Franck Hounsa</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Mariam Sica</span><b>8 h</b></span>
+              <span class="sk-mois-rang"><i></i><span>Paul Adjovi</span><b>8 h</b></span>
+            </div>
+          </div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+          <div class="sk-mois-encoche"></div>
+        </div>
+      </div>
+
+      <div class="sk-mois-pied">
+        <div class="sk-mois-ligne-pied">
+          <span><em>S44</em> · lun 26 oct → dim 1 nov</span>
+          <span>1 jour porté · <strong>0 h</strong></span>
+        </div>
+        <div class="sk-mois-ligne-pied">
+          <span><em>S45</em> · lun 2 → dim 8 nov</span>
+          <span>19 postes · <strong>165 h 50</strong></span>
+        </div>
+        <div class="sk-mois-ligne-pied">
+          <span><em>S46</em> · lun 9 → dim 15 nov</span>
+          <span>13 postes · <strong>113 h 15</strong> · 1 férié</span>
+        </div>
+        <div class="sk-mois-ligne-pied">
+          <span><em>S47</em> · lun 16 → dim 22 nov</span>
+          <span>15 postes · <strong>133 h 20</strong></span>
+        </div>
+        <div class="sk-mois-ligne-pied">
+          <span><em>S48</em> · lun 23 → dim 29 nov</span>
+          <span>22 postes · <strong>184 h 35</strong> · 3 à vérifier</span>
+        </div>
+        <div class="sk-mois-ligne-pied">
+          <span><em>S49</em> · lun 30 nov</span>
+          <span>4 postes · <strong>32 h</strong></span>
+        </div>
+      </div>
+
+      <div class="sk-mois-legende">
+        <span><i style="background: #7C3AED"></i>poste planifié, teinte de l'équipe</span>
+        <span><i style="background: #8A5A14"></i>oubli · retard — à vérifier</span>
+        <span><i style="background: #9B2C2C"></i>non pointé après la fin du poste</span>
+        <span>Un rang par personne, heures à droite · le « + » ouvre la journée</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
