@@ -498,7 +498,7 @@ n'ait demandé à être prévenu. L'alerte exige donc **deux conditions cumulati
 
 | Condition | Vérifiée par | Si absente |
 |---|---|---|
-| le seuil est **prouvé comme un choix** | `provenance.origine === 'entreprise'` | silence, `seuilPropose` reste visible |
+| un seuil **valide** existe | `weekly_threshold` fini et > 0 | silence, motif « aucun seuil valide » |
 | la case **« m'alerter au-delà de ce seuil »** est cochée | `settings.alerte_hebdo_activee === true` | silence, motif « alerte non activée » |
 
 - **En base** : `overtime_settings.alerte_hebdo_activee boolean not null default false`
@@ -508,21 +508,40 @@ n'ait demandé à être prévenu. L'alerte exige donc **deux conditions cumulati
   décision) ; une case absente du formulaire **n'est pas écrite** — même règle que les seuils.
 - **À la lecture** : une case absente n'est jamais un « oui ».
 
-**⚠️ Ce qui n'est pas encore livré, et pourquoi** : la case n'apparaît pas encore dans l'écran
-de réglages. Aucune alerte hebdomadaire n'est affichée aujourd'hui (voir le rectificatif
-ci-dessous) ; poser la case maintenant serait exactement l'interface qui promet un contrôle
-indisponible, ce que le fondateur a interdit. La case arrive **avec l'affichage**, dans le même
-lot (G4/G5) — données et règle sont prêtes, il ne reste que le rendu.
+**La case est la preuve, et c'est elle qui remplace la barrière de provenance.** Un client qui
+choisit délibérément 48 h — la valeur du défaut — était sinon condamné au silence, case cochée
+comprise : l'alerte ne se serait jamais déclenchée. Or cocher est un acte humain, posé avec le
+seuil affiché à côté ; la colonne naît à `false` et n'est écrite que par un formulaire. Cette
+case lève donc exactement l'ambiguïté que `historique_incertain` décrivait (« impossible de
+savoir si la valeur a été choisie ») : un humain l'a confirmée.
+
+Conséquence assumée sur les libellés : quand l'alerte est active, `source` vaut **`entreprise`**
+(le message au salarié dit « seuil d'entreprise », ce qui est vrai : l'entreprise l'a confirmé),
+tandis que `origineEnregistree` conserve la provenance brute (`defaut_produit`,
+`historique_incertain`…) pour l'audit.
+
+**Livré dans ce lot (les deux ensemble, comme demandé)** :
+
+| Élément | Où |
+|---|---|
+| champ « Seuil hebdomadaire (heures) » | `HeuresSupplementaires.jsx`, section « Alerte hebdomadaire » |
+| case « M'alerter au-delà de ce seuil » | même section, décochée par défaut |
+| garde de saisie | case cochée + seuil absent/invalide ⇒ sauvegarde refusée, aucun réglage inopérant écrit |
+| carte d'alerte chiffrée | `AlerteHebdoCard.jsx`, affichée dans la fiche employé |
+
+La carte ne s'affiche **que** si l'alerte est active et qu'une semaine dépasse le seuil : elle
+donne les heures, le seuil, l'écart, et rappelle que ce n'est pas un plafond légal. Aucun
+dépassement = aucun élément à l'écran — le silence n'est pas un oubli, c'est l'absence de
+constat.
 
 **⚠️ Constat de reproductibilité** : `overtime_settings` n'a **aucune migration de création**
 dans ce dépôt — la table n'existe qu'en base. La migration ajoutée est donc écrite pour être
 inoffensive si la table manque (et c'est testé). C'est un argument de plus pour G3, qui remplace
 cette table par `encheck_regles_temps_travail`, historisée par construction.
 
-**⚠️ Limite connue, à corriger en G3** : un client qui choisit *délibérément* 48 h est
-aujourd'hui indiscernable d'un héritage de l'ancien `|| 48` → il reste silencieux. La table
-`encheck_regles_temps_travail` apportera l'indicateur de **confirmation explicite** qui lève
-cette ambiguïté (un choix enregistré n'est plus déduit d'une valeur).
+**Ce que G3 devra encore faire** : horodater la confirmation (qui a coché, quand) et la rendre
+historique. Aujourd'hui `alerte_hebdo_activee` dit *oui/non*, pas *depuis quand ni par qui* —
+suffisant pour ne pas mentir, insuffisant pour le devoir d'informer (§3.5.g).
 
 **Rectificatif d'annonce** : j'avais écrit que les entreprises sans module allaient « recevoir
 des alertes ». C'est faux, et c'est vérifié : `calculateEmployeeHours` produit bien un tableau

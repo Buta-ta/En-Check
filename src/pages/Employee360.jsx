@@ -36,6 +36,7 @@ import {
 } from '../utils/timezoneUtils'
 import { initialesDe } from '../utils/initiales'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
+import AlerteHebdoCard from '../components/AlerteHebdoCard'
 import { __internal, calculateEmployeeHours } from '../services/hoursCalculator'
 import { chargerBulletinsPeriode } from '../services/paiementBulletins'
 import { chargerSeuilsPointage } from '../services/seuilsPointage'
@@ -1029,6 +1030,9 @@ suivre('taches',
 
             {/* ═══ Colonne 2 — activité, salaire, rythme ═══ */}
             <div className="e360-col">
+              {/*  ⏰ Muette par défaut : la carte ne s'affiche que si la case
+                  « m'alerter » est cochée ET qu'une semaine dépasse le seuil. */}
+              <AlerteHebdoCard plafond={d?.heuresEmp?.thisMonth?.plafond_hebdo} />
               <section className="e360-carte e360-carte--sable" aria-label="Activité sur la période">
                 <h3 className="e360-carte-titre">
                   Activité

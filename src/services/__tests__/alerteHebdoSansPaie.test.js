@@ -112,25 +112,36 @@ describe('Le sélecteur de seuils d’alerte', () => {
     })
   })
 
-  it('un défaut du produit n’allume rien : il est seulement proposé', () => {
-    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit'))
+  it('le défaut du produit reste une proposition tant que la case n’est pas cochée', () => {
+    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit', null, false))
     expect(seuils).toMatchObject({
       seuil: null,
       seuilMajeur: null,
-      source: 'defaut_produit',
       actif: false,
       seuilPropose: 48,
     })
-    expect(seuils.motif).toContain('defaut_produit')
+    expect(seuils.motif).toContain('non activée')
   })
 
-  it('une valeur héritée (48 ou 40) n’est pas un choix prouvé : silence', () => {
+  it('une valeur héritée (48 ou 40) reste muette sans la case', () => {
     for (const valeur of [48, 40]) {
-      const seuils = seuilsAlerteHebdo(reglage(valeur, 'historique_incertain'))
+      const seuils = seuilsAlerteHebdo(reglage(valeur, 'historique_incertain', null, false))
       expect(seuils.actif).toBe(false)
       expect(seuils.seuil).toBeNull()
       expect(seuils.seuilPropose).toBe(valeur)
     }
+  })
+
+  it('la case cochée confirme une valeur héritée — c’est l’ambiguïté que G2 décrivait', () => {
+    //  G2 : « une valeur égale à un défaut ne prouve pas un choix ».
+    //  La case répond à cette question : un humain l'a confirmée, seuil affiché.
+    const seuils = seuilsAlerteHebdo(reglage(48, 'historique_incertain', null, true))
+    expect(seuils.actif).toBe(true)
+    expect(seuils.seuil).toBe(48)
+    //  Ce qu'on peut affirmer au salarié…
+    expect(seuils.source).toBe('entreprise')
+    //  …et ce qui reste vrai pour l'audit.
+    expect(seuils.origineEnregistree).toBe('historique_incertain')
   })
 
   it('sans valeur, aucune origine n’est affirmée', () => {
@@ -148,7 +159,7 @@ describe('Le sélecteur de seuils d’alerte', () => {
 
 describe('Aucune alerte sans seuil choisi', () => {
   it('une semaine de 50 h ne déclenche RIEN sur le seul défaut produit', () => {
-    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit'))
+    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit', null, false))
     const evaluation = evaluerSeuilsHebdo({ semaines: SEMAINE_50H, ...seuils })
 
     expect(evaluation.disponible).toBe(false)
@@ -177,10 +188,13 @@ describe('Aucune alerte sans seuil choisi', () => {
     expect(seuils.seuilPropose).toBe(45)
   })
 
-  it('la case cochée ne suffit pas non plus : sans seuil prouvé, silence', () => {
-    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit', null, true))
-    expect(seuils.actif).toBe(false)
-    expect(seuils.seuil).toBeNull()
+  it('la case cochée sans aucun seuil valide n’allume rien', () => {
+    for (const valeur of [null, '', 0, -3, 'abc']) {
+      const seuils = seuilsAlerteHebdo(reglage(valeur, 'entreprise', null, true))
+      expect(seuils.actif).toBe(false)
+      expect(seuils.seuil).toBeNull()
+      expect(seuils.motif).toContain('seuil')
+    }
   })
 
   it('une case absente n’est jamais un oui', () => {
@@ -202,7 +216,7 @@ describe('Aucune alerte sans seuil choisi', () => {
 
   it('le second niveau est neutralisé avec le premier', () => {
     //  Un niveau 2 à 50 h sans niveau 1 prouvé ne doit pas devenir un seuil.
-    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit', 50))
+    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit', 50, false))
     expect(seuils.seuilMajeur).toBeNull()
   })
 })
@@ -225,7 +239,7 @@ describe('Bout en bout : une alerte existe sans module de paie', () => {
 
   it('le module coupé ne fabrique pas d’alerte pour qui n’a rien configuré', async () => {
     vi.spyOn(FeatureService, 'hasFeature').mockResolvedValue(false)
-    vi.spyOn(FeatureService, 'getOvertimeSettingsAvecOrigine').mockResolvedValue(reglage(48, 'defaut_produit'))
+    vi.spyOn(FeatureService, 'getOvertimeSettingsAvecOrigine').mockResolvedValue(reglage(48, 'defaut_produit', null, false))
     vi.spyOn(FeatureService, 'loadSchedules').mockResolvedValue([])
 
     const ctx = await loadOvertimeContext('ent-fictive')
