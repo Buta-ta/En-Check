@@ -184,10 +184,12 @@
   min-width: 0;
 }
 
-.me-carte--identite,
-.me-carte--regles {
-  overflow: hidden;
-}
+/* ⚠️ NE JAMAIS mettre `overflow: hidden` sur une `.me-carte`.
+   Le ruban de colle dépasse de 8 px AU-DESSUS du cadre : toute découpe le
+   rogne, et il ne reste qu'un liseré gris collé au bord — faute commise le
+   24/11/2026, vue sur la capture du fondateur. Ce qui déborde est le ruban,
+   pas le contenu : le contenu est tenu par `min-width: 0` et par
+   `overflow-wrap: anywhere` sur les valeurs longues. */
 
 /* ═══ LES FEUILLES DE SECTION ═══════════════════════════════════════════ */
 
@@ -200,7 +202,11 @@
   background: var(--charte-surface);
 }
 
-/* la bande de colle, en haut de chaque feuille */
+/* la bande de colle, en haut de chaque feuille.
+   Elle est peinte dans l'argile mêlée au papier — c'est la couleur du ruban
+   kraft de la maquette, obtenue avec les jetons, sans un seul hexadécimal.
+   `--charte-sable` à 70 % donnait un ruban de la couleur du fond : invisible,
+   et la capture l'a montré. */
 .me-carte::before {
   content: '';
   position: absolute;
@@ -208,21 +214,41 @@
   left: var(--charte-espace-6);
   width: 124px;
   height: 13px;
-  border: 1px solid color-mix(in srgb, var(--charte-encre) 15%, transparent);
-  background: color-mix(in srgb, var(--charte-sable) 70%, var(--charte-surface));
+  border: 1px solid color-mix(in srgb, var(--charte-encre) 22%, transparent);
+  background: color-mix(in srgb, var(--charte-aplat) 34%, var(--charte-surface));
   transform: rotate(-1.3deg);
   pointer-events: none;
 }
 
-/* le rabat du coin bas-droit */
+/* le rabat du coin bas-droit — deux couches dans un seul pseudo-élément.
+   La recette vient de `.e360-carte` (fiche employé) : une COUPE puis un PLI.
+   Ici il n'y a qu'un `::after` de libre (le `::before` porte le ruban), donc
+   les deux couches sont empilées en fonds, dans cet ordre :
+     1. la couche du HAUT dessine le pli — triangle au dos plus clair, bordé
+        du trait d'encre : c'est ce trait qui fait lire un coin replié plutôt
+        qu'une tache pâle (la faute vue sur la capture du 24/11) ;
+     2. la couche du BAS efface le coin — papier de la feuille, pas du sable :
+        la carte est POSÉE sur la feuille, dont la couleur est `--charte-surface`.
+   La boîte déborde de 2 px pour emporter l'arc de bordure et son rayon. */
 .me-carte::after {
   content: '';
   position: absolute;
-  right: 0;
-  bottom: 0;
-  border-style: solid;
-  border-width: 0 0 18px 18px;
-  border-color: transparent transparent var(--charte-sable) transparent;
+  right: calc(-1 * var(--charte-trait));
+  bottom: calc(-1 * var(--charte-trait));
+  width: 22px;
+  height: 22px;
+  background:
+    linear-gradient(
+      to top left,
+      transparent 0 44%,
+      var(--charte-encre) 44% 50%,
+      color-mix(in srgb, var(--charte-blanc) 55%, var(--charte-surface)) 50%
+    ),
+    linear-gradient(
+      to top left,
+      var(--charte-surface) 0 50%,
+      transparent 50%
+    );
   pointer-events: none;
 }
 
