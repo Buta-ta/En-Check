@@ -386,7 +386,7 @@ rendre l'écran muet au premier jour.
 |---|---|---|---|---|---|---|
 | 1 | **G1** ✅ *réalisé, en attente de validation* | Fenêtres hebdo et repos calculées sur une plage élargie ; la primitive refuse des bornes étroites ; drapeau mort supprimé | S | — | — | Un réglage éditable sur un calcul faux à cheval sur deux années, c'est un bouton qui ment deux fois |
 | 2 | **G2** ✅ *réalisé, en attente de validation* | Provenance réelle (`entreprise` / `defaut_produit` / `historique_incertain` / `inconnue`), défaut à 48 h, écriture qui n'invente plus de seuil, libellé honnête | S | S | — | Supprime le mensonge actuel (« seuil d'entreprise ») pour tous, tout de suite, sans toucher au calcul |
-| 3 | **G3** | Table versionnée + `encheck_regle_resolue` + `encheck_regle_ecrire` + journal (auteur, date d'effet, avant/après) | M | — | G2 (origines) | Le journal **avant** l'éditeur : des seuils modifiables sans trace sont un bouton pour réécrire janvier depuis novembre (règle C5-mince de l'audit) |
+| 3 | **G3** ⏳ *2a fait (table + RPC + service, sans branchement) ; 2b à faire* |
 | 4 | **G6** ⏳ *découplage + seuil choisi + case d'alerte (données) faits ; case à l'écran et séparation des clés à suivre* | Découplage de l'alerte et du module de paie ✅ (`seuilsAlerteHebdo`) ; séparation des trois clés (déclenchement de paie / seuil d'alerte / plafond `a_sourcer`) → **G3** | S | S | G3 | Donner un bouton « repos personnel » alors que l'alerte s'éteint avec la paie serait livrer un réglage inopérant |
 | 5 | **G4** | Page **« Mon entreprise »** : profil, identité, pays, règles de temps de travail ; accès de l'admin client ; « Entreprises » réservé au super-administrateur (V-A2, V-A3) | M | **M** | G3, G6 | Un écran « S » n'est pas une tâche « S » (audit §7.2) ; c'est la maison unique des règles d'entreprise (§4.2) |
 | 6 | **G4b** | **Modèles 48 h / 50 h par pays** : table, pré-sélection à la création, confirmation explicite, `statut_source` | S | S | G4 | Les modèles sont un confort de saisie ; les brancher avant la page n'aurait aucun support |
@@ -581,7 +581,7 @@ données. Deux lignes, un vrai bug : aujourd'hui, couper le module « heures sup
 
 Le gros morceau. Coupé en deux pour rester relisible.
 
-**PR 2a — la base et la résolution (sans interface, sans branchement)**
+**PR 2a — la base et la résolution (sans interface, sans branchement)** ✅ *réalisé le 24/10/2026*
 - migration `2026xxxx_encheck_regles_temps_travail.sql` : table versionnée (§3.2), index
   partiels, RLS (lecture selon l'accès, écriture par RPC seulement) ;
 - `encheck_regle_resolue(entreprise, employe, cle, date)` : la course des actes (§3.3),
@@ -594,6 +594,36 @@ Le gros morceau. Coupé en deux pour rester relisible.
 - tests : héritage par clé, retour à l'entreprise, verrou, date d'effet, refus inter-entreprises
   **au niveau RPC**, bornes.
 - **Rien ne change à l'écran. Aucun calcul existant n'est modifié.** C'est un lot sûr.
+
+##### 5.4.1 Ce que la PR 2a contient réellement
+
+| Livré | Fichier | Vérifié par |
+|---|---|---|
+| table versionnée, index partiels, RLS (lecture par accès, écriture interdite) | `20261123000002_encheck_regles_temps_travail.sql` | PGlite : insertion et mise à jour directes refusées |
+| `encheck_regle_resolue` : la course des actes + le verrou | idem | 6 tests de précédence, dont date d'effet future |
+| `encheck_regle_ecrire` : accès, appartenance, bornes, verrou, chaînage | idem | 5 tests de bornes et de clés |
+| `encheck_regle_historique` : qui, quand, avant → après | idem | versions conservées, `remplace_id` correct |
+| service `reglesTempsTravail.js` : `resoudre` / `ecrire` / `historique` | `src/services/reglesTempsTravail.js` | 17 tests, base simulée |
+
+**Deux points où j'ai dû préciser la spec pendant l'écriture** — à valider :
+
+1. **Le verrou porte sur la valeur personnelle COURANTE, pas sur son passé.** Dans une table
+   append-only, la ligne verrouillée ne disparaît jamais : si l'on testait « existe-t-il une
+   ligne verrouillée ? », une levée de verrou serait impossible même pour un super-admin.
+   La règle implémentée : la dernière version personnelle applicable décide ; si elle est
+   verrouillée, elle gagne. Une nouvelle version non verrouillée lève donc le verrou de fait,
+   et l'ancienne reste dans l'historique. Testé dans les deux sens.
+2. **Poser un verrou est aussi réservé au super-administrateur**, pas seulement le lever : sinon
+   un admin ordinaire pourrait se créer une valeur intouchable par ses pairs.
+
+**Trois limites assumées pour l'instant** :
+- `contrat_id` existe mais n'est jamais renseigné : la portée « contrat » est **réservée**, pas
+  active. Aucun code ne la lit ;
+- la RPC ne recalcule pas l'aperçu d'impact (protection (a) du §3.3) : il viendra avec l'écran,
+  car il dépend du nombre d'employés concernés ;
+- `employees` et `overtime_settings` n'ont toujours **aucune migration de création** dans le
+  dépôt : la table de test les recrée à la main. C'est le risque de reproductibilité déjà
+  signalé, que G3 ne corrige pas encore.
 
 **PR 2b — le branchement (S)**
 - `hoursCalculator.js` : le seuil d'alerte vient de `encheck_regle_resolue(...)` ; les réglages
