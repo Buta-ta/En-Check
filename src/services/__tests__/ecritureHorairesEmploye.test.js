@@ -21,6 +21,7 @@ const EMERAUDE = DISE + "10B981";
 
 import {
   carteDeTeintes,
+  REFUS_SANS_BASE,
   causeRejetBase,
   normaliserHeure,
   normaliserTeinte,
@@ -163,6 +164,29 @@ describe("carte des teintes par jour : fusionner sans fabriquer de fausses clés
 });
 
 describe("rejet de la base : une phrase, pas un code nu", () => {
+  it("ne fait pas passer un plantage du client pour un refus de la base", () => {
+    // le cas vécu le 23/11 : une méthode de notification inventée levait une
+    // TypeError DANS le try de l'enregistrement, donc dans son catch, donc ici —
+    // et le fondateur a lu « la base a refusé » alors qu'aucune requête n'était
+    // partie. Sans signature PostgREST (code, details, hint, statut), on ne peut
+    // pas accuser le serveur.
+    const plantage = new TypeError("toast.message is not a function");
+    expect(causeRejetBase(plantage)).toBe(REFUS_SANS_BASE);
+    expect(causeRejetBase({ message: "boom" })).toBe(REFUS_SANS_BASE);
+    expect(causeRejetBase(null)).toBe(REFUS_SANS_BASE);
+    expect(causeRejetBase(plantage)).not.toContain("a refusé l'écriture");
+    // la phrase dit où regarder et rassure sur les données, sans promettre de code
+    expect(REFUS_SANS_BASE).toContain("console");
+    expect(REFUS_SANS_BASE).toContain("rien n'est perdu");
+  });
+
+  it("garde la traduction complète dès qu'une signature de la base existe", () => {
+    // l'inverse du cas précédent : un objet minimal mais signé ne doit pas être
+    // renvoyé à « blocage côté application »
+    expect(causeRejetBase({ code: "23514" })).toContain("23514");
+    expect(causeRejetBase({ status: 400 })).toContain("HTTP 400");
+  });
+
   it("nomme la migration quand une colonne manque", () => {
     const r = causeRejetBase({
       code: "PGRST400",

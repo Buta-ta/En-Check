@@ -122,6 +122,43 @@ service, plus de concaténation d'heure brute, plus d'extension à l'aveugle, pl
 de toast muet). Les contrats 6bis et 6quater ont suivi l'écriture — même
 garantie, plus la garde sur la carte des jours.
 
+## Épisode du 23/11 après-midi : le correctif a cassé ce qu'il réparait
+
+Le fondateur recharge (bon bundle, `index-BAxy7aww.js`) et obtient, à la place du
+400 :
+
+```
+Enregistrement de la ligne d'horaire refusé: TypeError: te.message is not a function
+    at Array.forEach (<anonymous>)
+```
+
+Ce n'était plus la base. Les trois avis de `handleSaveEmployeeSchedule`
+(« teinte raccourcie étendue », « heure remplacée », « teintes écartées des autres
+jours ») avaient été écrits `toast.message(...)` — l'API de `sonner`, pas celle de
+`react-hot-toast`, la bibliothèque réellement installée ici. L'appel levait un
+`TypeError` **dans le `try`**, donc dans le `catch`, donc dans `causeRejetBase`,
+qui concluait honnêtement « la base a refusé » sur un objet qui n'était pas une
+réponse de la base. Résultat : un message qui accuse Postgres d'une faute de
+JavaScript, et aucune requête partie.
+
+Corrigé par trois choses, dans l'ordre :
+
+1. les avis s'écrivent `toast(...)` (l'unique export par défaut est callable) ;
+2. `causeRejetBase` exige désormais une **signature PostgREST** (`code`, `details`,
+   `hint`, `status`, `statusCode`) — sans elle, la phrase dit « blocage côté
+   application, avant tout accord de la base », au lieu d'accuser le serveur ;
+3. un contrat lit la **liste des méthodes sur la bibliothèque installée** et échoue
+   sur n'importe quel `toast.<nom>(` inventé, dans les quinze pages qui importent
+   `react-hot-toast`. Vérifié en réintroduisant `toast.message` : le test nomme
+   `Planning.jsx → toast.message()`. Le contrat a fait tomber au passage deux
+   `toast.warning(` de `src/pages/Pointages.jsx`, même faute, corrigés dans le
+   même commit puisqu'il était impossible de le rendre vert autrement.
+
+Ce que la trace laisse malgré tout : l'empilement `Array.forEach` désigne la
+boucle des **heures**. Un de ses quatre champs contenait donc une valeur lisible
+mais invalide — le repli l'annonce maintenant à l'écran, en nommant le champ et la
+valeur reçue. C'est une info que le fondateur n'a jamais eue, ni le 22 ni le 23.
+
 ## Ce qui reste à charge du poste
 
 La cause exacte de **ce** 400-là n'a pas été observée : l'objet d'erreur est

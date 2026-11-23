@@ -217,7 +217,35 @@ const CAUSES = {
  * @returns {string} jamais vide : un refus sans cause identifiée doit au moins
  *   dire qu'il y a un refus, et où lire la suite.
  */
+/**
+ * Un refus n'est pas forcément un refus de la base. Ce correctif-là l'a appris à
+ * ses dépens le 23/11, une demi-heure après son déploiement : un appel à une
+ * méthode de notification qui n'existe pas levait un `TypeError` DANS le `try` de
+ * l'enregistrement — donc dans son `catch`, donc dans `causeRejetBase`, qui
+ * concluyait « la base a refusé ». Le fondateur a lu un refus de Postgres pour une
+ * faute de JavaScript, et la vraie requête n'avait jamais été envoyée. Un
+ * `catch` qui avale le client et le traduit comme le serveur invente une cause.
+ *
+ * Alors on demande la signature : une réponse de PostgREST porte `code`,
+ * `details`, `hint` ou un statut HTTP. Une erreur d'exécution n'en porte aucun.
+ */
+function vientDeLaBase(error) {
+  if (!error || typeof error !== "object") return false;
+  return ["code", "details", "hint", "status", "statusCode"].some(
+    (champ) => error[champ] !== undefined && error[champ] !== null
+  );
+}
+
+/** La phrase qu'on lit quand ce n'est PAS la base qui a parlé. */
+export const REFUS_SANS_BASE =
+  "Blocage côté application, avant tout accord de la base : rien n'a été " +
+  "enregistré et rien n'est perdu. Le détail (nom de la fonction et ligne) est " +
+  "dans la console du navigateur — ce n'est pas une donnée à corriger, c'est du " +
+  "code à réparer.";
+
 export function causeRejetBase(error) {
+  if (!vientDeLaBase(error)) return REFUS_SANS_BASE;
+
   const code = error?.code ? String(error.code) : null;
   const detail = `${error?.details ?? ""} ${error?.message ?? ""}`;
 

@@ -752,7 +752,13 @@ export default function Pointages() {
         : null)
     const ligneEnBase = estIdentifiantDeBase(attendanceId) ? attendanceId : null
     if (!ligneEnBase && !sourceId) {
-      toast.warning('Aucune heure présumée consignée pour cette ligne.')
+      // `toast.warning` n'existe pas non plus dans react-hot-toast (vérifié sur la
+      // bibliothèque installée : error, success, loading, custom, promise,
+      // dismiss, remove). Un avis neutre s'écrit `toast(...)`. Constaté le 23/11
+      // en passant le contrat qui verrouille la liste — corrigé ici parce que le
+      // contrat serait faux sans ça, et qu'un clic sur ce bouton-là plantait de la
+      // même façon que Planning.jsx.
+      toast('Aucune heure présumée consignée pour cette ligne.')
       return
     }
     setEstimationEnCours(`${attendanceId || sourceId}:${action}`)
@@ -800,7 +806,7 @@ export default function Pointages() {
         toast.error(resultat?.erreur || 'Le traitement de cette estimation a échoué.')
         if (ligne?.__contextuelle) await loadPointages()
       } else if (resultat && resultat.statut === 'deja_statuee') {
-        toast.warning(
+        toast(
           'Cette estimation a déjà été traitée — la page est rechargée.',
         )
         await loadPointages()
