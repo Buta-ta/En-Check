@@ -1,0 +1,311 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   LE MODE MOIS DU PLANNING, HABILLÉ DE LA FEUILLE.
+   Proposition à transférer telle quelle dans src/pages/PlanningPostIt.css
+   une fois la direction choisie — c'est pourquoi elle est écrite avec les
+   deux classes d'usage et sans aucun jeton neuf.
+
+   Elle répond point par point aux six constats relevés sur la page :
+
+   1 · les sept colonnes tiennent DANS le cadre. La grille portante est en
+       minmax(0, 1fr) : une colonne ne peut plus être poussée par la largeur
+       minimale d'une pastille, et la septième ne se fait plus écraser ni
+       peindre par-dessus le liseré du panneau ;
+   2 · l'en-tête des jours et les cases appartiennent à LA MÊME grille. Deux
+       grilles séparées, même gabarit écrit deux fois, c'est exactement ce qui
+       faisait dériver « Jeudi » au-dessus de la colonne du mercredi ;
+   3 · le mois reçoit enfin la peau de la maison : le relevé du 23/11 donnait
+       zéro règle de PlanningPostIt.css pour les classes du mois, tout venait
+       de la feuille voisine ;
+   4 · aucune couleur brute : les teintes choisies case par case arrivent par
+       --teinte-du-jour, posé en style en ligne par le composant, et ne sont
+       jamais un aplat sous un mot ;
+   5 · la norme se tait, l'exception parle, et chaque marque porte son mot ;
+   6 · rien de destructeur dans une vue d'ensemble : la case entière est
+       l'entrée de la journée, le geste de retrait redescend dans le jour.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* la feuille de défilement : le même dispositif que la grille de la semaine,
+   qui elle, ne déborde jamais — le mois n'avait pas ce conteneur */
+.sk-plan-page--postit .sk-mois-deroule {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* LA grille : sept colonnes rigoureusement égales, jamais plus, jamais moins.
+   L'en-tête est la première rangée de cette grille — pas une seconde grille
+   posée à côté. */
+.sk-plan-page--postit .sk-mois {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--charte-espace-2);
+}
+
+/* ── la rangée des jours ────────────────────────────────────────────────────
+   11 px, 700, capitales, espacées : c'est l'étiquette du kit, pas un titre. */
+.sk-plan-page--postit .sk-mois-jour {
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border-bottom: 2px solid var(--charte-encre);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.sk-plan-page--postit .sk-mois-jour[data-fin-semaine] {
+  color: var(--charte-encre);
+}
+
+/* ── la case d'un jour ────────────────────────────────────────────────────
+   Du papier, un filet, une bande de teinte sur le haut — la matière d'une case
+   de la grille de la semaine, au quart de sa surface. Le liseré du haut est la
+   teinte CHOISIE CE JOUR-LÀ (case par case, D du 22/11) : 6 px de couleur,
+   pas un fond peint. */
+.sk-plan-page--postit .sk-mois-case {
+  --teinte-du-jour: var(--charte-surface2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-1);
+  min-height: 92px;
+  padding: var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-top: 6px solid var(--teinte-du-jour);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  cursor: pointer;
+  transition:
+    transform var(--charte-duree) var(--charte-easing),
+    border-color var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-mois-case:hover {
+  border-color: var(--charte-encre);
+  box-shadow: 3px 3px 0 0 var(--charte-encre);
+  transform: translateY(-2px);
+}
+
+.sk-plan-page--postit .sk-mois-case:focus-visible {
+  outline: 2px solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* le week-end : du papier un peu plus posé, pas une autre couleur */
+.sk-plan-page--postit .sk-mois-case[data-fin-semaine] {
+  background-color: color-mix(in srgb, var(--charte-surface2) 55%, var(--charte-surface));
+}
+
+/* aujourd'hui : UN seul signe. Le contour d'encre du kit, et le mot. Pas
+   liseré + fond peint + pastille orange posés l'un sur l'autre. */
+.sk-plan-page--postit .sk-mois-case[data-aujourdhui] {
+  border-color: var(--charte-encre);
+  border-width: 2px;
+  box-shadow: 3px 3px 0 0 color-mix(in srgb, var(--charte-encre) 22%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-mois-tete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--charte-espace-1);
+}
+
+.sk-plan-page--postit .sk-mois-nombre {
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.sk-plan-page--postit .sk-mois-mot {
+  color: var(--charte-douce);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sk-plan-page--postit .sk-mois-case[data-aujourdhui] .sk-mois-mot {
+  color: var(--charte-blanc);
+  background-color: var(--charte-encre);
+  padding: 2px 5px;
+}
+
+/* la ligne de compte : plus de « 0 modèle(s) • 0 perso ». Un chiffre, un mot,
+   et le total en colonnes serrées — les nombres sont en monnaie de compte. */
+.sk-plan-page--postit .sk-mois-chiffre {
+  display: flex;
+  align-items: baseline;
+  gap: var(--charte-espace-1);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+}
+
+.sk-plan-page--postit .sk-mois-chiffre b {
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* un jour sans poste n'est pas une anomalie : il le dit une fois, sobrement */
+.sk-plan-page--postit .sk-mois-vide-mot {
+  color: color-mix(in srgb, var(--charte-douce) 70%, var(--charte-surface));
+  font-size: var(--charte-taille-micro);
+}
+
+/* hors du mois : le vide se VOIDE. Pas de case papier, pas de compteur —
+  une encoche. Six encoches en tête de novembre, c'est un sixième du cadre
+  qui ne prétend plus rien montrer. */
+.sk-plan-page--postit .sk-mois-encoche {
+  min-height: 92px;
+  border: 1px dashed color-mix(in srgb, var(--charte-bordure) 70%, transparent);
+  border-radius: 0;
+  background-color: transparent;
+}
+
+/* ── les tampons : ce qui dépasse de la norme ───────────────────────────────
+   Le badge « tampon » du kit (statut figé) : un lavis de la couleur à 18 %,
+   un trait de cette couleur, le MOT en encre lavée. Jamais un mot blanc sur
+   un aplat saturé — c'est la règle des feutres, et le rouge reste à ce qui
+   détruit. */
+.sk-plan-page--postit .sk-mois-tampons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.sk-plan-page--postit .sk-mois-tampon {
+  --couleur: var(--charte-alerte);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 2px 5px;
+  border: 1px solid var(--couleur);
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--couleur) 18%, var(--charte-surface));
+  color: color-mix(in srgb, var(--couleur) 82%, var(--charte-encre));
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sk-plan-page--postit .sk-mois-tampon span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-plan-page--postit .sk-mois-tampon[data-espece="retard"],
+.sk-plan-page--postit .sk-mois-tampon[data-espece="oubli"] {
+  --couleur: var(--charte-alerte);
+}
+
+.sk-plan-page--postit .sk-mois-tampon[data-espece="absent"] {
+  --couleur: var(--charte-statut-absent);
+}
+
+.sk-plan-page--postit .sk-mois-tampon[data-espece="conge"] {
+  --couleur: var(--charte-texte);
+}
+
+.sk-plan-page--postit .sk-mois-tampon[data-espece="repos"] {
+  --couleur: var(--charte-douce);
+}
+
+.sk-plan-page--postit .sk-mois-tampon[data-espece="heure"] {
+  --couleur: var(--charte-succes);
+}
+
+/* le jour férié se dit, il ne se devine pas à un lavis de 14 % : le tampon
+   porte le nom, et la case garde sa bande de teinte */
+.sk-plan-page--postit .sk-mois-tampon[data-espece="ferie"] {
+  --couleur: var(--charte-encre);
+}
+
+/* ── la légende et le pied : deux choses que le mois n'avait pas ──────────── */
+.sk-plan-page--postit .sk-mois-legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-3);
+  margin-top: var(--charte-espace-3);
+  padding-top: var(--charte-espace-2);
+  border-top: 1px solid var(--charte-bordure);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+}
+
+.sk-plan-page--postit .sk-mois-legende i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border: 1px solid var(--charte-encre);
+  vertical-align: -1px;
+}
+
+/* le pied de grille, dans les mêmes termes que celui de la semaine : une ligne
+   par semaine, les heures à droite en colonnes serrées */
+.sk-plan-page--postit .sk-mois-pied {
+  display: grid;
+  gap: 1px;
+  margin-top: var(--charte-espace-3);
+  border: 1px solid var(--charte-bordure);
+  background-color: var(--charte-bordure);
+}
+
+.sk-plan-page--postit .sk-mois-ligne-pied {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--charte-espace-3);
+  padding: 6px var(--charte-espace-3);
+  background-color: var(--charte-surface);
+  font-size: var(--charte-taille-corps);
+}
+
+.sk-plan-page--postit .sk-mois-ligne-pied strong {
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.sk-plan-page--postit .sk-mois-ligne-pied em {
+  color: var(--charte-douce);
+  font-style: normal;
+}
+
+/* le geste d'entrée dans la journée : il n'y a plus de pastille à croix dans
+   une vue d'ensemble, il y a un mot qui apparaît quand on vise la case */
+.sk-plan-page--postit .sk-mois-ouvrir {
+  align-self: flex-start;
+  color: var(--charte-texte);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-mois-case:hover .sk-mois-ouvrir,
+.sk-plan-page--postit .sk-mois-case:focus-visible .sk-mois-ouvrir,
+.sk-plan-page--postit .sk-mois-case[data-survol] .sk-mois-ouvrir {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-plan-page--postit .sk-mois-case,
+  .sk-plan-page--postit .sk-mois-ouvrir {
+    transition: none;
+  }
+}

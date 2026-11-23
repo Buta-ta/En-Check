@@ -1,0 +1,26 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   MAQUETTE A — « LE MOIS NE DIT QUE CE QUI DÉPASSE »
+   La norme occupe 22 cases sur 30 : elle ne se répète plus en 22 pastilles
+   identiques. Une case conforme = une bande de teinte, deux chiffres, rien
+   d'autre. Ce qui parle, ce sont les tampons et le pied de semaine.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.sk-plan-page--postit .sk-mois--exceptions .sk-mois-case {
+  position: relative;
+}
+
+/* le jour conforme se lit à la règle du bas : trois pixels d'encre lavée,
+   posés à plat. Le mot « norme » n'est pas écrit : il n'y a rien à signaler. */
+.sk-plan-page--postit .sk-mois--exceptions .sk-mois-case[data-norme="total"] {
+  box-shadow: inset 0 -3px 0 0 color-mix(in srgb, var(--charte-encre) 14%, var(--charte-surface));
+}
+
+/* et le jour incomplet — il y a des postes, mais la journée ne couvre pas
+   tout l'effectif — prend la même règle, dans la couleur du jour */
+.sk-plan-page--postit .sk-mois--exceptions .sk-mois-case[data-norme="partiel"] {
+  box-shadow: inset 0 -3px 0 0 color-mix(in srgb, var(--teinte-du-jour) 45%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-mois--exceptions .sk-mois-chiffre {
+  margin-top: var(--charte-espace-1);
+}
