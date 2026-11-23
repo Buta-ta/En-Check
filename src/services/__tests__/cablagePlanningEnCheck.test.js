@@ -133,10 +133,14 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // quatre endroits relisent la palette au lieu de recopier un hexa. Depuis le
     // 23/11, l'un d'eux s'écrit sur la valeur normalisée (`teinteDemandee`),
     // parce que la fenêtre replie d'abord ce qu'elle tient sur la première
-    // teinte de la palette — le compte est le même, l'orthographe a suivi.
+    // teinte de la palette. Et depuis ce soir, un quatrième s'écrit aussi sur une
+    // valeur normalisée : « retirer la teinte d'une case » relit la teinte de la
+    // ligne avant de la remettre au formulaire — un bouton qui efface ne doit pas
+    // mettre en attente d'un 400 une valeur qu'il se contente d'afficher. Le compte
+    // est le même, l'orthographe a suivi, et c'est elle qui est vérifiée ici.
     expect(
       planningSrc.match(
-        /custom_color: TEINTE_PAR_DEFAUT|custom_color \|\| TEINTE_PAR_DEFAUT|teinteDemandee\.teinte \|\| TEINTE_PAR_DEFAUT/g
+        /custom_color: TEINTE_PAR_DEFAUT|custom_color \|\| TEINTE_PAR_DEFAUT|teinteDemandee\.teinte \|\| TEINTE_PAR_DEFAUT|\.teinte \|\| TEINTE_PAR_DEFAUT/g
       )
     ).toHaveLength(4)
     // La case ciblée garde le nom de son modèle : la surcharge locale ne le portait pas.
@@ -1634,6 +1638,16 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     )
     expect(retrait).toContain('causeRejetBase(error)')
     expect(retrait).not.toContain('"Erreur lors du retrait de la couleur"')
+    // retirer n'est pas un laisser-pour-compte : la carte repartie en base est
+    // relue, et le bouton ne peut plus échouer à cause d'une teinte illisible
+    // dormant sur un autre jour (trou reconnu le 23/11, comblé le même soir)
+    expect(retrait).toContain('const carteJour = carteDeTeintes(ligne);')
+    expect(retrait).toContain('const carte = { ...carteJour.carte };')
+    expect(retrait).toContain('carteJour.retirees')
+    expect(retrait).not.toContain('...(ligne?.custom_day_colors || {})')
+    expect(retrait).toContain(
+      'custom_color: normaliserTeinte(ligne?.custom_color ?? null).teinte || TEINTE_PAR_DEFAUT,'
+    )
     const revue = planningSrc.slice(
       planningSrc.indexOf('const handleReviewRequest = async () => {'),
       planningSrc.indexOf('═══ CALENDRIER MENSUEL')
