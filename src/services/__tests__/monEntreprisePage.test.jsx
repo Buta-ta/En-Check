@@ -10,10 +10,10 @@
 //      identifiant traîne dans le stockage local.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { act } from 'react'
+import { act, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
-import { MemoryRouter } from 'react-router-dom'
-import { afterEach, beforeEach, it, expect, vi } from 'vitest'
+import { MemoryRouter, useLocation } from 'react-router-dom'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import MonEntreprise from '../../pages/MonEntreprise'
 
 const mocks = vi.hoisted(() => ({
@@ -82,10 +82,26 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
-async function monter() {
+//  Où le routeur croit être. On lit le VRAI routeur — un `useLocation` dans
+//  le contexte de `MemoryRouter` — au lieu de remplacer le module : le simuler
+//  entier bloquait la suite (un `await` qui ne se résolvait plus). L'affectation
+//  passe par un effet : écrire hors du rendu, jamais pendant.
+const suivi = { chemin: null }
+function Observateur() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    suivi.chemin = pathname
+  }, [pathname])
+  return null
+}
+
+async function monter({ entrees = ['/mon-entreprise'], index = 0, idx = 0 } = {}) {
+  suivi.chemin = null
+  window.history.replaceState({ idx }, '')
   await act(async () => {
     root.render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={entrees} initialIndex={index}>
+        <Observateur />
         <MonEntreprise />
       </MemoryRouter>,
     )
@@ -190,4 +206,46 @@ it('montre l’impact avant d’écrire, et refuse si un verrou bloque', async (
 
   const enregistrer = bouton('Enregistrer')
   expect(enregistrer.disabled).toBe(true)
+})
+
+describe('Le bouton retour', () => {
+  it('existe, se nomme, et n’est pas une icône muette', async () => {
+    await monter()
+    const retour = host.querySelector('.me-retour')
+
+    expect(retour).not.toBeNull()
+    expect(retour.tagName).toBe('BUTTON')
+    expect(retour.getAttribute('aria-label')).toBe('Retour à la page précédente')
+    //  La flèche est un dessin : sans le mot, un lecteur d'écran n'annonce rien.
+    expect(retour.textContent.trim()).toBe('')
+  })
+
+  it('revient en arrière quand on vient d’une autre page', async () => {
+    await monter({ entrees: ['/dashboard', '/mon-entreprise'], index: 1, idx: 1 })
+    expect(suivi.chemin).toBe('/mon-entreprise')
+
+    await act(async () => host.querySelector('.me-retour').click())
+
+    //  On est revenu LÀ D'OÙ L'ON VENAIT, pas sur une adresse devinée.
+    expect(suivi.chemin).toBe('/dashboard')
+  })
+
+  it('sans historique, il aboutit au tableau de bord — jamais dans le vide', async () => {
+    await monter({ entrees: ['/mon-entreprise'], index: 0, idx: 0 })
+
+    await act(async () => host.querySelector('.me-retour').click())
+
+    expect(suivi.chemin).toBe('/dashboard')
+  })
+
+  it('l’écran d’accès refusé porte le retour lui aussi', async () => {
+    localStorage.setItem(
+      'admin',
+      JSON.stringify({ role: 'admin', selectedEnterprise: { id: 'ent-autre' } }),
+    )
+    await monter()
+
+    expect(host.textContent).toContain('Accès refusé')
+    expect(host.querySelector('.me-retour')).not.toBeNull()
+  })
 })

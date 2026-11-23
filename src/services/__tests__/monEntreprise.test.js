@@ -11,10 +11,12 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+  ACCUEIL_ADMIN,
   MODELES_HEBDO,
   MODELES_PAR_PAYS,
   REGLES_AFFICHEES,
   accesAutorise,
+  cibleRetour,
   entreprisesVisibles,
   formaterHeures,
   libelleStatutModele,
@@ -97,5 +99,23 @@ describe('Les mots', () => {
     expect(formaterHeures(undefined)).toBe('non configuré')
     expect(formaterHeures(0)).toBe('0 h')
     expect(formaterHeures('45')).toBe('45 h')
+  })
+})
+
+describe('Le retour ne dépose personne hors de l’application', () => {
+  it('avec un « d’où », il revient en arrière', () => {
+    expect(cibleRetour(3)).toBe('precedent')
+    expect(cibleRetour(1)).toBe('precedent')
+  })
+
+  it('sans « d’où » — page ouverte directement, ou index inconnu — il va au tableau de bord', () => {
+    expect(cibleRetour(0)).toBe(ACCUEIL_ADMIN)
+    expect(cibleRetour(undefined)).toBe(ACCUEIL_ADMIN)
+    expect(cibleRetour(null)).toBe(ACCUEIL_ADMIN)
+    expect(cibleRetour('abc')).toBe(ACCUEIL_ADMIN)
+  })
+
+  it('le repli est le tableau de bord, pas le menu ni une page vide', () => {
+    expect(ACCUEIL_ADMIN).toBe('/dashboard')
   })
 })

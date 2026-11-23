@@ -27,13 +27,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, Clock4, History, Info, Lock, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Check, Clock4, History, Info, Lock, ShieldCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import * as Regles from '../services/reglesTempsTravail'
 import {
   MODELES_HEBDO,
   REGLES_AFFICHEES,
   accesAutorise,
+  cibleRetour,
   formaterHeures,
   libelleStatutModele,
   modelePropose,
@@ -70,6 +71,35 @@ function tamponOrigine(resolution) {
   if (etat === 'personnelle') return 'Réglage personnel'
   if (etat === 'contrat') return 'Valeur du contrat'
   return 'Règle de l’entreprise'
+}
+
+/**
+ * Le retour, en haut à gauche de la feuille — même objet que sur la fiche
+ * employé (`.e360-retour`) et sur l'annuaire (`.empv3-fleche`) : 34 px, pilule,
+ * contour d'encre de 2 px, papier, survol `--charte-surface2`. La maison n'a
+ * qu'une flèche retour ; on ne lui en invente pas une seconde.
+ *
+ * Où il mène : là d'où l'on vient s'il y a un « d'où », sinon au tableau de
+ * bord. Un retour ne doit jamais déposer personne hors de l'application.
+ */
+function RetourEntete() {
+  const navigate = useNavigate()
+  const retour = () => {
+    const cible = cibleRetour(window.history.state?.idx)
+    if (cible === 'precedent') navigate(-1)
+    else navigate(cible)
+  }
+  return (
+    <button
+      type="button"
+      className="me-retour"
+      onClick={retour}
+      aria-label="Retour à la page précédente"
+      title="Retour"
+    >
+      <ArrowLeft size={18} aria-hidden="true" />
+    </button>
+  )
 }
 
 export default function MonEntreprise() {
@@ -223,6 +253,7 @@ export default function MonEntreprise() {
       <main className="me-page">
         <div className="me-feuille">
           <span className="me-bande-motif" aria-hidden="true" />
+          <RetourEntete />
           <div className="me-carte" role="alert">
             <h1>Accès refusé</h1>
             <p>Cette entreprise n’est pas rattachée à votre compte.</p>
@@ -241,6 +272,7 @@ export default function MonEntreprise() {
 
         <header className="me-tete">
           <div className="me-tete-texte">
+            <RetourEntete />
             <p className="me-surtitre">En-Check · Réglages</p>
             <h1 className="me-titre">Mon entreprise</h1>
             <p className="me-sous-titre">

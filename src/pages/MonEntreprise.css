@@ -46,6 +46,43 @@
   background-size: auto 22px;
 }
 
+/* ═══ LE RETOUR ════════════════════════════════════════════════════════ */
+
+/* La recette de `.e360-retour` (fiche employé) et `.empv3-fleche` (annuaire),
+   à l'identique : 34 px, pilule, contour d'encre de 2 px, papier, et le survol
+   `--charte-surface2`. Une seule flèche retour dans la maison. */
+.me-retour {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: 0 0 var(--charte-espace-2);
+  padding: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+
+.me-retour:hover {
+  background: var(--charte-surface2);
+}
+
+.me-retour:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* Le retour ne rétrécit pas la tête : à 320 px, il garde sa taille de doigt. */
+@media (max-width: 720px) {
+  .me-retour {
+    width: 38px;
+    height: 38px;
+  }
+}
+
 /* ═══ LA TÊTE ═══════════════════════════════════════════════════════════ */
 
 .me-tete {
