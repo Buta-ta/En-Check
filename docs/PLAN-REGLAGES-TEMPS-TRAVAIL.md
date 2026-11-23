@@ -181,7 +181,90 @@ orientation, et il est évitable à ce prix.
 `saveOvertimeSettings` ne permettent pas de savoir si l'entreprise les a choisies. On ne
 reconstitue pas une intention — on l'étiquette.
 
-### 3.4 Écriture
+### 3.5 Les règles personnelles, précisément
+
+C'est la partie V-B, désormais arbitrée (verrou accepté le 24/10). Une valeur personnelle
+n'est pas un « second réglage » : c'est une **décision nominative** qui entre dans la même
+course que les autres, avec une exception explicite — le verrou.
+
+#### a) Ce qu'un employé peut personnaliser — et ce qu'il ne peut pas
+
+| Clé | Personnalisable | Bornes techniques | Raison |
+|---|---|---|---|
+| `repos_minimum_heures` | **oui** | > 0 et ≤ 24 | une valeur à 0 ne serait pas un réglage, ce serait la suppression du contrôle |
+| `alerte_hebdo_heures` | **oui** | > 0 et ≤ 168 | |
+| `alerte_hebdo_niveau2_heures` | **oui** | > `alerte_hebdo_heures`, ≤ 168 | un second niveau sous le premier n'a pas de sens |
+| `declenchement_paie_hebdo_heures` | **non** | — | c'est une règle de **paie** : elle ne se personnalise pas par salarié (V-D2) |
+| `plafond_legal_heures` | **non** | — | `a_sourcer` (D5) ; rien à personnaliser tant que la source n'existe pas |
+| pauses, tolérances, arrondis, bascule | **non** | — | comportement de la borne, pas une règle individuelle (V-C3) |
+| heures prévues au contrat | **non** | — | `contract_hours_per_month` : une autre notion, un autre écran |
+
+Les bornes ci-dessus sont **techniques**. Aucune n'est un minimum ou un maximum « légal », et
+aucun libellé d'écran ne doit le suggérer.
+
+#### b) Les trois états d'une valeur personnelle
+
+1. **`suit_entreprise`** — l'état par défaut, matérialisé par *l'absence* de ligne
+   personnelle. Rien à créer, rien à nettoyer.
+2. **`personnelle`** — une ligne avec sa `date_effet`. Elle participe à la course des actes :
+   elle l'emporte sur toute valeur plus ancienne, et perd contre toute valeur plus récente
+   (contrat ou entreprise comprise).
+3. **`personnelle_verrouillee`** — même chose, plus une protection : **une règle
+   d'entreprise postérieure ne la remplace pas**. Seul un super-administrateur lève le
+   verrou, par un acte tracé (auteur, date, motif).
+
+Le verrou se pose au niveau de l'entreprise (l'administrateur qui gère l'accord), et ne se
+lève qu'au niveau supérieur. C'est volontairement asymétrique : celui qui accorde ne peut pas
+reprendre seul.
+
+#### c) Résolution, verrou compris
+
+Pour une clé et une date de référence :
+
+1. une valeur personnelle **verrouillée** et déjà en vigueur gagne, **quelle que soit** la
+   date des règles d'entreprise ou de contrat ;
+2. sinon, l'**acte le plus récent** gagne (§3.3) ; à égalité de date d'effet, la portée la
+   plus étroite ;
+3. sinon le `defaut_produit`, **et seulement s'il est autorisé** (§6.3) ;
+4. sinon : `aucune` — et l'écran dit « contrôle indisponible ». Jamais une conformité.
+
+#### d) Aperçu d'impact, avec le verrou
+
+Avant toute écriture d'entreprise, l'écran compte et **nomme** :
+
+- les employés dont la valeur personnelle sera **remplacée** (avec l'ancienne et la nouvelle) ;
+- les employés **verrouillés, non concernés** — ils doivent apparaître, sinon l'administrateur
+  croit avoir tout changé alors que trois accords tiennent.
+
+Sans confirmation explicite, **aucune écriture**. Le refus se teste au niveau de l'écriture,
+pas seulement de l'affichage.
+
+#### e) Cycle de vie
+
+| Acte | Effet |
+|---|---|
+| poser une valeur personnelle | nouvelle version, `date_effet`, `maj_par` |
+| la modifier | nouvelle version ; l'ancienne reste dans l'historique |
+| **revenir à la règle de l'entreprise** | la version est **archivée**, jamais supprimée : on doit pouvoir dire ce qui s'appliquait avant, et quand |
+| verrouiller / déverrouiller | acte tracé, avec motif |
+| fin de contrat, départ | l'historique reste ; aucune valeur n'est réécrite rétroactivement |
+| contrat signé plus tard | acte explicite ⇒ entre dans la course ; ne remplace **pas** une valeur verrouillée |
+
+#### f) Ce que voit l'employé, et ce qu'il ne peut pas faire
+
+- sa fiche affiche la valeur applicable, **son origine**, sa date d'effet et, le cas échéant,
+  « verrouillée le … par … » ;
+- il ne modifie rien lui-même : aucun champ d'administration sur la borne employé (V-C3) ;
+- s'il n'y a pas de valeur applicable, l'écran le dit — il n'affiche ni 0, ni « conforme ».
+
+#### g) Interdits d'accès
+
+- un administrateur ne lit ni n'écrit la valeur personnelle d'un employé d'une autre
+  entreprise : refus **dans la RPC**, pas seulement dans l'écran ;
+- l'employé visé doit appartenir à l'entreprise visée, contrôlé à l'écriture ;
+- un contrat ne peut porter une règle que pour l'employé qu'il couvre.
+
+### 3.6 Écriture
 
 Nouvelle RPC `encheck_regle_ecrire(...)` — **ne pas** modifier `encheck_seuil_ecrire` :
 - contrôle admin via `admin_has_access_to_enterprise` (déjà en base, `20261025000009` l. 32)
@@ -308,6 +391,11 @@ Réalisé le 24/10/2026, **non validé** : le statut reste « en attente ».
 **Ce que G1 ne fait pas** : il ne renomme rien à l'écran, ne modifie aucune alerte, ne touche
 ni aux seuils ni à la paie. Les totaux mensuels et annuels sont inchangés par construction
 (les boucles de totalisation gardent leurs propres listes de jours) et un test le vérifie.
+
+**Vérification des gardes de nuit** (6 tests, `gardeNuitAttribution.test.js`) : une garde reste
+attribuée à sa journée d'ouverture, n'est jamais dupliquée entre deux mois ni deux années, et
+la semaine à cheval sur le 31/12 la compte désormais une fois au lieu de zéro. Le taux appliqué
+est celui du jour d'ouverture — c'est une convention chiffrée au §8.7, pas un effet de G1.
 
 **G1 et G2 sont indépendants** et peuvent être menés en parallèle, une PR chacun. Le reste est
 séquentiel : G3 avant toute interface, G4 avant G4b et G5.
@@ -472,6 +560,18 @@ passe en `show: admin?.role === 'super_admin'`, ce qui supprime la redirection a
    règles de temps de travail uniquement** ; le journal général reste à faire.
 6. Le rapport demande de ne pas figer de résultats erronés : `snapshotCalcul.js` (PR #308)
    est une primitive neutre, mais son **activation** est un choix, pas une évidence.
+7. **Garde de nuit : une convention, pas une erreur — mais un écart qui se chiffre.** Une garde
+   appartient entièrement à la journée où elle a **commencé** (règle d'arbitrage n°2,
+   `garde_max_heures` = 22 h). Conséquence mesurée sur données fictives, à 1 000 FCFA/h :
+   une garde samedi 22 h → dimanche 6 h est payée **10 000 FCFA** (8 h au taux du samedi),
+   alors que la même nuit découpée au calendrier vaut **14 500** (2 h samedi + 6 h dimanche) ;
+   une garde dimanche 22 h → lundi 6 h est payée **16 000**, alors que la découpe vaut
+   **10 000**. Soit **6 000 FCFA d'écart** pour une nuit identique, selon le jour d'ouverture.
+   Ce n'est pas un défaut de G1 : la convention est antérieure et ses tests la verrouillent
+   (`gardeNuitAttribution.test.js`). La changer **change la paie** — donc c'est une décision,
+   pas une correction (voir §9). Effet secondaire de la même règle : six heures travaillées le
+   lundi sont comptées dans la semaine du dimanche, ce qui peut décaler une alerte
+   hebdomadaire d'une semaine.
 
 ---
 
@@ -488,5 +588,9 @@ passe en `show: admin?.role === 'super_admin'`, ce qui supprime la redirection a
   l'étiqueter, pas le réécrire).
 - La migration des réglages de pause vers « Mon entreprise » n'est **pas** décidée : V-C3 dit
   qu'ils restent où ils sont, et rien ici ne les déplace.
+- **Convention d'attribution des gardes de nuit** : conserver « la nuit appartient à son jour
+  d'ouverture » (écart mesuré jusqu'à 6 000 FCFA par nuit, §8.7), ou découper au calendrier ?
+  La seconde option change la paie et exige une décision explicite, une date d'effet et une
+  reprise de l'historique — elle n'entre pas dans G1.
 - Les repères concurrentiels du rapport ne sont pas des prescriptions : aucun compte
   concurrent n'a été testé.
