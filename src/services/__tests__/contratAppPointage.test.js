@@ -115,3 +115,67 @@ describe('🔌 Contrat serveur — le motif de fermeture', () => {
     expect(apresDrop).toContain('TO anon, authenticated, service_role')
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔐 LE CHEMIN SÛR — fermer sa propre pause sans jamais nommer l'employé
+//
+// L'audit du 23/11 a montré que `encheck_pause_fermer` est exécutable par
+// `anon` — le rôle de la clé publique, embarquée dans le bundle livré au
+// navigateur. `encheck_ma_pause_fermer` est la porte d'entrée qui ne prend
+// pas l'identité en paramètre. Voir docs/SECURITE-ECRITURES-ANONYMES.md.
+// ═══════════════════════════════════════════════════════════════════════════
+const SORTIE_SECURITE = readFileSync(
+  'supabase/migrations/20261124000001_ma_pause_fermer_par_jeton.sql', 'utf8')
+
+describe('🔐 encheck_ma_pause_fermer — l’employé n’est pas un paramètre', () => {
+  it('signe par jeton, pas par identifiant employé', () => {
+    expect(SORTIE_SECURITE).toContain('p_jeton text')
+    const signature = SORTIE_SECURITE.slice(
+      SORTIE_SECURITE.indexOf('FUNCTION public.encheck_ma_pause_fermer('),
+      SORTIE_SECURITE.indexOf('RETURNS jsonb')
+    )
+    //  Si un `p_employee` réapparaît dans la signature, la faille revient :
+    //  n'importe qui pourrait fermer la pause de n'importe qui.
+    expect(signature).not.toContain('p_employee')
+  })
+
+  it('refuse une session absente ou expirée', () => {
+    expect(SORTIE_SECURITE).toContain("RAISE EXCEPTION 'Session employé invalide ou expirée.'")
+    expect(SORTIE_SECURITE).toContain("ERRCODE = '42501'")
+  })
+
+  it('ne recopie pas la ligne de la table (piège 22P02 mesuré en prod)', () => {
+    //  L'assertion doit porter sur le CORPS de la fonction seulement : le
+    //  fichier contient un commentaire qui cite « SELECT * INTO » pour
+    //  expliquer le piège, et une recherche sur tout le fichier le trouve.
+    const corps = SORTIE_SECURITE.slice(
+      SORTIE_SECURITE.indexOf('AS $$'),
+      SORTIE_SECURITE.indexOf('$$;', SORTIE_SECURITE.indexOf('AS $$'))
+    )
+    //  Le corps contient aussi des commentaires qui CITENT la mauvaise
+    //  pratique pour l'expliquer. On ne juge que le code exécutable.
+    const code = corps.replace(/--[^\n]*/g, '')
+    expect(code).toContain('INTO v_emp, v_ent')
+    expect(code).not.toContain('SELECT * INTO')
+  })
+
+  it('délègue à une seule définition de la fermeture', () => {
+    //  Deux règles de fermeture = deux vérités. On en garde une.
+    expect(SORTIE_SECURITE).toContain('RETURN public.encheck_pause_fermer(v_emp, p_fin, p_motif)')
+  })
+
+  it('est purement additive : aucune fonction existante touchée', () => {
+    //  Une migration qui révoque trop tôt casse le pointage. La révocation
+    //  doit rester un geste manuel, après bascule de l'app.
+    expect(SORTIE_SECURITE).not.toContain('REVOKE')
+    expect(SORTIE_SECURITE).not.toContain('DROP FUNCTION')
+    expect(SORTIE_SECURITE).toContain('GRANT EXECUTE ON FUNCTION public.encheck_ma_pause_fermer')
+  })
+
+  it('dit dans le fichier ce qu’elle ne corrige pas', () => {
+    //  Un fichier qui laisse croire que le problème est réglé est pire
+    //  qu'aucun fichier : la section « ne fait pas » est obligatoire.
+    expect(SORTIE_SECURITE).toContain('CE QUE CETTE MIGRATION NE FAIT PAS')
+    expect(SORTIE_SECURITE).toContain('encheck_pause_ouvrir')
+  })
+})

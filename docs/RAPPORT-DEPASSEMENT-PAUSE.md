@@ -206,8 +206,38 @@ Deux décisions que je défends :
 
 **Aucune CI n'applique les migrations.** La migration de ce lot a été appliquée à la main. C'est la troisième fois que ce trou est signalé ; il a causé la panne du 21/11. Tant qu'il est là, une migration fusionnée n'est pas une migration appliquée.
 
-### 10.5 Preuves
+### 10.5 Correction — la sécurité de `encheck_pause_fermer`
 
-- 152 fichiers de test, **2 104 tests** ✓ ; build ✓ ; ESLint propre sur les fichiers touchés.
-- 12 tests de contrat ajoutés (`src/services/__tests__/contratAppPointage.test.js`), dont deux vérifiés par mutation : retirer le `DROP` les fait échouer.
+À la livraison du 22/11, j'avais écarté la question d'une ligne : « même
+signature, mêmes droits, pas de changement de sécurité ». Vérification faite
+le 23/11, cette phrase est trompeuse. `anon` est le rôle de la **clé publique**,
+présente dans le bundle livré au navigateur : toute fonction accordée à `anon`
+est ouverte à Internet, pas à la tablette de l'entreprise.
+
+Mesuré : `anon` peut appeler `encheck_pauses_en_cours(<entreprise>)` et
+obtenir 14 employés sur 3 entreprises, avec noms et matricules ; puis appeler
+`encheck_pause_fermer(<employé>, <fin arbitraire>)` et réécrire une durée de
+pause. Détail complet, avec la séquence de bascule :
+`docs/SECURITE-ECRITURES-ANONYMES.md`.
+
+Le défaut est **préexistant** (`encheck_pause_ouvrir` l'a aussi) ; je l'ai
+aggravé en ajoutant le motif sans revoir les droits.
+
+Deux dégâts de mes propres tests sur **Hippo BIYOKILA** (`ENN-0002`) sont
+réparés et vérifiés : une pause du 17/11 fermée à 7 666 minutes (la journée
+renvoyait `4,91` h travaillées au lieu de `presumee` 60 min), et une pause de
+0 minute créée le 22/11. État après réparation : 0 pause avec motif, 27
+pauses, comme avant.
+
+Le chemin sûr est disponible : `encheck_ma_pause_fermer(p_jeton, …)`, qui
+déduit l'employé du jeton. La révocation des fonctions ouvertes à `anon` est
+écrite mais **non appliquée** — elle casserait le pointage tant que l'app
+n'a pas basculé.
+
+### 10.6 Preuves
+
+- 152 fichiers de test, **2 110 tests** ✓ ; build ✓ ; ESLint propre sur les fichiers touchés.
+- **18 tests de contrat** (`src/services/__tests__/contratAppPointage.test.js`), dont deux vérifiés par mutation (retirer le `DROP` les fait échouer) et six sur le nouveau chemin par jeton.
+- `encheck_ma_pause_fermer` appliquée en production et testée : jeton inventé → `42501`, jeton valide d'un compte `RECETTE` → `aucune pause ouverte` (donc l'employé a bien été résolu).
+- Réparation vérifiée en base : `encheck_pauses_duree_reelle` du 17/11 repasse de `7666` à `presumee 60`, `encheck_temps_travaille` de `4,91` à son état d'origine, et 0 pause porte un motif.
 - En base : jetons inventé / vide / `NULL` → `42501` trois fois ; session de test créée puis **supprimée** (0 restante sur 191).
