@@ -525,3 +525,81 @@ Je ne tranche pas : la règle a été alignée dans l'app Pointage (`5a1f08b`,
 3 fichiers) et le web, et **décider maintenant changerait la paie sans
 regarder les lignes**. C'est à vérifier sur ces 3 pauses avant d'être
 affirmé comme règle. À soumettre avec le reste.
+
+---
+
+## 12 — Le filet « une sortie ferme la pause » (23/11)
+
+### 12.1 Un chantier qui est arrivé par la porte de service
+
+Le lot App Pointage a écrit **et appliqué en production** un déclencheur qui
+ferme la pause ouverte au moment où une sortie est pointée. Ils me l'ont
+transmis pour que je le committe ici. La validation du fondateur couvre le
+principe ; **la mise en production, elle, n'est pas passée par ce dépôt.**
+
+Conséquence concrète : jusqu'à cette migration, l'état décrit par le code ne
+correspondait pas à l'état de la base. Une base recréée depuis le dépôt
+n'aurait pas eu le filet.
+
+### 12.2 Ce qu'il fait vraiment — testé, pas relu
+
+Leur description annonçait le cas nominal. J'ai testé **le chemin complet**,
+par le vrai déclencheur, en transaction :
+
+```
+INSERT encheck_pauses (RECETTE, début = now() - 50 min)
+INSERT attendances (check_type 'out', check_time = now() - 10 min)
+→ pause fermée : fin = check_time, duree_minutes 40, motif_fermeture 'sortie'
+```
+
+Le déclencheur fait bien son travail, et le pointage passe.
+
+**Deux cas piégeux testés :**
+
+| Cas | Résultat |
+|---|---|
+| sortie dont l'heure est **antérieure** au début de la pause | pause **laissée ouverte** (`heure de reprise invalide`) — rien de cassé, rien d'inventé |
+
+C'est le bon comportement : `encheck_pause_fermer` refuse une fin incohérente,
+le filet ne fabrique pas une durée négative pour faire bonne figure. Mais
+**la pause reste ouverte** — le filet ne bouche donc pas tous les trous, et
+c'est assumé (une heure incohérente est un problème d'horloge à traiter, pas
+un cas à masquer).
+
+### 12.3 Ce que j'ai corrigé de leur version
+
+Leur ACL laissait **`anon` et `authenticated`** exécuter les deux fonctions.
+`encheck_pause_clore_sortie` est `SECURITY DEFINER` : laissée ouverte à
+`anon`, elle permet de fermer la pause de n'importe qui **sans session** —
+exactement le défaut corrigé au §11, une fonction plus loin.
+
+Vérification avant de fermer : **0 appel** dans les 90 fichiers Dart de
+`3826078`. Les deux fonctions ne servent qu'en interne, par le déclencheur.
+
+Après correction, mesuré en base :
+
+```
+encheck_pause_clore_sortie  → {postgres=X/postgres,service_role=X/postgres}
+encheck_pause_filet_sortie  → {postgres=X/postgres,service_role=X/postgres}
+```
+
+### 12.4 Les trois garde-fous tenus
+
+- **Borné** : `NEW.check_time`, jamais `now()`. Un test le verrouille — sur
+  un import rejoué le lendemain, `now()` aurait inventé une pause d'un jour.
+- **Visible** : motif `sortie` + trace `pause_fermee_sortie_auto`.
+- **Rattrapable** : aucune suppression. Un test vérifie qu'il n'y a pas de
+  `DELETE` dans la migration : fermer et effacer ne sont pas la même
+  décision, et une pause effacée ne peut plus être rouverte par le manager.
+
+**9 tests** (`filetSortiePause.test.js`).
+
+### 12.5 Ce que ce filet change pour la suite
+
+La révocation `anon` devient possible : `encheck_pauses_en_cours` est désormais
+appelée par l'app Pointage **et** par rien d'autre côté web — mon bandeau
+utilise `encheck_pauses_bandeau`. Le point d'arrêt reste le test tablette,
+parce que c'est l'app qui décide.
+
+**Reste ouvert, et visible dans les mesures :** la fuite noms + matricules
+par `encheck_pauses_en_cours` en `anon`.
