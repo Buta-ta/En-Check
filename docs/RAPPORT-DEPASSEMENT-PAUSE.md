@@ -603,3 +603,80 @@ parce que c'est l'app qui décide.
 
 **Reste ouvert, et visible dans les mesures :** la fuite noms + matricules
 par `encheck_pauses_en_cours` en `anon`.
+
+---
+
+## 13 — La fuite noms + matricules est fermée (23/11)
+
+### 13.1 Ce qui fuyait
+
+`encheck_pauses_en_cours(p_enterprise)` était exécutable par `anon`, la clé
+publique qui part dans le navigateur **et dans l'APK**. Elle renvoyait, pour
+chaque pause en cours : `employe_id`, `prenom`, `nom`, `matricule`, `debut`,
+`motif`, `duree_minutes`.
+
+Mesuré sous `SET LOCAL ROLE anon` : `Hippo`, `BIYOKILA`, `ENN-0002`.
+Sans compte, sans session.
+
+### 13.2 La correction de diagnostic que j'avais ratée depuis le début
+
+J'ai écrit plusieurs fois, dans ce rapport et dans mes messages, que ces
+fonctions renvoyaient des identités « parce qu'elles étaient ouvertes à
+`anon` ». **C'est faux.**
+
+En PostgreSQL, une fonction `SECURITY DEFINER` s'exécute avec les droits de
+**son propriétaire**. L'ACL ne décide pas de ce que la fonction peut lire —
+elle décide de **qui peut l'appeler**.
+
+Conséquence, vérifiée : `encheck_pauses_bandeau` — ma fonction, celle qui ne
+renvoie qu'un prénom et une initiale — est **aussi** exécutable par `anon`.
+Elle ne fuit pas parce que son corps est écrit pour ne pas fuir.
+
+Donc : **la révocation ne protège pas contre un appelant, elle ferme un
+chemin.** Le vrai correctif était le corps des fonctions, et il était déjà
+fait depuis le 30/11 (`bandeau` remplace `en_cours`). La révocation arrive
+après — elle empêche qu'on rappelle l'ancienne, elle ne rend pas la nouvelle
+sûre.
+
+### 13.3 Avant de révoquer, ce que j'ai vérifié dans leur code
+
+La révocation pouvait casser la tablette en production. J'ai lu
+`lib/services/pause_service.dart` à `3826078` :
+
+- **Le bandeau** : la tablette appelle `encheck_pauses_bandeau` **en
+  premier** et s'arrête là. Elle ne tombe sur `en_cours` que sur `PGRST202`
+  — impossible, `bandeau` est livrée et vérifiée.
+- **Ouvrir / fermer** : la variante par **jeton** est appelée en premier ;
+  l'ancien chemin n'est qu'un repli `PGRST202`.
+- Leur client est `Supabase.initialize(anonKey:)` **sans `signIn`** : la
+  tablette est en rôle `anon` en permanence.
+- **Aucun objet de la base** (fonction, vue) ne dépend d'`en_cours` —
+  vérifié par recherche dans `pg_proc.prosrc`.
+
+### 13.4 Mesure après révocation
+
+| Appel en rôle `anon` | Avant | Après |
+|---|---|---|
+| `encheck_pauses_en_cours` | renvoyait `Hippo / BIYOKILA / ENN-0002` | **`42501 permission denied`** |
+| `encheck_pause_ouvrir` | exécutable | **révoqué** |
+| `encheck_pause_fermer` | exécutable | **révoqué** |
+| `encheck_pauses_bandeau` | exécutable | **exécutable** (voulu) |
+| `encheck_ma_pause_ouvrir` (jeton invalide) | `42501 Session employé invalide` | **inchangé** |
+
+La tablette garde son bandeau et ses chemins par jeton.
+
+### 13.5 Ce qui reste vrai, et qu'il faut dire
+
+Leurs trois replis `PGRST202` tombent désormais en **`42501`**. Les trois sont
+rattrapés côté app : état local pour le bandeau, file d'attente pour les
+gestes. Mais **après un vidage de cache ou une réinstallation, une tablette
+sans jeton ne peut plus ouvrir ni fermer de pause hors ligne** — le geste
+reste en file jusqu'à la prochaine identification.
+
+Ce n'est pas une régression cachée : c'est le comportement voulu, et il est
+inscrit dans la migration. Le dire vaut mieux que de laisser quelqu'un le
+découvrir sur une tablette, un matin.
+
+**8 tests** (`revocationPausesAnon.test.js`), dont un qui vérifie que les
+chemins par jeton **ne sont pas** révoqués — la révocation ne doit pas
+devenir un excès.
