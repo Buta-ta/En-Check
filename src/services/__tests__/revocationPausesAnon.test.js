@@ -28,6 +28,11 @@ describe('🔒 Les trois anciennes fonctions sont fermées', () => {
     'encheck_pauses_en_cours',
     'encheck_pause_ouvrir',
     'encheck_pause_fermer',
+    //  Ajoutées après relecture de `proacl` : elles portaient bien la garde
+    //  `auth.uid()`, mais une garde qui refuse ne retire pas le chemin
+    //  d'appel. Elles ne sont appelées que par l'écran admin.
+    'encheck_pause_creer',
+    'encheck_pauses_annuler_decision',
   ])('%s est révoquée de anon', (nom) => {
     expect(MIGRATION).toMatch(
       new RegExp(`REVOKE ALL ON FUNCTION public\\.${nom}\\([^)]*\\)\\s+FROM anon`))

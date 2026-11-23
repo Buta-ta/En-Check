@@ -680,3 +680,36 @@ découvrir sur une tablette, un matin.
 **8 tests** (`revocationPausesAnon.test.js`), dont un qui vérifie que les
 chemins par jeton **ne sont pas** révoqués — la révocation ne doit pas
 devenir un excès.
+
+### 13.6 Deux oubliées, trouvées en relisant mes propres mesures
+
+Après avoir révoqué les trois fonctions du §13.4, j'ai relu `proacl` pour
+**toutes** les fonctions de pause — pas seulement celles que je venais de
+traiter. Deux y étaient encore ouvertes à `anon` :
+
+| Fonction | Garde `auth.uid()` | Ouverte à `anon` |
+|---|---|---|
+| `encheck_pause_creer` | oui | **oui** |
+| `encheck_pauses_annuler_decision` | oui | **oui** |
+
+Je les avais classées « protégées » au §11 en voyant leur garde. C'était la
+même erreur de raisonnement que pour les cinq autres, sous une autre forme :
+**une garde qui refuse ne retire pas le chemin d'appel.** L'ACL est la porte,
+la garde est le vigile ; fermer l'un ne ferme pas l'autre.
+
+Le §11 les avait déjà corrigées — elles refusaient bien — mais elles
+restaient dans l'ACL de `anon`. Révoquées.
+
+**Vérifié après coup :** l'écran admin `Pauses.jsx` continue de créer une
+pause (JWT simulé, `ROLLBACK`, `ok: true`). Ce sont les deux seules
+fonctions que l'écran utilise et que personne d'autre n'appelle.
+
+Après cette seconde passe, il reste exactement **cinq** fonctions de pause
+accessibles à `anon`, et c'est voulu :
+
+| Fonction | Pourquoi |
+|---|---|
+| `encheck_pauses_bandeau` | le bandeau des tablettes |
+| `encheck_pauses_mes_pauses` | mes pauses par jeton |
+| `encheck_pauses_mes_pauses` … `ma_pause_ouvrir` / `ma_pause_fermer` | gestes de pause par jeton |
+| `encheck_pause_prevue` | lecture seule, aucune identité renvoyée |

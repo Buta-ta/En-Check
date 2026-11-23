@@ -38,6 +38,8 @@
 --                                 `encheck_ma_pause_ouvrir(p_jeton, …)`
 --   3. encheck_pause_fermer     — écriture par `anon`, remplacée par
 --                                 `encheck_ma_pause_fermer(p_jeton, …)`
+--   4. encheck_pause_creer      — réservée à l'écran admin `Pauses.jsx`
+--   5. encheck_pauses_annuler_decision — idem
 --
 -- POURQUOI LE MOMENT EST BON — vérifié, pas supposé
 -- ────────────────────────────────────────────────────────────────────────────
@@ -70,6 +72,17 @@ REVOKE ALL ON FUNCTION public.encheck_pauses_en_cours(uuid)          FROM anon;
 REVOKE ALL ON FUNCTION public.encheck_pause_ouvrir(uuid, timestamptz, text) FROM anon;
 REVOKE ALL ON FUNCTION public.encheck_pause_fermer(uuid, timestamptz, text) FROM anon;
 
+--  Ajoutés dans un second temps, en relisant proacl après la première passe :
+--  ces deux-là portent pourtant la garde `auth.uid()`. Je les avais classées
+--  « protégées » alors que leur ACL me contredisait — la garde et le droit
+--  d'appel sont deux choses distinctes, et une garde qui refuse ne retire
+--  pas le chemin d'appel.
+--
+--  Elles ne sont appelées QUE par `Pauses.jsx` (client admin, jeton de
+--  session) : vérifié, 0 appel dans les 90 fichiers Dart de l'app.
+REVOKE ALL ON FUNCTION public.encheck_pause_creer(uuid, timestamptz, timestamptz, text) FROM anon;
+REVOKE ALL ON FUNCTION public.encheck_pauses_annuler_decision(uuid[], text) FROM anon;
+
 -- ───────────────────────────────────────────────────────────────────────────
 -- VÉRIFICATION — la migration échoue si une seule est encore ouverte.
 -- ───────────────────────────────────────────────────────────────────────────
@@ -83,7 +96,9 @@ BEGIN
    WHERE n.nspname = 'public'
      AND p.proname IN ('encheck_pauses_en_cours',
                        'encheck_pause_ouvrir',
-                       'encheck_pause_fermer')
+                       'encheck_pause_fermer',
+                       'encheck_pause_creer',
+                       'encheck_pauses_annuler_decision')
      AND p.proacl::text LIKE '%anon=X%';
 
   IF v_ouvert IS NOT NULL THEN
@@ -102,7 +117,7 @@ BEGIN
     RAISE EXCEPTION 'encheck_pauses_bandeau n''est plus accessible à anon : la tablette perdrait le bandeau';
   END IF;
 
-  RAISE NOTICE 'révocation vérifiée : 3 fermées à anon, le bandeau et les chemins par jeton restent ouverts';
+  RAISE NOTICE 'révocation vérifiée : 5 fermées à anon, entrées tablette et chemins par jeton ouverts';
 END;
 $$;
 
