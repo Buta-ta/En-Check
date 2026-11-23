@@ -30,7 +30,9 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
 
   it('2. rend TOUTES les équipes pliables, y compris GARDE & LOGISTIQUE, et permet de les créer / nommer', () => {
     // Une seule boucle de rendu des groupes : chaque groupe possède sa barre pliable
-    expect(planningSrc).toContain('className="sk-group-row"')
+    // l'état replié est Nommé dans la classe : c'est lui qui ouvre le geste de
+    // rangement (contrat 38), et la peau le dessine
+    expect(planningSrc).toContain('className={`sk-group-row ${isCollapsed ? "is-collapsed" : ""}')
     expect(planningSrc).not.toContain('groupIdx > 0')
     expect(planningSrc).toContain('Collaborateurs &amp; Équipes')
     // Création / renommage / suppression d'équipes + affectation des membres
@@ -1272,5 +1274,143 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // les autres écritures de la vue sont des voyages (« voir la semaine »),
     // pas des interrupteurs : elles ne dédoublent rien
     expect(planningSrc.match(/setPlanningView\(/g)).toHaveLength(4)
+  })
+
+  it('36. porte la liste des entreprises hors de la barre, où plus rien ne la coince', () => {
+    const selecteur = lire('src/components/SelecteurEntreprise.jsx')
+    // « quand je clique sur l'entreprise, le panneau s'ouvre en dessous du bloc
+    // (le problème est le même que dans la page dashboard) ». L'enfant absolu du
+    // rail ne pouvait pas dépasser l'étage de son parent — et sur le dashboard,
+    // l'`overflow: hidden` de `.dashboard-sidebar` le rognait. Un z-index de
+    // plus n'y changeait rien : la liste est PORTÉE AILLEURS.
+    expect(selecteur).toContain("import { createPortal } from 'react-dom'")
+    expect(selecteur).toContain('createPortal(liste, hote)')
+    expect(selecteur).toContain('document.body')
+    // posée à des coordonnées LUES sur la bande, pas à un nombre recopié
+    expect(selecteur).toContain('getBoundingClientRect()')
+    expect(selecteur).toContain('style={place ? { top: place.top, left: place.left } : { visibility: \'hidden\' }}')
+    // et la feuille SUIT la bande : la page roule, la barre est collante
+    expect(selecteur).toContain("window.addEventListener('resize', mesurer)")
+    expect(selecteur).toContain("window.addEventListener('scroll', mesurer, true)")
+    // un clic DANS la liste n'est plus un clic « dehors » depuis qu'elle est
+    // hors du rail : sans cette garde, choisir une entreprise la referait avant
+    // que le choix parte
+    expect(selecteur).toContain('feuille.current && feuille.current.contains(e.target)')
+
+    const barre = lire('src/components/SidebarUnique.css')
+    expect(barre).toMatch(
+      /\.se-liste--flottante \{\s*\n\s*position: fixed;\s*\n\s*top: auto;\s*\n\s*left: auto;\s*\n\s*z-index: 78;/
+    )
+    // haute mais jamais hors de l'écran
+    expect(barre).toContain('max-height: calc(100vh - 16px)')
+    expect(barre).toContain('max-height: calc(100dvh - 16px)')
+    expect(barre).toMatch(/\.se-liste--flottante \{\s*\n\s*bottom: auto;/)
+    // la barre, elle, passe à l'étage 74 : le registre qui se déplie, lui, ne
+    // sort pas de la barre et doit couvrir le bandeau collant de la page (60)
+    expect(barre).toContain('z-index: 74;')
+    // et l'ancienne cage a disparu de la variante : un `absolute` qui resterait
+    // écrit là serait lu par quelqu'un
+    expect(barre).not.toMatch(/\.se-liste--flottante \{[^}]*position: absolute/)
+  })
+
+  it('37. signe les sept jours dans la bande, à la couleur de la légende', () => {
+    // « n'OUVRE PAS LE MODAL AJUSTER LE PLANNING QUAND JE CLIQUE SUR LMMJVSD » :
+    // ces pastilles n'avaient pas de geste à retirer, elles n'en avaient AUCUN.
+    // Le clic traversait la cellule du collaborateur, dont l'onClick ouvre
+    // l'ajustement du planning. Elles sont donc des boutons qui arrêtent le
+    // clic et tournent l'état du jour.
+    const debut = planningSrc.indexOf('className="sk-avail-days"')
+    const bloc = planningSrc.slice(debut, planningSrc.indexOf('</div>', debut))
+    expect(bloc).toContain('<button')
+    expect(bloc).toContain('e.stopPropagation();')
+    expect(bloc).toContain('cycleAvailability(emp.id, `day-${j.id}`)')
+    expect(bloc).not.toContain('openAvailabilityModal')
+    expect(bloc).toContain('role="group"')
+    // un mot par état, jamais la couleur seule (D-007)
+    for (const mot of ['"disponible"', '"indisponible"', '"non renseigné"']) {
+      expect(bloc).toContain(mot)
+    }
+
+    // « tu n'appliques pas la légende pour les couleurs concernant ces boutons » :
+    // la ligne de légende peignait ses puces en vert et rouge fluo (deux hex de
+    // la feuille voisine), les boutons ne peignaient RIEN. Les trois objets
+    // lisent maintenant les mêmes tokens d'état — un fait, trois endroits.
+    const peau = lire('src/pages/PlanningPostIt.css')
+    // la règle est cherchée À SON ENDROIT, dans le bloc de l'objet : les trois
+    // objets portent le même token, mais pas à la même propriété (la puce le
+    // met en fond, la pilule en trait et en encre, le jour en fond lavé) — et
+    // deux lignes qui se recopient l'une l'autre est précisément ce qu'on
+    // arrête de faire ici.
+    const blocDe = (selecteur) => {
+      const depart = peau.indexOf(selecteur)
+      expect(depart, selecteur).toBeGreaterThan(-1)
+      return peau.slice(depart, peau.indexOf('}', depart))
+    }
+    for (const [etat, token] of [['is-on', '--charte-succes'], ['is-off', '--charte-erreur']]) {
+      for (const objet of ['sk-avail-legend-dot', 'sk-avail-pill', 'sk-avail-day']) {
+        expect(blocDe(`.sk-plan-page--postit .${objet}.${etat} {`)).toContain(`var(${token})`)
+      }
+    }
+    // « non défini » a sa couleur — le brun du neutre — et ce n'est pas une case vide
+    expect(peau).toMatch(
+      /\.sk-plan-page--postit \.sk-avail-day \{[\s\S]*?color: var\(--charte-statut-neutre\);/
+    )
+    // une pastille qu'on tourne au pouce se prend au pouce : 22 px, pas 16
+    expect(peau).toMatch(/\.sk-plan-page--postit \.sk-avail-day \{[\s\S]*?min-height: 22px;/)
+    expect(peau).toMatch(/\.sk-plan-page--postit \.sk-avail-day:focus-visible \{/)
+    // et le fluo n'a pas été déplacé : il a été retiré de la peau. ÉCRIT ICI
+    // en toutes lettres, le nom des deux couleurs en ajouterait deux au
+    // compteur de la porte de charte — le contrat serait la faute. On cherche
+    // donc le motif, pas les mots.
+    const reglures = peau.slice(
+      peau.indexOf('.sk-plan-page--postit .sk-avail-legend-dot {'),
+      peau.indexOf('/* \u2500\u2500 la carte de poste')
+    )
+    expect(reglures.length).toBeGreaterThan(600)
+    expect(reglures.match(/#[0-9a-fA-F]{3,8}\b/g)).toBeNull()
+    expect(reglures).not.toMatch(/background: var\(--sk-/)
+  })
+
+  it('38. range les équipes au glisser, une fois la ligne repliée', () => {
+    // « il faut pouvoir glisser les équipes une fois pliées pour échanger leur
+    // ordre ». Trois pièces, et la donnée doit être LUE par ce qui est rendu —
+    // un ordre enregistré que le mémo ignore n'est pas un ordre.
+    expect(planningSrc).toContain(
+      'const GROUPS_ORDER_STORAGE_KEY = "encheck_planning_teams_ordre_v1";'
+    )
+    expect(planningSrc).toContain('readStorage(GROUPS_ORDER_STORAGE_KEY, [])')
+    expect(planningSrc).toContain('writeStorage(GROUPS_ORDER_STORAGE_KEY, ordreEquipes)')
+
+    const memo = planningSrc.slice(
+      planningSrc.indexOf('const ranges = [...groupes].sort'),
+      planningSrc.indexOf('const titres = tries.map')
+    )
+    expect(memo).toContain('ordreEquipes.length')
+    expect(memo).toContain('ranges.filter((groupe) => !ordreEquipes.includes(groupe.key))')
+    // une équipe jamais rangée reste visible, elle ne disparaît pas du tri
+    expect(memo).toContain('.filter(Boolean)')
+    expect(planningSrc).toContain('equipesParEmploye, ordreEquipes]);')
+
+    const ligne = planningSrc.slice(planningSrc.indexOf('key={`grp-${group.key}`}'))
+    const attributs = ligne.slice(0, ligne.indexOf('onClick='))
+    expect(attributs).toContain('draggable={isCollapsed}')
+    expect(attributs).toContain('application/x-encheck-equipe')
+    expect(attributs).toContain('e.preventDefault()')
+    expect(attributs).toContain('echangerEquipes(cle, group.key)')
+    expect(attributs).toContain('setEquipeGlissee(null)')
+    // l'échange, pas l'insertion : le mot qu'il a employé, c'est « échanger »
+    expect(planningSrc).toContain('[cles[i], cles[j]] = [cles[j], cles[i]]')
+
+    // ce que le doigt voit : une ligne repliée est une prise, la ligne survolée
+    // est la place qu'elle prendra
+    const peau = lire('src/pages/PlanningPostIt.css')
+    expect(peau).toMatch(/\.sk-plan-page--postit \.sk-group-row\.is-collapsed \{\s*\n\s*cursor: grab;/)
+    expect(peau).toMatch(/\.sk-plan-page--postit \.sk-group-row\.is-glissee \{\s*\n\s*cursor: grabbing;/)
+    expect(peau).toMatch(
+      /\.sk-plan-page--postit \.sk-group-row\.is-cible \{\s*\n\s*box-shadow: inset 0 3px 0 var\(--charte-encre\);/
+    )
+    // et la porte de charte ne bouge pas d'un cran (aucun hex, aucun flou
+    // ajoutés par ces trois états) : le compte global est pris au compteur, en
+    // dur dans la chaîne de contrôle — pas rejoué ici à l'arrache.
   })
 })

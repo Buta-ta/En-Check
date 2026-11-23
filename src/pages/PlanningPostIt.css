@@ -1059,6 +1059,32 @@
   background-color: var(--plq-lave);
 }
 
+/* ── une équipe repliée se RANGE à la main (08/12) ─────────────────────────
+   Le geste doit se voir avant de se faire : une ligne repliée est une prise,
+   et la ligne qu'on survole est la place qu'elle prendra. Le trait d'encre ne
+   suffit pas à dire « ici » — il est épais d'un côté, et c'est ce côté qui
+   compte. */
+.sk-plan-page--postit .sk-group-row.is-collapsed {
+  cursor: grab;
+}
+
+.sk-plan-page--postit .sk-group-row.is-glissee {
+  cursor: grabbing;
+  /* la ligne qu'on tient s'efface à demi : on voit le vide qu'elle laisse, et
+     la feuille qu'on déplace reste lisible sous le curseur */
+  opacity: 0.55;
+}
+
+.sk-plan-page--postit .sk-group-row.is-cible {
+  box-shadow: inset 0 3px 0 var(--charte-encre);
+}
+
+/* les deux bordures de la ligne (trait d'encre en haut et en bas, plus haut
+   dans cette feuille) ne se doublent pas quand la cible est la première */
+.sk-plan-page--postit .sk-group-row.is-cible.is-glissee {
+  box-shadow: none;
+}
+
 .sk-plan-page--postit .sk-group-row.is-selected {
   outline: var(--charte-trait) solid var(--charte-encre);
   outline-offset: -4px;
@@ -1245,21 +1271,91 @@
   letter-spacing: 0.04em;
 }
 
-/* disponible et absent se distinguent au trait et au mot, avant la couleur :
-   le vert et le rouge ne portaient pas le texte, ils ne le portent toujours pas */
+/* Disponible et indisponible se distinguent AU TRAIT et AU MOT avant la
+   couleur (D-007) — mais ils portent AUSSI la couleur de la légende, depuis le
+   08/12 : « tu n'appliques pas la légende pour les couleurs concernant ces
+   boutons ». Les deux pilules et les sept jours du dessous lisent les mêmes
+   tokens d'état (D-018), posés en fond lavé et non en aplat saturé. */
 .sk-plan-page--postit .sk-avail-pill.is-on {
-  border-color: var(--charte-encre);
-  background-color: transparent;
-  color: var(--charte-encre);
+  border-color: var(--charte-succes);
+  background-color: color-mix(in srgb, var(--charte-succes) 10%, transparent);
+  color: var(--charte-succes);
 }
 
 .sk-plan-page--postit .sk-avail-pill.is-off {
   border-style: dashed;
-  border-color: color-mix(in srgb, var(--charte-encre) 62%, var(--charte-surface));
-  background-color: transparent;
-  color: color-mix(in srgb, var(--charte-encre) 62%, var(--charte-surface));
+  border-color: var(--charte-erreur);
+  background-color: color-mix(in srgb, var(--charte-erreur) 9%, transparent);
+  color: var(--charte-erreur);
   text-decoration: line-through;
   text-decoration-thickness: 1px;
+}
+
+/* un état qu'on peut tourner doit se voir au clavier comme au doigt */
+.sk-plan-page--postit .sk-avail-pill:focus-visible,
+.sk-plan-page--postit .sk-avail-day:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 1px;
+}
+
+/* LES TROIS PUCES DE LA LÉGENDE, au diapason : la ligne « Disponibilité ·
+   ● disponible ● indisponible ● non renseigné » était peinte en vert et rouge
+   FLUO, les deux hex de la feuille voisine — hors charte, et surtout : une
+   légende dont les couleurs ne sont pas celles des boutons qu'elle explique
+   est un texte décoratif. Elles portent désormais les mêmes tokens, dans le
+   même ordre qu'au-dessus. Le troisième état a une couleur lui aussi — le brun
+   du neutre — : « non renseigné » n'est pas une case vide. */
+.sk-plan-page--postit .sk-avail-legend-dot {
+  background-color: var(--charte-statut-neutre);
+}
+
+.sk-plan-page--postit .sk-avail-legend-dot.is-on {
+  background-color: var(--charte-succes);
+}
+
+.sk-plan-page--postit .sk-avail-legend-dot.is-off {
+  background-color: var(--charte-erreur);
+}
+
+/* LES SEPT JOURS, mêmes couleurs, même grammaire, en plus petit — ils sont
+   devenus des commandes (08/12) : ils se prennent au doigt, au clavier, et le
+   curseur le dit. Le `min-*` est la surface du geste ; la pastille de la
+   feuille voisine faisait seize px, une cible manquée du premier coup. */
+.sk-plan-page--postit .sk-avail-days {
+  gap: var(--charte-espace-1);
+}
+
+.sk-plan-page--postit .sk-avail-day {
+  min-width: 22px;
+  min-height: 22px;
+  width: auto;
+  height: auto;
+  padding: 0 var(--charte-espace-1);
+  border: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--charte-statut-neutre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sk-plan-page--postit .sk-avail-day:hover {
+  border-color: var(--charte-encre);
+  color: var(--charte-encre);
+}
+
+.sk-plan-page--postit .sk-avail-day.is-on {
+  border-color: var(--charte-succes);
+  background-color: color-mix(in srgb, var(--charte-succes) 16%, transparent);
+  color: var(--charte-succes);
+}
+
+.sk-plan-page--postit .sk-avail-day.is-off {
+  border-style: dashed;
+  border-color: var(--charte-erreur);
+  background-color: color-mix(in srgb, var(--charte-erreur) 14%, transparent);
+  color: var(--charte-erreur);
 }
 
 .sk-plan-page--postit .sk-avail-pill.is-daypicker {

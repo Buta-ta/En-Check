@@ -99,6 +99,7 @@ const TEAMS_STORAGE_KEY = "encheck_planning_teams_v1";
 const TEAM_ASSIGNMENTS_STORAGE_KEY = "encheck_planning_team_assignments_v1";
 const MONTH_MODELS_STORAGE_KEY = "encheck_planning_month_models_v1";
 const COLLAPSED_GROUPS_STORAGE_KEY = "encheck_planning_teams_collapsed_v1";
+const GROUPS_ORDER_STORAGE_KEY = "encheck_planning_teams_ordre_v1";
 
 // Raccourcis En-Check : rejoindre les autres modules sans repasser par le Dashboard
 // Palette de couleurs personnalisables En-Check (modèles & cases)
@@ -375,9 +376,20 @@ export default function Planning() {
   const [collapsedGroups, setCollapsedGroups] = useState(() =>
     readStorage(COLLAPSED_GROUPS_STORAGE_KEY, {})
   );
+  // L'ordre des équipes, tel que le fondateur le range à la main (08/12) : une
+  // liste de clés, dans l'ordre voulu. Rien d'autre — la place de chaque ligne
+  // se relit là, et nulle part ailleurs.
+  const [ordreEquipes, setOrdreEquipes] = useState(() =>
+    readStorage(GROUPS_ORDER_STORAGE_KEY, [])
+  );
   const [selectedEntreprise, setSelectedEntreprise] = useState("all");
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
+
+  // Le glisser d'ÉQUIPE à ÉQUIPE (08/12) : `equipeGlissee` est la ligne qu'on
+  // tient, `equipeCible` celle qu'on survole — de la peinture, pas de la donnée.
+  const [equipeGlissee, setEquipeGlissee] = useState(null);
+  const [equipeCible, setEquipeCible] = useState(null);
 
   // État Drag & Drop En-Check
   const [draggedPayload, setDraggedPayload] = useState(null);
@@ -552,6 +564,10 @@ export default function Planning() {
   useEffect(() => {
     writeStorage(COLLAPSED_GROUPS_STORAGE_KEY, collapsedGroups);
   }, [collapsedGroups]);
+
+  useEffect(() => {
+    writeStorage(GROUPS_ORDER_STORAGE_KEY, ordreEquipes);
+  }, [ordreEquipes]);
 
   useEffect(() => {
     writeStorage(TEAM_ASSIGNMENTS_STORAGE_KEY, teamAssignments);
@@ -2166,7 +2182,21 @@ export default function Planning() {
       return groupe.title === SANS_EQUIPE ? priority.length + 1 : priority.length;
     };
 
-    const tries = [...groupes].sort((a, b) => rangPrioritaire(a) - rangPrioritaire(b));
+    const ranges = [...groupes].sort((a, b) => rangPrioritaire(a) - rangPrioritaire(b));
+
+    // L'ordre GLISSÉ à la main passe devant les priorités écrites : ce que
+    // l'écran montre, c'est lui, et il revient d'une visite à l'autre. Une
+    // équipe absente de la liste — créée depuis, ou jamais déplacée — garde sa
+    // place de priorité APRÈS les glissées : elle ne disparaît pas pour n'avoir
+    // pas encore été rangée.
+    const tries = ordreEquipes.length
+      ? [
+          ...ordreEquipes
+            .map((cle) => ranges.find((groupe) => groupe.key === cle))
+            .filter(Boolean),
+          ...ranges.filter((groupe) => !ordreEquipes.includes(groupe.key)),
+        ]
+      : ranges;
 
     // Deux barres du même nom (équipe officielle + département hérité) :
     // on les signale, sinon on ne sait plus laquelle on regarde.
@@ -2179,7 +2209,22 @@ export default function Planning() {
       collision:
         titres.filter((titre) => titre === groupe.title.toUpperCase()).length > 1,
     }));
-  }, [filteredEmployees, teams, teamAssignments, equipesFormees, equipesParEmploye]);
+  }, [filteredEmployees, teams, teamAssignments, equipesFormees, equipesParEmploye, ordreEquipes]);
+
+  // L'ÉCHANGE, pas l'insertion : « glisser les équipes une fois pliées pour
+  // ÉCHANGER leur ordre ». Poser A sur B permute les deux lignes. C'est plus
+  // sûr qu'un trait d'insertion raté d'un demi-centimètre, et c'est le mot
+  // qu'il a employé. Les clés non rangées sont remises dans l'ordre affiché,
+  // pour que la liste mémorisée reste la liste complète.
+  const echangerEquipes = (cle, cible) => {
+    if (!cle || !cible || cle === cible) return;
+    const cles = employeeGroups.filter((groupe) => !groupe.isBannerOnly).map((groupe) => groupe.key);
+    const i = cles.indexOf(cle);
+    const j = cles.indexOf(cible);
+    if (i === -1 || j === -1) return;
+    [cles[i], cles[j]] = [cles[j], cles[i]];
+    setOrdreEquipes(cles);
+  };
 
   // ═══ COLLABORATEURS VISIBLES (groupes dépliés) ET FOCUS (équipe / collaborateur) ═══
   const visibleEmployees = useMemo(
@@ -3821,7 +3866,48 @@ export default function Planning() {
                           return [
                             <tr
                               key={`grp-${group.key}`}
-                              className="sk-group-row"
+                              className={`sk-group-row ${isCollapsed ? "is-collapsed" : ""} ${
+                                equipeGlissee === group.key ? "is-glissee" : ""
+                              } ${equipeCible === group.key ? "is-cible" : ""}`}
+                              // Une ligne REPLIÉE se glisse : c'est la demande du
+                              // 08/12. Dépliée, elle ne se glisse pas — on y
+                              // attraperait des collaborateurs, et le glisser des
+                              // modèles sur une ligne a déjà sa règle propre.
+                              draggable={isCollapsed}
+                              title={
+                                isCollapsed
+                                  ? "Équipe repliée : glissez-la sur une autre pour échanger leur ordre"
+                                  : "Cliquez pour replier l'équipe et pouvoir la glisser"
+                              }
+                              onDragStart={(e) => {
+                                if (!isCollapsed) return;
+                                e.dataTransfer.effectAllowed = "move";
+                                e.dataTransfer.setData("application/x-encheck-equipe", group.key);
+                                setEquipeGlissee(group.key);
+                              }}
+                              onDragEnd={() => {
+                                setEquipeGlissee(null);
+                                setEquipeCible(null);
+                              }}
+                              onDragOver={(e) => {
+                                if (!equipeGlissee || equipeGlissee === group.key) return;
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = "move";
+                                if (equipeCible !== group.key) setEquipeCible(group.key);
+                              }}
+                              onDragLeave={() => {
+                                if (equipeCible === group.key) setEquipeCible(null);
+                              }}
+                              onDrop={(e) => {
+                                // une équipe seulement : un modèle qu'on poserait
+                                // ici repart par la cellule du collaborateur
+                                const cle = e.dataTransfer.getData("application/x-encheck-equipe");
+                                if (!cle || cle === group.key) return;
+                                e.preventDefault();
+                                echangerEquipes(cle, group.key);
+                                setEquipeGlissee(null);
+                                setEquipeCible(null);
+                              }}
                               onClick={() =>
                                 setCollapsedGroups((prev) => ({
                                   ...prev,
@@ -4006,40 +4092,65 @@ export default function Planning() {
                                                 e.stopPropagation();
                                                 openAvailabilityModal(emp);
                                               }}
-                                              title="Choisir la disponibilité jour par jour (Lun, Mar, Mer...)"
+                                              title="Ouvrir la fiche de disponibilité jour par jour — les pastilles du bas la tournent aussi, sans fenêtre"
                                             >
                                               <CalendarDays size={10} />
                                               Jours
                                             </button>
                                           </div>
 
-                                          {/* Récapitulatif visuel des jours marqués */}
-                                          <div className="sk-avail-days">
+                                          {/* LES SEPT JOURS, À SIGNALER ICI — la demande du
+                                              08/12/2026 : « n'ouvre pas le modal Ajuster le
+                                              planning quand je clique sur L M M J V S D ».
+                                              Ce n'était pas un choix à retirer : c'était un
+                                              TROU. Ces sept jours étaient des <span> sans geste,
+                                              posés dans la cellule du collaborateur — et la
+                                              cellule, elle, a un onClick qui ouvre l'ajustement
+                                              du planning. Le clic traversait la pastille et
+                                              atterrissait sur la cellule : la fenêtre se levait
+                                              pour un jour qu'on voulait seulement colorer.
+                                              Ils sont donc des BOUTONS qui arrêtent le clic, et
+                                              qui font ce que la pastille Auj. fait déjà : tourner
+                                              l'état du jour (non renseigné → disponible →
+                                              indisponible → non renseigné). Le mot reste dans
+                                              l'intitulé : la couleur ne porte jamais l'état
+                                              seule (D-007). */}
+                                          <div
+                                            className="sk-avail-days"
+                                            role="group"
+                                            aria-label="Disponibilité jour par jour — cliquer un jour pour tourner son état"
+                                          >
                                             {joursSemaine.map((j) => {
-                                              const st = getAvailabilityState(
+                                              const etatDuJour = getAvailabilityState(
                                                 emp.id,
                                                 `day-${j.id}`
                                               );
+                                              const motDuJour =
+                                                etatDuJour === "available"
+                                                  ? "disponible"
+                                                  : etatDuJour === "unavailable"
+                                                    ? "indisponible"
+                                                    : "non renseigné";
                                               return (
-                                                <span
+                                                <button
                                                   key={j.id}
+                                                  type="button"
                                                   className={`sk-avail-day ${
-                                                    st === "available"
+                                                    etatDuJour === "available"
                                                       ? "is-on"
-                                                      : st === "unavailable"
-                                                      ? "is-off"
-                                                      : ""
+                                                      : etatDuJour === "unavailable"
+                                                        ? "is-off"
+                                                        : ""
                                                   }`}
-                                                  title={`${j.nom} : ${
-                                                    st === "available"
-                                                      ? "disponible"
-                                                      : st === "unavailable"
-                                                      ? "indisponible"
-                                                      : "non renseigné"
-                                                  }`}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    cycleAvailability(emp.id, `day-${j.id}`);
+                                                  }}
+                                                  title={`${j.nom} : ${motDuJour} — clic pour tourner (disponible / indisponible / non renseigné)`}
+                                                  aria-label={`${j.nom} : ${motDuJour}`}
                                                 >
                                                   {j.court.charAt(0)}
-                                                </span>
+                                                </button>
                                               );
                                             })}
                                           </div>
