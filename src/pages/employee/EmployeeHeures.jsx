@@ -8,6 +8,7 @@ import EmployeeAuthService from '../../services/employeeAuthService'
 import FeatureService from '../../services/featureService'
 import HolidayService from '../../services/holidayService'
 import EmployeeLayout from '../../components/EmployeeLayout'
+import MesPausesSection from '../../components/employee/MesPausesSection'
 import { formaterHeureLocaleShort } from '../../utils/timezoneUtils'
 import toast from 'react-hot-toast'
 
@@ -511,6 +512,11 @@ export default function EmployeeHeures() {
           <Clock size={12} color="#555" />
           <span>Heures affichées en UTC • Cohérent avec le système de pointage</span>
         </div>
+
+        {/*  Les pauses de l'employé. La section se masque d'elle-même s'il
+            n'y en a pas, ou si le serveur ne répond pas : une section
+            secondaire ne doit pas casser la page des heures. */}
+        <MesPausesSection />
       </div>
     </EmployeeLayout>
   )
