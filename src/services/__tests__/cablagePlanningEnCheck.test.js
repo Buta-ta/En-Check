@@ -274,9 +274,22 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // choix de l\u2019application, pas d\u2019une page. Ce contrat dit donc le
     // contraire de l\u2019ancien — et il est plus dur, pas plus souple : la page
     // doit OBÉIR au thème global et ne plus lever la main dessus.
-    expect(planningSrc).not.toContain('toggleTheme')
+    // Le basculeur passe par la barre, et PAR ELLE SEULE : la page le prête,
+    // elle ne le commande pas. Le contrat est donc plus étroit qu'avant — une
+    // occurrence, et c'est celle du prop.
+    // compté hors commentaires : ce qui est écrit pour le lecteur n'est pas un
+    // geste de la page
+    const code = planningSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    expect(code.match(/toggleTheme/g)).toHaveLength(2) // le déstructurer + le prêter
+    const blocBarre = planningSrc.slice(
+      planningSrc.indexOf('<SidebarUnique'),
+      planningSrc.indexOf('sk-plan-topbar-note')
+    )
+    expect(blocBarre).toContain('darkMode={darkMode}')
+    expect(blocBarre).toContain('surDeconnexion={deconnexion}')
+    expect(planningSrc).toContain('surTheme={toggleTheme}')
     expect(planningSrc).not.toContain('sk-theme-btn')
-    expect(planningSrc).toContain('const { darkMode } = useTheme();')
+    expect(planningSrc).toContain('const { darkMode, toggleTheme } = useTheme();')
     expect(planningSrc).toContain('data-theme={darkMode ? "dark" : "light"}')
     // la feuille de base ne garde pas la règle d\u2019un objet supprimé
     expect(planningCss).not.toContain('.sk-theme-btn')
@@ -1113,5 +1126,151 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // pleine dans une note de papier
     expect(blocPeau).toContain('.sk-plan-page--postit .sk-request-filter.active')
     expect(blocPeau).toContain('box-shadow: inset 0 -3px 0 0 var(--charte-encre)')
+  })
+
+  it('33. emprunte la coque et sa barre au lieu d’en redessiner une', () => {
+    // La page ne possède pas de rail : elle rend LES deux composants partagés.
+    // Un troisième rail écrit à la main est exactement la panne du 24/11
+    // (« rien ne se passe ») — le rail de la page n’avait aucun panneau.
+    expect(planningSrc).toContain('import CoqueAdmin from "../components/coque/CoqueAdmin";')
+    expect(planningSrc).toContain('import SidebarUnique from "../components/SidebarUnique";')
+    expect(planningSrc).toContain('import { sectionsNavAdmin } from "../components/coque/sectionsNavAdmin";')
+    expect(planningSrc).toContain('<CoqueAdmin')
+    expect(planningSrc).toContain('sections={sectionsNav}')
+    // la racine de la page est DANS la colonne de la coque, pas à côté
+    expect(planningSrc.indexOf('<CoqueAdmin')).toBeLessThan(
+      planningSrc.indexOf('className="sk-plan-page sk-plan-page--postit"')
+    )
+    // le bouton clair / sombre vit dans la barre : la page le lui prête
+    expect(planningSrc).toContain('surTheme={toggleTheme}')
+    expect(planningSrc).toContain('surDeconnexion={deconnexion}')
+
+    // LE PÉRIMÈTRE N’EST PAS RE-CALCULÉ. La page avait déjà l’effet qui lit
+    // `admin.selectedEnterprise` et son `entrepriseActive` : les écrire deux
+    // fois, c’est avoir deux réponses à « de quelle entreprise on parle ».
+    expect(planningSrc.match(/const entrepriseActive = /g)).toHaveLength(1)
+    // et le garde-fou de module ne peut pas lire `null` (un admin non super
+    // verrait toutes ses rubriques s’éteindre) : il a son entreprise à lui
+    expect(planningSrc).toContain('const entrepriseDuRail =')
+    expect(planningSrc).toContain('Boolean(entrepriseDuRail?.[champ])')
+
+    // LE SÉLECTEUR DU RAIL ÉCRIT LA MÊME CLÉ QUE L’ANNUAIRE — c’est ce qui rend
+    // la promesse du bandeau du 22/11 vraie au lieu de écrite.
+    const annuaire = lire('src/pages/Employes.jsx')
+    expect(planningSrc).toContain('last_enterprise_id_${admin.id}')
+    expect(annuaire).toContain('last_enterprise_id_')
+    expect(planningSrc).toContain('window.localStorage.setItem("admin", JSON.stringify(misAJour))')
+    expect(annuaire).toContain("localStorage.setItem('admin', JSON.stringify(misAJour))")
+    expect(planningSrc.match(/const entrepriseActive = /g)).toHaveLength(1)
+
+    // le composant partagé reste mince : il pose deux colonnes, il ne dessine
+    // pas la barre (aucune de ses classes ne doit réapparaître ici)
+    const coque = lire('src/components/coque/CoqueAdmin.jsx')
+    // la minceur se juge sur ce qui est RENDU, pas sur ce qui est expliqué :
+    // le composant a le droit de dire qu'il ne dessine pas la barre
+    const coqueRendue = coque.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    expect(coqueRendue).toContain('coque-admin-page')
+    expect(coqueRendue).not.toContain('sb-rail')
+    expect(coqueRendue).not.toContain('registre')
+    expect(coqueRendue.match(/<div/g)).toHaveLength(2) // la coque, et sa colonne
+    const cssCoque = lire('src/components/coque/CoqueAdmin.css')
+    // `min-width: 0` est la pièce qui empêche la page de se faire pousser
+    expect(cssCoque).toContain('min-width: 0')
+    // et la hauteur du rail suit la barre d’URL du téléphone
+    const feuilleBarre = lire('src/components/SidebarUnique.css')
+    expect(feuilleBarre).toContain('.coque-admin > .sb')
+    expect(feuilleBarre).toContain('height: calc(100dvh - 20px)')
+    // l’ancienne adresse reste servie : personne n’a été déshabillé au passage
+    expect(feuilleBarre).toContain('.empv2-layout > .sb')
+  })
+
+  it('34. descend d’un cran à chaque largeur, sans jamais rogner une brique', () => {
+    const peau = lire('src/pages/PlanningPostIt.css')
+    const echelle = peau.slice(peau.lastIndexOf('À TOUTES LES LARGEURS'))
+
+    // les paliers sont écrits, dans l’ordre décroissant
+    const paliers = (echelle.match(/@media \(max-width: (\d+)px\)/g) || []).map((x) =>
+      Number(x.match(/(\d+)/)[1])
+    )
+    expect(paliers).toEqual([1280, 1180, 1023, 820, 640, 520])
+
+    // la lisière se retire : 26 à la base, et un seul cran par palier, jamais
+    // à l’envers (une lisière qui s’épaissit en rétrécissant est une erreur)
+    const cades = (echelle.match(/--plq-cadre: (\d+)px/g) || []).map((x) => Number(x.match(/(\d+)/)[1]))
+    expect(cades).toEqual([22, 18, 12, 8])
+
+    // les planchers de la table de semaine : la coque prend 74 px, la table les
+    // rend en défilement — mais jamais sous le plancher que la feuille voisine
+    // a déjà choisi pour le téléphone (900 px, 101 px par jour)
+    const planchers = (echelle.match(/sk-matrix-table \{\s*\n?\s*min-width: (\d+)px/g) || []).map(
+      (x) => Number(x.match(/(\d+)px/)[1])
+    )
+    expect(planchers).toEqual([1040, 940, 900])
+    expect(Math.min(...planchers)).toBeGreaterThanOrEqual(900)
+
+    // LE MOIS NE SE ROGNE PAS : ses 760 px sont le choix du 23/11, et le texte
+    // qui le dit vit à côté de la règle qui s’abstient de le changer
+    expect(echelle).toContain('LE MOIS NE SE ROGNE PAS')
+
+    // l’ancien palier 700 ne possède plus ni la lisière ni la bande des vues :
+    // deux feuilles sur la même propriété, c’est une valeur qui meurt sans qu’on
+    // le sache (l’`18px` d’avant était déjà battu par la suite)
+    const ouvreur700 = peau.indexOf('@media (max-width: 700px)')
+    const bloc700 = peau.slice(
+      ouvreur700,
+      peau.slice(ouvreur700 + 10).search(/@media [^{]*\{/) + ouvreur700 + 10
+    )
+    expect(bloc700.length).toBeGreaterThan(200)
+    expect(bloc700).not.toContain('--plq-cadre')
+    expect(bloc700).not.toContain('sk-topbar-vues')
+
+    // la rangée du bas de l’écran ne mange ni la bande du modèle à poser ni le
+    // dock de l’assistant : le même nombre, 76 px, des deux côtés
+    expect(echelle).toContain('.sk-plan-page--postit .sk-touch-bar')
+    expect(peau).toContain('bottom: calc(76px + env(safe-area-inset-bottom, 0px));')
+    const dock = lire('src/styles/assistantDock.css')
+    expect(dock).toContain('@media (max-width: 820px) and (min-width: 641px)')
+    expect(dock).toContain('bottom: calc(76px + env(safe-area-inset-bottom, 0px));')
+
+    // la fenêtre ne se coupe plus par le haut quand la barre d’URL se replie
+    expect(echelle).toContain('@supports (height: 100dvh)')
+    // et la page ne défile pas pour du vide : sous la coque, sa hauteur
+    // minimale rend la hauteur RÉELLE de l'écran, et la réserve du bas est
+    // rendue sous 820 px — la même expression que le `padding-bottom` de la
+    // coque, pour que les deux nombres ne dérivent pas l'un de l'autre
+    expect(echelle).toContain('min-height: 100dvh;')
+    expect(echelle).toContain('min-height: calc(100dvh - 72px - var(--charte-espace-3));')
+    const cssCoque = lire('src/components/coque/CoqueAdmin.css')
+    expect(cssCoque).toContain('padding-bottom: calc(72px + var(--charte-espace-3));')
+    expect(cssCoque).toContain('min-height: 100dvh;')
+    // la hauteur de la coque se règle dans sa feuille, pas dans la peau
+    expect(echelle).not.toContain('.coque-admin {')
+
+    // et les trois audits de la porte de charte ne bougent pas d’un poil
+    expect(echelle.match(/#[0-9a-fA-F]{3,8}\b/g)).toBeNull()
+    expect(echelle).not.toMatch(/blur\(/)
+    expect(echelle).not.toMatch(/border-radius:\s*[^;]*\d+px/)
+    expect(echelle.match(/font-size:\s*\d/g)).toBeNull()
+    expect(echelle).not.toContain('!important')
+  })
+
+  it('35. laisse les quatre vues au bandeau : un seul interrupteur', () => {
+    // Le rail sait afficher des vues de page (`sb-rail-vues`). Ici, il ne les
+    // reçoit PAS — et le contrat veille à ce que ça ne dérive pas tout seul.
+    expect(planningSrc).not.toContain('vues={[')
+    expect(planningSrc).not.toContain('surVue={')
+    expect(planningSrc).not.toContain('vueActive={')
+    // le seul interrupteur est dans le bandeau, et il dit la vérité : le badge
+    // des demandes attendues est sur SON bouton
+    const bandeau = planningSrc.slice(
+      planningSrc.indexOf('<div className="sk-topbar-vues">'),
+      planningSrc.indexOf('sk-req-badge') + 60
+    )
+    expect(bandeau).toContain('["semaine", "mois", "jour", "demandes"]')
+    expect(bandeau).toContain('setPlanningView(vue)')
+    expect(bandeau).toContain('sk-req-badge')
+    // les autres écritures de la vue sont des voyages (« voir la semaine »),
+    // pas des interrupteurs : elles ne dédoublent rien
+    expect(planningSrc.match(/setPlanningView\(/g)).toHaveLength(4)
   })
 })

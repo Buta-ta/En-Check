@@ -2404,17 +2404,11 @@
 
 
 @media (max-width: 700px) {
-  .sk-plan-encadrement {
-    top: 4px;
-    margin: 4px 8px 0;
-    /* la lisière se retire un cran, sinon le tissu mangerait la note */
-    --plq-cadre: 18px;
-  }
-
-  .sk-plan-page--postit .sk-topbar-vues {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+  /* LE CADRE ET LA BANDE DES VUES NE SE RÈGLERAIENT PLUS ICI (23/11) : la
+     lisière à crans et la rangée qui glisse sont écrites une fois, plus bas,
+     dans « LA PAGE DANS SA COQUE, À TOUTES LES LARGEURS ». Deux feuilles qui
+     possèdent la même propriété à des paliers différents, c'est une valeur qui
+     meurt sans qu'on le sache — l'`18px` d'ici était déjà battu. */
 
   .sk-plan-page--postit .sk-view-Inline {
     gap: var(--charte-espace-3);
@@ -3435,4 +3429,256 @@
   .sk-plan-page--postit .sk-request-actions {
     flex-wrap: wrap;
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LA PAGE DANS SA COQUE, À TOUTES LES LARGEURS — 23/11/2026
+
+   « Intègre la sidebar + son rail à la page planning. Rends cette page
+   responsive en toute taille d'écran. » Les deux moitiés de la phrase tiennent
+   ensemble : poser une barre de 64 px à gauche d'une note qui fait déjà
+   1 140 px de plancher, sans rien calculer, c'est choisir lequel des deux va
+   déborder.
+
+   Ce qui est réglé ici, dans l'ordre de la page :
+
+   1. LA LISIÈRE SE RETIRE PAR CRANS. La toile fait 26 px sur quatre bords,
+      soit 104 px — un quart d'un écran de 400 px. Le fondateur a demandé le
+      cadre, pas sa largeur : il reste, il s'amincit.
+   2. LA COLONNE DE LA PAGE NE SE FAIT PAS POUSSER. `min-width: 0` + le
+      registre posé par-dessus (règle de la barre, étendue à `.coque-admin`) :
+      déplier ne mange pas 254 px de grille.
+   3. LES PLANCHERS RESTENT DANS LEUR RAIL. La table de la semaine garde son
+      `min-width` — c'est le rail qui défile, pas la page — mais ce plancher
+      baisse avec la place disponible : faire glisser 1 140 px sur une tablette
+      de 768 px, c'est quatre écrans de swipe pour lire une semaine.
+   4. LA BANDE DES QUATRE VUES devient une rangée qui glisse sous 821 px, au
+      lieu d'entasser quatre mots un par ligne dans une bande collante.
+   5. SOUS 821 px, LA BARRE EST UNE RANGÉE EN BAS DE L'ÉCRAN : la page se
+      réserve sa hauteur (c'est `CoqueAdmin.css` qui le fait), et le dock de
+      l'assistant s'assoit au-dessus d'elle — le palier du dock était écrit à
+      640 px, celui de la barre à 820 ; entre les deux, ils se chevauchaient.
+
+   Comme partout dans cette feuille : deux classes par sélecteur, pas
+   d'« important », aucun hexadécimal, aucun flou, aucun rayon en pixels,
+   aucune taille de texte chiffrée.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* 2 · la colonne de la page. Sans ces deux lignes, la note et ses tableaux
+      remontent en `min-content` jusqu'au flex-item parent : c'est LA PAGE qui
+      défile, l'en-tête collant part avec elle, et la barre reste scotchée à
+      gauche pendant que tout le reste glisse. */
+.coque-admin > .coque-admin-page .sk-plan-page--postit {
+  width: 100%;
+  min-width: 0;
+}
+
+/* et la page ne se croit plus seule dans la fenêtre. `min-height: 100vh` est
+   juste quand personne n'est assis à côté : sous la coque, la toile doit la
+   HAUTEUR RÉELLE de l'écran, pas la hauteur du navigateur — sinon la page
+   défile de 60 à 90 px sur téléphone pour atteindre du vide, et le rail sticky
+   remue avec elle. Sous 820 px, il faut en plus rendre la réserve du bas : la
+   coque y empile la page AU-DESSUS de sa rangée de navigation, et le `padding-
+   bottom` qu'elle lui donne s'ajoute à la facture. La même expression, des
+   deux côtés — sinon les deux nombres dérivent l'un de l'autre. */
+@supports (height: 100dvh) {
+  .coque-admin > .coque-admin-page .sk-plan-page--postit {
+    min-height: 100dvh;
+  }
+}
+
+/* la note prend toute la colonne : ses marges latérales de 14 px étaient
+   comptées sur une fenêtre sans voisine */
+.sk-plan-page--postit .sk-plan-encadrement {
+  margin: 8px var(--charte-espace-3) 0;
+}
+
+/* ── 1 · les crans de la lisière ──────────────────────────────────────────── */
+
+@media (max-width: 1280px) {
+  /* 3 · 1 140 px de table dans une colonne de 1 122 : le plancher se baisse
+     d'un cran, il ne s'écrase pas. 1 040 px, la colonne des noms posée à 150,
+     cela fait 127 px par jour — une brique de la semaine s'y lit encore. */
+  .sk-plan-page--postit .sk-matrix-scroll .sk-matrix-table {
+    min-width: 1040px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .sk-plan-page--postit .sk-plan-encadrement {
+    --plq-cadre: 22px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .sk-plan-page--postit .sk-plan-encadrement {
+    --plq-cadre: 18px;
+  }
+
+  .sk-plan-page--postit .sk-topbar {
+    padding: calc(var(--plq-pli) + 4px) var(--charte-espace-4) var(--charte-espace-2);
+  }
+
+  .sk-plan-page--postit .sk-dock-panel,
+  .sk-plan-page--postit .sk-focus-bar {
+    padding: var(--charte-espace-3) var(--charte-espace-4);
+  }
+
+  /* 3 · le plancher de la table, à la mesure de la place : à 940 px, une fois
+     les 150 px de la colonne des noms posés, il reste 113 px par jour */
+  .sk-plan-page--postit .sk-matrix-scroll .sk-matrix-table {
+    min-width: 940px;
+  }
+}
+
+@media (max-width: 820px) {
+  .sk-plan-page--postit .sk-plan-encadrement {
+    --plq-cadre: 12px;
+    top: 4px;
+  }
+
+  /* le pli et l'ombre portée se réduisent avec le cadre : à 12 px de toile,
+     un rabat de 14 px par-dessus ne se voit plus, il ne fait qu'épaissir le
+     haut de la note */
+  .sk-plan-page--postit .sk-plan-encadrement {
+    --plq-pli: 10px;
+  }
+
+  .sk-plan-page--postit .sk-topbar {
+    padding: calc(var(--plq-pli) + 2px) var(--charte-espace-3) var(--charte-espace-2);
+  }
+
+  /* 4 · les quatre vues se glissent au lieu de s'empiler — un mot coupé sur
+     deux lignes dans une bande collante, c'est une bande qui ne se lit plus
+     d'un coup. Le décrochage est celui de la bande des modèles : même geste,
+     même règle. */
+  .sk-plan-page--postit .sk-topbar-vues {
+    gap: var(--charte-espace-2);
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .sk-plan-page--postit .sk-view-Inline {
+    max-width: 100%;
+    gap: var(--charte-espace-4);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .sk-plan-page--postit .sk-view-Inline::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sk-plan-page--postit .sk-view-link {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .sk-plan-page--postit .sk-topbar-etat {
+    flex: 1 1 100%;
+    margin: 0;
+    text-align: left;
+  }
+
+  /* 3 · sous 821 px, la table reprend le plancher que la feuille voisine écrit
+     déjà à 760 : 900 px, soit 101 px par jour une fois la colonne des noms
+     posée à 190. ON NE SERRE PAS PLUS BAS — ce n'est pas la largeur de l'écran
+     qui décide de la lisibilité d'une brique. Le défilement reste dans le rail,
+     la page ne glisse pas. */
+  .sk-plan-page--postit .sk-matrix-scroll .sk-matrix-table {
+    min-width: 900px;
+  }
+
+  /* la barre de navigation, sur téléphone, est une rangée FIXÉE en bas de
+     l'écran (`SidebarUnique.css`, z-index 60). La bande du modèle prêt à poser
+     était collée à 10 px du bas : elle passait dessous, et le geste du dépôt se
+     commandait à l'aveugle. Elle prend le même cran que le dock global — 76 px,
+     une seule valeur pour tous les objets qui vivent au bas d'un écran. */
+  .sk-plan-page--postit .sk-touch-bar {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* la ligne d'état des fiches de paie et le bandeau « option non souscrite »
+     sont des phrases, pas des jauges : elles descendent, elles ne se serrent
+     pas pour tenir sur une ligne */
+  .sk-plan-page--postit .sk-payslip-status,
+  .sk-plan-page--postit .sk-no-option-banner {
+    flex-wrap: wrap;
+    row-gap: var(--charte-espace-1);
+  }
+
+  /* 5 · le dock de l'assistant se relève au-dessus de la rangée — sa règle est
+     dans sa propre feuille (`src/styles/assistantDock.css`), pas ici : la page
+     ne commande pas un objet qui vit hors d'elle. */
+
+  @supports (height: 100dvh) {
+    .coque-admin > .coque-admin-page .sk-plan-page--postit {
+      min-height: calc(100dvh - 72px - var(--charte-espace-3));
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .sk-plan-page--postit .sk-plan-encadrement {
+    margin: 4px var(--charte-espace-2) 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .sk-plan-page--postit .sk-plan-encadrement {
+    --plq-cadre: 8px;
+    --plq-decalage: 2px;
+  }
+
+  .sk-plan-page--postit .sk-brand-title {
+    font-size: var(--charte-taille-corps);
+  }
+
+  /* la flèche de retour et la période ne se marchent pas dessus */
+  .sk-plan-page--postit .sk-topbar-left,
+  .sk-plan-page--postit .sk-topbar-right {
+    flex-wrap: wrap;
+    row-gap: var(--charte-espace-2);
+  }
+
+  .sk-plan-page--postit .sk-period-label-wrap {
+    min-width: 0;
+  }
+
+  /* la bande des modèles garde la sienne : UNE brique par ligne sous 700 px,
+     décidée le 22/11 et vérifiée à 360 — deux briques de 142 px se lisaient
+     mieux sur une ardoise que sur un téléphone, où le nom du modèle partait en
+     deux lignes. Rien n'y revient ici. */
+
+  /* LE MOIS NE SE ROGNE PAS : ses 760 px de plancher sont le choix du 23/11,
+     écrit contre sept colonnes illisibles — « à 320 px de large, sept colonnes
+     illisibles valent moins qu'un défilement ». Sur téléphone on fait donc
+     glisser le mois, comme on fait glisser la semaine, dans son rail et pas
+     dans la page. C'est délibéré, pas un oubli de responsive. */
+
+  /* la fenêtre se pose en pleine feuille : 20 px de voile sur un écran de
+     360, c'est une marge que personne ne regarde */
+  .sk-plan-page--postit .sk-modal-backdrop {
+    padding: var(--charte-espace-2) var(--charte-espace-2) var(--charte-espace-3);
+  }
+
+  .sk-plan-page--postit .sk-modal-foot .sk-btn-publish,
+  .sk-plan-page--postit .sk-modal-foot .sk-btn-secondary {
+    flex: 1 1 100%;
+  }
+}
+
+/* la hauteur utile, pas la hauteur du navigateur : sur un téléphone la barre
+   d'URL mange 60 à 90 px, et une fenêtre centrée en flex qui déborde se coupe
+   PAR LE HAUT — l'en-tête et son bouton de fermeture devenaient injoignables,
+   ce que la note du bloc des modales promettait déjà d'éviter */
+@supports (height: 100dvh) {
+  .sk-plan-page--postit .sk-modal-box {
+    max-height: calc(100dvh - var(--plq-decalage) * 2 - 48px);
+  }
+
+  /* la coque aussi : `min-height: 100vh` sous une barre d'URL repliée laisse
+     60 px de toile vide sous le pied de page. Réglé dans la feuille de la
+     coque, pas ici — la page ne commande pas l'objet qui la porte. */
 }

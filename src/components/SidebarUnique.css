@@ -393,11 +393,15 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   DANS LA PAGE EMPLOYÉS — la barre vit dans une coque qui défile
-   `align-items: flex-start` sur .empv2-layout : sans ça, la barre
-   s'étirerait à la hauteur du contenu au lieu de rester plein écran.
+   LA BARRE DANS SA COQUE — elle défile, elle ne pousse pas
+   Écrite d'abord pour la page Employés (`.empv2-layout`), élargie le 23/11 à
+   `.coque-admin`, la coque partagée qu'emploie le Planning : `align-items:
+   flex-start` pose la barre en colonne pleine hauteur ; sans ça elle
+   s'étirerait à la hauteur du contenu. Les deux adresses sont servies — la
+   page Employés n'a pas été déshabillée au passage.
    ═══════════════════════════════════════════════════════════ */
 
+.coque-admin > .sb,
 .empv2-layout > .sb {
   position: sticky;
   top: 10px;
@@ -407,7 +411,19 @@
   z-index: 2;
 }
 
+/* la hauteur utile, à l'unité près : `100vh` sur un téléphone vaut la hauteur
+   du navigateur SANS sa barre d'URL, donc le bas du rail — thème, compte,
+   déconnexion — restait sous le pouce. `100dvh` la donne réelle ; le bloc
+   d'au-dessus reste la repli des navigateurs qui ne la connaissent pas. */
+@supports (height: 100dvh) {
+  .coque-admin > .sb,
+  .empv2-layout > .sb {
+    height: calc(100dvh - 20px);
+  }
+}
+
 /* quand elle est repliée, le panneau a disparu : le rail garde sa place */
+.coque-admin > .sb.sb--repliee,
 .empv2-layout > .sb.sb--repliee { gap: 0; }
 
 /* ── 08/11 — « déplier la sidebar ne doit plus pousser la page » ──────
@@ -422,6 +438,7 @@
    n'est poussé, tout est couvert, on referme. Sous 821 px, la barre est
    une rangée fixe en bas de l'écran — ce bloc ne s'applique pas là. */
 @media (min-width: 821px) {
+  .coque-admin > .sb > .sn-registre,
   .empv2-layout > .sb > .sn-registre {
     position: absolute;
     left: 74px;
@@ -460,6 +477,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 @media (max-width: 820px) {
+  .coque-admin > .sb,
   .empv2-layout > .sb,
   .dashboard-sidebar .sb {
     position: fixed;
