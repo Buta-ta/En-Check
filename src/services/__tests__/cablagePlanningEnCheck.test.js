@@ -1798,4 +1798,131 @@ describe('Câblage Planning v2 — Système Drag & Drop × Identité Afro-Tech E
     // un pointage qui arrive sans rechargement. Les quatre sont des gestes, et il
     // n'y a pas de navigateur ici.
   })
+
+  it('42. sépare les mots des boutons dans la fenêtre du jour, et la légende du mois ' +
+     'à celle des filtres', () => {
+    // Le 24/11, deux captures du fondateur. Sur la première, la fenêtre « qui, sur
+    // cette case ? » : le bouton de sortie montait SUR le titre, replié en trois
+    // syllabes, et les noms des deux briques étaient coupés en « Emma … », « Hippo
+    // Bl… ». Sur la seconde, la légende du mois : quatre carrés à elle, peints à la
+    // main, pendant que la grille, elle, montre des mots d'état cerclés — et un
+    // compte faux, « 2 rangées par case au plus » parce qu'il y avait deux
+    // collaborateurs à l'écran.
+
+    const peau = lire('src/pages/PlanningPostIt.css')
+    const fenetre = planningSrc.slice(
+      planningSrc.indexOf('{choixJour && ('),
+      planningSrc.indexOf('{caseVide && (')
+    )
+    expect(fenetre.length).toBeGreaterThan(1500)
+
+    // ① LE PIED PORTE LA SORTIE. `sk-back-btn` est `position: absolute` dans le
+    // coin plié de la fenêtre (`PlanningPostIt.css`) : poser la sortie sur cette
+    // classe, c'est la sortir du pied et l'écraser sur le titre. Le × reste le
+    // SEUL à la porter, et la sortie prend la classe du pied de la maison.
+    // l'ATTRIBUT, pas le mot : le commentaire qui raconte la bêtise la nomme
+    // aussi, et un contrat qui compte de la prose se casse dès qu'on la relit
+    expect(fenetre.match(/className="sk-back-btn"/g)).toHaveLength(1)
+    expect(fenetre).toContain('className="sk-btn-secondary"')
+    expect(peau).toMatch(/\.sk-modal-box \.sk-back-btn \{[^}]*position: absolute/)
+    expect(peau).toMatch(/\.sk-modal-foot \.sk-btn-secondary \{[^}]*background-color/)
+    // et la TÊTE réserve le coin : le × occupe 36 px depuis chaque bord et depuis
+    // le haut (`--charte-espace-2` + 28 px). Une tête qui ne réservait que 32 px
+    // laissait un titre long passer dessous — le même cran des deux côtés, sinon
+    // le centrage devient faux, et le palier étroit le reproduit.
+    expect(peau).toContain('--place-coin: calc(var(--charte-espace-2) + 28px)')
+    const tete = peau.slice(
+      peau.indexOf('.sk-plan-page--postit .sk-modal-head {'),
+      peau.indexOf('}', peau.indexOf('.sk-plan-page--postit .sk-modal-head {'))
+    )
+    // deux fois la réserve dans la règle du haut : une par bord, jamais une
+    // asymétrie qui décrèterait le centrage du titre
+    expect(tete.match(/var\(--place-coin\)/g)).toHaveLength(2)
+    // le palier étroit ne perd pas la réserve — et l'assertion vérifie qu'elle est
+    // bien DANS le bloc 700 px, pas seulement quelque part dans la feuille
+    const reserveEtroite = 'padding: var(--place-coin) var(--place-coin) var(--charte-espace-2);'
+    expect(peau).toContain(reserveEtroite)
+    // la réserve est bien DANS un bloc — celui de 1100 px, le premier des deux
+    // paliers de cette feuille, où la fenêtre respire moins. Découper sur le
+    // marqueur donne un morceau par bloc, et l'un d'eux doit porter la ligne :
+    // une règle hors de tout média n'aurait rien prouvé sur le palier étroit.
+    expect(
+      peau
+        .split('@media (max-width: 1100px)')
+        .slice(1)
+        .some((bloc) => bloc.includes(reserveEtroite))
+    ).toBe(true)
+
+    // ② UN NOM SE LIT EN ENTIER. `sk-brick-title` vient de la feuille voisine en
+    // `white-space: nowrap` avec ellipse, et `.sk-brick` est une ligne flex
+    // `space-between` : dans la fenêtre, le sous-titre mangeait la place et le nom
+    // tombait en « Emma … ». `sk-brick--choix` empile donc les deux lignes et défait
+    // le `nowrap` — sur la brique du DOCK, le 78 px, lui, est celui de la pastille
+    // de dépôt dans une case (`sk-cal-pill-model`), pas de la brique : deux objets,
+    // deux règles, vérifiées chacune.
+    const briques = peau.slice(
+      peau.indexOf('.sk-plan-page--postit .sk-brick--choix {'),
+      peau.indexOf('/* ── la carte de poste')
+    )
+    expect(briques).toContain('flex-direction: column;')
+    expect(briques).toMatch(
+      /\.sk-brick--choix \.sk-brick-title \{[^}]*white-space: normal/
+    )
+    expect(briques).toMatch(/\.sk-brick--choix \.sk-brick-sub \{[^}]*white-space: normal/)
+    // et l'état du jour se lit comme dans la case : poste · heures · état
+    expect(fenetre).toContain('const sousRang = (r) =>')
+    expect(fenetre).toContain('r.shift ? formatHoursCompact(r.minutes) : null')
+    expect(fenetre).toContain('<span className="sk-brick-sub">{sousRang(r)}</span>')
+    // le chapeau dit le GESTE, en une ligne, sans compte : il répétait la
+    // définition de la vue mois en deux lignes de majuscules épaisses — le même
+    // cri que les boutons juste en dessous, et le même chiffre que l'étiquette du
+    // groupe. Une phrase, un compte par groupe.
+    expect(fenetre).toContain('<span className="sk-modal-sub">Un clic ouvre le réglage de la personne</span>')
+    expect(fenetre).not.toContain('Une case du mois est une journée')
+    expect(fenetre.match(/· \{placees\.length\}/g)).toHaveLength(1)
+    expect(fenetre.match(/· \{restees\.length\}/g)).toHaveLength(1)
+
+    // ③ LA LÉGENDE DU MOIS PARLE LA LANGUE DES FILTRES. Même structure, et pour
+    // les états le VRAI objet de la grille — plus de carrés peints à la main, qui
+    // racontaient une seconde peinture de la même page.
+    const legende = planningSrc.slice(
+      planningSrc.indexOf('<div className="sk-legend sk-mois-legende">'),
+      planningSrc.indexOf('5. VUE DEMANDES DES COLLABORATEURS')
+    )
+    expect(legende.length).toBeGreaterThan(900)
+    expect(legende).toContain('<span className="sk-legend-group">')
+    expect(legende).toContain('<span className="sk-legend-title">Case du mois</span>')
+    expect(legende).toContain('<span className="sk-legend-title">Lecture</span>')
+    expect(legende.match(/sk-legend-item/g)).toHaveLength(8)
+    // six mots d'état, et ce sont SIX mots que la grille écrit elle-même :
+    // oubli de sortie, sortie manquante, en cours, repos, congé, férié
+    expect(legende.match(/className="sk-mois-tampon"/g)).toHaveLength(6)
+    // aucun carré inventé : ni <i data-espece> dans la légende, ni règle de
+    // peinture pour lui dans la feuille
+    expect(legende).not.toMatch(/<i aria-hidden/)
+    expect(peau).not.toMatch(/\.sk-mois-legende i/)
+    // et les couleurs de la légende restent celles des tampons, pas un stock
+    // parallèle : la feuille ne peint plus `.sk-mois-legende` que par l'aplomb
+    const regleLegende = peau.slice(
+      peau.indexOf('.sk-plan-page--postit .sk-mois-legende {'),
+      peau.indexOf('/* les groupes se lisent à plat')
+    )
+    expect(regleLegende).not.toMatch(/background-color/)
+    expect(regleLegende).toContain('border-top: 1px solid var(--charte-bordure);')
+
+    // ④ LE CHIFFRE D'UNE RÈGLE DE RENDU NE SE DÉDUIT PAS DE L'EFFECTIF : la case
+    // coupe à quatre rangées, deux collaborateurs ou deux cents.
+    expect(legende).toContain('4 rangées par case au plus')
+    expect(legende).not.toContain('Math.min(')
+    // l'ouverture d'une case se dit, elle n'est plus déduite d'un double-clic
+    expect(legende).toContain('un clic sur la case ouvre la fenêtre de réglage')
+    // et le brouillon local est annoncé comme tel (la seule pastille qui ne vient
+    // pas de la base)
+    expect(legende).toContain('brouillon')
+    expect(legende).toContain('sk-cal-pill is-daymodel')
+
+    // Comme pour le 41 : rien ici ne prouve le rendu. Que les lignes tiennent,
+    // que le nom ne se coupe plus, que la légende ressemble à la grille — c'est un
+    // œil, pas un test, et il n'y a pas d'œil ici.
+  })
 })
