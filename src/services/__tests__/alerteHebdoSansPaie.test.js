@@ -11,14 +11,20 @@
 //
 // CE QUE CES TESTS VERROUILLENT
 //   1. l'alerte reçoit ses seuils même quand le module est coupé ;
-//   2. la PAIIE, elle, ne reçoit rien quand le module est coupé — les réglages
+//   2. la PAIE, elle, ne reçoit rien quand le module est coupé — les réglages
 //      restent `null` pour tout ce qui calcule de l'argent ;
 //   3. le seuil d'alerte est toujours accompagné de son origine (P5) ;
 //   4. preuve du risque évité : charger les réglages sans condition ferait
 //      passer une majoration de férié de 100 % à 150 %.
 //
-// ⚠️ Les valeurs (45 h, 50 h, 150 %) sont FICTIVES. Aucune n'est une règle
-// légale, aucune ne vient d'une entreprise réelle.
+// ET SURTOUT (réponse à la question « pourquoi les alerter ? »)
+//   5. UNE ENTREPRISE QUI N'A RIEN CONFIGURÉ N'EST PAS ALERTÉE. Le défaut
+//      produit (48 h) pré-remplit un formulaire ; il n'allume pas un
+//      avertissement. Une alerte est une affirmation (« vous avez dépassé VOTRE
+//      seuil ») : elle exige un seuil choisi, prouvé.
+//
+// ⚠️ Les valeurs (45 h, 48 h, 50 h, 150 %) sont FICTIVES. Aucune n'est une
+// règle légale, aucune ne vient d'une entreprise réelle.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -40,8 +46,10 @@ const reglage = (valeur, origine, majeur = null) => ({
   provenance: { origine, motif: 'test' },
 })
 
+const SEMAINE_50H = [{ debut: '2026-10-05', fin: '2026-10-11', secondes: H(50), joursTravailles: 5, joursDansLaPeriode: 7 }]
+
 describe('Le seuil d’alerte ne dépend plus du module de paie', () => {
-  it('module coupé : l’alertage reçoit quand même ses seuils', async () => {
+  it('module coupé : l’alerte reçoit quand même ses seuils', async () => {
     vi.spyOn(FeatureService, 'hasFeature').mockResolvedValue(false)
     vi.spyOn(FeatureService, 'getOvertimeSettingsAvecOrigine').mockResolvedValue(reglage(45, 'entreprise'))
     vi.spyOn(FeatureService, 'loadSchedules').mockResolvedValue([])
@@ -75,38 +83,82 @@ describe('Le seuil d’alerte ne dépend plus du module de paie', () => {
     const ctx = await loadOvertimeContext('ent-fictive')
 
     expect(ctx.reglageHebdo).toBeNull()
-    expect(seuilsAlerteHebdo(ctx.reglageHebdo)).toEqual({
+    expect(seuilsAlerteHebdo(ctx.reglageHebdo)).toMatchObject({
       seuil: null,
       seuilMajeur: null,
       source: 'inconnue',
+      actif: false,
     })
   })
 })
 
 describe('Le sélecteur de seuils d’alerte', () => {
-  it('transmet la valeur et son origine', () => {
-    expect(seuilsAlerteHebdo(reglage(45, 'entreprise', 50))).toEqual({
+  it('un seuil d’entreprise est utilisable et nommé', () => {
+    expect(seuilsAlerteHebdo(reglage(45, 'entreprise', 50))).toMatchObject({
       seuil: 45,
       seuilMajeur: 50,
       source: 'entreprise',
+      actif: true,
+      motif: null,
     })
   })
 
-  it('un défaut du produit s’annonce comme tel', () => {
-    expect(seuilsAlerteHebdo(reglage(48, 'defaut_produit'))).toEqual({
-      seuil: 48,
+  it('un défaut du produit n’allume rien : il est seulement proposé', () => {
+    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit'))
+    expect(seuils).toMatchObject({
+      seuil: null,
       seuilMajeur: null,
       source: 'defaut_produit',
+      actif: false,
+      seuilPropose: 48,
     })
+    expect(seuils.motif).toContain('defaut_produit')
+  })
+
+  it('une valeur héritée (48 ou 40) n’est pas un choix prouvé : silence', () => {
+    for (const valeur of [48, 40]) {
+      const seuils = seuilsAlerteHebdo(reglage(valeur, 'historique_incertain'))
+      expect(seuils.actif).toBe(false)
+      expect(seuils.seuil).toBeNull()
+      expect(seuils.seuilPropose).toBe(valeur)
+    }
   })
 
   it('sans valeur, aucune origine n’est affirmée', () => {
     expect(seuilsAlerteHebdo({ settings: { weekly_threshold: null }, provenance: { origine: 'entreprise' } }))
-      .toEqual({ seuil: null, seuilMajeur: null, source: 'inconnue' })
+      .toMatchObject({ seuil: null, seuilMajeur: null, source: 'inconnue', actif: false })
   })
 
   it('sans provenance, on ne devine pas l’entreprise', () => {
-    expect(seuilsAlerteHebdo({ settings: { weekly_threshold: 48 }, provenance: null }).source).toBe('inconnue')
+    const seuils = seuilsAlerteHebdo({ settings: { weekly_threshold: 45 }, provenance: null })
+    expect(seuils.source).toBe('inconnue')
+    //  Une valeur sans origine connue ne déclenche pas d'alerte.
+    expect(seuils.actif).toBe(false)
+  })
+})
+
+describe('Aucune alerte sans seuil choisi', () => {
+  it('une semaine de 50 h ne déclenche RIEN sur le seul défaut produit', () => {
+    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit'))
+    const evaluation = evaluerSeuilsHebdo({ semaines: SEMAINE_50H, ...seuils })
+
+    expect(evaluation.disponible).toBe(false)
+    expect(evaluation.nb_depassees).toBe(0)
+  })
+
+  it('la même semaine déclenche dès que le seuil est un choix d’entreprise', () => {
+    const seuils = seuilsAlerteHebdo(reglage(45, 'entreprise'))
+    const evaluation = evaluerSeuilsHebdo({ semaines: SEMAINE_50H, ...seuils })
+
+    expect(evaluation.disponible).toBe(true)
+    expect(evaluation.nb_depassees).toBe(1)
+    expect(evaluation.semaines[0].depassement_heures).toBe(5)
+  })
+
+  it('le second niveau est neutralisé avec le premier', () => {
+    //  Un niveau 2 à 50 h sans niveau 1 prouvé ne doit pas devenir un seuil.
+    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit', 50))
+    expect(seuils.seuilMajeur).toBeNull()
   })
 })
 
@@ -118,15 +170,7 @@ describe('Bout en bout : une alerte existe sans module de paie', () => {
 
     const ctx = await loadOvertimeContext('ent-fictive')
     const seuils = seuilsAlerteHebdo(ctx.reglageHebdo)
-
-    const semaines = [{
-      debut: '2026-10-05',
-      fin: '2026-10-11',
-      secondes: H(50),
-      joursTravailles: 5,
-      joursDansLaPeriode: 7,
-    }]
-    const evaluation = evaluerSeuilsHebdo({ semaines, ...seuils })
+    const evaluation = evaluerSeuilsHebdo({ semaines: SEMAINE_50H, ...seuils })
 
     expect(evaluation.disponible).toBe(true)
     expect(evaluation.nb_depassees).toBe(1)
@@ -134,15 +178,16 @@ describe('Bout en bout : une alerte existe sans module de paie', () => {
     expect(evaluation.source).toBe('entreprise')
   })
 
-  it('sans règle d’entreprise, l’alerte se fait sur le défaut, dite comme telle', () => {
-    const seuils = seuilsAlerteHebdo(reglage(48, 'defaut_produit'))
-    const evaluation = evaluerSeuilsHebdo({
-      semaines: [{ debut: '2026-10-05', fin: '2026-10-11', secondes: H(50), joursTravailles: 5, joursDansLaPeriode: 7 }],
-      ...seuils,
-    })
+  it('le module coupé ne fabrique pas d’alerte pour qui n’a rien configuré', async () => {
+    vi.spyOn(FeatureService, 'hasFeature').mockResolvedValue(false)
+    vi.spyOn(FeatureService, 'getOvertimeSettingsAvecOrigine').mockResolvedValue(reglage(48, 'defaut_produit'))
+    vi.spyOn(FeatureService, 'loadSchedules').mockResolvedValue([])
 
-    expect(evaluation.source).toBe('defaut_produit')
-    expect(evaluation.nb_depassees).toBe(1)
+    const ctx = await loadOvertimeContext('ent-fictive')
+    const evaluation = evaluerSeuilsHebdo({ semaines: SEMAINE_50H, ...seuilsAlerteHebdo(ctx.reglageHebdo) })
+
+    expect(evaluation.disponible).toBe(false)
+    expect(evaluation.nb_depassees).toBe(0)
   })
 })
 

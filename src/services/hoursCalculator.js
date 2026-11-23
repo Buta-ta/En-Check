@@ -442,6 +442,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     }),
     //  Seuils d'HEURES SUPÉRIEURES de l'entreprise (40 h / 48 h). Ce ne sont
     //  pas des plafonds légaux : aucun texte n'est invoqué ici.
+    //  `null` quand le seuil n'a pas été CHOISI : pas de seuil, pas d'alerte.
     seuil: seuilsAlerteRegles.seuil,
     seuilMajeur: seuilsAlerteRegles.seuilMajeur,
     //  Ce que l'on SAIT de l'origine, jamais davantage (P5). Et surtout : plus de
@@ -541,9 +542,13 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     plafond_hebdo: {
       ...plafondHebdo,
       periode: { debut: debutSemaines, fin: finSemaines },
+      //  Une valeur non choisie reste VISIBLE ici (pour pré-remplir un écran ou
+      //  expliquer le silence), mais n'est jamais brandie comme un seuil.
+      seuil_propose: seuilsAlerteRegles.seuilPropose,
+      motif_silence: seuilsAlerteRegles.motif,
       note: plafondHebdo.disponible
         ? 'Seuil d’entreprise (heures supplémentaires hebdomadaires), pas un plafond légal.'
-        : 'Aucun seuil hebdomadaire configuré : la semaine n’est pas évaluée.',
+        : 'Aucun seuil d’entreprise confirmé : la semaine n’est pas évaluée.',
     },
   }
 
@@ -1493,14 +1498,41 @@ function resolvePlanForExpected(employeeScheduleRow, defaultScheduleRow) {
  */
 export function seuilsAlerteHebdo(reglageHebdo) {
   const settings = reglageHebdo?.settings || null
-  const seuil = settings?.weekly_threshold ?? null
-  const seuilMajeur = settings?.weekly_threshold_major ?? null
+  const seuilEnregistre = settings?.weekly_threshold ?? null
+  const majeurEnregistre = settings?.weekly_threshold_major ?? null
+  const origine = reglageHebdo?.provenance?.origine || 'inconnue'
+
+  //  ⚠️ UNE ALERTE EST UNE AFFIRMATION : « vous avez dépassé VOTRE seuil ».
+  //  Elle n'a donc le droit de se déclencher que si le seuil a été CHOISI.
+  //
+  //  Un défaut produit (48 h) n'est pas un choix : il sert à PRÉ-REMPLIR un
+  //  formulaire, jamais à allumer un avertissement. Alerter une entreprise qui
+  //  n'a rien configuré reviendrait à lui opposer une règle qu'elle n'a pas
+  //  posée — la même faute que d'inventer une valeur « légale » (D5), avec un
+  //  autre costume.
+  //
+  //  `historique_incertain` (valeur égale à un défaut : 48 ou 40) n'est pas un
+  //  choix prouvé non plus : la valeur a pu être écrite par l'ancien `|| 48`.
+  //  Silence, donc. ⚠️ Limite connue : un client qui choisit délibérément 48 h
+  //  est aujourd'hui indiscernable de l'héritage ; il faut une confirmation
+  //  explicite (indicateur dédié) dans G3 pour le distinguer.
+  const actif = seuilEnregistre !== null && origine === 'entreprise'
 
   return {
-    seuil,
-    seuilMajeur,
-    //  Pas de valeur = pas d'origine affirmée. Une valeur = l'origine constatée.
-    source: seuil === null ? 'inconnue' : (reglageHebdo?.provenance?.origine || 'inconnue'),
+    //  Ce que l'alerte a le DROIT d'utiliser : null = pas d'alerte.
+    seuil: actif ? seuilEnregistre : null,
+    seuilMajeur: actif ? majeurEnregistre : null,
+    //  Ce que l'on SAIT de l'origine, jamais davantage (P5).
+    source: seuilEnregistre === null ? 'inconnue' : origine,
+    actif,
+    //  La valeur telle qu'enregistrée (ou le défaut) : pour pré-remplir un
+    //  formulaire ou expliquer le silence. Jamais pour déclencher une alerte.
+    seuilPropose: seuilEnregistre,
+    motif: actif
+      ? null
+      : (seuilEnregistre === null
+        ? 'aucun seuil enregistré'
+        : `seuil (${seuilEnregistre} h) non prouvé comme un choix : ${origine}`),
   }
 }
 

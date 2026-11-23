@@ -387,7 +387,7 @@ rendre l'écran muet au premier jour.
 | 1 | **G1** ✅ *réalisé, en attente de validation* | Fenêtres hebdo et repos calculées sur une plage élargie ; la primitive refuse des bornes étroites ; drapeau mort supprimé | S | — | — | Un réglage éditable sur un calcul faux à cheval sur deux années, c'est un bouton qui ment deux fois |
 | 2 | **G2** ✅ *réalisé, en attente de validation* | Provenance réelle (`entreprise` / `defaut_produit` / `historique_incertain` / `inconnue`), défaut à 48 h, écriture qui n'invente plus de seuil, libellé honnête | S | S | — | Supprime le mensonge actuel (« seuil d'entreprise ») pour tous, tout de suite, sans toucher au calcul |
 | 3 | **G3** | Table versionnée + `encheck_regle_resolue` + `encheck_regle_ecrire` + journal (auteur, date d'effet, avant/après) | M | — | G2 (origines) | Le journal **avant** l'éditeur : des seuils modifiables sans trace sont un bouton pour réécrire janvier depuis novembre (règle C5-mince de l'audit) |
-| 4 | **G6** ⏳ *découplage fait, séparation des clés à suivre* | Découplage de l'alerte et du module de paie ✅ (`seuilsAlerteHebdo`) ; séparation des trois clés (déclenchement de paie / seuil d'alerte / plafond `a_sourcer`) → **G3** | S | S | G3 | Donner un bouton « repos personnel » alors que l'alerte s'éteint avec la paie serait livrer un réglage inopérant |
+| 4 | **G6** ⏳ *découplage + règle du seuil choisi faits ; séparation des clés à suivre* | Découplage de l'alerte et du module de paie ✅ (`seuilsAlerteHebdo`) ; séparation des trois clés (déclenchement de paie / seuil d'alerte / plafond `a_sourcer`) → **G3** | S | S | G3 | Donner un bouton « repos personnel » alors que l'alerte s'éteint avec la paie serait livrer un réglage inopérant |
 | 5 | **G4** | Page **« Mon entreprise »** : profil, identité, pays, règles de temps de travail ; accès de l'admin client ; « Entreprises » réservé au super-administrateur (V-A2, V-A3) | M | **M** | G3, G6 | Un écran « S » n'est pas une tâche « S » (audit §7.2) ; c'est la maison unique des règles d'entreprise (§4.2) |
 | 6 | **G4b** | **Modèles 48 h / 50 h par pays** : table, pré-sélection à la création, confirmation explicite, `statut_source` | S | S | G4 | Les modèles sont un confort de saisie ; les brancher avant la page n'aurait aucun support |
 | 7 | **G5** | Fiche employé : suivre l'entreprise ou valeur personnelle, clé par clé, retour à la règle générale, origine affichée | M | **M** | G3, G6, G4 | Après G4, sinon l'héritage n'a pas de parent à hériter |
@@ -464,7 +464,42 @@ détermine si l'entreprise a configuré une majoration de férié via `overtimeS
 les réglages « toujours » aurait fait passer une majoration de férié de **100 % à 150 %** pour
 les entreprises dont le module est coupé — une hausse de paie silencieuse, provoquée par un
 correctif d'affichage. C'est testé (`alerteHebdoSansPaie.test.js`, 10 tests), y compris la
-démonstration 100 % / 150 %.
+démonstration 100 % / 150 %). Depuis la règle du seuil choisi, le fichier compte **14 tests**.
+
+#### 5.3.1 « Pourquoi les alerter ? » — la règle du seuil choisi
+
+Question du fondateur, et elle a tranché le comportement : **une entreprise qui n'a rien
+configuré n'est pas alertée.**
+
+Une alerte est une **affirmation** : « vous avez dépassé *votre* seuil ». Elle exige donc un
+seuil **choisi et prouvé**. Le défaut produit de 48 h garde son rôle — **pré-remplir** l'écran
+de réglages, donner un point de départ — mais il n'allume aucun avertissement. Opposer à une
+entreprise une règle qu'elle n'a pas posée serait la même faute que d'inventer une valeur
+« légale » (D5), sous un autre costume.
+
+`seuilsAlerteHebdo()` rend désormais `{ seuil, seuilMajeur, source, actif, seuilPropose, motif }`
+et la règle est simple :
+
+| Situation (`provenance.origine`) | Seuil utilisé par l'alerte | Ce qui reste visible |
+|---|---|---|
+| `entreprise` (valeur ≠ défaut) | **la valeur** | seuil + origine |
+| `defaut_produit` (aucune règle) | **aucun** | `seuilPropose` = 48 h, motif « non prouvé comme un choix » |
+| `historique_incertain` (valeur = 48 ou 40) | **aucun** | `seuilPropose` = la valeur héritée |
+| `inconnue` / lecture en échec | **aucun** | `source: 'inconnue'` |
+
+Le second niveau (`weekly_threshold_major`) est neutralisé avec le premier : un niveau 2 ne
+peut pas devenir un seuil quand le niveau 1 n'est pas prouvé.
+
+**⚠️ Limite connue, à corriger en G3** : un client qui choisit *délibérément* 48 h est
+aujourd'hui indiscernable d'un héritage de l'ancien `|| 48` → il reste silencieux. La table
+`encheck_regles_temps_travail` apportera l'indicateur de **confirmation explicite** qui lève
+cette ambiguïté (un choix enregistré n'est plus déduit d'une valeur).
+
+**Rectificatif d'annonce** : j'avais écrit que les entreprises sans module allaient « recevoir
+des alertes ». C'est faux, et c'est vérifié : `calculateEmployeeHours` produit bien un tableau
+`alerts`, mais **aucun écran ne le rend** (`Employee360.jsx` n'y fait aucune référence). Le
+contrôle hebdomadaire est calculé puis **jeté**. G6 rend donc le calcul *juste et disponible* ;
+l'affichage — et le choix de qui le voit, avec quel consentement — appartient aux lots G4/G5.
 
 **Ce qui reste de G6** : la séparation des **trois clés** (déclenchement de paie / seuil
 d'alerte / plafond `a_sourcer`) n'est pas faite — elle appartient à G3, qui crée la table où
@@ -553,7 +588,7 @@ Le gros morceau. Coupé en deux pour rester relisible.
 | Ordre | Lot | Taille | Ce qui peut casser | Validation attendue |
 |---|---|---|---|---|
 | 0 | #313 (G1+G2) | — | rien (calcul inchangé, totaux identiques) | tu regardes, tu fusionnes |
-| 1 | G6-mince | S | rien : l'alerte apparaît là où elle manquait | une capture : alerte visible module coupé |
+| 1 | G6-mince | S | **aucune alerte nouvelle** : le seuil non choisi n'alerte pas (5.3.1) ; l'affichage n'existe pas encore | une capture : alerte visible module coupé, avec un seuil d'entreprise |
 | 2a | G3 base | M | rien : pas encore branché | revue de la migration et des RPC |
 | 2b | G3 branchement | S | les alertes si la bascule est mal faite | avant/après identiques pour une entreprise sans règle |
 | 3 | G4 + G4b | M+M | l'accès des admins clients | parcours admin non super-admin |
