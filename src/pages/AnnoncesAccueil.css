@@ -482,3 +482,366 @@
     width: 100%;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌾 LA BANDE DE BOGOLAN — le pagne de boue, à la place du kente
+
+   Pourquoi ce changement : `culturalMotifForPath` n'assigne aucun motif à
+   cette page, elle tombait donc sur le kente par défaut. Mais elle alimente
+   l'ACCUEIL, qui porte le bogolan (CHARTE §1.2). Une page qui nourrit
+   l'accueil ne peut pas porter un autre tissu que lui — sinon la bande du
+   carrousel et le carrousel lui-même sont de deux familles.
+
+   On ne redessine rien : ce sont les deux images du dépôt, natives, jamais
+   étirées (C4), répétées horizontalement. Technique relevée sur la page
+   Équipes (`.eqv2--postit .eqv2-tete::before`).
+   ═══════════════════════════════════════════════════════════════════════════ */
+.aa-register .aa-bande--bogolan {
+  position: relative;
+  width: 100%;
+  height: var(--aa-bande-h);
+  background-color: var(--charte-tissu);
+  background-image: url('/images/paie-bogolan-haut.webp');
+  background-repeat: repeat-x;
+  background-position: left center;
+  background-size: auto var(--aa-bande-h);
+  /* le fil qui arrête la tenture — même geste que la bande d'origine */
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+}
+
+/* la couture du bas, reprise de `.aa-bande::after` : c'est elle qui dit
+   « tissu cousu » et pas « image posée » */
+.aa-register .aa-bande--bogolan::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: -3px;
+  height: 3px;
+  background-image: linear-gradient(
+    to right,
+    var(--charte-encre) 0 7px,
+    transparent 7px 14px
+  );
+  background-size: 14px 3px;
+  opacity: 0.75;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🗂️ LA DISPOSITION « APERÇU » — la liste à gauche, l'écran à droite
+
+   C'est la maquette A retenue : quand l'onglet Aperçu est ouvert, la liste
+   des médias et la tablette vivent CÔTÉ À CÔTÉ. On voit ce qu'on change et
+   ce que l'employé verra, dans le même regard — au lieu de faire défiler.
+
+   La pile existe parce que `.aa-colonne` est une colonne : sans ce
+   conteneur, l'onglet Aperçu ne pourrait pas s'étaler sur deux colonnes
+   internes. Il est autonome et ne touche aucune autre vue.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.aa-apercu {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: clamp(16px, 2.2vw, 28px);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  /* sous cette largeur, deux colonnes écraseraient la tablette : on empile,
+     l'écran d'abord (c'est lui qu'on vient voir) */
+  .aa-apercu {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .aa-apercu .aa-apercu-ecran { order: -1; }
+}
+
+.aa-apercu-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  box-shadow: var(--charte-ombre-dure);
+  /* la bande de colle, posée en couche : un `background` en raccourci
+     l'effacerait — c'est le piège relevé sur la page Équipes */
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 55%, transparent) 0 7px,
+    color-mix(in srgb, var(--charte-encre) 10%, transparent) 7px 15px,
+    transparent 15px
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 15px;
+}
+
+.aa-apercu-liste-tete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: calc(15px + 8px) 16px 10px;
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+}
+
+.aa-apercu-liste-tete strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+
+.aa-apercu-liste-tete small {
+  font-size: 11px;
+  color: var(--charte-douce);
+  font-variant-numeric: tabular-nums;
+}
+
+.aa-apercu-ligne {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--charte-bordure);
+  background: transparent;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background 120ms ease-out;
+}
+.aa-apercu-ligne:last-child { border-bottom: 0; }
+.aa-apercu-ligne:hover { background: var(--charte-surface2); }
+
+/* la ligne active : elle porte un liseré d'argile à gauche, comme une page
+   de carnet qu'on a posée ouverte */
+.aa-apercu-ligne.est-active {
+  background: var(--charte-surface2);
+  box-shadow: inset 3px 0 0 0 var(--charte-aplat);
+}
+
+.aa-apercu-vignette {
+  width: 44px;
+  height: 44px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-espresso);
+  object-fit: cover;
+  display: block;
+}
+
+.aa-apercu-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.aa-apercu-texte strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--charte-encre);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aa-apercu-texte small {
+  font-size: 11px;
+  color: var(--charte-douce);
+}
+
+.aa-apercu-statut {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border: 1px solid var(--charte-succes);
+  color: var(--charte-succes);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.aa-apercu-vide {
+  padding: 22px 16px;
+  font-size: 13px;
+  color: var(--charte-douce);
+  text-align: center;
+}
+
+/* ── la pellicule de vignettes, sous la tablette ─────────────────────────── */
+.aa-apercu-pellicule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+
+.aa-apercu-mini {
+  width: 46px;
+  height: 34px;
+  padding: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-espresso);
+  cursor: pointer;
+  object-fit: cover;
+  display: block;
+  box-shadow: var(--charte-ombre-dure);
+  transition: transform 120ms ease-out;
+}
+.aa-apercu-mini:hover { transform: translateY(-2px); }
+.aa-apercu-mini.est-active {
+  /* le trait d'argile sous la vignette choisie : une action, pas une
+     décoration — il se voit même sur une photo claire */
+  box-shadow:
+    var(--charte-ombre-dure),
+    0 4px 0 0 var(--charte-aplat);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   📋 LA LIGNE DE MÉDIA, DANS SA VARIANTE « APERÇU »
+
+   La ligne de l'onglet Médias est un tableau : elle porte la date de début, de
+   fin, de publication, et cinq boutons. La colonne de gauche de la maquette A
+   est plus étroite et plus calme : vignette, titre, statut, et UN bouton rond
+   qui ouvre l'éditeur. On ne supprime aucune action — les quatre autres
+   restent dans l'onglet Médias. Ce que la maquette montre, c'est la lecture
+   rapide ; ce que l'onglet Médias garde, c'est le contrôle complet.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.aa-register .aa-ann-media.est-apercu {
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  padding: 11px 14px;
+  background: transparent;
+  border-bottom: 1px solid var(--aa-bordure, var(--charte-bordure));
+  border-radius: 0;
+  box-shadow: none;
+  align-items: center;
+}
+
+.aa-register .aa-ann-media.est-apercu:last-of-type {
+  border-bottom: 0;
+}
+
+.aa-register .aa-ann-media.est-apercu .aa-ann-vignette {
+  width: 46px;
+  height: 46px;
+}
+
+/* on masque le bandeau de type sur la vignette : la ligne est déjà courte,
+   et le type est rappelé par l'onglet Médias */
+.aa-register .aa-ann-media.est-apercu .aa-ann-mini-t {
+  display: none;
+}
+
+.aa-register .aa-ann-media.est-apercu .aa-ann-media-infos {
+  gap: 4px;
+}
+
+/* le titre prend le poids de la maquette : c'est lui qu'on balaie */
+.aa-register .aa-ann-media.est-apercu .aa-ann-media-ligne1 > span:first-child {
+  font-weight: 600;
+}
+
+/* statut et durée empilés à droite, avec le bouton rond en dessous */
+.aa-register .aa-ann-media.est-apercu .aa-ann-empile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.aa-register .aa-ann-media.est-apercu .aa-ann-media-actions {
+  display: none; /* remplacées par le bouton rond ci-dessous */
+}
+
+.aa-register .aa-ann-ouvrir {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 6px;
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  box-shadow: var(--charte-ombre-dure);
+  cursor: pointer;
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+}
+
+.aa-register .aa-ann-ouvrir:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 4px 4px 0 0 var(--charte-encre);
+}
+
+.aa-register .aa-ann-ouvrir:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 1px 1px 0 0 var(--charte-encre);
+}
+
+.aa-register .aa-ann-ouvrir:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-aplat);
+  outline-offset: 2px;
+}
+
+/* la puce de statut, en pastille pleine — la maquette la montre verte */
+.aa-register .aa-ann-media.est-apercu .aa-ann-puce {
+  border: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.aa-register .aa-ann-media.est-apercu .aa-ann-puce.st-en_ligne {
+  background-color: var(--charte-succes);
+  color: var(--charte-blanc);
+}
+
+.aa-register .aa-ann-media.est-apercu .aa-ann-pastille {
+  display: none;
+}
+
+/* ── Les surcharges doivent gagner ─────────────────────────────────────────
+   Les règles d'origine de la liste sont écrites `.aa-page .aa-ann-media…`
+   (0,3,0). Mes règles d'aperçu sont écrites `.aa-register .aa-ann-media…`
+   (0,3,0) AUSSI : à spécificité égale c'est la dernière qui gagne, et
+   `AnnoncesAccueil.css` est importée après `AdminAccounts.css`. C'est vrai
+   aujourd'hui, mais fragile. On rend la règle explicite avec `.aa-page`
+   dans le sélecteur ET on garde l'ordre — deux garanties plutôt qu'une. */
+.aa-page .aa-ann-media.est-apercu {
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--charte-bordure);
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.aa-page .aa-ann-media.est-apercu .aa-ann-vignette {
+  width: 46px;
+  height: 46px;
+  aspect-ratio: auto;
+  border-radius: 6px;
+  border: var(--charte-trait) solid var(--charte-encre);
+}
+
+.aa-page .aa-ann-media.est-apercu .aa-ann-puce {
+  background-color: var(--charte-succes);
+  border-color: var(--charte-succes);
+  color: var(--charte-blanc);
+}
+
+.aa-page .aa-ann-media.est-apercu .aa-ann-puce .aa-ann-pastille {
+  display: none;
+}
+
+/* la durée, à droite, en petit chiffre tabulaire */
+.aa-page .aa-ann-media.est-apercu .aa-ann-empile {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--charte-douce);
+}
