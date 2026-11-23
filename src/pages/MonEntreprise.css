@@ -1,113 +1,209 @@
 /* src/pages/MonEntreprise.css
    ─────────────────────────────────────────────────────────────────────────
-   Trois cartes, une encre, un accent. La page lit des décisions : elle doit
-   ressembler à un registre, pas à un tableau de bord. Aucune couleur d'alerte
-   ici — le rouge dirait « faute » là où il n'y a qu'un paramètre. */
+   Maquette retenue le 24/11/2026 : `maquettes/choix-mon-entreprise.png`.
+
+   « Refais la page Mon entreprise car ça ne colle pas avec l'identité En-Check. »
+   La page est UNE FEUILLE, pas une pile de cartes : bande de bogolan en haut,
+   cadre d'encre de 2 px et son ombre dure à flou zéro, bandes de colle, rabat
+   au coin, registre à traits de feutre, et l'historique en colonne de droite
+   comme un registre qu'on tourne.
+
+   Aucune couleur en dur (C1), aucun flou (C9), rayons dans {6, 8, 999} (C10).
+   ───────────────────────────────────────────────────────────────────────── */
 
 .me-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 28px 20px 64px;
+  min-height: 100vh;
+  padding: var(--charte-espace-6) var(--charte-espace-4) var(--charte-espace-7);
+  background: var(--charte-sable);
   font-family: var(--charte-police);
   color: var(--charte-encre);
 }
 
+/* ═══ LA FEUILLE ════════════════════════════════════════════════════════ */
+
+.me-feuille {
+  position: relative;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--charte-espace-6) var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* la bande de bogolan : une seule, en haut, à l'échelle native (24 px) */
+.me-bande-motif {
+  display: block;
+  height: 22px;
+  margin: 0 calc(var(--charte-espace-6) * -1);
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 6px 6px 0 0;
+  background-color: var(--charte-tissu);
+  background-image: url('/images/paie-bogolan-haut.webp');
+  background-repeat: repeat-x;
+  background-position: left top;
+  background-size: auto 22px;
+}
+
+/* ═══ LA TÊTE ═══════════════════════════════════════════════════════════ */
+
 .me-tete {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: var(--charte-espace-4);
   align-items: flex-end;
   justify-content: space-between;
+  padding: var(--charte-espace-5) 0 var(--charte-espace-4);
 }
 
 .me-surtitre {
-  margin: 0 0 4px;
-  font-size: 11px;
+  margin: 0 0 var(--charte-espace-1);
+  font-family: var(--charte-mono);
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--charte-aplat);
+  color: var(--charte-texte);
 }
 
-.me-tete h1 {
+.me-titre {
+  display: inline-block;
   margin: 0;
-  font-size: 26px;
-  line-height: 1.2;
+  padding-bottom: 4px;
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+  /* le second passage de feutre, en dessous : ombre dure, flou zéro */
+  box-shadow: 0 4px 0 0 color-mix(in srgb, var(--charte-aplat) 45%, transparent);
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
 }
 
 .me-sous-titre {
-  margin: 6px 0 0;
-  max-width: 60ch;
+  margin: var(--charte-espace-2) 0 0;
+  max-width: 58ch;
   font-size: 13px;
   line-height: 1.5;
   color: var(--charte-douce);
 }
 
+/* ── le sélecteur d'entreprise ── */
+
 .me-selecteur {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 12px;
+}
+
+.me-selecteur-libelle {
+  font-family: var(--charte-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--charte-douce);
 }
 
-.me-selecteur select {
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--charte-encre) 22%, transparent);
-  border-radius: 8px;
-  background: var(--charte-surface);
-  color: var(--charte-encre);
-  font-family: inherit;
+.me-selecteur-champ {
+  position: relative;
+  display: inline-flex;
 }
 
-.me-carte {
-  padding: 20px;
-  border: 1px solid color-mix(in srgb, var(--charte-encre) 14%, transparent);
-  border-radius: 14px;
+.me-selecteur-champ select {
+  appearance: none;
+  min-width: 220px;
+  height: 42px;
+  padding: 0 38px 0 var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
   background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.me-selecteur-champ select:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+.me-chevron {
+  position: absolute;
+  top: 50%;
+  right: var(--charte-espace-3);
+  transform: translateY(-50%);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* Les deux conteneurs qui portent la grille : ils ne peignent rien, ils
+   laissent la place. Sans `min-width: 0`, une longue date élargirait la
+   colonne et ferait déborder la feuille. */
+.me-tete-texte,
+.me-regles-principal {
+  min-width: 0;
+}
+
+.me-carte--identite,
+.me-carte--regles {
+  overflow: hidden;
+}
+
+/* ═══ LES FEUILLES DE SECTION ═══════════════════════════════════════════ */
+
+.me-carte {
+  position: relative;
+  margin-bottom: var(--charte-espace-5);
+  padding: var(--charte-espace-4) var(--charte-espace-4) var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+}
+
+/* la bande de colle, en haut de chaque feuille */
+.me-carte::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: var(--charte-espace-6);
+  width: 124px;
+  height: 13px;
+  border: 1px solid color-mix(in srgb, var(--charte-encre) 15%, transparent);
+  background: color-mix(in srgb, var(--charte-sable) 70%, var(--charte-surface));
+  transform: rotate(-1.3deg);
+  pointer-events: none;
+}
+
+/* le rabat du coin bas-droit */
+.me-carte::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  border-style: solid;
+  border-width: 0 0 18px 18px;
+  border-color: transparent transparent var(--charte-sable) transparent;
+  pointer-events: none;
 }
 
 .me-carte-titre {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 14px;
+  margin: 0 0 var(--charte-espace-3);
+  font-family: var(--charte-mono);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--charte-douce);
-}
-
-.me-identite {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 14px;
-  margin: 0 0 14px;
-}
-
-.me-identite dt {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--charte-douce);
-}
-
-.me-identite dd {
-  margin: 2px 0 0;
-  font-size: 15px;
-  font-weight: 600;
 }
 
 .me-note {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  margin: 0 0 12px;
+  margin: 0 0 var(--charte-espace-3);
+  max-width: 74ch;
   font-size: 12px;
   line-height: 1.5;
   color: var(--charte-douce);
@@ -119,217 +215,354 @@
 }
 
 .me-erreur {
-  margin: 0;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border-left: 3px solid var(--charte-alerte);
-  background: color-mix(in srgb, var(--charte-alerte) 10%, transparent);
+  margin: 0 0 var(--charte-espace-4);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border-left: 3px solid var(--charte-erreur);
+  background: color-mix(in srgb, var(--charte-erreur) 10%, transparent);
   font-size: 13px;
 }
 
 .me-vide {
   margin: 0;
-  font-size: 13px;
+  font-size: 12.5px;
+  line-height: 1.5;
   color: var(--charte-douce);
 }
 
-/* ── règles ─────────────────────────────────────────────────────────── */
+/* ═══ L'IDENTITÉ ════════════════════════════════════════════════════════ */
+
+.me-identite {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  margin: 0 0 var(--charte-espace-3);
+}
+
+.me-identite div {
+  padding: 0 var(--charte-espace-3);
+  border-left: 1px solid var(--charte-bordure);
+}
+
+.me-identite div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.me-identite dt {
+  font-family: var(--charte-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+.me-identite dd {
+  margin: 3px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* ═══ LES RÈGLES ════════════════════════════════════════════════════════ */
+
+.me-regles-corps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: var(--charte-espace-4);
+}
 
 .me-regles {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
   margin: 0;
   padding: 0;
   list-style: none;
+  border-top: var(--charte-trait) solid var(--charte-encre);
 }
 
 .me-regle {
-  padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--charte-encre) 10%, transparent);
-  border-radius: 12px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 5px minmax(0, 1.3fr) auto minmax(110px, 0.8fr) auto;
+  gap: var(--charte-espace-3);
+  align-items: center;
+  padding: var(--charte-espace-3) 0;
+  border-bottom: 1px solid var(--charte-bordure);
 }
 
-.me-regle-entete {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-start;
-  justify-content: space-between;
+.me-regle:last-child {
+  border-bottom: 0;
 }
 
-.me-regle h3 {
+/* Le trait de feutre d'une règle. Son nom est propre : une classe, un objet. */
+.me-trait {
+  position: relative;
+  align-self: stretch;
+  width: 5px;
+  min-height: 38px;
+  background: var(--charte-bordure);
+}
+
+.me-regle--entreprise .me-trait,
+.me-regle--contrat .me-trait {
+  background: var(--charte-aplat);
+}
+
+.me-regle--personnelle .me-trait,
+.me-regle--verrouillee .me-trait {
+  background: var(--charte-alerte);
+}
+
+/* Le verrou : un SECOND passage de feutre, décalé — jamais la couleur seule. */
+.me-regle--verrouillee .me-trait::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 8px;
+  width: 2px;
+  background: var(--charte-alerte);
+}
+
+.me-regle-texte {
+  padding-left: var(--charte-espace-2);
+  min-width: 0;
+}
+
+.me-regle-titre {
   margin: 0;
-  font-size: 14px;
+  font-family: var(--charte-mono);
+  font-size: 10px;
   font-weight: 700;
-}
-
-.me-regle-valeur {
-  margin: 4px 0 0;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.me-regle-origine {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--charte-douce);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
 .me-regle-aide {
-  margin: 4px 0 0;
-  font-size: 12px;
+  margin: 2px 0 0;
+  max-width: 40ch;
+  font-size: 11px;
+  line-height: 1.4;
   color: var(--charte-douce);
 }
+
+.me-regle-valeur {
+  margin: 0;
+  font-family: var(--charte-mono);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.05;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.me-regle--aucune .me-regle-valeur {
+  font-family: var(--charte-police);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--charte-douce);
+}
+
+.me-regle-origine {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.me-tampon {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--charte-encre) 30%, transparent);
+  border-radius: var(--charte-rayon-champ);
+  background: color-mix(in srgb, var(--charte-aplat) 12%, transparent);
+  font-family: var(--charte-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.me-regle--personnelle .me-tampon,
+.me-regle--verrouillee .me-tampon {
+  background: color-mix(in srgb, var(--charte-alerte) 14%, transparent);
+}
+
+.me-regle--aucune .me-tampon {
+  border-style: dashed;
+  background: transparent;
+  color: var(--charte-douce);
+}
+
+.me-regle-date {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--charte-douce);
+}
+
+/* ── l'édition en deux temps ── */
 
 .me-edition {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px dashed color-mix(in srgb, var(--charte-encre) 16%, transparent);
+  grid-column: 1 / -1;
+  margin-top: var(--charte-espace-2);
+  padding: var(--charte-espace-3);
+  border: 1px solid color-mix(in srgb, var(--charte-encre) 30%, transparent);
+  border-radius: var(--charte-rayon-champ);
+  background: color-mix(in srgb, var(--charte-sable) 55%, var(--charte-surface));
 }
 
-.me-edition label {
+.me-edition-champs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--charte-espace-3);
+  margin-bottom: var(--charte-espace-3);
+}
+
+.me-edition-champs label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
+  gap: 3px;
+  font-family: var(--charte-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   color: var(--charte-douce);
 }
 
-.me-edition input[type='number'],
-.me-edition input[type='date'] {
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--charte-encre) 22%, transparent);
-  border-radius: 8px;
-  background: var(--charte-surface2);
+.me-edition-champs input {
+  height: 36px;
+  padding: 0 var(--charte-espace-2);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-surface);
   color: var(--charte-encre);
-  font-family: inherit;
-  font-size: 14px;
+  font-family: var(--charte-mono);
+  font-size: 13px;
+}
+
+.me-edition-champs input:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 1px;
 }
 
 .me-confirmation {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 10px;
-  background: var(--charte-surface2);
-  font-size: 13px;
-  line-height: 1.5;
+  gap: var(--charte-espace-2);
 }
 
 .me-confirmation p {
   margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
 .me-case {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  align-items: flex-start;
+  gap: var(--charte-espace-2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.me-case input {
+  margin-top: 2px;
+  accent-color: var(--charte-aplat);
+}
+
+.me-impact {
+  margin: 0;
+  padding: var(--charte-espace-2);
+  border-left: 3px solid var(--charte-aplat);
+  background: color-mix(in srgb, var(--charte-aplat) 8%, transparent);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.me-impact--bloque {
+  border-left-color: var(--charte-erreur);
+  background: color-mix(in srgb, var(--charte-erreur) 10%, transparent);
 }
 
 .me-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--charte-espace-2);
+  margin-top: var(--charte-espace-3);
 }
+
+/* ── les boutons ── */
 
 .me-bouton {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 9px 16px;
-  border: 0;
-  border-radius: 9px;
-  background: var(--charte-aplat);
-  color: var(--charte-blanc);
-  font-family: inherit;
-  font-size: 13px;
+  min-height: 34px;
+  padding: 0 var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-encre);
+  color: var(--charte-sable);
+  font-family: var(--charte-mono);
+  font-size: 9.5px;
   font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
+  transition: opacity var(--charte-duree) var(--charte-easing);
+}
+
+.me-bouton:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.me-bouton:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
 }
 
 .me-bouton:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+  border-color: transparent;
+  background: var(--charte-btn-desactive);
+  color: var(--charte-btn-desactive-texte);
+  cursor: default;
 }
 
 .me-bouton--discret {
   background: transparent;
-  color: var(--charte-encre);
-  border: 1px solid color-mix(in srgb, var(--charte-encre) 24%, transparent);
+  color: var(--charte-btn-lien);
 }
 
-/* ── statut du modèle ───────────────────────────────────────────────── */
-
-.me-statut {
-  display: inline-block;
-  margin: 0 0 10px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+.me-bouton--discret:hover:not(:disabled) {
   background: var(--charte-surface2);
-  color: var(--charte-douce);
 }
 
-.me-statut--applique {
-  background: color-mix(in srgb, var(--charte-aplat) 16%, transparent);
-  color: var(--charte-encre);
+/* ── l'historique, en colonne ── */
+
+.me-historique-col {
+  padding-left: var(--charte-espace-3);
+  border-left: var(--charte-trait) solid var(--charte-encre);
 }
 
-.me-statut--confirme_autre {
-  background: color-mix(in srgb, var(--charte-alerte) 14%, transparent);
-  color: var(--charte-encre);
-}
-
-.me-modeles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 14px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.me-modeles li {
+.me-historique-titre {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid color-mix(in srgb, var(--charte-encre) 12%, transparent);
-  border-radius: 999px;
-  font-size: 12px;
+  gap: 5px;
+  margin: 0 0 var(--charte-espace-2);
+  font-family: var(--charte-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
   color: var(--charte-douce);
 }
 
-.me-modeles li.is-propose {
-  border-color: color-mix(in srgb, var(--charte-aplat) 45%, transparent);
-  color: var(--charte-encre);
-}
-
-.me-puce {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--charte-aplat);
-  color: var(--charte-blanc);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-/* ── historique ─────────────────────────────────────────────────────── */
-
 .me-historique {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -337,49 +570,244 @@
 
 .me-historique li {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--charte-douce);
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--charte-bordure);
 }
 
-.me-historique svg {
-  flex: 0 0 auto;
+.me-historique li:last-child {
+  border-bottom: 0;
 }
 
 .me-historique-date {
-  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--charte-mono);
+  font-size: 9.5px;
   font-weight: 700;
-  color: var(--charte-encre);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--charte-texte);
 }
 
-.me-historique-texte strong {
-  color: var(--charte-encre);
-}
-
-/* Quatre largeurs, comme les autres écrans de réglages. */
-@media (max-width: 720px) {
-  .me-page { padding: 20px 14px 48px; }
-  .me-tete h1 { font-size: 22px; }
-  .me-identite { grid-template-columns: 1fr 1fr; }
-}
-
-@media (max-width: 480px) {
-  .me-identite { grid-template-columns: 1fr; }
-  .me-actions { flex-direction: column; }
-  .me-actions .me-bouton { width: 100%; justify-content: center; }
-}
-
-/* Aperçu d'impact : une phrase avant l'acte, pas une erreur après. */
-.me-impact {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
+.me-historique-texte {
+  font-size: 11px;
+  line-height: 1.35;
   color: var(--charte-douce);
 }
 
-.me-impact--bloque {
-  padding-left: 10px;
-  border-left: 2px solid var(--charte-alerte);
+/* ═══ LE MODÈLE PROPOSÉ ═════════════════════════════════════════════════ */
+
+.me-carte--modele {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--charte-sable) 45%, var(--charte-surface));
+}
+
+.me-modele-corps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-5);
+  align-items: flex-start;
+}
+
+.me-modele-grand {
+  margin: 0;
+  font-family: var(--charte-mono);
+  font-size: 54px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.me-modele-texte {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.me-statut {
+  display: inline-block;
+  margin: 0 0 var(--charte-espace-2);
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--charte-encre) 35%, transparent);
+  border-radius: var(--charte-rayon-champ);
+  background: color-mix(in srgb, var(--charte-aplat) 12%, transparent);
+  font-family: var(--charte-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.me-statut--propose {
+  transform: rotate(-1.6deg);
+  border-style: dashed;
+  border-color: var(--charte-texte);
+  background: transparent;
+  color: var(--charte-texte);
+}
+
+.me-statut--applique {
+  background: color-mix(in srgb, var(--charte-succes) 14%, transparent);
+}
+
+.me-modeles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-2);
+  margin: var(--charte-espace-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.me-modeles li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  font-size: 11.5px;
+  color: var(--charte-douce);
+}
+
+.me-modeles li.is-propose {
+  border-color: color-mix(in srgb, var(--charte-encre) 40%, transparent);
   color: var(--charte-encre);
+}
+
+.me-puce {
+  font-family: var(--charte-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--charte-texte);
+}
+
+/* ═══ LE PIED ═══════════════════════════════════════════════════════════ */
+
+.me-pied {
+  padding-top: var(--charte-espace-3);
+  border-top: var(--charte-trait) solid var(--charte-encre);
+}
+
+.me-pied-texte {
+  margin: 0;
+  font-family: var(--charte-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+/* ═══ LES LARGEURS ══════════════════════════════════════════════════════ */
+
+@media (max-width: 960px) {
+  .me-feuille {
+    padding: 0 var(--charte-espace-4) var(--charte-espace-3);
+  }
+
+  .me-bande-motif {
+    margin: 0 calc(var(--charte-espace-4) * -1);
+  }
+
+  .me-titre {
+    font-size: 28px;
+  }
+
+  .me-identite {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: var(--charte-espace-3);
+  }
+
+  .me-identite div:nth-child(4) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .me-regles-corps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .me-historique-col {
+    padding-left: 0;
+    padding-top: var(--charte-espace-3);
+    border-left: 0;
+    border-top: var(--charte-trait) solid var(--charte-encre);
+  }
+}
+
+@media (max-width: 720px) {
+  .me-page {
+    padding: var(--charte-espace-4) var(--charte-espace-2) var(--charte-espace-6);
+  }
+
+  .me-carte {
+    padding: var(--charte-espace-3);
+  }
+
+  .me-identite {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .me-identite div:nth-child(3),
+  .me-identite div:nth-child(5) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .me-regle {
+    grid-template-columns: 5px minmax(0, 1fr) auto;
+    row-gap: var(--charte-espace-2);
+  }
+
+  .me-regle-texte {
+    grid-column: 2 / 4;
+  }
+
+  .me-regle-valeur {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .me-regle-origine {
+    grid-column: 2 / 4;
+  }
+
+  .me-regle > .me-bouton {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+  }
+
+  .me-edition-champs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .me-modele-grand {
+    font-size: 42px;
+  }
+}
+
+@media (max-width: 480px) {
+  .me-identite {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .me-identite div {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .me-selecteur-champ select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .me-selecteur {
+    width: 100%;
+  }
 }

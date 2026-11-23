@@ -144,7 +144,8 @@ it('affiche une valeur en vigueur avec son origine et sa date', async () => {
   await monter()
 
   expect(host.textContent).toContain('45 h')
-  expect(host.textContent).toContain('depuis le 2026-09-01')
+  //  La date est écrite en clair depuis la refonte du 24/11/2026.
+  expect(host.textContent).toContain('depuis le 1 sept. 2026')
 })
 
 it('montre l’impact avant d’écrire, et refuse si un verrou bloque', async () => {
