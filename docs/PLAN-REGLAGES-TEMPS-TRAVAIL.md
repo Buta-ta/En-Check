@@ -387,7 +387,7 @@ rendre l'écran muet au premier jour.
 | 1 | **G1** ✅ *réalisé, en attente de validation* | Fenêtres hebdo et repos calculées sur une plage élargie ; la primitive refuse des bornes étroites ; drapeau mort supprimé | S | — | — | Un réglage éditable sur un calcul faux à cheval sur deux années, c'est un bouton qui ment deux fois |
 | 2 | **G2** ✅ *réalisé, en attente de validation* | Provenance réelle (`entreprise` / `defaut_produit` / `historique_incertain` / `inconnue`), défaut à 48 h, écriture qui n'invente plus de seuil, libellé honnête | S | S | — | Supprime le mensonge actuel (« seuil d'entreprise ») pour tous, tout de suite, sans toucher au calcul |
 | 3 | **G3** | Table versionnée + `encheck_regle_resolue` + `encheck_regle_ecrire` + journal (auteur, date d'effet, avant/après) | M | — | G2 (origines) | Le journal **avant** l'éditeur : des seuils modifiables sans trace sont un bouton pour réécrire janvier depuis novembre (règle C5-mince de l'audit) |
-| 4 | **G6** | Découpler l'alerte du module de paie (défaire `hoursCalculator.js` l. 389) et séparer les trois clés : déclenchement de paie / seuil d'alerte / plafond légal (`a_sourcer`) | S | S | G3 | Donner un bouton « repos personnel » alors que l'alerte s'éteint avec la paie serait livrer un réglage inopérant |
+| 4 | **G6** ⏳ *découplage fait, séparation des clés à suivre* | Découplage de l'alerte et du module de paie ✅ (`seuilsAlerteHebdo`) ; séparation des trois clés (déclenchement de paie / seuil d'alerte / plafond `a_sourcer`) → **G3** | S | S | G3 | Donner un bouton « repos personnel » alors que l'alerte s'éteint avec la paie serait livrer un réglage inopérant |
 | 5 | **G4** | Page **« Mon entreprise »** : profil, identité, pays, règles de temps de travail ; accès de l'admin client ; « Entreprises » réservé au super-administrateur (V-A2, V-A3) | M | **M** | G3, G6 | Un écran « S » n'est pas une tâche « S » (audit §7.2) ; c'est la maison unique des règles d'entreprise (§4.2) |
 | 6 | **G4b** | **Modèles 48 h / 50 h par pays** : table, pré-sélection à la création, confirmation explicite, `statut_source` | S | S | G4 | Les modèles sont un confort de saisie ; les brancher avant la page n'aurait aucun support |
 | 7 | **G5** | Fiche employé : suivre l'entreprise ou valeur personnelle, clé par clé, retour à la règle générale, origine affichée | M | **M** | G3, G6, G4 | Après G4, sinon l'héritage n'a pas de parent à hériter |
@@ -440,7 +440,38 @@ Réalisé le 24/10/2026, **non validé**.
 **Non fait** : aucun écran n'affiche encore ces libellés (c'est G7), et le placement de
 l'alerte sous condition du module de paie reste à défaire (G6).
 
-### 5.3 Plan d'exécution — ce que je code, dans quel ordre
+### 5.3 G6-mince — l'alerte survit à la paie
+
+Réalisé le 24/10/2026, **non validé**.
+
+**Le défaut** : `loadOvertimeContext` ne chargeait les réglages que si le module « heures
+supplémentaires » était actif. L'alerte hebdomadaire lisant ces mêmes réglages, **couper la
+paie éteignait le contrôle du temps de travail** — la direction croyait n'avoir désactivé
+qu'un calcul de paie.
+
+**La correction** : deux lectures distinctes, jamais fusionnées.
+
+| Objet | Contenu | Conditionné au module ? |
+|---|---|---|
+| `overtimeSettings` | réglages de **paie** (taux, seuils journaliers, fériés) | **oui**, inchangé |
+| `reglageHebdo` | seuils de l'**alerte** + origine | **non**, lu dans tous les cas |
+
+`seuilsAlerteHebdo()` est une fonction pure : elle rend `{ seuil, seuilMajeur, source }` sans
+jamais consulter le module, ce qui rend la règle vérifiable sans base.
+
+**Le piège évité, et pourquoi la séparation n'est pas décorative** : `resoudreFerieDuJour`
+détermine si l'entreprise a configuré une majoration de férié via `overtimeSettings.id`. Charger
+les réglages « toujours » aurait fait passer une majoration de férié de **100 % à 150 %** pour
+les entreprises dont le module est coupé — une hausse de paie silencieuse, provoquée par un
+correctif d'affichage. C'est testé (`alerteHebdoSansPaie.test.js`, 10 tests), y compris la
+démonstration 100 % / 150 %.
+
+**Ce qui reste de G6** : la séparation des **trois clés** (déclenchement de paie / seuil
+d'alerte / plafond `a_sourcer`) n'est pas faite — elle appartient à G3, qui crée la table où
+ces clés vivront séparément. Aujourd'hui l'alerte lit encore `overtime_settings.weekly_threshold`,
+et le plafond « légal » n'existe pas.
+
+### 5.4 Plan d'exécution — ce que je code, dans quel ordre
 
 #### Étape 0 — fermer #313 avant d'empiler (décision du fondateur)
 
@@ -448,7 +479,7 @@ l'alerte sous condition du module de paie reste à défaire (G6).
 suit s'appuie sur un calcul non validé. **Aucun lot ci-dessous ne démarre sans cette
 validation** — ou sans un « je continue quand même » explicite.
 
-#### Lot 1 — G6-mince : l'alerte ne meurt plus avec la paie (S, 1 PR)
+#### Lot 1 — G6-mince : l'alerte ne meurt plus avec la paie ✅ *réalisé* (S, 1 PR)
 
 **Pourquoi d'abord** : c'est le dernier défaut de justesse qui ne dépend d'aucun modèle de
 données. Deux lignes, un vrai bug : aujourd'hui, couper le module « heures supplémentaires »

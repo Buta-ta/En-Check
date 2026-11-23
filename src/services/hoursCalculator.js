@@ -203,7 +203,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   )
 
   // ── 7) Contexte heures sup ───────────────────────────────────
-  const { hasOvertimeFeature, overtimeSettings, provenanceSeuil, allSchedules } = await loadOvertimeContext(employee.enterprise_id)
+  const { hasOvertimeFeature, overtimeSettings, reglageHebdo, allSchedules } = await loadOvertimeContext(employee.enterprise_id)
 
   // ── 8) Calcul jour par jour ──────────────────────────────────
   const daySummaries = buildDaySummariesStrict({
@@ -428,6 +428,8 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   //  Les semaines sont calculées sur des fenêtres complètes (lundi → dimanche),
   //  y compris celles à cheval sur deux mois : sinon 50 h pourraient se cacher
   //  dans deux « semaines » de 25 h au 1ᵉʳ du mois.
+  //  Les seuils de l'alerte : jamais conditionnés au module de paie (G6).
+  const seuilsAlerteRegles = seuilsAlerteHebdo(reglageHebdo)
   const secondesParJour = {}
   for (const d of listDaysInclusive(debutSemaines, finSemaines)) {
     secondesParJour[d] = (daySummaries[d] || {}).totalSeconds || 0
@@ -440,10 +442,11 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     }),
     //  Seuils d'HEURES SUPÉRIEURES de l'entreprise (40 h / 48 h). Ce ne sont
     //  pas des plafonds légaux : aucun texte n'est invoqué ici.
-    seuil: hasOvertimeFeature && overtimeSettings ? overtimeSettings.weekly_threshold : null,
-    seuilMajeur: hasOvertimeFeature && overtimeSettings ? overtimeSettings.weekly_threshold_major : null,
-    //  Ce que l'on SAIT de l'origine, jamais davantage (P5).
-    source: hasOvertimeFeature && overtimeSettings ? provenanceSeuil.origine : 'inconnue',
+    seuil: seuilsAlerteRegles.seuil,
+    seuilMajeur: seuilsAlerteRegles.seuilMajeur,
+    //  Ce que l'on SAIT de l'origine, jamais davantage (P5). Et surtout : plus de
+    //  condition au module de paie — le contrôle survit à sa désactivation (G6).
+    source: seuilsAlerteRegles.source,
   })
 
   // ── 11-ter) Repos entre deux journées ────────────────────────
@@ -1480,26 +1483,59 @@ function resolvePlanForExpected(employeeScheduleRow, defaultScheduleRow) {
 // OVERTIME CONTEXT
 // ═══════════════════════════════════════════════════════════
 
+/**
+ * Les seuils de l'ALERTE hebdomadaire, séparés de la paie (constat G6 / P4).
+ *
+ * POURQUOI une fonction pure : la règle « l'alerte ne dépend pas du module de
+ * paie » doit être vérifiable sans base. Ici, aucun `hasOvertimeFeature` : les
+ * valeurs viennent du réglage d'entreprise, ou de ses défauts, et l'origine est
+ * toujours transmise pour que le message ne mente pas (P5).
+ */
+export function seuilsAlerteHebdo(reglageHebdo) {
+  const settings = reglageHebdo?.settings || null
+  const seuil = settings?.weekly_threshold ?? null
+  const seuilMajeur = settings?.weekly_threshold_major ?? null
+
+  return {
+    seuil,
+    seuilMajeur,
+    //  Pas de valeur = pas d'origine affirmée. Une valeur = l'origine constatée.
+    source: seuil === null ? 'inconnue' : (reglageHebdo?.provenance?.origine || 'inconnue'),
+  }
+}
+
 async function loadOvertimeContext(enterpriseId) {
   let hasOvertimeFeature = false
   let overtimeSettings = null
-  let provenanceSeuil = { origine: 'inconnue', motif: 'non chargé' }
+  let reglageHebdo = null
 
   try {
     hasOvertimeFeature = await FeatureService.hasFeature(enterpriseId, FEATURES.HEURES_SUPPLEMENTAIRES)
-    if (hasOvertimeFeature) {
-      const { settings, provenance } = await FeatureService.getOvertimeSettingsAvecOrigine(enterpriseId)
-      overtimeSettings = settings
-      provenanceSeuil = provenance
-    }
   } catch {
     hasOvertimeFeature = false
-    overtimeSettings = null
-    provenanceSeuil = { origine: 'inconnue', motif: 'lecture impossible' }
+  }
+
+  //  ⚠️ DEUX lectures distinctes, et c'est volontaire (constat G6).
+  //
+  //  `overtimeSettings` sert à la PAIE : il reste conditionné au module, parce
+  //  que `resoudreFerieDuJour` s'en sert pour savoir si l'entreprise a configuré
+  //  une majoration de férié (`settingsConfigurees`, l. 1555). Le charger sans
+  //  condition changerait des montants — donc on ne le charge pas.
+  //
+  //  `reglageHebdo` sert à l'ALERTE : elle ne doit pas mourir avec la paie.
+  //  Couper le module « heures supplémentaires » n'est pas une décision de
+  //  renoncer au contrôle du temps de travail. Il est donc lu dans tous les cas.
+  try {
+    const lecture = await FeatureService.getOvertimeSettingsAvecOrigine(enterpriseId)
+    reglageHebdo = { settings: lecture.settings, provenance: lecture.provenance }
+    if (hasOvertimeFeature) overtimeSettings = lecture.settings
+  } catch {
+    reglageHebdo = null
+    if (hasOvertimeFeature) overtimeSettings = null
   }
 
   const allSchedules = await FeatureService.loadSchedules([enterpriseId])
-  return { hasOvertimeFeature, overtimeSettings, provenanceSeuil, allSchedules }
+  return { hasOvertimeFeature, overtimeSettings, reglageHebdo, allSchedules }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2477,6 +2513,8 @@ export function compterRetardsDuJour(
 // production.
 export const __internal = {
   buildDaySummariesStrict,
+  loadOvertimeContext,
+  seuilsAlerteHebdo,
   fenetreDeLecture,
   computeDayStrict,
   computeVirtualAutoCloseOut,
