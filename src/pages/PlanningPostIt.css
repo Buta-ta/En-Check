@@ -2528,5 +2528,432 @@
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   LE MODE MOIS, ENFIN HABILLÉ DE LA MAISON — 23/11/2026, direction B retenue
+   (« le mois dit qui est là »).
 
+   Ce que la grille était, mesuré sur la page du fondateur :
+   · deux grilles `repeat(7, 1fr)` séparées (l'en-tête, puis les cases) : la
+     seconde est poussée par le `min-content` des pastilles `nowrap`, pas la
+     première — d'où « Jeudi » au-dessus de la colonne du mercredi ;
+   · six colonnes gonflées et la septième écrasée, peinte HORS du panneau :
+     `.sk-matrix-card` est en `overflow: visible` sous cette peau (le rabat des
+     cartes doit pouvoir dépasser) et le mois n'avait pas le conteneur de
+     défilement de la semaine ;
+   · ZÉRO règle de cette feuille pour les classes du mois (douze dans la feuille
+     voisine) : le mois héritait donc de l'ancien vocabulaire — un dégradé
+     saturé sous un texte clair, là où la grille de la semaine pose un lavis.
 
+   Trois règles de tenue, ici :
+   1 · une SEULE grille, sept colonnes `minmax(0, 1fr)` : rien ne déborde plus,
+       et l'alignement de l'en-tête n'est plus une promesse ;
+   2 · la teinte d'un jour se pose en BANDE de 6 px, jamais en fond peint ; les
+       états se disent par un MOT (C7) et restent sur du papier lavé à 18 % ;
+   3 · rien de destructeur dans une vue de lecture : la case entière est la porte
+       du jour, le retrait d'un modèle déposé s'écrit en mot.
+
+   Comme partout dans cette feuille : deux classes par sélecteur, pas
+   d'« important », aucun hexadécimal, aucun flou, rayon écrit sans unité.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Sept colonnes égales, et un plancher : à 320 px de large, sept colonnes
+   illisibles valent moins qu'un défilement — la table de la semaine fait déjà
+   exactement ce choix (`min-width` + `.sk-matrix-scroll`). */
+.sk-plan-page--postit .sk-mois {
+  display: grid;
+  gap: var(--charte-espace-2);
+}
+
+/* la variante est celle de l'EFFECTIF : ce qui remplit la case, ce sont des
+   personnes, une rangée par tête. Le gabarit est écrit sur la variante parce
+   que c'est elle qui dit ce qu'une colonne doit contenir — sept colonnes de
+   `1fr` sous le `min-content` d'un nom, c'est précisément ce qui avait écrasé
+   le dimanche. */
+.sk-plan-page--postit .sk-mois--effectif {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-width: 760px;
+}
+
+/* la rangée des jours : une étiquette du kit, pas un titre */
+.sk-plan-page--postit .sk-mois-jour {
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.sk-plan-page--postit .sk-mois-jour[data-fin-semaine] {
+  color: var(--charte-encre);
+}
+
+/* la case du jour : du papier, un filet, une bande de teinte sur le haut. Elle
+   remplace la géométrie de la feuille voisine (112 px de haut, rayon de douze,
+   fond `--sk-bg-cell`, espace réparti) par la matière d'une carte de la grille. */
+.sk-plan-page--postit .sk-cal-cell.sk-mois-case {
+  --teinte-du-jour: var(--charte-surface2);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: var(--charte-espace-1);
+  min-height: 92px;
+  padding: var(--charte-espace-2);
+  border: 1px solid var(--charte-bordure);
+  border-top: 6px solid var(--teinte-du-jour);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  background-image: none;
+  color: var(--charte-encre);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    transform var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-cal-cell.sk-mois-case[data-fin-semaine] {
+  background-color: color-mix(in srgb, var(--charte-surface2) 45%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-cal-cell.sk-mois-case:hover {
+  border-color: var(--charte-encre);
+  box-shadow: var(--charte-ombre-dure);
+  transform: translateY(-2px);
+}
+
+.sk-plan-page--postit .sk-cal-cell.sk-mois-case:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* aujourd'hui : UN signe. Le contour d'encre du kit pose l'objet actif ; le mot
+   « Aujourd'hui » se pose en tampon d'encre, plus le lavis et le contour du
+   vieux `is-today` de la feuille voisine, qui triplaient le signal. */
+.sk-plan-page--postit .sk-cal-cell.sk-mois-case.is-today {
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-top: 6px solid var(--teinte-du-jour);
+  box-shadow: 3px 3px 0 0 color-mix(in srgb, var(--charte-encre) 22%, var(--charte-surface));
+}
+
+.sk-plan-page--postit .sk-today-pill {
+  padding: calc(var(--charte-espace-1) / 2) var(--charte-espace-1);
+  border-radius: 0;
+  background-color: var(--charte-encre);
+  color: var(--charte-blanc);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* hors du mois : une encoche. Elle ne prétend plus rien montrer, donc elle ne
+   prend plus la hauteur d'une journée de travail. */
+.sk-plan-page--postit .sk-mois-encoche {
+  min-height: 92px;
+  border: 1px dashed color-mix(in srgb, var(--charte-bordure) 70%, transparent);
+  border-radius: 0;
+}
+
+/* le chiffre du jour : plus de « 0 modèle(s) • 0 perso ». Un compte, un total,
+   et le nombre en monnaie de compte. */
+.sk-plan-page--postit .sk-cal-summary.sk-mois-chiffre {
+  display: flex;
+  align-items: baseline;
+  gap: var(--charte-espace-1);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.sk-plan-page--postit .sk-mois-chiffre b {
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+}
+
+.sk-plan-page--postit .sk-mois-vide {
+  color: color-mix(in srgb, var(--charte-douce) 68%, var(--charte-surface));
+  font-weight: 400;
+}
+
+/* QUI EST LÀ. Un rang par collaborateur : un repère de teinte dans le trait, le
+   nom lisible, les heures à droite. Le `min-width: 0` est la pièce qui répare
+   la colonne : sans lui, un nom long gonfle la colonne et le mois déborde. */
+.sk-plan-page--postit .sk-mois-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sk-plan-page--postit .sk-mois-rang {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  min-width: 0;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+  line-height: 1.25;
+}
+
+.sk-plan-page--postit .sk-mois-rang[draggable='true'] {
+  cursor: grab;
+}
+
+.sk-plan-page--postit .sk-mois-rang i {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--charte-encre);
+  background-color: var(--teinte-du-rang, var(--charte-surface2));
+}
+
+.sk-plan-page--postit .sk-mois-nom {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sk-plan-page--postit .sk-mois-heures {
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-bouton);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* l'état, collé au nom qu'il concerne : un lavis de 18 %, un trait de la
+   couleur, le mot en encre lavée. Jamais un mot blanc sur un aplat. */
+.sk-plan-page--postit .sk-mois-tampon {
+  --couleur: var(--charte-alerte);
+  grid-column: 2 / -1;
+  justify-self: start;
+  max-width: 100%;
+  padding: 1px var(--charte-espace-1);
+  border: 1px solid var(--couleur);
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--couleur) 18%, var(--charte-surface));
+  color: color-mix(in srgb, var(--couleur) 82%, var(--charte-encre));
+  font-size: var(--charte-taille-bouton);
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* le rouge reste à ce qui détruit : « absent » est le seul état qui le porte,
+   et seulement après la fin du poste — c'est déjà la règle du jeton. */
+.sk-plan-page--postit .sk-mois-tampon[data-espece='absent'] {
+  --couleur: var(--charte-statut-absent);
+}
+
+.sk-plan-page--postit .sk-mois-tampon[data-espece='conge'] {
+  --couleur: var(--charte-texte);
+}
+
+.sk-plan-page--postit .sk-mois-tampon[data-espece='repos'],
+.sk-plan-page--postit .sk-mois-tampon[data-espece='ferie'] {
+  --couleur: var(--charte-douce);
+}
+
+.sk-plan-page--postit .sk-mois-tampon[data-espece='heure'] {
+  --couleur: var(--charte-succes);
+}
+
+/* un jour férié se LIT, il ne se devine pas à un lavis de quatorze pour cent
+   posé en style en ligne dans le composant */
+.sk-plan-page--postit .sk-cal-holiday.sk-mois-tampon {
+  color: color-mix(in srgb, var(--charte-douce) 82%, var(--charte-encre));
+  font-size: var(--charte-taille-bouton);
+  text-transform: none;
+}
+
+/* les modèles DÉPOSÉS sur la journée : une bande à part, séparée du corps par
+   un filet, et non une rangée de plus qui se confondrait avec les gens. Un
+   dépôt n'est pas une personne ; il ne doit pas se lire comme une personne. */
+.sk-plan-page--postit .sk-mois-depots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-1);
+  margin-top: auto;
+  padding-top: var(--charte-espace-1);
+  border-top: var(--charte-trait) solid var(--charte-bordure);
+}
+
+/* le « +N » est une porte, pas un compteur : double soulignement d'encre lavée,
+   le geste des titres de cette feuille. */
+.sk-plan-page--postit .sk-mois-plus,
+.sk-plan-page--postit .sk-mois-ouvrir {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--charte-texte);
+  cursor: pointer;
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  transition: color var(--charte-duree) var(--charte-easing);
+}
+
+.sk-plan-page--postit .sk-mois-plus:hover,
+.sk-plan-page--postit .sk-mois-ouvrir:hover {
+  color: var(--charte-encre);
+}
+
+/* la porte de la journée : elle n'existe qu'au survol ou au clavier, pour ne pas
+   trente fois le même verbe à l'écran ; le double-clic et Entrée la tiennent
+   aussi, donc elle n'est jamais le seul chemin. */
+.sk-plan-page--postit .sk-mois-ouvrir {
+  margin-top: auto;
+  opacity: 0;
+}
+
+.sk-plan-page--postit .sk-cal-cell.sk-mois-case:hover .sk-mois-ouvrir,
+.sk-plan-page--postit .sk-cal-cell.sk-mois-case:focus-visible .sk-mois-ouvrir,
+.sk-plan-page--postit .sk-cal-cell.sk-mois-case:focus-within .sk-mois-ouvrir {
+  opacity: 1;
+}
+
+/* le modèle déposé sur la journée garde sa pastille, mais sort de l'aplat
+   saturé de la feuille voisine : la teinte arrive en couleur de bordure et de
+   lavis, le nom du modèle reste écrit. */
+.sk-plan-page--postit .sk-cal-pill.is-daymodel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  padding: 1px var(--charte-espace-2) 1px var(--charte-espace-1);
+  border: 1px solid var(--teinte-du-depot, var(--charte-bordure));
+  border-radius: 0;
+  background-color: color-mix(in srgb, var(--teinte-du-depot, var(--charte-surface2)) 18%, var(--charte-surface));
+  background-image: none;
+  color: var(--charte-encre);
+}
+
+/* le retrait d'un dépôt s'ÉCRIT : la croix de 16 px posée sur une vue de
+   lecture n'était qu'une surface de cible trop petite pour le doigt. Le mot
+   garde la couleur du dommage — c'est bien lui qui détruit — et il prend le
+   clavier en même temps que la souris. */
+.sk-plan-page--postit .sk-mois-retirer {
+  padding: 0 var(--charte-espace-1);
+  border: 0;
+  background: none;
+  color: var(--charte-btn-danger);
+  cursor: pointer;
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sk-plan-page--postit .sk-mois-retirer:hover,
+.sk-plan-page--postit .sk-mois-retirer:focus-visible {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+/* le pied : une ligne par semaine, les heures à droite. C'est ce que la grille
+   de la semaine fait déjà depuis le 22/11 ; le mois ne l'avait jamais eu. */
+.sk-plan-page--postit .sk-mois-pied {
+  display: grid;
+  gap: 1px;
+  margin-top: var(--charte-espace-3);
+  border: 1px solid var(--charte-bordure);
+  background-color: var(--charte-bordure);
+}
+
+.sk-plan-page--postit .sk-mois-ligne-pied {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--charte-espace-3);
+  padding: var(--charte-espace-1) var(--charte-espace-3);
+  background-color: var(--charte-surface);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+}
+
+.sk-plan-page--postit .sk-mois-ligne-pied em {
+  color: var(--charte-encre);
+  font-style: normal;
+}
+
+.sk-plan-page--postit .sk-mois-ligne-pied strong {
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+}
+
+/* la légende : quatre mots, un carré chacun. Elle aussi n'existait pas. */
+.sk-plan-page--postit .sk-mois-legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-4);
+  margin-top: var(--charte-espace-3);
+  padding-top: var(--charte-espace-2);
+  border-top: 1px solid var(--charte-bordure);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+}
+
+.sk-plan-page--postit .sk-mois-legende i {
+  --couleur: var(--charte-aplat);
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: var(--charte-espace-1);
+  border: 1px solid var(--charte-encre);
+  background-color: var(--couleur);
+  vertical-align: -1px;
+}
+
+.sk-plan-page--postit .sk-mois-legende i[data-espece='oubli'] {
+  --couleur: var(--charte-alerte);
+}
+
+.sk-plan-page--postit .sk-mois-legende i[data-espece='absent'] {
+  --couleur: var(--charte-statut-absent);
+}
+
+.sk-plan-page--postit .sk-mois-legende i[data-espece='repos'] {
+  --couleur: var(--charte-douce);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-plan-page--postit .sk-cal-cell.sk-mois-case,
+  .sk-plan-page--postit .sk-mois-plus,
+  .sk-plan-page--postit .sk-mois-ouvrir {
+    transition: none;
+  }
+
+  .sk-plan-page--postit .sk-cal-cell.sk-mois-case:hover {
+    transform: none;
+  }
+
+  /* sans mouvement, la porte du jour doit rester visible : le survol seul ne
+     serait plus rien sur un écran figé */
+  .sk-plan-page--postit .sk-mois-ouvrir {
+    opacity: 1;
+  }
+}

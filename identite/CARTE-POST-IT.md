@@ -81,4 +81,11 @@ Blocs de chiffres : repeat(auto-fit, minmax(122px, 1fr)) — deux notes côte à
 
 ## État d’application
 
+Le **mode mois du Planning** est passé par cette carte le 23/11/2026 : une seule grille de sept
+colonnes égales (`repeat(7, minmax(0, 1fr))` + `min-width: 760px` dans le rail qui défile), un rang
+par personne — nom lisible, heures en chiffres tabulaires, état écrit en mot sur un lavis de 18 % —,
+la teinte du jour en bande de 6 px seulement quand le jour a un auteur unique, et une porte nommée
+(« Ouvrir la journée ») plutôt qu'un double-clic à deviner. Ce que la carte exigeait et que le mois ne
+faisait pas : que ce qui est annoncé et ce qui est peint sortent du même calcul.
+
 Appliqué : **fiche employé** (cartes post-it, citation voilée, tête centrée, coque, responsive conteneur) — validé en production. Et depuis le 21/11/2026, **modale « fiche employé »** : `src/components/FicheEmployeModal.css`, portée `.fiche-v2--postit` — la feuille porte le double feutre, la bande de colle et le rabat ; le bandeau de motif du sommet et le filigrane sont tombés ; l’action principale est en espresso, plus en or. Le périmètre de la portée est strict : « Modifier le pointage », qui partage les classes `fiche-v2-*`, garde sa peau, intacte. A étendre, page par page avec validation du fondateur : annuaire, pointages, paie — mêmes règles, pas d'exception locale sans décision écrite dans ce dossier.
