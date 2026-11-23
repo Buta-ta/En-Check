@@ -97,3 +97,40 @@ describe('📱 « Mes pauses » web — l’identité vient du JWT', () => {
     expect(SQL).not.toMatch(/CURRENT_DATE - 30\b/)
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🚫 LE MOTIF NE SORT PAS CÔTÉ EMPLOYÉ
+//
+// Décision du fondateur, 26/11 : « ce n'est pas à l'employé de voir pourquoi
+// sa pause s'est fermée mais à l'admin de l'entreprise ».
+//
+// J'avais livré une version qui l'exposait dans `encheck_pauses_mes_pauses_web`
+// — alors que l'App Pointage avait écrit « décision partagée, pas maintenant ».
+// Ce test existe pour que l'oubli ne revienne pas.
+// ═══════════════════════════════════════════════════════════════════════════
+describe('🚫 Le motif de fermeture est une information d’administration', () => {
+  it('n’est pas renvoyé par la vue employé web', () => {
+    const fn = SQL.slice(SQL.indexOf('FUNCTION public.encheck_pauses_mes_pauses_web'))
+    const retour = fn.slice(fn.indexOf('RETURNS TABLE('), fn.indexOf('LANGUAGE plpgsql'))
+    expect(retour).not.toContain('motif_fermeture')
+    const corps = fn.slice(fn.indexOf('RETURN QUERY'), fn.indexOf('END;'))
+    expect(corps).not.toContain('motif_fermeture')
+  })
+
+  it('n’est pas renvoyé par la vue employé tablette', () => {
+    //  La migration ne reconstruit pas cette fonction : on vérifie le fichier
+    //  d'origine qui la définit, et l'on s'assure qu'aucune migration
+    //  ultérieure ne l'a élargie.
+    const tablette = readFileSync(
+      'supabase/migrations/20261123000001_contrat_serveur_app_pointage.sql', 'utf8')
+    const fn = tablette.slice(tablette.indexOf('FUNCTION public.encheck_pauses_mes_pauses('))
+    const retour = fn.slice(fn.indexOf('RETURNS TABLE('), fn.indexOf('LANGUAGE plpgsql'))
+    expect(retour).not.toContain('motif_fermeture')
+  })
+
+  it('n’est visible que par la lecture admin', () => {
+    //  Un seul point de sortie. S'il en apparaît un second, c'est une fuite.
+    const occurrences = SQL.match(/^\s+motif_fermeture text/gm) || []
+    expect(occurrences.length).toBe(1)
+  })
+})

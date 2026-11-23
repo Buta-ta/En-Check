@@ -12,6 +12,12 @@
 --      puisque l'espace employé web s'authentifie par Supabase Auth et non
 --      par une session de tablette.
 --
+--      ⚠️ Elle ne renvoie PAS `motif_fermeture`. Décision du fondateur du
+--      26/11 : « ce n'est pas à l'employé de voir pourquoi sa pause s'est
+--      fermée, mais à l'admin de l'entreprise ». Le motif est une
+--      information d'administration. Une version intermédiaire l'exposait :
+--      retirée le même jour.
+--
 -- ⚠️ HISTORIQUE — CE QUI S'EST PASSÉ LE 26/11, ET POURQUOI CE FICHIER
 --    DIFFÈRE DE CE QUI A ÉTÉ APPLIQUÉ D'ABORD
 --
@@ -155,8 +161,7 @@ RETURNS TABLE(
   statut          text,
   source          text,
   motif           text,
-  anomalie        text,
-  motif_fermeture text
+  anomalie        text
 )
 LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = public, pg_temp
@@ -189,8 +194,7 @@ BEGIN
 
   RETURN QUERY
     SELECT p.id, p.jour, p.debut, p.fin,
-           p.duree_minutes, p.statut, p.source, p.motif,
-           p.anomalie, p.motif_fermeture
+           p.duree_minutes, p.statut, p.source, p.motif, p.anomalie
       FROM public.encheck_pauses p
      WHERE p.employee_id = v_emp
        AND p.enterprise_id = v_ent
@@ -214,6 +218,10 @@ COMMIT;
 --   1. Elle ne touche pas `encheck_pauses_mes_pauses` (la variante par jeton
 --      de tablette). Deux variantes coexistent parce que deux espaces
 --      existent : la tablette a une session, le web a un compte.
+--
+--   1 bis. AUCUNE des deux variantes employé n'expose `motif_fermeture`.
+--      Ce n'est pas un oubli : c'est une décision. Le motif ne sort que par
+--      `encheck_pauses_lire`, réservée aux administrateurs.
 --
 --   2. Elle ne remplit pas `motif_fermeture` pour le passé : les pauses
 --      antérieures au 23/11 restent à NULL. NULL = « on ne sait pas ».
