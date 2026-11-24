@@ -158,10 +158,12 @@ describe('Absences · la section du haut, figure E', () => {
     expect(porte(codeKpi, 'const restants = employes.map')).toBe(false)
   })
 
-  it('laisse les trois onglets de section et la ligne d’outils où ils sont', () => {
-    // la tranche ne dessine que la partie haute : les onglets et la barre d'outils
-    // gardent leurs briques, y compris la couture pointillée qui les sépare
-    expect(porte(CODE_PAGE, 'className="abs-section-tabs"')).toBe(true)
+  it('laisse la ligne d’outils et les compteurs où ils sont, les onglets en haut', () => {
+    // 28/11/2026 : les trois onglets de section ont MONTÉ dans la chemise (maquette C) —
+    // ce n'est pas un retrait, c'est un objet de moins. Le reste de la partie haute ne
+    // bouge pas : la barre d'outils garde sa couture pointillée, les compteurs leur rangée.
+    expect(porte(CODE_PAGE, 'className="abs-section-tabs"')).toBe(false)
+    expect(lire('src/components/AbsencesChemise.jsx')).toContain('className="abs-chemise-onglets"')
     expect(porte(CODE_PAGE, '<AbsencesKpiCards')).toBe(true)
     expect(bloc('.abs-page .toolbar-top {')).toContain('border-top: 1px dashed')
     expect(porte(CODE_PAGE, 'className="abs-tuile"')).toBe(true)

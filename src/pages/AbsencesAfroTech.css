@@ -101,50 +101,222 @@
    coud pas à une lisière. Le `max-width` de la rangée intérieure, lui, reste :
    sur un écran de 2 560 px, un titre tout à gauche et trois boutons tout à
    droite ne se lisent plus. */
-.abs-topbar {
-  background: var(--abs-bg-elevated);
-  padding: 12px 22px 10px;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+.abs-chemise {
+  position: relative;
+  padding: 16px 24px 0;
 }
 
-.abs-topbar-inner {
+.abs-chemise-inner {
   max-width: 1560px;
   margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
 }
 
-.abs-topbar-left,
-.abs-topbar-right {
+/* LES ONGLETS, soudés au bord haut de la feuille. La soudure tient à deux nombres :
+   `margin-bottom: -2px` (la rangée plonge de l'épaisseur du trait dans la feuille) et
+   `z-index: 1` (elle peint PAR-DESSUS le contour de la feuille). L'onglet ouvert n'a
+   pas de bordure en bas : sa pâte est celle de la feuille, donc le contour disparaît
+   sous lui et les deux bords se continuent. Les deux autres gardent leur bordure basse,
+   qui tombe exactement SUR le trait de la feuille — une seule ligne, pas deux.
+   `align-items: flex-end` + une hauteur unique à 36 px alignent les trois socles ;
+   l'onglet ouvert reprend les 2 px de sa bordure en `padding-bottom` pour que les
+   trois libellés tiennent la même ligne de base. Retirer l'un de ces quatre nombres
+   défait la soudure, et ça ne se voit que sur un écran. */
+.abs-chemise-onglets {
+  position: relative;
+  z-index: 1;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 3px;
+  padding-left: 16px;
+  margin-bottom: calc(-1 * var(--charte-trait));
 }
 
-.abs-back-btn {
-  width: 36px;
+.abs-chemise-onglet {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
   height: 36px;
-  border-radius: 11px;
-  border: 1px solid var(--abs-border);
-  background: var(--abs-bg-soft);
-  color: var(--abs-amber);
+  padding: 0 16px;
+  background: var(--charte-surface2);
+  color: var(--charte-douce);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+  /* Deux coins seulement, et à 6 px : la maquette dessinait des épaules courbes et un
+     rayon de ~24 px. D-016 ne connaît ni la courbe libre ni ce rayon (C10 : {6, 8, 11,
+     12, 999}) — l'onglet reste un onglet sans sortir de la liste. */
+  border-radius: var(--charte-rayon-champ) var(--charte-rayon-champ) 0 0;
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--charte-duree) ease-out;
+}
+
+.abs-chemise-onglet:hover {
+  background: var(--charte-surface);
+}
+
+/* L'onglet courant : ouvert sur la feuille, repéré par l'encre, pas par une teinte. */
+.abs-chemise-onglet[aria-pressed='true'] {
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  border-bottom: 0;
+  padding-bottom: var(--charte-trait);
+}
+
+/* Le double trait de feutre, à l'envers de la maison : ici c'est une seule barre
+   d'encre sous le libellé, posée en `box-shadow` à flou zéro (C9). Sans elle, le seul
+   indice de l'onglet courant serait la pâte — 12,71:1 sur une pâte voisine, c'est peu
+   pour dire « c'est ici que tu es ». */
+.abs-chemise-onglet[aria-pressed='true'] .abs-chemise-onglet-label {
+  padding-bottom: 3px;
+  box-shadow: 0 3px 0 0 var(--charte-encre);
+}
+
+.abs-chemise-onglet:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+.abs-chemise-onglet-compte {
+  padding: 2px 8px;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-encre);
+  color: var(--charte-surface);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+/* L'alerte garde sa teinte, mais le nombre et le mot de l'onglet la nomment : C7
+   interdit qu'une couleur soit la seule à parler. Le `pulse 2s` de l'ancienne pastille
+   est retiré avec elle — la maison ne fait pas respirer ses chiffres. */
+.abs-chemise-onglet-compte[data-alerte='oui'] {
+  background: var(--charte-alerte);
+  color: var(--charte-blanc);
+}
+
+/* LA FEUILLE. Ni collante, ni flottante, ni voilée : elle défile avec la page, elle a
+   un contour de 2 px et une ombre dure à flou zéro. `z-index: 0` pour que la rangée
+   d'onglets passe au-dessus d'elle. */
+.abs-chemise-feuille {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-3);
+  padding: 12px 16px;
+  background: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* Le retour, à la recette de la maison (`.e360-retour`, `.empv3-fleche`) : 34 px,
+   pilule, encre 2 px, fond papier, survol surface2. La durée vient du jeton plutôt que
+   des 140 ms recopiés à la main sur les deux autres écrans — D-013 : tout en 200 ms. */
+.abs-chemise-retour {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: var(--charte-rayon-pilule);
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  cursor: pointer;
+  transition: background-color var(--charte-duree) ease-out;
+}
+
+.abs-chemise-retour:hover {
+  background: var(--charte-surface2);
+}
+
+.abs-chemise-retour:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* L'empreinte. `border-radius: 50%` est retiré : la liste de D-016 ne connaît pas les
+   pourcentages, et `999px` sur un carré de 42 px donne exactement le même disque.
+   Aucun fond ici — `EnCheckBrandMark` peint son propre disque, un second dessous
+   ferait un cercle dans le cercle. */
+.abs-chemise-marque {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.18s ease;
+  border-radius: var(--charte-rayon-pilule);
+  overflow: hidden;
 }
 
-.abs-back-btn:hover {
-  border-color: var(--abs-border-strong);
-  color: var(--abs-amber);
-  transform: translateX(-2px);
+.abs-chemise-titres {
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-1);
+  min-width: 0;
+}
+
+.abs-chemise-titre {
+  margin: 0;
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: var(--charte-encre);
+}
+
+.abs-chemise-sous {
+  margin: 0;
+  font-size: var(--charte-taille-micro);
+  letter-spacing: 0.4px;
+  color: var(--charte-douce);
+}
+
+.abs-chemise-commandes {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  margin-left: auto;
+}
+
+/* Les deux commandes SONT les boutons du kit (`ch-btn-contour`, `ch-btn-pleine`) :
+   hauteur 36 px, capitales 700 / 9,5 px, une seule pleine par écran. Ici et nulle part
+   ailleurs, ils prennent la pilule — le rayon que cette page donne à ce qui se clique
+   (le retour l'emploie déjà, à 34 px). La règle est scopingée sous `.abs-chemise`, les
+   `ch-btn-*` des autres écrans gardent leurs 6 px. */
+.abs-chemise .abs-chemise-action {
+  border-radius: var(--charte-rayon-pilule);
+}
+
+@media (max-width: 720px) {
+  .abs-chemise {
+    padding: 12px;
+  }
+  .abs-chemise-onglets {
+    padding-left: var(--charte-espace-2);
+    gap: 2px;
+  }
+  .abs-chemise-onglet {
+    height: 34px;
+    padding: 0 12px;
+    letter-spacing: 0.6px;
+  }
+  .abs-chemise-feuille {
+    flex-wrap: wrap;
+    row-gap: var(--charte-espace-3);
+  }
+  .abs-chemise-commandes {
+    margin-left: 0;
+  }
 }
 
 /* Même gabarit que la barre de raccourcis de la page Pointages :
@@ -204,51 +376,6 @@
   color: #1C130C;
   background: linear-gradient(135deg, #F0A86E, #D9884A);
   cursor: default;
-}
-
-.abs-brand {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  line-height: 1.25;
-}
-
-.abs-brand-mark {
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  /* L'empreinte se peint elle-même (`EnCheckBrandMark` porte son disque et son
-     dégradé) : le contenant ne fait que la rogner en rond. Le fond ambre/émeraude
-     qu'il portait ici peignait un second disque sous le premier. */
-  border-radius: 50%;
-  overflow: hidden;
-  background: transparent;
-  border: 0;
-}
-
-.abs-brand-texte {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.abs-brand-title {
-  /* le dessin titre à ~20 px ; 700 est le dernier grain d'IBM Plex Sans — un `800`
-     écrit ici serait un mensonge que le navigateur arrondirait pour nous */
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--abs-text);
-}
-
-.abs-brand-sub {
-  font-size: 11px;
-  color: var(--abs-text-faint);
-  letter-spacing: 0.04em;
 }
 
 /* ═══ ONGLETS ═══ */
@@ -642,7 +769,6 @@
 .abs-page input::placeholder, .abs-page textarea::placeholder, .abs-drawer-theme input::placeholder, .abs-drawer-theme textarea::placeholder { color: var(--abs-text-faint); opacity: 1; }
 .abs-page select option, .abs-drawer-theme select option { background: var(--abs-bg-elevated); color: var(--abs-text); }
 .abs-page :is(button, input, select, textarea, summary):focus-visible, .abs-drawer-theme :is(button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--abs-amber) !important; outline-offset: 3px; }
-.abs-section-tabs .tab-btn { flex: 1 1 180px; justify-content: center; min-height: 44px; border: 1px solid var(--abs-border) !important; }
 .abs-page .tab-btn[aria-pressed='true'], .abs-page .toolbar-top button[aria-pressed='true'] { background: var(--abs-amber) !important; color: var(--abs-bg-elevated) !important; }
 .abs-page .tab-btn[aria-pressed='true'] > span { color: inherit !important; }
 .abs-page .tab-btn[aria-pressed='true'] > span:last-child { background: transparent !important; color: var(--abs-bg-elevated) !important; }

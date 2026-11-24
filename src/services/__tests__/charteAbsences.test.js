@@ -37,9 +37,19 @@ describe('Charte En-Check de la page Absences', () => {
     expect(absencesSrc).toContain("import './AbsencesAfroTech.css'")
     // l'ancien en-tête générique (partagé par 12 pages) n'est plus utilisé ici
     expect(absencesSrc).not.toContain('PageHeader')
-    expect(absencesSrc).toContain('className="abs-topbar"')
-    expect(absencesSrc).toContain('className="abs-back-btn"')
-    expect(absencesSrc).toContain('En-Check · ABSENCES &amp; CONGÉS')
+    // 28/11/2026, maquette `absences-titre-C-chemise.png` : la bande du titre et la
+    // rangée d'onglets ne sont plus deux objets. La page ne monte plus qu'une chemise,
+    // et c'est elle qui porte le retour, l'empreinte, le titre et les commandes.
+    expect(absencesSrc).toContain('<AbsencesChemise')
+    expect(absencesSrc).toContain("import AbsencesChemise from '../components/AbsencesChemise'")
+    expect(absencesSrc).not.toContain('className="abs-topbar"')
+    expect(absencesSrc).not.toContain('className="abs-back-btn"')
+    expect(absencesSrc).not.toContain('className="abs-section-tabs"')
+    const chimise = lire('src/components/AbsencesChemise.jsx')
+    expect(chimise).toContain('className="abs-chemise-feuille"')
+    expect(chimise).toContain('aria-label="Retour à la page précédente"')
+    // le titre est une seule chaîne, en toutes lettres — pas d'entité HTML à décoder
+    expect(absencesSrc).toContain('titre="En-Check · ABSENCES & CONGÉS"')
   })
 
   it('4. une variante claire existe, même charpente — et reste lisible', () => {

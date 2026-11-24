@@ -133,12 +133,18 @@ it('9. le bandeau du planning reste une carte collée, celui des Absences une fe
   // Absences, 26/11/2026 : la maquette retenue (`maquettes/absences-en-tete-lisiere.png`)
   // couche la bande du titre SUR le sable, pleine largeur, qui défile avec la page.
   // « je veux tout comme dans la maquette » — donc ni collant, ni carton flottant.
-  const abs = regleDe('src/pages/AbsencesAfroTech.css', '.abs-topbar')
-  expect(abs).not.toContain('position: sticky')
-  expect(abs).not.toContain('backdrop-filter')
-  expect(abs).toContain('border-radius: 0')
-  expect(abs).toContain('box-shadow: none')
-  expect(abs).toContain('background: var(--abs-bg-elevated)')
+  // Absences, 28/11/2026 : la maquette C (`absences-titre-C-chemise.png`) remplace la
+  // bande plate par une chemise. Ce qui est gardé de la décision du 26/11 : elle ne se
+  // colle pas, elle ne se voile pas. Ce qui change : la feuille EST un objet posé —
+  // cercle d'encre de 2 px et ombre dure à flou zéro, les deux jetons du kit, pas des
+  // valeurs recopiées à la main. Et « bordure: 0, rayon: 0 » n'était pas une vertu :
+  // c'était l'absence de peau d'une bande qui ne ressemblait à rien dans la maison.
+  const chimise = regleDe('src/pages/AbsencesAfroTech.css', '.abs-chemise-feuille')
+  expect(chimise).not.toContain('position: sticky')
+  expect(chimise).not.toContain('backdrop-filter')
+  expect(chimise).toContain('border: var(--charte-trait) solid var(--charte-encre)')
+  expect(chimise).toContain('box-shadow: var(--charte-ombre-dure)')
+  expect(chimise).toContain('background: var(--charte-surface)')
 })
 
 // ── 6. Lisibilité du mode clair ──────────────────────────────────────
