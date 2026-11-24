@@ -188,3 +188,30 @@
 
   --charte-ombre-dure: 3px 3px 0 0 rgba(0, 0, 0, 0.55);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ESPACE EMPLOYÉ (E-001) — la peau des écrans salarié
+   ───────────────────────────────────────────────────────────
+   L'espace employé a sa propre ambiance, plus sombre que
+   l'administration : on la garde, elle a été validée à l'usage.
+   Ces jetons existent pour qu'aucun écran salarié n'ait à écrire
+   un hexadécimal en dur (contrôle C1).
+
+   ⚠️ Ce sont les MÊMES valeurs que la peau historique de
+   EmployeeLayout. Les écrire ici ne change aucun pixel : cela
+   change seulement l'endroit d'où elles viennent.
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --emp-fond: #0A0A0F;          /* le fond d'écran */
+  --emp-feuille: #14110E;       /* la feuille, un cran au-dessus */
+  --emp-feuille-2: #1B1712;     /* la ligne déjà lue */
+  --emp-encre: #F3E9DA;         /* le texte fort */
+  --emp-doux: #B9A88F;          /* légendes, valeurs passées */
+  --emp-filet: #3A3128;         /* les filets du registre */
+  --emp-argile: #A26537;        /* l'argile de la charte */
+  --emp-argile-clair: #D8A468;  /* les liens sur feuille sombre */
+  --emp-ocre: #D3A24B;          /* le tampon « à consulter » */
+  --emp-vert: #7FB08D;          /* « consultée » — toujours avec le mot */
+  --emp-tampon-fond: rgba(211, 162, 75, 0.10);
+  --emp-argile-voile: rgba(162, 101, 55, 0.14); /* le lavis des boutons et des encarts */
+}

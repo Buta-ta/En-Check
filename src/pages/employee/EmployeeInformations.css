@@ -1,0 +1,353 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   MES INFORMATIONS — la feuille du registre, dans la peau de l'espace employé
+
+   Maquette retenue : `maquettes/choix-informations-employe-1.png` (option 2).
+   Ce qui fait l'écran : une FEUILLE (pas une pile de cartes), une bande de
+   bogolan en tête, un cadre d'encre de 2 px, des filets verticaux entre les
+   colonnes, le tampon « à consulter » incliné en pointillé.
+
+   ⚠️ Contrôles C1 / C9 / C10 :
+   · aucune couleur en dur : tous les tons sont des jetons locaux `--emp-*`,
+     déclarés une seule fois, et calés sur la peau sombre de EmployeeLayout ;
+   · aucune ombre floue : une seule ombre, DURE, à flou zéro ;
+   · rayons uniquement 6 / 8 / 11 px (champ, carte, tampon de la charte).
+
+   L'espace employé n'a pas (encore) les jetons `--charte-*` : il porte sa
+   propre peau. On déclare donc ici les quelques tons nécessaires, nommés, pour
+   qu'aucune valeur ne traîne dans une règle.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.einfo-page {
+  /*  Tous les tons viennent des jetons `--emp-*` (tokens.css) : aucune couleur
+      n'est écrite ici (contrôle C1). */
+  min-height: 100%;
+  padding: var(--charte-espace-6) var(--charte-espace-5);
+  background: var(--emp-fond);
+  color: var(--emp-encre);
+  font-family: var(--charte-police);
+}
+
+/* ── En-tête : titre à double soulignement de feutre ─────────────────────── */
+
+.einfo-entete {
+  max-width: 1080px;
+  margin: 0 auto var(--charte-espace-5);
+}
+
+.einfo-retour {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  height: 32px;
+  padding: 0 var(--charte-espace-3);
+  margin-bottom: var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--emp-filet);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--emp-doux);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--charte-duree) var(--charte-easing);
+}
+.einfo-retour:hover { color: var(--emp-encre); }
+.einfo-retour:focus-visible {
+  outline: var(--charte-trait) solid var(--emp-ocre);
+  outline-offset: 2px;
+}
+
+.einfo-titre {
+  margin: 0 0 var(--charte-espace-2);
+  color: var(--emp-encre);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  line-height: 1.1;
+  /*  Deux traits de feutre, comme la maquette : pas un bord de boîte. */
+  text-decoration: underline;
+  text-decoration-color: var(--emp-ocre);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 6px;
+  text-decoration-skip-ink: none;
+}
+
+.einfo-sous-titre {
+  margin: 0;
+  color: var(--emp-doux);
+  font-size: var(--charte-taille-corps);
+}
+
+/* ── La feuille ──────────────────────────────────────────────────────────── */
+
+.einfo-feuille {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 0 var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--emp-encre);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--emp-feuille);
+  /*  Ombre DURE, flou zéro (C9). */
+  box-shadow: var(--charte-ombre-dure);
+  overflow: hidden;
+}
+
+/*  Bande de bogolan : faite de traits répétés, sans image ni couleur en dur. */
+.einfo-bande {
+  height: 18px;
+  background-color: var(--emp-encre);
+  background-image:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 6px,
+      var(--emp-ocre) 6px 10px,
+      transparent 10px 18px
+    );
+}
+@media (prefers-reduced-motion: no-preference) {
+  /*  Aucune animation ici : le motif est fixe. La règle existe pour rappeler
+      qu'on n'anime pas une bande décorative. */
+  .einfo-bande { animation: none; }
+}
+
+.einfo-bandeau {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--charte-espace-4);
+  padding: var(--charte-espace-4) var(--charte-espace-5);
+  border-bottom: var(--charte-trait) solid var(--emp-encre);
+}
+
+.einfo-bandeau-titre {
+  margin: 0;
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.einfo-bandeau-droite {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-4);
+}
+
+.einfo-compte {
+  color: var(--emp-ocre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+
+.einfo-recharger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  height: 28px;
+  padding: 0 var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--emp-filet);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--emp-doux);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.einfo-recharger:hover:not(:disabled) { color: var(--emp-encre); }
+.einfo-recharger:disabled { cursor: default; opacity: 0.5; }
+.einfo-recharger:focus-visible {
+  outline: var(--charte-trait) solid var(--emp-ocre);
+  outline-offset: 2px;
+}
+
+/* ── Le registre ─────────────────────────────────────────────────────────── */
+
+.einfo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--charte-taille-corps);
+}
+
+.einfo-table thead th {
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  border-bottom: var(--charte-trait) solid var(--emp-encre);
+  border-right: 1px solid var(--emp-filet);
+  color: var(--emp-encre);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.einfo-table thead th:last-child { border-right: 0; }
+
+.einfo-ligne td {
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  border-bottom: 1px solid var(--emp-filet);
+  border-right: 1px solid var(--emp-filet);
+  vertical-align: top;
+}
+.einfo-ligne td:last-child { border-right: 0; }
+
+/*  Une ligne lue s'éteint sans disparaître : l'information reste au registre. */
+.einfo-lue { background: var(--emp-feuille-2); }
+.einfo-lue .einfo-objet,
+.einfo-lue .einfo-texte { color: var(--emp-doux); }
+
+.einfo-date {
+  color: var(--emp-doux);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.einfo-objet {
+  display: block;
+  margin-bottom: var(--charte-espace-1);
+  color: var(--emp-encre);
+  font-weight: 700;
+}
+
+.einfo-texte {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--emp-doux);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/*  Chiffres tabulaires : deux lignes se comparent à l'œil. */
+.einfo-chiffre {
+  font-family: var(--charte-mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Les tampons : le mot d'abord, la couleur ensuite ────────────────────── */
+
+.einfo-tampon {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  padding: 2px var(--charte-espace-2);
+  border-radius: var(--charte-rayon-badge);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.einfo-tampon-attente {
+  border: 1px dashed var(--emp-ocre);
+  background: var(--emp-tampon-fond);
+  color: var(--emp-ocre);
+  /*  Le tampon incliné de la maquette — inclinaison, pas rotation animée. */
+  transform: rotate(-6deg);
+}
+
+.einfo-tampon-lu {
+  border: 1px solid var(--emp-vert);
+  color: var(--emp-vert);
+}
+
+.einfo-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  height: 30px;
+  padding: 0 var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--emp-argile);
+  border-radius: var(--charte-rayon-champ);
+  background: transparent;
+  color: var(--emp-argile-clair);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+.einfo-action:hover:not(:disabled) {
+  background: var(--emp-argile-voile);
+  color: var(--emp-encre);
+}
+.einfo-action:disabled { cursor: default; opacity: 0.6; }
+.einfo-action:focus-visible {
+  outline: var(--charte-trait) solid var(--emp-ocre);
+  outline-offset: 2px;
+}
+
+.einfo-deja {
+  color: var(--emp-doux);
+  font-size: var(--charte-taille-micro);
+  white-space: nowrap;
+}
+
+/* ── États vides, erreurs, pied ──────────────────────────────────────────── */
+
+.einfo-vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-7) var(--charte-espace-5);
+  color: var(--emp-doux);
+  text-align: center;
+}
+.einfo-vide p { margin: 0; color: var(--emp-encre); }
+.einfo-vide small { max-width: 44ch; line-height: 1.5; }
+
+.einfo-erreur {
+  margin: var(--charte-espace-4) var(--charte-espace-5);
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  border: var(--charte-trait) solid var(--emp-argile);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--emp-argile-voile);
+}
+.einfo-erreur p { margin: 0 0 var(--charte-espace-3); }
+
+.einfo-pied {
+  margin: 0;
+  padding: var(--charte-espace-4) var(--charte-espace-5) 0;
+  border-top: var(--charte-trait) solid var(--emp-encre);
+  color: var(--emp-doux);
+  font-size: var(--charte-taille-micro);
+  letter-spacing: 0.3px;
+}
+
+/* ── Petites largeurs : le registre se replie, il ne disparaît pas ───────── */
+
+@media (max-width: 760px) {
+  .einfo-page { padding: var(--charte-espace-4) var(--charte-espace-3); }
+  .einfo-bandeau { flex-direction: column; align-items: flex-start; gap: var(--charte-espace-3); }
+  .einfo-table thead { display: none; }
+  .einfo-ligne {
+    display: block;
+    padding: var(--charte-espace-3) var(--charte-espace-4);
+    border-bottom: 1px solid var(--emp-filet);
+  }
+  .einfo-ligne td {
+    display: block;
+    padding: 0 0 var(--charte-espace-2);
+    border: 0;
+  }
+  .einfo-ligne td::before {
+    content: attr(data-libelle);
+    display: block;
+    margin-bottom: var(--charte-espace-1);
+    color: var(--emp-doux);
+    font-size: var(--charte-taille-micro);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+}

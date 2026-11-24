@@ -271,3 +271,99 @@ export async function historique({ entrepriseId, employeId = null, cle = null })
   if (error) throw traduireErreur(error)
   return normaliserHistorique(Array.isArray(data) ? data : [])
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  L'ACTIVATION DE L'ALERTE (G5-bis)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Les trois états d'une activation, en mots.
+ *
+ * « Jamais décidée » n'est PAS « désactivée » : le premier dit qu'aucun humain
+ * ne s'est prononcé, le second qu'un humain a dit non. Les confondre, c'est
+ * prêter un acte à personne — et c'est exactement le mensonge que G5-bis
+ * corrige pour la case « m'alerter au-delà de ce seuil ».
+ */
+export const ETATS_ACTIVATION = {
+  activee: 'Activée',
+  desactivee: 'Désactivée',
+  jamais_decidee: 'Jamais décidée',
+}
+
+/** Une ligne de `encheck_activation_alerte` → objet lisible. Pure. */
+export function normaliserActivation(ligne) {
+  if (!ligne) {
+    return {
+      active: null,
+      etat: 'jamais_decidee',
+      libelle: ETATS_ACTIVATION.jamais_decidee,
+      dateEffet: null,
+      majPar: null,
+      majLe: null,
+      regleId: null,
+    }
+  }
+  //  Un état que l'on ne sait pas nommer ne devient jamais « activée » : il
+  //  retombe sur « jamais décidée », qui est le seul aveu honnête.
+  const etat = ETATS_ACTIVATION[ligne.etat] ? ligne.etat : 'jamais_decidee'
+  const active = ligne.active === null || ligne.active === undefined ? null : ligne.active === true
+
+  //  ⚠️ Cohérence : un état « activee » avec `active` faux serait contradictoire.
+  //  On rend `null` plutôt qu'un mensonge — l'écran dira « jamais décidée ».
+  const coherent = (etat === 'activee' && active === true)
+    || (etat === 'desactivee' && active === false)
+    || etat === 'jamais_decidee'
+
+  //  ⚠️ LE BOOLÉEN SUIT L'ÉTAT RETENU, jamais la ligne brute. Un état inconnu
+  //  accompagné d'un `active: true` aurait sinon rendu `true` tout en
+  //  s'affichant « jamais décidée » : l'écran aurait allumé une alerte en
+  //  disant qu'aucun humain ne l'a décidée. Le test l'a attrapé.
+  const etatRetenu = coherent ? etat : 'jamais_decidee'
+  const activeRetenu = etatRetenu === 'activee' ? true : (etatRetenu === 'desactivee' ? false : null)
+
+  return {
+    //  `null` quand personne n'a décidé : ce n'est pas `false`.
+    active: activeRetenu,
+    etat: etatRetenu,
+    libelle: ETATS_ACTIVATION[etatRetenu],
+    dateEffet: ligne.depuis || null,
+    majPar: ligne.maj_par || null,
+    majLe: ligne.maj_le || null,
+    regleId: ligne.regle_id || null,
+  }
+}
+
+/** L'activation de l'alerte à une date, telle que la base la connaît. */
+export async function activationAlerte({ entrepriseId, date = null }) {
+  const { data, error } = await db().rpc('encheck_activation_alerte', {
+    p_entreprise: entrepriseId,
+    p_date: date,
+  })
+  if (error) throw traduireErreur(error)
+  const ligne = Array.isArray(data) ? data[0] : data
+  return normaliserActivation(ligne)
+}
+
+/**
+ * Écrire l'activation : une VERSION d'entreprise, jamais un booléen écrasé.
+ *
+ * ⚠️ Un booléen est exigé, pas « 0/1 » ni une valeur « fausse mais pas trop » :
+ *    `null` voudrait dire « aucune décision », et une décision n'est pas une
+ *    absence. Le refus est posé ici, avant l'appel, pour que l'écran ait un
+ *    message en français plutôt qu'une erreur SQL.
+ */
+export async function ecrireActivationAlerte({ entrepriseId, actif, dateEffet = null }) {
+  if (typeof actif !== 'boolean') {
+    throw new Error('L’activation s’écrit avec un booléen : activée ou désactivée, rien d’autre.')
+  }
+  const { data, error } = await db().rpc('encheck_regle_ecrire', {
+    p_entreprise: entrepriseId,
+    p_employe: null,
+    p_cle: 'alerte_hebdo_activee',
+    p_valeur: actif ? 1 : 0,
+    p_date_effet: dateEffet,
+    p_verrouille: false,
+  })
+  if (error) throw traduireErreur(error)
+  return data || null
+}
