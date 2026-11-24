@@ -71,6 +71,8 @@ const STATUTS = {
   en_ligne: 'En ligne',
   programmee: 'Programmée',
   expinee: 'Expirée',
+  //  Maquette A (26/11) : le badge dit « INACTIVE », au féminin — une annonce,
+  //  pas un média. Le mot était déjà juste ; c'est le genre qui se voyait.
   inactive: 'Inactive',
 }
 
@@ -472,7 +474,9 @@ export default function AnnoncesAccueil() {
           {a.titre || (Meta ? Meta.libelle : a.type)}
         </span>
         <span className="aa-ann-media-ligne1">
-          <span className="aa-ann-ordre-n">{a.ordre_publication}°</span>
+          <span className="aa-ann-ordre-n" title={`Position ${a.ordre_publication}`}>
+            {a.ordre_publication === 1 ? '1er' : `${a.ordre_publication}e`}
+          </span>
           <span className={`aa-ann-puce st-${a.statut}`}>
             <span className="aa-ann-pastille" aria-hidden="true" />
             {STATUTS[a.statut] || a.statut}
@@ -520,33 +524,60 @@ export default function AnnoncesAccueil() {
         </span>
         )}
       </span>
+      {/*  QUATRE GESTES VISIBLES — maquette A (26/11).
+          L'ordre (haut / bas), le crayon qui ouvre l'éditeur, et le geste qui
+          sort le média du carrousel. Ce dernier manquait : la liste « Médias »
+          affichait des annonces inactives sans offrir de les remettre, alors
+          que l'onglet Aperçu, lui, l'avait. La maquette le donnait déjà. */}
       <span className="aa-ann-media-actions">
-        <button type="button" title="Monter dans l’ordre" aria-label="Monter dans l’ordre" disabled={busy || i === 0} onClick={() => deplacer(a, -1)}>
-          <ArrowUp size={14} />
-        </button>
-        <button type="button" title="Descendre dans l’ordre" aria-label="Descendre dans l’ordre" disabled={busy || i === triees.length - 1} onClick={() => deplacer(a, 1)}>
-          <ArrowDown size={14} />
-        </button>
-        <button type="button" title="Modifier" aria-label="Modifier" disabled={busy} onClick={() => ouvrirEdition(a)}>
-          <Pencil size={14} />
+        <button
+          type="button"
+          className="aa-ann-act"
+          title="Monter dans l’ordre"
+          aria-label="Monter dans l’ordre"
+          disabled={busy || i === 0}
+          onClick={() => deplacer(a, -1)}
+        >
+          <ArrowUp size={15} aria-hidden="true" />
         </button>
         <button
           type="button"
-          title={a.is_active ? 'Désactiver' : 'Activer'}
-          aria-label={a.is_active ? 'Désactiver' : 'Activer'}
+          className="aa-ann-act"
+          title="Descendre dans l’ordre"
+          aria-label="Descendre dans l’ordre"
+          disabled={busy || i === triees.length - 1}
+          onClick={() => deplacer(a, 1)}
+        >
+          <ArrowDown size={15} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="aa-ann-act"
+          title="Modifier"
+          aria-label="Modifier"
+          disabled={busy}
+          onClick={() => ouvrirEdition(a)}
+        >
+          <Pencil size={15} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="aa-ann-act"
+          title={a.is_active ? 'Retirer du carrousel' : 'Remettre dans le carrousel'}
+          aria-label={a.is_active ? 'Retirer du carrousel' : 'Remettre dans le carrousel'}
           disabled={busy}
           onClick={() => basculer(a)}
         >
-          <Power size={14} />
+          {a.is_active ? <ArrowUpRight size={15} aria-hidden="true" /> : <Power size={15} aria-hidden="true" />}
         </button>
         {confirmationSuppression === a.id ? (
-          <button type="button" className="est-confirm" disabled={busy} onClick={() => supprimer(a)}>
+          <button type="button" className="aa-ann-act est-confirm" disabled={busy} onClick={() => supprimer(a)}>
             Confirmer la suppression
           </button>
         ) : (
           <button
             type="button"
-            className="est-danger"
+            className="aa-ann-act est-danger"
             title="Supprimer"
             aria-label="Supprimer"
             disabled={busy}
@@ -555,7 +586,7 @@ export default function AnnoncesAccueil() {
               window.setTimeout(() => setConfirmationSuppression((c) => (c === a.id ? null : c)), 5000)
             }}
           >
-            <Trash2 size={14} />
+            <Trash2 size={15} aria-hidden="true" />
           </button>
         )}
       </span>
@@ -700,11 +731,18 @@ export default function AnnoncesAccueil() {
               {view === 'medias' && (
                 <>
                   {/* ── Le formulaire ── */}
-                  <section className="aa-panel aa-workflow" aria-label={enEdition ? 'Modifier l’annonce' : 'Ajouter une annonce'}>
+                  <section className="aa-workflow aa-ann-atelier" aria-label={enEdition ? 'Modifier l’annonce' : 'Ajouter une annonce'}>
                     <details onToggle={(e) => { if (!e.currentTarget.open) viderForm() }}>
                       <summary>{enEdition ? 'Modifier l’annonce choisie' : `Ajouter un média (${MAX_ANNONCES - (annonces || []).length} place${MAX_ANNONCES - (annonces || []).length > 1 ? 's' : ''} restante${MAX_ANNONCES - (annonces || []).length > 1 ? 's' : ''})`}</summary>
                       <div className="aa-ann-forme">
-                        <label className="aa-ann-upload">
+                        {/* ═══ FEUILLET 1 — LE MÉDIA ═══
+                            Maquette B (26/11) : le formulaire se coupe en deux
+                            feuillets à onglet. Celui-ci ne porte qu'une chose,
+                            la pièce jointe — c'est le geste qu'on fait en
+                            premier, et il mérite la place. */}
+                        <div className="aa-ann-feuillet aa-ann-feuillet--media">
+                          <span className="aa-ann-feuillet-onglet" aria-hidden="true">Le média</span>
+                          <label className="aa-ann-upload">
                           <input
                             ref={fileInput}
                             type="file"
@@ -729,7 +767,13 @@ export default function AnnoncesAccueil() {
                                 : <img src={apercu} alt="" />}
                             </span>
                           )}
-                        </label>
+                          </label>
+                          <p className="aa-ann-feuillet-rappel">16:9 recommandé · largeur ≤ 1600 px</p>
+                        </div>
+
+                        {/* ═══ FEUILLET 2 — LA DIFFUSION ═══ */}
+                        <div className="aa-ann-feuillet aa-ann-feuillet--diffusion">
+                          <span className="aa-ann-feuillet-onglet" aria-hidden="true">La diffusion</span>
 
                         {avertissement && (
                           <div role="alert" className="aa-ann-notice ton-alerte">
@@ -810,14 +854,23 @@ export default function AnnoncesAccueil() {
                           Publier immédiatement (sinon rangée inactive, à activer plus tard)
                         </label>
 
+                        {/*  LES RÈGLES, DANS LE PIED DU FEUILLET — maquette B :
+                            un bandeau plus sombre, au ras du bas du papier.
+                            Elles ne se lisent pas au même moment que les
+                            champs ; les mêler au formulaire les faisait passer
+                            pour des consignes à remplir. */}
                         <dl className="aa-ann-regles" aria-label="Règles des fichiers">
                           <div><dt>Image</dt><dd>JPEG · PNG · WebP — ≤ 500 Ko</dd></div>
                           <div><dt>GIF</dt><dd>animé — ≤ 2 Mo · ≤ 30 s</dd></div>
                           <div><dt>Vidéo</dt><dd>MP4 · MOV muette — ≤ 5 Mo · ≤ 30 s</dd></div>
-                          <div><dt>Durée</dt><dd>{DUREE_MIN} à {DUREE_MAX} s par média · max {MAX_ANNONCES} par entreprise</dd></div>
-                          <div><dt>Format</dt><dd>16:9 recommandé (recadrage sinon) · largeur ≤ 1600 px</dd></div>
+                          <div><dt>Durée</dt><dd>{DUREE_MIN} à {DUREE_MAX} s par média · max {MAX_ANNONCES}</dd></div>
                         </dl>
+                        </div>
 
+                        {/*  L'ENVOI SORT DES FEUILLETS — maquette B : le bouton
+                            est posé sous le papier, à droite. C'est l'acte qui
+                            engage les deux feuillets à la fois ; le mettre dans
+                            l'un d'eux aurait dit le contraire. */}
                         <div className="aa-ann-envoi">
                           <button type="button" className="aa-primary" disabled={!peutEnvoyer || busy} onClick={envoyer}>
                             {busy ? 'Publication en cours…' : enEdition ? 'Enregistrer les modifications' : 'Publier'}
