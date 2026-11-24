@@ -10,21 +10,29 @@ const css = readFileSync('src/pages/AbsencesAfroTech.css','utf8')
 let root, host
 beforeEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true; host = document.createElement('div'); document.body.append(host); root = createRoot(host) })
 afterEach(async () => { await act(async () => root.unmount()); host.remove() })
+// Absences, 24/11/2026 : « utilise le bogolan comme motif, remplace l'autre ».
+// Le nom du fichier a suivi l'image — un verrou qui s'appelle « Ndebele » pendant
+// que la page est peinte en bogolan est un mensonge de plus dans la repo.
 it('bandeaux décoratifs distincts en haut, en bas et dans les tiroirs', async () => {
   await act(async () => root.render(<><AbsencesCulturalBand/><AbsencesCulturalBand position="bottom"/><AbsencesCulturalBand drawer/></>))
   expect(host.querySelectorAll('[aria-hidden="true"]')).toHaveLength(3)
-  expect(host.querySelector('.abs-ndebele-bottom')).not.toBeNull()
-  expect(host.querySelector('.abs-ndebele-drawer')).not.toBeNull()
-  expect(css).toContain("url('/images/absences-ndebele.webp')")
+  expect(host.querySelector('.abs-bogolan-bottom')).not.toBeNull()
+  expect(host.querySelector('.abs-bogolan-drawer')).not.toBeNull()
+  // le bogolan de la Paie, déjà sur le disque — aucune image à créer
+  expect(css).toContain("url('/images/paie-bogolan-haut.webp')")
+  expect(css).toContain("url('/images/paie-bogolan-bas.webp')")
+  // une hauteur de référence, la largeur suit : le tissu n'est jamais étiré
   expect(css).toContain('background-size: auto 100%')
+  // et le ndebele n'est plus employé par la page, ni par son CSS
+  expect(css).not.toContain("url('/images/absences-ndebele.webp')")
 })
 for (const darkMode of [false,true]) it(`les deux tiroirs portent leur thème et deux bandeaux : sombre=${darkMode}`, async () => {
   await act(async () => root.render(<AbsenceFormulaire ouvert darkMode={darkMode}/>))
   expect(host.querySelector('aside').dataset.theme).toBe(darkMode?'dark':'light')
-  expect(host.querySelectorAll('.abs-ndebele-band')).toHaveLength(2)
+  expect(host.querySelectorAll('.abs-bogolan-band')).toHaveLength(2)
   await act(async () => root.render(<AbsenceTiroir darkMode={darkMode} absence={{id:'a',reason:'conge',status:'approuve',start_date:'2026-10-01',end_date:'2026-10-02',created_at:'2026-10-01T12:00:00Z'}}/>))
   expect(host.querySelector('aside').dataset.theme).toBe(darkMode?'dark':'light')
-  expect(host.querySelectorAll('.abs-ndebele-band')).toHaveLength(2)
+  expect(host.querySelectorAll('.abs-bogolan-band')).toHaveLength(2)
 })
 const lum = hex => hex.match(/[0-9a-f]{2}/gi).map(h=>parseInt(h,16)/255).map(c=>c<=0.04045?c/12.92:((c+0.055)/1.055)**2.4).reduce((a,c,i)=>a+c*[0.2126,0.7152,0.0722][i],0)
 const contrast = (a,b) => (Math.max(lum(a),lum(b))+.05)/(Math.min(lum(a),lum(b))+.05)

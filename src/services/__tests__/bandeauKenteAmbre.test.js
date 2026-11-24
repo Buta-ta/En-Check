@@ -16,21 +16,32 @@ const bandeAmbre = svgSrc.slice(debut, fin)
 
 const blocCss = lire('src/pages/AbsencesAfroTech.css')
 
-describe('Patrimoine Kente conservé et bandeau Ndebele propre aux Absences', () => {
+describe('Patrimoine Kente conservé · Absences passée au bogolan', () => {
   it('1. la frise ambre existe et est exportée', () => {
     expect(debut).toBeGreaterThan(-1)
     expect(svgSrc).toContain('export function KenteAmberWeaveSvg')
     expect(bandeAmbre).toContain('id="encheck-kente-amber"')
   })
 
-  it('2. Absences utilise maintenant le bandeau ndebele validé en haut et en bas', () => {
-    expect(absencesSrc).toContain("from '../components/AbsencesCulturalBand'")
+  it('2. Absences est encadrée de bogolan ; le ndebele reste l’artiste du badge', () => {
+    // 24/11/2026 : « utilise le bogolan comme motif, remplace l'autre ». La page
+    // ne pose plus deux bandeaux au-dessus et en dessous : elle est ENCADRÉE, le
+    // motif fait le tour de la section comme au planning.
+    expect(absencesSrc).toContain('<PageCulturalBand pathname="/absences" placement="cadre"')
+    expect(absencesSrc).not.toContain('<AbsencesCulturalBand/>')
+    expect(absencesSrc).not.toContain('<AbsencesCulturalBand position="bottom"/>')
     expect(absencesSrc).not.toContain('KenteAmberWeaveSvg')
-    const entete = absencesSrc.slice(absencesSrc.indexOf('<div className="abs-page"'), absencesSrc.indexOf('className="abs-topbar"'))
-    expect(entete).toContain('<AbsencesCulturalBand/>')
-    expect(absencesSrc).toContain('<AbsencesCulturalBand position="bottom"/>')
+    // les deux tiroirs gardent leurs bandeaux : une feuille qui glisse n’a pas
+    // besoin d’un cadre, elle a besoin d’une lisière en haut et d’une en bas
+    expect(lire('src/components/AbsenceTiroir.jsx')).toContain('<AbsencesCulturalBand drawer/>')
     expect(lire('src/components/AbsencesCulturalBand.jsx')).toContain('aria-hidden="true"')
+    expect(lire('src/components/AbsencesCulturalBand.jsx')).toContain('abs-bogolan-band')
+    // PROTECTION : « remplacer le motif » ne veut pas dire « jeter l’image ».
+    // Le ndebele reste sur le disque et reste le visuel du badge employé.
     expect(fs.existsSync(path.join(ROOT, 'public/images/absences-ndebele.webp'))).toBe(true)
+    expect(lire('src/components/badge/motifs.js')).toContain("image: '/images/absences-ndebele.webp'")
+    // et plus une seule feuille de style de la page ne peint le ndebele
+    expect(blocCss).not.toContain("url('/images/absences-ndebele.webp')")
   })
 
   it('3. la frise est strictement orange · jaune · noir : ni émeraude, ni indigo, ni bleu', () => {

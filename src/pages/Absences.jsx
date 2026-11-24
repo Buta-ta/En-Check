@@ -7,7 +7,11 @@ import AbsencesLoadingScreen from '../components/AbsencesLoadingScreen'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import AbsencesCulturalBand from '../components/AbsencesCulturalBand'
+// Absences, 24/11/2026 : le motif ne se pose plus AU-DESSUS de la feuille, il
+// l'ENCADRE — le même mécanisme que le planning (`placement="cadre"`), le même
+// bandeau décoratif muet. Le motif vient de `culturalMotif.js` : bogolan.
+import PageCulturalBand from '../components/PageCulturalBand'
+import { BogolanPastilleSvg } from '../components/BogolanMudclothSvg'
 import AbsencesCalendrier from '../components/AbsencesCalendrier'
 import { STATUTS_ABSENCE, getMotifConfig } from '../constants/motifsAbsence'
 import { compterJoursOuvres } from '../services/absencesCalendrier'
@@ -238,6 +242,9 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
   return (
     <div className="afro-card absence-card-hover" style={{ ...CS.card, animationDelay: `${index * 0.03}s`, ...(hasConflict && conflictPending ? { borderColor: 'rgba(249,115,22,.25)' } : {}) }}>
       <div style={CS.topBadges}>
+        {/* La tuile de motif, en tête de ligne : le bogolan de la page, posé là
+            comme un tampon d'atelier (maquette validée, point 4). */}
+        <span className="abs-tuile" aria-hidden="true"><BogolanPastilleSvg size={22} couleur="var(--abs-copper)" /></span>
         <div style={{ ...CS.badge, background: tc.bg, color: tc.color, border: `1px solid color-mix(in srgb, ${tc.color} 25%, transparent)` }}>
           <TemporalIcon size={11} /> {tc.label}
         </div>
@@ -250,12 +257,12 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
           </div>
         )}
         {feriesInPeriod > 0 && (
-          <div style={{ ...CS.badge, background: 'rgba(139,92,246,0.12)', color: 'var(--abs-violet)', border: '1px solid rgba(139,92,246,0.25)' }}>
+          <div style={{ ...CS.badge, background: 'color-mix(in srgb, var(--abs-violet) 12%, transparent)', color: 'var(--abs-violet)', border: '1px solid color-mix(in srgb, var(--abs-violet) 25%, transparent)' }}>
             🎌 {feriesInPeriod} férié{feriesInPeriod > 1 ? 's' : ''}
           </div>
         )}
         {hasConflict && conflictPending && (
-          <div style={{ ...CS.badge, background: 'rgba(249,115,22,.12)', color: 'var(--abs-orange)', border: '1px solid rgba(249,115,22,.3)' }}>
+          <div style={{ ...CS.badge, background: 'color-mix(in srgb, var(--abs-orange) 12%, transparent)', color: 'var(--abs-orange)', border: '1px solid color-mix(in srgb, var(--abs-orange) 30%, transparent)' }}>
             <AlertTriangle size={11} /> Conflit
           </div>
         )}
@@ -335,7 +342,7 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
       )}
 
       {hasConflict && !conflictPending && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(107,114,128,.06)', border: '1px solid rgba(107,114,128,.15)', borderRadius: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'color-mix(in srgb, var(--abs-text-faint) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--abs-text-faint) 15%, transparent)', borderRadius: 12 }}>
           <CheckCircle2 size={16} color="var(--abs-text-faint)" />
           <p style={{ color: 'var(--abs-text-faint)', fontSize: 12, margin: 0 }}>
             Conflit traité ({conflict.status === 'resolved'
@@ -1763,9 +1770,9 @@ export default function Absences() {
 `}</style>
 
       <div className="abs-page" data-theme={darkMode ? 'dark' : 'light'} style={S.container}>
-        <AbsencesCulturalBand/>
-
-        {/* Barre supérieure En-Check — même charte que la page Planning */}
+        {/* Barre supérieure En-Check — même charte que la page Planning.
+            Le motif n'est plus posé au-dessus de la feuille : il l'encadre
+            (maquette retenue `maquettes/absences-section-bogolan-cadre.png`). */}
         <div className="abs-topbar">
           <div className="abs-topbar-inner">
             <div className="abs-topbar-left">
@@ -1812,11 +1819,23 @@ export default function Absences() {
         </div>
 
         <main style={S.main}>
-                  <div className="abs-section-tabs" style={TAB.container}>
+          {/* Le motif ne se pose plus au-dessus de la feuille, il l'encadre
+              (maquette validée `absences-section-bogolan-cadre.png`) : quatre
+              lisières de bogolan, la feuille posée par-dessus, et jamais un mot
+              sur la toile. La lisière haute reçoit les onglets en rabats cousus.
+              LA SEULE DIFFÉRENCE AVEC LE DESSIN : la barre d'outils n'est pas
+              descendue dans la lisière basse — sous elle, la section continue
+              (filtres, trois vues, liste paginée), et une barre d'outils en pied
+              de cadre serait hors de portée dès la deuxième ligne. Elle reste en
+              tête de feuille, sur une couture pointillée. */}
+          <div className="abs-section-cadre">
+            <PageCulturalBand pathname="/absences" placement="cadre" />
+            <div className="abs-section-papier">
+          <div className="abs-section-tabs abs-onglets-rabats" style={TAB.container}>
             <button className="tab-btn" aria-pressed={activeTab === 'absences'} onClick={() => setActiveTab('absences')} style={{ ...TAB.tab, ...(activeTab === 'absences' ? TAB.tabActive : {}) }}>
               <CalendarOff size={16} />
               <span>Absences</span>
-              <span style={{ ...TAB.badge, background: activeTab === 'absences' ? 'rgba(245,158,11,0.2)' : 'var(--abs-line-soft)', color: activeTab === 'absences' ? 'var(--abs-amber)' : 'var(--abs-text-faint)' }}>
+              <span style={{ ...TAB.badge }}>
                 {absences.length}
               </span>
             </button>
@@ -1825,11 +1844,11 @@ export default function Absences() {
               <Inbox size={16} />
               <span>Demandes employés</span>
               {pendingRequestsCount > 0 ? (
-                <span style={{ ...TAB.badge, background: 'rgba(239,68,68,0.15)', color: 'var(--abs-coral)', animation: 'pulse 2s ease infinite' }}>
+                <span className="abs-badge-alerte" style={{ ...TAB.badge, animation: 'pulse 2s ease infinite' }}>
                   {pendingRequestsCount}
                 </span>
               ) : leaveRequests.length > 0 ? (
-                <span style={{ ...TAB.badge, background: activeTab === 'demandes' ? 'rgba(245,158,11,0.2)' : 'var(--abs-line-soft)', color: activeTab === 'demandes' ? 'var(--abs-amber)' : 'var(--abs-text-faint)' }}>
+                <span style={{ ...TAB.badge }}>
                   {leaveRequests.length}
                 </span>
               ) : null}
@@ -1844,7 +1863,6 @@ export default function Absences() {
           {activeTab === 'absences' && (
             <>
               <AbsencesKpiCards
-                darkMode={darkMode}
                 absences={absences}
                 employes={employes}
                 conflitsEnAttente={stats.conflitsPending}
@@ -1855,12 +1873,12 @@ export default function Absences() {
               />
 
               {stats.conflitsPending > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', background: 'rgba(249,115,22,.08)', border: '1px solid rgba(249,115,22,.2)', borderRadius: 14, marginBottom: 20 }}>
+                <div className="abs-couture-alerte">
                   <AlertTriangle size={20} color="var(--abs-orange)" />
                   <p style={{ color: 'var(--abs-orange)', fontSize: 14, fontWeight: 600, margin: 0 }}>
                     {stats.conflitsPending} conflit{stats.conflitsPending > 1 ? 's' : ''} absence/pointage nécessite{stats.conflitsPending > 1 ? 'nt' : ''} votre attention.
                   </p>
-                  <button onClick={() => setFilterConflict('with_conflict')} style={{ background: 'rgba(249,115,22,.15)', border: '1px solid rgba(249,115,22,.3)', color: 'var(--abs-orange)', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', marginLeft: 'auto', fontFamily: 'inherit' }}>
+                  <button onClick={() => setFilterConflict('with_conflict')} className="abs-btn">
                     Voir les conflits
                   </button>
                 </div>
@@ -1890,8 +1908,10 @@ export default function Absences() {
                     <button aria-pressed={viewMode === 'calendar'} onClick={() => setViewMode('calendar')} title="Mois — grille du mois" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'calendar' ? S.viewBtnActive : {}) }}><Calendar size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Mois</span></button>
                     <button aria-pressed={viewMode === 'list'} onClick={() => setViewMode('list')} title="Liste — cartes détaillées" style={{ ...S.viewBtn, gap: 6, ...(viewMode === 'list' ? S.viewBtnActive : {}) }}><List size={15} /><span style={{ fontSize: 12, fontWeight: 600 }}>Liste</span></button>
                   </div>
-                  <button onClick={handleExportCSV} style={S.exportBtn}><Download size={16} /><span>Export</span></button>
-                  <button onClick={() => handleAdd()} className="afro-btn" style={S.addBtn}><Plus size={18} /><span>Déclarer</span></button>
+                  {/* Export et « + Déclarer » ne sont plus ici : la maquette validée
+                      les garde sur la seule ligne d'en-tête (juste au-dessus du
+                      cadre), où ils existent déjà — `handleExportCSV` et `handleAdd`
+                      étaient branchés deux fois, ils ne le sont plus qu'une. */}
                 </div>
               </div>
 
@@ -2136,7 +2156,7 @@ export default function Absences() {
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                                 <div style={{ ...S.calDetailBadge, background: mc.bg, color: 'var(--abs-text)', border: `1px solid color-mix(in srgb, ${mc.color} 25%, transparent)` }}>{mc.emoji} {mc.label}</div>
                                 {conflict && conflict.status === 'pending' && (
-                                  <div style={{ ...S.calDetailBadge, background: 'rgba(249,115,22,.12)', color: 'var(--abs-orange)', border: '1px solid rgba(249,115,22,.3)', fontSize: 9 }}>⚠ Conflit</div>
+                                  <div style={{ ...S.calDetailBadge, background: 'color-mix(in srgb, var(--abs-orange) 12%, transparent)', color: 'var(--abs-orange)', border: '1px solid color-mix(in srgb, var(--abs-orange) 30%, transparent)', fontSize: 9 }}>⚠ Conflit</div>
                                 )}
                               </div>
                             </div>
@@ -2511,8 +2531,9 @@ export default function Absences() {
               </div>
             </div>
           )}
+            </div>{/* .abs-section-papier — la feuille posée par-dessus la toile */}
+          </div>{/* .abs-section-cadre — les quatre lisières de bogolan */}
         </main>
-        <AbsencesCulturalBand position="bottom"/>
 
         {/* ═══ MODAL AJOUT/MODIF ABSENCE ═══ */}
         <AbsenceFormulaire
@@ -2844,8 +2865,12 @@ const TAB = {
     scrollbarWidth: 'none', // Firefox
   },
   tab: { display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', borderRadius: '11px', border: 'none', background: 'transparent', color: 'var(--abs-text)', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
-  tabActive: { background: 'rgba(245,158,11,0.14)', color: 'var(--abs-amber)', fontWeight: '760' },
-  badge: { padding: '2px 8px', borderRadius: '999px', fontSize: '10.5px', fontWeight: '760', transition: 'all 0.2s ease' },
+  // Une seule teinte déclinée : l'ambre de la page, mêlée au fond. Ni `rgba()`
+  // recopié, ni chiffre de couleur en dur — la charte compte les deux.
+  tabActive: { background: 'color-mix(in srgb, var(--abs-amber) 14%, transparent)', color: 'var(--abs-amber)', fontWeight: '760' },
+  // Un seul jeton pour les trois pastilles ; l'onglet actif les met en creux,
+  // par la règle CSS `.tab-btn[aria-pressed='true'] > span:last-child`.
+  badge: { padding: '2px 8px', borderRadius: '999px', fontSize: '10.5px', fontWeight: '760', background: 'var(--abs-line-soft)', color: 'var(--abs-text-faint)', transition: 'all 0.2s ease' },
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2917,8 +2942,6 @@ const S = {
   viewToggle: { display: 'flex', background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line-soft)', borderRadius: 12, overflow: 'hidden' },
   viewBtn: { background: 'transparent', border: 'none', color: 'var(--abs-text-faint)', padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all .2s' },
   viewBtnActive: { background: 'rgba(245,158,11,.15)', color: 'var(--abs-amber)' },
-  exportBtn: { background: 'var(--abs-line-soft)', border: '1px solid var(--abs-line-soft)', color: 'var(--abs-text)', padding: '10px 16px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 500, fontSize: 13, fontFamily: 'inherit' },
-  addBtn: { background: 'linear-gradient(135deg,#F59E0B,#D97706)', color: '#000', border: 'none', padding: '12px 20px', borderRadius: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, fontFamily: 'inherit', transition: 'all .3s ease' },
   filtersPanel: { display: 'flex', flexWrap: 'wrap', gap: 14, background: 'var(--abs-bg-elevated)', border: '1px solid var(--abs-line-soft)', borderRadius: 16, padding: 20, marginBottom: 20, alignItems: 'flex-end', animation: 'slideUp .3s ease forwards' },
   filterItem: { display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 160px', minWidth: 140 },
   filterLabel: { color: 'var(--abs-text-soft)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .5 },

@@ -35,7 +35,10 @@ export function culturalMotifForPath(pathname = '') {
   // Les enrôlements et les réglages ont fusionné sous le même velours.
   // Les deux adresses retirées gardent l'identité de la page qui les reçoit.
   if (['reconnaissance-faciale', 'enrollements-faciaux', 'config-reco-faciale'].includes(page)) return 'kuba'
-  if (page === 'absences') return 'ndebele'
+  // Absences, 24/11/2026 : « utilise le bogolan comme motif, remplace l'autre ».
+  // Le ndebele n'est plus le motif de la page — il reste sur le disque, parce que
+  // le badge employé (`badge/motifs.js`) l'emploie encore comme choix d'artiste.
+  if (page === 'absences') return 'bogolan'
   //  Rémunérations nourrit la Paie : même pagne de boue, même famille.
   if (page === 'remunerations') return 'bogolan'
   if (['paie', 'fiches-paie', 'configuration-fiscale'].includes(page)) return 'bogolan'
