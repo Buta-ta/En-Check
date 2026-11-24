@@ -24,11 +24,16 @@ describe('Patrimoine Kente conservé · Absences passée au bogolan', () => {
   })
 
   it('2. Absences est encadrée de bogolan ; le ndebele reste l’artiste du badge', () => {
-    // 24/11/2026 : « utilise le bogolan comme motif, remplace l'autre ». La page
-    // ne pose plus deux bandeaux au-dessus et en dessous : elle est ENCADRÉE, le
-    // motif fait le tour de la section comme au planning.
-    expect(absencesSrc).toContain('<PageCulturalBand pathname="/absences" placement="cadre"')
-    expect(absencesSrc).not.toContain('<AbsencesCulturalBand/>')
+    // 24/11 : « utilise le bogolan comme motif, remplace l'autre ». 26/11 : le
+    // fondateur a refusé le cadre qui faisait le tour de la page — « tu n'as fait
+    // qu'entourer l'ancienne page d'une bande motif. je ne veux pas de ça. » Le
+    // motif n'est donc plus une bordure : il est LE BORD BAS de la section du haut,
+    // une lisière de 34 px sous la feuille du titre. Un seul exemplaire sur la
+    // page (les tiroirs gardent les leurs), jamais la toile entière du `<main>`.
+    expect(absencesSrc).not.toContain('<PageCulturalBand')
+    expect(absencesSrc).not.toContain('abs-section-cadre')
+    expect(absencesSrc).toContain('<AbsencesCulturalBand position="tete"/>')
+    expect(absencesSrc.split('<AbsencesCulturalBand').length - 1).toBe(1)
     expect(absencesSrc).not.toContain('<AbsencesCulturalBand position="bottom"/>')
     expect(absencesSrc).not.toContain('KenteAmberWeaveSvg')
     // les deux tiroirs gardent leurs bandeaux : une feuille qui glisse n’a pas

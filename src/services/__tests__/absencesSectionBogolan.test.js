@@ -1,144 +1,198 @@
-// ═══════════════════════════════════════════════════════════════════════════
-// 🧵 ABSENCES · LA SECTION DU HAUT — contrat de lecture de la maquette validée
+// Absences · contrat de la SECTION DU HAUT — bogolan en LISIÈRE, six rabats pendus
+// dessous, cadre défait. Absences, 26/11/2026 (maquette retenue
+// `maquettes/absences-en-tete-lisiere.png`, option de gauche).
 //
-// Maquette : `maquettes/absences-section-bogolan-cadre.png` (24/11/2026).
-// Consigne du fondateur : « utilise le bogolan comme motif, remplace l'autre »
-// et, pour Export et « + Déclarer » : « je les veux comme dans la maquette ».
+//   Ce qui est affiché est vrai ; ne pas confondre le tissu et l'encre ; le motif
+//   est un fond, le mot est un élément ; les chiffres ne se racontent pas, ils se
+//   comparent ; une correction = un contrat.
 //
-// Comme `cablagePlanningEnCheck.test.js` pour le planning : on ne teste pas ici
-// un rendu React, on verrouille que la SECTION dit la vérité — ce que le code
-// promet à l'écran. Un contrat par point de la maquette, dans son ordre de
-// lecture. Ce qui n'est PAS dans la maquette est dit dans la fiche
-// `docs/ABSENCES-SECTION-BOGOLAN.md`, § F.
-// ═══════════════════════════════════════════════════════════════════════════
+// Deux versions de cette section existent, et c'est la seconde qui tient :
+//   1re (24/11, refusée) : le motif tournait autour de la page entière —
+//     « tu n'as fait qu'entourer l'ancienne page d'une bande motif. je ne veux pas
+//     de ça. » Un liseré autour d'un contenu intact n'est pas une reprise.
+//   2e (26/11) : le motif ne border plus rien. La lisière EST le bord bas de la
+//     section, et les six raccourcis pendent sous elle.
+//
+// Un verrou de source qui cherche une sous-chaîne dans TOUT un fichier se fait
+// avoir par les commentaires : ces tests-là lisent le fichier découpé en lignes et
+// ne regardent que celles qui ne commentent pas (le motif est devenu une propriété
+// de structure, et une propriété de structure ne se prouve pas par un mot).
 
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
+import { culturalMotifForPath } from '../../components/culturalMotif.js'
 
+// même convention que `bandeauKenteAmbre.test.js` : une racine, des chemins relatifs
 const ROOT = path.resolve(import.meta.dirname, '../../..')
 const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
+const PAGE = lire('src/pages/Absences.jsx')
+const CSS = lire('src/pages/AbsencesAfroTech.css')
+const RAIL = lire('src/components/RaccourcisPages.jsx')
+const BANDE = lire('src/components/AbsencesCulturalBand.jsx')
 
-const page = lire('src/pages/Absences.jsx')
-const feuille = lire('src/pages/AbsencesAfroTech.css')
-const laniere = lire('src/components/AbsencesKpiCards.jsx')
-const toile = lire('src/components/PageCulturalBand.css')
+/* Le fichier réduit à ce qui code, commentaire retiré. */
+const lignesUtiles = (src) =>
+  src
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('//') && !l.startsWith('*') && !l.startsWith('/*'))
 
-describe('Absences · la section du haut, maquette bogolan', () => {
-  it('1. le motif n\'est plus un bandeau posé au-dessus : il ENCADRE la section', () => {
-    // Une seule toile, le même mécanisme qu'au planning (`placement="cadre"`).
-    expect(page).toContain('<PageCulturalBand pathname="/absences" placement="cadre"')
-    expect(page).toContain('className="abs-section-cadre"')
-    expect(page).toContain('className="abs-section-papier"')
-    // la toile est un fond : muet, sans clic, et c\'est la feuille qui écrit
-    expect(toile).toContain('.ec-cultural-cadre { position: absolute; inset: 0; z-index: 0')
-    expect(toile).toContain('pointer-events: none')
-    // un seul nombre règle l\'épaisseur du tissu ET le respirse du papier
-    expect(feuille).toContain('--abs-cadre: 26px')
-    expect(feuille).toContain('--ec-cadre-epaisseur: var(--abs-cadre)')
-    expect(feuille).toContain('padding: var(--abs-cadre)')
-    // la feuille est opaque et posée PAR-DESSUS la toile, sinon les mots
-    // se liraient sur le motif (D-004)
-    expect(feuille).toMatch(/\.abs-section-papier \{[^}]*z-index: 1[^}]*background: var\(--abs-bg-elevated\)/)
-    // et les deux bandeaux de la page ont bien disparu
-    expect(page).not.toContain('<AbsencesCulturalBand/>')
-    expect(page).not.toContain('<AbsencesCulturalBand position="bottom"/>')
+const CODE = { page: lignesUtiles(PAGE), css: lignesUtiles(CSS), rail: lignesUtiles(RAIL), bande: lignesUtiles(BANDE) }
+const codeDe = (nom) => CODE[nom].join('\n')
+const porte = (nom, motif) => CODE[nom].some((l) => l.includes(motif))
+const nb = (haystack, aiguille) => haystack.split(aiguille).length - 1
+
+describe("Absences · la section du haut, telle que la maquette l'a dessinée", () => {
+  it('le motif de la page est le bogolan, et c’est le seul', () => {
+    expect(culturalMotifForPath('/absences')).toBe('bogolan')
+    expect(porte('page', "<PageCulturalBand")).toBe(false) // la frise SVG ne fait pas la section
   })
 
-  it('2. le bogolan remplace le ndebele, l\'image reste sur le disque', () => {
-    const table = lire('src/components/culturalMotif.js')
-    expect(table).toContain("if (page === 'absences') return 'bogolan'")
-    expect(table).not.toContain("return 'ndebele'")
-    // la règle de la page peint le pagne de boue, plus la peinture ndebele
-    expect(feuille).toContain("url('/images/paie-bogolan-haut.webp')")
-    expect(feuille).not.toContain('absences-ndebele.webp')
-    // …mais le ndebele est toujours l\'artiste du badge employé : on a remplacé
-    // un EMPLOI, pas le fichier. Ce verrou est la protection demandée.
-    expect(fs.existsSync(path.join(ROOT, 'public/images/absences-ndebele.webp'))).toBe(true)
-    expect(lire('src/components/badge/motifs.js')).toContain("image: '/images/absences-ndebele.webp'")
+  // ── 1. le cadre est défait ──────────────────────────────────────────────────
+  it('ne tourne plus autour du <main> : plus de liseré sur quatre côtés', () => {
+    expect(porte('page', 'abs-section-cadre')).toBe(false)
+    expect(porte('page', 'abs-section-papier')).toBe(false)
+    expect(porte('css', '.abs-section-cadre')).toBe(false)
+    expect(porte('css', '.abs-section-papier')).toBe(false)
+    // et les onglets de section ne « remontent » plus sur une lisière inexistante
+    expect(porte('css', '.abs-onglets-rabats')).toBe(false)
+    expect(porte('page', 'abs-onglets-rabats')).toBe(false)
   })
 
-  it('3. les onglets sont des rabats cousus sur la lisière haute, pas une barre', () => {
-    expect(page).toContain('abs-section-tabs abs-onglets-rabats')
-    // la rangée remonte à cheval sur la toile…
-    expect(feuille).toMatch(/\.abs-onglets-rabats \{[^}]*margin-top: calc\(var\(--abs-cadre\) \* -1/)
-    // …et chaque rabat prend son fond opaque : un mot ne se lit pas à cru sur un motif
-    expect(feuille).toMatch(/\.abs-onglets-rabats \{[^}]*background: transparent !important/)
-    expect(feuille).toContain('.abs-onglets-rabats .tab-btn { background: var(--abs-bg-panel)')
-    // une seule teinte pour les trois pastilles de compte, en jeton
-    expect(page).toMatch(/badge: \{[^}]*background: 'var\(--abs-line-soft\)'/)
-    expect(page).not.toContain("background: activeTab === 'absences' ? 'rgba(245,158,11,0.2)'")
+  // ── 2. la feuille du titre est posée, pas collante ──────────────────────────
+  it("n’est plus une carte flottante : pas de collant, pas de rayon, pas de flou", () => {
+    const bloc = codeDe('css').match(/\.abs-topbar \{([^}]*)\}/)?.[1] || ''
+    expect(bloc).toBeTruthy()
+    expect(bloc).not.toContain('position: sticky') // « je veux tout comme dans la maquette »
+    expect(bloc).not.toContain('backdrop-filter')
+    expect(bloc).not.toContain('border-radius: 18px')
+    expect(bloc).not.toContain('box-shadow: var(--abs-shadow)')
+    expect(bloc).toContain('background: var(--abs-bg-elevated)') // l'ivoire de la variante claire
   })
 
-  it('4. six lanières de compteurs, deux poches — et les câbles existent déjà', () => {
-    // la maquette ne crée aucun voyage : les deux poches branchent les deux
-    // setters que la page utilisait déjà pour ces deux comptes
-    expect(page).toContain('onVoirConflits={() => setFilterConflict(\'with_conflict\')}')
-    expect(page).toContain('onVoirDemandes={() => setActiveTab(\'demandes\')}')
-    // six lanières inégales en poids, pas six cartes bordées
-    expect(laniere).toContain('repeat(4, minmax(0, 1fr)) minmax(0, 1.15fr) minmax(0, 1.35fr)')
-    expect(laniere).not.toContain('borderRadius: 12, padding: \'10px 12px\'')
-    // les libellés véridiques sont gardés tels quels : la maquette les avait
-    // raccourcis (« Solde moyen », « À traiter ») et illisibles en capitales
-    for (const label of ['Absents aujourd\'hui', 'Absences ce mois-ci', 'Taux d\'absence du mois',
-      'Congés restants (moyenne)', 'Demandes en attente', 'Conflits absence / pointage']) {
-      expect(laniere).toContain(`label="${label}"`)
+  it('garde les textes exacts de la maquette, et les mêmes briques qu’avant', () => {
+    expect(PAGE).toContain('En-Check · ABSENCES &amp; CONGÉS')
+    expect(PAGE).toContain('Congés, maladies, formations et justificatifs')
+    expect(porte('page', 'className="abs-topbar"')).toBe(true) // verrou de charteAbsences
+    expect(porte('page', 'abs-back-btn')).toBe(true)
+    expect(porte('page', 'abs-theme-toggle')).toBe(true)
+    // le titre de la maquette est à ~20 px, pas 16
+    expect(codeDe('css')).toMatch(/\.abs-brand-title \{[^}]*font-size: 20px/)
+  })
+
+  // ── 3. la lisière : le bord bas de la section, pleine largeur ───────────────
+  it('porte la lisière sous la feuille, sur toute la largeur', () => {
+    // dans le JSX : un seul élément, et il est FRÈRE de la feuille, pas son enfant
+    const ligne = (motif) => CODE.page.findIndex((l) => l.includes(motif))
+    expect(ligne('<AbsencesCulturalBand')).toBeGreaterThan(ligne('className="abs-topbar"')) // la lisière vient APRÈS la feuille
+    expect(ligne('className="abs-topbar-nav"')).toBeGreaterThan(ligne('<AbsencesCulturalBand')) // et le rail, dessous
+    expect(nb(PAGE, '<AbsencesCulturalBand')).toBe(1) // une lisière, pas deux
+    expect(porte('page', 'position="tete"')).toBe(true)
+    // le tissu est le webp de la paie, et sa largeur est implicite
+    expect(porte('css', '.abs-bogolan-tete { height: 34px; }')).toBe(true)
+    expect(codeDe('css')).toMatch(/\.abs-bogolan-band \{[^}]*background-size: auto 100%/)
+  })
+
+  it('ne peint aucun mot sur le tissu', () => {
+    // la lisière est une image muette : un div vide, `aria-hidden`, sans titre de
+    // motif ni texte — « le motif est un fond, le mot est un élément » (D-004)
+    expect(porte('bande', 'aria-hidden')).toBe(true)
+    expect(porte('bande', 'MotifTitre')).toBe(false)
+    expect(CODE.bande.some((l) => l.includes('<span') || l.includes('<p '))).toBe(false)
+    // et le tissu se réduit d'une hauteur : jamais étiré sur la largeur
+    expect(codeDe('css')).toMatch(/\.abs-bogolan-band \{[^}]*background-size: auto 100%/ )
+  })
+
+  // ── 4. les six rabats : tout le style neuf est scoping sous `.abs-topbar-nav` ──
+  it('habille les six rabats sans toucher au rail des 14 autres pages qui le partagent', () => {
+    // `.abs-raccourcis` / `.abs-raccourci` sont globales : 14 autres pages posent le
+    // même rail et le re-scopent dans 10 fichiers CSS (`.aa-raccourcis`, `.paie-page`,
+    // `.emp-barre`, `.jf-raccourcis`…). Une règle nue ici aurait habillé la moitié de
+    // l'application — d'où `.abs-topbar-nav` devant chaque sélecteur neuf.
+    const debut = CSS.indexOf('LA SECTION DU HAUT')
+    const fin = CSS.indexOf('La tuile de motif en tête de ligne')
+    expect(debut).toBeGreaterThan(-1)
+    expect(fin).toBeGreaterThan(debut)
+    const blocNeuf = lignesUtiles(CSS.slice(debut, fin))
+    expect(blocNeuf.length).toBeGreaterThan(20) // le bloc existe, il n'est pas vide
+    expect(blocNeuf.filter((l) => l.includes('.abs-raccourci')).length).toBeGreaterThan(3)
+    expect(blocNeuf.filter((l) => l.includes('.abs-raccourci')).every((l) => l.includes('.abs-topbar-nav'))).toBe(true)
+    // et le rail global, lui, n'a pas bougé d'un cheveu
+    expect(codeDe('css')).not.toMatch(/\.abs-raccourci \{[^}]*grid-template-columns/)
+    // le rail devient une portée de six parts égales, pleine largeur
+    expect(codeDe('css')).toMatch(/\.abs-topbar-nav \.abs-raccourcis \{[^}]*grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/)
+    // six libellés entiers, en minuscules, et le pictogramme rendu muet
+    expect(codeDe('css')).toMatch(/\.abs-topbar-nav \.abs-raccourci svg \{ display: none; \}/)
+    expect(codeDe('css')).not.toMatch(/\.abs-topbar-nav \.abs-raccourci \{[^}]*text-transform: uppercase/)
+  })
+
+  it('coud le rabat du jour en argile et y épingle le compte', () => {
+    const actif = codeDe('css').match(/\.abs-topbar-nav \.abs-raccourci\[data-actif="oui"\][^{]*\{([^}]*)\}/)?.[1] || ''
+    expect(actif).toContain('background: var(--abs-argile)') // l'argile du dessin, en aplat
+    expect(actif).toContain('color: var(--charte-blanc)')      // le blanc cassé de la charte, jamais le blanc pur (D-017)
+    // la crête : le rabat du jour descend plus bas que ses voisines, il ne masque pas le tissu
+    expect(actif).toContain('padding-bottom: 16px')
+    // le compte passe SUR le rabat (question 2 du fondateur : « comme dans la maquette »)
+    expect(porte('rail', 'comptes = {}')).toBe(true)
+    expect(porte('rail', 'abs-raccourci-compte')).toBe(true)
+    expect(porte('page', "comptes={{ '/absences': absences.length }}")).toBe(true)
+    // et il ne se dit pas deux fois : le compteur a quitté les onglets de section
+    const onglets = CODE.page.slice(
+      CODE.page.findIndex((l) => l.includes('className="abs-section-tabs"')),
+      CODE.page.findIndex((l) => l.includes('className="abs-section-tabs"')) + 14,
+    )
+    expect(onglets.some((l) => l.includes('{absences.length}'))).toBe(false)
+  })
+
+  // ── 5. Export et + Déclarer : une seule fois, dans la feuille ───────────────
+  it('ne dit Export et Déclarer qu’une seule fois dans la page', () => {
+    const entete = CODE.page.slice(
+      CODE.page.findIndex((l) => l.includes('className="abs-topbar"')),
+      CODE.page.findIndex((l) => l.includes('className="abs-topbar-nav"')),
+    )
+    expect(entete.some((l) => l.includes('<Download size={16} /> <span>Export</span>'))).toBe(true)
+    expect(entete.some((l) => l.includes('<Plus size={16} /> <span>Déclarer</span>'))).toBe(true)
+    const corps = CODE.page.slice(CODE.page.findIndex((l) => l.includes('className="abs-topbar-nav"')))
+    expect(corps.some((l) => l.includes('<Download size={16} /> <span>Export</span>'))).toBe(false)
+    expect(corps.some((l) => l.includes('<Plus size={16} /> <span>Déclarer</span>'))).toBe(false)
+    // le bouton d'action est un aplat, pas un dégradé (point 6 du dessin)
+    const primaire = codeDe('css').match(/\.abs-btn-primary \{([^}]*)\}/)?.[1] || ''
+    expect(primaire).toContain('background: var(--abs-argile)')
+    expect(primaire).not.toContain('linear-gradient')
+    // et `--abs-argile` est bien le cuivre freiné de tissu — un aplat de cuivre pur
+    // sous un texte blanc cassé ne passe pas AA, et c'est le point que le dégradé
+    // de la version refusée cachait
+    expect(codeDe('css')).toContain('--abs-argile: color-mix(in srgb, var(--abs-copper) 78%, var(--charte-tissu));')
+    // et la lune se pose carrée, comme ses deux voisines
+    const lune = codeDe('css').match(/\.abs-theme-btn \{([^}]*)\}/)?.[1] || ''
+    expect(lune).toContain('border-radius: 11px')
+  })
+
+  // ── 6. ce que la reprise laisse en place ───────────────────────────────────
+  it('laisse la tuile de ligne et la couture de la barre d’outils', () => {
+    // ce que le fondateur a demandé de garder (« Défaire le cadre seul, garder le
+    // reste ») : les briques qui ne doivent rien au cadre. La couture de la barre
+    // d'outils vivait sur `.abs-section-papier` — elle est réaccrochée à `.abs-page`,
+    // sinon elle mourait avec le cadre sans qu'aucun test ne s'en plaigne.
+    expect(porte('page', 'className="abs-tuile"')).toBe(true)
+    expect(porte('css', '.abs-tuile { width: 22px; height: 22px;')).toBe(true)
+    expect(porte('css', '.abs-couture-alerte')).toBe(true)
+    expect(codeDe('css')).toMatch(/\.abs-page \.toolbar-top \{[^}]*border-top: 1px dashed/)
+  })
+
+  it('se repose au plus étroit comme au plus large', () => {
+    // six rabats de front ne tiennent qu'au-dessus de 980 px : en dessous, trois
+    // par rang et deux rangées — le rail shared impose `white-space: nowrap`, un
+    // libellé tronqué serait un mensonge sur la page où l'on vient de cliquer
+    const etroit = (max) => {
+      const i = CSS.indexOf(`@media(max-width:${max}px)`)
+      expect(i).toBeGreaterThan(-1)
+      return lignesUtiles(CSS.slice(i, CSS.indexOf('\n}', i) + 2))
     }
-  })
-
-  it('5. Export et « + Déclarer » ne sont plus branchés deux fois', () => {
-    // la maquette ne les garde qu\'en tête ; le code les avait en tête ET dans la
-    // barre d\'outils. Ce n\'est pas une fonction retirée, c\'est un doublon retiré.
-    expect((page.match(/onClick=\{handleExportCSV\}/g) || [])).toHaveLength(1)
-    expect((page.match(/onClick=\{\(\) => handleAdd\(\)\}/g) || [])).toHaveLength(1)
-    // la ligne d\'en-tête garde les trois commandes annoncées : thème, Export, Déclarer
-    const entete = page.slice(page.indexOf('className="abs-topbar-right"'), page.indexOf('abs-topbar-nav'))
-    expect(entete).toContain('data-testid="abs-theme-toggle"')
-    expect(entete).toContain('<span>Export</span>')
-    expect(entete).toContain('<span>Déclarer</span>')
-    // la barre d\'outils, elle, garde la recherche, l\'entreprise, les filtres, les vues
-    const outils = page.slice(page.indexOf('className="toolbar-top"'), page.indexOf('{showFilters &&'))
-    expect(outils).toContain('Rechercher un employé')
-    expect(outils).toContain('aria-label="Entreprise"')
-    expect(outils).toContain('aria-label="Afficher les filtres"')
-    for (const vue of ['planning', 'calendar', 'list']) expect(outils).toContain(`viewMode === '${vue}'`)
-    // la barre d'outils ne branche plus aucune des deux actions (seul un
-    // commentaire en parle encore — c'est le JSX qui compte)
-    expect(outils).not.toContain('onClick={handleExportCSV}')
-    // les outils s'ouvrent sur la couture pointillée du dessin (point 3)
-    expect(feuille).toMatch(/\.abs-section-papier \.toolbar-top \{[^}]*border-top: 1px dashed var\(--abs-border-strong\)/)
-    expect(outils).not.toContain('className="afro-btn"')
-    // et les styles des boutons retirés sont partis avec eux : pas de dette orpheline
-    expect(page).not.toContain('exportBtn')
-    expect(page).not.toContain('addBtn')
-  })
-
-  it('6. l\'alerte de conflit est une couture, plus un bandeau plein', () => {
-    expect(page).toContain('className="abs-couture-alerte"')
-    expect(feuille).toMatch(/\.abs-couture-alerte \{[^}]*border-top: 1px dashed var\(--abs-border-strong\)/)
-    expect(feuille).toMatch(/\.abs-couture-alerte \{[^}]*border-bottom: 1px dashed var\(--abs-border-strong\)/)
-    // La bannière pleine en orange translucide a disparu de LA SECTION. Dit
-    // aussi ce qui reste : le rappel « Conflit RH détecté » à l'intérieur d'une
-    // ligne de liste n'est pas la même alerte — c'est un paragraphe, il garde
-    // son bloc (et ses teintes sont passées au jeton).
-    const section = page.slice(page.indexOf('abs-section-cadre'), page.indexOf('className="toolbar-top"'))
-    expect(section).not.toContain('rgba(249,115,22')
-    expect(section).toContain('abs-couture-alerte')
-  })
-
-  it('7. la ligne d\'absence porte la tuile de motif, muette', () => {
-    expect(page).toContain('<BogolanPastilleSvg size={22} couleur="var(--abs-copper)" />')
-    // muette : le motif ne se lit pas, il se regarde
-    expect(page).toMatch(/className="abs-tuile" aria-hidden="true"/)
-    expect(feuille).toContain('.abs-tuile { width: 22px; height: 22px')
-  })
-
-  it('8. la reprise n\'a pas rendu la page plus sale', () => {
-    // Cinq teintes en dur des quatre pastilles d\'état de la ligne sont parties
-    // au jeton : le compteur de la dette ne doit pas remonter derrière nous.
-    const durs = (page.match(/rgba\(|#[0-9A-Fa-f]{6}/g) || []).length
-    expect(durs).toBeLessThan(135) // 143 à la base `cf56084`, 127 après reprise
-    // et les styles en dur que nous avons remplacés ne reviennent pas
-    expect(page).not.toContain("color: 'var(--abs-text-muted)'") // jeton inexistant
+    expect(etroit(980)).toContain('.abs-topbar-nav .abs-raccourcis { grid-template-columns: repeat(3, minmax(0, 1fr)); }')
+    expect(etroit(650)).toContain('.abs-topbar-nav { padding: 0 12px 12px; }')
+    // la lisière maigrit avec le rail : un motif qui déborde est un défaut, pas un accent
+    expect(etroit(650)).toContain('.abs-bogolan-tete { height: 26px; }')
   })
 })

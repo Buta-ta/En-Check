@@ -112,19 +112,27 @@ it('8. le mode clair a bien ses propres valeurs pour chaque variable', () => {
 
 // ── 5. Bandeaux arrondis et collants ─────────────────────────────────
 
-it('9. les bandeaux des deux pages sont arrondis et restent collés', () => {
-  for (const [fichier, classe] of [
-    ['src/pages/AbsencesAfroTech.css', '.abs-topbar'],
-    ['src/pages/PlanningAfroTech.css', '.sk-topbar'],
-  ]) {
+it('9. le bandeau du planning reste une carte collée, celui des Absences une feuille posée', () => {
+  const regleDe = (fichier, classe) => {
     const css = lire(fichier)
     const debut = css.indexOf(`${classe} {`)
     expect(debut).toBeGreaterThan(-1)
-    const regles = css.slice(debut, css.indexOf('}', debut))
-    expect(regles).toContain('position: sticky')
-    expect(regles).toContain('border-radius')
-    expect(regles).toContain('box-shadow')
+    return css.slice(debut, css.indexOf('}', debut))
   }
+  // Le Planning n'a rien demandé : sa carte garde son rayon, son ombre et son collant.
+  const sk = regleDe('src/pages/PlanningAfroTech.css', '.sk-topbar')
+  expect(sk).toContain('position: sticky')
+  expect(sk).toContain('border-radius')
+  expect(sk).toContain('box-shadow')
+  // Absences, 26/11/2026 : la maquette retenue (`maquettes/absences-en-tete-lisiere.png`)
+  // couche la bande du titre SUR le sable, pleine largeur, qui défile avec la page.
+  // « je veux tout comme dans la maquette » — donc ni collant, ni carton flottant.
+  const abs = regleDe('src/pages/AbsencesAfroTech.css', '.abs-topbar')
+  expect(abs).not.toContain('position: sticky')
+  expect(abs).not.toContain('backdrop-filter')
+  expect(abs).toContain('border-radius: 0')
+  expect(abs).toContain('box-shadow: none')
+  expect(abs).toContain('background: var(--abs-bg-elevated)')
 })
 
 // ── 6. Lisibilité du mode clair ──────────────────────────────────────
