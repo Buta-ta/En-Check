@@ -17,16 +17,25 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
-  ArrowDown, ArrowUp, ArrowUpRight, CheckCircle2, Film,
+  ArrowDown, ArrowUp, ArrowUpRight, Ban, CheckCircle2, Film,
   Image as ImageIcon, Megaphone, Pencil, Power, RefreshCw, Repeat,
   Trash2, Upload,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useTheme } from '../contexts/ThemeContext'
 import { AbomeyBlasonSvg, AbomeyCoinSvg } from '../components/AbomeySvg'
 import AdminExplication from '../components/AdminExplication'
 import EnteteAnnonces from '../components/EnteteAnnonces'
+/*  LA SIDEBAR ET SON RAIL — « exactement comme dans la page employés »
+    (26/11). On ne recopie pas le patron : on rend les deux composants
+    partagés, `CoqueAdmin` et `SidebarUnique`, avec la fabrique de sections
+    que le Planning, Employés et la fiche employé lisent déjà. Une seule
+    barre pour toute l'application, donc aucune dérive possible. */
+import CoqueAdmin from '../components/coque/CoqueAdmin'
+import SidebarUnique from '../components/SidebarUnique'
+import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import EcranApercu from '../components/EcranApercu'
 import TuileEtat from '../components/TuileEtat'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
@@ -76,6 +85,22 @@ const STATUTS = {
   inactive: 'Inactive',
 }
 
+/*  CE QUE LE JOURNAL DIT — les actions de la base, en français.
+    Sans cette table, la page affichait `publiee` et `modifiee` : le nom de
+    la fonction, au participe sans majuscule. */
+/*  CE QUE LE JOURNAL DIT, ET COMMENT IL LE DIT — maquette B (26/11).
+    La base n'écrit que deux actions (`publiee` quand `is_active`, `modifiee`
+    sinon). Chacune a son ton, son icône et son verbe. Une entrée inconnue ne
+    disparaît pas : elle garde son nom technique, et c'est tant mieux — un
+    journal qui masque une ligne est pire qu'un journal qui parle mal. */
+const ACTIONS_JOURNAL = {
+  publiee: { verbe: 'Publiée', ton: 'publication', Icone: ArrowUp },
+  modifiee: { verbe: 'Modifiée', ton: 'modification', Icone: Pencil },
+  supprimee: { verbe: 'Supprimée', ton: 'suppression', Icone: Trash2 },
+  desactivee: { verbe: 'Retirée du carrousel', ton: 'retrait', Icone: Ban },
+  activee: { verbe: 'Remise dans le carrousel', ton: 'publication', Icone: ArrowUp },
+}
+
 function fmtKo(n) {
   if (!Number.isFinite(n)) return ''
   return n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} Mo` : `${Math.round(n / 1024)} Ko`
@@ -85,6 +110,19 @@ function fmtDate(iso) {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
 }
+/*  LA DATE, EN DEUX MORCEAUX — pour les fiches du journal.
+    `fmtDate` rend « 24/11/2026 23:20 » d'un seul tenant. La maquette B les
+    veut sur deux lignes, la date au-dessus de l'heure. On ne devine pas où
+    couper : on demande les deux morceaux séparément au formateur. */
+function fmtDateDeuxLignes(iso) {
+  if (!iso || iso === 'null') return ['', '']
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ['', '']
+  return [
+    d.toLocaleDateString('fr-FR'),
+    d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+  ]
+}
 // valeur `datetime-local` ← instant ISO (heure locale)
 function pourChampDateTime(iso) {
   if (!iso || iso === 'null') return ''
@@ -93,6 +131,8 @@ function pourChampDateTime(iso) {
 }
 
 export default function AnnoncesAccueil() {
+  const navigate = useNavigate()
+  const { darkMode, toggleTheme } = useTheme()
   const { ensureMfa, challenge } = useAdminMfaCheckpoint()
 
   const [enterprises, setEnterprises] = useState([])
@@ -136,6 +176,16 @@ export default function AnnoncesAccueil() {
   const epoch = useRef(0)
   const lock = useRef(false)
   const fileInput = useRef(null)
+  /*  LE FORMULAIRE DOIT S'OUVRIR QUAND ON ÉDITE.
+      Le bouton « modifier » remplissait bien les champs, mais le `<details>`
+      restait fermé : on ne voyait rien se passer. C'était le défaut signalé
+      le 26/11. Prendre la ref permet de l'ouvrir sans passer par un état
+      parallèle, et sans re-rendre la page. */
+  const formRef = useRef(null)
+
+  //  Le nom de l'administrateur, pour la barre. `charger` le lit déjà pour
+  //  vérifier le rôle : on le garde au passage au lieu de refaire l'appel.
+  const [admin, setAdmin] = useState(null)
 
   // Deuxième barrière, lisible : le défi MFA (ensureMfa) puis une relecture
   // du niveau de la session. Si la session n'est pas à l'assurance AAL2,
@@ -154,6 +204,7 @@ export default function AnnoncesAccueil() {
     setError('')
     try {
       const actor = await currentAdminAccount()
+      setAdmin(actor)
       if (actor.role !== 'super_admin')
         throw new Error('Cet espace est réservé au superadministrateur.')
       const comps = await supabase
@@ -271,6 +322,13 @@ export default function AnnoncesAccueil() {
   function ouvrirEdition(a) {
     viderForm()
     setEnEdition(a)
+    //  On déplie AVANT de remplir : le champ est alors dans le document, et
+    //  `setView('medias')` ramène l'onglet si l'on éditait depuis l'Aperçu.
+    setView('medias')
+    if (formRef.current) {
+      formRef.current.open = true
+      formRef.current.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    }
     if (a.url) { setApercu(a.url); setApercuEst(a.type) } // aperçu = média actuel (pas de copie locale à révoquer)
     setTypeMedia(a.type)
     setDuree(Math.round(a.duree_affichage_ms / 1000))
@@ -594,9 +652,36 @@ export default function AnnoncesAccueil() {
     )
   }
 
+  // ── La barre : ses sections, son nom, son thème ──
+  const sectionsNav = sectionsNavAdmin({
+    admin,
+    // `moduleActif` : la même fabrique que les autres pages. Ici l'entreprise
+    // choisie dans la page est la seule qui compte — ses modules sont ceux
+    // qu'on peut viser depuis cette page.
+    moduleActif: (champ) => {
+      const ligne = (enterprises || []).find((e) => e.id === entreprise)
+      return Boolean(ligne?.[champ])
+    },
+  })
+
   if (challenge) return challenge
 
   return (
+    <CoqueAdmin
+      sidebar={
+        <SidebarUnique
+          sections={sectionsNav}
+          nomAdmin={admin ? `${admin.first_name || ''} ${admin.last_name || ''}`.trim() : ''}
+          initialeAdmin={(admin?.first_name || 'A').charAt(0)}
+          darkMode={darkMode}
+          surTheme={toggleTheme}
+          surDeconnexion={() => navigate('/login')}
+          entreprises={enterprises}
+          entrepriseActive={enterprises.find((e) => e.id === entreprise) || null}
+          surEntreprise={(e) => setEntreprise(typeof e === 'string' ? e : e?.id || '')}
+        />
+      }
+    >
     <main className="aa-page aa-register">
       <div className="aa-grille">
         <div className="aa-colonne">
@@ -732,7 +817,11 @@ export default function AnnoncesAccueil() {
                 <>
                   {/* ── Le formulaire ── */}
                   <section className="aa-workflow aa-ann-atelier" aria-label={enEdition ? 'Modifier l’annonce' : 'Ajouter une annonce'}>
-                    <details onToggle={(e) => { if (!e.currentTarget.open) viderForm() }}>
+                    <details
+                      ref={formRef}
+                      id="aa-ann-formulaire"
+                      onToggle={(e) => { if (!e.currentTarget.open) viderForm() }}
+                    >
                       <summary>{enEdition ? 'Modifier l’annonce choisie' : `Ajouter un média (${MAX_ANNONCES - (annonces || []).length} place${MAX_ANNONCES - (annonces || []).length > 1 ? 's' : ''} restante${MAX_ANNONCES - (annonces || []).length > 1 ? 's' : ''})`}</summary>
                       <div className="aa-ann-forme">
                         {/* ═══ FEUILLET 1 — LE MÉDIA ═══
@@ -963,17 +1052,49 @@ export default function AnnoncesAccueil() {
                   {journal.length === 0 ? (
                     <p className="aa-ann-attente">Aucune intervention enregistrée pour cette entreprise.</p>
                   ) : (
-                    <div className="aa-ann-journal">
-                      {journal.map((j, i) => (
-                        <div key={i}>
-                          <span className="aa-ann-j-temps">{fmtDate(j.created_at)}</span>
-                          <span className="aa-ann-j-action">{String(j.action || '').replace('annonce_accueil_', '')}</span>
-                          <span className="aa-ann-j-detail">
-                            {j.details?.type_media ? `${j.details.type_media} · ordre ${j.details.ordre ?? '—'} · ${Math.round((j.details.duree_ms || 0) / 1000)} s` : ''}
-                            {j.details?.active === false ? ' · désactivée' : ''}
-                          </span>
-                        </div>
-                      ))}
+                    /*  LE REGISTRE COUSU — maquette B.
+                        Une fiche par intervention, son icône dans un carré,
+                        le nom du média, puis les réglages. La couture court
+                        dans la marge à gauche : c'est elle qui tient les
+                        fiches ensemble et qui fait lire le journal de haut en
+                        bas comme une page reliée. */
+                    <div className="aa-ann-registre">
+                      <span className="aa-ann-reliure" aria-hidden="true" />
+                      {journal.map((j, i) => {
+                        const cle = String(j.action || '').replace('annonce_accueil_', '')
+                        const action = ACTIONS_JOURNAL[cle] || {
+                          verbe: cle, ton: 'neutre', Icone: Megaphone,
+                        }
+                        const { Icone } = action
+                        const d = j.details || {}
+                        const dateLigne = fmtDateDeuxLignes(j.created_at)
+                        return (
+                          <article key={i} className={`aa-ann-fiche est-${action.ton}`}>
+                            <span className="aa-ann-fiche-icone" aria-hidden="true">
+                              <Icone size={17} />
+                            </span>
+                            <span className="aa-ann-fiche-corps">
+                              {/*  Le titre d'abord : c'est le nom qu'on
+                                  cherche. Les annonces posées avant la
+                                  colonne `titre` n'en ont pas — on retombe
+                                  alors sur le type, jamais sur du vide. */}
+                              <strong className="aa-ann-fiche-titre">
+                                {d.titre || (d.type_media === 'video' ? 'Vidéo' : 'Image')}
+                              </strong>
+                              <small className="aa-ann-fiche-detail">
+                                {action.verbe}
+                                {d.type_media ? ` · ${d.type_media}` : ''}
+                                {d.ordre != null ? ` · ordre ${d.ordre}` : ''}
+                                {d.duree_ms ? ` · ${Math.round(d.duree_ms / 1000)} s` : ''}
+                              </small>
+                            </span>
+                            <time className="aa-ann-fiche-temps" dateTime={j.created_at}>
+                              <span>{dateLigne[0]}</span>
+                              <span>{dateLigne[1]}</span>
+                            </time>
+                          </article>
+                        )
+                      })}
                     </div>
                   )}
                 </section>
@@ -983,5 +1104,6 @@ export default function AnnoncesAccueil() {
         </div>
       </div>
     </main>
+    </CoqueAdmin>
   )
 }

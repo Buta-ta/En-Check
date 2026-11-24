@@ -1500,3 +1500,164 @@
     align-items: stretch;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   📓 LE REGISTRE — le journal cousu (maquette B, 26/11)
+
+   « je choisis le B. » Quatre décisions, toutes prises sur la maquette :
+
+     · chaque entrée est une FICHE, pas une ligne de tableau ;
+     · l'action a un CARRÉ D'ICÔNE : flèche pour une publication, crayon
+       pour une modification, cercle barré pour un retrait ;
+     · une COUTURE POINTILLÉE court dans la marge, de haut en bas ;
+     · le média est nommé, et la date est rangée à droite, sur deux lignes.
+
+   La couture est peinte en dégradé répété — jamais en `border-image`, qui
+   ne sait pas arrondir ses bouts. Aucun `drop-shadow`, aucun hex.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.aa-page .aa-ann-registre {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  /* la place de la couture, à gauche : les fiches ne la traversent pas */
+  padding-left: 34px;
+}
+
+/* ── LA COUTURE ───────────────────────────────────────────────────────────
+   Une suite de points espresso espacés de 8 px. Elle part du haut du
+   registre et s'arrête au bas de la dernière fiche : `inset-block: 2px 8px`,
+   pour qu'elle ne pende pas dans le vide. */
+.aa-page .aa-ann-reliure {
+  position: absolute;
+  top: 2px;
+  bottom: 8px;
+  left: 8px;
+  width: 3px;
+  background-image: linear-gradient(
+    to bottom,
+    var(--charte-encre) 0 3px,
+    transparent 3px 8px
+  );
+  background-size: 3px 8px;
+  background-repeat: repeat-y;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ── LA FICHE ─────────────────────────────────────────────────────────────
+   Une bande de papier plus clair que le fond du panneau, son filet, et le
+   carré d'icône à gauche. */
+.aa-page .aa-ann-fiche {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px 10px 10px;
+  background-color: color-mix(in srgb, var(--charte-surface) 88%, var(--charte-surface2));
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+}
+
+/* ── LE CARRÉ D'ICÔNE ─────────────────────────────────────────────────────
+   Sa couleur dit la famille de l'action. Le terracotta est réservé à ce qui
+   PUBLIE — c'est le seul acte qui met quelque chose devant les employés. */
+.aa-page .aa-ann-fiche-icone {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+
+.aa-page .aa-ann-fiche.est-publication .aa-ann-fiche-icone {
+  background-color: var(--charte-aplat);
+  color: var(--charte-blanc);
+}
+
+.aa-page .aa-ann-fiche.est-modification .aa-ann-fiche-icone {
+  background-color: var(--charte-surface2);
+  color: var(--charte-texte);
+}
+
+.aa-page .aa-ann-fiche.est-retrait .aa-ann-fiche-icone,
+.aa-page .aa-ann-fiche.est-suppression .aa-ann-fiche-icone {
+  background-color: var(--charte-surface);
+  color: var(--charte-erreur);
+}
+
+.aa-page .aa-ann-fiche.est-neutre .aa-ann-fiche-icone {
+  background-color: var(--charte-surface);
+  color: var(--charte-douce);
+}
+
+/* ── LE CORPS ─────────────────────────────────────────────────────────────*/
+.aa-page .aa-ann-fiche-corps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.aa-page .aa-ann-fiche-titre {
+  font-family: var(--charte-police);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--charte-encre);
+  overflow-wrap: anywhere;
+}
+
+.aa-page .aa-ann-fiche-detail {
+  font-family: var(--charte-police);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--charte-douce);
+}
+
+/* ── LA DATE, À DROITE, SUR DEUX LIGNES ───────────────────────────────────
+   `fmtDate` rend « 24/11/2026 23:20 » : on le coupe sur l'espace pour que la
+   date et l'heure prennent deux lignes, alignées à droite, chiffres de même
+   largeur. */
+.aa-page .aa-ann-fiche-temps {
+  font-family: var(--charte-police);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  text-align: right;
+  white-space: pre-line;
+  color: var(--charte-douce);
+}
+
+@media (max-width: 640px) {
+  .aa-page .aa-ann-registre {
+    padding-left: 26px;
+  }
+  .aa-page .aa-ann-reliure {
+    left: 4px;
+  }
+  .aa-page .aa-ann-fiche {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .aa-page .aa-ann-fiche-icone {
+    width: 34px;
+    height: 34px;
+  }
+  .aa-page .aa-ann-fiche-temps {
+    grid-column: 2;
+    text-align: left;
+  }
+}
+
+/* la date sur deux lignes : date, puis heure — chacune son bloc */
+.aa-page .aa-ann-fiche-temps {
+  display: flex;
+  flex-direction: column;
+  white-space: normal;
+}
