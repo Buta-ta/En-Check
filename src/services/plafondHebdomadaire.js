@@ -179,18 +179,24 @@ export function evaluerSeuilsHebdo({
     //  « normal » = seuil de déclenchement ATTEINT (40 h pile compte), même
     //  sans dépassement du plafond haut. « aucun » = sous le seuil.
     const niveau = (sM !== null && heures >= sM) ? 'majeur' : (heures >= (s ?? 0) ? 'normal' : 'aucun')
+    //  ⚠️ Une semaine lue sur 3 jours n'est PAS une semaine sous le seuil.
+    //  C'était le dernier mensonge de ce module : `joursDansLaPeriode` était
+    //  calculé puis jamais lu, donc une fenêtre amputée rendait
+    //  « niveau: aucun, 0 dépassement » — un constat de conformité tiré d'une
+    //  lecture partielle. On ne le supprime pas : on le NOMME.
+    const partielle = Number(sem.joursDansLaPeriode) < 7
     return {
       ...sem,
       heures,
       depasse,
       depassement_heures: depasse ? Math.round((heures - bareme) * 100) / 100 : 0,
-      niveau,
-      //  ⚠️ Pas de drapeau `complete` ici, et c'est volontaire.
-      //  Le moteur demande désormais chaque semaine sur ses 7 jours réels (fenêtre
-      //  élargie, cf. `fenetreDeLecture`), donc un booléen vaudrait toujours vrai
-      //  et ne mesurerait plus rien. Ce qui reste vrai et vérifiable, c'est le
-      //  nombre de jours effectivement couverts par la fenêtre demandée :
-      //  `joursDansLaPeriode`, déjà porté par l'agrégat.
+      //  Un dépassement constaté sur une semaine partielle reste un
+      //  dépassement (il est prouvé) ; c'est l'ABSENCE de dépassement qui ne
+      //  prouve rien tant que la semaine n'est pas couverte en entier.
+      niveau: partielle && !depasse ? 'non_evalue' : niveau,
+      partielle,
+      //  Ce que `joursDansLaPeriode` ne disait pas tout seul : la semaine est
+      //  incomplète, donc « aucun dépassement » ne s'y prononce pas.
     }
   })
 
