@@ -42,6 +42,42 @@ export function libelleDepassement (p) {
   return `${ecart} min de plus que les ${prevue} min prévues`
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// POURQUOI LA PAUSE S'EST FERMÉE — information d'ADMINISTRATION
+//
+// `motif_fermeture` n'est renvoyé que par `encheck_pauses_lire`, réservée aux
+// administrateurs. Décision du fondateur (26/11) : ce n'est pas à l'employé
+// de voir pourquoi sa pause s'est fermée.
+//
+//   · `reprise` = l'employé est revenu travailler, la pause s'est close
+//                 d'elle-même parce qu'il a repris le service ;
+//   · `sortie`  = il a terminé sa journée, la sortie a refermé la pause ;
+//   · `null`    = on ne sait pas. Les pauses antérieures au 23/11 ne portent
+//                 aucun motif : on n'en invente pas un.
+// ═══════════════════════════════════════════════════════════════════════════
+export const MOTIFS_FERMETURE = {
+  reprise: { label: 'Reprise du service', court: 'Reprise', color: '#64748B' },
+  sortie: { label: 'Fin de journée', court: 'Sortie', color: '#7C3AED' },
+}
+
+/**
+ * Le libellé du motif, ou `null` s'il n'y en a pas.
+ * Renvoyer une chaîne vide ferait afficher un badge vide ; renvoyer un
+ * libellé par défaut inventerait une cause. On renvoie `null`, et l'écran
+ * n'affiche rien.
+ */
+export function libelleMotifFermeture (p) {
+  const motif = p?.motifFermeture ?? p?.motif_fermeture ?? null
+  if (!motif) return null
+  return MOTIFS_FERMETURE[motif]?.label || null
+}
+
+export function badgeMotifFermeture (p) {
+  const motif = p?.motifFermeture ?? p?.motif_fermeture ?? null
+  if (!motif) return null
+  return MOTIFS_FERMETURE[motif] || null
+}
+
 export const STATUTS_A_STATUER = ['reelle', 'presumee']
 
 function hhmm (timestamptz) {
@@ -273,6 +309,11 @@ export function construirePauses (lignesSql) {
       //  l'écran ne doit pas afficher « 0 min de plus » sur une pause normale.
       prevueMinutes: Number.isFinite(Number(l.prevue_minutes)) ? Number(l.prevue_minutes) : null,
       ecartMinutes: Number.isFinite(Number(l.ecart_minutes)) ? Number(l.ecart_minutes) : null,
+      //  La cause de la fermeture, telle que la base la donne. `null` reste
+      //  `null` : les pauses d'avant le 23/11 n'en ont pas, et l'écran ne
+      //  doit pas laisser croire qu'elles se sont fermées par reprise.
+      motifFermeture: l.motif_fermeture || null,
+      motifFermetureLabel: libelleMotifFermeture(l),
       ouverte,
       aStatuer: STATUTS_A_STATUER.includes(l.statut),
       estPresumee,
@@ -418,12 +459,15 @@ export function formatDuree (minutes) {
 /** Export CSV (séparateur point-virgule, Excel FR). */
 export function exportCsvPauses (paies) {
   const entetes = ['Jour', 'Employé', 'Matricule', 'Entreprise', 'Début', 'Fin',
-    'Durée (min)', 'Statut', 'Nature', 'Anomalie', 'Motif']
+    'Durée (min)', 'Statut', 'Nature', 'Anomalie', 'Motif', 'Fin de pause']
   const lignes = (paies || []).map(p => [
     p.jour, p.employe, p.matricule, p.entreprise_nom, p.debutHHMM,
     p.finHHMM || '', p.dureeMinutes, badgeStatut(p.statut).label,
     estPausePresumee(p) ? 'Présumée (grille)' : 'Réelle (non présumée)',
     (badgeAnomalie(p.anomalie) || {}).label || '', p.motif || '',
+    //  Vide quand la base ne sait pas : un CSV qui écrirait « reprise » par
+    //  défaut inventerait une cause sur les pauses d'avant le 23/11.
+    p.motifFermetureLabel || '',
   ])
   return [entetes, ...lignes]
     .map(cols => cols.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';'))

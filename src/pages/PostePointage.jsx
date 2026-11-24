@@ -44,6 +44,7 @@ import {
   oublierPoste,
   sensSuivant,
 } from '../lib/postePointage'
+import BandeauPauses from '../components/BandeauPauses'
 import './PostePointage.css'
 
 // ══════════════════════════════════════════════════════════════════
@@ -401,6 +402,13 @@ export default function PostePointage() {
           </button>
         </div>
       </header>
+
+      {/*  Le bandeau des pauses n'apparaît QUE quand la borne attend
+          quelqu'un. Pendant un pointage (confirmation, refus, saisie du
+          code), il disparaît : c'est le geste qui compte, pas le décor. */}
+      {(etat === 'pret' || etat === 'travail') && !replisPin && (
+        <BandeauPauses enterpriseId={config.enterprise_id} />
+      )}
 
       {avisHorloge > SEUIL_ECART_HORLOGE && (
         <p className="pp-avis-horloge" role="status">

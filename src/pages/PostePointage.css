@@ -786,3 +786,70 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ☕ BANDEAU DES PAUSES EN COURS — écran partagé, donc lisible de loin
+   et discret. Il ne prend jamais le focus ni ne capte le geste : la borne
+   sert d'abord à pointer.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pp-bandeau-pauses {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0 auto 14px;
+  max-width: 720px;
+  padding: 10px 16px;
+  border: 1px solid var(--pp-ligne);
+  border-radius: 12px;
+  background: var(--pp-creux);
+  color: var(--pp-coton-doux);
+}
+
+.pp-bandeau-pauses-titre {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--pp-ocre);
+  white-space: nowrap;
+}
+
+.pp-bandeau-pauses-liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-bandeau-pauses-ligne {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.86rem;
+}
+
+.pp-bandeau-pauses-nom {
+  font-weight: 700;
+  color: var(--pp-coton);
+}
+
+.pp-bandeau-pauses-duree {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--pp-coton-faible, var(--pp-coton-doux));
+  opacity: 0.85;
+}
+
+@media (max-width: 480px) {
+  .pp-bandeau-pauses {
+    padding: 8px 12px;
+  }
+
+  .pp-bandeau-pauses-ligne {
+    font-size: 0.8rem;
+  }
+}

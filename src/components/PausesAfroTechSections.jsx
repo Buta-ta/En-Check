@@ -31,6 +31,7 @@ import PhotoSignee from './PhotoSignee'
 import { AdinkraWatermarkSvg, KenteWovenTapestrySvg, WovenKenteBadgeSvg } from './AfroCulturalSvg'
 import {
   badgeAnomalieDetaillee,
+  badgeMotifFermeture,
   estPausePresumee,
   estPauseReelleEffectuee,
   formatDuree,
@@ -1472,6 +1473,7 @@ export function PausesCollaborateursSection({
                   p.entreprise_nom ||
                   'Équipe'
                 const anomalie = badgeAnomalieDetaillee(p)
+                const motifFermeture = badgeMotifFermeture(p)
                 const isPresumed = estPausePresumee(p)
                 const isReal = estPauseReelleEffectuee(p)
                 const liveElapsed = p.ouverte ? formaterTempsPauseEnDirect(p, nowMs) : null
@@ -1595,6 +1597,25 @@ export function PausesCollaborateursSection({
                             title={anomalie.raison || undefined}
                           >
                             {anomalie.label}
+                          </span>
+                        )}
+
+                        {/*  POURQUOI LA PAUSE S'EST FERMÉE — information
+                            d'administration : ni l'employé ni la tablette ne
+                            la voient. Absente quand la base ne sait pas
+                            (pauses d'avant le 23/11) : on n'affiche pas un
+                            badge vide, on n'affiche rien. */}
+                        {!p.ouverte && motifFermeture && (
+                          <span
+                            className="pauses-v2-status-pill"
+                            style={{ color: motifFermeture.color, borderColor: motifFermeture.color }}
+                            title={
+                              p.motifFermeture === 'sortie'
+                                ? 'La sortie du salarié a refermé la pause'
+                                : 'La pause s’est refermée quand le salarié a repris le service'
+                            }
+                          >
+                            {motifFermeture.court}
                           </span>
                         )}
 

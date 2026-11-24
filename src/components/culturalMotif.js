@@ -26,6 +26,10 @@ export function culturalMotifForPath(pathname = '') {
   if (page === 'geopointage' || page === 'carte-temps-reel') return 'dogon'
   if (page === 'rapports') return 'nsibidi'
   // Annonces, push et courriels ont une seule page : une seule toile.
+  //   Sauf l'adresse dédiée aux Annonces d'accueil : elle nourrit l'en-tête
+  //   Pointage, qui porte le bogolan (CHARTE §1.2). Une page ne peut pas
+  //   porter un autre tissu que ce qu'elle alimente.
+  if (page === 'annonces-accueil') return 'bogolan'
   if (['system-messages', 'push-notifications'].includes(page)) return 'korhogo'
   // Le journal, la carte et les visites ont une seule page : une seule toile.
   if (['analytics', 'connexions', 'connexions-map'].includes(page)) return 'korhogo'

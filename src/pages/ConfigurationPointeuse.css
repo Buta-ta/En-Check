@@ -2064,3 +2064,18 @@
 
   .cp-seuil-saisie { justify-content: flex-start; }
 }
+
+/* ── 23. La note « sans grille » sous l'aperçu ─────────────────
+   Elle porte une distinction que le fondateur ne doit pas avoir à
+   deviner : la tolérance compare à un créneau, le plafond compare à
+   une durée absolue. Sans grille, la première se tait, la seconde
+   continue d'agir. Filet fin, pas d'encadré : c'est une note, pas
+   une alerte — la mettre en boîte lui donnerait trop de poids. */
+.cp-seuil-note-grille {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--cp-ligne);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--cp-coton-doux);
+}

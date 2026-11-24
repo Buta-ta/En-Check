@@ -20,16 +20,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowDown, ArrowLeft, ArrowUp, ArrowUpRight, CheckCircle2, Film,
-  Image as ImageIcon, Megaphone, Pause, Pencil, Play, Power,
-  RefreshCw, Repeat, SkipBack, SkipForward, Sun, Moon,
+  Image as ImageIcon, Megaphone, Pencil, Power, RefreshCw, Repeat, Sun, Moon,
   Trash2, Upload, Users,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
-import PageCulturalBand from '../components/PageCulturalBand'
 import { AbomeyBlasonSvg, AbomeyCoinSvg } from '../components/AbomeySvg'
-import RaccourcisPages from '../components/RaccourcisPages'
 import AdminExplication from '../components/AdminExplication'
+import EcranApercu from '../components/EcranApercu'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
 import { currentAdminAccount, accountRpc } from '../services/adminAccounts'
 import './AdminAccounts.css'
@@ -95,14 +93,17 @@ export default function AnnoncesAccueil() {
   const { darkMode, toggleTheme } = useTheme()
   const { ensureMfa, challenge } = useAdminMfaCheckpoint()
 
-  const [me, setMe] = useState(null)
   const [enterprises, setEnterprises] = useState([])
   const [entreprise, setEntreprise] = useState('')
   const [annonces, setAnnonces] = useState(null) // null = non chargé
   const [journal, setJournal] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [view, setView] = useState('medias')
+  //  La page s'ouvre sur l'APERÇU : c'est la vue de la maquette retenue, et
+  //  c'est la plus utile — on voit d'emblée ce que l'employé verra, avec la
+  //  liste de ce qui est en ligne à côté. « Médias » reste à un clic, pour
+  //  le formulaire complet et les cinq actions de chaque ligne.
+  const [view, setView] = useState('apercu')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState(null)
 
@@ -118,11 +119,17 @@ export default function AnnoncesAccueil() {
   const [publier, setPublier] = useState(true)
   const [enEdition, setEnEdition] = useState(null)
   const [ordonne, setOrdonne] = useState(1)
+  // Le titre de l'annonce : c'est lui que la carte « Mes medias » montre
+  // en premier. Vide = pas de titre en base (NULL), l'affichage retombe
+  // sur le libelle du type.
+  const [titre, setTitre] = useState('')
   const [confirmationSuppression, setConfirmationSuppression] = useState(null)
 
   // aperçu carrousel
   const [previewIndex, setPreviewIndex] = useState(0)
-  const [lecture, setLecture] = useState(true)
+  // la maquette A n'a pas de bouton pause : l'ecran d'apercu avance toujours.
+  // `lecture` reste constant pour l'effet du carrousel.
+  const lecture = true
 
   const epoch = useRef(0)
   const lock = useRef(false)
@@ -155,7 +162,6 @@ export default function AnnoncesAccueil() {
         .limit(500)
       if (comps.error) throw comps.error
       if (req !== epoch.current) return
-      setMe(actor)
       setEnterprises(comps.data || [])
       setEntreprise((prev) => prev || (comps.data || [])[0]?.id || '')
     } catch (e) {
@@ -256,7 +262,7 @@ export default function AnnoncesAccueil() {
     if (apercu) URL.revokeObjectURL(apercu)
     setFichier(null); setApercu(null); setApercuEst(null); setTypeMedia('')
     setAvertissement(''); setDuree(5); setDebuteLe(''); setTermineLe('')
-    setPublier(true); setEnEdition(null)
+    setPublier(true); setEnEdition(null); setTitre('')
     setOrdonne(Math.max(0, ...(annonces || []).map((a) => a.ordre_publication)) + 1)
     if (fileInput.current) fileInput.current.value = ''
   }
@@ -270,6 +276,7 @@ export default function AnnoncesAccueil() {
     setDebuteLe(pourChampDateTime(a.debute_le))
     setTermineLe(pourChampDateTime(a.termine_le))
     setPublier(a.is_active)
+    setTitre(a.titre || '')
   }
 
   // ── Publication / mise à jour (MFA AAL2 avant l'envoi) ──
@@ -316,6 +323,7 @@ export default function AnnoncesAccueil() {
         p_is_active: publier,
         p_debute_le: debuteLe ? new Date(debuteLe).toISOString() : null,
         p_termine_le: termineLe ? new Date(termineLe).toISOString() : null,
+        p_titre: titre.trim(),
       })
       if (res?.ok !== true) throw new Error('Publication refusée par le serveur.')
       // Le fichier remplacé est nettoyé par le RPC (plus de remove côté client).
@@ -437,16 +445,135 @@ export default function AnnoncesAccueil() {
     () => [...(annonces || [])].sort((x, y) => x.ordre_publication - y.ordre_publication),
     [annonces],
   )
-  const courantApercu = enLigne[Math.min(previewIndex, enLigne.length - 1)] || null
+
+  /*  Une ligne de media, avec TOUTES ses actions (monter, descendre,
+      modifier, activer, supprimer). Rendue a l'identique dans l'onglet Medias
+      (pleine largeur) et dans la colonne gauche de l'onglet Apercu (maquette
+      A) : une seule source, deux largeurs — aucune action ne se perd.
+
+      `variante === 'apercu'` ajoute le bouton d'action rond de la maquette et
+      empile statut / duree. Rien d'autre ne change. */
+  const renduLigne = (a, i, variante) => {
+    const Meta = TYPES[a.type]
+    const enApercu = variante === 'apercu'
+    return (
+    <div className={`aa-ann-media${enApercu ? ' est-apercu' : ''}`} key={a.id}>
+      <span className="aa-ann-vignette">
+        {a.type === 'video'
+          ? <video src={a.url} muted loop playsInline preload="metadata" />
+          : <img src={a.url} alt="" loading="lazy" />}
+        <span className="aa-ann-mini-t">{Meta ? Meta.libelle : a.type}</span>
+      </span>
+      <span className="aa-ann-media-infos">
+        {/*  Le TITRE d'abord : c'est ce qu'on lit en balayant la liste.
+            Sans titre (les annonces posees avant la colonne), on retombe sur
+            le libelle du type — jamais sur une ligne vide. */}
+        <span className={`aa-ann-titre-media${a.titre ? '' : ' est-sans-titre'}`}>
+          {a.titre || (Meta ? Meta.libelle : a.type)}
+        </span>
+        <span className="aa-ann-media-ligne1">
+          <span className="aa-ann-ordre-n">{a.ordre_publication}°</span>
+          <span className={`aa-ann-puce st-${a.statut}`}>
+            <span className="aa-ann-pastille" aria-hidden="true" />
+            {STATUTS[a.statut] || a.statut}
+          </span>
+          {enApercu ? (
+            <span className="aa-ann-empile">
+              <span>{Math.round(a.duree_affichage_ms / 1000)} s</span>
+              {/*  deux gestes, comme la maquette : le crayon ouvre l'editeur
+                  au clavier, le bouton rond est la cible large. */}
+              <button
+                type="button"
+                className="aa-ann-crayon"
+                title="Modifier"
+                aria-label="Modifier"
+                disabled={busy}
+                onClick={() => ouvrirEdition(a)}
+              >
+                <Pencil size={13} />
+              </button>
+              {/*  Le bouton rond fait ce qu'aucun autre bouton ne peut faire
+                  depuis cette colonne : SORTIR le media de sa place dans le
+                  carrousel. Un media desactive reste visible ici — c'est la
+                  maquette, et c'est juste : on voit ce qu'on vient de retirer. */}
+              <button
+                type="button"
+                className={`aa-ann-ouvrir${a.is_active ? '' : ' est-retire'}`}
+                title={a.is_active ? 'Retirer du carrousel' : 'Remettre dans le carrousel'}
+                aria-label={a.is_active ? 'Retirer du carrousel' : 'Remettre dans le carrousel'}
+                disabled={busy}
+                onClick={() => basculer(a)}
+              >
+                {a.is_active ? <ArrowUpRight size={14} /> : <Power size={14} />}
+              </button>
+            </span>
+          ) : (
+            <span>{Math.round(a.duree_affichage_ms / 1000)} s</span>
+          )}
+        </span>
+        {!enApercu && (
+        <span className="aa-ann-media-detail">
+          {Meta ? Meta.libelle : a.type}
+          {a.debute_le !== 'null' ? ` · depuis ${fmtDate(a.debute_le)}` : ''}
+          {a.termine_le !== 'null' ? ` · jusqu’au ${fmtDate(a.termine_le)}` : ''}
+          {a.publie_le !== 'null' ? ` · publiée le ${fmtDate(a.publie_le)}` : ''}
+        </span>
+        )}
+      </span>
+      <span className="aa-ann-media-actions">
+        <button type="button" title="Monter dans l’ordre" aria-label="Monter dans l’ordre" disabled={busy || i === 0} onClick={() => deplacer(a, -1)}>
+          <ArrowUp size={14} />
+        </button>
+        <button type="button" title="Descendre dans l’ordre" aria-label="Descendre dans l’ordre" disabled={busy || i === triees.length - 1} onClick={() => deplacer(a, 1)}>
+          <ArrowDown size={14} />
+        </button>
+        <button type="button" title="Modifier" aria-label="Modifier" disabled={busy} onClick={() => ouvrirEdition(a)}>
+          <Pencil size={14} />
+        </button>
+        <button
+          type="button"
+          title={a.is_active ? 'Désactiver' : 'Activer'}
+          aria-label={a.is_active ? 'Désactiver' : 'Activer'}
+          disabled={busy}
+          onClick={() => basculer(a)}
+        >
+          <Power size={14} />
+        </button>
+        {confirmationSuppression === a.id ? (
+          <button type="button" className="est-confirm" disabled={busy} onClick={() => supprimer(a)}>
+            Confirmer la suppression
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="est-danger"
+            title="Supprimer"
+            aria-label="Supprimer"
+            disabled={busy}
+            onClick={() => {
+              setConfirmationSuppression(a.id)
+              window.setTimeout(() => setConfirmationSuppression((c) => (c === a.id ? null : c)), 5000)
+            }}
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </span>
+    </div>
+    )
+  }
 
   if (challenge) return challenge
 
   return (
     <main className={`aa-page aa-register ${darkMode ? 'aa-dark' : ''}`}>
-      {/* ═══ LA BANDE TISSÉE — pleine largeur, haute ═══ */}
-      <div className="aa-bande">
-        <PageCulturalBand pathname="/annonces-accueil" />
-      </div>
+      {/* ═══ LA BANDE DE BOGOLAN — pleine largeur ═══
+          Cette page n'avait aucun motif dans `culturalMotifForPath` : elle
+          tombait sur le kente par defaut. Or elle alimente l'ACCUEIL, qui porte
+          le bogolan (CHARTE §1.2). Une page qui nourrit l'accueil ne peut pas
+          porter un autre tissu que lui. Images du depot, jamais un SVG
+          reinvente — technique de la page Equipes. */}
+      <div className="aa-bande aa-bande--bogolan" aria-hidden="true" />
 
       <div className="aa-grille">
         <div className="aa-colonne">
@@ -494,11 +621,10 @@ export default function AnnoncesAccueil() {
             </div>
           </header>
 
-          {/* ── Les raccourcis ── */}
-          <div className="aa-raccourcis">
-            <span className="aa-raccourcis-libelle">Aller à</span>
-            <RaccourcisPages compact excludePaths={['/annonces-accueil', '/mon-compte']} />
-          </div>
+          {/* ── PAS DE RACCOURCIS ICI ──
+              « Enleve les raccourcis » : la rangee « Aller a » est retiree. Ces
+              raccourcis appartiennent aux tableaux de bord, pas a une page de
+              reglage — ici ils volaient la premiere ligne de contenu. */}
 
           {error ? (
             <div role="alert" className="aa-panel">
@@ -665,6 +791,25 @@ export default function AnnoncesAccueil() {
                           </div>
                         )}
 
+                        {/*  LE TITRE — c'est le nom que l'admin lira dans
+                            « Mes medias ». 80 caracteres : au-dela, l'affichage
+                            de la carte le tronque de toute facon. Facultatif :
+                            sans titre, la liste montre le type du media. */}
+                        <label className="aa-ann-champ-titre">
+                          Titre de l’annonce
+                          <input
+                            type="text"
+                            value={titre}
+                            maxLength={80}
+                            disabled={busy}
+                            placeholder="Ex. : Menu du jour, Consignes de sécurité…"
+                            onChange={(e) => setTitre(e.target.value)}
+                          />
+                          <small className="aa-ann-titre-compte">
+                            {titre.trim().length} / 80
+                          </small>
+                        </label>
+
                         <div className="aa-ann-grille-champs">
                           <label>
                             Durée d’affichage (secondes)
@@ -749,140 +894,68 @@ export default function AnnoncesAccueil() {
                         Aucune annonce pour cette entreprise. L’en-tête Pointage affiche la photo par défaut.
                       </p>
                     ) : (
-                      triees.map((a, i) => {
-                        const Meta = TYPES[a.type]
-                        return (
-                          <div className="aa-ann-media" key={a.id}>
-                            <span className="aa-ann-vignette">
-                              {a.type === 'video'
-                                ? <video src={a.url} muted loop playsInline preload="metadata" />
-                                : <img src={a.url} alt="" loading="lazy" />}
-                              <span className="aa-ann-mini-t">{Meta ? Meta.libelle : a.type}</span>
-                            </span>
-                            <span className="aa-ann-media-infos">
-                              <span className="aa-ann-media-ligne1">
-                                <span className="aa-ann-ordre-n">{a.ordre_publication}°</span>
-                                <span className={`aa-ann-puce st-${a.statut}`}>
-                                  <span className="aa-ann-pastille" aria-hidden="true" />
-                                  {STATUTS[a.statut] || a.statut}
-                                </span>
-                                <span>{Math.round(a.duree_affichage_ms / 1000)} s</span>
-                              </span>
-                              <span className="aa-ann-media-detail">
-                                {Meta ? Meta.libelle : a.type}
-                                {a.debute_le !== 'null' ? ` · depuis ${fmtDate(a.debute_le)}` : ''}
-                                {a.termine_le !== 'null' ? ` · jusqu’au ${fmtDate(a.termine_le)}` : ''}
-                                {a.publie_le !== 'null' ? ` · publiée le ${fmtDate(a.publie_le)}` : ''}
-                              </span>
-                            </span>
-                            <span className="aa-ann-media-actions">
-                              <button type="button" title="Monter dans l’ordre" aria-label="Monter dans l’ordre" disabled={busy || i === 0} onClick={() => deplacer(a, -1)}>
-                                <ArrowUp size={14} />
-                              </button>
-                              <button type="button" title="Descendre dans l’ordre" aria-label="Descendre dans l’ordre" disabled={busy || i === triees.length - 1} onClick={() => deplacer(a, 1)}>
-                                <ArrowDown size={14} />
-                              </button>
-                              <button type="button" title="Modifier" aria-label="Modifier" disabled={busy} onClick={() => ouvrirEdition(a)}>
-                                <Pencil size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                title={a.is_active ? 'Désactiver' : 'Activer'}
-                                aria-label={a.is_active ? 'Désactiver' : 'Activer'}
-                                disabled={busy}
-                                onClick={() => basculer(a)}
-                              >
-                                <Power size={14} />
-                              </button>
-                              {confirmationSuppression === a.id ? (
-                                <button type="button" className="est-confirm" disabled={busy} onClick={() => supprimer(a)}>
-                                  Confirmer la suppression
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="est-danger"
-                                  title="Supprimer"
-                                  aria-label="Supprimer"
-                                  disabled={busy}
-                                  onClick={() => {
-                                    setConfirmationSuppression(a.id)
-                                    window.setTimeout(() => setConfirmationSuppression((c) => (c === a.id ? null : c)), 5000)
-                                  }}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              )}
-                            </span>
-                          </div>
-                        )
-                      })
+                      triees.map((a, i) => renduLigne(a, i))
                     )}
                   </section>
                 </>
               )}
 
               {view === 'apercu' && (
-                <section className="aa-panel" aria-label="Aperçu du carrousel">
-                  <div className="aa-ann-cadre">
+                /*  LA MAQUETTE A RETENUE — la liste a gauche, l'ecran a droite.
+                    On voit ce qu'on a publie ET ce que l'employe verra, dans le
+                    meme regard. L'ecran est une tablette posee sur la page, pas
+                    la page dans une tablette. */
+                <div className="aa-apercu">
+                  <section className="aa-apercu-liste" aria-label="Médias en ligne">
+                    <div className="aa-apercu-liste-tete">
+                      <strong>Mes médias</strong>
+                      <small>{enLigne.length} en ligne</small>
+                    </div>
                     {enLigne.length === 0 ? (
-                      <div className="aa-ann-vide">
-                        <ImageIcon size={34} />
-                        <span>
-                          Aucune annonce en ligne pour cette entreprise.<br />
-                          L’app Pointage affiche la photo par défaut.
-                        </span>
-                      </div>
+                      <p className="aa-apercu-vide">
+                        Aucune annonce en ligne pour cette entreprise.<br />
+                        La borne affiche la photo par defaut.
+                      </p>
                     ) : (
-                      <>
+                      enLigne.map((a, i) => renduLigne(a, i, 'apercu'))
+                    )}
+                  </section>
+
+                  <div className="aa-apercu-ecran">
+                    <EcranApercu
+                      medias={enLigne}
+                      index={Math.min(previewIndex, Math.max(0, enLigne.length - 1))}
+                      vide={enLigne.length === 0}
+                      onPrecedent={() =>
+                        setPreviewIndex((i) => (i - 1 + enLigne.length) % enLigne.length)
+                      }
+                      onSuivant={() =>
+                        setPreviewIndex((i) => (i + 1) % enLigne.length)
+                      }
+                    />
+
+                    {enLigne.length > 1 && (
+                      <div className="aa-apercu-pellicule" role="group" aria-label="Choisir le média">
                         {enLigne.map((a, i) => (
-                          <div
+                          <button
                             key={a.id}
-                            className={`aa-ann-slide${i === Math.min(previewIndex, enLigne.length - 1) ? ' is-visible' : ''}`}
-                            aria-hidden={i !== Math.min(previewIndex, enLigne.length - 1)}
+                            type="button"
+                            className={`aa-apercu-mini${i === Math.min(previewIndex, enLigne.length - 1) ? ' est-active' : ''}`}
+                            onClick={() => setPreviewIndex(i)}
+                            aria-label={`Afficher le média ${i + 1}`}
+                            aria-pressed={i === Math.min(previewIndex, enLigne.length - 1)}
                           >
-                            {a.type === 'video'
-                              ? <video src={a.url} autoPlay muted loop playsInline />
-                              : <img src={a.url} alt="" />}
-                          </div>
+                            {a.type === 'video' ? (
+                              <video src={a.url} muted playsInline />
+                            ) : (
+                              <img src={a.url} alt="" />
+                            )}
+                          </button>
                         ))}
-                        <span className="aa-ann-compteur">
-                          {Math.min(previewIndex, enLigne.length - 1) + 1} / {enLigne.length}
-                        </span>
-                        {enLigne.length > 1 && courantApercu && (
-                          <span
-                            key={`p-${previewIndex}`}
-                            className="aa-ann-progress"
-                            style={{ animationDuration: `${courantApercu.duree_affichage_ms || 5000}ms`, animationPlayState: lecture ? 'running' : 'paused' }}
-                          />
-                        )}
-                      </>
+                      </div>
                     )}
                   </div>
-                  {enLigne.length > 1 && (
-                    <div className="aa-ann-controles" role="group" aria-label="Contrôles de l’aperçu">
-                      <button type="button" onClick={() => setPreviewIndex((i) => (i - 1 + enLigne.length) % enLigne.length)}>
-                        <SkipBack size={15} />
-                        <span>Précédent</span>
-                      </button>
-                      <button type="button" className="principal" onClick={() => setLecture((v) => !v)}>
-                        {lecture ? <Pause size={16} /> : <Play size={16} />}
-                        <span>{lecture ? 'Pause' : 'Lecture'}</span>
-                      </button>
-                      <button type="button" onClick={() => setPreviewIndex((i) => (i + 1) % enLigne.length)}>
-                        <SkipForward size={15} />
-                        <span>Suivant</span>
-                      </button>
-                    </div>
-                  )}
-                  <p className="aa-ann-attente">
-                    {enLigne.length === 0
-                      ? 'Aucune annonce en ligne : l’app affiche la photo par défaut.'
-                      : enLigne.length === 1
-                        ? 'Un seul média : affichage fixe, sans rotation — c’est ce que verra l’app.'
-                        : `Simulation du carrousel de l’app : chaque média s’affiche ${Math.round((courantApercu?.duree_affichage_ms || 5000) / 1000)} s. Utilisez Précédent, Pause et Suivant pour tester la rotation.`}
-                  </p>
-                </section>
+                </div>
               )}
 
               {view === 'journal' && (
