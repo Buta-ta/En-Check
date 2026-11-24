@@ -120,9 +120,11 @@ Le style vit dans la feuille d'Absences, **sans préfixe de page** :
    **onglets de section** (`{absences.length}`, `src/pages/Absences.jsx:1826`). Le poser sur
    le rabat = soit le dupliquer, soit le déplacer hors des onglets — décision à prendre, pas
    une ligne à écrire.
-2. **Le composant est partagé par 17 pages.** Lui ajouter un compteur le ferait pousser
-   partout ou nulle part ; il faudrait une prop nouvelle (`comptes={{ '/absences': n }}`)
-   et la câbler ici seulement.
+2. **Le composant est partagé par 15 écrans** — mesuré ce tour-ci : 15 fichiers montent
+   `<RaccourcisPages>` (Absences et 14 autres), et 11 feuilles CSS touchent déjà
+   `.abs-raccourci*` pour les habiller. Lui ajouter un compteur en dur le ferait pousser
+   partout ou nulle part ; il a donc fallu une prop neuve et optionnelle
+   (`comptes={{ '/absences': n }}`), câblée ici seulement — c'est ce que fait §E.5.
 3. **Le motif de la page est déjà bogolan** depuis #327 (`src/components/culturalMotif.js:41`
    renvoie `'bogolan'` pour `absences`) : la lisière de la maquette n'invente rien, elle
    **déplace** l'usage du motif — de `placement="cadre"` vers une bande basse de section.
@@ -183,7 +185,8 @@ option de gauche. Ce qui a été écrit, dans les trois seuls fichiers de la pag
    Et le rabat du jour n'efface pas le tissu (§D encore) : il descend de 2 px de plus que ses
    voisines — une crête — et c'est la lisière qui passe PAR-DESSUS lui, pas l'inverse. Le motif
    reste entier sous les six papiers, qui sont pendus et non posés.
-   quatre derniers d'un demi-rabat (§D).
+4. **Une seule ligne de base pour les six rabats** : le dessin avait décalé les quatre
+   derniers d'un demi-rabat (§D).
 5. **Teintes** : tout passe par les tokens de la page (`--abs-*`, `--charte-*`), aucune
    couleur d'image n'est recopiée en dur — la maquette est plus chaude que la charte,
    c'est §D encore.
