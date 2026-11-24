@@ -476,15 +476,31 @@ export default function AnnoncesAccueil() {
           {enApercu ? (
             <span className="aa-ann-empile">
               <span>{Math.round(a.duree_affichage_ms / 1000)} s</span>
+              {/*  deux gestes, comme la maquette : le crayon ouvre l'editeur
+                  au clavier, le bouton rond est la cible large. */}
               <button
                 type="button"
-                className="aa-ann-ouvrir"
-                title="Ouvrir dans l'editeur"
-                aria-label="Ouvrir dans l'editeur"
+                className="aa-ann-crayon"
+                title="Modifier"
+                aria-label="Modifier"
                 disabled={busy}
                 onClick={() => ouvrirEdition(a)}
               >
-                <ArrowUpRight size={14} />
+                <Pencil size={13} />
+              </button>
+              {/*  Le bouton rond fait ce qu'aucun autre bouton ne peut faire
+                  depuis cette colonne : SORTIR le media de sa place dans le
+                  carrousel. Un media desactive reste visible ici — c'est la
+                  maquette, et c'est juste : on voit ce qu'on vient de retirer. */}
+              <button
+                type="button"
+                className={`aa-ann-ouvrir${a.is_active ? '' : ' est-retire'}`}
+                title={a.is_active ? 'Retirer du carrousel' : 'Remettre dans le carrousel'}
+                aria-label={a.is_active ? 'Retirer du carrousel' : 'Remettre dans le carrousel'}
+                disabled={busy}
+                onClick={() => basculer(a)}
+              >
+                {a.is_active ? <ArrowUpRight size={14} /> : <Power size={14} />}
               </button>
             </span>
           ) : (

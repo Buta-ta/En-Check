@@ -790,3 +790,35 @@
   color: var(--charte-douce);
   text-align: right;
 }
+
+/* le crayon, à côté du bouton rond : même famille de papier, plus petit */
+.aa-register .aa-ann-crayon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--charte-douce);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.aa-register .aa-ann-crayon:hover:not(:disabled) {
+  color: var(--charte-encre);
+  background-color: var(--charte-surface2);
+}
+
+.aa-register .aa-ann-crayon:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-aplat);
+  outline-offset: 1px;
+}
+
+/* un média retiré du carrousel se voit : la ligne est en retrait, et le
+   bouton rond propose de le remettre. On ne cache pas ce qu'on a retiré. */
+.aa-page .aa-ann-media.est-apercu .aa-ann-ouvrir.est-retire {
+  color: var(--charte-douce);
+  background-color: var(--charte-surface2);
+}
