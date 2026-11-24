@@ -731,11 +731,18 @@ export default function AnnoncesAccueil() {
               {view === 'medias' && (
                 <>
                   {/* ── Le formulaire ── */}
-                  <section className="aa-panel aa-workflow" aria-label={enEdition ? 'Modifier l’annonce' : 'Ajouter une annonce'}>
+                  <section className="aa-workflow aa-ann-atelier" aria-label={enEdition ? 'Modifier l’annonce' : 'Ajouter une annonce'}>
                     <details onToggle={(e) => { if (!e.currentTarget.open) viderForm() }}>
                       <summary>{enEdition ? 'Modifier l’annonce choisie' : `Ajouter un média (${MAX_ANNONCES - (annonces || []).length} place${MAX_ANNONCES - (annonces || []).length > 1 ? 's' : ''} restante${MAX_ANNONCES - (annonces || []).length > 1 ? 's' : ''})`}</summary>
                       <div className="aa-ann-forme">
-                        <label className="aa-ann-upload">
+                        {/* ═══ FEUILLET 1 — LE MÉDIA ═══
+                            Maquette B (26/11) : le formulaire se coupe en deux
+                            feuillets à onglet. Celui-ci ne porte qu'une chose,
+                            la pièce jointe — c'est le geste qu'on fait en
+                            premier, et il mérite la place. */}
+                        <div className="aa-ann-feuillet aa-ann-feuillet--media">
+                          <span className="aa-ann-feuillet-onglet" aria-hidden="true">Le média</span>
+                          <label className="aa-ann-upload">
                           <input
                             ref={fileInput}
                             type="file"
@@ -760,7 +767,13 @@ export default function AnnoncesAccueil() {
                                 : <img src={apercu} alt="" />}
                             </span>
                           )}
-                        </label>
+                          </label>
+                          <p className="aa-ann-feuillet-rappel">16:9 recommandé · largeur ≤ 1600 px</p>
+                        </div>
+
+                        {/* ═══ FEUILLET 2 — LA DIFFUSION ═══ */}
+                        <div className="aa-ann-feuillet aa-ann-feuillet--diffusion">
+                          <span className="aa-ann-feuillet-onglet" aria-hidden="true">La diffusion</span>
 
                         {avertissement && (
                           <div role="alert" className="aa-ann-notice ton-alerte">
@@ -841,14 +854,23 @@ export default function AnnoncesAccueil() {
                           Publier immédiatement (sinon rangée inactive, à activer plus tard)
                         </label>
 
+                        {/*  LES RÈGLES, DANS LE PIED DU FEUILLET — maquette B :
+                            un bandeau plus sombre, au ras du bas du papier.
+                            Elles ne se lisent pas au même moment que les
+                            champs ; les mêler au formulaire les faisait passer
+                            pour des consignes à remplir. */}
                         <dl className="aa-ann-regles" aria-label="Règles des fichiers">
                           <div><dt>Image</dt><dd>JPEG · PNG · WebP — ≤ 500 Ko</dd></div>
                           <div><dt>GIF</dt><dd>animé — ≤ 2 Mo · ≤ 30 s</dd></div>
                           <div><dt>Vidéo</dt><dd>MP4 · MOV muette — ≤ 5 Mo · ≤ 30 s</dd></div>
-                          <div><dt>Durée</dt><dd>{DUREE_MIN} à {DUREE_MAX} s par média · max {MAX_ANNONCES} par entreprise</dd></div>
-                          <div><dt>Format</dt><dd>16:9 recommandé (recadrage sinon) · largeur ≤ 1600 px</dd></div>
+                          <div><dt>Durée</dt><dd>{DUREE_MIN} à {DUREE_MAX} s par média · max {MAX_ANNONCES}</dd></div>
                         </dl>
+                        </div>
 
+                        {/*  L'ENVOI SORT DES FEUILLETS — maquette B : le bouton
+                            est posé sous le papier, à droite. C'est l'acte qui
+                            engage les deux feuillets à la fois ; le mettre dans
+                            l'un d'eux aurait dit le contraire. */}
                         <div className="aa-ann-envoi">
                           <button type="button" className="aa-primary" disabled={!peutEnvoyer || busy} onClick={envoyer}>
                             {busy ? 'Publication en cours…' : enEdition ? 'Enregistrer les modifications' : 'Publier'}

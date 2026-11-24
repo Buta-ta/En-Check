@@ -1106,3 +1106,397 @@
 .aa-page .aa-tabs > button[aria-pressed='true'] {
   color: var(--charte-encre);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🧵 L'ATELIER — les deux feuillets du formulaire (maquette B, 26/11)
+
+   « je choisis le B. et je veux que le résultat soit exactement comme ça. »
+
+   Ce qui fait la maquette, et qu'on reprend trait pour trait :
+     · deux papiers côte à côte, chacun sous son ONGLET DE DOSSIER terracotta
+     · à gauche, une zone d'envoi CARRÉE, grande, au trait tirété
+     · à droite, les champs de diffusion
+     · les règles descendent dans un BANDEAU plus sombre, au ras du bas
+     · le bouton d'envoi sort des feuillets et se pose dessous, à droite
+
+   Aucun `drop-shadow`, aucun rayon hors échelle, aucun hexadécimal.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* la section ne porte plus `aa-panel` : ce sont les feuillets, eux, qui sont
+   le papier. Le résumé reste, c'est lui qu'on ouvre et qu'on ferme. */
+.aa-page .aa-ann-atelier {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.aa-page .aa-ann-atelier > details {
+  padding: 0;
+  border-top: 0;
+}
+
+.aa-page .aa-ann-atelier > details > summary {
+  padding: 6px 0 10px;
+  font-family: var(--charte-police);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+
+/* ── LA GRILLE DES DEUX FEUILLETS ─────────────────────────────────────────
+   Deux colonnes égales. Sous 900 px, une seule : un formulaire ne se coupe
+   pas en deux sur un écran qui n'a pas la place. */
+.aa-page .aa-ann-atelier .aa-ann-forme {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+  padding-top: 20px;
+}
+
+/* ── LE FEUILLET ──────────────────────────────────────────────────────────
+   Un papier, son onglet. Le coin bas-droit est plié, comme la maquette. */
+.aa-page .aa-ann-feuillet {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-top: 24px;
+  padding: 20px 20px 0;
+  background-color: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0 0 var(--charte-rayon-badge) 0;
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* l'onglet de dossier : deux coins hauts arrondis, il déborde du papier */
+.aa-page .aa-ann-feuillet-onglet {
+  position: absolute;
+  top: -25px;
+  left: -2px;
+  display: inline-flex;
+  align-items: flex-end;
+  height: 27px;
+  padding: 0 20px 5px;
+  background-color: var(--charte-aplat);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-bottom: 0;
+  border-radius: var(--charte-rayon-badge) var(--charte-rayon-badge) 0 0;
+  font-family: var(--charte-police);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--charte-blanc);
+  white-space: nowrap;
+}
+
+/* le pli du coin bas-droit : le rabat, son trait de pliure, rien d'autre */
+.aa-page .aa-ann-feuillet::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  background-image: linear-gradient(
+    to top right,
+    transparent 0 50%,
+    var(--charte-encre) 50% 56%,
+    color-mix(in srgb, var(--charte-blanc) 55%, var(--charte-surface)) 56%
+  );
+  pointer-events: none;
+}
+
+/* ── FEUILLET 1 · LA ZONE D'ENVOI, CARRÉE ─────────────────────────────────
+   La maquette B la veut haute et carrée, avec son icône au centre. C'est le
+   seul endroit de la page où l'on dépose une pièce : il doit se voir. */
+.aa-page .aa-ann-feuillet--media .aa-ann-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex: 1;
+  min-height: 300px;
+  padding: 24px 18px;
+  text-align: center;
+  border: var(--charte-trait) dashed var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background-color: color-mix(in srgb, var(--charte-surface2) 32%, var(--charte-surface));
+}
+
+.aa-page .aa-ann-feuillet--media .aa-ann-upload:hover {
+  background-color: color-mix(in srgb, var(--charte-surface2) 55%, var(--charte-surface));
+  border-color: var(--charte-aplat);
+}
+
+.aa-page .aa-ann-feuillet--media .aa-ann-upload-icone {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  flex: none;
+  border-radius: var(--charte-rayon-pilule);
+  background-color: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  color: var(--charte-encre);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+
+.aa-page .aa-ann-feuillet--media .aa-ann-upload-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.aa-page .aa-ann-feuillet--media .aa-ann-upload-texte strong {
+  font-family: var(--charte-police);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--charte-encre);
+  overflow-wrap: anywhere;
+}
+
+.aa-page .aa-ann-feuillet--media .aa-ann-upload-texte small {
+  font-family: var(--charte-police);
+  font-size: 12.5px;
+  color: var(--charte-douce);
+}
+
+/* la vignette de contrôle, quand un fichier est choisi */
+.aa-page .aa-ann-feuillet--media .aa-ann-upload-apercu {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface2);
+}
+
+.aa-page .aa-ann-feuillet--media .aa-ann-upload-apercu img,
+.aa-page .aa-ann-feuillet--media .aa-ann-upload-apercu video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* le rappel de format, sous la zone : discret, jamais un champ */
+.aa-page .aa-ann-feuillet-rappel {
+  margin: 12px 0 16px;
+  font-family: var(--charte-police);
+  font-size: 11.5px;
+  text-align: center;
+  color: var(--charte-douce);
+}
+
+/* ── FEUILLET 2 · LA DIFFUSION ────────────────────────────────────────────
+   Les champs reprennent la peau des champs (contour 2 px, rayon 6), et les
+   étiquettes passent au-dessus, en gras. */
+.aa-page .aa-ann-feuillet--diffusion label {
+  display: grid;
+  gap: 6px;
+  font-family: var(--charte-police);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--charte-douce);
+}
+
+.aa-page .aa-ann-feuillet--diffusion input[type='text'],
+.aa-page .aa-ann-feuillet--diffusion input[type='number'],
+.aa-page .aa-ann-feuillet--diffusion input[type='datetime-local'] {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  font-family: var(--charte-police);
+  font-size: 13px;
+  color: var(--charte-encre);
+  background-color: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+}
+
+.aa-page .aa-ann-feuillet--diffusion input:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-aplat);
+  outline-offset: 2px;
+}
+
+.aa-page .aa-ann-feuillet--diffusion .aa-ann-champ-titre {
+  margin-bottom: 14px;
+}
+
+.aa-page .aa-ann-feuillet--diffusion .aa-ann-titre-compte {
+  margin-top: 2px;
+  font-size: 10.5px;
+  text-align: right;
+  color: var(--charte-douce);
+}
+
+/* les quatre champs : deux colonnes, pas quatre — le feuillet est étroit */
+.aa-page .aa-ann-feuillet--diffusion .aa-ann-grille-champs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+  margin-bottom: 16px;
+}
+
+/* ── LA CASE À COCHER — un sceau, pas une case nue ────────────────────────
+   La maquette B la montre en carré plein avec sa coche crème. */
+.aa-page .aa-ann-feuillet--diffusion .aa-ann-case {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 18px;
+  font-family: var(--charte-police);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--charte-encre);
+  cursor: pointer;
+}
+
+.aa-page .aa-ann-feuillet--diffusion .aa-ann-case input {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  margin: 1px 0 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 4px;
+  background-color: var(--charte-surface);
+  cursor: pointer;
+}
+
+.aa-page .aa-ann-feuillet--diffusion .aa-ann-case input:checked {
+  background-color: var(--charte-encre);
+  /* la coche : deux traits crème, dessinés en dégradés */
+  background-image:
+    linear-gradient(45deg, transparent 44%, var(--charte-blanc) 44% 56%, transparent 56%),
+    linear-gradient(-45deg, transparent 44%, var(--charte-blanc) 44% 56%, transparent 56%);
+  background-size: 62% 62%, 62% 62%;
+  background-position: 42% 58%, 58% 58%;
+  background-repeat: no-repeat;
+}
+
+/* ── LES RÈGLES — le bandeau de pied, plus sombre, au ras du bas ─────────── */
+.aa-page .aa-ann-feuillet--diffusion .aa-ann-regles {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin: auto -20px 0;
+  padding: 10px 20px 14px;
+  background-color: var(--charte-surface2);
+  border-top: var(--charte-trait) solid var(--charte-encre);
+}
+
+.aa-page .aa-ann-feuillet--diffusion .aa-ann-regles div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--charte-encre) 28%, transparent);
+}
+
+.aa-page .aa-ann-feuillet--diffusion .aa-ann-regles div:last-child {
+  border-bottom: 0;
+}
+
+.aa-page .aa-ann-feuillet--diffusion .aa-ann-regles dt {
+  font-family: var(--charte-police);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--charte-encre);
+  white-space: nowrap;
+}
+
+.aa-page .aa-ann-feuillet--diffusion .aa-ann-regles dd {
+  margin: 0;
+  font-family: var(--charte-police);
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--charte-douce);
+}
+
+/* ── L'ENVOI — sous les feuillets, à droite ──────────────────────────────── */
+.aa-page .aa-ann-atelier .aa-ann-envoi {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+/* le bouton : plein, capitales, double feutre — la seule action principale */
+.aa-page .aa-ann-atelier .aa-ann-envoi .aa-primary {
+  min-height: 42px;
+  padding: 0 22px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-aplat);
+  color: var(--charte-blanc);
+  font-family: var(--charte-police);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.aa-page .aa-ann-atelier .aa-ann-envoi .aa-primary:hover:not(:disabled) {
+  background-color: var(--charte-texte);
+}
+
+.aa-page .aa-ann-atelier .aa-ann-envoi .aa-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aa-page .aa-ann-atelier .aa-ann-envoi > button:not(.aa-primary) {
+  font-family: var(--charte-police);
+  font-size: 12.5px;
+  color: var(--charte-texte);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── écrans étroits ───────────────────────────────────────────────────────
+   Les deux feuillets s'empilent. L'onglet du second reprend sa place, sinon
+   il passerait sous le premier papier. */
+@media (max-width: 900px) {
+  .aa-page .aa-ann-atelier .aa-ann-forme {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+  }
+  .aa-page .aa-ann-feuillet--media .aa-ann-upload {
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 560px) {
+  .aa-page .aa-ann-feuillet {
+    padding: 16px 14px 0;
+  }
+  .aa-page .aa-ann-feuillet--diffusion .aa-ann-regles {
+    margin-inline: -14px;
+    padding-inline: 14px;
+  }
+  .aa-page .aa-ann-feuillet--diffusion .aa-ann-grille-champs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .aa-page .aa-ann-atelier .aa-ann-envoi {
+    justify-content: stretch;
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
