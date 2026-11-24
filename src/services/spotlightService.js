@@ -13,7 +13,31 @@ import { calculateEmployeeHours } from './hoursCalculator'
 import HolidayService from './holidayService'
 import Fuse from 'fuse.js'
 
+/**
+ * Recherche Spotlight — point d'entrée unique.
+ *
+ *  ⚠️ F5 : cette fonction est appelée à chaque frappe. Sans `try/catch`, la
+ *  moindre panne d'une source remontait en rejet non géré et cassait la
+ *  recherche en silence. On préfère une carte visible : l'utilisateur sait
+ *  alors que la recherche est en panne, au lieu de croire qu'il n'y a rien.
+ */
 export async function searchSpotlight(query, admin) {
+  try {
+    return await executerRecherche(query, admin)
+  } catch (erreur) {
+    console.error('searchSpotlight: recherche interrompue', erreur)
+    return [{
+      id: 'search-error',
+      type: 'action',
+      category: 'actions',
+      title: 'Recherche momentanément indisponible',
+      subtitle: 'Une source de données n’a pas répondu. Réessayez dans un instant.',
+      action: null,
+    }]
+  }
+}
+
+async function executerRecherche(query, admin) {
   const q = (query || '').trim()
   if (!q) return []
 
@@ -444,6 +468,16 @@ async function globalSearch(parsed, enterpriseId) {
   const searchTerm = parsed.searchTerm || ''
   if (searchTerm.length < 2) return []
 
+  //  Une source en panne ne doit pas se transformer en « aucun résultat ».
+  //  Si TOUTES échouent, on le dit (voir `searchSpotlight`) ; si une seule
+  //  échoue, on rend les autres et on garde la trace en console.
+  const echecs = []
+  const surErreur = (promesse, nom) => Promise.resolve(promesse).catch((erreur) => {
+    echecs.push(nom)
+    console.warn(`globalSearch: source « ${nom} » indisponible`, erreur)
+    return []
+  })
+
   const [
     employees,
     tasks,
@@ -454,15 +488,19 @@ async function globalSearch(parsed, enterpriseId) {
     geofences,
     payslips, // ✅ AJOUTÉ
   ] = await Promise.all([
-    searchEmployees({ type: 'EMPLOYEE_SEARCH', searchTerm, filters: {} }, enterpriseId).catch(() => []),
-    searchTasks({ type: 'TASK_SEARCH', filters: {} }, enterpriseId).catch(() => []),
-    searchTeams(enterpriseId, searchTerm).catch(() => []),
-    searchLeaveRequests(enterpriseId).catch(() => []),
-    searchScheduleRequests(enterpriseId).catch(() => []),
-    searchFaceEnrollments(enterpriseId).catch(() => []),
-    searchGeofences(enterpriseId, searchTerm).catch(() => []),
-    searchPayslips({ searchTerm }, enterpriseId).catch(() => []), // ✅ AJOUTÉ
+    surErreur(searchEmployees({ type: 'EMPLOYEE_SEARCH', searchTerm, filters: {} }, enterpriseId), 'employees'),
+    surErreur(searchTasks({ type: 'TASK_SEARCH', filters: {} }, enterpriseId), 'tasks'),
+    surErreur(searchTeams(enterpriseId, searchTerm), 'teams'),
+    surErreur(searchLeaveRequests(enterpriseId), 'leaveRequests'),
+    surErreur(searchScheduleRequests(enterpriseId), 'scheduleRequests'),
+    surErreur(searchFaceEnrollments(enterpriseId), 'faceEnrollments'),
+    surErreur(searchGeofences(enterpriseId, searchTerm), 'geofences'),
+    surErreur(searchPayslips({ searchTerm }, enterpriseId), 'payslips'),
   ])
+
+  if (echecs.length === 8) {
+    throw new Error('Toutes les sources de recherche sont indisponibles')
+  }
 
   return [
     ...employees.slice(0, 5),
