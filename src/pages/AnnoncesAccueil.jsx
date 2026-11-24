@@ -639,10 +639,15 @@ export default function AnnoncesAccueil() {
             </div>
           ) : (
             <>
-              {/* ── L'entreprise ciblée ── */}
-              <section className="aa-panel aa-ann-entreprise" aria-label="Entreprise ciblée">
-                <label className="aa-puce-select">
-                  <Megaphone size={13} />
+              {/* ── LA BARRE D'OUTILS ──
+                  La maquette B la montre comme une seule pièce de papier :
+                  le champ de choix de l'entreprise à gauche, le bouton
+                  ACTUALISER en terracotta plein au milieu, le lien d'aide à
+                  droite. Mon premier jet n'avait pas touché cette barre — elle
+                  gardait le vieux select à coins arrondis et le bouton pâle. */}
+              <section className="aa-panel aa-outils-annonces" aria-label="Entreprise ciblée">
+                <label className="aa-champ-entreprise">
+                  <Megaphone size={13} aria-hidden="true" />
                   <select
                     aria-label="Entreprise des annonces"
                     value={entreprise}
@@ -654,8 +659,13 @@ export default function AnnoncesAccueil() {
                     ))}
                   </select>
                 </label>
-                <button type="button" className="aa-recharge" disabled={busy || annonces === null} onClick={chargerAnnonces}>
-                  <RefreshCw size={13} />
+                <button
+                  type="button"
+                  className="aa-recharge"
+                  disabled={busy || annonces === null}
+                  onClick={chargerAnnonces}
+                >
+                  <RefreshCw size={13} aria-hidden="true" />
                   Actualiser
                 </button>
                 <AdminExplication titre="Comment ça marche sur l’app Pointage">

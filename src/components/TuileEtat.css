@@ -1,79 +1,47 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   🗂️ LA TUILE D'ÉTAT — papier arraché, double feutre, carré brodé
+   🗂️ LA TUILE D'ÉTAT — le papier scotché (maquette B)
 
-   Les valeurs ne sont pas choisies ici : elles viennent de `tokens.css`.
-     · contour        2 px  --charte-trait
-     · ombre dure     3 px  --charte-ombre-dure   (flou = 0, règle C9)
-     · rayons         le papier n'est pas arrondi : c'est une carte-post-it,
-                      et CARTE-POST-IT.md dit « coins 0 »
-     · colle          14 px  --tue-colle, comme la fiche employé
-     · pli            14 px  --tue-pli, la jambe du rabat bas-droit
+   Deuxième version. La première avait six écarts avec la maquette ; ils sont
+   listés dans `TuileEtat.jsx` et chacun a sa correction ici.
 
-   On n'ajoute AUCUN hexadécimal : tout passe par les jetons. Un hex brut est
-   une infraction d'audit (C1).
+   Les valeurs viennent de `tokens.css` — aucun hexadécimal (audit C1).
+   Aucun `clip-path` (il rognerait l'ombre), aucun `drop-shadow` (il floute),
+   aucun rayon supérieur à 12 px.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .tue {
-  /* la boîte locale : elle rend les nombres ci-dessous lisibles et permet de
-     les régler ensemble si la tuile change de gabarit */
-  --tue-colle: 14px;
+  --tue-colle: 0px;           /* pas de bande de colle : c'est du SCOTCH ici */
   --tue-pli: 14px;
-  --tue-debord: 6px;          /* la seconde feuille, sous la première */
-  --tue-applique: 38px;       /* le carré brodé */
-  --tue-gouttiere: 20px;      /* l'air entre le bord et le texte */
+  --tue-debord: 5px;
+  --tue-applique: 42px;
+  --tue-gouttiere: 22px;
+  --tue-dechire-h: 7px;
 
   position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 176px;
   margin: 0;
   padding: 0;
   border: var(--charte-trait) solid var(--charte-encre);
   border-radius: 0;
   background-color: var(--charte-surface);
   color: var(--charte-encre);
-  /* L'OMBRE DURE + LE DÉBORD DE PAPIER
-     La première ombre (7 % d'encre) simule la feuille du dessous ; la seconde,
-     pleine, en dessine le bord. Aucune n'a de flou. */
+  /*  L'OMBRE DURE, en deux passes : la feuille du dessous (7 % d'encre) puis
+      son bord plein. Aucune n'a de flou — C9. */
   box-shadow:
     var(--tue-debord) var(--tue-debord) 0 0
-      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
+      color-mix(in srgb, var(--charte-encre) 8%, var(--charte-surface)),
     calc(var(--tue-debord) + 2px) calc(var(--tue-debord) + 2px) 0 0
       var(--charte-encre);
-  /* le léger de travers, pour que trois papiers ne fassent pas un tableau */
   transform: rotate(var(--tue-inclinaison, 0deg));
   isolation: isolate;
-  /*  Trois papiers posés côte à côte : ils doivent s'aligner, même quand un
-      libellé prend deux lignes et pas les autres. `min-height` plutôt qu'une
-      hauteur fixe, pour que le contenu long puisse encore pousser. */
-  min-height: 172px;
 }
 
-/* ── la bande de colle, en haut ─────────────────────────────────────────────
-   Posée en `background-image` DANS son propre élément : un `background:` en
-   raccourci sur la tuile effacerait le motif (piège relevé deux fois sur la
-   page Équipes). */
-.tue-colle {
-  position: absolute;
-  z-index: 3;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--tue-colle);
-  pointer-events: none;
-  background-image: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--charte-blanc) 42%, transparent) 0
-      calc(var(--tue-colle) - 1px),
-    color-mix(in srgb, var(--charte-encre) 14%, transparent)
-      calc(var(--tue-colle) - 1px) var(--tue-colle),
-    transparent var(--tue-colle)
-  );
-}
-
-/* ── LE DOUBLE FEUTRE : le second trait, à l'intérieur ─────────────────────
-   C'est le trait qui doit « se voir ». Il court à 6 px du bord, sur tout le
-   tour. `pointer-events: none` : c'est de l'encre, pas un cadre cliquable. */
+/* ── LE DOUBLE FEUTRE ───────────────────────────────────────────────────────
+   Le second trait, à l'intérieur. C'est lui qui doit « se voir » : la demande
+   était explicite (« je veux voir ces formes là bien double feutrés »). */
 .tue::before {
   content: '';
   position: absolute;
@@ -81,28 +49,18 @@
   inset: 6px;
   border: 1.5px solid var(--charte-encre);
   pointer-events: none;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
-/* ── LE PLI, au coin bas droit ─────────────────────────────────────────────
-   La recette de `FicheEmployeModal.css`, à l'identique : UN SEUL triangle, au
-   coin, qui porte à la fois la découpe et le rabat.
-
-   Le dégradé se lit de bas-gauche vers haut-droite :
-     · 0 → 44 %   le dos de la feuille (plus clair que le papier) : LE RABAT
-     · 44 → 50 %  le trait de pliure, en encre
-     · au-delà    transparent : la feuille reste pleine
-
-   Jamais `clip-path` : il rognerait l'ombre, et CARTE-POST-IT.md l'interdit
-   nommément. Jamais `drop-shadow` non plus — il floute.
-   Le pli ne rogne AUCUN contenu : la boîte de texte réserve déjà `--tue-pli`
-   en bas (voir `.tue-corps`). */
+/* ── LE PLI, coin bas-droit ────────────────────────────────────────────────
+   Un seul triangle : le rabat (plus clair), son trait de pliure, puis rien.
+   Recette de `FicheEmployeModal.css`, à l'identique. */
 .tue::after {
   content: '';
   position: absolute;
   z-index: 4;
   right: 0;
-  bottom: 0;
+  bottom: var(--tue-dechire-h);
   width: var(--tue-pli);
   height: var(--tue-pli);
   background-image: linear-gradient(
@@ -114,14 +72,71 @@
   pointer-events: none;
 }
 
-/* la découpe du coin : un triangle à la couleur du FOND DE PAGE, qui vient
-   manger le coin hors du contour. Posé sur un élément, pas sur le papier,
-   pour ne pas disputer `::after` au rabat. */
+/* ── 1 · LA BANDE DE SCOTCH ────────────────────────────────────────────────
+   À cheval sur le bord haut : elle dépasse de 7 px au-dessus du papier, ce
+   qui la fait lire comme un ruban collé et non comme un ornement imprimé.
+   Peinte en trois couches : deux bords plus opaques, un cœur translucide. */
+.tue-scotch {
+  position: absolute;
+  z-index: 6;
+  top: -7px;
+  left: 26%;
+  width: 34%;
+  height: 22px;
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--charte-blanc) 62%, transparent) 0 3px,
+      color-mix(in srgb, var(--charte-blanc) 34%, transparent) 3px
+        calc(100% - 3px),
+      color-mix(in srgb, var(--charte-blanc) 62%, transparent)
+        calc(100% - 3px)
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--charte-encre) 12%, transparent) 0,
+      transparent 3px calc(100% - 3px),
+      color-mix(in srgb, var(--charte-encre) 16%, transparent) 100%
+    );
+  transform: rotate(-2.2deg);
+  pointer-events: none;
+  opacity: 0.95;
+}
+
+/* ── 2 · LE BORD DÉCHIRÉ ───────────────────────────────────────────────────
+   Une suite de dents de 8 px, peinte en dégradé et répétée horizontalement.
+   Le liseré prend la couleur du FOND DE PAGE, pas du papier : c'est ce qui
+   « enlève » la matière et fait l'arrachement. Jamais `clip-path`. */
+.tue-dechire {
+  position: absolute;
+  z-index: 3;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  height: var(--tue-dechire-h);
+  background-image:
+    linear-gradient(
+      135deg,
+      var(--charte-sable) 0 50%,
+      transparent 50%
+    ),
+    linear-gradient(
+      45deg,
+      var(--charte-sable) 0 50%,
+      transparent 50%
+    );
+  background-size: 8px var(--tue-dechire-h), 8px var(--tue-dechire-h);
+  background-position: 0 0, 4px 0;
+  background-repeat: repeat-x;
+  pointer-events: none;
+}
+
+/* ── la découpe du coin, hors du contour ─────────────────────────────────── */
 .tue-decoupe {
   position: absolute;
   z-index: 5;
   right: calc(-1 * var(--charte-trait));
-  bottom: calc(-1 * var(--charte-trait));
+  bottom: calc(var(--tue-dechire-h) - var(--charte-trait));
   width: calc(var(--tue-pli) + var(--charte-trait));
   height: calc(var(--tue-pli) + var(--charte-trait));
   background-image: linear-gradient(
@@ -132,29 +147,25 @@
   pointer-events: none;
 }
 
-/* ── le carré brodé ──────────────────────────────────────────────────────── */
+/* ── 3 · L'APPLIQUÉ BRODÉ ─────────────────────────────────────────────────
+   Un carré de tissu, avec son motif ET son surjet. Mon premier jet n'avait
+   qu'un aplat : à 42 px, un aplat ne dit rien. Le motif est un fragment réel
+   de bogolan (`bogolan-vertical.webp`, 76 px de large : sa densité tombe
+   juste à cette taille). */
 .tue-applique {
   position: absolute;
-  z-index: 3;
-  top: calc(var(--tue-colle) + 8px);
-  right: 10px;
+  z-index: 4;
+  top: 16px;
+  right: 12px;
   width: var(--tue-applique);
   height: var(--tue-applique);
   background-color: var(--tue-teinte, var(--charte-espresso));
-  /* le point de surjet : un trait pointillé qui fait le tour, comme une couture */
   border: 1.5px solid var(--charte-encre);
-  outline: 1.5px dashed color-mix(in srgb, var(--charte-blanc) 70%, transparent);
-  outline-offset: -5px;
-  /* l'ombre dure du carré : il est cousu PAR-DESSUS la feuille, il doit se
-     détacher d'elle */
   box-shadow: 2px 2px 0 0 var(--charte-encre);
   transform: rotate(1.5deg);
   overflow: hidden;
 }
 
-/* le motif : un fragment de bogolan réel, jamais un SVG réinventé. C'est
-   `bogolan-vertical.webp` (76 × 1536) : sa densité est exactement celle qu'il
-   faut pour un carré de 38 px — on ne l'étire pas, on le recadre. */
 .tue-applique-motif {
   position: absolute;
   inset: 0;
@@ -162,10 +173,19 @@
   background-repeat: repeat-y;
   background-size: auto 100%;
   background-position: center;
-  opacity: 0.9;
+  mix-blend-mode: luminosity;
+  opacity: 0.55;
 }
 
-/* ── les trois teintes, prises dans la palette D-001 ─────────────────────── */
+/* le surjet : un pointillé blanc qui court à 4 px du bord, comme une couture
+   au fil. C'est lui qui fait dire « brodé » plutôt que « carré coloré ». */
+.tue-applique-surjet {
+  position: absolute;
+  inset: 4px;
+  border: 1.5px dashed color-mix(in srgb, var(--charte-blanc) 88%, transparent);
+  pointer-events: none;
+}
+
 .tue--indigo { --tue-teinte: var(--charte-espresso); }
 .tue--ocre   { --tue-teinte: var(--charte-aplat); }
 .tue--brique { --tue-teinte: var(--charte-erreur); }
@@ -175,58 +195,68 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  /* LA MARGE QUI PROTÈGE LE TEXTE
-     À droite, on réserve la largeur du carré brodé + son décalage + 8 px d'air.
-     Le carré peut grandir (média query ci-dessous), cette marge le suit : un
-     mot ne peut pas passer dessous. C'est la correction du défaut de la
-     capture, écrite en une ligne plutôt qu'en espoir. */
+  /*  LA MARGE QUI PROTÈGE LE TEXTE.
+      À droite : la largeur de l'appliqué + son décalage + 10 px d'air.
+      En bas : le bord déchiré + le pli + 10 px.
+      Le carré peut grandir, cette marge le suit — un mot ne passe jamais
+      dessous. C'est la correction du défaut de la capture d'origine. */
   padding:
-    calc(var(--tue-colle) + 16px)
-    calc(var(--tue-applique) + 10px + 8px)
-    calc(var(--tue-pli) + 12px)
+    22px calc(var(--tue-applique) + 12px + 10px)
+    calc(var(--tue-dechire-h) + var(--tue-pli) + 10px)
     var(--tue-gouttiere);
 }
 
 .tue-libelle {
   margin: 0;
-  font-size: 10.5px;
+  /*  LA POLICE EST FORCÉE ICI.
+      Mon premier jet laissait `font-family` à l'héritage : la page tombait sur
+      la serif par défaut du navigateur, et toute la maquette partait avec. */
+  font-family: var(--charte-police);
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: 0.11em;
+  line-height: 1.25;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--charte-texte);
-  /*  « Programmées · Expirées » tient sur deux lignes : c'est voulu, et c'est
-      préférable à un libellé tronqué. Il ne peut pas déborder à droite — la
-      boîte de texte est déjà bornée par le padding du corps. */
   overflow-wrap: break-word;
 }
 
-/* ── les chiffres ─────────────────────────────────────────────────────────── */
+/* ── 4 · LES CHIFFRES, ESPACÉS ─────────────────────────────────────────────
+   « 2 / 2 » respire ; « 0/2 » collé était une faute de lecture de la maquette.
+   Le séparateur est un vrai élément, pas un caractère soudé au chiffre. */
 .tue-chiffres {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  margin: 10px 0 0;
+  gap: 14px;
+  margin: 12px 0 0;
+  font-family: var(--charte-police);
   font-variant-numeric: tabular-nums;
 }
 
 .tue-chiffre-paquet {
   display: inline-flex;
   align-items: baseline;
-  gap: 5px;
+  gap: 7px;
 }
 
 .tue-chiffre {
-  font-size: clamp(38px, 4.2vw, 54px);
+  font-family: var(--charte-police);
+  font-size: clamp(40px, 4.4vw, 56px);
   font-weight: 700;
-  line-height: 0.95;
-  letter-spacing: -0.03em;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
   color: var(--charte-encre);
 }
 
+/*  Le chiffre qui suit : la barre de fraction dans la maquette est fine et
+      penchée, le second chiffre est plus petit et plus doux. On ne met PAS de
+      barre ici — elle est déjà dans la valeur (« / 2 »), mais on la dessine
+      en petit corps pour qu'elle ne mange pas le chiffre principal. */
 .tue-apres {
-  font-size: clamp(16px, 1.6vw, 21px);
+  font-family: var(--charte-police);
+  font-size: clamp(17px, 1.7vw, 22px);
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--charte-douce);
   font-variant-numeric: tabular-nums;
 }
@@ -239,63 +269,62 @@
 .tue-jauge {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   margin-top: auto;
-  padding-top: 16px;
+  padding-top: 18px;
 }
 
 .tue-point {
-  width: 15px;
-  height: 11px;
+  width: 16px;
+  height: 12px;
   border: 1.5px solid var(--charte-encre);
   background-color: transparent;
 }
 
-/* une place prise est un point de couture plein : deux traits, comme le fil
-   qui repasse. La teinte change avec la tuile, pour que la jauge appartienne
-   visiblement à la même famille que son carré brodé. */
 .tue-point.est-prise {
   background-color: var(--tue-teinte, var(--charte-aplat));
-  border-color: var(--charte-encre);
 }
 
 /* ── le pied : UN MOT ────────────────────────────────────────────────────── */
 .tue-pied {
   margin: 10px 0 0;
-  font-size: 11px;
+  font-family: var(--charte-police);
+  font-size: 11.5px;
   line-height: 1.3;
   color: var(--charte-douce);
 }
 
-/* ── états ───────────────────────────────────────────────────────────────── */
+/* ── l'alerte ne change que le chiffre et l'appliqué ─────────────────────── */
 .tue--alerte {
-  /* l'alerte ne hurle pas : elle teinte le chiffre et le carré, rien d'autre.
-     Un fond rouge sur une tuile ferait du bruit dans une rangée de trois. */
   --tue-teinte: var(--charte-erreur);
 }
 
-/* ── écran étroit : deux tuiles par rangée, puis une ─────────────────────── */
+/* ── écran étroit ────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .tue {
-    --tue-applique: 32px;
-    --tue-gouttiere: 16px;
+    --tue-applique: 34px;
+    --tue-gouttiere: 17px;
+    min-height: 158px;
   }
   .tue-chiffre {
-    font-size: clamp(32px, 7vw, 44px);
+    font-size: clamp(32px, 6.6vw, 44px);
+  }
+  .tue-scotch {
+    height: 18px;
+    top: -6px;
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 620px) {
   .tue {
-    --tue-applique: 28px;
+    --tue-applique: 30px;
   }
   .tue-point {
-    width: 11px;
-    height: 9px;
+    width: 12px;
+    height: 10px;
   }
 }
 
-/* ── le mouvement se retire si le système le demande ─────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .tue {
     transform: none;
