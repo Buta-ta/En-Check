@@ -30,6 +30,9 @@ export const RAISONS_INDISPONIBLE = {
   case_decochee: 'L’alerte hebdomadaire n’est pas activée : personne n’a demandé à être prévenu.',
   non_calcule: 'Le calcul de la semaine n’est pas disponible pour cette période.',
   lecture_impossible: 'Le seuil n’a pas pu être lu : ce contrôle n’est pas fait.',
+  semaine_en_cours: 'La semaine en cours n’est pas terminée : le contrôle se prononcera une fois tous ses jours échus.',
+  semaine_a_venir: 'Cette semaine n’a pas encore commencé : il n’y a rien à contrôler.',
+  semaine_partielle: 'La semaine n’est couverte que partiellement : « aucun dépassement » ne s’y prononce pas.',
 }
 
 /** Le libellé court, pour une puce ou une ligne de pied. */
@@ -43,7 +46,28 @@ export const ETIQUETTE_INDISPONIBLE = 'Contrôle indisponible'
  */
 export function pourquoiControleIndisponible(plafond) {
   //  Évalué : il n'y a rien à dire de plus que le résultat lui-même.
-  if (plafond && plafond.disponible === true) return null
+  //  ⚠️ SAUF si la semaine n'a pas été vécue en entier. Une semaine en cours ou
+  //  à venir n'est pas « sans dépassement » : elle n'a pas encore eu lieu. La
+  //  dire conforme serait exactement la faute que ce module existe pour éviter.
+  if (plafond && plafond.disponible === true) {
+    const enCours = (plafond.semaines || []).filter(
+      (s) => s && (s.a_venir === true || s.partielle === true),
+    )
+    if (enCours.length === 0) return null
+    if (enCours.some((s) => s.a_venir === true)) {
+      return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.semaine_a_venir }
+    }
+    //  Une semaine partielle ET un dépassement prouvé : l'alerte parle, la
+    //  ligne n'a pas à la contredire. On ne signale que l'absence de verdict.
+    if (enCours.every((s) => s.depasse === true)) return null
+    const toutesEchues = enCours.every((s) => Number(s.joursEchues) < 7)
+    return {
+      etiquette: ETIQUETTE_INDISPONIBLE,
+      raison: toutesEchues
+        ? RAISONS_INDISPONIBLE.semaine_en_cours
+        : RAISONS_INDISPONIBLE.semaine_partielle,
+    }
+  }
 
   //  Aucun objet du tout : le calcul n'a pas été produit (période vide, panne).
   if (!plafond) {

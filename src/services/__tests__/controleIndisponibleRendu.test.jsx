@@ -78,3 +78,63 @@ describe('Les deux ne parlent jamais en même temps', () => {
     expect(renduLigne(silenceAucunSeuil)).not.toBe('')
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  G7-bis — la règle des deux ensemble, contre les nouveaux cas
+//
+//  Les semaines en cours et à venir ont introduit trois façons de rendre la
+//  ligne. Aucune ne doit jamais cohabiter avec la carte d'alerte : deux
+//  messages simultanés se contrediraient, et c'est précisément ce que G7
+//  interdit.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('🖥️ G7-bis — exclusion mutuelle, cas étendus', () => {
+  const rendre = (plafond) =>
+    renderToStaticMarkup(
+      <div>
+        <AlerteHebdoCard plafond={plafond} />
+        <ControleIndisponible plafond={plafond} />
+      </div>,
+    )
+
+  it('dépassement prouvé + semaine partielle ⇒ la carte seule', () => {
+    const html = rendre({
+      disponible: true,
+      seuil: 48,
+      source: 'entreprise',
+      semaines: [
+        { debut: '2026-10-19', fin: '2026-10-25', heures: 60, depasse: true, depassement_heures: 12, partielle: true, joursEchues: 5, a_venir: false },
+      ],
+    })
+    expect(html).toContain('Dépassement hebdomadaire')
+    expect(html).not.toContain('e360-controle-indisponible')
+  })
+
+  it('semaine en cours sans dépassement ⇒ la ligne seule', () => {
+    const html = rendre({
+      disponible: true,
+      seuil: 48,
+      source: 'entreprise',
+      semaines: [
+        { debut: '2026-10-19', fin: '2026-10-25', heures: 20, depasse: false, partielle: true, joursEchues: 6, a_venir: false },
+      ],
+    })
+    expect(html).toContain('e360-controle-indisponible')
+    expect(html).not.toContain('Dépassement hebdomadaire')
+  })
+
+  it('semaine à venir ⇒ la ligne, et jamais un « conforme »', () => {
+    const html = rendre({
+      disponible: true,
+      seuil: 48,
+      source: 'entreprise',
+      semaines: [
+        { debut: '2026-10-26', fin: '2026-11-01', heures: 0, depasse: false, partielle: true, joursEchues: 0, a_venir: true },
+      ],
+    })
+    expect(html).toContain('e360-controle-indisponible')
+    expect(html).toMatch(/pas encore commencé/i)
+    expect(html.toLowerCase()).not.toContain('conforme')
+    expect(html).not.toContain('Dépassement hebdomadaire')
+  })
+})
