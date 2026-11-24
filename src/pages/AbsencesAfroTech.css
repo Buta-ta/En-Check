@@ -713,6 +713,7 @@
     position: static;
     align-self: center;
     align-items: center;
+    text-align: center;
     margin-top: 14px;
   }
 }
@@ -722,17 +723,343 @@
     width: 100%;
   }
   .abs-hamac-valeur { font-size: 32px; }
-}/* Sur un écran d'enfant, le poteau de droite se rapproche et la note de retour
-   descend sous la tuile : à 700 px, « RETOUR LUN. 30 NOV. » posé à droite de la
-   corde retomberait sur la tuile suspendue. */
-@media(max-width:980px) {
-  .abs-hamac-corde { margin: 0 6%; }
-  .abs-hamac-retour {
-    position: static;
-    align-items: center;
-    text-align: center;
-    margin-top: 14px;
-  }
+}
+/* La coupure de 980 px ci-dessus porte seule : la feuille en portait une seconde,
+   écrite `@media(max-width:980px)` sans espaces, qui répétait les mêmes règles en
+   `text-align: center`. Deux blocs au même point de rupture, c'est un seul qui gagne
+   et un qui endort la lecture. Le `text-align` est repris là où il servait. */
+
+/* ═══════════════════════════════════════════════════════════
+   🪧 L'ÉTAGÈRE — six pancartes pendues sous le transat
+   Maquette `maquettes/absences-kpi-P1-etagere.png`, retenue le 30/11/2026 :
+   « je choisis le P1 [...] je veux le résultat comme dans la maquette choisie ».
+
+   Avant : six lanières d'un même ruban, séparées par des filets, posées dans la
+   page comme une bande d'état civil. Maintenant : six planches de bois, chacune
+   pendue à un rail par deux cordes et deux anneaux, sous le transat.
+
+   Un rail PAR PLANCHE, pas un rail par rangée : chaque planche porte son tronçon
+   de rail (`::before`, pleine largeur de sa case, colonnes sans écart). Donc, à
+   toute largeur d'écran, les planches d'une même ligne partagent un trait continu
+   ET les lignes qui suivent ont chacune leur rang de cordes — sans qu'aucune
+   coupe d'écran n'ait à repositionner une tringle. C'est la réponse à « faudrait
+   juste penser à comment rendre ça responsive en tout écran ».
+
+   La maquette dessinait les deux longues cordes montant jusqu'au bandeau de
+   titre, par-dessus le transat. Elles s'arrêtent ici AU RAZ du bas du transat, et
+   c'est dit : la hauteur réelle du bloc du transat n'est pas lisible en CSS — la
+   tuile se remonte elle-même de 46 px (`margin: -46px auto 0`) et sa hauteur vient
+   d'un corps de 32 px, donc tout chiffre recopié pour traverser ce bloc est faux
+   de dizaines de pixels et ne se voit que sur un seul écran. La maquette en
+   portait un (`--abs-transat: 164px`, calculé depuis un `padding: 20px … 26px`
+   lu à moitié) ; la chute est ici UN jeton de l'échelle, qui ne peut pas dériver.
+   À reprendre avec une mesure runtime si le fondateur veut la corde jusqu'à la
+   chemise.
+
+   Les cinq espaces que la maquette s'était déclarés à elle-même n'existent pas
+   dans cette feuille : lus là, ils tombent en 0 — un `gap` fantôme ne lève pas
+   d'erreur, il soude les planches sans air. La menuiserie lit donc l'échelle de
+   la charte, de `-1` (4 px) à `-5` (24 px), et rien d'autre.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Trois nombres, posés là où ils servent : sur l'étagère elle-même, donc ils
+   descendent jusqu'aux planches sans passer par un conteneur de plus. */
+.abs-etagere {
+  --abs-chute: var(--charte-espace-5);
+  --abs-tringle: 4px;
+  --abs-planche: 88px;
+  max-width: 1560px;
+  margin: 0 auto;
+  /* le même 24 px que le bandeau de titre, à toutes les largeurs : l'étagère est
+     alignée sur ses coins, et une coupe d'écran ne la fait pas glisser dessous */
+  padding: 0 var(--charte-espace-5) var(--charte-espace-5);
+}
+
+/* Les deux longues cordes, et leurs scellements : une rangée de 24 px, deux
+   traits à 24 px des bords — l'aplomb exact des coins du bandeau de titre, et le
+   transat, lui, tient ses montants à 15 % : les deux dessinages ne se croisent
+   jamais. Muettes et hors du chemin du clic. */
+.abs-etagere-suspentes {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: var(--abs-chute);
+  pointer-events: none;
+}
+
+.abs-etagere-suspentes i {
+  position: relative;
+  display: block;
+  align-self: stretch;
+  width: 2px;
+  background: var(--charte-encre);
+}
+
+/* Le scellement : un carré de 8 px où la corde rejoint le rail. La maison connaît
+   ce motif — c'est le chapeau des montants du transat, posé à l'endroit. */
+.abs-etagere-suspentes b {
+  position: absolute;
+  top: -4px;
+  left: -3px;
+  display: block;
+  width: 8px;
+  height: 8px;
+  background: var(--charte-encre);
+}
+
+.abs-etagere-planches {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  /* aucun écart entre colonnes : c'est ce qui colle les six tronçons de rail en un
+     seul trait. L'air entre les planches est porté par leur remplissage intérieur.
+     Entre les rangs, un cran de l'échelle (16 px) — pas un nombre de plus. */
+  gap: var(--charte-espace-4) 0;
+}
+
+.abs-planche {
+  position: relative;
+  padding-top: var(--abs-tringle);
+  min-width: 0;
+}
+
+/* LE RAIL. 4 px, soit deux fois le trait d'encre : c'est une barre qui porte six
+   planches, pas un filet. Posé en `height` sur un `::before` et non en `border-top`
+   pour qu'il déborde d'un chevron aux deux bouts de la rangée sans toucher au
+   modèle de boîte des planches. */
+.abs-planche::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--abs-tringle);
+  background: var(--charte-encre);
+}
+
+/* Les deux cordes courtes et leurs anneaux. L'anneau est un creux de 8 px cerclé
+   d'encre, posé SUR le rail : c'est ce qui dit « pendu » plutôt que « collé ». */
+.abs-planche-corde {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: var(--abs-chute);
+  padding: 0 var(--charte-espace-4);
+}
+
+.abs-planche-corde i {
+  position: relative;
+  display: block;
+  align-self: stretch;
+  width: 2px;
+  background: var(--charte-encre);
+}
+
+.abs-planche-corde i::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: -3px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-sable);
+}
+
+/* LE CORPS. Une planche : coins carrés (la maquette n'en a pas d'autres), pâte de
+   la maison, contour d'encre de 2 px (C11) et ombre dure à flou zéro (C9). Aucune
+   graisse inventée : 700 est le dernier grain chargé dans `public/fonts/`.
+   `min-height`, jamais `height` : deux lignes de libellé doivent pouvoir entrer. */
+.abs-planche-corps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  min-height: var(--abs-planche);
+  padding: var(--charte-espace-2) var(--charte-espace-3) var(--charte-espace-5);
+  /* l'air entre deux planches, ce n'est pas un écart de grille : c'est le bois de
+     chacune qui se retire de 8 px de son côté — deux planches voisines se touchent
+     donc jamais, et le rail, lui, court sans interruption au-dessus d'elles */
+  margin: 0 var(--charte-espace-2);
+  text-align: center;
+  background: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  box-shadow: var(--charte-ombre-dure);
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+}
+
+/* Ce qui se clique se clique : le corps EST le bouton. Le survol répond comme dans
+   le reste de la maison — surface2, jamais l'ambre de la page, jamais `!important`,
+   et la corde ne s'efface pas au passage de la souris. */
+button.abs-planche-corps {
+  /* un `button` ne s'étire pas tout seul : la largeur se déduit du retrait du bois */
+  width: calc(100% - 2 * var(--charte-espace-2));
+  cursor: pointer;
+  font: inherit;
+  transition: background-color var(--charte-duree) ease-out;
+}
+
+button.abs-planche-corps:hover {
+  background: var(--charte-surface2);
+}
+
+button.abs-planche-corps:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 2px;
+}
+
+/* Le libellé tient sur DEUX lignes quand il doit : la rangée d'avant écrivait
+   `text-overflow: ellipsis`, c'est-à-dire « le mot saute s'il est long ». Ici rien
+   ne saute, et c'est la seule raison pour laquelle six planches tiennent sur
+   1560 px au lieu de quatre cartes de 380 px. */
+.abs-planche-label {
+  margin: 0;
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+.abs-planche-nombre {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-1);
+  margin: 0;
+  min-width: 0;
+}
+
+.abs-planche-chiffre {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-encre);
+}
+
+.abs-planche-suffixe {
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  color: var(--charte-douce);
+}
+
+/* La traverse du bas : la jauge des deux taux. 6 px, cerclée d'encre, remplie
+   d'argile — la teinte du chiffre n'a rien à dire (D-016 : deux densités, pas
+   plus), c'est le remplissage qui dit combien. `overflow: hidden` est ce qui fait
+   un coin carré sans sortir de la barre. */
+.abs-planche-jauge {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin-top: var(--charte-espace-1);
+  border: 2px solid var(--charte-encre);
+  background: var(--charte-surface2);
+  overflow: hidden;
+}
+
+.abs-planche-jauge i {
+  display: block;
+  height: 100%;
+  background: var(--charte-aplat);
+}
+
+/* L'étiquette d'action : le rabat d'argile coupé en biseau, comme la maison coupe
+   ses rabats. C'est un INDICE posé sur la planche, jamais une cible dans la
+   cible — `pointer-events: none`, le clic est sur toute la planche. */
+.abs-planche-etiquette {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  padding: 2px 7px 2px 9px;
+  background: var(--charte-aplat);
+  color: var(--charte-blanc);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  clip-path: polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px);
+  pointer-events: none;
+}
+
+/* Le fil de couture de la pancarte des conflits : l'alerte ne se dit plus par un
+   bandeau plein mais par un fil oblique, et il ne reste que la teinte du statut
+   absent. Il disparaît avec le conflit — c'est le contrat. */
+.abs-planche-couture {
+  display: block;
+  width: 100%;
+  height: 5px;
+  margin-top: var(--charte-espace-1);
+  background-image: repeating-linear-gradient(135deg, var(--abs-coral) 0 2px, transparent 2px 5px);
+}
+
+/* Les visages du jour, en chevauchement de 8 px (l'échelle de D-013 ne connaît pas
+   le 7). À zéro absent, la rangée n'est pas rendue : la planche dit alors le 0,
+   sans place vide. */
+.abs-planche-visages {
+  display: inline-flex;
+  align-items: center;
+}
+
+.abs-planche-visage {
+  border-radius: var(--charte-rayon-pilule);
+  border: 2px solid var(--charte-bordure);
+  background: var(--charte-surface2);
+  color: var(--charte-texte);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.abs-planche-visage + .abs-planche-visage,
+.abs-planche-plus {
+  margin-left: -8px;
+}
+
+.abs-planche-plus {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-surface2);
+  border: 2px solid var(--charte-encre);
+  color: var(--charte-encre);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+}
+
+/* TOUTES LES LARGEURS. La coupe d'écran ne change pas la figure, seulement le
+   nombre de planches par rang : six, puis trois et trois, puis deux-deux-deux,
+   puis une. Chaque rang garde son rail, ses cordes et ses anneaux, parce que le
+   rail appartient à la planche et non à la rangée — c'est pour ça qu'ici aucune
+   media ne repositionne quoi que ce soit à gauche ou à droite. Une figure qui
+   s'évapore en petit écran est un habillage ; ici c'est la même menuiserie,
+   seulement moins large. */
+@media (max-width: 1180px) {
+  .abs-etagere-planches { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .abs-etagere-planches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .abs-etagere { padding-left: 16px; padding-right: 16px; }
+}
+@media (max-width: 420px) {
+  .abs-etagere-planches { grid-template-columns: minmax(0, 1fr); }
+  /* à 420 px, une planche de ~320 px : les cordes se resserrent vers le centre
+     (un cran de plus) au lieu de rester plaquées aux bords du bois */
+  .abs-planche-corde { padding: 0 var(--charte-espace-5); }
 }
 
 /* La tuile de motif en tête de ligne : un carré de 22 px, le filet de la page
