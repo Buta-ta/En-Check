@@ -788,11 +788,27 @@ seul chemin est la RPC, et elle exige une session employé.
 **Ce qui reste** : la **capture** du registre aux quatre largeurs et en thème sombre — le CSS ne
 pose que des jetons, mais le rendu reste à l'œil du fondateur.
 
-#### Lot 5 — G7 : les libellés dans les écrans existants (S)
+#### Lot 5 — G7 : les libellés dans les écrans existants (S) ✅
 
-- le message d'alerte, la page Heures supplémentaires et le Planning affichent l'origine et
-  « contrôle indisponible » ;
-- aucun calcul nouveau, uniquement de la vérité visible.
+Trois écrans, une seule règle : **rendre visible ce que le moteur sait déjà**, sans ajouter de
+calcul. Module partagé : `src/lib/controleDisponible.js` (fonctions pures) + composant
+`ControleIndisponible.jsx`.
+
+| Écran | Ce qui a changé |
+|---|---|
+| Fiche employé | sous la carte d'alerte, la ligne « Contrôle indisponible — … » quand le contrôle n'a pas été fait |
+| Heures supplémentaires | la page lit désormais **avec origine** (`getOvertimeSettingsAvecOrigine`) et affiche « aucun seuil choisi », « alerte non activée », « origine à confirmer », « origine inconnue » |
+| Planning | la légende nomme les deux sources — V-C2 : « prévu » et « pointé » ne sont pas un contrôle de conformité |
+
+**La règle des deux ensemble** : jamais les deux à la fois. La carte d'alerte reste muette quand
+rien n'est prouvé (décision du 24/10/2026) ; la ligne parle à sa place. Un test de rendu le
+vérifie dans les deux sens, et interdit les deux fautes symétriques : une alerte sur une règle que
+personne n'a posée, un silence qui se lit comme une conformité.
+
+**Ce que G7 n'a pas fait** : aucun mot « légal », aucun verdict de conformité, aucune valeur
+inventée. Le défaut produit de 48 h reste proposé, jamais brandi.
+
+**Ce qui reste** : les captures des trois écrans — le rendu ne se teste pas dans le bac.
 
 #### Lot 6 — G8 / G9 : contrats et snapshots (décisions, peu de code)
 
@@ -809,7 +825,7 @@ pose que des jetons, mais le rendu reste à l'œil du fondateur.
 | 2b | G3 branchement ✅ | S | rien pour un client sans règle (mêmes seuils, mêmes montants) | avant/après identiques — testé |
 | 3 | G4 + G4b ✅ | M+M | l'accès des admins clients | parcours admin non super-admin |
 | 4 | G5 + G5-bis ✅ *fiche, états, impact, informations, activation versionnée, registre employé* | M+M | la lisibilité de la fiche employé | parcours : poser, verrouiller, informer |
-| 5 | G7 | S | des libellés | captures des 3 écrans |
+| 5 | G7 ✅ | S | des libellés | captures des 3 écrans |
 | 6 | G8/G9 | — | la paie si on active trop tôt | décision écrite |
 
 **G1 et G2 ont été livrés ensemble dans #313** (même branche, même PR : le second corrigeait le

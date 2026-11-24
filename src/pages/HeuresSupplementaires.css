@@ -598,3 +598,30 @@
 @keyframes ot-extra{0%,50%{transform:scaleX(0)}75%,85%{transform:scaleX(1)}100%{transform:scaleX(0)}}
 @media(max-width:650px){.ot-navigation{padding:12px 16px 0;flex-wrap:wrap}.ot-navigation nav{display:grid;grid-template-columns:1fr 1fr;width:100%}.ot-navigation>button{margin-left:auto}.ot-calculation-steps{gap:6px}.ot-calculation-steps li:before{display:grid;margin-bottom:6px}.ot-drawer>.ot-rules-body{padding:16px!important}.ot-rules-section{padding:12px}.ot-rules-footer{padding:12px 16px!important}.ot-rules-header{padding:16px!important}}
 @media(prefers-reduced-motion:reduce){.ot-loading-scene *{animation:none!important}.ot-loading-paper{transform:rotate(-8deg);opacity:1}.ot-loading-normal,.ot-loading-extra{transform:scaleX(1)}}
+
+/*  🧭 « Contrôle indisponible » (G7 / V-B3)
+    L'écran affiche des heures et un seuil ; s'il ne peut pas évaluer le
+    contrôle, il le dit. Une ligne discrète, pas une alerte : ce n'est pas un
+    incident, c'est un état de connaissance. Le mot est écrit, jamais la
+    couleur seule. */
+.ot-controle-indisponible {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-2);
+  margin: 0 0 var(--charte-espace-4);
+  padding: var(--charte-espace-3) var(--charte-espace-4);
+  border: 1px dashed var(--charte-bordure);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  line-height: 1.5;
+}
+
+.ot-controle-mot {
+  color: var(--charte-encre);
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}

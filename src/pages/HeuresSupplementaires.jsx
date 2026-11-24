@@ -5,7 +5,7 @@ import {
 // ═══════════════════════════════════════════════════════════
 // ⏱️ PAGE HEURES SUPPLÉMENTAIRES - AFROFUTURISTE
 // ═══════════════════════════════════════════════════════════
-import { useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../contexts/ThemeContext'
@@ -26,6 +26,7 @@ import HolidayService from '../services/holidayService'
 import { Settings, Save, X, Lock, Info } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { formaterDureeComplete } from '../utils/timezoneUtils'
+import { ETIQUETTE_INDISPONIBLE } from '../lib/controleDisponible'
 
 export default function HeuresSupplementaires() {
   const { darkMode, toggleTheme } = useTheme()
@@ -49,6 +50,9 @@ export default function HeuresSupplementaires() {
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [settingsForm, setSettingsForm] = useState({})
   const [savingSettings, setSavingSettings] = useState(false)
+  //  D'où vient le seuil ? `provenance.origine` ∈ entreprise | defaut_produit |
+  //  historique_incertain | inconnue. G7 : l'écran doit le dire, pas le deviner.
+  const [provenance, setProvenance] = useState(null)
 
   // Data
   const [overtimeData, setOvertimeData] = useState([])
@@ -82,6 +86,7 @@ export default function HeuresSupplementaires() {
     setAccessChecked(false)
     setHasAccess(false)
     setOvertimeSettings(null)
+    setProvenance(null)
     setSettingsForm({})
     const checkAccess = async () => {
       if (!admin) return
@@ -98,13 +103,17 @@ export default function HeuresSupplementaires() {
                 enterpriseId,
                 FEATURES.HEURES_SUPPLEMENTAIRES,
               ))
-        const settings =
+        //  ⚠️ `AvecOrigine` et pas `getOvertimeSettings` : la seconde fusionne
+        //  les défauts avec la ligne en base et perd le fait qu'un seuil ait
+        //  été CHOISI. C'est exactement le mensonge de libellé corrigé ici.
+        const complet =
           access && enterpriseId !== 'all'
-            ? await FeatureService.getOvertimeSettings(enterpriseId)
+            ? await FeatureService.getOvertimeSettingsAvecOrigine(enterpriseId)
             : null
         if (!active) return
-        setOvertimeSettings(settings)
-        setSettingsForm(settings || {})
+        setOvertimeSettings(complet?.settings || null)
+        setProvenance(complet?.provenance || null)
+        setSettingsForm(complet?.settings || {})
         setHasAccess(access)
       } catch {
         if (active) setHasAccess(false)
@@ -418,6 +427,48 @@ export default function HeuresSupplementaires() {
     setTimeout(() => URL.revokeObjectURL(link.href), 1000)
   }
 
+  //  ⚠️ G7 / V-B3 : l'écran affiche des heures et un seuil. S'il ne peut pas
+  //  évaluer le contrôle hebdomadaire, il le DIT — un tableau plein de chiffres
+  //  muet sur le contrôle se lit comme une conformité constatée.
+  //
+  //  On ne réutilise pas `pourquoiControleIndisponible` tel quel : ici, le
+  //  moteur de paie n'est pas passé, c'est le RÉGLAGE qui parle. On construit
+  //  donc le même objet, avec le même vocabulaire, à partir de l'origine lue.
+  const etatControle = useMemo(() => {
+    if (!hasAccess) return null
+    const seuil = Number(settingsForm.weekly_threshold)
+    const seuilChoisi = Number.isFinite(seuil) && seuil > 0
+
+    if (!seuilChoisi) {
+      return {
+        etiquette: ETIQUETTE_INDISPONIBLE,
+        raison: 'Aucun seuil hebdomadaire choisi : le dépassement n’est pas mesuré.',
+      }
+    }
+    if (settingsForm.alerte_hebdo_activee !== true) {
+      return {
+        etiquette: ETIQUETTE_INDISPONIBLE,
+        raison: 'L’alerte n’est pas activée : aucun dépassement n’est signalé.',
+      }
+    }
+    //  Origine incertaine : la valeur existe, mais personne ne peut prouver
+    //  qu'elle a été CHOISIE. On le dit sans retirer l'alerte (la case est la
+    //  preuve de l'acte, décision du 24/10/2026).
+    if (provenance?.origine === 'historique_incertain') {
+      return {
+        etiquette: 'Origine à confirmer',
+        raison: `Seuil de ${seuil} h identique à un défaut du produit : impossible de savoir s’il a été choisi.`,
+      }
+    }
+    if (provenance?.origine === 'inconnue') {
+      return {
+        etiquette: 'Origine inconnue',
+        raison: 'Le seuil enregistré n’a pas pu être relu : son origine n’est pas établie.',
+      }
+    }
+    return null
+  }, [hasAccess, settingsForm.weekly_threshold, settingsForm.alerte_hebdo_activee, provenance])
+
   return (
     <div className={`ot-page ${darkMode ? 'ot-dark' : ''}`}>
       <PageHeader title="Heures supplémentaires" />
@@ -441,30 +492,38 @@ export default function HeuresSupplementaires() {
             </button>
           </section>
         ) : (
-          <OvertimeDashboard
-            rows={overtimeData}
-            dates={dates}
-            mode={viewMode}
-            setMode={setViewMode}
-            selectedDate={selectedDate}
-            setDate={setSelectedDate}
-            loading={loading}
-            error={loadError}
-            retry={loadOvertimeData}
-            enterprises={entreprises}
-            enterpriseId={selectedEntrepriseId}
-            setEnterprise={(id) => {
-              requestId.current++
-              setOvertimeData([])
-              setLoading(true)
-              setSelectedEntrepriseId(id)
-              setShowSettingsModal(false)
-            }}
-            isSuperAdmin={admin?.role === 'super_admin'}
-            canEdit={admin?.role === 'super_admin' || admin?.role === 'admin'}
-            onSettings={() => setShowSettingsModal(true)}
-            onExport={exportCSV}
-          />
+          <>
+            {etatControle && (
+              <p className="ot-controle-indisponible" role="status">
+                <strong className="ot-controle-mot">{etatControle.etiquette}</strong>
+                <span>{etatControle.raison}</span>
+              </p>
+            )}
+            <OvertimeDashboard
+              rows={overtimeData}
+              dates={dates}
+              mode={viewMode}
+              setMode={setViewMode}
+              selectedDate={selectedDate}
+              setDate={setSelectedDate}
+              loading={loading}
+              error={loadError}
+              retry={loadOvertimeData}
+              enterprises={entreprises}
+              enterpriseId={selectedEntrepriseId}
+              setEnterprise={(id) => {
+                requestId.current++
+                setOvertimeData([])
+                setLoading(true)
+                setSelectedEntrepriseId(id)
+                setShowSettingsModal(false)
+              }}
+              isSuperAdmin={admin?.role === 'super_admin'}
+              canEdit={admin?.role === 'super_admin' || admin?.role === 'admin'}
+              onSettings={() => setShowSettingsModal(true)}
+              onExport={exportCSV}
+              />
+          </>
         )}
       </main>
       <PageCulturalBand pathname="/heures-supplementaires" placement="bottom" />

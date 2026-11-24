@@ -2075,6 +2075,18 @@
   max-width: 640px;
 }
 
+/*  ⚠️ V-C2 : les deux sources, nommées. Un écart entre « prévu » et « réel »
+    n'est pas un contrôle de conformité ; cette ligne le dit avant qu'on se
+    trompe. Discrète, en retrait du reste — c'est une légende, pas une alerte. */
+.sk-day-sources {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--sk-text-muted);
+  max-width: 640px;
+  opacity: 0.85;
+}
+
 /* Règle horaire unique alignée sur les pistes */
 .sk-day-ruler {
   display: flex;

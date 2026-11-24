@@ -26,6 +26,18 @@ vi.mock('../featureService', () => ({
       rate_major: 50,
       overtime_major_after_hours: 2,
     }),
+    //  ⚠️ Depuis G7, la page lit la version AVEC ORIGINE : `getOvertimeSettings`
+    //  fusionne les défauts avec la ligne en base et perd le fait qu'un seuil
+    //  ait été choisi. Le mock doit donc exposer le même contrat que le vrai
+    //  service (settings + provenance), sinon la page ne reçoit rien.
+    getOvertimeSettingsAvecOrigine: async () => ({
+      settings: {
+        rate_normal: 25,
+        rate_major: 50,
+        overtime_major_after_hours: 2,
+      },
+      provenance: { origine: 'entreprise', motif: 'test' },
+    }),
     loadSchedules: async () => [],
     calculateOvertimeForEmployeeDay: mocks.calculate,
     saveOvertimeSettings: mocks.save,
@@ -236,4 +248,82 @@ it('shows the existing employee photo in overtime results', async () => {
   expect(host.querySelector('.ot-avatar img').getAttribute('src')).toBe(
     '/profile-amina.jpg',
   )
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  G7 / V-B3 — « contrôle indisponible », sur l'écran qui affiche des heures
+// ─────────────────────────────────────────────────────────────────────────────
+//
+//  Le défaut d'origine n'était pas dans la logique : la page affichait des
+//  heures et un seuil sans jamais dire que le contrôle hebdomadaire n'était
+//  pas fait. Un tableau plein de chiffres muet là-dessus se lit comme une
+//  conformité constatée.
+
+it('dit que le contrôle n’est pas fait quand aucun seuil n’est choisi', async () => {
+  //  Le mock du service rend des réglages SANS seuil hebdomadaire : c'est le
+  //  cas d'un client neuf, où le défaut produit ne doit pas alerter (5.3.1).
+  const FeatureService = (await import('../featureService')).default
+  const initial = FeatureService.getOvertimeSettingsAvecOrigine
+  FeatureService.getOvertimeSettingsAvecOrigine = async () => ({
+    settings: { rate_normal: 25, rate_major: 50, overtime_major_after_hours: 2 },
+    provenance: { origine: 'defaut_produit', motif: 'aucune règle enregistrée' },
+  })
+  try {
+    await mount()
+    const ligne = host.querySelector('.ot-controle-indisponible')
+    expect(ligne).toBeTruthy()
+    expect(ligne.textContent).toContain('Contrôle indisponible')
+    expect(ligne.textContent).toMatch(/Aucun seuil hebdomadaire choisi/)
+    //  Et ce n'est PAS une alerte au sens des lecteurs d'écran.
+    expect(ligne.getAttribute('role')).toBe('status')
+  } finally {
+    FeatureService.getOvertimeSettingsAvecOrigine = initial
+  }
+})
+
+it('ne dit rien quand le seuil est choisi ET l’alerte activée', async () => {
+  const FeatureService = (await import('../featureService')).default
+  const initial = FeatureService.getOvertimeSettingsAvecOrigine
+  FeatureService.getOvertimeSettingsAvecOrigine = async () => ({
+    settings: {
+      rate_normal: 25,
+      rate_major: 50,
+      overtime_major_after_hours: 2,
+      weekly_threshold: 45,
+      alerte_hebdo_activee: true,
+    },
+    provenance: { origine: 'entreprise', motif: 'valeur choisie' },
+  })
+  try {
+    await mount()
+    expect(host.querySelector('.ot-controle-indisponible')).toBeNull()
+  } finally {
+    FeatureService.getOvertimeSettingsAvecOrigine = initial
+  }
+})
+
+it('nomme une origine incertaine sans retirer l’alerte', async () => {
+  const FeatureService = (await import('../featureService')).default
+  const initial = FeatureService.getOvertimeSettingsAvecOrigine
+  FeatureService.getOvertimeSettingsAvecOrigine = async () => ({
+    settings: {
+      rate_normal: 25,
+      rate_major: 50,
+      overtime_major_after_hours: 2,
+      weekly_threshold: 48,
+      alerte_hebdo_activee: true,
+    },
+    provenance: {
+      origine: 'historique_incertain',
+      motif: 'valeur identique à un défaut du produit',
+    },
+  })
+  try {
+    await mount()
+    const ligne = host.querySelector('.ot-controle-indisponible')
+    expect(ligne.textContent).toContain('Origine à confirmer')
+    expect(ligne.textContent).toContain('48 h')
+  } finally {
+    FeatureService.getOvertimeSettingsAvecOrigine = initial
+  }
 })
