@@ -210,3 +210,66 @@ describe('📅 G1 — la fenêtre reste la même quel que soit le mois de réfé
     expect(fJan.fin >= '2026-01-04').toBe(true)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  G1-bis — une semaine qui n'a pas eu lieu n'est pas une semaine sans écart
+//
+//  Trouvé le 24/10/2026, après la validation de G1. La fenêtre du mois
+//  d'octobre va jusqu'au dimanche de la semaine du 31, soit le 01/11. La
+//  semaine du 26/10 au 01/11 était donc comptée « 7 jours couverts » alors
+//  qu'aucun de ses jours n'était arrivé — et rendait `niveau: 'aucun'`,
+//  `heures: 0`, c'est-à-dire un constat de conformité sur de l'avenir.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('⏳ G1-bis — le futur ne se déclare pas conforme', () => {
+  const agreger = (aujourdHui) => agregerParSemaine({
+    secondesParJour: { '2026-10-05': H(10), '2026-10-06': H(10) },
+    debut: '2026-09-28',
+    fin: '2026-11-01',
+    aujourdHui,
+  })
+
+  it('le 24/10, la semaine du 26/10 est marquée à venir — pas « aucun »', () => {
+    const semaines = agreger('2026-10-24')
+    const future = semaines.find((s) => s.debut === '2026-10-26')
+
+    expect(future.joursEchues).toBe(0)
+    const evaluation = evaluerSeuilsHebdo({ semaines, seuil: 40, seuilMajeur: 48, source: 'entreprise' })
+    const evaluee = evaluation.semaines.find((s) => s.debut === '2026-10-26')
+    expect(evaluee.a_venir).toBe(true)
+    expect(evaluee.niveau).toBe('non_evalue')
+  })
+
+  it('le 24/10, la semaine en cours (19 → 25) est partielle, pas « aucun »', () => {
+    const semaines = agreger('2026-10-24')
+    const enCours = semaines.find((s) => s.debut === '2026-10-19')
+    //  Du 19 au 24 : 6 jours échus sur 7 (le 25 est demain).
+    expect(enCours.joursEchues).toBe(6)
+    const evaluation = evaluerSeuilsHebdo({ semaines, seuil: 40, seuilMajeur: 48, source: 'entreprise' })
+    expect(evaluation.semaines.find((s) => s.debut === '2026-10-19').niveau).toBe('non_evalue')
+  })
+
+  it('une semaine passée reste évaluée normalement', () => {
+    //  Le correctif ne doit pas transformer tout le mois en « non évalué » :
+    //  les semaines révolues gardent leur verdict.
+    const semaines = agreger('2026-10-24')
+    const passee = semaines.find((s) => s.debut === '2026-10-05')
+    expect(passee.joursEchues).toBe(7)
+    const evaluation = evaluerSeuilsHebdo({ semaines, seuil: 15, seuilMajeur: 48, source: 'entreprise' })
+    const evaluee = evaluation.semaines.find((s) => s.debut === '2026-10-05')
+    //  20 h : le seuil BAS (15 h) est atteint, donc `niveau: 'normal'` — mais
+    //  `depasse` se mesure au barème HAUT (48 h), qui n'est pas franchi.
+    //  Le point du test : la semaine passée est bien ÉVALUÉE, pas neutralisée.
+    expect(evaluee.heures).toBe(20)
+    expect(evaluee.niveau).toBe('normal')
+    expect(evaluee.partielle).toBe(false)
+  })
+
+  it('sans référence, tous les jours sont réputés échus (compatibilité)', () => {
+    //  Les appels historiques (fenêtre entièrement passée) ne fournissent pas
+    //  de date : le comportement d'avant est conservé, à l'identique.
+    const semaines = agreger(null)
+    expect(semaines.every((s) => s.joursEchues === s.joursDansLaPeriode)).toBe(true)
+    expect(semaines.every((s) => s.a_venir === undefined || s.a_venir === false)).toBe(true)
+  })
+})

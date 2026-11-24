@@ -440,6 +440,10 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
       secondesParJour,
       debut: debutSemaines,
       fin: finSemaines,
+      //  La date de référence, seule à savoir ce qui a pu être vécu. Sans elle,
+      //  une semaine entièrement future passait pour « 7 jours couverts » et
+      //  rendait « 0 h — rien à signaler » sur des jours pas encore arrivés.
+      aujourdHui: todayKey,
     }),
     //  Seuils d'HEURES SUPÉRIEURES de l'entreprise (40 h / 48 h). Ce ne sont
     //  pas des plafonds légaux : aucun texte n'est invoqué ici.

@@ -432,7 +432,28 @@ désormais dans `g1ValidationEnAttente.test.js` (7 tests) :
 P5 et D5 interdisent. Corrigé dans `evaluerSeuilsHebdo` : une semaine incomplète qui **ne
 dépasse pas** est désormais `non_evalue` avec `partielle: true`. Un dépassement, lui, reste
 prononcé — il est prouvé. Aucun écran ne consomme `niveau`, le changement est donc sans effet
-visuel aujourd'hui : c'est une vérité rétablie, pas un libellé ajouté. Les totaux mensuels et annuels sont inchangés par construction
+visuel aujourd'hui : c'est une vérité rétablie, pas un libellé ajouté.
+
+**G1-bis — le futur ne se déclare pas conforme (24/10/2026).** En préparant l'affichage, un
+défaut plus grave est apparu, et il venait de ma propre correction : une semaine **entièrement
+future** était comptée « 7 jours couverts » (`joursDansLaPeriode`), donc `partielle: false` et
+`niveau: 'aucun'` — « 0 h, rien à signaler » sur des jours pas encore arrivés. Au 24/10, la
+semaine du 26/10 au 01/11 tombait exactement dans ce cas.
+
+- `agregerParSemaine` reçoit désormais la date de référence et rend `joursEchues` à côté de
+  `joursDansLaPeriode` : ce que la **fenêtre** couvre, et ce qui a pu être **vécu** ;
+- une semaine sans jour échu est `a_venir: true`, `niveau: 'non_evalue'` ;
+- une semaine en cours (jours échus < 7) ne prononce pas « aucun dépassement » ;
+- une semaine révolue garde son verdict, à l'identique ;
+- sans date de référence (appel historique, fenêtre passée), tous les jours sont réputés échus :
+  le comportement d'avant est conservé.
+
+**Et à l'écran (G7-bis).** `pourquoiControleIndisponible` traite les trois nouveaux cas —
+semaine en cours, semaine à venir, semaine partielle — et continue de se taire quand un
+dépassement est **prouvé**, même sur une semaine partielle. L'exclusion mutuelle carte/ligne
+est verrouillée par trois tests de plus, dont un qui vérifie que le mot « conforme » n'apparaît
+jamais. `plafond_hebdo` expose enfin `a_venir` et `joursEchues` au lieu de laisser
+`joursDansLaPeriode` sans lecteur. Les totaux mensuels et annuels sont inchangés par construction
 (les boucles de totalisation gardent leurs propres listes de jours) et un test le vérifie.
 
 **Vérification des gardes de nuit** (6 tests, `gardeNuitAttribution.test.js`) : une garde reste
