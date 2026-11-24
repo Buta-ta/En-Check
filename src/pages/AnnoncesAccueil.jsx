@@ -99,7 +99,11 @@ export default function AnnoncesAccueil() {
   const [journal, setJournal] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [view, setView] = useState('medias')
+  //  La page s'ouvre sur l'APERÇU : c'est la vue de la maquette retenue, et
+  //  c'est la plus utile — on voit d'emblée ce que l'employé verra, avec la
+  //  liste de ce qui est en ligne à côté. « Médias » reste à un clic, pour
+  //  le formulaire complet et les cinq actions de chaque ligne.
+  const [view, setView] = useState('apercu')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState(null)
 
