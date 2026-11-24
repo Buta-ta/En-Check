@@ -13,12 +13,11 @@
 // statique dans les tests — et, vérifié à la main, de comparer son HTML à
 // celui de la maquette.
 //
-// LA BANDE DE MOTIF
+// PAS DE BANDE, ET C'EST VOULU
 // ────────────────────────────────────────────────────────────────────────────
-// Le dépôt a ses deux images de bogolan (`/images/paie-bogolan-haut.webp`,
-// `/images/bogolan-vertical.webp`). On ne les dessine pas en SVG : la page
-// Équipes a établi la technique, on la reprend — image native, jamais
-// étirée, `repeat-x`.
+// La tablette portait le bogolan de la paie dans son en-tête. Le fondateur l'a
+// fait retirer (25/11) : la tablette doit montrer la borne telle qu'elle est,
+// pas un tissu décoratif. Il ne reste que le nom.
 // ═══════════════════════════════════════════════════════════════════════════
 import { ChevronLeft, ChevronRight, Film, Image as ImageIcon } from 'lucide-react'
 import './EcranApercu.css'
@@ -55,9 +54,10 @@ export default function EcranApercu ({
         <span className="eap-touche eap-touche--power" aria-hidden="true" />
 
         <div className="eap-dalle">
-          {/* l'en-tête de la borne : sa bande, son nom */}
+          {/* l'en-tête de la borne : son nom, et plus de bande.
+              « enlève le bandeau bogolan dans la tablette de l'aperçu »
+              (25/11) : la tablette est fidèle à la borne, qui n'en porte pas. */}
           <div className="eap-entete">
-            <span className="eap-bande" aria-hidden="true" />
             <span className="eap-marque">Pointage</span>
           </div>
 

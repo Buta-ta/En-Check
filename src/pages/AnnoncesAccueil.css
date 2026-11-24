@@ -978,3 +978,131 @@
   flex-basis: 100%;
   margin-top: 8px;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🎛️ LA BARRE D'ACTIONS D'UN MÉDIA — maquette A (26/11)
+
+   Elle avait quatre boutons dont les icônes ne se voyaient pas. Les icônes
+   sont dans le HTML (vérifié : 4 `<svg>`), et aucune règle ne les masquait.
+   On ne se contente donc pas d'un correctif de surface : on fige la taille,
+   le trait et la couleur, pour que plus rien ne puisse les effacer.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.aa-page .aa-ann-media-actions .aa-ann-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  padding: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+  cursor: pointer;
+  transition:
+    transform var(--charte-duree) var(--charte-easing),
+    box-shadow var(--charte-duree) var(--charte-easing),
+    background-color var(--charte-duree) var(--charte-easing);
+}
+
+/*  La taille et le trait de l'icône sont écrits ici : c'est le seul endroit
+    qui décide, et il ne dépend d'aucune feuille voisine. */
+.aa-page .aa-ann-media-actions .aa-ann-act svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+  flex: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  color: inherit;
+}
+
+.aa-page .aa-ann-media-actions .aa-ann-act:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 3px 3px 0 0 var(--charte-encre);
+}
+
+.aa-page .aa-ann-media-actions .aa-ann-act:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 1px 1px 0 0 var(--charte-encre);
+}
+
+.aa-page .aa-ann-media-actions .aa-ann-act:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-aplat);
+  outline-offset: 2px;
+}
+
+.aa-page .aa-ann-media-actions .aa-ann-act:disabled {
+  opacity: 0.35;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/*  La suppression : terracotta plein. C'est la seule action qu'on ne peut pas
+    défaire. L'argile remplit, l'ivoire écrit (4,64:1). */
+.aa-page .aa-ann-media-actions .aa-ann-act.est-danger {
+  background-color: var(--charte-aplat);
+  color: var(--charte-blanc);
+}
+
+.aa-page .aa-ann-media-actions .aa-ann-act.est-confirm {
+  width: auto;
+  padding: 0 12px;
+  font-family: var(--charte-police);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background-color: var(--charte-erreur);
+  color: var(--charte-blanc);
+}
+
+/* ── l'ordinal : « 1er », « 2e » ─────────────────────────────────────────
+   La capture montrait « 1° » — le degré n'est pas un ordinal. */
+.aa-page .aa-ann-ordre-n {
+  font-family: var(--charte-police);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  padding: 2px 5px;
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface2);
+  color: var(--charte-encre);
+}
+
+/* ── LES PASTILLES D'ONGLET — le rond plein de la maquette A ──────────────
+   La feuille partagée les dessine en étiquette pâle (`AdminAccounts.css`
+   l. 813). On ne la modifie pas — elle sert aussi à Administration : on la
+   surcharge ici, pour cette page seulement. Un chiffre dans un rond plein se
+   lit sans effort ; c'est une quantité, pas une décoration. */
+.aa-page .aa-tabs .aa-tabs-n {
+  display: inline-grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 6px;
+  font-family: var(--charte-police);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-blanc);
+  background-color: var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+}
+
+/* ── le libellé des onglets inactifs ──────────────────────────────────────
+   La feuille partagée le pose en `--aa-encre-faible` : 2,82:1 sur le sable,
+   sous le minimum de lecture. `--charte-douce` donne 6,30:1. On ne touche
+   qu'aux onglets de cette page. */
+.aa-page .aa-tabs > button {
+  color: var(--charte-douce);
+}
+
+.aa-page .aa-tabs > button[aria-pressed='true'] {
+  color: var(--charte-encre);
+}

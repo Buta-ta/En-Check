@@ -71,6 +71,8 @@ const STATUTS = {
   en_ligne: 'En ligne',
   programmee: 'Programmée',
   expinee: 'Expirée',
+  //  Maquette A (26/11) : le badge dit « INACTIVE », au féminin — une annonce,
+  //  pas un média. Le mot était déjà juste ; c'est le genre qui se voyait.
   inactive: 'Inactive',
 }
 
@@ -472,7 +474,9 @@ export default function AnnoncesAccueil() {
           {a.titre || (Meta ? Meta.libelle : a.type)}
         </span>
         <span className="aa-ann-media-ligne1">
-          <span className="aa-ann-ordre-n">{a.ordre_publication}°</span>
+          <span className="aa-ann-ordre-n" title={`Position ${a.ordre_publication}`}>
+            {a.ordre_publication === 1 ? '1er' : `${a.ordre_publication}e`}
+          </span>
           <span className={`aa-ann-puce st-${a.statut}`}>
             <span className="aa-ann-pastille" aria-hidden="true" />
             {STATUTS[a.statut] || a.statut}
@@ -520,33 +524,60 @@ export default function AnnoncesAccueil() {
         </span>
         )}
       </span>
+      {/*  QUATRE GESTES VISIBLES — maquette A (26/11).
+          L'ordre (haut / bas), le crayon qui ouvre l'éditeur, et le geste qui
+          sort le média du carrousel. Ce dernier manquait : la liste « Médias »
+          affichait des annonces inactives sans offrir de les remettre, alors
+          que l'onglet Aperçu, lui, l'avait. La maquette le donnait déjà. */}
       <span className="aa-ann-media-actions">
-        <button type="button" title="Monter dans l’ordre" aria-label="Monter dans l’ordre" disabled={busy || i === 0} onClick={() => deplacer(a, -1)}>
-          <ArrowUp size={14} />
-        </button>
-        <button type="button" title="Descendre dans l’ordre" aria-label="Descendre dans l’ordre" disabled={busy || i === triees.length - 1} onClick={() => deplacer(a, 1)}>
-          <ArrowDown size={14} />
-        </button>
-        <button type="button" title="Modifier" aria-label="Modifier" disabled={busy} onClick={() => ouvrirEdition(a)}>
-          <Pencil size={14} />
+        <button
+          type="button"
+          className="aa-ann-act"
+          title="Monter dans l’ordre"
+          aria-label="Monter dans l’ordre"
+          disabled={busy || i === 0}
+          onClick={() => deplacer(a, -1)}
+        >
+          <ArrowUp size={15} aria-hidden="true" />
         </button>
         <button
           type="button"
-          title={a.is_active ? 'Désactiver' : 'Activer'}
-          aria-label={a.is_active ? 'Désactiver' : 'Activer'}
+          className="aa-ann-act"
+          title="Descendre dans l’ordre"
+          aria-label="Descendre dans l’ordre"
+          disabled={busy || i === triees.length - 1}
+          onClick={() => deplacer(a, 1)}
+        >
+          <ArrowDown size={15} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="aa-ann-act"
+          title="Modifier"
+          aria-label="Modifier"
+          disabled={busy}
+          onClick={() => ouvrirEdition(a)}
+        >
+          <Pencil size={15} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="aa-ann-act"
+          title={a.is_active ? 'Retirer du carrousel' : 'Remettre dans le carrousel'}
+          aria-label={a.is_active ? 'Retirer du carrousel' : 'Remettre dans le carrousel'}
           disabled={busy}
           onClick={() => basculer(a)}
         >
-          <Power size={14} />
+          {a.is_active ? <ArrowUpRight size={15} aria-hidden="true" /> : <Power size={15} aria-hidden="true" />}
         </button>
         {confirmationSuppression === a.id ? (
-          <button type="button" className="est-confirm" disabled={busy} onClick={() => supprimer(a)}>
+          <button type="button" className="aa-ann-act est-confirm" disabled={busy} onClick={() => supprimer(a)}>
             Confirmer la suppression
           </button>
         ) : (
           <button
             type="button"
-            className="est-danger"
+            className="aa-ann-act est-danger"
             title="Supprimer"
             aria-label="Supprimer"
             disabled={busy}
@@ -555,7 +586,7 @@ export default function AnnoncesAccueil() {
               window.setTimeout(() => setConfirmationSuppression((c) => (c === a.id ? null : c)), 5000)
             }}
           >
-            <Trash2 size={14} />
+            <Trash2 size={15} aria-hidden="true" />
           </button>
         )}
       </span>
