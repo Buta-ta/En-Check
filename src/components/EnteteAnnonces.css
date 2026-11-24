@@ -1,0 +1,259 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   🗂️ L'EN-TÊTE DES ANNONCES (maquette `entete-annonces-B.png`)
+
+   Trois formes du kit, aucune boîte :
+     · l'onglet    — le titre déborde du papier, rayons 11 aux deux coins hauts
+     · le tampon   — le blason, double cadre, incliné de 2°
+     · le champ souligné — « Mon compte », un trait et rien d'autre
+
+   Interdits tenus : aucun `drop-shadow` (C9), aucun rayon hors {6, 8, 11,
+   12, 999} (C10), aucun hex (tout vient des jetons `--charte-*`).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.aph {
+  --aph-onglet-h: 44px;
+  position: relative;
+  margin: 0 0 22px;
+  /* l'onglet dépasse de 44 px : la marge du haut lui laisse la place, sinon
+     il passerait sous le contenu précédent. */
+  padding-top: calc(var(--aph-onglet-h) + 6px);
+}
+
+/* ── L'ONGLET ─────────────────────────────────────────────────────────────
+   Deux coins hauts arrondis (11 : le rayon « tampon » du kit), les deux coins
+   bas droits. Il est posé SUR le bord du papier : son bas disparaît dessous,
+   ce qui le fait lire comme une languette et pas comme une étiquette. */
+.aph-onglet {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  height: calc(var(--aph-onglet-h) + 2px);
+  padding: 0 26px 10px;
+  background-color: var(--charte-aplat);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-bottom: 0;
+  border-radius: var(--charte-rayon-badge) var(--charte-rayon-badge) 0 0;
+}
+
+.aph-onglet h1 {
+  margin: 0;
+  font-family: var(--charte-police);
+  font-size: clamp(14px, 1.5vw, 18px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  /* l'argile remplit, l'ivoire écrit — 4,64:1, la paire de la charte */
+  color: var(--charte-blanc);
+  white-space: nowrap;
+}
+
+/* ── LE PAPIER ────────────────────────────────────────────────────────────
+   Un seul objet : contour 2 px, ombre dure de 3 px sans flou, trois coins
+   francs et le coin bas-droit à 11. */
+.aph-papier {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  min-height: 92px;
+  padding: 16px 20px;
+  background-color: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0 0 var(--charte-rayon-badge) 0;
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* ── LE RETOUR — un cercle, pas un carré ──────────────────────────────────
+   Rayon 999 : c'est une pilule, forme autorisée. Le second cercle intérieur
+   est le double feutre, à 4 px du bord. */
+.aph-retour {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  place-items: center;
+  color: var(--charte-encre);
+  background-color: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  text-decoration: none;
+  position: relative;
+}
+
+.aph-retour::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid var(--charte-encre);
+  border-radius: inherit;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.aph-retour:hover {
+  background-color: var(--charte-surface2);
+}
+
+.aph-retour:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 3px;
+}
+
+/* ── LE TAMPON ────────────────────────────────────────────────────────────
+   Le cachet : on ne pose pas un blason nu, on applique une marque. Le double
+   cadre crème et l'inclinaison disent « apposé », pas « aligné ». */
+.aph-tampon {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  background-color: var(--charte-espresso);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+  transform: rotate(-2deg);
+}
+
+.aph-tampon::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid var(--charte-blanc);
+  border-radius: 3px;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* le blason est réduit à sa matière : le cadre est déjà celui du tampon */
+.aph-tampon svg {
+  display: block;
+  border-radius: 2px;
+}
+
+/* ── LE TEXTE ─────────────────────────────────────────────────────────────
+   Plus de titre ici : il est dans l'onglet. Le sur-titre prend sa place et
+   donne la ligne de contexte qui restait dans la maquette. */
+.aph-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 220px;
+}
+
+.aph-surtitre {
+  margin: 0;
+  font-family: var(--charte-police);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+/* ── LE CHAMP SOULIGNÉ ────────────────────────────────────────────────────
+   Aucun cadre, aucun fond : le trait de 2 px suffit à dire « champ ». C'est
+   la forme 2 du kit pour un champ — celle des saisies en ligne. */
+.aph-compte {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding: 4px 2px 7px;
+  margin-left: auto;
+  color: var(--charte-encre);
+  text-decoration: none;
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+  transition: border-color var(--charte-duree) var(--charte-easing);
+}
+
+.aph-compte:hover {
+  border-bottom-color: var(--charte-aplat);
+}
+
+.aph-compte:focus-visible {
+  outline: var(--charte-trait) solid var(--charte-encre);
+  outline-offset: 3px;
+}
+
+.aph-compte-rond {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: var(--charte-rayon-pilule);
+  background-color: var(--charte-aplat);
+  color: var(--charte-blanc);
+}
+
+.aph-compte-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.aph-compte-texte strong {
+  font-family: var(--charte-police);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.aph-compte-texte small {
+  font-family: var(--charte-police);
+  font-size: 10.5px;
+  color: var(--charte-douce);
+}
+
+/* ── écrans étroits ───────────────────────────────────────────────────────
+   L'onglet garde sa place ; le champ souligné passe à la ligne et perd son
+   `margin-left: auto` pour rester collé à gauche. */
+@media (max-width: 760px) {
+  .aph {
+    --aph-onglet-h: 38px;
+  }
+  .aph-onglet {
+    padding: 0 16px 8px;
+  }
+  .aph-papier {
+    gap: 12px;
+    padding: 14px 14px;
+  }
+  .aph-compte {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .aph-tampon {
+    width: 48px;
+    height: 48px;
+  }
+  .aph-tampon svg {
+    width: 36px;
+    height: 36px;
+  }
+  .aph-compte-texte small {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aph-tampon {
+    transform: none;
+  }
+}
