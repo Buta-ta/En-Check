@@ -99,3 +99,81 @@ describe('V-C2 — prévu et pointé restent deux choses', () => {
     expect(legende).not.toMatch(/légal/i)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  G7-bis — « évalué » ne veut pas dire « la semaine a eu lieu »
+//
+//  Trouvé le 24/10/2026 en préparant l'affichage : une semaine ENTIÈREMENT
+//  FUTURE (26/10 → 01/11, consultée le 24/10) ressortait `partielle: false`,
+//  `niveau: 'aucun'`, `heures: 0`. Autrement dit « rien à signaler » sur des
+//  jours qui n'étaient pas encore arrivés.
+//
+//  C'est la même faute que V-B3, un cran plus loin : le silence ne disait pas
+//  qu'il portait sur du vide. Ces cas sont désormais nommés.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('⏳ G7-bis — semaines en cours et à venir', () => {
+  const semaine = (extra) => ({
+    debut: '2026-10-26',
+    fin: '2026-11-01',
+    heures: 0,
+    depasse: false,
+    niveau: 'non_evalue',
+    ...extra,
+  })
+  const plafondEvaluate = (...semaines) => ({
+    disponible: true,
+    seuil: 48,
+    source: 'entreprise',
+    semaines,
+  })
+
+  it('une semaine entièrement future n’est pas « sans dépassement »', () => {
+    const etat = pourquoiControleIndisponible(
+      plafondEvaluate(semaine({ a_venir: true, partielle: true, joursEchues: 0 })),
+    )
+    expect(etat).not.toBeNull()
+    expect(etat.raison).toMatch(/pas encore commencé/i)
+  })
+
+  it('une semaine en cours dit qu’elle n’est pas terminée', () => {
+    const etat = pourquoiControleIndisponible(
+      plafondEvaluate(
+        semaine({ a_venir: false, partielle: true, joursEchues: 6 }),
+        semaine({ debut: '2026-10-19', fin: '2026-10-25', partielle: true, joursEchues: 6 }),
+      ),
+    )
+    expect(etat).not.toBeNull()
+    expect(etat.raison).toMatch(/n’est pas terminée|pas terminée/i)
+  })
+
+  it('une semaine pleinement échue et sans dépassement reste silencieuse', () => {
+    //  Le silence doit rester possible : c'est le seul cas où « rien à
+    //  signaler » est vrai.
+    const etat = pourquoiControleIndisponible(
+      plafondEvaluate(
+        semaine({ a_venir: false, partielle: false, joursEchues: 7, debut: '2026-10-05' }),
+      ),
+    )
+    expect(etat).toBeNull()
+  })
+
+  it('un dépassement prouvé garde la parole, même sur une semaine partielle', () => {
+    //  La ligne ne contredit pas l'alerte : un dépassement constaté est vrai,
+    //  quel que soit le nombre de jours couverts.
+    const etat = pourquoiControleIndisponible(
+      plafondEvaluate(
+        semaine({ a_venir: false, partielle: true, joursEchues: 5, depasse: true, heures: 60 }),
+        semaine({ debut: '2026-10-19', fin: '2026-10-25', partielle: true, joursEchues: 5, depasse: true, heures: 55 }),
+      ),
+    )
+    expect(etat).toBeNull()
+  })
+
+  it('aucune raison ne dit « conforme » ni « légal »', () => {
+    const raisons = Object.values(RAISONS_INDISPONIBLE).join(' ').toLowerCase()
+    expect(raisons).not.toContain('conforme')
+    expect(raisons).not.toContain('légal')
+    expect(raisons).not.toContain('legal')
+  })
+})

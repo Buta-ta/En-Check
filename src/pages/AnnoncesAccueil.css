@@ -368,48 +368,11 @@
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   🌾 LA BANDE DE BOGOLAN — le pagne de boue, à la place du kente
-
-   Pourquoi ce changement : `culturalMotifForPath` n'assigne aucun motif à
-   cette page, elle tombait donc sur le kente par défaut. Mais elle alimente
-   l'ACCUEIL, qui porte le bogolan (CHARTE §1.2). Une page qui nourrit
-   l'accueil ne peut pas porter un autre tissu que lui — sinon la bande du
-   carrousel et le carrousel lui-même sont de deux familles.
-
-   On ne redessine rien : ce sont les deux images du dépôt, natives, jamais
-   étirées (C4), répétées horizontalement. Technique relevée sur la page
-   Équipes (`.eqv2--postit .eqv2-tete::before`).
-   ═══════════════════════════════════════════════════════════════════════════ */
-.aa-register .aa-bande--bogolan {
-  position: relative;
-  width: 100%;
-  height: var(--aa-bande-h);
-  background-color: var(--charte-tissu);
-  background-image: url('/images/paie-bogolan-haut.webp');
-  background-repeat: repeat-x;
-  background-position: left center;
-  background-size: auto var(--aa-bande-h);
-  /* le fil qui arrête la tenture — même geste que la bande d'origine */
-  border-bottom: var(--charte-trait) solid var(--charte-encre);
-}
-
-/* la couture du bas, reprise de `.aa-bande::after` : c'est elle qui dit
-   « tissu cousu » et pas « image posée » */
-.aa-register .aa-bande--bogolan::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  bottom: -3px;
-  height: 3px;
-  background-image: linear-gradient(
-    to right,
-    var(--charte-encre) 0 7px,
-    transparent 7px 14px
-  );
-  background-size: 14px 3px;
-  opacity: 0.75;
-}
+/* ── LA BANDE N'EST PLUS LÀ ──
+   « enlève le bandeau bogolan » (25/11). La page ouvre maintenant sur son
+   en-tête — l'onglet, le tampon, le champ souligné (EnteteAnnonces.css).
+   Le motif restait pourtant juste : la page est déclarée `bogolan` dans
+   `culturalMotifForPath`. C'est le fondateur qui a tranché, pas moi. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    🗂️ LA DISPOSITION « APERÇU » — la liste à gauche, l'écran à droite
@@ -839,4 +802,179 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 16px;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🧰 LA BARRE D'OUTILS — une seule pièce de papier (maquette B)
+
+   Ce que la maquette montre, et que l'ancienne barre ratait :
+     · le champ de l'entreprise est un CHAMP SOULIGNÉ (CHARTE §05), pas une
+       pilule à coins arrondis ;
+     · le bouton ACTUALISER est en terracotta PLEIN, en capitales, avec le
+       double feutre des autres objets ;
+     · le lien d'aide est un vrai lien, pas un bouton déguisé.
+
+   La barre est un post-it : contour 2 px, ombre dure, et le liseré de colle en
+   haut. Trois objets dedans, un seul papier autour.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.aa-page .aa-outils-annonces {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  background-color: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  box-shadow: var(--charte-ombre-dure);
+}
+
+/* ── le champ souligné ───────────────────────────────────────────────────── */
+.aa-page .aa-outils-annonces .aa-champ-entreprise {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 4px 2px 7px;
+  /* le trait du bas est LE champ : c'est la forme « champ souligné » du kit,
+     pas un cadre. 2 px d'encre, comme les autres traits. */
+  border-bottom: var(--charte-trait) solid var(--charte-encre);
+  background: transparent;
+  color: var(--charte-encre);
+}
+
+.aa-page .aa-outils-annonces .aa-champ-entreprise svg {
+  flex: none;
+  color: var(--charte-douce);
+}
+
+.aa-page .aa-outils-annonces .aa-champ-entreprise select {
+  min-width: 190px;
+  max-width: 260px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--charte-police);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  appearance: none;
+}
+
+.aa-page .aa-outils-annonces .aa-champ-entreprise:focus-within {
+  border-bottom-color: var(--charte-aplat);
+}
+
+/* ── le bouton ACTUALISER : plein, en capitales, double feutre ───────────── */
+.aa-page .aa-outils-annonces .aa-recharge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-aplat);
+  color: var(--charte-blanc);
+  font-family: var(--charte-police);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow:
+    2px 2px 0 0 var(--charte-encre),
+    inset 0 0 0 1.5px color-mix(in srgb, var(--charte-blanc) 42%, transparent);
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+}
+
+.aa-page .aa-outils-annonces .aa-recharge:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    3px 3px 0 0 var(--charte-encre),
+    inset 0 0 0 1.5px color-mix(in srgb, var(--charte-blanc) 42%, transparent);
+}
+
+.aa-page .aa-outils-annonces .aa-recharge:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    1px 1px 0 0 var(--charte-encre),
+    inset 0 0 0 1.5px color-mix(in srgb, var(--charte-blanc) 42%, transparent);
+}
+
+.aa-page .aa-outils-annonces .aa-recharge:disabled {
+  opacity: 0.5;
+  cursor: wait;
+  transform: none;
+}
+
+/* ── le lien d'aide ──────────────────────────────────────────────────────── */
+.aa-page .aa-outils-annonces .aa-aide-annonces {
+  margin-left: 4px;
+  font-family: var(--charte-police);
+  font-size: 12.5px;
+  color: var(--charte-texte);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  /* un lien se reconnaît à son trait : la charte souligne, elle n'encadre pas */
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: color-mix(in srgb, var(--charte-texte) 55%, transparent);
+}
+
+.aa-page .aa-outils-annonces .aa-aide-annonces:hover {
+  text-decoration-color: var(--charte-aplat);
+  color: var(--charte-encre);
+}
+
+@media (max-width: 620px) {
+  .aa-page .aa-outils-annonces .aa-champ-entreprise select {
+    min-width: 130px;
+    max-width: 170px;
+  }
+}
+
+/* ── le lien d'aide, quand il est un `<details>` ─────────────────────────────
+   `AdminExplication` rend un `<details>` : on habille son `<summary>` de la
+   même façon qu'un lien souligné, pour que la barre ait l'air d'une phrase et
+   pas de trois boutons. On garde le chevron natif masqué. */
+.aa-page .aa-outils-annonces .aa-explication {
+  margin-left: 4px;
+  border: 0;
+  background: none;
+  padding: 0;
+}
+
+.aa-page .aa-outils-annonces .aa-explication > summary {
+  list-style: none;
+  font-family: var(--charte-police);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--charte-texte);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: color-mix(in srgb, var(--charte-texte) 55%, transparent);
+}
+
+.aa-page .aa-outils-annonces .aa-explication > summary::-webkit-details-marker {
+  display: none;
+}
+
+.aa-page .aa-outils-annonces .aa-explication > summary:hover {
+  color: var(--charte-encre);
+  text-decoration-color: var(--charte-aplat);
+}
+
+/* ouvert, le texte se pose sous la barre : il ne doit pas la déformer */
+.aa-page .aa-outils-annonces .aa-explication-texte {
+  flex-basis: 100%;
+  margin-top: 8px;
 }

@@ -90,29 +90,39 @@ export function semainesDeLaPeriode(debut, fin) {
  * @param {string} options.fin    dernier jour de la période
  * @returns {Array<{debut, fin, secondes, joursTravailles, joursDansLaPeriode}>}
  */
-export function agregerParSemaine({ secondesParJour, debut, fin }) {
+export function agregerParSemaine({ secondesParJour, debut, fin, aujourdHui = null }) {
   const lire = (cle) => {
     if (!secondesParJour) return 0
     if (secondesParJour instanceof Map) return Number(secondesParJour.get(cle)) || 0
     return Number(secondesParJour[cle]) || 0
   }
 
+  //  ⚠️ Une semaine peut être COMPLÈTE au sens de la fenêtre (7 jours) et
+  //  pourtant n'avoir AUCUN jour passé : au 24/10, la semaine du 26/10 au
+  //  01/11 est entièrement à venir. Comptée comme « 7 jours couverts », elle
+  //  rendait « 0 h, niveau aucun » — un constat de conformité sur une semaine
+  //  qui n'a pas encore eu lieu. On distingue donc deux choses :
+  //    · `joursDansLaPeriode` : ce que la FENÊTRE couvre (inchangé) ;
+  //    · `joursEchues`        : ce qui a réellement pu être vécu.
+  const reference = aujourdHui || null
   return semainesDeLaPeriode(debut, fin).map(({ debut: d, fin: f }) => {
     let secondes = 0
     let joursTravailles = 0
     let joursDansLaPeriode = 0
+    let joursEchues = 0
     const curseur = depuisCle(d)
     for (let i = 0; i < 7; i += 1) {
       const cle = cleJour(curseur)
       if (cle >= debut && cle <= fin) {
         joursDansLaPeriode += 1
+        if (reference === null || cle <= reference) joursEchues += 1
         const s = lire(cle)
         secondes += s
         if (s > 0) joursTravailles += 1
       }
       curseur.setDate(curseur.getDate() + 1)
     }
-    return { debut: d, fin: f, secondes, joursTravailles, joursDansLaPeriode }
+    return { debut: d, fin: f, secondes, joursTravailles, joursDansLaPeriode, joursEchues }
   })
 }
 
@@ -184,7 +194,17 @@ export function evaluerSeuilsHebdo({
     //  calculé puis jamais lu, donc une fenêtre amputée rendait
     //  « niveau: aucun, 0 dépassement » — un constat de conformité tiré d'une
     //  lecture partielle. On ne le supprime pas : on le NOMME.
-    const partielle = Number(sem.joursDansLaPeriode) < 7
+    //  Une semaine dont AUCUN jour n'est encore arrivé n'est pas « sans
+    //  dépassement » : elle n'a simplement pas eu lieu. `joursEchues` vaut
+    //  `null` quand aucune référence n'a été fournie (fenêtre historique,
+    //  où tous les jours sont réputés échus).
+    const echues = sem.joursEchues === undefined || sem.joursEchues === null
+      ? null
+      : Number(sem.joursEchues)
+    const aVenir = echues === 0
+    const partielle = aVenir || (echues === null
+      ? Number(sem.joursDansLaPeriode) < 7
+      : echues < 7)
     return {
       ...sem,
       heures,
@@ -195,6 +215,7 @@ export function evaluerSeuilsHebdo({
       //  prouve rien tant que la semaine n'est pas couverte en entier.
       niveau: partielle && !depasse ? 'non_evalue' : niveau,
       partielle,
+      a_venir: aVenir,
       //  Ce que `joursDansLaPeriode` ne disait pas tout seul : la semaine est
       //  incomplète, donc « aucun dépassement » ne s'y prononce pas.
     }
