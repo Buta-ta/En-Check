@@ -297,11 +297,16 @@ export function messageDepassement(evaluation) {
   const seuil = evaluation.seuil ?? evaluation.seuil_majeur
   const max = evaluation.max?.heures ?? 0
   const semaines = evaluation.nb_depassees === 1 ? '1 semaine' : `${evaluation.nb_depassees} semaines`
-  const niveauHaut = (evaluation.semaines || []).some(
-    (sem) => sem && Number(sem.depassement_niveau_haut_heures) > 0,
+  //  ⚠️ Ce sont les HEURES AU-DELÀ du second niveau qu'on annonce, pas la
+  //  valeur du second niveau. « dont 48 h dépassées au second niveau » pour
+  //  une semaine de 50 h était faux de 46 h : le lecteur ne pouvait pas
+  //  distinguer le seuil (48) du dépassement (2).
+  const depassementHaut = (evaluation.semaines || []).reduce(
+    (max, sem) => Math.max(max, Number(sem?.depassement_niveau_haut_heures) || 0),
+    0,
   )
-  const second = niveauHaut && evaluation.seuil_majeur !== null && evaluation.seuil_majeur !== undefined
-    ? `, dont ${evaluation.seuil_majeur} h dépassées au second niveau`
+  const second = depassementHaut > 0 && evaluation.seuil_majeur !== null && evaluation.seuil_majeur !== undefined
+    ? `, dont ${depassementHaut} h au-delà du second niveau (${evaluation.seuil_majeur} h)`
     : ''
   return `${semaines} au-delà du ${libelleOrigineSeuil(evaluation.source)} (${seuil} h)${second} — maximum ${max} h`
 }

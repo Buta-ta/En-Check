@@ -193,7 +193,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   //  À 01:00 du matin, la journée de travail en cours est encore celle d'hier
   //  quand la bascule est à 04:00 : le tableau de bord doit montrer la garde en
   //  cours, pas une journée vide.
-  if (plan) todayKey = cleJourDeTravail(ref, plan.bascule)
+  if (plan) todayKey = cleJourDeTravail(ref, plan.bascule, enterprise.timezone || null)
   const scheduleResolved = resolveScheduleLikeRetards(employeeScheduleRow, defaultScheduleRow)
 
   // ── 6) Jours fériés ──────────────────────────────────────────
@@ -299,6 +299,12 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
 
   let monthOpenSessionsCount = 0
   let monthVirtualAutoCloseDays = 0
+  //  ⚠️ Les secondes issues d'une sortie PRÉSUMÉE sont comptées à part. Le
+  //  moteur les inclut dans `normal_seconds` (comportement historique, non
+  //  modifié ici) : ce qui change, c'est qu'on peut enfin les SÉPARER. Sans ce
+  //  chiffre, une fiche affichait 8 h pour une entrée seule, sans aucun moyen
+  //  de savoir que ces 8 h étaient inventées.
+  let monthPresumedSeconds = 0
   //  ⚠️ B : toute réparation automatique du mois, avec sa date.
   const monthAnomalies = []
 
@@ -311,6 +317,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     monthWorkedSeconds += s.totalSeconds
     monthOpenSessionsCount += s.openSessionsCount
     if (s.hasAutoCloseVirtual) monthVirtualAutoCloseDays += 1
+    monthPresumedSeconds += Number(s.totalSecondesPresumes) || 0
     for (const a of s.anomalies || []) monthAnomalies.push({ date: d, ...a })
 
     const holiday = holidayMap.get(d) || null
@@ -447,9 +454,12 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
       //  Et la journée en cours n'est pas révolue tant qu'elle n'est pas finie
       //  (bascule + fuseau de l'entreprise). Le dimanche à 10 h, la semaine
       //  n'est PAS terminée.
+      //  ⚠️ `plan.bascule` est déjà en MINUTES. Le repasser dans
+      //  `minutesDeBascule` (qui attend « 04:00 ») donnait 0 : la bascule de
+      //  l'entreprise était silencieusement ignorée.
       jourEnCours: jourDeTravailEnCours(
         ref,
-        plan ? minutesDeBascule(plan.bascule) : 0,
+        plan ? Number(plan.bascule) || 0 : 0,
         enterprise.timezone || null,
       ),
     }),
@@ -537,6 +547,10 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
 
     openSessionsCount: monthOpenSessionsCount,
     virtualAutoCloseDays: monthVirtualAutoCloseDays,
+    //  Ce que les heures affichées doivent à une ESTIMATION, et non à un
+    //  badgeage. `normal_seconds` les comprend encore : ce champ permet de le
+    //  dire à l'écran au lieu de laisser croire à un fait établi.
+    presumed_seconds: monthPresumedSeconds,
 
     //  ⚠️ B — ce que le moteur a réparé tout seul ce mois-ci.
     anomalies: monthAnomalies,
@@ -754,7 +768,7 @@ function buildDaySummariesStrict({
     const inDate = new Date(inAtt.check_time)
     //  Journée de travail : la bascule de la grille décide où commence la
     //  journée, donc à quelle journée appartient un pointage d'après minuit.
-    const dayKey = cleJourDeTravail(inDate, basculeMinutes)
+    const dayKey = cleJourDeTravail(inDate, basculeMinutes, enterpriseCfg?.timezone || null)
 
     if (dayKey < borneStartDate || dayKey > borneEndDate) return
 
@@ -784,6 +798,12 @@ function buildDaySummariesStrict({
     if (outAtt?.__virtual) {
       s.openSessionsCount += 1
       s.hasAutoCloseVirtual = true
+      //  ⚠️ La durée d'une clôture VIRTUELLE est une estimation. Elle reste
+      //  dans `totalSeconds` (comportement historique, non modifié ici : la
+      //  changer modifierait des montants), mais elle est comptée à part pour
+      //  que l'écran puisse la NOMMER. Sans ce chiffre, 8 h inventées et 8 h
+      //  badgées s'affichaient de la même façon.
+      s.totalSecondesPresumes = (Number(s.totalSecondesPresumes) || 0) + cappedDuration
     }
     if (outAtt?.is_auto_closed) {
       s.hasAutoClosedOut = true
@@ -803,7 +823,7 @@ function buildDaySummariesStrict({
   const closeOpenSessionVirtually = (openInAtt) => {
     if (!openInAtt) return
     const inDate = new Date(openInAtt.check_time)
-    const dayKey = cleJourDeTravail(inDate, basculeMinutes)
+    const dayKey = cleJourDeTravail(inDate, basculeMinutes, enterpriseCfg?.timezone || null)
     //  Cascade §5 : la grille EN VIGUEUR CE JOUR-LÀ (dates d'effet) vaut Niveau 1
     //  si elle est personnelle/liée, sinon on redescend au Niveau 3 (grille par
     //  défaut). Le JS reste un moteur D'AFFICHAGE : c'est `encheck_cloturer_pivotable`
@@ -842,8 +862,8 @@ function buildDaySummariesStrict({
         currentIn = att
       } else {
         const diffHours = (new Date(att.check_time) - new Date(currentIn.check_time)) / (1000 * 60 * 60)
-        const inDay = cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes)
-        const attDay = cleJourDeTravail(new Date(att.check_time), basculeMinutes)
+        const inDay = cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes, enterpriseCfg?.timezone || null)
+        const attDay = cleJourDeTravail(new Date(att.check_time), basculeMinutes, enterpriseCfg?.timezone || null)
         const isConsecutiveInSameShift =
           diffHours >= 0 &&
           diffHours <= APPARIEMENT_H &&
@@ -874,7 +894,7 @@ function buildDaySummariesStrict({
     //  Sortie sans entrée en cours : rien à apparier. Aujourd'hui elle
     //  disparaît purement et simplement du total.
     if (att.check_type === 'out' && !currentIn) {
-      noterAnomalie(cleJourDeTravail(new Date(att.check_time), basculeMinutes), 'sortie_orpheline', {
+      noterAnomalie(cleJourDeTravail(new Date(att.check_time), basculeMinutes, enterpriseCfg?.timezone || null), 'sortie_orpheline', {
         heure: att.check_time,
         message: 'Sortie sans entrée correspondante : non comptée',
       })
@@ -890,7 +910,7 @@ function buildDaySummariesStrict({
       // `encheck_nettoyer_rebonds_qr` effaçait aussi les vraies paires courtes, la
       // fonction est donc neutralisée côté base (elle marque, elle ne détruit plus).
       if (diffSeconds >= 0 && diffSeconds < REBOND_S) {
-        noterAnomalie(cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes), 'rebond_ignore', {
+        noterAnomalie(cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes, enterpriseCfg?.timezone || null), 'rebond_ignore', {
           secondes: Math.round(diffSeconds),
           message: 'Double scan rapproché : ignoré',
         })
@@ -903,7 +923,7 @@ function buildDaySummariesStrict({
       } else {
         // OUT trop loin (> appariement_heures) => l'ancien IN était un oubli de
         // dépointage : on le clôture virtuellement (on marque, on n'efface pas).
-        noterAnomalie(cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes), 'sortie_trop_lointaine', {
+        noterAnomalie(cleJourDeTravail(new Date(currentIn.check_time), basculeMinutes, enterpriseCfg?.timezone || null), 'sortie_trop_lointaine', {
           heures_ecart: Math.round(diffHours * 10) / 10,
           message: diffSeconds < 0
             ? 'Sortie antérieure à l’entrée : non comptée'
@@ -1207,12 +1227,17 @@ function minutesDeBascule(valeur) {
 
 //  Le nom de la journée de travail d'un instant : on recule de la bascule, puis
 //  on prend le jour local (dans le fuseau de l'entreprise). Avec une bascule à minuit, c'est le jour local.
-function cleJourDeTravail(date, basculeMinutes = 0) {
+function cleJourDeTravail(date, basculeMinutes = 0, fuseau = null) {
   const bascule = minutesDeBascule(basculeMinutes)
   const d = date instanceof Date ? date : new Date(date)
-  if (!bascule) return jourLocal(d) || toDateKeyLocal(d)
+  //  ⚠️ Le fuseau de l'ENTREPRISE, jamais un réglage global d'application.
+  //  Sans lui, `jourLocal` retombait sur `getActiveTimezone()` (réglage
+  //  d'écran, ou UTC). Le même instant — 23:30 UTC — donnait le 25 à UTC et
+  //  le 26 à Porto-Novo : la journée de travail changeait de date selon
+  //  l'appareil qui regardait. Un employé du Bénin à 00:30 voyait la veille.
+  if (!bascule) return jourLocal(d, fuseau) || toDateKeyLocal(d)
   const decale = new Date(d.getTime() - bascule * 60000)
-  return jourLocal(decale) || toDateKeyLocal(decale)
+  return jourLocal(decale, fuseau) || toDateKeyLocal(decale)
 }
 
 //  La journée de travail est-elle FINIE ?
@@ -1221,10 +1246,13 @@ function cleJourDeTravail(date, basculeMinutes = 0) {
 //  journée du lundi court jusqu'à mardi 03:59) et du fuseau de l'entreprise.
 //  Sans cela, un dimanche à 10 h du matin passait pour une semaine révolue.
 function jourDeTravailEnCours(ref, basculeMinutes = 0, fuseau = null) {
-  const bascule = minutesDeBascule(basculeMinutes)
+  //  `basculeMinutes` arrive DÉJÀ en minutes (c'est ce que rend
+  //  `resolvePlanForExpected`). On ne le repasse pas dans `minutesDeBascule`,
+  //  qui attend « 04:00 » et rendrait 0 pour 240.
+  const bascule = Math.max(0, Math.min(1439, Number(basculeMinutes) || 0))
   const d = ref instanceof Date ? ref : new Date(ref)
   if (Number.isNaN(d.getTime())) return null
-  const cle = cleJourDeTravail(d, bascule) || jourLocal(d, fuseau) || toDateKeyLocal(d)
+  const cle = cleJourDeTravail(d, bascule, fuseau) || jourLocal(d, fuseau) || toDateKeyLocal(d)
   if (!cle) return null
 
   //  Début de cette journée de travail, exprimé en UTC. La bascule est
@@ -1236,9 +1264,14 @@ function jourDeTravailEnCours(ref, basculeMinutes = 0, fuseau = null) {
     0,
     fuseau,
   )
-  if (!debut || Number.isNaN(debut.getTime())) return null
-  const fin = new Date(debut.getTime() + 24 * 3600 * 1000)
-  return d.getTime() < fin.getTime() ? cle : null
+  //  ⚠️ `heureLocaleVersUTC` rend une CHAÎNE ISO, pas un `Date`. Appeler
+  //  `.getTime()` dessus levait un TypeError et faisait tomber tout
+  //  `calculateEmployeeHours` — le parcours complet, pas seulement le calcul.
+  //  On normalise une fois, et on ne suppose plus le type.
+  const debutMs = debut ? new Date(debut).getTime() : NaN
+  if (!Number.isFinite(debutMs)) return null
+  const finMs = debutMs + 24 * 3600 * 1000
+  return d.getTime() < finMs ? cle : null
 }
 
 function grilleValableLe(grille, jour) {
@@ -1324,7 +1357,20 @@ async function loadPlanningsDeLaPeriode({ supabase, employeeId, enterpriseId, st
       ((r.use_custom_hours && r.custom_start_time && r.custom_end_time) ||
         (r.work_schedules && grilleValableLe(r.work_schedules, startDate)))
   )
-  const grillesUtiles = (grilles || []).filter((g) => grilleValableLe(g, startDate))
+  //  ⚠️ Une grille n'a pas besoin d'être valable AU PREMIER JOUR pour servir.
+  //  Filtrer sur `startDate` seul éliminait toute grille entrant en vigueur en
+  //  cours de période : la semaine du 19/10 avec une grille « 8 h jusqu'au 21,
+  //  6 h ensuite » n'attendait plus que 24 h (3 jours), les 2 jours suivants
+  //  passant pour du zéro attendu — 145 % de complétion au lieu de 97 %.
+  //  On retient donc les grilles qui CHEVAUCHENT la période ; le choix
+  //  jour par jour reste fait par `construirePlanningsParJour`.
+  const grillesUtiles = (grilles || []).filter((g) => {
+    const debut = g?.valide_du ? String(g.valide_du).slice(0, 10) : null
+    const fin = g?.valide_au ? String(g.valide_au).slice(0, 10) : null
+    if (debut && endDate && debut > endDate) return false
+    if (fin && startDate && fin < startDate) return false
+    return true
+  })
 
   const employeeScheduleRow = affectationsUtiles[0] || null
   const defaultScheduleRow =
@@ -2085,6 +2131,19 @@ function generateAlerts({ today, month, year, hasPlan, seuils, feries }) {
     alerts.push({ type: 'warning', message: `${month.openSessionsCount} session(s) ouverte(s) sur la période (auto-close plafonné)` })
   }
 
+  //  ⚠️ Fait établi ≠ estimation. Un mois dont une partie des heures vient
+  //  d'une sortie PRÉSUMÉE doit le dire : sans ce message, 8 h badgées et 8 h
+  //  inventées se lisent exactement pareil.
+  const presumees = Number(month?.presumed_seconds) || 0
+  if (presumees > 0) {
+    const heures = Math.round((presumees / 3600) * 100) / 100
+    alerts.push({
+      type: 'info',
+      message: `${heures} h de ce mois proviennent d’une sortie présumée (aucun badgeage) — `
+        + 'à confirmer avant paie. Elles ne sont pas un fait établi.',
+    })
+  }
+
   if (month?.anomalies?.length > 0) {
     const plafonnees = month.anomalies.filter(a => a.type === 'session_plafonnee').length
     const detail = plafonnees > 0 ? ` dont ${plafonnees} session(s) plafonnée(s)` : ''
@@ -2238,6 +2297,9 @@ function makeEmptyDaySummary(dateStr) {
     openSessionsCount: 0,
     hasAutoCloseVirtual: false,
     hasAutoClosedOut: false,
+    //  La part des secondes qui vient d'une ESTIMATION, pas d'un badgeage.
+    //  Déclarée ici pour que l'agrégat du mois puisse la séparer sans deviner.
+    totalSecondesPresumes: 0,
     entries: [],
     //  ⚠️ B — un pointage réparé sans trace est invisible à l'inspection.
     //  Chaque réparation laisse une ligne ici, au lieu d'un silence.
