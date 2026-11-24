@@ -1,8 +1,14 @@
 // ═══════════════════════════════════════════════════════════
-// 📊 CARTES DE SYNTHÈSE (KPI) DE LA PAGE ABSENCES
+// 🪧 LES SIX PAN CARTES DE L'ÉTAGÈRE (les ex-« cartes de synthèse »)
 //
 // Rendu serveur, aucune base : on vérifie les chiffres, les jauges
 // et surtout la présence des photos de profil.
+//
+// Le 30/11/2026 (maquette P1 retenue) : la peinture est descendue du `<style>`
+// embarqué dans le composant vers `AbsencesAfroTech.css`. Les verrous 13 à 18
+// lisaient donc des bouts de chaîne dans le rendu ; ils lisent maintenant la
+// feuille. Ce n'est pas un relâchement — `npm run charte` ne voyait pas le
+// `<style>` du JSX, il voit chaque ligne de la feuille.
 // ═══════════════════════════════════════════════════════════
 
 import { it, expect } from 'vitest'
@@ -10,6 +16,15 @@ import { readFileSync } from 'node:fs'
 import { renderToStaticMarkup } from 'react-dom/server'
 import AbsencesKpiCards from '../../components/AbsencesKpiCards'
 import { isoLocal, estJourOuvre } from '../absencesCalendrier'
+
+// Le corps d'une règle de la feuille de style, sélecteur retiré, commentaires retirés.
+const FEUILLE = readFileSync('src/pages/AbsencesAfroTech.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+const règle = (sélecteur) => {
+  const i = FEUILLE.indexOf(`${sélecteur} {`)
+  if (i === -1) throw new Error(`règle absente de la feuille : ${sélecteur}`)
+  return FEUILLE.slice(FEUILLE.indexOf('{', i) + 1, FEUILLE.indexOf('}', i))
+}
+const nud = (t) => t.replace(/\s+/g, '')
 
 const AUJOURDHUI = isoLocal(new Date())
 const dansNJours = (n) => {
@@ -122,8 +137,9 @@ it('8. les congés restants se calculent sur le plafond', () => {
 
 it('9. les cartes « à traiter » sont des boutons cliquables', () => {
   const guidage = rendre({ onVoirConflits: () => {}, onVoirDemandes: () => {} })
-  // deux cartes actionnables : les demandes en attente et les conflits
-  expect((guidage.match(/class="abs-kpi abs-kpi-cliquable"/g) || [])).toHaveLength(2)
+  // deux cartes actionnables : les demandes en attente et les conflits. Le corps de
+  // la planche EST le bouton — il n'y a plus de classe « cliquable » à coller à côté.
+  expect((guidage.match(/<button type="button" class="abs-planche-corps"/g) || [])).toHaveLength(2)
   expect(guidage).toContain('data-testid="abs-kpi-conflits"')
   expect(guidage).toContain('Arbitrer')
   // ce sont bien des boutons, donc accessibles au clavier
@@ -132,7 +148,7 @@ it('9. les cartes « à traiter » sont des boutons cliquables', () => {
 
 it('10. sans conflit ni attente, les cartes redeviennent inertes', () => {
   const propre = rendre({ conflitsEnAttente: 0, absences: [] })
-  expect(propre).not.toContain('class="abs-kpi abs-kpi-cliquable"')
+  expect(propre).not.toContain('<button')
   expect(propre).toContain('aucun conflit à arbitrer')
   expect(propre).toContain('aucune demande en souffrance')
 })
@@ -154,16 +170,24 @@ it('12. les dates de fin manquantes sont traitées comme un seul jour', () => {
 // 📏 FORMAT COMPACTE — la bande ne doit plus manger la page
 // ═══════════════════════════════════════════════════════════
 
-it('13. six lanières sur une ligne, inégales en poids, séparées d’un filet', () => {
-  // Absences, 24/11/2026 (maquette `absences-section-bogolan-cadre.png`) : plus
-  // six cartes égales posées en rang, mais six lanières — quatre renseignent,
-  // deux tirent, et ces deux-là sont plus larges parce qu’elles portent une poche.
-  expect(grille).toContain('repeat(4, minmax(0, 1fr)) minmax(0, 1.15fr) minmax(0, 1.35fr)')
-  // la cloison est un filet ENTRE voisines, jamais une bordure autour de chacune
-  expect(grille).toContain('.abs-kpi + .abs-kpi { border-left: 1px solid var(--abs-border); }')
+it('13. six planches pendues à un rail, de poids égal, et plus de filet entre voisines', () => {
+  // Absences, 30/11/2026 (maquette `absences-kpi-P1-etagere.png`, P1 retenu par le
+  // fondateur). La rangée d'avant était un ruban coupé en six par des bordures
+  // gauche, avec deux lanières plus larges parce qu'elles portaient une poche de
+  // renvoi. Maintenant six planches ÉGALES : le rabat se pose SUR la planche, il ne
+  // mange plus la largeur de sa voisine.
+  expect(nud(règle('.abs-etagere-planches'))).toContain('grid-template-columns:repeat(6,minmax(0,1fr))')
+  // la séparation, c'est le bois de chaque planche — son propre contour — et plus une
+  // bordure basse ajoutée sur la voisine de droite
+  expect(FEUILLE).not.toMatch(/\.abs-kpi/)
+  expect(nud(règle('.abs-planche-corps'))).toContain('border:var(--charte-trait)solidvar(--charte-encre)')
   // le paragraphe « chiffres calculés… » ne prend toujours pas une ligne entière
   expect(grille).not.toContain('1 / -1')
   expect(grille).toContain('title="Chiffres calculés sur les absences chargées')
+  // et chaque planche est pendue : deux cordes à sa tringle, et un rang de deux
+  // longues cordes au-dessus de la rangée
+  expect((grille.match(/abs-planche-corde/g) || [])).toHaveLength(6)
+  expect((grille.match(/abs-etagere-suspentes/g) || [])).toHaveLength(1)
 })
 
 it('14. le détail reste disponible, mais en infobulle', () => {
@@ -175,61 +199,88 @@ it('14. le détail reste disponible, mais en infobulle', () => {
   expect(propre).toContain('title="aucune demande en souffrance"')
 })
 
-it('15. une tuile compacte : petit chiffre, libellé sur une ligne', () => {
-  // chiffre ramené de 28 à 20 px, libellé coupé proprement s'il déborde
-  expect(grille).toContain('font-size:20px')
-  expect(grille).toContain('text-overflow:ellipsis')
-  // et l'icône ne fait plus 42 px de côté
-  expect(grille).not.toContain('width:42px')
+it('15. un chiffre de tableau, un libellé qui garde son mot entier', () => {
+  // La tuile compacte d'avant écrivait `font-size:20px` et `text-overflow:ellipsis`
+  // dans un `<style>` en ligne : le libellé sautait s'il était long. Six planches
+  // sur 1560 px font ~185 px de large — le libellé passe sur deux lignes au lieu
+  // de sauter, et le chiffre prend 26 px. C'est la seule raison pour laquelle la
+  // rangée en compte six et non quatre.
+  expect(nud(règle('.abs-planche-chiffre'))).toContain('font-size:26px')
+  expect(nud(règle('.abs-planche-label'))).not.toContain('text-overflow')
+  expect(nud(règle('.abs-planche-label'))).not.toContain('white-space')
+  // et l'icône de 42 px de côté n'est pas revenue : une planche n'a pas d'icône,
+  // elle a un chiffre. Six pictogrammes sur 185 px, c'est six timbres-poste.
+  expect(grille).not.toMatch(/width:42px/)
+  // la seule figure dessinée de la bande, c'est la flèche d'un rabat : une par
+  // étiquette, jamais une par planche.
+  expect((grille.match(/<svg/g) || []).length).toBe((grille.match(/abs-planche-etiquette/g) || []).length)
 })
 
-// ═══════════════════════════════════════════════════════════
 // 🪡 LANIÈRES, POCHES ET COUTURE — maquette bogolan, 24/11/2026
 // ═══════════════════════════════════════════════════════════
 
-it('16. les deux lanières qui tirent finissent sur une poche fléchée', () => {
-  // une demande en attente dans le jeu, pour que les DEUX poches existent
+it('16. les deux pancartes qui mènent quelque part finissent sur un rabat fléché', () => {
+  // une demande en attente dans le jeu, pour que les DEUX rabats existent
   const deux = absence('a9', 'e2', AUJOURDHUI, AUJOURDHUI, 'en_attente')
   const guidage = rendre({
     absences: [...absences, deux],
     onVoirConflits: () => {},
     onVoirDemandes: () => {},
   })
-  // « Traiter » et « Arbitrer » ne sont plus des pastilles d’ambre translucide :
-  // ce sont des onglets d’argile pleins, avec la flèche du voyage.
-  const poches = [...guidage.matchAll(/clip-path:polygon\(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px\)/g)]
-  expect(poches).toHaveLength(2)
-  // une seule des deux poches sans demande en attente : la poche dit l’action possible
-  expect((rendre({ onVoirConflits: () => {}, onVoirDemandes: () => {} }).match(/clip-path:polygon\(5px 0/g) || [])).toHaveLength(1)
+  // le rabat est coupé du même biseau de 5 px que la rangée d'avant, mais il ne se
+  // peint plus à chaque rendu : une règle dans la feuille, six planches.
+  expect(nud(règle('.abs-planche-etiquette'))).toContain('clip-path:polygon(5px0,100%0,100%100%,0100%,05px)')
+  expect((guidage.match(/abs-planche-etiquette/g) || [])).toHaveLength(2)
+  // un seul rabat quand il n'y a rien à traiter : la planche dit l'action possible
+  expect((rendre({ onVoirConflits: () => {}, onVoirDemandes: () => {} }).match(/abs-planche-etiquette/g) || [])).toHaveLength(1)
   expect(guidage).toContain('Traiter')
   expect(guidage).toContain('Arbitrer')
-  // la poche se remplit avec la teinte de la page, jamais un hex en dur
-  expect(guidage).toContain('background:var(--abs-amber)')
+  // le rabat se remplit avec l'aplatissement de la charte, jamais un hex en dur —
+  // et jamais en ligne : une attribution en ligne bat n'importe quel sélecteur.
+  expect(nud(règle('.abs-planche-etiquette'))).toContain('background:var(--charte-aplat)')
+  expect(grille).not.toMatch(/background:/)
 })
 
-it('17. la lanière des conflits porte une couture, et elle seule', () => {
+// ═══════════════════════════════════════════════════════════
+// 🪡 COUTURE — le fil oblique de la pancarte des conflits
+// ═══════════════════════════════════════════════════════════
+
+it('17. la planche des conflits porte une couture, et elle seule', () => {
   const guidage = rendre({ onVoirConflits: () => {}, onVoirDemandes: () => {} })
   expect((guidage.match(/data-testid="abs-kpi-couture"/g) || [])).toHaveLength(1)
-  // un fil oblique de la couleur du statut absent — plus de bandeau plein
-  expect(guidage).toContain('repeating-linear-gradient(135deg, var(--abs-coral) 0 2px, transparent 2px 5px)')
+  // un fil oblique de la teinte du statut absent — plus de bandeau plein
+  expect(nud(règle('.abs-planche-couture'))).toContain(
+    'background-image:repeating-linear-gradient(135deg,var(--abs-coral)02px,transparent2px5px)',
+  )
+  expect(nud(règle('.abs-planche-couture'))).not.toContain('background:var(--abs-coral)')
   // à la base déjà (deux conflits en attente), une seule couture…
   expect((grille.match(/data-testid="abs-kpi-couture"/g) || [])).toHaveLength(1)
-  // …et elle disparaît quand il n’y a plus rien à arbitrer
+  // …et elle disparaît quand il n'y a plus rien à arbitrer
   expect(rendre({ conflitsEnAttente: 0 })).not.toContain('data-testid="abs-kpi-couture"')
 })
 
-it('18. aucune teinte en dur dans la bande : tout passe par les jetons de la page', () => {
+it('18. aucune teinte en dur dans la bande : tout passe par les jetons', () => {
   // Le composant était peint en `rgba()` et en `#rrggbb` recopiés, avec un
-  // `${couleur}1F` concaténé qui ne peignait rien sur les cartes à jeton.
-  const brut = readFileSync('src/components/AbsencesKpiCards.jsx', 'utf8')
-  // On lit le code, pas la prose : un commentaire qui CITE `rgba()` pour expliquer
-  // la règle n'est pas une teinte peinte. Les commentaires retirés, il ne doit
-  // plus rester ni hexadécimal, ni `rgba()`, ni `${couleur}1F` concaténé.
-  const source = brut.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  // `${couleur}1F` concaténé qui ne peignait rien sur les cartes à jeton — et son
+  // `<style>` en ligne échappait à `npm run charte`. La peinture est descendue dans
+  // la feuille : elle y est comptée, et elle ne se repeint plus à chaque composant.
+  const source = readFileSync('src/components/AbsencesKpiCards.jsx', 'utf8')
+    .replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
   expect(source).not.toMatch(/#[0-9A-Fa-f]{6}/)
-  expect(source).not.toMatch(/rgba\(/)
+  expect(source).not.toMatch(/rgba?\(/)
   expect(source).not.toMatch(/\$\{couleur\}[0-9A-F]{2}/)
-  expect(source).toContain('color-mix(in srgb,')
-  // le chiffre reste à 20 px et en graisse de tableau, l’alignement est tabulaire
-  expect(grille).toContain('font-variant-numeric:tabular-nums')
+  // plus de `color-mix` en ligne non plus : la seule couleur que le JSX ose poser
+  // était une teinte de survol, elle est dans la feuille. Ce qu'il pose encore est
+  // une largeur de jauge en pourcentage — une donnée, pas un goût.
+  expect(source).not.toMatch(/color-mix\(/)
+  expect(nud(source)).toContain('style={{width:`${Math.max(0,Math.min(100,jauge))}%`}}'.replace(/\s/g,'').slice(5))
+  // la plage de l'étagère, dans la feuille : zéro hexadécimal, zéro `rgba()`, zéro flou
+  const plage = FEUILLE.slice(FEUILLE.indexOf('.abs-etagere {'), FEUILLE.indexOf('@media (max-width: 1180px)'))
+  expect(plage.length).toBeGreaterThan(1000)
+  expect(plage).not.toMatch(/#[0-9A-Fa-f]{3,6}/)
+  expect(plage).not.toMatch(/rgba?\(/)
+  expect(plage).not.toMatch(/blur\(/)
+  // le chiffre reste en graisse de tableau, l'alignement est tabulaire
+  expect(nud(règle('.abs-planche-chiffre'))).toContain('font-variant-numeric:tabular-nums')
+  expect(nud(règle('.abs-planche-chiffre'))).toContain('font-weight:700')
 })

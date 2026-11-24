@@ -1,22 +1,44 @@
 // ═══════════════════════════════════════════════════════════
-// 📊 ABSENCES — CARTES DE SYNTHÈSE (KPI)
+// 🪧 ABSENCES — LES SIX PAN CARTES DE L'ÉTAGÈRE
 //
-// Une carte = une question que se pose un RH en ouvrant la page :
-// qui manque aujourd'hui, combien ce mois, quoi traiter maintenant.
+// Maquette retenue `maquettes/absences-kpi-P1-etagere.png` (30/11/2026) :
+// « je choisis le P1, l'étagère sous le transat [...] je veux le résultat comme
+// dans la maquette choisie ».
 //
-// Deux cartes portent une jauge (taux d'absence, congés restants),
-// une carte montre les photos des absents du jour, et les cartes
-// « à traiter » sont cliquables : elles mènent droit au bon filtre.
+// Une carte = une question que se pose un RH en ouvrant la page : qui manque
+// aujourd'hui, combien ce mois, quoi traiter maintenant. Deux portent une
+// jauge, une montre les visages du jour, deux se cliquent et mènent droit au
+// bon filtre.
+//
+// Six pancartes pendues à un rail, et deux longues cordes qui descendent du
+// transat jusqu'à ce rail. Ce n'est plus un ruban coupé en six par des filets :
+// chaque chiffre a son bois, ses deux cordes et ses deux anneaux. La rangée
+// d'avant était « une lanière, pas une carte » ; celle-ci est une planche, et
+// une planche s'accroche.
+//
+// Ce que la maquette dessinait et que le code ne fait PAS : les deux longues
+// cordes montent jusqu'au bas du transat, pas jusqu'au bandeau de titre en
+// traversant la page. Traverser ce bloc demande de connaître sa hauteur, et
+// cette hauteur n'est lisible nulle part — la tuile se remonte elle-même de
+// 46 px et vit au grain d'un chiffre de 32 px. Un nombre recopié pour y arriver
+// serait faux de dizaines de pixels sur un seul écran. C'est écrit dans la
+// feuille, sous `🪧 L'ÉTAGÈRE`.
+//
+// Tout le dessin est parti dans `AbsencesAfroTech.css`. Ce fichier ne pose un
+// nombre en ligne qu'à deux endroits, et jamais de goût : la largeur d'une jauge
+// (un pourcentage lu en base) et le diamètre d'un visage (22 px, l'échelle des
+// tuiles). Les dix-sept `style={…}` d'avant étaient invisibles à
+// `npm run charte` — une attribution en ligne bat n'importe quel sélecteur de
+// feuille (journal du 22/11).
 //
 // Composant pur : pas de Supabase, pas d'effet, pas de suppression.
 // ═══════════════════════════════════════════════════════════
 
 import { useMemo } from 'react'
-import {
-  UserRoundX, CalendarRange, Hourglass, AlertTriangle, Activity, Palmtree, ArrowRight,
-} from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { isoLocal, estJourOuvre } from '../services/absencesCalendrier'
 import { soldeMoyen } from '../services/congesRestants'
+import '../pages/AbsencesAfroTech.css'
 
 const pad2 = (n) => String(n).padStart(2, '0')
 
@@ -34,160 +56,97 @@ function couvreJour(absence, iso) {
 }
 
 // ── Une photo ronde, avec repli sur les initiales ─────────────────────
-// Liseré d'ambre de la page, mêlé au fond : un seul jeton, pas un `rgba()` recopié.
-export function Avatar({ prenom, nom, photo, taille = 26, bordure = 'color-mix(in srgb, var(--abs-amber) 35%, transparent)' }) {
+// Le rond vient de la feuille (`.abs-planche-visage`), pas d'un `50%` recopié :
+// 50 % n'est pas dans la liste des rayons de D-016, et sur un carré de 22 px le
+// jeton `999px` donne exactement le même disque.
+export function Avatar({ prenom, nom, photo, taille = 22 }) {
+  const style = photo ? undefined : { fontSize: Math.max(9, Math.round(taille * 0.36)) }
   if (photo) {
     return (
       <img
         src={photo}
         alt=""
+        className="abs-planche-visage"
         data-testid="abs-kpi-avatar"
-        style={{
-          width: taille, height: taille, borderRadius: '50%', objectFit: 'cover',
-          flexShrink: 0, border: `1.5px solid ${bordure}`, background: 'color-mix(in srgb, var(--abs-bg) 80%, transparent)',
-        }}
+        style={{ width: taille, height: taille }}
       />
     )
   }
   return (
     <span
+      className="abs-planche-visage"
       data-testid="abs-kpi-avatar"
-      style={{
-        width: taille, height: taille, borderRadius: '50%', flexShrink: 0,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        border: `1.5px solid ${bordure}`, background: 'color-mix(in srgb, var(--abs-amber) 14%, transparent)',
-        color: 'var(--abs-amber)', fontSize: Math.max(9, Math.round(taille * 0.36)), fontWeight: 800,
-      }}
+      aria-hidden="true"
+      style={{ width: taille, height: taille, ...style }}
     >
       {initialesDe(prenom, nom)}
     </span>
   )
 }
 
-// ── Une lanière de compteur ───────────────────────────────────────────
-// Absences, 24/11/2026 (maquette `absences-section-bogolan-cadre.png`) : plus
-// six cartes égales posées en rang, mais six lanières séparées d'un filet,
-// inégales en poids — quatre renseignent, deux tirent (elles mènent à l'action).
-// Le détail (« sur 3 employés · 67 % ») reste en infobulle.
-//
-// Les teintes viennent toutes des jetons `--abs-*` de la page : ils portent déjà
-// le thème clair/sombre, le composant n'a donc plus besoin de `darkMode` — et un
-// `couleur}1F`concaténé sur un `var(--…)` ne peignait rien du tout (CSS invalide),
-// c'est `color-mix` qui fait le travail maintenant.
-function Carte({ testId, icone: Icone, couleur, valeur, suffixe, label, precision, jauge, action, onClick, couture, children }) {
-  // Composant icône reçu en prop : on le garde dans une variable locale
-  // (convention du projet : une capitale = jamais signalée comme inutilisée)
-  const IconeKpi = Icone
-  const texte = 'var(--abs-text)'
-  const doux = 'var(--abs-text-soft)'
-
-  const contenu = (
+/**
+ * Une pancarte. Elle est pendue, donc elle a une tringle au-dessus d'elle, deux
+ * cordes et deux anneaux — et un corps qui est soit un `div` (le chiffre
+ * renseigne), soit un `button` (le chiffre mène quelque part).
+ *
+ * Le libellé tient sur DEUX lignes plutôt que de se faire couper : la rangée
+ * d'avant écrivait `text-overflow: ellipsis`, c'est-à-dire « le libellé saute
+ * s'il est long ». Un libellé entier ne se rogne pas.
+ */
+function Planche({ testId, valeur, suffixe, label, precision, jauge, action, onClick, couture, children }) {
+  const corps = (
     <>
-      <p style={{
-        margin: 0, fontSize: 9.5, fontWeight: 700, letterSpacing: '.08em',
-        textTransform: 'uppercase', color: doux, fontFamily: 'IBM Plex Mono, monospace',
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      }}>
-        {label}
+      <p className="abs-planche-label">{label}</p>
+      <p className="abs-planche-nombre">
+        <span className="abs-planche-chiffre">{valeur}</span>
+        {suffixe && <span className="abs-planche-suffixe">{suffixe}</span>}
+        {children}
       </p>
-
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4, minWidth: 0 }}>
-        <span style={{ fontSize: 20, fontWeight: 800, color: texte, lineHeight: 1, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
-          {valeur}
-          {suffixe && <span style={{ fontSize: 12, fontWeight: 700, color: doux, marginLeft: 1 }}>{suffixe}</span>}
-        </span>
-
-        <span style={{
-          width: 20, height: 20, borderRadius: 4, flexShrink: 0, marginLeft: 'auto',
-          background: `color-mix(in srgb, ${couleur} 14%, transparent)`,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <IconeKpi size={12} color={couleur} />
-        </span>
-
-        {/* Les avatars (absents du jour) seglissent à droite de la ligne */}
-        {children && <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}>{children}</span>}
-
-        {/* La poche des deux lanières qui tirent : un onglet d'argile cousu au
-            bout de la lanière, avec la flèche du voyage (voir / traiter). */}
-        {action && (
-          <span style={{
-            marginLeft: 'auto', flexShrink: 0, alignSelf: 'center',
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
-            color: 'var(--abs-bg-elevated)', background: couleur,
-            padding: '3px 7px 3px 9px', borderRadius: 2, whiteSpace: 'nowrap',
-            clipPath: 'polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px)',
-          }}>
-            {action}
-            <ArrowRight size={11} />
-          </span>
-        )}
-      </div>
-
-      {/* La couture en zigzag de la lanière en conflit : l'alerte ne se dit plus
-          par un bandeau plein (c'était la bannière ambre), mais par un fil. */}
-      {couture === 'zigzag' && (
-        <div
-          aria-hidden="true"
-          data-testid="abs-kpi-couture"
-          style={{
-            marginTop: 6, height: 5,
-            backgroundImage: 'repeating-linear-gradient(135deg, var(--abs-coral) 0 2px, transparent 2px 5px)',
-          }}
-        />
-      )}
-
       {jauge !== undefined && jauge !== null && (
-        <div
+        <span
+          className="abs-planche-jauge"
           data-testid="abs-kpi-jauge"
           role="progressbar"
           aria-valuenow={Math.round(jauge)}
           aria-valuemin={0}
           aria-valuemax={100}
-          style={{
-            marginTop: 7, height: 3, overflow: 'hidden',
-            background: 'color-mix(in srgb, var(--abs-text) 8%, transparent)',
-          }}
         >
-          <div style={{
-            width: `${Math.max(0, Math.min(100, jauge))}%`, height: '100%',
-            background: couleur,
-          }} />
-        </div>
+          {/* LA seule valeur en ligne de ce fichier : elle est calculée, aucun
+              sélecteur de feuille ne peut savoir que le taux fait 41 %. */}
+          <i style={{ width: `${Math.max(0, Math.min(100, jauge))}%` }} />
+        </span>
+      )}
+      {couture === 'zigzag' && (
+        <span className="abs-planche-couture" data-testid="abs-kpi-couture" aria-hidden="true" />
+      )}
+      {action && (
+        <span className="abs-planche-etiquette">
+          {action}
+          <ArrowRight size={11} aria-hidden="true" />
+        </span>
       )}
     </>
   )
 
-  // Une lanière, pas une carte : pas de fond, pas de bordure autour, mais un
-  // filet entre les voisines — posé par la grille, jamais sur la première.
-  const commun = {
-    'data-testid': testId,
-    title: precision || undefined,
-    style: {
-      padding: '2px 12px', display: 'flex', flexDirection: 'column', minWidth: 0,
-      background: 'transparent',
-    },
-  }
-
-  if (onClick) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className="abs-kpi abs-kpi-cliquable"
-        style={{ ...commun.style, textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer' }}
-        data-testid={testId}
-        title={precision || undefined}
-      >
-        {contenu}
-      </button>
-    )
-  }
+  const attributs = { className: 'abs-planche-corps', title: precision || undefined }
 
   return (
-    <div className="abs-kpi" data-testid={testId} title={precision || undefined} style={commun.style}>
-      {contenu}
+    <div className="abs-planche" data-testid={testId}>
+      {/* la tringle est portée par la rangée, les cordes par la pancarte : à
+          chaque largeur d'écran, les planches d'une même ligne partagent le
+          même rail et les lignes qui suivent ont chacun leur propre rang de
+          cordes. C'est ce qui rend l'étagère responsive sans la défaire. */}
+      <span className="abs-planche-corde" aria-hidden="true">
+        <i />
+        <i />
+      </span>
+      {onClick ? (
+        <button type="button" onClick={onClick} {...attributs}>
+          {corps}
+        </button>
+      ) : (
+        <div {...attributs}>{corps}</div>
+      )}
     </div>
   )
 }
@@ -287,131 +246,87 @@ export default function AbsencesKpiCards({
 
   return (
     <div
+      className="abs-etagere"
       data-testid="abs-kpi-grille"
-      className="abs-kpi-grille"
       title={`Chiffres calculés sur les absences chargées · aujourd'hui = ${mesures.aujourdhui}`}
-      style={{
-        display: 'grid',
-        // Six lanières sur UNE ligne, inégales en poids : les deux de droite
-        // portent une poche et demandent plus de place que les quatre autres.
-        gridTemplateColumns: 'repeat(4, minmax(0, 1fr)) minmax(0, 1.15fr) minmax(0, 1.35fr)',
-        gap: 0,
-        marginBottom: 14,
-      }}
     >
-      <style>{`
-        /* Le filet entre les lanières, pas une bordure autour de chacune :
-           c'est la cloison d'un même tissu, pas six papiers collés. */
-        .abs-kpi + .abs-kpi { border-left: 1px solid var(--abs-border); }
-        .abs-kpi { transition: background-color .2s ease; }
-        .abs-kpi-cliquable:hover { background-color: color-mix(in srgb, var(--abs-amber) 8%, transparent) !important; }
-        .abs-kpi-cliquable:focus-visible { outline: 2px solid var(--abs-amber); outline-offset: -2px; }
-        /* Écran étroit : trois lanières par ligne, puis deux — les cloisons
-           suivent la grille, jamais un rang de filets orphelins. */
-        @media (max-width: 1100px) {
-          .abs-kpi-grille { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-          .abs-kpi:nth-child(4) { border-left: 0; }
-        }
-        @media (max-width: 900px) {
-          .abs-kpi-grille { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-          .abs-kpi:nth-child(4) { border-left: 0; }
-        }
-        @media (max-width: 560px) {
-          .abs-kpi-grille { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-          .abs-kpi:nth-child(3), .abs-kpi:nth-child(5) { border-left: 0; }
-        }
-      `}</style>
+      {/* Les deux longues cordes, scellées au raz du bas du transat. Elles sont à
+          24 px des bords — l'aplomb exact des coins du bandeau de titre — et le
+          transat, lui, tient ses montants à 15 % et 85 % : les deux dessinages ne
+          se croisent jamais. Muettes, et hors du chemin du clic. */}
+      <span className="abs-etagere-suspentes" aria-hidden="true">
+        <i><b /></i>
+        <i><b /></i>
+      </span>
 
-      {/* 1. Qui manque aujourd'hui — avec les photos */}
-      <Carte
-        testId="abs-kpi-absents"
-        icone={UserRoundX}
-        couleur="var(--abs-amber)"
-        valeur={mesures.absents.length}
-        label="Absents aujourd'hui"
-        precision={`sur ${mesures.effectif} employé${mesures.effectif > 1 ? 's' : ''} · ${mesures.taux} % de l'effectif`}
-      >
-        {apercu.length > 0 && (
-          <>
-            {apercu.map((e, i) => (
-              <span key={e.id} style={{ marginLeft: i === 0 ? 0 : -7, display: 'inline-flex' }}>
-                <Avatar prenom={e.first_name} nom={e.last_name} photo={e.photo_url} taille={22} />
-              </span>
-            ))}
-            {enPlus > 0 && (
-              <span style={{
-                marginLeft: -7, width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                background: 'color-mix(in srgb, var(--abs-amber) 18%, transparent)',
-                border: '1.5px solid color-mix(in srgb, var(--abs-amber) 35%, transparent)',
-                color: 'var(--abs-amber)', fontSize: 9, fontWeight: 800,
-              }}>
-                +{enPlus}
-              </span>
-            )}
-          </>
-        )}
-      </Carte>
+      <div className="abs-etagere-planches">
+        {/* 1. Qui manque aujourd'hui — avec les visages */}
+        <Planche
+          testId="abs-kpi-absents"
+          valeur={mesures.absents.length}
+          label="Absents aujourd'hui"
+          precision={`sur ${mesures.effectif} employé${mesures.effectif > 1 ? 's' : ''} · ${mesures.taux} % de l'effectif`}
+        >
+          {apercu.length > 0 && (
+            <span className="abs-planche-visages">
+              {apercu.map((e) => (
+                <Avatar key={e.id} prenom={e.first_name} nom={e.last_name} photo={e.photo_url} />
+              ))}
+              {enPlus > 0 && <span className="abs-planche-plus">+{enPlus}</span>}
+            </span>
+          )}
+        </Planche>
 
-      {/* 2. Le mois en cours */}
-      <Carte
-        testId="abs-kpi-mois"
-        icone={CalendarRange}
-        couleur="var(--abs-indigo)"
-        valeur={mesures.duMois}
-        label="Absences ce mois-ci"
-        precision={`${mesures.joursDecomptes} jour${mesures.joursDecomptes > 1 ? 's' : ''} décompté${mesures.joursDecomptes > 1 ? 's' : ''}`}
-      />
+        {/* 2. Le mois en cours */}
+        <Planche
+          testId="abs-kpi-mois"
+          valeur={mesures.duMois}
+          label="Absences ce mois-ci"
+          precision={`${mesures.joursDecomptes} jour${mesures.joursDecomptes > 1 ? 's' : ''} décompté${mesures.joursDecomptes > 1 ? 's' : ''}`}
+        />
 
-      {/* 3. Taux d'absence */}
-      <Carte
-        testId="abs-kpi-taux"
-        icone={Activity}
-        couleur="var(--abs-violet)"
-        valeur={mesures.tauxAbsence}
-        suffixe="%"
-        label="Taux d'absence du mois"
-        precision="jours d'absence / jours ouvrés de l'effectif"
-        jauge={mesures.tauxAbsence}
-      />
+        {/* 3. Taux d'absence du mois */}
+        <Planche
+          testId="abs-kpi-taux"
+          valeur={mesures.tauxAbsence}
+          suffixe="%"
+          label="Taux d'absence du mois"
+          precision="jours d'absence / jours ouvrés de l'effectif"
+          jauge={mesures.tauxAbsence}
+        />
 
-      {/* 4. Congés restants */}
-      <Carte
-        testId="abs-kpi-conges"
-        icone={Palmtree}
-        couleur="var(--abs-emerald)"
-        valeur={mesures.soldeMoyen}
-        suffixe="j"
-        label="Congés restants (moyenne)"
-        precision={`plafond ${mesures.plafond} jours · ${mesures.tauxConges} % encore disponible`}
-        jauge={mesures.tauxConges}
-      />
+        {/* 4. Congés restants. Le MÊME nombre que celui que le transat porte au creux
+            de sa corde — deux affichages, un seul calcul (`soldeMoyen`). La redite est
+            voulue par la maquette : ici on la lit, plus loin on la voit pendre. */}
+        <Planche
+          testId="abs-kpi-conges"
+          valeur={mesures.soldeMoyen}
+          suffixe="j"
+          label="Congés restants (moyenne)"
+          precision={`plafond ${mesures.plafond} jours · ${mesures.tauxConges} % encore disponible`}
+          jauge={mesures.tauxConges}
+        />
 
-      {/* 5. À traiter : demandes en attente */}
-      <Carte
-        testId="abs-kpi-attente"
-        icone={Hourglass}
-        couleur="var(--abs-amber)"
-        valeur={mesures.enAttente}
-        label="Demandes en attente"
-        precision={mesures.enAttente ? 'à valider ou à refuser' : 'aucune demande en souffrance'}
-        action={mesures.enAttente ? 'Traiter' : undefined}
-        onClick={onVoirDemandes}
-      />
+        {/* 5 et 6. Ce qui se traite : les deux seules pancartes qui se cliquent */}
+        <Planche
+          testId="abs-kpi-attente"
+          valeur={mesures.enAttente}
+          label="Demandes en attente"
+          precision={mesures.enAttente ? 'à valider ou à refuser' : 'aucune demande en souffrance'}
+          action={mesures.enAttente ? 'Traiter' : undefined}
+          onClick={onVoirDemandes}
+        />
 
-      {/* 6. À traiter : conflits */}
-      <Carte
-        testId="abs-kpi-conflits"
-        icone={AlertTriangle}
-        couleur={conflitsEnAttente ? 'var(--abs-coral)' : 'var(--abs-text-faint)'}
-        valeur={conflitsEnAttente}
-        label="Conflits absence / pointage"
-        precision={conflitsEnAttente ? 'un pointage sur une absence déclarée' : 'aucun conflit à arbitrer'}
-        action={conflitsEnAttente ? 'Arbitrer' : undefined}
-        couture={conflitsEnAttente ? 'zigzag' : undefined}
-        onClick={onVoirConflits}
-      />
-
+        <Planche
+          testId="abs-kpi-conflits"
+          valeur={conflitsEnAttente}
+          label="Conflits absence / pointage"
+          precision={conflitsEnAttente ? 'un pointage sur une absence déclarée' : 'aucun conflit à arbitrer'}
+          action={conflitsEnAttente ? 'Arbitrer' : undefined}
+          couture={conflitsEnAttente ? 'zigzag' : undefined}
+          onClick={onVoirConflits}
+        />
+      </div>
     </div>
   )
 }
