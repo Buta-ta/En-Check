@@ -384,7 +384,7 @@ rendre l'écran muet au premier jour.
 
 | Ordre | Lot | Contenu | E | É | Dépend de | Pourquoi ici |
 |---|---|---|---|---|---|---|
-| 1 | **G1** ✅ *réalisé, en attente de validation* | Fenêtres hebdo et repos calculées sur une plage élargie ; la primitive refuse des bornes étroites ; drapeau mort supprimé | S | — | — | Un réglage éditable sur un calcul faux à cheval sur deux années, c'est un bouton qui ment deux fois |
+| 1 | **G1** ✅ *validé le 24/10/2026* | Fenêtres hebdo et repos calculées sur une plage élargie ; la primitive refuse des bornes étroites ; drapeau mort supprimé | S | — | — | Un réglage éditable sur un calcul faux à cheval sur deux années, c'est un bouton qui ment deux fois |
 | 2 | **G2** ✅ *réalisé, en attente de validation* | Provenance réelle (`entreprise` / `defaut_produit` / `historique_incertain` / `inconnue`), défaut à 48 h, écriture qui n'invente plus de seuil, libellé honnête | S | S | — | Supprime le mensonge actuel (« seuil d'entreprise ») pour tous, tout de suite, sans toucher au calcul |
 | 3 | **G3** ✅ *2a (table + RPC + service) et 2b (branchement) faits* |
 | 4 | **G6** ⏳ *découplage + seuil choisi + case d'alerte (données) faits ; case à l'écran et séparation des clés à suivre* | Découplage de l'alerte et du module de paie ✅ (`seuilsAlerteHebdo`) ; séparation des trois clés (déclenchement de paie / seuil d'alerte / plafond `a_sourcer`) → **G3** | S | S | G3 | Donner un bouton « repos personnel » alors que l'alerte s'éteint avec la paie serait livrer un réglage inopérant |
@@ -413,7 +413,26 @@ Réalisé le 24/10/2026, **non validé** : le statut reste « en attente ».
   nouveau contrat.
 
 **Ce que G1 ne fait pas** : il ne renomme rien à l'écran, ne modifie aucune alerte, ne touche
-ni aux seuils ni à la paie. Les totaux mensuels et annuels sont inchangés par construction
+ni aux seuils ni à la paie.
+
+**Validation du 24/10/2026 — les trois contrôles qui manquaient au §7.** Le plan demandait
+sept vérifications ; `fenetreAnnee.test.js` en couvrait quatre. Les trois autres sont
+désormais dans `g1ValidationEnAttente.test.js` (7 tests) :
+
+| Contrôle manquant | Ce qu'il a révélé |
+|---|---|
+| repos 31/12 23 h 10 → 01/01 05 h 40 | **rien de cassé** : 6 h 30 mesurées, 4 h 30 manquantes pour un minimum fictif de 11 h — le cas du plan passe |
+| cas symétrique (référence janvier) | **rien de cassé** : janvier voit bien le 31/12 par la fenêtre élargie |
+| `donnees_completes = false` affiché | **un défaut réel** : ce drapeau n'existe pas dans le code |
+
+**Le défaut trouvé — une semaine amputée ne disait pas qu'elle l'était.**
+`joursDansLaPeriode` était calculé, documenté comme « ce qui reste vrai et vérifiable », puis
+**jamais lu**. Une fenêtre couvrant 3 jours sur 7 rendait donc `niveau: 'aucun'` et
+`nb_depassees: 0` : un constat de conformité tiré d'une lecture partielle, exactement ce que
+P5 et D5 interdisent. Corrigé dans `evaluerSeuilsHebdo` : une semaine incomplète qui **ne
+dépasse pas** est désormais `non_evalue` avec `partielle: true`. Un dépassement, lui, reste
+prononcé — il est prouvé. Aucun écran ne consomme `niveau`, le changement est donc sans effet
+visuel aujourd'hui : c'est une vérité rétablie, pas un libellé ajouté. Les totaux mensuels et annuels sont inchangés par construction
 (les boucles de totalisation gardent leurs propres listes de jours) et un test le vérifie.
 
 **Vérification des gardes de nuit** (6 tests, `gardeNuitAttribution.test.js`) : une garde reste
@@ -902,7 +921,7 @@ passe en `show: admin?.role === 'super_admin'`, ce qui supprime la redirection a
 
 ## 7. Tests à écrire, lot par lot
 
-**G1 — fenêtre à cheval sur deux années**
+**G1 — fenêtre à cheval sur deux années** ✅ *les 7 contrôles existent depuis le 24/10/2026*
 - semaine 29/12/2025 → 04/01/2026, 5 × 10 h (3 jours en décembre, 2 en janvier) : la semaine
   doit être vue **une fois**, à 50 h, avec un dépassement de 2 h au seuil de 48 h ;
 - côté décembre **et** côté janvier, le même total doit apparaître (pas 30 h / 20 h) ;
@@ -1020,6 +1039,12 @@ passe en `show: admin?.role === 'super_admin'`, ce qui supprime la redirection a
    **jetée**. Le `.catch(() => [])` était donc du code mort — rien ne rejetait jamais, et
    une base muette rendait simplement `[]`. Corrigé : chaque source propage désormais son
    erreur, et une panne totale affiche une carte au lieu d'un « aucun résultat ».
+   **Complété le 24/10/2026 (F5-bis)** : `dispatchRecherche` a huit branches, une seule était
+   testée en panne. `searchEmployeeHours`, `getStatsCommand` et `getAbsentsToday` jetaient
+   encore leurs erreurs — le dernier affichait « 0 absent », c'est-à-dire une panne
+   déguisée en bonne nouvelle. Les huit chemins sont désormais couverts
+   (`recherchePannesChemins.test.js`, 17 tests), y compris le pendant : une vraie vacuité
+   reste silencieuse.
    ⚠️ **À instruire** : `detectEmployeeQuery` renvoie `true` dès 3 caractères, donc
    `parseQuery` route **presque tout** vers `EMPLOYEE_SEARCH` et `globalSearch` est
    quasi inatteignable. La recherche dite « globale » ne l'est pas. C'est un lot à part.

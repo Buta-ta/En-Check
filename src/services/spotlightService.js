@@ -118,7 +118,10 @@ async function searchEmployeeHours(parsed, enterpriseId) {
   }
   if (parsed.employeeMatricule) q = q.ilike('matricule', `%${parsed.employeeMatricule}%`)
 
-  const { data: employees } = await q.limit(5)
+  const { data: employees, error: erreurEmployes } = await q.limit(5)
+  //  F5 — même règle que les huit sources : une erreur de lecture n'est pas
+  //  « aucun employé ». Sans ceci, une panne affichait un écran vide.
+  if (erreurEmployes) throw erreurEmployes
   if (!employees?.length) return []
 
   const results = await Promise.all(
@@ -540,15 +543,20 @@ async function getStatsCommand(enterpriseId) {
   const today = new Date().toISOString().split('T')[0]
 
   const [
-    { count: employeesCount }, 
-    { data: ins }, 
-    { data: absences }
+    { count: employeesCount, error: errEmp },
+    { data: ins, error: errIns },
+    { data: absences, error: errAbs },
   ] = await Promise.all([
     supabase.from('employees').select('*', { count: 'exact', head: true }).eq('enterprise_id', enterpriseId).eq('is_active', true),
     supabase.from('attendances').select('employee_id').eq('enterprise_id', enterpriseId).eq('check_type', 'in')
       .gte('check_time', `${today}T00:00:00`).lte('check_time', `${today}T23:59:59`),
     supabase.from('absences').select('employee_id').eq('enterprise_id', enterpriseId).lte('start_date', today).gte('end_date', today),
   ])
+
+  //  F5 — une commande `stats` qui n'a pas pu lire ses tables afficherait
+  //  « 0 présent, 0 absent » : un mensonge parfaitement crédible.
+  const panneStats = errEmp || errIns || errAbs
+  if (panneStats) throw panneStats
 
   const presentSet = new Set((ins || []).map(x => x.employee_id))
   const absenceSet = new Set((absences || []).map(x => x.employee_id))
@@ -577,15 +585,20 @@ async function getAbsentsToday(enterpriseId) {
   }
 
   const [
-    { data: employees }, 
-    { data: ins }, 
-    { data: absences }
+    { data: employees, error: errEmp },
+    { data: ins, error: errIns },
+    { data: absences, error: errAbs },
   ] = await Promise.all([
     supabase.from('employees').select('id, first_name, last_name, matricule, photo_url').eq('enterprise_id', enterpriseId).eq('is_active', true),
     supabase.from('attendances').select('employee_id').eq('enterprise_id', enterpriseId).eq('check_type', 'in')
       .gte('check_time', `${today}T00:00:00`).lte('check_time', `${today}T23:59:59`),
     supabase.from('absences').select('employee_id').eq('enterprise_id', enterpriseId).lte('start_date', today).gte('end_date', today),
   ])
+
+  //  F5 — pire que `stats` : « personne n'est absent » se lit comme une BONNE
+  //  nouvelle. Une panne ne doit jamais ressembler à un motif de satisfaction.
+  const panneAbsents = errEmp || errIns || errAbs
+  if (panneAbsents) throw panneAbsents
 
   const presentSet = new Set((ins || []).map(x => x.employee_id))
   const absenceSet = new Set((absences || []).map(x => x.employee_id))
