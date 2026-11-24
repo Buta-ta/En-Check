@@ -1002,22 +1002,35 @@ passe en `show: admin?.role === 'super_admin'`, ce qui supprime la redirection a
 
 ## 8. Contradictions et points de vigilance avec les travaux en cours
 
-1. **PR #308 (F4, F5, C1)** est ouverte. **C1 (écriture de snapshots) ne doit pas être
-   activée avant G1**, ni avant la décision du §6.4 : elle figerait un calcul faux au 31/12,
-   exactement ce que le rapport interdit. F4 (bornes) et F5 (recherche) sont sans conflit.
+1. **PR #308 : F4 et F5 sont repris ; C1 reste hors périmètre.**
+   La PR était en retard de 35 commits sur `main` et son merge touchait 10 fichiers en
+   conflit, dont `hoursCalculator.js` et `Planning.jsx`. Plutôt qu'une fusion hasardeuse,
+   **F4 et F5 ont été réécrits sur `main`**, avec leurs tests, dans une PR dédiée.
+   **C1 (écriture de snapshots) n'est PAS repris** : elle ne doit pas être activée avant
+   **G1**, ni avant la décision du §6.4 — elle figerait un calcul faux au 31/12, exactement
+   ce que le rapport interdit. La primitive `snapshotCalcul.js` reste disponible dans
+   l'historique de #308 pour qui voudra la reprendre *après* G1.
 2. **#311 (file de demandes de planning)**, fusionnée : elle manipule du planning *prévu*.
    Elle ne doit pas servir de source à un contrôle de conformité (V-C2).
 3. **D2 (repos quotidien) est fusionné mais inopérant** : `repos_quotidien_heures` n'a ni UI
    ni chemin d'écriture. Il ne doit pas être présenté comme actif tant que G3/G4 ne sont pas
    livrés — et G1 reste nécessaire pour qu'il soit juste au passage d'année.
-4. **D1 (plafond hebdomadaire) est fusionné et branché** sur un calcul amputé aux bornes
+4. **F5, en le corrigeant, a révélé un défaut plus profond que le `.catch` d'origine.**
+   Les huit sources lisaient `const { data } = await q` : l'`error` de Supabase était
+   **jetée**. Le `.catch(() => [])` était donc du code mort — rien ne rejetait jamais, et
+   une base muette rendait simplement `[]`. Corrigé : chaque source propage désormais son
+   erreur, et une panne totale affiche une carte au lieu d'un « aucun résultat ».
+   ⚠️ **À instruire** : `detectEmployeeQuery` renvoie `true` dès 3 caractères, donc
+   `parseQuery` route **presque tout** vers `EMPLOYEE_SEARCH` et `globalSearch` est
+   quasi inatteignable. La recherche dite « globale » ne l'est pas. C'est un lot à part.
+5. **D1 (plafond hebdomadaire) est fusionné et branché** sur un calcul amputé aux bornes
    d'année, avec une alerte conditionnée au module de paie (l. 389). Deux défauts, tous deux
    listés ici (G1, G6).
-5. **C5-mince (journal des décisions)** n'est pas encore fait. G3 en tient lieu **pour les
+6. **C5-mince (journal des décisions)** n'est pas encore fait. G3 en tient lieu **pour les
    règles de temps de travail uniquement** ; le journal général reste à faire.
-6. Le rapport demande de ne pas figer de résultats erronés : `snapshotCalcul.js` (PR #308)
+7. Le rapport demande de ne pas figer de résultats erronés : `snapshotCalcul.js` (PR #308)
    est une primitive neutre, mais son **activation** est un choix, pas une évidence.
-7. **Garde de nuit : une convention, pas une erreur — mais un écart qui se chiffre.** Une garde
+8. **Garde de nuit : une convention, pas une erreur — mais un écart qui se chiffre.** Une garde
    appartient entièrement à la journée où elle a **commencé** (règle d'arbitrage n°2,
    `garde_max_heures` = 22 h). Conséquence mesurée sur données fictives, à 1 000 FCFA/h :
    une garde samedi 22 h → dimanche 6 h est payée **10 000 FCFA** (8 h au taux du samedi),

@@ -37,6 +37,33 @@ export async function searchSpotlight(query, admin) {
 
   const parsed = parseQuery(q, admin)
 
+  //  F5 : `searchSpotlight` est appelée À CHAQUE FRAPPE, sans try/catch. La
+  //  moindre panne d'une source remontait donc en rejet non géré et cassait la
+  //  frappe en cours. Une recherche qui échoue doit le DIRE, pas disparaître.
+  try {
+    return await dispatchRecherche(parsed, admin, enterpriseId)
+  } catch (err) {
+    console.error('searchSpotlight — recherche indisponible:', err?.message || err)
+    return [CARTE_INDISPONIBLE('Réessayez dans un instant. Les pages métier restent accessibles.')]
+  }
+}
+
+/** Une panne de recherche doit se VOIR. Le défaut d'origine était justement
+ *  qu'elle ressemblait trait pour trait à « aucun résultat ». */
+function CARTE_INDISPONIBLE(subtitle) {
+  return {
+    id: 'search-unavailable',
+    type: 'action',
+    category: 'actions',
+    title: 'Recherche momentanément indisponible',
+    subtitle,
+    action: 'focusSearch',
+  }
+}
+
+/** Répartit une requête analysée vers la bonne source. Extrait pour que F5
+ *  puisse l'envelopper d'un try/catch — le comportement, lui, ne change pas. */
+async function dispatchRecherche(parsed, admin, enterpriseId) {
   switch (parsed.type) {
     case 'COMMAND':
       return handleCommand(parsed.command, admin, enterpriseId)
@@ -125,7 +152,8 @@ async function searchEmployees(parsed, enterpriseId) {
   if (filters?.department) q = q.ilike('department', `%${filters.department}%`)
   if (filters?.matricule) q = q.ilike('matricule', `%${filters.matricule}%`)
 
-  const { data } = await q.limit(30)
+  const { data, error } = await q.limit(30)
+  if (error) throw error
   let list = data || []
 
   if (searchTerm && list.length) {
@@ -200,7 +228,8 @@ async function searchTasks(parsed, enterpriseId) {
   if (parsed.filters?.status) q = q.eq('status', parsed.filters.status)
   if (parsed.filters?.teamName) q = q.ilike('teams.name', `%${parsed.filters.teamName}%`)
 
-  const { data } = await q.limit(20)
+  const { data, error } = await q.limit(20)
+  if (error) throw error
   
   return (data || []).map(t => ({
     ...t,
@@ -234,7 +263,8 @@ async function searchAttendances(parsed, enterpriseId) {
   if (parsed.filters?.type) q = q.eq('check_type', parsed.filters.type)
   if (parsed.filters?.method) q = q.eq('method', parsed.filters.method)
 
-  const { data } = await q.limit(20)
+  const { data, error } = await q.limit(20)
+  if (error) throw error
   
   return (data || []).map(a => ({
     ...a,
@@ -252,7 +282,7 @@ async function searchAttendances(parsed, enterpriseId) {
 async function searchAbsences(parsed, enterpriseId) {
   const today = new Date().toISOString().split('T')[0]
   
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('absences')
     .select(`
       *, 
@@ -263,6 +293,7 @@ async function searchAbsences(parsed, enterpriseId) {
     .gte('end_date', today)
     .order('created_at', { ascending: false })
     .limit(20)
+  if (error) throw error
 
   return (data || []).map(a => ({ 
     ...a, 
@@ -277,7 +308,7 @@ async function searchAbsences(parsed, enterpriseId) {
 // ═══════════════════════════════════════════════════════════
 
 async function searchLeaveRequests(enterpriseId) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('leave_requests')
     .select(`
       *,
@@ -287,6 +318,7 @@ async function searchLeaveRequests(enterpriseId) {
     .eq('status', 'en_attente')
     .order('created_at', { ascending: false })
     .limit(10)
+  if (error) throw error
 
   return (data || []).map(lr => ({
     ...lr,
@@ -312,7 +344,8 @@ async function searchTeams(enterpriseId, searchTerm = '') {
     q = q.ilike('name', `%${searchTerm}%`)
   }
 
-  const { data } = await q.limit(10)
+  const { data, error } = await q.limit(10)
+  if (error) throw error
 
   return (data || []).map(t => ({
     ...t,
@@ -333,7 +366,8 @@ async function searchGeofences(enterpriseId, searchTerm = '') {
     q = q.ilike('name', `%${searchTerm}%`)
   }
 
-  const { data } = await q.limit(10)
+  const { data, error } = await q.limit(10)
+  if (error) throw error
 
   return (data || []).map(g => ({
     ...g,
@@ -343,7 +377,7 @@ async function searchGeofences(enterpriseId, searchTerm = '') {
 }
 
 async function searchScheduleRequests(enterpriseId) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('schedule_change_requests')
     .select(`
       *,
@@ -354,6 +388,7 @@ async function searchScheduleRequests(enterpriseId) {
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(10)
+  if (error) throw error
 
   return (data || []).map(sr => ({
     ...sr,
@@ -364,7 +399,7 @@ async function searchScheduleRequests(enterpriseId) {
 }
 
 async function searchFaceEnrollments(enterpriseId) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('face_enrollments')
     .select(`
       *,
@@ -374,6 +409,7 @@ async function searchFaceEnrollments(enterpriseId) {
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(10)
+  if (error) throw error
 
   return (data || []).map(fe => ({
     ...fe,
@@ -384,13 +420,14 @@ async function searchFaceEnrollments(enterpriseId) {
 }
 
 async function searchPayslips(parsed, enterpriseId) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('employee_payslips')
     .select('*, employees(id, first_name, last_name, matricule)')
     .eq('enterprise_id', enterpriseId)
     .eq('is_deleted', false)
     .order('period_start', { ascending: false })
     .limit(20)
+  if (error) throw error
 
   return (data || []).map(p => ({ 
     ...p, 
@@ -444,6 +481,20 @@ async function globalSearch(parsed, enterpriseId) {
   const searchTerm = parsed.searchTerm || ''
   if (searchTerm.length < 2) return []
 
+  //  F5 — le défaut d'origine était une ligne de code : `.catch(() => [])`.
+  //  Huit fois. Une panne TOTALE ressemblait alors exactement à « aucun
+  //  résultat » : l'utilisateur concluait que la personne n'existe pas, alors
+  //  que la base ne répondait pas.
+  //  ⚠️ Le catch est posé À LA CONSTRUCTION, pas autour du tableau :
+  //  `Promise.all` rejette à la PREMIÈRE source qui échoue, et les autres
+  //  échecs deviendraient des rejets non gérés.
+  const pannes = []
+  const source = (nom, promesse) => Promise.resolve(promesse).catch((err) => {
+    pannes.push(nom)
+    console.error(`globalSearch — source « ${nom} » indisponible:`, err?.message || err)
+    return []
+  })
+
   const [
     employees,
     tasks,
@@ -454,15 +505,20 @@ async function globalSearch(parsed, enterpriseId) {
     geofences,
     payslips, // ✅ AJOUTÉ
   ] = await Promise.all([
-    searchEmployees({ type: 'EMPLOYEE_SEARCH', searchTerm, filters: {} }, enterpriseId).catch(() => []),
-    searchTasks({ type: 'TASK_SEARCH', filters: {} }, enterpriseId).catch(() => []),
-    searchTeams(enterpriseId, searchTerm).catch(() => []),
-    searchLeaveRequests(enterpriseId).catch(() => []),
-    searchScheduleRequests(enterpriseId).catch(() => []),
-    searchFaceEnrollments(enterpriseId).catch(() => []),
-    searchGeofences(enterpriseId, searchTerm).catch(() => []),
-    searchPayslips({ searchTerm }, enterpriseId).catch(() => []), // ✅ AJOUTÉ
+    source('employés', searchEmployees({ type: 'EMPLOYEE_SEARCH', searchTerm, filters: {} }, enterpriseId)),
+    source('tâches', searchTasks({ type: 'TASK_SEARCH', filters: {} }, enterpriseId)),
+    source('équipes', searchTeams(enterpriseId, searchTerm)),
+    source('absences', searchLeaveRequests(enterpriseId)),
+    source('demandes de planning', searchScheduleRequests(enterpriseId)),
+    source('enrôlements faciaux', searchFaceEnrollments(enterpriseId)),
+    source('zones', searchGeofences(enterpriseId, searchTerm)),
+    source('bulletins', searchPayslips({ searchTerm }, enterpriseId)), // ✅ AJOUTÉ
   ])
+
+  if (pannes.length === 8) {
+    //  Toutes les sources sont tombées : ce n'est PAS « aucun résultat ».
+    return [CARTE_INDISPONIBLE('Aucune source n\'a répondu. Réessayez dans un instant.')]
+  }
 
   return [
     ...employees.slice(0, 5),

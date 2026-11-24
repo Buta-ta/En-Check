@@ -55,6 +55,11 @@ export const SEUILS_PAR_DEFAUT = {
   //  mesure alors rien et le dit, plutôt que d'appliquer une valeur choisie
   //  par un développeur. Une valeur légale demande une source (D5).
   reposQuotidienHeures: null,
+  //  📊 Bornes de lecture du taux de charge mensuel (affichage, PAS de la paie).
+  //  Elles étaient écrites en dur (110 / 70) au milieu du calcul : impossible de
+  //  les ajuster sans toucher au code, et invisibles pour qui configure.
+  surchargePourcent: 110,
+  sousUtilisationPourcent: 70,
   modeEstimation: 'ombre',
   //  Seuils de PAUSE — réglés depuis Configuration pointeuse → Temps de travail.
   //  Le plafond était déjà lu par le moteur (`20261016000004:581`, défaut 120)
@@ -140,6 +145,8 @@ const CLES = {
   nudgeApresMinutes: 'nudge_apres_minutes',
   delaiContestationHeures: 'delai_contestation_heures',
   reposQuotidienHeures: 'repos_quotidien_heures',
+  surchargePourcent: 'surcharge_pourcent',
+  sousUtilisationPourcent: 'sous_utilisation_pourcent',
   modeEstimation: 'mode_estimation',
   pauseToleranceMinutes: 'pause_tolerance_minutes',
   pauseDureeMaxMinutes: 'pause_duree_max_minutes',
@@ -210,6 +217,11 @@ export async function chargerSeuilsPointage(enterpriseId, { force = false } = {}
   }
   seuils.oubliSortieHeures = _positif(seuils.oubliSortieHeures, SEUILS_PAR_DEFAUT.oubliSortieHeures)
   seuils.plafondInventionHeures = _positif(seuils.plafondInventionHeures, SEUILS_PAR_DEFAUT.plafondInventionHeures)
+  //  Les deux bornes de lecture sont des POURCENTAGES : un `0` ou un texte en
+  //  base ne doit pas devenir une règle (« sous-utilisation » dès 0 %, ou
+  //  « surcharge » chaque mois). On retombe sur le contrat, jamais sur 1.
+  seuils.surchargePourcent = _positif(seuils.surchargePourcent, SEUILS_PAR_DEFAUT.surchargePourcent)
+  seuils.sousUtilisationPourcent = _positif(seuils.sousUtilisationPourcent, SEUILS_PAR_DEFAUT.sousUtilisationPourcent)
   //  L'appariement doit rester AU MOINS aussi large que le seuil d'oubli : si la
   //  tolérance de rapprochement est plus courte que ce qu'on appelle « oubli »,
   //  une garde normale est coupée en deux journées et le total devient faux.

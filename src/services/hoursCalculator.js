@@ -2069,8 +2069,13 @@ function generateAlerts({ today, month, year, hasPlan, seuils, feries }) {
   }
 
   if (month?.rate !== null && month?.rate !== undefined) {
-    if (month.rate > 110) alerts.push({ type: 'warning', message: `Surcharge détectée : ${month.rate}% de la capacité` })
-    if (month.rate < 70 && month.rate > 0) alerts.push({ type: 'warning', message: `Sous-utilisation : seulement ${month.rate}% de la capacité` })
+    //  F4 : les bornes 110 / 70 étaient écrites en dur ici. Elles viennent
+    //  désormais des réglages, avec CES VALEURS POUR DÉFAUT — donc aucun
+    //  comportement ne change tant que personne ne les modifie.
+    const surcharge = Number(seuils?.surchargePourcent) || 110
+    const sousUtilisation = Number(seuils?.sousUtilisationPourcent) || 70
+    if (month.rate > surcharge) alerts.push({ type: 'warning', message: `Surcharge détectée : ${month.rate}% de la capacité` })
+    if (month.rate < sousUtilisation && month.rate > 0) alerts.push({ type: 'warning', message: `Sous-utilisation : seulement ${month.rate}% de la capacité` })
     if (alerts.length === 0 && month.rate >= 90 && month.rate <= 105) alerts.push({ type: 'success', message: 'Performance optimale ce mois' })
   }
 
