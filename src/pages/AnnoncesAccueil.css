@@ -733,3 +733,60 @@
   font-size: 11px;
   color: var(--charte-douce);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🏷️ LE TITRE D'UNE ANNONCE
+
+   La maquette A nomme chaque média. Le titre se lit AVANT le type, au-dessus
+   de la ligne de métadonnées — parce que c'est lui qu'on cherche des yeux
+   quand on parcourt une liste de huit lignes.
+
+   Sans titre, on n'affiche pas de vide : on montre le libellé du type, en
+   douceur, pour qu'on comprenne que ce n'est pas un nom mais une catégorie.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.aa-page .aa-ann-titre-media {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--aa-encre, var(--charte-encre));
+  margin-bottom: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* pas de titre : c'est une catégorie, pas un nom — on la met en retrait */
+.aa-page .aa-ann-titre-media.est-sans-titre {
+  font-weight: 500;
+  font-style: normal;
+  color: var(--aa-encre-faible, var(--charte-douce));
+}
+
+/* en variante aperçu, le titre prend le poids de la maquette */
+.aa-page .aa-ann-media.est-apercu .aa-ann-titre-media {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* ── Le champ du formulaire ─────────────────────────────────────────────── */
+.aa-page .aa-ann-champ-titre {
+  display: block;
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.aa-page .aa-ann-champ-titre input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* le compteur, discret, cale dans le champ */
+.aa-page .aa-ann-titre-compte {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--charte-douce);
+  text-align: right;
+}

@@ -115,6 +115,10 @@ export default function AnnoncesAccueil() {
   const [publier, setPublier] = useState(true)
   const [enEdition, setEnEdition] = useState(null)
   const [ordonne, setOrdonne] = useState(1)
+  // Le titre de l'annonce : c'est lui que la carte « Mes medias » montre
+  // en premier. Vide = pas de titre en base (NULL), l'affichage retombe
+  // sur le libelle du type.
+  const [titre, setTitre] = useState('')
   const [confirmationSuppression, setConfirmationSuppression] = useState(null)
 
   // aperçu carrousel
@@ -254,7 +258,7 @@ export default function AnnoncesAccueil() {
     if (apercu) URL.revokeObjectURL(apercu)
     setFichier(null); setApercu(null); setApercuEst(null); setTypeMedia('')
     setAvertissement(''); setDuree(5); setDebuteLe(''); setTermineLe('')
-    setPublier(true); setEnEdition(null)
+    setPublier(true); setEnEdition(null); setTitre('')
     setOrdonne(Math.max(0, ...(annonces || []).map((a) => a.ordre_publication)) + 1)
     if (fileInput.current) fileInput.current.value = ''
   }
@@ -268,6 +272,7 @@ export default function AnnoncesAccueil() {
     setDebuteLe(pourChampDateTime(a.debute_le))
     setTermineLe(pourChampDateTime(a.termine_le))
     setPublier(a.is_active)
+    setTitre(a.titre || '')
   }
 
   // ── Publication / mise à jour (MFA AAL2 avant l'envoi) ──
@@ -314,6 +319,7 @@ export default function AnnoncesAccueil() {
         p_is_active: publier,
         p_debute_le: debuteLe ? new Date(debuteLe).toISOString() : null,
         p_termine_le: termineLe ? new Date(termineLe).toISOString() : null,
+        p_titre: titre.trim(),
       })
       if (res?.ok !== true) throw new Error('Publication refusée par le serveur.')
       // Le fichier remplacé est nettoyé par le RPC (plus de remove côté client).
@@ -455,6 +461,12 @@ export default function AnnoncesAccueil() {
         <span className="aa-ann-mini-t">{Meta ? Meta.libelle : a.type}</span>
       </span>
       <span className="aa-ann-media-infos">
+        {/*  Le TITRE d'abord : c'est ce qu'on lit en balayant la liste.
+            Sans titre (les annonces posees avant la colonne), on retombe sur
+            le libelle du type — jamais sur une ligne vide. */}
+        <span className={`aa-ann-titre-media${a.titre ? '' : ' est-sans-titre'}`}>
+          {a.titre || (Meta ? Meta.libelle : a.type)}
+        </span>
         <span className="aa-ann-media-ligne1">
           <span className="aa-ann-ordre-n">{a.ordre_publication}°</span>
           <span className={`aa-ann-puce st-${a.statut}`}>
@@ -758,6 +770,25 @@ export default function AnnoncesAccueil() {
                             <span>{avertissement}</span>
                           </div>
                         )}
+
+                        {/*  LE TITRE — c'est le nom que l'admin lira dans
+                            « Mes medias ». 80 caracteres : au-dela, l'affichage
+                            de la carte le tronque de toute facon. Facultatif :
+                            sans titre, la liste montre le type du media. */}
+                        <label className="aa-ann-champ-titre">
+                          Titre de l’annonce
+                          <input
+                            type="text"
+                            value={titre}
+                            maxLength={80}
+                            disabled={busy}
+                            placeholder="Ex. : Menu du jour, Consignes de sécurité…"
+                            onChange={(e) => setTitre(e.target.value)}
+                          />
+                          <small className="aa-ann-titre-compte">
+                            {titre.trim().length} / 80
+                          </small>
+                        </label>
 
                         <div className="aa-ann-grille-champs">
                           <label>
