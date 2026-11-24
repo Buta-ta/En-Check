@@ -16,6 +16,7 @@ import {
   UserRoundX, CalendarRange, Hourglass, AlertTriangle, Activity, Palmtree, ArrowRight,
 } from 'lucide-react'
 import { isoLocal, estJourOuvre } from '../services/absencesCalendrier'
+import { soldeMoyen } from '../services/congesRestants'
 
 const pad2 = (n) => String(n).padStart(2, '0')
 
@@ -251,12 +252,13 @@ export default function AbsencesKpiCards({
     const tauxAbsence = Math.round((joursDecomptes / capacite) * 1000) / 10
 
     // ── Congés : ce qu'il reste en moyenne par employé ───────────────
+    // Le calcul est sorti dans `services/congesRestants` : la section du haut (le
+    // transat, maquette E du 27/11) suspend le MÊME nombre. Deux affichages d'un
+    // chiffre, oui ; deux calculs d'un même chiffre, jamais — l'un des deux finirait
+    // par rester faux le jour où l'autre est corrigé.
     const plafond = plafondConges || 30
-    const restants = employes.map((e) => Math.max(0, plafond - (joursPrisParEmploye[e.id] ?? 0)))
-    const soldeMoyen = restants.length
-      ? Math.round((restants.reduce((s, n) => s + n, 0) / restants.length) * 10) / 10
-      : plafond
-    const tauxConges = Math.round((soldeMoyen / plafond) * 1000) / 10
+    const solde = soldeMoyen({ employes, joursPrisParEmploye, plafond })
+    const tauxConges = Math.round((solde / plafond) * 1000) / 10
 
     const enAttente = absences.filter((a) => (a.status || 'approuve') === 'en_attente').length
 
@@ -268,7 +270,7 @@ export default function AbsencesKpiCards({
       duMois: duMois.length,
       joursDecomptes,
       tauxAbsence,
-      soldeMoyen,
+      soldeMoyen: solde,
       tauxConges,
       plafond,
       enAttente,

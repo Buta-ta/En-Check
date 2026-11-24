@@ -27,11 +27,7 @@ const PAGES_RAPIDES = [
   { chemin: '/rapports', libelle: 'Rapports', icone: BarChart3 },
 ]
 
-// `comptes` (Absences, 26/11/2026) : la page qui reçoit la bande peut épingler un
-// chiffre sur un rabat — `{ '/absences': 3 }`. La maquette de l'en-tête le montre
-// ainsi, et la charte le permet : le compte vit sur le rabat du jour, pas sur tous.
-// Aucune autre page ne le passe : sans prop, rien ne s'affiche et rien ne change.
-export default function RaccourcisPages({ pages = PAGES_RAPIDES, compact = false, excludePaths = [], comptes = {} }) {
+export default function RaccourcisPages({ pages = PAGES_RAPIDES, compact = false, excludePaths = [] }) {
   const { pathname, search } = useLocation()
   // « /paie?onglet=fiches » n'est actif que sur cet onglet précis
   const ici = (chemin) => {
@@ -50,7 +46,6 @@ export default function RaccourcisPages({ pages = PAGES_RAPIDES, compact = false
       {pages.filter(page => !excludePaths.includes(page.chemin.split('?')[0])).map(({ chemin, libelle, icone: Icone }) => {
         const actif = ici(chemin)
         const Picto = Icone
-        const compte = Number(comptes[chemin] || 0)
         return (
           <Link
             key={chemin}
@@ -60,12 +55,11 @@ export default function RaccourcisPages({ pages = PAGES_RAPIDES, compact = false
             data-page={chemin}
             data-actif={actif ? 'oui' : 'non'}
             aria-current={actif ? 'page' : undefined}
-            title={`${actif ? `Vous êtes sur ${libelle}` : `Aller à ${libelle}`}${compte > 0 ? ` · ${compte}` : ''}`}
+            title={actif ? `Vous êtes sur ${libelle}` : `Aller à ${libelle}`}
             data-compact={compact ? 'oui' : 'non'}
           >
             <Picto size={13} />
             {libelle}
-            {compte > 0 && <span className="abs-raccourci-compte" data-testid={`raccourci-compte-${chemin.split('?')[0]}`}>{compte}</span>}
           </Link>
         )
       })}

@@ -147,13 +147,6 @@
   transform: translateX(-2px);
 }
 
-/* Bandeau de raccourcis sous la barre du haut */
-.abs-topbar-nav {
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 0 24px 12px;
-}
-
 /* Même gabarit que la barre de raccourcis de la page Pointages :
    un contenant en pilule, des pastilles de 11 px / graisse 740, et la
    page courante en dégradé cuivre (texte sombre, lisible dans les deux
@@ -325,16 +318,6 @@
   border-color: var(--abs-border-strong);
 }
 
-.abs-theme-btn {
-  width: 38px;
-  min-height: 38px;
-  padding: 0;
-  justify-content: center;
-  /* le dessin la montre carrée, comme ses deux voisines — pas en pastille */
-  border-radius: 11px;
-  color: var(--abs-amber);
-}
-
 .abs-btn-primary {
   /* un aplat, pas un dégradé : la maquette peint l'argile d'une seule teinte, et
      l'encre devient le blanc cassé de la charte — une teinte en dur de moins */
@@ -458,112 +441,172 @@
 .abs-bogolan-drawer { height: 46px; }
 .abs-bogolan-drawer.abs-bogolan-bottom { height: 24px; }
 
-/* ═══ LA SECTION DU HAUT — maquette `maquettes/absences-en-tete-lisiere.png` ═══
-   Le 24/11, le motif tournait autour de la page entière (« tu n'as fait
-   qu'entourer l'ancienne page d'une bande motif » — refusé). Le 26/11, il ne
-   border plus rien : la lisière de bogolan EST le bord bas de la section, et les
-   six raccourcis pendent sous elle, sur le fond de page. */
+/* ═══ LA SECTION DU HAUT — maquette `maquettes/absences-haut-E-cremaillere.png` ═══
+   Le 26/11, la section finissait sur une lisière de bogolan et six rabats de
+   raccourcis. Le 27/11, le fondateur a choisi le transat et posé trois règles :
+   « dans chaque nouvelle page enlève les raccourcis », « un bandeau motif bogolan
+   servira autrement », « enlève le bouton clair/sombre ». La section ne montre donc
+   plus que ce que la maquette E montre : deux montants, une suspente en crémaillère,
+   un nombre suspendu dedans, le jour du retour à droite. Le tissu ne borde plus la
+   page — il reste dans les deux tiroirs, qui sont des feuilles qui glissent. */
 
-/* La lisière : le tissu de la page, en travers, 34 px — la hauteur que le dessin
-   lui donne, et le tiers de ce qu'elle était à cheval sur toute la page.
-   `z-index: 1` n'est pas un caprice : c'est ce qui fait passer LE TISSU par-dessus
-   les rabats. Le dessin, lui, peignait le rabat actif par-dessus la lisière et
-   effaçait le motif sur toute sa largeur (défaut §D) ; ici le papier glisse
-   SOUS le bogolan, le tissu reste entier, et le rabat n'a plus besoin de bord
-   haut pour faire cousu. */
-.abs-bogolan-tete { position: relative; z-index: 1; height: 34px; }
-
-/* Le rail devient une portée de six rabats. `margin-top: -14px` : les papiers
-   s'enfoncent de 14 px dans le bas du tissu et disparaissent dessous — pendus, pas
-   posés par-dessus. La rangée est en six parts ÉGALES, pleines largeur : c'est ce
-   que le dessin montre, et ce que la pilule `inline-flex` ne pouvait pas faire. */
-.abs-topbar-nav { position: relative; z-index: 0; margin: -14px 0 0; padding: 0 16px 14px; }
-.abs-topbar-nav .abs-raccourcis {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-  width: 100%;
+/* Le transat est posé à cru sur le sable : pas de carte autour, pas de fond.
+   Les montants et la corde SONT la figure ; un contenant les effacerait. */
+.abs-hamac {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   max-width: 1560px;
   margin: 0 auto;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  overflow: visible;
-  scrollbar-width: none;
-}
-/* Le rabat : papier, angle haut-droit seul arrondi (le pli du dessin), couture en
-   pointillés sur les trois autres bords, ombré porté de 2 px franc — pas de flou. */
-.abs-topbar-nav .abs-raccourci {
-  /* le compte épinglé se pose sur le rabat : sans assise, il irait se coller au
-     premier ancêtre positionné, c'est-à-dire le rail entier */
-  position: relative;
-  justify-content: center;
-  min-height: 56px;
-  /* 20 px en haut : les 14 premiers sont avalés par la lisière, le mot doit
-     commencer JUSTE SOUS le tissu, pas dessous */
-  padding: 20px 10px 14px;
-  border: 1px dashed var(--abs-border-strong);
-  border-top: 0;
-  border-radius: 0 12px 12px 12px;
-  background: var(--abs-bg-elevated);
-  color: var(--abs-text);
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: .01em;
-  box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--abs-text) 8%, transparent);
-}
-/* Le pictogramme de 13 px ne se montre pas, dans le dessin : le rabat ne porte que
-   son mot. C'est aussi ce que dit D-014 (« aucun pictogramme dans les boutons ») —
-   le composant reste partagé, seul Absences rend l'icône muette. */
-.abs-topbar-nav .abs-raccourci svg { display: none; }
-.abs-topbar-nav .abs-raccourci:hover {
-  border-style: solid;
-  border-color: var(--abs-border-strong);
-  color: var(--abs-text);
-}
-/* Le rabat du jour : argile pleine, texte blanc cassé, et le compte du jour épinglé
-   en bas à droite — une crête, pas un cache : il descend plus bas que ses voisines
-   et ne masque pas le tissu, contrairement au dessin qui le peignait par-dessus. */
-.abs-topbar-nav .abs-raccourci[data-actif="oui"],
-.abs-topbar-nav .abs-raccourci[data-actif="oui"]:hover {
-  background: var(--abs-argile);
-  border: 1px dashed color-mix(in srgb, var(--abs-bg-elevated) 45%, transparent);
-  border-top: 0;
-  color: var(--charte-blanc); /* le blanc cassé de la charte, jamais le blanc pur */
-  padding-bottom: 18px; /* la crête : 4 px de plus que ses voisines, pas un cache */
-  box-shadow: 2px 3px 0 0 color-mix(in srgb, var(--abs-text) 14%, transparent);
-}
-/* Six rabats de front ne tiennent qu'au-dessus de 980 px : en dessous, trois par
-   rang et deux rangées. Le rail partagé impose `white-space: nowrap`, donc un
-   libellé à l'étroit déborderait de son papier — et un mot coupé n'est plus un mot. */
-@media(max-width:980px) {
-  .abs-topbar-nav .abs-raccourcis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  padding: 20px 16px 26px;
 }
 
-.abs-topbar-nav .abs-raccourci-compte {
+/* La corde, entre ses deux montants. Les pourcentages sont la place que le dessin
+   donne aux montants, et elle est la MEME des deux côtés : 15 % à gauche, 15 % à
+   droite. Un écart, même de six points, décalait l'axe du transat de trois pour cent
+   — et le nombre suspendu, lui, restait au centre de la feuille. Deux centreurs qui
+   ne connaissent pas la même référence, c'est un chiffre pendu de travers.
+   Pas de `width: 100%` ici : sur un enfant de flex column, 100 % + marges = un
+   débordement de trente pour cent, et le poteau de gauche peignait hors de la carte.
+   `align-self: stretch` laisse la place aux marges, et c'est tout. */
+.abs-hamac-corde {
+  align-self: stretch;
+  display: flex;
+  align-items: flex-start;
+  min-height: 118px;
+  margin: 0 15%;
+}
+.abs-hamac-montant,
+.abs-hamac-montant-fin {
+  position: relative;
+  flex: 0 0 2px;
+  width: 2px;
+  height: 118px;
+  background: var(--abs-text);
+}
+/* Le chapeau du poteau, du côté du transat — c'est ce qui l'accroche, et le
+   dessin le montre sur les deux montants, en miroir. */
+.abs-hamac-montant::before,
+.abs-hamac-montant-fin::before {
+  content: "";
   position: absolute;
-  right: 8px;
-  bottom: 6px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  display: inline-flex;
+  top: 0;
+  width: 12px;
+  height: 8px;
+  background: var(--abs-text);
+}
+.abs-hamac-montant::before { left: -5px; }
+.abs-hamac-montant-fin::before { right: -5px; }
+
+/* La crémaillère : dix-sept traits de 8 px, chacun descendu de son nombre de
+   marches par le JSX. Ce sont les BORDS HAUTS des traits qui dessinent
+   l'affaissement — une courbe quantifiée, pas une courbe (D-016 : raide, aucun
+   flou). Les traits s'étirent (`flex: 1 1 0`) : à toute largeur, la suspente
+   compte les mêmes huit marches. */
+.abs-hamac-cran {
+  flex: 1 1 0;
+  height: 8px;
+  background: var(--abs-text);
+}
+
+/* Ce que tient la suspente. Le kit appelle cette forme une tuile « chiffre +
+   repère » : le nombre et la phrase qui dit de quoi il est le nombre.
+   Elle remonte de 46 px dans l'affaissement, et le nombre se calcule : la crémaillère
+   descend de 8 px sur huit marches, son point le plus BAS est donc à 8 × 8 + 8 = 72 px
+   du haut de la corde ; la corde est haute de 118 px (la taille des montants, qui est
+   ce qui la tient raide) ; 72 - 118 = -46. Le creux touche le haut de la tuile, la
+   tuile ne bouche pas le transat, et rien ne pend dans le vide. Un chiffre posé SOUS
+   la corde ne serait plus suspendu : il serait par terre.
+   Les `auto` sont ce qui replace la tuile sur l'axe de la corde — le même axe, pas le
+   centre de la feuille. */
+.abs-hamac-suspendu {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  border-radius: 999px;
+  gap: 3px;
+  min-width: 216px;
+  margin: -46px auto 0;
+  padding: 12px 18px 14px;
   background: var(--abs-bg-elevated);
-  /* pas le cuivre de la variante claire, trop clair sur papier (4,3:1, sous le seuil) :
-     le creux se lit en brun foncé, 6,9:1 — un compte doit se lire, pas se deviner */
-  color: var(--abs-amber-dark);
+  border: 2px solid var(--abs-text);
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--abs-text) 14%, transparent);
+  text-align: center;
+}
+.abs-hamac-valeur {
+  font-family: 'IBM Plex Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--abs-text);
+}
+.abs-hamac-etiquette {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--abs-text-soft);
+}
+
+/* À droite du second poteau, le jour où quelqu'un revient — ou rien du tout.
+   Une date inventée à l'endroit le plus visible de la page serait un mensonge. */
+.abs-hamac-retour {
+  position: absolute;
+  right: 5%;
+  top: 74px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
-  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--abs-text);
 }
+.abs-hamac-retour-label {
+  font-size: 9.5px;
+  letter-spacing: 1.3px;
+  color: var(--abs-text-soft);
+}
+.abs-hamac-retour-date { font-weight: 700; }
 
-/* Les onglets de section n'ont plus rien à chevaucher depuis que le cadre est
-   défait : ils reprennent leur rangée plate, avec les styles en ligne qu'ils
-   portaient avant — aucune surcharge ici, c'est ce qui les remet à plat. */
+
+/* À l'étroit, la corde se rapproche des bords (sinon il ne resterait que 150 px de
+   suspente, soit huit carreaux de 18 px — l'escalier n'existerait plus) et la note de
+   retour descend sous la tuile : `position: absolute` à `right: 5 %` par-dessus un bloc
+   de 216 px, c'est une date couchée sur le chiffre qu'elle commente. */
+@media (max-width: 980px) {
+  .abs-hamac-corde { margin: 0 6%; }
+  .abs-hamac-retour {
+    position: static;
+    align-self: center;
+    align-items: center;
+    margin-top: 14px;
+  }
+}
+@media (max-width: 650px) {
+  .abs-hamac-suspendu {
+    min-width: 0;
+    width: 100%;
+  }
+  .abs-hamac-valeur { font-size: 32px; }
+}/* Sur un écran d'enfant, le poteau de droite se rapproche et la note de retour
+   descend sous la tuile : à 700 px, « RETOUR LUN. 30 NOV. » posé à droite de la
+   corde retomberait sur la tuile suspendue. */
+@media(max-width:980px) {
+  .abs-hamac-corde { margin: 0 6%; }
+  .abs-hamac-retour {
+    position: static;
+    align-items: center;
+    text-align: center;
+    margin-top: 14px;
+  }
+}
 
 /* La tuile de motif en tête de ligne : un carré de 22 px, le filet de la page
    pour seul cadre. Elle est muette (`aria-hidden` porté par la span). */
@@ -609,10 +652,6 @@
   .abs-bogolan-top { height: 60px; }
   .abs-bogolan-drawer { height: 36px; }
   .abs-bogolan-drawer.abs-bogolan-bottom { height: 20px; }
-  /* trois par rang déjà acquis à 980 px : ici, le rail se contente de maigrir
-     de son côté, et la lisière avec lui */
-  .abs-topbar-nav { padding: 0 12px 12px; }
-  .abs-bogolan-tete { height: 26px; }
   .abs-tuile { display: none; } /* sur un écran d'enfant, la ligne n'a plus de place pour un carré de 22 px */
   .abs-drawer-theme > footer { padding: 12px !important; flex-wrap: wrap; }
   .abs-drawer-theme > footer button { min-width: 110px; }
