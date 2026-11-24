@@ -437,34 +437,81 @@
   }
 }
 
-/* Ndebele-inspired artwork approved for Absences; full artwork, no distortion. */
-.abs-ndebele-band { width: 100%; height: 76px; flex-shrink: 0; background: #efe1c5 url('/images/absences-ndebele.webp') repeat-x center; background-size: auto 100%; }
-.abs-ndebele-bottom { height: 32px; }
-.abs-ndebele-drawer { height: 46px; }
-.abs-ndebele-drawer.abs-ndebele-bottom { height: 24px; }
+/* Bogolan, retenu pour Absences (24/11/2026 : « utilise le bogolan comme motif,
+   remplace l'autre »). Les deux toiles viennent de la Paie et existent déjà :
+   1536×76 en haut, 1536×32 en bas — la hauteur du bandeau au pixel près.
+   `background-size: auto 100%` : on réduit d'une hauteur, la largeur suit, le
+   tissu n'est jamais étiré. Le ndebele reste sur le disque, il fait toujours les
+   badges employés (`badge/motifs.js`) — on a remplacé son EMPLOI, pas l'artiste. */
+.abs-bogolan-band { width: 100%; height: 76px; flex-shrink: 0; background: var(--abs-bg-panel) url('/images/paie-bogolan-haut.webp') repeat-x center; background-size: auto 100%; }
+.abs-bogolan-bottom { height: 32px; background-image: url('/images/paie-bogolan-bas.webp'); }
+.abs-bogolan-drawer { height: 46px; }
+.abs-bogolan-drawer.abs-bogolan-bottom { height: 24px; }
+
+/* ═══ LE CADRE DE LA SECTION — maquette validée `absences-section-bogolan-cadre.png` ═══
+   Le motif n'est plus posé au-dessus de la feuille : il la tourne autour.
+   Un seul nombre règle tout, `--abs-cadre`, épaisseur de la toile ET padding du
+   conteneur — deux valeurs distinctes et le papier ne rejoint plus le tissu.
+   La toile reste un fond : muet (`aria-hidden`), sans clic (`pointer-events:
+   none`), sans un seul mot (D-004) ; c'est la feuille qui écrit. */
+.abs-section-cadre { --abs-cadre: 26px; --ec-cadre-epaisseur: var(--abs-cadre); position: relative; padding: var(--abs-cadre); }
+.abs-section-papier { position: relative; z-index: 1; padding: 8px 20px 16px; background: var(--abs-bg-elevated); border: 1px solid var(--abs-border); }
+
+/* Les onglets en rabats cousus sur la lisière haute : la rangée remonte à cheval
+   sur la toile et chaque rabat prend son propre fond opaque — un mot ne se lit
+   jamais à cru sur un motif (D-004). Les `!important` ne sont pas de la brutalité :
+   ils défont des styles écrits en dur dans le JSX de la page, ligne à ligne. */
+.abs-onglets-rabats { margin-top: calc(var(--abs-cadre) * -1 + 8px); margin-left: -20px; margin-right: -20px; margin-bottom: 14px; background: transparent !important; border: 0 !important; border-radius: 0 !important; padding: 0 20px !important; max-width: 100% !important; flex-wrap: wrap; gap: 8px !important; }
+.abs-onglets-rabats .tab-btn { background: var(--abs-bg-panel) !important; border-radius: 8px 8px 0 0 !important; box-shadow: inset 0 2px 0 0 var(--abs-border-strong); }
+
+/* Sur le rabat actif, la pastille ne se peint pas : elle s'inverse. Un compte
+   liseré d'ambre sur fond d'ambre ne se lisait pas — ici le chiffre passe en
+   creux, la seule teinte que le rabat d'argile autorise. */
+.abs-badge-alerte { background: color-mix(in srgb, var(--abs-coral) 16%, transparent) !important; color: var(--abs-coral) !important; }
+
+/* La tuile de motif en tête de ligne : un carré de 22 px, le filet de la page
+   pour seul cadre. Elle est muette (`aria-hidden` porté par la span). */
+.abs-tuile { width: 22px; height: 22px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--abs-bg-soft); border: 1px solid var(--abs-border); }
+
+/* La barre d'outils s'ouvre sur une couture pointillée : c'est la règle courte
+   en tirets du dessin (point 3), et elle dit que les outils ne sont pas un
+   bandeau de plus — ils sont cousus au pied des compteurs. */
+.abs-section-papier .toolbar-top { border-top: 1px dashed var(--abs-border-strong); padding-top: 12px; margin-top: 2px; }
+
+/* L'alerte de conflit n'est plus un bandeau plein : une couture. Un filet
+   oblique en haut, un filet oblique en bas, le mot entre les deux. */
+.abs-couture-alerte { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-top: 1px dashed var(--abs-border-strong); border-bottom: 1px dashed var(--abs-border-strong); background: color-mix(in srgb, var(--abs-orange) 7%, transparent); margin-bottom: 18px; }
+.abs-couture-alerte .abs-btn { margin-left: auto; }
 .abs-page { display: flex; flex-direction: column; }
 .abs-page > main { flex: 1; width: 100%; box-sizing: border-box; min-width: 0; }
 .abs-drawer-theme { min-height: 0; box-sizing: border-box; }
 .abs-drawer-theme > header, .abs-drawer-theme > footer { flex-shrink: 0; }
 .abs-drawer-theme form { min-height: 0; }
-.abs-drawer-theme[data-testid='absence-tiroir'] > .abs-ndebele-band { width: calc(100% + 44px); margin: -22px -22px 20px; }
-.abs-drawer-theme[data-testid='absence-tiroir'] > .abs-ndebele-bottom { margin: 20px -22px -22px; }
+.abs-drawer-theme[data-testid='absence-tiroir'] > .abs-bogolan-band { width: calc(100% + 44px); margin: -22px -22px 20px; }
+.abs-drawer-theme[data-testid='absence-tiroir'] > .abs-bogolan-bottom { margin: 20px -22px -22px; }
 .abs-page, .abs-drawer-theme { color-scheme: dark; }
 .abs-page[data-theme='light'], .abs-drawer-theme[data-theme='light'] { color-scheme: light; }
 .abs-page input::placeholder, .abs-page textarea::placeholder, .abs-drawer-theme input::placeholder, .abs-drawer-theme textarea::placeholder { color: var(--abs-text-faint); opacity: 1; }
 .abs-page select option, .abs-drawer-theme select option { background: var(--abs-bg-elevated); color: var(--abs-text); }
 .abs-page :is(button, input, select, textarea, summary):focus-visible, .abs-drawer-theme :is(button, input, select, textarea, summary):focus-visible { outline: 2px solid var(--abs-amber) !important; outline-offset: 3px; }
-.abs-page .abs-section-tabs { max-width: 100% !important; flex-wrap: wrap; gap: 8px !important; background: var(--abs-bg-elevated) !important; padding: 8px !important; }
 .abs-section-tabs .tab-btn { flex: 1 1 180px; justify-content: center; min-height: 44px; border: 1px solid var(--abs-border) !important; }
 .abs-page .tab-btn[aria-pressed='true'], .abs-page .toolbar-top button[aria-pressed='true'] { background: var(--abs-amber) !important; color: var(--abs-bg-elevated) !important; }
 .abs-page .tab-btn[aria-pressed='true'] > span { color: inherit !important; }
-.abs-page .tab-btn[aria-pressed='true'] > span:last-child { background: transparent !important; }
+.abs-page .tab-btn[aria-pressed='true'] > span:last-child { background: transparent !important; color: var(--abs-bg-elevated) !important; }
 .abs-page [data-testid='demande-card'] { flex-wrap: wrap; background: var(--abs-bg-elevated) !important; border-color: var(--abs-border-strong) !important; }
 .abs-drawer-theme button, .abs-drawer-theme input, .abs-drawer-theme select, .abs-drawer-theme textarea { font-family: inherit; max-width: 100%; }
 @media(max-width:650px) {
-  .abs-ndebele-top { height: 60px; }
-  .abs-ndebele-drawer { height: 36px; }
-  .abs-ndebele-drawer.abs-ndebele-bottom { height: 20px; }
+  .abs-bogolan-top { height: 60px; }
+  .abs-bogolan-drawer { height: 36px; }
+  .abs-bogolan-drawer.abs-bogolan-bottom { height: 20px; }
+  /* cadre plus étroit sur un écran d'enfant : 26 px de tissu des deux
+     côtés, c'est un quart de la largeur disponible */
+  .abs-section-cadre { --abs-cadre: 14px; }
+  .abs-section-papier { padding: 14px 12px 12px; }
+  /* sur un écran étroit, les rabats ne chevauchent plus la toile : 14 px de
+     lisière ne laissent pas la place d'un rabat de 44 px à cheval dessus */
+  .abs-onglets-rabats { margin-top: 0; margin-left: -12px; margin-right: -12px; padding: 0 12px !important; }
+  .abs-tuile { display: none; } /* sur un écran d'enfant, la ligne n'a plus de place pour un carré de 22 px */
   .abs-drawer-theme > footer { padding: 12px !important; flex-wrap: wrap; }
   .abs-drawer-theme > footer button { min-width: 110px; }
   .abs-page .toolbar-top > div { min-width: 0; max-width: 100%; }

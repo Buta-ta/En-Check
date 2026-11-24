@@ -25,7 +25,8 @@ it('Absences : vrai état d’attente accessible, pas de pourcentage ni de fauss
     expect(html).toContain('role="status"')
     expect(html).toContain('aria-busy="true"')
     expect(html).toContain('Aucune demande n’est approuvée')
-    expect(html.match(/data-cultural-motif="ndebele"/g)).toHaveLength(2)
+    // Absences, 24/11/2026 : l'écran d'attente suit la page — bogolan, deux toiles.
+    expect(html.match(/data-cultural-motif="bogolan"/g)).toHaveLength(2)
     expect(html).not.toContain('progressbar')
   }
   expect(renderToStaticMarkup(<AbsencesLoadingScreen checkingAccess/>)).toContain('Vérification des accès')

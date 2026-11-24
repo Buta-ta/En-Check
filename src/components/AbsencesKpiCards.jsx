@@ -13,7 +13,7 @@
 
 import { useMemo } from 'react'
 import {
-  UserRoundX, CalendarRange, Hourglass, AlertTriangle, Activity, Palmtree,
+  UserRoundX, CalendarRange, Hourglass, AlertTriangle, Activity, Palmtree, ArrowRight,
 } from 'lucide-react'
 import { isoLocal, estJourOuvre } from '../services/absencesCalendrier'
 
@@ -33,7 +33,8 @@ function couvreJour(absence, iso) {
 }
 
 // ── Une photo ronde, avec repli sur les initiales ─────────────────────
-export function Avatar({ prenom, nom, photo, taille = 26, bordure = 'rgba(245,158,11,0.35)' }) {
+// Liseré d'ambre de la page, mêlé au fond : un seul jeton, pas un `rgba()` recopié.
+export function Avatar({ prenom, nom, photo, taille = 26, bordure = 'color-mix(in srgb, var(--abs-amber) 35%, transparent)' }) {
   if (photo) {
     return (
       <img
@@ -42,7 +43,7 @@ export function Avatar({ prenom, nom, photo, taille = 26, bordure = 'rgba(245,15
         data-testid="abs-kpi-avatar"
         style={{
           width: taille, height: taille, borderRadius: '50%', objectFit: 'cover',
-          flexShrink: 0, border: `1.5px solid ${bordure}`, background: 'rgba(0,0,0,0.2)',
+          flexShrink: 0, border: `1.5px solid ${bordure}`, background: 'color-mix(in srgb, var(--abs-bg) 80%, transparent)',
         }}
       />
     )
@@ -53,7 +54,7 @@ export function Avatar({ prenom, nom, photo, taille = 26, bordure = 'rgba(245,15
       style={{
         width: taille, height: taille, borderRadius: '50%', flexShrink: 0,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        border: `1.5px solid ${bordure}`, background: 'rgba(245,158,11,0.14)',
+        border: `1.5px solid ${bordure}`, background: 'color-mix(in srgb, var(--abs-amber) 14%, transparent)',
         color: 'var(--abs-amber)', fontSize: Math.max(9, Math.round(taille * 0.36)), fontWeight: 800,
       }}
     >
@@ -62,55 +63,79 @@ export function Avatar({ prenom, nom, photo, taille = 26, bordure = 'rgba(245,15
   )
 }
 
-// ── Une tuile compacte ───────────────────────────────────────────────
-// Format bandeau : icône + chiffre sur une ligne, libellé dessous,
-// jauge en bas. Le détail (« sur 3 employés · 67 % ») part dans une
-// infobulle : l'information reste disponible sans manger de hauteur.
-function Carte({ testId, icone: Icone, couleur, valeur, suffixe, label, precision, jauge, action, onClick, children, darkMode = true }) {
+// ── Une lanière de compteur ───────────────────────────────────────────
+// Absences, 24/11/2026 (maquette `absences-section-bogolan-cadre.png`) : plus
+// six cartes égales posées en rang, mais six lanières séparées d'un filet,
+// inégales en poids — quatre renseignent, deux tirent (elles mènent à l'action).
+// Le détail (« sur 3 employés · 67 % ») reste en infobulle.
+//
+// Les teintes viennent toutes des jetons `--abs-*` de la page : ils portent déjà
+// le thème clair/sombre, le composant n'a donc plus besoin de `darkMode` — et un
+// `couleur}1F`concaténé sur un `var(--…)` ne peignait rien du tout (CSS invalide),
+// c'est `color-mix` qui fait le travail maintenant.
+function Carte({ testId, icone: Icone, couleur, valeur, suffixe, label, precision, jauge, action, onClick, couture, children }) {
   // Composant icône reçu en prop : on le garde dans une variable locale
   // (convention du projet : une capitale = jamais signalée comme inutilisée)
   const IconeKpi = Icone
-  const carte = darkMode ? 'rgba(29,23,19,0.82)' : '#FFFFFF'
-  const bord = darkMode ? 'rgba(245,158,11,0.16)' : 'rgba(29,23,19,0.10)'
-  const texte = darkMode ? '#F5F2EB' : '#1D1713'
-  const doux = darkMode ? '#d6c7b7' : '#4E3D2E'
+  const texte = 'var(--abs-text)'
+  const doux = 'var(--abs-text-soft)'
 
   const contenu = (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-        <span style={{
-          width: 26, height: 26, borderRadius: 9, flexShrink: 0,
-          background: `${couleur}1F`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <IconeKpi size={14} color={couleur} />
-        </span>
+      <p style={{
+        margin: 0, fontSize: 9.5, fontWeight: 700, letterSpacing: '.08em',
+        textTransform: 'uppercase', color: doux, fontFamily: 'IBM Plex Mono, monospace',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>
+        {label}
+      </p>
 
-        <span style={{ fontSize: 20, fontWeight: 800, color: texte, lineHeight: 1, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4, minWidth: 0 }}>
+        <span style={{ fontSize: 20, fontWeight: 800, color: texte, lineHeight: 1, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
           {valeur}
           {suffixe && <span style={{ fontSize: 12, fontWeight: 700, color: doux, marginLeft: 1 }}>{suffixe}</span>}
+        </span>
+
+        <span style={{
+          width: 20, height: 20, borderRadius: 4, flexShrink: 0, marginLeft: 'auto',
+          background: `color-mix(in srgb, ${couleur} 14%, transparent)`,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <IconeKpi size={12} color={couleur} />
         </span>
 
         {/* Les avatars (absents du jour) seglissent à droite de la ligne */}
         {children && <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center' }}>{children}</span>}
 
+        {/* La poche des deux lanières qui tirent : un onglet d'argile cousu au
+            bout de la lanière, avec la flèche du voyage (voir / traiter). */}
         {action && (
           <span style={{
-            marginLeft: children ? 6 : 'auto', flexShrink: 0,
-            fontSize: 9.5, fontWeight: 700, color: couleur,
-            background: `${couleur}18`, border: `1px solid ${couleur}33`,
-            padding: '2px 7px', borderRadius: 999, whiteSpace: 'nowrap',
+            marginLeft: 'auto', flexShrink: 0, alignSelf: 'center',
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase',
+            color: 'var(--abs-bg-elevated)', background: couleur,
+            padding: '3px 7px 3px 9px', borderRadius: 2, whiteSpace: 'nowrap',
+            clipPath: 'polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px)',
           }}>
             {action}
+            <ArrowRight size={11} />
           </span>
         )}
       </div>
 
-      <p style={{
-        margin: '5px 0 0', fontSize: 10.5, fontWeight: 600, color: doux,
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      }}>
-        {label}
-      </p>
+      {/* La couture en zigzag de la lanière en conflit : l'alerte ne se dit plus
+          par un bandeau plein (c'était la bannière ambre), mais par un fil. */}
+      {couture === 'zigzag' && (
+        <div
+          aria-hidden="true"
+          data-testid="abs-kpi-couture"
+          style={{
+            marginTop: 6, height: 5,
+            backgroundImage: 'repeating-linear-gradient(135deg, var(--abs-coral) 0 2px, transparent 2px 5px)',
+          }}
+        />
+      )}
 
       {jauge !== undefined && jauge !== null && (
         <div
@@ -120,25 +145,27 @@ function Carte({ testId, icone: Icone, couleur, valeur, suffixe, label, precisio
           aria-valuemin={0}
           aria-valuemax={100}
           style={{
-            marginTop: 7, height: 3, borderRadius: 999, overflow: 'hidden',
-            background: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(29,23,19,0.07)',
+            marginTop: 7, height: 3, overflow: 'hidden',
+            background: 'color-mix(in srgb, var(--abs-text) 8%, transparent)',
           }}
         >
           <div style={{
-            width: `${Math.max(0, Math.min(100, jauge))}%`, height: '100%', borderRadius: 999,
-            background: `linear-gradient(90deg, ${couleur}, ${couleur}AA)`,
+            width: `${Math.max(0, Math.min(100, jauge))}%`, height: '100%',
+            background: couleur,
           }} />
         </div>
       )}
     </>
   )
 
+  // Une lanière, pas une carte : pas de fond, pas de bordure autour, mais un
+  // filet entre les voisines — posé par la grille, jamais sur la première.
   const commun = {
     'data-testid': testId,
     title: precision || undefined,
     style: {
-      background: carte, border: `1px solid ${bord}`, borderRadius: 12, padding: '10px 12px',
-      display: 'flex', flexDirection: 'column', minWidth: 0,
+      padding: '2px 12px', display: 'flex', flexDirection: 'column', minWidth: 0,
+      background: 'transparent',
     },
   }
 
@@ -170,7 +197,6 @@ export default function AbsencesKpiCards({
   conflitsEnAttente = 0,
   joursPrisParEmploye = {},
   plafondConges = 30,
-  darkMode = true,
   onVoirConflits,
   onVoirDemandes,
 }) {
@@ -264,23 +290,33 @@ export default function AbsencesKpiCards({
       title={`Chiffres calculés sur les absences chargées · aujourd'hui = ${mesures.aujourdhui}`}
       style={{
         display: 'grid',
-        // assez étroite pour tenir sur UNE seule ligne : le calendrier
-        // reste visible sans descendre la page
-        gridTemplateColumns: 'repeat(auto-fit, minmax(148px, 1fr))',
-        gap: 10,
+        // Six lanières sur UNE ligne, inégales en poids : les deux de droite
+        // portent une poche et demandent plus de place que les quatre autres.
+        gridTemplateColumns: 'repeat(4, minmax(0, 1fr)) minmax(0, 1.15fr) minmax(0, 1.35fr)',
+        gap: 0,
         marginBottom: 14,
       }}
     >
       <style>{`
-        .abs-kpi { transition: transform .25s ease, border-color .25s ease; }
-        .abs-kpi-cliquable:hover { transform: translateY(-2px); border-color: rgba(245,158,11,0.42) !important; }
-        .abs-kpi-cliquable:focus-visible { outline: 2px solid #F59E0B; outline-offset: 2px; }
-        /* Écran étroit : trois tuiles par ligne, jamais plus de deux rangs */
+        /* Le filet entre les lanières, pas une bordure autour de chacune :
+           c'est la cloison d'un même tissu, pas six papiers collés. */
+        .abs-kpi + .abs-kpi { border-left: 1px solid var(--abs-border); }
+        .abs-kpi { transition: background-color .2s ease; }
+        .abs-kpi-cliquable:hover { background-color: color-mix(in srgb, var(--abs-amber) 8%, transparent) !important; }
+        .abs-kpi-cliquable:focus-visible { outline: 2px solid var(--abs-amber); outline-offset: -2px; }
+        /* Écran étroit : trois lanières par ligne, puis deux — les cloisons
+           suivent la grille, jamais un rang de filets orphelins. */
+        @media (max-width: 1100px) {
+          .abs-kpi-grille { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+          .abs-kpi:nth-child(4) { border-left: 0; }
+        }
         @media (max-width: 900px) {
           .abs-kpi-grille { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+          .abs-kpi:nth-child(4) { border-left: 0; }
         }
         @media (max-width: 560px) {
           .abs-kpi-grille { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .abs-kpi:nth-child(3), .abs-kpi:nth-child(5) { border-left: 0; }
         }
       `}</style>
 
@@ -292,7 +328,6 @@ export default function AbsencesKpiCards({
         valeur={mesures.absents.length}
         label="Absents aujourd'hui"
         precision={`sur ${mesures.effectif} employé${mesures.effectif > 1 ? 's' : ''} · ${mesures.taux} % de l'effectif`}
-        darkMode={darkMode}
       >
         {apercu.length > 0 && (
           <>
@@ -305,7 +340,8 @@ export default function AbsencesKpiCards({
               <span style={{
                 marginLeft: -7, width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                background: 'rgba(245,158,11,0.18)', border: '1.5px solid rgba(245,158,11,0.35)',
+                background: 'color-mix(in srgb, var(--abs-amber) 18%, transparent)',
+                border: '1.5px solid color-mix(in srgb, var(--abs-amber) 35%, transparent)',
                 color: 'var(--abs-amber)', fontSize: 9, fontWeight: 800,
               }}>
                 +{enPlus}
@@ -319,24 +355,22 @@ export default function AbsencesKpiCards({
       <Carte
         testId="abs-kpi-mois"
         icone={CalendarRange}
-        couleur="#3B82F6"
+        couleur="var(--abs-indigo)"
         valeur={mesures.duMois}
         label="Absences ce mois-ci"
         precision={`${mesures.joursDecomptes} jour${mesures.joursDecomptes > 1 ? 's' : ''} décompté${mesures.joursDecomptes > 1 ? 's' : ''}`}
-        darkMode={darkMode}
       />
 
       {/* 3. Taux d'absence */}
       <Carte
         testId="abs-kpi-taux"
         icone={Activity}
-        couleur="#8B5CF6"
+        couleur="var(--abs-violet)"
         valeur={mesures.tauxAbsence}
         suffixe="%"
         label="Taux d'absence du mois"
         precision="jours d'absence / jours ouvrés de l'effectif"
         jauge={mesures.tauxAbsence}
-        darkMode={darkMode}
       />
 
       {/* 4. Congés restants */}
@@ -349,7 +383,6 @@ export default function AbsencesKpiCards({
         label="Congés restants (moyenne)"
         precision={`plafond ${mesures.plafond} jours · ${mesures.tauxConges} % encore disponible`}
         jauge={mesures.tauxConges}
-        darkMode={darkMode}
       />
 
       {/* 5. À traiter : demandes en attente */}
@@ -362,7 +395,6 @@ export default function AbsencesKpiCards({
         precision={mesures.enAttente ? 'à valider ou à refuser' : 'aucune demande en souffrance'}
         action={mesures.enAttente ? 'Traiter' : undefined}
         onClick={onVoirDemandes}
-        darkMode={darkMode}
       />
 
       {/* 6. À traiter : conflits */}
@@ -374,8 +406,8 @@ export default function AbsencesKpiCards({
         label="Conflits absence / pointage"
         precision={conflitsEnAttente ? 'un pointage sur une absence déclarée' : 'aucun conflit à arbitrer'}
         action={conflitsEnAttente ? 'Arbitrer' : undefined}
+        couture={conflitsEnAttente ? 'zigzag' : undefined}
         onClick={onVoirConflits}
-        darkMode={darkMode}
       />
 
     </div>

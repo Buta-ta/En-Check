@@ -6,6 +6,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { renderToStaticMarkup } from 'react-dom/server'
 import AbsencesKpiCards from '../../components/AbsencesKpiCards'
 import { isoLocal, estJourOuvre } from '../absencesCalendrier'
@@ -153,11 +154,14 @@ it('12. les dates de fin manquantes sont traitées comme un seul jour', () => {
 // 📏 FORMAT COMPACTE — la bande ne doit plus manger la page
 // ═══════════════════════════════════════════════════════════
 
-it('13. la bande tient sur une seule ligne : des tuiles étroites, sans bandeau de bas', () => {
-  // 148 px de largeur minimale → 6 tuiles tiennent sur un écran de bureau
-  expect(grille).toContain('minmax(148px, 1fr)')
-  // le paragraphe « chiffres calculés… » ne prend plus une ligne entière :
-  // il passe en infobulle de la bande
+it('13. six lanières sur une ligne, inégales en poids, séparées d’un filet', () => {
+  // Absences, 24/11/2026 (maquette `absences-section-bogolan-cadre.png`) : plus
+  // six cartes égales posées en rang, mais six lanières — quatre renseignent,
+  // deux tirent, et ces deux-là sont plus larges parce qu’elles portent une poche.
+  expect(grille).toContain('repeat(4, minmax(0, 1fr)) minmax(0, 1.15fr) minmax(0, 1.35fr)')
+  // la cloison est un filet ENTRE voisines, jamais une bordure autour de chacune
+  expect(grille).toContain('.abs-kpi + .abs-kpi { border-left: 1px solid var(--abs-border); }')
+  // le paragraphe « chiffres calculés… » ne prend toujours pas une ligne entière
   expect(grille).not.toContain('1 / -1')
   expect(grille).toContain('title="Chiffres calculés sur les absences chargées')
 })
@@ -177,4 +181,55 @@ it('15. une tuile compacte : petit chiffre, libellé sur une ligne', () => {
   expect(grille).toContain('text-overflow:ellipsis')
   // et l'icône ne fait plus 42 px de côté
   expect(grille).not.toContain('width:42px')
+})
+
+// ═══════════════════════════════════════════════════════════
+// 🪡 LANIÈRES, POCHES ET COUTURE — maquette bogolan, 24/11/2026
+// ═══════════════════════════════════════════════════════════
+
+it('16. les deux lanières qui tirent finissent sur une poche fléchée', () => {
+  // une demande en attente dans le jeu, pour que les DEUX poches existent
+  const deux = absence('a9', 'e2', AUJOURDHUI, AUJOURDHUI, 'en_attente')
+  const guidage = rendre({
+    absences: [...absences, deux],
+    onVoirConflits: () => {},
+    onVoirDemandes: () => {},
+  })
+  // « Traiter » et « Arbitrer » ne sont plus des pastilles d’ambre translucide :
+  // ce sont des onglets d’argile pleins, avec la flèche du voyage.
+  const poches = [...guidage.matchAll(/clip-path:polygon\(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px\)/g)]
+  expect(poches).toHaveLength(2)
+  // une seule des deux poches sans demande en attente : la poche dit l’action possible
+  expect((rendre({ onVoirConflits: () => {}, onVoirDemandes: () => {} }).match(/clip-path:polygon\(5px 0/g) || [])).toHaveLength(1)
+  expect(guidage).toContain('Traiter')
+  expect(guidage).toContain('Arbitrer')
+  // la poche se remplit avec la teinte de la page, jamais un hex en dur
+  expect(guidage).toContain('background:var(--abs-amber)')
+})
+
+it('17. la lanière des conflits porte une couture, et elle seule', () => {
+  const guidage = rendre({ onVoirConflits: () => {}, onVoirDemandes: () => {} })
+  expect((guidage.match(/data-testid="abs-kpi-couture"/g) || [])).toHaveLength(1)
+  // un fil oblique de la couleur du statut absent — plus de bandeau plein
+  expect(guidage).toContain('repeating-linear-gradient(135deg, var(--abs-coral) 0 2px, transparent 2px 5px)')
+  // à la base déjà (deux conflits en attente), une seule couture…
+  expect((grille.match(/data-testid="abs-kpi-couture"/g) || [])).toHaveLength(1)
+  // …et elle disparaît quand il n’y a plus rien à arbitrer
+  expect(rendre({ conflitsEnAttente: 0 })).not.toContain('data-testid="abs-kpi-couture"')
+})
+
+it('18. aucune teinte en dur dans la bande : tout passe par les jetons de la page', () => {
+  // Le composant était peint en `rgba()` et en `#rrggbb` recopiés, avec un
+  // `${couleur}1F` concaténé qui ne peignait rien sur les cartes à jeton.
+  const brut = readFileSync('src/components/AbsencesKpiCards.jsx', 'utf8')
+  // On lit le code, pas la prose : un commentaire qui CITE `rgba()` pour expliquer
+  // la règle n'est pas une teinte peinte. Les commentaires retirés, il ne doit
+  // plus rester ni hexadécimal, ni `rgba()`, ni `${couleur}1F` concaténé.
+  const source = brut.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  expect(source).not.toMatch(/#[0-9A-Fa-f]{6}/)
+  expect(source).not.toMatch(/rgba\(/)
+  expect(source).not.toMatch(/\$\{couleur\}[0-9A-F]{2}/)
+  expect(source).toContain('color-mix(in srgb,')
+  // le chiffre reste à 20 px et en graisse de tableau, l’alignement est tabulaire
+  expect(grille).toContain('font-variant-numeric:tabular-nums')
 })

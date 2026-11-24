@@ -8,7 +8,8 @@ import PlanningLoadingScreen from '../../components/PlanningLoadingScreen'
 it('résout routes, sous-routes, paramètres, alias paie et repli sans faux préfixe', () => {
   for (const path of ['/planning','/planning/','/planning?date=2026-10-23','/planning/team']) expect(culturalMotifForPath(path)).toBe('kuba')
   for (const path of ['/paie','/fiches-paie','/configuration-fiscale']) expect(culturalMotifForPath(path)).toBe('bogolan')
-  expect(culturalMotifForPath('/absences')).toBe('ndebele')
+  // Absences, 24/11/2026 : bogolan, sur demande du fondateur.
+  expect(culturalMotifForPath('/absences')).toBe('bogolan')
   for (const [path, motif] of [['/pointages','adinkra'],['/pauses','lesotho'],['/employes','zoulou']]) expect(culturalMotifForPath(path)).toBe(motif)
   for (const path of ['/planning-other','/','/salaires-inconnus']) expect(culturalMotifForPath(path)).toBe('kente')
   expect(culturalMotifForPath('/rapports')).toBe('nsibidi')
