@@ -465,14 +465,19 @@
    six raccourcis pendent sous elle, sur le fond de page. */
 
 /* La lisière : le tissu de la page, en travers, 34 px — la hauteur que le dessin
-   lui donne, et le tiers de ce qu'elle était à cheval sur toute la page. */
-.abs-bogolan-tete { height: 34px; }
+   lui donne, et le tiers de ce qu'elle était à cheval sur toute la page.
+   `z-index: 1` n'est pas un caprice : c'est ce qui fait passer LE TISSU par-dessus
+   les rabats. Le dessin, lui, peignait le rabat actif par-dessus la lisière et
+   effaçait le motif sur toute sa largeur (défaut §D) ; ici le papier glisse
+   SOUS le bogolan, le tissu reste entier, et le rabat n'a plus besoin de bord
+   haut pour faire cousu. */
+.abs-bogolan-tete { position: relative; z-index: 1; height: 34px; }
 
-/* Le rail devient une portée de six rabats. `margin-top` négatif : les papiers
-   mordent sur le bas du tissu, comme cousus dessus, et `z-index` les fait passer
-   par-dessus. La rangée est en six parts ÉGALES, pleines largeur : c'est ce que le
-   dessin montre, et ce que la pilule `inline-flex` ne pouvait pas faire. */
-.abs-topbar-nav { position: relative; z-index: 1; margin: -12px 0 0; padding: 0 16px 14px; }
+/* Le rail devient une portée de six rabats. `margin-top: -14px` : les papiers
+   s'enfoncent de 14 px dans le bas du tissu et disparaissent dessous — pendus, pas
+   posés par-dessus. La rangée est en six parts ÉGALES, pleines largeur : c'est ce
+   que le dessin montre, et ce que la pilule `inline-flex` ne pouvait pas faire. */
+.abs-topbar-nav { position: relative; z-index: 0; margin: -14px 0 0; padding: 0 16px 14px; }
 .abs-topbar-nav .abs-raccourcis {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -494,8 +499,10 @@
      premier ancêtre positionné, c'est-à-dire le rail entier */
   position: relative;
   justify-content: center;
-  min-height: 54px;
-  padding: 14px 10px 12px;
+  min-height: 56px;
+  /* 20 px en haut : les 14 premiers sont avalés par la lisière, le mot doit
+     commencer JUSTE SOUS le tissu, pas dessous */
+  padding: 20px 10px 14px;
   border: 1px dashed var(--abs-border-strong);
   border-top: 0;
   border-radius: 0 12px 12px 12px;
@@ -524,7 +531,7 @@
   border: 1px dashed color-mix(in srgb, var(--abs-bg-elevated) 45%, transparent);
   border-top: 0;
   color: var(--charte-blanc); /* le blanc cassé de la charte, jamais le blanc pur */
-  padding-bottom: 16px;
+  padding-bottom: 18px; /* la crête : 4 px de plus que ses voisines, pas un cache */
   box-shadow: 2px 3px 0 0 color-mix(in srgb, var(--abs-text) 14%, transparent);
 }
 /* Six rabats de front ne tiennent qu'au-dessus de 980 px : en dessous, trois par

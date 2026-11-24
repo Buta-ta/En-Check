@@ -90,7 +90,7 @@ describe("Absences · la section du haut, telle que la maquette l'a dessinée", 
     expect(nb(PAGE, '<AbsencesCulturalBand')).toBe(1) // une lisière, pas deux
     expect(porte('page', 'position="tete"')).toBe(true)
     // le tissu est le webp de la paie, et sa largeur est implicite
-    expect(porte('css', '.abs-bogolan-tete { height: 34px; }')).toBe(true)
+    expect(porte('css', '.abs-bogolan-tete { position: relative; z-index: 1; height: 34px; }')).toBe(true)
     expect(codeDe('css')).toMatch(/\.abs-bogolan-band \{[^}]*background-size: auto 100%/)
   })
 
@@ -100,6 +100,8 @@ describe("Absences · la section du haut, telle que la maquette l'a dessinée", 
     expect(porte('bande', 'aria-hidden')).toBe(true)
     expect(porte('bande', 'MotifTitre')).toBe(false)
     expect(CODE.bande.some((l) => l.includes('<span') || l.includes('<p '))).toBe(false)
+    // le mot commence sous le tissu, pas dedans
+    expect(codeDe('css')).toMatch(/\.abs-topbar-nav \.abs-raccourci \{[\s\S]*?padding: 20px 10px 14px/)
     // et le tissu se réduit d'une hauteur : jamais étiré sur la largeur
     expect(codeDe('css')).toMatch(/\.abs-bogolan-band \{[^}]*background-size: auto 100%/ )
   })
@@ -131,8 +133,12 @@ describe("Absences · la section du haut, telle que la maquette l'a dessinée", 
     const actif = codeDe('css').match(/\.abs-topbar-nav \.abs-raccourci\[data-actif="oui"\][^{]*\{([^}]*)\}/)?.[1] || ''
     expect(actif).toContain('background: var(--abs-argile)') // l'argile du dessin, en aplat
     expect(actif).toContain('color: var(--charte-blanc)')      // le blanc cassé de la charte, jamais le blanc pur (D-017)
-    // la crête : le rabat du jour descend plus bas que ses voisines, il ne masque pas le tissu
-    expect(actif).toContain('padding-bottom: 16px')
+    // la crête : le rabat du jour descend plus bas que ses voisines…
+    expect(actif).toContain('padding-bottom: 18px')
+    // …et il ne masque pas le tissu : c'est la lisière qui passe PAR-DESSUS les
+    // rabats (le dessin, lui, effaçait le motif derrière le rabat actif — §D)
+    expect(codeDe('css')).toMatch(/\.abs-bogolan-tete \{ position: relative; z-index: 1; height: 34px; \}/)
+    expect(codeDe('css')).toMatch(/\.abs-topbar-nav \{ position: relative; z-index: 0; margin: -14px 0 0/)
     // le compte passe SUR le rabat (question 2 du fondateur : « comme dans la maquette »)
     expect(porte('rail', 'comptes = {}')).toBe(true)
     expect(porte('rail', 'abs-raccourci-compte')).toBe(true)
