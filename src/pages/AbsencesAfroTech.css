@@ -95,17 +95,18 @@
 
 /* ═══ BARRE SUPÉRIEURE ═══ */
 /* Barre flottante : arrondie, et elle reste collée en haut au défilement */
+/* La maquette du 26/11 la montre couchée sur le sable : une feuille PLEINE
+   LARGEUR, posée. Sautent : le collant (`sticky` + `z-index: 60`), le rayon de
+   18 px, la bordure, l'ombre et le `backdrop-filter` — un carton flottant ne se
+   coud pas à une lisière. Le `max-width` de la rangée intérieure, lui, reste :
+   sur un écran de 2 560 px, un titre tout à gauche et trois boutons tout à
+   droite ne se lisent plus. */
 .abs-topbar {
-  position: sticky;
-  top: 8px;
-  z-index: 60;
-  margin: 8px 14px 0;
-  border-radius: 18px;
   background: var(--abs-bg-elevated);
-  border: 1px solid var(--abs-border);
-  box-shadow: var(--abs-shadow);
-  backdrop-filter: blur(14px);
-  padding: 12px 22px;
+  padding: 12px 22px 10px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .abs-topbar-inner {
@@ -227,9 +228,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(16, 185, 129, 0.1));
-  border: 1px solid rgba(245, 158, 11, 0.28);
+  /* L'empreinte se peint elle-même (`EnCheckBrandMark` porte son disque et son
+     dégradé) : le contenant ne fait que la rogner en rond. Le fond ambre/émeraude
+     qu'il portait ici peignait un second disque sous le premier. */
+  border-radius: 50%;
+  overflow: hidden;
+  background: transparent;
+  border: 0;
 }
 
 .abs-brand-texte {
@@ -239,8 +244,10 @@
 }
 
 .abs-brand-title {
-  font-size: 16px;
-  font-weight: 800;
+  /* le dessin titre à ~20 px ; 700 est le dernier grain d'IBM Plex Sans — un `800`
+     écrit ici serait un mensonge que le navigateur arrondirait pour nous */
+  font-size: 20px;
+  font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--abs-text);
 }
@@ -323,14 +330,17 @@
   min-height: 38px;
   padding: 0;
   justify-content: center;
-  border-radius: 50%;
+  /* le dessin la montre carrée, comme ses deux voisines — pas en pastille */
+  border-radius: 11px;
   color: var(--abs-amber);
 }
 
 .abs-btn-primary {
-  background: linear-gradient(135deg, var(--abs-copper), #8C3418);
+  /* un aplat, pas un dégradé : la maquette peint l'argile d'une seule teinte, et
+     l'encre devient le blanc cassé de la charte — une teinte en dur de moins */
+  background: var(--abs-argile);
   border: none;
-  color: #FFF5E6;
+  color: var(--charte-blanc);
   font-weight: 700;
 }
 
@@ -448,26 +458,112 @@
 .abs-bogolan-drawer { height: 46px; }
 .abs-bogolan-drawer.abs-bogolan-bottom { height: 24px; }
 
-/* ═══ LE CADRE DE LA SECTION — maquette validée `absences-section-bogolan-cadre.png` ═══
-   Le motif n'est plus posé au-dessus de la feuille : il la tourne autour.
-   Un seul nombre règle tout, `--abs-cadre`, épaisseur de la toile ET padding du
-   conteneur — deux valeurs distinctes et le papier ne rejoint plus le tissu.
-   La toile reste un fond : muet (`aria-hidden`), sans clic (`pointer-events:
-   none`), sans un seul mot (D-004) ; c'est la feuille qui écrit. */
-.abs-section-cadre { --abs-cadre: 26px; --ec-cadre-epaisseur: var(--abs-cadre); position: relative; padding: var(--abs-cadre); }
-.abs-section-papier { position: relative; z-index: 1; padding: 8px 20px 16px; background: var(--abs-bg-elevated); border: 1px solid var(--abs-border); }
+/* ═══ LA SECTION DU HAUT — maquette `maquettes/absences-en-tete-lisiere.png` ═══
+   Le 24/11, le motif tournait autour de la page entière (« tu n'as fait
+   qu'entourer l'ancienne page d'une bande motif » — refusé). Le 26/11, il ne
+   border plus rien : la lisière de bogolan EST le bord bas de la section, et les
+   six raccourcis pendent sous elle, sur le fond de page. */
 
-/* Les onglets en rabats cousus sur la lisière haute : la rangée remonte à cheval
-   sur la toile et chaque rabat prend son propre fond opaque — un mot ne se lit
-   jamais à cru sur un motif (D-004). Les `!important` ne sont pas de la brutalité :
-   ils défont des styles écrits en dur dans le JSX de la page, ligne à ligne. */
-.abs-onglets-rabats { margin-top: calc(var(--abs-cadre) * -1 + 8px); margin-left: -20px; margin-right: -20px; margin-bottom: 14px; background: transparent !important; border: 0 !important; border-radius: 0 !important; padding: 0 20px !important; max-width: 100% !important; flex-wrap: wrap; gap: 8px !important; }
-.abs-onglets-rabats .tab-btn { background: var(--abs-bg-panel) !important; border-radius: 8px 8px 0 0 !important; box-shadow: inset 0 2px 0 0 var(--abs-border-strong); }
+/* La lisière : le tissu de la page, en travers, 34 px — la hauteur que le dessin
+   lui donne, et le tiers de ce qu'elle était à cheval sur toute la page.
+   `z-index: 1` n'est pas un caprice : c'est ce qui fait passer LE TISSU par-dessus
+   les rabats. Le dessin, lui, peignait le rabat actif par-dessus la lisière et
+   effaçait le motif sur toute sa largeur (défaut §D) ; ici le papier glisse
+   SOUS le bogolan, le tissu reste entier, et le rabat n'a plus besoin de bord
+   haut pour faire cousu. */
+.abs-bogolan-tete { position: relative; z-index: 1; height: 34px; }
 
-/* Sur le rabat actif, la pastille ne se peint pas : elle s'inverse. Un compte
-   liseré d'ambre sur fond d'ambre ne se lisait pas — ici le chiffre passe en
-   creux, la seule teinte que le rabat d'argile autorise. */
-.abs-badge-alerte { background: color-mix(in srgb, var(--abs-coral) 16%, transparent) !important; color: var(--abs-coral) !important; }
+/* Le rail devient une portée de six rabats. `margin-top: -14px` : les papiers
+   s'enfoncent de 14 px dans le bas du tissu et disparaissent dessous — pendus, pas
+   posés par-dessus. La rangée est en six parts ÉGALES, pleines largeur : c'est ce
+   que le dessin montre, et ce que la pilule `inline-flex` ne pouvait pas faire. */
+.abs-topbar-nav { position: relative; z-index: 0; margin: -14px 0 0; padding: 0 16px 14px; }
+.abs-topbar-nav .abs-raccourcis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  scrollbar-width: none;
+}
+/* Le rabat : papier, angle haut-droit seul arrondi (le pli du dessin), couture en
+   pointillés sur les trois autres bords, ombré porté de 2 px franc — pas de flou. */
+.abs-topbar-nav .abs-raccourci {
+  /* le compte épinglé se pose sur le rabat : sans assise, il irait se coller au
+     premier ancêtre positionné, c'est-à-dire le rail entier */
+  position: relative;
+  justify-content: center;
+  min-height: 56px;
+  /* 20 px en haut : les 14 premiers sont avalés par la lisière, le mot doit
+     commencer JUSTE SOUS le tissu, pas dessous */
+  padding: 20px 10px 14px;
+  border: 1px dashed var(--abs-border-strong);
+  border-top: 0;
+  border-radius: 0 12px 12px 12px;
+  background: var(--abs-bg-elevated);
+  color: var(--abs-text);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--abs-text) 8%, transparent);
+}
+/* Le pictogramme de 13 px ne se montre pas, dans le dessin : le rabat ne porte que
+   son mot. C'est aussi ce que dit D-014 (« aucun pictogramme dans les boutons ») —
+   le composant reste partagé, seul Absences rend l'icône muette. */
+.abs-topbar-nav .abs-raccourci svg { display: none; }
+.abs-topbar-nav .abs-raccourci:hover {
+  border-style: solid;
+  border-color: var(--abs-border-strong);
+  color: var(--abs-text);
+}
+/* Le rabat du jour : argile pleine, texte blanc cassé, et le compte du jour épinglé
+   en bas à droite — une crête, pas un cache : il descend plus bas que ses voisines
+   et ne masque pas le tissu, contrairement au dessin qui le peignait par-dessus. */
+.abs-topbar-nav .abs-raccourci[data-actif="oui"],
+.abs-topbar-nav .abs-raccourci[data-actif="oui"]:hover {
+  background: var(--abs-argile);
+  border: 1px dashed color-mix(in srgb, var(--abs-bg-elevated) 45%, transparent);
+  border-top: 0;
+  color: var(--charte-blanc); /* le blanc cassé de la charte, jamais le blanc pur */
+  padding-bottom: 18px; /* la crête : 4 px de plus que ses voisines, pas un cache */
+  box-shadow: 2px 3px 0 0 color-mix(in srgb, var(--abs-text) 14%, transparent);
+}
+/* Six rabats de front ne tiennent qu'au-dessus de 980 px : en dessous, trois par
+   rang et deux rangées. Le rail partagé impose `white-space: nowrap`, donc un
+   libellé à l'étroit déborderait de son papier — et un mot coupé n'est plus un mot. */
+@media(max-width:980px) {
+  .abs-topbar-nav .abs-raccourcis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.abs-topbar-nav .abs-raccourci-compte {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--abs-bg-elevated);
+  /* pas le cuivre de la variante claire, trop clair sur papier (4,3:1, sous le seuil) :
+     le creux se lit en brun foncé, 6,9:1 — un compte doit se lire, pas se deviner */
+  color: var(--abs-amber-dark);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Les onglets de section n'ont plus rien à chevaucher depuis que le cadre est
+   défait : ils reprennent leur rangée plate, avec les styles en ligne qu'ils
+   portaient avant — aucune surcharge ici, c'est ce qui les remet à plat. */
 
 /* La tuile de motif en tête de ligne : un carré de 22 px, le filet de la page
    pour seul cadre. Elle est muette (`aria-hidden` porté par la span). */
@@ -476,7 +572,7 @@
 /* La barre d'outils s'ouvre sur une couture pointillée : c'est la règle courte
    en tirets du dessin (point 3), et elle dit que les outils ne sont pas un
    bandeau de plus — ils sont cousus au pied des compteurs. */
-.abs-section-papier .toolbar-top { border-top: 1px dashed var(--abs-border-strong); padding-top: 12px; margin-top: 2px; }
+.abs-page .toolbar-top { border-top: 1px dashed var(--abs-border-strong); padding-top: 12px; margin-top: 2px; }
 
 /* L'alerte de conflit n'est plus un bandeau plein : une couture. Un filet
    oblique en haut, un filet oblique en bas, le mot entre les deux. */
@@ -489,7 +585,16 @@
 .abs-drawer-theme form { min-height: 0; }
 .abs-drawer-theme[data-testid='absence-tiroir'] > .abs-bogolan-band { width: calc(100% + 44px); margin: -22px -22px 20px; }
 .abs-drawer-theme[data-testid='absence-tiroir'] > .abs-bogolan-bottom { margin: 20px -22px -22px; }
-.abs-page, .abs-drawer-theme { color-scheme: dark; }
+/* L'argile des aplats de la page — le rabat du jour et le bouton d'action. Le
+   cuivre seul, posé à plat, ne passe pas AA sous un texte blanc cassé (3,9:1 en
+   clair, 3,7:1 en sombre) ; freiné d'un cinquième de tissu, il tombe à 5,1:1 dans
+   les deux thèmes ET retrouve la teinte d'argile de la maquette. Le motif
+   sert d'encre autant que de fond : c'est le brun du bogolan, pas une couleur de
+   plus. Un seul nom pour les deux aplats, sinon ils divergent au premier ajustement. */
+.abs-page, .abs-drawer-theme {
+  color-scheme: dark;
+  --abs-argile: color-mix(in srgb, var(--abs-copper) 78%, var(--charte-tissu));
+}
 .abs-page[data-theme='light'], .abs-drawer-theme[data-theme='light'] { color-scheme: light; }
 .abs-page input::placeholder, .abs-page textarea::placeholder, .abs-drawer-theme input::placeholder, .abs-drawer-theme textarea::placeholder { color: var(--abs-text-faint); opacity: 1; }
 .abs-page select option, .abs-drawer-theme select option { background: var(--abs-bg-elevated); color: var(--abs-text); }
@@ -504,13 +609,10 @@
   .abs-bogolan-top { height: 60px; }
   .abs-bogolan-drawer { height: 36px; }
   .abs-bogolan-drawer.abs-bogolan-bottom { height: 20px; }
-  /* cadre plus étroit sur un écran d'enfant : 26 px de tissu des deux
-     côtés, c'est un quart de la largeur disponible */
-  .abs-section-cadre { --abs-cadre: 14px; }
-  .abs-section-papier { padding: 14px 12px 12px; }
-  /* sur un écran étroit, les rabats ne chevauchent plus la toile : 14 px de
-     lisière ne laissent pas la place d'un rabat de 44 px à cheval dessus */
-  .abs-onglets-rabats { margin-top: 0; margin-left: -12px; margin-right: -12px; padding: 0 12px !important; }
+  /* trois par rang déjà acquis à 980 px : ici, le rail se contente de maigrir
+     de son côté, et la lisière avec lui */
+  .abs-topbar-nav { padding: 0 12px 12px; }
+  .abs-bogolan-tete { height: 26px; }
   .abs-tuile { display: none; } /* sur un écran d'enfant, la ligne n'a plus de place pour un carré de 22 px */
   .abs-drawer-theme > footer { padding: 12px !important; flex-wrap: wrap; }
   .abs-drawer-theme > footer button { min-width: 110px; }

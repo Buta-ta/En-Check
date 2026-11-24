@@ -7,10 +7,11 @@ import AbsencesLoadingScreen from '../components/AbsencesLoadingScreen'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-// Absences, 24/11/2026 : le motif ne se pose plus AU-DESSUS de la feuille, il
-// l'ENCADRE — le même mécanisme que le planning (`placement="cadre"`), le même
-// bandeau décoratif muet. Le motif vient de `culturalMotif.js` : bogolan.
-import PageCulturalBand from '../components/PageCulturalBand'
+// Absences, 26/11/2026 (2e passage) : le fondateur a refusé le cadre qui faisait
+// le tour de la page entière — « tu n'as fait qu'entourer l'ancienne page d'une
+// bande motif ». Le motif redevient une bande, mais il ne border plus rien : il
+// est LE BORD BAS de la section du haut, et le rail de raccourcis pend dessous.
+import AbsencesCulturalBand from '../components/AbsencesCulturalBand'
 import { BogolanPastilleSvg } from '../components/BogolanMudclothSvg'
 import AbsencesCalendrier from '../components/AbsencesCalendrier'
 import { STATUTS_ABSENCE, getMotifConfig } from '../constants/motifsAbsence'
@@ -1770,9 +1771,13 @@ export default function Absences() {
 `}</style>
 
       <div className="abs-page" data-theme={darkMode ? 'dark' : 'light'} style={S.container}>
-        {/* Barre supérieure En-Check — même charte que la page Planning.
-            Le motif n'est plus posé au-dessus de la feuille : il l'encadre
-            (maquette retenue `maquettes/absences-section-bogolan-cadre.png`). */}
+        {/* ═══ LA SECTION DU HAUT — maquette `maquettes/absences-en-tete-lisiere.png` ═══
+            Trois registres cousus, et rien d'autre :
+            1. la feuille pleine largeur du titre (plus de carte flottante : pas de
+               rayon, pas d'ombre, pas de flou, plus de collant) ;
+            2. la lisière de bogolan, qui EST le bord bas de la section ;
+            3. les six rabats de raccourcis, pendus sous la lisière, sur le fond de
+               page — celui du jour est peint en argile et porte le compte. */}
         <div className="abs-topbar">
           <div className="abs-topbar-inner">
             <div className="abs-topbar-left">
@@ -1812,32 +1817,32 @@ export default function Absences() {
             </div>
           </div>
 
-          {/* Bandeau de raccourcis : Pointages · Planning · Fiches de paie… */}
-          <div className="abs-topbar-nav">
-            <RaccourcisPages />
-          </div>
+        </div>
+
+        {/* 2. la lisière : le motif de la page, posé en travers, en bord bas */}
+        <AbsencesCulturalBand position="tete"/>
+
+        {/* 3. les six rabats : Pointages · Planning · Absences · Fiches de paie…
+            Le compte du jour est passé ICI (il était sur les onglets de section) :
+            la maquette le met sur le rabat, et un chiffre ne se dit qu'une fois. */}
+        <div className="abs-topbar-nav">
+          <RaccourcisPages comptes={{ '/absences': absences.length }} />
         </div>
 
         <main style={S.main}>
-          {/* Le motif ne se pose plus au-dessus de la feuille, il l'encadre
-              (maquette validée `absences-section-bogolan-cadre.png`) : quatre
-              lisières de bogolan, la feuille posée par-dessus, et jamais un mot
-              sur la toile. La lisière haute reçoit les onglets en rabats cousus.
-              LA SEULE DIFFÉRENCE AVEC LE DESSIN : la barre d'outils n'est pas
-              descendue dans la lisière basse — sous elle, la section continue
-              (filtres, trois vues, liste paginée), et une barre d'outils en pied
-              de cadre serait hors de portée dès la deuxième ligne. Elle reste en
-              tête de feuille, sur une couture pointillée. */}
-          <div className="abs-section-cadre">
-            <PageCulturalBand pathname="/absences" placement="cadre" />
-            <div className="abs-section-papier">
-          <div className="abs-section-tabs abs-onglets-rabats" style={TAB.container}>
+          {/* Le cadre qui tournait autour du `<main>` entier est défait (26/11) : il
+              border la page sans rien retoucher (« je ne veux pas de ça »). Les trois
+              onglets de section reprennent leur rangée plate sous la feuille, et la
+              barre d'outils garde sa couture pointillée : elle ne doit rien au cadre. */}
+          <div className="abs-section-tabs" style={TAB.container}>
             <button className="tab-btn" aria-pressed={activeTab === 'absences'} onClick={() => setActiveTab('absences')} style={{ ...TAB.tab, ...(activeTab === 'absences' ? TAB.tabActive : {}) }}>
               <CalendarOff size={16} />
               <span>Absences</span>
-              <span style={{ ...TAB.badge }}>
-                {absences.length}
-              </span>
+              {/* Le compteur d'absences a quitté cet onglet (26/11/2026) : la maquette
+                  l'épingle sur le rabat « Absences » du rail, juste au-dessus, et les
+                  deux lisaient le même nombre (`absences.length`). Un chiffre ne se dit
+                  pas deux fois sur un écran. Les deux badges voisins restent : eux
+                  comptent d'autres choses — les demandes en attente, les congés. */}
             </button>
 
             <button className="tab-btn" aria-pressed={activeTab === 'demandes'} onClick={() => setActiveTab('demandes')} style={{ ...TAB.tab, ...(activeTab === 'demandes' ? TAB.tabActive : {}) }}>
@@ -2531,8 +2536,6 @@ export default function Absences() {
               </div>
             </div>
           )}
-            </div>{/* .abs-section-papier — la feuille posée par-dessus la toile */}
-          </div>{/* .abs-section-cadre — les quatre lisières de bogolan */}
         </main>
 
         {/* ═══ MODAL AJOUT/MODIF ABSENCE ═══ */}
