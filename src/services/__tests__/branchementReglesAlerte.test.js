@@ -15,10 +15,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const resoudre = vi.fn()
+const activationAlerte = vi.fn()
 
 vi.mock('../reglesTempsTravail', () => ({
   resoudre: (...args) => resoudre(...args),
+  activationAlerte: (...args) => activationAlerte(...args),
 }))
+
+//  Par défaut : aucune décision d'activation. « Jamais décidée » n'est pas
+//  « désactivée » — c'est ce `null` qui autorise le repli sur la case d'avant.
+const JAMAIS_DECIDEE = { active: null, etat: 'jamais_decidee', dateEffet: null }
+
+const activation = (active, dateEffet = '2026-11-03') => ({
+  active,
+  etat: active ? 'activee' : 'desactivee',
+  dateEffet,
+})
 
 const FeatureService = (await import('../featureService')).default
 const { __internal } = await import('../hoursCalculator')
@@ -47,6 +59,8 @@ const aucune = { valeur: null, origine: 'aucune', dateEffet: null }
 beforeEach(() => {
   resoudre.mockReset()
   resoudre.mockResolvedValue({ ...aucune })
+  activationAlerte.mockReset()
+  activationAlerte.mockResolvedValue({ ...JAMAIS_DECIDEE })
 })
 
 afterEach(() => {
@@ -171,5 +185,80 @@ describe('La paie ne dépend pas de cette lecture', () => {
       { entrepriseId: 'ent-42', cle: 'alerte_hebdo_heures' },
       { entrepriseId: 'ent-42', cle: 'alerte_hebdo_niveau2_heures' },
     ])
+    //  Et l'activation est lue une fois, sur la même entreprise, sans employé.
+    expect(activationAlerte).toHaveBeenCalledWith({ entrepriseId: 'ent-42' })
+  })
+})
+
+
+describe('G5-bis : l’activation versionnée fait autorité', () => {
+  it('activée dans la table : elle allume l’alerte même si la case d’avant est décochée', () => {
+    const seuils = seuilsAlerteHebdo(reglage(48, false), {
+      seuil: regle(45),
+      niveau2: aucune,
+      activation: activation(true),
+    })
+
+    expect(seuils.actif).toBe(true)
+    expect(seuils.seuil).toBe(45)
+    expect(seuils.alerteActivee).toBe(true)
+    expect(seuils.sourceActivation).toBe('table_versionnee')
+    expect(seuils.dateEffetActivation).toBe('2026-11-03')
+    expect(seuils.activationJamaisDecidee).toBe(false)
+  })
+
+  it('désactivée dans la table : elle éteint l’alerte même si la case d’avant est cochée', () => {
+    const seuils = seuilsAlerteHebdo(reglage(48, true), {
+      seuil: regle(45),
+      niveau2: aucune,
+      activation: activation(false),
+    })
+
+    expect(seuils.actif).toBe(false)
+    expect(seuils.seuil).toBeNull()
+    //  Le motif dit la vérité : ce n'est pas « la case n'est pas cochée »,
+    //  c'est une décision enregistrée. Deux choses différentes.
+    expect(seuils.motif).toMatch(/décision enregistrée/)
+    expect(seuils.sourceActivation).toBe('table_versionnee')
+  })
+
+  it('jamais décidée : repli EXACT sur la case d’avant, et c’est dit', () => {
+    const seuils = seuilsAlerteHebdo(reglage(48, true), {
+      seuil: aucune,
+      niveau2: aucune,
+      activation: null,
+    })
+
+    expect(seuils.actif).toBe(true)
+    expect(seuils.seuil).toBe(48)
+    expect(seuils.sourceActivation).toBe('reglage_entreprise')
+    expect(seuils.activationJamaisDecidee).toBe(true)
+    expect(seuils.dateEffetActivation).toBeNull()
+  })
+
+  it('une activation d’entreprise sans seuil n’allume rien : le seuil reste la condition de fond', () => {
+    const seuils = seuilsAlerteHebdo(
+      { settings: { ...FeatureService.getDefaultOvertimeSettings(), weekly_threshold: null, alerte_hebdo_activee: false }, provenance: { origine: 'defaut_produit' } },
+      { seuil: aucune, niveau2: aucune, activation: activation(true) },
+    )
+    expect(seuils.actif).toBe(false)
+    expect(seuils.motif).toMatch(/aucun seuil/)
+  })
+
+  it('une panne de la RPC d’activation ne prive pas du seuil lisible', async () => {
+    resoudre.mockResolvedValue(regle(45))
+    activationAlerte.mockRejectedValue(new Error('réseau indisponible'))
+
+    const ctx = await chargerReglesAlerte('ent-42')
+    expect(ctx.seuil.valeur).toBe(45)
+    expect(ctx.activation).toBeNull()
+
+    const seuils = seuilsAlerteHebdo(reglage(48, true), ctx)
+    expect(seuils.seuil).toBe(45)
+  })
+
+  it('la lecture de l’activation ne prend ni employé ni verrou', async () => {
+    await chargerReglesAlerte('ent-7')
+    expect(activationAlerte).toHaveBeenCalledWith({ entrepriseId: 'ent-7' })
   })
 })

@@ -64,6 +64,7 @@ import ConfigurationFiscale from './pages/ConfigurationFiscale'
 import PaieFiscalite from './pages/PaieFiscalite'
 import AnalyticsSite from './pages/AnalyticsSite'
 import EmployeeTasks from './pages/employee/EmployeeTasks'
+import EmployeeInformations from './pages/employee/EmployeeInformations'
 import Predictions from './pages/Predictions'
 import AiConnectionTest from './pages/AiConnectionTest'
 import AssistantDock from './components/AssistantDock'
@@ -465,6 +466,15 @@ function App() {
           <Route path="/employee/taches" element={
             <EmployeeRoute requiredFeature="gestion_taches">
               <EmployeeTasks />
+            </EmployeeRoute>
+          } />
+
+          {/*  👁️ Le registre des informations : le versant employé du devoir
+              d'informer (§3.5.g). Toujours ouvert — ce qu'on a dit à quelqu'un
+              ne dépend d'aucune option payante. */}
+          <Route path="/employee/informations" element={
+            <EmployeeRoute>
+              <EmployeeInformations />
             </EmployeeRoute>
           } />
 

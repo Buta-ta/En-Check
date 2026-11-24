@@ -38,7 +38,7 @@ import {
   messageDepassement,
 } from './plafondHebdomadaire'
 import { evaluerReposQuotidien, messageRepos } from './reposQuotidien'
-import { resoudre as resoudreRegleTemps } from './reglesTempsTravail'
+import { activationAlerte as encheckActivationAlerte, resoudre as resoudreRegleTemps } from './reglesTempsTravail'
 
 //  Aucun seuil de pointage n'est plus écrit en dur dans ce moteur : ils viennent
 //  de `encheck_reglages_pointage` (voir src/services/seuilsPointage.js). Les
@@ -1527,7 +1527,17 @@ export function seuilsAlerteHebdo(reglageHebdo, reglesAlerte = null) {
   //
   //  Il reste une seule condition de fond : un seuil valide doit exister. Une
   //  case cochée sans seuil n'allume rien.
-  const alerteActivee = settings?.alerte_hebdo_activee === true
+  //  ⚠️ L'ACTIVATION SUIT LA MÊME RÈGLE QUE LA VALEUR (G5-bis).
+  //  Une activation VERSIONNÉE fait autorité dès qu'elle existe : elle sait
+  //  qui a coché et quand. Tant qu'aucune version n'existe, on retombe sur la
+  //  colonne booléenne d'avant — comportement identique, aucune rupture.
+  //  Et « jamais décidée » ne se lit pas comme « désactivée » : `null` n'est
+  //  pas `false`, et la source le dira (`reglage_entreprise` vs table).
+  const activationVersionnee = reglesAlerte?.activation?.active
+  const alerteActivee = activationVersionnee === true
+    || (activationVersionnee === null || activationVersionnee === undefined
+      ? settings?.alerte_hebdo_activee === true
+      : false)
   const valeur = Number(seuilEnregistre)
   const seuilValide =
     seuilEnregistre !== null && seuilEnregistre !== '' && Number.isFinite(valeur) && valeur > 0
@@ -1549,6 +1559,13 @@ export function seuilsAlerteHebdo(reglageHebdo, reglesAlerte = null) {
     sourceValeur: valeurRegle !== null ? 'table_versionnee' : 'reglage_entreprise',
     actif,
     alerteActivee,
+    //  D'où vient l'ACTIVATION, et depuis quand. `null` quand personne n'a
+    //  décidé : l'écran doit pouvoir dire « jamais décidée », pas « désactivée ».
+    sourceActivation: activationVersionnee === null || activationVersionnee === undefined
+      ? 'reglage_entreprise'
+      : 'table_versionnee',
+    dateEffetActivation: reglesAlerte?.activation?.dateEffet || null,
+    activationJamaisDecidee: activationVersionnee === null || activationVersionnee === undefined,
     //  La valeur telle qu'enregistrée (ou le défaut) : pour pré-remplir un
     //  formulaire ou expliquer le silence. Jamais pour déclencher une alerte.
     seuilPropose: seuilEnregistre,
@@ -1556,7 +1573,9 @@ export function seuilsAlerteHebdo(reglageHebdo, reglesAlerte = null) {
       ? null
       : (!seuilValide
         ? 'aucun seuil hebdomadaire valide enregistré'
-        : 'alerte non activée : la case « m’alerter au-delà de ce seuil » n’est pas cochée'),
+        : activationVersionnee === false
+          ? 'alerte désactivée par une décision enregistrée'
+          : 'alerte non activée : la case « m’alerter au-delà de ce seuil » n’est pas cochée'),
   }
 }
 
@@ -1607,13 +1626,31 @@ async function loadOvertimeContext(enterpriseId) {
  * existant, exactement comme avant ce lot. Le silence est un repli, pas une
  * conclusion : `reglesAlerte` vaut `null`, et l'origine affichée le dira.
  */
+/**
+ * L'activation versionnée de l'alerte, ou `null` si elle n'a jamais été décidée.
+ *
+ * ⚠️ `null` n'est PAS `false` : « personne n'a décidé » n'est pas « un humain a
+ *    dit non ». La différence est celle que G5-bis rend visible à l'écran, et
+ *    c'est pour ça que la fonction rend l'objet entier plutôt qu'un booléen.
+ */
+async function activationAlerteRegle(entrepriseId) {
+  const etat = await encheckActivationAlerte({ entrepriseId })
+  return etat && etat.active !== null ? etat : null
+}
+
 async function chargerReglesAlerte(entrepriseId) {
   try {
-    const [seuil, niveau2] = await Promise.all([
+    const [seuil, niveau2, activation] = await Promise.all([
       resoudreRegleTemps({ entrepriseId, cle: 'alerte_hebdo_heures' }),
       resoudreRegleTemps({ entrepriseId, cle: 'alerte_hebdo_niveau2_heures' }),
+      //  L'ACTIVATION AUSSI (G5-bis). Elle vit désormais dans la même table :
+      //  on sait qui a coché la case et quand, au lieu d'écraser un booléen.
+      //  `catch` local : sur un serveur où la migration n'est pas encore
+      //  passée, l'activation revient `null` et le repli sur
+      //  `overtime_settings` s'applique — pas de panne, pas de mensonge.
+      activationAlerteRegle(entrepriseId).catch(() => null),
     ])
-    return { seuil, niveau2 }
+    return { seuil, niveau2, activation }
   } catch {
     return null
   }

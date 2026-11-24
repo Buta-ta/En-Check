@@ -699,7 +699,7 @@ règle de calcul n'a bougé : c'est la même logique d'écriture, la même édit
 même aperçu d'impact. Ce qui reste à valider : les captures réelles aux quatre largeurs et en
 thème sombre.
 
-#### Lot 4 — G5 + G5-bis : la fiche employé et le devoir d'informer (M + M) ✅ *sauf G5-bis (versionner l'activation)*
+#### Lot 4 — G5 + G5-bis : la fiche employé et le devoir d'informer (M + M) ✅ *activation versionnée, lecture employé livrée*
 
 ##### 5.4.4 Ce qui est livré, et ce qui ne l'est pas encore
 
@@ -746,13 +746,47 @@ Ce que les informations **ne sont pas** : une notification envoyée. On enregist
 d'avoir émis l'information ; `consulte_le` reste nul tant que personne ne l'a marquée, et
 aucun écran d'administration ne peut le faire à la place de l'employé.
 
-**Ce qui reste, et n'est pas fait** :
-- **versionner l'activation** de l'alerte (`alerte_hebdo_activee`) : toujours dans
-  `overtime_settings`, donc hors historique — c'est G5-bis ;
-- **marquer une information consultée** depuis l'espace employé : la colonne existe, l'écran
-  employé n'est pas branché ;
-- la **capture** de la fiche aux quatre largeurs (320 / 390 / 768 / 1440 px) et en thème
-  sombre : la feuille ne pose que des jetons, mais le rendu reste à l'œil du fondateur.
+##### 5.4.6 Versionner l'activation — G5-bis
+
+La case « m'alerter au-delà de ce seuil » cesse d'être un booléen écrasé : elle devient une
+**règle versionnée** comme les seuils, avec date d'effet et auteur. Migration
+`20261124000002_activation_alerte_versionnee.sql`.
+
+| Livré | Pourquoi c'était nécessaire | Vérifié par |
+|---|---|---|
+| `alerte_hebdo_activee` dans la liste des clés | sans elle, la clé tombait sur « une valeur nulle ne règle rien » et `0` (désactivée) était refusé | contrainte lue en base |
+| valeur restreinte à `{0, 1}` **pour cette clé seulement** | `0` y est légitime (« désactivée »), contrairement aux heures ; on ne baisse pas le plancher général pour autant | 5 tests SQL |
+| activation d'entreprise uniquement, verrou refusé | une alerte est un contrôle d'entreprise : la rendre nominative permettrait à chacun de s'y soustraire | 2 tests SQL |
+| écriture sans émission d'information | rien de personnel n'a bougé : dire « votre réglage a changé » serait faux | 1 test SQL |
+| RPC `encheck_activation_alerte` → `activee` / `desactivee` / `jamais_decidee` | `null` n'est pas `false` : « personne n'a décidé » n'est pas « quelqu'un a dit non » | 4 tests SQL + 11 de service |
+| branchement du moteur | l'activation versionnée fait autorité ; sans version, repli exact sur `overtime_settings` ; panne de la RPC ⇒ seuil lisible | 18 tests |
+
+⚠️ **La faute commise, et la garde posée.** Recréer `encheck_regle_ecrire` depuis la version
+d'origine a d'abord supprimé l'émission `encheck_informations_regle` du §3.5.g — une régression
+silencieuse, invisible aux tests de la migration seule. La réécriture repart désormais du corps
+de `20261124000001` et n'y ajoute que la branche d'activation : **toute recréation de fonction
+doit être un sur-ensemble de la dernière version**. Garde permanente : `0002` est jouée APRÈS
+`0001` dans les tests SQL, qui vérifient toujours l'émission (37 tests).
+
+##### 5.4.7 « J'ai lu » — le devoir d'informer vu depuis l'espace employé
+
+Maquette retenue le 24/11/2026 : `maquettes/choix-informations-employe-1.png` (option 2 sur 2) —
+le **registre** : feuille, bande de bogolan en tête, colonnes séparées par des filets, tampon
+« à consulter » incliné en pointillé, pied daté.
+
+| Livré | Où |
+|---|---|
+| `encheck_employe_courant()` — la fiche du compte connecté, en un seul endroit | `20261124000003_information_consultation.sql` |
+| `encheck_informations_employe()` — lecture **sans aucun identifiant** : le destinataire vient de la session | idem + `src/services/mesInformations.js` |
+| `encheck_information_consultee(id)` — refuse une information d'un autre, ne déplace jamais une date posée | idem |
+| écran `/employee/informations`, toujours ouvert (aucune option payante) | `src/pages/employee/EmployeeInformations.jsx` |
+
+**Ce qui n'a pas changé, et ne doit pas changer** : aucun écran d'administration ne peut marquer
+« consultée » à la place de l'employé. La table n'a toujours aucune politique d'écriture ; le
+seul chemin est la RPC, et elle exige une session employé.
+
+**Ce qui reste** : la **capture** du registre aux quatre largeurs et en thème sombre — le CSS ne
+pose que des jetons, mais le rendu reste à l'œil du fondateur.
 
 #### Lot 5 — G7 : les libellés dans les écrans existants (S)
 
@@ -774,7 +808,7 @@ aucun écran d'administration ne peut le faire à la place de l'employé.
 | 2a | G3 base | M | rien : pas encore branché | revue de la migration et des RPC |
 | 2b | G3 branchement ✅ | S | rien pour un client sans règle (mêmes seuils, mêmes montants) | avant/après identiques — testé |
 | 3 | G4 + G4b ✅ | M+M | l'accès des admins clients | parcours admin non super-admin |
-| 4 | G5 + G5-bis ✅ *fiche, états, impact, informations* ; reste : versionner l'activation | M+M | la lisibilité de la fiche employé | parcours : poser, verrouiller, informer |
+| 4 | G5 + G5-bis ✅ *fiche, états, impact, informations, activation versionnée, registre employé* | M+M | la lisibilité de la fiche employé | parcours : poser, verrouiller, informer |
 | 5 | G7 | S | des libellés | captures des 3 écrans |
 | 6 | G8/G9 | — | la paie si on active trop tôt | décision écrite |
 

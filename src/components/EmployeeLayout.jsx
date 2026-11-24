@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Footprints, LayoutDashboard, Calendar, Clock, CalendarDays,
-  LogOut, User, ChevronRight, Menu, X, ClipboardList
+  LogOut, User, ChevronRight, Menu, X, ClipboardList, Eye
 } from 'lucide-react'
 import EmployeeAuthService from '../services/employeeAuthService'
 
@@ -65,6 +65,14 @@ export default function EmployeeLayout({ children }) {
       icon: Calendar,
       label: 'Mes horaires',
       feature: 'planning',
+    },
+    {
+      //  👁️ Toujours visible : ce qu'on a dit à quelqu'un ne dépend d'aucune
+      //  option payante. C'est le versant employé du devoir d'informer.
+      path: '/employee/informations',
+      icon: Eye,
+      label: 'Mes informations',
+      always: true,
     },
   ]
 
