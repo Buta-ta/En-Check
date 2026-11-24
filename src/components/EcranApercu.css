@@ -104,7 +104,8 @@
   overflow: hidden;
 }
 
-/* l'en-tête de la borne : la bande de bogolan et son nom */
+/* l'en-tête de la borne : son nom seul — « enlève le bandeau bogolan dans
+   la tablette de l'aperçu » (25/11). */
 .eap-entete {
   position: relative;
   display: flex;
@@ -113,18 +114,6 @@
   padding: 7px 10px;
   background: var(--charte-tissu);
   border-bottom: var(--charte-trait) solid var(--charte-encre);
-}
-
-/* LA BANDE — les images du dépôt, natives, jamais étirées (C4). On les
-   répète horizontalement, comme la page Équipes : c'est la technique de la
-   maison, on ne la réinvente pas. */
-.eap-bande {
-  flex: 1;
-  height: 14px;
-  background-image: url('/images/paie-bogolan-haut.webp');
-  background-repeat: repeat-x;
-  background-size: auto 14px;
-  background-position: left center;
 }
 
 .eap-marque {
