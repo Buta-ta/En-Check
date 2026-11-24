@@ -1,0 +1,303 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   🗂️ LA TUILE D'ÉTAT — papier arraché, double feutre, carré brodé
+
+   Les valeurs ne sont pas choisies ici : elles viennent de `tokens.css`.
+     · contour        2 px  --charte-trait
+     · ombre dure     3 px  --charte-ombre-dure   (flou = 0, règle C9)
+     · rayons         le papier n'est pas arrondi : c'est une carte-post-it,
+                      et CARTE-POST-IT.md dit « coins 0 »
+     · colle          14 px  --tue-colle, comme la fiche employé
+     · pli            14 px  --tue-pli, la jambe du rabat bas-droit
+
+   On n'ajoute AUCUN hexadécimal : tout passe par les jetons. Un hex brut est
+   une infraction d'audit (C1).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.tue {
+  /* la boîte locale : elle rend les nombres ci-dessous lisibles et permet de
+     les régler ensemble si la tuile change de gabarit */
+  --tue-colle: 14px;
+  --tue-pli: 14px;
+  --tue-debord: 6px;          /* la seconde feuille, sous la première */
+  --tue-applique: 38px;       /* le carré brodé */
+  --tue-gouttiere: 20px;      /* l'air entre le bord et le texte */
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: 0;
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  /* L'OMBRE DURE + LE DÉBORD DE PAPIER
+     La première ombre (7 % d'encre) simule la feuille du dessous ; la seconde,
+     pleine, en dessine le bord. Aucune n'a de flou. */
+  box-shadow:
+    var(--tue-debord) var(--tue-debord) 0 0
+      color-mix(in srgb, var(--charte-encre) 7%, var(--charte-surface)),
+    calc(var(--tue-debord) + 2px) calc(var(--tue-debord) + 2px) 0 0
+      var(--charte-encre);
+  /* le léger de travers, pour que trois papiers ne fassent pas un tableau */
+  transform: rotate(var(--tue-inclinaison, 0deg));
+  isolation: isolate;
+  /*  Trois papiers posés côte à côte : ils doivent s'aligner, même quand un
+      libellé prend deux lignes et pas les autres. `min-height` plutôt qu'une
+      hauteur fixe, pour que le contenu long puisse encore pousser. */
+  min-height: 172px;
+}
+
+/* ── la bande de colle, en haut ─────────────────────────────────────────────
+   Posée en `background-image` DANS son propre élément : un `background:` en
+   raccourci sur la tuile effacerait le motif (piège relevé deux fois sur la
+   page Équipes). */
+.tue-colle {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--tue-colle);
+  pointer-events: none;
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--charte-blanc) 42%, transparent) 0
+      calc(var(--tue-colle) - 1px),
+    color-mix(in srgb, var(--charte-encre) 14%, transparent)
+      calc(var(--tue-colle) - 1px) var(--tue-colle),
+    transparent var(--tue-colle)
+  );
+}
+
+/* ── LE DOUBLE FEUTRE : le second trait, à l'intérieur ─────────────────────
+   C'est le trait qui doit « se voir ». Il court à 6 px du bord, sur tout le
+   tour. `pointer-events: none` : c'est de l'encre, pas un cadre cliquable. */
+.tue::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 6px;
+  border: 1.5px solid var(--charte-encre);
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* ── LE PLI, au coin bas droit ─────────────────────────────────────────────
+   La recette de `FicheEmployeModal.css`, à l'identique : UN SEUL triangle, au
+   coin, qui porte à la fois la découpe et le rabat.
+
+   Le dégradé se lit de bas-gauche vers haut-droite :
+     · 0 → 44 %   le dos de la feuille (plus clair que le papier) : LE RABAT
+     · 44 → 50 %  le trait de pliure, en encre
+     · au-delà    transparent : la feuille reste pleine
+
+   Jamais `clip-path` : il rognerait l'ombre, et CARTE-POST-IT.md l'interdit
+   nommément. Jamais `drop-shadow` non plus — il floute.
+   Le pli ne rogne AUCUN contenu : la boîte de texte réserve déjà `--tue-pli`
+   en bas (voir `.tue-corps`). */
+.tue::after {
+  content: '';
+  position: absolute;
+  z-index: 4;
+  right: 0;
+  bottom: 0;
+  width: var(--tue-pli);
+  height: var(--tue-pli);
+  background-image: linear-gradient(
+    to top right,
+    transparent 0 50%,
+    var(--charte-encre) 50% 56%,
+    color-mix(in srgb, var(--charte-blanc) 55%, var(--charte-surface)) 56%
+  );
+  pointer-events: none;
+}
+
+/* la découpe du coin : un triangle à la couleur du FOND DE PAGE, qui vient
+   manger le coin hors du contour. Posé sur un élément, pas sur le papier,
+   pour ne pas disputer `::after` au rabat. */
+.tue-decoupe {
+  position: absolute;
+  z-index: 5;
+  right: calc(-1 * var(--charte-trait));
+  bottom: calc(-1 * var(--charte-trait));
+  width: calc(var(--tue-pli) + var(--charte-trait));
+  height: calc(var(--tue-pli) + var(--charte-trait));
+  background-image: linear-gradient(
+    to top right,
+    var(--charte-sable) 0 50%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+/* ── le carré brodé ──────────────────────────────────────────────────────── */
+.tue-applique {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--tue-colle) + 8px);
+  right: 10px;
+  width: var(--tue-applique);
+  height: var(--tue-applique);
+  background-color: var(--tue-teinte, var(--charte-espresso));
+  /* le point de surjet : un trait pointillé qui fait le tour, comme une couture */
+  border: 1.5px solid var(--charte-encre);
+  outline: 1.5px dashed color-mix(in srgb, var(--charte-blanc) 70%, transparent);
+  outline-offset: -5px;
+  /* l'ombre dure du carré : il est cousu PAR-DESSUS la feuille, il doit se
+     détacher d'elle */
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+  transform: rotate(1.5deg);
+  overflow: hidden;
+}
+
+/* le motif : un fragment de bogolan réel, jamais un SVG réinventé. C'est
+   `bogolan-vertical.webp` (76 × 1536) : sa densité est exactement celle qu'il
+   faut pour un carré de 38 px — on ne l'étire pas, on le recadre. */
+.tue-applique-motif {
+  position: absolute;
+  inset: 0;
+  background-image: url('/images/bogolan-vertical.webp');
+  background-repeat: repeat-y;
+  background-size: auto 100%;
+  background-position: center;
+  opacity: 0.9;
+}
+
+/* ── les trois teintes, prises dans la palette D-001 ─────────────────────── */
+.tue--indigo { --tue-teinte: var(--charte-espresso); }
+.tue--ocre   { --tue-teinte: var(--charte-aplat); }
+.tue--brique { --tue-teinte: var(--charte-erreur); }
+
+/* ── le corps ─────────────────────────────────────────────────────────────── */
+.tue-corps {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  /* LA MARGE QUI PROTÈGE LE TEXTE
+     À droite, on réserve la largeur du carré brodé + son décalage + 8 px d'air.
+     Le carré peut grandir (média query ci-dessous), cette marge le suit : un
+     mot ne peut pas passer dessous. C'est la correction du défaut de la
+     capture, écrite en une ligne plutôt qu'en espoir. */
+  padding:
+    calc(var(--tue-colle) + 16px)
+    calc(var(--tue-applique) + 10px + 8px)
+    calc(var(--tue-pli) + 12px)
+    var(--tue-gouttiere);
+}
+
+.tue-libelle {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--charte-texte);
+  /*  « Programmées · Expirées » tient sur deux lignes : c'est voulu, et c'est
+      préférable à un libellé tronqué. Il ne peut pas déborder à droite — la
+      boîte de texte est déjà bornée par le padding du corps. */
+  overflow-wrap: break-word;
+}
+
+/* ── les chiffres ─────────────────────────────────────────────────────────── */
+.tue-chiffres {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 10px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.tue-chiffre-paquet {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.tue-chiffre {
+  font-size: clamp(38px, 4.2vw, 54px);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--charte-encre);
+}
+
+.tue-apres {
+  font-size: clamp(16px, 1.6vw, 21px);
+  font-weight: 600;
+  color: var(--charte-douce);
+  font-variant-numeric: tabular-nums;
+}
+
+.tue--alerte .tue-chiffre {
+  color: var(--charte-erreur);
+}
+
+/* ── la jauge : huit tirets cousus ───────────────────────────────────────── */
+.tue-jauge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.tue-point {
+  width: 15px;
+  height: 11px;
+  border: 1.5px solid var(--charte-encre);
+  background-color: transparent;
+}
+
+/* une place prise est un point de couture plein : deux traits, comme le fil
+   qui repasse. La teinte change avec la tuile, pour que la jauge appartienne
+   visiblement à la même famille que son carré brodé. */
+.tue-point.est-prise {
+  background-color: var(--tue-teinte, var(--charte-aplat));
+  border-color: var(--charte-encre);
+}
+
+/* ── le pied : UN MOT ────────────────────────────────────────────────────── */
+.tue-pied {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--charte-douce);
+}
+
+/* ── états ───────────────────────────────────────────────────────────────── */
+.tue--alerte {
+  /* l'alerte ne hurle pas : elle teinte le chiffre et le carré, rien d'autre.
+     Un fond rouge sur une tuile ferait du bruit dans une rangée de trois. */
+  --tue-teinte: var(--charte-erreur);
+}
+
+/* ── écran étroit : deux tuiles par rangée, puis une ─────────────────────── */
+@media (max-width: 900px) {
+  .tue {
+    --tue-applique: 32px;
+    --tue-gouttiere: 16px;
+  }
+  .tue-chiffre {
+    font-size: clamp(32px, 7vw, 44px);
+  }
+}
+
+@media (max-width: 560px) {
+  .tue {
+    --tue-applique: 28px;
+  }
+  .tue-point {
+    width: 11px;
+    height: 9px;
+  }
+}
+
+/* ── le mouvement se retire si le système le demande ─────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .tue {
+    transform: none;
+  }
+}
