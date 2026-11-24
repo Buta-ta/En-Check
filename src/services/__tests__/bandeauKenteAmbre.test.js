@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { culturalMotifForPath } from '../../components/culturalMotif.js'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -23,32 +24,28 @@ describe('Patrimoine Kente conservé · Absences passée au bogolan', () => {
     expect(bandeAmbre).toContain('id="encheck-kente-amber"')
   })
 
-  it('2. Absences est encadrée de bogolan ; le ndebele reste l’artiste du badge', () => {
-    // 24/11 : « utilise le bogolan comme motif, remplace l'autre ». 26/11 : le
-    // fondateur a refusé le cadre qui faisait le tour de la page — « tu n'as fait
-    // qu'entourer l'ancienne page d'une bande motif. je ne veux pas de ça. » Le
-    // motif n'est donc plus une bordure : il est LE BORD BAS de la section du haut,
-    // une lisière de 34 px sous la feuille du titre. Un seul exemplaire sur la
-    // page (les tiroirs gardent les leurs), jamais la toile entière du `<main>`.
+  it('2. le bogolan a quitté l’en-tête d’Absences, l’identité de la page reste', () => {
+    // 24/11 : « utilise le bogolan comme motif, remplace l'autre ». 26/11 : le cadre
+    // est refusé, la lisière le remplace. 27/11 : le fondateur choisit le transat et
+    // décide « un bandeau motif bogolan servira autrement » — la page ne monte donc
+    // plus aucune bande au-dessus du contenu. Le tissu reste dans les deux tiroirs,
+    // qui sont des feuilles qui glissent, et l'identité de la page ne bouge pas :
+    // l'écran de chargement et les motifs la lisent encore en bogolan.
     expect(absencesSrc).not.toContain('<PageCulturalBand')
-    expect(absencesSrc).not.toContain('abs-section-cadre')
-    expect(absencesSrc).toContain('<AbsencesCulturalBand position="tete"/>')
-    expect(absencesSrc.split('<AbsencesCulturalBand').length - 1).toBe(1)
-    expect(absencesSrc).not.toContain('<AbsencesCulturalBand position="bottom"/>')
-    expect(absencesSrc).not.toContain('KenteAmberWeaveSvg')
-    // les deux tiroirs gardent leurs bandeaux : une feuille qui glisse n’a pas
-    // besoin d’un cadre, elle a besoin d’une lisière en haut et d’une en bas
+    expect(absencesSrc).not.toContain('<AbsencesCulturalBand')
+    expect(lire('src/pages/AbsencesAfroTech.css')).not.toContain('.abs-bogolan-tete')
+    expect(culturalMotifForPath('/absences')).toBe('bogolan')
+    // les deux tiroirs gardent leurs bandeaux
     expect(lire('src/components/AbsenceTiroir.jsx')).toContain('<AbsencesCulturalBand drawer/>')
     expect(lire('src/components/AbsencesCulturalBand.jsx')).toContain('aria-hidden="true"')
     expect(lire('src/components/AbsencesCulturalBand.jsx')).toContain('abs-bogolan-band')
-    // PROTECTION : « remplacer le motif » ne veut pas dire « jeter l’image ».
+    // PROTECTION : « servir autrement » ne veut pas dire « jeter l'image ».
     // Le ndebele reste sur le disque et reste le visuel du badge employé.
     expect(fs.existsSync(path.join(ROOT, 'public/images/absences-ndebele.webp'))).toBe(true)
     expect(lire('src/components/badge/motifs.js')).toContain("image: '/images/absences-ndebele.webp'")
     // et plus une seule feuille de style de la page ne peint le ndebele
     expect(blocCss).not.toContain("url('/images/absences-ndebele.webp')")
   })
-
   it('3. la frise est strictement orange · jaune · noir : ni émeraude, ni indigo, ni bleu', () => {
     expect(bandeAmbre).not.toMatch(/#1E5E3E|#1F6A45|#288256|#10B981|#26734D|#24384A/i)
   })

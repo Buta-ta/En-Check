@@ -54,15 +54,19 @@ it('2. la page affichée est marquée, les autres restent des liens', () => {
   expect(bloc).toContain('aria-current="page"')
 })
 
-it('3. la bande est installée sur la page Absences', () => {
-  const src = lire('src/pages/Absences.jsx')
-  // le rail est bien monté sur la page — et il y est installé EN TÊTE, dans la
-  // section du haut (26/11/2026), pas relégué sous les compteurs
-  expect(src).toContain('<RaccourcisPages')
-  expect(src).toContain('className="abs-topbar-nav"')
-  // une prop neuve n'a pas le droit de faire disparaître le contrôle : le rail est
-  // rendu une seule fois sur la page, sinon il double les six liens de navigation
-  expect(src.split('<RaccourcisPages').length - 1).toBe(1)
+it('3. le rail de raccourcis a quitté la page Absences, sans quitter l’application', () => {
+  // 27/11/2026 : « désormais dans chaque nouvelle page enlève les raccourcis ».
+  const codes = lire('src/pages/Absences.jsx')
+    .split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('//'))
+  expect(codes.some((l) => l.includes('<RaccourcisPages'))).toBe(false)
+  expect(codes.some((l) => l.includes("import RaccourcisPages"))).toBe(false)
+  // le composant, lui, habille encore les autres écrans : le descendre d'une page
+  // ne vaut pas suppression du composant — et de ses six liens
+  expect(lire('src/components/RaccourcisPages.jsx')).toContain('className="abs-raccourcis"')
+  expect(rendre('/absences').match(/data-page="/g)).toHaveLength(6)
+  // la prop `comptes`, inventée pour le rabat d’Absences, n’a plus de poseur :
+  // un réglage que personne ne tourne est un mensonge sur le composant
+  expect(lire('src/components/RaccourcisPages.jsx')).not.toContain('comptes')
 })
 
 // ═══════════════════════════════════════════════════════════
@@ -80,30 +84,6 @@ const CALENDRIER = renderToStaticMarkup(
     darkMode
   />
 )
-
-it('7. le compte du jour s’épingle sur le rabat, et sur lui seul', () => {
-  // Absences, 26/11/2026 — « et le badge 1 sur le rabat actif ? — comme dans la
-  // maquette ». Le chiffre est une prop de la page, pas une devinette du composant.
-  const avecCompte = renderToStaticMarkup(
-    <MemoryRouter initialEntries={['/absences']}>
-      <RaccourcisPages comptes={{ '/absences': 3 }} />
-    </MemoryRouter>,
-  )
-  expect(avecCompte.match(/abs-raccourci-compte/g)).toHaveLength(1)
-  const rabat = avecCompte.slice(avecCompte.indexOf('data-page="/absences"'))
-  expect(rabat.slice(0, 200)).toContain('data-actif="oui"') // le compte suit le rabat du jour
-  expect(rabat).toContain('>3<')
-  expect(rabat).toContain('Vous êtes sur Absences · 3') // l’infobulle dit le chiffre, pas la pastille seule
-  // aucune page ne passe de prop ? aucun chiffre n'apparaît — le rail des 14 autres
-  // écrans n'a pas à apprendre un compteur qu'ils ne calculent pas
-  expect(rendre('/absences')).not.toContain('abs-raccourci-compte')
-  // et un compte à zéro ne se montre pas : « 0 absences » sur un rabat, c'est du vide
-  expect(renderToStaticMarkup(
-    <MemoryRouter initialEntries={['/absences']}>
-      <RaccourcisPages comptes={{ '/absences': 0 }} />
-    </MemoryRouter>,
-  )).not.toContain('abs-raccourci-compte')
-})
 
 it('4. le titre de la période est un bouton, fermé par défaut', () => {
   expect(CALENDRIER).toContain('data-testid="abs-cal-titre"')

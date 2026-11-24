@@ -76,9 +76,15 @@ it('5. la vue Jour affiche la photo (et retombe sur les initiales sinon)', () =>
 
 // ── 4. Bouton clair / sombre ─────────────────────────────────────────
 
-it('6. la page Absences a un bouton clair/sombre qui agit vraiment', () => {
-  expect(pageAbsences).toContain("data-testid=\"abs-theme-toggle\"")
-  expect(pageAbsences).toContain("const { darkMode, toggleTheme } = useTheme()")
+it("6. la page Absences n'a plus de bouton clair/sombre, mais elle lit toujours le thème", () => {
+  // 27/11/2026 : « enlève le bouton clair/sombre ». Ce qui est enlevé est
+  // l'interrupteur de CET écran, pas le thème — D-005 le garde dans
+  // `localStorage['encheck.theme']`, et un utilisateur qui l'a réglé hier doit
+  // retrouver sa nuit aujourd'hui.
+  expect(pageAbsences).not.toContain('abs-theme-toggle')
+  expect(pageAbsences).not.toContain('toggleTheme')
+  expect(lire('src/pages/AbsencesAfroTech.css')).not.toContain('.abs-theme-btn')
+  expect(pageAbsences).toContain("const { darkMode } = useTheme()")
   expect(pageAbsences).toContain("data-theme={darkMode ? 'dark' : 'light'}")
   // les composants suivent le thème au lieu de rester figés au sombre
   expect(pageAbsences).toContain('darkMode={darkMode}')

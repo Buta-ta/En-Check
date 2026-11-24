@@ -7,15 +7,18 @@ import AbsencesLoadingScreen from '../components/AbsencesLoadingScreen'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-// Absences, 26/11/2026 (2e passage) : le fondateur a refusé le cadre qui faisait
-// le tour de la page entière — « tu n'as fait qu'entourer l'ancienne page d'une
-// bande motif ». Le motif redevient une bande, mais il ne border plus rien : il
-// est LE BORD BAS de la section du haut, et le rail de raccourcis pend dessous.
-import AbsencesCulturalBand from '../components/AbsencesCulturalBand'
+// Absences, 27/11/2026 (3e passage) : le fondateur a choisi la figure du transat
+// (`maquettes/absences-haut-E-cremaillere.png`) et posé trois règles pour toutes les
+// pages qu'on retouche depuis : « enlève les raccourcis », « un bandeau motif
+// bogolan servira autrement », « enlève le bouton clair/sombre ». La page ne monte
+// donc plus le rail de `RaccourcisPages`, et le tissu ne borde plus l'en-tête — il
+// reste dans les deux tiroirs, qui sont des feuilles qui glissent.
+import AbsencesHamac from '../components/AbsencesHamac'
+import { soldeMoyen, prochainRetour, formatRetourFr } from '../services/congesRestants'
 import { BogolanPastilleSvg } from '../components/BogolanMudclothSvg'
 import AbsencesCalendrier from '../components/AbsencesCalendrier'
 import { STATUTS_ABSENCE, getMotifConfig } from '../constants/motifsAbsence'
-import { compterJoursOuvres } from '../services/absencesCalendrier'
+import { compterJoursOuvres, isoLocal } from '../services/absencesCalendrier'
 import AbsencesDock from '../components/AbsencesDock'
 import AbsencesMotifsManager from '../components/AbsencesMotifsManager'
 import AbsencesKpiCards from '../components/AbsencesKpiCards'
@@ -24,22 +27,12 @@ import { AbsencesSelectMotifs, AbsencesLegendeMotifs, AbsencesStatsMotifs } from
 import { DemandeCongeCard } from '../components/DemandeCongeCard'
 import { supprimerDemandeEtSesAbsences } from '../services/lienDemandeAbsence'
 import EnCheckBrandMark from '../components/EnCheckBrandMark'
-import RaccourcisPages from '../components/RaccourcisPages'
 import { MotifsAbsenceProvider } from '../contexts/MotifsAbsenceContext'
 import { useTheme } from '../contexts/ThemeContext'
 import './AbsencesAfroTech.css'
 import HolidayService from '../services/holidayService'
 import LeaveBalanceService from '../services/leaveBalanceService'
-import {
-  ArrowLeft,
-  Footprints, Plus, Trash2, X, Save, CalendarOff, Building2, User,
-  FileText, AlertTriangle, Clock, Search, Edit3, Check, XCircle,
-  Download, ChevronLeft, ChevronRight, Calendar,CalendarDays, List, TrendingUp,
-  Timer, BarChart3, Filter, Hourglass, RefreshCw, CheckCircle2,
-  AlertCircle, Upload, Paperclip, Eye, FileImage, File, ZoomIn,
-  Sun, Moon,
-  ZoomOut, ExternalLink, ShieldCheck, Ban, Inbox, MessageSquare
-} from 'lucide-react'
+import { ArrowLeft, Footprints, Plus, Trash2, X, Save, CalendarOff, Building2, User, FileText, AlertTriangle, Clock, Search, Edit3, Check, XCircle, Download, ChevronLeft, ChevronRight, Calendar, CalendarDays, List, TrendingUp, Timer, BarChart3, Filter, Hourglass, RefreshCw, CheckCircle2, AlertCircle, Upload, Paperclip, Eye, FileImage, File, ZoomIn, ZoomOut, ExternalLink, ShieldCheck, Ban, Inbox, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ═══════════════════════════════════════════════════════════
@@ -472,7 +465,11 @@ export default function Absences() {
   const [requestToDelete, setRequestToDelete] = useState(null)
 
   const navigate = useNavigate()
-  const { darkMode, toggleTheme } = useTheme()
+  // Le bouton clair/sombre est sorti de la page à la demande du fondateur (27/11).
+  // Le thème, lui, reste : `data-theme` en dépend, et il vient de
+  // `localStorage['encheck.theme']` (D-005) — retirer le bouton ne remet pas la page
+  // en clair de force, il retire l'interrupteur de CET écran.
+  const { darkMode } = useTheme()
   const today = new Date().toISOString().split('T')[0]
 
   const [formData, setFormData] = useState({
@@ -878,6 +875,17 @@ export default function Absences() {
     })
     return map
   }, [absences, calendarDate, getHolidaySet])
+
+  // Les deux chiffres suspendus dans le transat viennent du MÊME calcul que la tuile
+  // de compteur (`services/congesRestants`) : la maquette E montre le solde moyen
+  // deux fois — dans la suspente et dans la rangée de tuiles. Deux affichages d'un
+  // même nombre, oui ; deux calculs d'un même nombre, jamais. Le jour où l'un est
+  // corrigé, l'autre ne peut pas rester à traîner une valeur fausse.
+  const transat = useMemo(() => ({
+    jours: soldeMoyen({ employes, joursPrisParEmploye, plafond: leaveConfig.annual_leave_cap || 30 }),
+    retour: formatRetourFr(prochainRetour(absences, isoLocal(new Date()))),
+  }), [employes, joursPrisParEmploye, leaveConfig, absences])
+
 
   const openConflictModal = (absence, conflict) => {
     setSelectedConflictData({ absence, conflict })
@@ -1773,11 +1781,11 @@ export default function Absences() {
       <div className="abs-page" data-theme={darkMode ? 'dark' : 'light'} style={S.container}>
         {/* ═══ LA SECTION DU HAUT — maquette `maquettes/absences-en-tete-lisiere.png` ═══
             Trois registres cousus, et rien d'autre :
-            1. la feuille pleine largeur du titre (plus de carte flottante : pas de
-               rayon, pas d'ombre, pas de flou, plus de collant) ;
-            2. la lisière de bogolan, qui EST le bord bas de la section ;
-            3. les six rabats de raccourcis, pendus sous la lisière, sur le fond de
-               page — celui du jour est peint en argile et porte le compte. */}
+            1. la feuille pleine largeur du titre (pas de rayon, pas d'ombre, pas de
+               flou, pas de collant, plus de lune) ;
+            2. le transat suspendu sous elle, qui porte le solde de congés et la date
+               de retour — et RIEN D'AUTRE : le rail de raccourcis et la lisière de
+               bogolan sont sortis de la section (27/11). */}
         <div className="abs-topbar">
           <div className="abs-topbar-inner">
             <div className="abs-topbar-left">
@@ -1797,17 +1805,10 @@ export default function Absences() {
                 </span>
               </div>
             </div>
+            {/* Deux commandes, et plus de lune : le bouton clair/sombre est sorti de
+                la page (27/11). La charte tient toujours « une seule variante pleine
+                par écran » — + Déclarer reste la seule. */}
             <div className="abs-topbar-right">
-              <button
-                type="button"
-                className="abs-btn abs-theme-btn"
-                onClick={toggleTheme}
-                title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-                aria-label={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-                data-testid="abs-theme-toggle"
-              >
-                {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
               <button type="button" className="abs-btn" onClick={handleExportCSV}>
                 <Download size={16} /> <span>Export</span>
               </button>
@@ -1819,15 +1820,11 @@ export default function Absences() {
 
         </div>
 
-        {/* 2. la lisière : le motif de la page, posé en travers, en bord bas */}
-        <AbsencesCulturalBand position="tete"/>
-
-        {/* 3. les six rabats : Pointages · Planning · Absences · Fiches de paie…
-            Le compte du jour est passé ICI (il était sur les onglets de section) :
-            la maquette le met sur le rabat, et un chiffre ne se dit qu'une fois. */}
-        <div className="abs-topbar-nav">
-          <RaccourcisPages comptes={{ '/absences': absences.length }} />
-        </div>
+        {/* 2. le transat : deux montants, une suspente en crémaillère, le solde de
+            congés suspendu dedans, et à droite le jour du prochain retour. C'est la
+            figure E du lot de maquettes — les vacances ne s'y dessinent pas, elles s'y
+            tiennent. Ni motif, ni raccourcis : les deux ont quitté la page. */}
+        <AbsencesHamac jours={transat.jours} retour={transat.retour}/>
 
         <main style={S.main}>
           {/* Le cadre qui tournait autour du `<main>` entier est défait (26/11) : il
