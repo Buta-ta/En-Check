@@ -28,6 +28,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import { AbomeyBlasonSvg, AbomeyCoinSvg } from '../components/AbomeySvg'
 import AdminExplication from '../components/AdminExplication'
 import EcranApercu from '../components/EcranApercu'
+import TuileEtat from '../components/TuileEtat'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
 import { currentAdminAccount, accountRpc } from '../services/adminAccounts'
 import './AdminAccounts.css'
@@ -675,59 +676,45 @@ export default function AnnoncesAccueil() {
                 </AdminExplication>
               </section>
 
-              {/* ── Les trois chiffres ── */}
+              {/* ── Les trois chiffres ──
+                  Maquette B retenue par le fondateur : trois papiers arrachés,
+                  double feutre, un carré brodé dans le coin — et JAMAIS sur le
+                  texte. Une tuile porte un chiffre et un libellé (D-014), pas
+                  une phrase : les anciens pieds (« Photo par défaut affichée »)
+                  sont réduits à un mot. */}
               <section className="aa-metrics" aria-label="État des annonces">
-                <article className="aa-metrique">
-                  <span className="aa-metrique-coin aa-metrique-coin--haut" aria-hidden="true">
-                    <AbomeyCoinSvg variante="indigo" coin="haut" size={78} />
-                  </span>
-                  <span className="aa-metrique-coin aa-metrique-coin--bas" aria-hidden="true">
-                    <AbomeyCoinSvg variante="terre" coin="bas" size={78} />
-                  </span>
-                  <span className="aa-metrique-libelle">En ligne</span>
-                  <div className="aa-metrique-valeur">
-                    <strong>{enLigne.length}</strong>
-                    <span className="aa-metrique-total">/ {annonces === null ? '…' : annonces.length}</span>
-                  </div>
-                  <span className="aa-metrique-pied">
-                    {enLigne.length === 0 ? 'Photo par défaut affichée' : 'Diffusées dans l’en-tête'}
-                  </span>
-                </article>
-                <article className={`aa-metrique${enProgrammation > 0 || expirees > 0 ? ' aa-metrique--alerte' : ''}`}>
-                  <span className="aa-metrique-coin aa-metrique-coin--haut" aria-hidden="true">
-                    <AbomeyCoinSvg variante="or" coin="haut" size={78} />
-                  </span>
-                  <span className="aa-metrique-coin aa-metrique-coin--bas" aria-hidden="true">
-                    <AbomeyCoinSvg variante="indigo" coin="bas" size={78} />
-                  </span>
-                  <span className="aa-metrique-libelle">Programmées · Expirées</span>
-                  <div className="aa-metrique-valeur">
-                    <strong>{enProgrammation}</strong>
-                    <span className="aa-metrique-total">· {expirees}</span>
-                  </div>
-                  <span className="aa-metrique-pied">
-                    {enProgrammation === 0 && expirees === 0 ? 'Rien à venir, rien de périmé' : 'Contrôlées à la date serveur'}
-                  </span>
-                </article>
-                <article className={`aa-metrique${(annonces || []).length >= MAX_ANNONCES ? ' aa-metrique--alerte' : ''}`}>
-                  <span className="aa-metrique-coin aa-metrique-coin--haut" aria-hidden="true">
-                    <AbomeyCoinSvg variante="ivoire" coin="haut" size={78} />
-                  </span>
-                  <span className="aa-metrique-coin aa-metrique-coin--bas" aria-hidden="true">
-                    <AbomeyCoinSvg variante="or" coin="bas" size={78} />
-                  </span>
-                  <span className="aa-metrique-libelle">Places utilisées</span>
-                  <div className="aa-metrique-valeur">
-                    <strong>{annonces === null ? '…' : annonces.length}</strong>
-                    <span className="aa-metrique-total">/ {MAX_ANNONCES}</span>
-                  </div>
-                  <div className="aa-ann-jauge" aria-hidden="true">
-                    <span
-                      className={(annonces || []).length >= MAX_ANNONCES ? 'est-plein' : ''}
-                      style={{ width: `${Math.min(100, ((annonces || []).length / MAX_ANNONCES) * 100)}%` }}
-                    />
-                  </div>
-                </article>
+                <TuileEtat
+                  rang={0}
+                  tissu="indigo"
+                  libelle="En ligne"
+                  chiffres={[
+                    { valeur: enLigne.length },
+                    { valeur: `/${annonces === null ? '…' : annonces.length}` },
+                  ]}
+                  pied={enLigne.length === 0 ? 'Défaut' : 'Diffusées'}
+                />
+                <TuileEtat
+                  rang={1}
+                  tissu="ocre"
+                  alerte={enProgrammation > 0 || expirees > 0}
+                  libelle="Programmées · Expirées"
+                  chiffres={[
+                    { valeur: enProgrammation },
+                    { valeur: expirees },
+                  ]}
+                  pied={enProgrammation === 0 && expirees === 0 ? 'Aucune' : 'À surveiller'}
+                />
+                <TuileEtat
+                  rang={2}
+                  tissu="brique"
+                  alerte={(annonces || []).length >= MAX_ANNONCES}
+                  libelle="Places utilisées"
+                  chiffres={[
+                    { valeur: annonces === null ? '…' : annonces.length },
+                    { valeur: `/${MAX_ANNONCES}` },
+                  ]}
+                  jauge={Math.min(1, (annonces || []).length / MAX_ANNONCES)}
+                />
               </section>
 
               {/* ── Les onglets ── */}

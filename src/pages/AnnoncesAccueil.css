@@ -822,3 +822,21 @@
   color: var(--charte-douce);
   background-color: var(--charte-surface2);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   📐 LA RANGÉE DE TUILES — et le passage à l'empilement
+
+   Mesuré, pas deviné : à 420 px de page, trois tuiles côte à côte laissent
+   54 px de texte par tuile — « Programmées · Expirées » n'y tient pas, et un
+   libellé qui casse en trois morceaux n'est plus un libellé.
+
+   On empile donc, une tuile par ligne, sous 620 px. C'est la seule largeur
+   où trois tuiles ne peuvent PAS coexister. Au-dessus, trois colonnes ; entre
+   les deux, trois colonnes restent lisibles (100 px de texte à 560).
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 620px) {
+  .aa-register .aa-metrics {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+}
