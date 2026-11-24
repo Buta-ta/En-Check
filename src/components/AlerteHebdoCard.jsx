@@ -12,6 +12,12 @@
 //   · le mot « légal » : le seuil est un paramètre d'entreprise, pas un texte.
 //   Silence = rien à l'écran. Ce n'est pas un oubli : une conformité non
 //   évaluée ne doit pas ressembler à une conformité constatée.
+//
+//   ⚠️ DEPUIS G7, LE SILENCE S'EXPLIQUE AILLEURS. Cette carte reste muette quand
+//   rien n'est prouvé — c'est la décision du 24/10/2026 et elle ne change pas.
+//   Mais un écran qui affiche des heures et se tait sur le contrôle doit dire
+//   que celui-ci n'a pas été fait : c'est `controleDisponible.js` et son
+//   composant `ControleIndisponible`, posés à côté de cette carte.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { libelleOrigineSeuil, messageDepassement } from '../services/plafondHebdomadaire'

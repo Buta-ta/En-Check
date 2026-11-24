@@ -3,6 +3,7 @@ import PlanningPayslipBadge from "../components/PlanningPayslipBadge";
 import usePlanningPayslips, { payslipsForDay } from "../hooks/usePlanningPayslips";
 import useDirectPointages from "../hooks/useDirectPointages";
 import { presenterEtat } from "../utils/directPointages";
+import { legendeDesDeuxSources } from "../lib/controleDisponible";
 // ═══════════════════════════════════════════════════════════════════════════
 // 📅 EN-CHECK · PLANNING — SYSTÈME DRAG & DROP × IDENTITÉ AFRO-TECH
 // Matrice hebdomadaire glisser-déposer + Modèles personnalisables + Équipes
@@ -4840,6 +4841,11 @@ export default function Planning() {
                   sorties réellement pointées, calculées comme dans la page{" "}
                   <strong>Pointages</strong>.
                 </p>
+                {/*  ⚠️ V-C2 : deux sources, deux choses. L'écart entre « prévu » et
+                    « réel » se lit sinon comme un contrôle de conformité — il n'en est
+                    pas un. La phrase vient du module partagé, pour qu'elle ne diverge
+                    pas d'un écran à l'autre. */}
+                <p className="sk-day-sources">{legendeDesDeuxSources()}</p>
               </div>
               <button
                 type="button"

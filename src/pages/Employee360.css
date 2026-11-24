@@ -1764,3 +1764,34 @@
   font-size: 11px;
   color: var(--charte-douce);
 }
+
+/*  🧭 « Contrôle indisponible » (G7 / V-B3) — une ligne, pas une alerte.
+    Elle remplace le silence de la carte d'alerte quand aucun seuil n'a été
+    choisi, pour que ce silence ne se lise pas comme une conformité.
+    Aucune couleur d'alerte ici : ce n'est pas un incident, c'est un état de
+    connaissance. Le mot est écrit en toutes lettres (`en mots, jamais la
+    couleur seule`). */
+.e360-controle-indisponible {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-2);
+  margin: 0 0 var(--charte-espace-3);
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  border: 1px dashed var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-douce);
+  font-size: var(--charte-taille-micro);
+  line-height: 1.45;
+}
+
+.e360-controle-indisponible-mot {
+  color: var(--charte-encre);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.e360-controle-indisponible-raison {
+  flex: 1 1 14ch;
+}

@@ -37,6 +37,7 @@ import {
 import { initialesDe } from '../utils/initiales'
 import { construirePauses, estPauseReelleEffectuee } from '../services/pausesService'
 import AlerteHebdoCard from '../components/AlerteHebdoCard'
+import ControleIndisponible from '../components/ControleIndisponible'
 import ReglesTempsTravail from '../components/ReglesTempsTravail'
 import { __internal, calculateEmployeeHours } from '../services/hoursCalculator'
 import { chargerBulletinsPeriode } from '../services/paiementBulletins'
@@ -1045,8 +1046,13 @@ suivre('taches',
             {/* ═══ Colonne 2 — activité, salaire, rythme ═══ */}
             <div className="e360-col">
               {/*  ⏰ Muette par défaut : la carte ne s'affiche que si la case
-                  « m'alerter » est cochée ET qu'une semaine dépasse le seuil. */}
+                  « m'alerter » est cochée ET qu'une semaine dépasse le seuil.
+                  ⚠️ G7 : quand elle est muette, une LIGNE dit que le contrôle
+                  n'a pas été fait — sinon le silence se lit « tout va bien ».
+                  Les deux ne s'affichent jamais ensemble : le composant rend
+                  `null` dès que le contrôle a été évalué. */}
               <AlerteHebdoCard plafond={d?.heuresEmp?.thisMonth?.plafond_hebdo} />
+              <ControleIndisponible plafond={d?.heuresEmp?.thisMonth?.plafond_hebdo} />
               <section className="e360-carte e360-carte--sable" aria-label="Activité sur la période">
                 <h3 className="e360-carte-titre">
                   Activité
