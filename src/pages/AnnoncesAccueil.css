@@ -368,48 +368,11 @@
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   🌾 LA BANDE DE BOGOLAN — le pagne de boue, à la place du kente
-
-   Pourquoi ce changement : `culturalMotifForPath` n'assigne aucun motif à
-   cette page, elle tombait donc sur le kente par défaut. Mais elle alimente
-   l'ACCUEIL, qui porte le bogolan (CHARTE §1.2). Une page qui nourrit
-   l'accueil ne peut pas porter un autre tissu que lui — sinon la bande du
-   carrousel et le carrousel lui-même sont de deux familles.
-
-   On ne redessine rien : ce sont les deux images du dépôt, natives, jamais
-   étirées (C4), répétées horizontalement. Technique relevée sur la page
-   Équipes (`.eqv2--postit .eqv2-tete::before`).
-   ═══════════════════════════════════════════════════════════════════════════ */
-.aa-register .aa-bande--bogolan {
-  position: relative;
-  width: 100%;
-  height: var(--aa-bande-h);
-  background-color: var(--charte-tissu);
-  background-image: url('/images/paie-bogolan-haut.webp');
-  background-repeat: repeat-x;
-  background-position: left center;
-  background-size: auto var(--aa-bande-h);
-  /* le fil qui arrête la tenture — même geste que la bande d'origine */
-  border-bottom: var(--charte-trait) solid var(--charte-encre);
-}
-
-/* la couture du bas, reprise de `.aa-bande::after` : c'est elle qui dit
-   « tissu cousu » et pas « image posée » */
-.aa-register .aa-bande--bogolan::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  bottom: -3px;
-  height: 3px;
-  background-image: linear-gradient(
-    to right,
-    var(--charte-encre) 0 7px,
-    transparent 7px 14px
-  );
-  background-size: 14px 3px;
-  opacity: 0.75;
-}
+/* ── LA BANDE N'EST PLUS LÀ ──
+   « enlève le bandeau bogolan » (25/11). La page ouvre maintenant sur son
+   en-tête — l'onglet, le tampon, le champ souligné (EnteteAnnonces.css).
+   Le motif restait pourtant juste : la page est déclarée `bogolan` dans
+   `culturalMotifForPath`. C'est le fondateur qui a tranché, pas moi. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    🗂️ LA DISPOSITION « APERÇU » — la liste à gauche, l'écran à droite

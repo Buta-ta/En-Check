@@ -19,14 +19,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowDown, ArrowLeft, ArrowUp, ArrowUpRight, CheckCircle2, Film,
-  Image as ImageIcon, Megaphone, Pencil, Power, RefreshCw, Repeat, Sun, Moon,
-  Trash2, Upload, Users,
+  ArrowDown, ArrowUp, ArrowUpRight, CheckCircle2, Film,
+  Image as ImageIcon, Megaphone, Pencil, Power, RefreshCw, Repeat,
+  Trash2, Upload,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { useTheme } from '../contexts/ThemeContext'
 import { AbomeyBlasonSvg, AbomeyCoinSvg } from '../components/AbomeySvg'
 import AdminExplication from '../components/AdminExplication'
+import EnteteAnnonces from '../components/EnteteAnnonces'
 import EcranApercu from '../components/EcranApercu'
 import TuileEtat from '../components/TuileEtat'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
@@ -91,7 +91,6 @@ function pourChampDateTime(iso) {
 }
 
 export default function AnnoncesAccueil() {
-  const { darkMode, toggleTheme } = useTheme()
   const { ensureMfa, challenge } = useAdminMfaCheckpoint()
 
   const [enterprises, setEnterprises] = useState([])
@@ -567,60 +566,11 @@ export default function AnnoncesAccueil() {
   if (challenge) return challenge
 
   return (
-    <main className={`aa-page aa-register ${darkMode ? 'aa-dark' : ''}`}>
-      {/* ═══ LA BANDE DE BOGOLAN — pleine largeur ═══
-          Cette page n'avait aucun motif dans `culturalMotifForPath` : elle
-          tombait sur le kente par defaut. Or elle alimente l'ACCUEIL, qui porte
-          le bogolan (CHARTE §1.2). Une page qui nourrit l'accueil ne peut pas
-          porter un autre tissu que lui. Images du depot, jamais un SVG
-          reinvente — technique de la page Equipes. */}
-      <div className="aa-bande aa-bande--bogolan" aria-hidden="true" />
-
+    <main className="aa-page aa-register">
       <div className="aa-grille">
         <div className="aa-colonne">
           {/* ── La barre de titre ── */}
-          <header className="aa-heading">
-            <div className="aa-heading-gauche">
-              <Link
-                className="aa-retour"
-                to="/dashboard"
-                aria-label="Retour au tableau de bord"
-                title="Retour au tableau de bord"
-              >
-                <ArrowLeft size={16} aria-hidden="true" />
-              </Link>
-              <div className="aa-marque">
-                <AbomeyBlasonSvg size={52} />
-                <div className="aa-marque-texte">
-                  <h1>Annonces d’accueil</h1>
-                  <p>Le carrousel média de l’en-tête Pointage</p>
-                </div>
-              </div>
-            </div>
-            <div className="aa-heading-actions">
-              <Link className="aa-lien-compte" to="/mon-compte">
-                <span className="aa-lien-compte-icone"><Users size={14} /></span>
-                <span className="aa-lien-compte-texte">
-                  <strong>Mon compte</strong>
-                  <small>Profil, mot de passe, sécurité</small>
-                </span>
-                <ArrowUpRight size={14} />
-              </Link>
-              <button
-                type="button"
-                className="aa-bascule"
-                role="switch"
-                aria-checked={darkMode}
-                onClick={toggleTheme}
-                aria-label={darkMode ? 'Passer en thème clair' : 'Passer en thème sombre'}
-                title={darkMode ? 'Thème clair' : 'Thème sombre'}
-              >
-                <span className="aa-bascule-pastille">
-                  {darkMode ? <Moon size={10} /> : <Sun size={10} />}
-                </span>
-              </button>
-            </div>
-          </header>
+          <EnteteAnnonces />
 
           {/* ── PAS DE RACCOURCIS ICI ──
               « Enleve les raccourcis » : la rangee « Aller a » est retiree. Ces
