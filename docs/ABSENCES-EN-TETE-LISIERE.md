@@ -160,7 +160,7 @@ option de gauche. Ce qui a été écrit, dans les trois seuls fichiers de la pag
 | 1 | plus de carte : une feuille posée | `.abs-topbar` : ni `position: sticky`, ni `z-index`, ni `backdrop-filter`, ni rayon (`border-radius: 0`), ni ombre (`box-shadow: none`), ni `margin: 8px 14px 0`. Fond `--abs-bg-elevated`, pleine largeur. La rangée intérieure garde son `max-width: 1560px` — sinon le titre est à 2 560 px du bouton. |
 | 2 | titre en capitales à ~20 px | `.abs-brand-title` : 16 px → **20 px / 700**. Pas 800 : IBM Plex Sans s'arrête à 700, et un nombre que la police ne possède pas n'est pas une graisse, c'est une attente déçue. |
 | 3 | la lisière **clôt**, elle n'entoure pas | `<AbsencesCulturalBand position="tete"/>`, frère de la feuille (plus son enfant), 34 px (`--abs-bogolan-tete`), `background-size: auto 100%` sur `public/images/paie-bogolan-haut.webp` (1536×76) : le tissu se réduit d'une hauteur, jamais d'une largeur. Le cadre à quatre côtés (`abs-section-cadre`, `abs-section-papier`, la remontée `calc(var(--abs-cadre) * -1 + 8px)`) est supprimé du JSX **et** de la feuille. |
-| 4 | six rabats pendus sous le tissu | `.abs-topbar-nav` : grille `repeat(6, minmax(0, 1fr))`, `margin-top: -12px` (les papiers mordent sur le bas du tissu), rabat = `--abs-bg-elevated`, `border: 1px dashed`, bord haut ouvert (il est cousu là), `border-radius: 0 12px 12px 12px`, ombré porté `2px 2px 0` — pas de flou (C9). **Tout est préfixé `.abs-topbar-nav`** : `.abs-raccourci` est une classe globale que 14 autres pages re-scopent dans 10 feuilles CSS. |
+| 4 | six rabats pendus sous le tissu | `.abs-topbar-nav` : grille `repeat(6, minmax(0, 1fr))`, rabat = papier `--abs-bg-elevated`, `border: 1px dashed`, bord haut ouvert (il est cousu là), `border-radius: 0 12px 12px 12px`, ombré porté `2px 2px 0` — pas de flou (C9). **Le papier glisse SOUS le bogolan** : la lisière porte `z-index: 1`, le rail `z-index: 0`, et `margin-top: -14px` enfonce les six rabats dans le bas du tissu sans l'effacer ; `padding-top: 20px` pour que le mot commence juste sous la toile, pas dedans. **Tout est préfixé `.abs-topbar-nav`** : `.abs-raccourci` est une classe globale que 14 autres pages re-scopent dans 10 feuilles CSS. |
 | 5 | le compte est **sur** le rabat | `RaccourcisPages` reçoit une prop neuve `comptes={{ '/absences': absences.length }}` ; la pastille `.abs-topbar-nav .abs-raccourci-compte` vit en bas-droite du rabat. Et `{absences.length}` a **quitté** l'onglet « Absences » : le même chiffre ne se dit pas deux fois à l'écran. Les deux badges voisins restent, eux comptent d'autres choses. |
 | 6 | lune carrée, Export contour, + Déclarer aplat | `.abs-theme-btn` : `border-radius: 50%` → `11px`. `.abs-btn-primary` : le dégradé cuivre → un aplat. Les pictogrammes du rail sont rendus muets sur cette page (`display: none`), parce que le dessin ne les montre pas ; ceux des trois boutons restent, la maquette les a dessinés. |
 | 7 | petite largeur | 3 rabats par rang sous 980 px (le rail partagé pose `white-space: nowrap` : un libellé à l'étroit déborderait du papier), lisière à 26 px sous 650 px. |
@@ -179,10 +179,10 @@ option de gauche. Ce qui a été écrit, dans les trois seuls fichiers de la pag
    donc `--abs-argile: color-mix(in srgb, var(--abs-copper) 78%, var(--charte-tissu))` :
    ~5,1:1 dans les deux thèmes, et le brun du bogolan est le même que celui du tissu.
    Le motif sert d'encre, pas seulement de fond.
-3. **Le « 1 » ne chevauche pas la couture** (défaut §D) : la pastille est à
-   l'intérieur du rabat. Le rabat du jour ne masque pas le tissu : il descend de 4 px
-   de plus que ses voisines (crête), il ne peint pas par-dessus la lisière.
-4. **Une seule ligne de base pour les six rabats** : le dessin avait décalé les
+3. **Le « 1 » ne chevauche pas la couture** (défaut §D) : la pastille est à l'intérieur du rabat.
+   Et le rabat du jour n'efface pas le tissu (§D encore) : il descend de 2 px de plus que ses
+   voisines — une crête — et c'est la lisière qui passe PAR-DESSUS lui, pas l'inverse. Le motif
+   reste entier sous les six papiers, qui sont pendus et non posés.
    quatre derniers d'un demi-rabat (§D).
 5. **Teintes** : tout passe par les tokens de la page (`--abs-*`, `--charte-*`), aucune
    couleur d'image n'est recopiée en dur — la maquette est plus chaude que la charte,
