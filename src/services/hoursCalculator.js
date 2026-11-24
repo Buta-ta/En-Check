@@ -444,6 +444,14 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
       //  une semaine entièrement future passait pour « 7 jours couverts » et
       //  rendait « 0 h — rien à signaler » sur des jours pas encore arrivés.
       aujourdHui: todayKey,
+      //  Et la journée en cours n'est pas révolue tant qu'elle n'est pas finie
+      //  (bascule + fuseau de l'entreprise). Le dimanche à 10 h, la semaine
+      //  n'est PAS terminée.
+      jourEnCours: jourDeTravailEnCours(
+        ref,
+        plan ? minutesDeBascule(plan.bascule) : 0,
+        enterprise.timezone || null,
+      ),
     }),
     //  Seuils d'HEURES SUPÉRIEURES de l'entreprise (40 h / 48 h). Ce ne sont
     //  pas des plafonds légaux : aucun texte n'est invoqué ici.
@@ -546,6 +554,10 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
     //  pas un plafond légal — le mot importe.
     plafond_hebdo: {
       ...plafondHebdo,
+      //  La date de référence, exposée pour que l'écran puisse distinguer une
+      //  semaine EN COURS d'une semaine PASSÉE mais mal couverte. Sans elle,
+      //  les deux se ressemblent et le message se trompe.
+      aujourd_hui: todayKey,
       periode: { debut: debutSemaines, fin: finSemaines },
       //  Une valeur non choisie reste VISIBLE ici (pour pré-remplir un écran ou
       //  expliquer le silence), mais n'est jamais brandie comme un seuil.
@@ -1201,6 +1213,32 @@ function cleJourDeTravail(date, basculeMinutes = 0) {
   if (!bascule) return jourLocal(d) || toDateKeyLocal(d)
   const decale = new Date(d.getTime() - bascule * 60000)
   return jourLocal(decale) || toDateKeyLocal(decale)
+}
+
+//  La journée de travail est-elle FINIE ?
+//  Une journée n'est pas close à minuit : elle l'est quand son début + une
+//  durée pleine est dépassé, en tenant compte de la bascule (04:00 ⇒ la
+//  journée du lundi court jusqu'à mardi 03:59) et du fuseau de l'entreprise.
+//  Sans cela, un dimanche à 10 h du matin passait pour une semaine révolue.
+function jourDeTravailEnCours(ref, basculeMinutes = 0, fuseau = null) {
+  const bascule = minutesDeBascule(basculeMinutes)
+  const d = ref instanceof Date ? ref : new Date(ref)
+  if (Number.isNaN(d.getTime())) return null
+  const cle = cleJourDeTravail(d, bascule) || jourLocal(d, fuseau) || toDateKeyLocal(d)
+  if (!cle) return null
+
+  //  Début de cette journée de travail, exprimé en UTC. La bascule est
+  //  l'heure locale à laquelle la journée commence (04:00 ⇒ 4 h, 0 par défaut).
+  const debut = heureLocaleVersUTC(
+    cle,
+    Math.floor(bascule / 60),
+    bascule % 60,
+    0,
+    fuseau,
+  )
+  if (!debut || Number.isNaN(debut.getTime())) return null
+  const fin = new Date(debut.getTime() + 24 * 3600 * 1000)
+  return d.getTime() < fin.getTime() ? cle : null
 }
 
 function grilleValableLe(grille, jour) {

@@ -523,6 +523,24 @@ async function globalSearch(parsed, enterpriseId) {
     return [CARTE_INDISPONIBLE('Aucune source n\'a répondu. Réessayez dans un instant.')]
   }
 
+  //  ⚠️ UNE SEULE SOURCE TOMBÉE PEUT ENCORE MENTIR.
+  //  Tant que les autres ramènent quelque chose, le silence est honnête : on a
+  //  trouvé des résultats, la panne est marginale. Mais si le total est VIDE et
+  //  qu'une source était en panne, alors « aucun résultat » est faux : on ne
+  //  sait pas ce que cette source aurait répondu. C'est exactement le défaut
+  //  d'origine, au dernier endroit où il se cachait.
+  const totalTrouve =
+    employees.length + tasks.length + teams.length + leaveRequests.length +
+    scheduleRequests.length + faceEnrollments.length + geofences.length +
+    payslips.length
+  if (pannes.length > 0 && totalTrouve === 0) {
+    const une = pannes.length === 1
+    const texte = une
+      ? `Recherche partielle : la source « ${pannes[0]} » n’a pas répondu. `
+      : `Recherche partielle : ${pannes.length} sources n’ont pas répondu (${pannes.join(', ')}). `
+    return [CARTE_INDISPONIBLE(`${texte}Ce n’est pas une absence de résultat.`)]
+  }
+
   return [
     ...employees.slice(0, 5),
     ...tasks.slice(0, 3),

@@ -109,7 +109,13 @@ describe('Évaluation contre les seuils d’entreprise', () => {
     expect(evaluation.source).toBe('entreprise')
     expect(evaluation.semaines[0].heures).toBe(62)
     expect(evaluation.semaines[0].depasse).toBe(true)
-    expect(evaluation.semaines[0].depassement_heures).toBe(14)
+    //  Le dépassement se lit sur le seuil qui DÉCLENCHE (40 h), pas sur le
+    //  second niveau : 62 − 40 = 22. L'ancienne valeur (14) était calculée sur
+    //  48 h alors que le message nommait le seuil de 40 h — les deux ne
+    //  pouvaient pas être vrais ensemble.
+    expect(evaluation.semaines[0].depassement_heures).toBe(22)
+    //  Ce qui relève du second niveau est dit à part : 62 − 48 = 14.
+    expect(evaluation.semaines[0].depassement_niveau_haut_heures).toBe(14)
     expect(evaluation.semaines[0].niveau).toBe('majeur')
     expect(evaluation.nb_depassees).toBe(1)
     expect(evaluation.max.heures).toBe(62)

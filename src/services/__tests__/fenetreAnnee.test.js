@@ -153,7 +153,7 @@ describe('La semaine complète se lit une seule fois', () => {
     return secondesParJour
   }
 
-  it('50 h vues d’un bloc, et 2 h au-delà du seuil de 48 h', () => {
+  it('50 h vues d’un bloc, et 2 h au-delà du second niveau de 48 h', () => {
     const semaines = agregerParSemaine({
       secondesParJour: secondesDeLaSemaine(PERIODES_DECEMBRE),
       debut: '2025-12-29',
@@ -165,7 +165,10 @@ describe('La semaine complète se lit une seule fois', () => {
 
     const evaluation = evaluerSeuilsHebdo({ semaines, seuil: 40, seuilMajeur: 48 })
     expect(evaluation.nb_depassees).toBe(1)
-    expect(evaluation.semaines[0].depassement_heures).toBe(2)
+    //  Déclenchement sur le seuil choisi (40 h) : 50 − 40 = 10.
+    expect(evaluation.semaines[0].depassement_heures).toBe(10)
+    //  Et les 2 h au-delà du second niveau sont dites séparément.
+    expect(evaluation.semaines[0].depassement_niveau_haut_heures).toBe(2)
     expect(evaluation.semaines[0].joursDansLaPeriode).toBe(7)
   })
 

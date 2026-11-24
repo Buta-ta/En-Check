@@ -23,6 +23,10 @@
 // ⚠️ Fonctions PURES : la règle se vérifie sans base et sans écran.
 // ═══════════════════════════════════════════════════════════════════════════
 
+//  Nommer une semaine (« du 05/10 au 11/10 ») : sans cela, deux messages
+//  portant sur deux semaines différentes semblent se contredire.
+import { jourCourt } from '../utils/jourCourt'
+
 /** Les trois raisons d'un contrôle non fait, en français. */
 export const RAISONS_INDISPONIBLE = {
   aucun_seuil: 'Aucun seuil hebdomadaire choisi par l’entreprise : ce contrôle n’est pas fait.',
@@ -54,18 +58,47 @@ export function pourquoiControleIndisponible(plafond) {
       (s) => s && (s.a_venir === true || s.partielle === true),
     )
     if (enCours.length === 0) return null
-    if (enCours.some((s) => s.a_venir === true)) {
-      return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.semaine_a_venir }
-    }
-    //  Une semaine partielle ET un dépassement prouvé : l'alerte parle, la
-    //  ligne n'a pas à la contredire. On ne signale que l'absence de verdict.
+    //  Une semaine partielle ET un dépassement prouvé : l'alerte parle de
+    //  cette semaine-là, la ligne n'a pas à la contredire.
     if (enCours.every((s) => s.depasse === true)) return null
-    const toutesEchues = enCours.every((s) => Number(s.joursEchues) < 7)
+
+    //  ⚠️ PLUSIEURS SEMAINES, PLUSIEURS VÉRITÉS. Une carte peut signaler un
+    //  dépassement sur une semaine pendant qu'une AUTRE semaine n'a pas encore
+    //  commencé. Dire « cette semaine n'a pas commencé » sans nommer laquelle
+    //  donne l'impression que le message contredit l'alerte, ou qu'il la
+    //  relativise. On nomme donc la ou les semaines concernées.
+    const nonEvalues = enCours.filter((s) => s.depasse !== true)
+    const nommer = (s) => (s.debut && s.fin ? `du ${jourCourt(s.debut)} au ${jourCourt(s.fin)}` : null)
+
+    if (nonEvalues.some((s) => s.a_venir === true)) {
+      const aVenir = nonEvalues.filter((s) => s.a_venir === true)
+      const ou = aVenir.map(nommer).filter(Boolean)
+      return {
+        etiquette: ETIQUETTE_INDISPONIBLE,
+        raison: ou.length
+          ? `La semaine ${ou.join(' et ')} n’a pas encore commencé : il n’y a rien à contrôler de ce côté-là.`
+          : RAISONS_INDISPONIBLE.semaine_a_venir,
+      }
+    }
+
+    //  ⚠️ « En cours » n'est vrai que si la semaine contient la journée
+    //  d'aujourd'hui. Une semaine PASSÉE que la fenêtre ne couvre qu'en partie
+    //  (mois écourté, lecture bornée) n'est pas « en cours » : elle est
+    //  incomplète. Confondre les deux ferait attendre un verdict qui ne
+    //  viendra jamais.
+    const aujourdHui = plafond.aujourd_hui || null
+    const contientAujourdHui = (s) =>
+      Boolean(aujourdHui) && s.debut && s.fin && s.debut <= aujourdHui && aujourdHui <= s.fin
+    const touteLaSemaineEstEnCours = nonEvalues.every(
+      (s) => Number(s.joursEchues) < 7 && (aujourdHui ? contientAujourdHui(s) : true),
+    )
+    const ou = nonEvalues.map(nommer).filter(Boolean)
+    const suffixe = ou.length ? ` (semaine ${ou.join(', ')})` : ''
     return {
       etiquette: ETIQUETTE_INDISPONIBLE,
-      raison: toutesEchues
+      raison: (touteLaSemaineEstEnCours
         ? RAISONS_INDISPONIBLE.semaine_en_cours
-        : RAISONS_INDISPONIBLE.semaine_partielle,
+        : RAISONS_INDISPONIBLE.semaine_partielle) + suffixe,
     }
   }
 

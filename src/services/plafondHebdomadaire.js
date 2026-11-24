@@ -90,7 +90,7 @@ export function semainesDeLaPeriode(debut, fin) {
  * @param {string} options.fin    dernier jour de la période
  * @returns {Array<{debut, fin, secondes, joursTravailles, joursDansLaPeriode}>}
  */
-export function agregerParSemaine({ secondesParJour, debut, fin, aujourdHui = null }) {
+export function agregerParSemaine({ secondesParJour, debut, fin, aujourdHui = null, jourEnCours = null }) {
   const lire = (cle) => {
     if (!secondesParJour) return 0
     if (secondesParJour instanceof Map) return Number(secondesParJour.get(cle)) || 0
@@ -104,7 +104,15 @@ export function agregerParSemaine({ secondesParJour, debut, fin, aujourdHui = nu
   //  qui n'a pas encore eu lieu. On distingue donc deux choses :
   //    · `joursDansLaPeriode` : ce que la FENÊTRE couvre (inchangé) ;
   //    · `joursEchues`        : ce qui a réellement pu être vécu.
+  //
+  //  ⚠️ ET LE DERNIER JOUR N'EST PAS ÉCHU TANT QU'IL N'EST PAS FINI.
+  //  Compter `cle <= aujourdHui` faisait d'un dimanche à 10 h du matin une
+  //  semaine « terminée, 7 jours sur 7, aucun dépassement » — alors qu'il
+  //  restait quatorze heures à travailler. `jourEnCours`, quand il est fourni,
+  //  est la journée de travail qui n'est pas encore close : elle ne compte pas
+  //  parmi les jours échus, même si sa date est atteinte.
   const reference = aujourdHui || null
+  const enCours = jourEnCours || null
   return semainesDeLaPeriode(debut, fin).map(({ debut: d, fin: f }) => {
     let secondes = 0
     let joursTravailles = 0
@@ -115,7 +123,9 @@ export function agregerParSemaine({ secondesParJour, debut, fin, aujourdHui = nu
       const cle = cleJour(curseur)
       if (cle >= debut && cle <= fin) {
         joursDansLaPeriode += 1
-        if (reference === null || cle <= reference) joursEchues += 1
+        const atteinte = reference === null || cle <= reference
+        //  La journée en cours existe, mais elle n'est pas finie.
+        if (atteinte && cle !== enCours) joursEchues += 1
         const s = lire(cle)
         secondes += s
         if (s > 0) joursTravailles += 1
@@ -183,9 +193,17 @@ export function evaluerSeuilsHebdo({
     }
   }
 
+  //  ⚠️ QUI DÉCLENCHE L'ALERTE ? Le seuil CHOISI par l'entreprise, pas le
+  //  barème haut. Avant, `depasse` se mesurait au maximum des deux : avec un
+  //  seuil d'alerte à 40 h et un second niveau à 48 h, une semaine de 45 h ne
+  //  déclenchait RIEN, et une semaine de 50 h affichait « seuil de 40 h » avec
+  //  « dépassement de 2 h » — un message qui contredisait son propre chiffre.
+  //  Le second niveau ne déclenche pas : il QUALIFIE (passage en majoration
+  //  haute). `sM` reste le repli quand aucun seuil n'a été choisi.
+  const declencheur = s !== null ? s : sM
   const evaluees = semaines.map((sem) => {
     const heures = arrondiHeures(sem.secondes)
-    const depasse = heures > bareme
+    const depasse = declencheur !== null && heures > declencheur
     //  « normal » = seuil de déclenchement ATTEINT (40 h pile compte), même
     //  sans dépassement du plafond haut. « aucun » = sous le seuil.
     const niveau = (sM !== null && heures >= sM) ? 'majeur' : (heures >= (s ?? 0) ? 'normal' : 'aucun')
@@ -209,7 +227,13 @@ export function evaluerSeuilsHebdo({
       ...sem,
       heures,
       depasse,
-      depassement_heures: depasse ? Math.round((heures - bareme) * 100) / 100 : 0,
+      //  Le dépassement se lit sur le seuil qui a déclenché : le chiffre
+      //  affiché et le seuil nommé parlent enfin du même barème.
+      depassement_heures: depasse ? Math.round((heures - declencheur) * 100) / 100 : 0,
+      //  Et ce qui relève du second niveau est dit séparément, jamais fondu
+      //  dans le premier chiffre. `null` = aucun second niveau configuré.
+      depassement_niveau_haut_heures:
+        sM !== null && heures > sM ? Math.round((heures - sM) * 100) / 100 : 0,
       //  Un dépassement constaté sur une semaine partielle reste un
       //  dépassement (il est prouvé) ; c'est l'ABSENCE de dépassement qui ne
       //  prouve rien tant que la semaine n'est pas couverte en entier.
@@ -266,10 +290,20 @@ export function libelleOrigineSeuil(source) {
 
 export function messageDepassement(evaluation) {
   if (!evaluation?.disponible || !evaluation.nb_depassees) return null
-  const seuil = evaluation.seuil_majeur ?? evaluation.seuil
+  //  ⚠️ Le seuil NOMMÉ est celui qui a déclenché l'alerte. Il annonçait « 48 h »
+  //  alors que le déclencheur était à 40 h : le lecteur voyait un seuil qu'il
+  //  n'avait pas choisi. Le second niveau, lui, se dit à part et seulement
+  //  s'il a été franchi.
+  const seuil = evaluation.seuil ?? evaluation.seuil_majeur
   const max = evaluation.max?.heures ?? 0
   const semaines = evaluation.nb_depassees === 1 ? '1 semaine' : `${evaluation.nb_depassees} semaines`
-  return `${semaines} au-delà du ${libelleOrigineSeuil(evaluation.source)} (${seuil} h) — maximum ${max} h`
+  const niveauHaut = (evaluation.semaines || []).some(
+    (sem) => sem && Number(sem.depassement_niveau_haut_heures) > 0,
+  )
+  const second = niveauHaut && evaluation.seuil_majeur !== null && evaluation.seuil_majeur !== undefined
+    ? `, dont ${evaluation.seuil_majeur} h dépassées au second niveau`
+    : ''
+  return `${semaines} au-delà du ${libelleOrigineSeuil(evaluation.source)} (${seuil} h)${second} — maximum ${max} h`
 }
 
 export default {

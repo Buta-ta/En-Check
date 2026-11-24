@@ -448,6 +448,29 @@ semaine du 26/10 au 01/11 tombait exactement dans ce cas.
 - sans date de référence (appel historique, fenêtre passée), tous les jours sont réputés échus :
   le comportement d'avant est conservé.
 
+**Contrôle des quatre bouts (24/10/2026, `controleHebdoBouts.test.js`, 16 tests).**
+Quatre questions posées après #335, quatre vérifications :
+
+| Question | Verdict | Suite |
+|---|---|---|
+| 1. Le dimanche, la semaine passe-t-elle pour terminée ? | **confirmé** — 7/7 jours à 10 h du matin | un jour n'est échu que FINI : `jourDeTravailEnCours()` tient compte de la bascule et du fuseau ; le dimanche à 10 h ⇒ 6/7, `non_evalue` |
+| 2. Deux semaines, deux messages contradictoires ? | **confirmé** — « cette semaine n'a pas commencé » sans dire laquelle | la ligne NOMME la semaine (« du 26 oct. au 1 nov. ») ; une semaine passée mal couverte n'est plus dite « en cours » |
+| 3. Quel seuil déclenche l'alerte ? | **confirmé** — 45 h n'alertait pas ; à 50 h, le message nommait 40 h mais chiffrait sur 48 h | `depasse` se mesure au seuil CHOISI ; le second niveau se dit à part (`depassement_niveau_haut_heures`) |
+| 4. Une garde change-t-elle de valeur selon la fenêtre ? | **non confirmé** — la garde vaut 8 h quelle que soit la fenêtre | aucune correction ; le vrai risque (sortie estimée) est marqué et **ne gonfle jamais la paie** |
+
+**Point 3, ce qui n'a pas bougé** : `depassement_heures` n'est lu que par la carte
+d'alerte. Aucun montant, aucune règle de paie n'en dépend — vérifié par lecture, pas par
+supposition. Le `niveau` reste calculé sur le second seuil (majoration haute) : c'est lui qui
+QUALIFIE, il ne déclenche pas.
+
+**F5-ter — une panne isolée se déguisait encore en « aucun résultat » (24/10/2026).**
+Dernier endroit du défaut : quand UNE source tombe et que les autres ne trouvent rien, la
+recherche rendait un tableau vide, et l'assistant affirmait « Je n'ai trouvé aucune fiche
+correspondant à… ». Une phrase affirmative, complète, crédible, démentie par une panne
+invisible. Désormais : si le total est vide **et** qu'une source n'a pas répondu, une carte
+« Recherche partielle » le dit et précise que ce n'est pas une absence de résultat. Si les
+autres sources ramènent quelque chose, le silence reste : la panne est marginale.
+
 **Et à l'écran (G7-bis).** `pourquoiControleIndisponible` traite les trois nouveaux cas —
 semaine en cours, semaine à venir, semaine partielle — et continue de se taire quand un
 dépassement est **prouvé**, même sur une semaine partielle. L'exclusion mutuelle carte/ligne
