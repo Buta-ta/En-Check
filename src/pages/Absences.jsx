@@ -26,13 +26,14 @@ import AbsenceFormulaire from '../components/AbsenceFormulaire'
 import { AbsencesSelectMotifs, AbsencesLegendeMotifs, AbsencesStatsMotifs } from '../components/AbsencesFiltres'
 import { DemandeCongeCard } from '../components/DemandeCongeCard'
 import { supprimerDemandeEtSesAbsences } from '../services/lienDemandeAbsence'
-import EnCheckBrandMark from '../components/EnCheckBrandMark'
+import AbsencesChemise from '../components/AbsencesChemise'
+import { cibleRetour } from '../lib/monEntreprise'
 import { MotifsAbsenceProvider } from '../contexts/MotifsAbsenceContext'
 import { useTheme } from '../contexts/ThemeContext'
 import './AbsencesAfroTech.css'
 import HolidayService from '../services/holidayService'
 import LeaveBalanceService from '../services/leaveBalanceService'
-import { ArrowLeft, Footprints, Plus, Trash2, X, Save, CalendarOff, Building2, User, FileText, AlertTriangle, Clock, Search, Edit3, Check, XCircle, Download, ChevronLeft, ChevronRight, Calendar, CalendarDays, List, TrendingUp, Timer, BarChart3, Filter, Hourglass, RefreshCw, CheckCircle2, AlertCircle, Upload, Paperclip, Eye, FileImage, File, ZoomIn, ZoomOut, ExternalLink, ShieldCheck, Ban, Inbox, MessageSquare } from 'lucide-react'
+import { Footprints, Trash2, X, Save, CalendarOff, Building2, User, FileText, AlertTriangle, Clock, Search, Edit3, Check, XCircle, Download, ChevronLeft, ChevronRight, Calendar, CalendarDays, List, TrendingUp, Timer, BarChart3, Filter, Hourglass, RefreshCw, CheckCircle2, AlertCircle, Upload, Paperclip, Eye, FileImage, File, ZoomIn, ZoomOut, ExternalLink, ShieldCheck, Ban, Inbox, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ═══════════════════════════════════════════════════════════
@@ -885,6 +886,16 @@ export default function Absences() {
     jours: soldeMoyen({ employes, joursPrisParEmploye, plafond: leaveConfig.annual_leave_cap || 30 }),
     retour: formatRetourFr(prochainRetour(absences, isoLocal(new Date()))),
   }), [employes, joursPrisParEmploye, leaveConfig, absences])
+
+  // Le geste du retour est celui de la maison (MonEntreprise, fiche employé, annuaire) :
+  // on repart D'OÙ L'ON VIENT, et sans historique derrière on atterrit au tableau de
+  // bord. La page écrivait `navigate('/dashboard')` sous une flèche qui dit « retour » :
+  // un bouton qui annonce une chose et en fait une autre est plus cassé qu'un bouton absent.
+  const surRetour = () => {
+    const cible = cibleRetour(window.history.state?.idx)
+    if (cible === 'precedent') navigate(-1)
+    else navigate(cible)
+  }
 
 
   const openConflictModal = (absence, conflict) => {
@@ -1779,46 +1790,33 @@ export default function Absences() {
 `}</style>
 
       <div className="abs-page" data-theme={darkMode ? 'dark' : 'light'} style={S.container}>
-        {/* ═══ LA SECTION DU HAUT — maquette `maquettes/absences-en-tete-lisiere.png` ═══
-            Trois registres cousus, et rien d'autre :
-            1. la feuille pleine largeur du titre (pas de rayon, pas d'ombre, pas de
-               flou, pas de collant, plus de lune) ;
-            2. le transat suspendu sous elle, qui porte le solde de congés et la date
-               de retour — et RIEN D'AUTRE : le rail de raccourcis et la lisière de
-               bogolan sont sortis de la section (27/11). */}
-        <div className="abs-topbar">
-          <div className="abs-topbar-inner">
-            <div className="abs-topbar-left">
-              <button
-                type="button"
-                className="abs-back-btn"
-                onClick={() => navigate('/dashboard')}
-                aria-label="Retour au tableau de bord"
-              >
-                <ArrowLeft size={18} />
-              </button>
-              <div className="abs-brand">
-                <span className="abs-brand-mark" aria-hidden="true"><EnCheckBrandMark size={34} /></span>
-                <span className="abs-brand-texte">
-                  <span className="abs-brand-title">En-Check · ABSENCES &amp; CONGÉS</span>
-                  <span className="abs-brand-sub">Congés, maladies, formations et justificatifs</span>
-                </span>
-              </div>
-            </div>
-            {/* Deux commandes, et plus de lune : le bouton clair/sombre est sorti de
-                la page (27/11). La charte tient toujours « une seule variante pleine
-                par écran » — + Déclarer reste la seule. */}
-            <div className="abs-topbar-right">
-              <button type="button" className="abs-btn" onClick={handleExportCSV}>
-                <Download size={16} /> <span>Export</span>
-              </button>
-              <button type="button" className="abs-btn abs-btn-primary" onClick={() => handleAdd()}>
-                <Plus size={16} /> <span>Déclarer</span>
-              </button>
-            </div>
-          </div>
-
-        </div>
+        {/* ═══ LA SECTION DU HAUT — maquette `maquettes/absences-titre-C-chemise.png` ═══
+            UNE chemise, pas une bande au-dessus d'une rangée : les trois onglets de
+            section sortent du bord haut de la feuille, et l'onglet ouvert y est SOUDÉ
+            (sa pâte est celle de la feuille, sa bordure du bas n'existe pas). La feuille
+            porte l'empreinte, le titre et les deux commandes ; le transat reste dessous.
+            Ce qui n'est plus là : le rail de raccourcis, la lune, la lisière de bogolan
+            (27/11), et le conteneur propre des onglets — deux bordures, deux fonds et
+            deux rayons économisés. */}
+        <AbsencesChemise
+          titre="En-Check · ABSENCES & CONGÉS"
+          sousTitre="Congés, maladies, formations et justificatifs"
+          onglets={[
+            { id: 'absences', libelle: 'Absences' },
+            {
+              id: 'demandes',
+              libelle: 'Demandes employés',
+              compte: pendingRequestsCount > 0 ? pendingRequestsCount : leaveRequests.length,
+              alerte: pendingRequestsCount > 0,
+            },
+            { id: 'config_conges', libelle: 'Configuration congés' },
+          ]}
+          ongletActif={activeTab}
+          surChoixOnglet={setActiveTab}
+          surRetour={surRetour}
+          surExporter={handleExportCSV}
+          surDeclarer={() => handleAdd()}
+        />
 
         {/* 2. le transat : deux montants, une suspente en crémaillère, le solde de
             congés suspendu dedans, et à droite le jour du prochain retour. C'est la
@@ -1827,40 +1825,9 @@ export default function Absences() {
         <AbsencesHamac jours={transat.jours} retour={transat.retour}/>
 
         <main style={S.main}>
-          {/* Le cadre qui tournait autour du `<main>` entier est défait (26/11) : il
-              border la page sans rien retoucher (« je ne veux pas de ça »). Les trois
-              onglets de section reprennent leur rangée plate sous la feuille, et la
-              barre d'outils garde sa couture pointillée : elle ne doit rien au cadre. */}
-          <div className="abs-section-tabs" style={TAB.container}>
-            <button className="tab-btn" aria-pressed={activeTab === 'absences'} onClick={() => setActiveTab('absences')} style={{ ...TAB.tab, ...(activeTab === 'absences' ? TAB.tabActive : {}) }}>
-              <CalendarOff size={16} />
-              <span>Absences</span>
-              {/* Le compteur d'absences a quitté cet onglet (26/11/2026) : la maquette
-                  l'épingle sur le rabat « Absences » du rail, juste au-dessus, et les
-                  deux lisaient le même nombre (`absences.length`). Un chiffre ne se dit
-                  pas deux fois sur un écran. Les deux badges voisins restent : eux
-                  comptent d'autres choses — les demandes en attente, les congés. */}
-            </button>
-
-            <button className="tab-btn" aria-pressed={activeTab === 'demandes'} onClick={() => setActiveTab('demandes')} style={{ ...TAB.tab, ...(activeTab === 'demandes' ? TAB.tabActive : {}) }}>
-              <Inbox size={16} />
-              <span>Demandes employés</span>
-              {pendingRequestsCount > 0 ? (
-                <span className="abs-badge-alerte" style={{ ...TAB.badge, animation: 'pulse 2s ease infinite' }}>
-                  {pendingRequestsCount}
-                </span>
-              ) : leaveRequests.length > 0 ? (
-                <span style={{ ...TAB.badge }}>
-                  {leaveRequests.length}
-                </span>
-              ) : null}
-            </button>
-
-            <button className="tab-btn" aria-pressed={activeTab === 'config_conges'} onClick={() => setActiveTab('config_conges')} style={{ ...TAB.tab, ...(activeTab === 'config_conges' ? TAB.tabActive : {}) }}>
-              <CalendarDays size={16} />
-              <span>Configuration congés</span>
-            </button>
-          </div>
+          {/* Les trois onglets de section ont monté dans la chemise (28/11) : ils sont
+              soudés au bord haut de la feuille de titre, ils ne sont plus une rangée
+              plate sous elle. Le contenu, lui, ne bouge pas d'un octet. */}
 
           {activeTab === 'absences' && (
             <>
@@ -2850,28 +2817,6 @@ export default function Absences() {
 // ═══════════════════════════════════════════════════════════
 // STYLES ONGLETS
 // ═══════════════════════════════════════════════════════════
-const TAB = {
-    container: { 
-    display: 'flex', 
-    gap: '4px', 
-    padding: '4px', 
-    background: 'var(--abs-bg-soft)', 
-    borderRadius: '12px', 
-    border: '1px solid var(--abs-border)', 
-    marginBottom: '20px', 
-    width: '100%', // ✅ Au lieu de 'fit-content'
-    maxWidth: 'fit-content',
-    overflowX: 'auto', // ✅ Scroll horizontal si nécessaire
-    scrollbarWidth: 'none', // Firefox
-  },
-  tab: { display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', borderRadius: '11px', border: 'none', background: 'transparent', color: 'var(--abs-text)', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s ease' },
-  // Une seule teinte déclinée : l'ambre de la page, mêlée au fond. Ni `rgba()`
-  // recopié, ni chiffre de couleur en dur — la charte compte les deux.
-  tabActive: { background: 'color-mix(in srgb, var(--abs-amber) 14%, transparent)', color: 'var(--abs-amber)', fontWeight: '760' },
-  // Un seul jeton pour les trois pastilles ; l'onglet actif les met en creux,
-  // par la règle CSS `.tab-btn[aria-pressed='true'] > span:last-child`.
-  badge: { padding: '2px 8px', borderRadius: '999px', fontSize: '10.5px', fontWeight: '760', background: 'var(--abs-line-soft)', color: 'var(--abs-text-faint)', transition: 'all 0.2s ease' },
-}
 
 // ═══════════════════════════════════════════════════════════
 // STYLES CARTE (CS)
