@@ -104,6 +104,12 @@ Ce que le dessin promet, et ce qui est écrit en dur :
 
 **Ce qui reste, et pourquoi.** Les quatre puces de statut filtrent, les deux fils trient — ce n'est pas la même question. L'alerte « N demandes en attente » du haut reste aussi : elle dit une chose que le fil dit déjà, mais par une phrase, pas par un nombre, et elle n'a pas à être démolie pour que le fil existe. Le solde est cloué à droite (il descend sous les fils à 900 px) et lit `joursPrisParEmploye` + `annual_leave_cap` — les nombres de la poutre, pas un calcul de plus.
 
+### Le fil se tend aussi quand il n'y a rien
+
+Première mise en ligne, le fondateur n'a rien vu : son entreprise n'avait aucune demande dans la période, et l'onglet rendait alors le vieux panneau pointillé « Aucune demande » à la place du dessin. Le rail de gauche affichait bien zéro — mais le demandeur, son indicateur, les compteurs du mois et les jours fériés avaient disparu avec la figure. Une figure qu'on ne voit que quand elle est pleine est un rangement du bureau qui change selon la chance, et le jour de la première demande, le dossier se remet à ressembler à autre chose.
+
+Depuis, l'onglet `demandes` est **le fil, vide comme plein** : plus de branche conditionnelle dans `Absences.jsx`, l'état vide est une règle du composant (`.abs-fil-vide`) qui garde le trait tendu au-dessus des mots — c'est la corde qu'on regarde, pas l'inventaire. Les deux phrases viennent de la maison. Le transat, la suspension et l'établi restent à leur place. Verrou `absencesFil.test.jsx` #28 : le panneau ne peut pas renaître.
+
 ## Le raccord au bloc du haut (reprise du 1/12, morte le 2/12 — consignée pour ce qu'elle a appris)
 
 Le vide que le fondateur montrait du doigt ne venait pas d'une corde trop courte : il venait de **deux conteneurs**. Le transat est un enfant de `.abs-page`, l'étagère un enfant de `<main>`. La bande morte entre les deux valait 26 px (la respiration du bas du transat) + 20 px (le remplissage du haut de `main`) + 24 px (la chute sous le rail) = **70 px de rien**.

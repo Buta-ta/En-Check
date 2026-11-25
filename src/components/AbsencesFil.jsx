@@ -119,6 +119,7 @@ export function AbsencesFil({
   feriers = () => new Set(),
   soldes = [],
   enMain = null,
+  filtre = 'all',
   surChoisir = () => {},
   surDeclarer,
   surApprouver = () => {},
@@ -226,11 +227,17 @@ export function AbsencesFil({
       </header>
 
       {!fiches.length ? (
-        <p className="abs-fil-vide" data-testid="abs-fil-vide">
-          <span>Rien sur le fil</span>
-          <span aria-hidden="true">·</span>
-          <span>les demandes des employés s’y pendent à la réception</span>
-        </p>
+        // LE FIL SANS LINGE. Les mots sont ceux de la maison — « aucune demande »,
+        // et la phrase qui dit où on en est — posés sur le trait tendu : le vide
+        // se montre dans la langue du dessin, pas dans un panneau d'attente.
+        <div className="abs-fil-vide" data-testid="abs-fil-vide">
+          <p className="abs-fil-vide-titre">Aucune demande · rien sur le fil</p>
+          <p className="abs-fil-vide-note">
+            {filtre !== 'all'
+              ? 'Aucune demande avec ce statut — les autres pendront au fil dès que le filtre sera levé'
+              : 'Les employés n’ont pas encore soumis de demandes de congé'}
+          </p>
+        </div>
       ) : (
         <div className="abs-fil-corps">
           <div className="abs-fil-fils" ref={filRef}>

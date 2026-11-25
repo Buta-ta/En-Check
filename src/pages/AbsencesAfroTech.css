@@ -1440,17 +1440,33 @@ button.abs-planche-corps:focus-visible {
 
 .abs-fil-table-reprendre:hover { background: var(--charte-surface2); }
 
-/* Ce qui n'est pas un fil : le vide et la charge, dits dans la langue du
-   dessin — rien ne pend, le fil est tendu quand même. */
+/* LE FIL SANS LINGE. L'état vide de l'onglet est rendu par le dessin lui-même :
+   le trait reste tendu, et les mots sont posés dessous. Une entreprise sans
+   aucune demande voit donc la figure — sinon l'onglet changerait d'aspect selon
+   qu'il y a du travail ou non, et le jour où la première demande arrive, le
+   rangement disparaît sous ses yeux. */
 .abs-fil-vide {
-  margin: 0;
-  padding: var(--charte-espace-5) var(--charte-espace-4);
+  padding: var(--charte-espace-5) var(--abs-fil-retrait);
   border-top: var(--abs-fil-corde) solid var(--charte-encre);
-  color: var(--charte-douce);
+}
+
+.abs-fil-vide-titre {
+  margin: 0 0 var(--charte-espace-2);
+  color: var(--charte-encre);
   font-family: var(--charte-mono);
   font-size: var(--charte-taille-micro);
+  font-weight: 700;
   letter-spacing: 1.3px;
   text-transform: uppercase;
+}
+
+.abs-fil-vide-note {
+  margin: 0;
+  color: var(--charte-douce);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-corps);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 /* La légende du dessin, en pied : quatre phrases, la loi de la figure. */
