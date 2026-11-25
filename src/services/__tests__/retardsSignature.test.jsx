@@ -7,6 +7,25 @@ import {
 import { construireRetards } from '../retardsService'
 import { retardDates } from '../../utils/retardsPresentation'
 
+/* une seconde arrivée, délibérément plus faible : le focus doit aller à
+   `input` (123 min), jamais à elle. */
+const ligneEnPlus = {
+  ...{
+    pointage_id: 'fixture-2',
+    employe_id: 'fixture-2',
+    enterprise_id: 'ent',
+    entreprise_nom: 'Entreprise de test',
+    prenom: 'Koffi',
+    nom: 'MENSAH',
+    jour: '2026-10-23',
+    heure_prevue: '08:00',
+    heure_arrivee: '08:21',
+    est_retard: true,
+    retard_minutes: 21,
+    tolerance_minutes: 0,
+    grille_source: 'custom',
+  },
+}
 const input = {
   pointage_id: 'fixture',
   employe_id: 'fixture',
@@ -73,7 +92,35 @@ it('does not invent data for an empty day and uses plural counts', () => {
 it('keeps the real weekly distribution and all zero days', () => {
   const html = render([input], 'semaine')
   expect((html.match(/class="rt-bar-column"/g) || []).length).toBe(7)
-  expect(html).not.toContain('rt-day-seal')
+  /* 27/11 : l'empreinte du jour ne quitte plus la marge — elle est la
+     pièce centrale de la colonne de droite, demande de la maquette A. */
+  expect(html).toContain('rt-day-seal')
+})
+
+/*  LA DIRECTION A, retenue le 27/11 — « je le veux exactement comme la
+    maquette choisie ». Trois pièces doivent tenir :
+      · le rail des jours n'apparaît qu'en semaine et en mois ;
+      · une SEULE fiche est mise en avant, celle du plus fort écart ;
+      · la marge porte l'empreinte et la règle, jamais dans le flux des fiches. */
+it('met en avant une seule fiche, celle du plus fort écart', () => {
+  /* une fiche seule ne se met pas en avant : sans voisine, elle n'a rien
+     à quoi se comparer — le focus ne prend son sens qu'à partir de deux */
+  expect((render([input], 'jour').match(/is-focus/g) || []).length).toBe(0)
+
+  const html = render([input, ligneEnPlus], 'jour')
+  expect((html.match(/is-focus/g) || []).length).toBe(1)
+  expect(html).toContain('rt-marge')
+  expect(html).toContain('L’empreinte du jour')
+  expect(html).toContain('Ce que dit la règle')
+  /* le rail situe le jour dans sa semaine, comme la maquette A */
+  expect(html).toContain('rt-rail')
+  expect(html).toContain('Jours de la période')
+})
+
+it('ouvre le rail des jours dès que la période en compte plusieurs', () => {
+  const html = render([input], 'semaine')
+  expect(html).toContain('rt-rail')
+  expect(html).toContain('Jours de la période')
 })
 it('keeps explanations closed and the engraving purely decorative', () => {
   const html = renderToStaticMarkup(<RetardsHelp />)

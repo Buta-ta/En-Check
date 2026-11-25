@@ -24,7 +24,6 @@ import {
   allRetardRows,
 } from '../utils/retardsPresentation'
 import './Retards.css'
-import './RetardsSignature.css'
 
 export default function Retards() {
   const { darkMode, toggleTheme } = useTheme()
@@ -402,6 +401,8 @@ export default function Retards() {
             busy={deleting}
             search={search}
             setSearch={setSearch}
+            selectedDate={selectedDate}
+            onSelectDate={(date) => changeContext(() => setSelectedDate(date))}
           />
         )}
       </main>
