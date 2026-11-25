@@ -34,6 +34,7 @@ export const RAISONS_INDISPONIBLE = {
   case_decochee: 'L’alerte hebdomadaire n’est pas activée : personne n’a demandé à être prévenu.',
   non_calcule: 'Le calcul de la semaine n’est pas disponible pour cette période.',
   lecture_impossible: 'Le seuil n’a pas pu être lu : ce contrôle n’est pas fait.',
+  regle_sans_verdict: 'Les semaines n’ont pas pu être rattachées à une règle : aucun verdict n’est prononcé.',
   semaine_en_cours: 'La semaine en cours n’est pas terminée : le contrôle se prononcera une fois tous ses jours échus.',
   semaine_a_venir: 'Cette semaine n’a pas encore commencé : il n’y a rien à contrôler.',
   semaine_partielle: 'La semaine n’est couverte que partiellement : « aucun dépassement » ne s’y prononce pas.',
@@ -111,7 +112,17 @@ export function pourquoiControleIndisponible(plafond) {
   }
 
   //  Le moteur explique son silence ; on traduit son motif, on ne le réécrit pas.
-  const motif = String(plafond.motif_silence || plafond.motif || '')
+  //
+  //  ⚠️ L'ORDRE COMPTE (constat de vérification). `motif_silence` vient du
+  //  chargeur SANS DATE : il décrit l'état « aujourd'hui » du réglage
+  //  d'entreprise, pas la raison pour laquelle les semaines n'ont pas été
+  //  jugées. Quand le moteur a une raison propre — « 5 semaine(s) sans règle
+  //  résolue » —, c'est ELLE qui est vraie.
+  //
+  //  Cas réel : serveur sans les migrations, seuil d'entreprise à 45 h
+  //  enregistré. L'ancien ordre affichait « Aucun seuil hebdomadaire choisi
+  //  par l'entreprise » — faux, et il envoyait chercher un réglage qui existe.
+  const motif = String(plafond.motif || plafond.motif_silence || '')
   if (/désactivée par une décision/i.test(motif)) {
     return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.desactive }
   }
@@ -124,9 +135,19 @@ export function pourquoiControleIndisponible(plafond) {
   if (/lecture/i.test(motif)) {
     return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.lecture_impossible }
   }
+  //  ⚠️ Le moteur n'a jugé AUCUNE semaine faute de règle résolue (migration
+  //  absente, panne de la RPC datée). Le repli final répondait « aucun seuil
+  //  choisi » — faux quand un seuil EST enregistré. On dit ce qui s'est
+  //  réellement passé, sans accuser un réglage qui existe.
+  if (/sans règle résolue|sans regle resolue/i.test(motif)) {
+    return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.regle_sans_verdict }
+  }
 
-  //  Un silence non expliqué ne devient pas un silence rassurant.
-  return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.aucun_seuil }
+  //  Un silence non expliqué ne devient pas un silence rassurant — et il ne
+  //  devient pas non plus une accusation précise. Avant, ce repli rendait
+  //  « Aucun seuil hebdomadaire choisi par l'entreprise » alors qu'il n'en
+  //  savait rien : un motif inconnu n'autorise pas à nommer une cause.
+  return { etiquette: ETIQUETTE_INDISPONIBLE, raison: RAISONS_INDISPONIBLE.regle_sans_verdict }
 }
 
 /**
