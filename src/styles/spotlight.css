@@ -1876,6 +1876,17 @@
   color: #A78BFA;
 }
 
+/*  Un total qui contient des heures estimées n'est pas un montant dû.
+    La mention se lit SOUS le chiffre, dans le même bloc, pour qu'on ne
+    puisse pas lire le total sans lire la réserve. */
+.hours-detail-valorization-mention {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--spotlight-warning);
+  font-style: italic;
+}
+
 .hours-detail-valorization-divider {
   height: 1px;
   background: rgba(139, 92, 246, 0.2);

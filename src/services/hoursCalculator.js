@@ -812,11 +812,21 @@ function buildDaySummariesStrict({
     if (outAtt?.__virtual) {
       s.openSessionsCount += 1
       s.hasAutoCloseVirtual = true
-      //  ⚠️ La durée d'une clôture VIRTUELLE est une estimation. Elle reste
-      //  dans `totalSeconds` (comportement historique, non modifié ici : la
-      //  changer modifierait des montants), mais elle est comptée à part pour
-      //  que l'écran puisse la NOMMER. Sans ce chiffre, 8 h inventées et 8 h
-      //  badgées s'affichaient de la même façon.
+    }
+    //  ⚠️ La durée d'une clôture ESTIMÉE est une estimation. Elle reste dans
+    //  `totalSeconds` (comportement historique, non modifié ici : la changer
+    //  modifierait des montants), mais elle est comptée à part pour que
+    //  l'écran puisse la NOMMER. Sans ce chiffre, 8 h inventées et 8 h
+    //  badgées s'affichaient de la même façon.
+    //
+    //  DEUX FORMES, UNE SEULE MESURE. Une estimation arrive soit
+    //  `__virtual` (sortie fabriquée en mémoire, jamais écrite), soit
+    //  persistée avec `is_auto_closed`. La seconde échappait à la mesure :
+    //  une ligne auto-clôturée non validée était valorisée sans que rien ne
+    //  le dise. La doctrine « on invente, on marque, on n'encaisse pas » et la
+    //  borne de non-rétroactivité vivent dans `estEstimationNonValidee` : on
+    //  la réutilise au lieu d'en écrire une seconde, qui divergerait.
+    if (outAtt?.__virtual || estEstimationNonValidee(outAtt)) {
       s.totalSecondesPresumes = (Number(s.totalSecondesPresumes) || 0) + cappedDuration
     }
     if (outAtt?.is_auto_closed) {
