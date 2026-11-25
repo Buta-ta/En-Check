@@ -2269,7 +2269,6 @@ export default function Absences() {
                     conflitsParDemande={conflitsParDemande}
                     feriers={getHolidaySet}
                     soldes={soldesDuFil}
-                    charge={loadingRequests}
                     enMain={ficheEnMain}
                     surChoisir={(id) => setFicheEnMain((d) => (d === id ? null : id))}
                     surDeclarer={() => handleAdd()}

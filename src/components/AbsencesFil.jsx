@@ -118,7 +118,6 @@ export function AbsencesFil({
   conflitsParDemande = {},
   feriers = () => new Set(),
   soldes = [],
-  charge = false,
   enMain = null,
   surChoisir = () => {},
   surDeclarer,
@@ -226,9 +225,7 @@ export function AbsencesFil({
         )}
       </header>
 
-      {charge ? (
-        <p className="abs-fil-vide" data-testid="abs-fil-charge">Le fil se tend…</p>
-      ) : !fiches.length ? (
+      {!fiches.length ? (
         <p className="abs-fil-vide" data-testid="abs-fil-vide">
           <span>Rien sur le fil</span>
           <span aria-hidden="true">·</span>
