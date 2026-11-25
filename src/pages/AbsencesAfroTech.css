@@ -2012,6 +2012,7 @@ button.abs-planche-corps:focus-visible {
   --abs-corde-descente: 8px;
   --abs-corde-planche: 22px;
   --abs-corde-empilement: 26px;
+  --abs-corde-noeud: 8px;   /* la perle de corail sur le fil */
   --abs-corde-hauteur: calc(var(--abs-corde-fil-top) + var(--abs-corde-descente) + var(--abs-corde-planche) + var(--charte-espace-1));
   --abs-corde-jauge: 56px;
 }
@@ -2169,20 +2170,35 @@ button.abs-planche-corps:focus-visible {
 .abs-corde-attache {
   position: absolute;
   left: var(--charte-espace-3);
-  top: calc(-1 * var(--abs-corde-descente));
-  width: var(--charte-trait);
-  height: calc(var(--abs-corde-descente) + var(--abs-corde-fil));
+  /* le rang compte ici comme dans le `top` de la planche : une planche du
+     deuxième rang pend plus bas, donc sa ficelle est PLUS LONGUE. Fixer la
+     longueur à `descente` seule laisserait la deuxième planche retenue par un
+     moignon qui ne touche pas le fil — et une ficelle qui ne touche pas le fil
+     ne retient rien. */
+  top: calc(-1 * (var(--abs-corde-descente) + var(--abs-corde-rang, 0) * var(--abs-corde-empilement)));
+  height: calc(
+    var(--abs-corde-descente) + var(--abs-corde-rang, 0) * var(--abs-corde-empilement)
+    + var(--abs-corde-fil)
+  );
   background: var(--charte-encre);
 }
 
-/* le nœud sur la corde : la pointeuse conteste ce jour. 8 px de corail cerclés
-   d'encre, posés SUR le trait, à la crête de la ficelle. */
+/* le nœud sur la corde : la pointeuse conteste ce jour. Une perle de corail
+   cerclée d'encre, CENTER sur le fil — le même calcul qu'à l'anneau, et le
+   rang en plus : posée « à la crête de la ficelle » sans ces deux termes, elle
+   flottait trois pixels au-dessus du trait, et vingt-six en dessous dès la
+   deuxième planche. Elle se tient au même `left` que la ficelle : un nœud à
+   côté du cordage ne noue rien. */
 .abs-corde-noeud {
   position: absolute;
-  left: calc(var(--charte-espace-3) - var(--charte-espace-2));
-  top: calc(-1 * var(--abs-corde-descente) - var(--charte-espace-2) + var(--abs-corde-fil) / 2);
-  width: 8px;
-  height: 8px;
+  left: var(--charte-espace-3);
+  top: calc(
+    -1 * (var(--abs-corde-descente) + var(--abs-corde-rang, 0) * var(--abs-corde-empilement))
+    + var(--abs-corde-fil) / 2
+    - (var(--abs-corde-noeud) + 2 * var(--charte-trait)) / 2
+  );
+  width: var(--abs-corde-noeud);
+  height: var(--abs-corde-noeud);
   background: var(--abs-coral);
   border: var(--charte-trait) solid var(--charte-encre);
 }
@@ -2190,6 +2206,12 @@ button.abs-planche-corps:focus-visible {
 .abs-corde-marque { flex-shrink: 0; }
 
 .abs-corde-motif {
+  /* LA COUPE EST VOULUE ICI, et c'est la seule de la figure. Sur une planche
+     longue d'une journée, « Absence injustifiée » ne tient pas en 22 px de
+     haut : le rognage est admis parce que le mot entier est écrit trois fois
+     ailleurs — dans le `title` de la planche, dans son `aria-label`, et dans le
+     tiroir que le clic ouvre. Une pince de la tringle, elle, ne se rogne pas :
+     c'est le seul endroit où le libellé du motif vit. */
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
