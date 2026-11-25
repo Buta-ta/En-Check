@@ -127,15 +127,18 @@ describe('L’étagère — le rail appartient à la planche, pas à la rangée'
     expect(étagère).toContain('--abs-chute: var(--charte-espace-5)')
     expect(étagère).toContain('--abs-tringle: 10px')
     expect(étagère).toContain('--abs-planche: 88px')
-    expect(étagère).toContain('--abs-corde: 20px') // le seul vide sous la chemise, voir plus bas
+    expect(étagère).toContain('--abs-espace: 20px') // le seul vide sous la chemise, voir plus bas
+    expect(étagère).toContain('--abs-corde: 30px') // la corde, du trait de la chemise à la traverse
+    expect(étagère).toContain('--abs-anneau: 8px') // le cran qui pose l'anneau sur le trait
     const corde = nud(declarations('.abs-planche-corde'))
     expect(corde).toContain('height:var(--abs-corde)')
     expect(corde).toContain('top:calc(-1*(var(--abs-corde)+var(--abs-tringle)))')
     // la place de la corde est portée par la planche, pas par la rangée
     expect(nud(declarations('.abs-planche'))).toContain('margin-top:var(--abs-corde)')
-    // l'anneau se pose à hauteur du bord du bas de la chemise
+    // l'anneau se pose AU HAUT DE LA CORDE, descendu d'un cran — jamais au même
+    // décalage qu'elle (la faute du 2/12, voir le verrou d'aplomb plus bas)
     expect(nud(declarations('.abs-planche-corde i::before')))
-      .toContain('top:calc(-1*(var(--abs-corde)+var(--abs-tringle)))')
+      .toContain('top:calc(var(--abs-tringle)-var(--abs-anneau))')
   })
 })
 
@@ -153,11 +156,11 @@ describe('L’étagère — plus de bande à franchir : la rangée pend du bord 
   // 20 px n'est pas un goût : c'est le `padding-top` de `<main>`, écrit ailleurs.
   // C'est précisément le genre de chiffre qu'on recopie et qu'on oublie — donc il est
   // relu à sa source à chaque `vitest run`.
-  it('--abs-corde est le vide qu\'il reste sous la chemise, relu dans la page', () => {
+  it('--abs-espace est le vide qu\'il reste sous la chemise, relu dans la page', () => {
     const étagère = declarations('.abs-etagere')
     const page = lire('src', 'pages', 'Absences.jsx')
     const main = parseInt(/main:\s*\{\s*padding:\s*(\d+)/.exec(page)[1], 10)
-    const posée = parseInt(/--abs-corde:\s*(\d+)px/.exec(étagère)[1], 10)
+    const posée = parseInt(/--abs-espace:\s*(\d+)px/.exec(étagère)[1], 10)
     expect(main).toBe(20)
     expect(posée).toBe(main)
     // et le bloc du transat est bien parti : sinon la corde de 20 px retomberait sur
@@ -171,21 +174,51 @@ describe('L’étagère — plus de bande à franchir : la rangée pend du bord 
   // Toucher l'un sans l'autre fait sauter les sept planches de 20 px.
   it('le vide est annulé, pas résorbé : les deux nombres se répondent', () => {
     const étagère = nud(declarations('.abs-etagere'))
-    expect(étagère).toContain('margin:calc(-1*var(--abs-corde))autovar(--abs-chute)')
+    expect(étagère).toContain('margin:calc(-1*var(--abs-espace))autovar(--abs-chute)')
     expect(étagère).toContain('padding:0var(--abs-retrait)')
     // la corde, elle, est rendue planche par planche — c'est ce qui fait qu'un rang
     // qui se replie garde ses cordes
     expect(nud(declarations('.abs-planche'))).toContain('margin-top:var(--abs-corde)')
   })
 
-  // L'anneau est le point d'accroche : il se pose à la hauteur du bord du bas de la
-  // chemise, donc une corde + une traverse au-dessus du haut de la corde, et le
-  // retrait horizontal est LE MÊME que celui de la rangée.
-  it('l’anneau tombe sur le bord de la chemise, à son aplomb', () => {
+  /* L'APLOMB DE L'ANNEAU — le défaut que le fondateur a vu sur la capture du 3/12 :
+     « les trous (ronds) sont mal placés ». La pose du 2/12 posait l'anneau au décalage
+     `-(corde + traverse)`relatif à la CORDE, qui est elle-même déjà montée de
+     `-(corde + traverse)` : deux fois le saut, 20 px au-dessus du trait de la chemise,
+     par-dessus le titre. Rien ne cassait — les anneaux flottaient, voilà tout. Le seul
+     verrou qui attrape ça n'est pas une chaîne recopiée mais une addition :
+
+       corde = 40 px au-dessus du bois ; trait de la chemise = 30 px ;
+       anneau = de 32 px (haut) à 20 px (bas) au-dessus du bois → il tombe SUR le trait.
+     Et le retrait horizontal reste LE MÊME jeton que celui de la rangée. */
+  it('l’anneau tombe sur le trait du bas de la chemise, pas dedans ni au-dessus', () => {
     const anneau = declarations('.abs-planche-corde i::before')
-    expect(nud(anneau)).toContain('top:calc(-1*(var(--abs-corde)+var(--abs-tringle)))')
     expect(anneau).toMatch(/left:\s*-5px/) // centré sur un trait de 2 px : -(8 + 2) / 2
     const étagère = declarations('.abs-etagere')
+    const nombre = (nom) => parseInt(étagère.split(`${nom}: `)[1], 10)
+    const espace = nombre('--abs-espace') // 20 : le vide sous la chemise
+    const corde = nombre('--abs-corde') // 30 : la corde, du trait à la traverse
+    const traverse = nombre('--abs-tringle') // 10 : la barre peinte sur le bois
+    const cran = nombre('--abs-anneau') // 8 : la descente de l'anneau
+    // l'épaisseur peinte de l'anneau : son carré + ses deux bordures
+    const hauteur = parseInt(anneau.split('height: ')[1], 10) + 2 * parseInt(anneau.split('border: ')[1], 10)
+    expect(hauteur).toBe(12)
+    // 1. le HAUT de la corde est à `corde + traverse` au-dessus du bois : 40 px
+    const hautCorde = corde + traverse
+    expect(hautCorde).toBe(40)
+    // 2. le TRAIT du bas de la chemise est à 30 px au-dessus du bois (`corde`), et
+    //    la corde part de là : `corde + traverse − traverse` = `corde`
+    // 3. l'anneau est posé au haut de la corde, descendu du cran : de 32 px à 20 px
+    expect(hautCorde - cran).toBe(32)
+    expect(hautCorde - cran - hauteur).toBe(20)
+    // 4. et 20 px, c'est exactement `--abs-espace`, le remplissage haut de `<main>` :
+    //    le borderet de l'anneau s'arrête SUR le trait de la chemise, il ne le
+    //    traverse pas et ne flotte pas au-dessus. Un anneau posé au même décalage que la
+    //    corde (la faute du 2/12) le remontait de 20 px, par-dessus le titre.
+    expect(hautCorde - cran - hauteur).toBe(espace) // 40 − 8 − 12 = 20, le trait
+    // 4. et il n'est pas au même décalage que la corde — c'était LA faute
+    expect(nud(anneau)).not.toContain('top:calc(-1*(var(--abs-corde)+var(--abs-tringle)))')
+    expect(nud(anneau)).toContain('top:calc(var(--abs-tringle)-var(--abs-anneau))')
     expect(étagère).toMatch(/padding:\s*0\s+var\(--abs-retrait\)/)
     expect(étagère).toMatch(/--abs-retrait:\s*40px/)
     // 40 = le retrait du contenu de la chemise, relu dans la feuille : 16 + 24

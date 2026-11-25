@@ -61,6 +61,23 @@ Le retrait horizontal devient un jeton unique, `--abs-retrait: 40px`, relu comme
 
 Ce que le verrou de somme est devenu : il ne vérifie plus `26 + 20 + 24 = 70` (la respiration du transat n'existe plus dans la page), il vérifie **`main.padding == etagere.--abs-corde`** et **l'absence de `<AbsencesHamac`** dans la page. Un test qui ne vérifie que l'arithmétique laisse repasser le bloc par la fenêtre.
 
+## Le corollaire du 3/12 — l'anneau se pose au HAUT de la corde, pas à son décalage
+
+Le fondateur, sur la capture de la pose R1 : « c'est bien mais je constate que les trous (ronds) sont mal placés ». Mesure sur son image (2674×520, échelle 1,885 px = 1 px CSS) : les quatorze anneaux tombaient entre 12 et 32 px **au-dessus** du trait du bas de la chemise — dans le titre, pas sur la ligne. Horizontal, en revanche, c'était juste : les centres des anneaux et des cordes concordent au pixel près (écart de 1 à 3 px sur 2674).
+
+La faute tenait en un mot : **empilement**. La corde est montée de `corde + traverse` au-dessus du bois, et j'ai posé l'anneau à `-(corde + traverse)` **relatif à la corde** — donc deux fois le saut, 20 px de trop. Rien ne casse : les ronds flottent, la corde reste muette, tous les compteurs sont verts. Un dessin faux n'est pas une exception.
+
+La géométrie d'aplomb, quatre nombres et une soustraction :
+
+| segment | valeur | lu où |
+|---|---|---|
+| le vide sous la chemise, annulé par le `margin` | 20 px | `--abs-espace`, relu contre `S.main.padding` |
+| la corde, du trait de la chemise à la traverse | 30 px | `--abs-corde` |
+| la traverse peinte sur le bois | 10 px | `--abs-tringle` |
+| la descente de l'anneau, pour qu'il **touche** la ligne au lieu de la traverser | 8 px | `--abs-anneau`, le seul réglage d'œil de la rangée |
+
+Donc `top: calc(var(--abs-tringle) - var(--abs-anneau))` sur l'anneau — un cran **descendu depuis le haut de la corde**, jamais le décalage de la corde. De 40 px au-dessus du bois (son haut, le haut de la corde) à 20 px (son borderet, le trait de la chemise). Le verrou ne compare pas des chaînes : il relit les quatre jetons et l'épaisseur peinte (8 + 2 × 2), et vérifie `corde + traverse − cran − épaisseur == main.padding` — si quelqu'un graisse la corde sans reprendre l'anneau, la soustraction tombe et dit quoi retoucher.
+
 ## Le raccord au bloc du haut (reprise du 1/12, morte le 2/12 — consignée pour ce qu'elle a appris)
 
 Le vide que le fondateur montrait du doigt ne venait pas d'une corde trop courte : il venait de **deux conteneurs**. Le transat est un enfant de `.abs-page`, l'étagère un enfant de `<main>`. La bande morte entre les deux valait 26 px (la respiration du bas du transat) + 20 px (le remplissage du haut de `main`) + 24 px (la chute sous le rail) = **70 px de rien**.
@@ -117,7 +134,7 @@ _Pose précédente, périmée ci-dessus mais consignée :_ #345, fusionné dans 
 | `npx vitest run` | 195 fichiers · 2728 ✓ | 196 · **2749 ✓** | 196 · **2749 ✓** (aucun verrou retiré, 6 réécrits pour le nouveau contrat) |
 | `npx vite build` | ✓ | ✓ 18,8 s | ✓ 20,1 s |
 | la corde, dans la feuille minifiée servie | — | 5 mentions, `--abs-corde: 70px` | `--abs-corde: 20px`, `margin:calc(-1 * var(--abs-corde)) auto`, plus **aucune** règle `abs-etagere-suspentes`, plus **aucune** règle `.abs-hamac` |
-| lignes de la feuille de style | — | 1 172 | **974** (−198 : 161 lignes pour le bloc du transat, 37 pour la corde longue, le reste en prose reprise) |
+| lignes de la feuille de style | — | 1 172 | **993** (le corollaire du 3/12 ajoute 19 lignes de calcul et de prose, rien de plus) (−198 : 161 lignes pour le bloc du transat, 37 pour la corde longue, le reste en prose reprise) |
 | `npm run charte` · couleurs en dur | 4548 · 185 fichiers | **4548 · 185** |
 | `npm run charte` · ombres floues | 131 | **131** |
 | `npm run charte` · rayons hors liste | 359 · 18 valeurs | **359 · 18** |
