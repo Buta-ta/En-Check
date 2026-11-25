@@ -39,6 +39,7 @@ import {
 } from './plafondHebdomadaire'
 import { evaluerReposQuotidien, messageRepos } from './reposQuotidien'
 import { activationAlerte as encheckActivationAlerte, resoudre as resoudreRegleTemps } from './reglesTempsTravail'
+import { lundiDeLaSemaine } from './seuilsHebdoParSemaine'
 
 //  Aucun seuil de pointage n'est plus écrit en dur dans ce moteur : ils viennent
 //  de `encheck_reglages_pointage` (voir src/services/seuilsPointage.js). Les
@@ -442,8 +443,7 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
   for (const d of listDaysInclusive(debutSemaines, finSemaines)) {
     secondesParJour[d] = (daySummaries[d] || {}).totalSeconds || 0
   }
-  const plafondHebdo = evaluerSeuilsHebdo({
-    semaines: agregerParSemaine({
+  const semainesAgregees = agregerParSemaine({
       secondesParJour,
       debut: debutSemaines,
       fin: finSemaines,
@@ -462,15 +462,29 @@ export async function calculateEmployeeHours(employeeId, enterpriseId, reference
         plan ? Number(plan.bascule) || 0 : 0,
         enterprise.timezone || null,
       ),
-    }),
-    //  Seuils d'HEURES SUPÉRIEURES de l'entreprise (40 h / 48 h). Ce ne sont
-    //  pas des plafonds légaux : aucun texte n'est invoqué ici.
-    //  `null` quand le seuil n'a pas été CHOISI : pas de seuil, pas d'alerte.
-    seuil: seuilsAlerteRegles.seuil,
-    seuilMajeur: seuilsAlerteRegles.seuilMajeur,
-    //  Ce que l'on SAIT de l'origine, jamais davantage (P5). Et surtout : plus de
-    //  condition au module de paie — le contrôle survit à sa désactivation (G6).
-    source: seuilsAlerteRegles.source,
+  })
+
+  //  Les lundis à résoudre : un par semaine évaluée, plus le lundi de la
+  //  semaine de référence (qui peut précéder la fenêtre).
+  const lundisAEvaluer = [...new Set(
+    semainesAgregees
+      .map((sem) => lundiDeLaSemaine(sem.debut, enterprise.timezone || null))
+      .filter(Boolean),
+  )]
+  const seuilsParLundi = await chargerReglesAlerteParSemaine(
+    employee.enterprise_id,
+    employee.id,
+    lundisAEvaluer,
+  )
+
+  //  ⚠️ UNE SEMAINE, UN PALIER (décision option 3).
+  //  On évalue les semaines PAR TRANCHES : toutes celles qui partagent le même
+  //  lundi-applicable sont jugées ensemble, avec leur propre seuil. Une règle
+  //  prenant effet un mercredi s'applique donc au lundi SUIVANT — on ne coupe
+  //  jamais une semaine entre deux règles.
+  const plafondHebdo = evaluerSemainesParPalier(semainesAgregees, seuilsParLundi, {
+    enterpriseTimezone: enterprise.timezone || null,
+    seuilsFixes: seuilsAlerteRegles,
   })
 
   // ── 11-ter) Repos entre deux journées ────────────────────────
@@ -1585,6 +1599,161 @@ function resolvePlanForExpected(employeeScheduleRow, defaultScheduleRow) {
  * valeurs viennent du réglage d'entreprise, ou de ses défauts, et l'origine est
  * toujours transmise pour que le message ne mente pas (P5).
  */
+/**
+ * Évalue des semaines agrégées contre DES SEUILS QUI CHANGENT DANS LE TEMPS.
+ *
+ * Chaque semaine est jugée avec le palier en vigueur à SON lundi : une règle
+ * prenant effet en milieu de semaine ne s'applique qu'au lundi suivant, et une
+ * semaine passée se relit avec la règle de son époque.
+ *
+ * ⚠️ Aucune valeur n'est inventée. Quand un lundi n'a pas pu être résolu
+ * (panne, règle future), la semaine est marquée `resolution_absente` et
+ * n'affirme AUCUN dépassement ni AUCUNE conformité : le silence n'est pas un
+ * feu vert.
+ *
+ * @param {Array} semaines      sortie d'`agregerParSemaine`
+ * @param {Map} seuilsParLundi  lundi ISO → { seuil, niveau2, activation }
+ * @param {object} options      { enterpriseTimezone, seuilsFixes }
+ */
+function evaluerSemainesParPalier(semaines, seuilsParLundi, { enterpriseTimezone = null, seuilsFixes = {} } = {}) {
+  const tranches = []
+  let trancheCourante = null
+
+  for (const sem of semaines || []) {
+    const lundi = lundiDeLaSemaine(sem.debut, enterpriseTimezone)
+    const brut = lundi ? (seuilsParLundi?.get?.(lundi) ?? null) : null
+    const porte = empreinteDeRegles(brut, seuilsFixes, lundi)
+    const derniere = trancheCourante
+    if (derniere && derniere.porte.cle === porte.cle) {
+      derniere.semaines.push(sem)
+    } else {
+      trancheCourante = { porte, semaines: [sem] }
+      tranches.push(trancheCourante)
+    }
+  }
+
+  const partySemaines = []
+  const porteGlobal = tranches[0]?.porte || null
+  for (const tranche of tranches) {
+    if (!tranche.porte.disponible) {
+      for (const sem of tranche.semaines) {
+        partySemaines.push({
+          ...sem,
+          heures: Math.round((Number(sem.secondes) || 0) / 3600 * 100) / 100,
+          depasse: false,
+          depassement_heures: 0,
+          depassement_niveau_haut_heures: 0,
+          niveau: 'non_evalue',
+          partielle: false,
+          a_venir: false,
+          lundi_regle: tranche.porte.lundi,
+          regle_resolue: false,
+          motif: tranche.porte.motif,
+        })
+      }
+      continue
+    }
+
+    const evaluation = evaluerSeuilsHebdo({
+      semaines: tranche.semaines,
+      seuil: tranche.porte.seuil,
+      seuilMajeur: tranche.porte.seuilMajeur,
+      source: tranche.porte.source,
+    })
+
+    for (const sem of evaluation.semaines) {
+      partySemaines.push({
+        ...sem,
+        //  Le lundi de CETTE semaine. Le porter depuis la tranche donnait à
+        //  toutes les semaines du même palier la date de la première — une
+        //  semaine de janvier se serait lue « règle du 28 décembre ».
+        lundi_regle: lundiDeLaSemaine(sem.debut, enterpriseTimezone),
+        regle_resolue: true,
+        seuil_applique: tranche.porte.seuil,
+        seuil_majeur_applique: tranche.porte.seuilMajeur,
+        seuil_source: tranche.porte.source,
+      })
+    }
+  }
+
+  const depassees = partySemaines.filter((sem) => sem.depasse)
+  const max = partySemaines.reduce(
+    (acc, sem) => (!acc || sem.secondes > acc.secondes ? sem : acc),
+    null,
+  )
+  const nonResolues = partySemaines.filter((sem) => sem.regle_resolue === false)
+
+  return {
+    disponible: nonResolues.length === 0 && partySemaines.length > 0,
+    motif: nonResolues.length > 0
+      ? `${nonResolues.length} semaine(s) sans règle résolue : aucun verdict n'est prononcé pour elles`
+      : null,
+    seuil: porteGlobal?.seuil ?? null,
+    seuil_majeur: porteGlobal?.seuilMajeur ?? null,
+    source: porteGlobal?.source ?? null,
+    seuils_par_semaine: partySemaines.map((sem) => ({
+      lundi_regle: sem.lundi_regle ?? null,
+      seuil: sem.seuil_applique ?? null,
+      seuil_majeur: sem.seuil_majeur_applique ?? null,
+      source: sem.seuil_source ?? null,
+      resolu: sem.regle_resolue !== false,
+    })),
+    semaines: partySemaines,
+    nb_depassees: depassees.length,
+    max: max ? { debut: max.debut, fin: max.fin, heures: max.heures } : null,
+  }
+}
+
+/**
+ * Ce qui distingue deux semaines du point de vue de la règle.
+ * Sert à regrouper les semaines consécutives qui partagent le même palier.
+ */
+function empreinteDeRegles(brut, seuilsFixes, lundi) {
+  //  Résolution absente : la semaine ne reçoit AUCUN verdict.
+  if (!brut) {
+    return {
+      cle: `absente:${lundi ?? 'inconnu'}`,
+      disponible: false,
+      motif: 'aucune règle n’a pu être résolue pour ce lundi',
+      lundi: lundi ?? null,
+    }
+  }
+
+  const valeurSeuil = brut.seuil?.valeur !== null && brut.seuil?.valeur !== undefined
+    ? Number(brut.seuil.valeur)
+    : null
+  const valeurNiveau2 = brut.niveau2?.valeur !== null && brut.niveau2?.valeur !== undefined
+    ? Number(brut.niveau2.valeur)
+    : null
+
+  //  Le repli (réglage d'entreprise) ne s'applique QUE si la table versionnée
+  //  ne porte aucune valeur — exactement la règle de `seuilsAlerteHebdo`.
+  const seuil = valeurSeuil !== null ? valeurSeuil : (Number(seuilsFixes.seuil) || null)
+  const seuilMajeur = valeurSeuil !== null
+    ? valeurNiveau2
+    : (Number(seuilsFixes.seuilMajeur) || null)
+
+  const activeVersionnee = brut.activation?.active
+  const alerteActivee = activeVersionnee === true
+    || (activeVersionnee === null || activeVersionnee === undefined
+      ? seuilsFixes.alerteActivee === true
+      : false)
+
+  const source = brut.seuil?.origine === 'aucune' || brut.seuil?.origine === undefined
+    ? (seuilsFixes.source || 'entreprise')
+    : brut.seuil.origine
+
+  return {
+    cle: `${seuil}|${seuilMajeur}|${alerteActivee}|${source}`,
+    disponible: true,
+    motif: null,
+    lundi: lundi ?? null,
+    seuil: alerteActivee ? seuil : null,
+    seuilMajeur: alerteActivee ? seuilMajeur : null,
+    source,
+  }
+}
+
 export function seuilsAlerteHebdo(reglageHebdo, reglesAlerte = null) {
   const settings = reglageHebdo?.settings || null
   const origineEnregistree = reglageHebdo?.provenance?.origine || 'inconnue'
@@ -1724,6 +1893,46 @@ async function loadOvertimeContext(enterpriseId) {
 async function activationAlerteRegle(entrepriseId) {
   const etat = await encheckActivationAlerte({ entrepriseId })
   return etat && etat.active !== null ? etat : null
+}
+
+/**
+ * Les règles d'alerte, résolues POUR UN EMPLOYÉ ET POUR DES LUNDIS.
+ *
+ * ⚠️ Décision du fondateur (option 3) : chaque semaine se lit avec la règle en
+ * vigueur LE LUNDI de cette semaine. On interroge donc la RPC datée, lundi par
+ * lundi, au lieu d'une résolution unique « aujourd'hui ».
+ *
+ * Pourquoi la RPC datée plutôt qu'un filtrage des versions côté JS : la
+ * PRIORITÉ d'une règle personnelle VERROUILLÉE sur celle de l'entreprise est
+ * tranchée par Postgres (`encheck_regles_tt_personnelle_verrouillee`). La
+ * refaire en JS, c'est prendre le risque de deux vérités. On lui pose donc la
+ * question à la bonne date, avec le bon employé.
+ *
+ * @param {string} entrepriseId
+ * @param {string|null} employeId
+ * @param {string[]} lundis  dates 'AAAA-MM-JJ', une par semaine à évaluer
+ * @returns {Promise<Map<string, object>>} lundi → règles applicables
+ */
+async function chargerReglesAlerteParSemaine(entrepriseId, employeId, lundis = []) {
+  const dates = [...new Set((lundis || []).filter(Boolean))].sort()
+  if (dates.length === 0) return new Map()
+
+  const resultats = await Promise.all(
+    dates.map(async (date) => {
+      try {
+        const [seuil, niveau2, activation] = await Promise.all([
+          resoudreRegleTemps({ entrepriseId, employeId, cle: 'alerte_hebdo_heures', date }),
+          resoudreRegleTemps({ entrepriseId, employeId, cle: 'alerte_hebdo_niveau2_heures', date }),
+          encheckActivationAlerte({ entrepriseId, date }).catch(() => null),
+        ])
+        return [date, { seuil, niveau2, activation }]
+      } catch {
+        return [date, null]
+      }
+    }),
+  )
+
+  return new Map(resultats)
 }
 
 async function chargerReglesAlerte(entrepriseId) {
