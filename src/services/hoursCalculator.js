@@ -1647,6 +1647,12 @@ function evaluerSemainesParPalier(semaines, seuilsParLundi, { enterpriseTimezone
           partielle: false,
           a_venir: false,
           lundi_regle: tranche.porte.lundi,
+          //  Contrat explicite : une semaine sans verdict n'a AUCUN seuil
+          //  appliqué. `undefined` dirait « on ne sait pas », alors qu'on sait
+          //  exactement ceci : rien n'a été appliqué.
+          seuil_applique: null,
+          seuil_majeur_applique: null,
+          seuil_source: null,
           regle_resolue: false,
           motif: tranche.porte.motif,
         })

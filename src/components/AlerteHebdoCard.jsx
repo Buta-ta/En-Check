@@ -36,21 +36,58 @@ function originesDesSemaines(semaines, origineGlobale) {
   return 'Seuils d’origine différente selon les semaines'
 }
 
-export default function AlerteHebdoCard({ plafond }) {
-  //  Rien à dire, ou rien de prouvé : on ne dit rien.
-  if (!plafond || plafond.disponible !== true) return null
-  const semaines = (plafond.semaines || []).filter((s) => s && s.depasse === true)
-  if (semaines.length === 0) return null
+/**
+ * Les semaines dont le dépassement est PROUVÉ.
+ *
+ * Une semaine n'est retenue que si elle a été réellement jugée : règle
+ * résolue (`regle_resolue !== false`) et dépassement constaté. Une semaine
+ * sans règle n'a pas de verdict, donc pas de dépassement à afficher.
+ */
+function semainesProuvees(plafond) {
+  return (plafond.semaines || []).filter(
+    (s) => s && s.depasse === true && s.regle_resolue !== false,
+  )
+}
 
-  const message = messageDepassement(plafond)
+/**
+ * Les semaines qui n'ont PAS pu être jugées.
+ *
+ * Elles ne sont ni conformes ni en dépassement : elles n'ont pas eu de
+ * verdict. On les nomme, sans les mêler aux semaines prouvées.
+ */
+function semainesSansVerdict(plafond) {
+  return (plafond.semaines || []).filter((s) => s && s.regle_resolue === false)
+}
+
+export default function AlerteHebdoCard({ plafond }) {
+  if (!plafond) return null
+
+  const semaines = semainesProuvees(plafond)
+  const sansVerdict = semainesSansVerdict(plafond)
+
+  //  ⚠️ `disponible === false` ne signifie PAS « rien à dire » : il signifie
+  //  que TOUTES les semaines n'ont pas pu être jugées. Une semaine vérifiée
+  //  peut malgré tout porter un dépassement prouvé — le masquer parce qu'une
+  //  AUTRE semaine est indisponible, c'est perdre une alerte réelle.
+  //  On l'affiche donc, en signalant séparément ce qui reste inconnu.
+
+  //  Rien de prouvé et rien à signaler : on ne dit rien.
+  if (semaines.length === 0 && sansVerdict.length === 0) return null
+
+  const message = semaines.length > 0 ? messageDepassement(plafond) : null
 
   return (
     <section className="e360-carte e360-alerte-hebdo" aria-label="Dépassement hebdomadaire">
       <h3 className="e360-carte-titre">
-        Dépassement hebdomadaire
-        <span className="e360-alerte-hebdo-compte">
-          {semaines.length} semaine{semaines.length > 1 ? 's' : ''}
-        </span>
+        {/*  ⚠️ Le titre ne doit pas annoncer un dépassement quand aucun n'est
+            affiché. Une carte qui ne porte que des semaines sans verdict
+            parle de contrôle, pas de dépassement. */}
+        {semaines.length > 0 ? 'Dépassement hebdomadaire' : 'Contrôle hebdomadaire'}
+        {semaines.length > 0 && (
+          <span className="e360-alerte-hebdo-compte">
+            {semaines.length} semaine{semaines.length > 1 ? 's' : ''}
+          </span>
+        )}
       </h3>
 
       {message && <p className="e360-alerte-hebdo-message">{message}</p>}
@@ -71,13 +108,34 @@ export default function AlerteHebdoCard({ plafond }) {
         ))}
       </ul>
 
+      {/*  Une semaine sans verdict est dite À PART : ni conforme, ni en
+          dépassement. La mêler aux semaines prouvées ferait croire qu'elle a
+          été jugée ; la taire ferait croire qu'il n'y avait rien à voir. */}
+      {sansVerdict.length > 0 && (
+        <ul className="e360-alerte-hebdo-liste e360-alerte-hebdo-sans-verdict">
+          {sansVerdict.map((semaine) => (
+            <li key={`sv-${semaine.debut}-${semaine.fin}`}>
+              <span>
+                Semaine du {jourCourt(semaine.debut)} au {jourCourt(semaine.fin)}
+              </span>
+              <strong>
+                {semaine.heures} h — aucun seuil applicable n’a pu être résolu :
+                aucun verdict n’est prononcé pour cette semaine.
+              </strong>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {/*  ⚠️ Une semaine passée peut avoir été régie par une AUTRE origine que
           la semaine en cours (seuil personnel d'alors, règle d'entreprise
           depuis). Nommer une seule origine pour toutes les lignes reviendrait
           à prêter à une semaine une règle qui n'était pas la sienne. */}
-      <p className="e360-alerte-hebdo-note">
-        {originesDesSemaines(semaines, plafond.source)}. Ce n’est pas un plafond légal.
-      </p>
+      {semaines.length > 0 && (
+        <p className="e360-alerte-hebdo-note">
+          {originesDesSemaines(semaines, plafond.source)}. Ce n’est pas un plafond légal.
+        </p>
+      )}
     </section>
   )
 }
