@@ -86,7 +86,12 @@ it('does not invent data for an empty day and uses plural counts', () => {
   const html = render([])
   expect(html).toContain('0 min')
   expect(html).toContain('Retards constatés')
-  expect(html).toContain('Aucun retard constaté')
+  /*  25/11 : l'état vide ne dit plus la même chose. Il nomme ce qui est vrai
+      (« Aucune retard sur cette période ») et donne une issue au lieu de
+      répéter « 0 fiches sur 0 » juste en dessous. */
+  expect(html).toContain('Aucun retard sur cette période.')
+  expect(html).toContain('Aucune fiche sur cette période')
+  expect(html).not.toContain('0 fiches sur 0')
   expect(html).not.toContain('Hippo')
 })
 it('keeps the real weekly distribution and all zero days', () => {

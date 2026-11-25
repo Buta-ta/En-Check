@@ -775,12 +775,47 @@ export function RetardsContent({
             </details>
           )}
 
+          {/*  L'ÉTAT VIDE, refait le 25/11. Il disait « Aucun retard constaté
+              sur cette période parmi les journées évaluées. » puis, juste en
+              dessous, « 0 fiches sur 0 » : deux fois rien, et aucune issue.
+              Il dit maintenant ce qui est vrai, et propose la sortie quand il
+              y en a une — élargir la période, ou effacer la recherche. */}
           {!visible.length && (
-            <p className="rt-empty">
-              {retards.length
-                ? 'Aucun résultat pour cette recherche.'
-                : 'Aucun retard constaté sur cette période parmi les journées évaluées.'}
-            </p>
+            <div className="rt-empty">
+              <span className="rt-empty-marque" aria-hidden="true">
+                {terme ? <Search size={18} /> : <Clock size={18} />}
+              </span>
+              <div className="rt-empty-copie">
+                <strong>
+                  {terme
+                    ? 'Aucun nom ne correspond.'
+                    : 'Aucun retard sur cette période.'}
+                </strong>
+                <p>
+                  {terme
+                    ? `Rien au nom de « ${search.trim()} » parmi les ${retards.length} fiche${retards.length > 1 ? 's' : ''} de la période.`
+                    : `${dates.length} journée${dates.length > 1 ? 's' : ''} évaluée${dates.length > 1 ? 's' : ''} sans aucun retard. Rien à relancer ici.`}
+                </p>
+                <div className="rt-empty-gestes">
+                  {terme ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearch('')
+                        setPage(0)
+                      }}
+                    >
+                      Effacer la recherche
+                    </button>
+                  ) : (
+                    <span className="rt-empty-note">
+                      Pour voir plus large, changez de période dans la barre du
+                      haut — Jour, Semaine ou Mois.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
 
           {ordonnees.map((r) => (
@@ -793,10 +828,12 @@ export function RetardsContent({
 
           <footer className="rt-pagination">
             <span>
-              {filtered.length === 1
-                ? '1 fiche horaire'
-                : `${visible.length} fiches sur ${filtered.length}`}
-              {search && ` · ${retards.length} sur la période`}
+              {!filtered.length
+                ? 'Aucune fiche sur cette période'
+                : filtered.length === 1
+                  ? '1 fiche horaire'
+                  : `${visible.length} fiche${visible.length > 1 ? 's' : ''} sur ${filtered.length}`}
+              {search && retards.length > 0 && ` · ${retards.length} sur la période`}
             </span>
             {pageCount > 1 && (
               <div>
