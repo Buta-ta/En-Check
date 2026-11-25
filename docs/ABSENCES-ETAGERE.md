@@ -88,7 +88,10 @@ Et la preuve que le build ne défait pas le geste : `calc(var(--abs-chute) - var
 
 ## Où c'est posé
 
-#345, fusionné dans `main` en `5c44263` le 1/12. CI `success`, Vercel `dpl_4vGyTGD3n4n72MAnpNwAZE5SFBPa` · READY · PROMOTED sur l'alias `main`. Le seul chevauchement avec la session voisine (#344) était la retouche de regex sur la date courte des échéances — deux mains, même geste : **la version de main a été gardée, la mienne retirée** avant la fusion. Ce qui reste de ce côté, c'est l'étagère.
+**R1 · la poutre (2/12)** : #348, fusionné dans `main` en `e2ef3b5`, CI `success`, Vercel `dpl_2no1J1N9fxVugyK8dGaioqh2GrCa` · READY · PROMOTED sur l'alias `main`. Le pli avec la session voisine (#347, écran de chargement des annonces) n'a rencontré aucun des six fichiers touchés.
+
+
+_Pose précédente, périmée ci-dessus mais consignée :_ #345, fusionné dans `main` en `5c44263` le 1/12. CI `success`, Vercel `dpl_4vGyTGD3n4n72MAnpNwAZE5SFBPa` · READY · PROMOTED sur l'alias `main`. Le seul chevauchement avec la session voisine (#344) était la retouche de regex sur la date courte des échéances — deux mains, même geste : **la version de main a été gardée, la mienne retirée** avant la fusion. Ce qui reste de ce côté, c'est l'étagère.
 
 ## Deux accidents de chemin, écrits pour ne pas être refaits
 
