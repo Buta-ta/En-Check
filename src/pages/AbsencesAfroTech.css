@@ -924,6 +924,565 @@ button.abs-planche-corps:focus-visible {
   .abs-planche-corde { padding: 0 var(--charte-espace-5); }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   🧺 LE FIL — une demande = une fiche pendue
+   Maquette `maquettes/absences-calendrier-D-fil.png` (8/12).
+
+   L'onglet « Demandes employés » n'est plus une liste de lignes : c'est
+   du linge. Deux fils — ce qui attend, ce qui est jugé — et sur chaque
+   fil des fiches qui pendent à un anneau. La figure est celle de la
+   poutre du haut de page (corde, anneau, bois), mais elle dit autre
+   chose : le Planning répond « qui est là ? », le fil répond « qu'est-ce
+   qui attend, et depuis quand, et ça dure combien de jours ? ».
+
+   Trois nombres, et un seul d'entre eux est d'œil. La corde se pose en
+   `border-top` du RANG, pas du fil : quand la rangée se replie, le rang
+   qui tombe à l'écran reçoit son propre fil et ses propres anneaux — la
+   même menuiserie qu'en haut, pour la même raison.
+
+     --abs-fil-corde  4 px   l'épaisseur du trait tendu
+     --abs-fil-saut  24 px   la descente de la corde au bois de la fiche
+     --abs-fil-anneau 10 px   le cercle qui mord la corde
+
+   Décompte depuis le haut du bois d'une fiche : le fil monte de
+   `saut + corde` (28 px), son centre est à 26 px, l'anneau est posé à
+   `saut + (corde + anneau) / 2` = 31 px au-dessus du bois, donc son bord
+   bas remonte à 21 px : il traverse la corde de 3 px de part et d'autre.
+   Un anneau qui longe la corde ne retient rien ; c'est sa morsure qui dit
+   « accrochée ». Les quatre nombres sont relus par
+   `absencesFil.test.jsx`, jamais recopiés dans un `expect`.
+
+   La longueur du linge et le trait sous la fiche ne se peignent pas ici :
+   ils viennent de `LE_FIL` et du service des durées, en variables (`width`
+   en px, `--abs-fiche-trait` en pourcentage). Une règle de calcul écrite
+   deux fois se contredit à la première retouche.
+   ═══════════════════════════════════════════════════════════ */
+
+.abs-fil {
+  /* les trois nombres du fil, posés sur la section : le rang en a besoin pour
+     tendre la corde, la fiche pour descendre son anneau, et l'état vide pour
+     montrer un fil sans linge. Déclarés une fois, relus par un test. */
+  --abs-fil-corde: 4px;
+  --abs-fil-saut: 24px;
+  --abs-fil-anneau: 10px;
+  /* l'air entre deux fiches et le retrait du bois sous le trait : les mêmes
+     nombres que `LE_FIL`, côté calcul — la feuille et le calcul se relisent */
+  --abs-fil-ecart: 12px;
+  --abs-fil-retrait: 24px;
+  /* la hauteur d'une fiche : le bois la réclame, le crochet en main aussi —
+     détacher ne fait pas bouger le fil d'un cran */
+  --abs-fiche-bois: 96px;
+  position: relative;
+  padding: var(--charte-espace-4) 0 var(--charte-espace-5);
+  border-top: 1px dashed var(--abs-border-strong);
+}
+
+/* ── la bande : la légende du dessin, et la seule action de la section ── */
+.abs-fil-bande {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--charte-espace-4);
+}
+
+.abs-fil-legende {
+  margin: 0;
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 400;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--charte-espace-2);
+  flex-wrap: wrap;
+}
+
+.abs-fil-chiffres {
+  color: var(--charte-encre);
+  font-weight: 700;
+}
+
+.abs-fil-declarer {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  padding: 6px 12px;
+  background: var(--charte-aplat);
+  color: var(--charte-blanc);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  box-shadow: var(--charte-ombre-dure);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--charte-duree) ease-out;
+}
+
+.abs-fil-declarer:hover { background: var(--abs-argile); }
+
+/* ── le corps : les fils à gauche, les soldes à droite ── */
+.abs-fil-corps {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--charte-espace-4);
+}
+
+.abs-fil-fils {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--charte-espace-5);
+}
+
+.abs-fil-fil { min-width: 0; }
+
+/* L'intitulé du fil est une ligne, pas un titre posé sur un bandeau : la
+   maquette met le compte à côté du mot et les trois outils à l'opposé. */
+.abs-fil-tete {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  margin-bottom: var(--charte-espace-4);
+}
+
+.abs-fil-titre {
+  margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--charte-espace-2);
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+.abs-fil-titre b { font-size: var(--charte-taille-corps); }
+
+.abs-fil-detail {
+  color: var(--charte-douce);
+  font-weight: 400;
+  letter-spacing: 0.6px;
+}
+
+/* Les trois outils du bout de fil : la pile, une fiche à la fois. Ils ne
+   multiplient pas les écritures — ils appellent les gestes de la page. */
+.abs-fil-outils {
+  margin-left: auto;
+  display: inline-flex;
+  gap: var(--charte-espace-1);
+}
+
+.abs-fil-outils button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  cursor: pointer;
+  transition: background-color var(--charte-duree) ease-out;
+}
+
+.abs-fil-outils button:hover:not(:disabled) { background: var(--charte-surface2); }
+.abs-fil-outils button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* LE FIL LUI-MÊME : un rang = un trait tendu de bout en bout. La corde est
+   la `border-top` du rang, donc elle se repeint à chaque rang qui tombe à
+   l'écran et chaque anneau la retrouve sans qu'aucune media ne bouge. */
+.abs-fil-rang {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--abs-fil-ecart);
+  padding: 0 var(--abs-fil-retrait);
+  border-top: var(--abs-fil-corde) solid var(--charte-encre);
+}
+
+.abs-fil-rang + .abs-fil-rang { margin-top: var(--charte-espace-4); }
+
+/* LA FICHE. Son bois commence 24 px sous le fil — c'est la descente, et
+   c'est là que vivent le filin et l'anneau. `width` se borne à 100 % : la
+   longueur du linge est calculée (`--abs-fiche-largeur`), mais un écran
+   d'enfant la plafonne au fil — sinon une fiche de trois semaines, plus
+   large que le rang, ferait déborder le trait tendu. */
+.abs-fiche {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(var(--abs-fiche-largeur, 216px), 100%);
+  min-width: 0;
+  margin-top: var(--abs-fil-saut);
+}
+
+/* le filin : de la corde au bois */
+.abs-fiche::before {
+  content: "";
+  position: absolute;
+  top: calc(-1 * (var(--abs-fil-saut) + var(--abs-fil-corde)));
+  left: 50%;
+  width: 2px;
+  height: calc(var(--abs-fil-saut) + var(--abs-fil-corde));
+  margin-left: -1px;
+  background: var(--charte-encre);
+  pointer-events: none;
+}
+
+/* l'anneau : son centre tombe au centre de la corde — il la mord de 3 px
+   de chaque côté. Poser l'anneau AU LIEU de le centrer, c'était la panne du
+   3/12 sur la poutre ; le calcul est le même ici, et il est relu de même. */
+.abs-fiche::after {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--abs-fil-saut) - (var(--abs-fil-corde) + var(--abs-fil-anneau)) / 2);
+  left: 50%;
+  width: var(--abs-fil-anneau);
+  height: var(--abs-fil-anneau);
+  margin-left: calc(-1 * var(--abs-fil-anneau) / 2);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-sable);
+  pointer-events: none;
+}
+
+/* Le bois de la fiche. Un `button` plein bois : c'est toute la fiche qui se
+   détache, pas un coin. Contour d'encre 2 px (C11), ombre à flou zéro (C9),
+   coins de carte (C10). */
+.abs-fiche-corps {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--charte-espace-1);
+  width: 100%;
+  min-height: var(--abs-fiche-bois);
+  padding: var(--charte-espace-2) var(--charte-espace-3) var(--charte-espace-3);
+  text-align: left;
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  box-shadow: var(--charte-ombre-dure);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-corps);
+  cursor: pointer;
+  transition: background-color var(--charte-duree) ease-out;
+}
+
+.abs-fiche-corps:hover { background: var(--charte-surface2); }
+
+/* LE CROCHET. La fiche détachée laisse son anneau et son filin au trait, à sa
+   place et de sa largeur : le rang ne se referme pas, et la place vide dit où
+   reprendre la fiche. Rien à cliquer dessus — ce qui se clique est en bas. */
+.abs-fiche-crochet {
+  min-height: var(--abs-fiche-bois);
+  border: 1px dashed var(--charte-bordure);
+  border-radius: var(--charte-rayon-carte);
+}
+
+.abs-fiche-entete {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  min-width: 0;
+  width: 100%;
+}
+
+.abs-fiche-visage {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: cover;
+  background: var(--charte-surface2);
+  color: var(--charte-encre);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+}
+
+.abs-fiche-nom {
+  min-width: 0;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.abs-fiche-motif {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  padding: 2px 7px;
+  border: 1px solid var(--abs-fiche-motif, var(--charte-bordure));
+  border-radius: var(--charte-rayon-pilule);
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-texte);
+  background: var(--charte-sable);
+}
+
+.abs-fiche-date {
+  display: flex;
+  align-items: baseline;
+  gap: var(--charte-espace-2);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+}
+
+.abs-fiche-date b { color: var(--charte-encre); }
+
+.abs-fiche-mention {
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--charte-aplat);
+}
+
+/* Le conflit se dit par un mot et un point, jamais par la teinte seule
+   (D-007) — la couture oblique de la poutre, en plus court. */
+.abs-fiche-conflit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--abs-coral);
+}
+
+.abs-fiche-conflit i {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--abs-coral);
+}
+
+.abs-fiche-refus {
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  color: var(--charte-douce);
+  overflow-wrap: anywhere;
+}
+
+/* LE TRAIT SOUS LA FICHE : les jours ouvrés de la durée, en pourcentage lu
+  à la source (see `LE_FIL`). Zéro jour ouvré = pas de trait : le vide dit
+  aussi quelque chose, et un plancher inventé mentirait sur la durée. */
+.abs-fiche-trait {
+  display: block;
+  align-self: stretch;
+  width: var(--abs-fiche-trait, 100%);
+  height: 3px;
+  margin-top: auto;
+  background: var(--charte-encre);
+}
+
+/* Le rabat du « attente », coupé en biseau comme les étiquettes de la
+   poutre. Un indice sur le bois, pas une cible dans la cible. */
+.abs-fiche-onglet {
+  position: absolute;
+  top: calc(-1 * var(--charte-trait));
+  right: calc(-1 * var(--charte-trait));
+  padding: 2px 7px 2px 9px;
+  background: var(--charte-aplat);
+  color: var(--charte-blanc);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  clip-path: polygon(5px 0, 100% 0, 100% 100%, 0 100%, 0 5px);
+  pointer-events: none;
+}
+
+/* La fiche refusée garde son bois, mais pâle et barré d'un trait droit —
+   pas d'oblique floue, pas de courbe : un seul tracé, à 45°, franc. */
+.abs-fiche[data-statut='refuse'] .abs-fiche-corps {
+  background: var(--charte-surface2);
+  background-image: linear-gradient(
+    to top left,
+    transparent calc(50% - 1px),
+    var(--charte-bordure) calc(50% - 1px),
+    var(--charte-bordure) calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
+  color: var(--charte-douce);
+}
+
+/* ── les soldes, cloués à droite : ils ne pendent pas, ils sont le mur ── */
+.abs-fil-solde {
+  flex: 0 0 148px;
+  align-self: stretch;
+  padding: var(--charte-espace-3);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background: var(--charte-surface);
+  box-shadow: var(--charte-ombre-dure);
+}
+
+.abs-fil-solde h3 {
+  margin: 0 0 var(--charte-espace-2);
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+.abs-fil-solde ul { margin: 0; padding: 0; list-style: none; }
+
+.abs-fil-solde li {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-1) 0;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-micro);
+}
+
+.abs-fil-solde li + li { border-top: 1px solid var(--charte-bordure); }
+
+.abs-fil-solde-initiales {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--charte-mono);
+  font-weight: 700;
+  color: var(--charte-encre);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  background: var(--charte-sable);
+}
+
+.abs-fil-solde-nombre { font-family: var(--charte-mono); }
+.abs-fil-solde-nombre b { font-size: var(--charte-taille-corps); }
+
+/* Le solde court porte un carré d'argile ET le mot « court » : la teinte
+   seule ne dirait rien (D-007). */
+.abs-fil-solde li[data-court='oui']::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background: var(--charte-aplat);
+}
+
+.abs-fil-solde-court {
+  margin-left: auto;
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--charte-aplat);
+}
+
+/* LA TABLE. Ce qui est détaché du fil se pose dessous : un plateau au pied du
+   mur, pas un panneau de plus. Le trait du haut est la corde, coupée — la fiche
+   n'est plus accrochée, elle est posée, et le mot « reprendre » le dit. */
+.abs-fil-table {
+  margin-top: var(--charte-espace-4);
+  padding-top: var(--charte-espace-3);
+  border-top: var(--abs-fil-corde) dashed var(--charte-encre);
+}
+
+.abs-fil-table-tete {
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  margin-bottom: var(--charte-espace-2);
+}
+
+.abs-fil-table-legende {
+  margin: 0;
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+.abs-fil-table-reprendre {
+  margin-left: auto;
+  padding: 4px 9px;
+  background: transparent;
+  color: var(--charte-encre);
+  border: 1px solid var(--charte-bordure);
+  border-radius: var(--charte-rayon-champ);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--charte-duree) ease-out;
+}
+
+.abs-fil-table-reprendre:hover { background: var(--charte-surface2); }
+
+/* Ce qui n'est pas un fil : le vide et la charge, dits dans la langue du
+   dessin — rien ne pend, le fil est tendu quand même. */
+.abs-fil-vide {
+  margin: 0;
+  padding: var(--charte-espace-5) var(--charte-espace-4);
+  border-top: var(--abs-fil-corde) solid var(--charte-encre);
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+/* La légende du dessin, en pied : quatre phrases, la loi de la figure. */
+.abs-fil-captions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-4);
+  margin-top: var(--charte-espace-4);
+  padding-top: var(--charte-espace-3);
+  border-top: 1px dashed var(--abs-border-strong);
+}
+
+.abs-fil-captions span {
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+/* TOUTES LES LARGEURS. Le repli ne se règle pas ici : c'est `partagerEnRangs`
+   qui remplit le trait tendu, donc à 680 px comme à 1 560 px chaque rang
+   garde sa corde et ses anneaux. Le seul cran que la coupe change, c'est le
+   mur des soldes — il descend sous les fils, sinon il écrase le linge. */
+@media (max-width: 900px) {
+  .abs-fil-corps { flex-direction: column; }
+  .abs-fil-solde { flex: 1 1 auto; align-self: stretch; width: 100%; box-sizing: border-box; }
+  .abs-fil-solde ul { display: flex; flex-wrap: wrap; gap: var(--charte-espace-3); }
+  .abs-fil-solde li { flex: 0 1 132px; }
+  .abs-fil-solde li + li { border-top: 0; }
+}
+
 /* La tuile de motif en tête de ligne : un carré de 22 px, le filet de la page
    pour seul cadre. Elle est muette (`aria-hidden` porté par la span). */
 .abs-tuile { width: 22px; height: 22px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--abs-bg-soft); border: 1px solid var(--abs-border); }

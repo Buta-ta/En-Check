@@ -78,6 +78,32 @@ La géométrie d'aplomb, quatre nombres et une soustraction :
 
 Donc `top: calc(var(--abs-tringle) - var(--abs-anneau))` sur l'anneau — un cran **descendu depuis le haut de la corde**, jamais le décalage de la corde. De 40 px au-dessus du bois (son haut, le haut de la corde) à 20 px (son borderet, le trait de la chemise). Le verrou ne compare pas des chaînes : il relit les quatre jetons et l'épaisseur peinte (8 + 2 × 2), et vérifie `corde + traverse − cran − épaisseur == main.padding` — si quelqu'un graisse la corde sans reprendre l'anneau, la soustraction tombe et dit quoi retoucher.
 
+## Le fil du 8/12 — les demandes pendent (`maquettes/absences-calendrier-D-fil.png`)
+
+Le fondateur a d'abord demandé autre chose : « est-ce que le système absences ne devrait pas vivre dans le planning ? ». Réponse non, avec deux réserves qui ont été tenues : **un seul calcul des durées** et **le geste là où est le regard**. La page reste, parce que `module_conges` se verrouille à sa porte (`VerrouOptions.jsx`), que la validation d'une demande n'est pas du cadrage, et que le Planning n'a pas à porter un dossier. Ce qui a bougé, c'est l'onglet.
+
+La panne que la figure règle : en mode Semaine, le calendrier des absences **répétait la grille du Planning** — mêmes sept colonnes de jours, mêmes lignes d'employés. Deux pages répondant à « qui est là ? », et le Planning y répond mieux parce qu'il a les horaires à côté. Le dossier, lui, doit répondre à « qui manque, depuis quand, et ça dure combien de jours ? ».
+
+Ce que le dessin promet, et ce qui est écrit en dur :
+
+| ce que le linge dit | où le nombre vit | qui le relit |
+|---|---|---|
+| la **longueur** de la fiche = la période | `LE_FIL.base + (jours − 1) × LE_FIL.jour`, plafonné à `LE_FIL.plafond` | `largeurFiche`, et la feuille borne `width:min(var(--abs-fiche-largeur), 100%)` |
+| le **trait** sous la fiche = les jours ouvrés de la période | `compterJoursOuvres`, une fois pour la période (personne retirée), une fois pour les ouvrés | le verrou 7, sur des dates — jamais sur un pourcentage recopié |
+| le **nombre écrit** = ce que la demande décompte | le champ `days_count` de la ligne, sinon le compte que la règle `count_holidays_as_leave` désigne | `mesuresFiche` en est l'unique porte d'entrée |
+| la **corde** = le temps, de gauche à droite | `--abs-fil-corde: 4px`, posée en `border-top` du **rang** | le verrou 5 refuse un `border-top` sur le conteneur des fils |
+| l'**anneau** mord la corde | `--abs-fil-saut: 24px`, `--abs-fil-anneau: 10px`, centré par `(corde + anneau) / 2` | le verrou 3, en arithmétique, comme sur la poutre |
+
+**Trois lois de la poutre ont été reprises telles quelles**, parce qu'elles avaient déjà coûté :
+
+1. **La corde appartient au rang, pas au bloc.** C'est `partagerEnRangs` qui remplit le trait, donc à 1 560, 680 et 390 px chaque rang qui tombe à l'écran reçoit son fil et ses anneaux — aucune media ne repositionne une fiche. Le repli est un calcul, pas un correctif (verrou 25).
+2. **Un anneau qui partage la valeur de la corde ne retient rien.** Le `::after` se centre sur le trait, il ne s'y pose pas. La panne du 3/12 (l'anneau empilait le saut de la corde par-dessus le titre) est interdite par un verrou qui lit les quatre jetons et calcule la morsure.
+3. **Le linge se plie, il ne crève pas le mur.** Un congé de trois semaines mesure 420 px calculés ; à 390 px, `min(…, 100%)` le ramène à la largeur du fil. Sans cette borne, `flex: 0 0 auto` + une largeur en dur fait déborder le trait tendu — le nombre est faux à l'écran, pas seulement moche.
+
+**Le geste, et pourquoi il ne déplace rien.** Cliquer une fiche la **détache** : elle laisse son `abs-fiche-crochet` à sa place et de sa largeur — le rang ne se referme pas, la place vide dit où la reprendre — et elle se pose sous les fils en `DemandeCongeCard`, avec ses boutons. Le composant n'écrit aucune ligne en base : il appelle `openReviewModal` et `handleViewRequestDocument`, qui existaient. Les trois outils du bout du fil (✓ ✕ 📎) ne vident pas la pile d'un coup : ils prennent **la plus ancienne, une à la fois**, parce qu'un refus se motive et qu'approuver neuf congés sans les lire est un autre logiciel.
+
+**Ce qui reste, et pourquoi.** Les quatre puces de statut filtrent, les deux fils trient — ce n'est pas la même question. L'alerte « N demandes en attente » du haut reste aussi : elle dit une chose que le fil dit déjà, mais par une phrase, pas par un nombre, et elle n'a pas à être démolie pour que le fil existe. Le solde est cloué à droite (il descend sous les fils à 900 px) et lit `joursPrisParEmploye` + `annual_leave_cap` — les nombres de la poutre, pas un calcul de plus.
+
 ## Le raccord au bloc du haut (reprise du 1/12, morte le 2/12 — consignée pour ce qu'elle a appris)
 
 Le vide que le fondateur montrait du doigt ne venait pas d'une corde trop courte : il venait de **deux conteneurs**. Le transat est un enfant de `.abs-page`, l'étagère un enfant de `<main>`. La bande morte entre les deux valait 26 px (la respiration du bas du transat) + 20 px (le remplissage du haut de `main`) + 24 px (la chute sous le rail) = **70 px de rien**.
@@ -142,6 +168,19 @@ _Pose précédente, périmée ci-dessus mais consignée :_ #345, fusionné dans 
 | `npm run charte` · rayons hors liste | 359 · 18 valeurs | **359 · 18** |
 | `npm run charte` · mesures (tailles · marges · rayons distincts) | 65 · 44 · 27 | **65 · 44 · 27** |
 | `npx eslint` sur les trois fichiers touchés | — | **silence** |
+
+### Les chiffres du fil (8/12)
+
+| mesure | base R1 (2/12) | **le fil (8/12)** |
+|---|---|---|
+| `npx vitest run` | 196 fichiers · 2 749 ✓ | 197 · **2 777 ✓** (28 verrous ajoutés dans `absencesFil.test.jsx`, aucun retiré, aucun réécrit ailleurs) |
+| `npx vite build` | ✓ 20,1 s | ✓ 23,3 s |
+| lignes de la feuille de style | 993 | **1 552** (+559 : la section `🧺 LE FIL`, moitié règles moitié prose — les cinq jetons, les six états du bois, la borne du repli) |
+| la corde, dans la feuille minifiée servie | `--abs-corde: 20px` sur la poutre | `--abs-fil-corde: 4px` en `border-top` du rang, `top:calc(-1 * var(--abs-fil-saut) - (var(--abs-fil-corde) + var(--abs-fil-anneau)) / 2)` à l'anneau — **non plié**, la feuille est servie telle qu'écrite |
+| `npm run charte` | 4 548 · 131 · 359 · mesures 65/44/27 | **identique, ligne à ligne** — zéro hex, zéro flou, zéro rayon et zéro mesure de plus dans la maison |
+| `npx eslint` | silence | silence sur les quatre fichiers touchés (trois erreurs de `Absences.jsx` restent hors de ces lignes : 42, 474, 1 360) |
+
+**Ce que le fil ne prouve pas ici, à regarder en premier sur la preview.** Pas de navigateur dans l'atelier. Trois choses : si le **crochet vide** (la place de la fiche en main, pointillée, avec son anneau au fil) se lit comme « en main » ou comme un trou dans le dessin ; si les **fiches de 216 px** sont trop étroites pour un nom complet à deux Prénoms longs (elles sont bornées par `min-width: 0` et `overflow-wrap: anywhere`, donc elles se cassent — mais le goût est à dire) ; et si le **raté de la maquette** — la maquette écrivait « NOV. 2026 » et « APPROUVÉES CE MOIS », alors que l'onglet ne connaît pas de saison : le fil affiche « À valider · N » et « Répondues · N », et le mois n'a pas été inventé pour faire joli. Un chiffre faux vaut mieux qu'une étiquette fausse.
 
 ## Ce qu'on ne peut pas prouver ici, après R1
 
