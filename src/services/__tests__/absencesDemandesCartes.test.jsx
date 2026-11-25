@@ -159,9 +159,15 @@ it('9. les chips de filtrage et l’état vide sont ceux demandés', () => {
   expect(absencesSrc).toContain('⏳ En attente')
   expect(absencesSrc).toContain('✅ Approuvées')
   expect(absencesSrc).toContain('❌ Refusées')
-  expect(absencesSrc).toContain('Aucune demande')
-  expect(absencesSrc).toContain('pas encore soumis de demandes de congé')
   expect(absencesSrc).toContain('<DemandeCongeCard')
+  // Les deux phrases du vide, elles, ont suivi le dessin : depuis le 8/12 au
+  // soir, l'onglet est rendu par `AbsencesFil` vide comme plein (une entreprise
+  // sans demande doit voir la figure, pas un panneau pointillé à sa place), donc
+  // c'est le composant qui les porte. Les mots sont les mêmes, un fichier plus
+  // bas — retirer ce verrou aurait été laisser le vide revenir en panneau.
+  const filSrc = fs.readFileSync(path.join(ROOT, 'src/components/AbsencesFil.jsx'), 'utf8')
+  expect(filSrc).toContain('Aucune demande')
+  expect(filSrc).toContain('pas encore soumis de demandes de congé')
 })
 
 it('10. le bloc n’utilise plus l’ancienne présentation en colonnes', () => {

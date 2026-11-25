@@ -392,7 +392,7 @@ describe('🧺 le fil — le câblage de la page', () => {
     }
   })
 
-  it('26. détacher laisse le crochet à la place, de la largeur du bois parti', () => {
+  it('25. détacher laisse le crochet à la place, de la largeur du bois parti', () => {
     const pendue = rendre({ demandes: [du('2026-11-27', '2026-11-30', { id: 'p1' })] })
     expect(pendue).not.toContain('abs-fiche-crochet')
     const enMain = rendre({
@@ -414,7 +414,7 @@ describe('🧺 le fil — le câblage de la page', () => {
     expect(nud(declarations('.abs-fiche-crochet'))).toContain('min-height:var(--abs-fiche-bois)')
   })
 
-  it('27. à 390 px, une fiche de trois semaines sature le fil sans le crever', () => {
+  it('26. à 390 px, une fiche de trois semaines sature le fil sans le crever', () => {
     // le calcul donne la longueur dessinée…
     expect(largeurFiche(21)).toBe(LE_FIL.plafond)
     // …mais la feuille la borne au fil : `min(…, 100%)`, jamais un `width` nu
@@ -428,7 +428,7 @@ describe('🧺 le fil — le câblage de la page', () => {
     expect(porte(COMPOSANT, "'--abs-fiche-largeur': `${f.large}px`")).toBe(true)
   })
 
-  it('25. aucune media ne repositionne le fil : le repli est un calcul, pas un correctif', () => {
+  it('27. aucune media ne repositionne le fil : le repli est un calcul, pas un correctif', () => {
     // deux médias coupent à 900 px dans cette feuille (le dock, puis le fil) :
     // lire le premier trouvé vérifierait le voisin
     let bloc = ''
@@ -450,5 +450,25 @@ describe('🧺 le fil — le câblage de la page', () => {
     expect(bloc).not.toMatch(/border-top:\s*var\(--abs-fil-corde\)/)
     // et le rang ne connaît ni gauche ni droite à corriger
     expect(declarations('.abs-fil-rang')).not.toMatch(/left:|right:/)
+  })
+
+  it('28. le fil se tend aussi quand il n’y a rien à pendre', () => {
+    // la page ne choisit plus entre « un panneau pointillé » et « le dessin » :
+    // une entreprise sans demande doit voir la figure, sinon l'onglet change
+    // d'aspect selon la chance — et le jour de la première demande, le
+    // rangement disparaît sous les yeux du DRH, qui croit la page cassée
+    expect(porte(PAGE, 'filteredRequests.length === 0 ?')).toBe(false)
+    expect(porte(PAGE, '<AbsencesFil')).toBe(true)
+    // le filtre se dit au fil, qui choisit la phrase du vide
+    expect(porte(PAGE, 'filtre={requestFilter}')).toBe(true)
+    expect(rendre({ demandes: [] })).toContain('Aucune demande · rien sur le fil')
+    expect(rendre({ demandes: [], filtre: 'refuse' })).toContain('Aucune demande avec ce statut')
+    // et le trait reste tendu au-dessus des mots : c'est la corde, pas un cadre
+    const vide = declarations('.abs-fil-vide')
+    expect(nud(vide)).toContain('border-top:var(--abs-fil-corde)solidvar(--charte-encre)')
+    // le vide n'a pas de fil à outil : rien à valider, donc pas de ✓ ni de ✕
+    const videRendu = rendre({ demandes: [] })
+    expect(videRendu).not.toContain('abs-fil-outils')
+    expect(videRendu).not.toContain('abs-fiche-crochet')
   })
 })

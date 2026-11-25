@@ -2196,6 +2196,12 @@ export default function Absences() {
             </>
           )}
 
+          {/* LE FIL tient cet onglet, vide ou plein (reprise du 8/12 au soir) :
+              l'état vide était un panneau pointillé posé à la place du dessin,
+              si bien qu'une entreprise sans demande ne voyait jamais la figure.
+              Le fil se tend aussi sans linge — c'est même là qu'on voit le crochet
+              et la corde, et le « + Déclarer » du haut de bande est ce qu'on a
+              de mieux à proposer à un fil vide. */}
           {activeTab === 'demandes' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {pendingRequestsCount > 0 && (
@@ -2254,18 +2260,11 @@ export default function Absences() {
                   <div style={{ width: 40, height: 40, border: '3px solid var(--abs-line-soft)', borderTopColor: 'var(--abs-amber)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                   <p style={{ color: 'var(--abs-text-faint)', marginTop: 12, fontSize: 14 }}>Chargement...</p>
                 </div>
-              ) : filteredRequests.length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '60px 20px', background: 'var(--abs-bg-elevated)', borderRadius: 20, border: '1px dashed var(--abs-line-soft)', textAlign: 'center' }}>
-                  <Inbox size={48} color="var(--abs-text-soft)" />
-                  <h3 style={{ color: 'var(--abs-text)', margin: '12px 0 4px 0', fontSize: 18 }}>Aucune demande</h3>
-                  <p style={{ color: 'var(--abs-text-faint)', fontSize: 14, margin: 0 }}>
-                    {requestFilter !== 'all' ? 'Aucune demande avec ce statut' : 'Les employés n\'ont pas encore soumis de demandes de congé'}
-                  </p>
-                </div>
               ) : (
                 <>
                   <AbsencesFil
                     demandes={filteredRequests}
+                    filtre={requestFilter}
                     conflitsParDemande={conflitsParDemande}
                     feriers={getHolidaySet}
                     soldes={soldesDuFil}
