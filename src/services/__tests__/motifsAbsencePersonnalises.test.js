@@ -24,7 +24,6 @@ const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
 const serviceSrc = lire('src/services/motifsAbsenceService.js')
 const contexteSrc = lire('src/contexts/MotifsAbsenceContext.jsx')
 const managerSrc = lire('src/components/AbsencesMotifsManager.jsx')
-const dockSrc = lire('src/components/AbsencesDock.jsx')
 const calendrierSrc = lire('src/components/AbsencesCalendrier.jsx')
 const migration = lire('supabase/migrations/20261021000004_absence_motifs_personnalisables.sql')
 const absencesSrc = lire('src/pages/Absences.jsx')
@@ -137,9 +136,13 @@ describe('Doctrine : suppression réelle, transfert des absences', () => {
 })
 
 describe('Diffusion des motifs personnalisés', () => {
-  it('10. le dock propose les motifs du contexte, pas une liste figée', () => {
-    expect(dockSrc).toContain('useMotifsAbsence')
-    expect(dockSrc).toContain('{motifs.map((m) => (')
+  it('10. la tringle propose les motifs du contexte, pas une liste figée', () => {
+    // le dock est enlevé (9/12) : c'est la rangée de pinces de la tringle qui
+    // itère sur le contexte — une liste figée de sept motifs était déjà une
+    // faute avant que les motifs deviennent personnalisables
+    expect(calendrierSrc).toContain('useMotifsAbsence')
+    expect(calendrierSrc).toContain('{motifs.map((m) => {')
+    expect(calendrierSrc).not.toContain('AbsencesDock')
   })
 
   it('11. le calendrier colore ses barres avec les motifs du contexte', () => {

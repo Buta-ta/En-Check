@@ -7,7 +7,6 @@ const lire = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8')
 
 const absencesSrc = lire('src/pages/Absences.jsx')
 const charteCss = lire('src/pages/AbsencesAfroTech.css')
-const dockSrc = lire('src/components/AbsencesDock.jsx')
 const calendrierSrc = lire('src/components/AbsencesCalendrier.jsx')
 
 describe('Charte En-Check de la page Absences', () => {
@@ -66,23 +65,39 @@ describe('Charte En-Check de la page Absences', () => {
   })
 })
 
-describe('Dock de motifs — glisser-déposer', () => {
-  it('5. chaque motif du dock est saisissable à la souris', () => {
-    expect(dockSrc).toContain('draggable')
-    expect(dockSrc).toContain('data-motif={m.id}')
-    expect(dockSrc).toContain('DATA_TRANSFER_MOTIF')
-    expect(dockSrc).toContain('onDragStart')
-    expect(dockSrc).toContain('onDragEnd')
+describe('Les pinces de la tringle portent le glisser-déposer du dock', () => {
+  // Le dock « Motifs à glisser-déposer » est enlevé de la page (9/12, le
+  // fondateur : « enlève cette section, les étiquettes sur étagères peuvent
+  // jouer aussi cette fonction »). Ce que verrouillent les deux tests suivants
+  // n'est pas le meuble, c'est le service : la page doit continuer à pouvoir
+  // déclarer une absence en portant un motif sur un jour. Les verrous ont suivi
+  // le geste, ils n'ont pas été jetés avec le panneau.
+  it('5. chaque motif de la tringle est saisissable à la souris', () => {
+    expect(calendrierSrc).toContain('draggable')
+    expect(calendrierSrc).toContain('data-motif={m.id}')
+    expect(calendrierSrc).toContain('DATA_TRANSFER_MOTIF')
+    expect(calendrierSrc).toContain('onDragStart')
+    expect(calendrierSrc).toContain('onDragEnd')
     // le motif transite aussi en text/plain : repli pour tous les navigateurs
-    expect(dockSrc).toContain("setData('text/plain', m.id)")
+    expect(calendrierSrc).toContain("setData('text/plain', m.id)")
+    // et le panneau retiré ne revient pas par une porte de service
+    expect(absencesSrc).not.toContain('<AbsencesDock')
+    expect(fs.existsSync(path.join(ROOT, 'src/components/AbsencesDock.jsx'))).toBe(false)
+    expect(charteCss).not.toContain('.abs-dock')
   })
 
-  it('6. le dock reste utilisable au clavier et ne touche pas à la base', () => {
-    expect(dockSrc).toContain('tabIndex={0}')
-    expect(dockSrc).toContain("e.key === 'Enter'")
-    expect(dockSrc).not.toMatch(/supabase/)
-    expect(dockSrc).not.toMatch(/\.insert\s*\(/)
+  it('6. sans la souris, la porte reste le formulaire — et rien n’écrit en base', () => {
+    // une pince se clique (elle éteint le motif) : c'est un <button>, donc
+    // focusable et actionné au clavier par l'HTML — plus un <div tabIndex={0}>
+    // à entretenir à la main, comme le faisait le dock
+    expect(calendrierSrc).toContain('className={`abs-pince')
+    expect(calendrierSrc).not.toContain('tabIndex={0}')
+    // le préremplissage par motif passe par le sélecteur du formulaire
+    expect(lire('src/components/AbsenceFormulaire.jsx')).toContain('motifs.map')
+    expect(calendrierSrc).not.toMatch(/supabase/)
+    expect(calendrierSrc).not.toMatch(/\.insert\s*\(/)
   })
+
 
   it('7. la grille accepte le dépôt et calcule le jour sous le pointeur', () => {
     expect(calendrierSrc).toContain('onDragOver')

@@ -27,6 +27,7 @@ const RACINE = path.resolve(import.meta.dirname, '../../..')
 const lire = (...chemins) => fs.readFileSync(path.join(RACINE, ...chemins), 'utf8')
 
 const COMPOSANT = lire('src', 'components', 'AbsencesCalendrier.jsx')
+const PAGE = lire('src', 'pages', 'Absences.jsx')
 const FEUILLE = lire('src', 'pages', 'AbsencesAfroTech.css')
 const CSS = FEUILLE.replace(/\/\*[\s\S]*?\*\//g, '')
 // la rubrique de la tringle court jusqu'à la fin de la feuille : elle est posée
@@ -189,21 +190,33 @@ describe('🪝 la tringle du calendrier', () => {
     expect(plaque).not.toContain('→') // la flèche de la maquette n'est pas une donnée
   })
 
-  it('8. le bois se peint par tronçon, à la même hauteur sur la pièce et sur la pince', () => {
+  it('8. le bois se peint par tronçon, sans montant d’encre à la couture', () => {
     const pièce = nud(declarations('.abs-tringle-bois', TRINGLE))
     const pince = nud(declarations('.abs-pince::before', TRINGLE))
-    expect(pièce).toContain('top:var(--abs-tringle-anneau)')
-    expect(pince).toContain('top:var(--abs-tringle-anneau)')
-    // la soudure : le débord de chaque côté vaut la moitié de l'écart
-    expect(pièce).toContain('left:calc(-1*var(--abs-tringle-debord))')
-    expect(pince).toContain('left:calc(-1*var(--abs-tringle-debord))')
-    expect(pièce).toContain('right:calc(-1*var(--abs-tringle-debord))')
-    expect(pince).toContain('right:calc(-1*var(--abs-tringle-debord))')
+    expect(pièce).toContain('top:var(--abs-tringle-ciel)')
+    expect(pince).toContain('top:var(--abs-tringle-ciel)')
+    // la soudure : le débord de chaque côté vaut la moitié de l'écart, plus un
+    // chevron — se toucher laissait un fil blanc d'antialiasing entre deux
+    // tronçons, et la capture du 9/12 montrait une tringle en lattes
+    for (const côté of ['left', 'right']) {
+      expect(pièce).toContain(`${côté}:calc(-1*var(--abs-tringle-debord))`)
+      expect(pince).toContain(`${côté}:calc(-1*var(--abs-tringle-debord))`)
+    }
+    const jetons = declarations('.abs-tringle', TRINGLE)
+    expect(jeton(jetons, '--abs-tringle-debord') * 2).toBeGreaterThanOrEqual(
+      jeton(jetons, '--abs-tringle-ecart')
+    )
     // la hauteur du trait inclut ses deux rives : 10 px de bois, 14 px posés
     expect(pièce).toContain('height:calc(var(--abs-tringle-bois)+2*var(--charte-trait))')
     expect(pince).toContain('height:calc(var(--abs-tringle-bois)+2*var(--charte-trait))')
-    expect(jeton(declarations('.abs-tringle', TRINGLE), '--abs-tringle-debord') * 2)
-      .toBe(jeton(declarations('.abs-tringle', TRINGLE), '--abs-tringle-ecart'))
+    // et surtout : DEUX RIVES, PAS UN CADRE. Un `border` complet dessinait un
+    // montant de 2 px à chaque jonction — l'anomalie signalée sur l'écran du
+    // fondateur, qui voyait sept planchettes au lieu d'une tringle.
+    for (const règle of [pièce, pince]) {
+      expect(règle).not.toContain('border:var(--charte-trait)')
+      expect(règle).toContain('border-top:var(--charte-trait)')
+      expect(règle).toContain('border-bottom:var(--charte-trait)')
+    }
   })
 
   it('9. l’anneau mord le bois : son centre tombe sur son axe', () => {
@@ -213,6 +226,21 @@ describe('🪝 la tringle du calendrier', () => {
     // bois, moins (anneau + 2 traits) / 2 pour la moitié du cercle
     expect(suspentes).toContain('(var(--abs-tringle-bois)+2*var(--charte-trait))/2')
     expect(suspentes).toContain('(var(--abs-tringle-anneau)+2*var(--charte-trait))/2')
+    // l'anneau se centre sur la corde par une écriture, pas par un -5 px à
+    // l'œil : changer la taille de l'anneau doit déplacer le cercle, pas le
+    // laisser de travers
+    expect(nud(declarations('.abs-tringle-suspentes i::before', TRINGLE))).toContain(
+      'left:calc(-1*(var(--abs-tringle-anneau)+var(--charte-trait))/2)'
+    )
+    // ET IL EST PLUS HAUT QUE LE BOIS. Posé à 8 px sur un bandeau de 10 + 2 × 2,
+    // il disparaissait dedans : sur la capture du fondateur, on ne voyait plus
+    // que deux trous — un anneau qui ne déborde pas du trou qu'il retient ne
+    // mord rien, c'est la leçon du 3/12 reprise à l'envers.
+    const jetons = declarations('.abs-tringle', TRINGLE)
+    expect(jeton(jetons, '--abs-tringle-anneau')).toBeGreaterThan(jeton(jetons, '--abs-tringle-bois'))
+    // l'air au-dessus du bois est un nombre à part : sinon agrandir l'anneau
+    // descend le bois avec lui et toute la rangée bouge
+    expect(jetons).toContain('--abs-tringle-ciel')
     const anneau = nud(declarations('.abs-tringle-suspentes i::before', TRINGLE))
     expect(anneau).toContain('border-radius:var(--charte-rayon-pilule)')
     expect(anneau).toContain('background:var(--charte-sable)')
@@ -220,7 +248,7 @@ describe('🪝 la tringle du calendrier', () => {
 
   it('10. la ficelle des billets mesure exactement ce qui manque', () => {
     const billets = nud(declarations('.abs-tringle-piece--billets', TRINGLE))
-    expect(billets).toContain('padding-top:calc(var(--abs-tringle-anneau)+var(--abs-tringle-bois)+2*var(--charte-trait)+var(--abs-tringle-ficelle))')
+    expect(billets).toContain('padding-top:calc(var(--abs-tringle-ciel)+var(--abs-tringle-bois)+2*var(--charte-trait)+var(--abs-tringle-ficelle))')
     const ficelle = nud(declarations('.abs-tringle-billet::before', TRINGLE))
     expect(ficelle).toContain('top:calc(-1*var(--abs-tringle-ficelle))')
     expect(ficelle).toContain('height:var(--abs-tringle-ficelle)')
@@ -284,6 +312,69 @@ describe('🪝 la tringle du calendrier', () => {
     // la pince et son bois ne se retouchent pas : ils se débrouillent seuls
     expect(TRINGLE.slice(TRINGLE.indexOf('@media'))).not.toContain('.abs-pince')
     expect(TRINGLE.slice(TRINGLE.indexOf('@media'))).not.toContain('.abs-tringle-bois')
+  })
+
+  it('19. une étiquette ne se coupe jamais : le libellé fait la hauteur', () => {
+    // LA faute vue sur sa capture : « Maternité/Paternité » s'écrivait
+    // « é/Paternit ». L'étiquette avait une boîte et un `overflow: hidden`, et
+    // le libellé, étiré en `flex: 1`, était rogné des deux bouts.
+    const nom = declarations('.abs-pince-nom', TRINGLE)
+    expect(nom).not.toContain('overflow: hidden')
+    expect(nom).not.toContain('flex: 1')
+    expect(nom).toContain('white-space: nowrap')
+    // `min-height` reste un plancher — jamais un plafond
+    const étiquette = nud(declarations('.abs-pince-etiquette', TRINGLE))
+    expect(étiquette).toContain('min-height:var(--abs-pince-longueur)')
+    // une vraie `height`, même écrite après un `min-`, serait un plafond : la
+    // hauteur est laissée au libellé, et `min-height` ne sert que de plancher
+    expect(declarations('.abs-pince-etiquette', TRINGLE)).not.toMatch(/(^|[;{\s])height\s*:/)
+    expect(étiquette).toContain('justify-content:space-between')
+    // et le nombre reste au pied, que le libellé fasse six ou vingt lettres
+    expect(étiquette).not.toContain('max-height')
+  })
+
+  it('20. les sept pinces forment un groupe : la rangée ne se coupe plus n’importe où', () => {
+    // la capture montrait deux tringles, la coupe tombant entre le registre et
+    // les billets. Le groupe prend la ligne (`flex: 1 1 auto`) et se replie
+    // sur son propre bois : les commandes gardent leurs anneaux en haut.
+    expect(rendu).toContain('class="abs-tringle-pinces"')
+    const groupe = nud(declarations('.abs-tringle-pinces', TRINGLE))
+    expect(groupe).toContain('flex:11auto')
+    expect(groupe).toContain('flex-wrap:wrap')
+    expect(groupe).toContain('column-gap:var(--abs-tringle-ecart)') // la couture tient
+    // la mâchoire déborde du bois de quatre pixels de chaque côté : à la
+    // hauteur du bandeau, elle ne se voyait pas
+    const mâchoire = declarations('.abs-pince-bois', TRINGLE)
+    expect(mâchoire).toContain('top: calc(var(--abs-tringle-ciel) - 4px)')
+  })
+
+  it('21. la pince a reçu le métier du dock : elle se glisse sur une ligne', () => {
+    // `AbsencesDock` est enlevé de la page — ses sept lignes portaient le
+    // glisser-déposer, et le fondateur a jugé que les étiquettes de la tringle
+    // pouvaient faire ce travail aussi. Le geste est donc venu ici, avec son
+    // chargement : la clé du contexte ET le repli `text/plain`.
+    expect(porte(COMPOSANT, 'draggable')).toBe(true)
+    expect(porte(COMPOSANT, 'e.dataTransfer.setData(DATA_TRANSFER_MOTIF, m.id)')).toBe(true)
+    expect(porte(COMPOSANT, "e.dataTransfer.setData('text/plain', m.id)")).toBe(true)
+    expect(porte(COMPOSANT, "e.dataTransfer.effectAllowed = 'copy'")).toBe(true)
+    expect(porte(COMPOSANT, 'setMotifGlissé(m.id)')).toBe(true)
+    // le CLIC, lui, garde un seul métier : éteindre. Deux gestes sur un objet,
+    // deux gestes différents — la leçon de la case du Planning.
+    expect(porte(COMPOSANT, 'onClick={() => basculerMotif(m.id)}')).toBe(true)
+    expect(porte(COMPOSANT, 'onDeclarer?.({ motifId: m.id })')).toBe(false)
+    // la pince portée décroche du bois, l'étiquette pend d'un fil
+    expect(TRINGLE).toContain('.abs-pince.est-glissée')
+    expect(nud(declarations('.abs-pince.est-glissée .abs-pince-etiquette', TRINGLE))).toContain('border-style:dashed')
+  })
+
+  it('22. le dock est parti, sa phrase d’explication reste', () => {
+    expect(porte(PAGE, '<AbsencesDock')).toBe(false)
+    expect(fs.existsSync(path.join(RACINE, 'src/components/AbsencesDock.jsx'))).toBe(false)
+    expect(FEUILLE).not.toContain('.abs-dock')
+    // le « Comment déclarer une absence ? » du panneau déménage en note de la
+    // tringle : le geste nouveau s'explique, il ne se devine pas
+    expect(rendu).toContain('abs-tringle-note')
+    expect(rendu).toContain('Glisse une pince sur la ligne d’un employé')
   })
 
   it('16. le mode actif reste un seul des trois, sur son anneau', () => {
