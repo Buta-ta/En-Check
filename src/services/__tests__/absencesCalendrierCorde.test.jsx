@@ -190,12 +190,36 @@ describe('🪢 la corde par employé', () => {
   })
 
   it('6. la planche pend : sa ficelle entre dans le trait', () => {
-    const attache = declarations('.abs-corde-attache', CORDE)
-    expect(nud(attache)).toContain('top:calc(-1*var(--abs-corde-descente))')
-    expect(nud(attache)).toContain('height:calc(var(--abs-corde-descente)+var(--abs-corde-fil))')
+    const attache = nud(declarations('.abs-corde-attache', CORDE))
+    // la ficelle part du fil (descente, plus le rang) et descend jusqu'à la
+    // planche : `top` et `height` se retrouvent au milieu du trait, c'est ça
+    // « entrer dans le fil » plutôt que « toucher le fil »
+    expect(attache).toContain('top:calc(-1*(var(--abs-corde-descente)')
+    expect(attache).toContain('+var(--abs-corde-fil))')
+    expect(attache.match(/var\(--abs-corde-rang,0\)/g)).toHaveLength(2)
     // un trait qui touche sans traverser ne retient rien — la leçon des anneaux
     // de la poutre, reprise à l'envers
     expect(declarations('.abs-corde-planche', CORDE)).toContain('--abs-corde-rang, 0')
+  })
+
+  it('6bis. au deuxième rang, la ficelle et le nœud suivent le fil', () => {
+    // une ficelle de `descente` seulement laisse la deuxième planche retenue à
+    // vingt-six pixels en dessous du trait ; un nœud sans le terme de rang y
+    // laisse aussi la perle. Les deux formules doivent porter le rang.
+    const ficelle = nud(declarations('.abs-corde-attache', CORDE))
+    const nœud = nud(declarations('.abs-corde-noeud', CORDE))
+    const rang = 'var(--abs-corde-rang,0)*var(--abs-corde-empilement)'
+    expect(ficelle.match(new RegExp(rang.replace(/[().*]/g, '\\$&'), 'g'))).toHaveLength(2)
+    expect(nœud).toContain(rang)
+    // le nœud est CENTER sur le fil, à la même arithmétique que l'anneau
+    const anneau = nud(declarations('.abs-corde-anneaux i::before', CORDE))
+    for (const règle of [anneau, nœud]) {
+      expect(règle).toContain('+var(--abs-corde-fil)/2-(var(--abs-corde-')
+      expect(règle).toContain('+2*var(--charte-trait))/2)')
+    }
+    // et il est sur la ficelle, pas à côté
+    expect(nœud).toContain('left:var(--charte-espace-3)')
+    expect(ficelle).toContain('left:var(--charte-espace-3)')
   })
 
   it('7. la position de la planche vient du pourcentage de la période', () => {
