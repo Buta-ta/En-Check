@@ -23,6 +23,19 @@
 import { libelleOrigineSeuil, messageDepassement } from '../services/plafondHebdomadaire'
 import { jourCourt } from '../utils/jourCourt'
 
+/**
+ * Les origines de seuil réellement appliquées aux semaines affichées.
+ * Une seule → on la nomme ; plusieurs → on le dit, sans en privilégier une.
+ */
+function originesDesSemaines(semaines, origineGlobale) {
+  const origines = [...new Set(
+    semaines.map((s) => s.seuil_source).filter(Boolean),
+  )]
+  if (origines.length === 0) return libelleOrigineSeuil(origineGlobale)
+  if (origines.length === 1) return libelleOrigineSeuil(origines[0])
+  return 'Seuils d’origine différente selon les semaines'
+}
+
 export default function AlerteHebdoCard({ plafond }) {
   //  Rien à dire, ou rien de prouvé : on ne dit rien.
   if (!plafond || plafond.disponible !== true) return null
@@ -49,7 +62,7 @@ export default function AlerteHebdoCard({ plafond }) {
               Semaine du {jourCourt(semaine.debut)} au {jourCourt(semaine.fin)}
             </span>
             <strong>
-              {semaine.heures} h pour un seuil de {plafond.seuil} h
+              {semaine.heures} h pour un seuil de {semaine.seuil_applique ?? plafond.seuil} h
               {semaine.depassement_heures > 0
                 ? ` — dépassement de ${semaine.depassement_heures} h`
                 : ''}
@@ -58,8 +71,12 @@ export default function AlerteHebdoCard({ plafond }) {
         ))}
       </ul>
 
+      {/*  ⚠️ Une semaine passée peut avoir été régie par une AUTRE origine que
+          la semaine en cours (seuil personnel d'alors, règle d'entreprise
+          depuis). Nommer une seule origine pour toutes les lignes reviendrait
+          à prêter à une semaine une règle qui n'était pas la sienne. */}
       <p className="e360-alerte-hebdo-note">
-        {libelleOrigineSeuil(plafond.source)}. Ce n’est pas un plafond légal.
+        {originesDesSemaines(semaines, plafond.source)}. Ce n’est pas un plafond légal.
       </p>
     </section>
   )
