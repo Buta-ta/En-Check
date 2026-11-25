@@ -652,7 +652,7 @@ export function RetardsContent({
   stats,
   dates,
   mode,
-  filters,
+
   onDelete,
   onExport,
   onRules,
@@ -689,28 +689,45 @@ export function RetardsContent({
       : visible
 
   const employes = stats.employesEnRetard
+  /*  La période du carnet, en clair : « 25 nov. » pour un jour, « 23 – 29 nov. »
+      pour une semaine, « 1 – 30 nov. » pour un mois. On ne redit pas l'année
+      deux fois : elle est dans le bandeau, à quatre lignes de là. */
+  const periodeCourte =
+    dates.length > 1
+      ? `${retardDateLabel(dates[0])} – ${retardDateLabel(dates.at(-1))}`
+      : retardDateLabel(dates[0] || selectedDate)
   return (
     <>
       {/* Le titre de page a quitté cette ligne (25/11) : la barre sombre de
           l'application portait déjà « Retards », et le bandeau le porte
           maintenant une seule fois. Ici, on entre directement dans les
           commandes et les compteurs. */}
-      <header className="rt-title-row">
-        <div>
-          <span className="rt-eyebrow">Le carnet de ponctualité</span>
-          <p className="rt-sous-titre">Chaque arrivée, replacée dans son contexte.</p>
-        </div>
+      {/*  LE PETIT CARNET — 25/11. « Non mais là c'est un bandeau. Je veux
+          juste une petite forme carnet sur le côté qui intègre ce message-là. »
+          Trois essais ont fait un bloc pleine largeur, donc un troisième
+          bandeau sous le bandeau. Celui-ci est une NOTE : un carnet à
+          couverture cartonnée, posé à gauche de la rangée, avec sa reliure,
+          ses lignes et son coin corné. Il porte la phrase de la maison et la
+          période ; il ne prétend plus rien mesurer. Les actions restent de
+          l'autre côté de la rangée, à leur place. */}
+      <header className="rt-ouverture">
+        <aside className="rt-carnet" aria-label="Le carnet de ponctualité">
+          <span className="rt-carnet-reliure" aria-hidden="true" />
+          <span className="rt-carnet-titre">Le carnet de ponctualité</span>
+          <p className="rt-carnet-message">
+            Chaque arrivée, replacée dans son contexte.
+          </p>
+          <span className="rt-carnet-date">{periodeCourte}</span>
+        </aside>
         <div className="rt-actions">
           <button disabled={!filtered.length || busy} onClick={() => onExport(filtered)}>
             <Download size={15} /> Exporter
           </button>
           <button onClick={onRules} aria-label="Règles & tolérance">
-            <Settings size={15} /> Règles &amp; tolérance
+            <Settings size={15} /> Règles
           </button>
         </div>
       </header>
-
-      {filters}
 
       <section className="rt-summary" aria-label="Résumé de la période">
         {[
