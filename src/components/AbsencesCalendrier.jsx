@@ -36,8 +36,6 @@ const LARGEUR_EMPLOYE = 236
 const LARGEUR_JOUR_MOIS = 36
 const LARGEUR_JOUR_SEMAINE = 108
 const LARGEUR_JOUR_UNIQUE = 460
-const HAUTEUR_BARRE = 24
-const ESPACEMENT_BARRE = 30
 
 const MODES = [
   { id: 'jour', label: 'Jour' },
@@ -500,62 +498,56 @@ export default function AbsencesCalendrier({
             </div>
           </div>
 
-          {/* Lignes employés */}
+          {/* Lignes employés — UNE CORDE PAR EMPLOYÉ
+              (maquette `maquettes/absences-grille-1-corde.png`, retenue le 10/12 :
+              « je choisis le 1… je veux absolument avoir ce rendu »).
+
+              Ce que la grille ne disait pas : elle répondait « qui est là ? » par
+              l'ABSENCE de marque. Une case vide, un dimanche et un férié se
+              ressemblaient tous, et quatorze lignes de 78 px ne montraient rien
+              du tout. Ici le trait est la preuve : un anneau par jour — creux si
+              l'entreprise travaille ce jour-là, plein si c'est chômé — et la
+              planche d'absence pend au jour de son départ, sur SA corde.
+
+              Le métier est intact, seul le dessin change : `segmentSurJours`
+              positionne en pourcentage de la période, `empilerSegments` empile les
+              chevauchements en rangs, `styleBarreAbsence` garde sa loi (la couleur
+              dit le motif, le trait dit le statut), le clic ouvre le tiroir, et la
+              pince de la tringle se dépose au jour sous le pointeur. Les deux
+              nombres de hauteur ne sont plus ici : ils vivent dans la feuille, une
+              seule fois — un nombre écrit deux fois se contredit à la première
+              retouche. */}
           {lignes.map((ligne) => {
             const feriers = getHolidaySet(ligne.employe.enterprise_id)
             const nbRangees = ligne.segments.reduce((max, s) => Math.max(max, s.rangeesTotal || 1), 1)
-            const hauteur = 10 + nbRangees * ESPACEMENT_BARRE
             const solde = soldeDe(ligne.employe.id)
+            const plein = solde.plafond > 0 ? Math.round((solde.restant / solde.plafond) * 100) : 0
 
             return (
-              <div key={ligne.employe.id} style={{ display: 'flex', borderBottom: `1px solid ${theme.grille}` }}>
-                {/* Colonne employé (collante) */}
-                <div style={{
-                  width: LARGEUR_EMPLOYE, flexShrink: 0, position: 'sticky', left: 0, zIndex: 2,
-                  background: theme.carte, borderRight: `1px solid ${theme.bordure}`,
-                  padding: '8px 14px', minHeight: hauteur,
-                  display: 'flex', alignItems: 'center', gap: 10,
-                }}>
+              <div
+                key={ligne.employe.id}
+                className="abs-corde-ligne"
+                data-testid="abs-corde-ligne"
+                data-employe={ligne.employe.id}
+                style={{ '--abs-corde-rangs': nbRangees }}
+              >
+                <div className="abs-corde-tete" style={{ width: LARGEUR_EMPLOYE, background: theme.carte }}>
                   {ligne.employe.photo_url ? (
-                    <img
-                      src={ligne.employe.photo_url}
-                      alt=""
-                      style={{
-                        width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                        objectFit: 'cover', border: `1px solid ${theme.bordure}`,
-                      }}
-                    />
+                    <img className="abs-corde-figure" src={ligne.employe.photo_url} alt="" />
                   ) : (
-                    <div style={{
-                      width: 34, height: 34, borderRadius: 10, flexShrink: 0,
-                      background: theme.pastille, border: `1px solid ${theme.bordure}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 12, fontWeight: 700, color: theme.texte,
-                    }}>
+                    <span className="abs-corde-figure" aria-hidden="true">
                       {initialesDe(ligne.employe.first_name, ligne.employe.last_name)}
-                    </div>
-                  )}
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{
-                      margin: 0, fontSize: 13, fontWeight: 600, color: theme.texte,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 150,
-                    }}>
-                      {ligne.employe.first_name} {ligne.employe.last_name}
-                    </p>
-                    <span style={{
-                      display: 'inline-block', marginTop: 3, padding: '2px 8px', borderRadius: 999,
-                      background: 'rgba(16,185,129,0.12)', color: 'var(--abs-emerald)', fontSize: 10, fontWeight: 700,
-                    }}
-                      title={`${solde.pris} jour(s) pris · plafond ${solde.plafond} jours`}
-                    >
-                      🌴 {solde.restant}/{solde.plafond}
                     </span>
-                  </div>
+                  )}
+                  <span className="abs-corde-nom">
+                    {ligne.employe.first_name} {ligne.employe.last_name}
+                  </span>
                 </div>
 
-                {/* Piste de la période — zone de dépôt du glisser-déposer */}
+                {/* LA PISTE — la corde, les anneaux, les planches. Elle est aussi
+                    la zone de dépôt : c'était déjà `data-drop-lane`. */}
                 <div
-                  style={{ flex: 1, position: 'relative', display: 'flex', minHeight: hauteur }}
+                  className="abs-corde-piste"
                   data-drop-lane={ligne.employe.id}
                   onDragOver={(e) => {
                     if (!onDeposerMotif) return
@@ -567,10 +559,7 @@ export default function AbsencesCalendrier({
                       setSurvol({ employeeId: ligne.employe.id, index })
                     }
                   }}
-                  onDragLeave={(e) => {
-                    if (e.currentTarget.contains(e.relatedTarget)) return
-                    if (survol && survol.employeeId === ligne.employe.id) setSurvol(null)
-                  }}
+                  onDragLeave={() => setSurvol(null)}
                   onDrop={(e) => {
                     if (!onDeposerMotif) return
                     e.preventDefault()
@@ -581,74 +570,40 @@ export default function AbsencesCalendrier({
                     if (motifId) onDeposerMotif({ employeeId: ligne.employe.id, dateIso: jours[index].iso, motifId })
                   }}
                 >
-                  {jours.map((j) => (
-                    <div key={j.iso} style={{
-                      flex: 1, minWidth: 0,
-                      background: feriers.has(j.iso) ? theme.ferie : (j.weekend ? theme.weekend : 'transparent'),
-                      borderLeft: `1px solid ${theme.grille}`,
-                    }} />
-                  ))}
+                  <span className="abs-corde-fil" aria-hidden="true" />
+                  <span className="abs-corde-anneaux" aria-hidden="true">
+                    {jours.map((j) => {
+                      const chômé = feriers.has(j.iso) || j.weekend
+                      // Le mot est sur l'anneau, en survol : un férié d'entreprise
+                      // et un dimanche ont la MÊME pastille (le dessin choisi ne
+                      // distinguait pas les deux) mais ils n'ont pas la même
+                      // raison, et la raison doit être lisible. `aria-hidden` en
+                      // haut du rang : trente et un anneaux annoncés à un
+                      // lecteur d'écran seraient du bruit, les mots sont déjà
+                      // sur les planches et dans le tiroir.
+                      return (
+                        <i
+                          key={j.iso}
+                          data-anneau={chômé ? 'chômé' : 'travaillé'}
+                          title={`${nomJourLong(j.iso)} · ${
+                            chômé ? (feriers.has(j.iso) ? 'chômé (férié de l’entreprise)' : 'chômé (week-end)') : 'travaillé'
+                          }`}
+                        />
+                      )
+                    })}
+                  </span>
 
-                  {/* Repère « aujourd'hui » */}
+                  {/* Repère « aujourd'hui » : le trait rouille qui traverse la pile */}
                   {indexAujourdhui >= 0 && (
-                    <div aria-hidden="true" style={{
-                      position: 'absolute', top: 0, bottom: 0, width: 2,
-                      left: `${((indexAujourdhui + 0.5) / nbJours) * 100}%`,
-                      background: 'rgba(245,158,11,0.45)',
-                    }} />
+                    <span
+                      className="abs-corde-aujourdhui"
+                      data-testid="abs-corde-aujourdhui"
+                      aria-hidden="true"
+                      style={{ left: `${((indexAujourdhui + 0.5) / nbJours) * 100}%` }}
+                    />
                   )}
 
-                  {/* Barres d'absence */}
-                  {ligne.segments.map((seg) => {
-                    const st = styleBarreAbsence(seg.absence, listePour(seg.absence))
-                    const a = seg.absence
-                    const titreBarre = [
-                      st.motif.label,
-                      `${ligne.employe.first_name} ${ligne.employe.last_name}`,
-                      `du ${formaterDateCourt(a.start_date)} au ${formaterDateCourt(a.end_date)}`,
-                      st.statut.label,
-                    ].join(' · ')
-                    const coupee = seg.coupeeAvant || seg.coupeeApres
-
-                    return (
-                      <button
-                        key={a.id}
-                        className="abs-cal-barre"
-                        onClick={() => setAbsenceActive(a)}
-                        title={titreBarre}
-                        aria-label={titreBarre}
-                        data-testid="abs-cal-barre"
-                        data-statut={a.status}
-                        style={{
-                          position: 'absolute',
-                          left: `calc(${(seg.debut / nbJours) * 100}% + 2px)`,
-                          width: `calc(${((seg.fin - seg.debut + 1) / nbJours) * 100}% - 4px)`,
-                          top: 5 + seg.rangee * ESPACEMENT_BARRE,
-                          height: HAUTEUR_BARRE,
-                          background: st.fond,
-                          border: st.pointillee ? `1px dashed ${st.bordure}` : `1px solid ${st.bordure}`,
-                          borderRadius: 8,
-                          color: theme.texte,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          fontFamily: 'inherit',
-                          display: 'flex', alignItems: 'center', gap: 5,
-                          padding: '0 8px',
-                          cursor: 'pointer',
-                          overflow: 'hidden', whiteSpace: 'nowrap',
-                          textDecoration: st.barree ? 'line-through' : 'none',
-                          opacity: st.barree ? 0.85 : 1,
-                        }}
-                      >
-                        <span>{st.motif.emoji}</span>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{st.motif.label}</span>
-                        {a.document_url && <span aria-hidden="true">📎</span>}
-                        {coupee && <span aria-hidden="true" style={{ opacity: 0.8 }}>{seg.coupeeAvant ? '‹' : ''}{seg.coupeeApres ? '›' : ''}</span>}
-                        {conflitParAbsence[a.id]?.status === 'pending' && <span aria-hidden="true">⚡</span>}
-                      </button>
-                    )
-                  })}
-
+                  {/* Le jour visé pendant un glisser-déposer */}
                   {survol && survol.employeeId === ligne.employe.id && (
                     <div
                       className="abs-drop-cell"
@@ -660,11 +615,88 @@ export default function AbsencesCalendrier({
                       }}
                     />
                   )}
+
+                  {/* LES PLANCHES */}
+                  {ligne.segments.map((seg) => {
+                    const st = styleBarreAbsence(seg.absence, listePour(seg.absence))
+                    const a = seg.absence
+                    const titrePlanche = [
+                      st.motif.label,
+                      `${ligne.employe.first_name} ${ligne.employe.last_name}`,
+                      `du ${formaterDateCourt(a.start_date)} au ${formaterDateCourt(a.end_date)}`,
+                      st.statut.label,
+                    ].join(' · ')
+                    const coupee = seg.coupeeAvant || seg.coupeeApres
+                    const joursComptés = compterJoursOuvres(
+                      a.start_date,
+                      a.end_date,
+                      feriers,
+                      a.count_holidays_as_leave
+                    )
+
+                    return (
+                      <button
+                        key={a.id}
+                        className="abs-cal-barre abs-corde-planche"
+                        onClick={() => setAbsenceActive(a)}
+                        title={titrePlanche}
+                        aria-label={titrePlanche}
+                        data-testid="abs-cal-barre"
+                        data-statut={a.status}
+                        style={{
+                          left: `calc(${(seg.debut / nbJours) * 100}% + 2px)`,
+                          width: `calc(${((seg.fin - seg.debut + 1) / nbJours) * 100}% - 4px)`,
+                          '--abs-corde-rang': seg.rangee,
+                          background: st.fond,
+                          borderColor: st.bordure,
+                          borderStyle: st.pointillee ? 'dashed' : 'solid',
+                          color: theme.texte,
+                          textDecoration: st.barree ? 'line-through' : 'none',
+                        }}
+                      >
+                        {/* la ficelle qui retient la planche à sa corde : sans elle,
+                            on a une étiquette posée, pas une absence accrochée */}
+                        <span className="abs-corde-attache" aria-hidden="true" />
+                        {/* le nœud sur la corde, quand la pointeuse conteste ce jour */}
+                        {conflitParAbsence[a.id]?.status === 'pending' && (
+                          <span className="abs-corde-noeud" aria-hidden="true" />
+                        )}
+                        <span className="abs-corde-marque" aria-hidden="true">{st.motif.emoji}</span>
+                        <span className="abs-corde-motif">{st.motif.label}</span>
+                        <span className="abs-corde-durée">{joursComptés} j</span>
+                        {a.status !== 'approuve' && (
+                          <span className="abs-corde-statut">{st.statut.label}</span>
+                        )}
+                        {a.document_url && <span aria-hidden="true">📎</span>}
+                        {coupee && (
+                          <span className="abs-corde-coupure" aria-hidden="true">
+                            {seg.coupeeAvant ? '‹' : ''}{seg.coupeeApres ? '›' : ''}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* LE SOLDE, une longueur et non plus une boîte : pleine = rien
+                    pris. Le nombre reste écrit à côté — une jauge lue seule
+                    serait un statut sans mot. */}
+                <div
+                  className="abs-corde-solde"
+                  title={`${solde.pris} jour(s) pris · plafond ${solde.plafond} jours`}
+                  style={{
+                    background: theme.carte,
+                    '--abs-corde-plein': `${Math.max(0, Math.min(100, plein))}%`,
+                  }}
+                >
+                  <span className="abs-corde-jauge" aria-hidden="true"><i /></span>
+                  <span className="abs-corde-nombre">
+                    {solde.restant}/{solde.plafond}
+                  </span>
                 </div>
               </div>
             )
           })}
-
           {lignes.length === 0 && (
             <div style={{ padding: 44, textAlign: 'center', color: theme.texteDoux }}>
               <CalendarOff size={26} style={{ marginBottom: 10, opacity: 0.6 }} />
@@ -801,6 +833,20 @@ export default function AbsencesCalendrier({
             background: 'rgba(153,27,27,0.20)', border: '1px solid #B91C1C',
           }} />
           Refusé (barré)
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <i style={{
+            width: 8, height: 8, borderRadius: 999, display: 'block',
+            border: '2px solid var(--charte-encre)', background: 'transparent',
+          }} />
+          anneau = jour travaillé
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <i style={{
+            width: 8, height: 8, borderRadius: 999, display: 'block',
+            border: '2px solid var(--charte-encre)', background: 'var(--charte-encre)',
+          }} />
+          pastille = chômé (week-end ou férié)
         </span>
         <span>‹ › à cheval sur la période</span>
         <span>📎 justificatif joint</span>
