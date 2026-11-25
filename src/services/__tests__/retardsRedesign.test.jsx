@@ -60,9 +60,23 @@ vi.mock('../../lib/supabase', () => ({
           deleting = true
           return query
         },
-        single: async () => ({ data: { module_retards: mock.allowed } }),
+        /*  La vraie requête de la page lit `*` : id, nom, photo et droits
+            arrivent ensemble. Un mock qui ne rend que `module_retards` ferait
+            passer pour un bug ce qui n'est qu'un mock infidèle. */
+        single: async () => ({
+          data: {
+            id: 'ent',
+            name: 'Atelier',
+            code: 'ATL',
+            logo_url: 'https://exemple.test/a.png',
+            module_retards: mock.allowed,
+          },
+        }),
         range: async () => ({
-          data: table === 'enterprises' ? [{ id: 'ent', name: 'Atelier' }] : [],
+          data:
+            table === 'enterprises'
+              ? [{ id: 'ent', name: 'Atelier', logo_url: 'https://exemple.test/a.png' }]
+              : [],
         }),
         then: (resolve, reject) =>
           deleting
@@ -331,6 +345,44 @@ it('change de journée quand on clique un jour de la molette', async () => {
   /* React re-rend le bouton : on compare le JOUR, pas le nœud */
   expect(host.querySelector('.rt-rail-jour.is-actif .rt-rail-num').textContent).toBe('12')
   expect(host.querySelector('.rt-rail-jour.is-actif').getAttribute('aria-current')).toBe('date')
+})
+
+/*  LE PETIT CARNET, demande du 25/11 — après deux refus. Ses mots : « Non
+    mais là c'est un bandeau. Je veux juste une petite forme carnet sur le
+    côté qui intègre ce message-là. » Ce qui doit rester vrai : une note, pas
+    une bande ; la phrase dedans ; les actions dehors ; et la période DANS la
+    note, sinon la légende orpheline revient sous le titre. */
+it('pose la phrase de la maison dans une note, pas dans une bande', async () => {
+  mock.rpc.mockImplementation(() => rpcResponse({ data: [line()] }))
+  await mount()
+  const note = host.querySelector('.rt-carnet')
+  expect(note).not.toBeNull()
+  expect(note.textContent).toContain('Chaque arrivée, replacée dans son contexte.')
+  expect(note.textContent).toContain('Le carnet de ponctualité')
+  /* la période est dans la note, et nulle part ailleurs */
+  expect(note.textContent).toContain('23 oct.')
+  expect(host.querySelectorAll('.rt-period-caption')).toHaveLength(0)
+  /* les actions ne sont pas dans la note : elles restent à côté */
+  expect(note.querySelector('.rt-actions')).toBeNull()
+  expect(host.querySelector('.rt-ouverture > .rt-actions')).not.toBeNull()
+  /* et la note est une note : elle ne prend pas la largeur de la page */
+  expect(getComputedStyle(note).flexGrow).not.toBe('1')
+})
+
+/*  LA PHOTO DE L'ENTREPRISE DANS LE RAIL — « tu as oublié d'afficher l'image
+    de profil de l'entreprise » (25/11). La barre savait la peindre ; la
+    requête de cette page ne la demandait pas. On vérifie la chaîne entière :
+    la requête, la donnée, le rond. */
+it('demande la photo de l’entreprise, et la peint dans le rail', async () => {
+  mock.rpc.mockImplementation(() => rpcResponse({ data: [line()] }))
+  await mount()
+  /*  Un admin simple n'a qu'une entreprise : c'est la sienne, et le rail doit
+      la porter — avec sa photo. Avant le 25/11, la page ne lui versait qu'un
+      booléen d'accès, donc ni nom ni rond. */
+  const rond = host.querySelector('.se-rond--bande img')
+  expect(host.querySelector('.se-bande-nom')?.textContent).toBe('Atelier')
+  expect(rond).not.toBeNull()
+  expect(rond.getAttribute('src')).toBe('https://exemple.test/a.png')
 })
 
 /*  LA SIDEBAR, demande du 25/11 : « ramène la sidebar + son rail dans cette

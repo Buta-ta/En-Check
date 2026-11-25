@@ -238,7 +238,105 @@
   margin: 3px 0 6px;
 }
 .rt-title-dot { color: var(--rt-accent); }
-.rt-title-row p { font-size: 12.5px; color: var(--rt-douce); }
+
+/* ── LE PETIT CARNET (25/11) ────────────────────────────────────────────
+   « Je veux juste une petite forme carnet sur le côté qui intègre ce
+   message-là. » Pas une bande : une NOTE. Elle a la taille d'un carnet de
+   poche, sa reliure à gauche, un filet par ligne et le coin corné. Elle se
+   pose à gauche de la rangée ; les actions restent à droite. Rayon 8,
+   ombre dure 3 px, aucun flou (C9, C10). */
+.rt-ouverture {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.rt-carnet {
+  position: relative;
+  flex: 0 1 300px;
+  max-width: 300px;
+  padding: 10px 12px 10px 28px;
+  border: 2px solid var(--rt-encre);
+  border-radius: 8px;
+  background: var(--rt-fiche);
+  box-shadow: 3px 3px 0 var(--rt-encre);
+  /* les lignes du papier réglé, au lavis — jamais un trait plein */
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent 0 16px,
+    var(--rt-filet) 16px 17px
+  );
+  /*  Les lignes tombent SOUS la ligne de base, pas dessus : la première
+      réglure doit passer à hauteur du pied du titre, sinon elle barre le
+      texte — ce qu'elle faisait sur la capture du 25/11. */
+  background-position: 0 19px;
+  overflow: hidden;
+}
+/* la reliure : deux traits et la couture, sur toute la hauteur */
+.rt-carnet-reliure {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 14px;
+  border-right: 1.5px solid var(--rt-filet);
+  background: var(--rt-lavis);
+}
+.rt-carnet-reliure::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 5px;
+  width: 1.5px;
+  background: repeating-linear-gradient(
+    180deg,
+    var(--rt-douce) 0 3px,
+    transparent 3px 8px
+  );
+}
+/* le coin corné, en bas à droite — le papier qu'on a plié */
+.rt-carnet::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  background: var(--rt-lavis);
+  border-top: 1.5px solid var(--rt-filet);
+  border-left: 1.5px solid var(--rt-filet);
+}
+.rt-carnet-titre {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--rt-accent);
+}
+.rt-carnet-message {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.1px;
+  color: var(--rt-encre);
+}
+.rt-carnet-date {
+  display: inline-block;
+  margin-top: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.3px;
+  color: var(--rt-douce);
+}
+/* sur téléphone, la note prend la largeur et les actions passent dessous */
+@media (max-width: 640px) {
+  .rt-carnet { flex: 1 1 100%; max-width: 100%; }
+}
+.rt-title-row p { font-size: 12.5px; color: var(--rt-douce); }.rt-title-row p { font-size: 12.5px; color: var(--rt-douce); }
 
 .rt-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 

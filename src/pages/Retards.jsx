@@ -85,10 +85,18 @@ export default function Retards() {
     const check = async () => {
       try {
         if (admin.role === 'super_admin') {
+          /*  `*` ET PAS `id,name` — même correction que sur Annonces accueil
+              le 27/11, et pour la même raison, entendue ici le 25/11 : « tu as
+              oublié d'afficher l'image de profil de l'entreprise ». Le rond du
+              sélecteur lit `logo_url` ; une requête qui ne la ramène pas
+              laisse la lettre du nom, et on croit le logo perdu alors qu'il
+              n'a jamais été demandé. `*` ramène aussi les `module_*`, dont
+              `sectionsNavAdmin` a besoin : sans elles, le rail se croyait sur
+              une entreprise sans modules et cachait la moitié des pages. */
           const companies = await allRetardRows(
             supabase
               .from('enterprises')
-              .select('id,name')
+              .select('*')
               .eq('is_active', true)
               .order('name')
               .order('id'),
@@ -101,13 +109,20 @@ export default function Retards() {
           const enterpriseId =
             admin.selectedEnterprise?.id || admin.enterprise_id
           if (!enterpriseId) throw new Error('Missing enterprise')
+          /*  L'ADMIN SIMPLE AUSSI PORTE SON ENTREPRISE DANS LE RAIL.
+              Le sélecteur affiche `entrepriseActive` : tant que la page ne
+              versait qu'un booléen d'accès, la bande n'avait ni nom ni photo.
+              Une ligne suffit — c'est la sienne. */
           const { data, error: accessFailure } = await supabase
             .from('enterprises')
-            .select('module_retards')
+            .select('*')
             .eq('id', enterpriseId)
             .single()
           if (accessFailure) throw accessFailure
-          if (active) setAccess(!!data?.module_retards)
+          if (active) {
+            setAccess(!!data?.module_retards)
+            if (data) setEntreprises([data])
+          }
         }
       } catch {
         if (active)
@@ -268,17 +283,12 @@ export default function Retards() {
         </select>
       </label>
     ) : null
-  /* La période se règle dans le bandeau. Ici, il ne reste que sa LÉGENDE —
-     « du 23 au 27 nov. 2026 · 12 journées évaluées » — parce qu'elle informe,
-     là où les contrôles, eux, sont uniques. */
-  const filters = (
-    <p className="rt-period-caption">
-      {dates.length > 1
-        ? `Du ${retardDateLabel(dates[0])} au ${retardDateLabel(dates.at(-1))}`
-        : retardDateLabel(selectedDate)}{' '}
-      · {selectedDate.slice(0, 4)}
-    </p>
-  )
+  /*  LA LÉGENDE DE PÉRIODE A QUITTÉ CET ENDROIT (25/11). Elle flottait seule
+      sous le titre, à mi-chemin entre le bandeau et les compteurs, et disait
+      la même chose que le sélecteur de date deux fois plus haut. Le petit
+      carnet la reprend dans son coin — `RetardsContent` la calcule sur les
+      journées qu'il a réellement sous les yeux. Rien à passer ici : le
+      composant a déjà `dates` et `selectedDate`. */
 
   /*  Les sections du rail : la même fabrique que les autres pages, avec la
       même règle `super_admin` qui passe toujours — sans elle, le rail masquait
@@ -408,7 +418,7 @@ export default function Retards() {
               stats={stats}
               dates={dates}
               mode={viewMode}
-              filters={filters}
+
               onExport={exportCSV}
               onRules={() => setRulesOpen(true)}
               onDelete={(r) => {
