@@ -486,52 +486,173 @@
    ═══════════════════════════════════════════════════════════ */
 
 @media (max-width: 820px) {
+  /*  ═══ 27/11 — « le sidebar et son rail disparaissent » ═══
+      Trois causes mesurées au navigateur sur la vraie page, à 390 px :
+
+      1. LA RANGÉE ÉTAIT ÉCRASÉE. `.sb` était un conteneur flex en ligne :
+         le rail (64 px de haut) et le panneau — même fermé — y vivaient
+         côte à côte. Le panneau ouvert prenait 506 px de large et
+         comprimait les dix touches du rail de 40 px à 20, puis à 10 :
+         les icônes n'avaient plus de place. Le panneau SORT donc du flux
+         (`position: fixed`) ; la rangée ne contient plus que le rail.
+
+      2. LE PANNEAU S'OUVRAIT SUR UN TÉLÉPHONE. L'état « repliée » était
+         enregistré et rejoué d'une taille d'écran à l'autre ; voir
+         `useSidebarRepliee.jsx`, qui ne l'enregistre plus que sur grand
+         écran.
+
+      3. LES TOUCHES NE DOIVENT JAMAIS RÉTRÉCIR. `flex: 0 0 auto` le dit :
+         une pression au doigt fait 40 px, pas 20. Si les dix ne tiennent
+         pas, c'est à la rangée de défiler — pas aux boutons de fondre. */
+
   .coque-admin > .sb,
   .empv2-layout > .sb,
   .dashboard-sidebar .sb {
     position: fixed;
     left: 8px;
     right: 8px;
-    bottom: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     top: auto;
     height: auto;
     z-index: 60;
+    /* la rangée ne contient QUE le rail : le panneau est posé à part */
+    width: auto;
     gap: 0;
   }
 
   .sb { gap: 0; }
 
+  /*  `.sb-rail` est en colonne de 64 px sur grand écran (`flex: 0 0 64px`).
+      C'est ce socle qui le maintenait à 64 px de large une fois passé en
+      rangée : la largeur l'emportait sur `width: 100%`. On rend donc au
+      rail toute la largeur, et il ne rétrécit pas (`flex: 1 1 auto`). */
   .sb-rail {
     flex-direction: row;
-    justify-content: space-around;
+    justify-content: space-between;
+    flex: 1 1 auto;
     width: 100%;
+    min-width: 0;
     height: auto;
     padding: 6px;
     gap: 2px;
+    /*  Si la rangée manque de place, elle défile horizontalement. Un
+        rail qui glisse sous le doigt vaut mieux qu'un rail de 20 px.
+        L'indice de défilement à droite (le dégradé ci-dessous) prévient
+        qu'il reste des touches, au lieu de les laisser hors de vue. */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    position: relative;
+  }
+  .sb-rail::-webkit-scrollbar { display: none; }
+  /*  L'INDICE DE DÉFILEMENT : un liséré, pas un dégradé — un dégradé
+      exige une couleur de fondu en dur, que la charte compte hors jetons. */
+  .sb-rail::before {
+    content: '';
+    position: sticky;
+    right: 0;
+    flex: 0 0 3px;
+    width: 3px;
+    align-self: stretch;
+    margin-left: -3px;
+    border-radius: 999px;
+    background: var(--charte-bordure);
+    pointer-events: none;
+  }
+
+  /*  LA TAILLE DES TOUCHES EST INTANGIBLE. `flex: 0 0 auto` empêche le
+      rétrécissement ; `flex-shrink: 0` le redit pour les navigateurs qui
+      l'appliquent aux éléments à largeur fixe. */
+  .sb-rail-item,
+  .sb-rail-vues > .sb-rail-item {
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
   }
 
   .sb-rail-logo,
   .sb-rail-sep { display: none; }
 
-  .sb-rail-vues { flex-direction: row; padding: 0; border-top: 0; border-left: 1px solid var(--charte-bordure); padding-left: 4px; }
+  /*  LE SÉLECTEUR D'ENTREPRISE NE DÉFILE PAS.
+      C'est le seul endroit où l'on voit sur quelle entreprise on
+      travaille : il reste collé à gauche pendant que les touches passent
+      dessous. `order` négatif le place en tête de la rangée. */
+  .sb-rail .se {
+    position: sticky;
+    left: 0;
+    order: -1;
+    flex: 0 0 auto;
+    width: auto;
+    z-index: 1;
+    background: var(--charte-surface);
+  }
+  /*  LE SÉLECTEUR SE RÉDUIT À SA PASTILLE dans la rangée : le nom de
+      l'entreprise s'écrit en entier dans le panneau, à l'ouverture. Un
+      nom tronqué à 54 px ne disait rien ; la pastille et le chevron
+      disent « ici, on choisit l'entreprise », et le panneau donne le nom
+      complet. C'est ce qui rend leurs 40 px aux dix touches. */
+  .sb-rail .se-bande {
+    flex: 0 0 auto;
+    flex-direction: row;
+    width: 40px;
+    max-height: none;
+    height: 40px;
+    gap: 0;
+    padding: 0;
+    justify-content: center;
+  }
+  .sb-rail .se-bande-nom,
+  .sb-rail .se-bande-chev,
+  .sb-rail .se-bande-compte { display: none; }
+
+  .sb-rail-vues { flex-direction: row; padding: 0 0 0 4px; border-top: 0; border-left: 1px solid var(--charte-bordure); flex: 0 0 auto; }
 
   .sb-rail-pied {
     flex-direction: row;
+    flex: 0 0 auto;
     margin: 0;
-    padding: 0;
-    padding-left: 4px;
+    padding: 0 0 0 4px;
     border-top: 0;
     border-left: 1px solid var(--charte-bordure);
   }
 
-  /* le panneau, s'il est ouvert, monte au-dessus de la rangée */
+  /*  LE PANNEAU MONTE AU-DESSUS DE LA RANGÉE, HORS DU FLUX.
+      Il est positionné par rapport à la fenêtre, pas dans la rangée :
+      c'est ce qui rend aux touches leurs 40 px. */
   .sb-panneau {
     position: fixed;
     left: 8px;
     right: 8px;
-    bottom: 72px;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     z-index: 61;
-    max-height: 60vh;
+    max-height: min(60vh, 420px);
+    width: auto;
+  }
+
+  /*  LE CONTENU SE PLIE À LA HAUTEUR DU PANNEAU.
+      Sans ça `sn-registre-contenu` grandissait avec son contenu (1374 px
+      mesurés) et la partie basse — dont le pied — passait sous l'écran :
+      `overflow: hidden` du panneau la coupait purement et simplement.
+      En le laissant se rétracter (`flex: 1 1 auto; min-height: 0`), la
+      liste défile À L'INTÉRIEUR et le pied reste visible. */
+  .sb-panneau .sn-registre-contenu {
+    /*  Il FAUT en faire un conteneur flex : `flex: 1 1 auto` sur un
+        enfant d'un bloc anodin ne fait rien du tout, et le contenu
+        gardait sa hauteur naturelle (1374 px). */
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+  .sb-panneau .sb-panneau-inner {
+    /* ⚠️ `height: 100%` du panneau ouvert le laissait prendre sa hauteur
+       naturelle (1374 px) dès que le parent se pliait. On la remplace. */
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
   }
 
   /* et il s'efface quand il est fermé, pour ne pas bloquer les clics */
@@ -802,3 +923,61 @@
   flex: 0 0 30px;
   margin-bottom: 2px;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   LE PIED DU PANNEAU — les actions de compte, sur téléphone
+   Elles ne tiennent pas dans la rangée de 374 px (mesure à 390 px :
+   301 px hors de vue). Elles vivent ici, avec leur libellé, loupe du
+   pouce : pas d'icône nue qu'on doit deviner.
+   ═══════════════════════════════════════════════════════════ */
+.sb-panneau-pied {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--charte-bordure);
+}
+
+.sb-panneau-action {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1.5px solid var(--charte-bordure);
+  border-radius: 8px;
+  background: var(--charte-surface);
+  color: var(--charte-encre);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sb-panneau-action:hover { background: var(--charte-surface2); }
+
+.sb-panneau-action span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sb-panneau-action--sortie { color: var(--charte-erreur); }
+
+.sb-panneau-initiale {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--charte-aplat);
+  color: var(--charte-blanc);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* dans la rangée, le pied vidé ne doit pas laisser de trait vide */
+.sb-pied-ranguee { display: none; }

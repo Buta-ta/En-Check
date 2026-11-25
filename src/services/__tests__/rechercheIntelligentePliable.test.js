@@ -54,7 +54,10 @@ describe('la recherche intelligente est ouverte par défaut', () => {
 
 describe('une fois repliée, elle reste sur la page', () => {
   it('le bandeau se range au lieu de disparaître', () => {
-    expect(dock).toContain("className={`ec-assistant-dock${repliee ? ' is-repliee' : ''}`}")
+    // 27/11 : une seconde classe, `nav-ouverte`, range le dock pendant que
+    // la navigation est dépliée sur téléphone — les deux se disputaient le
+    // bas de l'écran et le dock recouvrait la liste.
+    expect(dock).toContain("className={`ec-assistant-dock${repliee ? ' is-repliee' : ''}${navOuverte ? ' nav-ouverte' : ''}`}")
     // le `hidden` existant ne sert qu'à la fenêtre de conversation
     expect(dock).toContain('hidden={opened}')
   })

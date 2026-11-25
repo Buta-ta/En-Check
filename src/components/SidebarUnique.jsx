@@ -44,6 +44,22 @@ export default function SidebarUnique({
   surEntreprise = () => {},
 }) {
   const { repliee, basculer, deplier, replier } = useSidebarRepliee()
+
+  /*  SUR TÉLÉPHONE, LE PIED QUITTE LA RANGÉE POUR LE PANNEAU.
+      Mesure à 390 px : la rangée fait 374 px, l'entreprise 152, les six
+      rubriques 252 — les trois actions de compte (thème, espace employé,
+      déconnexion) et le profil tombaient 300 px hors de vue. On ne cache
+      rien et on ne rétrécit pas les touches : ces actions descendent dans
+      le panneau, qui est fait pour ça. La rangée garde la navigation. */
+  const [ecranEtroit, setEcranEtroit] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= 820,
+  )
+  useEffect(() => {
+    const suivre = () => setEcranEtroit(window.innerWidth <= 820)
+    window.addEventListener('resize', suivre)
+    return () => window.removeEventListener('resize', suivre)
+  }, [])
+  const piedDansLePanneau = ecranEtroit
   const racine = useRef(null)
 
   // ⚠️ UN CLIC DANS LE VIDE RABAT LA SIDEBAR — son choix du 24/11.
@@ -62,6 +78,18 @@ export default function SidebarUnique({
     return () => document.removeEventListener('mousedown', clicDansLeVide)
   }, [repliee, replier])
   const { pathname } = useLocation()
+
+  /*  SUR TÉLÉPHONE, LE PANNEAU SE REFERME QUAND ON CHANGE DE PAGE.
+      Il est posé par-dessus la page et couvre presque tout l'écran : le
+      laisser ouvert après un clic obligerait à le refermer à la main à
+      chaque fois. Sur un grand écran, il reste ouvert — c'est une colonne,
+      pas un volet. */
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    // on ne dépend QUE du chemin : refermer au premier rendu sur mobile
+    // est voulu, mais on ne veut pas rejouer l'effet à chaque état.
+    if (window.innerWidth <= 820) replier()
+  }, [pathname])
   const [filtre, setFiltre] = useState('')
   const [groupesReplies, setGroupesReplies] = useState({})
 
@@ -151,45 +179,53 @@ export default function SidebarUnique({
           </div>
         )}
 
-        <div className="sb-rail-pied">
-          <button
-            type="button"
-            className="sb-rail-item"
-            onClick={surTheme}
-            title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-            aria-label={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-            aria-pressed={darkMode}
-          >
-            {darkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
-          </button>
-          <a
-            className="sb-rail-item"
-            href="/employee/login"
-            target="_blank"
-            rel="noreferrer"
-            title="Espace employé"
-            aria-label="Espace employé (s'ouvre dans un nouvel onglet)"
-          >
-            <Users size={18} aria-hidden="true" />
-          </a>
-          <button
-            type="button"
-            className="sb-rail-item"
-            onClick={surDeconnexion}
-            title="Déconnexion"
-            aria-label="Déconnexion"
-          >
-            <LogOut size={18} aria-hidden="true" />
-          </button>
-          {/* le compte mène au profil, comme dans l'ancienne barre */}
-          <Link
-            className="sb-rail-compte sidebar-profile-link"
-            to="/admins"
-            title={`${nomAdmin} — administrateur`}
-            aria-label={`${nomAdmin} — ouvrir la page Administrateurs`}
-          >
-            {(initialeAdmin || nomAdmin || 'A').trim().charAt(0).toUpperCase()}
-          </Link>
+        {/*  LE PIED DE LA RANGÉE — actions de compte.
+             Sur téléphone, la rangée n'a la place que pour la navigation
+             et l'entreprise : ces trois actions passent dans le panneau
+             (voir `piedDansLePanneau`), où on les cherche naturellement. */}
+        <div className={`sb-rail-pied${piedDansLePanneau ? ' sb-pied-ranguee' : ''}`}>
+          {!piedDansLePanneau && (
+            <>
+              <button
+                type="button"
+                className="sb-rail-item"
+                onClick={surTheme}
+                title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+                aria-label={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+                aria-pressed={darkMode}
+              >
+                {darkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+              </button>
+              <a
+                className="sb-rail-item"
+                href="/employee/login"
+                target="_blank"
+                rel="noreferrer"
+                title="Espace employé"
+                aria-label="Espace employé (s'ouvre dans un nouvel onglet)"
+              >
+                <Users size={18} aria-hidden="true" />
+              </a>
+              <button
+                type="button"
+                className="sb-rail-item"
+                onClick={surDeconnexion}
+                title="Déconnexion"
+                aria-label="Déconnexion"
+              >
+                <LogOut size={18} aria-hidden="true" />
+              </button>
+              {/* le compte mène au profil, comme dans l'ancienne barre */}
+              <Link
+                className="sb-rail-compte sidebar-profile-link"
+                to="/admins"
+                title={`${nomAdmin} — administrateur`}
+                aria-label={`${nomAdmin} — ouvrir la page Administrateurs`}
+              >
+                {(initialeAdmin || nomAdmin || 'A').trim().charAt(0).toUpperCase()}
+              </Link>
+            </>
+          )}
         </div>
       </aside>
 
@@ -278,6 +314,41 @@ export default function SidebarUnique({
               )
             })}
           </nav>
+
+          {/*  LE PIED DU PANNEAU — les actions de compte, sur téléphone.
+               Elles quittent la rangée (trop étroite pour elles) sans
+               disparaître : ce sont les mêmes, avec leur libellé. */}
+          {piedDansLePanneau && (
+            <div className="sb-panneau-pied">
+              <button
+                type="button"
+                className="sb-panneau-action"
+                onClick={surTheme}
+                aria-pressed={darkMode}
+              >
+                {darkMode ? <Sun size={15} aria-hidden="true" /> : <Moon size={15} aria-hidden="true" />}
+                <span>{darkMode ? 'Mode clair' : 'Mode sombre'}</span>
+              </button>
+              <a className="sb-panneau-action" href="/employee/login" target="_blank" rel="noreferrer">
+                <Users size={15} aria-hidden="true" />
+                <span>Espace employé</span>
+              </a>
+              <Link className="sb-panneau-action" to="/admins">
+                <span className="sb-panneau-initiale">
+                  {(initialeAdmin || nomAdmin || 'A').trim().charAt(0).toUpperCase()}
+                </span>
+                <span>{nomAdmin || 'Administrateur'}</span>
+              </Link>
+              <button
+                type="button"
+                className="sb-panneau-action sb-panneau-action--sortie"
+                onClick={surDeconnexion}
+              >
+                <LogOut size={15} aria-hidden="true" />
+                <span>Déconnexion</span>
+              </button>
+            </div>
+          )}
         </div>
       </RegistreRepli>
     </div>

@@ -23,6 +23,7 @@ import { answerExplanation, EXPLANATION_QUESTIONS } from '../services/assistantE
 import HolidayService from '../services/holidayService'
 import SearchResults from './SpotlightSearch/SearchResults'
 import useAssistantExamples, { ASSISTANT_EXAMPLES } from '../hooks/useAssistantExamples'
+import { useSidebarRepliee } from '../hooks/useSidebarRepliee'
 // Preserve the existing result-card styles after removal of the standalone hub.
 import '../styles/spotlight.css'
 import '../styles/assistantDock.css'
@@ -103,6 +104,23 @@ export default function AssistantDock() {
     setMessage('Badge lu. Envoyez la recherche pour consulter les résultats.')
   }, [])
   const [repliee, setRepliee] = useState(lireRechercheRepliee)
+
+  /*  QUAND LA NAVIGATION EST OUVERTE SUR TÉLÉPHONE, LE DOCK S'EFFACE.
+      Les deux se disputent le bas de l'écran : le panneau de navigation
+      monte depuis la rangée, le dock de l'assistant est posé à 76 px du
+      bas en z-index 80 — il recouvrait la liste (« Employés » à moitié
+      mangé). Le dock se retire donc tant que la navigation est dépliée
+      sur un écran étroit, et revient dès qu'elle se referme. */
+  const { repliee: navRepliee } = useSidebarRepliee()
+  const [ecranEtroit, setEcranEtroit] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= 820,
+  )
+  useEffect(() => {
+    const suivre = () => setEcranEtroit(window.innerWidth <= 820)
+    window.addEventListener('resize', suivre)
+    return () => window.removeEventListener('resize', suivre)
+  }, [])
+  const navOuverte = ecranEtroit && !navRepliee
   const [focused, setFocused] = useState(false)
   const [examplesOpen, setExamplesOpen] = useState(false)
   const placeholder = useAssistantExamples(opened || focused || examplesOpen || Boolean(draft))
@@ -431,7 +449,7 @@ export default function AssistantDock() {
   return <>
     <div className={`ec-assistant-space${repliee ? ' is-repliee' : ''}`} aria-hidden="true" />
     {createPortal(<>
-      <aside className={`ec-assistant-dock${repliee ? ' is-repliee' : ''}`} data-theme={theme} aria-label="Assistant En-Check" hidden={opened} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false) }}>
+      <aside className={`ec-assistant-dock${repliee ? ' is-repliee' : ''}${navOuverte ? ' nav-ouverte' : ''}`} data-theme={theme} aria-label="Assistant En-Check" hidden={opened} onFocusCapture={() => setFocused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false) }}>
         <div className="ec-assistant-weave" aria-hidden="true"><PageCulturalBand pathname={location.pathname} placement="compact"/></div>
         {repliee ? (
           <div className="ec-assistant-rangee">

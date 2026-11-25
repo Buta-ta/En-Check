@@ -811,3 +811,18 @@ body[data-theme="light"] .ec-assistant-panel:not([data-theme="dark"]) {
   .ec-assistant-replier span { display: none; }
   .ec-assistant-replier { padding: 5px 8px; }
 }
+
+/*  ═══ LE DOCK S'EFFACE QUAND LA NAVIGATION EST OUVERTE — 27/11 ═══
+    Sous 821 px, la navigation se déplie en panneau par-dessus la page,
+    posée à 72 px du bas ; le dock, à 76 px du bas et en z-index 80,
+    recouvrait cette liste. On ne peut pas garder les deux ouverts sur
+    390 px de large : le dock se retire pendant qu'on navigue, et
+    revient dès que le panneau se referme. */
+@media (max-width: 820px) {
+  .ec-assistant-dock.nav-ouverte {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(8px);
+  }
+}
