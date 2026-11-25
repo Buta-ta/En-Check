@@ -1566,3 +1566,431 @@ button.abs-planche-corps:focus-visible {
 }
 .abs-page [data-testid='abs-soldes-liste'] { overflow-x: auto; max-width: 100%; padding-bottom: 8px; }
 .abs-page [data-testid='abs-soldes-liste'] > div { min-width: 580px; box-sizing: border-box; }
+
+/* ═══════════════════════════════════════════════════════════
+   🪝 LA TRINGLE du calendrier des absences — maquette
+   `maquettes/absences-outils-1-rideau.png` (9/12)
+
+   Trois lignes de pastilles (la période, les modes, les sept motifs)
+   consommaient ~150 px avant la première information de la page. Elles sont
+   devenues UNE tringle, pleine de bout en bout, sur laquelle tout pend : la
+   planche de la période à deux anneaux, le registre des modes à un anneaux,
+   les billets sur leur ficelle, et une pince à linge par motif.
+
+   Les nombres, déclarés une fois ici et relus par `absencesCalendrierTringle.test.jsx`
+   (jamais recopiés dans un `expect`) :
+
+     --abs-tringle-bois     10 px   le bois, au cran de la tringle de l'étagère
+     --abs-tringle-anneau    8 px   le cercle qui mord le bois
+     --abs-tringle-saut     20 px   la descente du bois au haut de la pièce
+     --abs-tringle-ecart    12 px   l'air entre deux pièces
+     --abs-tringle-debord    6 px   la moitié de l'écart : ce qui soude les tronçons
+     --abs-tringle-ficelle  26 px   la corde des billets, plus longue que le saut
+     --abs-pince-largeur    46 px
+     --abs-pince-longueur  132 px   le min-height de l'étiquette : un libellé long
+                                    l'allonge, il ne la coupe pas
+
+   Le bois se peint par TRONÇON sur chaque pièce — `top: var(--abs-tringle-anneau)`
+   chez la pièce comme chez la pince, et `left/right: -debord` des deux côtés :
+   soudés, les tronçons font un trait continu d'un bout à l'autre de la rangée ;
+   séparés par une coupe, chaque rang qui tombe à l'écran a sa propre tringle.
+   C'est la menuiserie de `.abs-planche::before`, reprise pour la même raison.
+   La hauteur du trait inclut ses deux filets (`bois + 2 × trait`, en
+   `box-sizing: border-box`) : le bois ET ses deux rives font le bandeau, sinon
+   l'anneau mordrait une bordure de 10 px au lieu d'un bandeau de 10 px.
+   ═══════════════════════════════════════════════════════════ */
+
+.abs-tringle {
+  --abs-tringle-bois: 10px;
+  --abs-tringle-anneau: 8px;
+  --abs-tringle-saut: 20px;
+  --abs-tringle-ecart: 12px;
+  --abs-tringle-debord: 6px;
+  --abs-tringle-ficelle: 26px;
+  --abs-pince-largeur: 46px;
+  --abs-pince-longueur: 132px;
+  /* le bois, ses deux rives, et la descente : la même somme pour toutes les
+     pièces, sinon deux pièces d'une même rangée n'accrochent pas à la même
+     hauteur et le trait continu devient un escalier */
+  --abs-tringle-descente: calc(
+    var(--abs-tringle-anneau) + var(--abs-tringle-bois) + 2 * var(--charte-trait) + var(--abs-tringle-saut)
+  );
+  padding: var(--charte-espace-3) 0 var(--charte-espace-3);
+}
+
+/* la bande du haut : la seule action de la section, à droite, au-dessus du bois */
+.abs-tringle-bande {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--charte-espace-2);
+}
+
+.abs-tringle-declarer {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-2) var(--charte-espace-4);
+  background: var(--abs-argile);
+  color: var(--charte-blanc);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* la rangée : les pièces pendent côte à côte et se replient en rangs, chaque
+   rang portant son bois parce que le bois est porté par la pièce */
+.abs-tringle-rangee {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  column-gap: var(--abs-tringle-ecart);
+  row-gap: var(--charte-espace-5);
+}
+
+.abs-tringle-piece {
+  position: relative;
+  padding-top: var(--abs-tringle-descente);
+  min-width: 0;
+}
+
+/* LE TRONÇON DE BOIS. Il déborde de la moitié de l'écart de part et d'autre :
+   c'est ce qui soude deux pièces voisines en un seul trait, et ce qui fait
+   qu'aucune retouche de `gap` ne troue la tringle. */
+.abs-tringle-bois {
+  position: absolute;
+  top: var(--abs-tringle-anneau);
+  left: calc(-1 * var(--abs-tringle-debord));
+  right: calc(-1 * var(--abs-tringle-debord));
+  height: calc(var(--abs-tringle-bois) + 2 * var(--charte-trait));
+  box-sizing: border-box;
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-bordure);
+  pointer-events: none;
+}
+
+/* LES SUSPENTES : la corde de 2 px qui descend du bois au haut de la pièce, et
+   l'anneau à son sommet. Le centre de l'anneau tombe sur l'axe du bois — c'est
+   la morsure, pas un cercle posé à côté. Muet, hors du chemin du clic. */
+.abs-tringle-suspentes {
+  position: absolute;
+  top: calc(
+    var(--abs-tringle-anneau)
+    + (var(--abs-tringle-bois) + 2 * var(--charte-trait)) / 2
+    - (var(--abs-tringle-anneau) + 2 * var(--charte-trait)) / 2
+  );
+  left: var(--charte-espace-4);
+  right: var(--charte-espace-4);
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.abs-tringle-suspentes.est-un { justify-content: center; }
+
+.abs-tringle-suspentes i {
+  position: relative;
+  display: block;
+  width: var(--charte-trait);
+  background: var(--charte-encre);
+}
+
+/* left: -5 px = la moitié de l'épaisseur du cercle (8 + 2 × 2) moins la moitié
+   du trait de corde (2) — le cercle se centre sur la corde, comme sur la
+   planche de l'étagère. */
+.abs-tringle-suspentes i::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -5px;
+  width: var(--abs-tringle-anneau);
+  height: var(--abs-tringle-anneau);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-sable);
+}
+
+/* ── la planche de la période : deux clous, et le titre qui s'ouvre ── */
+.abs-tringle-nav {
+  display: flex;
+  align-items: stretch;
+  gap: var(--charte-espace-2);
+}
+
+.abs-tringle-plaque-boite { position: relative; }
+
+.abs-tringle-plaque {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--charte-espace-2);
+  min-width: 190px;
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  background: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-corps);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.abs-tringle-plaque.est-ouvert { background: var(--charte-surface2); }
+.abs-tringle-chevron[data-ouvert='vrai'] { transform: rotate(180deg); }
+
+.abs-tringle-clou {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-encre);
+  cursor: pointer;
+}
+
+/* ── le registre des trois modes, sur un anneau ── */
+.abs-tringle-registre {
+  display: inline-flex;
+  align-items: stretch;
+  gap: var(--charte-espace-1);
+  padding: var(--charte-espace-1);
+  background: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+}
+
+.abs-tringle-mode {
+  padding: var(--charte-espace-2) var(--charte-espace-3);
+  background: transparent;
+  border: 0;
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-douce);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.abs-tringle-mode.est-actif { background: var(--abs-argile); color: var(--charte-blanc); }
+
+/* ── les billets : ils pendent plus bas, sur leur ficelle ── */
+.abs-tringle-piece--billets {
+  padding-top: calc(
+    var(--abs-tringle-anneau) + var(--abs-tringle-bois) + 2 * var(--charte-trait) + var(--abs-tringle-ficelle)
+  );
+}
+
+.abs-tringle-billets {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--charte-espace-3) var(--charte-espace-2);
+}
+
+.abs-tringle-billet {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: var(--charte-espace-1) var(--charte-espace-2);
+  background: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-douce);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-micro);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+/* la ficelle : exactement la longueur qui manque entre le billet et le bord du
+   bas du bois — `ficelle`, et rien d'autre. Un billet sans ficelle est un
+   billet posé, pas suspendu. */
+.abs-tringle-billet::before {
+  content: "";
+  position: absolute;
+  left: var(--charte-espace-3);
+  top: calc(-1 * var(--abs-tringle-ficelle));
+  width: var(--charte-trait);
+  height: var(--abs-tringle-ficelle);
+  background: var(--charte-encre);
+}
+
+.abs-tringle-billet.est-actif { background: var(--charte-surface2); color: var(--charte-encre); }
+.abs-tringle-billet.est-reprise { border-style: dashed; color: var(--charte-texte); }
+
+.abs-tringle-detente {
+  position: relative;
+  width: 22px;
+  height: 10px;
+  flex-shrink: 0;
+  background: var(--charte-surface2);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+}
+
+.abs-tringle-detente::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: var(--charte-rayon-pilule);
+  background: var(--charte-encre);
+  transition: left var(--charte-duree) var(--charte-easing);
+}
+
+.abs-tringle-billet.est-actif .abs-tringle-detente::after { left: 12px; }
+
+/* ── LA PINCE : une par motif, l'étiquette pendue dessous ──
+   La pince serre le bois (elle le chevauche) et l'étiquette descend. Le tronçon
+   de bois est le même que celui des pièces : `.abs-pince:before` reprend
+   `top`, `left`, `right`, `height` et le filet de `.abs-tringle-bois`, au
+   cordeau près que la pince n'a pas d'anneau — c'est sa propre mâchoire qui
+   tient le bois. Un test relit les deux et refuse qu'ils divergent. */
+.abs-pince {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--abs-pince-largeur);
+  padding: calc(var(--abs-tringle-descente) - var(--abs-tringle-saut)) 0 0;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.abs-pince::before {
+  content: "";
+  position: absolute;
+  top: var(--abs-tringle-anneau);
+  left: calc(-1 * var(--abs-tringle-debord));
+  right: calc(-1 * var(--abs-tringle-debord));
+  height: calc(var(--abs-tringle-bois) + 2 * var(--charte-trait));
+  box-sizing: border-box;
+  border: var(--charte-trait) solid var(--charte-encre);
+  background: var(--charte-bordure);
+  pointer-events: none;
+}
+
+/* la mâchoire : un rectangle qui déborde d'un cran au-dessus et en dessous du
+   bois, et son ressort en travers. Elle est centrée sur le bois, pas posée
+   dessus : c'est ce qui se lit « elle serre ». */
+.abs-pince-bois {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: calc(var(--abs-tringle-bois) + 2 * var(--charte-trait) + 12px);
+  background: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+}
+
+.abs-pince-bois::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 50%;
+  height: var(--charte-trait);
+  background: var(--charte-encre);
+}
+
+.abs-pince-etiquette {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--abs-pince-longueur);
+  padding: calc(var(--abs-tringle-bois) + var(--charte-espace-3)) 0 var(--charte-espace-2);
+  background: var(--charte-surface);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-encre);
+}
+
+/* l'emoji au bord du haut, comme sur la maquette : il dépasse l'étiquette de
+   la moitié de sa caisse, c'est ce qui la dit pendue et non collée */
+.abs-pince-emoji { font-size: var(--charte-taille-corps); line-height: 1; }
+
+/* le libellé se lit à la verticale, de bas en haut : une étiquette étroite ne
+   peut pas porter « Absence injustifiée » à l'horizontale, et le tourner plutôt
+   que le couper est ce qui garde les sept pinces à 46 px */
+.abs-pince-nom {
+  flex: 1 0 auto;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.abs-pince-nombre {
+  width: 100%;
+  padding-top: var(--charte-espace-1);
+  border-top: var(--charte-trait) solid var(--charte-encre);
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  text-align: center;
+}
+
+/* l'étiquette éteinte : la pince reste sur le bois, l'étiquette a glissé
+   (deux degrés), elle est vidée de sa pâte et barrée d'un trait droit. Un
+   état dit par la forme et le mot du `title`, jamais par la couleur seule. */
+.abs-pince.est-eteint { transform: rotate(-2deg); }
+.abs-pince.est-eteint .abs-pince-etiquette { background: transparent; border-color: var(--charte-douce); color: var(--charte-douce); }
+.abs-pince.est-eteint .abs-pince-nombre { border-top-color: var(--charte-douce); }
+
+.abs-pince-barre {
+  display: none;
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 58%;
+  height: var(--charte-trait);
+  background: var(--charte-douce);
+  transform: rotate(-34deg);
+  pointer-events: none;
+}
+
+.abs-pince.est-eteint .abs-pince-barre { display: block; }
+
+/* TOUTES LES LARGEURS, sans correctif : le repli vient du `flex-wrap` de la
+   rangée et du bois porté par la pièce. À 390 px, les sept pinces se coupent
+   en deux rangs et chaque rang tend son propre trait — la maquette dessinait
+   une tringle unique, elle en dessinerait une par rang, et c'est la même
+   lecture. La bande de l'action, elle, passe sous la tringle quand la place
+   manque, sinon le bouton écrase la planche de la période. */
+@media (max-width: 900px) {
+  .abs-tringle-bande { justify-content: flex-start; margin-bottom: var(--charte-espace-3); }
+  .abs-tringle-nav { flex-wrap: wrap; }
+  .abs-tringle-plaque { min-width: 0; width: 100%; }
+  .abs-tringle-plaque-boite { flex: 1 1 100%; order: 2; }
+  .abs-tringle-clou { order: 1; }
+}

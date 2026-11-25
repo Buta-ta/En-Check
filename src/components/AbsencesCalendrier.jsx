@@ -10,7 +10,7 @@
 // reçoit des données et appelle des callbacks fournis par la page.
 // ═══════════════════════════════════════════════════════════
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, ChevronDown, Plus, CalendarOff, Users, CalendarDays, CalendarSearch } from 'lucide-react'
 import { styleBarreAbsence, DATA_TRANSFER_MOTIF } from '../constants/motifsAbsence'
 import { ecartEnMois } from '../services/absencesCalendrier'
@@ -214,6 +214,22 @@ export default function AbsencesCalendrier({
     [mode, lignes]
   )
 
+  // ── un cas par motif sur la période affichée ─────────────────────────
+  // La même géométrie que `lignes` : mêmes jours, mêmes employés du
+  // périmètre, même `segmentSurJours`. Mais SANS le filtre des pinces —
+  // une étiquette éteinte doit dire ce qu'on rate.
+  const comptes = useMemo(() => {
+    const vus = new Set(employes.map((e) => e.id))
+    const par = {}
+    absences.forEach((a) => {
+      if (!vus.has(a.employee_id)) return
+      if (!segmentSurJours(a.start_date, a.end_date, jours)) return
+      const cle = a.reason || 'autre'
+      par[cle] = (par[cle] || 0) + 1
+    })
+    return par
+  }, [absences, employes, jours])
+
   const basculerMotif = (id) => {
     setMotifsMasques((prev) => {
       const suivant = new Set(prev)
@@ -242,181 +258,167 @@ export default function AbsencesCalendrier({
         .abs-cal-barre:focus-visible { outline: 2px solid #F59E0B; outline-offset: 1px; }
       `}</style>
 
-      {/* ═══ Barre d'outils ═══ */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-        <div className="abs-calendar-navigation" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={() => deplacer(-1)} aria-label="Période précédente" style={boutonNav(theme)}>
-            <ChevronLeft size={18} />
-          </button>
+      {/* ═══ LA TRINGLE — maquette `maquettes/absences-outils-1-rideau.png` (9/12) ═══
+          Une tringle de 10 px, pleine de bout en bout, et tout pend dessus : la
+          planche de la période, le registre des trois modes, les sept pinces à
+          motif, les billets suspendus plus bas.
 
-          {/* Le titre s'ouvre : on peut viser une date, un mois, une année */}
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setChoixDate((v) => !v)}
-              aria-expanded={choixDate}
-              aria-haspopup="dialog"
-              title="Choisir une date, un mois ou une année"
-              data-testid="abs-cal-titre"
-              style={{
-                margin: 0, fontSize: 17, fontWeight: 700, color: theme.texte, minWidth: 168,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                padding: '5px 10px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
-                background: choixDate ? theme.pastille : 'transparent',
-                border: `1px ${choixDate ? 'solid' : 'dashed'} ${choixDate ? 'rgba(245,158,11,0.4)' : 'transparent'}`,
-              }}
-            >
-              {titre}
-              <ChevronDown size={15} style={{ transform: choixDate ? 'rotate(180deg)' : 'none' }} />
+          Ce qui tombe : les trois lignes de pastilles — la période, les modes,
+          les motifs — qui consommaient cent cinquante pixels avant la première
+          information, et le bouton « Tous les motifs », qui répétait ce qu'une
+          pince fait déjà (ôter la pince = éteindre le motif). Rien n'est perdu :
+          « Masquer les employés sans absence » est devenu un billet, et
+          « Réallumer tout » n'existe que quand il y a quelque chose à rallumer —
+          un bouton qui ne sert à rien ne s'accroche nulle part.
+
+          Le bois se peint par TRONÇON sur chaque pièce, et le tronçon déborde de
+          la moitié de l'écart : soudés de l'un à l'autre bout, ils font un trait
+          continu ; et le rang qui tombe à l'écran à 390 px reçoit sa propre
+          tringle, comme les planches de l'étagère reçoivent la leur.
+
+          Le titre de la période reste la phrase du service (`titrePeriode`) : la
+          maquette écrivait « LUN 23 → DIM 29 », une flèche de plus n'est pas une
+          donnée. Les capitales et la chasse sont du CSS, pas du texte. */}
+      <div className="abs-tringle" data-testid="abs-cal-tringle">
+        {/* L'action de la section, seule, à droite et au-dessus du bois. */}
+        {onDeclarer && (
+          <div className="abs-tringle-bande">
+            <button type="button" onClick={onDeclarer} className="abs-tringle-declarer" data-testid="abs-cal-declarer">
+              <Plus size={15} /> Déclarer une absence
             </button>
-
-            <ChoixPeriode
-              ouvert={choixDate}
-              onFermer={fermerChoix}
-              jourSel={jourSel}
-              annee={annee}
-              onAllerA={allerA}
-            />
           </div>
+        )}
 
-          <button onClick={() => deplacer(1)} aria-label="Période suivante" style={boutonNav(theme)}>
-            <ChevronRight size={18} />
-          </button>
-
-          {/* Retour immédiat à la période en cours */}
-          <button
-            type="button"
-            onClick={() => allerA(aujourdhuiIso)}
-            data-testid="abs-cal-aujourdhui"
-            title="Revenir à la période en cours"
-            style={{
-              marginLeft: 4, padding: '7px 14px', borderRadius: 999, cursor: 'pointer',
-              fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
-              background: 'rgba(245,158,11,0.12)',
-              border: '1px solid rgba(245,158,11,0.35)',
-              color: theme.ambre,
-            }}
-          >
-            Aujourd’hui
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          {/* Sélecteur de mode : Jour · Semaine · Mois */}
-          <div
-            role="group"
-            aria-label="Mode d'affichage du calendrier"
-            data-testid="abs-cal-modes"
-            style={{
-              display: 'inline-flex', padding: 3, gap: 3, borderRadius: 12,
-              border: `1px solid ${theme.bordure}`, background: theme.pastille,
-            }}
-          >
-            {MODES.map((m) => {
-              const actif = mode === m.id
-              return (
+        <div className="abs-tringle-rangee">
+          {/* ── la planche de la période : deux anneaux, deux clous, et le titre s'ouvre ── */}
+          <div className="abs-tringle-piece abs-tringle-piece--plaque">
+            <span className="abs-tringle-bois" aria-hidden="true" />
+            <span className="abs-tringle-suspentes" aria-hidden="true"><i /><i /></span>
+            <div className="abs-tringle-nav">
+              <button type="button" onClick={() => deplacer(-1)} aria-label="Période précédente" className="abs-tringle-clou">
+                <ChevronLeft size={17} />
+              </button>
+              <span className="abs-tringle-plaque-boite">
                 <button
-                  key={m.id}
                   type="button"
-                  onClick={() => changerMode(m.id)}
-                  aria-pressed={actif}
-                  data-testid={`abs-cal-mode-${m.id}`}
-                  style={{
-                    padding: '7px 13px', borderRadius: 9, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                    fontFamily: 'inherit', border: 'none',
-                    background: actif ? 'linear-gradient(135deg, #C25E28, #8C3418)' : 'transparent',
-                    color: actif ? '#FFF5E6' : theme.texteDoux,
-                  }}
+                  onClick={() => setChoixDate((v) => !v)}
+                  aria-expanded={choixDate}
+                  aria-haspopup="dialog"
+                  title="Choisir une date, un mois ou une année"
+                  data-testid="abs-cal-titre"
+                  className={`abs-tringle-plaque${choixDate ? ' est-ouvert' : ''}`}
                 >
-                  {m.label}
+                  {titre}
+                  <ChevronDown size={15} className="abs-tringle-chevron" data-ouvert={choixDate ? 'vrai' : 'faux'} />
                 </button>
-              )
-            })}
+                <ChoixPeriode
+                  ouvert={choixDate}
+                  onFermer={fermerChoix}
+                  jourSel={jourSel}
+                  annee={annee}
+                  onAllerA={allerA}
+                />
+              </span>
+              <button type="button" onClick={() => deplacer(1)} aria-label="Période suivante" className="abs-tringle-clou">
+                <ChevronRight size={17} />
+              </button>
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setMotifsMasques(new Set())}
-            disabled={motifsMasques.size === 0}
-            data-testid="abs-cal-tous-motifs"
-            title={motifsMasques.size === 0 ? 'Tous les motifs sont affichés' : `Réafficher les ${motifsMasques.size} motifs masqués`}
-            style={{
-              ...boutonDoux(theme),
-              opacity: 1,
-              cursor: motifsMasques.size === 0 ? 'default' : 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-            }}
-          >
-            <span aria-hidden="true" style={{
-              width: 8, height: 8, borderRadius: '50%',
-              background: motifsMasques.size === 0 ? '#10B981' : '#F59E0B',
-              display: 'inline-block',
-            }} />
-            Tous les motifs
-            {motifsMasques.size > 0 && (
-              <span style={{
-                fontSize: 10, fontWeight: 800, color: 'var(--abs-amber)',
-                background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.35)',
-                padding: '1px 6px', borderRadius: 999,
-              }}>
-                {motifsMasques.size}
-              </span>
-            )}
-          </button>
+          {/* ── le registre des modes, sur un seul anneau ── */}
+          <div className="abs-tringle-piece">
+            <span className="abs-tringle-bois" aria-hidden="true" />
+            <span className="abs-tringle-suspentes est-un" aria-hidden="true"><i /></span>
+            <div
+              role="group"
+              aria-label="Mode d'affichage du calendrier"
+              data-testid="abs-cal-modes"
+              className="abs-tringle-registre"
+            >
+              {MODES.map((m) => {
+                const actif = mode === m.id
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => changerMode(m.id)}
+                    aria-pressed={actif}
+                    data-testid={`abs-cal-mode-${m.id}`}
+                    className={`abs-tringle-mode${actif ? ' est-actif' : ''}`}
+                  >
+                    {m.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
-          <button
-            type="button"
-            role="switch"
-            aria-checked={masquerSansAbsence}
-            onClick={() => setMasquerSansAbsence((v) => !v)}
-            data-testid="abs-cal-masquer-sans-absence"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 9,
-              padding: '7px 12px', borderRadius: 999, cursor: 'pointer',
-              fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
-              background: masquerSansAbsence ? 'rgba(245,158,11,0.12)' : 'transparent',
-              border: `1px solid ${masquerSansAbsence ? 'rgba(245,158,11,0.45)' : theme.bordure}`,
-              color: masquerSansAbsence ? 'var(--abs-amber)' : theme.texteDoux,
-            }}
-          >
-            <span aria-hidden="true" style={{
-              width: 26, height: 15, borderRadius: 999, flexShrink: 0, position: 'relative',
-              background: masquerSansAbsence ? '#F59E0B' : (darkMode ? 'rgba(255,255,255,0.14)' : 'rgba(29,23,19,0.18)'),
-              transition: 'background .2s ease',
-            }}>
-              <span style={{
-                position: 'absolute', top: 2, left: masquerSansAbsence ? 13 : 2,
-                width: 11, height: 11, borderRadius: '50%', background: '#FFF5E6',
-                transition: 'left .2s ease',
-              }} />
+          {/* ── les billets : une ficelle de plus, ils pendent sous la tringle ── */}
+          <div className="abs-tringle-piece abs-tringle-piece--billets">
+            <span className="abs-tringle-bois" aria-hidden="true" />
+            <span className="abs-tringle-billets">
+              <button
+                type="button"
+                onClick={() => allerA(aujourdhuiIso)}
+                data-testid="abs-cal-aujourdhui"
+                title="Revenir à la période en cours"
+                className="abs-tringle-billet"
+              >
+                Aujourd’hui
+              </button>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={masquerSansAbsence}
+                onClick={() => setMasquerSansAbsence((v) => !v)}
+                data-testid="abs-cal-masquer-sans-absence"
+                className={`abs-tringle-billet${masquerSansAbsence ? ' est-actif' : ''}`}
+              >
+                <span className="abs-tringle-detente" aria-hidden="true" />
+                Masquer les employés sans absence
+              </button>
+              {motifsMasques.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMotifsMasques(new Set())}
+                  data-testid="abs-cal-tous-motifs"
+                  className="abs-tringle-billet est-reprise"
+                >
+                  Réallumer {motifsMasques.size} motif{motifsMasques.size > 1 ? 's' : ''}
+                </button>
+              )}
             </span>
-            Masquer les employés sans absence
-          </button>
-          {onDeclarer && (
-            <button onClick={onDeclarer} style={boutonPrimaire}>
-              <Plus size={16} /> Déclarer une absence
-            </button>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* ═══ Filtres par motif ═══ */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-        {motifs.map((m) => {
-          const actif = !motifsMasques.has(m.id)
-          return (
-            <button key={m.id} aria-pressed={actif} onClick={() => basculerMotif(m.id)} style={{
-              padding: '6px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-              fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: actif ? m.bg : 'transparent',
-              border: `1px solid ${actif ? m.color : theme.bordure}`,
-              color: actif ? theme.texte : theme.texteDoux,
-              opacity: 1,
-            }}>
-              <span>{m.emoji}</span> {m.label}
-            </button>
-          )
-        })}
+          {/* ── les sept pinces : une étiquette par motif, et le nombre de cas
+              de la période dessous. Le compte ne suit PAS le masque : une pince
+              ôtée doit montrer ce qu'on rate, sinon « éteint » vaut « zéro » et
+              plus personne ne rallume en confiance. ── */}
+          {motifs.map((m) => {
+            const actif = !motifsMasques.has(m.id)
+            const nb = comptes[m.id] ?? 0
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => basculerMotif(m.id)}
+                aria-pressed={actif}
+                data-motif={m.id}
+                data-pince={actif ? 'en-place' : 'otée'}
+                title={actif ? `${m.label} · ${nb} absence${nb > 1 ? 's' : ''} sur la période — cliquer pour l'éteindre` : `${m.label} · éteint — cliquer pour le rallumer`}
+                className={`abs-pince${actif ? '' : ' est-eteint'}`}
+              >
+                <span className="abs-pince-bois" aria-hidden="true" />
+                <span className="abs-pince-etiquette">
+                  <span className="abs-pince-emoji" aria-hidden="true">{m.emoji}</span>
+                  <span className="abs-pince-nom">{m.label}</span>
+                  <span className="abs-pince-nombre">{nb}</span>
+                </span>
+                <span className="abs-pince-barre" aria-hidden="true" />
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* ═══ Grille ═══ */}
@@ -817,25 +819,3 @@ function jourDepuisX(clientX, rect, nbJours) {
   return Math.max(0, Math.min(nbJours - 1, Math.floor(ratio * nbJours)))
 }
 
-// ── Petits helpers de style ───────────────────────────────────────────
-function boutonNav(theme) {
-  return {
-    background: theme.pastille, border: `1px solid ${theme.bordure}`, borderRadius: 10,
-    width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    cursor: 'pointer', color: theme.texte,
-  }
-}
-
-function boutonDoux(theme) {
-  return {
-    padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-    fontFamily: 'inherit', background: 'transparent', border: `1px solid ${theme.bordure}`, color: theme.texteDoux,
-  }
-}
-
-const boutonPrimaire = {
-  padding: '9px 14px', borderRadius: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700,
-  fontFamily: 'inherit', border: 'none',
-  background: 'linear-gradient(135deg, #C25E28, #8C3418)', color: '#FFF5E6',
-  display: 'inline-flex', alignItems: 'center', gap: 7,
-}

@@ -110,6 +110,29 @@ Première mise en ligne, le fondateur n'a rien vu : son entreprise n'avait aucun
 
 Depuis, l'onglet `demandes` est **le fil, vide comme plein** : plus de branche conditionnelle dans `Absences.jsx`, l'état vide est une règle du composant (`.abs-fil-vide`) qui garde le trait tendu au-dessus des mots — c'est la corde qu'on regarde, pas l'inventaire. Les deux phrases viennent de la maison. Le transat, la suspension et l'établi restent à leur place. Verrou `absencesFil.test.jsx` #28 : le panneau ne peut pas renaître.
 
+## La tringle du 9/12 — le bandeau du calendrier (`maquettes/absences-outils-1-rideau.png`)
+
+Le fondateur a envoyé la capture du bandeau (la période, les trois modes, « Tous les motifs », « Masquer les employés sans absence », « Déclarer une absence », puis les sept pastilles de motif) et a demandé deux figures. Il a retenu la tringle, avec « je le veux exactement comme dans la maquette ».
+
+Ce que la mesure reprochait au bandeau, et qui n'est pas une question de goût :
+
+- trois lignes de commandes, environ cent cinquante pixels, avant la première information de la page ;
+- le motif se commandait deux fois avec deux logiques — les pastilles **masquent**, le menu « Motif » du panneau de filtres **isole** ;
+- « Déclarer une absence » avait trois portes (la chemise du haut, le bouton rouille de ce bandeau, chaque ligne du dock de gauche) ;
+- « Tous les motifs » était un bouton qui, le plus souvent, ne servait à rien.
+
+La figure : **une tringle de 10 px**, pleine de bout en bout, et tout pend dessus. La période est une planche de bois à deux anneaux, ses deux flèches sont clouées de part et d'autre ; le registre des trois modes tient sur un anneau ; « Aujourd'hui » et l'interrupteur sont des **billets suspendus plus bas sur leur ficelle** ; et chaque motif est une **pince qui serre le bois**, avec son étiquette en dessous, lue à la verticale, et le nombre de cas de la période au pied de l'étiquette. Un motif éteint n'a pas droit à une couleur de plus : la pince reste sur le bois, l'étiquette a glissé de deux degrés, elle est vidée et barrée d'un trait droit.
+
+Les nombres, déclarés une fois sur `.abs-tringle` et relus par `absencesCalendrierTringle.test.jsx` (19 verrous, jamais contre leur propre valeur) : `bois 10`, `anneau 8`, `saut 20`, `écart 12`, `débord 6`, `ficelle 26`, `pince 46 × 132`. Le bois se peint **par tronçon sur chaque pièce** — `.abs-tringle-bois` et `.abs-pince:before` au même `top: var(--abs-tringle-anneau)` et au même débord de la moitié de l'écart — donc les tronçons se soudent en un trait continu, et un rang qui se replie à 390 px tend son propre trait. C'est la menuiserie de l'étagère, reprise pour la même raison, et une media ne repositionne jamais une pince.
+
+Trois lois qu'on ne pouvait pas casser en route :
+
+1. **le nombre d'une étiquette vient de la période, pas de la maquette** — il se calcule avec `segmentSurJours` sur les mêmes `jours` et le même périmètre d'employés que les lignes de la grille, et il **ne suit pas le masque** : une pince ôtée doit dire ce qu'on rate, sinon « éteint » vaut « zéro » et plus personne ne rallume en confiance ;
+2. **le titre de la période reste la phrase du service** (`titrePeriode`) : la maquette écrivait « LUN 23 → DIM 29 » avec une flèche, une flèche de plus n'est pas une donnée — les capitales et la chasse sont du CSS ;
+3. **rien n'est supprimé du bandeau, tout est suspendu** : le « Réallumer N motifs » n'existe que quand N est positif, parce qu'un bouton qui ne sert à rien ne s'accroche nulle part.
+
+Ce qui reste ouvert, et n'a pas été tranché ici : les trois portes « Déclarer ». Le fondateur n'a pas répondu sur ce point, donc le dock de gauche et la chemise du haut gardent les leurs ; seul le bouton de la tringle est nouveau-nommé (`abs-cal-declarer`). Si un avis vient, la porte à retirer est celle du bandeau, pas celle de la chemise.
+
 ## Le raccord au bloc du haut (reprise du 1/12, morte le 2/12 — consignée pour ce qu'elle a appris)
 
 Le vide que le fondateur montrait du doigt ne venait pas d'une corde trop courte : il venait de **deux conteneurs**. Le transat est un enfant de `.abs-page`, l'étagère un enfant de `<main>`. La bande morte entre les deux valait 26 px (la respiration du bas du transat) + 20 px (le remplissage du haut de `main`) + 24 px (la chute sous le rail) = **70 px de rien**.
