@@ -4,22 +4,19 @@ import {
   ArrowLeft,
   BarChart3,
   Building2,
-  Calendar,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
   Coffee,
   Download,
   FileText,
-  Home,
   Hourglass,
-  Moon,
   PieChart,
   Plus,
   Search,
-  Sun,
   Timer,
   Users,
   X,
@@ -146,7 +143,13 @@ export function PausesCulturalHero({
   return (
     <header aria-label="En-tête Pauses En-Check">
       <div className="pauses-v2-topbar">
-        {/* Flèche Retour + Marque En-Check · Pauses */}
+        {/*  ═══ LA MARQUE, COMME UNE ENSEIGNE (25/11) ═══
+            Maquette B retenue : le pied s'ouvre en grand dans un cercle à
+            double trait, le titre prend toute la hauteur, et un sticker
+            « EN-CHECK » s'y accroche de travers avec son liseré kente.
+            Plus de rangée de liens : la barre latérale suffit.
+            On garde les cibles : le cercle de retour et le bloc marque
+            ramènent au tableau de bord, comme avant. */}
         <div className="pauses-v2-brand">
           {onBackDashboard && (
             <button
@@ -159,57 +162,77 @@ export function PausesCulturalHero({
               <ArrowLeft size={18} />
             </button>
           )}
+          <div className="pauses-v2-sceau">
+            <EnCheckBrandMark size={46} />
+          </div>
           <div
+            className="pauses-v2-marque"
             onClick={onBackDashboard}
             role={onBackDashboard ? 'button' : undefined}
             tabIndex={onBackDashboard ? 0 : undefined}
-            style={{ cursor: onBackDashboard ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 11 }}
             title="Retour au Dashboard"
           >
-            <EnCheckBrandMark size={40} />
-            <div className="pauses-v2-brand-copy">
-              <strong>Pauses · En-Check</strong>
-              <span>Humain · Temps · Performance</span>
-            </div>
+            <span className="pauses-v2-titre-ligne">
+              <span className="pauses-v2-titre">Pauses</span>
+              <span className="pauses-v2-sticker" aria-hidden="true">En-Check</span>
+            </span>
+            <span className="pauses-v2-devise">Humain · Temps · Performance</span>
           </div>
-          <WovenKenteBadgeSvg variant={2} size={34} />
         </div>
 
-        {/* Navigation principale (fidèle à la maquette) */}
-        {onNavigate && (
-          <nav className="pauses-v2-nav" aria-label="Navigation principale En-Check">
-            <button type="button" className="pauses-v2-nav-item" onClick={() => onNavigate('/dashboard')}>
-              <Home size={15} />
-              <span>Dashboard</span>
-            </button>
-            <button type="button" className="pauses-v2-nav-item" onClick={() => onNavigate('/pointages')}>
-              <Clock size={15} />
-              <span>Pointages</span>
-            </button>
-            <button type="button" className="pauses-v2-nav-item" onClick={() => onNavigate('/employes')}>
-              <Users size={15} />
-              <span>Employés</span>
-            </button>
-            <button type="button" className="pauses-v2-nav-item is-active" aria-current="page">
-              <Coffee size={15} />
-              <span>Pauses</span>
-            </button>
-            <button type="button" className="pauses-v2-nav-item" onClick={() => onNavigate('/planning')}>
-              <Calendar size={15} />
-              <span>Planning</span>
-            </button>
-          </nav>
-        )}
+        {/*  ═══ LES ÉTIQUETTES DE PÉRIODE (25/11) ═══
+            Le centre de l'en-tête n'est plus un alignement de contrôles : ce
+            sont des étiquettes de bagage posées à des hauteurs différentes.
+            La plage de dates pend à sa ficelle, « semaine » est un tampon
+            dessous, les flèches sont deux pastilles. */}
+        <div className="pauses-v2-etiquettes">
+          <div className="pauses-v2-pendue">
+            <span className="pauses-v2-ficelle" aria-hidden="true" />
+            <div className="pauses-v2-etiquette-date">
+              <button
+                type="button"
+                className="pauses-v2-pastille"
+                onClick={() => onShiftDate && onShiftDate(-1)}
+                aria-label="Période précédente"
+                title="Période précédente"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <button
+                type="button"
+                className="pauses-v2-date-trigger"
+                onClick={openDatePicker}
+                title="Choisir une date au calendrier"
+              >
+                <span className="pauses-v2-oeillet" aria-hidden="true" />
+                <span>{periodLabel}</span>
+              </button>
+              <button
+                type="button"
+                className="pauses-v2-pastille"
+                onClick={() => onShiftDate && onShiftDate(1)}
+                aria-label="Période suivante"
+                title="Période suivante"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={selectedDate}
+              onChange={(e) => onDateChange && onDateChange(e.target.value)}
+              aria-label="Choisir une date"
+              style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+            />
+          </div>
 
-        {/* Contrôles de droite */}
-        <div className="pauses-v2-actions">
-          {/* Sélecteur Jour | Semaine | Mois */}
-          <div className="pauses-v2-period-pills" role="group" aria-label="Mode de période">
+          <div className="pauses-v2-modes" role="group" aria-label="Mode de période">
             {['jour', 'semaine', 'mois'].map((mode) => (
               <button
                 key={mode}
                 type="button"
-                className={`pauses-v2-period-pill${viewMode === mode ? ' is-active' : ''}`}
+                className={`pauses-v2-mode${viewMode === mode ? ' is-active' : ''}`}
                 onClick={() => onViewModeChange && onViewModeChange(mode)}
               >
                 {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -217,127 +240,57 @@ export function PausesCulturalHero({
             ))}
           </div>
 
-          {/* Sélecteur de plage de dates fonctionnel */}
-          <div className="pauses-v2-date-box">
-            <button
-              type="button"
-              className="pauses-v2-date-nav-btn"
-              onClick={() => onShiftDate && onShiftDate(-1)}
-              aria-label="Période précédente"
-              title="Période précédente"
-            >
-              <ChevronLeft size={15} />
-            </button>
+          <div className="pauses-v2-annexes">
+            {isSuperAdmin && entreprises.length > 0 && onSelectEnterprise && (
+              <label className="pauses-v2-entreprise">
+                <select
+                  value={selectedEnterpriseId || 'all'}
+                  onChange={(e) => onSelectEnterprise(e.target.value)}
+                  aria-label="Sélectionner une entreprise"
+                >
+                  <option value="all">Toutes les entreprises</option>
+                  {entreprises.map((ent) => (
+                    <option key={ent.id} value={ent.id}>{ent.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} aria-hidden="true" />
+              </label>
+            )}
 
-            <button
-              type="button"
-              className="pauses-v2-date-trigger"
-              onClick={openDatePicker}
-              title="Choisir une date au calendrier"
-            >
-              <Calendar size={14} color="var(--pv-gold)" />
-              <span>{periodLabel}</span>
-            </button>
-
-            <input
-              ref={dateInputRef}
-              type="date"
-              value={selectedDate}
-              onChange={(e) => onDateChange && onDateChange(e.target.value)}
-              aria-label="Choisir une date"
-              style={{
-                position: 'absolute',
-                width: 1,
-                height: 1,
-                opacity: 0,
-                pointerEvents: 'none',
-              }}
-            />
-
-            <button
-              type="button"
-              className="pauses-v2-date-nav-btn"
-              onClick={() => onShiftDate && onShiftDate(1)}
-              aria-label="Période suivante"
-              title="Période suivante"
-            >
-              <ChevronRight size={15} />
-            </button>
-
-            {selectedDate !== todayIso && (
+            {onExportCsv && (
               <button
                 type="button"
-                className="pauses-v2-date-nav-btn"
-                onClick={() => onDateChange && onDateChange(todayIso)}
-                style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--pv-gold)', padding: '2px 6px' }}
-                title="Revenir à aujourd’hui"
+                className="pauses-v2-pastille pauses-v2-pastille--csv"
+                onClick={onExportCsv}
+                title="Exporter en CSV"
               >
-                Auj.
+                CSV
               </button>
             )}
           </div>
+        </div>
 
-          {/* Filtre entreprise pour Super Admin */}
-          {isSuperAdmin && entreprises.length > 0 && onSelectEnterprise && (
-            <select
-              className="pauses-v2-select"
-              value={selectedEnterpriseId || 'all'}
-              onChange={(e) => onSelectEnterprise(e.target.value)}
-              aria-label="Sélectionner une entreprise"
-            >
-              <option value="all">Toutes les entreprises</option>
-              {entreprises.map((ent) => (
-                <option key={ent.id} value={ent.id}>{ent.name}</option>
-              ))}
-            </select>
-          )}
-
-          {/* Bouton + Ajouter une pause */}
+        {/*  ═══ À DROITE : le tampon d'ajout et la carte du profil ═══ */}
+        <div className="pauses-v2-bord">
           {onToggleAddForm && (
             <button
               type="button"
               className="pauses-v2-add-btn"
               onClick={onToggleAddForm}
             >
-              <Plus size={15} strokeWidth={2.5} />
+              <span className="pauses-v2-add-plus" aria-hidden="true">
+                <Plus size={14} strokeWidth={3} />
+              </span>
               <span>{showAddForm ? 'Fermer' : 'Ajouter une pause'}</span>
             </button>
           )}
 
-          {/* Export CSV */}
-          {onExportCsv && (
-            <button
-              type="button"
-              className="pauses-v2-Ghost-btn"
-              onClick={onExportCsv}
-              title="Exporter en CSV"
-            >
-              <Download size={14} />
-              <span>CSV</span>
-            </button>
-          )}
-
-          {/* Thème Clair / Sombre */}
-          {onToggleTheme && (
-            <button
-              type="button"
-              className="pauses-v2-Ghost-btn"
-              onClick={onToggleTheme}
-              title={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
-            >
-              {darkMode ? <Sun size={14} /> : <Moon size={14} />}
-            </button>
-          )}
-
-          {/* Profil Admin */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, paddingLeft: 4 }}>
-            <div className="pauses-v2-avatar" style={{ width: 36, height: 36, flexBasis: 36, fontSize: '0.74rem' }}>
-              {adminInitials}
-            </div>
-            <div style={{ lineHeight: 1.2 }}>
-              <strong style={{ display: 'block', fontSize: '0.78rem', color: 'var(--pv-text)' }}>{adminFullName}</strong>
-              <span style={{ fontSize: '0.68rem', color: 'var(--pv-muted)' }}>{adminRoleLabel}</span>
-            </div>
+          <div className="pauses-v2-identite">
+            <span className="pauses-v2-avatar">{adminInitials}</span>
+            <span className="pauses-v2-carte">
+              <strong>{adminFullName}</strong>
+              <em>{adminRoleLabel}</em>
+            </span>
           </div>
         </div>
       </div>
