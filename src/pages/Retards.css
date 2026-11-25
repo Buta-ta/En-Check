@@ -75,37 +75,141 @@
   color: var(--rt-douce);
 }
 
-/* ── 3 · LA NAVIGATION DE LA PAGE ───────────────────────────────────── */
-.rt-nav {
+/* ── 3 · LE CADRE BOGOLAN ───────────────────────────────────────────── */
+/*  Le motif ne se pose plus AU-DESSUS de la page : il l'ENTOURE. Une seule
+    toile de tissage, `placement="cadre"`, étalée en fond du cadre, et la
+    planche posée par-dessus — c'est elle qui masque le milieu, donc le motif
+    ne se voit qu'en lisière.
+
+    L'épaisseur se règle à UN seul endroit : `--rt-cadre-epaisseur` donne à la
+    fois l'espace intérieur du cadre et la hauteur de la tuile chez le bandeau
+    (par `--ec-cadre-epaisseur`). Deux nombres séparés, le papier et la toile
+    ne se rejoignent plus.
+
+    Le cadre ne boit aucun clic et ne porte aucun mot : le motif fait le tour,
+    les mots restent sur le papier (D-004). Une seule bande par page (D-003) :
+    le bandeau du bas, qui fermait la page, disparaît avec ce placement. */
+.rt-cadre {
+  --rt-cadre-epaisseur: 26px;
+  --ec-cadre-epaisseur: var(--rt-cadre-epaisseur);
+  position: relative;
   max-width: 1400px;
-  margin: 0 auto;
-  padding: 8px 3.4% 0;
+  margin: 10px auto 0;
+  width: 92.2%;
+  padding: var(--rt-cadre-epaisseur);
+  border: 2px solid var(--rt-encre);
+  border-radius: 12px;
+  background: var(--rt-papier);
+  box-shadow: 3px 3px 0 var(--rt-encre);
+}
+.rt-cadre > .ec-cultural-cadre {
+  border-radius: 11px;
+  overflow: hidden;
+}
+.rt-planche {
+  position: relative;
+  z-index: 1;
+  background: var(--rt-papier);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* 3a · la ligne du bandeau : retour, marque, titre — puis la période */
+.rt-bandeau-ligne {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
+  padding: 12px 14px 12px 12px;
+  flex-wrap: wrap;
 }
-.rt-nav nav { display: flex; flex-wrap: wrap; gap: 4px; }
-.rt-nav a,
-.rt-nav > button {
-  display: inline-flex;
+.rt-bandeau {
+  display: flex;
   align-items: center;
-  gap: 7px;
-  height: 30px;
-  padding: 0 11px;
-  border: 1.5px solid transparent;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--rt-douce);
-  font-size: 11px;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background-color 140ms ease, color 140ms ease;
+  gap: 14px;
+  min-width: 0;
+  flex: 1 1 320px;
 }
-.rt-nav a:hover,
-.rt-nav > button:hover {
+
+/* le rond du retour : 36 px, contour 1,5 px — jamais un carré */
+.rt-page button.rt-retour {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1.5px solid var(--rt-encre);
+  border-radius: 999px;
+  background: var(--rt-fiche);
+  color: var(--rt-encre);
+  cursor: pointer;
+  box-shadow: none;
+  transition: transform 140ms ease, background-color 140ms ease;
+}
+.rt-page button.rt-retour:hover {
   background: var(--rt-lavis);
+  transform: translateX(-2px);
+}
+.rt-marque {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  line-height: 0;
+}
+.rt-bandeau-titre { min-width: 0; }
+.rt-bandeau-titre h1 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  line-height: 1.15;
+  margin: 0;
+}
+.rt-bandeau-titre p {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--rt-douce);
+  margin: 3px 0 0;
+}
+
+/* 3b · la période, à droite de la même ligne */
+.rt-bandeau-periode {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.rt-segments[role='tablist'] button[aria-selected='true'] {
+  background: var(--rt-encre);
+  color: var(--charte-sable);
+}
+.rt-bandeau-jours {
+  font-family: var(--charte-mono);
+  font-size: 9.5px;
+  color: var(--rt-douce);
+  white-space: nowrap;
+}
+
+/* 3c · l'entreprise, sur la planche sous le bandeau */
+.rt-planche-entreprise {
+  padding: 0 14px 11px;
+}
+.rt-planche-entreprise .rt-filter-field {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--rt-aplat);
+}
+.rt-planche-entreprise select {
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--rt-encre);
 }
 
@@ -214,6 +318,46 @@
 }
 .rt-page select { font-family: inherit; font-size: 11px; }
 
+/* La case date du bandeau : une pilule, flèches rondes aux deux bouts.
+   Formes rondes ou en pilule — aucun carré (correction du 25/11). */
+.rt-bandeau-periode .rt-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1.5px solid var(--rt-bordure);
+  border-radius: 999px;
+  background: var(--rt-fiche);
+  overflow: hidden;
+  height: 30px;
+}
+.rt-bandeau-periode .rt-date button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 28px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--rt-douce);
+  cursor: pointer;
+  box-shadow: none;
+}
+.rt-bandeau-periode .rt-date button:hover {
+  background: var(--rt-lavis);
+  color: var(--rt-encre);
+}
+.rt-bandeau-periode .rt-date input[type='date'] {
+  border: 0;
+  background: transparent;
+  height: 28px;
+  padding: 0 2px;
+  font-family: var(--charte-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--rt-encre);
+}
+/* hors du bandeau (le rail de filtres n'existe plus, mais la regle reste
+   pour tout autre usage de `.rt-date` dans la page) */
 .rt-date { display: inline-flex; align-items: center; gap: 2px; }
 .rt-date button {
   display: grid;
@@ -221,7 +365,7 @@
   width: 26px;
   height: 26px;
   border: 1.5px solid var(--rt-filet);
-  border-radius: 6px;
+  border-radius: 999px;
   background: var(--rt-papier);
   cursor: pointer;
 }
@@ -875,8 +1019,26 @@
     défile. Mêmes 40 px de touche que la barre de navigation. */
 @media (max-width: 820px) {
   .rt-main { padding: 12px 14px 96px; }
-  .rt-nav { padding: 6px 14px 0; flex-wrap: wrap; }
-  .rt-nav a, .rt-nav > button { height: 28px; padding: 0 8px; }
+
+  /* le cadre s'affine sur téléphone : 14 px de lisière, pas 26 */
+  .rt-cadre {
+    --rt-cadre-epaisseur: 14px;
+    width: auto;
+    margin: 8px 12px 0;
+  }
+  .rt-bandeau-ligne {
+    gap: 10px;
+    padding: 10px 10px 10px 8px;
+  }
+  .rt-bandeau { gap: 10px; flex: 1 1 100%; }
+  .rt-bandeau-titre h1 { font-size: 15px; }
+  .rt-bandeau-periode {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .rt-planche-entreprise { padding: 0 10px 10px; }
+  .rt-page button.rt-retour { width: 34px; height: 34px; }
 
   .rt-summary { grid-template-columns: 1fr; }
   .rt-metric-copie strong { font-size: 23px; }

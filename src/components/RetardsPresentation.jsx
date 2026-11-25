@@ -16,14 +16,10 @@
 import EmployeeProfilePhoto from './EmployeeProfilePhoto'
 import RetardsEngraving from './RetardsEngraving'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Clock,
-  CalendarDays,
-  FileText,
-  Users,
-  Sun,
-  Moon,
+  ArrowLeft,
   ChevronRight,
   ChevronLeft,
   ChevronDown,
@@ -35,6 +31,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import PageCulturalBand from './PageCulturalBand'
+import EnCheckBrandMark from './EnCheckBrandMark'
 import {
   retardChart,
   retardDates,
@@ -104,30 +101,99 @@ export function RetardsDialog({ title, darkMode, onClose, busy, children }) {
   )
 }
 
-/* ═══ LA NAVIGATION — elle reste, elle s'allège ═══ */
-export function RetardsNavigation({ darkMode, onToggleTheme }) {
+/* ═══ LE BANDEAU — la maquette A ═══
+   Une seule ligne, tout au même niveau : le rond du retour, la marque, le
+   titre, puis la période à droite. Rien d'autre.
+
+   Trois choses ont quitté cette barre (décision du 25/11) :
+   · les raccourcis Pointages / Planning / Employés / Rapports — le rail du
+     tableau de bord fait déjà ce voyage, une page n'a pas à se refaire menu ;
+   · le bouton clair / sombre — le thème est un choix de l'application, pas
+     d'une page ;
+   · la bande de motif posée AU-DESSUS — elle ne disparaît pas pour autant :
+     elle fait maintenant le TOUR du bandeau (voir `rt-cadre`).
+
+   Formes RONDES ou en PILULE uniquement : le retour est un rond de 36 px,
+   jamais un carré (correction du 25/11 : « arrête de proposer une forme
+   carrée »). Le titre ne se répète pas : celui de la barre sombre est parti,
+   il n'en reste qu'un, ici. */
+export function RetardsBandeau() {
+  const navigate = useNavigate()
   return (
-    <div className="rt-nav">
-      <nav aria-label="Raccourcis Retards">
-        {[
-          [Clock, 'Pointages', '/pointages'],
-          [CalendarDays, 'Planning', '/planning'],
-          [Users, 'Employés', '/employes'],
-          [FileText, 'Rapports', '/rapports'],
-        ].map(([Icon, label, path]) => (
-          <Link key={path} to={path}>
-            <Icon size={15} aria-hidden="true" />
-            <span>{label}</span>
-          </Link>
-        ))}
-      </nav>
+    <header className="rt-bandeau">
       <button
-        onClick={onToggleTheme}
-        aria-label={darkMode ? 'Passer en mode clair' : 'Passer en mode sombre'}
+        type="button"
+        className="rt-retour"
+        onClick={() => navigate('/dashboard')}
+        title="Retour au tableau de bord"
+        aria-label="Retour au tableau de bord"
       >
-        {darkMode ? <Sun size={16} /> : <Moon size={16} />}
-        {darkMode ? 'Mode clair' : 'Mode sombre'}
+        <ArrowLeft size={17} aria-hidden="true" />
       </button>
+
+      <span className="rt-marque" aria-hidden="true">
+        <EnCheckBrandMark size={34} />
+      </span>
+
+      <div className="rt-bandeau-titre">
+        <h1>Retards</h1>
+        <p>Le registre du jour</p>
+      </div>
+    </header>
+  )
+}
+
+/* Les commandes de période, posées dans la ligne du bandeau, à droite :
+   la case date et la pilule Jour / Semaine / Mois. */
+export function RetardsPeriode({
+  selectedDate,
+  onDate,
+  onShift,
+  mode,
+  onMode,
+  dates,
+}) {
+  return (
+    <div className="rt-bandeau-periode">
+      <span className="rt-eyebrow">Période</span>
+      {/* une journée à la fois : les flèches sont le geste le plus courant */}
+      <div className="rt-date">
+        <button type="button" aria-label="Période précédente" onClick={() => onShift(-1)}>
+          <ChevronLeft size={16} aria-hidden="true" />
+        </button>
+        <input
+          type="date"
+          value={selectedDate}
+          onChange={(event) => onDate(event.target.value)}
+          aria-label="Journée de référence"
+        />
+        <button type="button" aria-label="Période suivante" onClick={() => onShift(1)}>
+          <ChevronRight size={16} aria-hidden="true" />
+        </button>
+      </div>
+      <div className="rt-segments" role="tablist" aria-label="Période affichée">
+        {[
+          ['jour', 'Jour'],
+          ['semaine', 'Semaine'],
+          ['mois', 'Mois'],
+        ].map(([cle, label]) => (
+          <button
+            key={cle}
+            type="button"
+            role="tab"
+            aria-selected={mode === cle}
+            className={mode === cle ? 'is-actif' : undefined}
+            onClick={() => onMode(cle)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {dates.length > 1 && (
+        <span className="rt-bandeau-jours">
+          {dates.length} journées évaluées
+        </span>
+      )}
     </div>
   )
 }
@@ -491,13 +557,14 @@ export function RetardsContent({
   const employes = stats.employesEnRetard
   return (
     <>
+      {/* Le titre de page a quitté cette ligne (25/11) : la barre sombre de
+          l'application portait déjà « Retards », et le bandeau le porte
+          maintenant une seule fois. Ici, on entre directement dans les
+          commandes et les compteurs. */}
       <header className="rt-title-row">
         <div>
           <span className="rt-eyebrow">Le carnet de ponctualité</span>
-          <h1>
-            Retards<span className="rt-title-dot" aria-hidden="true">.</span>
-          </h1>
-          <p>Chaque arrivée, replacée dans son contexte.</p>
+          <p className="rt-sous-titre">Chaque arrivée, replacée dans son contexte.</p>
         </div>
         <div className="rt-actions">
           <button disabled={!filtered.length || busy} onClick={() => onExport(filtered)}>

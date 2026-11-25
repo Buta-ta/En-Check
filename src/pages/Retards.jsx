@@ -6,12 +6,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useTheme } from '../contexts/ThemeContext'
-import PageHeader from '../components/PageHeader'
 import PageCulturalBand from '../components/PageCulturalBand'
 import {
+  RetardsBandeau,
   RetardsContent,
   RetardsDialog,
-  RetardsNavigation,
+  RetardsPeriode,
   RetardsHelp,
 } from '../components/RetardsPresentation'
 import HolidayService from '../services/holidayService'
@@ -240,98 +240,74 @@ export default function Retards() {
     link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
-  const filters = (
-    <section className="rt-filters" aria-label="Filtres des retards">
-      {admin?.role === 'super_admin' && (
-        <label className="rt-filter-field" data-step="01">
-          Entreprise
-          <select
-            value={selectedEntrepriseId}
-            onChange={(e) =>
-              changeContext(() => setSelectedEntrepriseId(e.target.value))
-            }
-          >
-            <option value="all">Toutes les entreprises</option>
-            {entreprises.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      <div className="rt-filter-field" data-step="02">
-        <span className="rt-label">Période</span>
-        <div className="rt-date">
-          <button
-            aria-label="Période précédente"
-            onClick={() =>
-              changeContext(() =>
-                setSelectedDate(shiftRetardDate(selectedDate, viewMode, -1)),
-              )
-            }
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <input
-            type="date"
-            aria-label="Date de référence"
-            value={selectedDate}
-            onChange={(e) => {
-              if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value))
-                changeContext(() => setSelectedDate(e.target.value))
-            }}
-          />
-          <button
-            aria-label="Période suivante"
-            onClick={() =>
-              changeContext(() =>
-                setSelectedDate(shiftRetardDate(selectedDate, viewMode, 1)),
-              )
-            }
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
-      </div>
-      <div className="rt-filter-field" data-step="03">
-        <span className="rt-label">Vue</span>
-        <div
-          className="rt-segments"
-          role="group"
-          aria-label="Durée de la période"
+  /* L'entreprise vit dans la planche (sous le bandeau), la période dans la
+     ligne du bandeau : deux pièces, jamais rendues deux fois. */
+  const filtreEntreprise =
+    admin?.role === 'super_admin' ? (
+      <label className="rt-filter-field" data-step="01">
+        Entreprise
+        <select
+          value={selectedEntrepriseId}
+          onChange={(e) =>
+            changeContext(() => setSelectedEntrepriseId(e.target.value))
+          }
         >
-          {[
-            ['jour', 'Jour'],
-            ['semaine', 'Semaine'],
-            ['mois', 'Mois'],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              aria-pressed={viewMode === value}
-              onClick={() => {
-                if (value !== viewMode) changeContext(() => setViewMode(value))
-              }}
-            >
-              {label}
-            </button>
+          <option value="all">Toutes les entreprises</option>
+          {entreprises.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.name}
+            </option>
           ))}
-        </div>
-      </div>
-      <p className="rt-period-caption">
-        {dates.length > 1
-          ? `Du ${retardDateLabel(dates[0])} au ${retardDateLabel(dates.at(-1))}`
-          : retardDateLabel(selectedDate)}{' '}
-        · {selectedDate.slice(0, 4)}
-      </p>
-    </section>
+        </select>
+      </label>
+    ) : null
+  /* La période se règle dans le bandeau. Ici, il ne reste que sa LÉGENDE —
+     « du 23 au 27 nov. 2026 · 12 journées évaluées » — parce qu'elle informe,
+     là où les contrôles, eux, sont uniques. */
+  const filters = (
+    <p className="rt-period-caption">
+      {dates.length > 1
+        ? `Du ${retardDateLabel(dates[0])} au ${retardDateLabel(dates.at(-1))}`
+        : retardDateLabel(selectedDate)}{' '}
+      · {selectedDate.slice(0, 4)}
+    </p>
   )
 
   return (
     <div className={`rt-page ${darkMode ? 'rt-dark' : ''}`}>
-      <PageCulturalBand pathname="/retards" />
-      <PageHeader title="Retards" />
-      <RetardsNavigation darkMode={darkMode} onToggleTheme={toggleTheme} />
+      {/* Le motif ne se pose plus AU-DESSUS du bandeau : il l'ENTOURE.
+          Même toile de tissage que la page, `placement="cadre"`, et la
+          planche posée par-dessus — c'est elle qui masque le milieu, donc
+          le motif ne se voit qu'en lisière (décision du 25/11). Le cadre ne
+          porte aucun mot et ne boit aucun clic (D-004). */}
+      <div className="rt-cadre">
+        <PageCulturalBand pathname="/retards" placement="cadre" />
+        <div className="rt-planche">
+          <div className="rt-bandeau-ligne">
+            <RetardsBandeau />
+            <RetardsPeriode
+              selectedDate={selectedDate}
+              onDate={(value) => {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(value))
+                  changeContext(() => setSelectedDate(value))
+              }}
+              onShift={(delta) =>
+                changeContext(() =>
+                  setSelectedDate(shiftRetardDate(selectedDate, viewMode, delta)),
+                )
+              }
+              mode={viewMode}
+              onMode={(value) => {
+                if (value !== viewMode) changeContext(() => setViewMode(value))
+              }}
+              dates={dates}
+            />
+          </div>
+          {filtreEntreprise && (
+            <div className="rt-planche-entreprise">{filtreEntreprise}</div>
+          )}
+        </div>
+      </div>
       <main className="rt-main">
         {accessError ? (
           <div className="rt-state" role="alert">
@@ -363,7 +339,6 @@ export default function Retards() {
                 <p>Chaque arrivée, replacée dans son contexte.</p>
               </div>
             </div>
-            {filters}
             <div
               className={error ? 'rt-state' : 'rt-loading-slot'}
               role={error ? 'alert' : undefined}

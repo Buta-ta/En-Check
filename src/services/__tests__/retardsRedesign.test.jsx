@@ -141,7 +141,15 @@ it('renders SQL times and a zero tolerance faithfully, without another schedule 
   expect(host.querySelector('.rt-summary').textContent).toContain('12 min')
   expect(host.querySelector('.rt-arrival').textContent).toContain('08:00')
   expect(host.querySelector('.rt-arrival').textContent).toContain('0 min')
-  expect(host.querySelectorAll('.rt-nav nav a')).toHaveLength(4)
+  /* La section a été retravaillée le 25/11 : les raccourcis de module et le
+     bouton clair/sombre ont quitté la page. Le bandeau ne garde que le
+     retour, la marque et le titre ; le motif ENToure au lieu de se poser
+     au-dessus. On garde la garde pour que ces trois-là ne reviennent pas. */
+  expect(host.querySelectorAll('.rt-nav nav a')).toHaveLength(0)
+  expect(host.textContent).not.toMatch(/Mode (sombre|clair)/)
+  expect(host.querySelectorAll('.rt-retour')).toHaveLength(1)
+  expect(host.querySelector('.rt-cadre .ec-cultural-band')).not.toBeNull()
+  expect(host.querySelector('.rt-bandeau-titre h1').textContent).toBe('Retards')
   await click('Règles & tolérance')
   expect(host.querySelectorAll('dialog .ec-cultural-band')).toHaveLength(2)
   expect(host.querySelector('dialog details[open]')).toBeNull()
