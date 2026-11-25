@@ -1,0 +1,560 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   📺 LE CHARGEMENT DES ANNONCES — la tablette sur la table
+
+   Maquette A (27/11) : la tablette vue de dessus, sur le sable, entourée
+   de ce qui traîne sur une table de travail. Tout est plat, tout est
+   contouré, rien n'a de flou.
+
+   LA RÈGLE DE LA MAISON, ET ELLE EST STRICTE (D-016, CARTE-POST-IT.md) :
+     · aucun hexadécimal — tout passe par les jetons `--charte-*` ;
+     · aucune ombre floue (C9) — l'ombre est dure, décalée de 3 px, et
+       c'est elle qui pose l'objet sur la table ;
+     · rayons dans {6, 8, 11, 12, 999} (C10) — la tablette prend 12, ses
+       touches 6, les post-it 6 ;
+     · `font-family` toujours explicite — jamais l'héritage.
+
+   LE DOUBLE FEUTRE, ici, n'est pas un effet : c'est TROIS traits d'encre
+   de 2 px qui se voient — la coque de l'appareil, la dalle à l'intérieur,
+   puis le filet du registre. Plus l'ombre dure. On doit les compter.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.anl {
+  /* ── les mesures de la scène ──
+     Une seule échelle : tout le reste en dérive, donc la scène tient
+     ensemble à toutes les largeurs. */
+  --anl-appareil: clamp(232px, 42vw, 340px);
+  --anl-tranche: 14px;
+  --anl-trait: var(--charte-trait);
+  --anl-pas: 2600ms;          /* la durée d'un mot — la même que le JS */
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(14px, 2.4vw, 24px);
+  width: 100%;
+  /*  la scène prend la largeur de la colonne, avec un plancher : sous
+      la coque, un panneau de chargement de 200 px de haut ferait sauter
+      la page quand il disparaît. */
+  min-height: clamp(380px, 52vh, 520px);
+  padding: clamp(16px, 3.2vw, 40px) clamp(12px, 2.4vw, 28px);
+  border: var(--anl-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-carte);
+  background-color: var(--charte-surface);
+  color: var(--charte-encre);
+  font-family: var(--charte-police);
+  /*  LE DOUBLE FEUTRE DE LA SCÈNE ENTIÈRE : l'ombre dure, puis un second
+      trait à l'intérieur. Le panneau se lit comme une feuille posée. */
+  box-shadow:
+    var(--charte-ombre-dure),
+    6px 6px 0 0 var(--charte-encre);
+  isolation: isolate;
+  overflow: hidden;
+}
+
+/* le second trait, à 8 px du bord — la deuxième passe de feutre */
+.anl::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: var(--anl-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  pointer-events: none;
+  opacity: 0.5;
+  z-index: 4;
+}
+
+/* ── LA TABLE ──────────────────────────────────────────────────────────────
+   La surface de sable, les objets posés, la tablette au centre. */
+.anl-table {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 240px;
+  padding: clamp(8px, 1.6vw, 18px);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-sable);
+  /* les veines du bois : deux filets très espacés, jamais un dégradé */
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 38px,
+      color-mix(in srgb, var(--charte-bordure) 55%, transparent) 38px 39px
+    );
+}
+
+/* ── LA TABLETTE ───────────────────────────────────────────────────────────
+   La coque (premier feutre), la dalle (deuxième), l'ombre dure sous la
+   coque. Elle est légèrement inclinée : une tablette qu'on vient de
+   poser n'est jamais d'équerre. */
+.anl-appareil {
+  position: relative;
+  z-index: 3;
+  width: var(--anl-appareil);
+  padding: var(--anl-tranche) var(--anl-tranche) calc(var(--anl-tranche) + 6px);
+  border: var(--anl-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-tuile);
+  background-color: var(--charte-surface2);
+  box-shadow:
+    var(--charte-ombre-dure),
+    9px 9px 0 0 color-mix(in srgb, var(--charte-encre) 16%, var(--charte-sable));
+  transform: rotate(-1.1deg);
+}
+
+/* la caméra : un point d'encre, à l'équerre malgré l'inclinaison */
+.anl-camera {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: var(--charte-rayon-pilule);
+  background-color: var(--charte-encre);
+  opacity: 0.75;
+}
+
+/* la touche, sur la tranche droite — le détail qui dit « tablette » */
+.anl-touche {
+  position: absolute;
+  right: calc(-1 * var(--anl-trait));
+  top: 38%;
+  width: 4px;
+  height: 34px;
+  border-radius: 0 var(--charte-rayon-champ) var(--charte-rayon-champ) 0;
+  background-color: var(--charte-encre);
+}
+
+/* ── LA DALLE ──────────────────────────────────────────────────────────────
+   L'écran. `overflow: hidden` lui appartient : c'est lui qui coupe le mot
+   qui sort, comme sur la maquette. */
+.anl-dalle {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: var(--anl-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+}
+
+/* l'en-tête de la borne : le nom, et l'état en toutes lettres */
+.anl-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  border-bottom: var(--anl-trait) solid var(--charte-encre);
+  background-color: var(--charte-surface2);
+}
+
+.anl-marque {
+  overflow: hidden;
+  font-family: var(--charte-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--charte-encre);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.anl-charge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
+/* le point qui clignote : c'est le seul mouvement de l'interface, et il
+   dit « ça travaille » sans promettre aucun chiffre */
+.anl-charge-point {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--charte-rayon-pilule);
+  background-color: var(--charte-aplat);
+  animation: anl-souffle 1200ms ease-in-out infinite;
+}
+
+/* ── LE REGISTRE : le filet pointillé et la piste des mots ─────────────────
+   Le filet pointillé est le troisième trait de feutre — celui du registre
+   que la page utilise déjà pour son journal. */
+.anl-registre {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 0;
+  /* la hauteur de trois mots et demi : le quatrième est coupé, et c'est
+     ce qui dit qu'il y en a d'autres plus bas */
+  height: calc(var(--anl-mot-h) * 3.4);
+  --anl-mot-h: clamp(46px, 8.6vw, 62px);
+  overflow: hidden;
+}
+
+.anl-file {
+  position: relative;
+  display: block;
+  border-right: 1px dashed var(--charte-bordure);
+}
+
+/* le pointillés verticaux du registre, tirés au-dessus du filet */
+.anl-pointille {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  border-left: 2px dotted color-mix(in srgb, var(--charte-encre) 42%, transparent);
+  transform: translateX(-50%);
+}
+
+/* ── LA PISTE ──────────────────────────────────────────────────────────────
+   Deux copies des trois mots. La piste monte d'exactement la hauteur
+   d'une copie : à l'arrivée, la seconde est en place et la boucle
+   repart sans saut. */
+.anl-piste {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  animation: anl-defiler calc(var(--anl-pas) * 3) linear infinite;
+  will-change: transform;
+}
+
+.anl-mots {
+  display: flex;
+  flex-direction: column;
+  /*  LES DEUX COPIES DOIVENT AVOIR LA MÊME HAUTEUR, au pixel près : la
+      boucle remonte d'exactement la moitié de la piste. La marge du
+      cartouche d'argile est donc ANNULÉE sur la liste — sinon elle
+      déborderait du `ul` et une copie serait plus haute que l'autre, ce
+      qui ferait sauter les mots à chaque tour. */
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+}
+
+/* ── LE MOT ────────────────────────────────────────────────────────────────
+   Capitales, très larges, à l'encre. Un seul des trois est en cartouche
+   d'argile — comme sur la maquette, où « PROMO » est le mot qu'on
+   remarque. Le cartouche déborde à droite : il est posé sur le papier,
+   il ne le remplit pas. */
+.anl-mot {
+  display: flex;
+  align-items: center;
+  height: var(--anl-mot-h);
+  padding: 0 8px 0 10px;
+  font-family: var(--charte-police);
+  font-size: clamp(19px, 3.6vw, 27px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  color: var(--charte-encre);
+  white-space: nowrap;
+  /* l'inclinaison alterne : deux mots ne se posent jamais d'équerre
+     l'un sur l'autre */
+  transform: rotate(calc((var(--anl-rang) - 1) * 0.35deg));
+}
+
+/* le cartouche d'argile : contour d'encre, ombre dure, texte de blanc */
+/*  Le cartouche garde EXACTEMENT la hauteur d'une ligne : `--anl-mot-h`
+    fait la case, le rembourrage intérieur ne vient pas s'y ajouter. Sans
+    cela, la copie serait plus haute que l'originale et la boucle
+    sauterait d'une dizaine de pixels à chaque tour. */
+.anl-mot.est-argile {
+  align-self: flex-start;
+  width: fit-content;
+  height: calc(var(--anl-mot-h) - 12px);
+  box-sizing: border-box;
+  margin: 6px 8px;
+  padding: 0 12px;
+  border: var(--anl-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-aplat);
+  color: var(--charte-blanc);
+  box-shadow: var(--charte-ombre-dure);
+  transform: rotate(-1.4deg);
+}
+
+/* la barre d'accueil de la tablette, en bas de la dalle */
+.anl-accueil {
+  align-self: center;
+  width: 32px;
+  height: 3px;
+  margin: 5px 0;
+  border-radius: var(--charte-rayon-pilule);
+  background-color: var(--charte-encre);
+  opacity: 0.55;
+}
+
+/* ── L'OMBRE AU SOL ────────────────────────────────────────────────────────
+   Elle est sous l'appareil et déborde à droite : c'est la lumière qui
+   vient de la gauche. Dure, jamais floue. */
+.anl-sol {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  bottom: clamp(6px, 1.4vw, 14px);
+  width: calc(var(--anl-appareil) * 0.86);
+  height: 10px;
+  border-radius: var(--charte-rayon-pilule);
+  background-color: color-mix(in srgb, var(--charte-encre) 14%, transparent);
+  transform: translateX(-50%) rotate(-1.1deg);
+}
+
+/* ── LES OBJETS DE LA TABLE ────────────────────────────────────────────────
+   Ils donnent l'échelle. Aucun n'est cliquable, aucun ne parle : tous
+   `aria-hidden`. Positions en pourcentage pour qu'ils suivent la table
+   à toutes les largeurs. */
+.anl-traine {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* le carnet, ouvert, en haut à gauche */
+.anl-carnet {
+  position: absolute;
+  top: 6%;
+  left: 2%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: clamp(58px, 9vw, 84px);
+  padding: 9px 8px;
+  border: var(--anl-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+  transform: rotate(-6deg);
+}
+
+.anl-carnet-ligne {
+  height: 2px;
+  border-radius: var(--charte-rayon-pilule);
+  background-color: color-mix(in srgb, var(--charte-encre) 26%, transparent);
+}
+.anl-carnet-ligne.est-courte { width: 58%; }
+
+/* le crayon : un corps clair, une mine d'encre, une bague */
+.anl-crayon {
+  position: absolute;
+  right: 7%;
+  bottom: 9%;
+  width: clamp(76px, 13vw, 122px);
+  height: 9px;
+  border: var(--anl-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  background-color: var(--charte-surface);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+  transform: rotate(-24deg);
+}
+
+.anl-crayon-mine {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 10px;
+  height: 9px;
+  background-color: var(--charte-encre);
+  transform: translateY(-50%);
+  /* la pointe : un triangle d'encre, pas de rayon */
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+/* la tasse, vue de dessus : le rond et son anse */
+.anl-tasse {
+  position: absolute;
+  top: 4%;
+  right: 3%;
+  width: clamp(44px, 7vw, 62px);
+  height: clamp(44px, 7vw, 62px);
+  border: var(--anl-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+  background-color: var(--charte-surface);
+  box-shadow: inset 0 0 0 7px var(--charte-surface2);
+}
+
+.anl-tasse-anse {
+  position: absolute;
+  top: 50%;
+  right: -13px;
+  width: 15px;
+  height: 20px;
+  border: var(--anl-trait) solid var(--charte-encre);
+  border-left: 0;
+  border-radius: 0 var(--charte-rayon-pilule) var(--charte-rayon-pilule) 0;
+  transform: translateY(-50%);
+}
+
+/* trois post-it, deux tons : ils portent l'argile et l'ocre de la palette */
+.anl-postit {
+  position: absolute;
+  width: clamp(34px, 5.4vw, 48px);
+  height: clamp(34px, 5.4vw, 48px);
+  border: var(--anl-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+}
+.anl-postit--1 {
+  left: 5%;
+  bottom: 15%;
+  background-color: color-mix(in srgb, var(--charte-aplat) 55%, var(--charte-surface));
+  transform: rotate(7deg);
+}
+.anl-postit--2 {
+  left: 13%;
+  bottom: 6%;
+  background-color: color-mix(in srgb, var(--charte-alerte) 45%, var(--charte-surface));
+  transform: rotate(-4deg);
+}
+.anl-postit--3 {
+  right: 5%;
+  top: 30%;
+  background-color: color-mix(in srgb, var(--charte-aplat) 32%, var(--charte-surface));
+  transform: rotate(11deg);
+}
+
+/* ── LE BAS : la légende et le geste ─────────────────────────────────────── */
+.anl-bas {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 640px;
+}
+
+.anl-legende {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-micro);
+  line-height: 1.45;
+  color: var(--charte-douce);
+}
+
+.anl-legende-point {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--charte-rayon-pilule);
+  background-color: var(--charte-aplat);
+  animation: anl-souffle 1200ms ease-in-out infinite;
+}
+
+/* le bouton : la forme « contour » de la charte, pas une forme inventée */
+.anl-passer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: var(--anl-trait) solid var(--charte-aplat);
+  border-radius: var(--charte-rayon-champ);
+  background-color: transparent;
+  color: var(--charte-texte);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-bouton);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--charte-duree) var(--charte-easing);
+}
+
+.anl-passer:hover { background-color: var(--charte-surface2); }
+
+.anl-passer:focus-visible {
+  outline: var(--anl-trait) solid var(--charte-aplat);
+  outline-offset: 2px;
+}
+
+/* ── LE THÈME SOMBRE ───────────────────────────────────────────────────────
+   Les jetons de la charte s'inversent déjà : la scène les suit sans une
+   seule valeur propre. Il ne reste que la table, qui doit s'assombrir
+   d'un cran pour que la tablette reste le sujet. */
+.anl--sombre .anl-table {
+  background-color: var(--charte-surface);
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 38px,
+      color-mix(in srgb, var(--charte-bordure) 70%, transparent) 38px 39px
+    );
+}
+
+.anl--sombre .anl-appareil {
+  background-color: var(--charte-surface2);
+  box-shadow:
+    var(--charte-ombre-dure),
+    9px 9px 0 0 color-mix(in srgb, var(--charte-encre) 10%, var(--charte-sable));
+}
+
+/* ═══ LES MOUVEMENTS ═══════════════════════════════════════════════════════
+   Deux seulement, et aucun ne porte d'information : la dérive des mots,
+   le souffle des points. */
+
+/* la piste monte d'une copie entière, puis reprend : la boucle est
+   sans couture parce que la seconde copie est identique à la première */
+@keyframes anl-defiler {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+/* le point respire — jamais un clignotement dur */
+@keyframes anl-souffle {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+/* ── QUI DEMANDE À NE PAS VOIR BOUGER ──────────────────────────────────────
+   La liste s'immobilise sur ses trois mots, entiers, et les points
+   cessent de respirer. Rien ne disparaît : les mots sont toujours là. */
+@media (prefers-reduced-motion: reduce) {
+  .anl-piste { animation: none; transform: none; }
+  .anl-charge-point,
+  .anl-legende-point { animation: none; opacity: 1; }
+  .anl-registre { height: auto; }
+  /* la seconde copie devient inutile : elle doublerait les mots à l'écran.
+     Elle est repérée par sa classe, pas par un attribut de lecture — la
+     table est muette, mais le CSS ne doit pas dépendre de ça. */
+  .anl-mots--copie { display: none; }
+}
+
+/* ── LES PETITS ÉCRANS ─────────────────────────────────────────────────────
+   La table se resserre, les objets s'effacent pour ne pas manger la
+   tablette. Ce qui reste : la tablette, ses mots, la légende. */
+@media (max-width: 720px) {
+  .anl {
+    --anl-appareil: min(78%, 300px);
+    min-height: 0;
+    gap: 14px;
+    padding: 14px 12px 16px;
+  }
+  .anl-traine { display: none; }
+  .anl-table { min-height: 0; padding: 14px 10px 18px; }
+  .anl-bas { justify-content: center; }
+  .anl-legende { justify-content: center; text-align: center; }
+}
+
+@media (max-width: 420px) {
+  .anl { --anl-appareil: min(88%, 260px); --anl-tranche: 11px; }
+  .anl-mot { font-size: 18px; letter-spacing: 0.05em; }
+  .anl-marque { font-size: 8px; }
+  .anl-charge { font-size: 7.5px; }
+}
