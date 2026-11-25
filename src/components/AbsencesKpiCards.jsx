@@ -10,19 +10,19 @@
 // jauge, une montre les visages du jour, deux se cliquent et mènent droit au
 // bon filtre.
 //
-// Six pancartes pendues à un rail, et deux longues cordes qui descendent du
-// transat jusqu'à ce rail. Ce n'est plus un ruban coupé en six par des filets :
-// chaque chiffre a son bois, ses deux cordes et ses deux anneaux. La rangée
-// d'avant était « une lanière, pas une carte » ; celle-ci est une planche, et
-// une planche s'accroche.
+// Six pancartes pendues à un rail, et deux longues cordes qui remontent de ce
+// rail jusqu'au bas du bloc d'en haut. Ce n'est plus un ruban coupé en six par des
+// filets : chaque chiffre a son bois, ses deux cordes et ses deux anneaux. La
+// rangée d'avant était « une lanière, pas une carte » ; celle-ci est une planche,
+// et une planche s'accroche.
 //
-// Ce que la maquette dessinait et que le code ne fait PAS : les deux longues
-// cordes montent jusqu'au bas du transat, pas jusqu'au bandeau de titre en
-// traversant la page. Traverser ce bloc demande de connaître sa hauteur, et
-// cette hauteur n'est lisible nulle part — la tuile se remonte elle-même de
-// 46 px et vit au grain d'un chiffre de 32 px. Un nombre recopié pour y arriver
-// serait faux de dizaines de pixels sur un seul écran. C'est écrit dans la
-// feuille, sous `🪧 L'ÉTAGÈRE`.
+// Le raccord, parce qu'il a été demandé deux fois (30/11 la figure, 1/12 « tu as
+// laissé bcp d'espace vide entre le bloc d'en haut et l'étagère ») : les longues
+// cordes traversent la bande morte — 70 px — et vont mordre sur le bas de la
+// chemise. Elles ne dévinent pas la hauteur du transat, ce que la maquette
+// chiffrait à 164 px et qui est faux : la bande à franchir vaut 26 + 20 + 24,
+// trois nombres relus par un test. Tout ce calcul de geometry est dans la feuille
+// sous `🪧 L'ÉTAGÈRE` ; ce fichier, lui, ne bouge pas d'un pixel de bois.
 //
 // Tout le dessin est parti dans `AbsencesAfroTech.css`. Ce fichier ne pose un
 // nombre en ligne qu'à deux endroits, et jamais de goût : la largeur d'une jauge
@@ -250,10 +250,11 @@ export default function AbsencesKpiCards({
       data-testid="abs-kpi-grille"
       title={`Chiffres calculés sur les absences chargées · aujourd'hui = ${mesures.aujourdhui}`}
     >
-      {/* Les deux longues cordes, scellées au raz du bas du transat. Elles sont à
-          24 px des bords — l'aplomb exact des coins du bandeau de titre — et le
-          transat, lui, tient ses montants à 15 % et 85 % : les deux dessinages ne
-          se croisent jamais. Muettes, et hors du chemin du clic. */}
+      {/* Les deux longues cordes. `position: absolute` dans le remplissage haut de
+          l'étagère : elles courent SUR la bande vide, du rail jusqu'au bas de la
+          chemise, à 24 px des bords — l'aplomb des coins du contenu de la chemise.
+          Muettes, hors du chemin du clic, et effacées sous 650 px, là où le transat
+          prend toute la largeur et n'a plus de bande à côté de lui. */}
       <span className="abs-etagere-suspentes" aria-hidden="true">
         <i><b /></i>
         <i><b /></i>
