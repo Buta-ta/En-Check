@@ -298,6 +298,41 @@ it('keeps the first ready result behind the intro, but does not repeat it on per
   expect(host.querySelector('.rt-arrival-skip')).toBeNull()
 })
 
+/*  LA MOLETTE, demande du 25/11 : « je veux que le calendrier présenté comme
+    ça soit cliquable et qu'on puisse l'utiliser comme une molette, glisser de
+    jour en jour ». Deux garanties : toute la période est dans la colonne (plus
+    de neuf jours figés), et cliquer un jour change vraiment la journée. */
+it('met toute la période dans la molette, pas neuf jours figés', async () => {
+  mock.rpc.mockImplementation(() => rpcResponse({ data: [line()] }))
+  await mount()
+  await click('Mois')
+  const jours = host.querySelectorAll('.rt-rail-jour')
+  expect(jours.length).toBe(31) // octobre 2026 : 31 jours
+  expect(host.querySelector('.rt-rail-note').textContent).toContain('31 j.')
+})
+
+it('change de journée quand on clique un jour de la molette', async () => {
+  mock.rpc.mockImplementation(() => rpcResponse({ data: [line()] }))
+  await mount()
+  await click('Mois')
+  /* le 12 octobre, à la deuxième requête près : la première a chargé le mois */
+  const jour = [...host.querySelectorAll('.rt-rail-jour')].find(
+    (el) => el.textContent.trim().startsWith('12'),
+  )
+  expect(jour).toBeTruthy()
+  mock.rpc.mockClear()
+  await act(async () => jour.click())
+  /* `changeContext` recharge : la RPC repart sur la journée du 12 */
+  expect(mock.rpc).toHaveBeenCalledWith('encheck_retards_plage', {
+    p_enterprise: 'ent',
+    p_du: '2026-10-12',
+    p_au: '2026-10-12',
+  })
+  /* React re-rend le bouton : on compare le JOUR, pas le nœud */
+  expect(host.querySelector('.rt-rail-jour.is-actif .rt-rail-num').textContent).toBe('12')
+  expect(host.querySelector('.rt-rail-jour.is-actif').getAttribute('aria-current')).toBe('date')
+})
+
 it('never reveals results merely because the six-second intro has expired', async () => {
   let release
   const pending = new Promise((resolve) => {

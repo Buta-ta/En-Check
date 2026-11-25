@@ -377,7 +377,16 @@ export default function Retards() {
             search={search}
             setSearch={setSearch}
             selectedDate={selectedDate}
-            onSelectDate={(date) => changeContext(() => setSelectedDate(date))}
+            /*  Un jour de la molette, c'est une JOURNÉE qu'on choisit — pas
+                une nouvelle ancre dans le mois. Sans le passage en vue du
+                jour, cliquer « le 12 » rechargeait le mois entier avec une
+                autre ancre et rien ne bougeait à l'écran. */
+            onSelectDate={(date) =>
+              changeContext(() => {
+                setSelectedDate(date)
+                setViewMode('jour')
+              })
+            }
           />
         )}
       </main>

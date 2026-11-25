@@ -355,52 +355,67 @@ function Fiche({ retard, focus }) {
   )
 }
 
-/* ═══ LE RAIL DES JOURS ═══
-   Il ne liste jamais plus de neuf jours : au-delà, c'est une frise, pas
-   un rail. Le jour sélectionné est plein ; un jour qui porte des retards
-   est souligné et porte son compte. En vue du jour il montre la semaine
-   qui contient le jour choisi — on se repère sans quitter la page. */
+/* ═══ LE RAIL DES JOURS — la molette ═══
+   Toute la période est là, pas neuf jours figés : la colonne défile (à la
+   molette, au doigt, aux flèches du clavier) et CHAQUE JOUR SE CLIQUE pour
+   changer de journée sans quitter la page. Un jour qui porte des retards est
+   souligné et porte son compte ; le jour choisi est plein et amené dans la
+   vue. Le bandeau du mois ne défile pas avec elle : il reste en tête.
+
+   En vue du jour — une seule journée chargée — le rail montre la semaine qui
+   contient le jour choisi, pour situer le jour dans la période. */
 function RailDesJours({ dates, retards, selectedDate, onSelect, mode }) {
-  /* en vue du jour, `dates` ne contient qu'un jour : le rail montre la
-     semaine autour de lui, pour situer le jour dans la période. */
+  const liste = useRef(null)
   const jours = useMemo(() => {
     if (dates && dates.length > 1) return dates
     const ancre = selectedDate || dates?.[0]
     return ancre ? retardDates(ancre, 'semaine') : []
   }, [dates, selectedDate])
+
+  /* Amener le jour choisi dans la vue de la molette, sans secouer la page :
+     la colonne défile en silence, c'est elle qu'on règle, pas l'écran. Un
+     `block: 'nearest'` ne bouge rien quand le jour est déjà visible. */
+  useEffect(() => {
+    const actif = liste.current?.querySelector('.is-actif')
+    actif?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [selectedDate, jours.length])
+
   if (!jours.length) return null
+
   const compte = new Map()
   for (const r of retards) compte.set(r.date, (compte.get(r.date) || 0) + 1)
-  const visibles = jours.length > 9 ? jours.slice(0, 9) : jours
-  const mois = new Date(`${visibles[0]}T12:00:00Z`).toLocaleDateString('fr-FR', {
+  const mois = new Date(`${jours[0]}T12:00:00Z`).toLocaleDateString('fr-FR', {
     month: 'short',
     timeZone: 'UTC',
   })
+
+  /* la molette s'ouvre sur le jour choisi, pas au premier jour du mois :
+     sinon, en mode mois, on arrive sur un mois qu'on ne voit pas entièrement
+     et il faut chercher où l'on est. */
   return (
     <nav className="rt-rail" aria-label="Jours de la période">
       <span className="rt-rail-titre">{mois}</span>
-      <div className="rt-rail-liste">
-        {visibles.map((date) => {
+      <div className="rt-rail-liste" role="list" ref={liste}>
+        {jours.map((date) => {
           const n = compte.get(date) || 0
           const actif = date === selectedDate
           return (
             <button
               key={date}
               type="button"
+              role="listitem"
               className={`rt-rail-jour${actif ? ' is-actif' : ''}${n ? ' a-des-retards' : ''}`}
               aria-current={actif ? 'date' : undefined}
               aria-label={`${retardDateLabel(date)}${n ? `, ${n} retard${n > 1 ? 's' : ''}` : ', aucun retard'}`}
               onClick={() => onSelect(date)}
             >
-              {retardDateLabel(date).split(' ')[0]}
+              <span className="rt-rail-num">{Number(date.slice(8, 10))}</span>
               {n ? <i aria-hidden="true">{n}</i> : null}
             </button>
           )
         })}
       </div>
-      {jours.length > visibles.length && (
-        <span className="rt-rail-note">+{jours.length - visibles.length} j.</span>
-      )}
+      <span className="rt-rail-note">{jours.length} j.</span>
     </nav>
   )
 }
