@@ -133,6 +133,29 @@ Trois lois qu'on ne pouvait pas casser en route :
 
 Ce qui reste ouvert, et n'a pas été tranché ici : les trois portes « Déclarer ». Le fondateur n'a pas répondu sur ce point, donc le dock de gauche et la chemise du haut gardent les leurs ; seul le bouton de la tringle est nouveau-nommé (`abs-cal-declarer`). Si un avis vient, la porte à retirer est celle du bandeau, pas celle de la chemise.
 
+### La tringle, relue sur l'écran du fondateur (le soir même)
+
+« C'est bien ce que tu as fait mais il y a des anomalies, analyse et tu verras. » Trois, mesurées sur sa capture, et chacune est une loi qu'on avait mal écrite :
+
+1. **le trait coupé en tranches.** Le bois se peignait d'un `border` complet : à chaque jonction de deux tronçons, deux montants d'encre de 2 px se faisaient face, et la tringle ressemblait à une rangée de lattes posées bout à bout. Le bois n'a plus que **deux rives** (haut et bas), et le débord passe de 6 à **7 px** — la moitié de l'écart *plus un chevron*, pour que les tronçons se recouvrent d'un pixel au lieu de se toucher au millimètre d'antialiasing près.
+2. **l'anneau noyé.** Un cercle de 12 px total sur un bandeau de 14 px total ne se voyait pas : il était *dedans*. L'anneau est maintenant **plus haut que le bois** (`anneau 14` pour `bois 10`) — la morsure doit déborder du trou qu'elle retient, sinon on ne voit que deux trous. Et l'air au-dessus du bois est devenu un nombre à part (`ciel 8`) : tant que le `top` du bois portait la valeur de l'anneau, agrandir l'anneau descendait le bois avec lui.
+3. **les étiquettes coupées.** « Maternité/Paternité » s'écrivait « é/Paternit » : l'étiquette avait une hauteur de boîte, le libellé un `flex: 1 0 auto` et un `overflow: hidden` — rogné des deux bouts. Une figure qui tronque un mot de l'entreprise est une figure cassée, pas sage. Le libellé fait maintenant la hauteur ; `min-height: 132px` n'est plus qu'un plancher.
+
+Quatrième correction, qui n'était pas dans l'image mais la causait : **la rangée se coupait n'importe où** (entre le registre des modes et les billets), ce qui dessinait deux tringles. Les sept pinces forment désormais un **groupe** qui prend la ligne (`flex: 1 1 auto`) et se replie sur son propre bois : les commandes gardent leurs anneaux en haut, les pinces trouvent leur trait en dessous. Et le billet « Masquer les employés sans absence » s'écrit « Masquer sans absence » — le nom complet reste dans l'`aria-label`.
+
+### Le dock « Motifs à glisser-déposer » est démonté
+
+Le fondateur a tranché : « enlève cette section modèle, les étiquettes sur étagères peuvent jouer aussi cette fonction ». `src/components/AbsencesDock.jsx` est supprimé (et avec lui ses sept règles CSS, son `box-shadow` flou — la feuille passe de 130 à 129 ombres floues — et sa colonne de 224 px qui mangeait la largeur de la tringle).
+
+Le service a déménagé, il n'a pas été jeté avec le meuble :
+
+- **une pince se glisse** sur la ligne d'un employé : `DATA_TRANSFER_MOTIF` + le repli `text/plain`, `effectAllowed = 'copy'`, et pendant le transport la mâchoire pivote de 8° et l'étiquette passe en pointillé ;
+- **un clic sur une pince éteint le motif** — un seul métier par geste. La leçon de la case du Planning (qui ouvrait déjà une fenêtre avant qu'on veuille y poser un bouton) vaut dans les deux sens : on ne colle pas « déclarer » sur un objet qui sert déjà à « masquer » ;
+- **au clavier et au doigt**, où le glisser n'existe pas, la porte est le formulaire : son sélecteur de motif est dans `AbsenceFormulaire.jsx`. Le dock avait un `div tabIndex={0}` entretenu à la main ; la pince est un `button`, focusable et actionnable par l'HTML ;
+- **la phrase d'explication reste** : le « Comment déclarer une absence ? » du panneau devient `.abs-tringle-note`, une ligne en pied de tringle, fermée par un `details`.
+
+Les verrous du dock (`charteAbsences.test.js` 5 et 6, `motifsAbsencePersonnalises.test.js` 10) ont suivi le geste sur `AbsencesCalendrier.jsx` — aucun n'a été supprimé. Le verrou nouveau qui les garde honnêtes : le fichier `AbsencesDock.jsx` ne doit plus exister, et `.abs-dock` ne doit plus se lire dans la feuille.
+
 ## Le raccord au bloc du haut (reprise du 1/12, morte le 2/12 — consignée pour ce qu'elle a appris)
 
 Le vide que le fondateur montrait du doigt ne venait pas d'une corde trop courte : il venait de **deux conteneurs**. Le transat est un enfant de `.abs-page`, l'étagère un enfant de `<main>`. La bande morte entre les deux valait 26 px (la respiration du bas du transat) + 20 px (le remplissage du haut de `main`) + 24 px (la chute sous le rail) = **70 px de rien**.

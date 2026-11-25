@@ -18,7 +18,6 @@ import { BogolanPastilleSvg } from '../components/BogolanMudclothSvg'
 import AbsencesCalendrier from '../components/AbsencesCalendrier'
 import { STATUTS_ABSENCE, getMotifConfig } from '../constants/motifsAbsence'
 import { compterJoursOuvres, isoLocal } from '../services/absencesCalendrier'
-import AbsencesDock from '../components/AbsencesDock'
 import AbsencesMotifsManager from '../components/AbsencesMotifsManager'
 import AbsencesKpiCards from '../components/AbsencesKpiCards'
 import AbsenceFormulaire from '../components/AbsenceFormulaire'
@@ -2004,10 +2003,12 @@ export default function Absences() {
                 </span>
               </div>
 
+              {/* Le dock « Motifs à glisser-déposer » est enlevé de la vue (9/12,
+                  à la demande du fondateur) : les sept pinces de la tringle
+                  portent le même motif et se glissent sur une ligne. La page n'a
+                  plus à ménager une colonne pour un panneau qui répétait une
+                  rangée de la tringle. */}
               {viewMode === 'planning' && (
-                <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <AbsencesDock onDeclarer={({ motifId }) => handleAdd({ reason: motifId })} />
-                <div style={{ flex: 1, minWidth: 0 }}>
                 <AbsencesCalendrier
                   absences={absences}
                   employes={employes}
@@ -2031,8 +2032,6 @@ export default function Absences() {
                     handleAdd({ employee_id: employeeId, start_date: dateIso, end_date: dateIso, reason: motifId })
                   }
                 />
-                </div>
-                </div>
               )}
 
               {viewMode === 'list' && (

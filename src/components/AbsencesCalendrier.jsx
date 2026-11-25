@@ -85,6 +85,8 @@ export default function AbsencesCalendrier({
   const [motifsMasques, setMotifsMasques] = useState(() => new Set())
   const [masquerSansAbsence, setMasquerSansAbsence] = useState(false)
   const [absenceActive, setAbsenceActive] = useState(null)
+  // La pince qu'on est en train de porter : elle se décolle du bois, pas du fil
+  const [motifGlissé, setMotifGlissé] = useState(null)
   // Cellule survolée pendant un glisser-déposer : { employeeId, index }
   const [survol, setSurvol] = useState(null)
   const [modeInterne, setModeInterne] = useState('semaine') // la semaine est la vue par défaut
@@ -370,12 +372,14 @@ export default function AbsencesCalendrier({
                 type="button"
                 role="switch"
                 aria-checked={masquerSansAbsence}
+                aria-label="Masquer les employés sans absence"
+                title="Retirer de la grille les lignes sans absence sur la période"
                 onClick={() => setMasquerSansAbsence((v) => !v)}
                 data-testid="abs-cal-masquer-sans-absence"
                 className={`abs-tringle-billet${masquerSansAbsence ? ' est-actif' : ''}`}
               >
                 <span className="abs-tringle-detente" aria-hidden="true" />
-                Masquer les employés sans absence
+                Masquer sans absence
               </button>
               {motifsMasques.size > 0 && (
                 <button
@@ -393,32 +397,65 @@ export default function AbsencesCalendrier({
           {/* ── les sept pinces : une étiquette par motif, et le nombre de cas
               de la période dessous. Le compte ne suit PAS le masque : une pince
               ôtée doit montrer ce qu'on rate, sinon « éteint » vaut « zéro » et
-              plus personne ne rallume en confiance. ── */}
-          {motifs.map((m) => {
-            const actif = !motifsMasques.has(m.id)
-            const nb = comptes[m.id] ?? 0
-            return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => basculerMotif(m.id)}
-                aria-pressed={actif}
-                data-motif={m.id}
-                data-pince={actif ? 'en-place' : 'otée'}
-                title={actif ? `${m.label} · ${nb} absence${nb > 1 ? 's' : ''} sur la période — cliquer pour l'éteindre` : `${m.label} · éteint — cliquer pour le rallumer`}
-                className={`abs-pince${actif ? '' : ' est-eteint'}`}
-              >
-                <span className="abs-pince-bois" aria-hidden="true" />
-                <span className="abs-pince-etiquette">
-                  <span className="abs-pince-emoji" aria-hidden="true">{m.emoji}</span>
-                  <span className="abs-pince-nom">{m.label}</span>
-                  <span className="abs-pince-nombre">{nb}</span>
-                </span>
-                <span className="abs-pince-barre" aria-hidden="true" />
-              </button>
-            )
-          })}
+              plus personne ne rallume en confiance.
+
+              LES PINCE ONT REÇU LE MÉTIER DU DOCK (9/12, « enlève cette section,
+              les étiquettes sur étagères peuvent jouer aussi cette fonction ») :
+              une pince se glisse sur la ligne d'un employé et le jour sous le
+              pointeur préremplit la fiche — c'est `onDeposerMotif`, la même
+              menuiserie que le dock du Planning sur sa planche de modèles. Le CLIC, lui, garde
+              un seul métier : éteindre le motif. Deux gestes sur un seul objet,
+              deux gestes différents — la leçon de la case du Planning, qui
+              ouvrait déjà une fenêtre avant qu'on veuille y poser un bouton.
+              Au clavier et au doigt, où le glisser n'existe pas, la porte est le
+              formulaire : son sélecteur de motif est là (ligne 292). ── */}
+          <span className="abs-tringle-pinces">
+            {motifs.map((m) => {
+              const actif = !motifsMasques.has(m.id)
+              const nb = comptes[m.id] ?? 0
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => basculerMotif(m.id)}
+                  aria-pressed={actif}
+                  data-motif={m.id}
+                  data-pince={actif ? 'en-place' : 'otée'}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(DATA_TRANSFER_MOTIF, m.id)
+                    e.dataTransfer.setData('text/plain', m.id) // repli navigateur
+                    e.dataTransfer.effectAllowed = 'copy'
+                    setMotifGlissé(m.id)
+                  }}
+                  onDragEnd={() => setMotifGlissé(null)}
+                  title={actif
+                    ? `${m.label} · ${nb} absence${nb > 1 ? 's' : ''} sur la période — glisser sur une ligne pour déclarer, cliquer pour éteindre`
+                    : `${m.label} · éteint — cliquer pour le rallumer`}
+                  className={`abs-pince${actif ? '' : ' est-eteint'}${motifGlissé === m.id ? ' est-glissée' : ''}`}
+                >
+                  <span className="abs-pince-bois" aria-hidden="true" />
+                  <span className="abs-pince-etiquette">
+                    <span className="abs-pince-emoji" aria-hidden="true">{m.emoji}</span>
+                    <span className="abs-pince-nom">{m.label}</span>
+                    <span className="abs-pince-nombre">{nb}</span>
+                  </span>
+                  <span className="abs-pince-barre" aria-hidden="true" />
+                </button>
+              )
+            })}
+          </span>
         </div>
+
+        {/* LA NOTE, une ligne : le dock partait avec son « Comment déclarer une
+            absence ? », la phrase reste — c'est elle qui explique la pince. */}
+        <details className="abs-tringle-note">
+          <summary>Comment déclarer une absence ?</summary>
+          <p>
+            Glisse une pince sur la ligne d’un employé : l’absence s’ouvre pré-remplie
+            au jour visé. Un clic sur une pince éteint le motif, il ne déclare rien.
+          </p>
+        </details>
       </div>
 
       {/* ═══ Grille ═══ */}
