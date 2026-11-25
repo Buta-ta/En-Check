@@ -867,11 +867,11 @@ describe('la vue Tâches', () => {
     const retard = dates.find((d) => d.querySelector('.tqv2-retard'))
     expect(retard).not.toBeNull()
     expect(retard.textContent).toMatch(/retard de \d+ j/)
-    // l'autre échéance porte sa date courte, sans retard. `\p{L}` et non `\w` :
-    // `\w` est ASCII, donc la date échouait chaque fois que le mois abrégé porte un
-    // accent — « 01 déc. », « 02 févr. ». Un test qui meurt deux mois par an n'est
-    // pas une preuve : c'est une fausse alerte programmée deux mois par an.
-    expect(dates.find((d) => !d.querySelector('.tqv2-retard')).textContent).toMatch(/\d{2} \p{L}{3}/u)
+    // l'autre échéance porte sa date courte, sans retard
+    /*  `\w` ne reconnaît que l'ASCII : « 01 déc. » échouait à cause du é, et
+        le test ne tombait en panne que les mois accentués — janvier, février,
+        août, décembre. On accepte les lettres accentuées. */
+    expect(dates.find((d) => !d.querySelector('.tqv2-retard')).textContent).toMatch(/\d{2} [\p{L}]{3}/u)
     // plus de collier : le texte suffit
     expect(hote.querySelector('[data-testid="collier-echeance"]')).toBeNull()
   })
@@ -1012,7 +1012,7 @@ describe('le ton et le dessin', () => {
     const dates = [...hote.querySelectorAll('.tqv2-fiche-date')]
     expect(dates).toHaveLength(2)
     // la date courte porte jour et mois
-    expect(dates[0].textContent).toMatch(/\d{2} \p{L}{3}/u) // même piège d'accent, voir plus haut
+    expect(dates[0].textContent).toMatch(/\d{2} [\p{L}]{3}/u)
     // le retard garde la phrase qui le chiffre : le texte ne se cache pas
     expect(hote.textContent).toMatch(/retard de \d+ j/)
     // plus de collier de perles
