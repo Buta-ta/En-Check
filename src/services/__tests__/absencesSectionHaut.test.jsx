@@ -81,25 +81,34 @@ describe('Absences · la section du haut, figure E', () => {
     expect(porte(CODE_PAGE, "data-theme={darkMode ? 'dark' : 'light'}")).toBe(true)
   })
 
-  it('pose deux montants, dix-sept crans de 8 px, une tuile suspendue', () => {
+  it('rend le transat HORS page, et ne le monte plus dans la page', () => {
+    // R1 (2/12/2026) : « je choisis la R1-poutre ». Le composant reste VIVANT et
+    // testé — c'est le seul endroit du dépôt qui vérifie la géométrie de la
+    // crémaillère — mais la page ne l'accroche plus : son nombre est descendu dans la
+    // rangée des compteurs, comme septième planche. Un composant qu'on ne monte plus
+    // et qu'on ne teste plus est un composant mort qu'on ne sait plus enterrer.
     const html = renderToStaticMarkup(<AbsencesHamac jours={30} retour="lun. 30 nov." />)
     expect(html).toContain('data-testid="abs-hamac"')
     expect(html.match(/class="abs-hamac-montant/g)).toHaveLength(2) // deux poteaux, pas un de plus
     expect(html.match(/abs-hamac-cran/g)).toHaveLength(MARCHES * 2 + 1)
     expect(MARCHES).toBe(8)
-    // le pas est le même du côté JSX et du côté CSS : sinon l'escalier se défait
     expect(PAS_PX).toBe(8)
     expect(FONDS).toBe(MARCHES * PAS_PX) // 64 px de creux, mesurés au haut du dernier carreau
-    expect(bloc('.abs-hamac-cran {')).toContain('height: 8px')
     // la descente est une tente, pas une courbe : 0 → 64 → 0 en marches franches
     const pas = [...html.matchAll(/margin-top:\s*(\d+)px/g)].map((m) => Number(m[1]))
     expect(pas).toHaveLength(17)
     expect(pas.join(',')).toBe('0,8,16,24,32,40,48,56,64,56,48,40,32,24,16,8,0')
-    // la corde est muette, seul le nombre parle
-    expect(html).toContain('aria-hidden="true"')
+    expect(html).toContain('aria-hidden="true"') // la corde est muette, seul le nombre parle
     expect(html).toContain('>30<')
     expect(html).toContain('jours de congé qui restent')
     expect(html).toContain('lun. 30 nov.')
+    // et la page, elle, ne le monte plus : la feuille ne porte plus aucune de ses
+    // règles, et chercher dans le CSS commenté ferait croire le contraire
+    expect(porte(CODE_PAGE, '<AbsencesHamac')).toBe(false)
+    expect(CSS.replace(/\/\*[\s\S]*?\*\//g, '')).not.toContain('.abs-hamac {')
+    // le nombre, lui, traverse : c'est la page qui calcule, le compteur qui affiche
+    expect(porte(CODE_PAGE, 'jours={transat.jours}')).toBe(true)
+    expect(porte(CODE_PAGE, 'retour={transat.retour}')).toBe(true)
   })
 
   it('ne devine rien : sans retour à venir, la note ne se montre pas', () => {
@@ -114,38 +123,51 @@ describe('Absences · la section du haut, figure E', () => {
   })
 
   it('garde la peau de la page : aucune courbe, aucune ombre floue, un seul rayon', () => {
-    const transat = [
-      bloc('.abs-hamac {'),
-      bloc('.abs-hamac-corde {'),
-      bloc('.abs-hamac-cran {'),
-      bloc('.abs-hamac-suspendu {'),
-      bloc('.abs-hamac-retour {'),
+    // La peau se vérifie maintenant sur ce qui a remplacé la tuile : le bois d'une
+    // planche de la poutre. Mêmes promesses — un rayon, une ombre à flou zéro, un
+    // contour d'encre — et le même refus de deviner une hauteur.
+    const poutre = [
+      bloc('.abs-planche {'),
+      bloc('.abs-planche-corde {'),
+      bloc('.abs-planche::before {'),
+      bloc('.abs-planche-corde i::before {'),
+      bloc('.abs-planche-corps {'),
     ].join('\n')
-    expect(transat).not.toContain('blur(') // C9 — D-016 : ombre dure
-    expect(transat).not.toMatch(/border-radius:\s*999/) // pas de pilule ici
-    expect([...transat.matchAll(/border-radius:\s*([^;]+);/g)].map((m) => m[1].trim())).toEqual(['8px'])
-    // le contour de la tuile est bien celui d'un objet actif, en encre de la page
-    expect(bloc('.abs-hamac-suspendu {')).toContain('border: 2px solid var(--abs-text)')
-    expect(bloc('.abs-hamac-suspendu {')).toContain('box-shadow: 2px 2px 0 0')
-    // Et la tuile est posée dans l'affaissement, sur l'axe de la corde. Ces trois
-    // lignes sont le seul endroit du dépôt où le -46 se vérifie : c'est une soustraction
-    // entre deux mesures de la feuille, pas un goût.
-    const corde = bloc('.abs-hamac-corde {')
-    const montant = bloc('.abs-hamac-montant,')
-    const hauteurCorde = Number(corde.match(/min-height:\s*(\d+)px/)[1])
-    expect(montant).toContain(`height: ${hauteurCorde}px`) // la corde tient RAIDE
-    const creux = FONDS + PAS_PX // le BAS du dernier carreau, pas son haut
-    expect(creux).toBe(72)
-    expect(bloc('.abs-hamac-suspendu {')).toContain(`margin: ${creux - hauteurCorde}px auto 0`)
-    // un centrage partagé, pas deux centrages séparés : la corde et ce qu'elle tient
-    // se règlent sur la même référence, sinon le nombre pend de travers
-    expect(corde).toContain('margin: 0 15%')
-    expect(corde).toContain('align-self: stretch')
-    expect(corde).not.toContain('width: 100%') // 100 % + marges = débordement de 30 %
-    // et l'étroitesse est prévue, pas subie
-    expect(CSS).toMatch(/@media \(max-width: 980px\)[\s\S]*?\.abs-hamac-retour \{\n\s*position: static/)
-    expect(CSS).toMatch(/@media \(max-width: 650px\)[\s\S]*?\.abs-hamac-suspendu \{\n\s*min-width: 0/)
+    expect(poutre).not.toContain('blur(') // C9 — D-016 : ombre dure
+    expect(poutre).not.toMatch(/border-radius:\s*999/) // la pilule est l'anneau, pas le bois
+    const rayons = [...poutre.matchAll(/border-radius:\s*([^;]+);/g)].map((m) => m[1].trim())
+    expect(rayons).toEqual(['var(--charte-rayon-pilule)']) // UN seul rayon : l'anneau. Le bois, lui, est carré.
+    // le contour du bois est celui d'un objet actif, à l'encre de la charte
+    expect(bloc('.abs-planche-corps {')).toContain('border: var(--charte-trait) solid var(--charte-encre)')
+    expect(bloc('.abs-planche-corps {')).toContain('box-shadow: var(--charte-ombre-dure)')
+    // et l'anneau se pose pile au niveau du bord du bas de la chemise : corde +
+    // traverse. C'est une soustraction entre deux nombres de la feuille, pas un goût.
+    const corde = declarations('.abs-planche-corde')
+    const anneau = declarations('.abs-planche-corde i::before')
+    expect(nud(corde)).toContain('top:calc(-1*(var(--abs-corde)+var(--abs-tringle)))')
+    expect(nud(anneau)).toContain('top:calc(-1*(var(--abs-corde)+var(--abs-tringle)))')
+    // la coupe de 1180 px ne reposition RIEN : chaque rang garde son rail et ses
+    // cordes, parce qu'ils appartiennent à la planche
+    expect(media('@media (max-width: 1180px)')).not.toMatch(/\n\s*(left|right|top|bottom):/)
   })
+
+  // lecteurs partagés par les deux verrous ci-dessus
+  function declarations(sélecteur) {
+    const i = CSS.indexOf(`${sélecteur} {`)
+    expect(i, `règle absente : ${sélecteur}`).toBeGreaterThan(-1)
+    return CSS.slice(CSS.indexOf('{', i) + 1, CSS.indexOf('}', i))
+  }
+  function media(état) {
+    const i = CSS.indexOf(état)
+    expect(i, `média absent : ${état}`).toBeGreaterThan(-1)
+    let n = 0
+    for (let j = CSS.indexOf('{', i); j < CSS.length; j += 1) {
+      if (CSS[j] === '{') n += 1
+      if (CSS[j] === '}') { n -= 1; if (n === 0) return CSS.slice(i, j + 1) }
+    }
+    throw new Error(`média non fermé : ${état}`)
+  }
+  const nud = (c) => c.replace(/\s+/g, '')
 
   it('ne dit le solde qu’une seule fois, et du même calcul', () => {
     // la maquette montre le « 30 » deux fois : dans la suspente et dans la tuile de

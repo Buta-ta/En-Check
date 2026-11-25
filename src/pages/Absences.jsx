@@ -13,7 +13,6 @@ import { useNavigate } from 'react-router-dom'
 // bogolan servira autrement », « enlève le bouton clair/sombre ». La page ne monte
 // donc plus le rail de `RaccourcisPages`, et le tissu ne borde plus l'en-tête — il
 // reste dans les deux tiroirs, qui sont des feuilles qui glissent.
-import AbsencesHamac from '../components/AbsencesHamac'
 import { soldeMoyen, prochainRetour, formatRetourFr } from '../services/congesRestants'
 import { BogolanPastilleSvg } from '../components/BogolanMudclothSvg'
 import AbsencesCalendrier from '../components/AbsencesCalendrier'
@@ -877,11 +876,12 @@ export default function Absences() {
     return map
   }, [absences, calendarDate, getHolidaySet])
 
-  // Les deux chiffres suspendus dans le transat viennent du MÊME calcul que la tuile
-  // de compteur (`services/congesRestants`) : la maquette E montre le solde moyen
-  // deux fois — dans la suspente et dans la rangée de tuiles. Deux affichages d'un
-  // même nombre, oui ; deux calculs d'un même nombre, jamais. Le jour où l'un est
-  // corrigé, l'autre ne peut pas rester à traîner une valeur fausse.
+  // Le solde de congés et le jour du prochain retour. Depuis R1 (2/12), ces deux
+  // nombres ne sont plus portés par un bloc au-dessus de la rangée : ils descendent
+  // DANS la rangée, sur la septième planche, et `transat` n'est plus qu'un passage —
+  // la page calcule, le composant affiche. Le MÊME calcul que celui de la planche des
+  // congés restants (`services/congesRestants`), jamais un second : deux affichages
+  // d'un nombre se tolèrent, deux calculs non.
   const transat = useMemo(() => ({
     jours: soldeMoyen({ employes, joursPrisParEmploye, plafond: leaveConfig.annual_leave_cap || 30 }),
     retour: formatRetourFr(prochainRetour(absences, isoLocal(new Date()))),
@@ -1794,7 +1794,7 @@ export default function Absences() {
             UNE chemise, pas une bande au-dessus d'une rangée : les trois onglets de
             section sortent du bord haut de la feuille, et l'onglet ouvert y est SOUDÉ
             (sa pâte est celle de la feuille, sa bordure du bas n'existe pas). La feuille
-            porte l'empreinte, le titre et les deux commandes ; le transat reste dessous.
+            porte l'empreinte, le titre et les deux commandes ; dessous, c'est déjà la poutre.
             Ce qui n'est plus là : le rail de raccourcis, la lune, la lisière de bogolan
             (27/11), et le conteneur propre des onglets — deux bordures, deux fonds et
             deux rayons économisés. */}
@@ -1818,16 +1818,11 @@ export default function Absences() {
           surDeclarer={() => handleAdd()}
         />
 
-        {/* 2. le transat : deux montants, une suspente en crémaillère, le solde de
-            congés suspendu dedans, et à droite le jour du prochain retour. C'est la
-            figure E du lot de maquettes — les vacances ne s'y dessinent pas, elles s'y
-            tiennent. Ni motif, ni raccourcis : les deux ont quitté la page. */}
-        <AbsencesHamac jours={transat.jours} retour={transat.retour}/>
-
         <main style={S.main}>
-          {/* Les trois onglets de section ont monté dans la chemise (28/11) : ils sont
-              soudés au bord haut de la feuille de titre, ils ne sont plus une rangée
-              plate sous elle. Le contenu, lui, ne bouge pas d'un octet. */}
+          {/* 2. LA POUTRE (maquette `maquettes/absences-raccord-R1-poutre.png`, 2/12) :
+              les sept pancartes — les six compteurs et le solde — pendent AU BORD DU BAS
+              de la chemise, plus de bloc entre les deux. Les trois onglets de section
+              restent soudés au bord haut de la feuille (28/11). */}
 
           {activeTab === 'absences' && (
             <>
@@ -1837,6 +1832,8 @@ export default function Absences() {
                 conflitsEnAttente={stats.conflitsPending}
                 joursPrisParEmploye={joursPrisParEmploye}
                 plafondConges={leaveConfig.annual_leave_cap || 30}
+                jours={transat.jours}
+                retour={transat.retour}
                 onVoirConflits={() => setFilterConflict('with_conflict')}
                 onVoirDemandes={() => setActiveTab('demandes')}
               />

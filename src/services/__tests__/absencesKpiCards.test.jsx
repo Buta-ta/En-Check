@@ -170,13 +170,13 @@ it('12. les dates de fin manquantes sont traitées comme un seul jour', () => {
 // 📏 FORMAT COMPACTE — la bande ne doit plus manger la page
 // ═══════════════════════════════════════════════════════════
 
-it('13. six planches pendues à un rail, de poids égal, et plus de filet entre voisines', () => {
-  // Absences, 30/11/2026 (maquette `absences-kpi-P1-etagere.png`, P1 retenu par le
-  // fondateur). La rangée d'avant était un ruban coupé en six par des bordures
-  // gauche, avec deux lanières plus larges parce qu'elles portaient une poche de
-  // renvoi. Maintenant six planches ÉGALES : le rabat se pose SUR la planche, il ne
-  // mange plus la largeur de sa voisine.
-  expect(nud(règle('.abs-etagere-planches'))).toContain('grid-template-columns:repeat(6,minmax(0,1fr))')
+it('13. sept planches pendues à la poutre, de poids égal, et plus de filet entre voisines', () => {
+  // Absences, 30/11/2026 (maquette P1) puis 2/12/2026 (`absences-raccord-R1-poutre.png`) :
+  // la rangée d'avant était un ruban coupé en six par des bordures gauche, avec deux
+  // lanières plus larges parce qu'elles portaient une poche de renvoi. Maintenant sept
+  // planches ÉGALES — les six compteurs et le solde descendu du transat : le rabat se
+  // pose SUR la planche, il ne mange plus la largeur de sa voisine.
+  expect(nud(règle('.abs-etagere-planches'))).toContain('grid-template-columns:repeat(7,minmax(0,1fr))')
   // la séparation, c'est le bois de chaque planche — son propre contour — et plus une
   // bordure basse ajoutée sur la voisine de droite
   expect(FEUILLE).not.toMatch(/\.abs-kpi/)
@@ -184,10 +184,11 @@ it('13. six planches pendues à un rail, de poids égal, et plus de filet entre 
   // le paragraphe « chiffres calculés… » ne prend toujours pas une ligne entière
   expect(grille).not.toContain('1 / -1')
   expect(grille).toContain('title="Chiffres calculés sur les absences chargées')
-  // et chaque planche est pendue : deux cordes à sa tringle, et un rang de deux
-  // longues cordes au-dessus de la rangée
-  expect((grille.match(/abs-planche-corde/g) || [])).toHaveLength(6)
-  expect((grille.match(/abs-etagere-suspentes/g) || [])).toHaveLength(1)
+  // et chaque planche est pendue : deux cordes et un rang d'anneaux AU-DESSUS D'ELLE,
+  // accrochés au bord du bas de la chemise — plus de rangée de longues cordes posée à
+  // part, qui est exactement ce qui avait laissé 253 px de vide le 1/12.
+  expect((grille.match(/abs-planche-corde/g) || [])).toHaveLength(7)
+  expect(grille).not.toMatch(/abs-etagere-suspentes/)
 })
 
 it('14. le détail reste disponible, mais en infobulle', () => {
