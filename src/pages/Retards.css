@@ -462,8 +462,38 @@
   position: sticky;
   top: 10px;
 }
-.rt-rail-titre { text-align: center; font-size: 8px; margin-bottom: 3px; }
-.rt-rail-liste { display: grid; gap: 2px; }
+.rt-rail-titre {
+  text-align: center;
+  font-size: 8px;
+  margin-bottom: 3px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--rt-fiche);
+  padding: 1px 0 2px;
+}
+/*  La molette : toute la période dans une colonne qui défile. Sa hauteur suit
+    la fenêtre — jamais plus haute que ce qu'on voit — et le bandeau du mois
+    reste en tête pendant que les jours passent sous lui. */
+.rt-rail-liste {
+  display: grid;
+  gap: 2px;
+  max-height: min(58vh, 460px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rt-filets, var(--rt-bordure)) transparent;
+  padding-bottom: 2px;
+}
+.rt-rail-liste::-webkit-scrollbar { width: 4px; }
+.rt-rail-liste::-webkit-scrollbar-thumb {
+  background: var(--rt-bordure);
+  border-radius: 999px;
+}
+.rt-rail-liste::-webkit-scrollbar-track { background: transparent; }
+.rt-rail-jour { scroll-snap-align: center; }
+.rt-rail-num { line-height: 1.1; }
 .rt-rail-jour {
   display: grid;
   place-items: center;
@@ -507,7 +537,10 @@
   text-align: center;
   font-size: 8.5px;
   color: var(--rt-douce);
-  padding-top: 3px;
+  padding-top: 4px;
+  border-top: 1.5px dashed var(--rt-filet);
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 7 · bis LE CADRE UNIQUE : une seule carte porte l'en-tete, le rail,
@@ -805,6 +838,14 @@
 
 /* 7c · la marge */
 .rt-marge { display: grid; gap: 12px; min-width: 0; }
+/*  Un enfant de grille refuse de rétrécir sous sa largeur MINIMALE (celle du
+    contenu) tant qu'on ne le lui dit pas : en mode mois, le graphe de 30
+    colonnes poussait la marge à 930 px dans une colonne de 268, et la page
+    débordait de 577 px. `min-width: 0` sur chaque pièce de la chaîne — le
+    `overflow-x` seul ne suffisait pas, il ne rogne que ce qui a déjà accepté
+    de rétrécir. */
+.rt-marge > * { min-width: 0; }
+.rt-chart { min-width: 0; overflow: hidden; }
 .rt-marge-carte {
   padding: 13px 14px;
   border: 2px solid var(--rt-encre);
@@ -1054,8 +1095,34 @@
     scrollbar-width: none;
   }
   .rt-rail::-webkit-scrollbar { display: none; }
-  .rt-rail-liste { display: flex; gap: 4px; }
-  .rt-rail-jour { min-width: 40px; min-height: 40px; padding: 0 6px; flex: 0 0 auto; }
+  /*  Sur téléphone, la molette se couche : une frise qui défile de gauche à
+      droite. La liste doit donc LÂCHER sa hauteur maximale et son défilement
+      vertical, sinon elle s'écrase à 42 px et les jours passent sous la frise. */
+  .rt-rail-liste {
+    display: flex;
+    gap: 4px;
+    max-height: none;
+    overflow: visible;
+    scroll-snap-type: x proximity;
+  }
+  .rt-rail-jour {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0 6px;
+    flex: 0 0 auto;
+    scroll-snap-align: center;
+  }
+  .rt-rail-titre {
+    text-align: left;
+    position: static;
+    padding: 0 2px 4px;
+  }
+  .rt-rail-note {
+    text-align: left;
+    border-top: 0;
+    margin-top: 4px;
+    padding-top: 0;
+  }
 
   .rt-arrival > summary { grid-template-columns: minmax(0, 1fr); }
   .rt-time-ticket { justify-content: space-between; width: 100%; }
