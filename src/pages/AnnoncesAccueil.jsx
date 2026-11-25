@@ -207,9 +207,20 @@ export default function AnnoncesAccueil() {
       setAdmin(actor)
       if (actor.role !== 'super_admin')
         throw new Error('Cet espace est réservé au superadministrateur.')
+      /*  `*` ET PAS `id,name` — correction du 27/11.
+          La barre a besoin de DEUX choses que cette requête ne ramenait pas :
+            · `logo_url`, la photo de l'entreprise dans le sélecteur du rail.
+              Sans elle, le rond affichait la lettre du nom ;
+            · les colonnes `module_*`, que `sectionsNavAdmin` interroge pour
+              savoir quelles sections montrer. Sans elles, le rail se croyait
+              sur une entreprise sans aucun module et cachait la moitié des
+              pages — le reproche « tu ne mets pas toutes les pages ».
+          Le tableau de bord lit déjà `*` : on fait pareil, pour la même
+          raison. Rien de secret ne transite : ces colonnes sont déjà
+          publiques sur l'entreprise. */
       const comps = await supabase
         .from('enterprises')
-        .select('id,name')
+        .select('*')
         .eq('is_active', true)
         .order('name')
         .limit(500)
@@ -658,7 +669,19 @@ export default function AnnoncesAccueil() {
     // `moduleActif` : la même fabrique que les autres pages. Ici l'entreprise
     // choisie dans la page est la seule qui compte — ses modules sont ceux
     // qu'on peut viser depuis cette page.
+    /*  `super_admin` PASSE TOUJOURS — correction du 27/11.
+        « tu n'as pas mis toutes les pages ». Ma fabrique lisait les colonnes
+        `module_*` de l'entreprise. Or le tableau de bord écrit exactement
+        l'inverse pour un super-administrateur :
+
+            admin?.role === 'super_admin' || Boolean(entrepriseActive?.[champ])
+
+        Un super-admin voit TOUT, par définition — c'est lui qui règle les
+        modules. Sans cette première moitié, le rail masquait Planning,
+        Absences, Retards, Paie, Prédictions… et la barre paraissait vide.
+        C'est la page Employés qui avait raison ; c'est elle que je copie. */
     moduleActif: (champ) => {
+      if (admin?.role === 'super_admin') return true
       const ligne = (enterprises || []).find((e) => e.id === entreprise)
       return Boolean(ligne?.[champ])
     },
