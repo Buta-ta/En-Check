@@ -70,6 +70,12 @@ Trois choses y tiennent, et chacune a son verrou :
 
 À 650 px, la tuile du transat passe à `width: 100%` (c'est SA coupe) : elle occupe toute la largeur, et une corde qui traverse la bande marcherait dessus. La longue corde se retire donc à cet écran — `--abs-corde` tombe à la chute seule, le bois ne saute pas, le rail reste pendu à ses deux cordes courtes par planche. La figure survit, seule la traversée s'arrête.
 
+Et la preuve que le build ne défait pas le geste : `calc(var(--abs-chute) - var(--abs-corde))` sort de `vite build` **intact**, dans un `.abs-etagere{margin:calc(...) auto 0}` — ni plié en `-46px` à la va-vite, ni réduit à `0`. La minification n'a touché que les espaces autour des deux-points. C'est ce qu'on lit dans `dist/assets/index-*.css`, ligne 0, à l'œil nu.
+
+## Où c'est posé
+
+#345, fusionné dans `main` en `5c44263` le 1/12. CI `success`, Vercel `dpl_4vGyTGD3n4n72MAnpNwAZE5SFBPa` · READY · PROMOTED sur l'alias `main`. Le seul chevauchement avec la session voisine (#344) était la retouche de regex sur la date courte des échéances — deux mains, même geste : **la version de main a été gardée, la mienne retirée** avant la fusion. Ce qui reste de ce côté, c'est l'étagère.
+
 ## Deux accidents de chemin, écrits pour ne pas être refaits
 
 1. **Un jeton inventé ne lève pas d'erreur, il tombe en zéro.** La maquette employait `--abs-espace-1…6`, qu'elle s'était déclarés à elle-même. Recopiés tels quels dans `AbsencesAfroTech.css`, ces cinq noms n'y sont définis nulle part : `gap` et `margin` retombent à 0, l'étagère se soude sans un air, et rien dans la console ne le dit. Un test lit maintenant chaque `var(--)` de la plage et le confronte aux déclarations réelles (`tokens.css` + la feuille). C'est le seul genre de verrou qui attrape ce genre de faute sans navigateur.
@@ -89,8 +95,9 @@ La feuille portait **deux blocs `@media (max-width: 980px)`** pour le transat, l
 
 | mesure | base `8ca43df` | après |
 |---|---|---|
-| `npx vitest run` | 195 fichiers · **2728 ✓** | 196 fichiers · **2749 ✓** (+21, aucun retiré) |
-| `npx vite build` | ✓ | ✓ 21,7 s |
+| `npx vitest run` | 195 fichiers · **2728 ✓** | 196 fichiers · **2749 ✓** (+21, aucun retiré) — rejoué **après le pli avec main**, à l'identique |
+| `npx vite build` | ✓ | ✓ 18,8 s |
+| la corde, dans la feuille minifiée servie | — | 5 mentions lues : `--abs-corde: 70px`, trois usages, `--abs-corde: var(--abs-chute)` sous 650 px |
 | `npm run charte` · couleurs en dur | 4548 · 185 fichiers | **4548 · 185** |
 | `npm run charte` · ombres floues | 131 | **131** |
 | `npm run charte` · rayons hors liste | 359 · 18 valeurs | **359 · 18** |
