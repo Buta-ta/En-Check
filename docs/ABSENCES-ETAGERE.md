@@ -1,6 +1,6 @@
-# Absences · l'étagère — les six compteurs, pendus sous le transat
+# Absences · la poutre — sept compteurs pendus au bord du bas de la chemise
 
-**Le fond de l'affaire :** une planche, et une planche s'accroche. Pas une carte de plus.
+**Le fond de l'affaire :** une planche, et une planche s'accroche. Pas une carte de plus — et pas non plus une planche posée *sous* quelque chose, à cent soixante pixels du bloc qu'elle est censée tenir.
 
 Fiche de pose de la figure retenue par le fondateur, maquette `maquettes/absences-kpi-P1-etagere.png` (30/11/2026) : « je choisis le P1, l'étagère sous le transat [...] tu peux coder. Je veux le résultat comme dans la maquette choisie ». Une seule réserve l'accompagnait, et c'est elle qui a décidé de l'architecture : « faudrait juste penser à comment rendre ça responsive en tout écran ».
 
@@ -47,7 +47,21 @@ Les coupures : **1180 → trois et trois · 680 → deux-deux-deux · 420 → un
 * **Ses visages étaient dessinés deux par planche**, six au total. Ici : les absents du jour seulement, quatre au plus, plus le `+N` — et la rangée n'est pas rendue à zéro absent, pour qu'aucun trou ne bâille dans le bois.
 * **`VOIR`** apparaissait deux fois dans l'image, comme une planche de plus. Ici le rabat se pose **sur** la planche qui mène quelque part — donc une fois par planche actionnable, zéro quand il n'y a rien à traiter : un libellé d'action muet est une promesse vide.
 
-## Le raccord au bloc du haut (reprise du 1/12)
+## La pose du 2/12 — R1 · la poutre (`maquettes/absences-raccord-R1-poutre.png`)
+
+**Ce que la reprise du 1/12 avait laissé voir.** Le fondateur : « il me semble que tu ne m'as pas compris car je ne vois aucun changement ». Il avait raison, et sa capture le prouvait à l'échelle 1× : la bande entre le bord du bas de la chemise et le haut des planches mesurait **253 px**, alors que la corde en franchissait 70. Les 183 px restants, c'était **le bloc du transat lui-même**, assis entre les deux : ma corde partait de son bord à lui, pas de la chemise. Rien n'était donc relié à rien.
+
+**Ce que R1 change, en trois nombres.**
+
+1. **le transat descend dans la rangée.** Son nombre (`30`, `soldeMoyen`) et son unique autre information (le jour du prochain retour) deviennent la **septième planche** : `abs-kpi-solde`, avec sa note `retour lun. 30 nov.` en capitales micro. Le composant `AbsencesHamac` reste vivant et testé — il n'est juste plus monté par la page. Le calcul ne bouge pas d'un octet : la page calcule (`transat`), le compteur affiche.
+2. **plus de bande à franchir, donc plus de corde longue.** La rangée remonte de exactement ce que `<main>` la séparait : `margin: calc(-1 * var(--abs-corde)) auto`, avec `--abs-corde: 20px` **relu** comme le `padding: 20` de `S.main`. Le `padding-top` de la rangée tombe à 0 — la place de la corde est rendue **planche par planche** (`margin-top: var(--abs-corde)` sur `.abs-planche`), ce qui est la seule écriture qui survive au repli en 4 / 3 / 2 / 1 colonnes.
+3. **l'anneau mord le trait de la chemise.** Il est posé `top: calc(-1 * (var(--abs-corde) + var(--abs-tringle)))` au-dessus du haut de la corde, c'est-à-dire à la hauteur exacte du bord du bas de la feuille de titre. La traverse du haut passe de 4 à **10 px** (un cran de l'échelle) parce que R1 dessine une barre pleine, pas un filet. Retirer l'un des deux nombres sans l'autre, c'est redescendre la rangée sous le nez du fondateur.
+
+Le retrait horizontal devient un jeton unique, `--abs-retrait: 40px`, relu comme `16` (`.abs-chemise`) + `24` (`.abs-chemise-feuille`) : la rangée pend à l'aplomb des **coins du contenu** de la chemise, et non de ses bords — comme sur le dessin.
+
+Ce que le verrou de somme est devenu : il ne vérifie plus `26 + 20 + 24 = 70` (la respiration du transat n'existe plus dans la page), il vérifie **`main.padding == etagere.--abs-corde`** et **l'absence de `<AbsencesHamac`** dans la page. Un test qui ne vérifie que l'arithmétique laisse repasser le bloc par la fenêtre.
+
+## Le raccord au bloc du haut (reprise du 1/12, morte le 2/12 — consignée pour ce qu'elle a appris)
 
 Le vide que le fondateur montrait du doigt ne venait pas d'une corde trop courte : il venait de **deux conteneurs**. Le transat est un enfant de `.abs-page`, l'étagère un enfant de `<main>`. La bande morte entre les deux valait 26 px (la respiration du bas du transat) + 20 px (le remplissage du haut de `main`) + 24 px (la chute sous le rail) = **70 px de rien**.
 
@@ -83,32 +97,42 @@ Et la preuve que le build ne défait pas le geste : `calc(var(--abs-chute) - var
 
 ## Gelés, et vérifiés comme tels
 
-* **La chemise** (bloc titre + sous-titre + onglets soudés) n'a rien gagné : ni œillet, ni crochet, ni seconde tringle, `clip-path` absent de sa plage. Un verrou interdit tout sélecteur `.abs-chemise` écrit **après** le marqueur de l'étagère — la bande s'accroche sous la feuille, elle ne la perce pas.
-* **Le transat** se suspend où il est : aucune corde inventée par-derrière, et le composant de la bande ne prononce pas `abs-hamac`.
+* **La chemise** (bloc titre + sous-titre + onglets soudés) n'a rien gagné, ni perdu : sa `padding: 16px 24px 0` est maintenant **lue par un test** comme la source du retrait de la rangée (16 + 24 = 40). C'est le premier verrou de cette fiche qui touche la chemise — il ne la modifie pas, il la relit.
+* **Le transat** ne borde plus la page (2/12, R1) : la feuille ne porte plus **aucune** de ses règles — vérifié CSS **commentaires retirés**, parce que la prose qui explique son départ contient son nom. Le composant, lui, reste monté dans son propre test.
+* **La chemise ne porte aucune attache** : pas d'œillet, pas de crochet, pas de seconde tringle. L'accroche est peinte par la planche qui pend, jamais percée dans la feuille de titre — un verrou interdit tout sélecteur `.abs-chemise` écrit **après** le marqueur de la poutre.
 * **Les nombres de la soudure** (`margin-bottom: calc(-1 * var(--charte-trait))`, `z-index: 1`, 36 px, la pâte commune) — repris à l'identique dans `absencesSectionHaut.test.jsx`.
 
 ## Égout d'à côté, cueilli en passant
 
-La feuille portait **deux blocs `@media (max-width: 980px)`** pour le transat, le second écrit `@media(max-width:980px)` sans espaces — donc invisible aux greffes comme aux recherches, et répétant les mêmes règles avec un `text-align: center` en plus. Les deux n'en font plus qu'un, avec le `text-align` repris là où il servait. Deux blocs au même point de rupture, c'est un qui gagne et un qui endort la lecture.
+1. Deux blocs `@media (max-width: 980px)` pour le transat, le second écrit `@media(max-width:980px)` sans espaces — invisible aux greffes comme aux recherches. Unifiés le 1/12 ; devenus sans objet le 2/12, le bloc entier étant sorti de la feuille.
+2. **Le `.env` local n'est pas dans le dépôt, et son absence n'est pas une régression.** Quinze fichiers de test s'arrêtent à la collect sur « ❌ Variables Supabase manquantes dans .env » (`src/lib/supabase.js:40`) quand le fichier n'est pas là : `Test Files 15 failed | 181 passed`, `Tests 2560 passed` — **zéro assertion en échec**. Le signe à chercher avant d'accuser un changement : des fichiers qui tombent sans aucun `×`. Un `cp .env.example .env` et la suite est verte.
 
 ## Les chiffres
 
-| mesure | base `8ca43df` | après |
-|---|---|---|
-| `npx vitest run` | 195 fichiers · **2728 ✓** | 196 fichiers · **2749 ✓** (+21, aucun retiré) — rejoué **après le pli avec main**, à l'identique |
-| `npx vite build` | ✓ | ✓ 18,8 s |
-| la corde, dans la feuille minifiée servie | — | 5 mentions lues : `--abs-corde: 70px`, trois usages, `--abs-corde: var(--abs-chute)` sous 650 px |
+| mesure | base `8ca43df` | P1 + raccord (1/12) | **R1 · la poutre (2/12)** |
+|---|---|---|---|
+| `npx vitest run` | 195 fichiers · 2728 ✓ | 196 · **2749 ✓** | 196 · **2749 ✓** (aucun verrou retiré, 6 réécrits pour le nouveau contrat) |
+| `npx vite build` | ✓ | ✓ 18,8 s | ✓ 20,1 s |
+| la corde, dans la feuille minifiée servie | — | 5 mentions, `--abs-corde: 70px` | `--abs-corde: 20px`, `margin:calc(-1 * var(--abs-corde)) auto`, plus **aucune** règle `abs-etagere-suspentes`, plus **aucune** règle `.abs-hamac` |
+| lignes de la feuille de style | — | 1 172 | **974** (−198 : 161 lignes pour le bloc du transat, 37 pour la corde longue, le reste en prose reprise) |
 | `npm run charte` · couleurs en dur | 4548 · 185 fichiers | **4548 · 185** |
 | `npm run charte` · ombres floues | 131 | **131** |
 | `npm run charte` · rayons hors liste | 359 · 18 valeurs | **359 · 18** |
 | `npm run charte` · mesures (tailles · marges · rayons distincts) | 65 · 44 · 27 | **65 · 44 · 27** |
 | `npx eslint` sur les trois fichiers touchés | — | **silence** |
 
-## Ce qu'on ne peut pas prouver ici
+## Ce qu'on ne peut pas prouver ici, après R1
+
+* **si l'anneau tombe exactement SUR le trait du bas de la chemise.** Le test vérifie que la corde vaut le `padding` de `main` et que l'anneau est posé à `-(corde + traverse)` ; il ne peut pas voir l'arrondi du navigateur, ni le `box-shadow` de la chemise (2 px en bas, à flou zéro) qui peut manger un trait. **C'est LE point à regarder en premier**, large et étroit.
+* **si la note de retour a le droit de vivre sur le bois** (elle est passée d'un bloc à une planche) — et si le `30` de la septième planche ne demande pas un corps plus gros que les autres, comme sur le dessin. Ces deux goûts sont retournables en une ligne chacun.
+* **la maquette R1 dessinait des hauteurs inégales** — la planche du solde un peu plus haute que les six autres, et un bandeau noir continu de bout en bout. Le premier est une fantaisie du dessin (rendue par une rangée à colonnes égales, qui est exactement ce qui tient au repli multi-rangs), le second est obtenu par sept traverses collées sans écart, ce qui donne le même trait continu mais qui **suit** les rangs quand ils se replient. Deux renoncements écrits ici pour qu'ils soient assumés, pas découverts dans six mois.
+
+## Ce qu'on ne peut pas prouver ici (la liste du 1/12, inchangée sur le fond)
 
 Pas de navigateur dans l'atelier : les rapports, les coupures, l'aplomb du raccord et l'absence de jeton fantôme sont tenus par les 21 verrous de `src/services/__tests__/absencesEtagere.test.jsx`, **le tracé à l'œil reste à faire sur la preview** — six largeurs, de 1560 à 360 px. Ce qu'on y regarde en premier : la corde qui tombe pile sur le bas de la feuille de titre (c'est le seul endroit du raccord qu'un test ne peut pas voir — il vérifie la somme, pas l'arrondi du navigateur), la continuité du rail d'une planche à l'autre, l'anneau posé SUR le rail, et le `+N` des visages qui ne doit pas chevaucher le chiffre quand une planche prend deux lignes de libellé.
 
 ## Et après
 
-1. Si le fondateur veut l'étagère **collée** sous le transat plutôt que pendue à 70 px de corde, le crochet se retourne en un nombre : `--abs-corde: var(--abs-chute)` remonte le bois de 46 px. Non fait ici parce que la maquette dessine une suspension, pas une planche posée.
+1. Si la rangée doit se **coller** sous la chemise au lieu de pendre à 20 px de corde, le crochet se retourne en un seul nombre : `--abs-corde: 0px`. C'est aussi le crochet qui sert si l'anneau du 2/12 mord trop sur le trait de la feuille de titre — une valeur, deux réglages, aucun sélecteur de plus.
+2. Le solde porte aujourd'hui `retour lun. 30 nov.` en note de bas de planche. Si le fondateur veut le voir ailleurs que sous un chiffre, c'est une `abs-planche-note` à déménager — pas un bloc à faire revenir.
 2. Le même tri pour les trois autres écrans qui portent encore un `<style>` embarqué : la charte ne les voit toujours pas.

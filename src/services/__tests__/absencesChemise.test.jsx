@@ -210,8 +210,13 @@ describe('Absences · la chemise (maquette C)', () => {
     const bouton = CSS.slice(CSS.indexOf('.abs-btn {'))
     expect(bouton.slice(0, bouton.indexOf('\n}'))).toContain('min-height: 40px')
     expect(bouton.slice(0, bouton.indexOf('\n}'))).toContain('border-radius: 11px')
-    // et le transat reste sous la chemise : cette tranche ne l'a pas décroché
-    expect(PAGE).toContain('<AbsencesHamac jours={transat.jours} retour={transat.retour}/>')
+    // et le bord du bas de la chemise est bien la POUTRE : depuis R1 (2/12), c'est
+    // dessus que pend la rangée, donc la feuille ne peut plus avoir été repoussée.
+    // La chaîne exacte est cherchée dans le CSS vide de commentaires — pas dans la
+    // prose qui explique, elle, qu'il n'y a plus de corde longue du tout.
+    expect(CSS.replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/\.abs-etagere-suspentes\s*\{/)
+    expect(PAGE).not.toContain('<AbsencesHamac')
+    expect(PAGE).toContain('jours={transat.jours}') // le nombre passe, la figure non
   })
 
   it('donne enfin un titre de page au niveau qui va avec', () => {

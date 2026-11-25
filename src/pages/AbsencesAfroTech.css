@@ -568,310 +568,110 @@
 .abs-bogolan-drawer { height: 46px; }
 .abs-bogolan-drawer.abs-bogolan-bottom { height: 24px; }
 
-/* ═══ LA SECTION DU HAUT — maquette `maquettes/absences-haut-E-cremaillere.png` ═══
-   Le 26/11, la section finissait sur une lisière de bogolan et six rabats de
-   raccourcis. Le 27/11, le fondateur a choisi le transat et posé trois règles :
-   « dans chaque nouvelle page enlève les raccourcis », « un bandeau motif bogolan
-   servira autrement », « enlève le bouton clair/sombre ». La section ne montre donc
-   plus que ce que la maquette E montre : deux montants, une suspente en crémaillère,
-   un nombre suspendu dedans, le jour du retour à droite. Le tissu ne borde plus la
-   page — il reste dans les deux tiroirs, qui sont des feuilles qui glissent. */
-
-/* Le transat est posé à cru sur le sable : pas de carte autour, pas de fond.
-   Les montants et la corde SONT la figure ; un contenant les effacerait. */
-.abs-hamac {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  max-width: 1560px;
-  margin: 0 auto;
-  padding: 20px 16px 26px;
-}
-
-/* La corde, entre ses deux montants. Les pourcentages sont la place que le dessin
-   donne aux montants, et elle est la MEME des deux côtés : 15 % à gauche, 15 % à
-   droite. Un écart, même de six points, décalait l'axe du transat de trois pour cent
-   — et le nombre suspendu, lui, restait au centre de la feuille. Deux centreurs qui
-   ne connaissent pas la même référence, c'est un chiffre pendu de travers.
-   Pas de `width: 100%` ici : sur un enfant de flex column, 100 % + marges = un
-   débordement de trente pour cent, et le poteau de gauche peignait hors de la carte.
-   `align-self: stretch` laisse la place aux marges, et c'est tout. */
-.abs-hamac-corde {
-  align-self: stretch;
-  display: flex;
-  align-items: flex-start;
-  min-height: 118px;
-  margin: 0 15%;
-}
-.abs-hamac-montant,
-.abs-hamac-montant-fin {
-  position: relative;
-  flex: 0 0 2px;
-  width: 2px;
-  height: 118px;
-  background: var(--abs-text);
-}
-/* Le chapeau du poteau, du côté du transat — c'est ce qui l'accroche, et le
-   dessin le montre sur les deux montants, en miroir. */
-.abs-hamac-montant::before,
-.abs-hamac-montant-fin::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  width: 12px;
-  height: 8px;
-  background: var(--abs-text);
-}
-.abs-hamac-montant::before { left: -5px; }
-.abs-hamac-montant-fin::before { right: -5px; }
-
-/* La crémaillère : dix-sept traits de 8 px, chacun descendu de son nombre de
-   marches par le JSX. Ce sont les BORDS HAUTS des traits qui dessinent
-   l'affaissement — une courbe quantifiée, pas une courbe (D-016 : raide, aucun
-   flou). Les traits s'étirent (`flex: 1 1 0`) : à toute largeur, la suspente
-   compte les mêmes huit marches. */
-.abs-hamac-cran {
-  flex: 1 1 0;
-  height: 8px;
-  background: var(--abs-text);
-}
-
-/* Ce que tient la suspente. Le kit appelle cette forme une tuile « chiffre +
-   repère » : le nombre et la phrase qui dit de quoi il est le nombre.
-   Elle remonte de 46 px dans l'affaissement, et le nombre se calcule : la crémaillère
-   descend de 8 px sur huit marches, son point le plus BAS est donc à 8 × 8 + 8 = 72 px
-   du haut de la corde ; la corde est haute de 118 px (la taille des montants, qui est
-   ce qui la tient raide) ; 72 - 118 = -46. Le creux touche le haut de la tuile, la
-   tuile ne bouche pas le transat, et rien ne pend dans le vide. Un chiffre posé SOUS
-   la corde ne serait plus suspendu : il serait par terre.
-   Les `auto` sont ce qui replace la tuile sur l'axe de la corde — le même axe, pas le
-   centre de la feuille. */
-.abs-hamac-suspendu {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  min-width: 216px;
-  margin: -46px auto 0;
-  padding: 12px 18px 14px;
-  background: var(--abs-bg-elevated);
-  border: 2px solid var(--abs-text);
-  border-radius: 8px;
-  box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--abs-text) 14%, transparent);
-  text-align: center;
-}
-.abs-hamac-valeur {
-  font-family: 'IBM Plex Mono', monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 40px;
-  font-weight: 700;
-  line-height: 1;
-  color: var(--abs-text);
-}
-.abs-hamac-etiquette {
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 1.3px;
-  text-transform: uppercase;
-  color: var(--abs-text-soft);
-}
-
-/* À droite du second poteau, le jour où quelqu'un revient — ou rien du tout.
-   Une date inventée à l'endroit le plus visible de la page serait un mensonge. */
-.abs-hamac-retour {
-  position: absolute;
-  right: 5%;
-  top: 74px;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  letter-spacing: .4px;
-  text-transform: uppercase;
-  color: var(--abs-text);
-}
-.abs-hamac-retour-label {
-  font-size: 9.5px;
-  letter-spacing: 1.3px;
-  color: var(--abs-text-soft);
-}
-.abs-hamac-retour-date { font-weight: 700; }
-
-
-/* À l'étroit, la corde se rapproche des bords (sinon il ne resterait que 150 px de
-   suspente, soit huit carreaux de 18 px — l'escalier n'existerait plus) et la note de
-   retour descend sous la tuile : `position: absolute` à `right: 5 %` par-dessus un bloc
-   de 216 px, c'est une date couchée sur le chiffre qu'elle commente. */
-@media (max-width: 980px) {
-  .abs-hamac-corde { margin: 0 6%; }
-  .abs-hamac-retour {
-    position: static;
-    align-self: center;
-    align-items: center;
-    text-align: center;
-    margin-top: 14px;
-  }
-}
-@media (max-width: 650px) {
-  .abs-hamac-suspendu {
-    min-width: 0;
-    width: 100%;
-  }
-  .abs-hamac-valeur { font-size: 32px; }
-}
-/* La coupure de 980 px ci-dessus porte seule : la feuille en portait une seconde,
-   écrite `@media(max-width:980px)` sans espaces, qui répétait les mêmes règles en
-   `text-align: center`. Deux blocs au même point de rupture, c'est un seul qui gagne
-   et un qui endort la lecture. Le `text-align` est repris là où il servait. */
-
 /* ═══════════════════════════════════════════════════════════
-   🪧 L'ÉTAGÈRE — six pancartes pendues sous le transat
-   Maquette `maquettes/absences-kpi-P1-etagere.png`, retenue le 30/11/2026 :
-   « je choisis le P1 [...] je veux le résultat comme dans la maquette choisie ».
+   🪧 LA POUTRE — sept pancartes pendues AU BORD DU BAS de la chemise
+   Maquette `maquettes/absences-raccord-R1-poutre.png`, retenue le 2/12/2026 :
+   « je choisis la R1-poutre. Je veux exactement ce résultat. Code maintenant ».
+   Elle succède à P1 (`absences-kpi-P1-etagere.png`, 30/11) sur un seul point, mais
+   c'est le point que le fondateur a répété trois fois : « relier l'étagère au bloc
+   d'en haut, les accrocher là ».
 
-   Avant : six lanières d'un même ruban, séparées par des filets, posées dans la
-   page comme une bande d'état civil. Maintenant : six planches de bois, chacune
-   pendue à un rail par deux cordes et deux anneaux, sous le transat.
+   CE QUE LA DEUXIÈME POSE AVAIT LAISSÉ. Le raccord du 1/12 mesurait la bande morte
+   entre le transat et le rail : 70 px, mangés par une corde de 70 px. Sur la page la
+   bande réelle en faisait 253 — parce que LE BLOC DU TRANSAT était assis entre la
+   chemise et cette bande. Une corde de 70 px au bas d'un bloc qui ne touche pas la
+   chemise = rien de relié, et le fondateur de voir « aucun changement ». Il avait
+   raison.
 
-   Un rail PAR PLANCHE, pas un rail par rangée : chaque planche porte son tronçon
-   de rail (`::before`, pleine largeur de sa case, colonnes sans écart). Donc, à
-   toute largeur d'écran, les planches d'une même ligne partagent un trait continu
-   ET les lignes qui suivent ont chacune leur rang de cordes — sans qu'aucune
-   coupe d'écran n'ait à repositionner une tringle. C'est la réponse à « faudrait
-   juste penser à comment rendre ça responsive en tout écran ».
+   CE QUE R1 CHANGE. Le transat ne borde plus la page : son nombre descend DANS la
+   rangée, comme septième planche (le calcul reste dans `services/congesRestants` —
+   deux affichages d'un chiffre se tolèrent, deux calculs non). Et la rangée s'accroche
+   au bord du bas de la chemise : `margin-top: -20px` annule exactement le
+   `padding-top: 20px` de `<main>`, et la place des cordes est rendue planche par
+   planche. DONC IL N'Y A PLUS DE BANDE À FRANCHIR : la corde ne traverse plus 253 px,
+   elle court les 20 px qu'elle peut voir, et l'anneau mord sur le trait d'encre de la
+   feuille de titre. C'est « accrochés là ».
 
-   LE RACCORD AU BLOC DU HAUT — second tour, 1/12 : « tu as laissé bcp d'espace
-   vide entre le bloc d'en haut et l'étagère. Moi ce que je voulais est de relier
-   l'étagère au bloc d'en haut, de les accrocher là ».
+   Le `--abs-transat: 164px` du dessin de novembre est enterré avec le bloc : il
+   prétendait deviner une hauteur que personne ne lit en CSS.
 
-   Le vide ne venait pas d'une corde trop courte, il venait de deux conteneurs : le
-   transat est enfant de `.abs-page`, l'étagère est enfant de `<main>`. La bande
-   morte valait 26 (respiration du bas du transat) + 20 (remplissage du haut de
-   `main`) + 24 (la chute sous le rail) = 70 px de rien. Raccorder sans toucher au
-   transat ni à `main`, c'est faire courir la corde SUR cette bande : `--abs-corde`
-   est le seul nombre, la boîte de l'étagère remonte de `corde − chute` (−46 px) et
-   son remplissage haut rend exactement la même somme — donc LE BOIS NE BOUGE PAS
-   D'UN PIXEL, c'est la corde qui s'allonge jusqu'au bas de la chemise.
-
-   Recopiage assumé parce que vérifié : `absencesEtagere.test.jsx` relit les 26 px
-   dans `.abs-hamac`, les 20 px dans `S.main` de la page, les 24 px du jeton de
-   chute, et refuse dès que la somme ne fait plus 70. Si quelqu'un change l'un des
-   trois sans lire la consigne, la corde démarre quatre pixels trop haut ou trop
-   bas : un dessin de travers, pas une casse.
-
-   Le 164 px que la maquette chiffrait pour traverser TOUT le bloc du transat est
-   mort, et pour de bon : il était faux (la tuile se remonte elle-même de 46 px et
-   sa hauteur vient d'un corps de 32 px — elle n'est lisible depuis aucun
-   sélecteur), et il ne sert plus. La corde n'a pas à deviner le transat, elle part
-   de son bord bas, là où la chemise finit.
-
-   Les cinq espaces que la maquette s'était déclarés à elle-même n'existent pas
-   dans cette feuille : lus là, ils tombent en 0 — un `gap` fantôme ne lève pas
-   d'erreur, il soude les planches sans air. La menuiserie lit donc l'échelle de
-   la charte, de `-1` (4 px) à `-5` (24 px), et rien d'autre.
+   Un rail PAR PLANCHE, pas par rangée (hérité de P1, et ce n'est pas un détail) :
+   chaque planche porte son tronçon (`::before`, pleine largeur de case, colonnes sans
+   écart), donc les planches d'une même ligne partagent un trait continu ET chaque rang
+   qui tombe à l'écran reçoit son propre rang de cordes — sans qu'aucune coupe n'ait à
+   repositionner une tringle. La maquette dessinait un bandeau plein de bout en bout :
+   ce n'est pas une tringle unique, c'est sept tronçons collés, et P1 avait déjà cette
+   menuiserie.
    ═══════════════════════════════════════════════════════════ */
 
-/* Trois nombres, posés là où ils servent : sur l'étagère elle-même, donc ils
+/* Quatre nombres, posés là où ils servent : sur la rangée elle-même, donc ils
    descendent jusqu'aux planches sans passer par un conteneur de plus. */
 .abs-etagere {
-  --abs-chute: var(--charte-espace-5);
-  --abs-tringle: 4px;
+  --abs-chute: var(--charte-espace-5); /* l'air sous le bois, et le cran entre deux rangs */
+  --abs-tringle: 10px;                 /* le bandeau du haut, celui que R1 dessine plein */
   --abs-planche: 88px;
-  /* 26 (bas du transat) + 20 (haut de `<main>`) + 24 (la chute) : la bande que la
-     corde traverse pour s'accrocher au bloc d'en haut. Un test relit les trois. */
-  --abs-corde: 70px;
+  /* LA LONGUEUR DE CORDE. Ce n'est plus une somme à deviner : c'est exactement le
+     `padding-top: 20px` de `<main>`, la seule chose qui séparait encore la rangée du
+     bloc du haut. Un test relit les deux nombres et refuse le décalage. */
+  --abs-corde: 20px;
+  /* le retrait du contenu de la chemise : 16 (`.abs-chemise`) + 24 (`.abs-chemise-feuille`).
+     La rangée pend à l'aplomb des coins de la feuille, pas à ses bords. */
+  --abs-retrait: 40px;
   position: relative;
   max-width: 1560px;
-  margin: calc(var(--abs-chute) - var(--abs-corde)) auto 0;
-  /* le même 24 px que le contenu de la chemise, à TOUTES les largeurs — y compris
-     petit écran : c'est ce jeton qui fixe aussi la place des longues cordes, et un
-     rang de cordes qui ne tombe plus sur les bouts du rail est un raccord faux */
-  padding: var(--abs-corde) var(--charte-espace-5) var(--charte-espace-5);
-}
-
-/* Les deux longues cordes et leurs scellements : une bande de 70 px posée par-
-   dessus la morte-saison, deux traits à 24 px des bords — l'aplomb exact des coins
-   du contenu de la chemise. Le transat, lui, tient ses montants à 15 % : tant
-   qu'il garde sa respiration, les deux dessinages ne se croisent pas (à 650 px il
-   la perd, et la corde se retire — plus bas). Muettes, hors du chemin du clic, et
-   SOUS le bois (`z-index: 0` contre `1` aux planches) si jamais elles le longent. */
-.abs-etagere-suspentes {
-  position: absolute;
-  top: 0;
-  left: var(--charte-espace-5);
-  right: var(--charte-espace-5);
-  height: var(--abs-corde);
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.abs-etagere-suspentes i {
-  position: relative;
-  display: block;
-  align-self: stretch;
-  width: 2px;
-  background: var(--charte-encre);
-}
-
-/* Le scellement : un carré de 8 px où la corde rejoint le rail. La maison connaît
-   ce motif — c'est le chapeau des montants du transat, posé à l'endroit. */
-.abs-etagere-suspentes b {
-  position: absolute;
-  top: -4px;
-  left: -3px;
-  display: block;
-  width: 8px;
-  height: 8px;
-  background: var(--charte-encre);
+  margin: calc(-1 * var(--abs-corde)) auto var(--abs-chute);
+  padding: 0 var(--abs-retrait);
 }
 
 .abs-etagere-planches {
-  position: relative; /* la corde traverse la bande au-dessus : le bois passe après */
-  z-index: 1;
+  position: relative;
+  z-index: 1; /* l'anneau se peint sur le trait de la chemise : il doit passer après elle */
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  /* aucun écart entre colonnes : c'est ce qui colle les six tronçons de rail en un
-     seul trait. L'air entre les planches est porté par leur remplissage intérieur.
-     Entre les rangs, un cran de l'échelle (16 px) — pas un nombre de plus. */
-  gap: var(--charte-espace-4) 0;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  /* aucun écart entre colonnes : c'est ce qui colle les sept bandeaux en un seul
+     trait plein, comme sur R1. L'air entre deux planches est porté par le retrait
+     intérieur de leur bois. Entre les rangs, la chute — pas un nombre de plus. */
+  gap: var(--abs-chute) 0;
 }
 
+/* La place de la corde est portée par la planche, pas par la rangée : c'est ce qui
+   fait qu'un rang de cordes suit ses planches à TOUTE largeur d'écran. Le bandeau du
+   haut se peint dans cette même marge, au-dessus du bois. */
 .abs-planche {
   position: relative;
-  padding-top: var(--abs-tringle);
+  margin-top: var(--abs-corde);
   min-width: 0;
 }
 
-/* LE RAIL. 4 px, soit deux fois le trait d'encre : c'est une barre qui porte six
-   planches, pas un filet. Posé en `height` sur un `::before` et non en `border-top`
-   pour qu'il déborde d'un chevron aux deux bouts de la rangée sans toucher au
-   modèle de boîte des planches. */
+/* LE BANDEAU DU HAUT. 10 px, un cran de l'échelle, deux fois et demie le trait
+   d'encre : R1 dessine une traverse pleine, pas un filet. Posé en `height` sur un
+   `::before` et non en `border-top` pour qu'il déborde d'un chevron aux deux bouts de
+   la rangée sans toucher au modèle de boîte des planches. */
 .abs-planche::before {
   content: "";
   position: absolute;
-  top: 0;
+  top: calc(-1 * var(--abs-tringle));
   left: 0;
   right: 0;
   height: var(--abs-tringle);
   background: var(--charte-encre);
 }
 
-/* Les deux cordes courtes et leurs anneaux. L'anneau est un creux de 8 px cerclé
-   d'encre, posé SUR le rail : c'est ce qui dit « pendu » plutôt que « collé ». */
+/* Les deux cordes et leurs anneaux : elles montent du bandeau jusqu'au trait de la
+   chemise, soit `--abs-corde` + une traverse. L'anneau est un creux de 8 px cerclé
+   d'encre, posé SUR le bord du bas de la feuille de titre : c'est ce qui dit
+   « accrochée là » plutôt que « posée en dessous ». Muet, hors du chemin du clic. */
 .abs-planche-corde {
+  position: absolute;
+  top: calc(-1 * (var(--abs-corde) + var(--abs-tringle)));
+  left: 0;
+  right: 0;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  height: var(--abs-chute);
+  height: var(--abs-corde);
   padding: 0 var(--charte-espace-4);
+  pointer-events: none;
 }
 
 .abs-planche-corde i {
@@ -882,11 +682,15 @@
   background: var(--charte-encre);
 }
 
+/* L'anneau EST le point d'accroche : il est posé à hauteur du bord du bas de la
+   chemise — donc une corde + une traverse au-dessus du haut de la corde — et centré
+   sur un trait de 2 px (`left` = la moitié de son épaisseur, bordure comprise).
+   Cinq valeurs, une seule idée : « cela tient à la feuille de titre ». */
 .abs-planche-corde i::before {
   content: "";
   position: absolute;
-  top: -7px;
-  left: -3px;
+  top: calc(-1 * (var(--abs-corde) + var(--abs-tringle)));
+  left: -5px;
   width: 8px;
   height: 8px;
   border: 2px solid var(--charte-encre);
@@ -1018,6 +822,18 @@ button.abs-planche-corps:focus-visible {
   pointer-events: none;
 }
 
+/* La note du prochain retour, descendue du transat sur la planche du solde : mêmes
+   capitales micro que le libellé, même grain. Elle se lit, elle ne se devine pas. */
+.abs-planche-note {
+  display: block;
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: var(--charte-douce);
+}
+
 /* Le fil de couture de la pancarte des conflits : l'alerte ne se dit plus par un
    bandeau plein mais par un fil oblique, et il ne reste que la teinte du statut
    absent. Il disparaît avec le conflit — c'est le contrat. */
@@ -1077,24 +893,10 @@ button.abs-planche-corps:focus-visible {
    s'évapore en petit écran est un habillage ; ici c'est la même menuiserie,
    seulement moins large. */
 @media (max-width: 1180px) {
-  .abs-etagere-planches { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .abs-etagere-planches { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 680px) {
-  .abs-etagere-planches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-/* À 650 px, la tuile du transat passe à `width: 100%` (c'est SA coupe, plus bas
-   dans la feuille) : elle occupe toute la largeur et une corde qui traverse la
-   bande marcherait dessus. À cet écran la bande morte n'existe presque plus —
-   plus rien à relier — donc la longue corde se retire, et le rail avec ses cordes
-   courtes par planche restent intacts. Le bois ne saute pas : `--abs-corde` tombe à
-   la chute seule et le remplissage haut rend la même somme. */
-@media (max-width: 650px) {
-  .abs-etagere {
-    --abs-corde: var(--abs-chute);
-    margin-top: 0;
-    padding-top: var(--abs-chute);
-  }
-  .abs-etagere-suspentes { display: none; }
+  .abs-etagere-planches { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 420px) {
   .abs-etagere-planches { grid-template-columns: minmax(0, 1fr); }

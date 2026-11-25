@@ -1,35 +1,31 @@
 // ═══════════════════════════════════════════════════════════
-// 🪧 ABSENCES — LES SIX PAN CARTES DE L'ÉTAGÈRE
+// 🪧 ABSENCES — LA POUTRE : SEPT PAN CARTES PENDUES AU BORD DU BAS DE LA CHEMISE
 //
-// Maquette retenue `maquettes/absences-kpi-P1-etagere.png` (30/11/2026) :
-// « je choisis le P1, l'étagère sous le transat [...] je veux le résultat comme
-// dans la maquette choisie ».
+// Maquette retenue `maquettes/absences-raccord-R1-poutre.png` (2/12/2026) :
+// « je choisis la R1-poutre. Je veux exactement ce résultat. Code maintenant ».
+// Elle succède à `maquettes/absences-kpi-P1-etagere.png` (30/11), que le fondateur
+// avait déjà validée sur la FIGURE — six pancartes pendues, pas un ruban coupé de
+// filets — mais pas sur le RACCORD, qu'il a redit trois fois : « relier l'étagère au
+// bloc d'en haut, les accrocher là ».
 //
 // Une carte = une question que se pose un RH en ouvrant la page : qui manque
-// aujourd'hui, combien ce mois, quoi traiter maintenant. Deux portent une
-// jauge, une montre les visages du jour, deux se cliquent et mènent droit au
-// bon filtre.
+// aujourd'hui, combien ce mois, quoi traiter maintenant. Deux portent une jauge, une
+// montre les visages du jour, deux se cliquent et mènent droit au bon filtre.
 //
-// Six pancartes pendues à un rail, et deux longues cordes qui remontent de ce
-// rail jusqu'au bas du bloc d'en haut. Ce n'est plus un ruban coupé en six par des
-// filets : chaque chiffre a son bois, ses deux cordes et ses deux anneaux. La
-// rangée d'avant était « une lanière, pas une carte » ; celle-ci est une planche,
-// et une planche s'accroche.
+// CE QUI CHANGE ICI, ET RIEN D'AUTRE. La septième planche est le solde de congés que
+// le transat portait à cru au-dessus de la rangée : le bloc est descendu DANS la
+// rangée (deux affichages d'un même nombre se tolèrent, deux calculs jamais — il vient
+// de `services/congesRestants`, comme avant). Et les deux longues cordes qui
+// traversaient une bande de 253 px sont parties avec le bloc : chaque planche tient
+// DÉSORMAIS SES cordes, courtes, qui s'arrêtent sur le trait d'encre de la chemise.
+// La géométrie (20 px de `<main>`, 10 px de traverse, 40 px de retrait) est sous
+// `🪧 LA POUTRE` dans `AbsencesAfroTech.css`.
 //
-// Le raccord, parce qu'il a été demandé deux fois (30/11 la figure, 1/12 « tu as
-// laissé bcp d'espace vide entre le bloc d'en haut et l'étagère ») : les longues
-// cordes traversent la bande morte — 70 px — et vont mordre sur le bas de la
-// chemise. Elles ne dévinent pas la hauteur du transat, ce que la maquette
-// chiffrait à 164 px et qui est faux : la bande à franchir vaut 26 + 20 + 24,
-// trois nombres relus par un test. Tout ce calcul de geometry est dans la feuille
-// sous `🪧 L'ÉTAGÈRE` ; ce fichier, lui, ne bouge pas d'un pixel de bois.
-//
-// Tout le dessin est parti dans `AbsencesAfroTech.css`. Ce fichier ne pose un
-// nombre en ligne qu'à deux endroits, et jamais de goût : la largeur d'une jauge
-// (un pourcentage lu en base) et le diamètre d'un visage (22 px, l'échelle des
-// tuiles). Les dix-sept `style={…}` d'avant étaient invisibles à
-// `npm run charte` — une attribution en ligne bat n'importe quel sélecteur de
-// feuille (journal du 22/11).
+// Tout le dessin est parti dans la feuille. Ce fichier ne pose un nombre en ligne
+// qu'à deux endroits, et jamais de goût : la largeur d'une jauge (un pourcentage lu en
+// base) et le diamètre d'un visage (22 px, l'échelle des tuiles). Les dix-sept
+// `style={…}` d'avant étaient invisibles à `npm run charte` — une attribution en ligne
+// bat n'importe quel sélecteur de feuille (journal du 22/11).
 //
 // Composant pur : pas de Supabase, pas d'effet, pas de suppression.
 // ═══════════════════════════════════════════════════════════
@@ -132,10 +128,11 @@ function Planche({ testId, valeur, suffixe, label, precision, jauge, action, onC
 
   return (
     <div className="abs-planche" data-testid={testId}>
-      {/* la tringle est portée par la rangée, les cordes par la pancarte : à
-          chaque largeur d'écran, les planches d'une même ligne partagent le
-          même rail et les lignes qui suivent ont chacun leur propre rang de
-          cordes. C'est ce qui rend l'étagère responsive sans la défaire. */}
+      {/* les cordes, l'anneau et la traverse sont PORTÉS PAR LA PLANCHE, pas par la
+          rangée : à toute largeur d'écran les planches d'un même rang partagent un
+          trait continu, et chaque rang qui tombe à l'écran reçoit son propre rang de
+          cordes. C'est ce qui rend la poutre responsive sans la défaire — et c'est
+          aussi ce qui fait que l'anneau retombe sous la chemise à chaque coupure. */}
       <span className="abs-planche-corde" aria-hidden="true">
         <i />
         <i />
@@ -157,6 +154,11 @@ export default function AbsencesKpiCards({
   conflitsEnAttente = 0,
   joursPrisParEmploye = {},
   plafondConges = 30,
+  // Le solde que portait le transat, et le jour du prochain retour. Ils entrent par
+  // props parce que la PAGE les calcule déjà (`transat`) : les re-calculer ici serait
+  // le deuxième calcul d'un même nombre, ce que la maison refuse.
+  jours = null,
+  retour = null,
   onVoirConflits,
   onVoirDemandes,
 }) {
@@ -250,16 +252,6 @@ export default function AbsencesKpiCards({
       data-testid="abs-kpi-grille"
       title={`Chiffres calculés sur les absences chargées · aujourd'hui = ${mesures.aujourdhui}`}
     >
-      {/* Les deux longues cordes. `position: absolute` dans le remplissage haut de
-          l'étagère : elles courent SUR la bande vide, du rail jusqu'au bas de la
-          chemise, à 24 px des bords — l'aplomb des coins du contenu de la chemise.
-          Muettes, hors du chemin du clic, et effacées sous 650 px, là où le transat
-          prend toute la largeur et n'a plus de bande à côté de lui. */}
-      <span className="abs-etagere-suspentes" aria-hidden="true">
-        <i><b /></i>
-        <i><b /></i>
-      </span>
-
       <div className="abs-etagere-planches">
         {/* 1. Qui manque aujourd'hui — avec les visages */}
         <Planche
@@ -308,7 +300,34 @@ export default function AbsencesKpiCards({
           jauge={mesures.tauxConges}
         />
 
-        {/* 5 et 6. Ce qui se traite : les deux seules pancartes qui se cliquent */}
+        {/* 5. LE SOLDE, jadis porté à cru par le transat au-dessus de la rangée. R1 le
+            veut PENDU avec les autres : même nombre, même calcul, une planche de plus.
+            Le jour du retour descend avec lui — c'était la seule autre information du
+            bloc, et une date qu'on ne montre plus est une date perdue. */}
+        {jours == null ? (
+          <Planche
+            testId="abs-kpi-solde"
+            valeur="—"
+            label="Jours de congé qui restent"
+            precision="soldes non chargés : aucun effectif, aucun jour pris"
+          />
+        ) : (
+          <Planche
+            testId="abs-kpi-solde"
+            valeur={jours}
+            suffixe="j"
+            label="Jours de congé qui restent"
+            precision={`plafond ${mesures.plafond} jours · moyenne de l'effectif`}
+          >
+            {retour && (
+              <span className="abs-planche-note" data-testid="abs-kpi-retour">
+                retour {retour}
+              </span>
+            )}
+          </Planche>
+        )}
+
+        {/* 6 et 7. Ce qui se traite : les deux seules pancartes qui se cliquent */}
         <Planche
           testId="abs-kpi-attente"
           valeur={mesures.enAttente}
