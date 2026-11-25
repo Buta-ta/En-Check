@@ -105,6 +105,8 @@ Et la preuve que le build ne défait pas le geste : `calc(var(--abs-chute) - var
 
 ## Où c'est posé
 
+**Le corollaire de l'anneau (3/12)** : #350, fusionné dans `main` en `1fc8b0d` — quatre jetons et une soustraction, aucun fichier de plus touché que la feuille, la fiche et deux tests.
+
 **R1 · la poutre (2/12)** : #348, fusionné dans `main` en `e2ef3b5`, CI `success`, Vercel `dpl_2no1J1N9fxVugyK8dGaioqh2GrCa` · READY · PROMOTED sur l'alias `main`. Le pli avec la session voisine (#347, écran de chargement des annonces) n'a rencontré aucun des six fichiers touchés.
 
 
