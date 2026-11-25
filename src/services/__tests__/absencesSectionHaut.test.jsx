@@ -140,12 +140,19 @@ describe('Absences · la section du haut, figure E', () => {
     // le contour du bois est celui d'un objet actif, à l'encre de la charte
     expect(bloc('.abs-planche-corps {')).toContain('border: var(--charte-trait) solid var(--charte-encre)')
     expect(bloc('.abs-planche-corps {')).toContain('box-shadow: var(--charte-ombre-dure)')
-    // et l'anneau se pose pile au niveau du bord du bas de la chemise : corde +
-    // traverse. C'est une soustraction entre deux nombres de la feuille, pas un goût.
+    // et l'anneau se pose au HAUT DE LA CORDE, pas à son décalage : la corde est déjà
+    // montée, additionner les deux (la pose du 2/12) faisait remonter l'anneau de
+    // 20 px par-dessus le titre — « les trous (ronds) sont mal placés », 3/12.
     const corde = declarations('.abs-planche-corde')
     const anneau = declarations('.abs-planche-corde i::before')
     expect(nud(corde)).toContain('top:calc(-1*(var(--abs-corde)+var(--abs-tringle)))')
-    expect(nud(anneau)).toContain('top:calc(-1*(var(--abs-corde)+var(--abs-tringle)))')
+    expect(nud(anneau)).toContain('top:calc(var(--abs-tringle)-var(--abs-anneau))')
+    // l'arithmétique, relue dans la feuille (pas un expect(20).toBe(20) qui ne peut
+    // pas tomber) : corde + traverse − cran − épaisseur = le remplissage de `<main>`
+    const jeton = (nom) => parseInt(declarations('.abs-etagere').split(`${nom}: `)[1], 10)
+    const épaisseur = parseInt(anneau.split('height: ')[1], 10) + 2 * parseInt(anneau.split('border: ')[1], 10)
+    expect(jeton('--abs-corde') + jeton('--abs-tringle') - jeton('--abs-anneau') - épaisseur)
+      .toBe(parseInt(/main:\s*\{\s*padding:\s*(\d+)/.exec(PAGE)[1], 10))
     // la coupe de 1180 px ne reposition RIEN : chaque rang garde son rail et ses
     // cordes, parce qu'ils appartiennent à la planche
     expect(media('@media (max-width: 1180px)')).not.toMatch(/\n\s*(left|right|top|bottom):/)
