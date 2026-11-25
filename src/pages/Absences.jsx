@@ -24,6 +24,7 @@ import AbsencesKpiCards from '../components/AbsencesKpiCards'
 import AbsenceFormulaire from '../components/AbsenceFormulaire'
 import { AbsencesSelectMotifs, AbsencesLegendeMotifs, AbsencesStatsMotifs } from '../components/AbsencesFiltres'
 import { DemandeCongeCard } from '../components/DemandeCongeCard'
+import { AbsencesFil } from '../components/AbsencesFil'
 import { supprimerDemandeEtSesAbsences } from '../services/lienDemandeAbsence'
 import AbsencesChemise from '../components/AbsencesChemise'
 import { cibleRetour } from '../lib/monEntreprise'
@@ -1023,6 +1024,53 @@ export default function Absences() {
   const formaterDateCourte = (d) => new Date(`${String(d).slice(0, 10)}T12:00:00Z`)
     .toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
   /** Au clic sur une carte : décider si c'est en attente, voir la pièce jointe sinon */
+  // ═══  LE FIL (maquette `absences-calendrier-D-fil.png`, 8/12) ═══
+  // La fiche détachée du fil est tenue ici, pas dans le composant : c'est la
+  // page qui possède les gestes (ouvrir, approuver, refuser, joindre), le fil
+  // ne fait que les appeler. `DemandeCongeCard` reste donc la fiche ouverte —
+  // la pendre et la détacher ne sont pas deux présentations d'une même
+  // demande, c'est la même demande dans deux états du geste.
+  const [ficheEnMain, setFicheEnMain] = useState(null)
+
+  // une demande approuvée a laissé une absence derrière elle (`leave_request_id`) :
+  // c'est par là qu'on retrouve son conflit de pointage, pas par un nouveau calcul
+  const absencesParDemande = useMemo(() => {
+    const map = {}
+    absences.forEach(a => { if (a.leave_request_id) map[a.leave_request_id] = a })
+    return map
+  }, [absences])
+
+  const conflitsParDemande = useMemo(() => {
+    const map = {}
+    leaveRequests.forEach(r => {
+      const a = absencesParDemande[r.id]
+      if (a && conflitParAbsence[a.id]) map[r.id] = conflitParAbsence[a.id]
+    })
+    return map
+  }, [leaveRequests, absencesParDemande, conflitParAbsence])
+
+  // les soldes cloués à droite du fil : les mêmes nombres que lit la poutre
+  // (`joursPrisParEmploye`, `annual_leave_cap`), triés du plus court au plus long
+  const soldesDuFil = useMemo(() => {
+    const plafond = leaveConfig.annual_leave_cap || 30
+    const concernes = new Map()
+    leaveRequests.forEach(r => {
+      const id = r.employee_id
+      if (id == null) return
+      if (!concernes.has(id)) {
+        concernes.set(id, {
+          id,
+          initiales: `${(r.employees?.first_name || '?')[0]}${(r.employees?.last_name || '?')[0]}`.toUpperCase(),
+          pris: joursPrisParEmploye[id] || 0,
+          plafond,
+          restant: plafond - (joursPrisParEmploye[id] || 0),
+          court: plafond - (joursPrisParEmploye[id] || 0) <= 0,
+        })
+      }
+    })
+    return [...concernes.values()].sort((a, b) => a.restant - b.restant).slice(0, 6)
+  }, [leaveRequests, joursPrisParEmploye, leaveConfig.annual_leave_cap])
+
   const ouvrirDemande = (d) => {
     if (d.status === 'en_attente') openReviewModal(d, 'approuve')
     else if (d.document_url) handleViewRequestDocument(d)
@@ -2215,21 +2263,55 @@ export default function Absences() {
                   </p>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="abs-demandes-liste">
-                  {filteredRequests.map((request) => (
-                    <DemandeCongeCard
-                      key={request.id}
-                      demande={request}
-                      cleJour={cleJourLocal}
-                      fmtDate={formaterDateCourte}
-                      busy={submittingReview && selectedRequest?.id === request.id}
-                      onVoir={ouvrirDemande}
-                      onApprouver={(d) => openReviewModal(d, 'approuve')}
-                      onRefuser={(d) => openReviewModal(d, 'refuse')}
-                      onSupprimer={confirmDeleteRequest}
-                    />
-                  ))}
-                </div>
+                <>
+                  <AbsencesFil
+                    demandes={filteredRequests}
+                    conflitsParDemande={conflitsParDemande}
+                    feriers={getHolidaySet}
+                    soldes={soldesDuFil}
+                    charge={loadingRequests}
+                    enMain={ficheEnMain}
+                    surChoisir={(id) => setFicheEnMain((d) => (d === id ? null : id))}
+                    surDeclarer={() => handleAdd()}
+                    surApprouver={(d) => openReviewModal(d, 'approuve')}
+                    surRefuser={(d) => openReviewModal(d, 'refuse')}
+                    surDocument={handleViewRequestDocument}
+                  />
+
+                  {/* CE QUI EST DÉTACHÉ SE POSE. La fiche en main est la seule
+                      présentation détaillée de la demande : `DemandeCongeCard`,
+                      avec ses boutons et ses pièces jointes, posée sous le fil.
+                      Rien n'est dupliqué — la fiche pendue ne montre que ce
+                      qu'il faut pour reconnaître le linge. */}
+                  {ficheEnMain && (() => {
+                    const demande = leaveRequests.find(r => String(r.id) === String(ficheEnMain))
+                    if (!demande) return null
+                    return (
+                      <div className="abs-fil-table" data-testid="abs-fil-table">
+                        <div className="abs-fil-table-tete">
+                          <p className="abs-fil-table-legende">La fiche en main · posée sur la table</p>
+                          <button
+                            type="button"
+                            className="abs-fil-table-reprendre"
+                            onClick={() => setFicheEnMain(null)}
+                          >
+                            Rependre la fiche
+                          </button>
+                        </div>
+                        <DemandeCongeCard
+                          demande={demande}
+                          cleJour={cleJourLocal}
+                          fmtDate={formaterDateCourte}
+                          busy={submittingReview && selectedRequest?.id === demande.id}
+                          onVoir={ouvrirDemande}
+                          onApprouver={(d) => openReviewModal(d, 'approuve')}
+                          onRefuser={(d) => openReviewModal(d, 'refuse')}
+                          onSupprimer={confirmDeleteRequest}
+                        />
+                      </div>
+                    )
+                  })()}
+                </>
               )}
             </div>
           )}
