@@ -7,6 +7,13 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useTheme } from '../contexts/ThemeContext'
 import PageCulturalBand from '../components/PageCulturalBand'
+/*  LA SIDEBAR ET SON RAIL — « ramène la sidebar + son rail dans cette page
+    comme dans Annonces accueil » (25/11). On ne recopie pas le patron : on
+    rend les deux composants partagés, `CoqueAdmin` et `SidebarUnique`, avec
+    la fabrique de sections que Planning, Employés et Annonces lisent déjà. */
+import CoqueAdmin from '../components/coque/CoqueAdmin'
+import SidebarUnique from '../components/SidebarUnique'
+import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import {
   RetardsBandeau,
   RetardsContent,
@@ -273,198 +280,234 @@ export default function Retards() {
     </p>
   )
 
+  /*  Les sections du rail : la même fabrique que les autres pages, avec la
+      même règle `super_admin` qui passe toujours — sans elle, le rail masquait
+      Retards et la barre paraissait vide. */
+  const sectionsNav = sectionsNavAdmin({
+    admin,
+    moduleActif: (champ) => {
+      if (admin?.role === 'super_admin') return true
+      const ligne = (entreprises || []).find(
+        (e) => e.id === (selectedEntrepriseId === 'all' ? null : selectedEntrepriseId),
+      )
+      return Boolean(ligne?.[champ])
+    },
+  })
+
   return (
-    <div className={`rt-page ${darkMode ? 'rt-dark' : ''}`}>
-      {/* Le motif ne se pose plus AU-DESSUS du bandeau : il l'ENTOURE.
-          Même toile de tissage que la page, `placement="cadre"`, et la
-          planche posée par-dessus — c'est elle qui masque le milieu, donc
-          le motif ne se voit qu'en lisière (décision du 25/11). Le cadre ne
-          porte aucun mot et ne boit aucun clic (D-004). */}
-      <div className="rt-cadre">
-        <PageCulturalBand pathname="/retards" placement="cadre" />
-        <div className="rt-planche">
-          <div className="rt-bandeau-ligne">
-            <RetardsBandeau />
-            <RetardsPeriode
-              selectedDate={selectedDate}
-              onDate={(value) => {
-                if (/^\d{4}-\d{2}-\d{2}$/.test(value))
-                  changeContext(() => setSelectedDate(value))
-              }}
-              onShift={(delta) =>
-                changeContext(() =>
-                  setSelectedDate(shiftRetardDate(selectedDate, viewMode, delta)),
-                )
-              }
-              mode={viewMode}
-              onMode={(value) => {
-                if (value !== viewMode) changeContext(() => setViewMode(value))
-              }}
-              dates={dates}
-            />
+    <CoqueAdmin
+      sidebar={
+        <SidebarUnique
+          sections={sectionsNav}
+          nomAdmin={admin ? `${admin.first_name || ''} ${admin.last_name || ''}`.trim() : ''}
+          initialeAdmin={(admin?.first_name || 'A').charAt(0)}
+          darkMode={darkMode}
+          surTheme={toggleTheme}
+          surDeconnexion={() => navigate('/login')}
+          entreprises={entreprises}
+          entrepriseActive={
+            entreprises.find((e) => e.id === selectedEntrepriseId) || null
+          }
+          surEntreprise={(e) =>
+            changeContext(() =>
+              setSelectedEntrepriseId(typeof e === 'string' ? e : e?.id || 'all'),
+            )
+          }
+        />
+      }
+    >
+      <div className={`rt-page ${darkMode ? 'rt-dark' : ''}`}>
+        {/* Le motif ne se pose plus AU-DESSUS du bandeau : il l'ENTOURE.
+            Même toile de tissage que la page, `placement="cadre"`, et la
+            planche posée par-dessus — c'est elle qui masque le milieu, donc
+            le motif ne se voit qu'en lisière (décision du 25/11). Le cadre ne
+            porte aucun mot et ne boit aucun clic (D-004). */}
+        <div className="rt-cadre">
+          <PageCulturalBand pathname="/retards" placement="cadre" />
+          <div className="rt-planche">
+            <div className="rt-bandeau-ligne">
+              <RetardsBandeau />
+              <RetardsPeriode
+                selectedDate={selectedDate}
+                onDate={(value) => {
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(value))
+                    changeContext(() => setSelectedDate(value))
+                }}
+                onShift={(delta) =>
+                  changeContext(() =>
+                    setSelectedDate(shiftRetardDate(selectedDate, viewMode, delta)),
+                  )
+                }
+                mode={viewMode}
+                onMode={(value) => {
+                  if (value !== viewMode) changeContext(() => setViewMode(value))
+                }}
+                dates={dates}
+              />
+            </div>
+            {filtreEntreprise && (
+              <div className="rt-planche-entreprise">{filtreEntreprise}</div>
+            )}
           </div>
-          {filtreEntreprise && (
-            <div className="rt-planche-entreprise">{filtreEntreprise}</div>
-          )}
         </div>
-      </div>
-      <main className="rt-main">
-        {accessError ? (
-          <div className="rt-state" role="alert">
-            <p>{accessError}</p>
-            <button onClick={() => setAccessAttempt((n) => n + 1)}>
-              Réessayer
-            </button>
-          </div>
-        ) : access === false ? (
-          <div className="rt-state">
-            <h1>Module Retards non activé</h1>
-            <Link to="/dashboard">Retour au tableau de bord</Link>
-          </div>
-        ) : access === null ? (
-          <div className="rt-state" role="status">
-            Vérification de l’accès…
-          </div>
-        ) : loading || error || introPending ? (
-          <>
-            <div className="rt-title-row">
-              <div>
-                <span className="rt-eyebrow">LE CARNET DE PONCTUALITÉ</span>
-                <h1>
-                  Retards
-                  <span className="rt-title-dot" aria-hidden="true">
-                    .
-                  </span>
-                </h1>
-                <p>Chaque arrivée, replacée dans son contexte.</p>
+        <main className="rt-main">
+          {accessError ? (
+            <div className="rt-state" role="alert">
+              <p>{accessError}</p>
+              <button onClick={() => setAccessAttempt((n) => n + 1)}>
+                Réessayer
+              </button>
+            </div>
+          ) : access === false ? (
+            <div className="rt-state">
+              <h1>Module Retards non activé</h1>
+              <Link to="/dashboard">Retour au tableau de bord</Link>
+            </div>
+          ) : access === null ? (
+            <div className="rt-state" role="status">
+              Vérification de l’accès…
+            </div>
+          ) : loading || error || introPending ? (
+            <>
+              <div className="rt-title-row">
+                <div>
+                  <span className="rt-eyebrow">LE CARNET DE PONCTUALITÉ</span>
+                  <h1>
+                    Retards
+                    <span className="rt-title-dot" aria-hidden="true">
+                      .
+                    </span>
+                  </h1>
+                  <p>Chaque arrivée, replacée dans son contexte.</p>
+                </div>
               </div>
-            </div>
-            <div
-              className={error ? 'rt-state' : 'rt-loading-slot'}
-              role={error ? 'alert' : undefined}
-            >
-              {error ? (
-                <>
-                  <p>{error}</p>
-                  <button onClick={loadRetards}>Réessayer</button>
-                </>
-              ) : (
-                <>
-                  <RetardsLoadingScreen
-                    onMinimumDone={introPending ? finishIntro : undefined}
-                    onSkip={introPending ? finishIntro : undefined}
-                    dataReady={!loading}
-                  />
-                </>
-              )}
-            </div>
-          </>
-        ) : (
-          <RetardsContent
-            key={`${selectedEntrepriseId}-${selectedDate}-${viewMode}`}
-            retards={retards}
-            stats={stats}
-            dates={dates}
-            mode={viewMode}
-            filters={filters}
-            onExport={exportCSV}
-            onRules={() => setRulesOpen(true)}
-            onDelete={(r) => {
-              setDeleteError('')
-              setRetardToDelete(r)
-            }}
-            busy={deleting}
-            search={search}
-            setSearch={setSearch}
-            selectedDate={selectedDate}
-            /*  Un jour de la molette, c'est une JOURNÉE qu'on choisit — pas
-                une nouvelle ancre dans le mois. Sans le passage en vue du
-                jour, cliquer « le 12 » rechargeait le mois entier avec une
-                autre ancre et rien ne bougeait à l'écran. */
-            onSelectDate={(date) =>
-              changeContext(() => {
-                setSelectedDate(date)
-                setViewMode('jour')
-              })
-            }
-            /*  Choisir un mois dans le rail amène au MOIS : c'est la vue
-                qui montre la période qu'on vient de demander. */
-            onSauterMois={(premierJour) =>
-              changeContext(() => {
-                setSelectedDate(premierJour)
-                setViewMode('mois')
-              })
-            }
-          />
-        )}
-      </main>
-      <PageCulturalBand pathname="/retards" placement="bottom" />
-      {rulesOpen && (
-        <RetardsDialog
-          title="Règles & tolérance"
-          darkMode={darkMode}
-          onClose={() => setRulesOpen(false)}
-        >
-          <RetardsHelp />
-          <section className="rt-rule-context">
-            <h3>Les règles de cette période</h3>
-            <p>
-              Les heures et tolérances affichées dans chaque détail proviennent
-              du planning applicable à l’employé pour la date concernée.
-              Plusieurs règles peuvent coexister : aucun seuil unique n’est
-              supposé pour toute l’entreprise.
-            </p>
-            <p>
-              Ce panneau explique les règles ; il ne modifie pas les paramètres
-              de calcul.
-            </p>
-            <Link to="/planning">
-              Consulter le Planning <ChevronRight size={15} />
-            </Link>
-          </section>
-        </RetardsDialog>
-      )}
-      {retardToDelete && (
-        <RetardsDialog
-          title="Supprimer le pointage source ?"
-          darkMode={darkMode}
-          busy={deleting}
-          onClose={() => setRetardToDelete(null)}
-        >
-          <p>
-            <strong>
-              {retardToDelete.employee.first_name}{' '}
-              {retardToDelete.employee.last_name}
-            </strong>{' '}
-            · {retardDateLabel(retardToDelete.date)} ·{' '}
-            {retardToDelete.heurePointage}
-          </p>
-          <p>
-            Cette action supprime le pointage d’arrivée, pas seulement l’alerte
-            de retard. Elle peut modifier les heures travaillées et les calculs
-            associés. Elle est irréversible depuis cette page.
-          </p>
-          {deleteError && (
-            <p role="alert" className="rt-delete-error">
-              {deleteError}
-            </p>
+              <div
+                className={error ? 'rt-state' : 'rt-loading-slot'}
+                role={error ? 'alert' : undefined}
+              >
+                {error ? (
+                  <>
+                    <p>{error}</p>
+                    <button onClick={loadRetards}>Réessayer</button>
+                  </>
+                ) : (
+                  <>
+                    <RetardsLoadingScreen
+                      onMinimumDone={introPending ? finishIntro : undefined}
+                      onSkip={introPending ? finishIntro : undefined}
+                      dataReady={!loading}
+                    />
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <RetardsContent
+              key={`${selectedEntrepriseId}-${selectedDate}-${viewMode}`}
+              retards={retards}
+              stats={stats}
+              dates={dates}
+              mode={viewMode}
+              filters={filters}
+              onExport={exportCSV}
+              onRules={() => setRulesOpen(true)}
+              onDelete={(r) => {
+                setDeleteError('')
+                setRetardToDelete(r)
+              }}
+              busy={deleting}
+              search={search}
+              setSearch={setSearch}
+              selectedDate={selectedDate}
+              /*  Un jour de la molette, c'est une JOURNÉE qu'on choisit — pas
+                  une nouvelle ancre dans le mois. Sans le passage en vue du
+                  jour, cliquer « le 12 » rechargeait le mois entier avec une
+                  autre ancre et rien ne bougeait à l'écran. */
+              onSelectDate={(date) =>
+                changeContext(() => {
+                  setSelectedDate(date)
+                  setViewMode('jour')
+                })
+              }
+              /*  Choisir un mois dans le rail amène au MOIS : c'est la vue
+                  qui montre la période qu'on vient de demander. */
+              onSauterMois={(premierJour) =>
+                changeContext(() => {
+                  setSelectedDate(premierJour)
+                  setViewMode('mois')
+                })
+              }
+            />
           )}
-          <div className="rt-confirm-actions">
-            <button disabled={deleting} onClick={() => setRetardToDelete(null)}>
-              Annuler
-            </button>
-            <button
-              className="rt-danger"
-              disabled={deleting}
-              onClick={confirmDelete}
-            >
-              {deleting
-                ? 'Suppression…'
-                : 'Supprimer définitivement le pointage'}
-            </button>
-          </div>
-        </RetardsDialog>
-      )}
-    </div>
+        </main>
+        <PageCulturalBand pathname="/retards" placement="bottom" />
+        {rulesOpen && (
+          <RetardsDialog
+            title="Règles & tolérance"
+            darkMode={darkMode}
+            onClose={() => setRulesOpen(false)}
+          >
+            <RetardsHelp />
+            <section className="rt-rule-context">
+              <h3>Les règles de cette période</h3>
+              <p>
+                Les heures et tolérances affichées dans chaque détail proviennent
+                du planning applicable à l’employé pour la date concernée.
+                Plusieurs règles peuvent coexister : aucun seuil unique n’est
+                supposé pour toute l’entreprise.
+              </p>
+              <p>
+                Ce panneau explique les règles ; il ne modifie pas les paramètres
+                de calcul.
+              </p>
+              <Link to="/planning">
+                Consulter le Planning <ChevronRight size={15} />
+              </Link>
+            </section>
+          </RetardsDialog>
+        )}
+        {retardToDelete && (
+          <RetardsDialog
+            title="Supprimer le pointage source ?"
+            darkMode={darkMode}
+            busy={deleting}
+            onClose={() => setRetardToDelete(null)}
+          >
+            <p>
+              <strong>
+                {retardToDelete.employee.first_name}{' '}
+                {retardToDelete.employee.last_name}
+              </strong>{' '}
+              · {retardDateLabel(retardToDelete.date)} ·{' '}
+              {retardToDelete.heurePointage}
+            </p>
+            <p>
+              Cette action supprime le pointage d’arrivée, pas seulement l’alerte
+              de retard. Elle peut modifier les heures travaillées et les calculs
+              associés. Elle est irréversible depuis cette page.
+            </p>
+            {deleteError && (
+              <p role="alert" className="rt-delete-error">
+                {deleteError}
+              </p>
+            )}
+            <div className="rt-confirm-actions">
+              <button disabled={deleting} onClick={() => setRetardToDelete(null)}>
+                Annuler
+              </button>
+              <button
+                className="rt-danger"
+                disabled={deleting}
+                onClick={confirmDelete}
+              >
+                {deleting
+                  ? 'Suppression…'
+                  : 'Supprimer définitivement le pointage'}
+              </button>
+            </div>
+          </RetardsDialog>
+        )}
+      </div>
+    </CoqueAdmin>
   )
 }

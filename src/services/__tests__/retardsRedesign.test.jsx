@@ -333,6 +333,21 @@ it('change de journée quand on clique un jour de la molette', async () => {
   expect(host.querySelector('.rt-rail-jour.is-actif').getAttribute('aria-current')).toBe('date')
 })
 
+/*  LA SIDEBAR, demande du 25/11 : « ramène la sidebar + son rail dans cette
+    page comme tu as fait dans la page Annonces accueil ». La page rend la
+    coque partagée — pas une barre recopiée. */
+it('vit dans la coque admin, avec la sidebar et son rail', async () => {
+  mock.rpc.mockImplementation(() => rpcResponse({ data: [line()] }))
+  await mount()
+  const coque = host.querySelector('.coque-admin')
+  expect(coque).not.toBeNull()
+  /* la barre est ENFANT DIRECT de la coque : c'est la règle de la coque, un
+     wrapper de plus et elle redevient un flex-item qui pousse la page */
+  expect(coque.firstElementChild.classList.contains('sb')).toBe(true)
+  expect(host.querySelector('.sb-rail')).not.toBeNull()
+  expect(host.querySelector('.coque-admin-page .rt-page')).not.toBeNull()
+})
+
 /*  LE CHOIX DU MOIS, demande du 25/11 : « je veux qu'on puisse cliquer sur
     nov. et choisir le mois et l'année ». Le titre du rail ouvre un panneau de
     douze mois et d'une année ; choisir y amène directement. */
