@@ -29,37 +29,50 @@ function declarations(sélecteur) {
   return CSS.slice(début + 1, fin)
 }
 
-/** Le bloc d'un média, accolades comprises. */
-function media(état) {
-  const i = CSS.indexOf(état)
-  if (i === -1) throw new Error(`média absent : ${état}`)
+/** Le bloc d'un média, accolades comprises. `àCôtéDe` désigne LEQUEL quand deux
+    portent la même coupe : `.abs-hamac` et `.abs-etagere` coupent toutes les deux à
+    650 px, et lire le premier trouvé vérifierait le voisin. */
+function blocMedia(source, i) {
   let n = 0
-  for (let j = CSS.indexOf('{', i); j < CSS.length; j += 1) {
-    if (CSS[j] === '{') n += 1
-    if (CSS[j] === '}') {
+  for (let j = source.indexOf('{', i); j < source.length; j += 1) {
+    if (source[j] === '{') n += 1
+    if (source[j] === '}') {
       n -= 1
       if (n === 0) return CSS.slice(i, j + 1)
     }
   }
-  throw new Error(`média non fermé : ${état}`)
+  throw new Error(`média non fermé à l'index ${i}`)
 }
 
 const nud = (chaîne) => chaîne.replace(/\s+/g, '')
 
+// Le jour « aujourd'hui » s'écrit ici au lieu d'être importé du service de
+// calendrier : ce fichier lit des sources, et un import de plus dans un test de
+// source est une raison de plus qu'il tombe pour autre chose que ce qu'on vérifie.
 const AUJOURDHUI = (() => {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 })()
 const moisDe = (iso) => iso.slice(0, 7)
 
+function media(état, àCôtéDe) {
+  for (let i = CSS.indexOf(état); i !== -1; i = CSS.indexOf(état, i + 1)) {
+    const bloc = blocMedia(CSS, i)
+    if (!àCôtéDe || bloc.includes(àCôtéDe)) return bloc
+  }
+  throw new Error(`média absent${àCôtéDe ? ` (avec ${àCôtéDe})` : ''} : ${état}`)
+}
+
 /* ────────────────────────────────────────────────────────────────────────────
-   Ce fichier ne rejoue pas la maquette — il garde LA PROMESSE QUI NE SE VOIT
-   PAS sur une capture large. Le fondateur a retenu P1 « en pensant à comment
-   rendre ça responsive en tout écran » : ces tests sont cette phrase. Trois
-   façons de la casser, toutes silencieuses sur un bureau à 1560 px :
-   une planche à hauteur fixe qui rogne un mot, un libellé à points de
-   suspension, et une tringle par rangée qui se retrouve en l'air dès que les
-   planches passent de six à trois par ligne.
+   CE FICHIER NE REJOUE PAS LA MAQUETTE. Il garde les deux promesses qui ne se
+   voient pas sur une capture large :
+   1. « en pensant à comment rendre ça responsive en tout écran » (30/11) ;
+   2. « relier l'étagère au bloc d'en haut, les accrocher là » (1/12).
+   Chacune se défait en silence : une planche à hauteur fixe rogne un mot, un
+   libellé à points de suspension avale une syllabe, une tringle par rangée reste
+   en l'air dès que les planches passent de six à trois, et un raccord chiffré à
+   la main dort le jour où quelqu'un respire le transat. D'où un test qui RELIT les
+   sources des nombres au lieu de les répéter.
    ──────────────────────────────────────────────────────────────────────────── */
 
 describe('L’étagère — le rail appartient à la planche, pas à la rangée', () => {
@@ -96,7 +109,7 @@ describe('L’étagère — le rail appartient à la planche, pas à la rangée'
     expect(points).toEqual([...points].sort((a, b) => a - b))
   })
 
-  it('les trois hauteurs de la menuiserie viennent de trois nombres posés sur l’étagère', () => {
+  it('les quatre hauteurs de la menuiserie viennent de quatre nombres posés sur l’étagère', () => {
     // Un seul endroit les déclare, et la corde courte comme la chute lisent la même
     // `--abs-chute` : sinon l'anneau ne touche plus le rail à une largeur d'écran.
     const étagère = declarations('.abs-etagere')
@@ -104,10 +117,103 @@ describe('L’étagère — le rail appartient à la planche, pas à la rangée'
     expect(étagère).toContain('--abs-tringle: 4px')
     expect(étagère).toContain('--abs-planche: 88px')
     expect(nud(declarations('.abs-planche-corde'))).toContain('height:var(--abs-chute)')
-    expect(nud(declarations('.abs-etagere-suspentes'))).toContain('height:var(--abs-chute)')
+    expect(étagère).toContain('--abs-corde: 70px') // la bande à traverser, voir plus bas
+    expect(nud(declarations('.abs-etagere-suspentes'))).toContain('height:var(--abs-corde)')
     expect(nud(declarations('.abs-planche-corde i::before'))).toContain('top:-7px')
     // le `padding-top` de la planche, c'est le trait du rail — pas un nombre de plus
     expect(nud(declarations('.abs-planche'))).toContain('padding-top:var(--abs-tringle)')
+  })
+})
+
+/* ────────────────────────────────────────────────────────────────────────────
+   LE RACCORD AU BLOC DU HAUT — la demande du 1/12, après la première pose : « tu
+   as laissé bcp d'espace vide entre le bloc d'en haut et l'étagère. Moi ce que je
+   voulais est de relier l'étagère au bloc d'en haut, de les accrocher là ».
+
+   Quatre verrous, et chacun tient une façon dont ce raccord se défait tout seul :
+   un nombre recopié qui dort, le bois qui saute de 46 px quand on « corrige » la
+   corde, la corde qui dérape à côté du rail petit écran, et la corde qui marche sur
+   le transat quand celui-ci prend toute la largeur.
+   ──────────────────────────────────────────────────────────────────────────── */
+describe('L’étagère — la corde traverse la bande et s’accroche au bloc du haut', () => {
+  // 70 px n'est pas un goût : c'est la somme de trois nombres qui vivent ailleurs.
+  // C'est précisément le genre de chiffre qu'on recopie et qu'on oublie — donc il
+  // est relu à sa source, dans les deux fichiers, à chaque `vitest run`.
+  it('--abs-corde est la SOMME des trois respirations, relue là où elle est écrite', () => {
+    const étagère = declarations('.abs-etagere')
+    // 1 · la respiration du bas du transat, dans cette feuille.
+    const blocTransat = /\.abs-hamac\s*\{[^}]*\}/.exec(CSS)[0]
+    const quatre = /padding:\s*([^;]+)/.exec(blocTransat)[1].trim().split(/\s+/)
+    const respiration = parseInt(quatre[quatre.length - 1], 10) // la dernière = le bas
+    // 2 · le remplissage du haut de `<main>`, dans la page.
+    const page = lire('src', 'pages', 'Absences.jsx')
+    const remplissage = parseInt(/main:\s*\{\s*padding:\s*(\d+)/.exec(page)[1], 10)
+    // 3 · la chute, qui est un jeton de l'échelle, pas un nombre de la page.
+    const nom = /--abs-chute:\s*var\((--charte-espace-\d)\)/.exec(étagère)[1]
+    const tokens = lire('src', 'styles', 'tokens.css')
+    const chute = parseInt(new RegExp(`${nom}:\\s*(\\d+(?:\\.\\d+)?)px`).exec(tokens)[1], 10)
+
+    const posée = parseInt(/--abs-corde:\s*(\d+)px/.exec(étagère)[1], 10)
+    expect([respiration, remplissage, chute, posée]).toEqual([26, 20, 24, 70])
+    expect(posée).toBe(respiration + remplissage + chute)
+  })
+
+  // La bande est grimpée, pas résorbée : `margin-top: calc(chute − corde)` remonte la
+  // boîte de `corde − chute`, `padding-top: corde` la redescend d'autant. Le bois est
+  // exactement où il était — si l'un des deux est touché sans l'autre, les six
+  // planches sautent de 46 px sous le transat, et la table en dessous avec.
+  it('le bois ne bouge pas d’un pixel : c’est la corde qui s’allonge', () => {
+    const étagère = nud(declarations('.abs-etagere'))
+    expect(étagère).toContain('margin:calc(var(--abs-chute)-var(--abs-corde))auto0')
+    expect(étagère).toMatch(/padding:var\(--abs-corde\)var\(--charte-espace-5\)var\(--charte-espace-5\)/)
+  })
+
+  // Les deux longues cordes tombent sur les bouts du rail parce qu'elles lisent le
+  // MÊME jeton que le remplissage horizontal de l'étagère — et parce qu'aucune coupe
+  // d'écran ne redefine l'un sans l'autre. (La feuille en portait une, à 680 px, qui
+  // passait l'étagère à 16 px : la corde restait à 24, soit 8 px à côté du rail.)
+  it('l’aplomb des cordes est celui du rail, à toute largeur', () => {
+    const cordes = declarations('.abs-etagere-suspentes')
+    expect(cordes).toMatch(/left:\s*var\(--charte-espace-5\)/)
+    expect(cordes).toMatch(/right:\s*var\(--charte-espace-5\)/)
+    expect(cordes).toMatch(/top:\s*0/)
+    expect(cordes).toMatch(/position:\s*absolute/)
+    const étagère = declarations('.abs-etagere')
+    expect(étagère).toMatch(/padding:\s*var\(--abs-corde\)\s+var\(--charte-espace-5\)/)
+    // et personne ne redefini plus le retrait horizontal de l'étagère dans un média
+    for (const coupe of ['1180', '680', '650', '420']) {
+      expect(media(`@media (max-width: ${coupe}px)`, '.abs-etagere')).not.toMatch(/padding-(left|right):/)
+    }
+  })
+
+  // Sous 650 px, la tuile du transat passe à `width: 100%` : une corde qui traverse
+  // la bande marcherait sur son bois. Elle se retire, et le rail reste pendu à ses
+  // propres cordes courtes — la figure survit, seule la traversée s'arrête.
+  it('sous 650 px la corde se retire, et le rail reste à sa place', () => {
+    const bloc = media('@media (max-width: 650px)', '.abs-etagere')
+    expect(bloc).toMatch(/--abs-corde:\s*var\(--abs-chute\)/)
+    expect(bloc).toMatch(/\.abs-etagere-suspentes\s*\{\s*display:\s*none/)
+    expect(bloc).toMatch(/margin-top:\s*0/)
+    expect(bloc).toMatch(/padding-top:\s*var\(--abs-chute\)/)
+    // la coupe du transat, elle, est toujours là et n'a rien gagné : le raccord ne
+    // touche pas à la figure d'en haut
+    const transat = media('@media (max-width: 650px)', '.abs-hamac-suspendu')
+    expect(transat).toContain('width: 100%')
+    expect(transat).not.toMatch(/abs-etagere/)
+  })
+
+  // La corde passe dans le vide à côté du transat, et sous le bois si jamais elle
+  // le longe : jamais elle ne capte un clic, jamais elle ne peint par-dessus.
+  it('la corde est muette, hors du clic, et sous le bois', () => {
+    const cordes = declarations('.abs-etagere-suspentes')
+    expect(cordes).toMatch(/pointer-events:\s*none/)
+    expect(cordes).toMatch(/z-index:\s*0/)
+    expect(declarations('.abs-etagere-planches')).toMatch(/z-index:\s*1/)
+    expect(declarations('.abs-etagere-planches')).toMatch(/position:\s*relative/)
+    // le rang de cordes vit dans le composant, pas dans la page : la page ne connaît
+    // pas la menuiserie, et le transat reste monté où le fondateur l'a validé
+    expect(JSX).toContain('className="abs-etagere-suspentes"')
+    expect(JSX).not.toMatch(/abs-hamac/)
   })
 })
 

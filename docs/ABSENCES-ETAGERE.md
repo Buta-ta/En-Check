@@ -21,7 +21,7 @@ Ce que la mesure a trouvé là-dessus :
 
 ## La figure
 
-Six pancartes de bois dans une rangée de six cases, chacune pendue à un rail par deux cordes et deux anneaux ; au-dessus de la rangée, un rang de deux longues cordes scellées à raz du bas du transat. Le corps d'une pancarte est soit un `div` (le chiffre renseigne), soit un `button` (le chiffre mène au bon filtre) — le survol répond en `--charte-surface2`, jamais en ambre, jamais en `!important`. La couture oblique des conflits (`repeating-linear-gradient(135deg, …)`) et les deux jauges restent ; `VOIR` redevient un rabat posé **sur** la planche, en `pointer-events: none`, pour que le clic reste sur toute la planche.
+Six pancartes de bois dans une rangée de six cases, chacune pendue à un rail par deux cordes et deux anneaux ; au-dessus de la rangée, deux longues cordes qui remontent de son rail jusqu'au bas de la feuille de titre (70 px de vide traversés, pas un de perdu). Le corps d'une pancarte est soit un `div` (le chiffre renseigne), soit un `button` (le chiffre mène au bon filtre) — le survol répond en `--charte-surface2`, jamais en ambre, jamais en `!important`. La couture oblique des conflits (`repeating-linear-gradient(135deg, …)`) et les deux jauges restent ; `VOIR` redevient un rabat posé **sur** la planche, en `pointer-events: none`, pour que le clic reste sur toute la planche.
 
 ## Le geste qui rend l'affaire responsive
 
@@ -41,11 +41,34 @@ Les coupures : **1180 → trois et trois · 680 → deux-deux-deux · 420 → un
 
 ## Ce que la maquette dessinait, et qui n'a pas été recopié
 
-* **Ses deux longues cordes montaient jusqu'au bandeau de titre, en traversant le transat.** Non fait, et c'est la seule entorse assumée : la hauteur réelle de ce bloc n'est lisible nulle part en CSS — la tuile se remonte elle-même de 46 px (`margin: -46px auto 0`) et sa hauteur vient d'un corps de 32 px. La maquette portait un `--abs-transat: 164px` calculé depuis un `padding: 20px 0 26px` **lu à moitié** : le vrai bloc vaut 20 + 118 + 26 + la tuile. Plutôt que figer un nombre faux de dizaines de pixels, la chute est un jeton de l'échelle (`--charte-espace-5`). À reprendre avec une mesure runtime si le fondateur veut la corde jusqu'à la chemise.
+* **Ses deux longues cordes montaient jusqu'au bandeau de titre, en traversant le transat.** Au premier tour, non fait — et pour une raison vraie : la hauteur du bloc du transat n'est lisible nulle part en CSS (la tuile se remonte elle-même de 46 px, sa hauteur vient d'un corps de 32 px), et le `--abs-transat: 164px` que la maquette chiffrait était faux. **Fait au second tour**, sur la reprise du 1/12 (« tu as laissé bcp d'espace vide entre le bloc d'en haut et l'étagère. Moi ce que je voulais est de relier l'étagère au bloc d'en haut, de les accrocher là ») : la corde n'a plus à connaître le transat, elle franchit la bande morte. Voir `Le raccord au bloc du haut` ci-dessous.
 * **`0,4 %`** était un chiffre de mon prompt d'image, jamais lu en base. La planche garde le calcul réel (`jours décomptés / jours ouvrés de l'effectif`).
 * **Ses planches débordaient des poteaux** : largeurs dessinées à une échelle qui n'est pas celle de la page — `<main>` plafonne à `maxWidth: 1200`, pas 1560. Un verrou dit le fait : *ce qui est durcit est la borne, pas l'illusion*.
 * **Ses visages étaient dessinés deux par planche**, six au total. Ici : les absents du jour seulement, quatre au plus, plus le `+N` — et la rangée n'est pas rendue à zéro absent, pour qu'aucun trou ne bâille dans le bois.
 * **`VOIR`** apparaissait deux fois dans l'image, comme une planche de plus. Ici le rabat se pose **sur** la planche qui mène quelque part — donc une fois par planche actionnable, zéro quand il n'y a rien à traiter : un libellé d'action muet est une promesse vide.
+
+## Le raccord au bloc du haut (reprise du 1/12)
+
+Le vide que le fondateur montrait du doigt ne venait pas d'une corde trop courte : il venait de **deux conteneurs**. Le transat est un enfant de `.abs-page`, l'étagère un enfant de `<main>`. La bande morte entre les deux valait 26 px (la respiration du bas du transat) + 20 px (le remplissage du haut de `main`) + 24 px (la chute sous le rail) = **70 px de rien**.
+
+Raccorder sans toucher au transat (validé tel quel le 24/11) ni à `main` (il tient toute la page) :
+
+```css
+.abs-etagere {
+  --abs-corde: 70px;                                          /* la bande à franchir */
+  margin: calc(var(--abs-chute) - var(--abs-corde)) auto 0;   /* −46 px : la boîte monte */
+  padding: var(--abs-corde) var(--charte-espace-5) var(--charte-espace-5); /* +70 : le bois redescend */
+}
+.abs-etagere-suspentes { position: absolute; top: 0; left: 24px; right: 24px; height: var(--abs-corde); }
+```
+
+Trois choses y tiennent, et chacune a son verrou :
+
+1. **le bois ne bouge pas d'un pixel** — la boîte remonte de `corde − chute`, le remplissage haut rend `corde` : le rail reste exactement où il était, c'est la corde qui s'allonge. Écrit autrement, « raccorder » aurait voulu dire descendre six planches et la table entière de 46 px ;
+2. **70 n'est pas un chiffre qu'on oublie** — `absencesEtagere.test.jsx` relit les 26 px dans `.abs-hamac`, les 20 px dans `S.main` de la page, les 24 px du jeton de chute, et refuse dès que la somme ne fait plus 70. Si quelqu'un respire l'un des trois sans lire la consigne, la corde démarre quatre pixels trop haut : un dessin de travers, pas une casse ;
+3. **l'aplomb corde ↔ rail est le même jeton** (`--charte-espace-5` des deux côtés) — et la coupe de 680 px qui passait le retrait de l'étagère à 16 px est morte : elle laissait les longues cordes à 24 px, donc 8 px à côté des bouts du rail.
+
+À 650 px, la tuile du transat passe à `width: 100%` (c'est SA coupe) : elle occupe toute la largeur, et une corde qui traverse la bande marcherait dessus. La longue corde se retire donc à cet écran — `--abs-corde` tombe à la chute seule, le bois ne saute pas, le rail reste pendu à ses deux cordes courtes par planche. La figure survit, seule la traversée s'arrête.
 
 ## Deux accidents de chemin, écrits pour ne pas être refaits
 
@@ -66,7 +89,7 @@ La feuille portait **deux blocs `@media (max-width: 980px)`** pour le transat, l
 
 | mesure | base `8ca43df` | après |
 |---|---|---|
-| `npx vitest run` | 195 fichiers · **2728 ✓** | 196 fichiers · **2744 ✓** (+16, aucun retiré) |
+| `npx vitest run` | 195 fichiers · **2728 ✓** | 196 fichiers · **2749 ✓** (+21, aucun retiré) |
 | `npx vite build` | ✓ | ✓ 21,7 s |
 | `npm run charte` · couleurs en dur | 4548 · 185 fichiers | **4548 · 185** |
 | `npm run charte` · ombres floues | 131 | **131** |
@@ -76,9 +99,9 @@ La feuille portait **deux blocs `@media (max-width: 980px)`** pour le transat, l
 
 ## Ce qu'on ne peut pas prouver ici
 
-Pas de navigateur dans l'atelier : les rapports, les coupures et l'absence de jeton fantôme sont tenus par les 16 verrous de `src/services/__tests__/absencesEtagere.test.jsx`, **le tracé à l'œil reste à faire sur la preview** — six largeurs, de 1560 à 360 px. Ce qu'on y regarde en premier : la continuité du rail d'une planche à l'autre (un décalage d'un pixel se voit), l'anneau posé sur le rail et non à côté, et le `+N` des visages qui ne doit pas chevaucher le chiffre quand une planche passe à deux lignes de libellé.
+Pas de navigateur dans l'atelier : les rapports, les coupures, l'aplomb du raccord et l'absence de jeton fantôme sont tenus par les 21 verrous de `src/services/__tests__/absencesEtagere.test.jsx`, **le tracé à l'œil reste à faire sur la preview** — six largeurs, de 1560 à 360 px. Ce qu'on y regarde en premier : la corde qui tombe pile sur le bas de la feuille de titre (c'est le seul endroit du raccord qu'un test ne peut pas voir — il vérifie la somme, pas l'arrondi du navigateur), la continuité du rail d'une planche à l'autre, l'anneau posé SUR le rail, et le `+N` des visages qui ne doit pas chevaucher le chiffre quand une planche prend deux lignes de libellé.
 
 ## Et après
 
-1. La corde jusqu'à la chemise, avec une hauteur mesurée (`ResizeObserver`) au lieu d'un nombre recopié — à ne faire **que** si le fondateur la veut.
+1. Si le fondateur veut l'étagère **collée** sous le transat plutôt que pendue à 70 px de corde, le crochet se retourne en un nombre : `--abs-corde: var(--abs-chute)` remonte le bois de 46 px. Non fait ici parce que la maquette dessine une suspension, pas une planche posée.
 2. Le même tri pour les trois autres écrans qui portent encore un `<style>` embarqué : la charte ne les voit toujours pas.

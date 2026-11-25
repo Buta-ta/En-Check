@@ -745,16 +745,30 @@
    coupe d'écran n'ait à repositionner une tringle. C'est la réponse à « faudrait
    juste penser à comment rendre ça responsive en tout écran ».
 
-   La maquette dessinait les deux longues cordes montant jusqu'au bandeau de
-   titre, par-dessus le transat. Elles s'arrêtent ici AU RAZ du bas du transat, et
-   c'est dit : la hauteur réelle du bloc du transat n'est pas lisible en CSS — la
-   tuile se remonte elle-même de 46 px (`margin: -46px auto 0`) et sa hauteur vient
-   d'un corps de 32 px, donc tout chiffre recopié pour traverser ce bloc est faux
-   de dizaines de pixels et ne se voit que sur un seul écran. La maquette en
-   portait un (`--abs-transat: 164px`, calculé depuis un `padding: 20px … 26px`
-   lu à moitié) ; la chute est ici UN jeton de l'échelle, qui ne peut pas dériver.
-   À reprendre avec une mesure runtime si le fondateur veut la corde jusqu'à la
-   chemise.
+   LE RACCORD AU BLOC DU HAUT — second tour, 1/12 : « tu as laissé bcp d'espace
+   vide entre le bloc d'en haut et l'étagère. Moi ce que je voulais est de relier
+   l'étagère au bloc d'en haut, de les accrocher là ».
+
+   Le vide ne venait pas d'une corde trop courte, il venait de deux conteneurs : le
+   transat est enfant de `.abs-page`, l'étagère est enfant de `<main>`. La bande
+   morte valait 26 (respiration du bas du transat) + 20 (remplissage du haut de
+   `main`) + 24 (la chute sous le rail) = 70 px de rien. Raccorder sans toucher au
+   transat ni à `main`, c'est faire courir la corde SUR cette bande : `--abs-corde`
+   est le seul nombre, la boîte de l'étagère remonte de `corde − chute` (−46 px) et
+   son remplissage haut rend exactement la même somme — donc LE BOIS NE BOUGE PAS
+   D'UN PIXEL, c'est la corde qui s'allonge jusqu'au bas de la chemise.
+
+   Recopiage assumé parce que vérifié : `absencesEtagere.test.jsx` relit les 26 px
+   dans `.abs-hamac`, les 20 px dans `S.main` de la page, les 24 px du jeton de
+   chute, et refuse dès que la somme ne fait plus 70. Si quelqu'un change l'un des
+   trois sans lire la consigne, la corde démarre quatre pixels trop haut ou trop
+   bas : un dessin de travers, pas une casse.
+
+   Le 164 px que la maquette chiffrait pour traverser TOUT le bloc du transat est
+   mort, et pour de bon : il était faux (la tuile se remonte elle-même de 46 px et
+   sa hauteur vient d'un corps de 32 px — elle n'est lisible depuis aucun
+   sélecteur), et il ne sert plus. La corde n'a pas à deviner le transat, elle part
+   de son bord bas, là où la chemise finit.
 
    Les cinq espaces que la maquette s'était déclarés à elle-même n'existent pas
    dans cette feuille : lus là, ils tombent en 0 — un `gap` fantôme ne lève pas
@@ -768,23 +782,35 @@
   --abs-chute: var(--charte-espace-5);
   --abs-tringle: 4px;
   --abs-planche: 88px;
+  /* 26 (bas du transat) + 20 (haut de `<main>`) + 24 (la chute) : la bande que la
+     corde traverse pour s'accrocher au bloc d'en haut. Un test relit les trois. */
+  --abs-corde: 70px;
+  position: relative;
   max-width: 1560px;
-  margin: 0 auto;
-  /* le même 24 px que le bandeau de titre, à toutes les largeurs : l'étagère est
-     alignée sur ses coins, et une coupe d'écran ne la fait pas glisser dessous */
-  padding: 0 var(--charte-espace-5) var(--charte-espace-5);
+  margin: calc(var(--abs-chute) - var(--abs-corde)) auto 0;
+  /* le même 24 px que le contenu de la chemise, à TOUTES les largeurs — y compris
+     petit écran : c'est ce jeton qui fixe aussi la place des longues cordes, et un
+     rang de cordes qui ne tombe plus sur les bouts du rail est un raccord faux */
+  padding: var(--abs-corde) var(--charte-espace-5) var(--charte-espace-5);
 }
 
-/* Les deux longues cordes, et leurs scellements : une rangée de 24 px, deux
-   traits à 24 px des bords — l'aplomb exact des coins du bandeau de titre, et le
-   transat, lui, tient ses montants à 15 % : les deux dessinages ne se croisent
-   jamais. Muettes et hors du chemin du clic. */
+/* Les deux longues cordes et leurs scellements : une bande de 70 px posée par-
+   dessus la morte-saison, deux traits à 24 px des bords — l'aplomb exact des coins
+   du contenu de la chemise. Le transat, lui, tient ses montants à 15 % : tant
+   qu'il garde sa respiration, les deux dessinages ne se croisent pas (à 650 px il
+   la perd, et la corde se retire — plus bas). Muettes, hors du chemin du clic, et
+   SOUS le bois (`z-index: 0` contre `1` aux planches) si jamais elles le longent. */
 .abs-etagere-suspentes {
+  position: absolute;
+  top: 0;
+  left: var(--charte-espace-5);
+  right: var(--charte-espace-5);
+  height: var(--abs-corde);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  height: var(--abs-chute);
   pointer-events: none;
+  z-index: 0;
 }
 
 .abs-etagere-suspentes i {
@@ -808,6 +834,8 @@
 }
 
 .abs-etagere-planches {
+  position: relative; /* la corde traverse la bande au-dessus : le bois passe après */
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   /* aucun écart entre colonnes : c'est ce qui colle les six tronçons de rail en un
@@ -1053,7 +1081,20 @@ button.abs-planche-corps:focus-visible {
 }
 @media (max-width: 680px) {
   .abs-etagere-planches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .abs-etagere { padding-left: 16px; padding-right: 16px; }
+}
+/* À 650 px, la tuile du transat passe à `width: 100%` (c'est SA coupe, plus bas
+   dans la feuille) : elle occupe toute la largeur et une corde qui traverse la
+   bande marcherait dessus. À cet écran la bande morte n'existe presque plus —
+   plus rien à relier — donc la longue corde se retire, et le rail avec ses cordes
+   courtes par planche restent intacts. Le bois ne saute pas : `--abs-corde` tombe à
+   la chute seule et le remplissage haut rend la même somme. */
+@media (max-width: 650px) {
+  .abs-etagere {
+    --abs-corde: var(--abs-chute);
+    margin-top: 0;
+    padding-top: var(--abs-chute);
+  }
+  .abs-etagere-suspentes { display: none; }
 }
 @media (max-width: 420px) {
   .abs-etagere-planches { grid-template-columns: minmax(0, 1fr); }
