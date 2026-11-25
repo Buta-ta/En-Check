@@ -25,7 +25,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../contexts/ThemeContext'
-import { AbomeyBlasonSvg, AbomeyCoinSvg } from '../components/AbomeySvg'
+import { AbomeyBlasonSvg } from '../components/AbomeySvg'
 import AdminExplication from '../components/AdminExplication'
 import EnteteAnnonces from '../components/EnteteAnnonces'
 /*  LA SIDEBAR ET SON RAIL — « exactement comme dans la page employés »
@@ -38,6 +38,10 @@ import SidebarUnique from '../components/SidebarUnique'
 import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import EcranApercu from '../components/EcranApercu'
 import TuileEtat from '../components/TuileEtat'
+/*  LA SCÈNE DE CHARGEMENT — « une tablette sur une table, et dans la
+    tablette les mots Pub, Annonces… » (27/11, maquette A). Elle remplace
+    un panneau de trois lignes qui ne disait rien de la page. */
+import AnnoncesLoadingScreen from '../components/AnnoncesLoadingScreen'
 import useAdminMfaCheckpoint from '../hooks/useAdminMfaCheckpoint'
 import { currentAdminAccount, accountRpc } from '../services/adminAccounts'
 import './AdminAccounts.css'
@@ -135,7 +139,8 @@ export default function AnnoncesAccueil() {
   const { darkMode, toggleTheme } = useTheme()
   const { ensureMfa, challenge } = useAdminMfaCheckpoint()
 
-  const [enterprises, setEnterprises] = useState([])
+  const [listeEntreprises, setListeEntreprises] = useState([])
+
   const [entreprise, setEntreprise] = useState('')
   const [annonces, setAnnonces] = useState(null) // null = non chargé
   const [journal, setJournal] = useState([])
@@ -146,6 +151,19 @@ export default function AnnoncesAccueil() {
   //  liste de ce qui est en ligne à côté. « Médias » reste à un clic, pour
   //  le formulaire complet et les cinq actions de chaque ligne.
   const [view, setView] = useState('apercu')
+
+  /*  CE QUE LA SCÈNE DE CHARGEMENT DIT.
+      Calculé ici et pas dans le JSX : la légende dépend de ce qui est
+      déjà arrivé. Tant que la liste des entreprises est vide, on lit les
+      comptes ; ensuite, on lit les annonces de l'entreprise choisie. La
+      scène ne prétend donc jamais charger autre chose que ce qu'elle
+      charge vraiment. */
+  const entrepriseCourante = listeEntreprises.find((e) => e.id === entreprise) || null
+  const legendeChargement = entrepriseCourante
+    ? `Lecture des annonces et des médias de ${entrepriseCourante.name}…`
+    : listeEntreprises.length
+      ? 'Lecture des annonces et des médias de l’entreprise…'
+      : 'Lecture de votre compte et des entreprises accessibles…'
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState(null)
 
@@ -166,6 +184,14 @@ export default function AnnoncesAccueil() {
   // sur le libelle du type.
   const [titre, setTitre] = useState('')
   const [confirmationSuppression, setConfirmationSuppression] = useState(null)
+  /*  « Passer l'animation » : la scène se coupe dès que la page a
+      quelque chose à montrer. Elle ne retarde JAMAIS les données — c'est
+      `loading` qui décide — et elle ne les devance pas non plus : tant que
+      les annonces ne sont pas arrivées, la scène reste, sinon le clic
+      ferait apparaître une page vide. Le drapeau sert donc à une seule
+      chose : ne pas regarder une tablette qui défile quand tout est prêt
+      et qu'on veut aller plus vite. */
+  const [scenePassee, setScenePassee] = useState(false)
 
   // aperçu carrousel
   const [previewIndex, setPreviewIndex] = useState(0)
@@ -226,7 +252,7 @@ export default function AnnoncesAccueil() {
         .limit(500)
       if (comps.error) throw comps.error
       if (req !== epoch.current) return
-      setEnterprises(comps.data || [])
+      setListeEntreprises(comps.data || [])
       setEntreprise((prev) => prev || (comps.data || [])[0]?.id || '')
     } catch (e) {
       if (req === epoch.current) setError(e.message)
@@ -682,7 +708,7 @@ export default function AnnoncesAccueil() {
         C'est la page Employés qui avait raison ; c'est elle que je copie. */
     moduleActif: (champ) => {
       if (admin?.role === 'super_admin') return true
-      const ligne = (enterprises || []).find((e) => e.id === entreprise)
+      const ligne = (listeEntreprises || []).find((e) => e.id === entreprise)
       return Boolean(ligne?.[champ])
     },
   })
@@ -699,8 +725,8 @@ export default function AnnoncesAccueil() {
           darkMode={darkMode}
           surTheme={toggleTheme}
           surDeconnexion={() => navigate('/login')}
-          entreprises={enterprises}
-          entrepriseActive={enterprises.find((e) => e.id === entreprise) || null}
+          entreprises={listeEntreprises}
+          entrepriseActive={listeEntreprises.find((e) => e.id === entreprise) || null}
           surEntreprise={(e) => setEntreprise(typeof e === 'string' ? e : e?.id || '')}
         />
       }
@@ -721,11 +747,27 @@ export default function AnnoncesAccueil() {
               <p>{error}</p>
               <button onClick={charger}>Réessayer</button>
             </div>
-          ) : loading ? (
-            <div role="status" className="aa-panel aa-chargement">
-              <AbomeyBlasonSvg size={40} />
-              <p>Préparation des annonces…</p>
-            </div>
+          ) : loading && !scenePassee && annonces === null ? (
+            /*  LA SCÈNE, PLEINE LARGEUR DE LA COLONNE.
+                Elle remplace le panneau de trois lignes du 25/11. La
+                maquette A a été retenue le 27/11 : la tablette posée sur
+                une table, et les mots qui montent dans l'écran.
+                La légende dit ce que la page charge À CET INSTANT — les
+                comptes d'abord, puis l'entreprise et ses annonces — au lieu
+                de « Préparation des annonces… » qui ne nommait rien.
+
+                ⚠ `annonces === null` DANS LA CONDITION — correction du 27/11.
+                Sans elle, « Passer » pendant que les annonces chargeaient
+                encore affichait la page avec une liste VIDE : on ne montre
+                pas « aucune annonce » à quelqu'un qui a cliqué pour aller
+                plus vite. Tant que la liste n'est pas là, la scène reste —
+                elle ne bloque rien, elle attend la même chose que la page. */
+            <AnnoncesLoadingScreen
+              darkMode={darkMode}
+              legende={legendeChargement}
+              nomEntreprise={entrepriseCourante?.name || ''}
+              onSkip={() => setScenePassee(true)}
+            />
           ) : (
             <>
               {/* ── LA BARRE D'OUTILS ──
@@ -743,7 +785,7 @@ export default function AnnoncesAccueil() {
                     onChange={(e) => setEntreprise(e.target.value)}
                   >
                     <option value="" disabled>Choisir une entreprise…</option>
-                    {enterprises.map((ent) => (
+                    {listeEntreprises.map((ent) => (
                       <option key={ent.id} value={ent.id}>{ent.name}</option>
                     ))}
                   </select>
