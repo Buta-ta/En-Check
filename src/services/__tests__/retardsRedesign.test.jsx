@@ -333,6 +333,66 @@ it('change de journée quand on clique un jour de la molette', async () => {
   expect(host.querySelector('.rt-rail-jour.is-actif').getAttribute('aria-current')).toBe('date')
 })
 
+/*  LE CHOIX DU MOIS, demande du 25/11 : « je veux qu'on puisse cliquer sur
+    nov. et choisir le mois et l'année ». Le titre du rail ouvre un panneau de
+    douze mois et d'une année ; choisir y amène directement. */
+it('ouvre le choix du mois et de l’année depuis le titre du rail', async () => {
+  mock.rpc.mockImplementation(() => rpcResponse({ data: [line()] }))
+  await mount()
+  const bouton = host.querySelector('.rt-choix-mois-bouton')
+  expect(bouton).not.toBeNull()
+  expect(bouton.getAttribute('aria-expanded')).toBe('false')
+  await act(async () => bouton.click())
+  expect(bouton.getAttribute('aria-expanded')).toBe('true')
+  /* douze mois en toutes lettres, et l'année affichée */
+  const mois = host.querySelectorAll('.rt-choix-mois-grille button')
+  expect(mois.length).toBe(12)
+  expect(mois[10].textContent).toBe('Novembre')
+  expect(host.querySelector('.rt-choix-mois-annee b').textContent).toBe('2026')
+  /* le mois courant est marqué, pas un autre */
+  expect(host.querySelector('.rt-choix-mois-grille .is-actif').textContent).toBe(
+    'Octobre',
+  )
+})
+
+it('saute au mois choisi et met la vue sur le mois', async () => {
+  mock.rpc.mockImplementation(() => rpcResponse({ data: [line()] }))
+  await mount()
+  await act(async () => host.querySelector('.rt-choix-mois-bouton').click())
+  mock.rpc.mockClear()
+  const mars = [...host.querySelectorAll('.rt-choix-mois-grille button')].find(
+    (b) => b.textContent === 'Mars',
+  )
+  await act(async () => mars.click())
+  /* la période demandée est le mois de mars entier */
+  expect(mock.rpc).toHaveBeenCalledWith('encheck_retards_plage', {
+    p_enterprise: 'ent',
+    p_du: '2026-03-01',
+    p_au: '2026-03-31',
+  })
+  expect(host.querySelector('.rt-choix-mois-panneau')).toBeNull()
+})
+
+it('change d’année avant de choisir le mois', async () => {
+  mock.rpc.mockImplementation(() => rpcResponse({ data: [line()] }))
+  await mount()
+  await act(async () => host.querySelector('.rt-choix-mois-bouton').click())
+  await act(async () =>
+    host.querySelector('.rt-choix-mois-annee button[aria-label="Année précédente"]').click(),
+  )
+  expect(host.querySelector('.rt-choix-mois-annee b').textContent).toBe('2025')
+  mock.rpc.mockClear()
+  const janvier = [...host.querySelectorAll('.rt-choix-mois-grille button')].find(
+    (b) => b.textContent === 'Janvier',
+  )
+  await act(async () => janvier.click())
+  expect(mock.rpc).toHaveBeenCalledWith('encheck_retards_plage', {
+    p_enterprise: 'ent',
+    p_du: '2025-01-01',
+    p_au: '2025-01-31',
+  })
+})
+
 it('never reveals results merely because the six-second intro has expired', async () => {
   let release
   const pending = new Promise((resolve) => {

@@ -387,6 +387,14 @@ export default function Retards() {
                 setViewMode('jour')
               })
             }
+            /*  Choisir un mois dans le rail amène au MOIS : c'est la vue
+                qui montre la période qu'on vient de demander. */
+            onSauterMois={(premierJour) =>
+              changeContext(() => {
+                setSelectedDate(premierJour)
+                setViewMode('mois')
+              })
+            }
           />
         )}
       </main>

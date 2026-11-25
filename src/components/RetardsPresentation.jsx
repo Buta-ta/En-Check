@@ -40,6 +40,11 @@ import {
   retardDateLabel,
 } from '../utils/retardsPresentation'
 
+const MOIS_LONGS = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+]
+
 /* Le nombre de fiches par page — il ne dépend plus de la hauteur d'écran :
    la pagination est une décision de lecture, pas de place. */
 const PAR_PAGE = 8
@@ -355,6 +360,108 @@ function Fiche({ retard, focus }) {
   )
 }
 
+/* ═══ LE CHOIX DU MOIS ═══
+   Le titre du rail (« NOV. ») se clique : il ouvre un panneau de douze mois
+   et de l'année, et choisir y amène directement. C'est un panneau maison, pas
+   un `<select>` : dans une colonne de 64 px, le sélecteur natif du système
+   déborde et prend la couleur du système, pas la nôtre.
+
+   Trois choses qu'il doit faire, et qu'on ne voit qu'à l'usage :
+   · il se pose AU-DESSUS du rail (z-index), sinon la molette le recouvre ;
+   · Échap le ferme, et un clic ailleurs aussi — sans quoi il reste ouvert
+     au-dessus des fiches et on ne sait plus le refermer ;
+   · les mois s'écrivent en toutes lettres : « nov. » est déjà dans le titre,
+     un panneau de douze abréviations se lit mal. */
+function SelecteurMois({ mois, annee, dateCourante, onChoisir }) {
+  const [ouvert, setOuvert] = useState(false)
+  const ancre = useRef(null)
+  const [anneeVue, setAnneeVue] = useState(Number(annee))
+  const moisCourant = Number(dateCourante.slice(5, 7)) - 1
+
+  useEffect(() => {
+    if (!ouvert) return
+    setAnneeVue(Number(annee))
+    const fermer = (event) => {
+      if (event.type === 'keydown' && event.key !== 'Escape') return
+      if (event.type === 'pointerdown' && ancre.current?.contains(event.target))
+        return
+      setOuvert(false)
+    }
+    document.addEventListener('keydown', fermer)
+    document.addEventListener('pointerdown', fermer)
+    return () => {
+      document.removeEventListener('keydown', fermer)
+      document.removeEventListener('pointerdown', fermer)
+    }
+  }, [ouvert, annee])
+
+  const choisir = (indexMois) => {
+    const valeur = `${anneeVue}-${String(indexMois + 1).padStart(2, '0')}-01`
+    setOuvert(false)
+    onChoisir(valeur)
+  }
+
+  return (
+    <div className="rt-choix-mois" ref={ancre}>
+      <button
+        type="button"
+        className="rt-rail-titre rt-choix-mois-bouton"
+        aria-haspopup="dialog"
+        aria-expanded={ouvert}
+        aria-label={`Choisir le mois — ${mois} ${annee}`}
+        onClick={() => setOuvert((v) => !v)}
+      >
+        {mois}
+        <ChevronDown size={11} aria-hidden="true" />
+      </button>
+
+      {ouvert && (
+        <div
+          className="rt-choix-mois-panneau"
+          role="dialog"
+          aria-label="Choisir un mois et une année"
+        >
+          <div className="rt-choix-mois-annee">
+            <button
+              type="button"
+              aria-label="Année précédente"
+              onClick={() => setAnneeVue((a) => a - 1)}
+            >
+              <ChevronLeft size={13} aria-hidden="true" />
+            </button>
+            <b>{anneeVue}</b>
+            <button
+              type="button"
+              aria-label="Année suivante"
+              onClick={() => setAnneeVue((a) => a + 1)}
+            >
+              <ChevronRight size={13} aria-hidden="true" />
+            </button>
+          </div>
+          <div className="rt-choix-mois-grille">
+            {MOIS_LONGS.map((nom, index) => {
+              const actif =
+                anneeVue === Number(annee) && index === moisCourant
+              return (
+                <button
+                  key={nom}
+                  type="button"
+                  className={actif ? 'is-actif' : undefined}
+                  aria-current={actif ? 'date' : undefined}
+                  aria-label={`${nom} ${anneeVue}`}
+                  onClick={() => choisir(index)}
+                >
+                  {nom}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ═══ LE RAIL DES JOURS — la molette ═══
    Toute la période est là, pas neuf jours figés : la colonne défile (à la
    molette, au doigt, aux flèches du clavier) et CHAQUE JOUR SE CLIQUE pour
@@ -364,7 +471,7 @@ function Fiche({ retard, focus }) {
 
    En vue du jour — une seule journée chargée — le rail montre la semaine qui
    contient le jour choisi, pour situer le jour dans la période. */
-function RailDesJours({ dates, retards, selectedDate, onSelect, mode }) {
+function RailDesJours({ dates, retards, selectedDate, onSelect, mode, onSauter }) {
   const liste = useRef(null)
   const jours = useMemo(() => {
     if (dates && dates.length > 1) return dates
@@ -388,13 +495,24 @@ function RailDesJours({ dates, retards, selectedDate, onSelect, mode }) {
     month: 'short',
     timeZone: 'UTC',
   })
+  const annee = jours[0].slice(0, 4)
+  const saut = typeof onSauter === 'function'
 
   /* la molette s'ouvre sur le jour choisi, pas au premier jour du mois :
      sinon, en mode mois, on arrive sur un mois qu'on ne voit pas entièrement
      et il faut chercher où l'on est. */
   return (
     <nav className="rt-rail" aria-label="Jours de la période">
-      <span className="rt-rail-titre">{mois}</span>
+      {saut ? (
+        <SelecteurMois
+          mois={mois}
+          annee={annee}
+          dateCourante={jours[0]}
+          onChoisir={(valeur) => onSauter(valeur)}
+        />
+      ) : (
+        <span className="rt-rail-titre">{mois}</span>
+      )}
       <div className="rt-rail-liste" role="list" ref={liste}>
         {jours.map((date) => {
           const n = compte.get(date) || 0
@@ -543,6 +661,7 @@ export function RetardsContent({
   setSearch,
   selectedDate,
   onSelectDate,
+  onSauterMois,
 }) {
   const [page, setPage] = useState(0)
   const terme = search.trim().toLocaleLowerCase('fr')
@@ -637,6 +756,7 @@ export function RetardsContent({
           retards={retards}
           selectedDate={selectedDate || dates[0]}
           onSelect={onSelectDate || (() => {})}
+          onSauter={onSauterMois}
           mode={mode}
         />
 

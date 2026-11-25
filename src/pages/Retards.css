@@ -111,7 +111,10 @@
   z-index: 1;
   background: var(--rt-papier);
   border-radius: 8px;
-  overflow: hidden;
+  /*  Pas d'`overflow: hidden` ici : le panneau du choix du mois dépasserait
+      du rail et serait rogné à la lisière de la planche. C'est le rayon des
+      enfants qui tient les coins, pas un rognage du parent. */
+  overflow: visible;
 }
 
 /* 3a · la ligne du bandeau : retour, marque, titre — puis la période */
@@ -461,6 +464,8 @@
   background: var(--rt-fiche);
   position: sticky;
   top: 10px;
+  /* au-dessus des fiches : le panneau du choix du mois déborde du rail */
+  z-index: 2;
 }
 .rt-rail-titre {
   text-align: center;
@@ -533,6 +538,106 @@
   color: var(--rt-accent);
 }
 .rt-rail-jour.is-actif i { color: var(--charte-sable); }
+/*  Le choix du mois : le titre du rail devient un bouton. Le panneau se pose
+    AU-DESSUS du rail, sinon la molette le recouvre, et il reste dans la
+    largeur de la colonne (64 px) — d'où les mois sur deux colonnes. */
+.rt-choix-mois { position: relative; }
+.rt-page button.rt-choix-mois-bouton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 20px;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rt-douce);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: none;
+}
+.rt-page button.rt-choix-mois-bouton:hover {
+  background: var(--rt-lavis);
+  color: var(--rt-encre);
+}
+.rt-choix-mois-panneau {
+  position: absolute;
+  top: calc(100% + 4px);
+  /*  Ancrer à GAUCHE, pas au centre : le rail fait 64 px, un panneau de
+      168 px centré dessus sortait du cadre par la gauche (les mois
+      s'affichaient « ovembre », « ptembre »). Il s'ouvre donc vers la
+      droite, par-dessus les fiches, et reste dans le cadre sur téléphone
+      aussi. */
+  left: 0;
+  z-index: 8;
+  width: 168px;
+  padding: 7px;
+  border: 2px solid var(--rt-encre);
+  border-radius: 11px;
+  background: var(--rt-fiche);
+  box-shadow: 3px 3px 0 var(--rt-encre);
+}
+.rt-choix-mois-annee {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding-bottom: 5px;
+  margin-bottom: 5px;
+  border-bottom: 1.5px dashed var(--rt-filet);
+}
+.rt-choix-mois-annee b {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.rt-page .rt-choix-mois-annee button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1.5px solid var(--rt-bordure);
+  border-radius: 999px;
+  background: var(--rt-papier);
+  color: var(--rt-encre);
+  cursor: pointer;
+  box-shadow: none;
+}
+.rt-page .rt-choix-mois-annee button:hover { background: var(--rt-lavis); }
+.rt-choix-mois-grille {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+}
+.rt-page .rt-choix-mois-grille button {
+  padding: 4px 2px;
+  border: 1.5px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rt-encre);
+  font-size: 9.5px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: none;
+}
+.rt-page .rt-choix-mois-grille button:hover {
+  background: var(--rt-lavis);
+  border-color: var(--rt-bordure);
+}
+.rt-page .rt-choix-mois-grille button.is-actif {
+  background: var(--rt-encre);
+  color: var(--charte-sable);
+  font-weight: 700;
+}
+
 .rt-rail-note {
   text-align: center;
   font-size: 8.5px;
