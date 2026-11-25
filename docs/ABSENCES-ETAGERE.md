@@ -249,3 +249,84 @@ Pas de navigateur dans l'atelier : les rapports, les coupures, l'aplomb du racco
 1. Si la rangée doit se **coller** sous la chemise au lieu de pendre à 20 px de corde, le crochet se retourne en un seul nombre : `--abs-corde: 0px`. C'est aussi le crochet qui sert si l'anneau du 2/12 mord trop sur le trait de la feuille de titre — une valeur, deux réglages, aucun sélecteur de plus.
 2. Le solde porte aujourd'hui `retour lun. 30 nov.` en note de bas de planche. Si le fondateur veut le voir ailleurs que sous un chiffre, c'est une `abs-planche-note` à déménager — pas un bloc à faire revenir.
 2. Le même tri pour les trois autres écrans qui portent encore un `<style>` embarqué : la charte ne les voit toujours pas.
+
+---
+
+# La corde par employé (10/12) — le corps du calendrier quitte les cases
+
+**Le fond de l'affaire :** onze mille pixels carrés de vide pour dire que ces gens-là sont là. Une case vide, un dimanche et un jour férié se ressemblent trait pour trait : la grille répondait à « qui est là ? » par l'**absence** de marque. Le fondateur a retenu la maquette `maquettes/absences-grille-1-corde.png` — « je choisis le 1, une corde par employé. je veux absolument avoir ce rendu » — et a posé la loi : **la tringle est le contrat**.
+
+## Ce qui a été mesuré avant de dessiner
+
+Sur sa capture, à la règle : une ligne de **78 px**, une colonne d'employé de **236 px**, une journée de **108 px**. À 1 440 px de large et en mode semaine, sept cases vides par salarié multipliées par quatorze salariés. La peinture ne pouvait pas s'en tirer par un trait plus fin : c'est la *cellule* qui était la faute, pas sa bordure.
+
+| la grille écrivait | la corde tient |
+|---|---|
+| une `<div>` de fond par jour et par ligne, bordure droite sur la voisine | **un anneau par jour**, réparti en `flex: 1 1 0` sur les mêmes colonnes que l'entête — pas un `left` recalculé |
+| `HAUTEUR_BARRE: 24` / `ESPACEMENT_BARRE: 30` en durs dans le JSX, la hauteur de ligne ajoutée à la main | les six nombres vivent dans la **feuille**, et `--abs-corde-hauteur` est le `calc()` des trois hauteurs qu'il contient |
+| la planche posée dans la case, bordure de 2 px pour tout indice de statut | la planche **pend** sous le trait, retenue par une ficelle qui *entre* dans le trait |
+| le solde en quatorze pilules identiques « 26 J » | une **longueur** (jauge) et le nombre à côté, une fois |
+| `data-jour` recopié dans chaque cellule du corps | `data-jour` ne vit plus que dans l'entête : le jour se lit à l'anneau |
+
+## Les six nombres, et le septième qui les commande
+
+```css
+.abs-cal {
+  --abs-corde-fil: 2px;          /* le trait tendu            */
+  --abs-corde-fil-top: 10px;     /* sa place depuis le haut   */
+  --abs-corde-anneau: 8px;       /* le creux du jour, cerclé de 2 */
+  --abs-corde-descente: 8px;     /* la ficelle sous le trait  */
+  --abs-corde-planche: 22px;     /* la hauteur d'une planche  */
+  --abs-corde-empilement: 26px;  /* le cran entre deux planches qui se chevauchent */
+  --abs-corde-hauteur: calc(var(--abs-corde-fil-top) + var(--abs-corde-descente) + var(--abs-corde-planche) + var(--charte-espace-1));
+}
+```
+
+**Un seul nombre d'empilement, lu deux fois** : le `top` de la planche (`fil-top + descente + --abs-corde-rang × empilement`) et le `min-height` de la ligne (`hauteur + (rangs − 1) × empilement`). Écrit deux fois, il se contredit à la première retouche — et la deuxième planche d'une même corde mange alors la ligne du voisin. C'est la leçon des anneaux de la poutre, reprise à l'envers : `--abs-corde-rangs` vient du JSX (`seg.rangeesTotal`), donc la ligne grandit **d'elle-même** quand deux absences se chevauchent.
+
+L'anneau est **plus haut que le trait** qu'il cercline (8 px + 2 px de cercle pour un fil de 2) : un anneau à la hauteur du trait est invisible, on l'a déjà payé le 9/12. Le creux se centre sur la colonne par `left: 50%` + `translateX(-50%)` sur le pseudo-élément, jamais par un pourcentage recopié du nombre de jours — c'est ce qui fait que mode jour, semaine et mois partagent la même géométrie sans un seul `if`.
+
+## Les états, tous en forme avant d'être en couleur
+
+* **anneau creux** = jour travaillé · **pastille pleine** = chômé, et le chômé vient des *données* : `feriers.has(j.iso) || j.weekend`, le férié étant lu au jeu de l'**entreprise de la ligne** (`getHolidaySet(ligne.employe.enterprise_id)`), pas à une liste de la maison.
+  Le week-end et le férié d'entreprise **partagent la pastille** — c'est le dessin choisi qui le dit, pas un oubli — mais chaque anneau porte sa raison en `title` (`dim. 25 oct. · chômé (week-end)` / `· chômé (férié de l’entreprise)`), parce qu'un même signe pour deux causes doit au moins savoir les nommer au survol.
+* **la couleur dit le motif, le trait dit le statut** — la loi de `styleBarreAbsence` est recopiée telle quelle sur la planche : une demande en attente porte son contour pointillé *et* le mot « En attente », une refusée est barrée *et* dit « Refusé ». Une approuvée ne porte pas de mot : la plaine couleur le dit déjà.
+* **le nœud corail sur la corde** quand la pointeuse conteste ce jour (`conflitParAbsence[a.id]?.status === 'pending'`) — la marque est sur le fil, à la crête de la ficelle, parce qu'un conflit est un accident de cordage, pas une étiquette.
+* **la coupure** aux deux bouts quand l'absence déborde de la période, 📎 quand un justificatif pend à la fiche.
+
+## Ce qui n'a PAS été recopié du dessin
+
+La maquette mentait sur trois points, et le code ne l'a pas crue : les **prénoms** (Aïssatou, Paternité… — des taches), les soldes **« 26/30 » et « 30/30 » répétés** sur toutes les lignes (le nombre vient de `joursPrisParEmploye` et du plafond de l'entreprise, il est donc différent par ligne), et **une planche qui pendait sur la corde du voisin** (le dessin n'a pas de `rangee`, le segment en a une). La légende a gagné deux lignes — « un anneau = jour travaillé », « une pastille = chômé (week-end ou férié de l'entreprise) » — pour que la figure ne soit pas une devinette.
+
+## Ce qui a été refusé en route
+
+* **Le rail de cases en dernier recours.** On aurait pu garder les cellules et seulement retirer leurs bordures : la grille restait une grille, et l'anneau y aurait été un collage.
+* **Un `left: ${(i / nbJours) * 100}%` par anneau.** Exactement le genre de nombre que le mode jour casse. `flex: 1 1 0` donne la même colonne que l'entête sans arithmétique.
+* **Refaire la `soldeDe`.** Le solde change de *forme*, pas de source : même fonction, même `pris / plafond / restant`, la jauge n'est qu'un `--abs-corde-plein` posé en ligne.
+* **La cellule collée au bas de la ligne** (`top: auto; bottom: 0`) pour la jauge : une règle de plus pour un résultat que l'`align-items: center` de la ligne donne déjà.
+* **Toute media-query qui repositionnerait un anneau, une ficelle ou une planche.** La seule coupure de la corde (650 px) raccourcit le prénom et la jauge.
+
+## Les chiffres du contrôle
+
+| mesure | base `main` (9/12) | **la corde (10/12)** |
+|---|---|---|
+| `npx vitest run` | 198 fichiers · 2 809 ✓ | **199 · 2 828 ✓** (0 échec) — dont 17 verrous dans le nouveau `absencesCalendrierCorde.test.jsx` ; la famille « absences* » passe de 107 à 124 `it()` |
+| serrures nées avec la corde | — | la tringle en a vu deux **bornées, pas relâchées** : elles lisaient la feuille *jusqu'à la fin du fichier* et se déclenchaient sur le rayon de la planche. `TRINGLE` s'arrête maintenant à `--abs-corde-fil`, avec un `throw` si la corde n'y est plus |
+| `npm run charte` · couleurs en dur | 4 496 · 183 fichiers | **4 496 · identique** — zéro hex de plus ; trois `#2A1708` que j'avais écrits dans la légende sont repartis en `var(--charte-encre)` |
+| `npm run charte` · ombres floues | 129 | **129** · `rayons` 337 · mesures **63 / 42 / 27** (aucune de plus : la corde n'emploie que `champ`, `carte`, `pilule`) |
+| `npx vite build` + lecture du `dist` | ✓ | ✓ (vite + PWA, 22 entrées precachees) — dans la feuille minifiée servie : `--abs-corde-fil: 2px`, `flex:1 1 0`, `left:50%`, `top:calc(var(--abs-corde-fil-top) + var(--abs-corde-fil) / 2 - (var(--abs-corde-anneau) + 2 * var(--charte-trait)) / 2)` et le sélecteur `[data-anneau='chômé']` sont **intacts** |
+| portes de la bande | 9 `data-testid`, 2 `aria-pressed`, 1 `role="switch"` | **les mêmes, un pour un** — `abs-cal-barre`, `abs-cal-declarer`, `abs-cal-modes`, `abs-cal-aujourdhui`, `abs-cal-titre`, `abs-cal-tous-motifs`, `abs-cal-feuille-jour`, `abs-cal-masquer-sans-absence`, `abs-cal-tringle` |
+| dépôt d'une pince | `data-drop-lane` + `jourDepuisX(e.clientX, rect, nbJours)` | **inchangé** : la piste entière est la zone de dépôt, le jour visé reste celui sous le pointeur, `.abs-drop-cell` n'a pas déménagé de rubrique |
+| `npx eslint` | silence | **silence** sur les trois fichiers touchés |
+
+## Ce qu'on ne peut pas prouver ici
+
+* **le rendu à l'œil, sur ses données à lui.** Pas de navigateur dans l'atelier : les 17 verrous tiennent la géométrie, pas le goût. Ce qu'on regarde en premier, en semaine et en mois : si l'anneau tombe **pile sur le fil** (le `calc()` de centrage est juste sur le papier, `box-sizing: border-box` et le `border` de 2 px ne se lisent qu'à l'écran) ; si une planche de 22 px suffit à porter emoji + libellé + « N j » + mot de statut sans que ça se tasse ; et si les deux colonnes collantes (nom à gauche, solde à droite) restent opaques au défilement horizontal — elles portent `background: theme.carte` pour ça, un `sticky` transparent fait voir la corde **à travers** le nom.
+* **les trois largeurs de coupure** (1 560 / 900 / 360) : à 360 px, une journée vaut-elle encore assez pour un anneau ? La piste est en pourcentages (`flex: 1; min-width: 0`) et c'est le `minWidth` de la range — `LARGEUR_EMPLOYE + nbJours × largeurJour`, posé en ligne comme sur la grille d'avant — qui fait défiler. C'est voulu ; le goût est à dire.
+* **le nœud de conflit** : la maquette en dessinait un par ligne, le code n'en pose un que si la pointeuse a dit `pending`. Sur un jeu de données silencieux, le nœud ne s'affiche pas — ce n'est pas un trou, c'est l'absence de conflit.
+
+## Et après (la corde)
+
+1. **Le mode jour est une corde d'un seul anneau.** Ça tient — un anneau, une planche pleine, le solde à droite — mais une figure à un point est pauvre. Si le fondateur le trouve maigre, la porte est un jeton de plus (les six jours voisins en filigrane), pas un composant de plus.
+2. **`Masquer sans absence` et la corde se marchent un peu dessus** : le switch enlève la ligne entière, l'anneau creux la rendait déjà muette. Le jour où la liste des présents s'allonge, le switch devient un tri et l'anneau garde la parole.
+3. Reste ouvert depuis la tringle : **la deuxième porte « Déclarer »** (bande vs bandeau du haut), **la décision B du Planning** (`planning-case-B2-*`), et la factorisation de `services/absences.js` avec le `motifDe()` de `Planning.jsx`.

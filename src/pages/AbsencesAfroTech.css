@@ -1973,3 +1973,293 @@ button.abs-planche-corps:focus-visible {
   .abs-tringle-plaque-boite { flex: 1 1 100%; order: 2; }
   .abs-tringle-clou { order: 1; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   🪢 LA CORDE PAR EMPLOYÉ — le corps du calendrier des absences
+   (maquette `maquettes/absences-grille-1-corde.png`, retenue le 10/12 :
+   « je choisis le 1… je veux absolument avoir ce rendu »)
+
+   La maladie de la grille : elle répondait « qui est là ? » par l'absence de
+   marque. Quatorze lignes de 78 px, sept colonnes, et rien dedans ; une case
+   vide, un dimanche et un férié se ressemblaient. Ici le trait EST la preuve :
+   un anneau par jour — creux = jour travaillé, plein = chômé — et la planche
+   de l'absence pend au jour de son départ, sur SA corde, retenue par une
+   ficelle de `descente`. Pas de lignes de cases, pas de cadres de cellules.
+
+   Les nombres, tous posés une fois sur `.abs-cal` et relus par
+   `absencesCalendrierCorde.test.jsx` — jamais recopiés dans un `expect` :
+
+     --abs-corde-fil          2 px   le trait tendu
+     --abs-corde-fil-top     10 px   sa place depuis le haut de la ligne
+     --abs-corde-anneau       8 px   le creux du jour (cerclé de 2)
+     --abs-corde-descente     8 px   la ficelle entre le trait et la planche
+     --abs-corde-planche     22 px   la hauteur d'une planche
+     --abs-corde-empilement  26 px   le cran entre deux planches qui se chevauchent
+     --abs-corde-hauteur          =  fil-top + descente + planche + un cran d'air
+                                    (CALCULÉ, pas annoncé : 44 px à oggi)
+
+   La loi de la dérive : la planche se pose à `fil-top + descente + rang ×
+   empilement`, et la ligne à `hauteur + (rangs − 1) × empilement`. Un seul
+   nombre d'empilement pour les deux, sinon la deuxième planche mord la
+   suivante. La ficelle, elle, fait exactement `descente` plus l'épaisseur du
+   trait : elle doit ENTRER dans le trait, pas le toucher.
+   ═══════════════════════════════════════════════════════════ */
+
+.abs-cal {
+  --abs-corde-fil: 2px;
+  --abs-corde-fil-top: 10px;
+  --abs-corde-anneau: 8px;
+  --abs-corde-descente: 8px;
+  --abs-corde-planche: 22px;
+  --abs-corde-empilement: 26px;
+  --abs-corde-hauteur: calc(var(--abs-corde-fil-top) + var(--abs-corde-descente) + var(--abs-corde-planche) + var(--charte-espace-1));
+  --abs-corde-jauge: 56px;
+}
+
+/* la ligne : tête collante à gauche, piste au centre, solde collant à droite */
+.abs-corde-ligne {
+  display: flex;
+  align-items: stretch;
+  min-height: calc(var(--abs-corde-hauteur) + (var(--abs-corde-rangs, 1) - 1) * var(--abs-corde-empilement));
+  border-bottom: 1px solid var(--abs-grid);
+}
+
+.abs-corde-tete {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-2);
+  padding: 0 var(--charte-espace-3);
+  border-right: 1px solid var(--charte-bordure);
+}
+
+/* la pastille d'initiales : un carré, comme sur la maquette — la page est déjà
+   pleine de pilules, le carré se lit dans une colonne de noms */
+.abs-corde-figure {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--charte-surface2);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-champ);
+  color: var(--charte-encre);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  object-fit: cover;
+}
+
+.abs-corde-nom {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--charte-encre);
+  font-size: var(--charte-taille-corps);
+  font-weight: 600;
+}
+
+/* LA PISTE — tout s'y pose en pourcentage de la période, comme les barres
+   d'avant : mêmes index, même `segmentSurJours`, un seul calcul de position. */
+.abs-corde-piste {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.abs-corde-fil {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--abs-corde-fil-top);
+  height: var(--abs-corde-fil);
+  background: var(--charte-encre);
+  pointer-events: none;
+}
+
+.abs-corde-anneaux {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+/* un anneau par jour, centré sur SA colonne : `flex: 1 1 0` est ce qui les
+   répartit exactement comme les cellules de l'entête, sans un seul `left`
+   calculé à la main */
+.abs-corde-anneaux i {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 1px;
+}
+
+.abs-corde-anneaux i::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(
+    var(--abs-corde-fil-top) + var(--abs-corde-fil) / 2
+    - (var(--abs-corde-anneau) + 2 * var(--charte-trait)) / 2
+  );
+  transform: translateX(-50%);
+  width: calc(var(--abs-corde-anneau) + 2 * var(--charte-trait));
+  height: calc(var(--abs-corde-anneau) + 2 * var(--charte-trait));
+  box-sizing: border-box;
+  background: var(--charte-sable);
+  border: var(--charte-trait) solid var(--charte-encre);
+  border-radius: var(--charte-rayon-pilule);
+}
+
+/* chômé = plein. Le week-end et le férié de L'ENTREPRISE de la ligne (les
+   fériés sont par entreprise, c'est `getHolidaySet` qui les donne). Creux ou
+   plein : la différence se lit en forme, pas en couleur (C7). */
+.abs-corde-anneaux i[data-anneau='chômé']::before {
+  background: var(--charte-encre);
+}
+
+/* le repère du jour actuel : un trait rouille qui traverse la pile */
+.abs-corde-aujourdhui {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--abs-corde-fil);
+  margin-left: calc(-1 * var(--abs-corde-fil) / 2);
+  background: var(--abs-amber);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* LA PLANCHE. Sa couleur vient du motif, son trait vient du statut — la loi
+   de `styleBarreAbsence`, inchangée. La position horizontale est posée en
+   `left`/`width` inline (pourcentages de la période) ; la verticale est ici,
+   dérivée du rang. */
+.abs-corde-planche {
+  position: absolute;
+  top: calc(
+    var(--abs-corde-fil-top) + var(--abs-corde-descente)
+    + var(--abs-corde-rang, 0) * var(--abs-corde-empilement)
+  );
+  height: var(--abs-corde-planche);
+  display: flex;
+  align-items: center;
+  gap: var(--charte-espace-1);
+  padding: 0 var(--charte-espace-2);
+  box-sizing: border-box;
+  border-width: var(--charte-trait);
+  border-radius: var(--charte-rayon-carte);
+  font-family: var(--charte-police);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* la ficelle : du bord du haut de la planche JUSQU'À L'INTÉRIEUR du trait. Un
+   trait qui touche sans traverser ne retient rien — c'est la leçon des anneaux
+   de la poutre, reprise à l'envers. */
+.abs-corde-attache {
+  position: absolute;
+  left: var(--charte-espace-3);
+  top: calc(-1 * var(--abs-corde-descente));
+  width: var(--charte-trait);
+  height: calc(var(--abs-corde-descente) + var(--abs-corde-fil));
+  background: var(--charte-encre);
+}
+
+/* le nœud sur la corde : la pointeuse conteste ce jour. 8 px de corail cerclés
+   d'encre, posés SUR le trait, à la crête de la ficelle. */
+.abs-corde-noeud {
+  position: absolute;
+  left: calc(var(--charte-espace-3) - var(--charte-espace-2));
+  top: calc(-1 * var(--abs-corde-descente) - var(--charte-espace-2) + var(--abs-corde-fil) / 2);
+  width: 8px;
+  height: 8px;
+  background: var(--abs-coral);
+  border: var(--charte-trait) solid var(--charte-encre);
+}
+
+.abs-corde-marque { flex-shrink: 0; }
+
+.abs-corde-motif {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.abs-corde-durée,
+.abs-corde-statut,
+.abs-corde-coupure {
+  flex-shrink: 0;
+  font-family: var(--charte-mono);
+}
+
+/* le mot du statut n'est pas un ornement : en attente et refusée se LISENT, la
+   couleur seule ne porte aucun sens ici (C7) */
+.abs-corde-statut { color: var(--charte-douce); }
+
+/* LE SOLDE, à droite : une longueur et un nombre. Pleine = rien n'est pris.
+   Le nombre reste : une jauge seule serait un statut sans mot. */
+.abs-corde-solde {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--charte-espace-2);
+  width: calc(var(--abs-corde-jauge) + 4 * var(--charte-espace-3));
+  padding: 0 var(--charte-espace-3);
+  border-left: 1px solid var(--charte-bordure);
+}
+
+.abs-corde-jauge {
+  position: relative;
+  width: var(--abs-corde-jauge);
+  height: 6px;
+  flex-shrink: 0;
+  border: var(--charte-trait) dashed var(--charte-douce);
+  border-radius: var(--charte-rayon-champ);
+}
+
+.abs-corde-jauge i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--abs-corde-plein, 0%);
+  background: var(--abs-argile);
+}
+
+.abs-corde-nombre {
+  color: var(--charte-douce);
+  font-family: var(--charte-mono);
+  font-size: var(--charte-taille-micro);
+  font-weight: 700;
+}
+
+/* le survol d'une planche : la maison n'ajoute pas d'ombre floue (C9) — elle
+   remonte la planche d'un cran, comme une étiquette qu'on soulève du doigt */
+.abs-corde-planche:hover {
+  transform: translateY(-1px);
+}
+
+/* PAS DE CORRECTIF DE LARGEUR. La corde n'a rien à repositionner : les anneaux
+   se répartissent en `flex: 1 1 0` sur les mêmes colonnes que l'entête, et la
+   piste garde la largeur que lui donne le `min-width` du conteneur. À 390 px,
+   le mois de 31 jours se met à défiler comme il défilait déjà en grille — c'est
+   la piste qui roule, pas la figure qui se replie. */
+@media (max-width: 650px) {
+  .abs-corde-nom { max-width: 110px; }
+  .abs-corde-jauge { width: calc(var(--abs-corde-jauge) / 2); }
+}

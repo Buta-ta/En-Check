@@ -30,9 +30,15 @@ const COMPOSANT = lire('src', 'components', 'AbsencesCalendrier.jsx')
 const PAGE = lire('src', 'pages', 'Absences.jsx')
 const FEUILLE = lire('src', 'pages', 'AbsencesAfroTech.css')
 const CSS = FEUILLE.replace(/\/\*[\s\S]*?\*\//g, '')
-// la rubrique de la tringle court jusqu'à la fin de la feuille : elle est posée
-// là parce qu'elle doit tenir devant les correctifs `!important` du tas de fin
-const TRINGLE = CSS.slice(CSS.indexOf('.abs-tringle {'))
+// la rubrique de la tringle court jusqu'à la fin de la feuille — elle est
+// posée là parce qu'elle doit tenir devant les correctifs `!important` du tas
+// de fin — mais elle s'ARRÊTE où commence celle de la corde (10/12) : la
+// corde a son propre fichier de serrures, `absencesCalendrierCorde.test.jsx`,
+// et une serrure qui lit le bloc du voisin se déclenche pour les mauvaises
+// raisons (le rayon de la planche n'est pas une affaire de tringle).
+const DÉBUT_CORDE = CSS.search(/\.abs-cal\s*\{\s*--abs-corde-fil/)
+if (DÉBUT_CORDE === -1) throw new Error('rubrique de la corde introuvable : la tringle ne sait plus où elle finit')
+const TRINGLE = CSS.slice(CSS.indexOf('.abs-tringle {'), DÉBUT_CORDE)
 
 const DESSIN = 'maquettes/absences-outils-1-rideau.png'
 
