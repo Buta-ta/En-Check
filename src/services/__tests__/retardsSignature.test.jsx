@@ -4,6 +4,7 @@ import {
   RetardsContent,
   RetardsHelp,
 } from '../../components/RetardsPresentation'
+import RetardsEngraving from '../../components/RetardsEngraving'
 import { construireRetards } from '../retardsService'
 import { retardDates } from '../../utils/retardsPresentation'
 
@@ -133,4 +134,40 @@ it('keeps explanations closed and the engraving purely decorative', () => {
   expect(html).not.toContain('open=""')
   expect(html).toContain('aria-hidden="true"')
   expect(html).toContain('Le temps, expliqué.')
+})
+
+/*  L'HORLOGE ANIMÉE — 25/11, « anime cette horloge ». Ce qui doit rester
+    vrai : elle est vivante (trois groupes qui tournent, à trois vitesses),
+    elle reste décorative, et le choix du système est respecté. */
+it('anime les trois aiguilles, et s’arrête pour qui a demandé moins d’animation', async () => {
+  const { readFileSync } = await import('node:fs')
+  const html = renderToStaticMarkup(<RetardsEngraving />)
+  const css = readFileSync('src/pages/Retards.css', 'utf8')
+
+  /* trois groupes distincts : heure, minute, trotteuse */
+  for (const aiguille of [
+    'rt-engraving-heures',
+    'rt-engraving-minutes',
+    'rt-engraving-secondes',
+  ]) {
+    expect(html).toContain(aiguille)
+    expect(css).toContain(`.${aiguille}`)
+  }
+  /* trois vitesses différentes — sinon ce n'est pas une horloge */
+  expect(css).toContain('rt-aiguille-heures 43200s')
+  expect(css).toContain('rt-aiguille-minutes 3600s')
+  expect(css).toContain('rt-trotteuse 60s')
+
+  /* `transform-box` : sans lui, un groupe SVG tourne autour du coin */
+  expect(css).toContain('transform-box: view-box')
+
+  /* décorative, jamais une mesure */
+  expect(html).toContain('aria-hidden="true"')
+  expect(html).not.toMatch(/<text/)
+
+  /* et le réglage du système gagne toujours */
+  const bloc = css.slice(css.indexOf('prefers-reduced-motion'))
+  expect(bloc).toContain('.rt-engraving-secondes')
+  expect(bloc).toContain('.rt-engraving-heures')
+  expect(bloc).toContain('animation: none')
 })
