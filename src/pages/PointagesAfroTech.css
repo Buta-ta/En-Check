@@ -6776,25 +6776,7 @@
   box-shadow: 2px 2px 0 0 var(--charte-encre);
 }
 /*  Les dents, en haut et en bas : de petits cercles creux de la couleur du
-    papier, posés sur le bord. */
-.pauses-v2-onglets .pauses-v2-Ghost-btn::before,
-.pauses-v2-onglets .pauses-v2-Ghost-btn::after {
-  content: '';
-  position: absolute;
-  left: 6px;
-  right: 6px;
-  height: 5px;
-  background-image: radial-gradient(
-    circle at 3px 50%,
-    var(--charte-sable) 2.6px,
-    transparent 2.8px
-  );
-  background-size: 8px 5px;
-  background-repeat: repeat-x;
-  pointer-events: none;
-}
-.pauses-v2-onglets .pauses-v2-Ghost-btn::before { top: -2.5px; }
-.pauses-v2-onglets .pauses-v2-Ghost-btn::after { bottom: -2.5px; }
+    papier, posés sur le bord. *
 
 /*  ── 6 · DERNIERS ÉCARTS AVEC LA MAQUETTE ─────────────────────────────── */
 
@@ -6838,21 +6820,6 @@
   border-radius: 8px;
   border-width: 2px;
 }
-.pauses-v2-onglets .pauses-v2-Ghost-btn::before,
-.pauses-v2-onglets .pauses-v2-Ghost-btn::after {
-  height: 6px;
-  background-image: radial-gradient(
-    circle at 3px 50%,
-    transparent 2.4px,
-    var(--charte-encre) 2.6px,
-    var(--charte-encre) 3.4px,
-    transparent 3.6px
-  );
-  background-size: 9px 6px;
-  opacity: 0.85;
-}
-.pauses-v2-onglets .pauses-v2-Ghost-btn::before { top: -3px; }
-.pauses-v2-onglets .pauses-v2-Ghost-btn::after { bottom: -3px; }
 
 /*  L'onglet actif : l'aplat doit s'arrêter AVANT les dents, sinon il les
         couvre. On passe donc le fond en `background-size` intérieur. */
@@ -6865,6 +6832,9 @@
 /*  c) LE BOIS. La surface était trop pâle, on ne lisait pas « table ». On
         monte l'argile et on marque les veines. */
 .pauses-v2-table-section .pauses-v2-table-wrap {
+  /*  Le coin est nettement plus rond que ce que j'avais posé : 12 px, le
+      maximum de la charte, comme sur la maquette. */
+  border-radius: var(--charte-rayon-tuile);
   background:
     repeating-linear-gradient(
       93deg,
@@ -6882,61 +6852,34 @@
 
      Le crantage que je viens de poser fait une FRISE de timbres : trop de
      dents, trop profondes. Un sachet de sucre a trois ou quatre bosses
-     larges. On passe donc à des bosses de 14 px, et on les atténue. */
-.pauses-v2-onglets .pauses-v2-Ghost-btn::before,
-.pauses-v2-onglets .pauses-v2-Ghost-btn::after {
-  height: 5px;
-  background-image: radial-gradient(
-    circle at 7px 50%,
-    transparent 4.2px,
-    var(--charte-encre) 4.4px,
-    var(--charte-encre) 5px,
-    transparent 5.2px
-  );
-  background-size: 14px 5px;
-  opacity: 0.6;
-}
-.pauses-v2-onglets .pauses-v2-Ghost-btn[data-actif="oui"]::before,
-.pauses-v2-onglets .pauses-v2-Ghost-btn[data-actif="oui"]::after {
-  opacity: 0.9;
-}
+     larges. On passe donc à des bosses de 14 px, et on les atténue. *
 
 /*  LE COUVERT SÉPARATEUR. La maquette pose une fourchette et un couteau
-     croisés sur chaque ligne de séparation, à gauche de la table. On les
-     dessine en SVG de fond sur la première cellule de la rangée : un
-     couvert, pas une icône de bibliothèque. */
+     croisés au départ de chaque filet. Le `mask` à sept couches bavait à
+     cette taille : on dessine deux traits d'encre croisés en `::before` et
+     `::after`, ce qui reste net à n'importe quel zoom. */
 .pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child {
   position: relative;
 }
-.pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child::before {
+.pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child::before,
+.pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child::after {
   content: '';
   position: absolute;
-  top: -9px;
-  left: 4px;
-  width: 20px;
-  height: 18px;
+  top: -12px;
+  left: 3px;
+  width: 2.5px;
+  height: 20px;
   background: var(--charte-encre);
-  opacity: 0.55;
-  -webkit-mask:
-    /*  la fourchette : trois dents + manche */
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 2px 0 / 1.4px 6px no-repeat,
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 5px 0 / 1.4px 6px no-repeat,
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 8px 0 / 1.4px 6px no-repeat,
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 2px 6px / 7.4px 2px no-repeat,
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 4.6px 8px / 1.6px 10px no-repeat,
-    /*  le couteau : lame + manche */
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 14px 0 / 2px 12px no-repeat,
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 14px 12px / 2px 6px no-repeat;
-  mask:
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 2px 0 / 1.4px 6px no-repeat,
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 5px 0 / 1.4px 6px no-repeat,
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 8px 0 / 1.4px 6px no-repeat,
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 2px 6px / 7.4px 2px no-repeat,
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 4.6px 8px / 1.6px 10px no-repeat,
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 14px 0 / 2px 12px no-repeat,
-    linear-gradient(var(--charte-encre), var(--charte-encre)) 14px 12px / 2px 6px no-repeat;
-  transform: rotate(-8deg);
+  opacity: 0.7;
+  border-radius: 1px;
   pointer-events: none;
+}
+/*  La fourchette, penchée à gauche ; le couteau, penché à droite. */
+.pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child::before {
+  transform: translateX(-3px) rotate(26deg);
+}
+.pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child::after {
+  transform: translateX(4px) rotate(-26deg);
 }
 
 /*  ── 8 · LE MOBILE : LA TABLE DEVIENT UNE PILE DE FICHES ────────────────
@@ -7063,11 +7006,6 @@
   gap: 12px;
   row-gap: 12px;
 }
-.pauses-v2-onglets .pauses-v2-Ghost-btn::before,
-.pauses-v2-onglets .pauses-v2-Ghost-btn::after {
-  background-size: 12px 5px;
-  opacity: 0.45;
-}
 
 /*  ── 9 bis · LES ACTIONS, EN LIGNE POUR DE VRAI ─────────────────────────
 
@@ -7101,5 +7039,320 @@
     justify-content: flex-start;
     width: 100%;
     gap: 6px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LA GRANDE TABLE — 2ᵉ PASSE, EN UNE SEULE COUCHE
+
+   La première passe avait posé la table. La deuxième l'a comparée à la
+   maquette, image par image, et a corrigé six écarts. Ces corrections ont
+   d'abord été écrites en dix-huit blocs qui se reprenaient l'un l'autre —
+   le bois est passé par quatre teintes, les onglets par trois méthodes.
+
+   Ce qui suit ne raconte plus l'historique : c'est l'état retenu, une fois
+   pour toutes. Chaque valeur est celle qui s'affiche.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/*  ── LE BOIS ──────────────────────────────────────────────────────────────
+
+    La teinte ne se compose plus à l'œil : elle a été échantillonnée sur la
+    maquette, qui va du miel clair au miel profond. On la reproduit avec
+    l'argile de la charte (l'aplat) éclaircie de surface blanche — et l'encre
+    garde 6,15:1, très au-dessus du plancher de 4,5:1.
+
+    La variable est déclarée sur la SCÈNE autant que sur le plateau : la
+    poignée et la serviette sont ses frères, pas ses enfants, et une
+    variable ne descend pas entre frères. */
+.pauses-v2-table-section .pauses-v2-table-scene,
+.pauses-v2-table-section .pauses-v2-table-wrap {
+  --pv-bois: color-mix(in srgb, var(--charte-aplat) 70%, var(--charte-surface));
+  --pv-bois-clair: color-mix(in srgb, var(--charte-aplat) 61%, var(--charte-surface));
+  --pv-bois-fonce: color-mix(in srgb, var(--charte-aplat) 80%, var(--charte-tissu));
+}
+
+.pauses-v2-table-section .pauses-v2-table-wrap {
+  background:
+    /*  les veines larges, dans le sens du fil */
+    repeating-linear-gradient(
+      91deg,
+      transparent 0 38px,
+      color-mix(in srgb, var(--charte-encre) 9%, transparent) 38px 40px
+    ),
+    /*  un nœud plus dense tous les 130 px */
+    repeating-linear-gradient(
+      89deg,
+      transparent 0 130px,
+      color-mix(in srgb, var(--charte-encre) 5%, transparent) 130px 145px
+    ),
+    /*  la lumière du plateau, plus claire en haut */
+    linear-gradient(
+      176deg,
+      var(--pv-bois-clair) 0%,
+      var(--pv-bois) 38%,
+      var(--pv-bois-fonce) 100%
+    );
+  box-shadow:
+    5px 5px 0 0 var(--charte-encre),
+    inset 0 2px 0 0 color-mix(in srgb, var(--charte-blanc) 22%, transparent),
+    inset 0 0 0 7px color-mix(in srgb, var(--charte-encre) 10%, transparent);
+}
+
+/*  ── L'ASSIETTE DE L'AVATAR ───────────────────────────────────────────────
+
+    La maquette a UN cerne d'encre, pas trois. J'avais empilé des anneaux en
+    `box-shadow` : ça faisait une bulle de bande dessinée. */
+.pauses-v2-table-section .pauses-v2-table tbody td:first-child .pauses-v2-avatar,
+.pauses-v2-table-section .pauses-v2-table .pauses-v2-avatar {
+  width: 56px;
+  height: 56px;
+  border: 2.5px solid var(--charte-encre);
+  background: var(--charte-surface);
+  box-shadow: 3px 3px 0 0 var(--charte-encre);
+}
+
+/*  ── L'AIR DANS LES CELLULES ──────────────────────────────────────────────
+
+    Le rendu était tassé ; la maquette respire. */
+/*  ATTENTION : ces réglages sont ceux du PLATEAU large. En dessous de
+    700 px la table se replie en fiches, et la fiche pose ses propres
+    marges — il ne faut donc pas les écraser d'ici. */
+@media (min-width: 701px) {
+  .pauses-v2-table-section .pauses-v2-table th,
+  .pauses-v2-table-section .pauses-v2-table td {
+    padding: 20px 14px;
+    vertical-align: middle;
+  }
+  .pauses-v2-table-section .pauses-v2-table thead th {
+    padding-top: 14px;
+    padding-bottom: 12px;
+  }
+}
+/*  La maquette sépare les rangées par un POINTILLÉ d'encre franc, qui
+    commence au couvert croisé. On le pose sur les `td` (le `tr` ne peint pas
+    de bordure avec `border-collapse`). */
+@media (min-width: 701px) {
+  .pauses-v2-table-section .pauses-v2-table tbody tr + tr td {
+    border-top: 2px dotted color-mix(in srgb, var(--charte-encre) 62%, transparent);
+  }
+}
+
+/*  ── LE JOURNAL NE TOUCHE PLUS LA TABLE ─────────────────────────────────── */
+.pauses-v2-journal-panel {
+  margin-bottom: 30px;
+}
+
+/*  ── LES DÉCORS DE LA TABLE ───────────────────────────────────────────────
+
+    Trois objets posés sur le plateau, relevés au pixel sur la maquette :
+    · les RONDS D'EAU, très pâles, dans la marge gauche (deux verres qu'on a
+      posés là et qui ont laissé leur empreinte) ;
+    · l'ASSIETTE DE SERVICE, à droite : un cerne pointillé, une assiette
+      blanche dedans, et le triangle de la serviette qui dépasse dessous ;
+    · le TISSU KENTE, un ruban rayé de la palette, qui dépasse sous le coin
+      bas gauche. Ce n'est pas un carré posé à plat : c'est un tissu qui
+      pend, donc un trapèze incliné.
+
+    La scène déborde de 34 px à gauche pour les ronds d'eau, et le plateau
+    réserve sa gouttière à droite pour que les actions les évitent. */
+.pauses-v2-table-section .pauses-v2-table-scene {
+  position: relative;
+  margin: 0 34px 0 26px;
+}
+@media (min-width: 701px) {
+  .pauses-v2-table-section .pauses-v2-table-wrap {
+    padding: 0 30px 26px 20px;
+  }
+}
+
+/*  Les ronds d'eau : deux empreintes, à peine plus foncées que le bois. */
+.pauses-v2-table-service {
+  position: absolute;
+  top: 56%;
+  left: -3px;
+  z-index: 1;
+  width: 38px;
+  height: 38px;
+  border: 2.5px solid color-mix(in srgb, var(--charte-tissu) 24%, transparent);
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: none;
+}
+.pauses-v2-table-service::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 2px solid color-mix(in srgb, var(--charte-tissu) 16%, transparent);
+  border-radius: 50%;
+}
+
+/*  L'assiette de service, à droite : un cerne pointillé, une assiette
+    blanche dedans, et le triangle de la serviette qui dépasse dessous. */
+.pauses-v2-table-assiette {
+  position: absolute;
+  top: 26%;
+  right: -32px;
+  z-index: 2;
+  width: 72px;
+  height: 72px;
+  border: 2.5px dotted var(--charte-encre);
+  border-radius: 50%;
+  background: var(--charte-surface);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+  pointer-events: none;
+}
+.pauses-v2-table-assiette::before {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border: 2.5px solid var(--charte-encre);
+  border-radius: 50%;
+  background: var(--charte-surface);
+  box-shadow: inset 2px 2px 0 0 color-mix(in srgb, var(--charte-encre) 12%, transparent);
+}
+/*  Le triangle de serviette, sous l'assiette, pointe en bas. */
+.pauses-v2-table-assiette::after {
+  content: '';
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  width: 42px;
+  height: 32px;
+  transform: translateX(-50%);
+  border: 2.5px solid var(--charte-encre);
+  background: var(--charte-surface);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+/*  Le tissu kente : un ruban de bandes colorées, incliné, qui pend sous le
+    coin bas gauche du plateau. Les couleurs sont celles de la charte, sauf
+    l'or et le vert, pris dans leurs jetons sémantiques. */
+.pauses-v2-table-serviette {
+  position: absolute;
+  left: -26px;
+  bottom: -34px;
+  z-index: 0;
+  width: 74px;
+  height: 148px;
+  border: 2.5px solid var(--charte-encre);
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--charte-erreur) 0 8px,
+      var(--charte-alerte) 8px 15px,
+      var(--charte-succes) 15px 20px,
+      var(--charte-encre) 20px 26px,
+      var(--charte-surface) 26px 30px
+    );
+  box-shadow: 3px 3px 0 0 var(--charte-encre);
+  transform: rotate(-24deg);
+  pointer-events: none;
+}
+
+/*  ── LES ONGLETS ──────────────────────────────────────────────────────────
+
+    J'ai cherché midi à quatorze heures : des crans, des dents, un `mask`,
+    un `filter`, un `z-index` négatif. Trois méthodes ont échoué avant que
+    je regarde vraiment la maquette — où les pilules n'ont AUCUN cran.
+    Ce sont des pastilles au bord plein, comme partout ailleurs sur la page.
+
+    Une seule règle, donc, et le vocabulaire de la charte : un fond, un
+    bord, une ombre pleine. */
+.pauses-v2-onglets {
+  gap: 12px;
+  row-gap: 12px;
+}
+.pauses-v2-onglets .pauses-v2-Ghost-btn {
+  position: relative;
+  z-index: 0;
+  padding: 8px 20px;
+  border: 2px solid var(--charte-encre);
+  border-radius: 6px;
+  background: var(--charte-surface);
+  box-shadow: 2px 2px 0 0 var(--charte-encre);
+  color: var(--charte-encre);
+  font-size: 0.77rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.pauses-v2-onglets .pauses-v2-Ghost-btn[data-actif="oui"] {
+  background: var(--charte-aplat);
+  color: var(--charte-blanc);
+}
+.pauses-v2-onglets .pauses-v2-Ghost-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 0 var(--charte-encre);
+}
+@media (max-width: 700px) {
+  .pauses-v2-onglets .pauses-v2-Ghost-btn { padding: 7px 14px; font-size: 0.72rem; }
+}
+
+/*  ── LES COLONNES ET LES ACTIONS ──────────────────────────────────────────
+
+    Les statuts débordaient de leur colonne, et les cinq boutons de ligne
+    s'empilaient en colonne au lieu de former deux rangées de trois et deux. */
+.pauses-v2-table-section .pauses-v2-table th:nth-child(1),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(1) { width: 19%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(2),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(2) { width: 10%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(3),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(3) { width: 12%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(4),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(4) { width: 13%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(5),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(5) { width: 7%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(6),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(6) { width: 18%; }
+.pauses-v2-table-section .pauses-v2-table th:nth-child(7),
+.pauses-v2-table-section .pauses-v2-table td:nth-child(7) { width: 21%; }
+
+.pauses-v2-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 250px;
+  margin-left: auto;
+}
+@media (max-width: 700px) {
+  .pauses-v2-row-actions {
+    justify-content: flex-start;
+    width: 100%;
+    max-width: none;
+    gap: 6px;
+  }
+  .pauses-v2-table-section .pauses-v2-table td:last-child > div {
+    max-width: none;
+    margin-left: 0;
+  }
+  .pauses-v2-table-section .pauses-v2-table td:last-child .pauses-v2-btn-validate,
+  .pauses-v2-table-section .pauses-v2-table td:last-child .pauses-v2-btn-reject,
+  .pauses-v2-table-section .pauses-v2-table td:last-child .pauses-v2-icon-btn {
+    padding: 5px 12px;
+    font-size: 0.72rem;
+  }
+}
+
+/*  ── LES DÉCORS N'HABILLENT QUE LE PLATEAU ───────────────────────────────
+
+     En dessous de 700 px, la table se replie en fiches : l'assiette et le
+     kente, dessinés pour le plateau, se retrouvaient à flotter au milieu de
+     la pile de fiches, sans rien vouloir dire. On les masque — et on rend à
+     la scène les marges du mobile, pour ne pas laisser de gouttière vide. */
+@media (max-width: 700px) {
+  .pauses-v2-table-service,
+  .pauses-v2-table-assiette,
+  .pauses-v2-table-serviette {
+    display: none;
+  }
+  /*  Le couvert marque le départ d'un FILET entre deux rangées : sur une
+      fiche, il n'y a plus de filet, donc plus de couvert. */
+  .pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child::before,
+  .pauses-v2-table-section .pauses-v2-table tbody tr + tr td:first-child::after {
+    display: none;
+  }
+  .pauses-v2-table-section .pauses-v2-table-scene {
+    margin: 0;
   }
 }

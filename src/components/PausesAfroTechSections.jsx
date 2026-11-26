@@ -1569,7 +1569,14 @@ export function PausesCollaborateursSection({
         ))}
       </div>
 
-      {/* Tableau RH des pauses */}
+      {/* Tableau RH des pauses — posé sur la Grande Table.
+
+          Trois décors d'objet, relevés sur la maquette : les ronds d'eau
+          laissés par les verres dans la marge gauche, l'assiette de service
+          à cheval sur le bord droit, et le tissu kente qui pend sous le coin
+          bas gauche. Ils sont purement décoratifs (`aria-hidden`) et
+          n'existent qu'en grand écran : sous 700 px la table devient une
+          pile de fiches et ces ornements n'auraient plus de sens. */}
       {filteredList.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '42px 18px', color: 'var(--pv-muted)' }}>
           <Coffee size={36} color="var(--pv-gold)" style={{ opacity: 0.75, marginBottom: 8 }} />
@@ -1581,8 +1588,12 @@ export function PausesCollaborateursSection({
           </p>
         </div>
       ) : (
-        <div className="pauses-v2-table-wrap">
-          <table className="pauses-v2-table">
+        <div className="pauses-v2-table-scene">
+          <span className="pauses-v2-table-service" aria-hidden="true" />
+          <span className="pauses-v2-table-assiette" aria-hidden="true" />
+          <span className="pauses-v2-table-serviette" aria-hidden="true" />
+          <div className="pauses-v2-table-wrap">
+            <table className="pauses-v2-table">
             <thead>
               <tr>
                 <th>Employé</th>
@@ -1858,7 +1869,8 @@ export function PausesCollaborateursSection({
                 )
               })}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       )}
     </section>
