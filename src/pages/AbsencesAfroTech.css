@@ -1977,35 +1977,49 @@ button.abs-planche-corps:focus-visible {
 /* ═══════════════════════════════════════════════════════════
    🪢 LA CORDE PAR EMPLOYÉ — la cote du dessin, relevée à la règle
 
-   Maquette `maquettes/absences-grille-1-corde.png`, retenue le 10/12. Le 26/11,
-   la comparaison des deux images a été mesurée, pas ressentie, et elle a trouvé
-   quatre écarts : les anneaux dérivaient de −8 à −97 px sous leurs jours (le
-   solde n'était pas réservé dans l'entête), le repère du jour était un trait de
-   2 px à 45 % d'opacité, les planches n'étaient reliées à leur fil que par un
-   cordon de 2 px invisible, et le champ était blanc uni là où le dessin pose des
-   bandes. Cette rubrique est donc écrite D'APRÈS le dessin, à la cote : chaque nombre est
-   sa mesure, relevée sur l'image elle-même (son canevas fait 1 422 px de large,
-   l'échelle est donc à peu près celle d'un écran — les cotes se recopient).
+   Maquette `maquettes/absences-grille-1-corde.png`, retenue le 10/12. Le 08/12,
+   la copie a été re-mesurée sur le dessin (1 376 × 768, un pixel du canevas pour
+   un pixel d'écran) et confrontée au rendu : cinq cotes étaient fausses, et trois
+   d'entre elles ne se voyaient qu'en réglant les éléments au bord près.
+   (1) LE FIL NE COLLE PAS AU HAUT DE LA BANDE : dans le dessin la ligne fait 48 et
+   le fil court à y 196, soit 21 px sous le bord haut de la bande (175). Posé à 2,
+   mon fil tirait toute la pile vers le haut — les anneaux sous la règle, la jauge
+   dix-huit pixels trop bas, et le trait du jour qui traversait l'anneau au lieu
+   de passer entre deux. (2) L'ANNEAU MARQUE LE DÉBUT DU JOUR, PAS SON MILIEU : les
+   six trous du dessin sont à x 474, 596, 716, 832, 947, 1062 — les bornes des
+   cellules — alors que les étiquettes sont centrées à 411, 534, 656, 773, 887,
+   1003, 1119. Un demi-jour d'écart, et c'est exactement ce que le rendu avait de
+   travers. (3) LA CARTE PEND DE 14 px, PAS DE 21 : son bord haut est à y 214 sous
+   un fil à 198. (4) LES CORDONS SONT À 12 px DES COINS ET NON À 6, épais de 3, et
+   la planche s'arrête aux CENTRES des jours de rive (cordon à x 536 = centre du
+   mardi 24, cordon à 776 = centre du jeudi 26), avec 12 px d'aile au-delà de
+   chaque cordon. (5) LE LAVAGE DU JOUR FAIT UNE COLONNE, PAS UNE ET DEMIE :
+   x 595..715 pour une cellule de 118, et il commence DANS L'ENTÊTE, en un
+   rectangle aux coins arrondis (y 120..172), pas sous la règle.
+   S'y ajoute l'échelle de typographie : le dessin est posé entièrement à ~20 px
+   (capitales de 16 px mesurées dans « L 23 », 17 dans « Congé · 3 j ») — la taille
+   de titre de la charte, le plus grand de ses quatre crans. Mes micro-étiquettes
+   de 11 px faisaient un dessin à demi effacé.
 
-     --abs-corde-fil          3 px   le trait tendu          (dessin : y 180-182)
-     --abs-corde-fil-top      2 px   sa place sous le haut de la ligne
-     --abs-corde-anneau       9 px   le TROU du jour         (dessin : 8-9)
-     --abs-corde-cercle       3 px   son cerclage            (dessin : 3)
-     --abs-corde-descente    21 px   la chute entre le fil et la carte (le haut
-                                      de carte tombe à 26 px du trait, mesuré)
-     --abs-corde-carte       46 px   la hauteur d'une carte  (dessin : 46, la
-                                      ligne en fait 50 : la carte déborde exprès)
-     --abs-corde-figure     78×35    la vignette de tête, en largeur, teintée et
-                                      non cerclée (dessin : x 42..119, y 180..214,
-                                      aucun trait d'encre sur son bord)
-     --abs-corde-encre        3 px   le contour de la carte  (dessin : 3)
-     --abs-corde-cordons      4 px   les deux attaches, à 6 px des coins
-     --abs-corde-repos       50 px   la hauteur d'une ligne
-     --abs-corde-jauge       74 px   la longueur du solde    (dessin : 104 × 18,
-                                      réduit à 74 : la colonne mesurée fait 136
-                                      et le nombre doit tenir à côté)
+     --abs-corde-fil          3 px   le trait tendu          (dessin : y 196-198)
+     --abs-corde-fil-top     21 px   sa place sous le haut de la ligne (196 − 175)
+     --abs-corde-anneau      10 px   le TROU du jour         (dessin : 10 — à chaque
+                                      anneau, le fil s'interrompt de x 470 à 479)
+     --abs-corde-cercle       3 px   son cerclage            (16 × 15 hors-tout au
+                                      dessin ; la maison tient le trou carré, 16 × 16)
+     --abs-corde-descente    14 px   la chute entre le fil et la carte (198 → 214)
+     --abs-corde-carte       46 px   la hauteur d'une carte  (dessin : 214..258, 45)
+     --abs-corde-encre        3 px   le contour de la carte  (dessin : 2-3)
+     --abs-corde-cordons      3 px   les deux attaches       (dessin : x 535-537)
+     --abs-corde-coin        12 px   leur retrait du coin    (536 − 524)
+     --abs-corde-aile        12 px   ce que la carte dépasse de son cordon
+     --abs-corde-repos       50 px   la hauteur d'une ligne  (pas dessiné : 48,5)
+     --abs-corde-entête      76 px   la hauteur de l'entête  (dessin : y 96..172)
+     --abs-corde-jauge       74 px   la longueur du solde    (dessin : x 1190..1261)
+     --abs-corde-jauge-hauteur
+                              15 px   … et sa hauteur        (dessin : y 190..204)
      --abs-corde-noeud       13 px   le carré de corail d'un conflit
-     --abs-corde-lavage       1,5    la largeur du lavage du jour, en jours
+     --abs-corde-lavage         1    la largeur du lavage du jour, en jours
 
    Trois nombres ne sont PAS ici parce qu'ils ne sont pas à la feuille de décider :
    `--abs-corde-employe` et `--abs-corde-solde` viennent du composant (les deux
@@ -2023,19 +2037,30 @@ button.abs-planche-corps:focus-visible {
 
 .abs-cal {
   --abs-corde-fil: 3px;
-  --abs-corde-fil-top: 2px;
-  --abs-corde-anneau: 9px;
+  /* le fil ne colle pas au bord haut de la bande : dessiné à y 196 dans une ligne
+     qui commence à 175 (relevé du 08/12). Posé à 2, il tirait les anneaux sous la
+     règle, la jauge dix-huit pixels trop bas, et le trait du jour traversait
+     l'anneau au lieu de passer entre deux. */
+  --abs-corde-fil-top: 21px;
+  --abs-corde-anneau: 10px;
   --abs-corde-cercle: 3px;
-  --abs-corde-descente: 21px;
+  /* la carte pend de 14 px sous le fil (198 → 214), pas de 21 */
+  --abs-corde-descente: 14px;
   --abs-corde-carte: 46px;
   --abs-corde-encre: 3px;
-  --abs-corde-cordons: 4px;
-  --abs-corde-coin: 6px;
+  --abs-corde-cordons: 3px;
+  --abs-corde-coin: 12px;
+  /* l'aile : ce que la carte dépasse de son cordon, de chaque côté (dessin : la
+     planche va de x 524 à 790, ses cordons à 536 et 776) */
+  --abs-corde-aile: 12px;
   --abs-corde-repos: 50px;
   --abs-corde-noeud: 13px;
   --abs-corde-jauge: 74px;
-  --abs-corde-jauge-hauteur: 14px;
-  --abs-corde-lavage: 1.5;
+  --abs-corde-jauge-hauteur: 15px;
+  /* l'entête du dessin fait 76 px (y 96..172) : le filet du bas EST sa règle */
+  --abs-corde-entete: 76px;
+  /* le lavage fait UNE colonne (x 595..715 pour une cellule de 118) */
+  --abs-corde-lavage: 1;
   --abs-corde-figure-largeur: 78px;
   --abs-corde-figure-hauteur: 35px;
   /* ce que la carte de dernier rang dépasse de sa ligne : le haut sous le fil
@@ -2047,6 +2072,9 @@ button.abs-planche-corps:focus-visible {
     var(--abs-corde-fil-top) + var(--abs-corde-fil) + var(--abs-corde-descente)
     + var(--abs-corde-carte) - var(--abs-corde-repos)
   );
+  /* le ciel laissé au-dessus du lavage dans l'entête : le rectangle du dessin
+     commence à y 120 pour une bande de 96..172 — soit vingt-quatre pixels */
+  --abs-corde-descente-lavage: 24px;
   /* le cran entre deux cartes qui se chevauchent : une carte + un souffle. Le
      MÊME nombre sert à la montée de la carte et à la hauteur que la ligne doit
      laisser libre dessous — écrit deux fois, le deuxième rang mange la ligne. */
@@ -2073,7 +2101,9 @@ button.abs-planche-corps:focus-visible {
 .abs-cal-entete {
   display: flex;
   align-items: stretch;
-  min-height: var(--abs-corde-repos);
+  /* 76 px, pas le pas d'une ligne : le dessin joue l'entête sur un registre
+     large (y 96..172) parce que ses étiquettes sont à la taille de titre */
+  min-height: var(--abs-corde-entête);
   /* le dessin ne sépare pas l'entête par un trait de corde : 2 px (y 162-163) */
   border-bottom: var(--charte-trait) solid var(--charte-bordure);
 }
@@ -2085,11 +2115,11 @@ button.abs-planche-corps:focus-visible {
   left: 0;
   z-index: 3;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--charte-espace-2);
-  padding: var(--charte-espace-3) var(--charte-espace-4);
+  padding: 0 var(--charte-espace-4) var(--charte-espace-3);
   background: var(--abs-corde-fond, var(--charte-sable));
-  font-size: var(--charte-taille-micro);
+  font-size: var(--charte-taille-titre);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--charte-douce);
@@ -2102,30 +2132,54 @@ button.abs-planche-corps:focus-visible {
 }
 
 .abs-cal-jour {
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   gap: var(--charte-espace-2);
-  padding: var(--charte-espace-3) 0 var(--charte-espace-2);
+  /* le dessin centre l'étiquette en bas de sa bande, à seize pixels de la règle
+     (encre mesurée y 141..156 pour une bande finissant à 172) */
+  padding: 0 0 var(--charte-espace-3);
 }
 
+/* un seul corps de lettre pour la lettre et le chiffre : le dessin écrit
+   « L 23 » d'un souffle, la capitale mesurée à seize pixels. Le trait
+   d'union entre les deux n'existe pas — la casse est la sienne, pas la mienne. */
 .abs-cal-jour-nom {
-  font-size: var(--charte-taille-micro);
+  font-size: var(--charte-taille-titre);
+  position: relative;
   text-transform: uppercase;
-  color: var(--charte-douce);
-}
-
-.abs-cal-jour-num {
-  font-family: var(--charte-mono);
-  font-size: var(--charte-taille-corps);
-  font-weight: 600;
   color: var(--charte-encre);
 }
 
-/* le dessin ne teint pas la case du jour dans l'entête : il écrit le chiffre en
-   ambre, et le lavage commence sous la règle. */
+.abs-cal-jour-num {
+  position: relative;
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
+  color: var(--charte-encre);
+}
+
+/* LE LAVAGE DE L'ENTÊTE. Le dessin ne laisse pas la case du jour nue : un
+   rectangle teinté, aux deux coins du haut arrondis, court de y 120 à la règle
+   (172) sur la largeur exacte de la cellule — la suite du lavage, celle des
+   lignes, reprend à la bande et le filet les recoud l'un à l'autre. L'encre
+   passe par-dessus : les étiquettes sont écrites SUR le lavage. */
+.abs-cal-jour[data-aujourdhui='vrai']::before {
+  content: "";
+  position: absolute;
+  top: var(--abs-corde-descente-lavage);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--abs-amber);
+  opacity: 0.14;
+  border-radius: var(--charte-rayon-carte) var(--charte-rayon-carte) 0 0;
+  pointer-events: none;
+}
+
+.abs-cal-jour[data-aujourdhui='vrai'] .abs-cal-jour-nom,
 .abs-cal-jour[data-aujourdhui='vrai'] .abs-cal-jour-num { color: var(--abs-amber) }
 
 .abs-cal-entete-solde {
@@ -2194,7 +2248,9 @@ img.abs-corde-figure { border: 0 }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--charte-taille-corps);
+  /* le dessin écrit les noms au corps de titre (encre mesurée sur trente-neuf
+     pixels de haut pour deux lignes) — pas en micro-étiquette */
+  font-size: var(--charte-taille-titre);
   font-weight: 600;
   color: var(--charte-encre);
 }
@@ -2217,8 +2273,13 @@ img.abs-corde-figure { border: 0 }
 }
 
 /* LES ANNEAUX — un par jour, répartis comme l'entête : pas un `left` calculé.
-   Le trou est peint de la teinte de la bande, donc le fil ne le traverse pas —
-   un trou transparent n'était pas un trou, c'était un cercle posé sur un trait. */
+   Deux relevés du 08/12, tous deux mesurés au pixel :
+   · le trou est peint de la teinte de la bande, donc le fil ne le traverse pas —
+     à chaque anneau du dessin, l'encre du fil s'interrompt de x 470 à 479 ;
+   · l'anneau est à la BORNE du jour, pas à son milieu. Les six trous sont à
+     474, 596, 716, 832, 947, 1062 — les bords des cellules — tandis que les
+     étiquettes restent centrées dans la leur. Un anneau `left: 50%` tombait
+     sous le chiffre du jour : c'est le décalage qu'il voyait de travers. */
 .abs-corde-anneaux {
   position: absolute;
   inset: 0;
@@ -2237,7 +2298,9 @@ img.abs-corde-figure { border: 0 }
 .abs-corde-anneaux i::before {
   content: "";
   position: absolute;
-  left: 50%;
+  /* la naissance du jour : l'anneau est centré sur sa borne gauche, à cheval sur
+     deux cellules — jamais sous son étiquette */
+  left: 0;
   top: calc(
     var(--abs-corde-fil-top) + var(--abs-corde-fil) / 2
     - (var(--abs-corde-anneau) + 2 * var(--abs-corde-cercle)) / 2
@@ -2257,9 +2320,12 @@ img.abs-corde-figure { border: 0 }
 }
 
 /* AUJOURD'HUI — le dessin ne laisse pas un cheveu pâle : la journée est lavée
-   d'ambre sur une largeur et demie de jour, du haut en bas de la pile, et un
-   trait de 4 px court dedans. Les deux partagent le `left` du composant, donc
-   ils tombent sur le même anneau que les cartes. */
+   d'ambre sur UNE colonne (x 595..715 pour une cellule de 118 — pas une et
+   demie, j'avais forci), du haut de l'entête au bas de la pile, et un trait de
+   corde — 3 px, x 656..658 — court dedans, à l'aplomb du milieu du jour, donc
+   ENTRE deux anneaux. Les deux partagent le `left` du composant.
+   L'opacité est une mesure, pas une intuition : le ton du lavage (237, 213, 193)
+   sur la bande claire (243, 234, 216) rend l'ambre `--abs-amber` à 14 %. */
 .abs-corde-lavage {
   position: absolute;
   top: 0;
@@ -2271,7 +2337,7 @@ img.abs-corde-figure { border: 0 }
   max-width: 100%;
   transform: translateX(-50%);
   background: var(--abs-amber);
-  opacity: 0.10;
+  opacity: 0.14;
   pointer-events: none;
 }
 
@@ -2279,7 +2345,9 @@ img.abs-corde-figure { border: 0 }
   position: absolute;
   top: 0;
   bottom: 0;
-  width: var(--charte-trait);
+  /* le trait du jour a la graisse du fil, pas celle du filet : 3 px mesurés
+     (x 656, 657, 658) dans le dessin, et la même encre ambrée */
+  width: var(--abs-corde-fil);
   transform: translateX(-50%);
   background: var(--abs-amber);
   pointer-events: none;
@@ -2304,7 +2372,14 @@ img.abs-corde-figure { border: 0 }
     var(--abs-corde-fil-top) + var(--abs-corde-fil) + var(--abs-corde-montée)
   );
   height: var(--abs-corde-carte);
-  min-width: 0;
+  /* une carte d'une journée vaut une colonne ET l'aile de chaque côté : le
+     dessin ne réduit pas la planche à ses deux cordons (mesurée : 156 de large
+     pour un jour, sur une cellule de 118). Et le plancher ne dépasse jamais la
+     piste — en mode jour, une colonne vaut le champ entier. */
+  min-width: min(
+    100% - 4px,
+    calc(100% / var(--abs-corde-nb-jours) + 2 * var(--abs-corde-aile))
+  );
   display: flex;
   align-items: center;
   gap: var(--charte-espace-2);
@@ -2321,7 +2396,8 @@ img.abs-corde-figure { border: 0 }
   border-radius: var(--charte-rayon-champ);
   box-shadow: var(--charte-ombre-dure);
   font-family: var(--charte-police);
-  font-size: var(--charte-taille-corps);
+  /* « Congé · 3 j » est relevé à dix-sept pixels d'encre : la taille de titre */
+  font-size: var(--charte-taille-titre);
   font-weight: 600;
   line-height: 1.15;
   color: var(--charte-encre);
@@ -2381,11 +2457,12 @@ img.abs-corde-figure { border: 0 }
 /* le mot du statut n'est pas un ornement : en attente et refusée se LISENT (C7) */
 .abs-corde-statut { color: var(--charte-douce); font-size: var(--charte-taille-micro) }
 
-/* LE SOLDE, à droite : le dessin dessine une ORNIÈRE — une piste de 74 × 14 en
-   contour pointillé, et ce qui RESTE posé dedans en plein. Ma version précédente
-   (6 px de haut, contour pointillé par-dessus) rendait une échelle de bois, pas
-   une longueur. Le nombre reste écrit à côté : une jauge seule serait un statut
-   sans mot. */
+/* LE SOLDE, à droite : le dessin pose une BARRE pleine, cerclée d'encre — pas
+   une ornière pointillée, que j'avais crue telle. Relevé 08/12 : x 1190..1261,
+   y 190..204 (72 × 15), contour d'encre de 2 px, fond (209, 199, 187) là où il
+   reste du solde, `--charte-aplat` (161, 93, 47) pleins, et le nombre écrit à
+   côté — x 1270..1319, dix pixels de haut d'encre, jamais dans la barre : une
+   jauge seule serait un statut sans mot. */
 .abs-corde-solde {
   width: var(--abs-corde-solde);
   flex-shrink: 0;
@@ -2393,10 +2470,16 @@ img.abs-corde-figure { border: 0 }
   right: 0;
   z-index: 2;
   display: flex;
-  align-items: center;
+  /* la jauge n'est pas centrée dans la ligne : le dessin la pose SUR le fil,
+     son axe à y 197 pour un fil à 196-198. Une ligne centrée sur la bande la
+     faisait flotter dix-huit pixels plus bas, à mi-hauteur de la carte. */
+  align-items: flex-start;
   justify-content: flex-end;
   gap: var(--charte-espace-3);
-  padding: 0 var(--charte-espace-4);
+  padding: calc(
+    var(--abs-corde-fil-top) + var(--abs-corde-fil) / 2
+    - var(--abs-corde-jauge-hauteur) / 2
+  ) var(--charte-espace-4) 0;
   background: var(--abs-corde-fond);
 }
 
@@ -2406,8 +2489,9 @@ img.abs-corde-figure { border: 0 }
   height: var(--abs-corde-jauge-hauteur);
   flex-shrink: 0;
   box-sizing: border-box;
-  border: var(--charte-trait) dashed var(--charte-douce);
+  border: var(--charte-trait) solid var(--charte-encre);
   border-radius: var(--charte-rayon-champ);
+  background: var(--charte-bordure);
 }
 
 .abs-corde-jauge i {
@@ -2421,10 +2505,9 @@ img.abs-corde-figure { border: 0 }
 }
 
 .abs-corde-nombre {
-  font-family: var(--charte-mono);
-  font-size: var(--charte-taille-corps);
-  font-weight: 600;
-  color: var(--charte-texte);
+  font-size: var(--charte-taille-titre);
+  font-weight: 700;
+  color: var(--charte-encre);
 }
 
 /* le survol répond en surface plus appuyée, jamais en ambre, jamais en

@@ -674,8 +674,25 @@ export default function AbsencesCalendrier({
                         data-testid="abs-cal-barre"
                         data-statut={a.status}
                         style={{
-                          left: `calc(${(seg.debut / nbJours) * 100}% + 2px)`,
-                          width: `calc(${((seg.fin - seg.debut + 1) / nbJours) * 100}% - 4px)`,
+                          /* la planche ne s'étend pas sur les cellules : elle est
+                             ACCROCHÉE aux centres de ses deux jours de rive, et
+                             l'aile du dessin (12 px) déborde chaque cordon. Mesuré
+                             08/12 : cordons à x 536 et 776 — les centres du mardi
+                             24 et du jeudi 26 — carte de x 524 à 790, soit deux
+                             pas de jour et douze pixels d'aile de chaque côté.
+                             Posée sur les bords des cellules, elle débordait d'un
+                             demi-jour et ses deux ficelles tombaient dans le vide.
+                             `left` ET `right`, jamais une largeur : la période
+                             coupée par la fenêtre doit toucher le bord, pas
+                             s'arrêter au centre du premier jour visible. */
+                          /* en mode jour, la colonne unique EST le champ : les deux
+                             rives se collent aux bords, comme avant la cote. */
+                          left: nbJours === 1 || seg.coupeeAvant
+                            ? '2px'
+                            : `calc(${((seg.debut + 0.5) / nbJours) * 100}% - var(--abs-corde-aile))`,
+                          right: nbJours === 1 || seg.coupeeAprès
+                            ? '2px'
+                            : `calc(${100 - ((seg.fin + 0.5) / nbJours) * 100}% - var(--abs-corde-aile))`,
                           '--abs-corde-rang': seg.rangee,
                           /* La carte est crème cerclée d'encre, comme au dessin :
                              la couleur du motif ne se pose PAS sur la carte (le
@@ -689,9 +706,11 @@ export default function AbsencesCalendrier({
                         }}
                       >
                         {/* Les DEUX cordons du dessin : ils partent du bord haut de
-                            la carte, à six pixels des coins, et montent jusqu'au fil.
-                            Un seul cordon de 2 px, mesuré sur l'écran, ne se voyait
-                            pas — une carte sans attache est une étiquette posée. */}
+                            la carte, à douze pixels des coins (cordon à x 536 pour
+                            une carte née à 524), épais de 3, et montent jusqu'au
+                            fil. Un seul cordon de 2 px, mesuré sur l'écran, ne se
+                            voyait pas — une carte sans attache est une étiquette
+                            posée. */}
                         <span className="abs-corde-cordons" aria-hidden="true" />
                         {/* le nœud sur la corde, quand la pointeuse conteste ce jour */}
                         {conflitParAbsence[a.id]?.status === 'pending' && (
