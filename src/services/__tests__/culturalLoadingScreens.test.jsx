@@ -46,9 +46,16 @@ it('la scène validée dispose de calques distincts et d’un repli sans mouveme
   expect(css).toContain('.abs-loading-layers { display: none; }')
 })
 it('les pages réutilisent les mêmes bandeaux et le chargement Absences reste lié au chargement réel', () => {
-  for (const name of ['Pointages','Pauses']) {
+  for (const name of ['Pointages']) {
     expect(readFileSync(`src/pages/${name}.jsx`,'utf8')).toContain(`pathname="/${name.toLowerCase()}" placement="bottom"`)
   }
+  /*  Pauses garde la bande du HAUT — c'est l'identité de la page — mais la
+      bande du bas a été retirée à sa demande le 26/11 : « enlève le bandeau
+      motif en bas de l'écran ». Elle fermait la page sur un motif qui
+      n'annonçait plus rien. */
+  const pauses = readFileSync('src/pages/Pauses.jsx','utf8')
+  expect(pauses).toContain('pathname="/pauses"')
+  expect(pauses).not.toContain('placement="bottom"')
   // Employés : le bandeau de motif a été retiré de cette page
   // (demande du fondateur, 08/11 : « enlève le bandeau motif culturel »).
   // La page ne doit plus en porter, ni en haut ni en bas.

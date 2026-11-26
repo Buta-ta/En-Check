@@ -7906,3 +7906,34 @@
   letter-spacing: 0.02em;
   background: var(--charte-surface);
 }
+
+/* ═══ LE SCEAU DEVIENT UN PIED SUR DU SABLE ═══════════════════════════════
+
+     « Colore ce logo (couleur sable) pour ce qui entoure le pied, et le pied
+     aux couleurs du logo En-Check, c'est pour penser à un pied sur du sable »
+     — 26/11.
+
+     Le disque du sceau était en `--pv-papier` (la surface claire). Il prend
+     le SABLE de la charte, et son double trait reste à l'encre : le cercle
+     est la plage, le pied y laisse son empreinte.
+
+     Le pied, lui, est coloré dans `PiedGrave` : encre pour la sole, argile
+     pour le second trait et le gros orteil, lavis de sable dans le creux. */
+.pauses-v2-sceau {
+  background: var(--charte-sable);
+}
+/*  Le lavis du pied se lit sur le sable du disque comme un creux : sans
+    assez de contraste, il disparaîtrait. Un cran plus dense que le disque,
+    donc, et pris dans la surface claire. */
+.pauses-v2-pied path[fill] {
+  fill: var(--charte-surface2);
+  opacity: 0.9;
+}
+
+/*  Un cran plus de contraste entre la plage et le pied : sur le sable clair
+    de la charte, le lavis du creux se distinguait à peine du disque. Le
+    disque descend d'un ton, le creux garde la surface claire — le pied se
+    lit comme une empreinte, pas comme un dessin posé à plat. */
+.pauses-v2-sceau {
+  background: color-mix(in srgb, var(--charte-sable) 72%, var(--charte-surface2));
+}
