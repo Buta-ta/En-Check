@@ -84,11 +84,18 @@ const règleFeuille = (début) => {
   return CSS.slice(i, CSS.indexOf('}', CSS.indexOf('{', i)) + 1)
 }
 
-/** Un jeton de la rubrique, en nombre — la cote du dessin, pas une intention. */
-function cote(nom) {
+/** Un jeton de la rubrique, en nombre — la cote du dessin, pas une intention.
+ * ⚠️ Il SUIT un `var()` simple : `--abs-pli-pas` est devenu la lecture du pas de la
+ * semaine (un nombre écrit une fois, deux modes), et une aiguille qui ferait
+ * `Number('var(…')` comparerait `NaN` à `NaN` en croyant mesurer quelque chose. */
+function cote(nom, profondeur = 0) {
   const trou = PLI.split(`${nom}:`)[1]
   if (!trou) throw new Error(`jeton du pli absent : ${nom}`)
-  return Number(trou.trim().split(';')[0].replace('px', ''))
+  if (profondeur > 2) throw new Error(`chaîne de var() trop longue sur ${nom}`)
+  const brut = trou.trim().split(';')[0].trim()
+  const renvoi = brut.match(/^var\((--abs-pli-[\wéèê-]+)\)$/)
+  if (renvoi) return cote(renvoi[1], profondeur + 1)
+  return Number(brut.replace('px', ''))
 }
 
 /** La valeur brute d'un jeton (pour les valeurs qui ne sont pas des nombres). */
@@ -1227,5 +1234,108 @@ describe('📐 le pli par employé', () => {
     expect(caseTete).not.toContain('--abs-pli-pince')
     // le mot du prénom garde sa priorité : c'est la troncature qui paie l'espace
     expect(nud(corps('.abs-pli-nom'))).toContain('min-width:0')
+  })
+
+  it('37. le mois relit les cotes de la semaine, il ne les re-écrit pas', () => {
+    // SA PROPRE CAPTURE (08/12, « le mois n'est pas bien fait, il y a bcp d'anomalies »)
+    // nommait six défauts, tous nés de la même cause : des cotes de SEMAINE lues sur
+    // trente et une colonnes de trente-six. Le mois n'a donc pas de rules nouvelles,
+    // il relit les jetons : chaque valeur ci-dessous est un calcul dont le seul nombre
+    // est celui du dessin.
+    const hôte = ".abs-cal[data-mode='mois'] {"
+    const i = PLI.indexOf(hôte)
+    if (i === -1) throw new Error("le mode mois n'a plus de bloc dans la rubrique du pli")
+    const mois = nud(PLI.slice(i, PLI.indexOf('}', i)))
+    expect(mois).toContain('--abs-pli-pas:calc(var(--abs-pli-pas-semaine)/2)')
+    expect(mois).toContain('--abs-pli-entête:var(--abs-pli-pas)')
+    expect(mois).toContain('--abs-pli-ciel:0px')
+    expect(mois).toContain('--abs-pli-rentrée:calc(2*var(--abs-pli-pas))')
+    expect(mois).toContain('--abs-pli-planche:var(--abs-pli-pas)')
+    expect(mois).toContain('--abs-pli-empilement:0px')
+    expect(mois).toContain('--abs-pli-carré:calc(var(--abs-pli-pas)-2*var(--charte-espace-1))')
+    expect(mois).toContain('--abs-pli-tiers:1')
+    expect(mois).toContain('--abs-pli-trait-hauteur:100%')
+    // la largeur de hachure N'EST PAS relue à 100 % : à trente-six pixels de
+    // cellule, le cerne remplissait la case de six diagonales (le zèbre du peigne,
+    // rejoué en entête). Elle garde les 40 du dessin, une seule diagonale déborde.
+    expect(mois).not.toContain('--abs-pli-hachure-largeur')
+    expect(mois).toContain('--abs-pli-hachure-hauteur:calc(var(--abs-pli-pas)-var(--abs-pli-rule))')
+    // le peigne du mois est UNE RÈGLE PAR JOUR posée tous les sept jours — pas le
+    // peigne de la semaine (trois poils par cellule), qui rayait la page en zèbre.
+    // la borne est l'accolade, pas la fin de la rubrique : une tranche sans fin
+    // avalerait les neuf règles suivantes et compterait leurs encres (23 au lieu
+    // de 1 — une aiguille qui échoue pour une raison d'ordre n'est pas une mesure)
+    const débutPiste = PLI.indexOf(".abs-cal[data-mode='mois'] .abs-pli-piste {")
+    expect(débutPiste, "le peigne du mois n'a plus de règle").toBeGreaterThan(-1)
+    const pisteMois = nud(PLI.slice(débutPiste, PLI.indexOf('}', débutPiste)))
+    expect(pisteMois).toContain('background-size:calc(7*var(--abs-pli-jour))')
+    // UNE SEULE RIVE : la septième journée suivante commence exactement où finit la
+    // septième — un trait à droite ET à gauche peindrait un double aux coutures.
+    expect((pisteMois.match(/var\(--charte-encre\)/g) || []).length).toBe(1)
+    // la lettre du jour se tait, le quantième se centre, le mot du statut se tait :
+    // trois `display`, pas trois tailles réécrites
+    expect(nud(corps(".abs-cal[data-mode='mois'] .abs-cal-jour-nom"))).toContain('display:none')
+    expect(nud(corps(".abs-cal[data-mode='mois'] .abs-pli-statut"))).toContain('display:none')
+    const étiquette = nud(corps(".abs-cal[data-mode='mois'] .abs-cal-jour"))
+    expect(étiquette).toContain('padding:0')
+    expect(étiquette).toContain('align-items:center')
+    // et la semaine NE BOUGE PAS : le mois est une relecture, pas une retouche
+    expect(cote('--abs-pli-pas')).toBe(78)
+    expect(cote('--abs-pli-planche')).toBe(40)
+    expect(cote('--abs-pli-carré')).toBe(51)
+    expect(valeur('--abs-pli-tiers')).toBe('3')
+    // le nombre du mois se déduit, il n'est pas posé : 39 = la moitié de 78, et la
+    // rentrée (78) retrouve la distance absolue de la semaine (1 × 78)
+    const pas = cote('--abs-pli-pas-semaine')
+    expect(pas / 2).toBe(39)
+    expect(2 * (pas / 2)).toBe(pas)
+    expect(cote('--abs-pli-rule')).toBe(3)
+    expect(pas - cote('--abs-pli-rule')).toBe(75) // la hachure, à la semaine
+    expect(pas / 2 - cote('--abs-pli-rule')).toBe(36) // la hachure, au mois
+    // et le souffle du CONTENEUR se relit avec la pile : le mois la referme à
+    // 2 × 39 = 78 (la distance absolue de la semaine), donc il ne paie ni la
+    // chute de droite ni celle du bas — huit pixels de défilement pour une ombre
+    // qui n'existe pas est un défilement volé (08/12, « optimise l'espace »)
+    const souffle = nud(corps(".abs-cal[data-mode='mois'] .abs-cal-champ"))
+    expect(souffle).toContain('padding-right:0')
+    expect(souffle).toContain('padding-bottom:0')
+  })
+
+  it('38. la page Absences est dans la coque, et son rail porte les images', () => {
+    // « RAMENE THE SIDEBAR ET LE RAIL DANS LA PAGE ABSENCE (n\'oublie pas
+    // d\'afficher les images respectives des entreprises dans la sidebar comme dans
+    // la page employées) », 08/12. Trois lois, trois aiguilles :
+    // 1️⃣ une barre, une seule : la page ne se DESSINE pas de rail, elle rend
+    //    `<CoqueAdmin sidebar={<SidebarUnique …/>}>` comme Planning, Pauses, Retards ;
+    expect(PAGE).toContain("import CoqueAdmin from '../components/coque/CoqueAdmin'")
+    expect(PAGE).toContain('<SidebarUnique')
+    // 2️⃣ le rail est le FILS DIRECT de `.coque-admin` (Sinon : un wrapper de plus,
+    //    et la barre redevient un flex-item qui ôte sa largeur à la page — la faute
+    //    du 08/11, reproduite). Deux `<CoqueAdmin` (ouverture + fermeture), rien de plus.
+    // `<CoqueAdmin` EN BALISE OUVERTE, une fois : ni l'import, ni le commentaire qui
+    // nomme la coque (une aiguille qui compte les SOUS-CHAÎNES d'un fichier compterait
+    // aussi la prose — et la prose, ici, cite exactly what we forbid twice).
+    expect((PAGE.match(/^\s*<CoqueAdmin$/gm) || []).length).toBe(1)
+    expect((PAGE.match(/<\/CoqueAdmin>/g) || []).length).toBe(1)
+    // 3️⃣ le rail est lu par TOUTES les pages de la coque via la MÊME fabrique de
+    //    sections et le MÊME gabarit de panneau : écrit en dur ici, il dériverait
+    //    au premier bouton oublié (c'est déjà la loi des sections, see
+    //    `sectionsNavAdmin`).
+    expect(PAGE).toContain("import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'")
+    expect(PAGE).toContain('sectionsNavAdmin({')
+    const barre = lire('src', 'components', 'SidebarUnique.jsx')
+    const gabarit = Number(barre.match(/const LARGEUR_PANNEAU = (\d+)/)[1])
+    expect(gabarit).toBe(254)
+    // « COMME DANS LA PAGE EMPLOYÉES » : l'image de l'entreprise, pas sa lettre. Le
+    // rond lit `logo_url` sur les objets qu'on lui passe — une requête qui ne la
+    // demande pas laisse la lettre du nom, et on croit le logo perdu alors qu'il
+    // n'a jamais été demandé (`SelecteurEntreprise`, 26/11).
+    const selecteur = lire('src/components/SelecteurEntreprise.jsx')
+    expect(selecteur).toContain('entreprise?.logo_url')
+    expect(PAGE).toContain('entreprises={entreprises}')
+    expect(PAGE).toContain('entrepriseActive={entrepriseActivePourRail}')
+    expect(PAGE).toContain(".from('enterprises').select('*')")
+    // et le rail n'a pas de sections récrites à la main
+    expect(PAGE).not.toContain("label: 'Absences', path: '/absences'")
   })
 })

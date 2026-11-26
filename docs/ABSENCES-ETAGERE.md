@@ -817,3 +817,93 @@ erreur d'exécution : sans aiguille, il ne se voit que sur l'image.
 | verrous réécrits à la mesure, pas relâchés | 3 (l'ombre se relit sur le pas, le souffle du bas aussi, et le champ ne s'étale plus), 16 (la pince de ligne se déduit de la case), 22 (mort de `--abs-pli-ombre` puis de `--abs-pli-deuil` ; `recul`/`pile`/`rentrée`/`pince` écrits en calculs), 28 (la feuille est une **bande clinquée** : ni `inset:0`, ni `border-left` droite, ni `transform:rotate`), 30 (le plateau ne se garde plus d'air en padding interne), 35 (l'arithmétique de l'éventail : 16·13 et 8·5 au sommet, rentrées à quatre et cinq pas) ; 36 porte la loi de portée du bandeau |
 | `npm run charte` | **inchangé** : 64 tailles · 43 marges · 27 rayons, recompté sur `git archive HEAD src` (8ac940c) **et** sur l'arbre d'aujourd'hui — aucune valeur neuve |
 | `npm run build` · `npx eslint` | ✓ (23,1 s) · 3 erreurs et 3 warnings **préexistants** dans `Absences.jsx`, aucun neuf |
+
+## La vignette du mois, refaite à la mesure (08/12)
+
+Le fondateur a posé sa propre capture du mois avec « le mois n'est pas bien fait, il y a
+bcp d'anomalies ». Les pixels de l'image (2 326 × 1 180, ÷2 pour passer en CSS) nomment
+six défauts, et les six sont nés de la même cause : **des cotes de la semaine lues sur
+trente et une colonnes de trente-six**.
+
+| ce que la capture montrait | la mesure | ce qui a été relu |
+|---|---|---|
+| le peigne rayait la page en zèbre | poils tous les **13,7 px** d'image (6,85 CSS), deux pixels de trait sur douze | `--abs-pli-tiers: 1` et une règle **par semaine** (`background-size: calc(7 × var(--abs-pli-jour))`), trait de 2 → pas de 36 px |
+| la journée flottait au milieu de la ligne | encre de 22 px dans une ligne de 39 px d'image | `--abs-pli-trait-hauteur: 100%` |
+| « 4J 5V 6S 7D … » se touchait | étiquettes tous les **40–42 px** d'image pour 72 px de cellule, `--charte-taille-titre` (20 px) | la lettre du jour se tait (`display: none`), le quantième se centre en micro |
+| les hachures de week-end bavaient sur trois jours | boîtes de 74, 62 et **227** px d'image | largeur **non relue** (40 du dessin), hauteur `pas − rule` ; à `100%` le cerne emplissait la case de six diagonales |
+| la planche de 40 dans une ligne de 39 | règles à y 208 · 364 · 520 · 676 · 832 · 988 · 1144 → **pas de 78 CSS par ligne** pour un contenu de 40 | `--abs-pli-pas: calc(--abs-pli-pas-semaine / 2)` = **39**, `planche = pas`, `empilement = 0`, `carré = 39 − 2 × espace-1` = **31** |
+| « 2 À SIGNALER · 4 RIEN CE MOIS-CI » | phrase coupée, verbe avalé | `4 rien à signaler ce mois-ci` — le second membre reprend le verbe du premier |
+
+Et deux chiffres rendus à la page : l'entête du mois **n'a plus de marge au talon**
+(`padding: 0`, la bande EST la case — la cote de 76 disparaît au lieu d'être
+récrite en 39 − 37), et le **souffle droit/bas du conteneur** tombe à 0 (la pile du
+mois se referme à `2 × 39 = 78`, la distance absolue de la semaine : rien ne déborde,
+donc huit pixels de défilement ne se paient plus pour une ombre absente).
+
+Le gain, mesuré sur les mêmes jetons : **459 px** avant la onzième ligne contre **886**
+à la semaine — dix lignes de mois tiennent dans la moitié du pli d'une semaine.
+`--abs-pli-pas-semaine` est le seul nombre écrit ; `--abs-pli-pas` n'en est que la
+lecture, et le verrou 4 (`cote('--abs-pli-pas') = 78`) traverse le `var()` — la cote
+du dessin se relit, elle ne se re-écrit pas dans les deux sens.
+
+## Le rang des demandes et l'onglet « configuration congés » (08/12)
+
+Deux captures, une loi : **la page ne se donne pas deux figures**. Le bandeau
+d'alerte et ses quatre pastilles (image 2) vivaient en `1px solid rgba(...)` à rayon
+999 sous un **filet pointillé** ; l'onglet de configuration (texte collé) empilait
+**quatre cartes** cerclées de 1 px à rayon 18, peignait ses deux actions principales
+en **dégradés** (`#F59E0B → #D97706`, `#C25E28 → #8C3418`, texte `#000` / `#FFF5E6`)
+et écrivait le texte d'aide « Ex: 1.75 jours/mois » sous le champ.
+
+* le cerclage est `--abs-pli-rule` (3) à `--charte-rayon-champ` (6), **le même que le
+  plateau** ; la seconde bordure d'un objet est `--charte-trait` (2), jamais un
+  `rgba(…, 0.2)` de plus ;
+* le rang des demandes est **un seul rang** : alerte + filtre séparés par la règle
+  d'encre, une couture par bordure, repli à 650 px **dans le bloc du pli** (un seuil,
+  un `@media` par feuille — la rubrique du rang n'en contient aucun) ;
+* la pastille de statut est la **pince de la grille** : `--charte-rayon-champ`, cerclée
+  de 2, pleine d'argile quand elle est en main, `aria-pressed` ; le compte est en
+  `--charte-mono`. Le pointillé est mort, le rouge reste **seul** à l'alerte ;
+* l'action pleine est `--charte-aplat` sous `--charte-blanc`, jamais un dégradé ; le
+  recalcul devient un **pied de carte** (une carte de moins, 40 px de respiration
+  rendus) ;
+* un exemple se lit **dans** le champ (`placeholder="1.75"`), sous le champ on écrit
+  ce que le nombre devient (`1.75 × 12 = 21 jours sur une année pleine`) ;
+* « Méthode d'acquisition des congés » n'était pas une note, c'était le titre du
+  groupe égaré en dessous : le groupe devient un `<fieldset><legend>` ;
+* la table des soldes se **governe** (une règle par rangée, l'encre seulement sur le
+  solde, sceau d'initiales carré) et sa largeur de colonnes vit dans
+  `--abs-soldes-grille` — la constante JavaScript `SOLDE_GRILLE` est morte, une cote
+  écrite deux fois se contredit dès qu'on retouche la table ;
+* l'« acquis » s'explique : `1.75 × 3.4 mois depuis le 12/01/2026`, parce que 24 j à
+  côté de 8 j se lisait comme une incohérence de la base alors que c'est la règle. Le
+  calcul n'est **pas** refait à la page — seuls les paramètres sont nommés (deux
+  fabrications du même nombre, c'est deux nombres) ;
+* côté motifs : le hex n'est plus jamais du texte (`#10B981` → « Vert sauge » + son
+  nuancier, `nomDeCouleur`), et `nettoyerEmoji` rend **un** graphème (`Intl.Segmenter`)
+  au lieu de deux, pendant que `nettoyerLibellé` retire de la **chaîne** le caractère
+  pictographique du même coup — « 📋 🎙️ Musique » ne peut plus naître, parce que le
+  libellé et l'emoji ont maintenant un porteur chacun.
+
+## La barre et son rail sur la page Absences (08/12)
+
+La page était la seule des cinq coques à ne pas la porter (`AnnoncesAccueil`,
+`Employee360`, `Employes`, `Pauses`, `Planning` : oui). Elle se rend donc elle-même
+sous `<CoqueAdmin sidebar={<SidebarUnique …/>}>` — pas de route à retoucher, pas de
+patron recopié : `sectionsNavAdmin` reste la seule fabrique des rubriques, et le
+gabarit du panneau se relit à la source du composant (254), pas dans une copie.
+
+« COMME DANS LA PAGE EMPLOYÉES » visait l'image : `SelecteurEntreprise` lit
+`logo_url` sur les objets qu'on lui passe, signés par `PhotoSignee`. La page
+demandait bien `select('*')` pour le super_admin — mais **ne chargeait rien du tout**
+pour un admin ordinaire (le `select('*')` ne tournait que dans la branche
+`super_admin` de `checkAccess`). `loadEntreprises(own)` existe maintenant : la
+requête sur la propre entreprise de l'admin non super passe par la même fabrique, et
+sa pastille a une image au lieu de la lettre de son nom.
+
+Deux conséquences mesurées, pas choisies : `S.container` perd son `minHeight: 100vh`
+(la coque connaît déjà sa hauteur, deux planchers l'un sur l'autre n'en font qu'un de
+trop), et le thème de la page se règle **dans le rail** — l'interdit du 27/11 (« enlève
+le bouton clair/sombre ») se relit sans se relâcher : pas de `abs-theme-toggle`, pas de
+classe, pas d'icône à la page ; `toggleTheme` n'apparaît que dans la déstructuration du
+contexte et dans `surTheme` (aiguille 6 de `entetesEtTheme`, 12 de la même).

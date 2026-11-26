@@ -26,6 +26,9 @@ import { DemandeCongeCard } from '../components/DemandeCongeCard'
 import { AbsencesFil } from '../components/AbsencesFil'
 import { supprimerDemandeEtSesAbsences } from '../services/lienDemandeAbsence'
 import AbsencesChemise from '../components/AbsencesChemise'
+import CoqueAdmin from '../components/coque/CoqueAdmin'
+import SidebarUnique from '../components/SidebarUnique'
+import { sectionsNavAdmin } from '../components/coque/sectionsNavAdmin'
 import { cibleRetour } from '../lib/monEntreprise'
 import { MotifsAbsenceProvider } from '../contexts/MotifsAbsenceContext'
 import { useTheme } from '../contexts/ThemeContext'
@@ -392,7 +395,33 @@ function AbsenceCard({ absence, admin, onEdit, onDelete, onStatusChange, onViewD
 // ═══════════════════════════════════════════════════════════
 // COMPOSANT PRINCIPAL
 // ═══════════════════════════════════════════════════════════
-const SOLDE_GRILLE = 'minmax(180px, 2fr) repeat(4, minmax(80px, 1fr))'
+/** Douze mois, ou moins depuis l'embauche : le diviseur de l'acquisition, en
+    dixièmes (un `1.75 × 3.4` affiché entier dirait « 6 » pour 5,95). */
+const nombreDeMois = (mois) => Math.round(Math.max(0, Math.min(12, mois)) * 10) / 10
+
+/** COMMENT un « acquis » est fait. Sans cette ligne, 24 j à côté de 8 j se lit
+    comme une incohérence de la base alors que c'est la règle (fondateur, 08/12 :
+    la colonne « Acquis » alternait 24j et 8j sans que rien ne le dise). Le
+    calcul n'est PAS repris à la charge du service : on nomme les paramètres, on
+    ne redonne pas le résultat — deux fabrications du même nombre, c'est deux
+    nombres. */
+const explicationAcquis = (item, config, annee) => {
+  const parMois = Number(config?.leave_days_per_month) || 0
+  if (!parMois) return 'aucune acquisition réglée'
+  if (config?.leave_reference_date === 'calendar_year') {
+    return `année civile · ${parMois} × 12, plafonné à ${config.annual_leave_cap || '—'} j`
+  }
+  const embauche = item?.employees?.hire_date
+  if (!embauche) return `${parMois} j/mois depuis l’embauche (date inconnue)`
+  const née = new Date(`${embauche}T12:00:00`)
+  const début = Number(née.getFullYear()) < Number(annee) ? new Date(`${annee}-01-01T12:00:00`) : née
+  const fin = new Date()
+  const mois =
+    (fin.getFullYear() - début.getFullYear()) * 12 + (fin.getMonth() - début.getMonth()) +
+    (fin.getDate() >= début.getDate() ? 1 : 0)
+  if (Number(née.getFullYear()) > Number(annee)) return `entré le ${embauche.slice(8, 10)}/${embauche.slice(5, 7)}/${embauche.slice(0, 4)} · rien à acquérir cette année`
+  return `${parMois} × ${nombreDeMois(mois)} mois depuis le ${embauche.slice(8, 10)}/${embauche.slice(5, 7)}/${embauche.slice(0, 4)}`
+}
 
 export default function Absences() {
   const [admin, setAdmin] = useState(null)
@@ -469,7 +498,7 @@ export default function Absences() {
   // Le thème, lui, reste : `data-theme` en dépend, et il vient de
   // `localStorage['encheck.theme']` (D-005) — retirer le bouton ne remet pas la page
   // en clair de force, il retire l'interrupteur de CET écran.
-  const { darkMode } = useTheme()
+  const { darkMode, toggleTheme } = useTheme()
   const today = new Date().toISOString().split('T')[0]
 
   const [formData, setFormData] = useState({
@@ -505,6 +534,7 @@ export default function Absences() {
       const { data: entreprise } = await supabase.from('enterprises').select('module_conges').eq('id', enterpriseId).single()
       if (!entreprise?.module_conges) { toast.error('Le module Absences & Congés n\'est pas activé pour votre entreprise'); navigate('/dashboard'); return }
       setSelectedEntrepriseId(enterpriseId)
+      await loadEntreprises(enterpriseId)
       setAccessChecked(true)
     } catch {
       toast.error('Erreur de vérification des accès')
@@ -526,9 +556,19 @@ export default function Absences() {
   const getHolidayMap = useCallback((enterpriseId) => holidayMapsByEnterprise[enterpriseId] || new Map(), [holidayMapsByEnterprise])
 
   // ─── CHARGEMENT ───────────────────────────────────────
-  const loadEntreprises = async () => {
-    const { data } = await supabase.from('enterprises').select('*').eq('is_active', true).order('name')
-    setEntreprises(data || [])
+  const loadEntreprises = async (own = null) => {
+    /* own : la liste à charger quand l'admin n'est pas super_admin. Le rail a
+       besoin de l'entreprise ACTIVE — sa pastille d'image, son nom — alors
+       qu'avant cette requête ne tournait que pour le super_admin et que le
+       filtre « Toutes entreprises » restait seul demandeur. On ne demande
+       jamais `*` en force : un rôle non super ne peut pas lire la table des
+       entreprises, d'où le filtre sur son propre identifiant. */
+    let requete = supabase.from('enterprises').select('*')
+    requete = own
+      ? requete.eq('id', own).maybeSingle()
+      : requete.eq('is_active', true).order('name')
+    const { data } = await requete
+    setEntreprises(own ? (data ? [data] : []) : (data || []))
   }
 
   const loadData = async () => {
@@ -1437,6 +1477,39 @@ export default function Absences() {
     ? selectedEntrepriseId
     : (admin?.selectedEnterprise?.id || admin?.enterprise_id)
 
+  /* ═══ LE RAIL ET LA BARRE (demande du 08/12 : « RAMENE THE SIDEBAR ET LE
+     RAIL DANS LA PAGE ABSENCE — n'oublie pas d'afficher les images respectives
+     des entreprises dans la sidebar comme dans la page employées »).
+     La page se rend elle-même sous <CoqueAdmin> : pas de route dédiée à
+     modifier, et le rail se retrouve piloté par la MÊME fabrique de sections
+     que la page Employés — `sectionsNavAdmin`, une liste pour toutes les
+     pages, jamais un patron recopié.
+
+     ⚠️ « comme dans la page employées » veut dire l'IMAGE de l'entreprise,
+     pas sa lettre : `SelecteurEntreprise` lit `logo_url` (signé par
+     `PhotoSignee`) sur les objets passés dans `entreprises`. C'est pour ça
+     que `loadEntreprises` demande `*` et tourne aussi pour un admin non
+     super : une requête qui ne rapporte pas `logo_url` laisse la lettre du
+     nom, et on croit le logo perdu alors qu'il n'a jamais été demandé. */
+  const entrepriseActivePourRail =
+    entreprises.find((e) => e.id === selectedEntrepriseId)
+    || (admin?.role !== 'super_admin' ? (entreprises[0] || null) : null)
+  const nomAdmin =
+    `${admin?.first_name || ''} ${admin?.last_name || ''}`.trim() ||
+    admin?.name || admin?.email || 'Administrateur'
+  const sectionsNav = sectionsNavAdmin({
+    admin,
+    // Le module de CETTE page est déjà gardé plus haut (`checkAccess`) : le
+    // rail, lui, montre toutes les rubriques — la page voisine est autorisée
+    // ou non par sa propre porte, pas par un grisonnement ici.
+    moduleActif: () => true,
+  })
+  const surDeconnexion = () => {
+    localStorage.removeItem('admin')
+    localStorage.removeItem('last_enterprise_id')
+    navigate('/login')
+  }
+
   return (
     <MotifsAbsenceProvider enterpriseId={entrepriseActiveId}>
     <>
@@ -1850,6 +1923,23 @@ export default function Absences() {
   }
 `}</style>
 
+      <CoqueAdmin
+        sidebar={
+          <SidebarUnique
+            sections={sectionsNav}
+            nomAdmin={nomAdmin}
+            initialeAdmin={(admin?.first_name || nomAdmin || 'A').charAt(0).toUpperCase()}
+            darkMode={darkMode}
+            surTheme={toggleTheme}
+            surDeconnexion={surDeconnexion}
+            entreprises={entreprises}
+            entrepriseActive={entrepriseActivePourRail}
+            surEntreprise={(e) =>
+              setSelectedEntrepriseId(typeof e === 'string' ? e : e?.id || 'all')
+            }
+          />
+        }
+      >
       <div className="abs-page" data-theme={darkMode ? 'dark' : 'light'} style={S.container}>
         {/* ═══ LA SECTION DU HAUT — maquette `maquettes/absences-titre-C-chemise.png` ═══
             UNE chemise, pas une bande au-dessus d'une rangée : les trois onglets de
@@ -2229,56 +2319,51 @@ export default function Absences() {
               et la corde, et le « + Déclarer » du haut de bande est ce qu'on a
               de mieux à proposer à un fil vide. */}
           {activeTab === 'demandes' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {pendingRequestsCount > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 14 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Inbox size={20} color="var(--abs-coral)" />
+            <div className="abs-demandes">
+              {/* LE RANG DES DEMANDES (08/12 : « retravaille cette section »). Une
+                  seule file : l'alerte à gauche, les quatre statuts à droite, une
+                  règle d'encre de trois pixels entre les deux — la règle du
+                  plateau, pas un filet pointillé et pas un second bandeau. Les
+                  pastilles sont les pinces de la grille : carrées, cerclées,
+                  pleines d'argile quand elles sont en main. Le rouge est réservé à
+                  l'alerte, parce qu'une pastille de filtre n'a rien à signaler. */}
+              <div className="abs-demandes-rang">
+                {pendingRequestsCount > 0 && (
+                  <div className="abs-demandes-segment abs-demandes-alerte">
+                    <span className="abs-demandes-sceau" aria-hidden="true"><Inbox size={16} /></span>
+                    <div>
+                      <p className="abs-demandes-alerte-nombre">
+                        <span className="abs-demandes-compte">{pendingRequestsCount}</span>{' '}
+                        demande{pendingRequestsCount > 1 ? 's' : ''} en attente de validation
+                      </p>
+                      <p className="abs-demandes-alerte-note">Les employés attendent votre réponse</p>
+                    </div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ color: 'var(--abs-coral)', fontSize: 14, fontWeight: 700, margin: '0 0 2px 0' }}>
-                      {pendingRequestsCount} demande{pendingRequestsCount > 1 ? 's' : ''} en attente de validation
-                    </p>
-                    <p style={{ color: 'var(--abs-text-soft)', fontSize: 12, margin: 0 }}>Les employés attendent votre réponse</p>
-                  </div>
-                </div>
-              )}
+                )}
 
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} data-testid="abs-demandes-filtres">
-                {[
-                  { key: 'all', label: '📨 Toutes', couleur: '#F59E0B' },
-                  { key: 'en_attente', label: '⏳ En attente', couleur: '#F59E0B' },
-                  { key: 'approuve', label: '✅ Approuvées', couleur: '#10B981' },
-                  { key: 'refuse', label: '❌ Refusées', couleur: '#EF4444' },
-                ].map(f => {
-                  const count = f.key === 'all' ? leaveRequests.length : leaveRequests.filter(r => r.status === f.key).length
-                  const actif = requestFilter === f.key
-                  return (
-                    <button
-                      key={f.key}
-                      data-testid={`abs-demande-filtre-${f.key}`}
-                      onClick={() => setRequestFilter(f.key)}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px',
-                        background: actif ? `${f.couleur}1F` : 'var(--abs-fill-soft)',
-                        border: `1px solid ${actif ? `${f.couleur}66` : 'var(--abs-line-soft)'}`,
-                        borderRadius: 999, color: actif ? 'var(--abs-text)' : 'var(--abs-text-soft)',
-                        fontSize: 13, fontWeight: actif ? 600 : 500, cursor: 'pointer', fontFamily: 'inherit',
-                        boxShadow: actif ? `0 0 0 3px ${f.couleur}14` : 'none',
-                        transition: 'all .18s ease',
-                      }}
-                    >
-                      <span>{f.label}</span>
-                      <span style={{
-                        padding: '1px 7px', borderRadius: 999, fontSize: 11, fontWeight: 700,
-                        background: actif ? `${f.couleur}2E` : 'var(--abs-line-soft)',
-                        color: actif ? 'var(--abs-text)' : 'var(--abs-text-faint)',
-                      }}>
-                        {count}
-                      </span>
-                    </button>
-                  )
-                })}
+                <div className="abs-demandes-segment abs-demandes-filtres" data-testid="abs-demandes-filtres" role="group" aria-label="Filtrer les demandes par statut">
+                  {[
+                    { key: 'all', label: '📨 Toutes' },
+                    { key: 'en_attente', label: '⏳ En attente' },
+                    { key: 'approuve', label: '✅ Approuvées' },
+                    { key: 'refuse', label: '❌ Refusées' },
+                  ].map(f => {
+                    const count = f.key === 'all' ? leaveRequests.length : leaveRequests.filter(r => r.status === f.key).length
+                    return (
+                      <button
+                        key={f.key}
+                        type="button"
+                        className="abs-demandes-pastille"
+                        data-testid={`abs-demande-filtre-${f.key}`}
+                        aria-pressed={requestFilter === f.key}
+                        onClick={() => setRequestFilter(f.key)}
+                      >
+                        <span>{f.label}</span>
+                        <span className="abs-demandes-compte">{count}</span>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
               {loadingRequests ? (
@@ -2342,184 +2427,131 @@ export default function Absences() {
 
 
                     {activeTab === 'config_conges' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="abs-config-pile" data-testid="abs-config-pile">
               <AbsencesMotifsManager absences={absences} />
-              <div style={{
-                background: 'var(--abs-bg-elevated)',
-                border: '1px solid var(--abs-line-soft)',
-                borderRadius: 18,
-                padding: 20,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 18,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+
+              {/* UNE SEULE CARTE pour les réglages et leur recalcul : la carte
+                  « Recalcul des soldes » était une QUATRIEME feuille cerclée pour
+                  un titre, une phrase et un bouton — un pied de carte dit la même
+                  chose pour trois pixels d'encre. » */}
+              <section className="abs-config-carte">
+                <header className="abs-config-tete">
                   <div>
-                    <h3 style={{ color: 'var(--abs-text)', fontSize: 18, fontWeight: 700, margin: 0 }}>Configuration des congés</h3>
-                    <p style={{ color: 'var(--abs-text-soft)', fontSize: 13, margin: '4px 0 0 0' }}>
-                      Ces paramètres seront utilisés dans l’espace employé et les fiches de paie.
+                    <h3>Configuration des congés</h3>
+                    <p className="abs-config-note">
+                      Ces paramètres servent à l’espace employé, aux fiches de paie et au calcul des soldes ci-dessous.
                     </p>
                   </div>
-
                   <button
+                    type="button"
+                    className="abs-config-action"
                     onClick={handleSaveLeaveConfig}
                     disabled={savingLeaveConfig}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '12px 16px',
-                      borderRadius: 12,
-                      border: 'none',
-                      background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-                      color: '#000',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      fontSize: 13,
-                    }}
                   >
-                    {savingLeaveConfig ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />}
-                    <span>{savingLeaveConfig ? 'Enregistrement...' : 'Enregistrer'}</span>
+                    {savingLeaveConfig ? <RefreshCw size={16} /> : <Save size={16} />}
+                    <span>{savingLeaveConfig ? 'Enregistrement…' : 'Enregistrer'}</span>
                   </button>
-                </div>
+                </header>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 }}>Jours acquis par mois</label>
+                <div className="abs-config-grille">
+                  <label className="abs-config-champ">
+                    <span className="abs-config-etiquette">Jours acquis par mois</span>
                     <input
                       type="number"
                       step="0.25"
                       value={leaveConfig.leave_days_per_month}
                       onChange={e => setLeaveConfig(prev => ({ ...prev, leave_days_per_month: e.target.value }))}
-                      style={S.input}
+                      placeholder="1.75"
                     />
-                    <span style={{ color: 'var(--abs-text-faint)', fontSize: 11 }}>Ex: 1.75 jours/mois</span>
-                  </div>
+                    <span className="abs-config-aide">
+                      {nombreDeMois(12) * (parseFloat(leaveConfig.leave_days_per_month) || 0)} jours sur une année pleine
+                    </span>
+                  </label>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 }}>Plafond annuel</label>
+                  <label className="abs-config-champ">
+                    <span className="abs-config-etiquette">Plafond annuel</span>
                     <input
                       type="number"
                       value={leaveConfig.annual_leave_cap}
                       onChange={e => setLeaveConfig(prev => ({ ...prev, annual_leave_cap: e.target.value }))}
-                      style={S.input}
+                      placeholder="30"
                     />
-                    <span style={{ color: 'var(--abs-text-faint)', fontSize: 11 }}>Ex: 30 jours maximum</span>
-                  </div>
+                    <span className="abs-config-aide">
+                      Au-delà, l’acquisition s’arrête — {leaveConfig.leave_days_per_month || 0} × 12 ={' '}
+                      {nombreDeMois(12) * (parseFloat(leaveConfig.leave_days_per_month) || 0)}
+                    </span>
+                  </label>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 }}>Référence de calcul</label>
+                  {/* « Méthode d’acquisition des congés » était une note sous le
+                      champ, alors qu'elle ne faisait que RENOMMER l'étiquette du
+                      dessus : le titre du groupe est l'étiquette, la note dit ce
+                      que le choix change. */}
+                  <fieldset className="abs-config-champ" style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+                    <legend>Référence de calcul</legend>
                     <select
                       value={leaveConfig.leave_reference_date}
                       onChange={e => setLeaveConfig(prev => ({ ...prev, leave_reference_date: e.target.value }))}
-                      style={S.filterSelectSmall}
                     >
                       <option value="hire_date">Depuis la date d’embauche</option>
                       <option value="calendar_year">Année civile</option>
                     </select>
-                    <span style={{ color: 'var(--abs-text-faint)', fontSize: 11 }}>Méthode d’acquisition des congés</span>
-                  </div>
+                    <span className="abs-config-aide">
+                      Date d’embauche : chacun acquiert à partir de son premier jour. Année civile : tous acquièrent du 1er janvier.
+                    </span>
+                  </fieldset>
                 </div>
 
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  padding: '12px 14px',
-                  background: 'var(--abs-fill-soft)',
-                  border: '1px solid var(--abs-line-soft)',
-                  borderRadius: 12,
-                  cursor: 'pointer'
-                }}>
+                <label className="abs-config-bascule">
                   <input
                     type="checkbox"
                     checked={leaveConfig.leave_carry_over}
                     onChange={e => setLeaveConfig(prev => ({ ...prev, leave_carry_over: e.target.checked }))}
-                    style={{ accentColor: 'var(--abs-amber)', marginTop: 2 }}
                   />
-                  <div>
-                    <span style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 600 }}>
-                      Autoriser le report des congés N-1
+                  <span>
+                    <span className="abs-config-bascule-strong">Autoriser le report des congés N-1</span>
+                    <span className="abs-config-bascule-note">
+                      Si activé, le solde positif de l’année précédente est reporté automatiquement.
                     </span>
-                    <p style={{ color: 'var(--abs-text-soft)', fontSize: 11, margin: '4px 0 0 0', lineHeight: 1.4 }}>
-                      Si activé, le solde positif de l’année précédente sera reporté automatiquement.
-                    </p>
-                  </div>
+                  </span>
                 </label>
-              </div>
 
-              <div style={{
-                background: 'var(--abs-bg-elevated)',
-                border: '1px solid var(--abs-line-soft)',
-                borderRadius: 18,
-                padding: 20,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 16,
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <div>
-                    <h3 style={{ color: 'var(--abs-text)', fontSize: 18, fontWeight: 700, margin: 0 }}>Recalcul des soldes</h3>
-                    <p style={{ color: 'var(--abs-text-soft)', fontSize: 13, margin: '4px 0 0 0' }}>
-                      Recalcule les soldes pour tous les employés actifs de l’entreprise.
-                    </p>
-                  </div>
-
+                <footer className="abs-config-pied">
+                  <span className="abs-config-note">
+                    Le recalcul relit les absences VALIDÉES de l’année pour tous les employés actifs de l’entreprise.
+                  </span>
                   <button
+                    type="button"
+                    className="abs-config-action abs-config-action-secondaire"
                     onClick={handleRecalculateLeaveBalances}
                     disabled={recalculatingBalances}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '12px 16px',
-                      borderRadius: 12,
-                      border: '1px solid rgba(16,185,129,0.25)',
-                      background: 'rgba(16,185,129,0.12)',
-                      color: 'var(--abs-emerald)',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      fontSize: 13,
-                    }}
                   >
-                    {recalculatingBalances ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={16} />}
-                    <span>{recalculatingBalances ? 'Recalcul...' : 'Recalculer tous les soldes'}</span>
+                    <RefreshCw size={16} />
+                    <span>{recalculatingBalances ? 'Recalcul…' : 'Recalculer tous les soldes'}</span>
                   </button>
-                </div>
-              </div>
+                </footer>
+              </section>
 
-              <div style={{
-                background: 'var(--abs-bg-elevated)',
-                border: '1px solid var(--abs-line-soft)',
-                borderRadius: 18,
-                padding: 20,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 16,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <section className="abs-config-carte">
+                <header className="abs-config-tete">
                   <div>
-                    <h3 style={{ color: 'var(--abs-text)', fontSize: 18, fontWeight: 700, margin: 0 }}>Soldes de congés {anneeSoldes}</h3>
-                    <p style={{ color: 'var(--abs-text-soft)', fontSize: 13, margin: '4px 0 0 0' }}>
-                      Calculés à partir des absences validées de l’année — employés actifs uniquement.
+                    <h3>Soldes de congés {anneeSoldes}</h3>
+                    <p className="abs-config-note">
+                      Calculés à partir des absences validées de l’année — employés actifs uniquement. Deux employés
+                      n’ont pas le même « acquis » : {nombreDeMois(12) * (parseFloat(leaveConfig.leave_days_per_month) || 1.75)}{' '}
+                      jours pour une année pleine, autant de ×{' '}
+                      <span className="abs-config-mono">{leaveConfig.leave_days_per_month || 1.75}</span> que de mois
+                      depuis l’embauche pour les autres.
                     </p>
                   </div>
                   {!loadingLeaveBalancesPreview && leaveBalancesPreview.length > 0 && (
-                    <span style={{
-                      padding: '5px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                      background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)', color: 'var(--abs-amber)',
-                    }}>
-                      {leaveBalancesPreview.length} employé{leaveBalancesPreview.length > 1 ? 's' : ''}
-                    </span>
+                    <span className="abs-demandes-compte">{leaveBalancesPreview.length} employé{leaveBalancesPreview.length > 1 ? 's' : ''}</span>
                   )}
-                </div>
+                </header>
 
                 {loadingLeaveBalancesPreview ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 30 }}>
-                    <RefreshCw size={20} color="var(--abs-amber)" style={{ animation: 'spin 1s linear infinite' }} />
-                    <span style={{ color: 'var(--abs-text-soft)' }}>Chargement des soldes...</span>
+                  <div className="abs-config-note" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <RefreshCw size={20} style={{ animation: 'spin 0.8s linear infinite' }} />
+                    <span>Chargement des soldes…</span>
                   </div>
                 ) : leaveBalancesPreview.length === 0 ? (
                   <div style={S.emptyMini}>
@@ -2527,17 +2559,13 @@ export default function Absences() {
                     <span>Aucun solde disponible. Lancez un recalcul.</span>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="abs-soldes-liste" role="region" aria-label="Soldes de congés, tableau défilant" tabIndex={0}>
-                    <div style={{
-                      display: 'grid', gridTemplateColumns: SOLDE_GRILLE, gap: 12,
-                      padding: '0 14px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.4px',
-                      color: 'var(--abs-text-faint)',
-                    }}>
+                  <div className="abs-soldes-table" data-testid="abs-soldes-liste" role="region" aria-label="Soldes de congés, tableau défilant" tabIndex={0}>
+                    <div className="abs-soldes-ligne abs-soldes-tete">
                       <span>Employé</span>
-                      <span style={{ textAlign: 'right' }}>Acquis</span>
-                      <span style={{ textAlign: 'right' }}>Pris</span>
-                      <span style={{ textAlign: 'right' }}>Attente</span>
-                      <span style={{ textAlign: 'right' }}>Solde</span>
+                      <span>Acquis</span>
+                      <span>Pris</span>
+                      <span>En attente</span>
+                      <span>Solde</span>
                     </div>
 
                     {leaveBalancesPreview.map((item, index) => {
@@ -2549,58 +2577,50 @@ export default function Absences() {
                       return (
                         <div
                           key={item.id || `${item.employee_id}-${index}`}
+                          className="abs-soldes-ligne"
                           data-testid="abs-solde-ligne"
                           data-employe={item.employee_id}
-                          style={{
-                            display: 'grid', gridTemplateColumns: SOLDE_GRILLE, gap: 12, alignItems: 'center',
-                            padding: '12px 14px', borderRadius: 12,
-                            background: 'var(--abs-fill-soft)', border: '1px solid var(--abs-line-soft)',
-                          }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                            <span style={{
-                              width: 32, height: 32, flexShrink: 0, borderRadius: '50%',
-                              background: 'linear-gradient(135deg, rgba(245,158,11,0.85), rgba(16,185,129,0.7))',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: 'var(--abs-bg-elevated)', fontSize: 12, fontWeight: 800,
-                            }}>
-                              {initiales}
-                            </span>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ color: 'var(--abs-text)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <div className="abs-soldes-identité">
+                            <span className="abs-soldes-sceau" aria-hidden="true">{initiales}</span>
+                            <span style={{ minWidth: 0 }}>
+                              <span className="abs-soldes-nom">
                                 {item.employees?.first_name} {item.employees?.last_name}
-                              </div>
-                              <div style={{ color: 'var(--abs-text-soft)', fontSize: 11 }}>
+                              </span>
+                              <span className="abs-soldes-matricule">
                                 {item.employees?.matricule || '—'}
-                                {item.employees?.department ? ` • ${item.employees.department}` : ''}
-                              </div>
-                            </div>
+                                {item.employees?.department ? ` · ${item.employees.department}` : ''}
+                              </span>
+                            </span>
                           </div>
 
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ color: 'var(--abs-emerald)', fontSize: 13, fontWeight: 700 }}>{acquis}j</div>
+                          <div className="abs-soldes-nombre">
+                            {acquis} j
+                            <span className="abs-soldes-fabrication">{explicationAcquis(item, leaveConfig, anneeSoldes)}</span>
                           </div>
 
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ color: 'var(--abs-amber)', fontSize: 13, fontWeight: 700 }}>{pris}j</div>
-                            <div style={{ height: 3, marginTop: 4, borderRadius: 999, background: 'var(--abs-line-soft)', overflow: 'hidden' }}>
-                              <div style={{ width: `${pct}%`, height: '100%', background: pct >= 100 ? '#EF4444' : '#F59E0B' }} />
-                            </div>
+                          <div className="abs-soldes-nombre">
+                            {pris} j
+                            <span
+                              className="abs-soldes-jauge"
+                              role="presentation"
+                              title={`${pct} % du pris sur l'acquis`}
+                            >
+                              <span className="abs-soldes-jauge-plein" data-plein={pct >= 100 ? 'vrai' : 'faux'} style={{ width: `${pct}%` }} />
+                            </span>
                           </div>
 
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ color: 'var(--abs-indigo)', fontSize: 13, fontWeight: 700 }}>{item.total_pending || 0}j</div>
-                          </div>
+                          <div className="abs-soldes-nombre">{item.total_pending || 0} j</div>
 
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ color: solde < 0 ? 'var(--abs-coral)' : 'var(--abs-text)', fontSize: 14, fontWeight: 800 }}>{solde}j</div>
+                          <div className="abs-soldes-solde" data-negatif={solde < 0 ? 'vrai' : 'faux'}>
+                            {solde} j
                           </div>
                         </div>
                       )
                     })}
                   </div>
                 )}
-              </div>
+              </section>
             </div>
           )}
         </main>
@@ -2912,6 +2932,7 @@ export default function Absences() {
           </div>
         )}
       </div>
+      </CoqueAdmin>
     </>
     </MotifsAbsenceProvider>
   )
@@ -2963,7 +2984,7 @@ const CS = {
 // STYLES PRINCIPAUX (S)
 // ═══════════════════════════════════════════════════════════
 const S = {
-  container: { minHeight: '100vh', background: 'var(--abs-bg)' },
+  container: { background: 'var(--abs-bg)' },
   loadingContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--abs-bg)', gap: 16 },
   loadingText: { color: 'var(--abs-text-soft)', marginTop: 20 },
   main: { padding: 20, maxWidth: 1200, margin: '0 auto' },

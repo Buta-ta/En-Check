@@ -16,19 +16,30 @@
 import { useMemo, useState } from 'react'
 import { Plus, Pencil, Check, X, Trash2, Building2, Smile } from 'lucide-react'
 import { useMotifsAbsence } from '../hooks/useMotifsAbsence'
-import { EMOJIS_MOTIFS, PALETTE_MOTIFS, fondDepuisCouleur } from '../constants/motifsAbsence'
+import { EMOJIS_MOTIFS, PALETTE_MOTIFS, fondDepuisCouleur, nomDeCouleur } from '../constants/motifsAbsence'
 
 const champsVides = { label: '', emoji: '📋', color: 'var(--abs-emerald)' }
 
 /** Les motifs d'origine portent `id`, ceux de la base portent `code` */
 const codeDe = (m) => m.code || m.id
 
-/** Un emoji, pas un roman : on garde au plus 2 caractères utiles */
+/** UN emoji, pas un roman, et pas deux. `nettoyerEmoji('🎙️ Musique')` rendait
+ * « 🎙️ » mais le libellé, lui, gardait l'emoji collé dans son nom — une tuile
+ * « 📋 🎙️ Musique » (fondateur, 08/12 : un motif doublonné). Le champ emoji
+ * segmente donc en graphèmes (un ZWJ reste UN signe) et le libellé est vidé de
+ * ceux qui le précèdent : deux porteurs du même signe, c'est deux signes. */
+const segmenteur = typeof Intl !== 'undefined' && Intl.Segmenter
+  ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+  : null
 const nettoyerEmoji = (valeur) => {
   const net = (valeur || '').trim()
   if (!net) return '📋'
-  return [...net].slice(0, 2).join('')
+  const signes = segmenteur ? [...segmenteur.segment(net)].map((g) => g.segment) : [...net]
+  return signes[0]
 }
+const emojiDansLeLibellé = /\p{Extended_Pictographic}/u
+const nettoyerLibellé = (valeur) =>
+  (valeur || '').replace(emojiDansLeLibellé, '').replace(/\s+/g, ' ').trim()
 
 export default function AbsencesMotifsManager({ absences = [] }) {
   const { motifs, toutesEntreprises, creer, modifier, supprimer } = useMotifsAbsence()
@@ -56,15 +67,19 @@ export default function AbsencesMotifsManager({ absences = [] }) {
   }
 
   const enregistrer = async () => {
-    if (!brouillon || !brouillon.label.trim()) return
+    // le libellé se nettoie UNE fois, avant le garde-fou : sinon on refuse un
+    // motif dont le nom ne contenait qu'un emoji, et on écrit deux fois la même
+    // correction (dans le brouillon et dans la sauvegarde)
+    const libellé = nettoyerLibellé(brouillon?.label || '')
+    if (!brouillon || !libellé) return
     setEnCours(true)
     try {
       if (brouillon.rowId) await modifier(brouillon.rowId, {
-        label: brouillon.label,
+        label: libellé,
         emoji: brouillon.emoji,
         color: brouillon.color,
       })
-      else await creer({ label: brouillon.label, emoji: brouillon.emoji, color: brouillon.color })
+      else await creer({ label: libellé, emoji: brouillon.emoji, color: brouillon.color })
       setBrouillon(null)
     } finally {
       setEnCours(false)
@@ -177,8 +192,14 @@ export default function AbsencesMotifsManager({ absences = [] }) {
                 }}>
                   {m.label}
                 </p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--abs-text-muted, var(--abs-text-soft))' }}>
-                  {m.color} · {nb} absence{nb > 1 ? 's' : ''}
+                {/* le NUANCIER montre la teinte, le texte la NOMME : écrit deux
+                    fois, le hex se lit comme une erreur de saisie */}
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--abs-text-muted, var(--abs-text-soft))', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span
+                    aria-hidden="true"
+                    style={{ width: 9, height: 9, borderRadius: 3, background: m.color, border: '1px solid var(--abs-line)', flexShrink: 0 }}
+                  />
+                  {nomDeCouleur(m.color)} · {nb} absence{nb > 1 ? 's' : ''}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
@@ -321,12 +342,12 @@ export default function AbsencesMotifsManager({ absences = [] }) {
             <button
               type="button"
               onClick={enregistrer}
-              disabled={!brouillon.label.trim() || enCours}
+              disabled={!nettoyerLibellé(brouillon.label) || enCours}
               data-testid="abs-motifs-enregistrer"
               style={{
                 ...boutonPrimaire,
-                opacity: !brouillon.label.trim() || enCours ? 0.5 : 1,
-                cursor: !brouillon.label.trim() || enCours ? 'not-allowed' : 'pointer',
+                opacity: !nettoyerLibellé(brouillon.label) || enCours ? 0.5 : 1,
+                cursor: !nettoyerLibellé(brouillon.label) || enCours ? 'not-allowed' : 'pointer',
               }}
             >
               <Check size={15} /> {brouillon.rowId ? 'Enregistrer' : 'Créer le motif'}
